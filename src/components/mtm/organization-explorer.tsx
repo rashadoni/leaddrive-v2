@@ -1104,7 +1104,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               <Download className="mr-2 h-4 w-4" />
               {tx("explorer.exportOptions")}
             </summary></Hint>
-            <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 grid w-[min(18rem,calc(100vw-2rem))] gap-2 rounded-xl xl:left-auto xl:right-0 border border-zinc-200 bg-card p-2 shadow-xl dark:border-zinc-700">
+            <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 grid w-[min(18rem,calc(100vw-2rem))] gap-2 rounded-xl xl:left-auto xl:right-0 border border-border bg-card p-2 shadow-xl">
               <Button
                 variant="ghost"
                 size="sm"
@@ -1149,7 +1149,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
 
 
       {isRouteOrganizationFlow && routeAssignmentHandoff ? (
-        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{tx("explorer.routeFlowTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1368,8 +1368,8 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                 {tx(`explorer.densities.${density}`)}
               </span>
             </summary>
-            <div className="absolute right-0 top-full z-30 mt-2 w-[min(24rem,100%)] border border-zinc-200 bg-popover p-3 text-popover-foreground shadow-lg dark:border-zinc-700">
-              <div className="flex items-center justify-between gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+            <div className="absolute right-0 top-full z-30 mt-2 w-[min(24rem,100%)] border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <span className="text-sm font-semibold">{tx("explorer.density")}</span>
                 <div className="flex gap-1" role="group" aria-label={tx("explorer.density")}>
                   {(["COMPACT", "COMFORTABLE"] as OrganizationDensity[]).map((value) => (
@@ -1397,7 +1397,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                   const position = visibleColumns.indexOf(column)
                   const fixedCount = visibleColumns.filter((entry) => entry === "code" || entry === "organization").length
                   return (
-                    <div key={column} className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b border-zinc-100 py-1 last:border-0 dark:border-zinc-800">
+                    <div key={column} className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b border-border py-1 last:border-0">
                       <label className="flex min-w-0 cursor-pointer items-center gap-2 text-sm">
                         <input
                           type="checkbox"
@@ -1438,7 +1438,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           ))}
         </div>
       ) : loadError ? (
-        <div className="grid min-h-52 place-items-center rounded-xl border border-zinc-200 bg-card p-6 text-center dark:border-zinc-700">
+        <div className="grid min-h-52 place-items-center rounded-xl border border-border bg-card p-6 text-center">
           <div className="grid max-w-md gap-3">
             <p className="font-semibold">{tx("explorer.loadFailed")}</p>
             <p className="text-sm text-muted-foreground">{loadError}</p>
@@ -1446,7 +1446,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           </div>
         </div>
       ) : organizations.length === 0 ? (
-        <div className="grid min-h-52 place-items-center rounded-xl border border-zinc-200 bg-card p-6 text-center dark:border-zinc-700">
+        <div className="grid min-h-52 place-items-center rounded-xl border border-border bg-card p-6 text-center">
           <div className="grid max-w-md gap-3">
             <Building2 className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="font-semibold">
@@ -1460,7 +1460,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
             {activeFilterLabels.length > 0 ? (
               <div aria-label={tx("explorer.emptyActiveFilters")} className="flex flex-wrap justify-center gap-1.5">
                 {activeFilterLabels.map((label) => (
-                  <span key={label} className="rounded-full border border-zinc-200 bg-muted/60 px-2 py-1 text-xs text-muted-foreground dark:border-zinc-700">
+                  <span key={label} className="rounded-full border border-border bg-muted/60 px-2 py-1 text-xs text-muted-foreground">
                     {label}
                   </span>
                 ))}
@@ -1483,7 +1483,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 md:block">
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
             {/* No frame with its own scrolling (owner: an inner scroll is a bug):
                 the default columns fit a laptop screen; more, scroll sideways. */}
             <div data-testid="mtm-organization-grid-scroll" className="overflow-x-auto">
@@ -1495,7 +1495,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                 data-density={density}
               >
                 <thead className="sticky top-0 z-10 bg-muted">
-                  <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
+                  <tr className="border-b border-border text-left">
                     <th className="sticky left-0 z-20 bg-muted px-1" style={{ width: selectionColumnWidth, minWidth: selectionColumnWidth }}>
                       <div className="flex items-center justify-between gap-1">
                         <span className="pl-2 text-[10px] font-semibold text-muted-foreground">№</span>
@@ -1525,7 +1525,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                     return (
                       <tr
                         key={organization.id}
-                        className="group border-b border-zinc-200 align-middle transition-colors last:border-0 hover:bg-muted/40 dark:border-zinc-700"
+                        className="group border-b border-border align-middle transition-colors last:border-0 hover:bg-muted/40"
                         style={{ contentVisibility: "auto", containIntrinsicSize: density === "COMPACT" ? "44px" : "64px" }}
                       >
                         <td className="sticky left-0 z-20 bg-card px-1 group-hover:bg-muted" style={{ width: selectionColumnWidth, minWidth: selectionColumnWidth }}>
@@ -1684,7 +1684,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           </div>
 
           <div className="grid gap-2 md:hidden">
-            <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-card px-2 dark:border-zinc-700">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-2">
               <span className="px-2 text-sm font-medium">{tx("explorer.pageSelection")}</span>
               <FieldCheckbox
                 checked={allPageSelected}
@@ -1699,7 +1699,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               const nextVisit = organization.routePoints[0]
               const attributes = organization.attributeFacts[0]
               return (
-                <article key={organization.id} data-testid="mtm-organization-card" className="rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+                <article key={organization.id} data-testid="mtm-organization-card" className="rounded-xl border border-border bg-card p-3">
                   <div className="flex items-start gap-2">
                     <FieldCheckbox
                       checked={selected.has(organization.id)}
@@ -1828,7 +1828,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                       })}</dd>
                     </div>
                   </dl>
-                  <div className={`mt-3 grid gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700 ${effectiveScope === "MINE" ? "grid-cols-2" : "grid-cols-1"}`}>
+                  <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${effectiveScope === "MINE" ? "grid-cols-2" : "grid-cols-1"}`}>
                     {effectiveScope === "MINE" ? (
                       organization.latitude !== null && organization.longitude !== null ? (
                         <Button asChild variant="outline" className="min-h-11">
@@ -1865,7 +1865,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </>
       )}
 
-      <nav aria-label={tx("explorer.pagination")} className="flex flex-col gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+      <nav aria-label={tx("explorer.pagination")} className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Label htmlFor="organization-page-size" className="text-sm text-muted-foreground">{tx("explorer.rowsPerPage")}</Label>
           <Select
@@ -1948,7 +1948,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               placeholder={tx("explorer.savedViewNamePlaceholder")}
             />
           </div>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 px-3 dark:border-zinc-700">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3">
             <input
               type="checkbox"
               checked={savedViewDefault}
@@ -1994,7 +1994,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <div data-testid="mtm-organization-assignment-dialog">
           {assignmentResult ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 divide-x rounded-xl border border-zinc-200 dark:border-zinc-700">
+              <div className="grid grid-cols-3 divide-x rounded-xl border border-border">
                 <div className="grid gap-1 p-3">
                   <span className="text-xs text-muted-foreground">{tx("explorer.changed")}</span>
                   <strong className="text-2xl tabular-nums">{assignmentResult.summary.changed}</strong>
@@ -2024,7 +2024,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
             </div>
           ) : preview ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 divide-x divide-y rounded-xl border border-zinc-200 dark:border-zinc-700 sm:grid-cols-4 sm:divide-y-0">
+              <div className="grid grid-cols-2 divide-x divide-y rounded-xl border border-border sm:grid-cols-4 sm:divide-y-0">
                 {[
                   [tx("explorer.selected"), preview.summary.selected],
                   [tx("explorer.canChange"), preview.summary.assignable],
@@ -2052,7 +2052,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
+                <div className="flex items-center gap-3 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm">
                   <UserRoundCheck className="h-5 w-5 flex-none" />
                   {tx("explorer.noConflicts")}
                 </div>

@@ -26,7 +26,7 @@ describe("C8: the catalogue is readable and cancel asks first", () => {
     const card = builder.slice(builder.indexOf('data-testid="mtm-route-candidate"'), builder.indexOf('data-testid="mtm-route-candidate-availability"') + 2000)
     expect(card).not.toContain("text-[10px]")
     expect(card).not.toContain("text-[11px]")
-    expect(builder).toContain('<span className="shrink-0 border border-zinc-200 px-1.5 py-0.5 text-xs font-medium text-muted-foreground dark:border-zinc-700">')
+    expect(builder).toContain('<span className="shrink-0 border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">')
     expect(builder).toContain('<span className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">')
   })
 

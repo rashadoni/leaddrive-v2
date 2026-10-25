@@ -73,7 +73,7 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
             <button
               type="button"
               data-testid="live-map-card-customize"
-              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-foreground hover:bg-muted [@media(pointer:coarse)]:min-h-11"
             >
               <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />{tMap("card.customize")}
               {shown.length < offered.length ? <span className="tabular-nums text-muted-foreground">· {tMap("card.hiddenCount", { count: offered.length - shown.length })}</span> : null}
@@ -107,7 +107,7 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
                       onClick={() => { if (!(index === 0)) onLayoutChange(moveCardBlock(layout, id, "up", available)) }}
                       aria-label={tMap("card.moveUp", { name: block.title })}
                       data-testid={`live-map-card-block-up-${id}`}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
                     >
                       <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
@@ -120,7 +120,7 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
                       onClick={() => { if (!(index === offered.length - 1)) onLayoutChange(moveCardBlock(layout, id, "down", available)) }}
                       aria-label={tMap("card.moveDown", { name: block.title })}
                       data-testid={`live-map-card-block-down-${id}`}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-200 hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-transparent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
                     >
                       <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>

@@ -500,7 +500,7 @@ export default function PipelinesSettingsPage() {
             value={newPipelineName}
             onChange={e => setNewPipelineName(e.target.value)}
             placeholder={t("newPipelinePlaceholder")}
-            className="h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 text-xs w-48"
+            className="h-8 rounded-lg border border-input bg-background px-3 text-xs w-48"
             onKeyDown={e => e.key === "Enter" && createPipeline()}
           />
           <Button size="sm" className="h-8 text-xs" onClick={createPipeline} disabled={creatingPipeline || !newPipelineName.trim()}>
@@ -520,7 +520,7 @@ export default function PipelinesSettingsPage() {
 
           return (
             <MotionItem key={stage.id}>
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
                 {/* Stage header */}
                 {isEditing ? (
                   /* ── Inline Edit Mode ── */
@@ -535,7 +535,7 @@ export default function PipelinesSettingsPage() {
                         <input
                           value={editName}
                           onChange={e => setEditName(e.target.value)}
-                          className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 text-xs"
+                          className="w-full h-8 rounded-lg border border-input bg-background px-3 text-xs"
                         />
                       </div>
                       <div>
@@ -544,7 +544,7 @@ export default function PipelinesSettingsPage() {
                           type="number" min="0" max="100"
                           value={editProbability}
                           onChange={e => setEditProbability(e.target.value)}
-                          className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 text-xs"
+                          className="w-full h-8 rounded-lg border border-input bg-background px-3 text-xs"
                         />
                       </div>
                     </div>
@@ -666,7 +666,7 @@ export default function PipelinesSettingsPage() {
                             const fieldKey = FIELD_KEYS.find(f => f.value === rule.fieldName)
                             const ruleTypeKey = (FIELD_RULE_MAP[rule.fieldName] || []).find(r => r.value === rule.ruleType)
                             return (
-                              <div key={rule.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 border border-zinc-200 dark:border-zinc-700">
+                              <div key={rule.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 border border-border">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium">{rule.errorMessage}</p>
@@ -688,13 +688,13 @@ export default function PipelinesSettingsPage() {
 
                         {/* Add rule form */}
                         {addingFor === stage.id ? (
-                          <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background space-y-3">
+                          <div className="p-3 rounded-lg border border-border bg-background space-y-3">
                             <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <label className="text-[10px] font-medium text-muted-foreground mb-1 block">{t("field")}</label>
                                 <select
                                   value={newField} onChange={e => handleFieldChange(e.target.value)}
-                                  className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-xs"
+                                  className="w-full h-8 rounded-lg border border-input bg-background px-2 text-xs"
                                 >
                                   {FIELD_KEYS.map(f => <option key={f.value} value={f.value}>{t(f.key)}</option>)}
                                 </select>
@@ -703,7 +703,7 @@ export default function PipelinesSettingsPage() {
                                 <label className="text-[10px] font-medium text-muted-foreground mb-1 block">{t("ruleType")}</label>
                                 <select
                                   value={newRuleType} onChange={e => setNewRuleType(e.target.value)}
-                                  className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-xs"
+                                  className="w-full h-8 rounded-lg border border-input bg-background px-2 text-xs"
                                 >
                                   {(FIELD_RULE_MAP[newField] || []).map(r => (
                                     <option key={r.value} value={r.value}>{t(r.key)}</option>
@@ -717,7 +717,7 @@ export default function PipelinesSettingsPage() {
                                 <input
                                   type="number" min="0" value={newRuleValue}
                                   onChange={e => setNewRuleValue(e.target.value)}
-                                  className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-xs"
+                                  className="w-full h-8 rounded-lg border border-input bg-background px-2 text-xs"
                                   placeholder={VALUE_PLACEHOLDERS[newRuleType] || "0"}
                                 />
                               </div>
@@ -726,7 +726,7 @@ export default function PipelinesSettingsPage() {
                               <label className="text-[10px] font-medium text-muted-foreground mb-1 block">{t("errorMessage")}</label>
                               <input
                                 value={newErrorMsg} onChange={e => setNewErrorMsg(e.target.value)}
-                                className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-xs"
+                                className="w-full h-8 rounded-lg border border-input bg-background px-2 text-xs"
                                 placeholder={t("errorMessagePlaceholder")}
                               />
                             </div>
@@ -755,7 +755,7 @@ export default function PipelinesSettingsPage() {
         {/* Add new stage */}
         {showAddStage ? (
           <MotionItem>
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3">
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("newStage")}</span>
@@ -767,7 +767,7 @@ export default function PipelinesSettingsPage() {
                     value={newStageName}
                     onChange={e => setNewStageName(e.target.value)}
                     placeholder={t("stageNamePlaceholder")}
-                    className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 text-xs"
+                    className="w-full h-8 rounded-lg border border-input bg-background px-3 text-xs"
                   />
                 </div>
                 <div>
@@ -776,7 +776,7 @@ export default function PipelinesSettingsPage() {
                     type="number" min="0" max="100"
                     value={newStageProbability}
                     onChange={e => setNewStageProbability(e.target.value)}
-                    className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background px-3 text-xs"
+                    className="w-full h-8 rounded-lg border border-input bg-background px-3 text-xs"
                   />
                 </div>
               </div>

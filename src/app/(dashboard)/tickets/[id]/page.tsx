@@ -1154,7 +1154,7 @@ export default function TicketDetailPage() {
               {showMacrosMenu && (
                 <>
                   <button type="button" tabIndex={-1} aria-hidden="true" className="fixed inset-0 z-10 cursor-default" onClick={() => setShowMacrosMenu(false)} />
-                  <div className="absolute right-0 top-full mt-1 bg-card border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg p-1 min-w-[200px] z-20">
+                  <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg p-1 min-w-[200px] z-20">
                     {activeMacros.map(m => (
                       <button
                         key={m.id}
@@ -1187,12 +1187,12 @@ export default function TicketDetailPage() {
 
       {/* Shortcuts help panel */}
       {showShortcuts && (
-        <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 bg-muted/30">
+        <div className="border border-border rounded-lg p-3 bg-muted/30">
           <h3 className="text-xs font-semibold mb-2">{tsk("title")}</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
             {TICKET_SHORTCUTS.map(s => (
               <div key={s.keys} className="flex items-center gap-2 text-xs">
-                <kbd className="px-1.5 py-0.5 bg-card rounded border border-zinc-200 dark:border-zinc-700 text-xs font-mono">{s.keys}</kbd>
+                <kbd className="px-1.5 py-0.5 bg-card rounded border border-border text-xs font-mono">{s.keys}</kbd>
                 <span className="text-muted-foreground">{s.description}</span>
               </div>
             ))}
@@ -1232,7 +1232,7 @@ export default function TicketDetailPage() {
       {/* Customer 360 moved to sidebar below */}
 
       {/* Status Pipeline */}
-      <div className="flex min-w-0 max-w-full overflow-x-auto rounded-lg border border-zinc-200 bg-card p-1 dark:border-zinc-700" aria-label={t("statusProgress")}>
+      <div className="flex min-w-0 max-w-full overflow-x-auto rounded-lg border border-border bg-card p-1" aria-label={t("statusProgress")}>
         {STATUS_PIPELINE.map((s, i) => {
           const isCurrent = ticket.status === s
           const currentIdx = STATUS_PIPELINE.indexOf(ticket.status)
@@ -1697,7 +1697,7 @@ export default function TicketDetailPage() {
                         value={aiLang}
                         onChange={e => setAiLang(e.target.value)}
                         aria-label={t("aiLanguage")}
-                        className="h-11 rounded-md border border-zinc-200 bg-background px-2 text-xs dark:border-zinc-700 sm:h-9"
+                        className="h-11 rounded-md border border-input bg-background px-2 text-xs sm:h-9"
                       >
                         <option value="ru">{t("languageRussian")}</option>
                         <option value="az">{t("languageAzerbaijani")}</option>
@@ -1768,7 +1768,7 @@ export default function TicketDetailPage() {
 
                 {/* Da Vinci Result display */}
                 {aiResult && (
-                  <div className="rounded-lg border border-zinc-200 bg-muted/50 p-3 dark:border-zinc-700">
+                  <div className="rounded-lg border border-border bg-muted/50 p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Bot className="h-4 w-4 text-foreground" />
                       <span className="text-xs font-medium text-foreground">

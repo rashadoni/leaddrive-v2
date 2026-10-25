@@ -3,6 +3,7 @@
 import * as React from "react"
 import { X } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { useCrmAppearance } from "./crm-appearance"
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -81,6 +82,7 @@ interface DialogProps {
 
 export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[40rem]", maxHeightClassName = "max-h-[85vh]", hideClose = false, mobileFullscreen = false, mobileFullscreenBreakpoint = "sm" }: DialogProps) {
   const t = useTranslations("common")
+  const crmAppearance = useCrmAppearance()
   const dialogRef = React.useRef<HTMLDivElement>(null)
   const previouslyFocusedElementRef = React.useRef<HTMLElement | null>(null)
   const dialogInstanceRef = React.useRef(Symbol("dialog"))
@@ -230,6 +232,8 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
         <div
           ref={dialogRef}
           role="dialog"
+          data-crm-dialog=""
+          data-crm-workspace={crmAppearance ? "" : undefined}
           aria-modal="true"
           aria-labelledby={hasTitle ? titleId : undefined}
           aria-describedby={hasDescription ? descriptionId : undefined}
@@ -254,11 +258,11 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
 }
 
 export function DialogContent({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-6 overflow-y-auto flex-1 ${className}`}>{children}</div>
+  return <div data-crm-dialog-content="" className={`p-6 overflow-y-auto flex-1 ${className}`}>{children}</div>
 }
 
 export function DialogHeader({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`px-6 pr-16 pt-6 pb-2 ${className}`}>{children}</div>
+  return <div data-crm-dialog-header="" className={`px-6 pr-16 pt-6 pb-4 ${className}`}>{children}</div>
 }
 
 export function DialogTitle({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -274,5 +278,5 @@ export function DialogDescription({ children, className = "" }: { children: Reac
 }
 
 export function DialogFooter({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`px-6 pb-6 pt-3 flex justify-end gap-2 border-t flex-shrink-0 ${className}`}>{children}</div>
+  return <div data-crm-dialog-footer="" className={`px-6 pb-6 pt-4 flex justify-end gap-2 border-t flex-shrink-0 ${className}`}>{children}</div>
 }

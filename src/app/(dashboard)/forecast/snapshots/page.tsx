@@ -183,7 +183,7 @@ export default function ForecastSnapshotsPage() {
           </MotionCard>
         )}
 
-        <MotionCard className="overflow-hidden border border-zinc-200 dark:border-zinc-700 rounded-lg">
+        <MotionCard className="overflow-hidden border border-border rounded-lg">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50">

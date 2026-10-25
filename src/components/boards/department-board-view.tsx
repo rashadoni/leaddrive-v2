@@ -131,11 +131,11 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
       </div>
 
       {/* Tabs */}
-      <div className="mb-3 inline-flex w-fit overflow-hidden rounded-md border">
-        <button onClick={() => setView("board")} className={`px-4 py-1.5 text-sm font-medium ${view === "board" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
+      <div data-crm-tabs="" className="mb-3 inline-flex w-fit overflow-hidden rounded-md border">
+        <button data-crm-tab="" data-state={view === "board" ? "active" : "inactive"} onClick={() => setView("board")} className={`px-4 py-1.5 text-sm font-medium ${view === "board" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
           {t("boardView")}
         </button>
-        <button onClick={() => setView("reports")} className={`px-4 py-1.5 text-sm font-medium ${view === "reports" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
+        <button data-crm-tab="" data-state={view === "reports" ? "active" : "inactive"} onClick={() => setView("reports")} className={`px-4 py-1.5 text-sm font-medium ${view === "reports" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
           {t("reportsTab")}
         </button>
       </div>

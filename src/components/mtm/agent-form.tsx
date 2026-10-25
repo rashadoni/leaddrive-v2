@@ -353,9 +353,9 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Doctors are a field agent's: the tab is there for that role only. */}
         {form.role === "AGENT" ? (
-          <div role="tablist" className="flex gap-1 border-b px-6" data-testid="agent-form-tabs">
+          <div data-crm-tabs="" role="tablist" className="flex gap-1 border-b px-6" data-testid="agent-form-tabs">
             {(["profile", "clients"] as const).map(key => (
-              <button
+              <button data-crm-tab="" data-state={tab === key ? "active" : "inactive"}
                 key={key}
                 type="button"
                 role="tab"
@@ -376,7 +376,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
           </div>
         ) : null}
         <DialogContent>
-          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-zinc-200 border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-zinc-700 dark:border-l-red-500">{error}</div>}
+          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-border border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-l-red-500">{error}</div>}
           {form.role === "AGENT" && clientsOpened ? (
             <div className={cn(tab !== "clients" && "hidden")}>
               <MtmAgentClientPicker agentId={agentId} orgId={orgId} onChange={setClientChoice} />
@@ -400,7 +400,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             {/* Owner, 2026-10-16: «одно и то же правило для сотрудников и агентов
                 полевых» — the agent gets a code in WhatsApp and sets their own
                 password (as Personnel → Add employee). */}
-            <p className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm" data-testid="agent-code-login-note">
+            <p className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm" data-testid="agent-code-login-note">
               <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{isEdit && !form.phone.trim() ? tf("codeLoginNoPhone") : tf("codeLoginNote")}</span>
             </p>
@@ -481,7 +481,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             </div>
             {form.role === "AGENT" ? (
               <div className="grid gap-3">
-                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border p-3 text-sm">
                   <input
                     id="canPlanOwnRoutes"
                     className="mt-0.5 h-5 w-5 accent-primary"
@@ -494,7 +494,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
                     <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{tf("allowSelfRoutePlanningHint")}</span>
                   </span>
                 </label>
-                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border p-3 text-sm">
                   <input
                     id="canSelfPublishRoutes"
                     className="mt-0.5 h-5 w-5 accent-primary"
@@ -511,7 +511,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             ) : null}
             <div>
               <Label htmlFor="agent-tags">{tf("tags")}</Label>
-              <div className="mt-1 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-zinc-200/70 bg-card px-2 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20 dark:border-zinc-700/70">
+              <div className="mt-1 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20">
                 {form.tags.map(tag => (
                   <span key={tag} className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted py-0.5 pl-2.5 pr-1 text-sm">
                     <span className="truncate">{tag}</span>
@@ -615,7 +615,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
                     "inline-flex h-9 items-center rounded-full border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                     form.mapColor === ""
                       ? "border-zinc-900 font-medium dark:border-zinc-100"
-                      : "border-zinc-200 text-muted-foreground hover:bg-muted dark:border-zinc-700",
+                      : "border-border text-muted-foreground hover:bg-muted",
                   )}
                 >
                   {tf("mapColorNone")}

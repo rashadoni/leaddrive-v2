@@ -221,7 +221,7 @@ export function HomeAttentionCard({ state }: { state: HomeAttentionState }) {
       ) : (
         <ul>
           {rows.map((row) => (
-            <li key={row.key} data-testid={`mtm-home-attention-${row.key}`} className="flex items-center gap-3 border-b border-zinc-100 py-3 last:border-b-0 dark:border-zinc-800">
+            <li key={row.key} data-testid={`mtm-home-attention-${row.key}`} className="flex items-center gap-3 border-b border-border py-3 last:border-b-0">
               {/* The icon keeps its row's colour, with no square under it (2026-10-18). */}
               <span className={cn("flex h-10 w-7 shrink-0 items-center justify-center", HOME_ICON[row.tone])}>{row.icon}</span>
               <div className="min-w-0 flex-1">

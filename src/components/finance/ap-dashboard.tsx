@@ -233,7 +233,7 @@ export function APDashboard() {
                   <tr className="border-b text-left">
                     <th className="py-2 px-2 w-8">
                       {canSelect && (
-                        <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-zinc-200 dark:border-zinc-700" />
+                        <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-input" />
                       )}
                     </th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("colBillNumber")}</th>
@@ -254,7 +254,7 @@ export function APDashboard() {
                     <tr key={bill.id} className={`border-b last:border-0 hover:bg-muted/50 ${isOverdue ? "bg-red-50/50 dark:bg-red-950/20" : ""} ${selected.has(bill.id) ? "bg-blue-50/50 dark:bg-blue-950/20" : ""} ${isFocused ? "outline outline-1 outline-primary/40" : ""}`}>
                       <td className="py-2 px-2">
                         {canSelect && (
-                          <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-zinc-200 dark:border-zinc-700" />
+                          <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-input" />
                         )}
                       </td>
                       <td className="py-2 px-2 font-medium">{bill.billNumber}</td>
@@ -382,15 +382,15 @@ function AddPaymentDialog({ billId, onClose, onPay }: { billId: string; onClose:
 }
 
 function SummaryCard({ title, value, icon, color }: { title: string; value: string; icon: React.ReactNode; color: string }) {
+  const signalColor = color === "#ef4444" || color === "#f59e0b" ? color : undefined
   return (
-    <div className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm" style={{ background: `linear-gradient(135deg, ${color}08 0%, ${color}18 100%)`, borderColor: `${color}20` }}>
-      <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ backgroundColor: color }} />
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
       <div className="relative p-4 pt-5 flex justify-between items-center">
         <div>
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
-          <p className="text-xl font-bold mt-1 tabular-nums">{value}</p>
+          <p className="text-xl font-bold mt-1 tabular-nums text-foreground">{value}</p>
         </div>
-        <div className="p-2.5 rounded-xl" style={{ color, backgroundColor: `${color}12` }}>{icon}</div>
+        <div className="p-2.5 rounded-xl bg-muted text-muted-foreground" style={{ color: signalColor }}>{icon}</div>
       </div>
     </div>
   )

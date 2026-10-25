@@ -503,7 +503,7 @@ export function LocationHistoryPanel() {
     <div className="space-y-3">
       <form
         data-testid="mtm-location-history-filter-form"
-        className="@container rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700"
+        className="@container rounded-lg border border-border bg-card p-4"
         onSubmit={(event) => {
           event.preventDefault()
           void loadHistory()
@@ -573,14 +573,14 @@ export function LocationHistoryPanel() {
       </form>
 
       {rosterError && (
-        <div data-testid="mtm-location-history-roster-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+        <div data-testid="mtm-location-history-roster-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
           <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" />{t("rosterLoadFailed")}: {rosterError}</span>
           <Button data-testid="mtm-location-history-roster-retry" variant="outline" className="min-h-11" onClick={() => void loadRoster()}>{t("retryEmployees")}</Button>
         </div>
       )}
 
       {historyError && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
           <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" />{t("loadFailed")}: {historyError}</span>
           <Button data-testid="mtm-location-history-history-retry" variant="outline" className="min-h-11" onClick={() => void loadHistory()}>{t("retryHistory")}</Button>
         </div>
@@ -611,7 +611,7 @@ export function LocationHistoryPanel() {
               { icon: WifiOff, label: t("gaps"), value: `${data.summary.gapCount}`, hint: t("hint.historyGaps", { minutes: Math.round(data.policy.gapThresholdSeconds / 6) / 10 }) },
               { icon: Activity, label: t("anomalies"), value: `${data.summary.anomalyCount}`, hint: t("hint.historyAnomalies", { accuracy: Math.round(data.policy.maxAccuracyMeters) }) },
             ].map((metric) => (
-              <div key={metric.label} className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+              <div key={metric.label} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
                 <metric.icon className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <div className="text-xs text-muted-foreground">{metric.label}</div>
@@ -622,7 +622,7 @@ export function LocationHistoryPanel() {
           </div>
 
           {(data.quality.rawTruncated || data.quality.downsampled || data.quality.rejectedByAccuracy > 0) && (
-            <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
+            <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs">
               {data.quality.rawTruncated
                 ? t("truncatedWarning")
                 : t("qualitySummary", {
@@ -633,7 +633,7 @@ export function LocationHistoryPanel() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card p-2 dark:border-zinc-700">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-2">
             <div className="flex flex-wrap items-center gap-1.5" aria-label={t("layers")}>
               <span className="mr-1 inline-flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground"><Layers3 className="h-3.5 w-3.5" />{t("layers")}</span>
               {(Object.keys(layers) as Array<keyof typeof layers>).filter((layer) => layer !== "roads" || Boolean(data?.matchedTrack)).map((layer) => {
@@ -659,7 +659,7 @@ export function LocationHistoryPanel() {
             </Hint>
           </div>
 
-          <section data-testid="mtm-location-history-replay" className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700" aria-labelledby="day-replay-title">
+          <section data-testid="mtm-location-history-replay" className="rounded-lg border border-border bg-card p-3" aria-labelledby="day-replay-title">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h3 id="day-replay-title" className="flex items-center gap-2 text-sm font-semibold">
@@ -750,7 +750,7 @@ export function LocationHistoryPanel() {
 
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
             <div className="space-y-2 xl:sticky xl:top-3">
-            <div className="h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
+            <div className="h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-border bg-card">
               <LocationHistoryMap
                 points={data.points}
                 stops={data.stops}
@@ -767,7 +767,7 @@ export function LocationHistoryPanel() {
               />
             </div>
             {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
-            <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
+            <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{data.matchedTrack && layers.roads ? t("legendRoads") : t("legendTrack")}</li>
               {data.matchedTrack && layers.roads ? (
                 <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-2 border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.raw }} />{t("legendRaw")}</li>
@@ -792,7 +792,7 @@ export function LocationHistoryPanel() {
                   roadsMatched={data.summary.distanceBasis === "ROADS"}
                 />
               )}
-              {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+              {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-border bg-card p-3">
                 <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock3 className="h-4 w-4" />{t("workday")}</h3>
                 {(data.range.days ?? 1) > 1 ? (
                   data.workdays?.length ? (
@@ -829,8 +829,8 @@ export function LocationHistoryPanel() {
 
               {/* The trip above tells the day; stops and raw events stay one click away as evidence. */}
               <details data-testid="mtm-history-evidence" open={!data.trip} className="group space-y-3">
-              <summary className="flex min-h-11 cursor-pointer items-center rounded-lg border border-zinc-200 bg-card px-3 text-sm font-medium dark:border-zinc-700">{t("trip.evidence")}</summary>
-              <section className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
+              <summary className="flex min-h-11 cursor-pointer items-center rounded-lg border border-border bg-card px-3 text-sm font-medium">{t("trip.evidence")}</summary>
+              <section className="rounded-lg border border-border bg-card">
                 <div className="border-b px-3 py-2">
                   <h3 className="text-sm font-semibold">{t("stopDetails")} · {selectedAgent?.name}</h3>
                   <p className="text-xs text-muted-foreground">{t("stopPolicy", { radius: data.policy.stopRadiusMeters, minutes: data.policy.stopMinimumMinutes })}</p>
@@ -861,7 +861,7 @@ export function LocationHistoryPanel() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
+              <section className="rounded-lg border border-border bg-card">
                 <div className="border-b px-3 py-2">
                   <h3 className="text-sm font-semibold">{t("timeline")}</h3>
                   <p className="text-xs text-muted-foreground">{t("timelineHint")}</p>
@@ -895,7 +895,7 @@ export function LocationHistoryPanel() {
           </div>
 
           {data.anomalies.length > 0 && (
-            <section className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3">
+            <section className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3">
               <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="h-4 w-4 text-amber-600" />{t("evidenceWarnings")}</h3>
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {data.anomalies.slice(0, 30).map((anomaly) => (
@@ -912,7 +912,7 @@ export function LocationHistoryPanel() {
             </section>
           )}
 
-          <section className="overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
+          <section className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="border-b px-4 py-3">
               <h3 className="text-sm font-semibold">{t("visitCorrelation")}</h3>
               <p className="text-xs text-muted-foreground">{t("visitCorrelationHint")}</p>

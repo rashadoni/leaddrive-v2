@@ -39,7 +39,7 @@ import { addDateKeyDays } from "@/lib/mtm/mobile-week"
  * the filter shows that one day as before.
  */
 
-const categoryColors: Record<string, string> = { CRITICAL: "text-red-700 border-zinc-200", WARNING: "text-amber-700 border-zinc-200", INFO: "text-sky-700 border-zinc-200" }
+const categoryColors: Record<string, string> = { CRITICAL: "text-red-700 border-border", WARNING: "text-amber-700 border-border", INFO: "text-sky-700 border-border" }
 
 // Per-type friendly icon (human label + "what to do" hint come from i18n:
 // typeLabel_<TYPE> / typeHint_<TYPE>). Unknown types fall back to AlertTriangle.
@@ -343,7 +343,7 @@ export default function MtmAlertsPage() {
       <div className="space-y-4">
         {header}
         {errorKey === "agentOutOfScope" && filters}
-        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
           <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1">{tt(`accessError.${errorKey}`)}</p>
           {errorKey === "loadFailed" && (
@@ -480,7 +480,7 @@ export default function MtmAlertsPage() {
         <div className="animate-pulse space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-lg bg-muted" />)}</div>
       ) : openMode ? (
         days.length === 0 ? (
-          <div data-testid="mtm-alerts-none-open" className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-zinc-200 bg-card px-4 py-10 text-center dark:border-zinc-700">
+          <div data-testid="mtm-alerts-none-open" className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-10 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" aria-hidden="true" />
             <p className="text-sm font-semibold">{t("noneOpen")}</p>
             <Hint text={t("hint.showResolvedToday")}>
@@ -509,7 +509,7 @@ export default function MtmAlertsPage() {
           </div>
         )
       ) : groups.length === 0 ? (
-        <div className="flex h-32 items-center justify-center rounded-lg border border-zinc-200 bg-card text-muted-foreground dark:border-zinc-700">{t("emptyDay")}</div>
+        <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">{t("emptyDay")}</div>
       ) : (
         <div className="space-y-2">
           {data?.truncated && <p className="text-xs text-muted-foreground">{t("truncated")}</p>}
@@ -518,7 +518,7 @@ export default function MtmAlertsPage() {
       )}
 
       {data && !openMode && data.stale.total > 0 && (
-        <section className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
+        <section className="rounded-lg border border-border bg-card">
           <div className="flex flex-wrap items-center gap-2 p-3">
             <button type="button" onClick={() => setStaleOpen((open) => !open)} aria-expanded={staleOpen} className="flex min-w-0 flex-1 items-start gap-2 text-left">
               <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 transition-transform ${staleOpen ? "" : "-rotate-90"}`} aria-hidden="true" />

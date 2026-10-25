@@ -129,11 +129,11 @@ export function MtmAgentPermissionMatrix({
       ) : (
         <div className="space-y-4">
           {AGENT_PERMISSION_GROUPS.map((group) => (
-            <div key={group} className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-              <h3 className="border-b border-zinc-200 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground dark:border-zinc-700">
+            <div key={group} className="rounded-xl border border-border bg-card">
+              <h3 className="border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {t(`permGroup_${group}` as never)}
               </h3>
-              <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <ul className="divide-y divide-border">
                 {AGENT_PERMISSION_ROWS.filter((row) => row.group === group && (!["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation", "attendanceBranchQr"].includes(row.id) || settings.attendanceEnabled === true)).map((row) => (
                   <MatrixRow
                     key={row.id}
@@ -212,7 +212,7 @@ function MatrixRow({
                 <label key={card.id} className="flex min-h-9 cursor-pointer items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                    className="h-4 w-4 rounded border-input"
                     checked={granted(card)}
                     disabled={cardBusy}
                     onChange={(event) => onGrant(card.id, cardFlag, event.target.checked)}

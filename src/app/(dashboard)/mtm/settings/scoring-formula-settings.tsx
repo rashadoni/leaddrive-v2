@@ -291,7 +291,7 @@ export function ScoringFormulaSettings() {
   }
 
   return (
-    <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+    <section className="border-t border-border pt-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -316,7 +316,7 @@ export function ScoringFormulaSettings() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+      <div className="mt-4 rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
         <div className="flex items-start gap-2">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
@@ -331,14 +331,14 @@ export function ScoringFormulaSettings() {
           {[1, 2].map((item) => <div key={item} className="h-44 animate-pulse rounded-lg bg-muted" />)}
         </div>
       ) : loadError && formulas.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm">
+        <div className="mt-5 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-4 text-sm">
           <p>{loadError}</p>
           <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>
             {t("retry")}
           </Button>
         </div>
       ) : orderedFormulas.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-700">
+        <div className="mt-5 rounded-lg border border-dashed border-zinc-300 p-6 text-center dark:border-border">
           <FileClock className="mx-auto h-6 w-6 text-muted-foreground" />
           <p className="mt-2 text-sm font-medium">{t("emptyTitle")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("emptyDescription")}</p>
@@ -350,8 +350,8 @@ export function ScoringFormulaSettings() {
               key={formula.id}
               className={`rounded-lg border p-4 ${
                 formula.status === "ACTIVE"
-                  ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
-                  : "border-zinc-200 bg-card dark:border-zinc-700"
+                  ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500"
+                  : "border-border bg-card"
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -417,11 +417,11 @@ export function ScoringFormulaSettings() {
                 </div>
               </dl>
 
-              <details className="mt-4 rounded-md border border-zinc-200 bg-background/80 dark:border-zinc-700">
+              <details className="mt-4 rounded-md border border-border bg-background/80">
                 <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium">
                   {t("showDefinition")}
                 </summary>
-                <pre className="overflow-x-auto border-t border-zinc-200 p-3 text-[11px] leading-relaxed dark:border-zinc-700">
+                <pre className="overflow-x-auto border-t border-border p-3 text-[11px] leading-relaxed">
                   {JSON.stringify(formula.definition, null, 2)}
                 </pre>
               </details>
@@ -478,7 +478,7 @@ export function ScoringFormulaSettings() {
               />
             </div>
             {formError ? (
-              <p role="alert" className="rounded-md border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+              <p role="alert" className="rounded-md border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
                 {formError}
               </p>
             ) : null}
@@ -511,7 +511,7 @@ export function ScoringFormulaSettings() {
           </DialogDescription>
         </DialogHeader>
         <DialogContent>
-          <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">
+          <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm">
             <p className="font-medium">{t("activationEffectTitle")}</p>
             <p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p>
           </div>

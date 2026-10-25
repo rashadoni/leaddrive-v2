@@ -256,7 +256,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
           <button
             onClick={openCreate}
             disabled={busy}
-            className="inline-flex items-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
             {t("newTier")}
@@ -264,7 +264,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
           <button
             onClick={load}
             disabled={loading || busy}
-            className="inline-flex items-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
             aria-label={tc("refresh")}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -287,7 +287,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
       )}
 
       {showForm && (
-        <MotionCard className="mb-6 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+        <MotionCard className="mb-6 p-4 border border-border rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">
               {editingId ? t("editTier") : t("createTier")}
@@ -337,7 +337,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
                 }
                 disabled={!!editingId}
                 placeholder="bronze"
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm disabled:bg-muted disabled:text-muted-foreground"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm disabled:bg-muted disabled:text-muted-foreground"
               />
             </div>
             <div>
@@ -349,7 +349,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Bronze"
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm"
               />
             </div>
             <div className="md:col-span-2">
@@ -362,7 +362,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm"
               />
             </div>
             <div>
@@ -377,7 +377,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
                 onChange={(e) =>
                   setForm({ ...form, minLifetimePoints: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
               />
             </div>
             <div>
@@ -392,7 +392,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
                 onChange={(e) =>
                   setForm({ ...form, multiplier: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
               />
             </div>
             <div className="flex items-center gap-2 md:col-span-2">
@@ -433,7 +433,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
       {!loading && tiers.length > 0 && (
         <div className="space-y-2">
           {tiers.map((row) => (
-            <MotionCard key={row.id} className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <MotionCard key={row.id} className="p-4 border border-border rounded-lg">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3 min-w-0">
                   <span
@@ -481,7 +481,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
                     <button
                       onClick={() => openEdit(row)}
                       disabled={busy}
-                      className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-muted disabled:opacity-50"
+                      className="p-2 border border-border rounded-md hover:bg-muted disabled:opacity-50"
                       aria-label={tc("edit")}
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -489,7 +489,7 @@ export function TiersSection({ embedded = false }: { embedded?: boolean } = {}) 
                     <button
                       onClick={() => setDeleteTarget(row)}
                       disabled={busy}
-                      className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                      className="p-2 border border-border rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-50"
                       aria-label={tc("delete")}
                     >
                       <Trash2 className="w-3.5 h-3.5" />

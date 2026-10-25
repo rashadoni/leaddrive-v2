@@ -301,7 +301,7 @@ async function submitLeadDriveForm(e) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-background">
+              <div className="border border-border rounded-lg p-4 bg-background">
                 <h3 className="text-lg font-semibold mb-3">{formTitle}</h3>
                 <div className="space-y-3">
                   <div>
@@ -327,7 +327,7 @@ async function submitLeadDriveForm(e) {
                   {showMessage && (
                     <div>
                       <label className="text-sm font-medium">{c.message}</label>
-                      <textarea className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-2 text-sm" placeholder={c.messagePlaceholder} rows={3} disabled />
+                      <textarea className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder={c.messagePlaceholder} rows={3} disabled />
                     </div>
                   )}
                   <Button disabled className="w-full">{submitText}</Button>

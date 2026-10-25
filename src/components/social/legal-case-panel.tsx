@@ -526,21 +526,21 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-zinc-200 bg-muted/40 p-1 [scrollbar-width:none] dark:border-zinc-700 [&::-webkit-scrollbar]:hidden" role="group" aria-label={t("workspaceTabsLabel")}>
+      <div data-crm-tabs="" className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-muted/40 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label={t("workspaceTabsLabel")}>
         {([
           ["candidates", t("tabCandidates"), filteredCandidates.length],
           ["cases", t("tabCases"), filteredCases.length],
           ["reports", t("tabReports"), reports.length],
           ["rules", t("tabRules"), null],
         ] as const).map(([id, label, count]) => (
-          <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)} className={`min-h-11 shrink-0 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${view === id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}>
+          <button data-crm-tab="" data-state={view === id ? "active" : "inactive"} key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)} className={`min-h-11 shrink-0 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${view === id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}>
             {label}{count !== null && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">{count}</span>}
           </button>
         ))}
       </div>
 
       {(view === "candidates" || view === "cases") && subjectOptions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-card px-3 py-2 dark:border-zinc-700">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
           <Label htmlFor="social-legal-subject-filter" className="text-xs font-medium text-muted-foreground">
             {t("brandFilterLabel")}
           </Label>
@@ -560,7 +560,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
 
       {view === "candidates" && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+          <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="flex items-center gap-2 text-base font-semibold"><ShieldAlert className="h-4 w-4 text-amber-600" /> {t("candidatesTitle")}</h2>
@@ -572,7 +572,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
             {filteredCandidates.length === 0 && !loading && <p className="mt-4 text-sm text-muted-foreground">{t("noCandidates")}</p>}
             <div className="mt-3 space-y-2">
               {filteredCandidates.map(candidate => (
-                <div key={candidate.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                <div key={candidate.id} className="rounded-lg border border-border p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary" className="text-[10px] uppercase">{candidate.mention.platform}</Badge>
                     <Badge variant={candidate.category ? categoryBadgeVariant(candidate.category) : "outline"} className="text-[10px]">{candidate.category ? t(`category.${candidate.category}` as Parameters<typeof t>[0]) : t("categoryUnclear")}</Badge>
@@ -593,7 +593,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
               ))}
             </div>
           </div>
-          <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+          <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold"><Hand className="h-4 w-4 text-violet-600" /> {t("manualTasksTitle")} <Badge variant="secondary">{filteredManualTasks.length}</Badge></h3>
             <p className="mt-1 text-sm text-muted-foreground">{t("manualTasksDesc")}</p>
             {filteredManualTasks.length === 0 ? (
@@ -611,7 +611,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
                     && Boolean(task.officialResponder)
                   const taskBusy = busyTaskId === task.id
                   return (
-                    <article key={task.id} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                    <article key={task.id} className="rounded-lg border border-border p-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className="uppercase">{task.platform}</Badge>
@@ -640,7 +640,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
                             ? t("manualTaskRiskReviewDesc")
                           : task.reason}
                       </p>
-                      <div className="mt-3 rounded-md border border-zinc-200 bg-muted/40 p-3 dark:border-zinc-700">
+                      <div className="mt-3 rounded-md border border-border bg-muted/40 p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                           <span>{isCommentOrReply ? t("manualTaskOriginalComment") : t("manualTaskOriginalMaterial")}</span>
                           <span>
@@ -771,7 +771,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-3 rounded-md border border-zinc-200 bg-muted/30 p-3 text-xs text-muted-foreground dark:border-zinc-700">
+                        <div className="mt-3 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
                           <p>{t("manualTaskNoDraft")}</p>
                           <Button
                             variant="outline"
@@ -794,7 +794,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
         </div>
       )}
 
-      {view === "cases" && <div className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+      {view === "cases" && <div className="rounded-lg border border-border bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -822,7 +822,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
         )}
         <div className="mt-3 space-y-2">
           {filteredCases.map((item) => (
-            <div key={item.id} className="flex items-start gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
+            <div key={item.id} className="flex items-start gap-3 rounded-md border border-border p-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" className="text-[10px] uppercase">{item.mention.platform}</Badge>
@@ -855,7 +855,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
         </div>
       </div>}
 
-      {view === "reports" && <div className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+      {view === "reports" && <div className="rounded-lg border border-border bg-card p-4">
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <FileText className="h-4 w-4 text-blue-600" /> {t("reportsTitle")}
         </h2>
@@ -868,7 +868,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
             <button
               key={report.id}
               type="button"
-              className="flex w-full items-center gap-3 rounded-md border border-zinc-200 p-3 text-left transition-colors hover:bg-muted/40 dark:border-zinc-700"
+              className="flex w-full items-center gap-3 rounded-md border border-border p-3 text-left transition-colors hover:bg-muted/40"
               onClick={() => openReport(report.id)}
             >
               <div className="min-w-0 flex-1">
@@ -890,7 +890,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
       </div>}
 
       {view === "rules" && (
-        <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+        <div className="rounded-xl border border-border bg-card p-4">
           <h2 className="flex items-center gap-2 text-base font-semibold"><SlidersHorizontal className="h-4 w-4 text-blue-600" /> {t("rulesTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("rulesDesc")}</p>
           <div className="mt-4 space-y-4">
@@ -976,7 +976,7 @@ export function LegalCasePanel({ headers }: { headers: Record<string, string> })
               <Label>{t("casesInReport", { count: detail.cases.length })}</Label>
               <div className="space-y-2">
                 {detail.cases.map((item) => (
-                  <div key={item.id} className="rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-700">
+                  <div key={item.id} className="rounded-md border border-border p-2 text-xs">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="secondary" className="text-[10px] uppercase">{item.mention.platform}</Badge>
                       <Badge variant={categoryBadgeVariant(item.category)} className="text-[10px]">

@@ -260,15 +260,15 @@ export function WorkforceMyExceptions() {
     <section data-testid="workforce-my-exceptions-boundary" aria-labelledby="workforce-my-exceptions-boundary" className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-4">
       <div className="flex gap-3"><ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" /><div><h2 id="workforce-my-exceptions-boundary" className="font-semibold">{t("boundaryTitle")}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("boundaryHint")}</p></div></div>
     </section>
-    {responseRecording === "MIGRATION_REQUIRED" ? <section data-testid="workforce-my-exceptions-response-boundary" aria-labelledby="workforce-my-exceptions-response-boundary" className="rounded-lg border border-zinc-200 bg-muted/30 p-4 dark:border-zinc-700">
+    {responseRecording === "MIGRATION_REQUIRED" ? <section data-testid="workforce-my-exceptions-response-boundary" aria-labelledby="workforce-my-exceptions-response-boundary" className="rounded-lg border border-border bg-muted/30 p-4">
       <h2 id="workforce-my-exceptions-response-boundary" className="font-semibold">{t("responseRecordingUnavailableTitle")}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("responseRecordingUnavailableHint")}</p>
     </section> : null}
     <div className="flex justify-end"><Button type="button" variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal" onClick={refresh} disabled={loading || acknowledgingCaseId !== null}>{loading ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="mr-2 size-4" />}{t("refresh")}</Button></div>
     {error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
     {loading ? <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("loading")}</div> : null}
-    {items && !loading ? <section aria-labelledby="workforce-my-exceptions-list" className="rounded-lg border border-zinc-200 dark:border-zinc-700">
-      <div className="border-b border-zinc-200 p-4 dark:border-zinc-700"><h2 id="workforce-my-exceptions-list" className="font-semibold">{t("casesTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("casesHint", { count: items.length })}</p></div>
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">{items.map((item) => {
+    {items && !loading ? <section aria-labelledby="workforce-my-exceptions-list" className="rounded-lg border border-border">
+      <div className="border-b border-border p-4"><h2 id="workforce-my-exceptions-list" className="font-semibold">{t("casesTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("casesHint", { count: items.length })}</p></div>
+      <div className="divide-y divide-border">{items.map((item) => {
         const correctionWorkdayId = item.availableAction === "REQUEST_CORRECTION" ? item.workdayId : null
         const isWorkdayCorrection = correctionWorkdayId !== null
         const displayDate = dateFormatter.format(new Date(`${item.workDate.slice(0, 10)}T12:00:00`))

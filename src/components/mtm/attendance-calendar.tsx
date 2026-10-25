@@ -202,11 +202,11 @@ export function MtmAttendanceCalendar() {
               onChange={(event) => void load(event.target.value)}>{[currentYear, currentYear + 1].map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
         </div>
         {days.length ? <div className="overflow-x-auto" role="region" aria-label={t("calendarTitle")} tabIndex={0}><table className="block w-full table-fixed text-left text-sm sm:table" aria-label={t("calendarTitle")}>
-          <thead className="hidden border-b border-zinc-200 text-xs text-muted-foreground dark:border-zinc-700 sm:table-header-group"><tr>
+          <thead className="hidden border-b border-border text-xs text-muted-foreground sm:table-header-group"><tr>
             <th scope="col" className="w-[18%] py-3 pr-3 font-medium">{t("calendarDate")}</th><th scope="col" className="w-[23%] py-3 pr-3 font-medium">{t("calendarKind")}</th>
             <th scope="col" className="py-3 pr-3 font-medium">{t("calendarName")}</th><th scope="col" className="w-[25%] py-3 font-medium">{t("calendarActions")}</th>
           </tr></thead>
-          <tbody className="block sm:table-row-group">{days.map((day) => <tr key={day.id} data-testid="attendance-calendar-day" className="block space-y-2 border-b border-zinc-200 py-4 last:border-b-0 dark:border-zinc-700 sm:table-row sm:space-y-0 sm:py-0">
+          <tbody className="block sm:table-row-group">{days.map((day) => <tr key={day.id} data-testid="attendance-calendar-day" className="block space-y-2 border-b border-border py-4 last:border-b-0 sm:table-row sm:space-y-0 sm:py-0">
             <th scope="row" className="block break-words font-medium sm:table-cell sm:py-4 sm:pr-3"><time dateTime={day.date}>{dateLabel(day.date)}</time></th>
             <td className="block break-words sm:table-cell sm:py-4 sm:pr-3">{kindLabel(day.kind)}</td>
             <td className="block break-words text-muted-foreground sm:table-cell sm:py-4 sm:pr-3">{day.name || t("calendarUnnamed")}</td>
@@ -218,14 +218,14 @@ export function MtmAttendanceCalendar() {
               <Button type="button" variant="ghost" className="min-h-11 text-destructive" disabled={disabled} onClick={() => { setRemovingId(day.id); setSaved(null) }} aria-label={t("calendarDeleteDate", { date: dateLabel(day.date) })}>{t("calendarDelete")}</Button></div>
               : <span className="text-xs text-muted-foreground">{t(day.date <= data.today ? "calendarPastReadOnly" : !day.canEdit ? "calendarPairedReadOnly" : "calendarViewOnly")}</span>}</td>
           </tr>)}</tbody>
-        </table></div> : <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-sm text-muted-foreground dark:border-zinc-700">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
-        {data.canManage && year ? <div className="space-y-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4" data-testid="attendance-calendar-official">
+        </table></div> : <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
+        {data.canManage && year ? <div className="space-y-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4" data-testid="attendance-calendar-official">
           <p className="text-sm font-semibold">{t("calendarOfficialTitle", { year })}</p>
           <p className="max-w-prose text-sm text-muted-foreground">{azOfficialCalendar(Number(year)).complete ? t("calendarOfficialHint", { source: azOfficialCalendar(Number(year)).source ?? "" }) : t("calendarOfficialPartial", { year })}</p>
           <Button type="button" className="min-h-11 rounded-full" disabled={disabled} onClick={() => void addOfficial()}>{t("calendarOfficialAdd", { year })}</Button>
           {official ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300" data-testid="attendance-calendar-official-result">{t("calendarOfficialDone", official)}</p> : null}
         </div> : null}
-        {data.canManage ? <form className="space-y-4 border-t border-zinc-200 pt-5 dark:border-zinc-700" onSubmit={submit} aria-label={t(draft.id ? "calendarEditForm" : "calendarAddForm")}>
+        {data.canManage ? <form className="space-y-4 border-t border-border pt-5" onSubmit={submit} aria-label={t(draft.id ? "calendarEditForm" : "calendarAddForm")}>
           <fieldset disabled={disabled} className="space-y-4"><legend className="mb-3 text-sm font-semibold">{t(draft.id ? "calendarEditForm" : "calendarAddForm")}</legend>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(12rem,1.3fr)_minmax(14rem,2fr)]">
               <div className="space-y-2"><label htmlFor="attendance-calendar-date" className="text-sm font-medium">{t("calendarDate")}</label>

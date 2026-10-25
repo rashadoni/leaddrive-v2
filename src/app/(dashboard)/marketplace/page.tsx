@@ -693,7 +693,7 @@ function FilterChip({
         "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm transition-colors",
         active
           ? "border-primary bg-primary text-primary-foreground"
-          : "border-zinc-200 bg-background text-foreground hover:border-primary/40 hover:bg-primary/5 dark:border-zinc-700"
+          : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
       )}
     >
       <span className="max-w-[180px] truncate">{label}</span>

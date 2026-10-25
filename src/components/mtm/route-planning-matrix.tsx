@@ -345,10 +345,10 @@ export function MtmRoutePlanningMatrix({
     <section
       data-testid="mtm-route-planning-matrix"
       data-loaded-agent-id={data?.agent.id ?? ""}
-      className="border-y border-zinc-200 bg-card dark:border-zinc-700"
+      className="border-y border-border bg-card"
       aria-busy={loading}
     >
-      <header className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+      <header className="border-b border-border px-4 py-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -385,7 +385,7 @@ export function MtmRoutePlanningMatrix({
         </div>
       </header>
 
-      {error ? <div role="alert" className="flex items-start gap-2 border-b border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div> : null}
+      {error ? <div role="alert" className="flex items-start gap-2 border-b border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 px-4 py-3 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div> : null}
       {!agentId ? (
         <div className="grid min-h-52 place-items-center px-4 py-8 text-center">
           <div><MapPin className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 font-semibold">{t("weekPlannerChooseAgent")}</p></div>
@@ -393,7 +393,7 @@ export function MtmRoutePlanningMatrix({
       ) : !data ? (
         <div className="grid min-h-52 place-items-center px-4 py-8"><Loader2 className="h-7 w-7 animate-spin text-primary motion-reduce:animate-none" aria-label={t("loading")} /></div>
       ) : (
-        <div data-testid="mtm-week-day-list" className="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <div data-testid="mtm-week-day-list" className="divide-y divide-border">
           {data.planningDays.map((day, index) => {
             const snapshot = daySnapshots[day.date]
             if (!snapshot) return null
@@ -428,9 +428,9 @@ export function MtmRoutePlanningMatrix({
                 </button>
 
                 {expanded ? (
-                  <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
+                  <div className="border-t border-border px-4 py-3">
                     {canOpenDayPlanner ? (
-                      <div className="mb-3 flex flex-col gap-2 border-b border-zinc-200 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700">
+                      <div className="mb-3 flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-muted-foreground">{t("weekPlannerOpenDayHint")}</p>
                         <Button
                           data-testid="mtm-week-planner-open-day"
@@ -445,7 +445,7 @@ export function MtmRoutePlanningMatrix({
                       </div>
                     ) : null}
                     {snapshot.locked || snapshot.multipleDrafts ? (
-                      <div className="flex items-start gap-3 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">
+                      <div className="flex items-start gap-3 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm">
                         <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                         <p>{snapshot.multipleDrafts ? t("weekPlannerMultipleDrafts", { date: compactDayLabel(day.date, locale) }) : t("weekPlannerPublishedLocked")}</p>
                       </div>
@@ -459,7 +459,7 @@ export function MtmRoutePlanningMatrix({
                             </div>
                             <span className="text-sm font-medium tabular-nums">{snapshot.stops.length}</span>
                           </div>
-                          <div className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                          <div className="mt-3 divide-y divide-border border-y border-border">
                             {snapshot.stops.map((stop, stopIndex) => (
                               <div key={stop.key} className="grid min-h-16 grid-cols-[32px_minmax(0,1fr)] items-center gap-3 py-2 sm:grid-cols-[32px_minmax(0,1fr)_auto]">
                                 <span className="grid h-8 w-8 place-items-center rounded-full bg-muted text-xs font-semibold">{stopIndex + 1}</span>
@@ -499,7 +499,7 @@ export function MtmRoutePlanningMatrix({
                             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input value={searchByDay[day.date] ?? ""} onChange={(event) => setSearchByDay((current) => ({ ...current, [day.date]: event.target.value }))} placeholder={t("weekPlannerSearchPlaceholder")} className="pl-9" disabled={loading} />
                           </div>
-                          <div className="mt-3 max-h-80 divide-y divide-zinc-200 overflow-y-auto border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                          <div className="mt-3 max-h-80 divide-y divide-border overflow-y-auto border-y border-border">
                             {loading ? <div className="grid min-h-24 place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" /></div> : null}
                             {!loading && data.candidates.slice(0, 60).map((candidate) => {
                               return (

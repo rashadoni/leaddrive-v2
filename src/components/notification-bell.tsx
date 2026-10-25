@@ -257,7 +257,7 @@ export function NotificationBell() {
         align="end"
         sideOffset={10}
         collisionPadding={12}
-        className="z-[1000] max-h-96 w-80 overflow-hidden rounded-lg border border-zinc-200 bg-background p-0 shadow-xl dark:border-zinc-700"
+        className="z-[1000] max-h-96 w-80 overflow-hidden rounded-lg border border-border bg-background p-0 shadow-xl"
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h4 className="text-sm font-medium">{t("title")}</h4>

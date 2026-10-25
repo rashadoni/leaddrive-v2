@@ -100,7 +100,7 @@ export function JointVisitReviewBlock({ jointVisit, timezone }: { jointVisit: Jo
   const when = (value: string) => formatDateTime(value, locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: timezone }) || "—"
 
   return (
-    <section className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-5" data-testid="mtm-visit-joint-block">
+    <section className="border-b border-border px-4 py-3 sm:px-5" data-testid="mtm-visit-joint-block">
       {jointVisit.evaluations.length === 0 ? (
         <div className="flex items-start gap-2">
           <UsersRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -181,7 +181,7 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
   }
   if (state.error || !state.data) {
     return (
-      <div role="alert" className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card p-4 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500">
+      <div role="alert" className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card p-4 text-sm text-foreground dark:border-l-amber-500">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>{state.error === "forbidden" ? t("forbidden") : t("loadError")}</span>
       </div>
@@ -197,7 +197,7 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
 
   if (data.evaluated === 0) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-card p-4 text-sm dark:border-zinc-700" data-testid="mtm-agent-evaluations">
+      <div className="rounded-xl border border-border bg-card p-4 text-sm" data-testid="mtm-agent-evaluations">
         <h2 className="font-semibold text-foreground">{t("periodTitle", { days: data.days })}</h2>
         <p className="mt-1 text-muted-foreground">{t("periodJoint", { count: data.jointVisits })}</p>
         <p className="mt-2 text-muted-foreground">{t("empty")}</p>
@@ -206,8 +206,8 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700" data-testid="mtm-agent-evaluations">
-      <div className="border-b border-zinc-200 p-4 dark:border-zinc-700">
+    <div className="rounded-xl border border-border bg-card" data-testid="mtm-agent-evaluations">
+      <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-semibold text-foreground">{t("periodTitle", { days: data.days })}</h2>
@@ -240,7 +240,7 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
       </div>
       <div className="p-4">
         <h3 className="text-sm font-semibold text-foreground">{t("recentTitle")}</h3>
-        <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
+        <ul className="mt-2 divide-y divide-border">
           {data.recent.map((item) => (
             <li key={item.visitId} className="grid grid-cols-[4.5rem_1fr_auto_auto] items-center gap-3 py-2 text-sm">
               <span className="text-muted-foreground">{day(item.checkInAt)}</span>

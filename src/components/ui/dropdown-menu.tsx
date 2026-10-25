@@ -3,6 +3,7 @@
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { cn } from "@/lib/utils"
+import { useCrmAppearance } from "./crm-appearance"
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
@@ -15,6 +16,7 @@ const DropdownMenuContent = React.forwardRef<
 >(({ className, sideOffset = 6, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
+      data-crm-workspace={useCrmAppearance() ? "" : undefined}
       ref={ref}
       sideOffset={sideOffset}
       className={cn(

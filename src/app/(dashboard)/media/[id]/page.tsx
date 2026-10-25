@@ -113,7 +113,7 @@ export default function MediaSubscriberDetailPage({ params }: { params: Promise<
         </Button>
 
         {/* Header Card */}
-        <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-6">
+        <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-purple-500/10 rounded-full">
               <Tv className="h-7 w-7 text-purple-500" />
@@ -147,7 +147,7 @@ export default function MediaSubscriberDetailPage({ params }: { params: Promise<
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Hash className="h-4 w-4" />
               {t("detailSubscription")}
@@ -166,7 +166,7 @@ export default function MediaSubscriberDetailPage({ params }: { params: Promise<
             </dl>
           </div>
 
-          <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               {t("detailBilling")}

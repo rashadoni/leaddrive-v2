@@ -323,7 +323,7 @@ export default function MtmPhotosPage() {
 
       {/* Batch action bar */}
       {viewMode === "batch" && selectedPhotos.size > 0 && (
-        <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+        <div className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card">
           <span className="text-xs font-medium">{t("batchSelected", { n: selectedPhotos.size })}</span>
           <Hint text={t("hint.approveAll")}>
             <Button size="sm" variant="outline" className="h-6 text-xs text-green-600" onClick={() => { selectedPhotos.forEach(id => { if (!missingFiles.has(id)) updatePhotoStatus(id, "APPROVED") }); setSelectedPhotos(new Set()) }}>
@@ -341,7 +341,7 @@ export default function MtmPhotosPage() {
 
       {/* Compare view */}
       {viewMode === "compare" && (
-        <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4">
           {[{ photo: compareLeft, label: t("compareLeft") }, { photo: compareRight, label: t("compareRight") }].map(({ photo, label }) => (
             <div key={label}>
               <div className="text-xs font-medium text-muted-foreground mb-2">{label} — {photo ? `${photo.agent?.name} (${mtmStatusLabel(ts, "photo", photo.status)})` : t("comparePickHint")}</div>
@@ -354,14 +354,14 @@ export default function MtmPhotosPage() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="h-48 flex items-center justify-center px-4 text-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{period !== "all" && periodTotal === 0 ? t("periodEmpty") : activeFilter !== "all" && periodTotal > 0 ? t("noResults") : t("empty")}</div>
+        <div className="h-48 flex items-center justify-center px-4 text-center text-muted-foreground border border-border rounded-lg bg-card">{period !== "all" && periodTotal === 0 ? t("periodEmpty") : activeFilter !== "all" && periodTotal > 0 ? t("noResults") : t("empty")}</div>
       ) : (
         <div className={`grid gap-4 ${focusedPhoto ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {filtered.map((photo) => {
               const isFocused = focusedPhoto?.id === photo.id
               return (
-                <div key={photo.id} className={`rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden cursor-pointer transition-all ${selectedPhotos.has(photo.id) ? "ring-2 ring-primary" : ""} ${isFocused ? "outline outline-1 outline-primary/50" : ""}`}
+                <div key={photo.id} className={`rounded-lg border border-border bg-card overflow-hidden cursor-pointer transition-all ${selectedPhotos.has(photo.id) ? "ring-2 ring-primary" : ""} ${isFocused ? "outline outline-1 outline-primary/50" : ""}`}
                   onClick={() => {
                     if (viewMode === "batch") {
                       setSelectedPhotos(prev => {

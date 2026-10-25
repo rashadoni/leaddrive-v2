@@ -244,14 +244,14 @@ export function OfferForm({
                 ))}
               </Select>
             </div>
-            <label className="flex items-center gap-2 h-10 px-3 border border-zinc-200 dark:border-zinc-700 rounded-md bg-muted/30 cursor-pointer whitespace-nowrap">
+            <label className="flex items-center gap-2 h-10 px-3 border border-border rounded-md bg-muted/30 cursor-pointer whitespace-nowrap">
               <input type="checkbox" checked={includeVat} onChange={e => setIncludeVat(e.target.checked)} className="h-4 w-4 rounded" />
               <span className="text-sm font-medium">ƏDV 18%</span>
             </label>
           </div>
 
           {/* ═══ SECTION 2: Client Info ═══ */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/20 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{t("clientInfo")}</span>
@@ -318,7 +318,7 @@ export function OfferForm({
           </div>
 
           {/* ═══ SECTION 3: Offer Details ═══ */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/20 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{t("offerDetails")}</span>
@@ -340,7 +340,7 @@ export function OfferForm({
           </div>
 
           {/* ═══ SECTION 4: Items ═══ */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/20 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
@@ -397,7 +397,7 @@ export function OfferForm({
 
           {/* ═══ SECTION 5: Totals ═══ */}
           {items.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/20 dark:to-cyan-950/20 p-4">
+            <div className="rounded-lg border border-border bg-muted/40 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Calculator className="h-4 w-4 text-teal-600" />
                 <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">{t("summary")}</span>

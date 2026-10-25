@@ -902,11 +902,11 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
 
   if (loading) return (
     <div className="space-y-3" aria-busy="true">
-      <div className="flex animate-pulse flex-col gap-3 border-b border-zinc-200 pb-3 motion-reduce:animate-none dark:border-zinc-700 xl:flex-row xl:items-center">
+      <div className="flex animate-pulse flex-col gap-3 border-b border-border pb-3 motion-reduce:animate-none xl:flex-row xl:items-center">
         <div className="flex-1 space-y-2"><div className="h-5 w-28 rounded bg-muted" /><div className="h-4 w-72 max-w-full rounded bg-muted" /></div>
         <div className="flex gap-2"><div className="h-11 w-32 rounded-xl bg-muted" /><div className="h-11 w-32 rounded-xl bg-muted" /><div className="h-11 w-40 rounded-xl bg-muted" /></div>
       </div>
-      <div className="h-[34rem] animate-pulse rounded-xl border border-zinc-200 bg-muted/50 motion-reduce:animate-none dark:border-zinc-700" />
+      <div className="h-[34rem] animate-pulse rounded-xl border border-border bg-muted/50 motion-reduce:animate-none" />
     </div>
   )
 
@@ -915,7 +915,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
       {/* Prod 2026-09-26 at 1568 px: with six view tabs in one row next to the
           heading, the row wrapped and its second line lay over the heading.
           The heading keeps its own line; the tabs and actions take the next. */}
-      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-border pb-3">
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <Route className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0">
@@ -940,7 +940,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
               Excel exchange is a button with words, not a menu item. */}
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
             {showViewTabs ? (
-            <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 border-b border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
+            <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 border-b border-border" role="group" aria-label={t("primaryViews")}>
               {calendarSurface ? <Hint text={t("hint.viewCalendar")}><Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant="ghost" size="sm" className={viewTabClass(viewMode === "calendar")} onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button></Hint> : null}
               {calendarSurface && capabilities.canReview ? <Hint text={t("hint.viewWeek")}><Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant="ghost" size="sm" className={viewTabClass(viewMode === "week")} onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button></Hint> : null}
               {!calendarSurface ? <Hint text={t("hint.viewList")}><Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant="ghost" size="sm" className={viewTabClass(viewMode === "list")} onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button></Hint> : null}
@@ -975,13 +975,13 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
       />
 
       {!capabilities.canCreateRoute ? (
-        <p data-testid="mtm-route-self-planning-disabled" role="status" className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm">
+        <p data-testid="mtm-route-self-planning-disabled" role="status" className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-sm">
           {t("selfPlanningDisabled")}
         </p>
       ) : null}
 
       {focusedRouteUnavailable && requestedRouteId ? (
-        <div role="status" className="border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
+        <div role="status" className="border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
           {t("focusedUnavailable")}
         </div>
       ) : null}
@@ -1085,7 +1085,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
               </div>
             </Hint>
           </div>
-          <div className="grid grid-cols-2 divide-x divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 sm:grid-cols-5 sm:divide-y-0">
+          <div className="grid grid-cols-2 divide-x divide-y divide-border border-y border-border sm:grid-cols-5 sm:divide-y-0">
             <div className="p-3 text-center"><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-green-500" /><div className="text-lg font-bold">{selectedRoute.visitedPoints}/{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.completed")}>{t("completed")}</HintValue></div></div>
             <div className="p-3 text-center"><Navigation className="mx-auto mb-1 h-4 w-4 text-blue-500" /><div className="text-lg font-bold">{routeMetrics?.completion ?? 0}%</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.execution")}>{t("execution")}</HintValue></div></div>
             <div className="p-3 text-center"><Clock className="mx-auto mb-1 h-4 w-4 text-amber-500" /><div className="text-lg font-bold">{routeMetrics?.duration ? durationLabel(routeMetrics.duration) : "—"}</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.duration")}>{t("duration")}</HintValue></div></div>
@@ -1093,7 +1093,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
             <div className="p-3 text-center"><Route className="mx-auto mb-1 h-4 w-4 text-cyan-600" /><div className="text-lg font-bold">{selectedRoute.distanceKm ? `${selectedRoute.distanceKm} km` : "—"}</div><div className="text-[10px] text-muted-foreground"><HintValue text={t("hint.distance")}>{t("distance")}</HintValue></div></div>
           </div>
           {selectedRoutePoints.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden" style={{ height: 360 }}><MtmRouteMap points={selectedRoutePoints} timezone={timezone} /></div>
+            <div className="rounded-lg border border-border overflow-hidden" style={{ height: 360 }}><MtmRouteMap points={selectedRoutePoints} timezone={timezone} /></div>
           )}
           <MtmRouteTravelPanel
             route={selectedRoute}
@@ -1119,7 +1119,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
                   customer: { latitude: p.customer?.latitude, longitude: p.customer?.longitude, geofenceRadius: p.geofenceRadiusMeters ?? p.customer?.geofenceRadius },
                 }) : null
                 return (
-                <div key={p.id} data-testid="mtm-route-detail-stop" className="border-b border-zinc-200 py-2 text-xs last:border-b-0 dark:border-zinc-700">
+                <div key={p.id} data-testid="mtm-route-detail-stop" className="border-b border-border py-2 text-xs last:border-b-0">
                   <div className="flex items-center gap-2">
                   <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "text-emerald-700 dark:text-emerald-300" : p.status === "SKIPPED" ? "text-red-700 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
                   <span className="min-w-0 flex-1 font-medium">
@@ -1214,7 +1214,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
             </span>
           </MtmFilterBar>
           {filtered.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{routes.length === 0 ? t("empty") : t("noResults")}</div>
+            <div className="h-48 flex items-center justify-center text-muted-foreground border border-border rounded-lg bg-card">{routes.length === 0 ? t("empty") : t("noResults")}</div>
           ) : (
             <div className="space-y-1.5">
               {filtered.map((route) => {
@@ -1226,7 +1226,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
                 // what came of it; the stops are one click away in the route.
                 const stopsLine = route.name || (route.points ?? []).slice(0, 3).map((point) => point.customer?.name).filter(Boolean).join(", ")
                 return (
-                  <article key={route.id} data-testid="mtm-route-list-item" data-route-id={route.id} data-route-status={route.status} className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-card px-3 py-2 transition-colors hover:border-primary/40 dark:border-zinc-700 sm:flex-row sm:items-center sm:gap-4">
+                  <article key={route.id} data-testid="mtm-route-list-item" data-route-id={route.id} data-route-status={route.status} className="flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:gap-4">
                     <button
                       type="button"
                       data-testid={`mtm-route-open-${route.id}`}
@@ -1313,7 +1313,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
         <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? searchParams.get("agentId") : capabilities.actorAgentId} />
       ) : viewMode === "approvals" ? (
         approvalCounts && approvalTotal === 0 ? (
-          <div data-testid="mtm-approvals-empty" role="status" className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-4 text-sm dark:border-zinc-700">
+          <div data-testid="mtm-approvals-empty" role="status" className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 text-sm">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             {t("needsAttentionClearDescription")}
           </div>

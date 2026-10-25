@@ -960,7 +960,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       {/* What this list is, in a sentence, before anything else on the tab —
           and how to change it only for someone who may. */}
       {agentScope ? (
-        <section data-testid="mtm-agent-scope-explainer" className="flex items-start gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4">
+        <section data-testid="mtm-agent-scope-explainer" className="flex items-start gap-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4">
           {agentScope.view === "assigned"
             ? <UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
             : <UserPlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />}
@@ -974,7 +974,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       ) : null}
 
       {isRouteDoctorFlow && routeAssignmentHandoff ? (
-        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{t("routeFlowTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1108,7 +1108,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           </MtmFilterActions>
         ) : null}
         {coverageWithoutNorms ? (
-          <div data-testid="mtm-contact-coverage-unsigned" className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground dark:border-zinc-700">
+          <div data-testid="mtm-contact-coverage-unsigned" className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground">
             <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 flex-1">{t("coverageUnsignedBanner")}</span>
             {payload?.capabilities.actorRole === "ADMIN" ? (
@@ -1216,7 +1216,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       ) : null}
 
       {error ? (
-        <section className="rounded-xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-6 text-center">
+        <section className="rounded-xl border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-6 text-center">
           <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
           <Button type="button" variant="outline" size="sm" className="mt-3" onClick={refresh}>{t("retry")}</Button>
         </section>
@@ -1225,7 +1225,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           {[1, 2, 3, 4].map((item) => <div key={item} className="h-20 animate-pulse rounded-xl bg-muted" />)}
         </div>
       ) : contacts.length === 0 ? (
-        <section className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
+        <section className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-border">
           <UsersRound className="mx-auto h-7 w-7 text-muted-foreground" />
           <h2 className="mt-3 text-sm font-semibold">{agentScope && !hasActiveFilters ? t(`agentScope.${agentScope.view}EmptyTitle`, { name: agentScope.agent.name }) : t("emptyTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{agentScope && !hasActiveFilters ? t(`agentScope.${agentScope.view}EmptyDescription`) : t("emptyDescription")}</p>
@@ -1255,7 +1255,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           {/* One line a client (owner, 2026-10-16, from a picture): who, where,
               when last and by whom, when next, whose — and «В маршрут». The
               table fits the screen: no sideways scrolling, no column of «—». */}
-          <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 lg:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-border bg-card lg:block">
             <table data-testid="mtm-contact-table" className="w-full table-fixed text-sm">
               <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
                 <tr>
@@ -1281,7 +1281,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                   <th scope="col" className="w-[9.5rem] px-3 py-2.5"><span className="sr-only">{t("rowActions")}</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tbody className="divide-y divide-border">
                 {contacts.map((contact) => {
                   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
                   const owners = contactEmployees(contact)
@@ -1403,7 +1403,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
         </>
       )}
 
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-3 dark:border-zinc-700">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
         <div className="flex items-center gap-2">
           <Label htmlFor="mtm-contact-page-size" className="text-xs text-muted-foreground">{t("rowsPerPage")}</Label>
           <Select
@@ -1506,7 +1506,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
               className="min-h-11"
             />
           </div>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 px-3 dark:border-zinc-700">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3">
             <input
               type="checkbox"
               checked={savedViewDefault}
@@ -1585,7 +1585,7 @@ function ContactCard({
   const lastVisit = contact.visits[0]
   const nextPoint = contact.routePoints[0]
   return (
-    <article className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <article className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-start gap-3">
         <FieldCheckbox
           checked={checked}
@@ -1658,7 +1658,7 @@ function ContactCard({
           </dd>
         </div>
       </dl>
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
         {planHref ? (
           <Button asChild size="sm" className="min-h-11"><Link href={planHref}><CalendarPlus className="mr-1 h-4 w-4" aria-hidden="true" />{t("addToRoute")}</Link></Button>
         ) : null}

@@ -233,8 +233,8 @@ function InlineRelatedEntityCell({ relatedType, relatedId, relatedName, orgId, o
         {saving && <Loader2 className="ml-auto h-3 w-3 shrink-0 animate-spin" />}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full min-w-[240px] rounded-md border border-zinc-200 bg-popover shadow-lg dark:border-zinc-700">
-          <div className="flex items-center gap-1 border-b border-zinc-200 p-1.5 dark:border-zinc-700">
+        <div className="absolute z-50 mt-1 w-full min-w-[240px] rounded-md border border-border bg-popover shadow-lg">
+          <div className="flex items-center gap-1 border-b border-border p-1.5">
             {RELATED_ENTITY_VALUES.map((v) => {
               const Icon = RELATED_ENTITY_ICONS[v]
               return (
@@ -253,7 +253,7 @@ function InlineRelatedEntityCell({ relatedType, relatedId, relatedName, orgId, o
               )
             })}
           </div>
-          <div className="flex items-center gap-1.5 border-b border-zinc-200 px-2 py-1.5 dark:border-zinc-700">
+          <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
@@ -573,7 +573,7 @@ function TaskAttachmentsSection({ taskId, orgId, attachments, canEdit, onRefresh
         ) : (
           <div className="space-y-1.5">
             {attachments.map((f) => (
-              <div key={f.id} className="flex items-center gap-2 rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-2 bg-muted/20">
+              <div key={f.id} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 bg-muted/20">
                 <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{f.originalName}</p>
@@ -652,7 +652,7 @@ function TaskCommentsSection({ taskId, orgId, comments, onRefresh }: {
             onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postComment() }}
             placeholder={t("addComment")}
             rows={2}
-            className="flex-1 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-2 resize-none bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 text-sm rounded-md border border-input px-3 py-2 resize-none bg-background focus:outline-none focus:ring-1 focus:ring-primary"
             disabled={posting}
           />
           <Button size="sm" onClick={postComment} disabled={!newComment.trim() || posting} className="self-end">
@@ -728,11 +728,11 @@ function SearchableUserList({ users, renderItem, prefix }: {
   const q = search.trim().toLowerCase()
   const filtered = q ? users.filter(u => u.name.toLowerCase().includes(q)) : users
   return (
-    <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-zinc-200 bg-popover shadow-lg dark:border-zinc-700">
+    <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-lg">
       {/* Sticky search header above a separate scroll area so the filter never
           scrolls out of view (matters most for the multi-select, which stays
           open while toggling). */}
-      <div className="border-b border-zinc-100 p-1.5 dark:border-zinc-700">
+      <div className="border-b border-border p-1.5">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -740,7 +740,7 @@ function SearchableUserList({ users, renderItem, prefix }: {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={tc("searchUsers")}
-            className="w-full rounded border border-zinc-200 bg-background py-1.5 pl-7 pr-2 text-sm outline-none transition-colors focus:border-primary dark:border-zinc-700"
+            className="w-full rounded border border-input bg-background py-1.5 pl-7 pr-2 text-sm outline-none transition-colors focus:border-primary"
           />
         </div>
       </div>
@@ -1150,7 +1150,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
           comments, attachments, assignee. Consolidates the old two big KPI
           cards (removed from the sidebar) into one dense, more-informative
           line (user feedback 2026-06-13). */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-muted/30 px-4 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-muted/30 px-4 py-2 text-sm">
         <span className="inline-flex items-center gap-1.5" title={t("daysOpen")}>
           <Clock className="h-4 w-4 text-blue-500" />
           <span className="font-semibold">{daysOpen}</span>
@@ -1203,7 +1203,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
       </div>
 
       {/* Status Pipeline */}
-      <div className="flex gap-0 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700" data-tour-id="task-status">
+      <div className="flex gap-0 rounded-xl overflow-hidden border border-border" data-tour-id="task-status">
         {pipeStages.map((st, i) => {
           const isCurrent = pipeBucket(st.key) === pipeBucket(task.status)
           const isPast = pipeCurrentIdx >= 0 && i < pipeCurrentIdx
@@ -1398,7 +1398,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
                   <Badge className={cn(priorityStyle.className, "hover:opacity-80 transition-opacity")}>{PRIORITY_LABELS[task.priority] || task.priority}</Badge>
                 </button>
                 {priorityOpen && (
-                  <div className="absolute z-50 mt-1 bg-popover border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg overflow-hidden">
+                  <div className="absolute z-50 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden">
                     {(["urgent", "high", "medium", "low"] as const).map(p => (
                       <button
                         key={p}
@@ -1420,7 +1420,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
                   {(task.type && (taskTypeMap.get(task.type)?.displayName ?? task.type)) || "—"}
                 </button>
                 {typeOpen && (
-                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-zinc-200 bg-popover shadow-lg dark:border-zinc-700">
+                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-lg">
                     {taskTypes.map(tt => (
                       <button
                         key={tt.id}
@@ -1443,7 +1443,7 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
                   {(task.eventType && (eventTypeMap.get(task.eventType)?.displayName ?? task.eventType)) || "—"}
                 </button>
                 {eventOpen && (
-                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-zinc-200 bg-popover shadow-lg dark:border-zinc-700">
+                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-lg">
                     <button
                       onClick={() => { handleInlineUpdate("eventType", null); setEventOpen(false) }}
                       className={cn("w-full px-3 py-2 text-left text-sm italic text-muted-foreground transition-colors hover:bg-muted", !task.eventType && "bg-primary/5")}

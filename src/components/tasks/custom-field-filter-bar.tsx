@@ -122,7 +122,7 @@ export function CustomFieldFilterBar({ defs, filters, onFiltersChange }: Props) 
             {t("inlineFilterButton")}
           </button>
           {addOpen && (
-            <div className="absolute z-50 mt-1 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md py-1">
+            <div className="absolute z-50 mt-1 min-w-[180px] rounded-lg border border-border bg-popover shadow-md py-1">
               {availableToAdd.map(def => (
                 <button
                   key={def.id}
@@ -239,7 +239,7 @@ function FilterChip({
       </button>
 
       {isEditing && (
-        <div className="absolute z-50 left-0 top-full mt-1 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md py-1">
+        <div className="absolute z-50 left-0 top-full mt-1 min-w-[180px] rounded-lg border border-border bg-popover shadow-md py-1">
           {options.length === 0 && (
             <div className="px-3 py-2 text-xs text-muted-foreground">{t("inlineNoOptionsDefined")}</div>
           )}

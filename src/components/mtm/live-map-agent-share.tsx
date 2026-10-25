@@ -27,12 +27,12 @@ import {
 } from "@/lib/mtm/live-map-share-links"
 
 // The pill of the card's own «История за день / Только он / Следить» row.
-const PILL = "inline-flex min-h-8 items-center rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-60 aria-disabled:hover:bg-transparent dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+const PILL = "inline-flex min-h-8 items-center rounded-full border border-border px-2.5 text-[11px] font-medium text-foreground hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-60 aria-disabled:hover:bg-transparent [@media(pointer:coarse)]:min-h-11"
 // The worded action of a row, as in the list of zones.
 const ACTION = "inline-flex min-h-8 shrink-0 items-center text-[11px] font-semibold underline underline-offset-2 aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
 // The ways a new link leaves the card: «Отправить в WhatsApp» is the first of them, the other two stand under it.
 const SEND = "inline-flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-semibold [@media(pointer:coarse)]:min-h-11"
-const SEND_OTHER = `${SEND} flex-1 border border-zinc-300 bg-background text-foreground hover:bg-muted dark:border-zinc-600`
+const SEND_OTHER = `${SEND} flex-1 border border-border bg-background text-foreground hover:bg-muted`
 // The two answers to «Отозвать ссылку?».
 const ANSWER = "inline-flex min-h-8 items-center rounded-lg px-2.5 text-[11px] font-semibold aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
 /** How long «Скопировано» stands on the button before it reads «Скопировать» again. */
@@ -544,7 +544,7 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                     <div className="break-words text-muted-foreground" data-testid="live-map-share-link-facts"><HintValue text={t("hint.shareStats")}>{factsOf(link)}</HintValue></div>
                   </div>
                   {fresh ? (
-                    <div role="status" className="col-span-2 row-start-2 mt-1.5 rounded-md border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-2" data-testid={`live-map-share-fresh-${link.id}`}>
+                    <div role="status" className="col-span-2 row-start-2 mt-1.5 rounded-md border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-2" data-testid={`live-map-share-fresh-${link.id}`}>
                       <div className="font-semibold text-foreground">{t("share.ready")}</div>
                       <input
                         ref={(node) => {
@@ -558,7 +558,7 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                         onFocus={(event) => selectLink(event.currentTarget)}
                         data-testid={`live-map-share-url-${link.id}`}
                         // 16 px on a touch screen: a smaller field makes iOS zoom the whole page on focus.
-                        className="mt-1 h-8 w-full rounded-lg border border-zinc-200 bg-background px-2 text-[11px] text-muted-foreground outline-none focus:border-primary/60 focus:text-foreground dark:border-zinc-700 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
+                        className="mt-1 h-8 w-full rounded-lg border border-input bg-background px-2 text-[11px] text-muted-foreground outline-none focus:border-primary/60 focus:text-foreground [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
                       />
                       <Hint text={t("hint.shareWhatsApp")}>
                         <a
@@ -633,7 +633,7 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                           onClick={() => doNotRevoke(link)}
                           data-share-keep={link.id}
                           data-testid={`live-map-share-revoke-keep-${link.id}`}
-                          className={`${ANSWER} border border-zinc-300 text-foreground hover:bg-muted aria-disabled:hover:bg-transparent dark:border-zinc-600`}
+                          className={`${ANSWER} border border-border text-foreground hover:bg-muted aria-disabled:hover:bg-transparent`}
                         >
                           {t("share.revokeCancel")}
                         </button>

@@ -286,7 +286,7 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">{t("widgetEnabled")}</p>
@@ -301,7 +301,7 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div data-tour-id="webchat-embed" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+      <div data-tour-id="webchat-embed" className="rounded-lg border border-border bg-card p-5 space-y-4">
         <h2 className="text-sm font-semibold flex items-center gap-2"><Globe className="h-4 w-4" /> {t("embedSnippet")}</h2>
         <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">{embedSnippet}</div>
         <div className="flex items-center gap-2">
@@ -324,7 +324,7 @@ export default function WebChatSettingsPage() {
         <p className="text-xs text-amber-700 dark:text-amber-300">{c.regenerateHint}</p>
       </div>
 
-      <div data-tour-id="webchat-behavior" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+      <div data-tour-id="webchat-behavior" className="rounded-lg border border-border bg-card p-5 space-y-4">
         <h2 className="text-sm font-semibold">{t("appearance")}</h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
@@ -357,7 +357,7 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+      <div className="rounded-lg border border-border bg-card p-5">
         <h2 className="text-sm font-semibold">{t("behavior")}</h2>
         <div className="divide-y divide-border/60">
           <ToggleRow title={t("aiReply")} hint={c.aiHint} checked={cfg.aiEnabled} onChange={(v) => update({ aiEnabled: v })}>
@@ -382,7 +382,7 @@ export default function WebChatSettingsPage() {
                     <select
                       value={cfg.aiThreshold === null ? "" : String(cfg.aiThreshold)}
                       onChange={(e) => update({ aiThreshold: e.target.value === "" ? null : Number(e.target.value) })}
-                      className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 py-1 text-sm"
+                      className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                     >
                       <option value="">{c.thresholdOff}</option>
                       <option value="0.85">{c.thresholdCautious}</option>
@@ -400,7 +400,7 @@ export default function WebChatSettingsPage() {
                   <select
                     value={cfg.aiRolloutPercent === null ? "" : String(cfg.aiRolloutPercent)}
                     onChange={(e) => update({ aiRolloutPercent: e.target.value === "" ? null : Number(e.target.value) })}
-                    className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 py-1 text-sm"
+                    className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                   >
                     <option value="">{c.rolloutAll}</option>
                     <option value="75">75%</option>
@@ -422,7 +422,7 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         {/* Master onboarding toggle (Whelp-style): off = one-click anonymous start — the
             per-field builder + custom questions only matter while it's on. */}
         <div className="flex items-start justify-between gap-4">
@@ -447,7 +447,7 @@ export default function WebChatSettingsPage() {
                   update({ preChatForm: next })
                 }
                 return (
-                  <div key={field} className="flex flex-wrap items-center gap-4 rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                  <div key={field} className="flex flex-wrap items-center gap-4 rounded-md border border-border px-3 py-2">
                     <span className="w-24 text-sm font-medium">{t(`field${field.charAt(0).toUpperCase()}${field.slice(1)}`)}</span>
                     <label className="flex items-center gap-2 text-xs">
                       <input type="checkbox" checked={item.enabled} onChange={e => setField({ enabled: e.target.checked })} />
@@ -496,7 +496,7 @@ export default function WebChatSettingsPage() {
         )}
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">{t("workingHours")}</h2>
           <label className="flex items-center gap-2 text-sm">
@@ -567,7 +567,7 @@ export default function WebChatSettingsPage() {
         )}
       </div>
 
-      <div data-tour-id="webchat-origins" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-2">
+      <div data-tour-id="webchat-origins" className="rounded-lg border border-border bg-card p-5 space-y-2">
         <h2 className="text-sm font-semibold">{t("allowedOrigins")}</h2>
         <p className="text-xs text-muted-foreground">{t("allowedOriginsHint")}</p>
         <Textarea

@@ -310,7 +310,7 @@ export default function CompaniesPage() {
               handleBulkAction("update_status", status)
               setStatusMenuKey(k => k + 1)
             }}
-            className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+            className="h-8 px-2 rounded-md border border-input bg-card text-xs"
             aria-label={t("bulkSetStatus")}
           >
             <option value="" disabled>{t("bulkSetStatus")}</option>
@@ -330,7 +330,7 @@ export default function CompaniesPage() {
               handleBulkAction("update_category", category)
               setCategoryMenuKey(k => k + 1)
             }}
-            className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+            className="h-8 px-2 rounded-md border border-input bg-card text-xs"
             aria-label={t("bulkSetCategory")}
           >
             <option value="" disabled>{t("bulkSetCategory")}</option>

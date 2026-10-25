@@ -275,8 +275,8 @@ export default function ContractRequestPage() {
 
       {/* Tab strip — only shown when the user can also see the queue */}
       {isQueueViewer && (
-        <div className="flex gap-1 border-b border-border">
-          <button
+        <div data-crm-tabs="" className="flex gap-1 border-b border-border">
+          <button data-crm-tab="" data-state={activeTab === "form" ? "active" : "inactive"}
             onClick={() => setActiveTab("form")}
             className={
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors " +
@@ -290,7 +290,7 @@ export default function ContractRequestPage() {
               {t("tabSubmitRequest")}
             </span>
           </button>
-          <button
+          <button data-crm-tab="" data-state={activeTab === "queue" ? "active" : "inactive"}
             onClick={() => setActiveTab("queue")}
             className={
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors " +
@@ -340,7 +340,7 @@ export default function ContractRequestPage() {
                   <select
                     value={selectedFormId}
                     onChange={(e) => setSelectedFormId(e.target.value)}
-                    className="flex h-10 w-full rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-3 py-2 text-sm"
+                    className="flex h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"
                   >
                     <option value="">{t("selectFormPlaceholder")}</option>
                     {forms.map((f) => (
@@ -375,7 +375,7 @@ export default function ContractRequestPage() {
                             <select
                               value={responses[q.id] ?? ""}
                               onChange={(e) => setResponse(q.id, e.target.value)}
-                              className="flex h-10 w-full rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-3 py-2 text-sm"
+                              className="flex h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"
                             >
                               <option value="">{t("selectOption")}</option>
                               {(q.options ?? []).map((opt) => (

@@ -350,7 +350,7 @@ export default function ContactsPage() {
         const warm = contacts.filter(c => { const s = c.engagementScore ?? 0; return s >= 20 && s < 50 }).length
         const cold = contacts.filter(c => (c.engagementScore ?? 0) < 20).length
         return (
-          <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/30 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm">
+          <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/30 rounded-lg border border-border text-sm">
             <span className="text-muted-foreground font-medium">{te("title")}:</span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {te("hot")} ({hot})
@@ -394,7 +394,7 @@ export default function ContactsPage() {
           }}
           disabled={bulkDeleting}
           aria-label={t("bulkSetCategory")}
-          className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+          className="h-8 px-2 rounded-md border border-input bg-card text-xs"
         >
           <option value="" disabled>{t("bulkSetCategory")}</option>
           <option value="vip">{categoryLabel("vip")}</option>
@@ -416,7 +416,7 @@ export default function ContactsPage() {
           }}
           disabled={bulkDeleting}
           aria-label={t("bulkSetSource")}
-          className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+          className="h-8 px-2 rounded-md border border-input bg-card text-xs"
         >
           <option value="" disabled>{t("bulkSetSource")}</option>
           {Object.entries(SOURCE_LABELS).map(([k, label]) => (
@@ -436,7 +436,7 @@ export default function ContactsPage() {
           }}
           disabled={bulkDeleting}
           aria-label={t("bulkSetActive")}
-          className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+          className="h-8 px-2 rounded-md border border-input bg-card text-xs"
         >
           <option value="" disabled>{t("bulkSetActive")}</option>
           <option value="true">{tc("active")}</option>
@@ -450,7 +450,7 @@ export default function ContactsPage() {
             onChange={(e) => setBulkTagInput(e.target.value)}
             placeholder={t("bulkTagPlaceholder")}
             disabled={bulkDeleting}
-            className="h-8 w-28 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+            className="h-8 w-28 px-2 rounded-md border border-input bg-card text-xs"
             aria-label={t("bulkTagPlaceholder")}
           />
           <Button
@@ -532,7 +532,7 @@ export default function ContactsPage() {
           inline-editing surface. Roadmap #18. */}
       <div className="md:hidden space-y-2">
         {paginated.length === 0 ? (
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
             {search ? t("noResults") : t("noContacts")}
           </div>
         ) : (
@@ -548,7 +548,7 @@ export default function ContactsPage() {
               <div
                 key={item.id}
                 className={cn(
-                  "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-colors",
+                  "rounded-xl border border-border bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-colors",
                   selected.has(item.id) && "ring-1 ring-primary/40 bg-blue-50/40 dark:bg-blue-900/10",
                 )}
               >
@@ -665,7 +665,7 @@ export default function ContactsPage() {
       </div>
 
       {/* Desktop table — hidden below md: */}
-      <div className="hidden md:block rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card overflow-x-auto">
+      <div className="hidden md:block rounded-lg border border-border bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">

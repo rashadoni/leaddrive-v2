@@ -180,7 +180,7 @@ export default function WaterfallPage() {
                 className={`px-3 py-1.5 rounded-lg text-sm border ${
                   days === opt.days
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card hover:bg-muted border-zinc-200 dark:border-zinc-700"
+                    : "bg-card hover:bg-muted border-border"
                 }`}
               >
                 {opt.label}
@@ -207,7 +207,7 @@ export default function WaterfallPage() {
           <>
             {/* Net delta + total transitions summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-5 border border-border rounded-lg">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <Activity className="w-4 h-4" />
                   {t("totalTransitions")}
@@ -217,7 +217,7 @@ export default function WaterfallPage() {
                   {data.analysis.totalTransitions}
                 </div>
               </MotionCard>
-              <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-5 border border-border rounded-lg">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   {data.analysis.netAmountDelta >= 0 ? (
                     <TrendingUp className="w-4 h-4 text-green-600" />
@@ -238,7 +238,7 @@ export default function WaterfallPage() {
                   {fmtCurrencyCompact(data.analysis.netAmountDelta)}
                 </div>
               </MotionCard>
-              <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-5 border border-border rounded-lg">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   {t("topMover")}
                   <Hint text={t("hintTopMover")} />
@@ -266,7 +266,7 @@ export default function WaterfallPage() {
             </div>
 
             {/* Main waterfall chart */}
-            <MotionCard className="p-6 border border-zinc-200 dark:border-zinc-700 rounded-lg mb-4">
+            <MotionCard className="p-6 border border-border rounded-lg mb-4">
               {chartData.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <p>{t("emptyTitle")}</p>
@@ -358,7 +358,7 @@ export default function WaterfallPage() {
             </MotionCard>
 
             {/* Detailed table */}
-            <MotionCard className="overflow-hidden border border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <MotionCard className="overflow-hidden border border-border rounded-lg">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-muted/50">

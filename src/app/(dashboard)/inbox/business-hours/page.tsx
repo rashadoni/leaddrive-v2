@@ -278,23 +278,23 @@ export default function InboxBusinessHoursPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <header className="rounded-3xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-slate-50 p-5 shadow-sm sm:p-6 dark:border-orange-950/50 dark:from-orange-950/20 dark:via-zinc-950 dark:to-slate-950">
+      <header className="rounded-3xl border border-border bg-card text-card-foreground p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold text-orange-700 shadow-sm dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5" />
               {t("businessHoursBadge")}
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 {t("businessHoursTitle")}
               </h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {t("businessHoursDesc")}
               </p>
             </div>
           </div>
-          <div className="grid gap-2 rounded-2xl border border-orange-100 bg-white p-4 text-sm shadow-sm sm:min-w-64 dark:border-orange-950/50 dark:bg-zinc-950">
+          <div className="grid gap-2 rounded-2xl border border-border bg-card p-4 text-sm sm:min-w-64">
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">{t("businessHoursStatus")}</span>
               <span className={config.isActive ? "font-semibold text-emerald-600" : "font-semibold text-slate-500"}>
@@ -342,7 +342,7 @@ export default function InboxBusinessHoursPage() {
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <Clock className="h-5 w-5 text-orange-600" />
+                <Clock className="h-5 w-5 text-muted-foreground" />
                 {t("businessHoursScheduleTitle")}
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -353,7 +353,7 @@ export default function InboxBusinessHoursPage() {
               type="button"
               onClick={saveConfig}
               disabled={loading || saving}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saving ? t("businessHoursSaving") : t("businessHoursSave")}
@@ -511,7 +511,7 @@ export default function InboxBusinessHoursPage() {
 
             <aside className="rounded-3xl border bg-card p-5 shadow-sm sm:p-6">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <GitBranch className="h-5 w-5 text-orange-600" />
+                <GitBranch className="h-5 w-5 text-muted-foreground" />
                 {t("businessHoursPreviewTitle")}
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -526,8 +526,8 @@ export default function InboxBusinessHoursPage() {
                   <div className="mt-1 text-sm font-medium">{t("businessHoursPreviewInbound")}</div>
                 </div>
                 <div className="mx-5 h-6 border-l" />
-                <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 dark:border-orange-950/60 dark:bg-orange-950/30">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">
+                <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     business_hours_gate
                   </div>
                   <div className="mt-1 text-sm font-medium">{t("businessHoursPreviewGate")}</div>

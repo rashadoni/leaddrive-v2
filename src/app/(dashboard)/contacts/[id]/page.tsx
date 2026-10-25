@@ -514,10 +514,10 @@ export default function ContactDetailPage() {
                 <div className="relative space-y-4 pl-6 before:absolute before:left-[11px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-border">
                   {contact.activities.map((activity) => (
                     <div key={activity.id} className="relative">
-                      <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-zinc-200 dark:border-zinc-700 text-xs">
+                      <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-border text-xs">
                         {activityIcons[activity.type] || "📌"}
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                      <div className="rounded-lg border border-border p-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">{activity.subject || t("activityFallback")}</span>
                           <span className="text-xs text-muted-foreground">

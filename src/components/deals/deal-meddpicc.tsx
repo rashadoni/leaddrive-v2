@@ -185,7 +185,7 @@ export function DealMeddpicc({
 
       {/* Plain-language primer: what MEDDPICC is + how the 1-5 score works, so a
           first-time user knows what each block is asking and how to rate it. */}
-      <div className="rounded-lg border border-zinc-200 bg-muted/40 px-3 py-2 text-xs leading-relaxed dark:border-zinc-700">
+      <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed">
         <p className="text-muted-foreground">{t("intro")}</p>
         <p className="mt-1.5 font-medium text-foreground/80">{t("scoreGuide")}</p>
       </div>
@@ -195,7 +195,7 @@ export function DealMeddpicc({
           const block = data[key] ?? {}
           const bucket = scoreBucket(block.score)
           return (
-            <div key={key} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 space-y-2.5">
+            <div key={key} className="rounded-lg border border-border p-3 space-y-2.5">
               {/* Title + AI badge — its own line; a long title can wrap without
                   ever colliding with the score buttons. */}
               <div className="flex items-start gap-1.5">
@@ -238,14 +238,14 @@ export function DealMeddpicc({
                 onChange={(e) => patch(key, { note: e.target.value })}
                 placeholder={t("whyPlaceholder")}
                 maxLength={2000}
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 py-1.5 text-xs"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
               />
               <input
                 value={block.next ?? ""}
                 onChange={(e) => patch(key, { next: e.target.value })}
                 placeholder={t("nextPlaceholder")}
                 maxLength={2000}
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 py-1.5 text-xs"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
               />
             </div>
           )

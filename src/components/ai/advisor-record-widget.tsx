@@ -585,7 +585,7 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
   const displayTitle = title === "Advisor risk" || title === "Da Vinci Advisor" ? copy.title : title
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <section className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -615,7 +615,7 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
           {copy.noRisk}
         </div>
       ) : (
-        <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <div className="divide-y divide-border">
           {signals.slice(0, 2).map((signal) => (
             <RecordSignalRisk
               key={signal.id}
@@ -696,7 +696,7 @@ function RecordSignalRisk({
         </div>
       ) : null}
       {primaryAction && preview.length > 0 ? (
-        <div className="mt-3 rounded-lg border border-zinc-200 bg-background px-3 py-2 dark:border-zinc-700">
+        <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2">
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
@@ -742,5 +742,5 @@ function RecordSignalRisk({
 function severityClass(severity: AdvisorSignal["severity"]) {
   if (severity === "critical") return "border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
   if (severity === "high") return "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
-  return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  return "border-border bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
 }

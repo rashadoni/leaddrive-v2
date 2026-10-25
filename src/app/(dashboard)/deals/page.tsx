@@ -512,9 +512,9 @@ export default function DealsPage() {
             уезжают вниз вместе и остаются прижатыми вправо, а не оставляют
             дыру посередине строки. */}
         <div className="flex flex-wrap items-center gap-2 ml-auto">
-        <div className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg p-1 bg-muted/30 w-fit">
+        <div data-crm-tabs="" className="flex border border-border rounded-lg p-1 bg-muted/30 w-fit">
           {tabs.map(({ mode, Icon, label, tourId }) => (
-            <button
+            <button data-crm-tab="" data-state={tab === mode ? "active" : "inactive"}
               key={mode}
               data-tour-id={tourId}
               onClick={() => setTab(mode)}
@@ -538,7 +538,7 @@ export default function DealsPage() {
               data-tour-id="deals-pipeline-select"
               value={selectedPipelineId}
               onChange={e => setSelectedPipelineId(e.target.value)}
-              className="border border-zinc-200 dark:border-zinc-700 rounded-lg py-2 px-3 text-sm bg-background text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+              className="border border-input rounded-lg py-2 px-3 text-sm bg-background text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
             >
               {pipelines.map(p => (
                 <option key={p.id} value={p.id}>{p.name}{p.isDefault ? " ★" : ""}</option>
@@ -549,7 +549,7 @@ export default function DealsPage() {
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="border border-zinc-200 dark:border-zinc-700 rounded-lg py-2 px-3 text-sm bg-background text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+              className="border border-input rounded-lg py-2 px-3 text-sm bg-background text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="newest">{t("sortNewest")}</option>
               <option value="oldest">{t("sortOldest")}</option>
@@ -584,7 +584,7 @@ export default function DealsPage() {
           стадиям нужен обоим режимам. */}
       {(tab === "kanban" || tab === "list") && (
         <>
-          <div data-tour-id="deals-summary" className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 sm:p-5">
+          <div data-tour-id="deals-summary" className="rounded-xl border border-border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
               <div className="min-w-0">
                 <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -723,13 +723,13 @@ export default function DealsPage() {
                 placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg py-2 pl-9 pr-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/60"
+                className="w-full border border-input rounded-lg py-2 pl-9 pr-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/60"
               />
             </div>
             <select
               value={offerFilter}
               onChange={(event) => setOfferFilter(event.target.value as "all" | "with" | "without")}
-              className="h-9 rounded-lg border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
               aria-label={t("offerFilter")}
             >
               <option value="all">{t("offerFilterAll")}</option>
@@ -755,7 +755,7 @@ export default function DealsPage() {
           size="sm"
           onClick={runAiAnalysis}
           disabled={aiLoading || deals.length === 0}
-          className="relative overflow-hidden bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] hover:opacity-90 text-white border-0 shadow-md shadow-[hsl(var(--ai-from))]/25 hover:shadow-lg hover:shadow-[hsl(var(--ai-from))]/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
+          className="gap-1.5"
         >
           {aiLoading ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -771,11 +771,11 @@ export default function DealsPage() {
 
       {/* ── Da Vinci AI result card ── */}
       {aiOpen && tab === "analytics" && (
-        <div className="rounded-xl border border-[hsl(var(--ai-from))]/20 bg-card p-5">
+        <div className="crm-panel p-5">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))]">
-                <Sparkles className="h-4 w-4 text-white" />
+              <div className="p-1.5 rounded-lg bg-muted">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
               </div>
               <h3 className="text-sm font-semibold">Da Vinci — {t("title")}</h3>
             </div>
@@ -843,7 +843,7 @@ export default function DealsPage() {
                 // event.target.value (architect P1 fix on `ccc60f91`).
                 setStageMenuKey(k => k + 1)
               }}
-              className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+              className="h-8 px-2 rounded-md border border-input bg-card text-xs"
               aria-label={t("bulkSetStage")}
             >
               <option value="" disabled>{t("bulkSetStage")}</option>
@@ -878,7 +878,7 @@ export default function DealsPage() {
         {/* Mobile stacked-card view (#18) — shown below md:. Tap → /deals/[id]. */}
         <div className="md:hidden space-y-2">
           {filteredDeals.length === 0 ? (
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
               <Handshake className="h-8 w-8 mx-auto mb-2 opacity-50" />
               {t("noDeals")}
             </div>
@@ -895,7 +895,7 @@ export default function DealsPage() {
                 <div
                   key={deal.id}
                   className={cn(
-                    "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
+                    "rounded-xl border border-border bg-card p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
                     isSelected && "ring-1 ring-primary/40 bg-primary/[0.04]",
                   )}
                 >
@@ -980,11 +980,11 @@ export default function DealsPage() {
         </div>
 
         {/* Desktop table — hidden below md: */}
-        <div className="hidden md:block rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+        <div className="hidden md:block rounded-lg border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[960px]">
               <thead>
-                <tr className="bg-muted border-b border-zinc-200 dark:border-zinc-700">
+                <tr className="bg-muted border-b border-border">
                   {/* Bulk-select header — Roadmap #19 Phase B. Tri-state:
                       empty / partial / all-page selected. `every`/`some`
                       computed once and reused (architect P2). */}
@@ -1035,7 +1035,7 @@ export default function DealsPage() {
                     <tr
                       key={deal.id}
                       className={cn(
-                        "border-b border-zinc-200 dark:border-zinc-700 last:border-0 transition-colors hover:bg-muted/50 group",
+                        "border-b border-border last:border-0 transition-colors hover:bg-muted/50 group",
                         selectedDealIds.has(deal.id) && "bg-primary/[0.04]",
                       )}
                     >
@@ -1156,7 +1156,7 @@ export default function DealsPage() {
             </table>
           </div>
           {filteredDeals.length > 0 && (
-            <div className="px-4 py-2 border-t border-zinc-200 dark:border-zinc-700 bg-muted/30 text-xs text-muted-foreground">
+            <div className="px-4 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground">
               {filteredDeals.length}{filteredDeals.length !== deals.length ? ` / ${deals.length}` : ""} {t("totalDeals", { count: filteredDeals.length }).replace(/\d+\s*/, "")}
             </div>
           )}
@@ -1274,7 +1274,7 @@ function InlineStageCell({
         {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md py-1">
+        <div className="absolute z-50 mt-1 min-w-[180px] rounded-lg border border-border bg-popover shadow-md py-1">
           {stages.map(s => (
             <button
               key={s.name}

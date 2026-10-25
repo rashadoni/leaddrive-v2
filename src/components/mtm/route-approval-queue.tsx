@@ -93,8 +93,8 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
   }
 
   return (
-    <section id="mtm-route-approval-queue" className="border-y border-zinc-200 bg-card dark:border-zinc-700">
-      <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+    <section id="mtm-route-approval-queue" className="border-y border-border bg-card">
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <ClipboardCheck className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">{t("approvalQueue")}</h2>
@@ -109,7 +109,7 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
         </div>
       ) : null}
 
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+      <div className="divide-y divide-border">
         {requests.map((request) => {
           const needsComment = !comments[request.id]?.trim()
           const latestOutcome = request.evidence?.outcomes.at(-1) ?? null
@@ -131,7 +131,7 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
                   ) : null}
                 </div>
                 {request.evidence ? (
-                  <div className="mt-3 rounded-md border border-zinc-200 bg-muted/30 p-2 text-xs dark:border-zinc-700">
+                  <div className="mt-3 rounded-md border border-border bg-muted/30 p-2 text-xs">
                     <div className="font-medium text-foreground">{t("changeEvidenceTitle")}</div>
                     <div className="mt-1 grid gap-1 sm:grid-cols-2">
                       <div>

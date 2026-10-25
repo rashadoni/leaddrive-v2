@@ -80,7 +80,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent surface="canvas" side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="pb-4 border-b">
           <div className="flex items-center justify-between pr-8">
             <Badge className={STAGE_COLORS[deal.stage] || ""}>{deal.stage}</Badge>
@@ -120,7 +120,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
               <TabsTrigger value="team" className="flex-1">{t("team")}</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-3 mt-3">
+            <TabsContent value="overview" className="space-y-3 mt-3 rounded-xl border border-border bg-card p-4">
               <div>
                 <h4 className="text-sm font-medium mb-1">{t("sheetDescription")}</h4>
                 <p className="text-sm text-muted-foreground">{deal.description}</p>
@@ -161,7 +161,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
                         <select
                           value={pricingForm.type}
                           onChange={(e) => setPricingForm({ ...pricingForm, type: e.target.value })}
-                          className="w-full h-8 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm"
+                          className="w-full h-8 border border-input rounded px-2 text-sm"
                         >
                           <option value="recurring">{t("pricingRecurring")}</option>
                           <option value="one_time">{t("pricingOneTime")}</option>
@@ -222,7 +222,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
               )}
             </TabsContent>
 
-            <TabsContent value="history" className="mt-3">
+            <TabsContent value="history" className="mt-3 rounded-xl border border-border bg-card p-4">
               <div className="space-y-3">
                 {deal.stageHistory.map((entry, i) => (
                   <div key={i} className="flex items-start gap-3">
@@ -239,7 +239,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
               </div>
             </TabsContent>
 
-            <TabsContent value="activities" className="mt-3">
+            <TabsContent value="activities" className="mt-3 rounded-xl border border-border bg-card p-4">
               <div className="space-y-3">
                 {deal.activities.map((activity, i) => (
                   <div key={i} className="flex items-start gap-3 text-sm">
@@ -253,7 +253,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
               </div>
             </TabsContent>
 
-            <TabsContent value="team" className="mt-3">
+            <TabsContent value="team" className="mt-3 rounded-xl border border-border bg-card p-4">
               <div className="space-y-2">
                 {deal.team.map((member, i) => (
                   <div key={i} className="flex items-center gap-3 p-2 rounded bg-muted/50">

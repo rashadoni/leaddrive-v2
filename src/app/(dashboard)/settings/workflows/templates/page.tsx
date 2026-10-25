@@ -159,7 +159,7 @@ export default function WorkflowTemplatesPage() {
           {t("backToWorkflows")}
         </Link>
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 p-2.5 text-white shadow-sm">
+          <div className="rounded-lg border border-border bg-card p-2.5 text-muted-foreground">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
@@ -195,7 +195,7 @@ export default function WorkflowTemplatesPage() {
           ))}
         </div>
       ) : templates.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-200 bg-card px-6 py-14 text-center text-muted-foreground dark:border-zinc-700" data-tour-id="workflow-templates-list">
+        <div className="rounded-lg border border-dashed border-border bg-card px-6 py-14 text-center text-muted-foreground" data-tour-id="workflow-templates-list">
           <Sparkles className="mx-auto mb-3 h-10 w-10 opacity-30" />
           <p className="font-medium text-foreground">{t("empty")}</p>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{t("emptyHint")}</p>
@@ -217,7 +217,7 @@ export default function WorkflowTemplatesPage() {
                     <div
                       key={tpl.id}
                       data-tour-id="workflow-templates-card"
-                      className="group relative rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 hover:border-primary/50 hover:shadow-sm transition-all flex flex-col"
+                      className="group relative rounded-lg border border-border bg-card text-card-foreground p-5 hover:border-foreground/20 hover:shadow-sm transition-all flex flex-col"
                     >
                       {tpl.isApplied && (
                         <div className="absolute top-3 right-3 flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 rounded-full px-2 py-0.5">
@@ -226,7 +226,7 @@ export default function WorkflowTemplatesPage() {
                         </div>
                       )}
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="rounded-md bg-primary/10 p-2 text-primary shrink-0">
+                        <div className="rounded-md bg-muted p-2 text-muted-foreground shrink-0">
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0 pr-16">
@@ -303,7 +303,7 @@ export default function WorkflowTemplatesPage() {
                     const setCustom = (patch: CustomField) =>
                       setCustomizations({ ...customizations, [String(idx)]: { ...custom, ...patch } })
                     return (
-                      <div key={idx} className="rounded-md border border-zinc-200 dark:border-zinc-700 p-3 space-y-2">
+                      <div key={idx} className="rounded-md border border-border p-3 space-y-2">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-[10px] font-mono">
                             {action.actionType}

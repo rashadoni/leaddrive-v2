@@ -32,6 +32,7 @@ import { HelpVideoLauncher } from "@/components/help/help-video-launcher"
 import { PharmacyPromotionOutboxSync } from "@/components/mtm/pharmacy-promotion-outbox-sync"
 import { dashboardAssistantVisibility } from "@/lib/dashboard-assistant-visibility"
 import { ReviewerWatermark } from "@/components/reviewer-watermark"
+import { CrmAppearanceProvider } from "@/components/ui/crm-appearance"
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -158,6 +159,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
+      <CrmAppearanceProvider enabled>
       <WallpaperProvider>
         <QueryClientProvider client={queryClient}>
           <TicketBadgeProvider>
@@ -178,14 +180,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 here silently hid module groups (MTM/Finance) and showed a
                 fake "User" identity (recurring bug report 2026-06-11). */}
             <Sidebar org={org} sessionLoaded={sessionLoaded} />
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <div data-crm-workspace="" className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <Header
                 orgName={user?.organizationName}
                 userName={user?.name ?? undefined}
                 sessionLoaded={sessionLoaded}
                 onOpenLauncher={() => setLauncherOpen(true)}
               />
-              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} ref={mainRef}>
+              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} data-crm-workspace="" ref={mainRef}>
                 {!childrenReady ? (
                   <div className="flex h-full items-center justify-center" aria-busy="true">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -243,6 +245,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </TicketBadgeProvider>
         </QueryClientProvider>
       </WallpaperProvider>
+      </CrmAppearanceProvider>
     </ThemeProvider>
   )
 }

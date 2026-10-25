@@ -98,7 +98,7 @@ export function RouteTargetTypeSettings({
   const shown = rows.filter((row) => row.enabled)
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700" aria-labelledby="route-target-types-title">
+    <section className="rounded-lg border border-border bg-card p-4" aria-labelledby="route-target-types-title">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export function RouteTargetTypeSettings({
       {/* Two equal halves, like every other row of the settings page: the
           list and what the agent sees stand side by side at one height. */}
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700" data-testid="route-target-rows">
+        <ul className="divide-y divide-border border-y border-border" data-testid="route-target-rows">
           {rows.map((row, index) => {
             // The unfiltered button is always there, always first and always on
             // (coerceMtmRouteTargetTypes): only its name is the organization's.
@@ -281,7 +281,7 @@ export function RouteTargetTypeSettings({
 
         {/* The picker as the agent's phone draws it, from the rows on the left:
             what is switched off is not here, and the order is the order. */}
-        <aside className="rounded-2xl border border-zinc-200 bg-muted/40 p-4 dark:border-zinc-700" aria-label={t("routeTargetPreviewTitle")} data-testid="route-target-preview">
+        <aside className="rounded-2xl border border-border bg-muted/40 p-4" aria-label={t("routeTargetPreviewTitle")} data-testid="route-target-preview">
           <div className="mx-auto w-full max-w-xs">
           <p className="text-center text-xs text-muted-foreground">{t("routeTargetPreviewTitle")}</p>
           <p className="mt-2 text-sm font-semibold">{t("routeTargetPreviewQuestion")}</p>
@@ -293,7 +293,7 @@ export function RouteTargetTypeSettings({
                   key={row.id}
                   className={cn(
                     "truncate rounded-xl border px-2 py-2 text-center text-xs font-medium",
-                    index === 0 ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 bg-background dark:border-zinc-700",
+                    index === 0 ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 bg-background dark:border-border",
                     // Pairs; an odd last button takes the whole row instead of half of it.
                     shown.length % 2 === 1 && index === shown.length - 1 && "col-span-2",
                   )}

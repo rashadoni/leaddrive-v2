@@ -270,7 +270,7 @@ function SectionHeading({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-muted/35 text-muted-foreground dark:border-zinc-700">
+      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted/35 text-muted-foreground">
         <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
@@ -367,7 +367,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
     const permission = phase === "permission"
     const notFound = phase === "notFound"
     return (
-      <section className="flex min-h-[22rem] flex-col items-center justify-center gap-4 border-y border-zinc-200 px-4 py-12 text-center dark:border-zinc-700" role="alert">
+      <section className="flex min-h-[22rem] flex-col items-center justify-center gap-4 border-y border-border px-4 py-12 text-center" role="alert">
         <AlertCircle className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
         <div className="max-w-lg space-y-2">
           <h1 className="text-xl font-semibold tracking-tight">
@@ -497,7 +497,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
 
   return (
     <div data-testid="mtm-task-workspace" className="space-y-6 pb-24 print:pb-0 print:[&_a]:hidden print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden lg:pb-6">
-      <header className="border-b border-zinc-200 pb-5 dark:border-zinc-700">
+      <header className="border-b border-border pb-5">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
             <Button asChild variant="ghost" className="-ml-4 min-h-11 w-fit print:hidden">
@@ -538,7 +538,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
           were laid out against the right edge of <main>, which clips instead
           of scrolling. Below xl the actions come first, as on a phone. */}
       <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] xl:items-start">
-        <main className="order-2 min-w-0 divide-y divide-zinc-200 print:order-1 print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden dark:divide-zinc-700 xl:order-1">
+        <main className="order-2 min-w-0 divide-y divide-border print:order-1 print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden xl:order-1">
           <section className="space-y-5 pb-8">
             <SectionHeading icon={ClipboardCheck} title={t("overview")} detail={t("overviewHint")} />
             <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
@@ -589,7 +589,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
               <Definition label={t("address")}>{task.customer?.address}</Definition>
             </dl>
             {task.customer ? (
-              <div className="flex items-start gap-3 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
+              <div className="flex items-start gap-3 border-t border-border pt-4 text-sm">
                 <Building2 className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 break-words">{task.customer.name}{place ? ` · ${place}` : ""}</span>
               </div>
@@ -610,7 +610,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                   {recurrencePreview.length ? (
                     <ol className="grid gap-2 sm:grid-cols-2">
                       {recurrencePreview.map((occurrence, index) => (
-                        <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm dark:border-zinc-700">
+                        <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3 py-1.5 text-sm">
                           <span className="tabular-nums text-muted-foreground">{index + 1}</span>
                           <span>{formatRecurrenceDateTime(occurrence.dueDate || occurrence.scheduledStartAt)}</span>
                           {occurrence.dstAdjusted ? (
@@ -664,7 +664,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
           </div>
 
           {canDelete ? (
-            <section className="space-y-2 border-b border-zinc-200 pb-6 print:hidden dark:border-zinc-700">
+            <section className="space-y-2 border-b border-border pb-6 print:hidden">
               <Hint text={t("hint.wsDelete")}>
                 <Button
                   type="button"
@@ -679,7 +679,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             </section>
           ) : null}
 
-          <section className="space-y-5 border-y border-zinc-200 py-5 dark:border-zinc-700">
+          <section className="space-y-5 border-y border-border py-5">
             <SectionHeading icon={ClipboardCheck} title={t("execution")} />
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 text-sm">
@@ -692,14 +692,14 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             </div>
             <Definition label={t("result")}>{task.result || t("noResult")}</Definition>
             {task.returnReason ? (
-              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">
+              <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm">
                 <p className="font-semibold">{t("returnedForRework")}</p>
                 <p className="mt-1 leading-5">{task.returnReason}</p>
               </div>
             ) : null}
           </section>
 
-          <section className="space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
+          <section className="space-y-4 border-b border-border pb-6">
             <div className="flex items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4 text-muted-foreground" />{t("timeline")}</h2>
               <HintValue text={t("hint.wsTimelineCount")}><Badge variant="outline">{timeline.length}</Badge></HintValue>
@@ -727,7 +727,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             ) : null}
           </section>
 
-          <section className="space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
+          <section className="space-y-4 border-b border-border pb-6">
             <div className="flex items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-muted-foreground" />{t("files")}</h2>
               <HintValue text={t("hint.wsFilesCount")}><Badge variant="outline">{documents.length}</Badge></HintValue>
@@ -749,7 +749,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
         </aside>
       </div>
 
-      {!hasMobilePrimary ? <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm print:hidden lg:hidden">
+      {!hasMobilePrimary ? <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm print:hidden lg:hidden">
         <div className="mx-auto flex max-w-xl gap-2">
           <Button asChild variant="outline" className="min-h-12 flex-1">
             <Link href={returnHref}><ArrowLeft className="h-4 w-4" />{t("back")}</Link>
@@ -787,7 +787,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                   {t("deleteConfirmDescription", { title: task.title })}
                 </DialogDescription>
                 {deleteMessage ? (
-                  <p className="rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm" role="alert">
+                  <p className="rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm" role="alert">
                     {deleteMessage}
                   </p>
                 ) : null}

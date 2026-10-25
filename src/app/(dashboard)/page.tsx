@@ -206,7 +206,7 @@ export default function DashboardPage() {
         {widgets.churnRisk && <ChurnRiskWidget />}
         {/* Engagement Overview */}
         {data && (
-          <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 bg-card">
+          <div className="border border-border rounded-xl p-4 bg-card">
             <h3 className="text-sm font-semibold mb-3">{te("title")}</h3>
             {(() => {
               const hot = data.engagementHot ?? 0

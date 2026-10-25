@@ -177,34 +177,34 @@ export default function CustomDomainsPage() {
       />
 
       {/* How it works — always visible guide */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 p-6">
+      <div className="rounded-xl border border-border bg-card text-card-foreground p-6">
         <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          <h3 className="font-semibold text-blue-900 dark:text-blue-300">{t("howItWorks")}</h3>
+          <BookOpen className="h-5 w-5 text-muted-foreground" />
+          <h3 className="font-semibold text-foreground">{t("howItWorks")}</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Step 1 */}
-          <div className="bg-white/80 dark:bg-white/5 rounded-lg p-4 border border-blue-100 dark:border-blue-900/40">
+          <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">1</div>
+              <div className="h-7 w-7 rounded-full bg-muted text-foreground flex items-center justify-center text-sm font-bold">1</div>
               <h4 className="font-medium text-sm">{t("step1Title")}</h4>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">{t("step1Desc")}</p>
           </div>
 
           {/* Step 2 */}
-          <div className="bg-white/80 dark:bg-white/5 rounded-lg p-4 border border-blue-100 dark:border-blue-900/40">
+          <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">2</div>
+              <div className="h-7 w-7 rounded-full bg-muted text-foreground flex items-center justify-center text-sm font-bold">2</div>
               <h4 className="font-medium text-sm">{t("step2Title")}</h4>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed mb-3">{t("step2Desc")}</p>
             {/* CNAME visual */}
-            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-md p-3 border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="bg-muted rounded-md p-3 border border-border space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("recordType")}</span>
-                <span className="text-xs font-mono font-semibold text-blue-700 dark:text-blue-400">CNAME</span>
+                <span className="text-xs font-mono font-semibold text-foreground">CNAME</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("hostLabel")}</span>
@@ -213,10 +213,10 @@ export default function CustomDomainsPage() {
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("valueLabel")}</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-mono font-semibold text-blue-700 dark:text-blue-400">{CNAME_TARGET}</span>
+                  <span className="text-xs font-mono font-semibold text-foreground">{CNAME_TARGET}</span>
                   <button
                     onClick={() => copyToClipboard(CNAME_TARGET)}
-                    className="p-0.5 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                    className="p-0.5 rounded hover:bg-background transition-colors"
                     title="Copy"
                   >
                     {copied ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
@@ -227,23 +227,23 @@ export default function CustomDomainsPage() {
           </div>
 
           {/* Step 3 */}
-          <div className="bg-white/80 dark:bg-white/5 rounded-lg p-4 border border-blue-100 dark:border-blue-900/40">
+          <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">3</div>
+              <div className="h-7 w-7 rounded-full bg-muted text-foreground flex items-center justify-center text-sm font-bold">3</div>
               <h4 className="font-medium text-sm">{t("step3Title")}</h4>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">{t("step3Desc")}</p>
           </div>
         </div>
 
-        <div className="mt-4 flex items-start gap-2 text-xs text-blue-700/70 dark:text-blue-400/60">
+        <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
           <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>{t("dnsNote")}</span>
         </div>
       </div>
 
       {/* Example card */}
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30 p-4">
+      <div className="rounded-lg border border-border bg-muted/30 p-4">
         <div className="flex items-start gap-3">
           <FileCode2 className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
           <div>
@@ -254,7 +254,7 @@ export default function CustomDomainsPage() {
               <ArrowRight className="h-3 w-3 text-muted-foreground" />
               <code className="text-xs bg-background px-2 py-1 rounded border font-mono">CNAME</code>
               <ArrowRight className="h-3 w-3 text-muted-foreground" />
-              <code className="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded border border-blue-200 dark:border-blue-800 font-mono">{CNAME_TARGET}</code>
+              <code className="text-xs bg-background text-foreground px-2 py-1 rounded border border-border font-mono">{CNAME_TARGET}</code>
             </div>
             <p className="text-xs text-muted-foreground mt-2">{t("exampleResult")}</p>
           </div>
@@ -279,7 +279,7 @@ export default function CustomDomainsPage() {
       ) : (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("yourDomains")}</h3>
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700">
+          <div className="rounded-lg border border-border">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

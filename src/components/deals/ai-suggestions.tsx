@@ -86,7 +86,7 @@ export function AiSuggestions({ dealId }: { dealId: string }) {
   if (!loading && !error && visibleSuggestions.length === 0 && suggestions.length === 0) return null
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}

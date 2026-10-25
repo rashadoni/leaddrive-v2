@@ -195,7 +195,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
           { label: labels.pipelineValue,  value: fmtCurrency(stats.pipelineValue), icon: Zap, sub: `${stats.active} leads` },
           { label: labels.avgDaysToConvert, value: leads.length > 0 ? Math.round(leads.filter(l => l.status !== "converted").reduce((s, l) => s + daysBetween(l.createdAt, new Date().toISOString()), 0) / Math.max(1, leads.filter(l => l.status !== "converted").length)) : "—", icon: Clock, sub: "days avg" },
         ].map((kpi, i) => (
-          <div key={i} className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex flex-col gap-2">
+          <div key={i} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground truncate">{kpi.label}</span>
               <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
@@ -211,7 +211,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
       {/* ── Row 2: Status + Score + Source ────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Status Distribution */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
             {labels.statusDistribution}
@@ -240,7 +240,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
         </div>
 
         {/* Score Distribution */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-muted-foreground" />
             {labels.scoreDistribution}
@@ -264,7 +264,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
         </div>
 
         {/* Source Breakdown */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Globe className="h-4 w-4 text-muted-foreground" />
             {labels.sourceBreakdown}
@@ -302,7 +302,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
       {/* ── Row 3: Monthly Trend + Priority + Top Leads ──────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Monthly Trend */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
             {labels.leadsByMonth}
@@ -319,7 +319,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
         </div>
 
         {/* Priority Breakdown */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Zap className="h-4 w-4 text-muted-foreground" />
             {labels.priorityBreakdown}
@@ -351,7 +351,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
         </div>
 
         {/* Top Leads */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
             <Flame className="h-4 w-4 text-muted-foreground" />
             {labels.topLeads}
@@ -399,7 +399,7 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
       </div>
 
       {/* ── Conversion Funnel ────────────────────────────────── */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+      <div className="rounded-xl border border-border bg-card p-5">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
           <Target className="h-4 w-4 text-muted-foreground" />
           {labels.conversionFunnel}

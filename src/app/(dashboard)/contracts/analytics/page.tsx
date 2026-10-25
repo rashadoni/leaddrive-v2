@@ -396,7 +396,7 @@ export default function ContractAnalyticsPage() {
                     </thead>
                     <tbody>
                       {data.byType.map((row, i) => (
-                        <tr key={i} className="border-b border-zinc-100 dark:border-zinc-800">
+                        <tr key={i} className="border-b border-border">
                           <td className="py-1 flex items-center gap-1">
                             <span
                               className="inline-block w-2 h-2 rounded-full"

@@ -130,7 +130,7 @@ export function SnapshotsTab() {
           <select
             value={effectiveMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="h-9 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-3 text-sm"
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
             {snapshots.map(s => (
               <option key={s.snapshotMonth} value={s.snapshotMonth}>{formatMonth(s.snapshotMonth)}</option>
