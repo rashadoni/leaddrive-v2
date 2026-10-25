@@ -209,6 +209,7 @@ describe("Add employee", () => {
   it.each([
     ["MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN", "addEmployeeEmailTaken"],
     ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "addEmployeePhoneTaken"],
+    ["IDENTITY_CANONICAL_PHONE_RESERVED", "addEmployeePhoneTaken"],
   ])("names %s in words and keeps what was typed", async (code, text) => {
     fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ code }), { status: 409 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
     await render()
@@ -219,10 +220,10 @@ describe("Add employee", () => {
     expect(input("addEmployeeEmail").value).toBe("taken@example.test")
     expect(input("addEmployeePhone").value).toBe("+994501112233")
   })
-  it.each(["ru", "az", "en"] as const)("opens an existing hidden CRM card after the phone conflict in %s without creating or linking again", async language => {
+  it.each((["ru", "az", "en"] as const).flatMap(language => ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "IDENTITY_CANONICAL_PHONE_RESERVED"].map(code => ({ language, code }))))("opens an existing hidden CRM card after $code in $language without creating or linking again", async ({ language, code }) => {
     fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
       ? response({ kind: "attendance", agentId: "existing-card", name: "Existing CRM person", enrolled: false })
-      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+      : String(url).endsWith("/employees/new") ? response(null, 409, code) : response(directory))
     await render(language)
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
     await type("addEmployeeName", "Typed name"); await type("addEmployeePhone", "+994501112233")

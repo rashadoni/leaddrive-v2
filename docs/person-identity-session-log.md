@@ -1078,3 +1078,11 @@ Server run40213352343 again completed90 PG foundation checks but v2 invitation p
 - Local node syntax and git diff checks passed. PostgreSQL/schema acceptance NOT RUN locally under host workload policy; pushed for hosted CI.
 - Native PR #204 c21a488 tests passed in run 40213969736; APK build still pending. No production cutover or real registration claimed.
 - Next: exact-source PG acceptance, then explicit onboarding/activation and first-login integration with safe compatibility floor.
+
+### 2026-10-25T17:12:21.024151+00:00 — legacy database write fence prepared (UTC)
+
+- Added additive migration20261103123000: old User/card password writes are refused after canonical cutover, new/relinked cards cannot introduce independent credentials, and legacy phone allocation refuses canonical claims including the old national alias. All relevant creation/contact/password/link writes take the existing tenant identity lock. Credentialless application cards and unchanged values remain possible; no person is converted.
+- Added disposable actual-PG cases for direct old SQL, preserved shadow writes, tenant separation, canonical phone collision, credentialless cards, and a password-only insert waiting for concurrent cutover. This supplements service guards; it is NOT an artifact rollback floor or a completed activation mechanism.
+- Added safe409 mapping without SQL/payload leakage and kept the Time form existing-profile lookup for the new canonical phone refusal. Local error15 tests, related UI/API/phone-match64 tests, expanded UI32 tests, targeted ESLint, syntax/runner policy86/diff checks PASS. Full build/types/schema/PG/browser for this checkpoint NOT RUN locally under host limits; hosted pending. No translations changed.
+- Native PR204 c21a488 scope/tests and APK build now PASS (40213969736,40213969447); no publication. Server v2 correction0d1cf2a02 hosted run40214527218 still executing.
+- Next: qualify both additive migrations, finish the explicit onboarding/activation and admin form flow plus rollout/rollback compatibility before any production opt-in.

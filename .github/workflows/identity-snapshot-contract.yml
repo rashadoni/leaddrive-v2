@@ -10,6 +10,7 @@ on:
       - 'prisma/migrations/20261103120000_identity_foundation/**'
       - 'prisma/migrations/20261103121000_identity_contact_revision/**'
       - 'prisma/migrations/20261103122000_identity_proof_authority/**'
+      - 'prisma/migrations/20261103123000_identity_legacy_write_fence/**'
       - 'src/lib/identity/**'
       - 'src/app/api/v1/identity/**'
       - 'src/__tests__/identity-application-enrollment-http.test.ts'

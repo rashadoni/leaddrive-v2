@@ -16,6 +16,7 @@ const ERRORS: Record<string, string> = {
   MTM_ATTENDANCE_EMPLOYEE_IDENTITY_CONFLICT: "addEmployeeEmailTaken",
   MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID: "addEmployeePhoneInvalid",
   MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN: "addEmployeePhoneTaken",
+  IDENTITY_CANONICAL_PHONE_RESERVED: "addEmployeePhoneTaken",
   MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT: "addEmployeeUserLimit",
   MTM_ATTENDANCE_EMPLOYEE_SECTION_ELSEWHERE: "employeeSectionElsewhere",
 }
@@ -58,7 +59,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         return
       }
       if (submittedRevision !== revision.current) return
-      if ((response.status === 409 && body?.code === "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN")
+      if ((response.status === 409 && ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "IDENTITY_CANONICAL_PHONE_RESERVED"].includes(body?.code))
         || (response.status === 403 && body?.code === "MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT")) {
         // A full plan can refuse creation before the phone check. Neither
         // refusal is permission to adopt that person's account. Offer
