@@ -577,7 +577,9 @@ class ZeytunInboundBridge:
                                 "quantity": {"type": "INTEGER", "description": "Whole number, in the unit the caller said."},
                                 "unit": {"type": "STRING", "description": "The caller's unit: qutu, ədəd, flakon, ampula, ..."},
                                 "spoken": {"type": "STRING", "description": "The caller's own words for this line, at most 160 characters."}},
-                 "required": ["quantity", "unit", "spoken"]}}}, "required": ["lines"]}}]}]
+                 "required": ["quantity", "unit", "spoken"]}},
+                 "pharmacy": {"type": "STRING", "description": "The pharmacy as the caller named it, at most 120 characters; omit when not named."}},
+                 "required": ["lines"]}}]}]
 
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
@@ -703,6 +705,17 @@ class ZeytunInboundBridge:
                 "lines": priced, "notIncluded": skipped, "complete": not skipped}
 
     @staticmethod
+    def order_request(args):
+        """The save call as the CRM accepts it ({"lines", "pharmacy"?}), or None."""
+        if not isinstance(args, dict) or not {"lines"} <= set(args) <= {"lines", "pharmacy"}:
+            return None
+        lines = ZeytunInboundBridge.order_lines({"lines": args["lines"]})
+        pharmacy = args.get("pharmacy")
+        if lines is None or (pharmacy is not None and (not isinstance(pharmacy, str) or not 1 <= len(pharmacy.strip()) <= 120)):
+            return None
+        return {"lines": lines, **({"pharmacy": pharmacy.strip()} if pharmacy is not None else {})}
+
+    @staticmethod
     def order_lines(args):
         """The save call's lines exactly as the CRM accepts them, or None."""
         lines = args.get("lines") if isinstance(args, dict) and set(args) == {"lines"} else None
@@ -789,7 +802,7 @@ class ZeytunInboundBridge:
                     send({"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}})
                 continue
             saving = name == self.SAVE_NAME
-            args = self.order_lines(call.get("args")) if saving else self.query(call.get("args"))
+            args = self.order_request(call.get("args")) if saving else self.query(call.get("args"))
             response = lambda body, key=key, name=name: {"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}}
             error = None
             with self.lock:
@@ -815,7 +828,7 @@ class ZeytunInboundBridge:
             def work(key=key, marker=marker, args=args, response=response, saving=saving):
                 try:
                     if saving:
-                        result = self.safe_saved(self.request({"action": "order", "callId": self.call_id, "lines": args}))
+                        result = self.safe_saved(self.request({"action": "order", "callId": self.call_id, **args}))
                     else:
                         result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
                 except Exception:

@@ -138,7 +138,7 @@ export const ZEYTUN_LINE_PROMPT = [
   ["You are Zeytun's AI assistant receiving an INBOUND B2B pharmacy order rehearsal.",
     "You are Zeytun's AI assistant taking INBOUND B2B pharmacy orders by phone."],
   ["The caller is the owner's test participant, NOT an authenticated pharmacy. Do not use any CRM customer history or infer a pharmacy identity from the caller's number.",
-    "The caller says they are a pharmacy; that is NOT verified. Your opening asks which pharmacy is calling; if unclear, ask once more, then go on. Never use CRM history or infer the pharmacy from the number."],
+    "The caller claims to be a pharmacy, NOT verified. The opening asks which one; if unclear ask once more, then go on. Never infer it from the number or CRM history."],
   ["say once that this test call cannot confirm them", "say once that you cannot confirm them on this call"],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named it."],
 ].reduce((prompt, [from, to]) => {
