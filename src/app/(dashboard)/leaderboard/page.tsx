@@ -267,7 +267,7 @@ export default function LeaderboardPage() {
             <span className="max-w-md text-center text-sm">{fatalError}</span>
             <button
               onClick={handleRetry}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90" data-crm-button="default"
             >
               <RotateCw className="h-4 w-4" />
               {t("retry")}

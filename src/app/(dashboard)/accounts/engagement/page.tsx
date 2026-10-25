@@ -156,7 +156,7 @@ export default function AccountEngagementPage() {
           </div>
           <button
             onClick={() => setPromoteOpen(true)}
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90" data-crm-button="default"
           >
             <Plus className="w-4 h-4" />
             {t("promoteCta")}
@@ -231,7 +231,7 @@ export default function AccountEngagementPage() {
                 <p className="text-sm mt-1">{t("emptyDesc")}</p>
                 <button
                   onClick={() => setPromoteOpen(true)}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90" data-crm-button="default"
                 >
                   <Plus className="w-4 h-4" />
                   {t("promoteCta")}

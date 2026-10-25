@@ -84,8 +84,9 @@ describe("dashboard AI launcher placement", () => {
     expect(status).toContain("createPortal(")
     expect(status).toContain('VOICE_STATUS_LAYER_ID = "dashboard-voice-status-layer"')
     expect(status).toContain("fixed z-50")
-    expect(layout).toContain('<div id="dashboard-voice-status-layer" />')
-    expect(layout.indexOf('<div id="dashboard-voice-status-layer" />')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
+    const statusLayer = layout.match(/<div\b[^>]*\bid="dashboard-voice-status-layer"[^>]*\/>/)?.[0]
+    expect(statusLayer).toContain('data-crm-workspace=""')
+    expect(layout.indexOf('id="dashboard-voice-status-layer"')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
     expect(voiceConsole).toContain("<VoiceInlineStatus")
     expect(voice).toContain("<VoiceInlineStatus")
     expect(voiceConsole).not.toContain("absolute right-0 top-full z-20")

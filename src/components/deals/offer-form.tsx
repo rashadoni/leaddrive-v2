@@ -449,7 +449,7 @@ export function OfferForm({
           {/* ═══ Actions ═══ */}
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               {t("save")}
             </Button>

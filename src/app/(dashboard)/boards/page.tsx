@@ -349,7 +349,7 @@ export default function BoardsIndexPage() {
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
           >
             <Plus className="h-4 w-4" /> {t("createBoard")}
           </button>
@@ -368,7 +368,7 @@ export default function BoardsIndexPage() {
           {canManage && (
             <button
               onClick={() => setShowCreate(true)}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
             >
               <Plus className="h-4 w-4" /> {t("createBoard")}
             </button>
@@ -587,7 +587,7 @@ function CreateBoardDialog({ departments, onClose, onCreated }: { departments: D
           <button
             onClick={submit}
             disabled={!valid || saving}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" data-crm-button="default"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {saving ? t("creating") : t("create")}
@@ -836,7 +836,7 @@ function EditBoardDialog({ division, departments, onClose, onSaved }: { division
             <button
               onClick={save}
               disabled={!valid || saving}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" data-crm-button="default"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? t("saving") : t("save")}

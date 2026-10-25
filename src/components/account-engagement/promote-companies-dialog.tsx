@@ -231,7 +231,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
         {result ? (
           <button
             onClick={() => onOpenChange(false)}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90" data-crm-button="default"
           >
             {t("close")}
           </button>
@@ -246,7 +246,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
             <button
               onClick={promote}
               disabled={selected.size === 0 || submitting}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2" data-crm-button="default"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("promoteSelected", { count: selected.size })}

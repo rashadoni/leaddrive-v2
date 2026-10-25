@@ -555,7 +555,7 @@ export function VoiceReceiptSurface({
             <a
               href={voiceResultHref(outcome.entityType, outcome.entityId)}
               data-testid="voice-receipt-open-result"
-              className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" data-crm-button="default"
             >
               {t("receipt.openResult")}
               <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
@@ -567,7 +567,7 @@ export function VoiceReceiptSurface({
               onClick={() => void (editing ? saveEdits() : confirm("button"))}
               disabled={committing || saving}
               data-testid={editing ? "voice-receipt-save-edit" : "voice-receipt-confirm"}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
+              className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60" data-crm-button="default"
             >
               {(committing || saving) && <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />}
               {editing

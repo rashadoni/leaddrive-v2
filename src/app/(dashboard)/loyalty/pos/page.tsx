@@ -267,7 +267,7 @@ export default function LoyaltyPosPage() {
           ) : (
             <div className="space-y-4">
               {cameraCapabilityChecked && cameraSupported && (
-                <button onClick={startCamera} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90">
+                <button onClick={startCamera} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90" data-crm-button="default">
                   <Camera className="w-5 h-5" /> {t("scanCamera")}
                 </button>
               )}
@@ -293,7 +293,7 @@ export default function LoyaltyPosPage() {
                     placeholder={t("manualPlaceholder")}
                     className="flex-1 px-3 py-2 border border-input rounded-md text-sm font-mono uppercase"
                   />
-                  <button onClick={() => resolve(code)} disabled={resolving || !code.trim()} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                  <button onClick={() => resolve(code)} disabled={resolving || !code.trim()} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default">
                     {resolving ? tc("loading") : t("find")}
                   </button>
                 </div>
@@ -397,7 +397,7 @@ export default function LoyaltyPosPage() {
             <button
               onClick={award}
               disabled={awarding || (!manualOverride && (!purchaseAmount || suggested.points <= 0)) || (manualOverride && !points)}
-              className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default"
             >
               <Gift className="w-4 h-4" /> {awarding ? tc("saving") : t("awardBtn")}
             </button>

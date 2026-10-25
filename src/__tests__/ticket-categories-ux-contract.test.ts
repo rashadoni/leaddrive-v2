@@ -72,13 +72,22 @@ describe("ticket categories UX contract", () => {
 
   it("avoids decorative AI palette patterns and keeps primary controls touch-safe", () => {
     const page = source("src/app/(dashboard)/settings/ticket-categories/page.tsx")
+    const button = source("src/components/ui/button.tsx")
+    const appearance = source("src/app/crm-workspace.css")
     expect(page).toContain("min-h-11")
     expect(page).toContain("motion-reduce:animate-none")
-    expect(page).toContain("bg-orange-700")
-    expect(page).toContain("hover:bg-orange-800")
+    const create = page.match(/<Button data-testid="ticket-categories-new-root"[\s\S]*?<\/Button>/)?.[0]
+    const save = page.match(/<Button data-testid="ticket-category-save"[\s\S]*?<\/Button>/)?.[0]
+    expect(create).toContain('className="min-h-11 w-full px-4 sm:w-auto"')
+    expect(save).toContain('className="min-h-11"')
+    expect(create).not.toMatch(/\bvariant=/)
+    expect(save).not.toMatch(/\bvariant=/)
+    expect(button).toContain('default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"')
+    expect(button).toContain('data-crm-button={variant ?? "default"}')
+    expect(appearance).toMatch(/\[data-crm-workspace\] \[data-crm-button="default"\]\s*\{\s*--primary: var\(--crm-action\);/)
     expect(page).toContain('className="absolute inset-0 h-full w-full cursor-pointer opacity-0"')
     expect(page).toContain('className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row"')
-    expect(page).toContain("min-h-11 w-full bg-orange-700")
+    expect(page).toContain("min-h-11 w-full px-4 sm:w-auto")
     expect(page).not.toMatch(/(?:violet|purple|cyan|fuchsia)-/)
     expect(page).not.toContain("bg-gradient")
   })

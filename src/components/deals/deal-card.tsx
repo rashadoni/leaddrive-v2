@@ -237,7 +237,7 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
         <button
           type="button"
           className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shadow-md hover:shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-          onClick={e => { e.stopPropagation(); setQuickAdd(true) }}
+          onClick={e => { e.stopPropagation(); setQuickAdd(true) }} data-crm-button="default"
         >
           <Plus className="h-3 w-3" /> {t("quickAddTask")}
         </button>
@@ -264,7 +264,7 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
             <button
               className="h-7 w-7 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               disabled={!taskTitle.trim() || saving}
-              onClick={handleQuickAdd}
+              onClick={handleQuickAdd} data-crm-button="default"
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
             </button>

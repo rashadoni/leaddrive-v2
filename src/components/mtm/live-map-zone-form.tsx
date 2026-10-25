@@ -244,7 +244,7 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
           className={cn(
             "inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold disabled:opacity-70 [@media(pointer:coarse)]:min-h-11",
             removes ? "bg-red-600 text-white hover:bg-red-700" : "bg-primary text-primary-foreground",
-          )}
+          )} data-crm-button="default"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
           {tMap(removes ? (busy ? "areas.form.deleting" : "areas.form.delete") : (busy ? "areas.form.saving" : "areas.form.save"))}

@@ -151,7 +151,7 @@ export function DealDetailSheet({ deal, open, onOpenChange, onEdit, onDelete, on
               {isWon && onAddToPricing && (
                 <div className="mt-3">
                   {!showPricingForm ? (
-                    <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => setShowPricingForm(true)}>
+                    <Button size="sm" className="w-full" onClick={() => setShowPricingForm(true)}>
                       <DollarSign className="h-4 w-4 mr-1" /> {t("addToPricingModel")}
                     </Button>
                   ) : (

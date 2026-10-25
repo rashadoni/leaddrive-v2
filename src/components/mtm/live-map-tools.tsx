@@ -160,7 +160,7 @@ export function LiveMapTools({
               />
             </label>
             <Hint wrap text={tMap("hint.findAddress")}>
-              <button type="submit" disabled={searching} data-testid="live-map-address-search" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:opacity-70">
+              <button type="submit" disabled={searching} data-testid="live-map-address-search" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:opacity-70" data-crm-button="default">
                 {searching ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                 {tMap(searching ? "tools.searching" : "tools.searchButton")}
               </button>
@@ -224,7 +224,7 @@ export function LiveMapTools({
           {/* What has just been outlined can stay on the map as a zone with a name. */}
           {zoneDrawing && !zoneFormShown && outlineProblem === null ? (
             <Hint text={tMap("hint.saveOutline")}>
-              <button type="button" onClick={() => setZoneForm("outline")} data-testid="live-map-ruler-save-zone" className="inline-flex min-h-8 items-center rounded-md bg-primary px-2 font-semibold text-primary-foreground">
+              <button type="button" onClick={() => setZoneForm("outline")} data-testid="live-map-ruler-save-zone" className="inline-flex min-h-8 items-center rounded-md bg-primary px-2 font-semibold text-primary-foreground" data-crm-button="default">
                 {tMap("areas.saveOutline")}
               </button>
             </Hint>

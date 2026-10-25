@@ -1878,7 +1878,7 @@ function AddTaskRow({ onCreate, totalCols }: {
           type="button"
           onMouseDown={(e) => { e.preventDefault(); commit(false) }}
           disabled={saving || !title.trim()}
-          className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50" data-crm-button="default"
         >
           {tc("save")}
         </button>

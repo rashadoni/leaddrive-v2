@@ -2168,7 +2168,7 @@ export function ChannelConfigForm({
                           : ""
                         window.location.href = `/api/v1/social/oauth/${provider}/start?from=${from}${pin}${origin}`
                       }}
-                      className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600"
+                      className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" data-crm-button="default"
                     >
                       {form.channelType === "facebook" ? c.metaConnectFacebook : c.metaConnectInstagram}
                     </button>

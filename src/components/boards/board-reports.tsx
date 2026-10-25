@@ -625,7 +625,7 @@ function SlaView({ sla, divisionId, canEdit, onSaved }: { sla: SlaData; division
             type="button"
             onClick={() => save(n)}
             disabled={saving || invalid || n === sla.targetDays}
-            className="rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+            className="rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-50" data-crm-button="default"
           >
             {t("slaSave")}
           </button>

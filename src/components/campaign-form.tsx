@@ -696,7 +696,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
               {tc("edit")}
             </Button>
             {onSend && !lockedWhatsApp && (
-              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={onSend}>
+              <Button type="button" className="gap-1" onClick={onSend}>
                 <Send className="h-3.5 w-3.5" /> {t("sendCampaign")}
               </Button>
             )}
@@ -1126,12 +1126,12 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
               {saving ? "..." : isEdit ? tc("save") : tc("create")}
             </Button>
             {isEdit && onSend && (
-              <Button type="button" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={onSend}>
+              <Button type="button" size="sm" className="gap-1" onClick={onSend}>
                 <Send className="h-3.5 w-3.5" /> {t("sendCampaign")}
               </Button>
             )}
             {!isEdit && onCreatedAndSend && (
-              <Button type="submit" size="sm" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+              <Button type="submit" size="sm" disabled={saving} className="gap-1"
                 onClick={() => setSendAfterSave(true)}>
                 <Send className="h-3.5 w-3.5" /> {t("sendCampaign")}
               </Button>

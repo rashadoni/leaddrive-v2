@@ -708,8 +708,8 @@ export default function CalculatedInsightsPage() {
                                     className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                                       st === "error"
                                         ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-500/25"
-                                        : "bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-60"
-                                    }`}
+                                        : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                                    }`} data-crm-button="default"
                                   >
                                     {st === "saving" ? (
                                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

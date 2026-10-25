@@ -448,7 +448,7 @@ export default function LeadsPage() {
           {/* New Lead — only this button gets orange */}
           <button
             onClick={() => { setEditData(undefined); setShowForm(true) }}
-            className="flex items-center gap-1.5 text-sm font-semibold bg-[#FF4D00] text-white px-4 py-1.5 rounded-lg hover:bg-[#e04400] transition-colors"
+            className="flex items-center gap-1.5 text-sm font-semibold bg-primary text-primary-foreground px-4 py-1.5 rounded-lg hover:bg-primary/90 transition-colors" data-crm-button="default"
           >
             <Plus className="h-4 w-4" />
             {t("newLead")}
