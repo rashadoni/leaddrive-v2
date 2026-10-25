@@ -237,6 +237,9 @@ CREATE TRIGGER identity_actor_binding_no_truncate BEFORE TRUNCATE ON identity_ac
 -- silently resume legacy credentials after an application rollback.
 CREATE FUNCTION identity_guard_account_revision() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  IF TG_OP <> 'UPDATE' THEN
+    RAISE EXCEPTION 'IDENTITY_ACCOUNT_STATE_RETAINED' USING ERRCODE = '23514';
+  END IF;
   IF NEW."organizationId" IS DISTINCT FROM OLD."organizationId" OR NEW."userId" IS DISTINCT FROM OLD."userId" THEN
     RAISE EXCEPTION 'IDENTITY_ACCOUNT_SCOPE_IMMUTABLE' USING ERRCODE = '23514';
   END IF;
@@ -252,8 +255,10 @@ BEGIN
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER identity_account_revision_guard BEFORE UPDATE ON identity_accounts
+CREATE TRIGGER identity_account_revision_guard BEFORE UPDATE OR DELETE ON identity_accounts
   FOR EACH ROW EXECUTE FUNCTION identity_guard_account_revision();
+CREATE TRIGGER identity_account_truncate_guard BEFORE TRUNCATE ON identity_accounts
+  FOR EACH STATEMENT EXECUTE FUNCTION identity_guard_account_revision();
 
 -- App security state is retained and monotonic, including under future
 -- writers. Delete/recreate or a same-version reactivation must never revive
