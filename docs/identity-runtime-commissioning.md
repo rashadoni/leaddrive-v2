@@ -19,8 +19,10 @@ deployment is accepted.
 1. Merge the verified server change after the owner approves the concrete
    behavior. Let the normal immutable-artifact deployment finish, including
    migrations, ping and exact public build-info verification. Keep the company
-   flag off. Publish the reviewed compatible native candidate before converting
-   mobile users; the Time candidate prepared with this change is1049.
+   flag off. Publish and install a compatible reviewed main-built native release
+   before converting mobile users. Time1049 and Field1819 are qualified feature
+   candidates; a fresh main build must have an increasing version code. Their
+   candidate numbers are not promised public release numbers.
 2. Dispatch `inspect`, selecting the actual company slug (for Zeytun: `zeytun`)
    and the verified deployed main SHA. It reports only configuration presence,
    aggregate identity counts and the selected company's opt-in state. Missing
