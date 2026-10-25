@@ -30,3 +30,16 @@
 - Actual ready-event stand run40173681459, job121109730089, exact sourcea19b1800f; requiredPR run40173681412. Runner-policy40173669692 and secret scan40173669515 SUCCESS. Standard optional PR bundle policy-skipped; custom stand is performing a real full bundle, so skip is not counted as proof. No application source/deploy change.
 - Native isolated-cookie probe (tiny loopback HTTP server, synthetic cookie, no app/provider traffic) confirms __Secure cookie round-trip in actual Playwright API client and native Chromium on localhost. This resolves production-bundle secure-cookie transport concern without changing auth settings, forging session or weakening HTTPS policy. Probe server/browser closed.
 - Stand dependencies installed; disposable schema/actual Booking constraints/generate step running. No hosted build/auth/browser result yet. Local source already final; only journal advances locally, no extra push to cancel valid CI. Next: require actual source-bound stand output, inspect genuine failure with finite diagnostics; retain tests/baselines and production isolation.
+
+
+## 2026-10-25 11:50 Asia/Baku — Required asset gate found workflow ordering requirement
+
+- First candidate static121109825842 failed Event-platform Kafka/schema asset gate: cold webpack builds require a separately recognized prior worker-trace patch step. The patch command was actually first inside the build step, but executable policy checks earlier steps. This is a genuine workflow-structure failure, not waived or baseline-adjusted.
+- Split the existing patch into its own preceding step locally. Actual node scripts/ci/test-event-platform-assets.mjs now PASS, runner-policy83PASS, whitespacePASS. Current hosted stand build still executes the correct patch-before-build commands and is allowed to finish to expose browser/fixture issues before batching a final source correction. Do not count the red first static run as passing.
+- Disposable schema/Booking constraints/generate step already SUCCESS and actual full bundle is running. Next: browser result on initial candidate, combine any real fixes, publish exact final source and require fresh source gates plus full hosted stand again. No production mutation or assertion/gate weakening.
+
+
+## 2026-10-25 11:53 Asia/Baku — Local correction checkpoint while initial hosted bundle completes
+
+- Strengthened calendar UI proof to await calendar aria-busyfalse, verify selected actual day cell and its rendered count2, in addition to API parity. This avoids relying on list row count alone. Scoped harness lint/syntax/whitespace PASS.
+- Checkpointing separate preceding Next trace patch and stronger calendar checks locally, not pushing yet. Actual initial standby full bundle began07:46:08Z; schema/role/DDL setup passed. Initial static ordering failure is understood/fixed locally; initial typecheck is still compiling. Next: inspect initial browser outcome, batch any real fix, then push and require final source gates plus complete stand. No completed role proof yet.

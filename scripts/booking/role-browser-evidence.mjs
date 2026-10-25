@@ -210,8 +210,12 @@ try {
   await coordinator.page.getByRole('button', { name: copy.viewCalendar, exact: true }).click();
   await coordinator.page.locator('#meeting-month').fill(day.slice(0, 7));
   const dayLabel = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
-  await coordinator.page.locator('.grid-cols-7 button').filter({ has: coordinator.page.getByText(dayLabel, { exact: true }) }).click();
+  const selectedCell = coordinator.page.locator('.grid-cols-7 button').filter({ has: coordinator.page.getByText(dayLabel, { exact: true }) });
+  await selectedCell.click();
   await waitRows(coordinator.page, 2);
+  await coordinator.page.waitForFunction(label => [...document.querySelectorAll('section[aria-label]')].some(el => el.getAttribute('aria-label') === label && el.getAttribute('aria-busy') === 'false'), copy.viewCalendar);
+  assert.equal(await selectedCell.getAttribute('aria-pressed'), 'true');
+  assert.match(await selectedCell.locator('span').nth(1).innerText(), /\b2\b/);
   assert.equal(await rows(coordinator.page).count(), 2);
   await coordinator.page.screenshot({ path: `${output}/coordinator-calendar.png` });
   await coordinator.page.getByRole('button', { name: copy.viewList, exact: true }).click();

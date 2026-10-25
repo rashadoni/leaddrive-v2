@@ -109,12 +109,13 @@ jobs:
           done
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$BOOKING_DB_PASSWORD" -f scripts/ci/fixtures/booking-role-sandbox.sql
           npx prisma generate
+      - name: Keep Next build-worker trace events out of IPC
+        run: node scripts/ci/patch-next-build-worker-trace.mjs
       - name: Compile complete isolated production bundle
         shell: bash
         run: |
           set -euo pipefail
           printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
-          node scripts/ci/patch-next-build-worker-trace.mjs
           ulimit -c 0
           /usr/bin/time -v npx next build --webpack
         env:
