@@ -67,6 +67,13 @@ Candidate39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27, проверенный merge5
 append-only журнале. Ограничения и P2 по будущим path triggers описаны в
 [критичном аудите](critical-audit.md).
 
+Все5 обязательных source contexts и booking-role-browser SUCCESS:
+[source-checks.json](evidence/source-checks.json). Online Booking PostgreSQL27/27PASS.
+Unit/type gates прошли неизменённые baseline без новых отклонений; существующие
+18 failing files /1334 type diagnostics не выдаются за ноль ошибок репозитория.
+Source PR остаётся39ec68f; последующие checkpoint-коммиты содержат только
+локальные доказательства/аудит, не отправлены и не изменяют проверенный исходник.
+
 Этот результат дополнит переданный локальный production admin-smoke. Он не
 является приёмкой настоящих production employee/coordinator аккаунтов, live
 Google/письма, public create или полного accessibility/load/DR. Смена сессии

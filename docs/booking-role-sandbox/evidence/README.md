@@ -5,6 +5,9 @@
 проверенный merge —50f205317e4d7d4ea155a786586f01c181ed7d60.
 
 - [result.json](result.json): исходная санитарная квитанция15/15PASS.
+- [source-checks.json](source-checks.json): все5 обязательных source contexts
+  и дополнительный browser stand SUCCESS; Booking PostgreSQL27/27PASS,
+  действующие unit/type baseline сохранены без новых отклонений.
 - [artifact-metadata.json](artifact-metadata.json): run/job/artifact, проверенный
   ZIP SHA256 и файлы;16 source hashes независимо сверены с Git и рабочими файлами.
 - [workflow-context.json](workflow-context.json): исходный PREPARING-контекст;

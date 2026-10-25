@@ -6,6 +6,13 @@ release всего раздела встреч. Hosted stand40175047313 заве
 head39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27, merge50f205317e4d7d4ea155a786586f01c181ed7d60.
 Квитанция: [result.json](evidence/result.json), происхождение и проверенный ZIP
 digest: [artifact-metadata.json](evidence/artifact-metadata.json).
+Все5 обязательных source contexts и дополнительный booking-role-browser SUCCESS;
+[source-checks.json](evidence/source-checks.json) сохраняет точные run/job URLs.
+Online Booking PostgreSQL27/27PASS. Unit gate прошёл существующий baseline:
+18 failing files /18baseline, новых0. Type gate:1334 diagnostics,64 gated pairs
+/64baseline, новых gated defects0; compiler exit2 не скрывается. Общий label-gated
+build SKIPPED, не считается доказательством; actual full cold bundle выполнен
+отдельным стендом. Baselines/правила не ослаблялись.
 
 ## Что именно доказывает проверка
 
@@ -125,6 +132,6 @@ production admin-smoke и будущую live ролевую приёмку. С�
 I-12/I-13 из предыдущего аудита этим PR не объявляются закрытыми.
 
 В новом исходнике стенда блокирующих дефектов P0/P1 после критического прохода
-не установлено; отмечены2P2 пробела автоматического покрытия. Итоговый допуск самого стенда зависит от полного hosted PASS
-и обязательных source checks на точной проверяемой версии. Production merge
+не установлено; отмечены2P2 пробела покрытия. Стенд прошёл полный hosted PASS
+и обязательные source checks на точной проверяемой версии. Production merge
 или deploy не входит в задачу.
