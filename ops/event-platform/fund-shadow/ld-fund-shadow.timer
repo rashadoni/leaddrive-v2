@@ -1,0 +1,14 @@
+# Installed by provision.sh fund-shadow-install; enabled by fund-shadow-enable
+# only after a first manual run succeeded. Stopping the pilot is disabling
+# this timer: the CRM never reads the shadow, so nothing needs rolling back.
+[Unit]
+Description=Run the Fund shadow pilot every 5 minutes
+
+[Timer]
+OnCalendar=*:1/5
+AccuracySec=10s
+Persistent=false
+Unit=ld-fund-shadow.service
+
+[Install]
+WantedBy=timers.target

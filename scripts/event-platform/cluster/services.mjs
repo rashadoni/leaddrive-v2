@@ -65,7 +65,8 @@ export function aclBindings(env, catalogTopics) {
     // (verifyTopic). Without it the worker never reaches READY on the real
     // cluster — found by the 2026-10-25 drill (fund-drill.ts).
     allow(PRINCIPALS.fundWorker, ['Read', 'Describe', 'DescribeConfigs'], ['--topic', financeEvents]),
-    allow(PRINCIPALS.fundWorker, ['Read'], ['--group', `ld.${env}.fund-shadow.`], 'prefixed'),
+    // validateKafkaWorkerPlan admits only ld.<env>.finance.fund-shadow.v<N>.<name>.
+    allow(PRINCIPALS.fundWorker, ['Read'], ['--group', `ld.${env}.finance.fund-shadow.`], 'prefixed'),
   ]
 }
 

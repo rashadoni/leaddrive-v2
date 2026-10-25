@@ -11,6 +11,9 @@
 #   provision.sh topics CLUSTER ENV         create the governed catalog (idempotent)
 #   provision.sh install-watch ENV          health probe on every host + the watch timer here
 #   provision.sh install-backup-watch       the backup watch on BACKUP_WATCH_HOST (after install-watch)
+#   provision.sh fund-shadow-prod ORG       Fund shadow pilot, production side (login, build, pg_hba, group)
+#   provision.sh fund-shadow-install        Fund shadow pilot runner on its Connect host (timer left off)
+#   provision.sh fund-shadow-run|enable|disable|status   one session now / the timer / state
 #
 # The production web host is not handled here; its tunnel/ufw step is separate.
 set -Eeuo pipefail
@@ -36,6 +39,28 @@ copy() { local name="$1" mode="$2" owner="$3" src="$4" dst="$5"
   on "$name" "install -m $mode -o ${owner%:*} -g ${owner#*:} /dev/stdin '$dst'" <"$src"; }
 
 backup_host() { node --input-type=module -e "import { BACKUP_WATCH_HOST } from '$here/watch.mjs'; console.log(BACKUP_WATCH_HOST)"; }
+
+# Fund shadow pilot: one runner host and one build per checkout release. A new
+# release is a new build (its codeSha is pinned), never an edited one.
+FS_HOST=kafka-p-connect-uk
+fs_pilot_init() {
+  # fs_pilot_init ORG [new]: "new" (fund-shadow-prod) starts a build for a new
+  # release; without it the recorded build must already be this release's.
+  local org="$1" mode="${2:-}" file="$state/fund-shadow/pilot.json"
+  fs_release="$(git -C "$repo" rev-parse HEAD)"
+  [ -z "$(git -C "$repo" status --porcelain --untracked-files=no)" ] || die "the checkout has local changes"
+  git -C "$repo" merge-base --is-ancestor HEAD origin/main || die "check out a commit of origin/main"
+  mkdir -p "$state/fund-shadow"
+  if [ ! -s "$file" ] || [ "$(node -e 'console.log(require(process.argv[1]).releaseSha)' "$file")" != "$fs_release" ]; then
+    [ "$mode" = new ] || die "no build for release ${fs_release:0:12}: run fund-shadow-prod first"
+    local n=1; [ -s "$file" ] && n=$(( $(node -e 'console.log(require(process.argv[1]).number)' "$file") + 1 ))
+    node -e 'const [org, release, n] = process.argv.slice(1); process.stdout.write(JSON.stringify({ org, number: Number(n),
+      role: "ld_fund_shadow_pilot", buildId: require("node:crypto").randomUUID(), buildKey: `pilot-${n}`,
+      groupId: `ld.prod.finance.fund-shadow.v2.pilot-${n}`, releaseSha: release }, null, 1))' "$org" "$fs_release" "$n" >"$file"
+  fi
+  [ "$(node -e 'console.log(require(process.argv[1]).org)' "$file")" = "$org" ] || die "the pilot is for another organization"
+  read -r fs_role fs_build fs_key fs_group < <(node -e 'const p = require(process.argv[1]); console.log(p.role, p.buildId, p.buildKey, p.groupId)' "$file")
+}
 
 member_role() { js '
   const t = m.loadTopology(); const h = m.meshMembers(t).find((x) => x.name === process.argv[1])
@@ -428,6 +453,129 @@ case "${1:-}" in
     done
     on "$name" 'systemctl daemon-reload && systemctl enable --now ld-kafka-backup-watch.timer >/dev/null && systemctl is-active ld-kafka-backup-watch.timer' \
       | sed "s/^/backup watch timer on $name: /"
+    ;;
+
+  fund-shadow-prod)
+    # The pilot's production side, in one place and idempotent: the restricted
+    # login and shadow build of ORG (provision-role.sql), the login's pg_hba
+    # line from the runner host only, the worker's group ACL and the group's
+    # starting offset. Touches production: run only with the owner's word.
+    org="${2:-}"; [[ "$org" =~ ^[A-Za-z0-9_-]{1,64}$ ]] || die "usage: fund-shadow-prod ORG"
+    fs_pilot_init "$org" new
+    src_key="${LD_SOURCE_SSH_KEY:-$HOME/.ssh/leaddrive_prod_2026_09_09}"
+    src_ip="$(public_of "$(js 'console.log(m.loadTopology().sourceHost.name)')")" || die "source not enrolled"
+    on_src() { ssh -i "$src_key" -o IdentitiesOnly=yes -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=15 "root@$src_ip" "$@"; }
+    password="$state/secrets/prod-fund-shadow-$fs_role"
+    [ -s "$password" ] || openssl rand -hex 24 >"$password"
+    on_src 'install -d -m 0700 /root/ld-fund-shadow'
+    on_src 'install -m 0700 /dev/stdin /root/ld-fund-shadow/prod-apply.sh' <"$repo/scripts/event-platform/fund-shadow/prod-apply.sh"
+    on_src 'install -m 0600 /dev/stdin /root/ld-fund-shadow/provision-role.sql' <"$repo/scripts/event-platform/fund-shadow/provision-role.sql"
+    # Only the SCRAM verifier leaves this workstation for the database.
+    node "$repo/scripts/event-platform/fund-shadow/scram.mjs" <"$password" \
+      | on_src "bash /root/ld-fund-shadow/prod-apply.sh role $org $fs_role $fs_build $fs_key $fs_release"
+    runner_addr="$(js 'console.log(JSON.parse(process.argv[1]).hosts[process.argv[2]].address)' "$(cat "$inventory")" "$FS_HOST")"
+    on_src "bash /root/ld-fund-shadow/prod-apply.sh hba $fs_role $runner_addr"
+    "$0" admin kafka-p-broker-eu kafka-acls.sh --add --allow-principal User:ld-fund-worker --operation Read \
+      --group ld.prod.finance.fund-shadow. --resource-pattern-type prefixed >/dev/null
+    # The prefix before PR fixing services.mjs never matched a plan's group.
+    "$0" admin kafka-p-broker-eu kafka-acls.sh --remove --force --allow-principal User:ld-fund-worker --operation Read \
+      --group ld.prod.fund-shadow. --resource-pattern-type prefixed >/dev/null
+    # The bridge refuses a group without offsets; the shadow folds full history.
+    if "$0" admin kafka-p-broker-eu kafka-consumer-groups.sh --describe --group "$fs_group" 2>/dev/null | grep -q 'ld.prod.finance.events.v1'; then
+      echo "group $fs_group already has offsets"
+    else
+      "$0" admin kafka-p-broker-eu kafka-consumer-groups.sh --group "$fs_group" --topic ld.prod.finance.events.v1 \
+        --reset-offsets --to-earliest --execute >/dev/null
+      echo "group $fs_group starts at the earliest offsets"
+    fi
+    on_src "bash /root/ld-fund-shadow/prod-apply.sh status $fs_role"
+    ;;
+
+  fund-shadow-install)
+    # The pilot runner on FS_HOST from this exact checkout: the bridge artifact
+    # (bridge classes + the Connect image's client jars, verified by the
+    # runner), the runner bundle, plan/pins/host files and secrets. The timer
+    # is installed but left off: fund-shadow-run first, then fund-shadow-enable.
+    [ -s "$state/fund-shadow/pilot.json" ] || die "run fund-shadow-prod first"
+    fs_pilot_init "$(node -e 'console.log(require(process.argv[1]).org)' "$state/fund-shadow/pilot.json")"
+    password="$state/secrets/prod-fund-shadow-$fs_role"; [ -s "$password" ] || die "no pilot login password"
+    worker_secret="$state/secrets/prod-ld-fund-worker"; [ -s "$worker_secret" ] || die "no ld-fund-worker password"
+    image="$(on "$FS_HOST" "docker inspect -f '{{.Config.Image}}' $FS_HOST-connect")"
+    on "$FS_HOST" 'command -v node >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null
+      node -e "process.exit(Number(process.versions.node.split(\".\")[0]) >= 18 ? 0 : 1)"' || die "no Node.js 18+ on $FS_HOST"
+    on "$FS_HOST" 'rm -rf /opt/ld-fund-shadow/build && install -d -m 0755 /opt/ld-fund-shadow /opt/ld-fund-shadow/build /opt/ld-fund-shadow/build/artifact /opt/ld-fund-shadow/build/artifact/classes /opt/ld-fund-shadow/build/artifact/lib'
+    on "$FS_HOST" 'install -m 0644 /dev/stdin /opt/ld-fund-shadow/build/KafkaPartitionBridge.java' <"$repo/ops/event-platform/driver/KafkaPartitionBridge.java"
+    # Client-only jars, the same filter as the CI artifact (kafka-broker-harness.ts).
+    on "$FS_HOST" "docker run --rm --user 0 -v /opt/ld-fund-shadow/build:/w --entrypoint sh '$image' -c '
+        jars=\$(ls /kafka/libs | grep -E \"^(kafka-clients|slf4j-api|log4j-api|log4j-core|log4j-slf4j2?-impl|zstd-jni|lz4-java|snappy-java)-[0-9][A-Za-z0-9_.-]*\\.jar\$\")
+        for j in \$jars; do cp /kafka/libs/\$j /w/artifact/lib/; done
+        java -Xmx256m -m jdk.compiler/com.sun.tools.javac.Main -cp \"\$(echo /kafka/libs/*.jar | tr \" \" :)\" -d /w/artifact/classes /w/KafkaPartitionBridge.java'"
+    printf 'status=OFF\nrootLogger.level=OFF\n' | on "$FS_HOST" 'install -m 0644 /dev/stdin /opt/ld-fund-shadow/build/artifact/logging.properties'
+    digest="$(on "$FS_HOST" "cd /opt/ld-fund-shadow/build/artifact && chown -R root:root . && find . -type d -exec chmod 0755 {} + && find . -type f -exec chmod 0644 {} +
+      python3 - $fs_release <<'PY'
+import hashlib, json, os, sys
+files = []
+for d in ('classes', 'lib'):
+    for name in sorted(os.listdir(d)):
+        b = open(f'{d}/{name}', 'rb').read()
+        files.append({'path': f'{d}/{name}', 'bytes': len(b), 'sha256': 'sha256:' + hashlib.sha256(b).hexdigest()})
+b = open('logging.properties', 'rb').read()
+files.append({'path': 'logging.properties', 'bytes': len(b), 'sha256': 'sha256:' + hashlib.sha256(b).hexdigest()})
+m = json.dumps({'apiVersion': 'event-platform.leaddrive.io/v1', 'kind': 'KafkaBridgeArtifact', 'releaseSha': sys.argv[1],
+                'kafkaVersion': '4.3.1', 'files': files}, separators=(',', ':')).encode()
+open('manifest.json', 'wb').write(m); os.chmod('manifest.json', 0o644)
+print('sha256:' + hashlib.sha256(m).hexdigest())
+PY
+      rm -rf /opt/ld-fund-shadow/artifact && mv /opt/ld-fund-shadow/build/artifact /opt/ld-fund-shadow/artifact && rm -rf /opt/ld-fund-shadow/build")"
+    [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || die "artifact manifest not built"
+    bundle="$(mktemp -d)"
+    NODE_PATH="$repo/ops/event-platform/fund-shadow/node_modules" "$repo/ops/event-platform/fund-shadow/node_modules/.bin/esbuild" \
+      "$repo/scripts/event-platform/fund-shadow/runner.ts" --bundle --platform=node --target=node18 --format=cjs \
+      --external:pg-native --legal-comments=none --log-level=error --outfile="$bundle/runner.cjs" \
+      || die "bundle failed (npm ci --prefix ops/event-platform/fund-shadow --ignore-scripts)"
+    copy "$FS_HOST" 0644 root:root "$bundle/runner.cjs" /opt/ld-fund-shadow/runner.cjs; rm -rf "$bundle"
+    topic="$("$0" admin kafka-p-broker-eu kafka-topics.sh --describe --topic ld.prod.finance.events.v1 2>/dev/null | head -1)"
+    topic_id="$(sed -n 's/.*TopicId: \([^[:space:]]*\).*/\1/p' <<<"$topic")"; partitions="$(sed -n 's/.*PartitionCount: \([0-9]*\).*/\1/p' <<<"$topic")"
+    cluster_id="$(node -e 'console.log(require(process.argv[1]).clusters.primary.clusterId)' "$inventory")"
+    on "$FS_HOST" 'install -d -m 0700 /etc/leaddrive-kafka/fund-shadow /etc/leaddrive-kafka/fund-shadow/secrets'
+    node -e '
+      const [release, digest, clusterId, topicId, partitions, pilotFile, inventoryFile, image] = process.argv.slice(1)
+      const pilot = require(pilotFile), inv = require(inventoryFile)
+      const brokers = ["kafka-p-broker-eu", "kafka-p-broker-uk", "kafka-p-broker-gra"].map(n => `${inv.hosts[n].address}:9092`).join(",")
+      const plan = { apiVersion: "event-platform.leaddrive.io/v1", kind: "FundShadowWorkerPlan", releaseSha: release, artifactSha256: digest,
+        environment: "prod", broker: { clusterId, groupId: pilot.groupId, topic: "ld.prod.finance.events.v1", topicId, partitionCount: Number(partitions) },
+        limits: { maxRecords: 10000, maxDurationMs: 240000 }, kafkaSecretReference: "vault://leaddrive/kafka/ld-fund-worker",
+        routes: [{ scope: { organizationId: pilot.org, buildId: pilot.buildId, buildKey: pilot.buildKey, projectionVersion: 2,
+          codeSha: release, environment: "prod", expectedWorkerRole: pilot.role }, databaseSecretReference: `vault://leaddrive/postgres/${pilot.role}` }] }
+      const host = { brokers, connectImage: image, caFile: "/etc/leaddrive-kafka/tls/ca.pem",
+        database: { address: inv.hosts["leaddrive-prod"].address, tlsName: "vmi3554743.contaboserver.net",
+          caFile: "/etc/leaddrive-kafka/tls/source-postgres.pem", name: "leaddrive_v2" } }
+      process.stdout.write(JSON.stringify({ plan, pins: { releaseSha: release, artifactSha256: digest, environment: "prod" }, host }))
+    ' "$fs_release" "$digest" "$cluster_id" "$topic_id" "$partitions" "$state/fund-shadow/pilot.json" "$inventory" "$image" >"$state/fund-shadow/install.json"
+    for part in plan pins host; do
+      node -e 'process.stdout.write(JSON.stringify(require(process.argv[1])[process.argv[2]], null, 1))' "$state/fund-shadow/install.json" "$part" \
+        | on "$FS_HOST" "install -m 0600 /dev/stdin /etc/leaddrive-kafka/fund-shadow/$part.json"
+    done
+    copy "$FS_HOST" 0600 root:root "$worker_secret" /etc/leaddrive-kafka/fund-shadow/secrets/leaddrive__kafka__ld-fund-worker
+    copy "$FS_HOST" 0600 root:root "$password" "/etc/leaddrive-kafka/fund-shadow/secrets/leaddrive__postgres__$fs_role"
+    for unit in ld-fund-shadow.service ld-fund-shadow.timer; do
+      copy "$FS_HOST" 0644 root:root "$repo/ops/event-platform/fund-shadow/$unit" "/etc/systemd/system/$unit"
+    done
+    on "$FS_HOST" 'systemctl daemon-reload'
+    echo "runner installed on $FS_HOST: release ${fs_release:0:12}, artifact $digest, timer $(on "$FS_HOST" 'systemctl is-enabled ld-fund-shadow.timer 2>/dev/null || true')"
+    ;;
+
+  fund-shadow-run)
+    on "$FS_HOST" 'systemctl start ld-fund-shadow.service; rc=$?; journalctl -u ld-fund-shadow.service -n 5 --no-pager -o cat | grep fund_shadow_session | tail -1; exit $rc'
+    ;;
+  fund-shadow-enable)
+    on "$FS_HOST" 'systemctl enable --now ld-fund-shadow.timer >/dev/null && systemctl is-active ld-fund-shadow.timer'
+    ;;
+  fund-shadow-disable)
+    on "$FS_HOST" 'systemctl disable --now ld-fund-shadow.timer >/dev/null; systemctl is-active ld-fund-shadow.timer || true'
+    ;;
+  fund-shadow-status)
+    on "$FS_HOST" 'echo "timer: $(systemctl is-active ld-fund-shadow.timer)"; journalctl -u ld-fund-shadow.service --since -2h --no-pager -o short-iso | grep fund_shadow_session | tail -5'
     ;;
 
   verify)
