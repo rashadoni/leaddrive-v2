@@ -1149,6 +1149,7 @@ export default function UsersSettingsPage() {
       key: "isActive", label: tu("colStatus"), sortable: true,
       render: (item: User) => (
         <Badge
+          data-crm-color-role="status"
           className={`cursor-pointer ${item.isActive
             ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
             : "bg-muted text-muted-foreground"
