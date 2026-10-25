@@ -1,8 +1,8 @@
 import type { Prisma } from "@prisma/client"
-import { assertIdentityScope, IdentityRegistryError } from "./contract.js"
-import type { RegistryClient } from "./registry.js"
-import { readVerifiedIdentityMobileClaims, type IdentitySessionKeyResolver } from "./mobile-session.js"
-import { authorizeIdentityMobileSession, type IdentityMobileApplication, type IdentityMobileState } from "./mobile-session-contract.js"
+import { assertIdentityScope, IdentityRegistryError } from "./contract"
+import type { RegistryClient } from "./registry"
+import { readVerifiedIdentityMobileClaims, type IdentitySessionKeyResolver } from "./mobile-session"
+import { authorizeIdentityMobileSession, type IdentityMobileApplication, type IdentityMobileState } from "./mobile-session-contract"
 
 /** Fixed server policy; read actual rollout/license through this same transaction. */
 export type IdentityMobileTenantPolicy = (tx: Prisma.TransactionClient, organizationId: string, application: IdentityMobileApplication) => Promise<{

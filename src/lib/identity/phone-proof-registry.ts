@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from "node:crypto"
 import bcrypt from "bcryptjs"
-import { credentialSetupHint, credentialSetupRequestHash, mintCredentialSetup, verifyCredentialSetup, type CredentialSetupContext } from "./credential-setup.js"
+import { credentialSetupHint, credentialSetupRequestHash, mintCredentialSetup, verifyCredentialSetup, type CredentialSetupContext } from "./credential-setup"
 import type { IdentityPhoneProof, Prisma } from "@prisma/client"
-import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract.js"
-import { phoneProofAttemptHash, sealPhoneProof, verifyPhoneProofCode, type PhoneProofContext, type PhoneProofKey, type SealedPhoneProof } from "./phone-proof.js"
-import { withRegistryTransaction, type RegistryClient, type IdentityActor } from "./registry.js"
+import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract"
+import { phoneProofAttemptHash, sealPhoneProof, verifyPhoneProofCode, type PhoneProofContext, type PhoneProofKey, type SealedPhoneProof } from "./phone-proof"
+import { withRegistryTransaction, type RegistryClient, type IdentityActor } from "./registry"
 
 export type StagedProofIssue = { userId: string; reservationId: string; expectedAccountVersion: number; expectedCredentialEpoch: number; requestId: string }
 export type StagedProofAttempt = { proofId: string; requestId: string; code: string }

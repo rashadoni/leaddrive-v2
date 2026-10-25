@@ -1,6 +1,6 @@
-import { assertIdentityScope } from "./contract.js"
-import type { RegistryClient } from "./registry.js"
-import { withIdentityMobileReadSnapshot } from "./mobile-session-resolver.js"
+import { assertIdentityScope } from "./contract"
+import type { RegistryClient } from "./registry"
+import { withIdentityMobileReadSnapshot } from "./mobile-session-resolver"
 
 export type LegacyCredentialPrincipal = { kind: "USER"; userId: string } | { kind: "ACTOR"; actorId: string }
 export type LegacyCredentialBoundary = "LEGACY" | "MIGRATED" | "UNAVAILABLE"

@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes, randomInt, timingSafeEqual } from "node:crypto"
-import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError, normalizeIdentityPhone } from "./contract.js"
+import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError, normalizeIdentityPhone } from "./contract"
 
 /** Node/server primitive only; never a login token or a grant decision. */
 export type PhoneProofContext = {

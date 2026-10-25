@@ -1,6 +1,6 @@
 import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto"
-import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract.js"
-import type { PhoneProofKey } from "./phone-proof.js"
+import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract"
+import type { PhoneProofKey } from "./phone-proof"
 
 /** Frozen server-derived facts AFTER a successful phone confirmation. */
 export type CredentialSetupContext = {

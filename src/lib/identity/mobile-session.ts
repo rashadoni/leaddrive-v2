@@ -1,8 +1,8 @@
 import { hkdfSync, randomUUID } from "node:crypto"
 import jwt from "jsonwebtoken"
-import { IdentityRegistryError } from "./contract.js"
+import { IdentityRegistryError } from "./contract"
 import { parseIdentityMobileClaims, authorizeIdentityMobileSession, IDENTITY_MOBILE_AUDIENCES, IDENTITY_MOBILE_ISSUER,
-  type IdentityMobileApplication, type IdentityMobileClaims, type IdentityMobileState } from "./mobile-session-contract.js"
+  type IdentityMobileApplication, type IdentityMobileClaims, type IdentityMobileState } from "./mobile-session-contract"
 
 export type IdentitySessionSigningKey = { purpose: "IDENTITY_MOBILE_SESSION"; id: string; material: Uint8Array }
 declare const identityClaimsVerified: unique symbol

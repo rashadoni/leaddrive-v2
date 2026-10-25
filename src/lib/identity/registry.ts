@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
-import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, assertStagedPhoneReservation, compareIdentityShadow, IdentityRegistryError, type IdentityApplication, type IdentityGrantStatus, type StagedApplicationGrantInput, type StagedPhoneReservationInput } from "./contract.js"
+import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, assertStagedPhoneReservation, compareIdentityShadow, IdentityRegistryError, type IdentityApplication, type IdentityGrantStatus, type StagedApplicationGrantInput, type StagedPhoneReservationInput } from "./contract"
 
 export type RegistryClient = Pick<PrismaClient, "$transaction">
 export type IdentityActor = { organizationId: string; userId: string }

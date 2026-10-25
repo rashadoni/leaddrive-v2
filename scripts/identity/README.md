@@ -487,3 +487,6 @@ Legacy boundary caller update: the next candidate fences resolveMobileAuth after
 
 
 App Prisma composition: PostgreSQL set_config in injected-client helpers is not a substitute for the extended app client AsyncLocalStorage scope. Call the legacy reader inside runWithTenant using the verified tenant so the Prisma transaction proxy establishes inTx; the reader still forces and verifies read-only/RR/bypass-off. Preserve prior context with run, not enterWith. Broad real-login PG caught the missing no-context wrapper; keep that positive compatibility assertion and the RLS test guard enabled.
+
+
+Source imports use the application convention without a .js suffix so Next can resolve TypeScript neighbors. The scoped NodeNext build emits CommonJS under this package default; emitted .js files still resolve through require and fixture entry points keep their explicit emitted paths. The actual scoped runtime/PG and Next bundle both guard compatibility; do not treat the standalone compiler alone as a bundler check.

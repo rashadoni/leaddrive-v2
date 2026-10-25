@@ -1,4 +1,4 @@
-import { assertIdentityRequestId, assertIdentityScope } from "./contract.js"
+import { assertIdentityRequestId, assertIdentityScope } from "./contract"
 
 export type IdentityMobileApplication = "TIME" | "ROUTE_FIELD"
 export const IDENTITY_MOBILE_ISSUER = "leaddrive:identity:mobile:v1"

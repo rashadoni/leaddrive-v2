@@ -1,7 +1,7 @@
 import { isTenantCapabilityEnabled } from "../tenant-capabilities"
 import { readAttendanceFeature } from "../mtm/attendance-feature"
-import { assertIdentityScope, IdentityRegistryError } from "./contract.js"
-import type { IdentityMobileTenantPolicy } from "./mobile-session-resolver.js"
+import { assertIdentityScope, IdentityRegistryError } from "./contract"
+import type { IdentityMobileTenantPolicy } from "./mobile-session-resolver"
 
 /** Control-plane opt-in only; false/missing never means legacy fallback. */
 export const IDENTITY_AUTH_SETTING_KEY = "identityAuthV1"

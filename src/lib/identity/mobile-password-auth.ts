@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs"
 import type { Prisma } from "@prisma/client"
-import { assertIdentityScope, normalizeIdentityPhone } from "./contract.js"
-import type { RegistryClient } from "./registry.js"
-import type { IdentityMobileApplication } from "./mobile-session-contract.js"
-import { issueIdentityMobileSession, verifyIdentityMobileSession, type IdentitySessionSigningKey } from "./mobile-session.js"
-import { readIdentityMobileState, withIdentityMobileReadSnapshot } from "./mobile-session-resolver.js"
+import { assertIdentityScope, normalizeIdentityPhone } from "./contract"
+import type { RegistryClient } from "./registry"
+import type { IdentityMobileApplication } from "./mobile-session-contract"
+import { issueIdentityMobileSession, verifyIdentityMobileSession, type IdentitySessionSigningKey } from "./mobile-session"
+import { readIdentityMobileState, withIdentityMobileReadSnapshot } from "./mobile-session-resolver"
 import { readIdentityMobileTenantPolicy } from "./tenant-policy"
 
 export type IdentityMobilePasswordInput = { phone: string; password: string; application: IdentityMobileApplication }

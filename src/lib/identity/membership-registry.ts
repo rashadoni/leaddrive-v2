@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto"
 import type { Prisma } from "@prisma/client"
-import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, IdentityRegistryError } from "./contract.js"
-import { withRegistryTransaction, type IdentityActor, type RegistryClient } from "./registry.js"
-import type { IdentityMobileApplication } from "./mobile-session-contract.js"
+import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, IdentityRegistryError } from "./contract"
+import { withRegistryTransaction, type IdentityActor, type RegistryClient } from "./registry"
+import type { IdentityMobileApplication } from "./mobile-session-contract"
 
 export type StagedActorReview = { userId: string; actorId: string; expectedAccountVersion: number; reviewReference: string; requestId: string }
 export type StagedMembershipPlan = { userId: string; actorId: string; application: IdentityMobileApplication; status: "ACTIVE" | "REVOKED";

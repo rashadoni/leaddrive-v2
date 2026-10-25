@@ -1,6 +1,6 @@
-import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract.js"
-import { openPhoneProofDelivery, type PhoneProofKey } from "./phone-proof.js"
-import type { StagedProofDelivery, StagedProofDeliveryReceipt } from "./phone-proof-registry.js"
+import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract"
+import { openPhoneProofDelivery, type PhoneProofKey } from "./phone-proof"
+import type { StagedProofDelivery, StagedProofDeliveryReceipt } from "./phone-proof-registry"
 
 export type ProofTransportResult = { status: "SENT"; providerMessageId: string } | { status: "FAILED" | "UNCERTAIN" }
 export type ProofDispatchDependencies = {
