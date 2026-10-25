@@ -131,6 +131,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
   let forgotPassword!: typeof import("@/app/api/v1/auth/forgot-password/route").POST
   let redeemPassword!: typeof import("@/app/api/v1/auth/reset-password/route").POST
   let resetTenantUser!: typeof import("@/app/api/v1/admin/tenants/[id]/users/[userId]/reset-password/route").POST
+  let updateCrmUser!: typeof import("@/app/api/v1/users/[id]/route").PUT
   let updateAgent!: typeof import("@/app/api/v1/mtm/agents/[id]/route").PUT
   let resolveMobileAuth!: typeof import("@/lib/mobile-auth").resolveMobileAuth
   let availability!: typeof import("@/lib/mtm/whatsapp-login-code")
@@ -154,6 +155,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     verifyCode = (await import("@/app/api/v1/mtm/mobile/auth/code/verify/route")).POST
     setPassword = (await import("@/app/api/v1/mtm/mobile/auth/password/route")).POST
     signIn = (await import("@/app/api/v1/mtm/mobile/auth/route")).POST
+    updateCrmUser = (await import("@/app/api/v1/users/[id]/route")).PUT
     updateAgent = (await import("@/app/api/v1/mtm/agents/[id]/route")).PUT
     resolveMobileAuth = (await import("@/lib/mobile-auth")).resolveMobileAuth
     await import("@/lib/auth")
@@ -644,6 +646,51 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(await callback({ token: { sub: userId, email }, user: signedIn, account: { provider: "credentials" } })).toBeNull()
     expect(await callback({ token, user: undefined })).toBeNull()
     expect(await state()).toEqual(before)
+    expect(sent).toHaveLength(0)
+  })
+
+  it("keeps CRM user phone maintenance atomic and refuses canonical self or another person's phone", async () => {
+    const company = "identity-user-phone-maintenance", oldPhone = "+994507772201", newPhone = "+994507772202", claimedPhone = "+994507772203"
+    const fixture = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, slug: company, name: "Fictional user phone maintenance", modules: { settings: true } } })
+      const actor = await prisma.user.create({ data: { organizationId: company, name: "Fictional phone administrator", email: "admin@user-phone.invalid", role: "admin", passwordHash: "!fixture" } })
+      const target = await prisma.user.create({ data: { organizationId: company, name: "Fictional disabled user", email: "target@user-phone.invalid", role: "viewer", passwordHash: "!fixture", phone: oldPhone, isActive: false } })
+      const owner = await prisma.user.create({ data: { organizationId: company, name: "Fictional canonical owner", email: "owner@user-phone.invalid", role: "viewer", passwordHash: "!fixture" } })
+      await prisma.identityAccount.create({ data: { organizationId: company, userId: owner.id, cutoverAt: new Date(), passwordHash: "!fixture-common" } })
+      await prisma.identityPhoneClaim.create({ data: { organizationId: company, userId: owner.id, normalizedPhone: claimedPhone, accountVersion: 1, verifiedAt: new Date() } })
+      return { actorId: actor.id, userId: target.id, ownerId: owner.id }
+    })
+    const state = () => bypass(() => prisma.user.findUniqueOrThrow({ where: { id: fixture.userId }, select: { name: true, phone: true, isActive: true, role: true, updatedAt: true } }))
+    const change = (body: unknown) => updateCrmUser(new NextRequest(`http://localhost/api/v1/users/${fixture.userId}`, {
+      method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+    }), { params: Promise.resolve({ id: fixture.userId }) })
+    webSession.current = { orgId: company, userId: fixture.actorId, role: "admin", email: "admin@user-phone.invalid", name: "Fictional phone administrator", principalType: "session" }
+    try {
+      const before = await state()
+      await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE audit_logs ADD CONSTRAINT identity_fixture_phone_audit_fail CHECK ("organizationId" <> 'identity-user-phone-maintenance' OR action <> 'user_updated') NOT VALID`))
+      try {
+        expect((await change({ name: "Renamed fictional user", phone: newPhone })).status).toBe(500)
+        expect(await state()).toEqual(before)
+      } finally { await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE audit_logs DROP CONSTRAINT identity_fixture_phone_audit_fail")) }
+      expect((await change({ name: "Renamed fictional user", phone: newPhone })).status).toBe(200)
+      const maintained = await state()
+      expect(maintained).toMatchObject({ name: "Renamed fictional user", phone: newPhone, role: "viewer", isActive: false })
+      const conflict = await change({ phone: claimedPhone })
+      expect(conflict.status).toBe(409)
+      expect((await conflict.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId: fixture.userId, cutoverAt: new Date(), passwordHash: "!fixture-target-common" } }))
+      for (const phone of [null, newPhone]) {
+        const refused = await change({ phone })
+        expect(refused.status).toBe(409)
+        expect((await refused.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      }
+      expect(await state()).toEqual(maintained)
+      expect((await bypass(() => prisma.identityPhoneClaim.findUniqueOrThrow({ where: { organizationId_userId: { organizationId: company, userId: fixture.ownerId } } }))).normalizedPhone).toBe(claimedPhone)
+      expect(await bypass(() => prisma.auditLog.count({ where: { organizationId: company, action: "user_updated" } }))).toBe(1)
+      // Ordinary metadata edits need no credential or identity-mode switch.
+      expect((await change({ name: "Canonical metadata only" })).status).toBe(200)
+      expect((await state()).phone).toBe(newPhone)
+    } finally { webSession.current = null }
     expect(sent).toHaveLength(0)
   })
 

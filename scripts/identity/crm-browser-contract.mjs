@@ -104,8 +104,17 @@ try {
     }
     async function denied(current) {
       assert.equal((await session(current)).user, undefined)
-      const response = await current.request.get("/api/v1/users", { timeout: 120000 })
-      assert.equal(response.status(), 401)
+      const response = await current.request.get("/api/v1/users", { timeout: 120000, maxRedirects: 0 })
+      if (response.status() === 307) {
+        // The real proxy denies anonymous requests by redirecting to login.
+        // Do not follow that redirect and mistake its HTML200 for API access.
+        const target = new URL(response.headers().location, origin)
+        assert.equal(target.origin, origin.origin); assert.equal(target.pathname, "/login")
+        assert.equal(target.searchParams.get("callbackUrl"), "/api/v1/users")
+      } else {
+        assert.equal(response.status(), 401)
+        assert.equal((await response.json()).error, "Unauthorized")
+      }
     }
     phase("LEGACY_PASSWORD_AND_MISSING_TENANT_REFUSED")
     for (const [entered, tenant] of [[`${password}-legacy`, company], [password, ""], [password, "fictional-other-company"]]) {
@@ -120,7 +129,7 @@ try {
     result.actualCookie = true
     const personState = await admin.user.findUniqueOrThrow({ where: { id: userId("ordinary") }, select: { loginCount: true, role: true } })
     assert.ok(personState.loginCount > 0); assert.equal(personState.role, "admin")
-    const roster = await ordinary.current.request.get("/api/v1/users", { timeout: 120000 })
+    const roster = await ordinary.current.request.get("/api/v1/users", { timeout: 120000, maxRedirects: 0 })
     assert.equal(roster.status(), 200)
     const rosterBody = await roster.json()
     assert.equal(rosterBody.success, true)
@@ -178,7 +187,7 @@ try {
       const after = await session(admitted.current)
       assert.equal(after.user.role, "viewer")
       assert.equal(after.user[suffix === "setup" ? "needsSetup2fa" : "needs2fa"], true)
-      const response = await admitted.current.request.get("/api/v1/users", { timeout: 120000 })
+      const response = await admitted.current.request.get("/api/v1/users", { timeout: 120000, maxRedirects: 0 })
       assert.equal(response.status(), 403)
     }
     check("shared_password_or_actual_session_update_cannot_satisfy_crm_mfa_or_forge_private_grants")
