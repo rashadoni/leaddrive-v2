@@ -160,11 +160,18 @@ export async function reserveIdentityPhoneByAdministrator(client: RegistryClient
   return reservePhone(client, actor, input, actor)
 }
 async function reservePhone(client: RegistryClient, actor: IdentityActor, input: StagedPhoneReservationInput, administrator?: IdentityAdministrator) {
+  const work = reservePhoneWork(actor, input)
+  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
+}
+export async function reserveIdentityPhoneInTransaction(tx: Prisma.TransactionClient, actor: IdentityAdministrator, input: StagedPhoneReservationInput) {
+  return withIdentityAdministratorInTransaction(tx, actor, reservePhoneWork(actor, input))
+}
+function reservePhoneWork(actor: IdentityActor, input: StagedPhoneReservationInput) {
   assertIdentityScope(actor.organizationId, input.userId)
   const normalizedPhone = assertStagedPhoneReservation(input)
   const requestHash = createHash("sha256").update(JSON.stringify([1, "PHONE_RESERVED", actor.organizationId, actor.userId,
     input.userId, normalizedPhone, input.expectedAccountVersion, input.expectedCredentialEpoch])).digest("hex")
-  const work = async (tx: Prisma.TransactionClient) => {
+  return async (tx: Prisma.TransactionClient) => {
     const [user] = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE "organizationId" = ${actor.organizationId} AND id = ${input.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
     if (!user) throw new IdentityRegistryError("IDENTITY_SUBJECT_UNAVAILABLE")
     const accountKey = { organizationId: actor.organizationId, userId: input.userId }
@@ -186,8 +193,9 @@ async function reservePhone(client: RegistryClient, actor: IdentityActor, input:
     }
     if (account.version !== input.expectedAccountVersion) throw new IdentityRegistryError("IDENTITY_ACCOUNT_STALE")
     if (account.credentialEpoch !== input.expectedCredentialEpoch) throw new IdentityRegistryError("IDENTITY_CREDENTIAL_STALE")
-    const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId: actor.organizationId, normalizedPhone } }, select: { id: true } })
-    if (claim) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
+    const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId: actor.organizationId, normalizedPhone } }, select: { userId: true } })
+    // A live legacy administrator may re-prove only their own staged number.
+    if (claim && !(actor.userId === input.userId && claim.userId === actor.userId)) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
     const actors = await tx.mtmAgent.findMany({ where: { organizationId: actor.organizationId, userId: user.id }, select: { id: true }, take: 2 })
     if (actors.length > 1) throw new IdentityRegistryError("IDENTITY_LEGACY_LINK_AMBIGUOUS")
     // Only expired rows blocking this person or number are cleaned; immutable
@@ -202,5 +210,4 @@ async function reservePhone(client: RegistryClient, actor: IdentityActor, input:
       requestHash, action: "PHONE_RESERVED", accountVersion: account.version, normalizedPhone, reservationId: id, reservationExpiresAt: expiresAt, createdAt: now } })
     return { mode: "SHADOW" as const, status: "RESERVED" as const, reservationId: id, expiresAt: expiresAt.toISOString(), replayed: false, authenticationChanged: false as const }
   }
-  return administrator ? withIdentityAdministrator(client, administrator, work) : withRegistryTransaction(client, actor, false, work)
 }

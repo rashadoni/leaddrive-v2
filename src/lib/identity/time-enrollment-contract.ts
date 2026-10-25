@@ -20,6 +20,7 @@ export const IdentityLegacyTimeCandidate = z.object({
 export const IdentityTimePersonResult = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("none") }),
   IdentityLegacyTimeCandidate,
+  z.object({ kind: z.literal("administrator_setup") }),
   z.object({ kind: z.literal("canonical"), userId: id, name: z.string().max(200), claimId: id,
     accountVersion: z.number().int().positive(), timeActorId: id.nullable() }),
 ])

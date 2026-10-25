@@ -20,7 +20,11 @@ export async function lookupIdentityTimePerson(client: RegistryClient, administr
     const organizationId = administrator.organizationId
     const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId, normalizedPhone } },
       include: { account: { select: { cutoverAt: true, version: true } } } })
-    if (!claim?.account.cutoverAt) return await readLegacyTimeCandidate(tx, administrator, normalizedPhone) ?? { kind: "none" }
+    if (!claim?.account.cutoverAt) {
+      const policy = await readIdentityMobileTenantPolicy(tx, organizationId, "TIME")
+      if (administrator.mode === "LEGACY" && policy.identityEnabled && policy.licensed) return { kind: "administrator_setup" }
+      return await readLegacyTimeCandidate(tx, administrator, normalizedPhone) ?? { kind: "none" }
+    }
     const policy = await readIdentityMobileTenantPolicy(tx, organizationId, "TIME")
     if (!policy.identityEnabled || !policy.licensed) throw new IdentityRegistryError("IDENTITY_APPLICATION_DISABLED")
     const person = await tx.user.findFirst({ where: { organizationId, id: claim.userId, isActive: true, anonymizedAt: null }, select: { name: true } })

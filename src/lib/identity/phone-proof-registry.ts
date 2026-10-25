@@ -6,7 +6,7 @@ import type { IdentityPhoneProof, Prisma } from "@prisma/client"
 import { assertIdentityRequestId, assertIdentityScope, IdentityRegistryError } from "./contract"
 import { phoneProofAttemptHash, sealPhoneProof, verifyPhoneProofCode, type PhoneProofContext, type PhoneProofKey, type SealedPhoneProof } from "./phone-proof"
 import { withRegistryTransaction, type RegistryClient, type IdentityActor } from "./registry"
-import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { withIdentityAdministrator, withIdentityAdministratorInTransaction, type IdentityAdministrator } from "./administrator"
 import { freezeIdentityProofAuthority, revalidateIdentityProofAuthority, parseIdentityProofAuthority, identityProofAuthorityHash } from "./proof-authority"
 
 import { parseIdentityRecoveryAuthority, identityRecoveryAuthorityHash, revalidateIdentityRecoveryAuthority } from "./recovery-authority"
@@ -91,10 +91,19 @@ export async function issueCanonicalAdministratorPhoneProof(client: RegistryClie
   return issuePhoneProof(client, actor, input, key, actor)
 }
 async function issuePhoneProof(client: RegistryClient, actor: IdentityActor, input: StagedProofIssue, key: PhoneProofKey, canonical?: IdentityAdministrator) {
+  const work = issuePhoneProofWork(actor, input, key, canonical)
+  return canonical ? withIdentityAdministrator(client, canonical, work) : withRegistryTransaction(client, actor, false, work)
+}
+/** Live self-bootstrap only. A generic legacy cookie cannot issue for another subject here. */
+export async function issueSelfBootstrapProofInTransaction(tx: Prisma.TransactionClient, actor: IdentityAdministrator, input: StagedProofIssue, key: PhoneProofKey) {
+  if (actor.mode !== "LEGACY" || actor.userId !== input.userId) throw new IdentityRegistryError("IDENTITY_ADMIN_REQUIRED")
+  return withIdentityAdministratorInTransaction(tx, actor, issuePhoneProofWork(actor, input, key))
+}
+function issuePhoneProofWork(actor: IdentityActor, input: StagedProofIssue, key: PhoneProofKey, canonical?: IdentityAdministrator) {
   exact(input, ["userId", "reservationId", "expectedAccountVersion", "expectedCredentialEpoch", "requestId"])
   assertIdentityScope(actor.organizationId, input.userId); assertIdentityRequestId(input.reservationId); assertIdentityRequestId(input.requestId)
   if (!version(input.expectedAccountVersion) || !version(input.expectedCredentialEpoch)) throw new IdentityRegistryError("IDENTITY_PROOF_INPUT_INVALID")
-  const work = async (tx: Prisma.TransactionClient) => {
+  return async (tx: Prisma.TransactionClient) => {
     const authority = canonical ? await freezeIdentityProofAuthority(tx, canonical) : null
     const requestHash = digest([canonical ? 2 : 1, "PHONE_PROOF_ISSUED", actor.organizationId, actor.userId, input.userId, input.reservationId, input.expectedAccountVersion, input.expectedCredentialEpoch,
       ...(authority ? [identityProofAuthorityHash(authority)] : [])])
@@ -110,7 +119,8 @@ async function issuePhoneProof(client: RegistryClient, actor: IdentityActor, inp
     const reservation = await tx.identityPhoneReservation.findFirst({ where: { organizationId: actor.organizationId, userId: input.userId, id: input.reservationId } })
     if (!reservation || reservation.expiresAt <= now) throw new IdentityRegistryError("IDENTITY_PHONE_RESERVATION_EXPIRED")
     if (reservation.expectedAccountVersion !== account.version || reservation.expectedCredentialEpoch !== account.credentialEpoch) throw new IdentityRegistryError("IDENTITY_PROOF_STALE")
-    if (await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId: actor.organizationId, normalizedPhone: reservation.normalizedPhone } } })) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
+    const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId: actor.organizationId, normalizedPhone: reservation.normalizedPhone } }, select: { userId: true } })
+    if (claim && !(!canonical && actor.userId === input.userId && claim.userId === actor.userId)) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
     const previous = await tx.identityPhoneProof.findMany({ where: { organizationId: actor.organizationId, reservationId: reservation.id }, orderBy: { createdAt: "desc" }, take: 20 })
     if (previous[0] && now.valueOf() - previous[0].createdAt.valueOf() < 60_000) throw new IdentityRegistryError("IDENTITY_PROOF_RESEND_LATER")
     await suppress(tx, actor.organizationId, previous.map(row => row.id), "SUPERSEDED")
@@ -127,7 +137,6 @@ async function issuePhoneProof(client: RegistryClient, actor: IdentityActor, inp
       reservationId: reservation.id, proofId: id, proofExpiresAt: expiresAt, createdAt: now } })
     return { ...metadata, status: "PENDING", proofId: id, expiresAt: expiresAt.toISOString(), replayed: false }
   }
-  return canonical ? withIdentityAdministrator(client, canonical, work) : withRegistryTransaction(client, actor, false, work)
 }
 
 async function lockedProof(tx: Prisma.TransactionClient, organizationId: string, id: string) {
@@ -195,9 +204,11 @@ export async function consumeStagedPhoneProof(client: RegistryClient, organizati
       return invalid()
     }
     const occupiedClaim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId, normalizedPhone: proof.normalizedPhone } }, select: { userId: true } })
-    // Only a current, revalidated first-login intent can renew its OWN staged
-    // claim after setup expiry. A different person is never adopted by OTP.
-    if (occupiedClaim && (!proof.onboardingIntentId || occupiedClaim.userId !== proof.userId)) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
+    // An invitation or the same still-legacy administrator proving their own
+    // number may renew an OWN staged claim. issuer() above rechecks authority;
+    // no public setup route accepts a manual v1 capability or foreign holder.
+    const ownBootstrap = proof.contextVersion === 1 && proof.issuedByUserId === proof.userId
+    if (occupiedClaim && ((!proof.onboardingIntentId && !ownBootstrap) || occupiedClaim.userId !== proof.userId)) throw new IdentityRegistryError("IDENTITY_PHONE_UNAVAILABLE")
     if (account.version >= 2_147_483_647 || account.credentialEpoch >= 2_147_483_647) throw new IdentityRegistryError("IDENTITY_VERSION_EXHAUSTED")
     const oldClaim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_userId: { organizationId, userId: proof.userId } }, select: { id: true } })
     const nextVersion = account.version + 1, nextEpoch = account.credentialEpoch + 1, claimId = randomUUID()

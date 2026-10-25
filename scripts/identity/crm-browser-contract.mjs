@@ -78,6 +78,10 @@ try {
     await admin.mtmAgent.create({ data: { id: pendingActor, organizationId: company, userId: pendingUser, name: "Fictional first login", phone: "+994507770020", role: "AGENT", status: "ACTIVE", passwordHash: legacyHash } })
     await admin.user.create({ data: { id: userId("time-only"), organizationId: company, email: email("time-only"), name: "Fictional Time only",
       phone: "+994507770021", role: "viewer", passwordHash: legacyHash, isActive: true } })
+    for (const [suffix, phone, require2fa] of [["bootstrap", "+994507770022", false], ["bootstrap-mfa", "+994507770023", true]]) {
+      await admin.user.create({ data: { id: userId(suffix), organizationId: company, email: email(suffix), name: "Fictional initial administrator",
+        phone, role: "admin", passwordHash: legacyHash, isActive: true, require2fa } })
+    }
     await admin.mtmSetting.create({ data: { organizationId: company, key: "attendanceEnabled", value: true } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
     process.stdout.write("IDENTITY_CRM_BROWSER_FIXTURE_PREPARED\n")
@@ -363,6 +367,72 @@ try {
     const { identityRuntimeKeys } = await loadIdentity("runtime-keys")
     recoveryClient = makeRlsTestPrisma(appUrl.href)
     const proofKey = identityRuntimeKeys().proof.active
+    phase("LIVE_LEGACY_ADMINISTRATOR_SELF_BOOTSTRAP")
+    const bootstrapApi = "/api/v1/identity/self-bootstrap"
+    const bootstrapPhone = "+994507770022"
+    const initialAdmin = await login("bootstrap", `${password}-legacy`)
+    assert.equal(initialAdmin.error, null)
+    const initialMfa = await login("bootstrap-mfa", `${password}-legacy`)
+    assert.equal((await initialMfa.current.request.post(bootstrapApi, { timeout: 120000, data: { action: "review", phone: "+994507770023" } })).status(), 403)
+    const bootstrapReviewResponse = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: { action: "review", phone: bootstrapPhone } })
+    assert.equal(bootstrapReviewResponse.status(), 200)
+    const bootstrapReview = (await bootstrapReviewResponse.json()).data
+    assert.deepEqual(bootstrapReview.applications, [{ application: "CRM", role: "admin" }])
+    const bootstrapActor = { organizationId: company, userId: userId("bootstrap"), mode: "LEGACY" }
+    const { requestIdentitySelfBootstrap } = await loadIdentity("self-bootstrap")
+    const bootstrapRequest = { phone: bootstrapPhone, sourceRevision: bootstrapReview.sourceRevision, requestId: "87f4a730-a185-4771-9532-2f37ab37acdd" }
+    // Private synthetic issuance: the actual route never skips its transport.
+    const bootstrapProof = await requestIdentitySelfBootstrap(recoveryClient, bootstrapActor, bootstrapRequest, proofKey, async () => head)
+    assert.equal((await requestIdentitySelfBootstrap(recoveryClient, bootstrapActor, bootstrapRequest, proofKey, async () => head)).proofId, bootstrapProof.proofId)
+    await assert.rejects(requestIdentitySelfBootstrap(recoveryClient, bootstrapActor, { ...bootstrapRequest, phone: "+994507770023" }, proofKey, async () => head), /IDENTITY_REQUEST_REUSED/)
+    const bootstrapRow = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: bootstrapProof.proofId } })
+    const bootstrapCode = openPhoneProofDelivery(phoneProofContext(bootstrapRow), bootstrapRow, proofKey, new Date())
+    const bootstrapConfirm = { action: "confirm", proofId: bootstrapRow.id, code: bootstrapCode }
+    assert.equal((await initialMfa.current.request.post(bootstrapApi, { timeout: 120000, data: bootstrapConfirm })).status(), 403)
+    const bootstrapConfirmed = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: bootstrapConfirm })
+    assert.equal(bootstrapConfirmed.status(), 200)
+    let bootstrapSetup = (await bootstrapConfirmed.json()).data.setupToken
+    assert.ok(bootstrapSetup.startsWith("lds1."))
+    phase("LIVE_BOOTSTRAP_RECONFIRMS_OWN_STAGED_CLAIM")
+    await delay(61050) // Real hosted cooldown; no clock/authority rewrite.
+    const renewedReviewResponse = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: { action: "review", phone: bootstrapPhone } })
+    assert.equal(renewedReviewResponse.status(), 200)
+    const renewedReview = (await renewedReviewResponse.json()).data
+    const renewedBootstrap = await requestIdentitySelfBootstrap(recoveryClient, bootstrapActor, { phone: bootstrapPhone,
+      sourceRevision: renewedReview.sourceRevision, requestId: "e7783287-92a0-487c-8207-e7f59bf531f0" }, proofKey, async () => head)
+    const renewedBootstrapRow = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: renewedBootstrap.proofId } })
+    const renewedBootstrapConfirmed = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: {
+      action: "confirm", proofId: renewedBootstrapRow.id, code: openPhoneProofDelivery(phoneProofContext(renewedBootstrapRow), renewedBootstrapRow, proofKey, new Date()),
+    } })
+    assert.equal(renewedBootstrapConfirmed.status(), 200)
+    const staleBootstrapFinish = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: {
+      action: "finish", setupToken: bootstrapSetup, password: `Stale!${password.slice(0, 32)}`,
+    } })
+    assert.equal(staleBootstrapFinish.status(), 409)
+    bootstrapSetup = (await renewedBootstrapConfirmed.json()).data.setupToken
+    const bootstrapPassword = `Bootstrap!${password.slice(0, 32)}`
+    const bootstrapFinish = { action: "finish", setupToken: bootstrapSetup, password: bootstrapPassword }
+    await admin.$executeRawUnsafe(`CREATE FUNCTION identity_bootstrap_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF NEW.action = 'ACCOUNT_ACTIVATED' THEN RAISE EXCEPTION 'SYNTHETIC_BOOTSTRAP_AUDIT_FAILURE' USING ERRCODE='23514'; END IF; RETURN NEW; END $$`)
+    await admin.$executeRawUnsafe('CREATE TRIGGER identity_bootstrap_fail_audit BEFORE INSERT ON identity_events FOR EACH ROW EXECUTE FUNCTION identity_bootstrap_fail_audit()')
+    try {
+      assert.equal((await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: bootstrapFinish })).status(), 500)
+      assert.equal((await admin.identityAccount.findUniqueOrThrow({ where: accountKey("bootstrap") })).cutoverAt, null)
+      assert.equal(await bcrypt.compare(`${password}-legacy`, (await admin.user.findUniqueOrThrow({ where: { id: userId("bootstrap") } })).passwordHash), true)
+    } finally {
+      await admin.$executeRawUnsafe('DROP TRIGGER identity_bootstrap_fail_audit ON identity_events')
+      await admin.$executeRawUnsafe('DROP FUNCTION identity_bootstrap_fail_audit()')
+    }
+    const bootstrapCompleted = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: bootstrapFinish })
+    assert.equal(bootstrapCompleted.status(), 200); assert.equal((await bootstrapCompleted.json()).data.signInRequired, true)
+    await denied(initialAdmin.current)
+    assert.equal((await login("bootstrap", `${password}-legacy`)).error, "CredentialsSignin")
+    const bootstrappedAdmin = await login("bootstrap", bootstrapPassword)
+    assert.equal(bootstrappedAdmin.error, null); assert.equal((await session(bootstrappedAdmin.current)).user.role, "admin")
+    const bootstrappedApps = await admin.identityApplicationGrant.findMany({ where: { organizationId: company, userId: userId("bootstrap") }, select: { application: true } })
+    assert.deepEqual(bootstrappedApps, [{ application: "CRM" }])
+    assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
+    check("live_legacy_administrator_self_bootstrap_preserves_mfa_rolls_back_failed_retirement_and_requires_fresh_common_password_login")
     phase("ACTUAL_ADMIN_FIRST_LOGIN_REVIEW")
     const invitationUrl = "/api/v1/identity/time/onboarding"
     const candidateResponse = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: "+994507770020" } })
