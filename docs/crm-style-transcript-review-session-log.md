@@ -421,3 +421,9 @@
 
 - В новом прогоне две дополнительные HRM browser jobs завершились до запуска UI. Лог policy-version run 40207653599: Exact GitHub candidate parents required, actual parent 16cd1735dd18ea9c04aa82a07d21d698140b5b00, expected event base d2275cda7ddbd6e6f0ac1ff693bb4d5810a754e9, head 1200378cb. Это не результат браузерной проверки оформления. Required static-checks только начал выполняться.
 - Актуальный main дополнительно содержит reviewed attendance-existing-profile и Kafka docs. Пересечение с task: три locale JSON и attendance-add-employee.tsx; GitHub сообщает MERGEABLE. Следующий шаг — обычный merge current origin/main, сохранить upstream behavior, проверить объединённые literals/i18n и push свежего SHA. Checks/guard не ослабляются. Native authenticated target на /companies проверен read-only: сессия доступна, auth данные не копировались.
+
+### Повторная синхронизация и проверка итоговой версии
+
+- origin/main 16cd1735dd18ea9c04aa82a07d21d698140b5b00 объединён без конфликтов: merge 59dae24403e4c2cf751b4d4c8e0eca8597ae7445. Поведение upstream attendance-existing-profile сохранено; diff attendance-add-employee относительно main содержит только замену neutral border token.
+- После merge 16 targeted suites: 121 tests PASS. i18n parity RU/EN/AZ: missing=0, extra=0. git diff --check PASS. RAM available 11.9 GB, disk 115 GB, memory pressure 0; полные local build/typecheck/E2E по-прежнему NOT RUN по host contract.
+- Подготовлены дополнительные read-only native smoke для Tasks, Boards, Channels и одной существующей доски; оба helper node --check PASS, live ещё NOT RUN до проверки production artifact SHA. Следующий шаг — push свежего checkpoint и новый hosted CI, затем разрешённый штатный merge/release/smoke.
