@@ -52,7 +52,13 @@ export async function resolveMetaSenderName(opts: {
       signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
     })
     if (!res.ok) {
-      console.warn(`[meta-sender-profile] ${platform} lookup failed (${res.status}) for sender ${senderId}`)
+      // The status alone ("400") cannot tell a missing permission from a token problem; Meta's
+      // error code/subcode/message can, and they carry no profile data.
+      const err = ((await res.json().catch(() => null)) as { error?: Record<string, unknown> } | null)?.error
+      const detail = err
+        ? ` code=${String(err.code ?? "?")} subcode=${String(err.error_subcode ?? "-")} type=${String(err.type ?? "?")}: ${String(err.message ?? "").slice(0, 200)}`
+        : ""
+      console.warn(`[meta-sender-profile] ${platform} lookup failed (${res.status}) for sender ${senderId}${detail}`)
       return senderId
     }
     const data = (await res.json().catch(() => null)) as { name?: unknown; username?: unknown } | null
