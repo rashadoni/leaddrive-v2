@@ -106,7 +106,8 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
 
 /* A selected value is not a submit/create action. This class also supports
    native filter buttons without changing their selection or event handling. */
-[data-crm-workspace] .crm-choice-selected {
+[data-crm-workspace] .crm-choice-selected,
+[data-crm-workspace] [data-crm-filter][data-state="active"] {
   background-color: hsl(var(--muted));
   color: hsl(var(--foreground));
   border-color: hsl(var(--input));
@@ -162,12 +163,6 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
   background: hsl(var(--card));
   color: hsl(var(--muted-foreground));
   box-shadow: none;
-}
-
-[data-crm-workspace] [data-crm-filter][data-state="active"] {
-  border-color: hsl(var(--foreground));
-  color: hsl(var(--foreground));
-  font-weight: 600;
 }
 
 /* Dialogs sit above the page. A recessed canvas stays gray inside them. */
