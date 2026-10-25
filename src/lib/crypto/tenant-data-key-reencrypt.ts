@@ -53,6 +53,7 @@ export const REENCRYPTABLE_COLUMNS: Readonly<Record<string, readonly string[]>> 
   outages: ["publicSummary", "internalNotes"],
   quotes: ["rejectedReason"],
   esign_provider_configs: ["config"],
+  pharmacy_phone_orders: ["callerPhone"],
 }
 
 /**
