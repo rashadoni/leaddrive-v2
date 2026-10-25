@@ -94,6 +94,9 @@ export type ZeytunBalanceCandidate = ReturnType<typeof mapRow>
  * snapshot contract or authorize a quote, reserve, substitution or order.
  * A replacement is constructed completely before the caller swaps its cache.
  */
+// Placeholders and generic words the feed puts where a maker would be.
+const STOP_MAKERS = new Set(["прочее", "прочие", "разное", "other", "digər", "diger", "mmc", "ltd", "llc", "pvt", "ооо", "оао", "зао", "ип"])
+
 export class ZeytunAvailableBalances {
   private readonly context: ZeytunBalancesContext
   private readonly version: string
@@ -167,6 +170,32 @@ export class ZeytunAvailableBalances {
       candidates: ids.slice(0, 5).map((id) => structuredClone(this.items.get(id)!)),
       canResolveIdentity: false as const, canSubmitTo1c: false as const,
     }
+  }
+
+  /**
+   * Manufacturer words for the speech recognizer's hint list, most frequent
+   * first. 2026-10-25 live call: "Sopharma" came back as "суппозитории" and
+   * "repositorio" — brands are not in the recognizer's own vocabulary. Read
+   * from the labels themselves ("… (Sopharma ) (Болгария)", "… \*Sopharma
+   * Asc , Bolqarıstan\*"), first word of the maker, so the list follows the
+   * catalog instead of a hand-kept one. Not a product identity: hints only.
+   */
+  manufacturerWords(limit = 400): string[] {
+    const counts = new Map<string, { word: string; n: number }>()
+    const add = (maker: string | undefined) => {
+      const word = maker?.trim().split(/[\s,]+/u)[0]?.replace(/[.,;:\-]+$/u, "")
+      if (!word || word.length < 3 || word.length > 30 || !/^[\p{L}][\p{L}\-']*$/u.test(word) || STOP_MAKERS.has(word.toLowerCase())) return
+      const key = word.toLowerCase(), seen = counts.get(key)
+      if (seen) seen.n += 1
+      else counts.set(key, { word, n: 1 })
+    }
+    for (const item of this.items.values()) {
+      const groups = [...item.name.matchAll(/\(([^()]*)\)/gu)].map((match) => match[1])
+      if (groups.length >= 2) add(groups[groups.length - 2])
+      add(item.nameAz?.match(/\\\*([^\\*,]*)/u)?.[1])
+    }
+    return [...counts.values()].filter((entry) => entry.n >= 2).sort((a, b) => b.n - a.n || a.word.localeCompare(b.word))
+      .slice(0, limit).map((entry) => entry.word)
   }
 
   private assertScope(organizationId: string): void {
