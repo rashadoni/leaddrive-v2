@@ -412,3 +412,12 @@
 - Старые required checks ed8029718 завершились SUCCESS, но они не покрывают этот дополнительный переход. Следующая точка: сохранить checkpoint, обновить PR1041, push свежего SHA, дождаться новых required checks, затем штатный merge/Actions release и native authenticated smoke. Разрешение пользователя на общий выпуск сохраняется.
 
 - Финальный Booking rerun после wallpaper/native correction: desktop/mobile/dark/wallpaper, 52 assertions PASS; ROOT просмотрел desktop и wallpaper. Evidence сохранено в /mnt/HC_Volume_106454338/codex-alt-data/visual-evidence/leaddrive-crm-style-20261025/coverage-20261025/. Это всё ещё компонентный стенд до выпуска.
+
+### Checkpoint опубликован, ожидается новый hosted CI
+
+- Commit 1200378cb48676848841eec9796d103064a6ef98 сохранён и pushed в codex/crm-style-transcript-review-20261025. PR1041 обновлён под окончательный охват: 416 files в суммарном diff, только UI/tests/translation/design docs. Новый PR checks run 40207653492 начат 2026-10-25T15:35:20Z; CI ещё выполняется. Релиз не объявляется готовым до новых checks, SHA-bound deploy и native smoke. Root/branch/origin и production 13.140.132.245:/opt/leaddrive-v2 повторно сверены с docs/DEPLOYMENT.md и clients/registry.json.
+
+### Hosted evidence остановлен проверкой candidate parents
+
+- В новом прогоне две дополнительные HRM browser jobs завершились до запуска UI. Лог policy-version run 40207653599: Exact GitHub candidate parents required, actual parent 16cd1735dd18ea9c04aa82a07d21d698140b5b00, expected event base d2275cda7ddbd6e6f0ac1ff693bb4d5810a754e9, head 1200378cb. Это не результат браузерной проверки оформления. Required static-checks только начал выполняться.
+- Актуальный main дополнительно содержит reviewed attendance-existing-profile и Kafka docs. Пересечение с task: три locale JSON и attendance-add-employee.tsx; GitHub сообщает MERGEABLE. Следующий шаг — обычный merge current origin/main, сохранить upstream behavior, проверить объединённые literals/i18n и push свежего SHA. Checks/guard не ослабляются. Native authenticated target на /companies проверен read-only: сессия доступна, auth данные не копировались.
