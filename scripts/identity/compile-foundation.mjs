@@ -21,7 +21,7 @@ async function main() {
   const names = ["contract", "registry", "phone-proof", "phone-proof-registry", "credential-setup", "phone-proof-dispatch", "mobile-session-contract", "mobile-session", "membership-registry", "mobile-session-resolver", "tenant-policy"]
   const config = join(temp, "identity-foundation-tsconfig.json")
   await writeFile(config, JSON.stringify({ extends: join(workspace, "tsconfig.json"), compilerOptions: {
-    target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", types: ["node"], strict: true, skipLibCheck: true,
+    target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", types: ["node"], typeRoots: [join(workspace, "node_modules/@types")], strict: true, skipLibCheck: true,
     esModuleInterop: true, noEmit: false, incremental: false, allowJs: false, rootDir: join(workspace, "src/lib"), outDir: output,
   }, files: names.map(name => join(workspace, `src/lib/identity/${name}.ts`)), include: [], exclude: [] }), { flag: "wx", mode: 0o600 })
   execFileSync(process.execPath, [join(workspace, "node_modules/typescript/bin/tsc"), "--project", config], { cwd: workspace, stdio: "inherit", timeout: 120_000 })
