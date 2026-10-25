@@ -476,3 +476,8 @@ For authoritative accounts only, actual User.passwordChangedAt transitions also 
 ### Retained application security revisions (inactive)
 
 SQL guards also make grant/membership keys and original member actor immutable, reject revision rollback, and require a new version for actual status/role transitions. Those rows cannot be deleted or truncated and then recreated with an old version; revoke through a new revision instead. Normal services still require current administrator authorization and atomic audit. An actor correction is a separate reviewed migration. Two dedicated disposable-PG groups check failed mutations preserve row counts, valid monotonic reactivation and sibling isolation. This candidate requires its own exact-source hosted gate; no current application route uses these tables.
+
+
+### Legacy credential eligibility boundary (inactive)
+
+readLegacyCredentialBoundary returns LEGACY/MIGRATED/UNAVAILABLE from a fresh guarded tenant snapshot; it is not authentication. Only LEGACY permits the caller to continue all prior credential/MFA/license/role checks. Any error denies fallback. Irreversible authority is independent of rollout flags and incomplete claims/grants. An actor checks both its fresh linked User and immutable reviewed owner; relink/unlink/new unreviewed card cannot restore old credentials for a canonical person. Shadow/staged records preserve legacy eligibility. No current route calls this reader; later writes need their own transaction guard. Three actual-PG groups are prepared and need the next exact hosted gate.

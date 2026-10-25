@@ -265,3 +265,12 @@ Source review после52-group PASS выявил storage gap: сервисы �
 
 
 Уточнение раздела9: full standalone build40150397065/job121040752286 для того же fe295ab7a PR source завершён SUCCESS; проверка наличия server.js и отсутствие запрещённого build artifact прошли. Scoped/PG и production bundle теперь подтверждены для этого исходника. Global type/static и новые identity UI/browser/Android gates остаются NOT RUN; production ничего не переключал.
+
+
+### 9.1. Граница старых credentials — подготовлена после foundation milestone
+
+legacy-credential-boundary.ts — внутренний eligibility reader, не аутентификация и не API активации. Сервер передаёт выбранную компанию и principal из реального legacy lookup/проверенной сессии. Только LEGACY разрешает продолжить прежние password/MFA/role/license проверки; MIGRATED и UNAVAILABLE не разрешают fallback. Ошибка БД/неверный scope/отсутствующая или неактивная личность закрывают доступ. Никаких hash/phone/token в результате; чтение в том же guarded READ ONLY/RR/bypass-off snapshot.
+
+Authoritative marker проверяется независимо от rollout flag и наличия новых grant/claim: даже неполный перевод не возвращает старый вход. Для actor читаются текущий User link и неизменяемый reviewed owner; canonical у любого из них запрещает legacy. Отвязка/перепривязка карточки не обходит marker первоначального владельца, новая unreviewed карточка canonical User тоже не даёт старый вход. Staged/shadow записи не включают эту границу и сохраняют прежнюю eligibility (это ещё не успех входа). Каждый credential writer требует повторной проверки внутри своей транзакции; reader не удерживает lock для последующей записи.
+
+Подготовлены3 real-PG группы для этих условий, двух компаний, наследованного bypass, invalid context/DB failure. Expected58 foundation, NOT RUN для нового исходника до следующего GitHub gate. Действующие CRM/mobile/password/code routes пока не вызывают helper; их окончательное подключение нужно согласовать с новым API/клиентом и сохранением очереди. OAuth остаётся запрещён, CRM MFA не меняется.
