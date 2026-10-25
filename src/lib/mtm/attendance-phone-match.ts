@@ -13,7 +13,7 @@ export async function readAttendancePhoneMatch(actor: AttendanceReviewer, raw: u
   const parsed = AttendancePhoneMatchInput.safeParse(raw)
   if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID", 400)
   if (actor.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED", 403)
-  return prisma.$transaction(async tx => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient): Promise<AttendancePhoneMatch> => {
     await requireAttendanceEmployeeAdmin(tx, actor)
     const owner = await findPhoneOwner(tx, actor.organizationId, parsed.data.phone)
     if (owner.kind !== "found") return { kind: owner.kind }
