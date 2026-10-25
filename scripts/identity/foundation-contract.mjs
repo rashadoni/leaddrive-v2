@@ -55,6 +55,7 @@ async function main() {
     await admin.$executeRawUnsafe('ALTER TABLE users ADD CONSTRAINT identity_fixture_users_tenant_key UNIQUE ("organizationId", id)')
     await admin.$executeRawUnsafe('ALTER TABLE mtm_agents ADD CONSTRAINT identity_fixture_agents_tenant_key UNIQUE ("organizationId", id)')
     await admin.$executeRawUnsafe("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'manager'")
+    await admin.$executeRawUnsafe('ALTER TABLE users ADD COLUMN "passwordChangedAt" TIMESTAMP(3)')
     await admin.$executeRawUnsafe('ALTER TABLE organizations ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true')
     await admin.$executeRawUnsafe("UPDATE users SET role = 'admin' WHERE id IN ('identity-user-a', 'identity-user-b')")
     await admin.$executeRawUnsafe('INSERT INTO users (id, "organizationId", "isActive", role) VALUES ($1, $2, true, $3)', "identity-user-a3", A, "viewer")

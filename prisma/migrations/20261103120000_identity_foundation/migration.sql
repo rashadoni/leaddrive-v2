@@ -271,8 +271,12 @@ BEGIN
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER identity_person_lifecycle AFTER UPDATE OF "isActive", "anonymizedAt" ON users
-  FOR EACH ROW WHEN (OLD."isActive" IS DISTINCT FROM NEW."isActive" OR OLD."anonymizedAt" IS DISTINCT FROM NEW."anonymizedAt")
+-- The existing logout-all marker is also used by password/MFA security actions.
+-- Any actual transition, including clearing/backdating it, revokes shared mobile
+-- sessions monotonically; a repeated identical timestamp is a no-op.
+CREATE TRIGGER identity_person_lifecycle AFTER UPDATE OF "isActive", "anonymizedAt", "passwordChangedAt" ON users
+  FOR EACH ROW WHEN (OLD."isActive" IS DISTINCT FROM NEW."isActive" OR OLD."anonymizedAt" IS DISTINCT FROM NEW."anonymizedAt"
+    OR OLD."passwordChangedAt" IS DISTINCT FROM NEW."passwordChangedAt")
   EXECUTE FUNCTION identity_person_lifecycle_changed();
 
 -- A technical actor's global lifecycle is not an application grant switch.
