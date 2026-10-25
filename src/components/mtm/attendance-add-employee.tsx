@@ -44,16 +44,18 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   const [legacyPerson, setLegacyPerson] = useState<Extract<IdentityTimePerson, { kind: "legacy" }> | null>(null)
   const [preserveCrm, setPreserveCrm] = useState(false)
   const [invited, setInvited] = useState(false)
+  const [pendingReview, setPendingReview] = useState<Extract<IdentityTimePerson, { kind: "pending" }> | null>(null)
+  const cancelRequest = useRef<string | null>(null)
   const [administratorSetup, setAdministratorSetup] = useState(false)
   const enrollmentRequest = useRef<string | null>(null)
   const revision = useRef(0)
-  const clearResult = () => { revision.current++; setError(null); setMatch(null); setCanonicalPerson(null); setLegacyPerson(null); setInvited(false); enrollmentRequest.current = null }
+  const clearResult = () => { revision.current++; setError(null); setMatch(null); setCanonicalPerson(null); setLegacyPerson(null); setInvited(false); setPendingReview(null); cancelRequest.current = null; enrollmentRequest.current = null }
   const set = <K extends keyof Form>(key: K) => (value: Form[K]) => { setForm(current => ({ ...current, [key]: value })); clearResult() }
   const close = () => { clearResult(); setAdministratorSetup(false); setOpen(false) }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || canonicalPerson || legacyPerson || invited || administratorSetup) return
+    if (saving || canonicalPerson || legacyPerson || invited || pendingReview || administratorSetup) return
     if (!internationalPhone(form.phone)) { setError("addEmployeePhoneInvalid"); return }
     const submittedRevision = revision.current
     setSaving(true); setError(null); setMatch(null)
@@ -90,6 +92,10 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
           }
           if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "administrator_setup") {
             setAdministratorSetup(true)
+            return
+          }
+          if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "pending") {
+            setPendingReview(candidate.data); cancelRequest.current = null
             return
           }
           const lookup = await fetch("/api/v1/mtm/attendance/employees/phone-match", {
@@ -146,11 +152,39 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
           } }) })
       const body = await response.json().catch(() => null)
       if (submittedRevision !== revision.current) return
-      if (response.status === 201 && body?.success && body.data?.status === "ACTIVE") setInvited(true)
+      if (response.status === 201 && body?.success && body.data?.status === "ACTIVE" && typeof body.data.intentId === "string" && typeof body.data.expiresAt === "string") {
+        setInvited(true); setLegacyPerson(null)
+        setPendingReview({ kind: "pending", userId: person.userId, name: person.name, intentId: body.data.intentId, expiresAt: body.data.expiresAt })
+      }
       else {
         if (response.status === 409) { setLegacyPerson(null); enrollmentRequest.current = null }
         setError(response.status === 409 ? "addEmployeeIdentityChanged" : "addEmployeeFailed")
       }
+    } catch { if (submittedRevision === revision.current) setError("addEmployeeFailed") }
+    finally { setSaving(false) }
+  }
+
+  async function cancelPendingReview() {
+    if (saving || !pendingReview) return
+    const submittedRevision = revision.current
+    cancelRequest.current ??= crypto.randomUUID()
+    setSaving(true); setError(null)
+    try {
+      const cancelled = await fetch(`/api/v1/identity/onboarding/${encodeURIComponent(pendingReview.intentId)}/cancel`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ requestId: cancelRequest.current }),
+      })
+      if (submittedRevision !== revision.current) return
+      if (!cancelled.ok && cancelled.status !== 409) { setError("addEmployeeFailed"); return }
+      const lookup = await fetch("/api/v1/identity/time/lookup", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone: form.phone.trim() }), cache: "no-store" })
+      const body = await lookup.json().catch(() => null), candidate = IdentityTimePersonResult.safeParse(body?.data)
+      if (submittedRevision !== revision.current) return
+      if (!lookup.ok || !body?.success || !candidate.success || !["legacy", "canonical"].includes(candidate.data.kind)) {
+        setError("addEmployeeIdentityChanged"); return
+      }
+      setPendingReview(null); setInvited(false); cancelRequest.current = null; enrollmentRequest.current = null
+      if (candidate.data.kind === "legacy") { setLegacyPerson(candidate.data); setPreserveCrm(false) }
+      if (candidate.data.kind === "canonical") setCanonicalPerson(candidate.data)
     } catch { if (submittedRevision === revision.current) setError("addEmployeeFailed") }
     finally { setSaving(false) }
   }
@@ -175,6 +209,11 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
       <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{p("addEmployeeCodeNote")}</span></p>
     {error ? <p role="alert" className="text-sm text-destructive">{p(error)}</p> : null}
     {administratorSetup ? <IdentitySelfBootstrap onClose={() => setAdministratorSetup(false)} /> : null}
+    {pendingReview ? <div role="status" className="max-w-prose space-y-3 rounded-xl border p-4 text-sm" data-testid="attendance-pending-review">
+      <p>{p("addEmployeePhoneProfile", { name: pendingReview.name })}</p>
+      <p>{p(invited ? "addEmployeeIdentityInviteReady" : "addEmployeeIdentityPending")}</p>
+      <Button type="button" variant="outline" disabled={saving} onClick={cancelPendingReview} data-testid="attendance-cancel-review">{p("addEmployeeIdentityCancelReview")}</Button>
+    </div> : null}
     {canonicalPerson ? <div role="status" className="max-w-prose space-y-2 rounded-xl border p-4 text-sm" data-testid="attendance-canonical-person">
       <p>{p("addEmployeePhoneProfile", { name: canonicalPerson.name })}</p>
       {canonicalPerson.timeActorId ? <>
@@ -207,7 +246,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         </Button>
       </> : match.kind === "other" ? <p className="text-muted-foreground">{p("addEmployeePhoneOtherProfile")}</p> : null}
     </div> : null}
-    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving || !!canonicalPerson || !!legacyPerson || invited || administratorSetup}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
+    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving || !!canonicalPerson || !!legacyPerson || !!pendingReview || invited || administratorSetup}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
       <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={saving} onClick={close}>{p("cancel")}</Button></div>
   </form>
 }

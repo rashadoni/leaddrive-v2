@@ -30380,6 +30380,8 @@
     "addEmployeePhoneProfile": "This number is listed on the profile for {name}.",
     "addEmployeeIdentityTimeHint": "If this is the same person, connect the profile “{name}” to Time. The position, department, section and hire date entered here will be saved to a separate employee card. Their apps will share the same password.",
     "addEmployeeIdentityTimeSubmit": "Connect existing profile to Time",
+    "addEmployeeIdentityPending": "Time connection is already prepared. The employee can verify the number and set a password in the app. If it has expired or the employment details need changing, cancel this preparation and confirm the connection again.",
+    "addEmployeeIdentityCancelReview": "Cancel connection preparation",
     "identitySetupTitle": "Confirm your administrator number",
     "identitySetupHint": "To enroll employees using a shared number, first connect your own account to the new sign-in. Enter your number here, not the employee’s. Your permissions and history will be preserved.",
     "identitySetupOwnPhone": "Your WhatsApp number",

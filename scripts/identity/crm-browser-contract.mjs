@@ -462,7 +462,7 @@ try {
     }
     const invitationResponse = await administrator.current.request.post(invitationUrl, { timeout: 120000, data: invitation })
     assert.equal(invitationResponse.status(), 201)
-    const invitationResult = (await invitationResponse.json()).data
+    let invitationResult = (await invitationResponse.json()).data
     const repeatedReview = await administrator.current.request.post(invitationUrl, { timeout: 120000, data: invitation })
     assert.equal(repeatedReview.status(), 201); assert.equal((await repeatedReview.json()).data.intentId, invitationResult.intentId)
     assert.equal((await administrator.current.request.post(invitationUrl, { timeout: 120000, data: { ...invitation, preserveCrm: true } })).status(), 409)
@@ -477,9 +477,43 @@ try {
       organizationSlug: company, phone: invitation.phone, application: "TIME", challengeId: firstRow.id, code: firstCode,
     } })
     assert.equal(firstConfirmed.status(), 200)
-    const firstSetup = (await firstConfirmed.json()).data.setupToken
+    let firstSetup = (await firstConfirmed.json()).data.setupToken
     assert.ok(firstSetup.startsWith("lds2."))
     const firstPassword = `Onboarding!${password.slice(0, 32)}`
+    phase("CANCEL_AND_REVIEW_PENDING_TIME_FROM_THE_ADMIN_FORM")
+    const pendingLookup = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: invitation.phone } })
+    assert.equal(pendingLookup.status(), 200); assert.equal((await pendingLookup.json()).data.kind, "pending")
+    const cancelledIntent = invitationResult.intentId
+    const cancelUrl = `/api/v1/identity/onboarding/${cancelledIntent}/cancel`
+    for (let attempt = 0; attempt < 2; attempt++) {
+      assert.equal((await administrator.current.request.post(cancelUrl, { timeout: 120000, data: { requestId: "cancel-time-review-retry" } })).status(), 200)
+    }
+    await reserveAuthPost()
+    assert.equal((await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
+      organizationSlug: company, application: "TIME", setupToken: firstSetup, password: firstPassword,
+    } })).status(), 401)
+    const freshLookup = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: invitation.phone } })
+    assert.equal(freshLookup.status(), 200)
+    const reviewedAgain = (await freshLookup.json()).data
+    assert.equal(reviewedAgain.kind, "legacy"); assert.notEqual(reviewedAgain.sourceRevision, invitation.sourceRevision)
+    const renewedInvitation = await administrator.current.request.post(invitationUrl, { timeout: 120000, data: {
+      ...invitation, sourceRevision: reviewedAgain.sourceRevision, requestId: "c02e4e56-708f-4650-90b2-af2da163431d",
+    } })
+    assert.equal(renewedInvitation.status(), 201)
+    invitationResult = (await renewedInvitation.json()).data
+    assert.notEqual(invitationResult.intentId, cancelledIntent)
+    await delay(Math.max(0, firstRow.createdAt.valueOf() + 61050 - Date.now()))
+    const renewedFirstProof = await issueIdentityOnboardingProof(recoveryClient, company, { phone: invitation.phone, application: "TIME", requestId: "cookie-renewed-first-login-code" }, proofKey)
+    const renewedFirstRow = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: renewedFirstProof.proofId } })
+    await reserveAuthPost()
+    const renewedFirstConfirmed = await firstClient.request.post("/api/v1/mtm/mobile/auth/code/verify", { timeout: 120000, data: {
+      organizationSlug: company, phone: invitation.phone, application: "TIME", challengeId: renewedFirstRow.id,
+      code: openPhoneProofDelivery(phoneProofContext(renewedFirstRow), renewedFirstRow, proofKey, new Date()),
+    } })
+    assert.equal(renewedFirstConfirmed.status(), 200); firstSetup = (await renewedFirstConfirmed.json()).data.setupToken
+    assert.equal(await admin.identityActorBinding.count({ where: { organizationId: company, userId: userId("onboarding") } }), 1)
+    assert.equal((await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: cancelledIntent } })).status, "CANCELLED")
+    check("pending_time_review_visible_and_cancellable_with_safe_retry_new_review_and_retained_history_binding")
     const firstLegacy = await admin.user.findUniqueOrThrow({ where: { id: userId("onboarding") }, select: { passwordHash: true } })
     phase("ACTUAL_PUBLIC_FIRST_LOGIN_HR_AUDIT_ROLLBACK")
     await admin.$executeRawUnsafe('CREATE SEQUENCE identity_onboarding_time_audit_reached')

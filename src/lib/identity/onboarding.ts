@@ -180,13 +180,19 @@ export async function cancelIdentityOnboardingIntent(client: RegistryClient, adm
   return withIdentityAdministrator(client, administrator, async tx => {
     const organizationId = administrator.organizationId
     const intent = await tx.identityOnboardingIntent.findFirst({ where: { organizationId, id: intentId } })
+    const requestHash = digest([1, "ONBOARDING_CANCELLED", intentId, administrator.userId])
+    const previous = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId, requestId } } })
+    if (previous) {
+      if (previous.action !== "ONBOARDING_CANCELLED" || previous.requestHash !== requestHash || intent?.status !== "CANCELLED") throw new IdentityRegistryError("IDENTITY_REQUEST_REUSED")
+      return { status: "CANCELLED" as const }
+    }
     if (!intent || intent.status !== "ACTIVE") throw unavailable()
     const account = await tx.identityAccount.findUniqueOrThrow({ where: { organizationId_userId: { organizationId, userId: intent.userId } } })
     await tx.identityOnboardingIntent.update({ where: { id: intent.id }, data: { status: "CANCELLED" } })
     await tx.identityPhoneProof.updateMany({ where: { organizationId, onboardingIntentId: intent.id, status: "PENDING" }, data: { status: "SUPERSEDED", deliveryCiphertext: null } })
     await tx.identityPhoneProofOutbox.updateMany({ where: { organizationId, proof: { onboardingIntentId: intent.id }, status: { in: ["PENDING", "LEASED"] } }, data: { status: "SUPERSEDED" } })
     await tx.identityEvent.create({ data: { id: randomUUID(), organizationId, userId: intent.userId, actorUserId: administrator.userId,
-      requestId, requestHash: digest([1, "ONBOARDING_CANCELLED", intent.id, administrator.userId]), action: "ONBOARDING_CANCELLED",
+      requestId, requestHash, action: "ONBOARDING_CANCELLED",
       accountVersion: account.version, credentialEpoch: account.credentialEpoch, reviewReference: intent.reviewReference } })
     return { status: "CANCELLED" as const }
   })

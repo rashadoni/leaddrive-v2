@@ -40,16 +40,25 @@ export async function readLegacyTimeCandidate(tx: Prisma.TransactionClient, admi
     select: { version: true, credentialEpoch: true, contactRevision: true, cutoverAt: true } })
   if (account?.cutoverAt) return null
   const scope = { organizationId, userId }
-  // An earlier manual reconciliation must not be overwritten by this form.
-  if (await tx.identityApplicationGrant.findFirst({ where: scope, select: { userId: true } })
-    || await tx.identityActorBinding.findFirst({ where: scope, select: { actorId: true } })
-    || await tx.identityOnboardingIntent.findFirst({ where: { ...scope, status: "ACTIVE" }, select: { id: true } })) return null
+  const grants = await tx.identityApplicationGrant.findMany({ where: scope, orderBy: { application: "asc" }, take: 4 })
+  const members = await tx.identityApplicationMembership.findMany({ where: scope, orderBy: { application: "asc" }, take: 3 })
+  const bindings = await tx.identityActorBinding.findMany({ where: scope, orderBy: { actorId: "asc" }, take: 2 })
+  if (await tx.identityOnboardingIntent.findFirst({ where: { ...scope, status: "ACTIVE" }, select: { id: true } })) return null
+  // Only an explicitly closed earlier Time review can be prepared again here.
+  // Unrelated manual reconciliation and different actor ownership stay blocked.
+  if (grants.length || members.length || bindings.length) {
+    const prior = await tx.identityOnboardingIntent.findFirst({ where: { ...scope, application: "TIME", status: { in: ["CANCELLED", "EXPIRED"] } }, select: { timeEnrollment: true } })
+    if (!prior?.timeEnrollment || grants.some(g => !["ACTIVE", "REVOKED"].includes(g.status)
+      || (g.application === "CRM" ? g.role !== person.role : g.application !== "ROUTE_FIELD" || !cards[0] || g.role !== cards[0].role))
+      || members.some(m => m.application !== "ROUTE_FIELD" || m.actorId !== cards[0]?.id || !["ACTIVE", "REVOKED"].includes(m.status))
+      || bindings.some(b => b.actorId !== cards[0]?.id)) return null
+  }
   for (const application of cards.length ? ["TIME", "ROUTE_FIELD"] as const : ["TIME"] as const) {
     const policy = await readIdentityMobileTenantPolicy(tx, organizationId, application)
     if (!policy.identityEnabled || !policy.licensed) return null
   }
   return { kind: "legacy" as const, userId, name: person.name, crmRole: person.role, fieldActorId: cards[0]?.id ?? null,
-    fieldRole: cards[0]?.role ?? null, sourceRevision: digest([1, organizationId, phone, person, cards, account]) }
+    fieldRole: cards[0]?.role ?? null, sourceRevision: digest([1, organizationId, phone, person, cards, account, grants, members, bindings]) }
 }
 
 /** Explicit selected-person review stages the account, exact retained access,
@@ -73,22 +82,27 @@ export async function prepareLegacyPersonForTime(client: RegistryClient, adminis
     const scope = { organizationId, userId: input.userId }
     let version = (await stageIdentityAccountInTransaction(tx, administrator, { userId: input.userId, requestId: `time-stage:${input.requestId}` })).accountVersion
     const applications: OnboardingPlan[] = []
-    if (input.preserveCrm) {
+    const priorGrants = await tx.identityApplicationGrant.findMany({ where: scope })
+    const priorMembers = await tx.identityApplicationMembership.findMany({ where: scope })
+    const priorCrm = priorGrants.find(g => g.application === "CRM")
+    if (input.preserveCrm || priorCrm) {
       const grant = await planIdentityApplicationInTransaction(tx, administrator, { userId: input.userId, application: "CRM", role: candidate.crmRole,
-        status: "ACTIVE", expectedAccountVersion: version, expectedGrantVersion: 0, requestId: `time-crm:${input.requestId}` })
+        status: input.preserveCrm ? "ACTIVE" : "REVOKED", expectedAccountVersion: version, expectedGrantVersion: priorCrm?.version ?? 0, requestId: `time-crm:${input.requestId}` })
       version = grant.accountVersion
-      applications.push({ application: "CRM", role: candidate.crmRole, status: "ACTIVE", grantVersion: grant.grantVersion,
+      applications.push({ application: "CRM", role: candidate.crmRole, status: input.preserveCrm ? "ACTIVE" : "REVOKED", grantVersion: grant.grantVersion,
         actorId: null, membershipVersion: 0, membershipStatus: null })
     }
     if (candidate.fieldActorId) {
       const actorId = candidate.fieldActorId
-      version = (await reviewIdentityActorInTransaction(tx, administrator, { userId: input.userId, actorId, expectedAccountVersion: version,
+      const binding = await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId, actorId } } })
+      if (binding && binding.userId !== input.userId) throw unavailable()
+      if (!binding) version = (await reviewIdentityActorInTransaction(tx, administrator, { userId: input.userId, actorId, expectedAccountVersion: version,
         reviewReference, requestId: `time-binding:${input.requestId}` })).accountVersion
       const grant = await planIdentityApplicationInTransaction(tx, administrator, { userId: input.userId, application: "ROUTE_FIELD", role: candidate.fieldRole,
-        status: "ACTIVE", expectedAccountVersion: version, expectedGrantVersion: 0, requestId: `time-field:${input.requestId}` })
+        status: "ACTIVE", expectedAccountVersion: version, expectedGrantVersion: priorGrants.find(g => g.application === "ROUTE_FIELD")?.version ?? 0, requestId: `time-field:${input.requestId}` })
       version = grant.accountVersion
       const member = await planIdentityMembershipInTransaction(tx, administrator, { userId: input.userId, actorId, application: "ROUTE_FIELD", status: "ACTIVE",
-        expectedAccountVersion: version, expectedGrantVersion: grant.grantVersion, expectedMembershipVersion: 0, requestId: `time-member:${input.requestId}` })
+        expectedAccountVersion: version, expectedGrantVersion: grant.grantVersion, expectedMembershipVersion: priorMembers.find(m => m.application === "ROUTE_FIELD")?.version ?? 0, requestId: `time-member:${input.requestId}` })
       version = member.accountVersion
       applications.push({ application: "ROUTE_FIELD", role: candidate.fieldRole, status: "ACTIVE", grantVersion: grant.grantVersion,
         actorId, membershipVersion: member.membershipVersion, membershipStatus: "ACTIVE" })

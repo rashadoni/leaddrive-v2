@@ -86,6 +86,7 @@ export async function checkIdentityOnboarding({ load, admin, writer, failing, is
   await assert.rejects(onboarding.cancelIdentityOnboardingIntent(failing, issuer, cancelled.review.intentId, "cancel-failed-audit"), /SYNTHETIC_AUDIT_FAILURE/)
   assert.equal((await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: cancelled.review.intentId } })).status, "ACTIVE")
   await onboarding.cancelIdentityOnboardingIntent(writer, issuer, cancelled.review.intentId, "cancel-reviewed")
+  assert.equal((await onboarding.cancelIdentityOnboardingIntent(writer, issuer, cancelled.review.intentId, "cancel-reviewed")).status, "CANCELLED")
   await assert.rejects(finish(writer, cancelledSetup.setupToken), /IDENTITY_ONBOARDING_UNAVAILABLE/)
   await assert.rejects(proof.setStagedIdentityCredential(writer, org, { setupToken: cancelledSetup.setupToken, password, requestId: "cancel-direct-setup" }, ring, passwordPolicyError), /IDENTITY_ONBOARDING_UNAVAILABLE/)
   assert.equal(await proof.claimStagedPhoneProofDelivery(writer, org, old.row.id), null)

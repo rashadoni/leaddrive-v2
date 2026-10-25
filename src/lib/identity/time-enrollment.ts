@@ -23,6 +23,14 @@ export async function lookupIdentityTimePerson(client: RegistryClient, administr
     if (!claim?.account.cutoverAt) {
       const policy = await readIdentityMobileTenantPolicy(tx, organizationId, "TIME")
       if (administrator.mode === "LEGACY" && policy.identityEnabled && policy.licensed) return { kind: "administrator_setup" }
+      if (administrator.mode === "CANONICAL" && policy.identityEnabled && policy.licensed) {
+        const pending = await tx.identityOnboardingIntent.findFirst({ where: { organizationId, normalizedPhone, application: "TIME", status: "ACTIVE" },
+          select: { id: true, userId: true, expiresAt: true } })
+        if (pending) {
+          const person = await tx.user.findFirst({ where: { organizationId, id: pending.userId, isActive: true, anonymizedAt: null }, select: { name: true } })
+          if (person) return { kind: "pending", userId: pending.userId, name: person.name, intentId: pending.id, expiresAt: pending.expiresAt.toISOString() }
+        }
+      }
       return await readLegacyTimeCandidate(tx, administrator, normalizedPhone) ?? { kind: "none" }
     }
     const policy = await readIdentityMobileTenantPolicy(tx, organizationId, "TIME")

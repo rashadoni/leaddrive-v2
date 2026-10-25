@@ -495,7 +495,7 @@ Supersedes the corresponding limitation in9.25: a reviewed intent can freeze opt
 
 The HR transaction adapter is a fixed server dependency in the route composition, not a request field or permission bypass. Its failure or absence prevents completion. New-person pending registration, first-administrator bootstrap and complete administrator UI still require implementation and qualification. No production cutover is implied by this prepared design.
 
-### 9.22 Explicit Time form and live initial administrator (2026-10-25, prepared)
+### 9.27 Explicit Time form and live initial administrator (2026-10-25, prepared)
 
 The Time form can now select an unambiguous existing legacy person for an explicit review. Source metadata/revisions are compared again under the tenant fence; staging, historical actor binding, the complete retained application plan and frozen Time employment metadata commit with the invitation. Retaining CRM is a separate explicit choice. Empty retained plans are allowed only with pending Time completion. General activation cannot bypass that pending work: cutover, actual new Time actor/binding/grant/member and HR metadata/history must commit together. A failure rolls back retirement and Time creation. This supersedes the earlier limitation to already-staged people, but hosted acceptance of this final composition is still pending.
 

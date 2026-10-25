@@ -254,7 +254,7 @@ describe("Add employee", () => {
   it.each(["ru", "az", "en"] as const)("requires explicit legacy-person review and explains pending first login in %s", async language => {
     const candidate = { kind: "legacy", userId: "existing-person", name: "Existing Field person", sourceRevision: "a".repeat(64), fieldActorId: "existing-field", fieldRole: "AGENT", crmRole: "viewer" }
     fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response(candidate)
-      : String(url).endsWith("/identity/time/onboarding") ? response({ status: "ACTIVE", intentId: "prepared-review" }, 201)
+      : String(url).endsWith("/identity/time/onboarding") ? response({ status: "ACTIVE", intentId: "prepared-review", expiresAt: "2026-11-01T12:00:00.000Z" }, 201)
       : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
     await render(language); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
     await type("addEmployeeName", "Different typed name"); await type("addEmployeePhone", "+994501112233"); await send()
@@ -271,6 +271,28 @@ describe("Add employee", () => {
     expect(form().textContent).toContain(p("addEmployeeIdentityInviteReady"))
     expect(form().querySelector('[data-testid="attendance-legacy-invite"]')).toBeNull()
     expect(creates()).toHaveLength(1)
+  })
+
+  it("shows a pending review and cancels it explicitly before offering a fresh review", async () => {
+    let cancelled = false
+    fetchMock.mockImplementation(async url => {
+      if (String(url).endsWith("/cancel")) { cancelled = true; return response({ status: "CANCELLED" }) }
+      if (String(url).endsWith("/identity/time/lookup")) return response(cancelled
+        ? { kind: "legacy", userId: "existing-person", name: "Existing person", sourceRevision: "b".repeat(64), fieldActorId: "field", fieldRole: "AGENT", crmRole: "viewer" }
+        : { kind: "pending", userId: "existing-person", name: "Existing person", intentId: "pending-intent", expiresAt: "2026-11-01T12:00:00.000Z" })
+      return String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory)
+    })
+    await render(); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed name"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-pending-review"]')).not.toBeNull()
+    expect(cancelled).toBe(false)
+    await send(); expect(creates()).toHaveLength(1)
+    await act(async () => form().querySelector<HTMLButtonElement>('[data-testid="attendance-cancel-review"]')!.click())
+    expect(cancelled).toBe(true)
+    expect(form().querySelector('[data-testid="attendance-pending-review"]')).toBeNull()
+    expect(form().querySelector('[data-testid="attendance-legacy-person"]')).not.toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/onboarding"))).toBe(false)
+    expect(input("addEmployeePhone").value).toBe("+994501112233")
   })
 
   it("clears legacy review when the number changes and never enrolls its stale candidate", async () => {
