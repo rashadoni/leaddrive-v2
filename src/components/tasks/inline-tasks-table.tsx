@@ -1774,7 +1774,7 @@ export function InlineBooleanCell({ value, onSave }: {
     try { await onSave(!value) } catch { /* handled upstream via toast + rollback */ } finally { setSaving(false) }
   }
   return (
-    <button
+    <button data-crm-color-role="toggle"
       type="button"
       onClick={toggle}
       disabled={saving}

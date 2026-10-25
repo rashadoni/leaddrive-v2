@@ -1124,7 +1124,7 @@ export default function UsersSettingsPage() {
     {
       key: "isAvailable", label: tu("colAvailable"),
       render: (item: User) => (
-        <button
+        <button data-crm-color-role="toggle"
           type="button"
           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
             item.isAvailable ? "bg-green-500" : "bg-muted-foreground/40"
@@ -1249,7 +1249,7 @@ export default function UsersSettingsPage() {
               SMS {item.smsAuthEnabled ? "✓" : "—"}
             </button>
             {/* Require 2FA toggle */}
-            <button
+            <button data-crm-color-role="toggle"
               type="button"
               title={tu("require2faTooltip")}
               className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${
@@ -1289,7 +1289,7 @@ export default function UsersSettingsPage() {
           return <span className="text-muted-foreground">—</span>
         }
         return (
-          <button
+          <button data-crm-color-role="toggle"
             type="button"
             title={tu("voiceEnabledTooltip")}
             className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${

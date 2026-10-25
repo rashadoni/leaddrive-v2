@@ -436,6 +436,7 @@ export function VoiceReceiptSurface({
       aria-label={t("receipt.ariaLabel")}
       aria-live="polite"
       data-testid="voice-receipt-panel"
+      data-crm-workspace=""
       data-layout={layout}
       data-action-type={receipt.actionType}
       data-receipt-id={receipt.id}

@@ -794,18 +794,18 @@ export default function ContractsPage() {
 
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
-        <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>
+        <Button variant={activeFilter === "all" ? "selected" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>
           {t("filterAll")} ({total})
         </Button>
         {(["draft", "pending_approval", "approved", "active", "renewing", "renewed", "expired", "terminated", "rejected", "cancelled"] as const).map(key => (
           statusCounts[key] ? (
-            <Button key={key} variant={activeFilter === key ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(key)}>
+            <Button key={key} variant={activeFilter === key ? "selected" : "outline"} size="sm" onClick={() => setActiveFilter(key)}>
               {statusLabels[key]} ({statusCounts[key]})
             </Button>
           ) : null
         ))}
         <Button
-          variant={activeFilter === "expiring_soon" ? "default" : "outline"}
+          variant={activeFilter === "expiring_soon" ? "selected" : "outline"}
           size="sm"
           onClick={() => setActiveFilter("expiring_soon")}
           className={cn(expiringSoon > 0 && activeFilter !== "expiring_soon" && "border-orange-300 text-orange-600")}
@@ -847,7 +847,7 @@ export default function ContractsPage() {
               className={cn(
                 "text-xs px-2.5 py-1 rounded-full border transition-colors",
                 selectedTagIds.includes(tag.id)
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? "crm-choice-selected  "
                   : "bg-muted/50 text-muted-foreground border-muted hover:border-muted-foreground"
               )}
               style={tag.color && !selectedTagIds.includes(tag.id) ? {

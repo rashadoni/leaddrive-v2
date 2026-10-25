@@ -158,7 +158,7 @@ export default function VelocityPage() {
                 onClick={() => setPeriodKey(opt.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm border ${
                   periodKey === opt.key
-                    ? "bg-primary text-primary-foreground border-primary"
+                    ? "crm-choice-selected  "
                     : "bg-card hover:bg-muted border-border"
                 }`}
               >

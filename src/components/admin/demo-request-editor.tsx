@@ -302,7 +302,7 @@ export function DemoRequestEditor({
             </span>
           </label>
         ) : null}
-        <div className="mt-5 flex flex-col gap-4 rounded-xl bg-zinc-900 p-5 text-zinc-100 lg:flex-row lg:items-center lg:justify-between dark:bg-zinc-100 dark:text-zinc-900">
+        <div data-crm-action-surface="inverse" className="mt-5 flex flex-col gap-4 rounded-xl bg-zinc-900 p-5 text-zinc-100 lg:flex-row lg:items-center lg:justify-between dark:bg-zinc-100 dark:text-zinc-900">
           <div className="flex items-start gap-3">
             <KeyRound className="mt-0.5 h-5 w-5 text-orange-400" />
             <div><p className="text-sm font-semibold">{t("issueTitle")}</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">{t("issueBody")}</p></div>
@@ -321,7 +321,7 @@ export function DemoRequestEditor({
             ) : (
               <Button type="button" variant="outline" disabled className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 dark:border-zinc-400 dark:text-zinc-900"><Eye className="h-4 w-4" />{t("previewSelected")}</Button>
             )}
-            <Button type="button" disabled={busy !== null || (mode === "modules" && !selected.length) || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0 bg-orange-600 text-white hover:bg-orange-700">
+            <Button type="button" disabled={busy !== null || (mode === "modules" && !selected.length) || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0">
               {busy === "issue" ? <Clock3 className="h-4 w-4 animate-spin" /> : latestGrant ? <RotateCcw className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               {latestGrant ? t("reissueAndSend") : t("issueAndSend")}
             </Button>

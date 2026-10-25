@@ -359,10 +359,10 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
                 <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center justify-between">
                   {t("clientInfo")}
                   <div className="flex gap-1">
-                    <Button type="button" variant={clientMode === "crm" ? "default" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("crm")}>
+                    <Button type="button" variant={clientMode === "crm" ? "selected" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("crm")}>
                       {t("fromCrm")}
                     </Button>
-                    <Button type="button" variant={clientMode === "manual" ? "default" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("manual")}>
+                    <Button type="button" variant={clientMode === "manual" ? "selected" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("manual")}>
                       {t("manualEntry")}
                     </Button>
                   </div>

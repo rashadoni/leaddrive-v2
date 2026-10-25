@@ -211,7 +211,7 @@ export default function LeaderboardPage() {
               onClick={() => setGroup(g)}
               className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
                 group === g
-                  ? "bg-primary text-primary-foreground shadow-sm"
+                  ? "crm-choice-selected  shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >

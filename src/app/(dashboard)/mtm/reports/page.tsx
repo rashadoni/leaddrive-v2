@@ -181,7 +181,7 @@ export default function MtmReportsPage() {
                 data-testid={`mtm-report-type-${rt}`}
                 onClick={() => chooseReport(rt)}
                 className={`inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm transition-colors ${on
-                  ? "border-primary bg-primary font-semibold text-primary-foreground"
+                  ? " crm-choice-selected font-semibold "
                   : count > 0 ? "border-border bg-card font-medium hover:bg-muted/60" : "border-dashed border-border text-muted-foreground hover:bg-muted/40"}`}
               >
                 {t(`type_${rt}`)}

@@ -138,7 +138,7 @@ export default function QuotaSettingsPage() {
               key={y}
               onClick={() => setYear(y)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                year === y ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                year === y ? "crm-choice-selected " : "bg-muted hover:bg-muted/80"
               }`}
             >
               {y}

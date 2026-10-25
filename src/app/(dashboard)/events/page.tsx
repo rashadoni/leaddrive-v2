@@ -170,7 +170,7 @@ export default function EventsPage() {
           {/* Status filters */}
           <div className="flex gap-2 flex-wrap">
             <Button
-              variant={!statusFilter ? "default" : "outline"}
+              variant={!statusFilter ? "selected" : "outline"}
               size="sm" className="h-8 text-xs"
               onClick={() => setStatusFilter("")}
             >
@@ -179,7 +179,7 @@ export default function EventsPage() {
             {Object.entries(STATUS_LABELS).map(([key, label]) => (
               <Button
                 key={key}
-                variant={statusFilter === key ? "default" : "outline"}
+                variant={statusFilter === key ? "selected" : "outline"}
                 size="sm" className="h-8 text-xs"
                 onClick={() => setStatusFilter(statusFilter === key ? "" : key)}
               >

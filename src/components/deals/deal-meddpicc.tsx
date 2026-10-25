@@ -215,7 +215,7 @@ export function DealMeddpicc({
               {/* Score — a full-width segmented row (5 equal buttons), its own line */}
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <button
+                  <button data-crm-color-role="status"
                     key={s}
                     type="button"
                     onClick={() => patch(key, { score: block.score === s ? undefined : s })}

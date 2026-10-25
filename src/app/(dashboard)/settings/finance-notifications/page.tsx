@@ -289,7 +289,7 @@ export default function FinanceNotificationsPage() {
               <Label className="text-xs font-medium text-muted-foreground">{t("daysBeforeDeadline")}</Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {DAY_OPTIONS.map(({ value, label }) => (
-                  <Button key={value} size="sm" variant={settings.advance.daysBeforeDeadline === value ? "default" : "outline"} className="h-8" onClick={() => setDays(value)}>
+                  <Button key={value} size="sm" variant={settings.advance.daysBeforeDeadline === value ? "selected" : "outline"} className="h-8" onClick={() => setDays(value)}>
                     {label}
                   </Button>
                 ))}

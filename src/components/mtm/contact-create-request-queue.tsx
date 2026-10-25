@@ -116,7 +116,7 @@ export function ContactCreateRequestQueue({ openOnArrival = false }: { openOnArr
           <b className="font-semibold">{rows.length === 1 ? copy.waitingOne : copy.waitingMany}</b>
           {" — "}{summary}{rows.length > 1 ? ` ${copy.andMore.replace("{count}", String(rows.length - 1))}` : ""}
         </span>
-        <Button type="button" size="sm" className="min-h-9 bg-amber-900 text-white hover:bg-amber-950" aria-expanded={open} data-testid="mtm-contact-create-requests-toggle" onClick={() => setOpen((current) => !current)}>
+        <Button type="button" size="sm" variant="outline" className="min-h-9" aria-expanded={open} data-testid="mtm-contact-create-requests-toggle" onClick={() => setOpen((current) => !current)}>
           {open ? copy.collapse : copy.review}
         </Button>
       </div>

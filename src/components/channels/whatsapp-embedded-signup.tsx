@@ -235,7 +235,7 @@ export function WhatsAppEmbeddedSignup({
           </p>
         </div>
       ) : (
-        <button
+        <button data-crm-color-role="provider"
           type="button"
           onClick={() => void start()}
           disabled={status.kind === "working"}
