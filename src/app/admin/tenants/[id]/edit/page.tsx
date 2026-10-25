@@ -614,6 +614,25 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               </div>
               <div className="flex items-center justify-between py-2 px-3 rounded-md border border-zinc-200/40 dark:border-zinc-700/40 bg-muted/20">
                 <div>
+                  <div className="text-sm font-medium">Pharmacy phone orders</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Раздел /pharmacy-orders в группе Route &amp; Field: заказы, которые аптеки продиктовали ИИ-оператору по телефону.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleFeature("pharmacy_phone_orders")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                    form.features.includes("pharmacy_phone_orders")
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : "bg-transparent text-muted-foreground border border-zinc-200 dark:border-zinc-700 hover:bg-muted"
+                  }`}
+                >
+                  {form.features.includes("pharmacy_phone_orders") ? "on" : "off"}
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-md border border-zinc-200/40 dark:border-zinc-700/40 bg-muted/20">
+                <div>
                   <div className="text-sm font-medium">Social: Brand-protection only</div>
                   <div className="text-[11px] text-muted-foreground">
                     Соц-мониторинг только для наблюдения за внешними страницами (brand protection): скрывает подключение своих каналов, ответы и ИИ-агента; API отклоняет создание owned-источников.
