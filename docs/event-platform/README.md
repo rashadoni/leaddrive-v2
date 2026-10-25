@@ -5,10 +5,10 @@ BACKUP COMMISSIONING; ENTERPRISE PITR/SECOND-REGION/FULL-AUTHORITY GATES OPEN;
 KAFKA TRANSPORT PREPARED BUT NOT ACTIVATED**
 Date: 2026-09-05
 
-> **2026-10-25: Kafka свёрнута владельцем.** Прод снят с роли CDC-источника
-> (`retire-event-cdc-source.yml`): слота, публикации и входа роли CDC больше
-> нет, Kafka VPS отменяются. Документы ниже описывают прежний план; см. раздел
-> «Kafka свёрнута» в корневом `CLAUDE.md`.
+> **2026-10-25: Kafka остаётся.** Владелец вечером отменил дневное решение
+> свернуть Kafka. Прод снова CDC-источник: слот, публикация и вход роли CDC
+> восстановлены после ошибочного запуска `retire-event-cdc-source.yml` (теперь он
+> умеет только `inspect`). См. раздел «Kafka остаётся» в корневом `CLAUDE.md`.
 
 LeadDrive uses this program to make calculation, consumer, and projection bugs
 recoverable without rolling the whole shared multi-tenant database back in

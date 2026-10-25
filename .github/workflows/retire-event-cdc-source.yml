@@ -1,23 +1,22 @@
 name: Retire event CDC source on production
 
-# Owner, 2026-10-25: the Kafka VPS are wound down to cut costs. Before those
-# hosts go, production must stop being their CDC source — otherwise the
-# Debezium slot stays behind and pins WAL on the production disk.
+# Read-only report of the production CDC source (slot, publication, CDC role).
 #
-# Runs scripts/event-platform/retire-cdc-source.sh on the production host:
-#   inspect (default) — read-only report;
-#   apply             — safety pg_dump, CDC role NOLOGIN, walsender terminated,
-#                       slot and publication dropped, verified, CRM pinged.
-# Idempotent: apply on a retired source changes nothing and still verifies.
+# Inspect only. Apply was removed on 2026-10-25: a session acting on an
+# earlier owner decision dispatched it at 14:42 UTC and dropped the live slot
+# after the owner had decided to keep Kafka ("Kafka оставляем"). Retiring the
+# source needs the owner's direct word on the same day and runs by hand on
+# the host (see "Kafka остаётся" in CLAUDE.md and retire-cdc-source.sh), never
+# from a button anyone holding the GitHub token can press.
 # Dispatch-only and on the production-deploy lock; it never runs from a push.
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "inspect — только посмотреть; apply — снять CDC (копия базы, слот, публикация, вход роли)"
+        description: "inspect — только посмотреть (снять CDC отсюда нельзя)"
         type: choice
-        options: [inspect, apply]
+        options: [inspect]
         default: inspect
 
 permissions:
@@ -46,7 +45,7 @@ jobs:
           MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
-          case "$MODE" in inspect|apply) ;; *) echo "::error::mode must be inspect or apply"; exit 1 ;; esac
+          [ "$MODE" = inspect ] || { echo "::error::only inspect runs from GitHub; see CLAUDE.md «Kafka остаётся»"; exit 1; }
           bash -n scripts/event-platform/retire-cdc-source.sh
 
       - name: Setup pinned production SSH
@@ -63,20 +62,10 @@ jobs:
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           set -euo pipefail
-          case "$MODE" in inspect|apply) ;; *) exit 1 ;; esac
+          [ "$MODE" = inspect ] || exit 1
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
-            "$SERVER_USER@$SERVER_HOST" "bash -s -- $MODE" \
+            "$SERVER_USER@$SERVER_HOST" "bash -s -- inspect" \
             < scripts/event-platform/retire-cdc-source.sh
-
-      - name: CRM answers from outside
-        if: inputs.mode == 'apply'
-        run: |
-          set -euo pipefail
-          for path in /api/v1/ping /login; do
-            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://app.leaddrivecrm.org$path")"
-            echo "$path → $code"
-            [ "$code" = 200 ] || { echo "::error::$path answered $code"; exit 1; }
-          done
 
       - name: Cleanup SSH material
         if: always()

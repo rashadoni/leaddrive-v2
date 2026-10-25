@@ -26,6 +26,8 @@ function run(cmd, args, opts = {}) {
 }
 const sql = (q, db = 'leaddrive_v2') => run('psql', ['-X', '-At', '-d', db, '-c', q]).stdout.trim()
 
+const approved = () => ({ OWNER_APPROVED_ON: new Date().toISOString().slice(0, 10), OWNER_WORDS: 'Да, снимай CDC с прода сейчас' })
+
 function retire(mode, extra = {}) {
   // As the workflow delivers it: the script on bash's stdin, mode as argument.
   return spawnSync('bash', ['-s', '--', mode], {
@@ -91,10 +93,24 @@ test('inspect reports the live CDC and changes nothing', () => {
   assert.ok(!existsSync(join(root, 'safety')), 'inspect must not dump')
 })
 
+test('apply without the owner\'s word from today changes nothing', () => {
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+  for (const extra of [{}, { ...approved(), OWNER_APPROVED_ON: yesterday }, { ...approved(), OWNER_WORDS: '' }]) {
+    const r = retire('apply', extra)
+    assert.notEqual(r.status, 0)
+    assert.match(r.stderr, /nothing was changed/)
+  }
+  assert.equal(sql("select active from pg_replication_slots where slot_name = 'leaddrive_event_outbox_prod'"), 't')
+  assert.equal(sql("select count(*) from pg_publication"), '1')
+  assert.equal(sql("select rolcanlogin from pg_roles where rolname = 'leaddrive_event_cdc'"), 't')
+  assert.ok(!existsSync(join(root, 'safety')), 'no dump either')
+})
+
 test('apply drops the held slot and publication, locks the role, keeps the rest', () => {
-  const r = retire('apply')
+  const r = retire('apply', approved())
   assert.equal(r.status, 0, r.stderr + r.stdout)
   assert.match(r.stdout, /PASS/)
+  assert.match(r.stdout, /owner approved on \d{4}-\d{2}-\d{2}: «Да, снимай CDC с прода сейчас»/)
   assert.equal(sql("select string_agg(slot_name, ',') from pg_replication_slots"), 'unrelated_slot')
   assert.equal(sql("select count(*) from pg_publication"), '0')
   assert.equal(sql("select rolcanlogin from pg_roles where rolname = 'leaddrive_event_cdc'"), 'f')
@@ -114,7 +130,7 @@ test('a connector coming back cannot log in, so cannot recreate the slot', () =>
 })
 
 test('a second apply is a no-op and still verifies', () => {
-  const r = retire('apply')
+  const r = retire('apply', approved())
   assert.equal(r.status, 0, r.stderr + r.stdout)
   assert.match(r.stdout, /already retired/)
   assert.equal(readdirSync(join(root, 'safety')).length, 1, 'no second dump')

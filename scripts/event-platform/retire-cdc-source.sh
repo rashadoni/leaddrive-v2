@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# Retire the production database as the Kafka CDC source (owner, 2026-10-25:
-# Kafka is wound down to cut costs; the CRM keeps writing to PostgreSQL only).
-# Runs on the production web/PostgreSQL host as root:
+# Retire the production database as the Kafka CDC source. Runs on the
+# production web/PostgreSQL host as root:
 #
 #   retire-cdc-source.sh inspect   read-only: CDC slots, publication, role, event rows, latest backup
 #   retire-cdc-source.sh apply     safety dump, then retire CDC; idempotent, re-run is a no-op
+#
+# Kafka stays (owner, 2026-10-25, after a first retire had run). Apply refuses
+# unless OWNER_APPROVED_ON is today's UTC date and OWNER_WORDS quotes the
+# owner's own message asking for it: a decision from another day, or one
+# relayed by another session, is not enough. The quote is printed in the log.
 #
 # Why this exists: a Debezium slot left behind when the Connect hosts go away
 # pins WAL on the production disk (~0.4 GB/day, up to max_slot_wal_keep_size)
@@ -33,6 +37,13 @@ die() { printf 'retire-cdc: FATAL: %s\n' "$*" >&2; exit 1; }
 
 mode="${1:-}"
 case "$mode" in inspect|apply) ;; *) sed -n '2,8p' "$0" 2>/dev/null || true; die "usage: inspect|apply" ;; esac
+if [ "$mode" = apply ]; then
+  [ "${OWNER_APPROVED_ON:-}" = "$(date -u +%F)" ] \
+    || die "apply needs OWNER_APPROVED_ON=$(date -u +%F) (today, UTC): the owner's word from today; nothing was changed"
+  words="${OWNER_WORDS:-}"
+  [ "${#words}" -ge 10 ] \
+    || die "apply needs OWNER_WORDS: the owner's own message asking to retire CDC, quoted; nothing was changed"
+fi
 
 dbname="${DBNAME:-leaddrive_v2}"
 [[ "$dbname" =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || die "DBNAME has an unexpected shape"
@@ -87,6 +98,7 @@ SQL
 
 
 printf 'retire-cdc: mode=%s database=%s observed_at=%s\n' "$mode" "$dbname" "$(date -u +%FT%TZ)"
+[ "$mode" = apply ] && printf 'retire-cdc: owner approved on %s: «%s»\n' "$OWNER_APPROVED_ON" "$OWNER_WORDS"
 report
 [ "$mode" = inspect ] && exit 0
 
