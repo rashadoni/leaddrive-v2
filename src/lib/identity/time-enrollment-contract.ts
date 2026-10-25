@@ -9,7 +9,7 @@ export const IdentityTimeEnrollmentFields = z.object({
 const consistentUnit = (value: z.infer<typeof IdentityTimeEnrollmentFields>) => !(value.teamId && value.newTeamName) && !(value.departmentId && value.newDepartmentName)
 export const IdentityTimeEnrollmentMetadata = IdentityTimeEnrollmentFields.refine(consistentUnit)
 export const IdentityTimeEnrollmentInput = IdentityTimeEnrollmentFields.extend({
-  userId: id, expectedClaimId: id, expectedAccountVersion: z.number().int().positive().max(2_147_483_640), requestId: z.string().uuid(),
+  userId: id, expectedActorId: id.nullable().optional(), expectedClaimId: id, expectedAccountVersion: z.number().int().positive().max(2_147_483_640), requestId: z.string().uuid(),
 }).strict().refine(consistentUnit)
 export type IdentityTimeEnrollmentRequest = z.infer<typeof IdentityTimeEnrollmentInput>
 export const IdentityLegacyTimeCandidate = z.object({
@@ -23,6 +23,6 @@ export const IdentityTimePersonResult = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("pending"), userId: id, name: z.string().max(200), intentId: id, expiresAt: z.string().datetime() }),
   z.object({ kind: z.literal("administrator_setup") }),
   z.object({ kind: z.literal("canonical"), userId: id, name: z.string().max(200), claimId: id,
-    accountVersion: z.number().int().positive(), timeActorId: id.nullable() }),
+    accountVersion: z.number().int().positive(), timeActorId: id.nullable(), timeEnrolled: z.boolean().default(false), timeEnrollmentBlocked: z.boolean().default(false) }),
 ])
 export type IdentityTimePerson = z.infer<typeof IdentityTimePersonResult>

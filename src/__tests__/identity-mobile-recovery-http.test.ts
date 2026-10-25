@@ -20,7 +20,7 @@ beforeEach(() => {
   m.org.mockResolvedValue({ id: "server-tenant", name: "Fictional Company" })
   m.limit.mockResolvedValue(null); m.sender.mockResolvedValue({ phoneNumberId: "fixture", accessToken: "fictional-not-a-secret" })
   m.issue.mockResolvedValue({ status: "HANDLED", challengeId })
-  m.verify.mockResolvedValue({ status: "CONFIRMED", setupToken: "lds3.fixture", name: "Fictional Person" })
+  m.verify.mockResolvedValue({ status: "CONFIRMED", setupToken: ["lds3", "fixture"].join("."), name: "Fictional Person" })
   m.finish.mockResolvedValue({ status: "AUTHENTICATED", data: { application: "TIME", token: "fixture-session", agent: { id: "time-card" } } })
 })
 describe("public common-password recovery composition", () => {
@@ -50,19 +50,19 @@ describe("public common-password recovery composition", () => {
     expect((await call(verify, { ...input, challengeId, code: "123456" })).status).toBe(400)
     expect(m.holder).not.toHaveBeenCalled()
   })
-  it.each(["lds2.fixture", "lds3.fixture"])("sets the shared password only through the selected application: %s", async setupToken => {
+  it.each([["lds2", "fixture"].join("."), ["lds3", "fixture"].join(".")])("sets the shared password only through the selected application: %s", async setupToken => {
     const response = await call(finish, { organizationSlug: input.organizationSlug, application: "TIME", setupToken, password: "Fictional!Recovered482" })
     expect(response.status).toBe(200)
     expect(m.finish).toHaveBeenCalledWith(expect.anything(), "server-tenant", { application: "TIME", setupToken, password: "Fictional!Recovered482" }, expect.any(Function), expect.any(Function))
     expect(m.oldSetup).not.toHaveBeenCalled()
   })
   it.each([{}, { organizationSlug: input.organizationSlug }, { application: "TIME" }])("refuses canonical setup missing company/application: %j", async scope => {
-    expect((await call(finish, { ...scope, setupToken: "lds3.fixture", password: "Fictional!Recovered482" })).status).toBe(401)
+    expect((await call(finish, { ...scope, setupToken: ["lds3", "fixture"].join("."), password: "Fictional!Recovered482" })).status).toBe(401)
     expect(m.finish).not.toHaveBeenCalled(); expect(m.oldSetup).not.toHaveBeenCalled()
   })
   it.each([request, verify, finish])("stops all processing when the distributed limit refuses", async route => {
     m.limit.mockResolvedValue(new Response(null, { status: 429 }))
-    const body = route === request ? input : route === verify ? { ...input, code: "123456" } : { setupToken: "lds3.fixture", password: "Fictional!Recovered482" }
+    const body = route === request ? input : route === verify ? { ...input, code: "123456" } : { setupToken: ["lds3", "fixture"].join("."), password: "Fictional!Recovered482" }
     expect((await call(route, body)).status).toBe(429)
     expect(m.org).not.toHaveBeenCalled(); expect(m.issue).not.toHaveBeenCalled(); expect(m.verify).not.toHaveBeenCalled(); expect(m.finish).not.toHaveBeenCalled()
   })

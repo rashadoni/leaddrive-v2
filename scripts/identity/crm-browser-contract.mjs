@@ -55,18 +55,21 @@ try {
     assert.equal(await admin.organization.count(), 0); assert.equal(await admin.user.count(), 0)
     await admin.organization.create({ data: { id: company, slug: company, name: "Fictional identity browser company", features: ["settings"], modules: { settings: true, personnel: true, "route-field": true } } })
     const commonHash = await bcrypt.hash(password, 12), legacyHash = await bcrypt.hash(`${password}-legacy`, 4)
-    for (const [i, suffix] of ["ordinary", "setup", "totp", "administrator", "employee", "enrollment"].entries()) {
+    for (const [i, suffix] of ["ordinary", "setup", "totp", "administrator", "employee", "enrollment", "existing-time"].entries()) {
       await admin.user.create({ data: { id: userId(suffix), organizationId: company, email: email(suffix), name: `Fictional ${suffix}`, role: suffix === "administrator" ? "viewer" : "admin",
         passwordHash: legacyHash, require2fa: suffix === "setup", totpEnabled: suffix === "totp", smsAuthEnabled: false } })
       await admin.identityAccount.create({ data: { organizationId: company, userId: userId(suffix), passwordHash: commonHash, cutoverAt: new Date() } })
       await admin.identityPhoneClaim.create({ data: { organizationId: company, userId: userId(suffix), normalizedPhone: `+99450777001${i}`, verifiedAt: new Date(), accountVersion: 1 } })
-      if (!["employee", "enrollment"].includes(suffix)) await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: userId(suffix), application: "CRM", status: "ACTIVE", role: suffix === "administrator" ? "admin" : "viewer" } })
+      if (!["employee", "enrollment", "existing-time"].includes(suffix)) await admin.identityApplicationGrant.create({ data: { organizationId: company, userId: userId(suffix), application: "CRM", status: "ACTIVE", role: suffix === "administrator" ? "admin" : "viewer" } })
     }
     for (const [application, role] of [["ROUTE_FIELD", "AGENT"]]) {
       const actorId = userId(`employee-${application}`)
       await admin.mtmAgent.create({ data: { id: actorId, organizationId: company, userId: userId("employee"), name: "Fictional employee", role, status: "ACTIVE", attendanceParticipant: application === "TIME" } })
       await admin.identityActorBinding.create({ data: { organizationId: company, userId: userId("employee"), actorId, reviewedByUserId: userId("administrator"), reviewReference: `fixture-${application}`, accountVersion: 1 } })
     }
+    await admin.mtmAgent.create({ data: { id: userId("existing-time-card"), organizationId: company, userId: userId("existing-time"),
+      name: "Fictional preserved card", role: "EMPLOYEE", status: "ACTIVE", attendanceParticipant: false,
+      attendanceIncludedFrom: new Date("2026-10-01T00:00:00Z"), position: "Preserved position" } })
     const fieldId = userId("enrollment-field")
     await admin.mtmAgent.create({ data: { id: fieldId, organizationId: company, userId: userId("enrollment"), name: "Fictional enrollment", role: "AGENT", status: "ACTIVE" } })
     await admin.identityActorBinding.create({ data: { organizationId: company, userId: userId("enrollment"), actorId: fieldId, reviewedByUserId: userId("administrator"), reviewReference: "fixture-enrollment-field", accountVersion: 1 } })
@@ -266,6 +269,28 @@ try {
       await admin.$executeRawUnsafe('DROP FUNCTION identity_time_fail_audit()')
       await admin.$executeRawUnsafe('DROP SEQUENCE identity_time_audit_reached')
     }
+    phase("TIME_REGISTRATION_REUSE_OWNED_CARD")
+    const existingLookup = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: "+994507770016" } })
+    assert.equal(existingLookup.status(), 200)
+    const existingCandidate = (await existingLookup.json()).data
+    assert.equal(existingCandidate.timeActorId, userId("existing-time-card")); assert.equal(existingCandidate.timeEnrolled, false)
+    const existingBefore = await admin.mtmAgent.findUniqueOrThrow({ where: { id: existingCandidate.timeActorId } })
+    const existingRegistration = { ...registration, userId: existingCandidate.userId, expectedActorId: existingCandidate.timeActorId,
+      expectedAccountVersion: existingCandidate.accountVersion, expectedClaimId: existingCandidate.claimId, requestId: "51de58b9-c15f-4b0f-8a98-edb123288c01" }
+    const foreignCard = await administrator.current.request.post(registrationUrl, { timeout: 120000,
+      data: { ...existingRegistration, expectedActorId: beforeField.id, requestId: "51de58b9-c15f-4b0f-8a98-edb123288c02" } })
+    assert.equal(foreignCard.status(), 409)
+    const existingResult = await administrator.current.request.post(registrationUrl, { timeout: 120000, data: existingRegistration })
+    assert.equal(existingResult.status(), 201); assert.equal((await existingResult.json()).data.agentId, existingCandidate.timeActorId)
+    const existingAfter = await admin.mtmAgent.findUniqueOrThrow({ where: { id: existingCandidate.timeActorId } })
+    assert.deepEqual({ ...existingAfter, attendanceParticipant: existingBefore.attendanceParticipant, updatedAt: existingBefore.updatedAt }, existingBefore)
+    assert.equal(existingAfter.attendanceParticipant, true)
+    assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: existingCandidate.userId } }), 1)
+    assert.equal((await admin.$queryRaw`SELECT count(*)::int AS count FROM workforce_employment_events WHERE "organizationId"=${company} AND "agentId"=${existingCandidate.timeActorId}`)[0].count, 0)
+    assert.equal((await administrator.current.request.post(registrationUrl, { timeout: 120000, data: existingRegistration })).status(), 201)
+    const connectedLookup = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: "+994507770016" } })
+    assert.equal((await connectedLookup.json()).data.timeEnrolled, true)
+    check("existing_owned_time_card_connected_without_duplicate_or_hr_history_rewrite")
     phase("TIME_REGISTRATION_COMMIT")
     const registered = await administrator.current.request.post(registrationUrl, { timeout: 120000, data: registration })
     assert.equal(registered.status(), 201)
@@ -433,6 +458,15 @@ try {
     assert.deepEqual(bootstrappedApps, [{ application: "CRM" }])
     assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
     check("live_legacy_administrator_self_bootstrap_preserves_mfa_rolls_back_failed_retirement_and_requires_fresh_common_password_login")
+    phase("CONNECTED_TIME_CARD_VISIBLE_IN_DIRECTORY")
+    const directoryResponse = await bootstrappedAdmin.current.request.get("/api/v1/mtm/attendance/employees", { timeout: 120000 })
+    assert.equal(directoryResponse.status(), 200)
+    const connectedDirectory = (await directoryResponse.json()).data
+    const visibleExisting = connectedDirectory.employees.find(row => row.id === existingCandidate.timeActorId)
+    assert.ok(visibleExisting); assert.equal(visibleExisting.position, existingBefore.position)
+    assert.equal(visibleExisting.includedFrom, existingBefore.attendanceIncludedFrom.toISOString())
+    assert.equal(visibleExisting.history.length, 0)
+    check("explicit_time_connection_makes_technical_card_visible_without_rewriting_effective_date")
     phase("ACTUAL_ADMIN_FIRST_LOGIN_REVIEW")
     const invitationUrl = "/api/v1/identity/time/onboarding"
     const candidateResponse = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: "+994507770020" } })

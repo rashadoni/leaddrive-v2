@@ -117,21 +117,21 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   }
 
   async function enrollExistingPerson() {
-    if (saving || !canonicalPerson || canonicalPerson.timeActorId) return
+    if (saving || !canonicalPerson || (canonicalPerson.timeEnrolled || canonicalPerson.timeEnrollmentBlocked)) return
     const submittedRevision = revision.current
     const person = canonicalPerson
     enrollmentRequest.current ??= crypto.randomUUID()
     setSaving(true); setError(null)
     try {
       const response = await fetch("/api/v1/identity/time/enroll", { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId: person.userId, expectedClaimId: person.claimId, expectedAccountVersion: person.accountVersion,
+        body: JSON.stringify({ userId: person.userId, expectedActorId: person.timeActorId, expectedClaimId: person.claimId, expectedAccountVersion: person.accountVersion,
           requestId: enrollmentRequest.current, position: form.position.trim() || null, ...departmentPayload(form.department), hireDate: form.hireDate || null }) })
       const body = await response.json().catch(() => null)
       if (submittedRevision !== revision.current) return
       if (response.status === 201 && body?.success) {
         onAdded(person.name, form.phone.trim()); setForm(empty); setOpen(false); clearResult()
       } else {
-        const stale = ["IDENTITY_ACCOUNT_STALE", "IDENTITY_EXISTING_ACTOR_REVIEW_REQUIRED", "IDENTITY_MEMBERSHIP_ACTOR_REVIEW_REQUIRED"].includes(body?.error)
+        const stale = ["IDENTITY_ACCOUNT_STALE", "IDENTITY_EXISTING_ACTOR_REVIEW_REQUIRED", "IDENTITY_MEMBERSHIP_ACTOR_REVIEW_REQUIRED", "IDENTITY_TIME_ALREADY_ENROLLED", "IDENTITY_TIME_CARD_REVIEW_REQUIRED", "IDENTITY_ACTOR_UNAVAILABLE"].includes(body?.error)
         if (stale) { setCanonicalPerson(null); enrollmentRequest.current = null }
         setError(stale ? "addEmployeeIdentityChanged" : "addEmployeeFailed")
       }
@@ -216,11 +216,11 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
     </div> : null}
     {canonicalPerson ? <div role="status" className="max-w-prose space-y-2 rounded-xl border p-4 text-sm" data-testid="attendance-canonical-person">
       <p>{p("addEmployeePhoneProfile", { name: canonicalPerson.name })}</p>
-      {canonicalPerson.timeActorId ? <>
-        <p className="text-muted-foreground">{p("addEmployeePhoneAlreadyEnrolled")}</p>
+      {canonicalPerson.timeActorId && (canonicalPerson.timeEnrolled || canonicalPerson.timeEnrollmentBlocked) ? <>
+        <p className="text-muted-foreground">{p(canonicalPerson.timeEnrollmentBlocked ? "addEmployeeIdentityTimeBlocked" : "addEmployeePhoneAlreadyEnrolled")}</p>
         <Button asChild type="button" variant="outline" className="min-h-11 rounded-full"><Link href={`/mtm/attendance/people/${encodeURIComponent(canonicalPerson.timeActorId)}`} prefetch={false}>{p("addEmployeePhoneOpenProfile")}</Link></Button>
       </> : <>
-        <p className="text-muted-foreground">{p("addEmployeeIdentityTimeHint", { name: canonicalPerson.name })}</p>
+        <p className="text-muted-foreground">{p(canonicalPerson.timeActorId ? "addEmployeeIdentityExistingTimeHint" : "addEmployeeIdentityTimeHint", { name: canonicalPerson.name })}</p>
         <Button type="button" className="min-h-11 rounded-full" disabled={saving} onClick={enrollExistingPerson} data-testid="attendance-canonical-enroll">{p(saving ? "addEmployeeSaving" : "addEmployeeIdentityTimeSubmit")}</Button>
       </>}
     </div> : null}

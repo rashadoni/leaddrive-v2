@@ -30376,6 +30376,8 @@
     "addEmployeePhoneProfile": "Nömrə «{name}» profilində göstərilib.",
     "addEmployeeIdentityTimeHint": "Bu həmin şəxsdirsə, «{name}» profilini Time-a qoşun. Formadakı vəzifə, departament, şöbə və işə qəbul tarixi ayrıca əməkdaş kartında saxlanacaq. Parol onun tətbiqləri üçün ümumi qalacaq.",
     "addEmployeeIdentityTimeSubmit": "Mövcud profili Time-a qoş",
+    "addEmployeeIdentityTimeBlocked": "Əməkdaş kartı aktiv deyil və ya iş vaxtı uçotundan çıxarılıb. Time-a qoşmazdan əvvəl kartı açın və kadr statusunu yoxlayın.",
+    "addEmployeeIdentityExistingTimeHint": "{name} üçün Time profili artıq var. Bağlantı onun məlumatlarını və tarixçəsini saxlayacaq; bu formadakı vəzifə, şöbə və tarix mövcud qeydləri əvəz etməyəcək. Onları profilin özündə dəyişə bilərsiniz.",
     "addEmployeeIdentityPending": "Time bağlantısı artıq hazırlanıb. Əməkdaş tətbiqdə nömrəsini təsdiqləyib parol yarada bilər. Müddət bitibsə və ya kadr məlumatları dəyişməlidirsə, bu hazırlığı ləğv edib bağlantını yenidən təsdiqləyin.",
     "addEmployeeIdentityCancelReview": "Bağlantı hazırlığını ləğv et",
     "identitySetupTitle": "Administrator nömrənizi təsdiqləyin",

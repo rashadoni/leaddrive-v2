@@ -67,7 +67,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
       user: { select: { identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
       identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
       auditLogs: { where: { organizationId, metadataKind: "mtm_attendance_employment", OR: [
-        { action: { in: ["MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYEE_ENROLLED"] } },
+        { action: { in: ["MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYEE_ENROLLED", "MTM_IDENTITY_TIME_ENROLLED"] } },
         { action: "MTM_ATTENDANCE_EMPLOYMENT_RECORDED", newData: { path: ["kind"], equals: "HIRE" } },
       ] }, select: { id: true }, take: 1 },
     }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })

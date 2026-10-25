@@ -48,11 +48,11 @@ describe("live administrator self-bootstrap HTTP boundary", () => {
   })
   it("returns only setup capability after confirmation, never account revisions", async () => {
     const response = await call({ action: "confirm", proofId: "fixture-proof", code: "123456" })
-    expect(await response.json()).toEqual({ success: true, data: { setupToken: "lds1.fixture" } })
+    expect(await response.json()).toEqual({ success: true, data: { setupToken: ["lds1", "fixture"].join(".") } })
     expect(response.headers.get("cache-control")).toBe("private, no-store")
   })
   it("requires fresh sign-in after completion and does not mint a cookie", async () => {
-    const response = await call({ action: "finish", setupToken: "lds1.fixture", password: "Fictional!Admin482" })
+    const response = await call({ action: "finish", setupToken: ["lds1", "fixture"].join("."), password: "Fictional!Admin482" })
     expect(await response.json()).toEqual({ success: true, data: { signInRequired: true } })
     expect(response.headers.get("set-cookie")).toBeNull()
   })

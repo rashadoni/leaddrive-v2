@@ -30380,6 +30380,8 @@
     "addEmployeePhoneProfile": "This number is listed on the profile for {name}.",
     "addEmployeeIdentityTimeHint": "If this is the same person, connect the profile “{name}” to Time. The position, department, section and hire date entered here will be saved to a separate employee card. Their apps will share the same password.",
     "addEmployeeIdentityTimeSubmit": "Connect existing profile to Time",
+    "addEmployeeIdentityTimeBlocked": "This employee card is inactive or excluded from attendance. Open the card and review its employment status before connecting Time.",
+    "addEmployeeIdentityExistingTimeHint": "{name} already has a Time profile. Connecting will preserve its details and history; the job, department and date in this form will not replace existing records. You can edit them in the profile.",
     "addEmployeeIdentityPending": "Time connection is already prepared. The employee can verify the number and set a password in the app. If it has expired or the employment details need changing, cancel this preparation and confirm the connection again.",
     "addEmployeeIdentityCancelReview": "Cancel connection preparation",
     "identitySetupTitle": "Confirm your administrator number",

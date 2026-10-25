@@ -12,6 +12,7 @@ on:
       - 'src/app/api/v1/mtm/mobile/auth/**'
       - 'src/app/api/v1/mtm/mobile/profile/**'
       - 'src/lib/identity/**'
+      - 'src/lib/mtm/attendance-employee-store.ts'
       - 'src/app/api/v1/identity/**'
       - 'src/lib/api-auth.ts'
       - 'src/lib/two-factor-*.ts'
@@ -134,7 +135,7 @@ jobs:
           GRANT INSERT, UPDATE ON identity_application_grants, identity_application_memberships TO identity_crm_browser;
           GRANT INSERT ON identity_events, identity_accounts TO identity_crm_browser;
           GRANT INSERT ON mtm_agents, identity_actor_bindings TO identity_crm_browser;
-          GRANT UPDATE (position, "teamId", "departmentId", "updatedAt", "passwordHash") ON mtm_agents TO identity_crm_browser;
+          GRANT UPDATE (position, "teamId", "departmentId", "updatedAt", "passwordHash", "attendanceParticipant") ON mtm_agents TO identity_crm_browser;
           GRANT INSERT ON mtm_departments, mtm_teams, workforce_employment_events TO identity_crm_browser;
           GRANT UPDATE ("departmentId", "updatedAt") ON mtm_teams TO identity_crm_browser;
           GRANT UPDATE (id) ON mtm_settings TO identity_crm_browser;
