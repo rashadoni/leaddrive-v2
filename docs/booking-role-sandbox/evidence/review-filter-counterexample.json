@@ -1,0 +1,13 @@
+{
+  "candidateSha": "39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27",
+  "diagnostic": "Exact existing waitRows predicate plus follow-up count assertion accept one assigned-host row under the coordinator own filter",
+  "expectedMeetingOwner": "coordinator",
+  "renderedMeetingOwner": "assigned",
+  "existingAssertionsAcceptWrongOwner": true,
+  "kind": "small predicate counterexample, not a full-app reproduction",
+  "adminEndpointCoverage": {
+    "bookingPagesGetReferenced": false,
+    "coordinatorGrantsGetReferenced": false
+  },
+  "productionRequests": 0
+}
