@@ -471,3 +471,8 @@ phone-change API or evidence of a real SMS/WhatsApp ownership check.
 ### Existing logout-all compatibility (inactive)
 
 For authoritative accounts only, actual User.passwordChangedAt transitions also advance the shared credential epoch/revision with atomic system audit. This preserves the current logout-all marker and security actions that write it. Equal timestamps do nothing; clearing/backdating cannot revive an old epoch. Password hashes and per-app memberships stay unchanged. Staged/legacy identities are unaffected. The actual PostgreSQL case includes both audiences, audit-failure rollback, no-op and clearing, and staged isolation. Legacy password reset still must be fenced: this revocation bridge never adopts its new hash as the canonical password. No current route or production cutover is activated.
+
+
+### Retained application security revisions (inactive)
+
+SQL guards also make grant/membership keys and original member actor immutable, reject revision rollback, and require a new version for actual status/role transitions. Those rows cannot be deleted or truncated and then recreated with an old version; revoke through a new revision instead. Normal services still require current administrator authorization and atomic audit. An actor correction is a separate reviewed migration. Two dedicated disposable-PG groups check failed mutations preserve row counts, valid monotonic reactivation and sibling isolation. This candidate requires its own exact-source hosted gate; no current application route uses these tables.

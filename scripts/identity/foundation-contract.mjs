@@ -7,6 +7,7 @@ import { writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { checkCanonicalPasswordLogin } from "./mobile-password-contract.mjs"
+import { checkApplicationRevisions } from "./application-revision-contract.mjs"
 import { checkMembershipTransactions } from "./membership-contract.mjs"
 import { checkPhoneProofTransactions } from "./phone-proof-contract.mjs"
 import { admitContractTarget } from "./postgres-contract.mjs"
@@ -380,6 +381,8 @@ async function main() {
     await expectDatabaseError(() => admin.$executeRawUnsafe('TRUNCATE identity_actor_bindings CASCADE'), "23514")
     assert.equal(await admin.identityApplicationMembership.count({ where: { organizationId: A, userId: binding.userId } }), 2)
     receipt.checks.push("independent_mobile_memberships_require_tenant_person_binding_and_existing_grant")
+
+    await checkApplicationRevisions({ admin, actor, checks: receipt.checks, phase: value => { phase = value } })
 
     await checkPhoneProofTransactions({ admin, writer, failing, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
 

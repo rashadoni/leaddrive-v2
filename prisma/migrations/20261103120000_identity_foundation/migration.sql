@@ -255,6 +255,44 @@ END $$;
 CREATE TRIGGER identity_account_revision_guard BEFORE UPDATE ON identity_accounts
   FOR EACH ROW EXECUTE FUNCTION identity_guard_account_revision();
 
+-- App security state is retained and monotonic, including under future
+-- writers. Delete/recreate or a same-version reactivation must never revive
+-- an old JWT. Historical actor changes require a separately reviewed migration.
+CREATE FUNCTION identity_guard_application_revision() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP <> 'UPDATE' THEN
+    RAISE EXCEPTION 'IDENTITY_APPLICATION_STATE_RETAINED' USING ERRCODE = '23514';
+  END IF;
+  IF NEW."organizationId" IS DISTINCT FROM OLD."organizationId" OR NEW."userId" IS DISTINCT FROM OLD."userId"
+      OR NEW.application IS DISTINCT FROM OLD.application THEN
+    RAISE EXCEPTION 'IDENTITY_APPLICATION_SCOPE_IMMUTABLE' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.version < OLD.version THEN
+    RAISE EXCEPTION 'IDENTITY_APPLICATION_REVISION_ROLLBACK' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.status IS DISTINCT FROM OLD.status AND NEW.version <= OLD.version THEN
+    RAISE EXCEPTION 'IDENTITY_APPLICATION_REVISION_REQUIRED' USING ERRCODE = '23514';
+  END IF;
+  IF TG_TABLE_NAME = 'identity_application_grants' THEN
+    IF NEW.role IS DISTINCT FROM OLD.role AND NEW.version <= OLD.version THEN
+      RAISE EXCEPTION 'IDENTITY_APPLICATION_REVISION_REQUIRED' USING ERRCODE = '23514';
+    END IF;
+  ELSE
+    IF NEW."actorId" IS DISTINCT FROM OLD."actorId" THEN
+      RAISE EXCEPTION 'IDENTITY_MEMBERSHIP_ACTOR_IMMUTABLE' USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER identity_grant_revision_guard BEFORE UPDATE OR DELETE ON identity_application_grants
+  FOR EACH ROW EXECUTE FUNCTION identity_guard_application_revision();
+CREATE TRIGGER identity_grant_truncate_guard BEFORE TRUNCATE ON identity_application_grants
+  FOR EACH STATEMENT EXECUTE FUNCTION identity_guard_application_revision();
+CREATE TRIGGER identity_membership_revision_guard BEFORE UPDATE OR DELETE ON identity_application_memberships
+  FOR EACH ROW EXECUTE FUNCTION identity_guard_application_revision();
+CREATE TRIGGER identity_membership_truncate_guard BEFORE TRUNCATE ON identity_application_memberships
+  FOR EACH STATEMENT EXECUTE FUNCTION identity_guard_application_revision();
+
 -- Only reviewed authoritative identities are affected. Do not lock proofs or
 -- outboxes here: normal writers lock User before account and recheck epochs.
 CREATE FUNCTION identity_person_lifecycle_changed() RETURNS trigger LANGUAGE plpgsql AS $$
