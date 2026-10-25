@@ -343,7 +343,7 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
       await prisma.organization.create({ data: { id: company, name: "Fictional boundary company", slug: company, modules: { "route-field": true, personnel: false } } })
       const hash = await bcrypt.hash(password, 4)
       const user = await prisma.user.create({ data: { organizationId: company, name: "Fictional boundary person", email: "boundary@example.invalid", passwordHash: hash, role: "viewer" } })
-      const card = await prisma.mtmAgent.create({ data: { organizationId: company, userId: user.id, name: "Fictional boundary field card", phone, role: "AGENT", passwordHash: hash } })
+      const card = await prisma.mtmAgent.create({ data: { organizationId: company, userId: user.id, name: "Fictional boundary field card", email: "boundary@example.invalid", phone, role: "AGENT", passwordHash: hash } })
       return { userId: user.id, cardId: card.id }
     })
     const response = await post(signIn, "", { phone, password, organizationSlug: company })
@@ -356,12 +356,45 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
       prisma.mtmAgent.findUniqueOrThrow({ where: { id: cardId }, select: { passwordHash: true, userId: true, status: true } }),
     ]))
     const before = await credentials()
+    expect((await post(signIn, "", { email: "boundary@example.invalid", password, organizationSlug: company })).status).toBe(200)
+    expect((await post(requestCode, "/code", { phone, organizationSlug: company })).status).toBe(200)
+    expect(sent).toHaveLength(1)
+    const verified = await post(verifyCode, "/code/verify", { phone, organizationSlug: company, code: codeOf(sent[0]) })
+    expect(verified.status).toBe(200)
+    const setupToken = (await verified.json()).data.setupToken as string
+    expect(setupToken).toEqual(expect.any(String))
+    sent.length = 0
     // Synthetic authority assumption only, not proof/enrollment or activation
     // tooling: even an incomplete canonical record must not restore old auth.
     await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId,
       cutoverAt: new Date(), passwordHash: "!fixture-canonical-boundary" } }))
     expect(await resolveMobileAuth(request())).toBeNull()
+    expect((await post(signIn, "", { phone, password, organizationSlug: company })).status).toBe(401)
+    expect((await post(signIn, "", { email: "boundary@example.invalid", password, organizationSlug: company })).status).toBe(401)
+    expect((await post(setPassword, "/password", { setupToken, password: "Different-Boundary-Pass-2026!" })).status).toBe(401)
+    // Remove the ordinary cooldown as an alternative explanation for no send.
+    await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: company, phone }, data: { createdAt: new Date(Date.now() - 120_000) } }))
+    const asked = await post(requestCode, "/code", { phone, organizationSlug: company })
+    expect(asked.status).toBe(200)
+    expect((await asked.json()).data.sent).toBe(true)
+    expect((await post(verifyCode, "/code/verify", { phone, organizationSlug: company, code: "000000" })).status).toBe(400)
     expect(await credentials()).toEqual(before)
+    expect(sent).toHaveLength(0)
+  })
+
+  it("does not adopt a canonical User through the legacy same-email auto-link", async () => {
+    const company = "identity-legacy-email-boundary", email = "unlinked@example.invalid", password = "Fictional-Unlinked-Pass-2026!"
+    const cardId = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional unlinked company", slug: company, modules: { "route-field": true } } })
+      const user = await prisma.user.create({ data: { organizationId: company, name: "Fictional canonical person", email, passwordHash: await bcrypt.hash(password, 4), role: "viewer" } })
+      await prisma.identityAccount.create({ data: { organizationId: company, userId: user.id, cutoverAt: new Date(), passwordHash: "!fixture-canonical-boundary" } })
+      return (await prisma.mtmAgent.create({ data: { organizationId: company, name: "Fictional unlinked card", email, role: "AGENT" } })).id
+    })
+    expect((await post(signIn, "", { email, password, organizationSlug: company })).status).toBe(401)
+    await bypass(async () => {
+      expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: cardId } })).userId).toBeNull()
+      expect(await prisma.mtmAuditLog.count({ where: { organizationId: company, action: "AUTO_LINK" } })).toBe(0)
+    })
     expect(sent).toHaveLength(0)
   })
 

@@ -11,7 +11,7 @@ import {
   linkedUserCredentials,
   mobileAppRefusal,
   mobileLoginSuccess,
-  officeEmployeeMaySignIn,
+  legacyMobileMaySignIn,
   passwordSetupStillFresh,
   readPasswordSetupToken,
 } from "@/lib/mtm/mobile-login-session"
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         include: { organization: { select: MOBILE_LOGIN_ORGANIZATION_SELECT } },
       })
       if (!row || row.status !== "ACTIVE" || !row.organization.isActive || !passwordSetupStillFresh(row, setup.fingerprint)) return expired()
-      if (!(await officeEmployeeMaySignIn(row))) return expired()
+      if (!(await legacyMobileMaySignIn(row))) return expired()
       const refusal = mobileAppRefusal(row)
       if (refusal) return refusal
 

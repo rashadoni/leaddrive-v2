@@ -14,7 +14,8 @@ import {
   linkedUserCredentials,
   mobileAppRefusal,
   mobileLoginSuccess,
-  officeEmployeeMaySignIn,
+  legacyMobileMaySignIn,
+  legacyLinkedUserMaySignIn,
   type LinkedUserCredentials,
   type MobileLoginAgent,
 } from "@/lib/mtm/mobile-login-session"
@@ -237,7 +238,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    if (!(await officeEmployeeMaySignIn(agent))) {
+    if (!(await legacyMobileMaySignIn(agent))) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
@@ -313,6 +314,10 @@ export async function POST(req: NextRequest) {
       if (!linkedUserCredentialState) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
       }
+    }
+
+    if (linkedUserId && !(await legacyLinkedUserMaySignIn(agent.organizationId, linkedUserId))) {
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
     const refusal = mobileAppRefusal(agent)

@@ -54,6 +54,10 @@ vi.mock("@/lib/rate-limit", () => ({
   hashForRateLimit: vi.fn(async (s: string) => s),
 }))
 
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({
+  readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"),
+}))
+
 vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn().mockResolvedValue("hashed-pw"), compare: vi.fn() },
 }))
@@ -99,6 +103,7 @@ import { prisma } from "@/lib/prisma"
 import { getOrgId, getSession, requireAuth } from "@/lib/api-auth"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import bcrypt from "bcryptjs"
+import { readLegacyCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
 
 const ORG = "org-1"
 const MOBILE_ORG = {
@@ -129,6 +134,7 @@ function pp(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(readLegacyCredentialBoundary).mockResolvedValue("LEGACY")
   vi.mocked(getOrgId).mockResolvedValue(ORG)
   vi.mocked(getSession).mockResolvedValue({
     orgId: ORG,
