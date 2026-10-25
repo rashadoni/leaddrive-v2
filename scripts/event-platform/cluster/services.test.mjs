@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { expandCatalog, loadCatalog, loadTopology } from './render.mjs'
 import { readFileSync } from 'node:fs'
-import { PRINCIPALS, aclBindings, connectSecretEnv, infraTopics, registrySecretEnv, renderServiceHost, renderSourceConnector } from './services.mjs'
+import { PRINCIPALS, aclBindings, connectSecretEnv, heartbeatTopic, infraTopics, registrySecretEnv, renderServiceHost, renderSourceConnector } from './services.mjs'
 
 const topology = loadTopology()
 const topics = expandCatalog(loadCatalog(), 'prod')
@@ -80,4 +80,15 @@ test('Connect reaches the source by its certificate name over the overlay and ke
   assert.equal(connector.config['database.password'], '${file:/etc/kafka/secrets/cdc.properties:password}')
   assert.equal(connector.config['slot.name'], 'leaddrive_event_outbox_prod')
   assert.equal(connector.config['transforms.outbox.route.topic.replacement'], 'ld.prod.$1.events.v1')
+  // Heartbeats keep the slot moving while the outbox is quiet; their topic is
+  // a platform topic under the prefix Connect may write, never an events topic.
+  assert.equal(connector.config['heartbeat.interval.ms'], '60000')
+  const beat = `${connector.config['topic.heartbeat.prefix']}.${connector.config['topic.prefix']}`
+  assert.equal(beat, heartbeatTopic('prod'))
+  assert.ok(infraTopics('prod').some((t) => t.name === beat))
+  assert.ok(grantsFor(PRINCIPALS.connect).some((g) => /--operation Write .*--topic ld\.prod\.connect\. --resource-pattern-type prefixed/.test(g)) && beat.startsWith('ld.prod.connect.'))
+  assert.doesNotMatch(beat, /\.events\.v1$/)
+  // The heartbeat's own WAL message is consumed, never emitted as a record.
+  assert.match(connector.config['heartbeat.action.query'], /^SELECT pg_logical_emit_message\(false, '([a-z-]+)', ''\)$/)
+  assert.equal(connector.config['message.prefix.exclude.list'], `${connector.config['heartbeat.action.query'].match(/'([a-z-]+)'/)[1]}.*`)
 })
