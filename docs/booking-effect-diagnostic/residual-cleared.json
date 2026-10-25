@@ -1,0 +1,44 @@
+{
+  "source": {
+    "threadId": "01a171e6-f877-7020-bd5e-6c3a3b478f28",
+    "hostId": "local",
+    "turnId": "01a17438-b005-7622-9d3d-12c47486e71a",
+    "method": "Actual authenticated native-browser read; sanitized final response"
+  },
+  "observedUTC": "2026-10-25T18:00:51Z",
+  "shaBefore": "e04595d429c0c134275413627fbdc95640d6a848",
+  "shaAfter": "e04595d429c0c134275413627fbdc95640d6a848",
+  "totals": {
+    "succeeded": 16,
+    "pending": 0
+  },
+  "allRequiresAttentionFalse": true,
+  "A": {
+    "bookingId": "cmvnycd8f000ukp9m9n847z7e",
+    "status": "cancelled",
+    "version": 2,
+    "project": {
+      "succeeded": 2
+    }
+  },
+  "B": {
+    "bookingId": "cmvnycim5000ykp9m0tqzyfyt",
+    "status": "cancelled",
+    "version": 2,
+    "project": {
+      "succeeded": 2
+    }
+  },
+  "lastPendingObservationUTC": "2026-10-25T17:41:10Z",
+  "manualRetryOrDispatch": false,
+  "productionDiagnosticInvoked": false,
+  "newDiagnosticPR": {
+    "number": 1055,
+    "state": "closed",
+    "merged": false
+  },
+  "limits": [
+    "Exact historical lastError, availableAt and completion time were not recovered.",
+    "No recipient-delivery or real Google Calendar acceptance in this observation."
+  ]
+}
