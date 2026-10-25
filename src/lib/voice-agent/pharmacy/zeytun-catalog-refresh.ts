@@ -24,8 +24,13 @@ export async function refreshZeytunLineCatalog(env: { grantFile?: string; cacheD
   try { input = await readPrivate(join(dirname(env.grantFile), ZEYTUN_CONNECTION_FILE), 16_384) }
   catch { return { outcome: "not_configured" as const } }
   const config = parseZeytunBalanceConfig(input)
-  const cache = new ZeytunBalanceCache(config, new ZeytunSnapshotStore(env.cacheDir, config.organizationId, zeytunBalanceScopeKey(config)),
-    undefined, undefined, 60 * 60_000, 2 * 60 * 60_000)
+  const store = new ZeytunSnapshotStore(env.cacheDir, config.organizationId, zeytunBalanceScopeKey(config))
+  // Not due yet: answer from the attempt record alone. Building the cache
+  // parses the stored 14 MB snapshot (~2 s on this process, which also answers
+  // the line's calls) just to learn it is throttled.
+  const attempt = await store.readAttempt()
+  if (attempt && Date.now() < attempt.nextAttemptAt) return { outcome: "throttled" as const, nextAttemptAt: attempt.nextAttemptAt }
+  const cache = new ZeytunBalanceCache(config, store, undefined, undefined, 60 * 60_000, 2 * 60 * 60_000)
   await cache.restore()
   return cache.refresh()
 }

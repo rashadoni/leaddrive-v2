@@ -59,6 +59,32 @@ export class ZeytunSnapshotStore {
     })
   }
 
+  /** The stored snapshot's version and observation time from its header line
+   * alone: no payload read, no hashing. A cheap "has it changed?" before a
+   * caller re-parses 14 MB on the thread that also answers calls. */
+  async peek(): Promise<{ version: string; observedAt: string } | null> {
+    return this.safe(async () => {
+      await this.ensureRoot()
+      let handle
+      try { handle = await open(join(this.root, `${this.scopeKey}.snapshot`), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK) }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return null
+        throw error
+      }
+      try {
+        const stat = await handle.stat()
+        this.assertPrivateFile(stat)
+        const head = Buffer.alloc(Math.min(2048, stat.size))
+        const { bytesRead } = await handle.read(head, 0, head.length, 0)
+        const separator = head.subarray(0, bytesRead).indexOf(10)
+        if (separator < 1) throw new ZeytunSnapshotStoreError()
+        const metadata = metadataSchema.parse(JSON.parse(head.subarray(0, separator).toString("utf8")))
+        if (metadata.scopeKey !== this.scopeKey || metadata.organizationId !== this.organizationId) throw new ZeytunSnapshotStoreError()
+        return { version: metadata.version, observedAt: metadata.observedAt }
+      } finally { await handle.close() }
+    })
+  }
+
   /** Caller validates the entire feed before saving, while holding withLock. */
   async save(snapshot: ZeytunStoredSnapshot): Promise<void> {
     return this.safe(async () => {

@@ -87,6 +87,13 @@ describe("private inbound pilot host", () => {
     const catalog = await f.host.loadCatalog(line)
     expect(catalog.version).toMatch(/^[a-f0-9]{64}$/)
   })
+  it("reads only the snapshot header to learn whether it changed", async () => {
+    const f = await fixture()
+    const store = new ZeytunSnapshotStore(join(f.root, "catalog"), f.config.approvedSource.organizationId, f.config.approvedSource.scopeKey)
+    expect(await store.peek()).toEqual({ version: (f.config as { approvedSource: { catalogVersion: string } }).approvedSource.catalogVersion,
+      observedAt: f.config.issuedAt })
+    expect(await new ZeytunSnapshotStore(join(f.root, "catalog"), f.config.approvedSource.organizationId, "b".repeat(64)).peek()).toBeNull()
+  })
   it("refuses to open a session when the durable test marker cannot be written", async () => {
     const f = await fixture(); f.state.writes = []
     expect(await f.host.claim(f.config, f.call)).toBe(false)
