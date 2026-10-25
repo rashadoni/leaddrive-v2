@@ -177,6 +177,22 @@ class InboundBrowserAgiTest(unittest.TestCase):
         self.assertEqual(payload["toNumber"], DID)
         uuid.UUID(payload["eventId"])
 
+    def test_ringing_names_the_number_dialled_when_the_channel_has_one(self):
+        for dnid, expected in [("994995111103", "994995111103"), ("+994125553065", "+994125553065"),
+                               ("unknown", DID), ("", DID), ("12; DROP", DID)]:
+            client = FakeClient()
+            with tempfile.TemporaryDirectory() as spool:
+                result = agi.run_mode(
+                    mode="ringing",
+                    arguments=[CALL_ID, DID],
+                    agi_variables={"agi_callerid": CALLER, "agi_extension": "s", "agi_dnid": dnid},
+                    client=client,
+                    spool_dir=Path(spool),
+                    output=io.StringIO(),
+                )
+            self.assertEqual(result, 0, dnid)
+            self.assertEqual(client.lifecycle_payloads[0]["toNumber"], expected, dnid)
+
     def test_identify_generates_a_canonical_uuid_without_asterisk_func_uuid(self):
         client = FakeClient()
         output = io.StringIO()
