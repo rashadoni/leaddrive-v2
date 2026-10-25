@@ -188,7 +188,15 @@ try {
 } catch (error) {
   result.status = "FAIL"
   // No raw SQL, credentials, cookie values, login response URLs or stack dump.
-  result.failureCode = error?.code === "ERR_ASSERTION" ? "ASSERTION" : "RUNTIME"
+  result.failureCode = error?.code === "ERR_ASSERTION" ? "ASSERTION"
+    : /^P[0-9]{4}$/.test(error?.code ?? "") ? error.code
+      : error?.name === "TimeoutError" ? "BROWSER_TIMEOUT" : "RUNTIME"
+  if (error?.code === "ERR_ASSERTION") {
+    result.assertionTypes = { actual: typeof error.actual, expected: typeof error.expected }
+    if (typeof error.actual === "number" && typeof error.expected === "number") {
+      result.assertionStatus = { actual: error.actual, expected: error.expected }
+    }
+  }
   process.stderr.write(`IDENTITY_CRM_BROWSER_FAIL phase=${result.phase} code=${result.failureCode}\n`)
   process.exitCode = 1
 } finally {
