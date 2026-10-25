@@ -97,5 +97,11 @@ test('Connect reaches the source by its certificate name over the overlay and ke
   assert.doesNotMatch(beat, /\.events\.v1$/)
   // The heartbeat's own WAL message is consumed, never emitted as a record.
   assert.match(connector.config['heartbeat.action.query'], /^SELECT pg_logical_emit_message\(false, '([a-z-]+)', ''\)$/)
-  assert.equal(connector.config['message.prefix.exclude.list'], `${connector.config['heartbeat.action.query'].match(/'([a-z-]+)'/)[1]}.*`)
+  // Allow-list that admits nothing: neither the heartbeat nor any foreign
+  // prefix is emitted, so no message can hit the unwritable .message topic.
+  const prefix = connector.config['heartbeat.action.query'].match(/'([a-z-]+)'/)[1]
+  assert.equal(connector.config['message.prefix.exclude.list'], undefined)
+  const allowed = connector.config['message.prefix.include.list'].split(',')
+  assert.ok(allowed.length === 1 && !new RegExp(`^(?:${allowed[0]})$`).test(prefix), 'the heartbeat prefix is not emitted')
+  for (const foreign of ['drill-foreign-prefix', 'pgaudit', 'wal2json', '']) assert.ok(!new RegExp(`^(?:${allowed[0]})$`).test(foreign))
 })

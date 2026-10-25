@@ -465,6 +465,20 @@ missing="$(comm -23 <(seq 1 12 | sort) <(sort "$work/cdc-restart.txt"))"
 slot_caught_up || fail "the slot fell behind after the restart"
 echo "12/12 outbox rows in Kafka across a task restart amid other traffic"
 
+step "A foreign logical-decoding message neither kills the task nor reaches Kafka"
+# Production 2026-10-25 13:04 UTC: one message with an unexcluded prefix was
+# routed to the unwritable cdc-source.message topic and killed the task.
+pgq -c "select pg_logical_emit_message(true, 'drill-foreign-prefix', 'must not leave PostgreSQL')" >/dev/null
+outbox_row 13 | pgq >/dev/null
+sleep 15
+connector_running || { connector_status | cut -c1-1500; echo; fail "a foreign logical message killed the connector task"; }
+KAFKA_TIMEOUT=90 kafka kafka-console-consumer.sh --bootstrap-server "$bootstrap_scram" --consumer.config /client/fund.properties \
+  --topic "$finance_events" --group "ld.$env.fund-shadow.cdc-foreign" --from-beginning --timeout-ms 20000 2>/dev/null \
+  | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$' | sort -n | uniq >"$work/cdc-foreign.txt" || true
+grep -qx 13 "$work/cdc-foreign.txt" || fail "the outbox row after the foreign message did not reach Kafka"
+slot_caught_up || fail "the slot fell behind after the foreign message"
+echo "foreign message skipped; task RUNNING; the next outbox row arrived"
+
 step "Registry keeps schemas in Kafka across a restart"
 schema='{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["amount"],"properties":{"amount":{"type":"string"}}}'
 body="$(node -e 'console.log(JSON.stringify({ artifactId: "fund-transaction-recorded", artifactType: "JSON", firstVersion: { content: { content: process.argv[1], contentType: "application/json" } } }))' "$schema")"
