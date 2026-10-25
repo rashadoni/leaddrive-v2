@@ -167,7 +167,19 @@ jobs:
           # Apply the real template identity migration after the historical
           # proof. It preserves rows and replaces the stricter old unique key;
           # schema push must still refuse any other unreviewed destructive change.
-          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f prisma/migrations/20261028091000_whatsapp_template_channel_identity/migration.sql
+          # The database was pushed from the PR's base schema: a base that
+          # already carries the migration has the new key and not the old one,
+          # and replaying it would collide. Any other combination is refused.
+          template_keys="$(psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -At -c "SELECT count(*) FILTER (WHERE indexname = 'whatsapp_templates_org_channel_name_language_key') || ':' || count(*) FILTER (WHERE indexname = 'whatsapp_templates_organizationId_name_language_key') FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'whatsapp_templates'")"
+          case "$template_keys" in
+            0:1) psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f prisma/migrations/20261028091000_whatsapp_template_channel_identity/migration.sql ;;
+            1:0) echo "Base schema already carries 20261028091000_whatsapp_template_channel_identity" ;;
+            *) echo "::error::Unexpected whatsapp_templates unique keys (new:old = $template_keys)"; exit 1 ;;
+          esac
+          # Booking ids are already global primary keys. Add their redundant
+          # tenant keys explicitly on this seeded disposable fixture too. Do
+          # not accept Prisma's blanket data-loss override for schema alignment.
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE UNIQUE INDEX IF NOT EXISTS "booking_pages_org_id_key" ON "booking_pages"("organizationId", "id"); CREATE UNIQUE INDEX IF NOT EXISTS "bookings_org_id_key" ON "bookings"("organizationId", "id");'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
       - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
         run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1

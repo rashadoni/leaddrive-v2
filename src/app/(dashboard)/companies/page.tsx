@@ -245,7 +245,7 @@ export default function CompaniesPage() {
         }
       />
       <PageDescription text={t("pageDescription")} />
-      <DidYouKnow page="companies" className="mb-4" />
+      <DidYouKnow page="companies" variant="disclosure" className="mb-4" />
 
       <div data-tour-id="companies-stats" className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
       </div>

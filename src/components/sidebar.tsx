@@ -11,6 +11,7 @@ import {
   RAW_LOCATION_CHANGE_EVENT,
   SUPPORT_NAV_SECTION_ORDER,
   accessibleNavItems,
+  navItemMatchesSearch,
   navItemPathname,
   activeNavBase,
   type NavItem,
@@ -261,17 +262,16 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     }))
   }, [accessibleItems, groups])
 
-  // Search results — flat list of items whose translated label OR group name
-  // includes the query (case-insensitive). Returns null when query is empty
+  // Search results match translated labels/aliases, groups and Support sections
+  // case-insensitively. Returns null when query is empty
   // so the rendering branch can fall back to the normal grouped accordion.
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return null
     return accessibleItems.filter((item) => {
-      const label = t(item.tKey).toLowerCase()
       const groupLabel = t(`groups.${item.group}`).toLowerCase()
       const sectionLabel = item.supportSection ? t(`supportSections.${item.supportSection}`).toLowerCase() : ""
-      return label.includes(q) || groupLabel.includes(q) || sectionLabel.includes(q)
+      return navItemMatchesSearch(item, q, t) || groupLabel.includes(q) || sectionLabel.includes(q)
     })
   }, [searchQuery, accessibleItems, t])
 

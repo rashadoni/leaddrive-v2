@@ -272,6 +272,7 @@ jobs:
           node --test scripts/backup/migration-ledger-exceptions.test.mjs
           node --test scripts/backup/evidence-main-window.test.mjs
           node --test scripts/event-platform/topology.test.mjs scripts/event-platform/cluster/render.test.mjs scripts/event-platform/cluster/network.test.mjs scripts/event-platform/cluster/provision.test.mjs scripts/event-platform/cluster/services.test.mjs scripts/event-platform/cluster/health.test.mjs
+          node --test scripts/event-platform/retire-cdc-source.test.mjs
           node --test .github/scripts/test-inspect-backup-compatibility.mjs
 
       - name: Event-platform migration and database invariant gate
@@ -371,6 +372,30 @@ jobs:
         env:
           AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           AD_CONVERSIONS_DB_GATE: required
+
+      - name: Pharmacy phone orders database gate
+        # Phone orders on a real Postgres under the application's role: the
+        # list a call saves, a second save from the same call, eight calls
+        # numbered at once, the manager's card, and one organization never
+        # seeing another's orders.
+        run: npx vitest run src/__tests__/pharmacy-phone-orders-postgres.test.ts
+        env:
+          PHARMACY_PHONE_ORDERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          PHARMACY_PHONE_ORDERS_DB_GATE: required
+
+      - name: Booking release admission and recovery contract gate
+        run: node --test scripts/booking/release-contract.test.mjs
+        env:
+          BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Company VÖEN database gate
+        # A company's VÖEN on a real Postgres: ten digits or refused, the
+        # duplicate warning sees this organization only, and the tax registry's
+        # card (through the Fanum station relay, stood in) is read, not written.
+        run: npx vitest run src/__tests__/company-voen-postgres.test.ts
+        env:
+          COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          COMPANY_VOEN_DB_GATE: required
 
       - name: Online booking database gate
         # Online booking (/book/<slug>) on a real Postgres: eight customers on

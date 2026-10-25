@@ -84,6 +84,34 @@ describe("middleware", async () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://app.leaddrivecrm.org"
   })
 
+  describe("Time download public boundary", () => {
+    it.each(["/time", "/time/download", "/api/v1/public/time-app/latest"])("admits anonymous %s without requesting device permissions", async pathname => {
+      const res = await authMiddleware(makeReq({ pathname, host: "app.leaddrivecrm.org", auth: null }))
+      expect(res.status).toBe(200)
+      expect(res.headers.get("permissions-policy")).toBe("camera=(), microphone=(), geolocation=()")
+    })
+    it.each(["az", "ru", "en"])("selects the link language %s over a cookie", async lang => {
+      const res = await authMiddleware(makeReq({ pathname: `/time?lang=${lang}`, host: "app.leaddrivecrm.org", cookies: { NEXT_LOCALE: "ru" } }))
+      expect(forwardedRequestHeader(res, "x-locale")).toBe(lang)
+    })
+    it("defaults to Azerbaijani and respects the existing locale cookie", async () => {
+      const first = await authMiddleware(makeReq({ pathname: "/time", host: "app.leaddrivecrm.org" }))
+      expect(forwardedRequestHeader(first, "x-locale")).toBe("az")
+      const known = await authMiddleware(makeReq({ pathname: "/time?lang=invalid", host: "app.leaddrivecrm.org", cookies: { NEXT_LOCALE: "en" } }))
+      expect(forwardedRequestHeader(known, "x-locale")).toBe("en")
+    })
+    it.each(["/timesheets", "/time-admin"])("does not exempt similarly named protected routes: %s", async pathname => {
+      const res = await authMiddleware(makeReq({ pathname, host: "app.leaddrivecrm.org" }))
+      expect(res.status).toBe(307)
+      expect(res.headers.get("location")).toContain("/login")
+    })
+    it("keeps latest-version requests behind the existing public GET rate limit", async () => {
+      vi.mocked(checkRateLimit).mockReturnValue(false)
+      const res = await authMiddleware(makeReq({ pathname: "/api/v1/public/time-app/latest", host: "app.leaddrivecrm.org" }))
+      expect(res.status).toBe(429)
+    })
+  })
+
   // ─── Auth redirect ────────────────────────────────────────
 
   it("redirects unauthenticated users from /dashboard to /login", async () => {

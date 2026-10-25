@@ -382,7 +382,7 @@ export default function CalculatedInsightsPage() {
         {!loading && data && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card text-card-foreground">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <User className="w-3 h-3" /> {t("kpiProfiles")}
                 </p>
@@ -394,7 +394,7 @@ export default function CalculatedInsightsPage() {
                   title={t("trendDeltaTitle")}
                 />
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card text-card-foreground">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <DollarSign className="w-3 h-3" /> {t("kpiProjectedLtv")}
                 </p>
@@ -419,10 +419,10 @@ export default function CalculatedInsightsPage() {
                 />
               </MotionCard>
               <MotionCard
-                className={`p-3 border rounded-lg ${
+                className={`p-3 border rounded-lg text-card-foreground ${
                   data.highRiskCount > 0
                     ? "border-red-300 dark:border-red-800 bg-red-50/70 dark:bg-red-500/10"
-                    : "border-zinc-200 dark:border-zinc-700"
+                    : "border-zinc-200 dark:border-zinc-700 bg-card"
                 }`}
               >
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -442,7 +442,7 @@ export default function CalculatedInsightsPage() {
                   title={t("trendDeltaTitle")}
                 />
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card text-card-foreground">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Brain className="w-3 h-3" /> {t("kpiAvgEngagement")}
                 </p>
@@ -544,10 +544,10 @@ export default function CalculatedInsightsPage() {
                       return (
                         <MotionCard
                           key={p.id}
-                          className={`p-4 border rounded-lg transition-colors ${
+                          className={`p-4 border rounded-lg text-card-foreground transition-colors ${
                             p.isStalePriority
                               ? "border-amber-300 dark:border-amber-700 border-l-4 border-l-amber-500 bg-amber-50/70 dark:bg-amber-500/10"
-                              : "border-zinc-200 dark:border-zinc-700"
+                              : "border-zinc-200 dark:border-zinc-700 bg-card"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
