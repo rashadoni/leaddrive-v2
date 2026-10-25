@@ -114,6 +114,23 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(response["response"], {"status": "saved", "orderNumber": "TS-1024", "total": "170.40",
             "currency": "AZN", "notFound": ["fluimusil üç qutu"], "unpriced": []})
 
+    def test_save_carries_the_pharmacy_the_caller_named(self):
+        self.save_args({"lines": [{"quantity": 2, "unit": "qutu", "spoken": "iki qutu"}], "pharmacy": " Zəfər Aptek "})
+        self.assertEqual(self.requests[-1], {"action": "order", "callId": CALL,
+            "lines": [{"quantity": 2, "unit": "qutu", "spoken": "iki qutu"}], "pharmacy": "Zəfər Aptek"})
+        sent = len(self.requests)
+        for bad in [{"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}], "pharmacy": ""},
+                    {"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}], "pharmacy": "x" * 121},
+                    {"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}], "customer": "y"}]:
+            self.assertEqual(self.save_args(bad, key="p-%d" % len(self.sent))["response"]["status"], "not_saved")
+        self.assertEqual(len(self.requests), sent)
+
+    def save_args(self, args, key="save-args"):
+        self.finished.clear()
+        self.handle({"toolCall": {"functionCalls": [{"id": key, "name": "save_order_list", "args": args}]}})
+        self.assertTrue(self.finished.wait(2))
+        return self.sent[-1]["toolResponse"]["functionResponses"][0]
+
     def test_a_malformed_save_never_reaches_the_crm(self):
         sent = len(self.requests)
         for lines in [[], [{"quantity": 0, "unit": "qutu", "spoken": "x"}], [{"quantity": 1, "unit": "qutu"}],

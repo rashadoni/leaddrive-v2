@@ -72,6 +72,21 @@ describe("private inbound pilot host", () => {
     const persisted = await readFile(join(f.root, `inbound-${f.config.id}.claim`), "utf8")
     expect(persisted).not.toContain(f.config.testPhoneE164)
   })
+  it("on the line claims every call by itself and reads the newest snapshot", async () => {
+    const f = await fixture()
+    const line: InboundPilotConfig = { version: 1, enabled: true, purpose: "zeytun_line", id: "dddddddd-1111-4111-8111-111111111111",
+      organizationId: f.config.organizationId, channelConfigId: f.config.channelConfigId, issuedAt: f.config.issuedAt,
+      expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
+      approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey } }
+    const other = { ...f.call, id: "other-call", providerCallId: "cccccccc-1111-4111-8111-111111111111" }
+    f.state.writes = [{ id: f.call.id }, { id: other.id }]
+    expect(await Promise.all([f.host.claim(line, f.call), f.host.claim(line, other)])).toEqual([true, true])
+    expect(await f.host.isClaimed(line, other)).toBe(true)
+    await readFile(join(f.root, `line-${line.id}-${other.providerCallId}.claim`), "utf8")
+    // No version in the grant: the snapshot on disk is taken as it is.
+    const catalog = await f.host.loadCatalog(line)
+    expect(catalog.version).toMatch(/^[a-f0-9]{64}$/)
+  })
   it("refuses to open a session when the durable test marker cannot be written", async () => {
     const f = await fixture(); f.state.writes = []
     expect(await f.host.claim(f.config, f.call)).toBe(false)

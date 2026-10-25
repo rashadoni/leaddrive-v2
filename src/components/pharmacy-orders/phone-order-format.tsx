@@ -26,7 +26,7 @@ export function formatMoney(amount: string, locale: string) {
 }
 
 /** Date and time (default), date only (false) or time only ("time"). */
-export function formatOrderDate(iso: string, locale: string, part: true | false | "time" = true) {
+export function formatOrderDate(iso: string, locale: string, part: true | false | "time" = true): string {
   const date = new Date(iso)
   if (part === "time") return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date)
   if (!part) return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric" }).format(date)

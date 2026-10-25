@@ -206,8 +206,14 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       <div className="grid gap-4 md:grid-cols-2">
         <section className={cn(CARD, "px-4 py-3")}>
           <h2 className="text-sm font-semibold">{t("pharmacyTitle")}</h2>
-          {testCall && !order.pharmacy.name ? (
-            <p className="mt-2 text-sm text-muted-foreground">{t("testCallNote")}</p>
+          {!order.pharmacy.name ? (
+            <p className="mt-2 text-sm text-muted-foreground">{t(testCall ? "testCallNote" : "unidentifiedNote")}</p>
+          ) : order.pharmacy.identification === "named_on_call" ? (
+            <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              <Field label={t("pharmacySpokenName")} value={order.pharmacy.name} strong />
+              <Field label={t("pharmacyHow")} value={t("identification.named_on_call")} />
+              <p className="col-span-2 text-[11px] text-muted-foreground">{t("spokenNameNote")}</p>
+            </div>
           ) : (
             <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
               <Field label={t("pharmacyName")} value={order.pharmacy.name} strong />
