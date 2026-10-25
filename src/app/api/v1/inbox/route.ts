@@ -274,6 +274,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         where: { id: { in: convIds }, organizationId: orgId },
         select: {
           id: true,
+          contactName: true,
           status: true,
           assignedTo: true,
           snoozedUntil: true,
@@ -293,6 +294,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       })
       type SocialState = {
         id: string
+        contactName: string | null
         status: string
         assignedTo: string | null
         snoozedUntil: Date | null
@@ -344,8 +346,15 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         const qualificationLeadId = typeof metadata.qualificationLeadId === "string"
           ? metadata.qualificationLeadId
           : null
+        // Instagram/Messenger/VK messages carry only the opaque sender id (IGSID/PSID/peer id) in
+        // `from`, so a thread with no CRM contact shows a 16-digit number. The webhook stores the
+        // resolved @username / name on the conversation (lib/social/meta-sender-profile) — show it.
+        const storedName = s?.contactName?.trim()
+        const showStoredName = !c.contactId && typeof c.contactName === "string"
+          && /^-?\d+$/.test(c.contactName) && !!storedName && !/^-?\d+$/.test(storedName)
         return s ? {
           ...c,
+          ...(showStoredName ? { contactName: storedName } : {}),
           status: s.status,
           assignedTo: s.assignedTo,
           snoozedUntil: s.snoozedUntil,

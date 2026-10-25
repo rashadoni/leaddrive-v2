@@ -36,12 +36,22 @@ export function ProfileTelegramCard() {
   useEffect(load, [load])
 
   async function startLink() {
+    // The tab is opened inside the tap and pointed at the link once it
+    // arrives. Opened after the await, the window no longer counts as the
+    // user's own and phone browsers block it (owner, 2026-10-25). If the
+    // browser blocks even this, «Open again» below is a plain link.
+    const tab = window.open("", "_blank")
     setBusy(true)
     const body = await fetch("/api/v1/profile/telegram", { method: "POST" }).then((r) => r.json()).catch(() => null)
     setBusy(false)
     if (body?.success) {
       setLink(body.data.url)
-      window.open(body.data.url, "_blank", "noopener,noreferrer")
+      if (tab) {
+        tab.opener = null
+        tab.location.href = body.data.url
+      }
+    } else {
+      tab?.close()
     }
   }
 

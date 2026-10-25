@@ -252,8 +252,19 @@ each Connect worker and registry, controller quorum and each voter, each
 broker's last fetch, offline / below-min-ISR / under-replicated partitions,
 disk use on every host, WireGuard peers, node certificate expiry.
 
-Not covered yet: consumer lag (no consumer runs), outbox-to-Kafka watermark
-age beyond what the slot shows, schemas, quarantine, archive, projections.
+Outbox parity (2026-10-25): every pass, the production probe lists the
+`event_outbox` rows of the last 3 hours except the newest 5 minutes, and the
+broker that answered for the cluster lists the `id` header of every record in
+`ld.prod.*.events.v1` from 3 hours 10 minutes back (its own consumer group,
+reset by time, read until each partition's noted end). An outbox `eventId`
+missing from Kafka is critical («События из базы не дошли до Kafka»); a read
+that did not reach the end, or a side that did not answer, is a warning, never
+a false loss. Extra or repeated records in Kafka are not a problem. Rows older
+than the window are checked by the passes that saw them; a watch that was down
+longer than 3 hours leaves that stretch unchecked.
+
+Not covered yet: consumer lag (no consumer runs), schemas, quarantine,
+archive, projections.
 
 ### The backup watch (2026-10-25)
 

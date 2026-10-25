@@ -92,7 +92,10 @@ function problem(id, severity, title, detail) { return { id, severity, title, de
 
 // probes: { [hostName]: { ok: true, data } | { ok: false, error } }
 // cluster: { broker, data: { status, replication, topics } } from one broker, or null.
-export function evaluate({ topology, inventory, probes, cluster: clusterView }) {
+// events: the "events" view of that broker ({ ids, complete, … } or { error });
+// undefined means parity was not attempted (no broker answered, or a caller
+// that checks only the cluster).
+export function evaluate({ topology, inventory, probes, cluster: clusterView, events }) {
   const problems = []
   const primary = topology.clusters.find((c) => c.name === 'primary')
   const members = [
@@ -158,7 +161,33 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView }) 
 
   problems.push(...connectorProblems(members.filter((m) => m.roles.includes('connect')).map((m) => probes[m.name]).filter((p) => p?.ok)))
   problems.push(...clusterProblems({ clusterView, ids, label }))
+  const source = members.find((m) => m.roles.includes(SOURCE_ROLE))
+  // An unreachable production host, an unreadable slot or a silent cluster is
+  // told already; parity needs all three.
+  const sourceView = source && probes[source.name]?.ok ? probes[source.name].data.source : null
+  if (sourceView && clusterView && events !== undefined) problems.push(...parityProblems(sourceView.outbox, events))
   return problems
+}
+
+const bakuTime = (ms) => new Date(ms).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Baku' })
+
+// Every outbox row of the window (older than the grace the connector may still
+// need) must be in Kafka. Extra or repeated records in Kafka are allowed: the
+// connector delivers at least once, and a deleted organization takes its rows.
+export function parityProblems(outbox, events) {
+  const unavailable = (why) => [problem('parity-unavailable', 'warning', 'Не выполнилась сверка базы с Kafka',
+    `Сторож не смог проверить, что каждое событие из базы прода дошло до Kafka: ${why}.`)]
+  if (!outbox) return unavailable('проба прода не умеет читать outbox (её нужно обновить)')
+  if (outbox.error) return unavailable(`outbox на проде не прочитан (${outbox.error})`)
+  if (events.error) return unavailable(`события в Kafka не прочитаны (${events.error})`)
+  if (!events.complete) return unavailable(`Kafka прочитана не до конца (${events.behind} партиций)`)
+  const seen = new Set(events.ids)
+  const missing = outbox.rows.filter(([id]) => !seen.has(id))
+  if (!missing.length) return []
+  const topics = [...new Set(missing.map(([, topic]) => topic))]
+  const [firstId, , firstAt] = missing[0]
+  return [problem('events-missing', 'critical', 'События из базы не дошли до Kafka',
+    `${missing.length} событий из outbox прода старше ${Math.round(outbox.graceSeconds / 60)} минут нет в Kafka (${topics.slice(0, 3).join(', ')}${topics.length > 3 ? ` и ещё ${topics.length - 3}` : ''}). Самое раннее записано в ${bakuTime(firstAt)}, eventId ${firstId}. Переносчик их пропустил или отстал; их нужно догрузить.`)]
 }
 
 function sourceProblems(source) {

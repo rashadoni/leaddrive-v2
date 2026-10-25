@@ -452,6 +452,10 @@ class ZeytunInboundBridge:
         "suspenziya", "damcı", "sprey", "məlhəm", "krem", "gel", "toz", "paket", "blister",
         "şpris", "məhlul", "milliqram", "mikroqram", "millilitr", "qram", "beynəlxalq vahid",
         "film örtüklü",
+        # 2026-10-25 live call: "ampula" came back as "анкетирование". Callers
+        # in Baku say the form in Russian as often as in Azerbaijani.
+        "ампулы", "таблетки", "капсулы", "свечи", "суппозитории", "сироп", "капли",
+        "мазь", "гель", "крем", "спрей", "саше", "флакон", "упаковка", "коробка", "штук",
     )
 
     def __init__(self, runtime_url, token, call_id, request=None, clock=None, announce_answered=None):
