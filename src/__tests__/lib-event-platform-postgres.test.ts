@@ -33,22 +33,22 @@ postgresDescribe("event-platform PostgreSQL optimistic append", () => {
         await tx.$queryRawUnsafe("SELECT set_config('TimeZone', $1, true)", options.timezone)
       }
       return appendDomainEvent(
-      tx as unknown as EventPlatformTransaction,
-      {
-        organizationId: "org-b",
-        domain: "finance",
-        aggregateType: "sdk-probe",
-        aggregateId,
-        expectedVersion,
-        eventType: "finance.sdk-probe.v1",
-        source: "urn:leaddrive:event-platform-ci",
-        dataSchema: "urn:leaddrive:schema:finance.sdk-probe:v1",
-        classification: "internal",
-        producer: "event-platform-postgres-ci",
-        producerVersion: "integration-v1",
-        data: { probe },
-        occurredAt: options.occurredAt,
-      },
+        tx as unknown as EventPlatformTransaction,
+        {
+          organizationId: "org-b",
+          domain: "finance",
+          aggregateType: "sdk-probe",
+          aggregateId,
+          expectedVersion,
+          eventType: "finance.sdk-probe.v1",
+          source: "urn:leaddrive:event-platform-ci",
+          dataSchema: "urn:leaddrive:schema:finance.sdk-probe:v1",
+          classification: "internal",
+          producer: "event-platform-postgres-ci",
+          producerVersion: "integration-v1",
+          data: { probe },
+          occurredAt: options.occurredAt,
+        },
       )
     })
   }
