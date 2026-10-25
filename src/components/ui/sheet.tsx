@@ -30,6 +30,8 @@ interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   side?: "top" | "bottom" | "left" | "right"
   closeLabel?: string
+  /** A gray canvas separates white detail groups; simple sheets stay white. */
+  surface?: "card" | "canvas"
 }
 
 const sheetVariants = {
@@ -42,11 +44,12 @@ const sheetVariants = {
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, closeLabel = "Close", ...props }, ref) => (
+>(({ side = "right", className, children, closeLabel = "Close", surface = "card", ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <DialogPrimitive.Content
       data-crm-workspace={useCrmAppearance() ? "" : undefined}
+      data-crm-surface={surface}
       ref={ref}
       className={cn(
         "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300 motion-reduce:animate-none motion-reduce:transition-none",

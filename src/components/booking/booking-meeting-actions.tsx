@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useQuery } from "@tanstack/react-query"
+import { CalendarDays, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CrmSection } from "@/components/ui/crm-section"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -55,11 +57,13 @@ export function BookingMeetingActions({ booking, context, onSaved }: { booking: 
     } catch { setError(t("commandUnconfirmed")) } finally { setBusy(false) }
   }
   if (!booking.canManage) return null
-  return <section className="space-y-3 border-t pt-4" aria-label={t("meetingActions")}>
+  // Do not present an empty action group when this meeting has no action.
+  if (!mode && !(booking.status === "confirmed" && future) && !(ended && booking.status !== "cancelled" && (booking.status === "confirmed" || booking.canCorrect))) return null
+  return <CrmSection title={t("meetingActions")} aria-label={t("meetingActions")}>
     {!mode ? <div className="flex flex-wrap gap-2">
-      {booking.status === "confirmed" && future ? <><Button variant="outline" onClick={() => setMode("reschedule")}>{t("rescheduleMeeting")}</Button><Button variant="ghost" onClick={() => setMode("cancel")}>{t("cancelLink")}</Button></> : null}
-      {ended && booking.status !== "cancelled" && (booking.status === "confirmed" || booking.canCorrect) ? <Button variant="outline" onClick={() => setMode("outcome")}>{t(booking.status === "confirmed" ? "recordOutcome" : "correctOutcome")}</Button> : null}
-    </div> : <div className="space-y-4 rounded-xl border p-4">
+      {booking.status === "confirmed" && future ? <><Button className="h-auto w-full whitespace-normal py-2.5 sm:w-auto" onClick={() => setMode("reschedule")}><CalendarDays aria-hidden="true" />{t("rescheduleMeeting")}</Button><Button variant="destructive-outline" className="h-auto w-full whitespace-normal py-2.5 sm:w-auto" onClick={() => setMode("cancel")}><X aria-hidden="true" />{t("cancelLink")}</Button></> : null}
+      {ended && booking.status !== "cancelled" && (booking.status === "confirmed" || booking.canCorrect) ? <Button className="h-auto w-full whitespace-normal py-2.5 sm:w-auto" onClick={() => setMode("outcome")}>{t(booking.status === "confirmed" ? "recordOutcome" : "correctOutcome")}</Button> : null}
+    </div> : <div className="space-y-4">
       <h3 className="font-medium">{t(mode === "reschedule" ? "rescheduleMeeting" : mode === "cancel" ? "cancelTitle" : "recordOutcome")}</h3>
       {mode === "reschedule" ? <>
         <div className="space-y-1"><Label htmlFor="move-host">{t("colHosts")}</Label><select id="move-host" value={hostId} disabled={busy} className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" onChange={(event) => { setHostId(event.target.value); setStartsAt("") }}>{hosts.map((host) => <option key={host.id} value={host.id}>{host.name}</option>)}</select></div>
@@ -70,7 +74,7 @@ export function BookingMeetingActions({ booking, context, onSaved }: { booking: 
       <div className="space-y-1"><Label htmlFor="meeting-change-reason">{t("changeReason")}</Label><Textarea id="meeting-change-reason" value={reason} maxLength={500} disabled={busy} onChange={(event) => setReason(event.target.value)} /></div>
       {booking.email && mode !== "outcome" ? <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={notifyCustomer} disabled={busy} onChange={(event) => setNotifyCustomer(event.target.checked)} />{t("notifyCustomer")}</label> : null}
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-      <div className="flex flex-wrap gap-2"><Button onClick={() => void submit()} disabled={busy || mode === "reschedule" && (!startsAt || availability.isFetching || availability.isError)}>{busy ? t("saving") : t("saveMeeting")}</Button><Button variant="ghost" disabled={busy} onClick={() => { setMode(null); setError("") }}>{t("cancel")}</Button></div>
+      <div className="flex flex-wrap gap-2"><Button variant={mode === "cancel" ? "destructive" : "default"} className="h-auto whitespace-normal py-2.5" onClick={() => void submit()} disabled={busy || mode === "reschedule" && (!startsAt || availability.isFetching || availability.isError)}>{busy ? t("saving") : t("saveMeeting")}</Button><Button variant="ghost" className="h-auto whitespace-normal py-2.5" disabled={busy} onClick={() => { setMode(null); setError("") }}>{t("cancel")}</Button></div>
     </div>}
-  </section>
+  </CrmSection>
 }

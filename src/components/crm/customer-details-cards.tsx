@@ -49,7 +49,7 @@ export function CustomerDetailsCards({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {person && (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3.5 flex gap-3 min-w-0">
+        <div className="rounded-lg border border-border bg-card p-3.5 flex gap-3 min-w-0">
           <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold flex-shrink-0">
             {person.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
           </div>
@@ -73,7 +73,7 @@ export function CustomerDetailsCards({
       )}
 
       {company && (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3.5 flex gap-3 min-w-0">
+        <div className="rounded-lg border border-border bg-card p-3.5 flex gap-3 min-w-0">
           <div className="h-11 w-11 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
             <Building2 className="h-5 w-5" />
           </div>

@@ -2,8 +2,8 @@
 
 import { createContext, useContext, type ReactNode } from "react"
 
-// The workspace owns its appearance. Home, public pages and the navigation
-// shell keep their existing design; React context also follows portal content.
+// One appearance for the authenticated CRM, including home and portal content.
+// Public pages and exported document/email content do not opt into this scope.
 const CrmAppearanceContext = createContext(false)
 
 export function CrmAppearanceProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {

@@ -204,7 +204,7 @@ export function DidYouKnow({
   const tc = useTranslations("common")
   const router = useRouter()
   const crmAppearance = useCrmAppearance()
-  const variant = requestedVariant ?? (crmAppearance && page !== "dashboard" ? "disclosure" : "default")
+  const variant = requestedVariant ?? (crmAppearance ? "disclosure" : "default")
   const [dismissed, setDismissed] = useState<Set<string>>(() => getDismissed())
   const [currentIdx, setCurrentIdx] = useState(0)
   const [direction, setDirection] = useState(0)

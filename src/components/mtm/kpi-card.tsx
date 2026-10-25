@@ -54,7 +54,7 @@ export function KpiCard({
     "bg-red-500"
 
   return (
-    <div data-crm-stat="" className={cn("rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-2", className)}>
+    <div data-crm-stat="" className={cn("rounded-lg border border-border bg-card p-4 space-y-2", className)}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs text-muted-foreground leading-tight">{label}</p>
         {icon && (
