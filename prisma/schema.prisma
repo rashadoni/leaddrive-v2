@@ -861,6 +861,8 @@ model IdentityAccount {
   user            User @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   version         Int @default(1)
   credentialEpoch Int @default(1)
+  /// Monotonic even when a contact changes away and back before OTP expiry.
+  contactRevision Int @default(1)
   passwordHash    String?
   cutoverAt       DateTime? @db.Timestamptz(3)
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
@@ -1050,6 +1052,7 @@ model IdentityEvent {
   proofAttempt    Int?
   proofOutcome    String? @db.VarChar(32)
   credentialEpoch Int?
+  contactRevision Int?
   previousClaimId String?
   claimId         String?
   createdAt       DateTime @default(now()) @db.Timestamptz(3)

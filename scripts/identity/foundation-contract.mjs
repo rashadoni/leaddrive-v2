@@ -10,6 +10,7 @@ import { checkCanonicalPasswordLogin } from "./mobile-password-contract.mjs"
 import { checkApplicationRevisions } from "./application-revision-contract.mjs"
 import { checkLegacyCrm } from "./legacy-crm-contract.mjs"
 import { checkCanonicalCrmSession } from "./crm-session-contract.mjs"
+import { checkContactRevision } from "./contact-revision-contract.mjs"
 import { checkLegacyWrites } from "./legacy-write-contract.mjs"
 import { checkLegacyBoundary } from "./legacy-boundary-contract.mjs"
 import { checkMembershipTransactions } from "./membership-contract.mjs"
@@ -76,7 +77,7 @@ async function main() {
     await admin.$executeRawUnsafe(`CREATE POLICY identity_fixture_settings_read ON mtm_settings FOR SELECT USING ("organizationId"=current_setting('app.org_id',true))`)
 
     phase = "ACTUAL_ADDITIVE_MIGRATION"
-    execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", "prisma/migrations/20261103120000_identity_foundation/migration.sql"], {
+    for (const migration of ["20261103120000_identity_foundation", "20261103121000_identity_contact_revision"]) execFileSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", `prisma/migrations/${migration}/migration.sql`], {
       env: { ...process.env, PGHOST: url.hostname, PGPORT: url.port, PGDATABASE: url.pathname.slice(1), PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password) },
       stdio: ["ignore", "pipe", "pipe"], timeout: 30_000,
     })
@@ -400,6 +401,7 @@ async function main() {
 
     await checkLegacyCrm({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
     await checkCanonicalCrmSession({ admin, writer, actor, other, build, checks: receipt.checks, phase: value => { phase = value } })
+    await checkContactRevision({ admin, writer, actor, build, checks: receipt.checks, phase: value => { phase = value } })
 
     phase = "RLS_AND_IMMUTABILITY"
     for (const table of TABLES) {

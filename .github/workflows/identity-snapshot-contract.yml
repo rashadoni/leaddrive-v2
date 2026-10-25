@@ -8,6 +8,7 @@ on:
       - '.github/workflows/identity-snapshot-contract.yml'
       - 'prisma/schema.prisma'
       - 'prisma/migrations/20261103120000_identity_foundation/**'
+      - 'prisma/migrations/20261103121000_identity_contact_revision/**'
       - 'src/lib/identity/**'
       - 'src/lib/tenant-capabilities.ts'
       - 'src/lib/modules.ts'
