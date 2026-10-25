@@ -78,15 +78,16 @@ type Fetch = typeof fetch
 export async function sendLoginCodeToWhatsApp(
   sender: WhatsAppConfig,
   input: { to: string; code: string; language: string | null | undefined },
-  deps: { fetch?: Fetch; now?: () => number; templateName?: string } = {},
+  deps: { fetch?: Fetch; now?: () => number; templateName?: string; signal?: AbortSignal; singleAttempt?: boolean } = {},
 ): Promise<LoginCodeDelivery> {
   const doFetch = deps.fetch ?? fetch
   const now = deps.now ?? Date.now
   const templateName = deps.templateName ?? loginCodeTemplateName()
   const to = input.to.replace(/\D/g, "")
   let missing = 0
-  const languages = templateLanguages(input.language)
+  const languages = deps.singleAttempt ? templateLanguages(input.language).slice(0, 1) : templateLanguages(input.language)
   for (const language of languages) {
+    if (deps.signal?.aborted) return { status: "failed", reason: "timeout" }
     let response: Response
     try {
       response = await doFetch(`${GRAPH_API_BASE}/${sender.phoneNumberId}/messages`, {
@@ -105,7 +106,7 @@ export async function sendLoginCodeToWhatsApp(
             ],
           },
         }),
-        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+        signal: deps.signal ? AbortSignal.any([deps.signal, AbortSignal.timeout(SEND_TIMEOUT_MS)]) : AbortSignal.timeout(SEND_TIMEOUT_MS),
       })
     } catch (error) {
       return { status: "failed", reason: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network" }
@@ -121,6 +122,7 @@ export async function sendLoginCodeToWhatsApp(
     return { status: "failed", reason: code ? `meta_${code}` : `http_${response.status}` }
   }
   if (missing === languages.length) {
+    if (deps.singleAttempt) return { status: "unavailable", reason: "template_language_missing" }
     unavailableUntil = now() + UNAVAILABLE_FOR_MS
     return { status: "unavailable", reason: "template_missing" }
   }

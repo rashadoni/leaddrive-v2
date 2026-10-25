@@ -44,6 +44,7 @@ export async function issueCanonicalRecovery(client: RegistryClient, organizatio
   input: { phone: string; application: IdentityMobileApplication; requestId: string }, key: PhoneProofKey) {
   exact(input, ["phone", "application", "requestId"]); assertIdentityRequestId(input.requestId)
   const phone = normalizeIdentityPhone(input.phone)
+  if (!phone) throw unavailable()
   return proofTransaction(client, organizationId, true, async tx => {
     const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId, normalizedPhone: phone } } })
     if (!claim) return null

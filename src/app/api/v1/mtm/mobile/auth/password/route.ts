@@ -1,4 +1,5 @@
-import { NextRequest } from "next/server"
+import { finishIdentityMobileRecovery } from "@/lib/identity/mobile-recovery-runtime"
+import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -17,9 +18,11 @@ import {
   passwordSetupStillFresh,
   readPasswordSetupToken,
 } from "@/lib/mtm/mobile-login-session"
-import { codeFlowError, codeFlowRateLimit, readCodeFlowBody } from "@/lib/mtm/mobile-login-code-flow"
+import { codeFlowError, codeFlowRateLimit, readCodeFlowBody, OrganizationSlug, companyBySlug, NO_STORE } from "@/lib/mtm/mobile-login-code-flow"
 
 const SetPasswordSchema = z.object({
+  organizationSlug: OrganizationSlug.optional(),
+  application: z.enum(["TIME", "ROUTE_FIELD"]).optional(),
   setupToken: z.string().min(1).max(2048),
   password: z.string().min(1).max(1024),
 }).strict()
@@ -45,6 +48,17 @@ export async function POST(req: NextRequest) {
       if (!body.ok) return body.response
       const limited = await codeFlowRateLimit(req, "mtm-mobile-password-setup", clientIp(req), { ip: [20, 600], principal: [20, 600] })
       if (limited) return limited
+      if (body.value.setupToken.startsWith("lds")) {
+        const { setupToken, password, organizationSlug, application } = body.value
+        if (!setupToken.startsWith("lds3.") || !organizationSlug || !application) return expired()
+        const weak = passwordPolicyError(password)
+        if (weak) return codeFlowError(400, "MTM_PASSWORD_WEAK", weak)
+        const organization = await companyBySlug(organizationSlug)
+        if (!organization) return expired()
+        const recovery = await finishIdentityMobileRecovery(prisma, organization.id, { setupToken, application, password }, passwordPolicyError)
+        if (recovery.status !== "AUTHENTICATED") return expired()
+        return NextResponse.json({ success: true, data: recovery.data }, { headers: NO_STORE })
+      }
       const setup = readPasswordSetupToken(body.value.setupToken)
       if (!setup) return expired()
       const weak = passwordPolicyError(body.value.password)

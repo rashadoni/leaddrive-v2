@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/prisma"
+import { verifyIdentityMobileRecovery } from "@/lib/identity/mobile-recovery-runtime"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { runWithRlsBypass } from "@/lib/rls-context"
@@ -19,6 +21,8 @@ import {
 const VerifyCodeSchema = z.object({
   organizationSlug: OrganizationSlug,
   phone: EnteredPhone,
+  application: z.enum(["TIME", "ROUTE_FIELD"]).optional(),
+  challengeId: z.string().uuid().optional(),
   code: z.string().trim().regex(/^\d{6}$/),
 }).strict()
 
@@ -45,7 +49,7 @@ export async function POST(req: NextRequest) {
     return await runWithRlsBypass(async () => {
       const body = await readCodeFlowBody(req, VerifyCodeSchema)
       if (!body.ok) return body.response
-      const { organizationSlug, phone, code } = body.value
+      const { organizationSlug, phone, code, application, challengeId } = body.value
       const limited = await codeFlowRateLimit(req, "mtm-mobile-login-code-verify", `${organizationSlug}:${phoneDigits(phone)}`, {
         ip: [20, 600],
         principal: [10, 600],
@@ -54,6 +58,13 @@ export async function POST(req: NextRequest) {
 
       const organization = await companyBySlug(organizationSlug)
       if (!organization) return codeFlowError(404, "MTM_COMPANY_NOT_FOUND", "Company not found")
+      if (application) {
+        const recovery = await verifyIdentityMobileRecovery(prisma, organization.id, { phone, application, challengeId, code })
+        if (recovery.status === "DENIED") return refused("invalid")
+        if (recovery.status === "CONFIRMED") return NextResponse.json({ success: true, data: {
+          setupToken: recovery.setupToken, agent: { name: recovery.name }, organizationName: organization.name,
+        } }, { headers: NO_STORE })
+      } else if (challengeId) return refused("invalid")
       const holder = await codeHolder(organization, phone)
       // Nobody to sign in: answered as a wrong code — no code was ever sent.
       if (holder.kind === "nobody") return refused("invalid")
