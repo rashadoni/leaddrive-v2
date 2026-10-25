@@ -642,6 +642,105 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(sent).toHaveLength(0)
   })
 
+  async function canonicalCrmFixture(suffix: string, mfa: { require2fa?: boolean; totpEnabled?: boolean } = {}) {
+    const company = `identity-canonical-crm-${suffix}`, email = `${suffix}@canonical-crm.invalid`
+    const password = "Fictional-Shared-Crm-2026!", legacyPassword = "Fictional-Old-Crm-2026!"
+    const sharedHash = await bcrypt.hash(password, 12)
+    const userId = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, slug: company, name: "Fictional canonical CRM company" } })
+      const person = await prisma.user.create({ data: { organizationId: company, email, name: "Fictional canonical CRM person", role: "admin", passwordHash: await bcrypt.hash(legacyPassword, 4), ...mfa } })
+      await prisma.identityAccount.create({ data: { organizationId: company, userId: person.id, cutoverAt: new Date(), passwordHash: sharedHash } })
+      await prisma.identityPhoneClaim.create({ data: { organizationId: company, userId: person.id, normalizedPhone: "+994507770001", verifiedAt: new Date(), accountVersion: 1 } })
+      await prisma.identityApplicationGrant.create({ data: { organizationId: company, userId: person.id, application: "CRM", status: "ACTIVE", role: "viewer" } })
+      await prisma.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
+      return person.id
+    })
+    const authorize = crmAuth.config.providers[0].authorize, callback = crmAuth.config.callbacks.jwt
+    const credentials = { email, password, organizationSlug: company }
+    const issue = async () => {
+      const person = await authorize(credentials)
+      expect(person).toMatchObject({ id: userId, role: "viewer", identityCrm: { userId, organizationId: company } })
+      const token = await callback({ token: { sub: userId, email }, user: person, account: { provider: "credentials" } })
+      expect(token).toMatchObject({ sub: userId, role: "viewer", identityCrm: person.identityCrm })
+      return { person, token }
+    }
+    return { company, userId, email, password, legacyPassword, authorize, callback, credentials, issue,
+      scope: { organizationId: company, userId }, grantKey: { organizationId_userId_application: { organizationId: company, userId, application: "CRM" as const } } }
+  }
+
+  it("uses canonical shared CRM credentials and grant role in actual Auth.js callbacks, isolating sibling grants", async () => {
+    const f = await canonicalCrmFixture("password")
+    expect(await f.authorize({ ...f.credentials, password: f.legacyPassword })).toBeNull()
+    expect(await f.authorize({ email: f.email, password: f.password })).toBeNull()
+    const { person, token } = await f.issue()
+    expect(await f.callback({ token: { ...token }, user: undefined })).toMatchObject({ role: "viewer" })
+    await bypass(async () => {
+      await prisma.identityApplicationGrant.create({ data: { ...f.scope, application: "TIME", status: "ACTIVE", role: "EMPLOYEE" } })
+      await prisma.identityAccount.update({ where: { organizationId_userId: f.scope }, data: { version: { increment: 1 } } })
+    })
+    expect(await f.callback({ token: { ...token }, user: undefined })).toMatchObject({ role: "viewer", identityCrm: token.identityCrm })
+    const oldCookie = { ...token }
+    delete oldCookie.identityCrm
+    expect(await f.callback({ token: oldCookie, user: undefined })).toBeNull()
+    expect(await f.callback({ token: { sub: f.userId }, user: person, account: { provider: "google" } })).toBeNull()
+    const missingFingerprint = { ...person }
+    delete missingFingerprint.sessionFingerprint
+    expect(await f.callback({ token: { sub: f.userId }, user: missingFingerprint, account: { provider: "credentials" } })).toBeNull()
+    await bypass(() => prisma.identityApplicationGrant.update({ where: f.grantKey, data: { role: "manager", version: 2 } }))
+    expect(await f.callback({ token: { ...token }, user: undefined })).toBeNull()
+    expect(await f.callback({ token: { sub: f.userId }, user: person, account: { provider: "credentials" } })).toBeNull()
+    const promoted = await f.authorize(f.credentials)
+    expect(promoted).toMatchObject({ role: "manager", identityCrm: { grantVersion: 2 } })
+    expect(await f.callback({ token: { sub: f.userId }, user: promoted, account: { provider: "credentials" } })).toMatchObject({ role: "manager" })
+    expect(sent).toHaveLength(0)
+  })
+
+  it.each([
+    { suffix: "setup", require2fa: true, totpEnabled: false, expected: { needsSetup2fa: true } },
+    { suffix: "totp", require2fa: false, totpEnabled: true, expected: { needs2fa: true, twoFactorMethod: "totp" } },
+  ])("retains canonical CRM $suffix MFA and rejects browser authority/MFA updates", async ({ suffix, require2fa, totpEnabled, expected }) => {
+    const f = await canonicalCrmFixture(suffix, { require2fa, totpEnabled })
+    const { token } = await f.issue()
+    expect(token).toMatchObject(expected)
+    const updated = await f.callback({ token: { ...token }, user: undefined, trigger: "update", session: {
+      needs2fa: false, needsSetup2fa: false, role: "superadmin",
+      identityCrm: { ...token.identityCrm, grantVersion: 999, credentialEpoch: 999 },
+    } })
+    expect(updated).toMatchObject({ ...expected, role: "viewer", identityCrm: token.identityCrm })
+    const publicSession = await crmAuth.config.callbacks.session({ session: { identityCrm: token.identityCrm, user: { email: f.email, identityCrm: token.identityCrm } }, token: updated })
+    expect(publicSession.identityCrm).toBeUndefined()
+    expect(publicSession.user.identityCrm).toBeUndefined()
+    expect(JSON.stringify(publicSession)).not.toContain('"credentialEpoch"')
+    expect(sent).toHaveLength(0)
+  })
+
+  it("refuses canonical CRM epoch races, logout-all, opt-out and inactive lifecycle without legacy fallback", async () => {
+    const f = await canonicalCrmFixture("revocation")
+    const { person, token } = await f.issue()
+    await bypass(() => prisma.identityAccount.update({ where: { organizationId_userId: f.scope }, data: { credentialEpoch: { increment: 1 }, version: { increment: 1 } } }))
+    expect(await f.callback({ token: { ...token }, user: undefined })).toBeNull()
+    expect(await f.callback({ token: { sub: f.userId }, user: person, account: { provider: "credentials" } })).toBeNull()
+    const renewed = await f.issue()
+    await bypass(() => prisma.user.update({ where: { id: f.userId }, data: { passwordChangedAt: new Date("2030-01-01T00:00:00.001Z") } }))
+    expect(await f.callback({ token: { ...renewed.token }, user: undefined })).toBeNull()
+    const afterLogout = await f.issue()
+    const flag = { organizationId_key: { organizationId: f.company, key: "identityAuthV1" } }
+    await bypass(() => prisma.mtmSetting.update({ where: flag, data: { value: false } }))
+    expect(await f.authorize(f.credentials)).toBeNull()
+    expect(await f.authorize({ ...f.credentials, password: f.legacyPassword })).toBeNull()
+    expect(await f.callback({ token: { ...afterLogout.token }, user: undefined })).toBeNull()
+    await bypass(() => prisma.mtmSetting.update({ where: flag, data: { value: { version: 1, enabled: true } } }))
+    await bypass(() => prisma.organization.update({ where: { id: f.company }, data: { isActive: false } }))
+    expect(await f.authorize(f.credentials)).toBeNull()
+    expect(await f.callback({ token: { ...afterLogout.token }, user: undefined })).toBeNull()
+    await bypass(async () => {
+      await prisma.organization.update({ where: { id: f.company }, data: { isActive: true } })
+      await prisma.user.update({ where: { id: f.userId }, data: { isActive: false } })
+    })
+    expect(await f.authorize(f.credentials)).toBeNull()
+    expect(await f.callback({ token: { ...afterLogout.token }, user: undefined })).toBeNull()
+  })
+
   it.each(["tenant", "platform"] as const)("keeps %s admin reset of disabled legacy users atomic and refuses canonical credentials", async scope => {
     const company = `identity-admin-credential-${scope}`, initialPassword = "Fictional-Admin-Initial-2026!"
     const { targetId, actorId } = await bypass(async () => {

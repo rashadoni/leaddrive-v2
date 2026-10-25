@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
 import { readLegacyCrmCredentialBoundary } from "./identity/legacy-crm-boundary"
+import { authenticateIdentityCrmPassword, resolveIdentityCrmSession, type IdentityCrmClaims } from "./identity/crm-session"
 import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
   loginSchema,
@@ -43,11 +44,16 @@ async function reviewerAccessUntilFor(user: { id: string; role: string }): Promi
   return reviewerAccessOpen(grant) ? new Date(grant!.expiresAt).toISOString() : false
 }
 
-/** Only fresh legacy eligibility permits the existing credentials/MFA flow. */
-async function legacyCrmMaySignIn(user: { id: string; organizationId: string }): Promise<boolean> {
-  if (!user.organizationId || !user.id) return false
-  return await runWithTenant(user.organizationId, async () =>
-    await readLegacyCrmCredentialBoundary(prisma, user.organizationId, user.id) === "LEGACY")
+/** Fresh mode selection; a missing private hint never upgrades a legacy cookie. */
+async function crmCredentialBoundary(user: { id: string; organizationId: string }) {
+  if (!user.organizationId || !user.id) return "UNAVAILABLE" as const
+  return await runWithTenant(user.organizationId, () =>
+    readLegacyCrmCredentialBoundary(prisma, user.organizationId, user.id))
+}
+async function crmSessionAuthority(user: { id: string; organizationId: string; role: string }, hint: unknown) {
+  if (hint !== undefined) return await runWithTenant(user.organizationId, () =>
+    resolveIdentityCrmSession(prisma, user.organizationId, user.id, hint))
+  return await crmCredentialBoundary(user) === "LEGACY" ? { role: user.role, claims: undefined } : null
 }
 
 /**
@@ -150,9 +156,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           let user: typeof candidates[number] | null = null
+          let identityCrm: IdentityCrmClaims | undefined
           for (const candidate of candidates) {
-            if (!(await legacyCrmMaySignIn(candidate))) continue
-            user = await pickCandidateByPassword<typeof candidates[number]>([candidate], parsed.data.password)
+            const mode = await crmCredentialBoundary(candidate)
+            if (mode === "LEGACY") {
+              user = await pickCandidateByPassword<typeof candidates[number]>([candidate], parsed.data.password)
+            } else if (mode === "MIGRATED" && parsed.data.organizationSlug) {
+              const proof = await runWithTenant(candidate.organizationId, () =>
+                authenticateIdentityCrmPassword(prisma, candidate.organizationId, candidate.id, parsed.data.password))
+              if (proof) {
+                identityCrm = proof.claims
+                user = { ...candidate, role: proof.role }
+              }
+            }
             if (user) break
           }
           if (!user) {
@@ -205,6 +221,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: user.email,
             name: user.name,
             role: user.role,
+            identityCrm,
             // Bind the successful bcrypt comparison to the exact DB credential
             // state it verified. The JWT callback re-fetches the row and rejects
             // if a concurrent password change landed between authorize() and
@@ -306,7 +323,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // RLS: jwt callback runs on session resolution, before any guard —
         // bypass-wrapped or every authed request fails closed once `users`
         // gets policies.
-        const dbUser = await runWithRlsBypass(() => prisma.user.findUnique({
+        let dbUser = await runWithRlsBypass(() => prisma.user.findUnique({
           where: { id: user.id as string },
           include: { organization: true },
         }))
@@ -325,7 +342,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (dbUser.role !== "superadmin" && dbUser.organization?.isActive !== true) {
           return null
         }
-        if (!(await legacyCrmMaySignIn(dbUser))) return null
+        const hint = (user as { identityCrm?: unknown }).identityCrm
+        // Only this provider can issue canonical password authority. Adapter
+        // profiles and browser session updates cannot bootstrap a private hint.
+        if (hint !== undefined && account?.provider !== "credentials") return null
+        const authority = await crmSessionAuthority(dbUser, hint)
+        if (!authority) return null
+        dbUser = { ...dbUser, role: authority.role }
+        if (authority.claims) token.identityCrm = authority.claims
+        else delete token.identityCrm
         // An outside reviewer signs in only while their grant is open.
         const reviewerAccessUntil = await reviewerAccessUntilFor(dbUser)
         if (reviewerAccessUntil === false) return null
@@ -408,7 +433,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!refreshWhere) {
             return null
           }
-          const freshUser = await runWithRlsBypass(() => prisma.user.findUnique({
+          let freshUser = await runWithRlsBypass(() => prisma.user.findUnique({
             where: refreshWhere,
             select: {
               id: true,
@@ -454,7 +479,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (freshUser.role !== "superadmin" && freshUser.organization?.isActive !== true) {
             return null
           }
-          if (!(await legacyCrmMaySignIn(freshUser))) return null
+          const authority = await crmSessionAuthority(freshUser, token.identityCrm)
+          if (!authority) return null
+          freshUser = { ...freshUser, role: authority.role }
+          if (authority.claims) token.identityCrm = authority.claims
+          else delete token.identityCrm
           // A reviewer's session ends with their grant: at the end date, or the
           // moment an admin closes it, whichever comes first.
           const freshReviewerAccessUntil = await reviewerAccessUntilFor(freshUser)
@@ -544,6 +573,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       delete publicSession.passwordHash
       delete publicUser.sessionFingerprint
       delete publicUser.passwordHash
+      delete publicSession.identityCrm
+      delete publicUser.identityCrm
 
       return {
         ...publicSession,

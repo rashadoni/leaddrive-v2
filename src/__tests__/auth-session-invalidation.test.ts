@@ -340,11 +340,13 @@ describe("Auth.js password-session invalidation", () => {
     const session = await sessionCallback()({
       session: {
         sessionFingerprint: fingerprint,
+        identityCrm: { credentialEpoch: 9 },
         passwordHash: USER.passwordHash,
         user: {
           email: USER.email,
           name: USER.name,
           sessionFingerprint: fingerprint,
+          identityCrm: { credentialEpoch: 9 },
           passwordHash: USER.passwordHash,
         },
       },
@@ -358,6 +360,7 @@ describe("Auth.js password-session invalidation", () => {
         organizationName: USER.organization.name,
         plan: USER.organization.plan,
         sessionFingerprint: fingerprint,
+        identityCrm: { credentialEpoch: 9 },
       },
     })
     const serialized = JSON.stringify(session)
@@ -365,6 +368,9 @@ describe("Auth.js password-session invalidation", () => {
     expect(session.sessionFingerprint).toBeUndefined()
     expect(session.user.sessionFingerprint).toBeUndefined()
     expect(session.user.passwordHash).toBeUndefined()
+    expect(session.identityCrm).toBeUndefined()
+    expect(session.user.identityCrm).toBeUndefined()
+    expect(serialized).not.toContain("credentialEpoch")
     expect(serialized).not.toContain(fingerprint)
     expect(serialized).not.toContain(USER.passwordHash)
   })

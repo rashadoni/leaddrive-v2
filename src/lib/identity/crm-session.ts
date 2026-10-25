@@ -67,7 +67,7 @@ async function credential(tx: Prisma.TransactionClient, organizationId: string, 
 
 /** Server-selected tenant/User only; callers authenticate/rate-limit the login
  * request and retain Auth.js fingerprint, MFA, reviewer and module checks.
- * This proves a shared password, not completed CRM MFA. No public caller yet.
+ * This proves a shared password, not completed CRM MFA; Auth.js enforces MFA.
  * No legacy User/actor hash, phone or role fallback, and no platform conversion.
  */
 export async function authenticateIdentityCrmPassword(client: RegistryClient, organizationId: string, userId: string, password: string) {
