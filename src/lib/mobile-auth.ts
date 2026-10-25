@@ -11,6 +11,7 @@ import { requireAuthSecret } from "./auth-secret"
 import { isTenantCapabilityEnabled } from "./tenant-capabilities"
 import { resolveWorkforceExceptionResponseRecording } from "./workforce/exception-response-rollout"
 import { readAttendanceFeature } from "./mtm/attendance-feature"
+import { readLegacyCredentialBoundary } from "./identity/legacy-credential-boundary"
 
 export function requireJwtSecret(): string {
   return requireAuthSecret()
@@ -155,6 +156,10 @@ export async function resolveMobileAuth(
   }
 
   try {
+    // A verified legacy JWT must not bypass irreversible identity cutover.
+    // The reader checks the current link AND reviewed original actor owner;
+    // disabling rollout or relinking a card cannot restore the old token.
+    if (await readLegacyCredentialBoundary(prisma, decoded.orgId, { kind: "ACTOR", actorId: decoded.agentId }) !== "LEGACY") return null
     // RLS: revocation check runs before any tenant context exists — bypass-wrapped.
     const agent = await runWithRlsBypass(() => prisma.mtmAgent.findFirst({
       where: { id: decoded.agentId, organizationId: decoded.orgId },

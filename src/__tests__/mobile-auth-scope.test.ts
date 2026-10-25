@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server"
 // Shared mocks — declared before any imports from the modules under test
 // ---------------------------------------------------------------------------
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }))
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({ readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -75,6 +76,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
 import { JWT_SECRET, resolveMobileAuth, requireMobileAuth } from "@/lib/mobile-auth"
+import { readLegacyCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
 import { createSessionFingerprint } from "@/lib/session-invalidation"
 import { hasModule, moduleRecordFromOrgFields } from "@/lib/modules"
 
@@ -138,6 +140,7 @@ const DEACTIVATED_USER = { ...ACTIVE_USER, isActive: false }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(readLegacyCredentialBoundary).mockResolvedValue("LEGACY")
   vi.mocked(hasModule).mockReturnValue(true)
   vi.mocked(moduleRecordFromOrgFields).mockReturnValue({ mtm: true })
   // Default: no web session
@@ -158,6 +161,17 @@ beforeEach(() => {
 // FIX 3 — resolveMobileAuth revocation check (direct unit tests)
 // ===========================================================================
 describe("resolveMobileAuth — revocation check", () => {
+  it.each(["MIGRATED", "UNAVAILABLE"] as const)("refuses a valid legacy token at the %s authority boundary before business reads", async status => {
+    vi.mocked(readLegacyCredentialBoundary).mockResolvedValue(status)
+    expect(await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    expect(readLegacyCredentialBoundary).toHaveBeenCalledWith(prisma, MOBILE_PAYLOAD.orgId, { kind: "ACTOR", actorId: MOBILE_PAYLOAD.agentId })
+  })
+  it("does not open the authority reader for an invalid signature", async () => {
+    vi.mocked(jwt.verify).mockImplementationOnce(() => { throw new Error("synthetic-invalid-signature") })
+    expect(await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
+    expect(readLegacyCredentialBoundary).not.toHaveBeenCalled()
+  })
   it("ACCEPTED: active agent + active org under /mtm/ → returns MobileAuthResult", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(ACTIVE_AGENT as any)
     const req = makeRequestWithMobileBearer("/api/v1/mtm/visits")
@@ -406,6 +420,11 @@ describe("resolveMobileAuth — revocation check", () => {
 // FIX 2 — getOrgId: mobile JWT accepted ONLY under /api/v1/mtm/
 // ===========================================================================
 describe("getOrgId — FIX 2: mobile JWT path scoping", () => {
+  it.each(["MIGRATED", "UNAVAILABLE"] as const)("cannot recover tenant admission from a legacy token at the %s boundary", async status => {
+    vi.mocked(readLegacyCredentialBoundary).mockResolvedValue(status)
+    expect(await getOrgId(makeRequestWithMobileBearer("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+  })
   it("ACCEPTED (app unbroken): mobile JWT on /api/v1/mtm/visits → org resolved", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(ACTIVE_AGENT as any)
     const req = makeRequestWithMobileBearer("/api/v1/mtm/visits")

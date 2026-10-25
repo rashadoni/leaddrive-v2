@@ -3,9 +3,11 @@ import { NextRequest } from "next/server"
 vi.hoisted(() => { process.env.NEXTAUTH_SECRET = "fictional-office-attendance-test-secret" })
 vi.mock("@/lib/prisma", () => ({ prisma: { mtmAgent: { findFirst: vi.fn() }, mtmSetting: { findUnique: vi.fn() }, user: { findFirst: vi.fn() } } }))
 vi.mock("jsonwebtoken", () => ({ default: { verify: vi.fn() } }))
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({ readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 import { JWT_SECRET, resolveMobileAuth } from "@/lib/mobile-auth"
+import { readLegacyCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
 import { createSessionFingerprint } from "@/lib/session-invalidation"
 const agentId = "office-fixture-agent", userId = "office-fixture-user", organizationId = "office-fixture-org"
 const user = { isActive: true, passwordHash: "fixture-user-hash", passwordChangedAt: null }
@@ -13,6 +15,7 @@ const agent = { role: "EMPLOYEE", status: "ACTIVE", userId, passwordHash: null, 
 const request = (path: string, method = "GET") => new NextRequest(`http://localhost${path}`, { method, headers: { authorization: "Bearer fixture-token" } })
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(readLegacyCredentialBoundary).mockResolvedValue("LEGACY")
   vi.mocked(jwt.verify).mockReturnValue({ agentId, userId, orgId: organizationId, role: "ADMIN",
     agentSessionFingerprint: createSessionFingerprint({ principalId: agentId, passwordHash: agent.passwordHash, secret: JWT_SECRET }),
     userSessionFingerprint: createSessionFingerprint({ principalId: userId, passwordHash: user.passwordHash, passwordChangedAt: null, secret: JWT_SECRET }) } as never)
@@ -21,6 +24,11 @@ beforeEach(() => {
   vi.mocked(prisma.user.findFirst).mockResolvedValue(user as never)
 })
 describe("office attendance fresh mobile access", () => {
+  it.each(["MIGRATED", "UNAVAILABLE"] as const)("does not let an old office JWT bypass %s identity authority", async status => {
+    vi.mocked(readLegacyCredentialBoundary).mockResolvedValue(status)
+    expect(await resolveMobileAuth(request("/api/v1/mtm/mobile/bootstrap"))).toBeNull()
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+  })
   it("allows enrollment through the linked credentials while ignoring an old elevated token role", async () => {
     expect((await resolveMobileAuth(request("/api/v1/mtm/mobile/bootstrap")))?.role).toBe("EMPLOYEE")
     expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ attendanceParticipant: true }) }))

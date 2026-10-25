@@ -13,6 +13,10 @@ on:
       - 'src/lib/modules.ts'
       - 'src/lib/crm-product-availability.ts'
       - 'src/lib/mtm/attendance-feature.ts'
+      - 'src/lib/mobile-auth.ts'
+      - 'src/__tests__/mobile-auth-scope.test.ts'
+      - 'src/__tests__/mobile-auth-office-attendance.test.ts'
+      - 'src/__tests__/lib-whatsapp-portal-mobile-slack.test.ts'
       - 'package-lock.json'
   workflow_dispatch:
 
@@ -68,7 +72,7 @@ jobs:
       - name: Focused identity types and independent application unit checks
         run: |
           node scripts/identity/compile-foundation.mjs
-          VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts src/lib/identity/phone-proof.test.ts src/lib/identity/credential-setup.test.ts src/lib/identity/phone-proof-dispatch.test.ts src/lib/identity/mobile-session-contract.test.ts src/lib/identity/mobile-session.test.ts src/lib/identity/tenant-policy.test.ts src/__tests__/rls-bypass-classifier.test.ts src/__tests__/tenant-capabilities.test.ts src/__tests__/attendance-feature.test.ts
+          VITEST_MAX_WORKERS=1 npx vitest run src/lib/identity/contract.test.ts src/lib/identity/phone-proof.test.ts src/lib/identity/credential-setup.test.ts src/lib/identity/phone-proof-dispatch.test.ts src/lib/identity/mobile-session-contract.test.ts src/lib/identity/mobile-session.test.ts src/lib/identity/tenant-policy.test.ts src/__tests__/rls-bypass-classifier.test.ts src/__tests__/tenant-capabilities.test.ts src/__tests__/attendance-feature.test.ts src/__tests__/mobile-auth-scope.test.ts src/__tests__/mobile-auth-office-attendance.test.ts src/__tests__/lib-whatsapp-portal-mobile-slack.test.ts
       - name: Actual additive identity migration, tenant isolation and phone races
         run: node scripts/identity/foundation-contract.mjs
         env:

@@ -6,7 +6,7 @@ export type LegacyCredentialPrincipal = { kind: "USER"; userId: string } | { kin
 export type LegacyCredentialBoundary = "LEGACY" | "MIGRATED" | "UNAVAILABLE"
 
 /**
- * Inactive compatibility boundary, NOT authentication or an activation API.
+ * Compatibility eligibility boundary, NOT authentication or an activation API.
  * The caller supplies the server-selected tenant and a principal from its
  * actual legacy lookup/verified session. Only LEGACY permits proceeding to
  * the existing password/MFA/role/license checks. Errors never permit fallback.
@@ -14,7 +14,8 @@ export type LegacyCredentialBoundary = "LEGACY" | "MIGRATED" | "UNAVAILABLE"
  * feature is switched off. For actors, check both the current User link and
  * immutable reviewed owner so unlinking/relinking cannot restore legacy auth.
  * A business write needs its own transactional guard; this snapshot holds no
- * lock for later writes. No current endpoint calls this helper yet.
+ * lock for later writes. Fencing legacy requests never activates a person or
+ * replaces their password/login flow with the new canonical implementation.
  */
 export async function readLegacyCredentialBoundary(client: RegistryClient, organizationId: string,
   principal: LegacyCredentialPrincipal): Promise<LegacyCredentialBoundary> {
