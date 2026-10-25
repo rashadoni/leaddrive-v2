@@ -95,3 +95,28 @@ describe("identity application enrollment HTTP authority", () => {
     expect(mocks.enroll).not.toHaveBeenCalled()
   })
 })
+
+
+vi.mock("@/lib/identity/time-enrollment", () => ({ lookupIdentityTimePerson: mocks.enroll, enrollExistingIdentityInTime: mocks.enroll }))
+import { POST as lookupTime } from "@/app/api/v1/identity/time/lookup/route"
+import { POST as enrollTime } from "@/app/api/v1/identity/time/enroll/route"
+const timeInput = { userId: "fixture-person", expectedClaimId: "fixture-phone", expectedAccountVersion: 3,
+  requestId: "b9ab19e0-e59d-49ac-8f47-70ec6c5f3479", position: "Accountant", teamId: null, departmentId: null, hireDate: "2026-10-25" }
+const timeCall = (route: typeof lookupTime, value: unknown) => route(new NextRequest("https://fixture.example/api/v1/identity/time/enroll", { method: "POST", body: JSON.stringify(value) }))
+describe("explicit existing-person Time registration", () => {
+  it("uses verified private administrator authority for lookup and enrollment", async () => {
+    expect((await timeCall(lookupTime, { phone: "+994507770014" })).status).toBe(200)
+    expect(mocks.enroll).toHaveBeenLastCalledWith({}, { organizationId: "fixture-company", userId: "fixture-admin", mode: "CANONICAL", claims }, "+994507770014")
+    expect((await timeCall(enrollTime, timeInput)).status).toBe(201)
+    expect(mocks.enroll).toHaveBeenLastCalledWith({}, { organizationId: "fixture-company", userId: "fixture-admin", mode: "CANONICAL", claims }, timeInput)
+  })
+  it.each([lookupTime, enrollTime])("refuses non-admin sessions before any profile access", async route => {
+    mocks.session.mockResolvedValue({ orgId: "fixture-company", userId: "viewer", role: "viewer", principalType: "session" })
+    expect((await timeCall(route, timeInput)).status).toBe(403)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+  it.each([{ ...timeInput, organizationId: "foreign" }, { ...timeInput, password: "must-not-be-set-here" }, { ...timeInput, name: "replacement identity" }, { ...timeInput, expectedClaimId: "" }])("refuses scope, credential and profile substitutions", async input => {
+    expect((await timeCall(enrollTime, input)).status).toBe(400)
+    expect(mocks.enroll).not.toHaveBeenCalled()
+  })
+})

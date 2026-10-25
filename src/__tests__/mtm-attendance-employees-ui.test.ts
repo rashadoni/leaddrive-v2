@@ -220,6 +220,37 @@ describe("Add employee", () => {
     expect(input("addEmployeeEmail").value).toBe("taken@example.test")
     expect(input("addEmployeePhone").value).toBe("+994501112233")
   })
+  it.each(["ru", "az", "en"] as const)("explicitly connects the reviewed person to Time with the entered job details in %s", async language => {
+    const candidate = { kind: "canonical", userId: "existing-person", name: "Existing Person", claimId: "current-phone-claim", accountVersion: 7, timeActorId: null }
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response(candidate)
+      : String(url).endsWith("/identity/time/enroll") ? response({ agentId: "new-time-card", name: candidate.name }, 201)
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(language)
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed Name"); await type("addEmployeePhone", "+994501112233")
+    await type("employeeCardPosition", "Accountant"); await type("employeeCardHired", "2026-10-25")
+    await send()
+    expect(form().querySelector('[data-testid="attendance-canonical-person"]')!.textContent).toContain(candidate.name)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/enroll"))).toBe(false)
+    expect(form().querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true)
+    await act(async () => form().querySelector<HTMLButtonElement>('[data-testid="attendance-canonical-enroll"]')!.click())
+    const write = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/identity/time/enroll"))!
+    expect(JSON.parse(String(write[1]!.body))).toEqual({ userId: candidate.userId, expectedClaimId: candidate.claimId, expectedAccountVersion: 7,
+      requestId: expect.any(String), position: "Accountant", departmentId: null, teamId: null, hireDate: "2026-10-25" })
+    expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toContain(candidate.name)
+  })
+
+  it("clears the reviewed identity when the number changes", async () => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response({ kind: "canonical", userId: "existing-person", name: "Existing Person", claimId: "claim", accountVersion: 7, timeActorId: null })
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed Name"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-canonical-person"]')).not.toBeNull()
+    await type("addEmployeePhone", "+994501112234")
+    expect(form().querySelector('[data-testid="attendance-canonical-person"]')).toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/enroll"))).toBe(false)
+  })
+
   it.each((["ru", "az", "en"] as const).flatMap(language => ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "IDENTITY_CANONICAL_PHONE_RESERVED"].map(code => ({ language, code }))))("opens an existing hidden CRM card after $code in $language without creating or linking again", async ({ language, code }) => {
     fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
       ? response({ kind: "attendance", agentId: "existing-card", name: "Existing CRM person", enrolled: false })
@@ -233,7 +264,7 @@ describe("Add employee", () => {
     expect(match.textContent).toContain(p("addEmployeePhoneExistingHire"))
     expect(match.querySelector("a")!.getAttribute("href")).toBe("/mtm/attendance/people/existing-card?back=%2Fmtm%2Fattendance%2Fpeople%3Ftab%3Demployees")
     expect(creates()).toHaveLength(1)
-    expect(fetchMock.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(2)
+    expect(fetchMock.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(3)
     expect(form().querySelector('[role="alert"]')).toBeNull()
     expect(input("addEmployeeName").value).toBe("Typed name")
     await type("addEmployeePhone", "+994501112234")

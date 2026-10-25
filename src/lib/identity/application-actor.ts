@@ -1,6 +1,7 @@
+import type { Prisma } from "@prisma/client"
 import { createHash, randomUUID } from "node:crypto"
 import { assertIdentityRequestId, assertIdentityScope, assertStagedApplicationGrant, IdentityRegistryError } from "./contract"
-import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { withIdentityAdministrator, withIdentityAdministratorInTransaction, type IdentityAdministrator } from "./administrator"
 import type { RegistryClient } from "./registry"
 import type { IdentityMobileApplication } from "./mobile-session-contract"
 import { readIdentityMobileTenantPolicy } from "./tenant-policy"
@@ -15,6 +16,11 @@ export type IdentityApplicationActorInput = {
  * equal names and phone matches never authorize adopting someone else's card.
  * No grant, password, contact or historic workday is changed by this operation. */
 export async function prepareIdentityApplicationActor(client: RegistryClient, actor: IdentityAdministrator, input: IdentityApplicationActorInput) {
+  return withIdentityAdministrator(client, actor, tx => prepareIdentityApplicationActorInTransaction(tx, actor, input))
+}
+
+/** Full authorization is repeated inside the caller's atomic transaction. */
+export async function prepareIdentityApplicationActorInTransaction(tx: Prisma.TransactionClient, actor: IdentityAdministrator, input: IdentityApplicationActorInput) {
   const fields = ["userId", "application", "role", "actorId", "expectedAccountVersion", "reviewReference", "requestId"] as const
   if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).length !== fields.length
     || fields.some(key => !Object.hasOwn(input, key)) || !["TIME", "ROUTE_FIELD"].includes(input.application)
@@ -25,7 +31,7 @@ export async function prepareIdentityApplicationActor(client: RegistryClient, ac
   if (input.actorId !== null) assertIdentityRequestId(input.actorId)
   assertStagedApplicationGrant({ ...input, status: "ACTIVE", expectedGrantVersion: 0 })
   const requestHash = createHash("sha256").update(JSON.stringify([1, "APPLICATION_ACTOR_PREPARED", actor.organizationId, actor.userId, ...fields.map(key => input[key])])).digest("hex")
-  return withIdentityAdministrator(client, actor, async tx => {
+  return withIdentityAdministratorInTransaction(tx, actor, async tx => {
     const scope = { organizationId: actor.organizationId, userId: input.userId }
     const receipt = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: scope.organizationId, requestId: input.requestId } } })
     if (receipt) {

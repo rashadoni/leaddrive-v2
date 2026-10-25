@@ -10,6 +10,8 @@ import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, 
 import { ATTENDANCE_EMPLOYEE_POSITION_MAX, type AttendanceDepartment, type AttendanceSection } from "@/lib/mtm/attendance-employee-contract"
 import { AttendancePhoneMatchResult, type AttendancePhoneMatch } from "@/lib/mtm/attendance-phone-match-contract"
 
+import { IdentityTimePersonResult, type IdentityTimePerson } from "@/lib/identity/time-enrollment-contract"
+
 const ENDPOINT = "/api/v1/mtm/attendance/employees/new"
 const ERRORS: Record<string, string> = {
   MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN: "addEmployeeEmailTaken",
@@ -37,14 +39,16 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   const [open, setOpen] = useState(false), [form, setForm] = useState<Form>(empty)
   const [saving, setSaving] = useState(false), [error, setError] = useState<string | null>(null)
   const [match, setMatch] = useState<AttendancePhoneMatch | null>(null)
+  const [canonicalPerson, setCanonicalPerson] = useState<Extract<IdentityTimePerson, { kind: "canonical" }> | null>(null)
+  const enrollmentRequest = useRef<string | null>(null)
   const revision = useRef(0)
-  const clearResult = () => { revision.current++; setError(null); setMatch(null) }
+  const clearResult = () => { revision.current++; setError(null); setMatch(null); setCanonicalPerson(null); enrollmentRequest.current = null }
   const set = <K extends keyof Form>(key: K) => (value: Form[K]) => { setForm(current => ({ ...current, [key]: value })); clearResult() }
   const close = () => { clearResult(); setOpen(false) }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving) return
+    if (saving || canonicalPerson) return
     if (!internationalPhone(form.phone)) { setError("addEmployeePhoneInvalid"); return }
     const submittedRevision = revision.current
     setSaving(true); setError(null); setMatch(null)
@@ -65,6 +69,16 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         // refusal is permission to adopt that person's account. Offer
         // their existing card for an explicit review using its normal controls.
         try {
+          const canonicalLookup = await fetch("/api/v1/identity/time/lookup", {
+            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: form.phone.trim() }), cache: "no-store",
+          })
+          const canonicalBody = await canonicalLookup.json().catch(() => null)
+          if (submittedRevision !== revision.current) return
+          const candidate = IdentityTimePersonResult.safeParse(canonicalBody?.data)
+          if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "canonical") {
+            setCanonicalPerson(candidate.data); enrollmentRequest.current = null
+            return
+          }
           const lookup = await fetch("/api/v1/mtm/attendance/employees/phone-match", {
             method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: form.phone.trim() }), cache: "no-store",
           })
@@ -79,6 +93,29 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
       }
       if (submittedRevision !== revision.current) return
       setError(ERRORS[body?.code] ?? (response.status === 400 ? "addEmployeeInvalid" : "addEmployeeFailed"))
+    } catch { if (submittedRevision === revision.current) setError("addEmployeeFailed") }
+    finally { setSaving(false) }
+  }
+
+  async function enrollExistingPerson() {
+    if (saving || !canonicalPerson || canonicalPerson.timeActorId) return
+    const submittedRevision = revision.current
+    const person = canonicalPerson
+    enrollmentRequest.current ??= crypto.randomUUID()
+    setSaving(true); setError(null)
+    try {
+      const response = await fetch("/api/v1/identity/time/enroll", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId: person.userId, expectedClaimId: person.claimId, expectedAccountVersion: person.accountVersion,
+          requestId: enrollmentRequest.current, position: form.position.trim() || null, ...departmentPayload(form.department), hireDate: form.hireDate || null }) })
+      const body = await response.json().catch(() => null)
+      if (submittedRevision !== revision.current) return
+      if (response.status === 201 && body?.success) {
+        onAdded(person.name, form.phone.trim()); setForm(empty); setOpen(false); clearResult()
+      } else {
+        const stale = ["IDENTITY_ACCOUNT_STALE", "IDENTITY_EXISTING_ACTOR_REVIEW_REQUIRED", "IDENTITY_MEMBERSHIP_ACTOR_REVIEW_REQUIRED"].includes(body?.error)
+        if (stale) { setCanonicalPerson(null); enrollmentRequest.current = null }
+        setError(stale ? "addEmployeeIdentityChanged" : "addEmployeeFailed")
+      }
     } catch { if (submittedRevision === revision.current) setError("addEmployeeFailed") }
     finally { setSaving(false) }
   }
@@ -102,6 +139,16 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
     <p className="flex max-w-prose items-start gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm" data-testid="attendance-add-employee-code-note">
       <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{p("addEmployeeCodeNote")}</span></p>
     {error ? <p role="alert" className="text-sm text-destructive">{p(error)}</p> : null}
+    {canonicalPerson ? <div role="status" className="max-w-prose space-y-2 rounded-xl border p-4 text-sm" data-testid="attendance-canonical-person">
+      <p>{p("addEmployeePhoneProfile", { name: canonicalPerson.name })}</p>
+      {canonicalPerson.timeActorId ? <>
+        <p className="text-muted-foreground">{p("addEmployeePhoneAlreadyEnrolled")}</p>
+        <Button asChild type="button" variant="outline" className="min-h-11 rounded-full"><Link href={`/mtm/attendance/people/${encodeURIComponent(canonicalPerson.timeActorId)}`} prefetch={false}>{p("addEmployeePhoneOpenProfile")}</Link></Button>
+      </> : <>
+        <p className="text-muted-foreground">{p("addEmployeeIdentityTimeHint", { name: canonicalPerson.name })}</p>
+        <Button type="button" className="min-h-11 rounded-full" disabled={saving} onClick={enrollExistingPerson} data-testid="attendance-canonical-enroll">{p(saving ? "addEmployeeSaving" : "addEmployeeIdentityTimeSubmit")}</Button>
+      </>}
+    </div> : null}
     {match && match.kind !== "none" ? <div role="status" className="max-w-prose space-y-2 rounded-xl border p-4 text-sm" data-testid="attendance-phone-match">
       <p>{match.kind === "ambiguous" ? p("addEmployeePhoneAmbiguous") : p("addEmployeePhoneProfile", { name: match.name })}</p>
       {match.kind === "attendance" ? <>
@@ -111,7 +158,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         </Button>
       </> : match.kind === "other" ? <p className="text-muted-foreground">{p("addEmployeePhoneOtherProfile")}</p> : null}
     </div> : null}
-    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
+    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving || !!canonicalPerson}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
       <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={saving} onClick={close}>{p("cancel")}</Button></div>
   </form>
 }
