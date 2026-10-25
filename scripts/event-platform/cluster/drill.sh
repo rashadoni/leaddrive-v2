@@ -13,7 +13,8 @@
 #   5. a cold restart keeps topics, ACLs and credentials;
 #   6. the watch (health.mjs) reads this Kafka's own answers correctly: silent
 #      when healthy, names the lost site, calls two lost sites critical;
-#   7. heartbeats keep the CDC slot moving while only other tables change.
+#   7. the CDC slot keeps moving while only other tables change, and no
+#      outbox row is lost across a connector restart in the middle of that.
 # One runner is one failure domain: this proves configuration and Kafka
 # behaviour, not physical independence of the real sites.
 #
@@ -411,9 +412,8 @@ node -e '
     .replaceAll("__PGDATABASE__", "leaddrive").replaceAll("__SECRET_FROM_PROVIDER__", process.argv[3])
     .replaceAll("__PG_SSL_ROOT_CERT_PATH__", "/etc/kafka/tls/ca.pem")
   if (/__[A-Z_]+__/.test(s)) throw new Error("unresolved placeholder in connector")
-  const c = JSON.parse(s)
-  import(process.argv[4]).then((m) => { Object.assign(c.config, m.slotHeartbeat(process.argv[2])); process.stdout.write(JSON.stringify(c)) })
-' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" "$services" >"$work/connector.json"
+  process.stdout.write(s)
+' "$repo/ops/event-platform/debezium/event-outbox-connector.template.json" "$env" "$cdc_password" >"$work/connector.json"
 docker exec -i kafka-p-connect-eu curl -fsS -X POST -H 'Content-Type: application/json' --data @- \
   http://kafka-p-connect-eu:8083/connectors <"$work/connector.json" >/dev/null || fail "connector registration rejected"
 connector_status() { docker exec kafka-p-connect-eu curl -fsS "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/status"; }
@@ -432,17 +432,37 @@ grep -q 'organizationid:org-1' "$work/cdc.txt" || fail "organizationid header mi
 grep -Eq '(^|[[:space:]])org-0:fund:fund-1[[:space:]]' "$work/cdc.txt" || fail "partition key is not the outbox partitionKey"
 echo "6/6 outbox rows (3 snapshot, 3 streamed) arrived over SCRAM/TLS from a verify-full PostgreSQL source, with key and headers"
 
-step "Heartbeats keep the CDC slot moving while only other tables change"
+step "The CDC slot keeps moving while only other tables change"
 pgq() { docker exec -i "$pg" psql -XAtq -v ON_ERROR_STOP=1 -U postgres -d leaddrive "$@"; }
-pgq -c 'CREATE TABLE other_traffic (id bigserial PRIMARY KEY, pad text)' \
-    -c 'INSERT INTO other_traffic (pad) SELECT repeat(md5(g::text), 32) FROM generate_series(1, 20000) g' >/dev/null
+other_traffic() { pgq -c 'INSERT INTO other_traffic (pad) SELECT repeat(md5(g::text), 32) FROM generate_series(1, 20000) g' >/dev/null; }
+pgq -c 'CREATE TABLE other_traffic (id bigserial PRIMARY KEY, pad text)' >/dev/null
+other_traffic
 target="$(pgq -c 'select pg_current_wal_lsn()')"
 slot_sql="from pg_replication_slots where slot_name = 'leaddrive_event_outbox_$env'"
 slot_caught_up() { [ "$(pgq -c "select pg_wal_lsn_diff(confirmed_flush_lsn, '$target') >= 0 $slot_sql")" = t ]; }
-for _ in $(seq 60); do slot_caught_up && break; sleep 3; done
+for _ in $(seq 40); do slot_caught_up && break; sleep 3; done
 slot_caught_up || { pgq -c "select slot_name, active, confirmed_flush_lsn, pg_current_wal_lsn() $slot_sql"; fail "the slot did not confirm WAL written to other tables (target $target)"; }
-connector_running || { connector_status | cut -c1-1500; echo; fail "connector stopped after heartbeats started"; }
-echo "slot confirmed past $target with no outbox row; slot now holds $(pgq -c "select pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) $slot_sql") of WAL"
+echo "slot confirmed past $target with no outbox row; it now holds $(pgq -c "select pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) $slot_sql") of WAL"
+
+# Confirming positions nobody subscribes to must never skip an outbox row:
+# interleave rows with other traffic and restart the task in the middle.
+for n in 7 8 9; do outbox_row "$n"; done | pgq >/dev/null
+other_traffic
+docker exec kafka-p-connect-eu curl -fsS -X POST "http://kafka-p-connect-eu:8083/connectors/leaddrive-event-outbox-$env/restart?includeTasks=true" >/dev/null \
+  || fail "connector restart rejected"
+other_traffic
+for n in 10 11 12; do outbox_row "$n"; done | pgq >/dev/null
+other_traffic
+for _ in $(seq 40); do connector_running && break; sleep 3; done
+connector_running || { connector_status | cut -c1-1500; echo; fail "connector task is not RUNNING after restart"; }
+sleep 15
+KAFKA_TIMEOUT=90 kafka kafka-console-consumer.sh --bootstrap-server "$bootstrap_scram" --consumer.config /client/fund.properties \
+  --topic "$finance_events" --group "ld.$env.fund-shadow.cdc-restart" --from-beginning --timeout-ms 20000 2>/dev/null \
+  | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$' | sort -n | uniq >"$work/cdc-restart.txt" || true
+missing="$(comm -23 <(seq 1 12 | sort) <(sort "$work/cdc-restart.txt"))"
+[ -z "$missing" ] || fail "outbox rows missing after the restart: $(tr '\n' ' ' <<<"$missing")"
+slot_caught_up || fail "the slot fell behind after the restart"
+echo "12/12 outbox rows in Kafka across a task restart amid other traffic"
 
 step "Registry keeps schemas in Kafka across a restart"
 schema='{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["amount"],"properties":{"amount":{"type":"string"}}}'

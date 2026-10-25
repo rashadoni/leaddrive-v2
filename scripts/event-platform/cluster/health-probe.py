@@ -39,13 +39,14 @@ def overlay_address():
 
 
 def tunnel(stale_after=180):
-    code, out, _ = run(["wg", "show", "wg0", "latest-handshakes"], timeout=5)
+    code, out, _ = run(["wg", "show", "wg0", "dump"], timeout=5)
     if code != 0:
-        return {"up": False, "peers": 0, "stale": 0}
+        return {"up": False, "peers": 0, "stale": 0, "stalePeers": []}
     now = int(time.time())
-    peers = [line.split() for line in out.splitlines() if line.strip()]
-    stale = sum(1 for p in peers if len(p) < 2 or int(p[1]) == 0 or now - int(p[1]) > stale_after)
-    return {"up": True, "peers": len(peers), "stale": stale}
+    # Peer lines: public-key preshared-key endpoint allowed-ips latest-handshake rx tx keepalive
+    peers = [line.split("\t") for line in out.splitlines()[1:] if line.strip()]
+    stale = [p[3].split("/")[0] for p in peers if len(p) < 5 or int(p[4]) == 0 or now - int(p[4]) > stale_after]
+    return {"up": True, "peers": len(peers), "stale": len(stale), "stalePeers": stale}
 
 
 def disk(path="/"):

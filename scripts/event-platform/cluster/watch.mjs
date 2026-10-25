@@ -94,6 +94,8 @@ async function main() {
   const key = process.env.LD_KAFKA_WATCH_KEY ?? path.join(process.env.HOME, '.ssh/leaddrive_kafka_watch')
   const notify = process.env.LD_KAFKA_WATCH_NOTIFY ?? path.join(process.env.HOME, 'bin/notify-telegram')
   const dryRun = process.argv.includes('--dry-run')
+  // Marks a live drill's messages, e.g. "[проверка] ", run with its own state dir.
+  const prefix = process.env.LD_KAFKA_WATCH_PREFIX ?? ''
   mkdirSync(stateDir, { recursive: true, mode: 0o700 })
 
   if (process.argv.includes('--notify-failure')) {
@@ -141,7 +143,7 @@ async function main() {
   let lastWeekly = state.lastWeekly
   for (const message of outgoing) {
     if (dryRun) { console.log(`[dry-run] ${message.title}\n${message.text}`); continue }
-    const r = await sh(notify, [message.title, message.text], { timeout: 30_000 })
+    const r = await sh(notify, [prefix + message.title, message.text], { timeout: 30_000 })
     if (r.code !== 0) { console.log(`telegram send failed, will retry: ${message.title}`); continue }
     console.log(`sent: ${message.title}`)
     if (message.kind === 'weekly') lastWeekly = now

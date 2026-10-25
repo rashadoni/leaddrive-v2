@@ -235,6 +235,29 @@ partitions, min-ISR violations, rejected schemas, quarantine rate, archive
 watermark lag, and per-tenant projection parity. Logs and metric labels must not
 contain event payloads or customer PII.
 
+### What the watch covers today (2026-10-23)
+
+`scripts/event-platform/cluster/watch.mjs` runs every 5 minutes on the operator
+workstation (`provision.sh install-watch prod`, user timer `ld-kafka-watch`)
+and sends to the owner's Telegram through `~/bin/notify-telegram`. Each host
+answers through `health-probe.py`, the forced command of the watch key
+(`restrict`, no shell, no forwarding, read-only); one broker answers for the
+cluster with its own certificate. A problem is told after two passes in a row,
+once, with a reminder a day later and a note when it is over; a crash of the
+watch itself is told at most every six hours; a Monday note says it is alive.
+
+Covered: replication-slot retained bytes (1 GB warning, 4 GB critical, cap
+16 GB), slot inactive / unreserved / lost / missing, connector and task state,
+each Connect worker and registry, controller quorum and each voter, each
+broker's last fetch, offline / below-min-ISR / under-replicated partitions,
+disk use on every host, WireGuard peers, node certificate expiry.
+
+Not covered yet: consumer lag (no consumer runs), outbox-to-Kafka watermark
+age beyond what the slot shows, schemas, quarantine, archive, projections. The
+watch shares a failure domain with production (both in Contabo Hub Europe):
+when that site is gone entirely, no alert comes until the planned monitoring
+host outside it exists.
+
 ## Evidence identifiers and credential-reference shape
 
 Evidence/change/operator IDs and endpoints must be canonical nonempty strings:

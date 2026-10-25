@@ -292,6 +292,11 @@ assert.equal(config["database.password"], "__SECRET_FROM_PROVIDER__")
 assert.equal(config["database.sslmode"], "verify-full")
 assert.equal(config["publication.name"], "leaddrive_event_outbox")
 assert.equal(config["publication.autocreate.mode"], "disabled")
+// The outbox is quiet while the rest of the database writes WAL. With the
+// default "connector" mode the slot confirms only what Debezium emitted, so it
+// pinned every byte since the last outbox row (production, 2026-10-23); the
+// driver must also confirm keepalive positions nobody subscribes to.
+assert.equal(config["lsn.flush.mode"], "connector_and_driver")
 assert.equal(config["table.include.list"], "public.event_outbox")
 assert.equal(config["schema.include.list"], "public")
 assert.equal(config["skipped.operations"], "u,d,t")

@@ -99,6 +99,7 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView }) 
   const label = (name) => hostLabel(byName.get(name) ?? { roles: [], site: name })
 
   const unreachable = members.filter((m) => !probes[m.name]?.ok)
+  const downAddresses = new Set(unreachable.map((m) => inventory.hosts[m.name]?.address).filter(Boolean))
   for (const m of unreachable) {
     problems.push(problem(`host-unreachable:${m.name}`, m.roles.includes(SOURCE_ROLE) ? 'critical' : 'warning',
       `Не отвечает ${label(m.name)}`,
@@ -113,9 +114,12 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView }) 
       problems.push(problem(`disk:${m.name}`, disk >= LIMITS.diskCriticalPercent ? 'critical' : 'warning',
         `Кончается диск: ${label(m.name)}`, `Диск занят на ${disk}%. Когда он заполнится, ${m.roles.includes(SOURCE_ROLE) ? 'база и сайт остановятся' : 'Kafka на этом сервере остановится'}.`))
     }
-    if (data.tunnel && data.tunnel.stale > 0) {
+    // A peer that is down itself is already reported; a lost link between two
+    // live hosts is not, so only that counts here.
+    const silent = (data.tunnel?.stalePeers ?? []).filter((address) => !downAddresses.has(address))
+    if (silent.length) {
       problems.push(problem(`tunnel:${m.name}`, 'warning', `Связь между серверами: ${label(m.name)}`,
-        `У ${label(m.name)} нет связи с ${data.tunnel.stale} из ${data.tunnel.peers} серверов кластера дольше ${LIMITS.tunnelStaleSeconds / 60} минут.`))
+        `У ${label(m.name)} нет связи с ${silent.length} из ${data.tunnel.peers} серверов кластера дольше ${LIMITS.tunnelStaleSeconds / 60} минут, хотя они сами отвечают.`))
     }
     if (Number.isFinite(data.cert?.daysLeft) && data.cert.daysLeft < LIMITS.certWarnDays) {
       problems.push(problem(`cert:${m.name}`, data.cert.daysLeft < 7 ? 'critical' : 'warning', `Истекает сертификат: ${label(m.name)}`,

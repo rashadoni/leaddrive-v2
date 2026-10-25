@@ -24,7 +24,7 @@ const topic = (name, rows) => [
 const HEALTHY_TOPICS = [topic('ld.prod.finance.events.v1', [[102, '102,103,101'], [103, '103,101,102']]), topic('ld.prod.registry.journal', [[103, '103,101,102']])].join('\n')
 
 const topology = loadTopology()
-const inventory = { hosts: Object.fromEntries([...topology.clusters[0].hosts.map((h) => h.name), 'leaddrive-prod'].map((n) => [n, { publicAddress: '192.0.2.1' }])) }
+const inventory = { hosts: Object.fromEntries([...topology.clusters[0].hosts.map((h) => h.name), 'leaddrive-prod'].map((n, i) => [n, { publicAddress: '192.0.2.1', address: `10.88.0.${10 + i}` }])) }
 const SLOT = 'leaddrive_event_outbox_prod'
 const CONNECTOR = 'leaddrive-event-outbox-prod'
 const running = { [CONNECTOR]: { status: { connector: { state: 'RUNNING' }, tasks: [{ id: 0, state: 'RUNNING' }] } } }
@@ -82,6 +82,9 @@ test('losing a site names its broker and controller; losing two names refused wr
     topics: topic('ld.prod.finance.events.v1', [[103, '103,101'], [103, '103,101']]) } }
   const p = healthyProbes(); p['kafka-p-broker-uk'] = { ok: false, error: 'timeout' }; p['kafka-p-ctrl-uk'] = { ok: false, error: 'timeout' }
   p['kafka-p-connect-uk'] = { ok: false, error: 'timeout' }
+  // Every live host now misses the three UK peers: that is the site, not three more problems.
+  const ukAddresses = ['kafka-p-broker-uk', 'kafka-p-ctrl-uk', 'kafka-p-connect-uk'].map((n) => inventory.hosts[n].address)
+  for (const probe of Object.values(p)) if (probe.ok) probe.data.tunnel = { up: true, peers: 8, stale: 3, stalePeers: ukAddresses }
   assert.deepEqual(ids(evaluate({ topology, inventory, probes: p, cluster: oneSite })), [
     'broker:kafka-p-broker-uk', 'controller:kafka-p-ctrl-uk', 'host-unreachable:kafka-p-broker-uk', 'host-unreachable:kafka-p-connect-uk',
     'host-unreachable:kafka-p-ctrl-uk', 'partitions-under-replicated'])
@@ -90,6 +93,12 @@ test('losing a site names its broker and controller; losing two names refused wr
   assert.ok(problems.some((x) => x.id === 'partitions-below-min-isr' && x.severity === 'critical'))
   assert.ok(problems.some((x) => x.id === 'partitions-offline' && x.severity === 'critical'))
   assert.deepEqual(ids(evaluate({ topology, inventory, probes: healthyProbes(), cluster: null })), ['cluster-unreachable'])
+})
+
+test('a lost link between two live hosts is reported, a dead peer is not counted twice', () => {
+  const p = healthyProbes()
+  p['kafka-p-ctrl-eu'].data.tunnel = { up: true, peers: 8, stale: 1, stalePeers: [inventory.hosts['kafka-p-broker-gra'].address] }
+  assert.deepEqual(ids(evaluate({ topology, inventory, probes: p, cluster: healthyCluster() })), ['tunnel:kafka-p-ctrl-eu'])
 })
 
 test('a stopped connector task is critical; one silent Connect worker is a warning', () => {
