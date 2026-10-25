@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client"
 import { assertIdentityScope } from "./contract"
 import type { RegistryClient } from "./registry"
 import { withIdentityMobileReadSnapshot } from "./mobile-session-resolver"
+import { phoneDigits, phonesMatch } from "../mtm/mobile-login-phone"
 
 export type LegacyCredentialPrincipal = { kind: "USER"; userId: string } | { kind: "ACTOR"; actorId: string }
 export type LegacyCredentialBoundary = "LEGACY" | "MIGRATED" | "UNAVAILABLE"
@@ -30,6 +31,46 @@ export async function readLegacyCredentialBoundary(client: RegistryClient, organ
     assertIdentityScope(organizationId, id)
     const snapshot = await withIdentityMobileReadSnapshot(client, organizationId, async tx => {
       return readLegacyCredentialBoundaryInTransaction(tx, organizationId, principal)
+    })
+    return snapshot.value
+  } catch { return "UNAVAILABLE" }
+}
+
+/**
+ * Phone-only legacy admission. A different, unconverted card must not capture
+ * the namespace of a verified canonical phone through an old national alias.
+ * Suffix comparison only REFUSES legacy admission; it never chooses a person,
+ * changes a claim, infers a country or authorizes canonical authentication.
+ * Shadow claims/reservations do not change the existing admission policy.
+ */
+export async function readLegacyPhoneCredentialBoundary(client: RegistryClient, organizationId: string,
+  actorId: string, enteredPhone: string): Promise<LegacyCredentialBoundary> {
+  try {
+    assertIdentityScope(organizationId, actorId)
+    if (typeof enteredPhone !== "string" || enteredPhone.length > 128) return "UNAVAILABLE"
+    const digits = phoneDigits(enteredPhone)
+    if (digits.length < 8 || digits.length > 15) return "UNAVAILABLE"
+    const snapshot = await withIdentityMobileReadSnapshot(client, organizationId, async tx => {
+      const principal = await readLegacyCredentialBoundaryInTransaction(tx, organizationId, { kind: "ACTOR", actorId })
+      if (principal !== "LEGACY") return principal
+      const actor = await tx.mtmAgent.findFirst({ where: { id: actorId, organizationId }, select: { phone: true, userId: true } })
+      if (!actor) return "UNAVAILABLE" as const
+      const user = !actor.phone && actor.userId ? await tx.user.findFirst({
+        where: { id: actor.userId, organizationId, isActive: true, anonymizedAt: null }, select: { phone: true },
+      }) : null
+      const effectivePhone = actor.phone ?? user?.phone ?? null
+      // Recheck the original lookup inside this snapshot; a changed phone must
+      // not authenticate a stale selected actor. Preserve the existing alias
+      // semantics, including the card's own phone taking priority.
+      if (!phonesMatch(effectivePhone, enteredPhone)) return "UNAVAILABLE" as const
+      const alternatives = [digits, phoneDigits(effectivePhone)].map(value => value.startsWith("0")
+        ? { normalizedPhone: { endsWith: value.slice(1) } }
+        : { normalizedPhone: `+${value}` })
+      const canonicalClaim = await tx.identityPhoneClaim.findFirst({
+        where: { organizationId, account: { cutoverAt: { not: null } }, OR: alternatives },
+        select: { id: true },
+      })
+      return canonicalClaim ? "MIGRATED" as const : "LEGACY" as const
     })
     return snapshot.value
   } catch { return "UNAVAILABLE" }

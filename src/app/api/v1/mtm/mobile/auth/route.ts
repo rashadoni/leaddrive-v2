@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    if (!(await legacyMobileMaySignIn(agent))) {
+    if (!(await legacyMobileMaySignIn(agent, enteredPhone ?? undefined))) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 

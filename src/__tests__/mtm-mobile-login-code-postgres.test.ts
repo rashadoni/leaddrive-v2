@@ -428,6 +428,44 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(sent).toHaveLength(0)
   })
 
+  it("refuses legacy password and OTP through another canonical person's number, including the linked User national alias", async () => {
+    const company = "identity-phone-namespace", phone = "+994507778877", national = "0507778877", password = "Fictional-Phone-Namespace-2026!"
+    const fixture = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional phone namespace company", slug: company, modules: { "route-field": true } } })
+      const legacy = await prisma.user.create({ data: { organizationId: company, name: "Fictional legacy owner", email: "legacy-namespace@example.invalid", phone: national, passwordHash: "!unused", role: "viewer" } })
+      const canonical = await prisma.user.create({ data: { organizationId: company, name: "Fictional reviewed canonical owner", email: "canonical-namespace@example.invalid", passwordHash: "!unused", role: "viewer" } })
+      const card = await prisma.mtmAgent.create({ data: { organizationId: company, userId: legacy.id, name: "Fictional old alias card", email: "card-namespace@example.invalid", role: "AGENT", passwordHash: await bcrypt.hash(password, 4) } })
+      await prisma.identityAccount.create({ data: { organizationId: company, userId: canonical.id } })
+      await prisma.identityPhoneClaim.create({ data: { organizationId: company, userId: canonical.id, normalizedPhone: phone, accountVersion: 1, verifiedAt: new Date() } })
+      return { cardId: card.id, canonicalId: canonical.id, legacyId: legacy.id }
+    })
+    const login = (entered: string) => post(signIn, "", { phone: entered, password, organizationSlug: company })
+    // A reviewed shadow is not authority and must not switch existing login.
+    expect((await login(phone)).status).toBe(200)
+    expect((await post(requestCode, "/code", { phone, organizationSlug: company })).status).toBe(200)
+    expect(sent).toHaveLength(1)
+    const oldCode = codeOf(sent[0])
+    await bypass(async () => {
+      await prisma.identityAccount.update({ where: { organizationId_userId: { organizationId: company, userId: fixture.canonicalId } },
+        data: { cutoverAt: new Date(), passwordHash: "!canonical-namespace-fixture", version: 2, credentialEpoch: 2 } })
+      // Remove cooldown as an alternative explanation for the subsequent refusal.
+      await prisma.otpCode.updateMany({ where: { organizationId: company, phone }, data: { createdAt: new Date(Date.now() - 120_000) } })
+    })
+    sent.length = 0
+    for (const entered of [phone, national, "+155507778877"]) expect((await login(entered)).status).toBe(401)
+    expect((await post(verifyCode, "/code/verify", { phone, organizationSlug: company, code: oldCode })).status).toBe(400)
+    expect((await post(requestCode, "/code", { phone, organizationSlug: company })).status).toBe(200)
+    expect(sent).toHaveLength(0)
+    // Stable actor/email credentials still identify the old person; the phone
+    // conflict does not transfer his card, data or claim to the canonical one.
+    expect((await post(signIn, "", { email: "card-namespace@example.invalid", password, organizationSlug: company })).status).toBe(200)
+    await bypass(async () => {
+      expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId } })).userId).toBe(fixture.legacyId)
+      expect((await prisma.identityPhoneClaim.findUniqueOrThrow({ where: { organizationId_userId: { organizationId: company, userId: fixture.canonicalId } } })).normalizedPhone).toBe(phone)
+      expect((await prisma.otpCode.findFirstOrThrow({ where: { organizationId: company, phone }, orderBy: { createdAt: "desc" } })).attempts).toBe(0)
+    })
+  })
+
   it("atomically links a proven legacy mailbox owner and rolls back the link when its audit fails", async () => {
     const company = "identity-atomic-email-link", email = "atomic-link@example.invalid", password = "Fictional-Atomic-Link-Pass-2026!"
     const fixture = await bypass(async () => {

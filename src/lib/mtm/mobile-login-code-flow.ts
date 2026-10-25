@@ -77,7 +77,7 @@ export async function codeHolder(organization: MobileLoginAgent["organization"],
   const row = await prisma.mtmAgent.findFirst({ where: { id: owner.agentId, organizationId: organization.id } })
   if (!row || row.status !== "ACTIVE") return { kind: "nobody", reason: "inactive" }
   const agent: MobileLoginAgent = { ...row, organization }
-  if (!(await legacyMobileMaySignIn(agent)) || mobileAppRefusal(agent)) return { kind: "nobody", reason: "not_admitted" }
+  if (!(await legacyMobileMaySignIn(agent, phone)) || mobileAppRefusal(agent)) return { kind: "nobody", reason: "not_admitted" }
   if (!owner.sendTo) return { kind: "nobody", reason: "national_number" }
   return { kind: "agent", agent, sendTo: owner.sendTo }
 }

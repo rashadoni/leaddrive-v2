@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken"
 import type { MtmAgent } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
-import { readLegacyCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
+import { readLegacyCredentialBoundary, readLegacyPhoneCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
 import { JWT_SECRET } from "@/lib/mobile-auth"
 import { createSessionFingerprint } from "@/lib/session-invalidation"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
@@ -44,9 +44,10 @@ export async function officeEmployeeMaySignIn(agent: Pick<MtmAgent, "role" | "us
 }
 
 /** Admission only: canonical authority must never fall back to old credentials. */
-export async function legacyMobileMaySignIn(agent: Pick<MtmAgent, "id" | "role" | "userId" | "attendanceParticipant" | "organizationId">): Promise<boolean> {
-  const boundary = await runWithTenant(agent.organizationId, () =>
-    readLegacyCredentialBoundary(prisma, agent.organizationId, { kind: "ACTOR", actorId: agent.id }))
+export async function legacyMobileMaySignIn(agent: Pick<MtmAgent, "id" | "role" | "userId" | "attendanceParticipant" | "organizationId">, enteredPhone?: string): Promise<boolean> {
+  const boundary = await runWithTenant(agent.organizationId, () => enteredPhone === undefined
+    ? readLegacyCredentialBoundary(prisma, agent.organizationId, { kind: "ACTOR", actorId: agent.id })
+    : readLegacyPhoneCredentialBoundary(prisma, agent.organizationId, agent.id, enteredPhone))
   return boundary === "LEGACY" && await officeEmployeeMaySignIn(agent)
 }
 

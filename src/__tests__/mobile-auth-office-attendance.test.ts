@@ -3,7 +3,7 @@ import { NextRequest } from "next/server"
 vi.hoisted(() => { process.env.NEXTAUTH_SECRET = "fictional-office-attendance-test-secret" })
 vi.mock("@/lib/prisma", () => ({ prisma: { mtmAgent: { findFirst: vi.fn() }, mtmSetting: { findUnique: vi.fn() }, user: { findFirst: vi.fn() } } }))
 vi.mock("jsonwebtoken", () => ({ default: { verify: vi.fn() } }))
-vi.mock("@/lib/identity/legacy-credential-boundary", () => ({ readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({ readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"), readLegacyPhoneCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
 import { JWT_SECRET, resolveMobileAuth } from "@/lib/mobile-auth"

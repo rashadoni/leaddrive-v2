@@ -55,7 +55,7 @@ vi.mock("@/lib/rate-limit", () => ({
 }))
 
 vi.mock("@/lib/identity/legacy-credential-boundary", () => ({
-  readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"),
+  readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"), readLegacyPhoneCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"),
 }))
 
 const linkFence = vi.hoisted(() => ({ allowed: true }))

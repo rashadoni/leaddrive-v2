@@ -77,4 +77,41 @@ export async function checkLegacyBoundary({ admin, writer, actor, other, build, 
   }
   assert.equal(opens, 0)
   checks.push("legacy_boundary_never_treats_missing_inactive_foreign_invalid_context_or_database_failure_as_legacy_permission")
+
+  const { readLegacyPhoneCredentialBoundary: phoneBoundary } = await module("legacy-credential-boundary")
+  const canonicalUser = "legacy-phone-canonical-user", oldUser = "legacy-phone-old-user"
+  const directCard = "legacy-phone-direct-card", fallbackCard = "legacy-phone-user-card"
+  const phone = "+994507778866", national = "0507778866"
+  for (const id of [canonicalUser, oldUser]) {
+    await admin.$executeRawUnsafe('INSERT INTO users (id,"organizationId","isActive",role,phone) VALUES ($1,$2,true,\'viewer\',$3)', id, org, id === oldUser ? national : null)
+  }
+  await admin.$executeRawUnsafe('INSERT INTO mtm_agents (id,"organizationId","userId",phone,role,status,"attendanceParticipant") VALUES ($1,$2,NULL,$3,\'AGENT\',\'ACTIVE\',false)', directCard, org, phone)
+  await admin.$executeRawUnsafe('INSERT INTO mtm_agents (id,"organizationId","userId",role,status,"attendanceParticipant") VALUES ($1,$2,$3,\'AGENT\',\'ACTIVE\',false)', fallbackCard, org, oldUser)
+  await admin.identityAccount.create({ data: { organizationId: org, userId: canonicalUser } })
+  await admin.identityPhoneClaim.create({ data: { organizationId: org, userId: canonicalUser, normalizedPhone: phone, accountVersion: 1, verifiedAt: new Date() } })
+  phase("LEGACY_PHONE_NAMESPACE_SHADOW_PRESERVES_OLD_DIRECT_AND_USER_ALIASES")
+  for (const cardId of [directCard, fallbackCard]) for (const entered of [phone, national]) {
+    assert.equal(await phoneBoundary(writer, org, cardId, entered), "LEGACY")
+  }
+  checks.push("legacy_phone_namespace_shadow_claim_does_not_change_direct_or_linked_user_national_alias_admission")
+
+  phase("LEGACY_PHONE_NAMESPACE_CANONICAL_OWNER_BLOCKS_DIFFERENT_OLD_ACTOR")
+  await admin.identityAccount.update({ where: { organizationId_userId: { organizationId: org, userId: canonicalUser } },
+    data: { cutoverAt: new Date(), passwordHash: "!fixture-canonical-phone", version: 2, credentialEpoch: 2 } })
+  for (const cardId of [directCard, fallbackCard]) for (const entered of [phone, national]) {
+    assert.equal(await phoneBoundary(writer, org, cardId, entered), "MIGRATED")
+    assert.equal(await read(card(cardId)), "LEGACY") // Email eligibility remains separate.
+  }
+  // A legacy national alias must not pick a country or escape the conflict by
+  // supplying another international prefix with the same subscriber digits.
+  assert.equal(await phoneBoundary(writer, org, fallbackCard, "+155507778866"), "MIGRATED")
+  checks.push("canonical_phone_namespace_refuses_old_other_person_direct_user_national_and_country_ambiguous_aliases_without_reassigning_ownership")
+
+  phase("LEGACY_PHONE_NAMESPACE_SCOPE_STALE_AND_DATABASE_ERRORS_REFUSE")
+  assert.equal(await phoneBoundary(writer, other.organizationId, directCard, phone), "UNAVAILABLE")
+  assert.equal(await phoneBoundary(writer, org, directCard, "+994507778899"), "UNAVAILABLE")
+  assert.equal(await phoneBoundary(unavailable, org, directCard, phone), "UNAVAILABLE")
+  const unconverted = await admin.identityPhoneClaim.findUniqueOrThrow({ where: { organizationId_userId: { organizationId: org, userId: canonicalUser } } })
+  assert.equal(unconverted.normalizedPhone, phone); assert.equal(unconverted.userId, canonicalUser)
+  checks.push("legacy_phone_namespace_stale_actor_lookup_foreign_tenant_and_database_error_fail_closed_without_changing_claim")
 }

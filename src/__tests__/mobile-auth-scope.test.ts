@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from "next/server"
 // Shared mocks — declared before any imports from the modules under test
 // ---------------------------------------------------------------------------
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }))
-vi.mock("@/lib/identity/legacy-credential-boundary", () => ({ readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({ readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"), readLegacyPhoneCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
