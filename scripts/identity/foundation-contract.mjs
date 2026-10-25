@@ -62,6 +62,7 @@ async function main() {
 
     // Adapt the existing minimal disposable fixture for the shared entitlement
     // and attendance readers; none of this alters production legacy tables.
+    await admin.$executeRawUnsafe('ALTER TABLE organizations ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP')
     await admin.$executeRawUnsafe("ALTER TABLE organizations ADD COLUMN plan TEXT NOT NULL DEFAULT 'starter', ADD COLUMN addons TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], ADD COLUMN features JSONB NOT NULL DEFAULT '[]', ADD COLUMN modules JSONB NOT NULL DEFAULT '{}'")
     await admin.$executeRawUnsafe('CREATE TABLE mtm_settings (id TEXT PRIMARY KEY,"organizationId" TEXT NOT NULL REFERENCES organizations(id),key TEXT NOT NULL,value JSONB NOT NULL,description TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,UNIQUE("organizationId",key))')
     await admin.$executeRawUnsafe('ALTER TABLE mtm_settings ENABLE ROW LEVEL SECURITY')
