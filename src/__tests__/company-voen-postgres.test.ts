@@ -198,7 +198,7 @@ pgDescribe("a company's VÖEN on a real Postgres", () => {
     })
     expect(body.data.duplicate).toEqual({ id: before[0].id, name: "Nur Ticarət" })
     expect(relay.calls).toEqual([{
-      url: "https://185.161.225.131:8088/registry/az/find-taxpayer",
+      url: "https://127.0.0.1:18088/registry/az/find-taxpayer",
       body: { tin: VOEN, type: "legalEntity", serviceCode: "checkLegalName", isStateRegistry: true },
     }])
     expect(await companies()).toEqual(before)
