@@ -31033,5 +31033,16 @@
     "openAgain": "Yenidən aç",
     "checkLinked": "Start basdım",
     "linkSteps": "Botu açın və «Start» basın. Link 15 dəqiqə keçərlidir."
+  },
+  "whatsappSignupWindow": {
+    "title": "WhatsApp-ı qoşmaq",
+    "description": "Meta daxil olmağı, şirkəti və WhatsApp nömrəsini seçməyi xahiş edəcək. Bitəndə bu pəncərə bağlanacaq, nömrə isə CRM-də görünəcək.",
+    "button": "Facebook ilə davam et",
+    "working": "Meta gözlənilir…",
+    "done": "Hazırdır — pəncərəni bağlaya bilərsiniz.",
+    "cancelled": "Meta pəncərəsi qoşulma bitmədən bağlandı.",
+    "failed": "Qoşulma tamamlanmadı. Pəncərəni bağlayın və kanallar kataloqundan yenidən cəhd edin.",
+    "notFromCatalog": "Bu pəncərəni CRM-dən açın: Ayarlar → Kanallar → WhatsApp.",
+    "notConfigured": "Bu serverdə WhatsApp-ı Meta vasitəsilə qoşmaq mümkün deyil."
   }
 }
