@@ -387,6 +387,15 @@ jobs:
         env:
           BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
 
+      - name: Company VÖEN database gate
+        # A company's VÖEN on a real Postgres: ten digits or refused, the
+        # duplicate warning sees this organization only, and the tax registry's
+        # card (through the Fanum station relay, stood in) is read, not written.
+        run: npx vitest run src/__tests__/company-voen-postgres.test.ts
+        env:
+          COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          COMPANY_VOEN_DB_GATE: required
+
       - name: Online booking database gate
         # Online booking (/book/<slug>) on a real Postgres: eight customers on
         # one time get one meeting, and two overlapping meetings of one host

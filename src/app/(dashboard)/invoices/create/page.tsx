@@ -36,6 +36,7 @@ interface CustomColumn {
 interface Company {
   id: string
   name: string
+  voen?: string | null
 }
 
 interface Contact {
@@ -496,6 +497,8 @@ export default function CreateInvoicePage() {
                               onClick={() => {
                                 setCompany(c.id)
                                 setCompanySearch(c.name)
+                                // The buyer's VÖEN comes from its company card; it can still be edited below.
+                                setVoen(c.voen || "")
                                 setShowCompanyDropdown(false)
                               }}
                             >

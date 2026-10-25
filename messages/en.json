@@ -8965,6 +8965,7 @@
     "fieldLeadTemperature": "Lead Temperature",
     "fieldDescription": "Description",
     "fieldVoen": "VOEN",
+    "fieldDirector": "Director",
     "fieldFullName": "Full Name",
     "fieldPosition": "Position",
     "fieldDepartment": "Department",
@@ -30964,5 +30965,25 @@
     "updates": "Time offers a new version when you open it. Choose Later to keep working. If your older version does not offer updates yet, download the update from this page. Confirm installation in Android.",
     "playNote": "For a copy installed from Google Play, update through Google Play. This page provides the separate Time APK.",
     "privacy": "Privacy policy"
+  },
+  "companyVoen": {
+    "fill": "Fill from VÖEN",
+    "fillHint": "Looks the company up in the State Tax Service's public registry. Nothing changes until you press «Copy to form».",
+    "hint": "10 digits. The data comes from the State Tax Service's public registry.",
+    "errInvalid": "VÖEN is 10 digits.",
+    "errNotFound": "No commercial organization with this VÖEN in the registry.",
+    "errUnavailable": "The tax registry is not answering right now. Fill the fields by hand or try again later.",
+    "duplicate": "A company with this VÖEN already exists: «{name}».",
+    "openCard": "Open card",
+    "found": "Found in the registry",
+    "active": "Active",
+    "inactive": "Not active",
+    "vatPayer": "VAT payer",
+    "name": "Name",
+    "legalAddress": "Legal address",
+    "director": "Director",
+    "keepsTyped": "Fields you filled in by hand stay as they are.",
+    "apply": "Copy to form",
+    "applyHint": "Fills the empty name, address and director fields. Saved only when you save the company."
   }
 }

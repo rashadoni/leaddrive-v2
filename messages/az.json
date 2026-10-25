@@ -8961,6 +8961,7 @@
     "fieldLeadTemperature": "Lid temperaturu",
     "fieldDescription": "Təsvir",
     "fieldVoen": "VÖEN",
+    "fieldDirector": "Direktor",
     "fieldFullName": "Tam ad",
     "fieldPosition": "Vəzifə",
     "fieldDepartment": "Şöbə",
@@ -30960,5 +30961,25 @@
     "updates": "Time açıldıqda yeni versiyanı təklif edir. «Sonra» seçib işə davam edə bilərsiniz. Köhnə versiya yeniləmə təklif etmirsə, onu bu səhifədən yükləyin. Android-də quraşdırmanı təsdiqləyin.",
     "playNote": "Tətbiq Google Play-dən quraşdırılıbsa, Google Play vasitəsilə yeniləyin. Bu səhifə ayrıca Time APK faylı üçündür.",
     "privacy": "Məxfilik siyasəti"
+  },
+  "companyVoen": {
+    "fill": "VÖEN ilə doldur",
+    "fillHint": "Şirkəti Dövlət Vergi Xidmətinin açıq reyestrində axtarır. «Formaya köçür» basılana qədər heç nə dəyişmir.",
+    "hint": "10 rəqəm. Məlumat Dövlət Vergi Xidmətinin açıq reyestrindən gəlir.",
+    "errInvalid": "VÖEN 10 rəqəmdir.",
+    "errNotFound": "Reyestrdə bu VÖEN ilə kommersiya qurumu yoxdur.",
+    "errUnavailable": "Vergi reyestri hazırda cavab vermir. Sahələri əl ilə doldurun və ya bir az sonra yenidən cəhd edin.",
+    "duplicate": "Bu VÖEN ilə şirkət artıq var: «{name}».",
+    "openCard": "Kartı aç",
+    "found": "Reyestrdə tapıldı",
+    "active": "Aktiv",
+    "inactive": "Aktiv deyil",
+    "vatPayer": "ƏDV ödəyicisi",
+    "name": "Ad",
+    "legalAddress": "Hüquqi ünvan",
+    "director": "Direktor",
+    "keepsTyped": "Əl ilə doldurulmuş sahələrə toxunulmur.",
+    "apply": "Formaya köçür",
+    "applyHint": "Boş ad, ünvan və direktor sahələrini doldurur. Şirkəti yadda saxlayanda saxlanılır."
   }
 }

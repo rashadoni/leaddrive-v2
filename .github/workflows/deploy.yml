@@ -492,6 +492,14 @@ jobs:
         env:
           BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
 
+      - name: Company VÖEN database gate
+        # Same gate as in pr-checks: a company's VÖEN, its duplicate warning and
+        # the tax registry's card (see the test's header).
+        run: npx vitest run src/__tests__/company-voen-postgres.test.ts
+        env:
+          COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          COMPANY_VOEN_DB_GATE: required
+
       - name: Online booking database gate
         # Same gate as in pr-checks: one meeting per host per time, by the real
         # booking transaction (see the test's header).
