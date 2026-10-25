@@ -428,6 +428,47 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(sent).toHaveLength(0)
   })
 
+  it("keeps legacy card reset and relink atomic and refuses canonical current or new owners", async () => {
+    const company = "identity-card-maintenance", oldPassword = "Fictional-Card-Old-Pass-2026!", newPassword = "Fictional-Card-New-Pass-2026!"
+    const fixture = await bypass(async () => {
+      await prisma.organization.create({ data: { id: company, name: "Fictional card maintenance", slug: company, modules: { "route-field": true } } })
+      const admin = await prisma.user.create({ data: { organizationId: company, name: "Fictional admin", email: "card-admin@example.invalid", role: "admin", passwordHash: "!unused" } })
+      const user = await prisma.user.create({ data: { organizationId: company, name: "Fictional old owner", email: "card-owner@example.invalid", role: "viewer", passwordHash: "!unused" } })
+      const card = await prisma.mtmAgent.create({ data: { organizationId: company, userId: user.id, name: "Fictional disabled card", status: "INACTIVE", role: "AGENT", passwordHash: await bcrypt.hash(oldPassword, 4) } })
+      const other = await prisma.mtmAgent.create({ data: { organizationId: company, name: "Fictional unlinked card", role: "AGENT" } })
+      return { adminId: admin.id, userId: user.id, cardId: card.id, otherId: other.id, oldHash: card.passwordHash }
+    })
+    const change = (id: string, body: unknown) => updateAgent(new NextRequest(`http://localhost/api/v1/mtm/agents/${id}`, {
+      method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+    }), { params: Promise.resolve({ id }) })
+    const cardState = () => bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId }, select: { passwordHash: true, status: true, userId: true } }))
+    webSession.current = { orgId: company, userId: fixture.adminId, role: "admin", email: "card-admin@example.invalid", name: "Fictional admin", principalType: "session" }
+    try {
+      await bypass(() => prisma.$executeRawUnsafe(`ALTER TABLE mtm_audit_logs ADD CONSTRAINT identity_fixture_card_audit_fail CHECK ("organizationId" <> 'identity-card-maintenance' OR action <> 'AGENT_UPDATE') NOT VALID`))
+      try {
+        expect((await change(fixture.cardId, { password: newPassword })).status).toBe(400)
+        expect(await cardState()).toEqual({ passwordHash: fixture.oldHash, status: "INACTIVE", userId: fixture.userId })
+      } finally { await bypass(() => prisma.$executeRawUnsafe("ALTER TABLE mtm_audit_logs DROP CONSTRAINT identity_fixture_card_audit_fail")) }
+      expect((await change(fixture.cardId, { password: newPassword })).status).toBe(200)
+      const maintained = await cardState()
+      expect(maintained.status).toBe("INACTIVE")
+      expect(await bcrypt.compare(newPassword, maintained.passwordHash!)).toBe(true)
+      await bypass(() => prisma.identityAccount.create({ data: { organizationId: company, userId: fixture.userId, cutoverAt: new Date(), passwordHash: "!canonical-card-fixture" } }))
+      for (const body of [{ password: oldPassword }, { userId: null }]) {
+        const refused = await change(fixture.cardId, body)
+        expect(refused.status).toBe(409)
+        expect((await refused.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      }
+      expect((await change(fixture.otherId, { userId: fixture.userId })).status).toBe(409)
+      expect(await cardState()).toEqual(maintained)
+      await bypass(async () => {
+        expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.otherId } })).userId).toBeNull()
+        expect(await prisma.mtmAuditLog.count({ where: { organizationId: company, action: "AGENT_UPDATE" } })).toBe(1)
+      })
+    } finally { webSession.current = null }
+    expect(sent).toHaveLength(0)
+  })
+
   it("refuses legacy password and OTP through another canonical person's number, including the linked User national alias", async () => {
     const company = "identity-phone-namespace", phone = "+994507778877", national = "0507778877", password = "Fictional-Phone-Namespace-2026!"
     const fixture = await bypass(async () => {

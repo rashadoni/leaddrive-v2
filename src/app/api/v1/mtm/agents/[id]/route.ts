@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
+import { IdentityRegistryError } from "@/lib/identity/contract"
 import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { withRls } from "@/lib/with-rls"
 import { getMobileAuth } from "@/lib/mobile-auth"
@@ -310,10 +313,39 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
       data.passwordHash = await bcrypt.hash(body.password, 12)
     }
 
-    const write = (externalCode?: string) => prisma.mtmAgent.updateMany({
-      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
-      data: externalCode === undefined ? data : { ...data, externalCode },
-    })
+    const changesCredentials = Boolean(body.password) || body.userId !== undefined
+    const audit = (newData: Prisma.MtmAgentUncheckedUpdateManyInput, tx?: Prisma.TransactionClient) => writeMtmAudit({
+      organizationId: orgId, agentId: id, action: "AGENT_UPDATE", entity: "agent", entityId: id,
+      metadataKind: "agent_update", oldData: before,
+      newData: { ...newData, passwordHash: newData.passwordHash ? "[redacted]" : undefined }, req,
+    }, tx)
+    const write = async (externalCode?: string): Promise<Prisma.BatchPayload> => {
+      const update = externalCode === undefined ? data : { ...data, externalCode }
+      const where = { id: scopedAgentIdFilter(administration, id), organizationId: orgId }
+      if (!changesCredentials) return prisma.mtmAgent.updateMany({ where, data: update })
+      const principals = [{ kind: "ACTOR" as const, actorId: id },
+        ...(body.userId ? [{ kind: "USER" as const, userId: body.userId }] : [])]
+      const result = await runWithTenant(orgId, () => withLegacyCredentialMaintenance(prisma, orgId, principals, async tx => {
+        const fresh = await tx.mtmAgent.findFirst({ where, select: {
+          role: true, status: true, userId: true, teamId: true, managerId: true,
+        } })
+        if (!fresh) return { count: 0 }
+        // The permission decision above belongs to this exact card/scope.
+        // Do not reset or relink after a concurrent privilege/territory move.
+        if (fresh.role !== before.role || fresh.status !== before.status || fresh.userId !== before.userId
+          || fresh.teamId !== before.teamId || fresh.managerId !== before.managerId) {
+          throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+        }
+        if (body.userId && !await tx.user.findFirst({ where: {
+          id: body.userId, organizationId: orgId, isActive: true, anonymizedAt: null,
+        }, select: { id: true } })) throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+        const changed = await tx.mtmAgent.updateMany({ where, data: update })
+        if (changed.count === 1) await audit(update, tx)
+        return changed
+      }))
+      if (!result.allowed) throw new IdentityRegistryError("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      return result.value
+    }
     let agent: Prisma.BatchPayload
     if (body.externalCode === undefined) {
       agent = await write()
@@ -328,20 +360,14 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     }
     if (agent.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    await writeMtmAudit({
-      organizationId: orgId,
-      agentId: id,
-      action: "AGENT_UPDATE",
-      entity: "agent",
-      entityId: id,
-      metadataKind: "agent_update",
-      oldData: before,
-      newData: { ...data, passwordHash: data.passwordHash ? "[redacted]" : undefined },
-      req,
-    }).catch((e) => console.warn("[MTM/agents/[id] PUT] audit failed", e))
+    if (!changesCredentials) await audit(data).catch((e) => console.warn("[MTM/agents/[id] PUT] audit failed", e))
 
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
+    if (e instanceof IdentityRegistryError && ["IDENTITY_CREDENTIAL_FLOW_REQUIRED", "IDENTITY_LEGACY_CARD_STATE_CHANGED"].includes(e.code)) {
+      return NextResponse.json({ code: e.code, error: e.code === "IDENTITY_CREDENTIAL_FLOW_REQUIRED"
+        ? "Use the current credential management flow for this account" : "The card changed; refresh it and retry" }, { status: 409 })
+    }
     const conflict = attendanceIdentityConflictResponse(e)
     if (conflict) return conflict
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to update" }, { status: 400 })

@@ -62,6 +62,8 @@ const linkFence = vi.hoisted(() => ({ allowed: true }))
 vi.mock("@/lib/identity/legacy-credential-write", () => ({
   withLegacyCredentialWrite: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
     linkFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    ({ allowed: true, value: await work(client) })),
 }))
 
 vi.mock("bcryptjs", () => ({
