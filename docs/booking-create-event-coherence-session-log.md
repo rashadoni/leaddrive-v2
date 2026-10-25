@@ -20,3 +20,9 @@ managed worktree's docs/booking-role-sandbox-session-log.md.
 
 - Scoped ESLint for the extended SDK PostgreSQL test passed. Existing event-platform foundation unit suite run separately; actual result recorded in current tool output before checkpoint. No production append modification yet.
 - Real SDK/booking PostgreSQL and full typecheck/build NOT RUN on Contabo by workload policy. Push only task-owned regression/journal to feature branch for existing hosted PR gates; no main push or deployment.
+
+
+## 2026-10-25T16:51:21+04:00 — Regression PR and exact local unit result
+
+- Scoped ESLint PASS; existing foundation unit suite14/14PASS (not the database regression). Feature test commit9d7c5107faabfd1219e47f34f73626dbe8b39b7c pushed and PRhttps://github.com/rashadoni/leaddrive-v2/pull/1038 opened/attached. PR checks40194634988, runner40194635012, scan40194635041 queued; no DB result yet. No production source changes in this candidate.
+- Full PostgreSQL cases intentionally run only on hostedCI with actual foundation constraints; do not claim hypothesis proven before its output. If disproven, keep useful coverage and investigate next actual mismatch without weakening the invariant.
