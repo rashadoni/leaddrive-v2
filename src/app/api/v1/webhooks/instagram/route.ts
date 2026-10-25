@@ -162,6 +162,10 @@ export async function POST(req: NextRequest) {
       await runWithTenant(channel.organizationId, async () => {
       for (const event of entry.messaging || []) {
         if (event.message?.is_echo) continue // skip our own echoes
+        // Seen receipts, reactions, edits and postbacks arrive in the same `messaging` array but carry
+        // no `message`. Recording them wrote a phantom "[media]" inbound (no mid, no attachment) a few
+        // seconds after the customer's real text, and counted it as unread.
+        if (!event.message) continue
         const senderId = event.sender?.id
         const text = event.message?.text || "[media]"
         const { mediaUrl, messageType } = parseInstagramAttachment(event.message?.attachments)
