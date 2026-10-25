@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: production-deploy
@@ -31,6 +32,9 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
