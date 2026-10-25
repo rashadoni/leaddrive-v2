@@ -8,7 +8,7 @@ import { readIdentityMobileTenantPolicy } from "./tenant-policy"
 const unavailable = () => new IdentityRegistryError("IDENTITY_ONBOARDING_UNAVAILABLE")
 export async function assertOnboardingApplicationPlan(tx: Prisma.TransactionClient, intent: Pick<IdentityOnboardingIntent, "organizationId" | "userId" | "application" | "applications" | "timeEnrollment">) {
   const scope = { organizationId: intent.organizationId, userId: intent.userId }
-  const parsed = IdentityOnboardingPlan.array().min(1).max(3).safeParse(intent.applications)
+  const parsed = IdentityOnboardingPlan.array().max(3).safeParse(intent.applications)
   if (!parsed.success) throw unavailable()
   await tx.$queryRaw`SELECT application FROM identity_application_grants WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId} ORDER BY application FOR SHARE`
   await tx.$queryRaw`SELECT application FROM identity_application_memberships WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId} ORDER BY application FOR SHARE`

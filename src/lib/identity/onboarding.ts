@@ -158,20 +158,16 @@ export async function finishIdentityOnboarding(client: RegistryClient, organizat
     const { intent, authority, account, applications, now } = await revalidateOnboardingIntent(tx, organizationId, selected.intent.id)
     if (intent.currentProofId !== hint.proofId || intent.application !== input.application) throw unavailable()
     await assertOnboardingProgress(tx, intent, account)
-    const activated = await activateReviewedIdentityInTransaction(tx, authority.administrator, { userId: intent.userId, expectedAccountVersion: account.version,
-      expectedCredentialEpoch: account.credentialEpoch, expectedContactRevision: account.contactRevision, credentialRequestId: requestId,
-      reviewReference: intent.reviewReference, requestId: `onboarding-activate:${intent.id}`, applications }, artifactSha)
-    if (intent.timeEnrollment) {
+    const completePendingTime = intent.timeEnrollment ? async (tx: Prisma.TransactionClient, accountVersion: number) => {
       const metadata = IdentityTimeEnrollmentMetadata.parse(intent.timeEnrollment)
       if (!completeTime) throw unavailable()
       const claim = await tx.identityPhoneClaim.findUniqueOrThrow({ where: { organizationId_userId: { organizationId, userId: intent.userId } } })
-      const completed = await completeTime(tx, authority.administrator, { ...metadata, userId: intent.userId, expectedClaimId: claim.id,
-        expectedAccountVersion: activated.accountVersion, requestId: intent.id })
-      const timeKey = { organizationId_userId_application: { organizationId, userId: intent.userId, application: "TIME" } }
-      const grant = await tx.identityApplicationGrant.findUnique({ where: timeKey })
-      const member = await tx.identityApplicationMembership.findUnique({ where: timeKey })
-      if (!completed?.agentId || grant?.status !== "ACTIVE" || grant.role !== "EMPLOYEE" || member?.status !== "ACTIVE" || member.actorId !== completed.agentId) throw unavailable()
-    }
+      return completeTime(tx, authority.administrator, { ...metadata, userId: intent.userId, expectedClaimId: claim.id,
+        expectedAccountVersion: accountVersion, requestId: intent.id })
+    } : undefined
+    await activateReviewedIdentityInTransaction(tx, authority.administrator, { userId: intent.userId, expectedAccountVersion: account.version,
+      expectedCredentialEpoch: account.credentialEpoch, expectedContactRevision: account.contactRevision, credentialRequestId: requestId,
+      reviewReference: intent.reviewReference, requestId: `onboarding-activate:${intent.id}`, applications }, artifactSha, completePendingTime)
     await tx.identityOnboardingIntent.update({ where: { id: intent.id }, data: { status: "COMPLETED", completedAt: now } })
     return subject
   })

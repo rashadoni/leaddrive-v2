@@ -1,5 +1,6 @@
 /** Hosted-only actual Auth.js cookie acceptance. No production or provider access. */
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
 import { mkdir, realpath, writeFile } from "node:fs/promises"
 import { resolve, relative, isAbsolute } from "node:path"
@@ -75,6 +76,8 @@ try {
     await admin.user.create({ data: { id: pendingUser, organizationId: company, email: email("onboarding"), name: "Fictional first login",
       phone: "+994507770020", role: "viewer", passwordHash: legacyHash, isActive: true } })
     await admin.mtmAgent.create({ data: { id: pendingActor, organizationId: company, userId: pendingUser, name: "Fictional first login", phone: "+994507770020", role: "AGENT", status: "ACTIVE", passwordHash: legacyHash } })
+    await admin.user.create({ data: { id: userId("time-only"), organizationId: company, email: email("time-only"), name: "Fictional Time only",
+      phone: "+994507770021", role: "viewer", passwordHash: legacyHash, isActive: true } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "attendanceEnabled", value: true } })
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
     process.stdout.write("IDENTITY_CRM_BROWSER_FIXTURE_PREPARED\n")
@@ -432,6 +435,23 @@ try {
       await admin.$executeRawUnsafe('DROP FUNCTION identity_onboarding_time_fail_audit()')
       await admin.$executeRawUnsafe('DROP SEQUENCE identity_onboarding_time_audit_reached')
     }
+    phase("FIRST_LOGIN_CANNOT_BYPASS_PENDING_TIME_COMPLETION")
+    const { activateReviewedIdentity } = await loadIdentity("activation")
+    const issuerAccount = await admin.identityAccount.findUniqueOrThrow({ where: accountKey("administrator") })
+    const issuerClaim = await admin.identityPhoneClaim.findUniqueOrThrow({ where: accountKey("administrator") })
+    const issuerGrant = await admin.identityApplicationGrant.findUniqueOrThrow({ where: grantKey("administrator") })
+    const issuer = { organizationId: company, userId: userId("administrator"), mode: "CANONICAL", claims: {
+      mode: "IDENTITY_CRM_V1", organizationId: company, userId: userId("administrator"), claimId: issuerClaim.id,
+      credentialEpoch: issuerAccount.credentialEpoch, grantVersion: issuerGrant.version,
+    } }
+    const stagedAccount = await admin.identityAccount.findUniqueOrThrow({ where: accountKey("onboarding") })
+    const frozenInvitation = await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: invitationResult.intentId } })
+    await assert.rejects(activateReviewedIdentity(recoveryClient, issuer, { userId: userId("onboarding"),
+      expectedAccountVersion: stagedAccount.version, expectedCredentialEpoch: stagedAccount.credentialEpoch, expectedContactRevision: stagedAccount.contactRevision,
+      credentialRequestId: `onboarding-password:${createHash("sha256").update(firstSetup).digest("hex")}`,
+      reviewReference: frozenInvitation.reviewReference, requestId: "refuse-partial-time-cutover", applications: frozenInvitation.applications,
+    }, async () => head), /IDENTITY_ONBOARDING_COMPLETION_REQUIRED/)
+    assert.equal((await admin.identityAccount.findUniqueOrThrow({ where: accountKey("onboarding") })).cutoverAt, null)
     phase("ACTUAL_PUBLIC_FIRST_LOGIN_CUTOVER")
     await reserveAuthPost()
     const firstSession = await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
@@ -461,6 +481,39 @@ try {
     assert.equal((await preservedFieldLogin.json()).data.agent.id, userId("onboarding-field"))
     assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("onboarding") } }), 2)
     check("actual_admin_review_public_first_login_activates_common_password_and_separate_time_card_with_hr_fields_preserving_field_actor_without_implicit_crm_or_receipt_authentication")
+    phase("ACTUAL_TIME_ONLY_PERSON_WITHOUT_CRM_OR_FIELD_GRANTS")
+    const onlyPhone = "+994507770021"
+    const onlyLookup = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: onlyPhone } })
+    assert.equal(onlyLookup.status(), 200)
+    const onlyCandidate = (await onlyLookup.json()).data
+    assert.equal(onlyCandidate.kind, "legacy"); assert.equal(onlyCandidate.fieldActorId, null)
+    const onlyReview = await administrator.current.request.post(invitationUrl, { timeout: 120000, data: {
+      userId: onlyCandidate.userId, phone: onlyPhone, sourceRevision: onlyCandidate.sourceRevision, preserveCrm: false,
+      requestId: "ad068da1-5a47-448d-a681-05c3d9347e42", timeEnrollment: { position: "Fictional Time role", teamId: null, departmentId: null, hireDate: null },
+    } })
+    assert.equal(onlyReview.status(), 201)
+    const onlyIntent = (await onlyReview.json()).data.intentId
+    assert.deepEqual((await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: onlyIntent } })).applications, [])
+    const onlyProof = await issueIdentityOnboardingProof(recoveryClient, company, { phone: onlyPhone, application: "TIME", requestId: "cookie-only-time-code" }, proofKey)
+    const onlyRow = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: onlyProof.proofId } })
+    const onlyClient = await context()
+    await reserveAuthPost()
+    const onlyConfirmed = await onlyClient.request.post("/api/v1/mtm/mobile/auth/code/verify", { timeout: 120000, data: {
+      organizationSlug: company, phone: onlyPhone, application: "TIME", challengeId: onlyRow.id,
+      code: openPhoneProofDelivery(phoneProofContext(onlyRow), onlyRow, proofKey, new Date()),
+    } })
+    assert.equal(onlyConfirmed.status(), 200)
+    const onlySetup = (await onlyConfirmed.json()).data.setupToken
+    await reserveAuthPost()
+    const onlyCompleted = await onlyClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
+      organizationSlug: company, application: "TIME", setupToken: onlySetup, password: firstPassword,
+    } })
+    assert.equal(onlyCompleted.status(), 200); assert.equal((await onlyCompleted.json()).data.application, "TIME")
+    const onlyScope = { organizationId: company, userId: userId("time-only") }
+    assert.deepEqual((await admin.identityApplicationGrant.findMany({ where: onlyScope, select: { application: true, status: true } })), [{ application: "TIME", status: "ACTIVE" }])
+    assert.equal(await admin.mtmAgent.count({ where: onlyScope }), 1)
+    assert.equal((await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: onlyIntent } })).status, "COMPLETED")
+    check("time_only_existing_person_gets_no_temporary_crm_or_field_grant_and_pending_time_cannot_be_bypassed")
     phase("ACTUAL_PUBLIC_COMMON_PASSWORD_RECOVERY")
     // Private synthetic issuance only. Actual public verification/reset below;
     // no provider configuration, external request or plaintext-code artifact.

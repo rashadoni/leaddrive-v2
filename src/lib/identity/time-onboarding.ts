@@ -70,8 +70,6 @@ export async function prepareLegacyPersonForTime(client: RegistryClient, adminis
     }
     const candidate = await readLegacyTimeCandidate(tx, administrator, phone)
     if (!candidate || candidate.userId !== input.userId || candidate.sourceRevision !== input.sourceRevision) throw unavailable()
-    // No temporary CRM grant to make a Time-only conversion pass activation.
-    if (!candidate.fieldActorId && !input.preserveCrm) throw unavailable()
     const scope = { organizationId, userId: input.userId }
     let version = (await stageIdentityAccountInTransaction(tx, administrator, { userId: input.userId, requestId: `time-stage:${input.requestId}` })).accountVersion
     const applications: OnboardingPlan[] = []

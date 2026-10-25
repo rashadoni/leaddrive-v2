@@ -24,6 +24,12 @@ describe("first-login review boundary", () => {
       expect(IdentityOnboardingInput.safeParse(candidate).success).toBe(false)
     }
   })
+  it("allows no retained application only for an explicit pending Time enrollment", () => {
+    const timeEnrollment = { position: null, teamId: null, departmentId: null, hireDate: null }
+    expect(IdentityOnboardingInput.safeParse({ ...review, applications: [], timeEnrollment }).success).toBe(true)
+    expect(IdentityOnboardingInput.safeParse({ ...review, applications: [] }).success).toBe(false)
+    expect(IdentityOnboardingInput.safeParse({ ...review, applications: [], timeEnrollment, application: "ROUTE_FIELD" }).success).toBe(false)
+  })
   it.each(["organizationId", "password", "issuerAuthority", "cutoverAt", "expiresAt"])("does not admit caller-owned %s", field => {
     expect(IdentityOnboardingInput.safeParse({ ...review, [field]: "forged" }).success).toBe(false)
   })

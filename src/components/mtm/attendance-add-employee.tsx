@@ -128,7 +128,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   }
 
   async function inviteExistingPerson() {
-    if (saving || !legacyPerson || invited || (!legacyPerson.fieldActorId && !preserveCrm)) return
+    if (saving || !legacyPerson || invited) return
     const submittedRevision = revision.current, person = legacyPerson
     enrollmentRequest.current ??= crypto.randomUUID()
     setSaving(true); setError(null)
@@ -185,9 +185,9 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         <label className="flex items-start gap-2"><input type="checkbox" checked={preserveCrm} disabled={saving}
           onChange={event => { setPreserveCrm(event.target.checked); enrollmentRequest.current = null }} />
           <span>{p("addEmployeeIdentityPreserveCrm", { role: legacyPerson.crmRole })}</span></label>
-        {!preserveCrm && legacyPerson.fieldActorId ? <p>{p("addEmployeeIdentityNoCrm")}</p> : null}
+        {!preserveCrm ? <p>{p("addEmployeeIdentityNoCrm")}</p> : null}
         <p className="text-muted-foreground">{p("addEmployeeIdentityInviteHint")}</p>
-        <Button type="button" className="min-h-11 rounded-full" disabled={saving || (!legacyPerson.fieldActorId && !preserveCrm)}
+        <Button type="button" className="min-h-11 rounded-full" disabled={saving}
           onClick={inviteExistingPerson} data-testid="attendance-legacy-invite">{p(saving ? "addEmployeeSaving" : "addEmployeeIdentityInviteSubmit")}</Button>
       </>}
     </div> : null}

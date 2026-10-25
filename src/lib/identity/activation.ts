@@ -32,11 +32,12 @@ export async function activateReviewedIdentity(client: RegistryClient, administr
 /** Internal composition for one atomic cutover plus onboarding completion.
  * artifactSha is admitted by the server wrapper, never by a request body. */
 export async function activateReviewedIdentityInTransaction(tx: Prisma.TransactionClient, administrator: IdentityAdministrator,
-  input: IdentityActivationInput, artifactSha: string) {
+  input: IdentityActivationInput, artifactSha: string,
+  completePendingTime?: (tx: Prisma.TransactionClient, accountVersion: number) => Promise<{ agentId: string }>) {
   const fields = ["userId", "expectedAccountVersion", "expectedCredentialEpoch", "expectedContactRevision", "credentialRequestId", "reviewReference", "requestId", "applications"]
   if (!input || typeof input !== "object" || Object.keys(input).length !== fields.length || fields.some(k => !Object.hasOwn(input, k))
     || ![input.expectedAccountVersion, input.expectedCredentialEpoch, input.expectedContactRevision].every(revision)
-    || !Array.isArray(input.applications) || input.applications.length < 1 || input.applications.length > 3) throw new IdentityRegistryError("IDENTITY_ACTIVATION_INPUT_INVALID")
+    || !Array.isArray(input.applications) || input.applications.length < (completePendingTime ? 0 : 1) || input.applications.length > 3) throw new IdentityRegistryError("IDENTITY_ACTIVATION_INPUT_INVALID")
   assertIdentityScope(administrator.organizationId, input.userId)
   for (const id of [input.credentialRequestId, input.reviewReference, input.requestId]) assertIdentityRequestId(id)
   const planFields = ["application", "role", "status", "grantVersion", "actorId", "membershipVersion", "membershipStatus"]
@@ -46,13 +47,13 @@ export async function activateReviewedIdentityInTransaction(tx: Prisma.Transacti
     if (plan.actorId !== null) assertIdentityRequestId(plan.actorId)
     assertStagedApplicationGrant({ ...plan, userId: input.userId, expectedAccountVersion: input.expectedAccountVersion, expectedGrantVersion: plan.grantVersion, requestId: input.requestId })
   }
-  if (new Set(input.applications.map(p => p.application)).size !== input.applications.length || !input.applications.some(p => p.status === "ACTIVE")) throw new IdentityRegistryError("IDENTITY_ACTIVATION_INPUT_INVALID")
+  if (new Set(input.applications.map(p => p.application)).size !== input.applications.length || (!completePendingTime && !input.applications.some(p => p.status === "ACTIVE"))) throw new IdentityRegistryError("IDENTITY_ACTIVATION_INPUT_INVALID")
   const submitted = input.applications.map(p => ({ application: p.application, role: p.role, status: p.status, grantVersion: p.grantVersion, actorId: p.actorId, membershipVersion: p.membershipVersion, membershipStatus: p.membershipStatus }))
   if (!/^[a-f0-9]{40}$/.test(artifactSha)) throw new IdentityRegistryError("IDENTITY_ACTIVATION_RUNTIME_UNAVAILABLE")
   // A retry may use a newer compatible artifact; the original successful
   // receipt retains its SHA. Artifact version is not caller authorization.
   const requestHash = createHash("sha256").update(JSON.stringify([1, "ACCOUNT_ACTIVATED", administrator.organizationId, administrator.userId,
-    ...fields.filter(k => k !== "applications").map(k => input[k as keyof IdentityActivationInput]), ordered(submitted)])).digest("hex")
+    ...fields.filter(k => k !== "applications").map(k => input[k as keyof IdentityActivationInput]), ordered(submitted), Boolean(completePendingTime)])).digest("hex")
   return withIdentityAdministratorInTransaction(tx, administrator, async tx => {
     const scope = { organizationId: administrator.organizationId, userId: input.userId }
     const previous = await tx.identityEvent.findUnique({ where: { organizationId_requestId: { organizationId: scope.organizationId, requestId: input.requestId } } })
@@ -76,6 +77,11 @@ export async function activateReviewedIdentityInTransaction(tx: Prisma.Transacti
     const now = (await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`)[0].now
     if (!proof || proof.expiresAt <= now) throw new IdentityRegistryError("IDENTITY_SETUP_EXPIRED")
     await revalidateOnboardingProof(tx, proof)
+    const onboarding = proof.onboardingIntentId
+      ? await tx.identityOnboardingIntent.findFirst({ where: { ...scope, id: proof.onboardingIntentId, status: "ACTIVE", currentProofId: proof.id } }) : null
+    // A frozen pending Time review cannot be partially activated through the
+    // general cutover API. Its Time card and grant must exist before commit.
+    if (Boolean(onboarding?.timeEnrollment) !== Boolean(completePendingTime)) throw new IdentityRegistryError("IDENTITY_ONBOARDING_COMPLETION_REQUIRED")
     if (!proof.issuedByUserId || ![1, 2].includes(proof.contextVersion)) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
     if (proof.contextVersion === 2) await revalidateIdentityProofAuthority(tx, proof.issuerAuthority, scope.organizationId, proof.issuedByUserId)
     else if (administrator.mode !== "LEGACY" || proof.issuedByUserId !== administrator.userId) throw new IdentityRegistryError("IDENTITY_PROOF_AUTHORITY_UNAVAILABLE")
@@ -142,6 +148,20 @@ export async function activateReviewedIdentityInTransaction(tx: Prisma.Transacti
     await tx.identityEvent.create({ data: { id: randomUUID(), ...scope, actorUserId: administrator.userId, requestId: input.requestId, requestHash,
       action: "ACCOUNT_ACTIVATED", accountVersion, credentialEpoch, contactRevision: account.contactRevision, reviewReference: input.reviewReference,
       activationArtifactSha: artifactSha, proofId: proof.id, claimId: claim.id, createdAt: now } })
+    if (completePendingTime) {
+      const completed = await completePendingTime(tx, accountVersion)
+      const key = { organizationId_userId_application: { ...scope, application: "TIME" } }
+      const grant = await tx.identityApplicationGrant.findUnique({ where: key })
+      const member = await tx.identityApplicationMembership.findUnique({ where: key })
+      const card = completed?.agentId ? await tx.mtmAgent.findFirst({ where: { ...scope, id: completed.agentId },
+        select: { role: true, status: true, attendanceParticipant: true, attendanceExcluded: true } }) : null
+      const binding = completed?.agentId ? await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: {
+        organizationId: scope.organizationId, actorId: completed.agentId,
+      } } }) : null
+      if (grant?.status !== "ACTIVE" || grant.role !== "EMPLOYEE" || member?.status !== "ACTIVE" || member.actorId !== completed?.agentId
+        || binding?.userId !== scope.userId || card?.role !== "EMPLOYEE" || card.status !== "ACTIVE" || !card.attendanceParticipant || card.attendanceExcluded
+        || cards.some(c => c.id === completed?.agentId)) throw new IdentityRegistryError("IDENTITY_ONBOARDING_COMPLETION_REQUIRED")
+    }
     return { status: "ACTIVE" as const, accountVersion, credentialEpoch, replayed: false }
   })
 }
