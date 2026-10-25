@@ -58,8 +58,10 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         return
       }
       if (submittedRevision !== revision.current) return
-      if (response.status === 409 && body?.code === "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") {
-        // A conflict is not permission to adopt that person's account. Offer
+      if ((response.status === 409 && body?.code === "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN")
+        || (response.status === 403 && body?.code === "MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT")) {
+        // A full plan can refuse creation before the phone check. Neither
+        // refusal is permission to adopt that person's account. Offer
         // their existing card for an explicit review using its normal controls.
         try {
           const lookup = await fetch("/api/v1/mtm/attendance/employees/phone-match", {

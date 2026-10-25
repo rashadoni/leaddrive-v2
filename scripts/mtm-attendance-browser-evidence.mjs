@@ -1291,10 +1291,21 @@ try {
     const form = page.getByTestId('attendance-add-employee-form')
     await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
     await form.getByTestId('attendance-add-employee-phone').fill(phone)
-    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
+    // The fixture's actual user quota is full. Existing-person hiring must not
+    // require another seat; new-account creation remains refused.
+    assert.ok(fixture.organization.maxUsers !== -1 && before.users >= fixture.organization.maxUsers)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 403)
     const result = page.getByTestId('attendance-phone-match')
     await result.waitFor()
     assert.ok((await result.innerText()).includes(name))
+    // Also exercise the original PHONE_TAKEN branch with a free fixture seat.
+    try {
+      await fixture.admin.organization.update({ where: { id: organizationId }, data: { maxUsers: before.users + 1 } })
+      await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
+      await result.waitFor()
+    } finally {
+      await fixture.admin.organization.update({ where: { id: organizationId }, data: { maxUsers: fixture.organization.maxUsers } })
+    }
     assert.ok((await result.innerText()).includes(pt('addEmployeePhoneExistingHire')))
     await page.screenshot({ path: `${output}/existing-crm-phone-match.png`, fullPage: false })
     await result.getByRole('link', { name: pt('addEmployeePhoneOpenProfile'), exact: true }).click()

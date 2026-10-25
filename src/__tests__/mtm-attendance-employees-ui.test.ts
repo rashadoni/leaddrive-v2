@@ -262,4 +262,26 @@ describe("Add employee", () => {
     expect(form().querySelector('[role="alert"]')).toBeNull()
   })
 
+  it.each([true, false])("resolves an existing profile at the seat limit; match=%s", async found => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
+      ? response(found ? { kind: "attendance", agentId: "existing-card", name: "Existing person", enrolled: false } : { kind: "none" })
+      : String(url).endsWith("/employees/new") ? response(null, 403, "MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(creates()).toHaveLength(1)
+    if (found) expect(form().querySelector('[data-testid="attendance-phone-match"] a')).not.toBeNull()
+    else {
+      expect(form().querySelector('[data-testid="attendance-phone-match"]')).toBeNull()
+      expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeeUserLimit"))
+    }
+  })
+  it("does not look up a phone after an administrator permission refusal", async () => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/employees/new") ? response(null, 403, "MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/phone-match"))).toBe(false)
+  })
+
 })
