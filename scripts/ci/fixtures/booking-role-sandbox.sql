@@ -14,6 +14,9 @@ GRANT USAGE ON SCHEMA public TO booking_role_sandbox;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO booking_role_sandbox;
 -- Real credential login only; no business-table writes are granted.
 GRANT UPDATE ("lastLogin", "loginCount", "updatedAt") ON public.users TO booking_role_sandbox;
+-- Ordinary navigation persists only the synthetic user's favorites/recents.
+-- This UI preference table is not a Booking/Task business fact.
+GRANT INSERT, UPDATE ON public.user_preferences TO booking_role_sandbox;
 DO $$ DECLARE target record; BEGIN
   FOR target IN
     SELECT DISTINCT c.relname FROM pg_class c JOIN pg_attribute a ON a.attrelid=c.oid

@@ -22,19 +22,22 @@ const receipt = { version: 1, status: 'RUNNING', startedAt: new Date().toISOStri
   headSha: process.env.BOOKING_ROLE_HEAD_SHA, checkedSha: process.env.GITHUB_SHA,
   environment: 'ephemeral hosted PostgreSQL16 / production Next bundle / real credentials and native Chromium',
   syntheticDataOnly: true, productionMutation: false, authenticationMocked: false,
-  cases: [], blockedNetwork: [], blockedPublicFontAssets: 0, limitations: [
+  cases: [], blockedNetwork: [], blockedPublicFontAssets: 0, uiPreferenceRequests: 0, cspDiagnosticRequests: 0, toursDismissed: 0, limitations: [
     'Disposable stand proof, not live production employee/coordinator acceptance',
     'Login uses real CSRF/credentials callback, not visual login-form testing',
     'Synthetic pre-cutover Booking rows; read-only UI, not public create/provider delivery acceptance',
     'Session switch checked after navigation, not cross-tab in-place broadcast invalidation',
     'No full accessibility, load or disaster-recovery certification; service worker disabled in stand',
     'External public font assets are blocked; screenshots may use fallback fonts',
+    'Normal synthetic-user navigation preferences/login metadata may update; Booking/Task business facts must remain unchanged',
   ] };
 const bindings = ['scripts/booking/role-browser-evidence.mjs', 'scripts/booking/role-browser-contract.mjs',
   'scripts/ci/fixtures/booking-role-sandbox.sql', '.github/workflows/booking-role-sandbox.yml',
   'src/lib/booking/access.ts', 'src/lib/booking/queries.ts', 'src/lib/booking/task-reference.ts',
   'src/components/booking/booking-workspace.tsx', 'src/components/tasks/task-meeting-notice.tsx',
-  'src/components/tasks/task-detail-view.tsx', 'src/lib/auth.ts', 'src/lib/with-rls.ts', 'prisma/schema.prisma'];
+  'src/components/tasks/task-detail-view.tsx', 'src/components/tour/tour-step.tsx',
+  'src/app/api/v1/users/me/preferences/route.ts', 'src/app/api/v1/public/csp-report/route.ts',
+  'src/lib/auth.ts', 'src/lib/with-rls.ts', 'prisma/schema.prisma'];
 receipt.sourceBindings = await Promise.all(bindings.map(async path => ({ path,
   sha256: createHash('sha256').update(await readFile(path)).digest('hex') })));
 let browser;
@@ -132,6 +135,14 @@ async function view(user) {
   await context.route('**/*', async route => {
     const request = route.request();
     const url = new URL(request.url());
+    if (url.origin === base.origin && url.pathname === '/api/v1/users/me/preferences' && request.method() === 'PUT') {
+      receipt.uiPreferenceRequests++;
+      return route.continue();
+    }
+    if (url.origin === base.origin && url.pathname === '/api/v1/public/csp-report' && request.method() === 'POST') {
+      receipt.cspDiagnosticRequests++;
+      return route.continue();
+    }
     if (['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname) && request.method() === 'GET'
       && ['stylesheet', 'font'].includes(request.resourceType())) {
       receipt.blockedPublicFontAssets++;
@@ -146,6 +157,10 @@ async function view(user) {
   await authenticate(context, user);
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
+  await page.addLocatorHandler(page.getByTestId('tour-overlay'), async () => {
+    await page.keyboard.press('Escape');
+    receipt.toursDismissed++;
+  });
   await page.goto('/meetings', { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: copy.workspaceTitle, exact: true }).waitFor();
   await page.locator('#meeting-period').selectOption('all');
@@ -221,21 +236,26 @@ try {
   await coordinator.page.getByRole('button', { name: copy.viewList, exact: true }).click();
   assert.equal(await coordinator.page.locator('#meeting-period').inputValue(), 'all');
   pass('populated-list-calendar-day-parity-and-period-preservation', { employeeCount: 1, coordinatorCount: 2 });
-  stage = 'detail-and-task';
+  stage = 'detail-open';
+  await api(employee.context, `/api/v1/bookings/${fixture.meetings.employee.id}`);
   await rows(employee.page).filter({ hasText: fixture.meetings.employee.name }).click();
   const dialog = employee.page.getByRole('dialog');
   await dialog.getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
   await dialog.getByRole('button', { name: copy.close, exact: true }).click();
   assert.equal(await employee.page.locator('#meeting-period').inputValue(), 'all');
+  pass('meeting-detail-close-preserves-context');
+  stage = 'task-open';
   await rows(employee.page).filter({ hasText: fixture.meetings.employee.name }).click();
   await dialog.getByRole('link', { name: copy.openTask, exact: true }).click();
   const open = employee.page.getByRole('link', { name: copy.taskOpenMeeting, exact: true });
   await open.waitFor();
   assert.equal(await open.getAttribute('href'), `/meetings?booking=${fixture.meetings.employee.id}`);
+  pass('related-task-shows-authorized-exact-meeting-link');
   await employee.page.screenshot({ path: `${output}/employee-task-link.png` });
+  stage = 'task-return-link';
   await open.click();
   await employee.page.getByRole('dialog').getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
-  pass('meeting-detail-close-preserves-context-and-task-link-returns-exact-meeting');
+  pass('task-link-returns-exact-meeting');
   stage = 'negative-controls';
   for (const key of ['assigned', 'excluded', 'foreign']) {
     await api(employee.context, `/api/v1/bookings/${fixture.meetings[key].id}`, 404);
@@ -265,7 +285,9 @@ try {
   assert.deepEqual(await snapshot(), before, 'Read-only browser run changed business facts');
   receipt.factSnapshot = before;
   assert.equal(receipt.blockedNetwork.length, 0, 'Unexpected external or mutation request attempted');
-  pass('business-facts-unchanged-and-no-browser-provider-or-mutation-requests');
+  pass('business-facts-unchanged-and-no-browser-provider-or-business-mutation-requests', {
+    uiPreferenceRequests: receipt.uiPreferenceRequests, cspDiagnosticRequests: receipt.cspDiagnosticRequests,
+  });
   receipt.status = 'PASS_ISOLATED_ROLE_BROWSER_STAND';
 } catch (error) {
   receipt.status = 'FAIL_ISOLATED_ROLE_BROWSER_STAND';
