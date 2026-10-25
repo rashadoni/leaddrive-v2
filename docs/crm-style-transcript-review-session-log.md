@@ -278,3 +278,10 @@
 - Повторно прочитаны DELIVERY-ARCHITECTURE, DEPLOYMENT и registry: PR-only main, пять обязательных проверок GitHub Actions, production `13.140.132.245:/opt/leaddrive-v2`, exact artifactSha после выпуска. Согласие пользователя на конкретный список уже получено; повторное подтверждение не требуется.
 - Продолжение с `c418bc2b3`. Fetch origin/main получил `c2c399099` (booking role stand и Time APK release); merge выполнен без конфликтов. Пересечений с пятью исходниками задачи нет. Итоговый diff против main: только пять исходников и два task-owned документа. `git diff --check origin/main...HEAD`: PASS. Тяжёлые проверки передаются hosted CI.
 - Текущая фаза: финальная проверка области PR, создание draft PR, перевод готовой ветки в ready и ожидание обязательных проверок. После зелёных проверок — merge, Deploy to Production, ping/build-info и просмотр трёх затронутых маршрутов в авторизованном нативном браузере. Главную не открывать.
+
+### PR и admission к CI
+
+- Ветка опубликована в origin. Создан draft PR [#1034](https://github.com/rashadoni/leaddrive-v2/pull/1034), base `main`, task branch `codex/crm-style-transcript-review-20261025`; PR прикреплён к этой беседе. В него входят пять исходников и два документа задачи.
+- Live branch protection подтверждает ровно `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan`, app_id 15368, enforce_admins=true, required approvals=0. Защита не изменялась. Для кода skipped static-checks/typecheck не будут приняты за успех.
+- Финальный независимый review не нашёл секретов, клиентских данных и случайных изменений бизнес-логики. Замечание касается лишь общего названия постороннего браузерного сервиса в старой записи; конкретных URL, аккаунтов или содержимого там нет. История журнала сохраняется по append-only правилу пользователя.
+- Ветка закончена; следующий этап — ready_for_review на финальном SHA и ожидание hosted gates. Новая правка исходников для запуска CI не добавлялась.
