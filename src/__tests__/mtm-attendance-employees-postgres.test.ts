@@ -787,4 +787,54 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       name: "Fictional branch", address: "Fictional address", latitude: 40.4, longitude: 49.8, radiusMeters: 150, active: false, createdBy: "setup-admin" } }))
     expect((await done()).branches).toBe(false)
   })
+  it("finds a hidden CRM profile and hires it through the existing card without duplicating identity", async () => {
+    const { readAttendancePhoneMatch } = await import("@/lib/mtm/attendance-phone-match")
+    const { createAttendanceEmployee } = await import("@/lib/mtm/attendance-employee-create")
+    const org = "employee-pg-phone-match", phone = "+994550009901"
+    const actor = { organizationId: org, userId: "phone-match-admin", principalType: "session" as const }
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional phone match", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      for (const [id, role, userPhone] of [[actor.userId, "admin", null], ["phone-match-person", "sales", phone]] as const) {
+        await prisma.user.create({ data: { id, organizationId: org, name: id, email: `${id}@example.invalid`, role, phone: userPhone, passwordHash: "unusable-fixture-hash" } })
+      }
+    })
+    await tenant(org, async () => {
+      const card = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: "phone-match-person" } })
+      expect(card).toMatchObject({ role: "EMPLOYEE", attendanceParticipant: true })
+      // Exercise the linked User.phone fallback even if provisioning later copies phones.
+      await prisma.mtmAgent.update({ where: { id: card.id }, data: { phone: null } })
+      const snapshot = async () => ({
+        user: await prisma.user.findUniqueOrThrow({ where: { id: "phone-match-person" } }),
+        card: await prisma.mtmAgent.findUniqueOrThrow({ where: { id: card.id } }),
+        users: await prisma.user.count(), cards: await prisma.mtmAgent.count(), audits: await prisma.mtmAuditLog.count(),
+      })
+      const before = await snapshot()
+      expect((await store.readAttendanceEmployees(actor)).employees.map(row => row.id)).not.toContain(card.id)
+      await expect(createAttendanceEmployee(actor, { name: "Fictional new form", phone })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN" })
+      const match = { kind: "attendance", agentId: card.id, name: card.name, enrolled: false }
+      expect(await readAttendancePhoneMatch(actor, { phone: "+994 (55) 000-99-01" })).toEqual(match)
+      expect(await snapshot()).toEqual(before)
+      await expect(readAttendancePhoneMatch({ ...actor, userId: "phone-match-person" }, { phone })).rejects.toMatchObject({ status: 403 })
+      await expect(readAttendancePhoneMatch({ ...actor, principalType: "api_key" }, { phone })).rejects.toMatchObject({ status: 403 })
+      await expect(readAttendancePhoneMatch(actor, { phone, organizationId: "employee-pg-b" })).rejects.toMatchObject({ status: 400 })
+      expect(await readAttendancePhoneMatch(actor, { phone: "+994550009909" })).toEqual({ kind: "none" })
+      expect((await store.readAttendanceEmployee(actor, card.id)).employee.id).toBe(card.id)
+      await store.updateAttendanceEmployee(actor, card.id, { name: card.name, position: null, teamId: null, departmentId: null, managerId: null, hireDate: "2026-10-25" })
+      expect(await readAttendancePhoneMatch(actor, { phone })).toEqual({ ...match, enrolled: true })
+      const hired = (await store.readAttendanceEmployees(actor)).employees.find(row => row.id === card.id)!
+      expect(hired.history).toMatchObject([{ kind: "HIRE", date: "2026-10-25" }])
+      const after = await snapshot()
+      expect(after.users).toBe(before.users); expect(after.cards).toBe(before.cards)
+      for (const key of ["id", "passwordHash", "role", "phone", "email", "hiddenModules", "isActive"] as const) expect(after.user[key]).toEqual(before.user[key])
+      for (const key of ["id", "userId", "passwordHash", "role", "phone", "attendanceParticipant"] as const) expect(after.card[key]).toEqual(before.card[key])
+      const field = await prisma.mtmAgent.create({ data: { organizationId: org, name: "Fictional field", role: "AGENT", phone: "+994550009902" } })
+      expect(await readAttendancePhoneMatch(actor, { phone: field.phone })).toEqual({ kind: "other", name: field.name })
+      await prisma.mtmAgent.create({ data: { organizationId: org, name: "Fictional ambiguous", role: "AGENT", phone } })
+      expect(await readAttendancePhoneMatch(actor, { phone })).toEqual({ kind: "ambiguous" })
+    })
+    expect(await tenant(organizationId, () => readAttendancePhoneMatch(admin, { phone }))).toEqual({ kind: "none" })
+    await expect(tenant("employee-pg-b", () => readAttendancePhoneMatch(actor, { phone }))).rejects.toThrow()
+  })
+
 })

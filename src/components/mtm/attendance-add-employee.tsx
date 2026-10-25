@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useRef, useState, type FormEvent } from "react"
+import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { MessageCircle, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
 import { ATTENDANCE_EMPLOYEE_POSITION_MAX, type AttendanceDepartment, type AttendanceSection } from "@/lib/mtm/attendance-employee-contract"
+import { AttendancePhoneMatchResult, type AttendancePhoneMatch } from "@/lib/mtm/attendance-phone-match-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees/new"
 const ERRORS: Record<string, string> = {
@@ -33,13 +35,18 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   const p = useTranslations("personnel")
   const [open, setOpen] = useState(false), [form, setForm] = useState<Form>(empty)
   const [saving, setSaving] = useState(false), [error, setError] = useState<string | null>(null)
-  const set = <K extends keyof Form>(key: K) => (value: Form[K]) => { setForm(current => ({ ...current, [key]: value })); setError(null) }
+  const [match, setMatch] = useState<AttendancePhoneMatch | null>(null)
+  const revision = useRef(0)
+  const clearResult = () => { revision.current++; setError(null); setMatch(null) }
+  const set = <K extends keyof Form>(key: K) => (value: Form[K]) => { setForm(current => ({ ...current, [key]: value })); clearResult() }
+  const close = () => { clearResult(); setOpen(false) }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (saving) return
     if (!internationalPhone(form.phone)) { setError("addEmployeePhoneInvalid"); return }
-    setSaving(true); setError(null)
+    const submittedRevision = revision.current
+    setSaving(true); setError(null); setMatch(null)
     try {
       const response = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: form.name, phone: form.phone.trim(), email: form.email.trim() || null,
@@ -50,8 +57,26 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         setForm(empty); setOpen(false); onAdded(name.trim(), phone.trim())
         return
       }
+      if (submittedRevision !== revision.current) return
+      if (response.status === 409 && body?.code === "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") {
+        // A conflict is not permission to adopt that person's account. Offer
+        // their existing card for an explicit review using its normal controls.
+        try {
+          const lookup = await fetch("/api/v1/mtm/attendance/employees/phone-match", {
+            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: form.phone.trim() }), cache: "no-store",
+          })
+          const result = await lookup.json().catch(() => null)
+          if (submittedRevision !== revision.current) return
+          const parsed = AttendancePhoneMatchResult.safeParse(result?.data)
+          if (lookup.ok && result?.success === true && parsed.success && parsed.data.kind !== "none") {
+            setMatch(parsed.data)
+            return
+          }
+        } catch { /* Keep the original conflict if its explanation is unavailable. */ }
+      }
+      if (submittedRevision !== revision.current) return
       setError(ERRORS[body?.code] ?? (response.status === 400 ? "addEmployeeInvalid" : "addEmployeeFailed"))
-    } catch { setError("addEmployeeFailed") }
+    } catch { if (submittedRevision === revision.current) setError("addEmployeeFailed") }
     finally { setSaving(false) }
   }
 
@@ -61,7 +86,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   return <form onSubmit={submit} className="w-full space-y-4 rounded-2xl border bg-card p-5" aria-label={p("addEmployee")} data-testid="attendance-add-employee-form">
     <div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-semibold">{p("addEmployee")}</h2>
       <p className="mt-1 max-w-prose text-sm text-muted-foreground">{p("addEmployeeHint")}</p></div>
-      <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("close")} onClick={() => { setOpen(false); setError(null) }}><X className="h-4 w-4" aria-hidden="true" /></Button></div>
+      <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("close")} onClick={close}><X className="h-4 w-4" aria-hidden="true" /></Button></div>
     <div className="grid gap-4 md:grid-cols-2">
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeName")}</span><Input required maxLength={200} className="min-h-11" autoComplete="off" value={form.name} onChange={event => set("name")(event.target.value)} /></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeePhone")}</span><Input required type="tel" inputMode="tel" placeholder="+994501234567" maxLength={24} className="min-h-11" autoComplete="off" value={form.phone} onChange={event => set("phone")(event.target.value)} data-testid="attendance-add-employee-phone" /></label>
@@ -74,7 +99,16 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
     <p className="flex max-w-prose items-start gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm" data-testid="attendance-add-employee-code-note">
       <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{p("addEmployeeCodeNote")}</span></p>
     {error ? <p role="alert" className="text-sm text-destructive">{p(error)}</p> : null}
+    {match && match.kind !== "none" ? <div role="status" className="max-w-prose space-y-2 rounded-xl border p-4 text-sm" data-testid="attendance-phone-match">
+      <p>{match.kind === "ambiguous" ? p("addEmployeePhoneAmbiguous") : p("addEmployeePhoneProfile", { name: match.name })}</p>
+      {match.kind === "attendance" ? <>
+        <p className="text-muted-foreground">{p(match.enrolled ? "addEmployeePhoneAlreadyEnrolled" : "addEmployeePhoneExistingHire")}</p>
+        <Button asChild type="button" variant="outline" className="min-h-11 rounded-full">
+          <Link href={`/mtm/attendance/people/${encodeURIComponent(match.agentId)}?back=${encodeURIComponent("/mtm/attendance/people?tab=employees")}`} prefetch={false}>{p("addEmployeePhoneOpenProfile")}</Link>
+        </Button>
+      </> : match.kind === "other" ? <p className="text-muted-foreground">{p("addEmployeePhoneOtherProfile")}</p> : null}
+    </div> : null}
     <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
-      <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={saving} onClick={() => { setOpen(false); setError(null) }}>{p("cancel")}</Button></div>
+      <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={saving} onClick={close}>{p("cancel")}</Button></div>
   </form>
 }
