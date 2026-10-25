@@ -479,6 +479,13 @@ jobs:
           AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           AD_CONVERSIONS_DB_GATE: required
 
+      - name: Voice line numbers database gate
+        # Same gate as in pr-checks: number -> organization (see the test's header).
+        run: npx vitest run src/__tests__/voice-line-numbers-postgres.test.ts
+        env:
+          VOICE_LINE_NUMBERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          VOICE_LINE_NUMBERS_DB_GATE: required
+
       - name: Pharmacy phone orders database gate
         # Same gate as in pr-checks: a call's order list, its numbering and the
         # manager's card under FORCE row-level security (see the test's header).

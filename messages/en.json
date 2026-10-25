@@ -31087,5 +31087,21 @@
     "failed": "The connection did not finish. Close this window and try again from the channel catalog.",
     "notFromCatalog": "Open this window from Settings → Channels → WhatsApp in your CRM.",
     "notConfigured": "Connecting WhatsApp through Meta is not available on this server."
+  },
+  "voiceLineNumbers": {
+    "title": "Voice numbers",
+    "adminHint": "Calls to these numbers go to this organization and its voice agent. A number belongs to one organization only.",
+    "tenantHint": "Your voice agent answers calls to these numbers. LeadDrive connects the numbers.",
+    "loading": "Loading…",
+    "none": "No numbers yet.",
+    "noLabel": "no label",
+    "remove": "Remove",
+    "number": "Number",
+    "label": "Label",
+    "labelPlaceholder": "For example, “Orders”",
+    "add": "Add",
+    "taken": "This number already belongs to “{holder}”.",
+    "invalid": "That does not look like a phone number: write +994… or 012…",
+    "generic": "That did not work, try again."
   }
 }

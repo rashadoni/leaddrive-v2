@@ -82,6 +82,7 @@ model Organization {
   telegramStaffActions     TelegramStaffAction[]
   bookings              Booking[]
   pharmacyPhoneOrders   PharmacyPhoneOrder[]
+  voiceLineNumbers      VoiceLineNumber[]
   pharmacyPhoneOrderLines PharmacyPhoneOrderLine[]
   reviewerAccessGrants  ReviewerAccessGrant[]
   accountGradeConfig    AccountGradeConfig?
@@ -23598,4 +23599,25 @@ model TelegramStaffAction {
   @@index([organizationId, status])
   @@index([linkId])
   @@map("telegram_staff_actions")
+}
+
+/// A phone number a client's calls arrive on. LeadDrive's operator (a
+/// superadmin) assigns it, never the tenant itself: whoever holds a number
+/// receives its calls. A call on a number without a row stays with the
+/// installation's default organization (VOICE_AGENT_ORGANIZATION_ID).
+model VoiceLineNumber {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The organization's VoIP channel the calls belong to; null: its newest Asterisk channel.
+  channelConfigId String?
+  /// E.164, unique across the installation.
+  e164            String       @unique
+  label           String?
+  createdById     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("voice_line_numbers")
 }
