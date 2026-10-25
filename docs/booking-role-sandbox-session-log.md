@@ -23,3 +23,10 @@
 - Source checkpointa19b1800f2bac03e53901820c83839e6d7c0efe9 pushed only to codex/booking-role-sandbox-20261025. Created draft PR1032 https://github.com/rashadoni/leaddrive-v2/pull/1032 and attached it to this chat; after final narrow validation marked ready so mandatory source checks and the scoped hosted stand may run. Draft-event stand skip is expected and is not PASS.
 - Five required contexts retain their existing policies/baselines; no protection or build gate changed. No main merge or deploy performed/authorized for this test stand. Current application source equals basea98e87; all additions are isolated harness/workflow/fixtures/docs.
 - Next: capture fresh ready-event stand run ID, require actual full bundle/schema/auth/populated browser/fact-isolation result, inspect and fix any genuine failure. Journal-only checkpoint remains local while source CI runs so it does not cancel a valid job.
+
+
+## 2026-10-25 11:47 Asia/Baku — Fresh ready-source CI and native cookie compatibility
+
+- Actual ready-event stand run40173681459, job121109730089, exact sourcea19b1800f; requiredPR run40173681412. Runner-policy40173669692 and secret scan40173669515 SUCCESS. Standard optional PR bundle policy-skipped; custom stand is performing a real full bundle, so skip is not counted as proof. No application source/deploy change.
+- Native isolated-cookie probe (tiny loopback HTTP server, synthetic cookie, no app/provider traffic) confirms __Secure cookie round-trip in actual Playwright API client and native Chromium on localhost. This resolves production-bundle secure-cookie transport concern without changing auth settings, forging session or weakening HTTPS policy. Probe server/browser closed.
+- Stand dependencies installed; disposable schema/actual Booking constraints/generate step running. No hosted build/auth/browser result yet. Local source already final; only journal advances locally, no extra push to cancel valid CI. Next: require actual source-bound stand output, inspect genuine failure with finite diagnostics; retain tests/baselines and production isolation.
