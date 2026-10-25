@@ -25,6 +25,7 @@ on:
       - 'prisma/migrations/20261103125000_identity_activation_receipt/**'
       - 'prisma/migrations/20261103126000_identity_common_password_recovery/**'
       - 'prisma/migrations/20261103127000_identity_onboarding_intent/**'
+      - 'prisma/migrations/20261103128000_identity_onboarding_time/**'
       - 'package-lock.json'
   workflow_dispatch:
 
@@ -121,6 +122,7 @@ jobs:
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103125000_identity_activation_receipt/migration.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103126000_identity_common_password_recovery/migration.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103127000_identity_onboarding_intent/migration.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103128000_identity_onboarding_time/migration.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -v app_password="$IDENTITY_CRM_DB_PASSWORD" <<'SQL'
           CREATE ROLE identity_crm_browser LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD :'app_password';
           GRANT CONNECT ON DATABASE identity_crm_browser_test TO identity_crm_browser;

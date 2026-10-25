@@ -11,7 +11,7 @@ export async function checkIdentityOnboarding({ load, admin, writer, failing, is
   const signing = { purpose: "IDENTITY_MOBILE_SESSION", id: "onboarding-signing", material: new Uint8Array(32).fill(67) }
   let count = 0
   const account = userId => admin.identityAccount.findUniqueOrThrow({ where: { organizationId_userId: { organizationId: org, userId } } })
-  async function fixture(label) {
+  async function fixture(label, addTime = false) {
     const userId = `onboarding-${label}`, actorId = `onboarding-card-${label}`, phone = `+99455776${String(++count).padStart(4, "0")}`
     await admin.$executeRaw`INSERT INTO users (id,"organizationId","isActive",role,phone,"passwordHash") VALUES (${userId},${org},true,'viewer',${phone},'!onboarding-legacy')`
     await admin.$executeRaw`INSERT INTO mtm_agents (id,"organizationId","userId",phone,role,status,"attendanceParticipant","passwordHash") VALUES (${actorId},${org},${userId},${phone},'AGENT','ACTIVE',false,'!onboarding-actor-legacy')`
@@ -19,18 +19,19 @@ export async function checkIdentityOnboarding({ load, admin, writer, failing, is
     await registry.planIdentityApplicationByAdministrator(writer, issuer, { userId, application, status: "ACTIVE", role: "AGENT", expectedAccountVersion: 1, expectedGrantVersion: 0, requestId: `${userId}-grant` })
     await membership.reviewIdentityActorByAdministrator(writer, issuer, { userId, actorId, expectedAccountVersion: 2, reviewReference: `${userId}-review`, requestId: `${userId}-binding` })
     await membership.planIdentityMembershipByAdministrator(writer, issuer, { userId, actorId, application, status: "ACTIVE", expectedAccountVersion: 3, expectedGrantVersion: 1, expectedMembershipVersion: 0, requestId: `${userId}-member` })
-    const input = { userId, phone, application, expectedAccountVersion: 4, expectedCredentialEpoch: 1, expectedContactRevision: 1,
+    const input = { userId, phone, application: addTime ? "TIME" : application,
+      ...(addTime ? { timeEnrollment: { position: null, teamId: null, departmentId: null, hireDate: null } } : {}), expectedAccountVersion: 4, expectedCredentialEpoch: 1, expectedContactRevision: 1,
       applications: [{ application, role: "AGENT", status: "ACTIVE", grantVersion: 1, actorId, membershipVersion: 1, membershipStatus: "ACTIVE" }], reviewReference: `${userId}-review`, requestId: `${userId}-intent` }
     const review = await onboarding.createIdentityOnboardingIntent(writer, issuer, input)
     return { userId, actorId, phone, input, review }
   }
   async function issue(f, suffix = "issue") {
-    const request = { phone: f.phone, application, requestId: `${f.userId}-${suffix}` }
+    const request = { phone: f.phone, application: f.input.application, requestId: `${f.userId}-${suffix}` }
     const issued = await onboarding.issueIdentityOnboardingProof(writer, org, request, key)
     assert.ok(issued)
     const row = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: issued.proofId } })
     const code = openPhoneProofDelivery(proof.phoneProofContext(row), row, key, new Date())
-    const attempt = { proofId: row.id, phone: f.phone, application, code }
+    const attempt = { proofId: row.id, phone: f.phone, application: f.input.application, code }
     return { request, issued, row, attempt }
   }
   const finish = (client, setupToken) => onboarding.finishIdentityOnboarding(client, org, { setupToken, password, application }, ring, passwordPolicyError, runtime)
@@ -105,6 +106,35 @@ export async function checkIdentityOnboarding({ load, admin, writer, failing, is
   assert.notEqual(freshSetup.claimId, oldSetup.claimId)
   assert.equal((await finish(writer, freshSetup.setupToken)).userId, resend.userId)
   checks.push("onboarding_cancellation_blocks_confirmed_setup_source_reset_requires_review_and_resend_renews_only_own_staged_claim_without_extending_review")
+
+  phase("ONBOARDING_REVIEWED_FIELD_TO_TIME_ATOMIC_COMPOSITION")
+  const upgraded = await fixture("field-to-time", true), upgradeProof = await issue(upgraded)
+  const upgradeSetup = await onboarding.confirmIdentityOnboardingProof(writer, org, upgradeProof.attempt, ring)
+  const upgradeInput = { setupToken: upgradeSetup.setupToken, password, application: "TIME" }
+  await assert.rejects(onboarding.finishIdentityOnboarding(writer, org, upgradeInput, ring, passwordPolicyError, runtime), /IDENTITY_ONBOARDING_UNAVAILABLE/)
+  const { prepareIdentityApplicationActorInTransaction: prepareActor } = await load("application-actor")
+  const { enrollIdentityApplicationInTransaction: enroll } = await load("application-enrollment")
+  // Actual guarded card/grant services; full HR metadata is covered by the
+  // real HTTP/full-schema fixture, not this minimal foundation database.
+  const completeTime = async (tx, administrator, input) => {
+    const card = await prepareActor(tx, administrator, { userId: input.userId, application: "TIME", role: "EMPLOYEE", actorId: null,
+      expectedAccountVersion: input.expectedAccountVersion, reviewReference: `upgrade-review:${input.requestId}`, requestId: `upgrade-card:${input.requestId}` })
+    await enroll(tx, administrator, { userId: input.userId, application: "TIME", role: "EMPLOYEE", actorId: card.actorId, status: "ACTIVE",
+      expectedAccountVersion: card.accountVersion, expectedGrantVersion: 0, expectedMembershipVersion: 0, requestId: `upgrade-grant:${input.requestId}` })
+    return { agentId: card.actorId }
+  }
+  await assert.rejects(onboarding.finishIdentityOnboarding(completionFailure, org, upgradeInput, ring, passwordPolicyError, runtime, completeTime), /SYNTHETIC_COMPLETION_FAILURE/)
+  assert.equal((await account(upgraded.userId)).cutoverAt, null)
+  assert.equal(await admin.mtmAgent.count({ where: { organizationId: org, userId: upgraded.userId, role: "EMPLOYEE" } }), 0)
+  assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: org, userId: upgraded.userId, application: "TIME" } }), 0)
+  await onboarding.finishIdentityOnboarding(writer, org, upgradeInput, ring, passwordPolicyError, runtime, completeTime)
+  const timeLogin = await login(writer, org, { phone: upgraded.phone, application: "TIME", password }, signing)
+  const fieldLogin = await login(writer, org, { phone: upgraded.phone, application: "ROUTE_FIELD", password }, signing)
+  assert.ok(timeLogin); assert.ok(fieldLogin)
+  assert.notEqual(timeLogin.context.actorId, fieldLogin.context.actorId)
+  assert.equal(fieldLogin.context.actorId, upgraded.actorId)
+  assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: org, userId: upgraded.userId, application: "CRM" } }), 0)
+  checks.push("reviewed_field_to_time_onboarding_requires_hr_composition_and_rolls_back_cutover_card_and_grant_together_then_common_password_selects_distinct_actors")
 
   phase("ONBOARDING_ISSUER_REVOKE_REACTIVATE")
   const revoked = await fixture("issuer-revoked"), revokedProof = await issue(revoked)

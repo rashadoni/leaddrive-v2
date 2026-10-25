@@ -12,6 +12,7 @@ import { proofTransaction, phoneProofClock, phoneProofContext, phoneProofKeyFor,
 import { sealPhoneProof, phoneProofAttemptHash, type PhoneProofKey } from "./phone-proof"
 import { credentialSetupHint } from "./credential-setup"
 import { activateReviewedIdentityInTransaction } from "./activation"
+import { IdentityTimeEnrollmentMetadata, type IdentityTimeEnrollmentRequest } from "./time-enrollment-contract"
 import { assertIdentityActivationRuntime } from "./activation-runtime"
 
 const unavailable = () => new IdentityRegistryError("IDENTITY_ONBOARDING_UNAVAILABLE")
@@ -52,12 +53,12 @@ export async function createIdentityOnboardingIntent(client: RegistryClient, adm
     const cards = await tx.mtmAgent.findMany({ where: { organizationId, userId: input.userId }, select: { id: true }, take: 2 })
     if (cards.length > 1) throw new IdentityRegistryError("IDENTITY_LEGACY_LINK_AMBIGUOUS")
     await assertSourcePhone(tx, organizationId, input.userId, phone)
-    const applications = await assertOnboardingApplicationPlan(tx, { organizationId, userId: input.userId, application: input.application, applications: input.applications })
+    const applications = await assertOnboardingApplicationPlan(tx, { organizationId, userId: input.userId, application: input.application, applications: input.applications, timeEnrollment: input.timeEnrollment ?? null })
     const now = await phoneProofClock(tx)
     await tx.identityOnboardingIntent.updateMany({ where: { organizationId, status: "ACTIVE", expiresAt: { lte: now }, OR: [{ userId: input.userId }, { normalizedPhone: phone }] }, data: { status: "EXPIRED" } })
     const intent = await tx.identityOnboardingIntent.create({ data: {
       id: randomUUID(), organizationId, userId: input.userId, issuedByUserId: administrator.userId, issuerAuthority: authority as unknown as Prisma.InputJsonObject,
-      normalizedPhone: phone, application: input.application, applications, accountVersion: account.version, credentialEpoch: account.credentialEpoch,
+      normalizedPhone: phone, application: input.application, applications, ...(input.timeEnrollment ? { timeEnrollment: input.timeEnrollment } : {}), accountVersion: account.version, credentialEpoch: account.credentialEpoch,
       contactRevision: account.contactRevision, issuedAccountVersion: account.version, issuedCredentialEpoch: account.credentialEpoch,
       requestId: input.requestId, requestHash, reviewReference: input.reviewReference, createdAt: now, expiresAt: new Date(now.valueOf() + 7 * 86_400_000),
     } })
@@ -121,12 +122,17 @@ export async function confirmIdentityOnboardingProof(client: RegistryClient, org
   return consumeStagedPhoneProofWithSetup(client, organizationId, { proofId: input.proofId, code: input.code, requestId }, resolve)
 }
 
+/** Server-owned HR transaction adapter. It is never supplied by an HTTP body;
+ * the actual Time enrollment service repeats administrator checks and persists
+ * all metadata/history under the same transaction. */
+export type CompleteIdentityTimeEnrollment = (tx: Prisma.TransactionClient, administrator: IdentityAdministrator, input: IdentityTimeEnrollmentRequest) => Promise<{ agentId: string }>
+
 /** Setup writes only a staged hash. The subsequent cutover and closing of the
  * exact review commit together. A returned subject is NOT a login/session;
  * callers must still obtain a fresh application-scoped password login. */
 export async function finishIdentityOnboarding(client: RegistryClient, organizationId: string,
   input: { setupToken: string; password: string; application: "TIME" | "ROUTE_FIELD" }, resolve: PhoneProofKeyResolver, policy: SharedPasswordPolicy,
-  admitRuntime: () => Promise<string> = assertIdentityActivationRuntime) {
+  admitRuntime: () => Promise<string> = assertIdentityActivationRuntime, completeTime?: CompleteIdentityTimeEnrollment) {
   const hint = credentialSetupHint(input.setupToken)
   if (!hint || !input.setupToken.startsWith("lds2.")) throw unavailable()
   const artifactSha = await admitRuntime()
@@ -141,15 +147,27 @@ export async function finishIdentityOnboarding(client: RegistryClient, organizat
   })
   const subject = { userId: selected.intent.userId, phone: selected.intent.normalizedPhone }
   if (selected.complete) return subject // The HTTP composition must authenticate the supplied password afresh.
+  if (selected.intent.timeEnrollment && !completeTime) throw unavailable()
   const requestId = `onboarding-password:${createHash("sha256").update(input.setupToken).digest("hex")}`
   await setStagedIdentityCredential(client, organizationId, { setupToken: input.setupToken, password: input.password, requestId }, resolve, policy)
   return proofTransaction(client, organizationId, true, async tx => {
     const { intent, authority, account, applications, now } = await revalidateOnboardingIntent(tx, organizationId, selected.intent.id)
     if (intent.currentProofId !== hint.proofId || intent.application !== input.application) throw unavailable()
     await assertOnboardingProgress(tx, intent, account)
-    await activateReviewedIdentityInTransaction(tx, authority.administrator, { userId: intent.userId, expectedAccountVersion: account.version,
+    const activated = await activateReviewedIdentityInTransaction(tx, authority.administrator, { userId: intent.userId, expectedAccountVersion: account.version,
       expectedCredentialEpoch: account.credentialEpoch, expectedContactRevision: account.contactRevision, credentialRequestId: requestId,
       reviewReference: intent.reviewReference, requestId: `onboarding-activate:${intent.id}`, applications }, artifactSha)
+    if (intent.timeEnrollment) {
+      const metadata = IdentityTimeEnrollmentMetadata.parse(intent.timeEnrollment)
+      if (!completeTime) throw unavailable()
+      const claim = await tx.identityPhoneClaim.findUniqueOrThrow({ where: { organizationId_userId: { organizationId, userId: intent.userId } } })
+      const completed = await completeTime(tx, authority.administrator, { ...metadata, userId: intent.userId, expectedClaimId: claim.id,
+        expectedAccountVersion: activated.accountVersion, requestId: intent.id })
+      const timeKey = { organizationId_userId_application: { organizationId, userId: intent.userId, application: "TIME" } }
+      const grant = await tx.identityApplicationGrant.findUnique({ where: timeKey })
+      const member = await tx.identityApplicationMembership.findUnique({ where: timeKey })
+      if (!completed?.agentId || grant?.status !== "ACTIVE" || grant.role !== "EMPLOYEE" || member?.status !== "ACTIVE" || member.actorId !== completed.agentId) throw unavailable()
+    }
     await tx.identityOnboardingIntent.update({ where: { id: intent.id }, data: { status: "COMPLETED", completedAt: now } })
     return subject
   })

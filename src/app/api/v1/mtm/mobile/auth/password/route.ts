@@ -1,3 +1,4 @@
+import { enrollExistingIdentityInTimeInTransaction } from "@/lib/identity/time-enrollment"
 import { finishIdentityMobileRecovery } from "@/lib/identity/mobile-recovery-runtime"
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
         if (weak) return codeFlowError(400, "MTM_PASSWORD_WEAK", weak)
         const organization = await companyBySlug(organizationSlug)
         if (!organization) return expired()
-        const recovery = await finishIdentityMobileRecovery(prisma, organization.id, { setupToken, application, password }, passwordPolicyError)
+        const recovery = await finishIdentityMobileRecovery(prisma, organization.id, { setupToken, application, password }, passwordPolicyError, enrollExistingIdentityInTimeInTransaction)
         if (recovery.status !== "AUTHENTICATED") return expired()
         return NextResponse.json({ success: true, data: recovery.data }, { headers: NO_STORE })
       }

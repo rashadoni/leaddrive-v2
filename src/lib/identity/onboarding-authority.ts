@@ -2,10 +2,11 @@ import type { IdentityOnboardingIntent, IdentityPhoneProof, Prisma } from "@pris
 import { IdentityRegistryError } from "./contract"
 import { IdentityOnboardingPlan, orderedOnboardingPlans } from "./onboarding-contract"
 import { identityProofAuthorityHash, parseIdentityProofAuthority, revalidateIdentityProofAuthority } from "./proof-authority"
+import { IdentityTimeEnrollmentMetadata } from "./time-enrollment-contract"
 import { readIdentityMobileTenantPolicy } from "./tenant-policy"
 
 const unavailable = () => new IdentityRegistryError("IDENTITY_ONBOARDING_UNAVAILABLE")
-export async function assertOnboardingApplicationPlan(tx: Prisma.TransactionClient, intent: Pick<IdentityOnboardingIntent, "organizationId" | "userId" | "application" | "applications">) {
+export async function assertOnboardingApplicationPlan(tx: Prisma.TransactionClient, intent: Pick<IdentityOnboardingIntent, "organizationId" | "userId" | "application" | "applications" | "timeEnrollment">) {
   const scope = { organizationId: intent.organizationId, userId: intent.userId }
   const parsed = IdentityOnboardingPlan.array().min(1).max(3).safeParse(intent.applications)
   if (!parsed.success) throw unavailable()
@@ -20,7 +21,12 @@ export async function assertOnboardingApplicationPlan(tx: Prisma.TransactionClie
   }))
   if (!plans.success || JSON.stringify(orderedOnboardingPlans(parsed.data)) !== JSON.stringify(orderedOnboardingPlans(plans.data))) throw unavailable()
   const selected = plans.data.find(p => p.application === intent.application)
-  if (!selected || selected.status !== "ACTIVE" || !selected.actorId || selected.membershipStatus !== "ACTIVE") throw unavailable()
+  if (intent.timeEnrollment !== null && intent.timeEnrollment !== undefined) {
+    if (intent.application !== "TIME" || selected || !IdentityTimeEnrollmentMetadata.safeParse(intent.timeEnrollment).success) throw unavailable()
+    const policy = await readIdentityMobileTenantPolicy(tx, scope.organizationId, "TIME")
+    if (!policy.identityEnabled || !policy.licensed) throw unavailable()
+    if (await tx.mtmAgent.findFirst({ where: { ...scope, role: "EMPLOYEE" }, select: { id: true } })) throw unavailable()
+  } else if (!selected || selected.status !== "ACTIVE" || !selected.actorId || selected.membershipStatus !== "ACTIVE") throw unavailable()
   for (const p of plans.data.filter(p => p.status === "ACTIVE" && p.application !== "CRM")) {
     const policy = await readIdentityMobileTenantPolicy(tx, scope.organizationId, p.application as "TIME" | "ROUTE_FIELD")
     if (!policy.identityEnabled || !policy.licensed) throw unavailable()

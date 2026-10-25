@@ -13,6 +13,17 @@ describe("first-login review boundary", () => {
       expect(IdentityOnboardingInput.safeParse({ ...review, applications }).success).toBe(false)
     }
   })
+  it("requires explicit immutable HR metadata when adding Time during Field cutover", () => {
+    const fieldPlan = { ...plan, application: "ROUTE_FIELD", role: "AGENT", actorId: "reviewed-field-card" }
+    const timeEnrollment = { position: "Analyst", teamId: null, departmentId: null, hireDate: "2026-10-25" }
+    const upgrade = { ...review, applications: [fieldPlan], timeEnrollment }
+    expect(IdentityOnboardingInput.safeParse(upgrade).success).toBe(true)
+    for (const candidate of [{ ...upgrade, timeEnrollment: undefined }, { ...upgrade, application: "ROUTE_FIELD" },
+      { ...upgrade, applications: [plan] }, { ...upgrade, timeEnrollment: { ...timeEnrollment, password: "forbidden" } },
+      { ...upgrade, timeEnrollment: { ...timeEnrollment, departmentId: "existing", newDepartmentName: "new" } }]) {
+      expect(IdentityOnboardingInput.safeParse(candidate).success).toBe(false)
+    }
+  })
   it.each(["organizationId", "password", "issuerAuthority", "cutoverAt", "expiresAt"])("does not admit caller-owned %s", field => {
     expect(IdentityOnboardingInput.safeParse({ ...review, [field]: "forged" }).success).toBe(false)
   })

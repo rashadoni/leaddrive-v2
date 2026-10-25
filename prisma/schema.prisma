@@ -1018,6 +1018,7 @@ model IdentityOnboardingIntent {
   normalizedPhone String @db.VarChar(16)
   application String @db.VarChar(16)
   applications Json
+  timeEnrollment Json?
   accountVersion Int
   credentialEpoch Int
   contactRevision Int

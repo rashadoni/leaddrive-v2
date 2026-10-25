@@ -5,7 +5,7 @@ import { normalizeIdentityPhone } from "./contract"
 import { identityRuntimeKeys } from "./runtime-keys"
 import { withIdentityMobileReadSnapshot } from "./mobile-session-resolver"
 import { identityMobileLogin } from "./mobile-login-runtime"
-import { issueIdentityOnboardingProof, confirmIdentityOnboardingProof, finishIdentityOnboarding } from "./onboarding"
+import { issueIdentityOnboardingProof, confirmIdentityOnboardingProof, finishIdentityOnboarding, type CompleteIdentityTimeEnrollment } from "./onboarding"
 import { issueCanonicalRecovery, confirmCanonicalRecovery, resetCanonicalPassword } from "./canonical-recovery"
 import { phoneProofContext, claimStagedPhoneProofDelivery, recordStagedPhoneProofDelivery, type SharedPasswordPolicy } from "./phone-proof-registry"
 import { phoneProofAttemptHash } from "./phone-proof"
@@ -79,12 +79,12 @@ export async function verifyIdentityMobileRecovery(client: RegistryClient, organ
 }
 
 export async function finishIdentityMobileRecovery(client: RegistryClient, organizationId: string,
-  input: { setupToken: string; application: IdentityMobileApplication; password: string }, policy: SharedPasswordPolicy) {
+  input: { setupToken: string; application: IdentityMobileApplication; password: string }, policy: SharedPasswordPolicy, completeTime?: CompleteIdentityTimeEnrollment) {
   try {
     const keys = identityRuntimeKeys(), hint = credentialSetupHint(input.setupToken)
     if (!keys.proof || !keys.mobile || !hint) return { status: "DENIED" as const }
     if (input.setupToken.startsWith("lds2.")) {
-      const subject = await finishIdentityOnboarding(client, organizationId, input, keys.proof.resolve, policy)
+      const subject = await finishIdentityOnboarding(client, organizationId, input, keys.proof.resolve, policy, undefined, completeTime)
       const login = await identityMobileLogin(client, organizationId, { phone: subject.phone, password: input.password, application: input.application })
       return login.status === "AUTHENTICATED" ? login : { status: "DENIED" as const }
     }

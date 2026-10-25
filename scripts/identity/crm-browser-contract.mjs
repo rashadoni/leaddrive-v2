@@ -366,7 +366,8 @@ try {
     const proofKey = identityRuntimeKeys().proof.active
     phase("ACTUAL_ADMIN_FIRST_LOGIN_REVIEW")
     const invitationUrl = `/api/v1/identity/people/${userId("onboarding")}/onboarding`
-    const invitation = { phone: "+994507770020", application: "ROUTE_FIELD", expectedAccountVersion: 4,
+    const invitation = { phone: "+994507770020", application: "TIME", expectedAccountVersion: 4,
+      timeEnrollment: { position: "Fictional analyst", departmentId: null, newDepartmentName: "Fictional Technology", teamId: null, newTeamName: "Fictional Operations", hireDate: "2026-10-25" },
       expectedCredentialEpoch: 1, expectedContactRevision: 1, requestId: "cookie-onboarding-review", reviewReference: "cookie-explicit-first-login",
       applications: [{ application: "ROUTE_FIELD", role: "AGENT", status: "ACTIVE", grantVersion: 1,
         actorId: userId("onboarding-field"), membershipVersion: 1, membershipStatus: "ACTIVE" }] }
@@ -375,14 +376,14 @@ try {
     assert.equal(invitationResponse.status(), 201)
     const invitationResult = (await invitationResponse.json()).data
     const { issueIdentityOnboardingProof } = await loadIdentity("onboarding")
-    const firstProof = await issueIdentityOnboardingProof(recoveryClient, company, { phone: invitation.phone, application: "ROUTE_FIELD", requestId: "cookie-first-login-code" }, proofKey)
+    const firstProof = await issueIdentityOnboardingProof(recoveryClient, company, { phone: invitation.phone, application: "TIME", requestId: "cookie-first-login-code" }, proofKey)
     const firstRow = await admin.identityPhoneProof.findUniqueOrThrow({ where: { id: firstProof.proofId } })
     const firstCode = openPhoneProofDelivery(phoneProofContext(firstRow), firstRow, proofKey, new Date())
     const firstClient = await context()
     phase("ACTUAL_PUBLIC_FIRST_LOGIN_CONFIRMATION")
     await reserveAuthPost()
     const firstConfirmed = await firstClient.request.post("/api/v1/mtm/mobile/auth/code/verify", { timeout: 120000, data: {
-      organizationSlug: company, phone: invitation.phone, application: "ROUTE_FIELD", challengeId: firstRow.id, code: firstCode,
+      organizationSlug: company, phone: invitation.phone, application: "TIME", challengeId: firstRow.id, code: firstCode,
     } })
     assert.equal(firstConfirmed.status(), 200)
     const firstSetup = (await firstConfirmed.json()).data.setupToken
@@ -391,20 +392,32 @@ try {
     phase("ACTUAL_PUBLIC_FIRST_LOGIN_CUTOVER")
     await reserveAuthPost()
     const firstSession = await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
-      organizationSlug: company, application: "ROUTE_FIELD", setupToken: firstSetup, password: firstPassword,
+      organizationSlug: company, application: "TIME", setupToken: firstSetup, password: firstPassword,
     } })
     assert.equal(firstSession.status(), 200)
     const firstData = (await firstSession.json()).data
-    assert.equal(firstData.application, "ROUTE_FIELD"); assert.equal(firstData.agent.id, userId("onboarding-field"))
+    assert.equal(firstData.application, "TIME"); assert.notEqual(firstData.agent.id, userId("onboarding-field"))
+    const firstTimeCard = await admin.mtmAgent.findUniqueOrThrow({ where: { id: firstData.agent.id }, include: { department: true, team: true } })
+    assert.equal(firstTimeCard.position, invitation.timeEnrollment.position)
+    assert.equal(firstTimeCard.department.name, invitation.timeEnrollment.newDepartmentName)
+    assert.equal(firstTimeCard.team.name, invitation.timeEnrollment.newTeamName)
+    assert.equal((await admin.$queryRaw`SELECT count(*)::int AS count FROM workforce_employment_events WHERE "organizationId"=${company} AND "agentId"=${firstTimeCard.id} AND kind='HIRE'`)[0].count, 1)
     assert.equal((await admin.identityOnboardingIntent.findUniqueOrThrow({ where: { id: invitationResult.intentId } })).status, "COMPLETED")
     assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId("onboarding") }, select: { passwordHash: true } })).passwordHash, "!identity:canonical-only")
-    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("onboarding"), application: { in: ["CRM", "TIME"] } } }), 0)
+    assert.equal(await admin.identityApplicationGrant.count({ where: { organizationId: company, userId: userId("onboarding"), application: "CRM" } }), 0)
     assert.equal((await firstClient.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: { Authorization: `Bearer ${firstData.token}` } })).status(), 200)
     await reserveAuthPost()
     assert.equal((await firstClient.request.post("/api/v1/mtm/mobile/auth/password", { timeout: 120000, data: {
-      organizationSlug: company, application: "ROUTE_FIELD", setupToken: firstSetup, password: "Wrong!FirstLogin482",
+      organizationSlug: company, application: "TIME", setupToken: firstSetup, password: "Wrong!FirstLogin482",
     } })).status(), 401)
-    check("actual_admin_review_public_first_login_code_password_atomic_cutover_and_fresh_session_without_implicit_crm_time_or_completed_receipt_authentication")
+    await reserveAuthPost()
+    const preservedFieldLogin = await firstClient.request.post("/api/v1/mtm/mobile/auth", { timeout: 120000, data: {
+      organizationSlug: company, application: "ROUTE_FIELD", phone: invitation.phone, password: firstPassword,
+    } })
+    assert.equal(preservedFieldLogin.status(), 200)
+    assert.equal((await preservedFieldLogin.json()).data.agent.id, userId("onboarding-field"))
+    assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("onboarding") } }), 2)
+    check("actual_admin_review_public_first_login_activates_common_password_and_separate_time_card_with_hr_fields_preserving_field_actor_without_implicit_crm_or_receipt_authentication")
     phase("ACTUAL_PUBLIC_COMMON_PASSWORD_RECOVERY")
     // Private synthetic issuance only. Actual public verification/reset below;
     // no provider configuration, external request or plaintext-code artifact.

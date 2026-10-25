@@ -1,5 +1,6 @@
+import type { Prisma } from "@prisma/client"
 import { createHash } from "node:crypto"
-import { withIdentityAdministrator, type IdentityAdministrator } from "./administrator"
+import { withIdentityAdministrator, withIdentityAdministratorInTransaction, type IdentityAdministrator } from "./administrator"
 import type { RegistryClient } from "./registry"
 import { IdentityRegistryError, normalizeIdentityPhone } from "./contract"
 import { readIdentityMobileTenantPolicy } from "./tenant-policy"
@@ -33,13 +34,18 @@ export async function lookupIdentityTimePerson(client: RegistryClient, administr
  * the entered HR metadata atomically. Existing cards/history require their own
  * review screen. No second User, credential, phone claim or Field mutation. */
 export async function enrollExistingIdentityInTime(client: RegistryClient, administrator: IdentityAdministrator, raw: unknown) {
+  return withIdentityAdministrator(client, administrator, tx => enrollExistingIdentityInTimeInTransaction(tx, administrator, raw))
+}
+
+/** Used by reviewed first login to commit cutover and the complete Time card together. */
+export async function enrollExistingIdentityInTimeInTransaction(tx: Prisma.TransactionClient, administrator: IdentityAdministrator, raw: unknown) {
   const parsed = IdentityTimeEnrollmentInput.safeParse(raw)
   if (!parsed.success) throw new IdentityRegistryError("IDENTITY_TIME_ENROLLMENT_INVALID")
   const input = parsed.data, organizationId = administrator.organizationId
   const requestHash = createHash("sha256").update(JSON.stringify([1, organizationId, administrator.userId,
     input.userId, input.expectedClaimId, input.expectedAccountVersion, input.position, input.departmentId, input.newDepartmentName ?? null,
     input.teamId, input.newTeamName ?? null, input.hireDate])).digest("hex")
-  return withIdentityAdministrator(client, administrator, async tx => {
+  return withIdentityAdministratorInTransaction(tx, administrator, async tx => {
     const previous = await tx.mtmAuditLog.findFirst({ where: { organizationId, action: "MTM_IDENTITY_TIME_ENROLLED",
       newData: { path: ["clientRequestId"], equals: input.requestId } }, select: { agentId: true, newData: true } })
     if (previous) {

@@ -3,6 +3,7 @@ import { NextRequest } from "next/server"
 const m = vi.hoisted(() => ({ org: vi.fn(), limit: vi.fn(), issue: vi.fn(), verify: vi.fn(), finish: vi.fn(), holder: vi.fn(), sender: vi.fn(), send: vi.fn(), oldSetup: vi.fn() }))
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))
 vi.mock("@/lib/rls-context", () => ({ runWithRlsBypass: (work: () => unknown) => work(), runWithTenant: (_org: string, work: () => unknown) => work() }))
+vi.mock("@/lib/identity/time-enrollment", () => ({ enrollExistingIdentityInTimeInTransaction: vi.fn() }))
 vi.mock("@/lib/identity/mobile-recovery-runtime", () => ({ requestIdentityMobileRecovery: m.issue, verifyIdentityMobileRecovery: m.verify, finishIdentityMobileRecovery: m.finish }))
 vi.mock("@/lib/mtm/mobile-login-code-flow", async importOriginal => ({ ...await importOriginal<object>(), companyBySlug: m.org, codeFlowRateLimit: m.limit, codeHolder: m.holder }))
 vi.mock("@/lib/mtm/whatsapp-login-code", () => ({ loginCodeSender: m.sender, loginCodeTemporarilyUnavailable: () => false, sendLoginCodeToWhatsApp: m.send }))
@@ -52,7 +53,7 @@ describe("public common-password recovery composition", () => {
   it.each(["lds2.fixture", "lds3.fixture"])("sets the shared password only through the selected application: %s", async setupToken => {
     const response = await call(finish, { organizationSlug: input.organizationSlug, application: "TIME", setupToken, password: "Fictional!Recovered482" })
     expect(response.status).toBe(200)
-    expect(m.finish).toHaveBeenCalledWith(expect.anything(), "server-tenant", { application: "TIME", setupToken, password: "Fictional!Recovered482" }, expect.any(Function))
+    expect(m.finish).toHaveBeenCalledWith(expect.anything(), "server-tenant", { application: "TIME", setupToken, password: "Fictional!Recovered482" }, expect.any(Function), expect.any(Function))
     expect(m.oldSetup).not.toHaveBeenCalled()
   })
   it.each([{}, { organizationSlug: input.organizationSlug }, { application: "TIME" }])("refuses canonical setup missing company/application: %j", async scope => {

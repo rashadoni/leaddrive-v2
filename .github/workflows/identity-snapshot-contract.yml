@@ -23,6 +23,7 @@ on:
       - 'prisma/migrations/20261103125000_identity_activation_receipt/**'
       - 'prisma/migrations/20261103126000_identity_common_password_recovery/**'
       - 'prisma/migrations/20261103127000_identity_onboarding_intent/**'
+      - 'prisma/migrations/20261103128000_identity_onboarding_time/**'
       - 'src/lib/identity/**'
       - 'src/app/api/v1/identity/**'
       - 'src/__tests__/identity-application-enrollment-http.test.ts'
