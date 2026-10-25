@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement, type AnchorHTMLAttributes } from "react"
+import { act, createElement, type AnchorHTMLAttributes, type ComponentType, type ComponentProps, type PropsWithChildren } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
@@ -10,11 +10,15 @@ vi.mock("next-auth/react", () => ({ useSession: () => ({ data: session.current }
 vi.mock("next/link", () => ({ default: ({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => createElement("a", props, children) }))
 import { TaskMeetingNotice } from "@/components/tasks/task-meeting-notice"
 
+// React.createElement supplies the required child as its third argument.
+// Retain all other provider prop types while modeling that call shape.
+const IntlFixtureProvider = NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>, "children">>>
+
 let root: Root, container: HTMLDivElement
 const request = vi.fn<typeof fetch>()
 const response = (data: unknown, status = 200) => Response.json(status === 200 ? { success: true, data } : { error: "Denied" }, { status })
 async function render(blocked = false, taskId = "task-a") {
-  await act(async () => root.render(createElement(NextIntlClientProvider, {
+  await act(async () => root.render(createElement(IntlFixtureProvider, {
     locale: "ru", messages, timeZone: "Asia/Baku",
   }, createElement(TaskMeetingNotice, { taskId, blocked }))))
 }
