@@ -187,7 +187,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 onOpenLauncher={() => setLauncherOpen(true)}
               />
               <CrmAppearanceProvider enabled={!isDashboardHome}>
-              <main data-crm-workspace={!isDashboardHome ? "" : undefined} className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} ref={mainRef}>
+              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} data-crm-workspace={!isDashboardHome ? "" : undefined} ref={mainRef}>
                 {!childrenReady ? (
                   <div className="flex h-full items-center justify-center" aria-busy="true">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />
