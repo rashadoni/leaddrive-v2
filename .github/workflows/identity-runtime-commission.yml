@@ -38,7 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Admit reviewed main operation and registered target
+      - name: Validate inputs and admit reviewed main operation and registered target
         env:
           OPERATION: ${{ inputs.operation }}
           COMPANY_SLUG: ${{ inputs.company_slug }}
@@ -82,7 +82,7 @@ jobs:
           cleanup() { ssh "${SSH_OPTIONS[@]}" "$TARGET" "rm -rf -- '$STAGE'" >/dev/null 2>&1 || true; }
           trap cleanup EXIT
           LOCAL_STAGE="$(mktemp -d "$RUNNER_TEMP/identity-operator.XXXXXX")"
-          for file in scripts/identity/commission-runtime.mjs scripts/identity/commission-lock.py scripts/identity/release-contract.mjs scripts/identity/release-state.sql scripts/event-platform/inspect-production.sh scripts/backup/snapshot-secrets.sh; do
+          for file in scripts/identity/commission-runtime.mjs scripts/identity/commission-enable.sql scripts/identity/commission-lock.py scripts/identity/release-contract.mjs scripts/identity/release-state.sql scripts/event-platform/inspect-production.sh scripts/backup/snapshot-secrets.sh; do
             mkdir -p "$LOCAL_STAGE/$(dirname "$file")"
             cp "$file" "$LOCAL_STAGE/$file"
             sha256sum "$file" >> "$LOCAL_STAGE/SHA256SUMS"
