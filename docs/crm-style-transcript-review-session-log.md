@@ -474,3 +474,31 @@
 - Companies rerun с реальным readinessselector PASS; все cleanup flags true. Final initial live summary:15 structuralPASS,2emptyLIMITED,1financeERROR на18routes; подробности shared-style/release/e04595-live-review.md. Boarddetail также NOT_VERIFIED (нетдоступнойдоски), cleanupPASS. Unrelated tasks.noTasks copy defect не изменялся. Следующий шаг — финальная targeted проверка native CTA, checkpoint/push нового PR, required CI, обычный release и повторный live smoke затронутыхконтролов.
 
 - Дополнительные MTM map-tools/zones suites:73testsPASS. Всего11targetedsuites268testsPASS. Native-static CSS fixture готовится независимо; live повтор будет после следующего проверенного artifact.
+
+### Дополнительный PR опубликован
+
+- Commit6eb4ffcf7d413a903a571726fc42b19c4299ca57 (57 task-owned paths) pushed в прежнюю dedicatedbranch. Открыт и прикреплён PR1057 https://github.com/rashadoni/leaddrive-v2/pull/1057, base на момент opened14eba222839fd0e5e1d3ffa58d23bc100e21e2e6, MERGEABLE. Required CI run40218605649 queued; дополнительные проверки запущены штатнымиpathfilters. Source первого общего релиза e04595 уже live, этот follow-up ещё не выпущен. Следующий шаг — дождаться actual conclusions без ослабленияchecks, затем штатныйmerge/release и native smoke.
+
+### Native primary CSS проверен в трёх режимах
+
+- Bounded static fixture48 actual source class samples PASS в light/dark/wallpaper (144 sample checks): общийactiontoken, radius8px, видимость, отсутствие background-image;47 текстовыхsamples такжеwhite/AAcontrast. Root просмотрел light/darkPNG. Icon-only mailto в Contacts имеет white Mail child в реальномsource; его synthetic OK placeholder не проверялся как реальныйlabel.6conditional/stateexpressions исключены изstaticfixture и перечислены вmetadata; это не проверка ихbusinessbehavior.
+- Evidence: /mnt/HC_Volume_106454338/codex-alt-data/visual-evidence/leaddrive-crm-style-20261025/followup/native-primary-2026-10-25T17-58-38-060Z/checks.json. Создан только отдельный localhosttab, он закрыт, viewport очищен; существующаяauthenticatedCRMвкладка не использовалась. Sourcehead остаётся6eb4ffcf7.
+- Requiredpr-scope,runner-policy,scan SUCCESS;static-checks/typecheck и применимыеbrowserjobs выполняются/ожидают. Доихокончания merge не выполняется.
+
+- Независимыйreview подтвердил48CTAна3PNG; выявленный белыйcanvas wallpaper относился только кстенду (bodytransparent без backdrop). ВtempHTML фон перенесён наhtml, безsourceизменений; повторwallpaper48PASS, rootviewedPNG. Исправленнаяevidence: followup/native-primary-2026-10-25T18-00-00-021Z.
+
+### Итоги дополнительных проверок перед завершением CI
+
+- Проверка типов для source 6eb4ffcf завершилась SUCCESS. Это штатные blocking syntax/module/name и defect-baseline gates; существующие advisory diagnostics не объявляются нулевыми. Static-checks ещё выполняет Unit tests vs baseline, Booking собирает полный isolated production bundle на hosted runner.
+- Attendance run 40218605674 / job 121245053301 SUCCESS: actual authenticated browser, mobile HTTP и PostgreSQL summary PASS 66 / FAIL 0 / NOT_RUN 5. Не проверялись physical APK/OS permissions, внешняя почта, camera/offline Android replay, overnight soak и все комбинации controls.
+- Уточнение покрытия Workforce: 10 lifecycle jobs SUCCESS, 11 withdrawal receipts (restore API/browser отдельно). Это проверки текущего удаления capability: authenticated page 404/API 410, сохранность истории/RLS. Архивные функциональные HRM journeys NOT RUN; прежние общие формулировки о browser acceptance не означают их выполнения. Четыре условных WF-C6-010 jobs также SKIPPED/NOT RUN. Независимый reviewer проверил actual log lines и exact candidate/source guard.
+- Пока CI проверяет тот же source SHA, журнал остаётся отдельно unstaged, чтобы запись о проверках не перезапустила все source gates. Следующий checkpoint журнала — после итогов и выпуска. Бизнес-данные не менялись.
+
+- Все 9 дополнительных workflow runs для 6eb4ffcf завершились SUCCESS. Booking run 40218605693 / job 121245148405: complete isolated production bundle SUCCESS и 20 authenticated populated role browser cases PASS, failureStage null. Точный synthetic candidate e41ac87b7074db2a317731e07040b89493c746b0. Report сохранён в visual-evidence/leaddrive-crm-style-20261025/followup/followup-ci-review.md. Это изолированная проверка реального Next bundle с synthetic records, не live tenant data/public sends.
+
+### Последний required gate выявил устаревший KB color contract
+
+- Required run 40218605649 завершился FAILURE только на Unit tests vs baseline: 19 failing files при 18 разрешённых baseline. Единственный новый файл — support-ux-knowledge-base-flow-evidence-contract.test.ts, строка78 ожидала literal bg-orange-700. Остальные required jobs SUCCESS; все дополнительные workflows SUCCESS на6eb4ffcf. Этот SHA не merged.
+- В тесте устаревший literal заменён проверками двух конкретных CTA (header/empty state): shared default Button, сохранённые размеры44px/responsive widths и обработчики, default variant, общийdata marker и scoped CRM action token. Остальные state/portal/flow assertions сохранены; test baseline не расширялся. Независимый reviewer сверил source/common Button/CSS и подтвердил причину.
+- Targeted4 suites29tests PASS; lint изменённого теста PASS; git diff --check PASS. Первый test command не запустил suites из-за неподдерживаемого Vitest4 --minWorkers; повтор с --maxWorkers=1 успешно выполнен. Исходники интерфейса при этом исправлении не менялись.
+- Текущий main267a9524e содержит отдельные reviewed Kafka/PBX changes (7paths), пересечений с UI нет. Следующий шаг — checkpoint, обычный merge current main для актуального candidate, push и новые required checks без обхода gate.
