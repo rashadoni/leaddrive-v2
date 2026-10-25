@@ -103,23 +103,24 @@
 
   .support-page-shell :where(button, a, [role="button"]).bg-primary,
   .support-ai-search .ai-search-btn {
-    background-color: hsl(20 92% 38%) !important;
+    background-color: hsl(var(--crm-action, 20 92% 38%)) !important;
+    color: hsl(var(--crm-action-foreground, 0 0% 100%));
   }
 
   .support-page-shell :where(button, a, [role="button"]).bg-primary:hover,
   .support-ai-search .ai-search-btn:hover {
-    background-color: hsl(20 92% 32%) !important;
+    background-color: hsl(var(--crm-action-hover, 20 92% 32%)) !important;
   }
 
-  /* The shared brand orange is an accent, but white 14 px button text on its
-     default shade is only 3.6:1. Customer-facing primary actions use the same
-     hue at an AA-safe lightness without changing primary text/focus accents. */
+  /* Inside CRM, support follows the common action pair. Public customer
+     portals keep their existing AA-safe orange fallback outside that scope. */
   .customer-support-surface :where(button, a, [role="button"]).bg-primary {
-    background-color: hsl(20 92% 38%) !important;
+    background-color: hsl(var(--crm-action, 20 92% 38%)) !important;
+    color: hsl(var(--crm-action-foreground, 0 0% 100%));
   }
 
   .customer-support-surface :where(button, a, [role="button"]).bg-primary:hover {
-    background-color: hsl(20 92% 32%) !important;
+    background-color: hsl(var(--crm-action-hover, 20 92% 32%)) !important;
   }
 
   .support-case-workspace {
@@ -657,8 +658,8 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-field svg {
   color: hsl(210 15% 74%) !important;
 }
 html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-btn {
-  background-color: hsl(215 25% 30% / 0.75) !important;
-  color: hsl(0 0% 96%) !important;
+  background-color: hsl(var(--crm-action, 215 25% 30% / 0.75)) !important;
+  color: hsl(var(--crm-action-foreground, 0 0% 96%)) !important;
   box-shadow: none !important;
 }
 

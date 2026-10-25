@@ -23,6 +23,17 @@ describe("CRM action hierarchy source guard", () => {
     }
   })
 
+  it("keeps legacy support overrides on the shared action tokens", () => {
+    const css = readFileSync("src/app/globals.css", "utf8")
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]+)\}/g)]
+      .filter(([, selector]) => /support-(page-shell|ai-search|surface)/.test(selector) && /bg-primary|ai-search-btn/.test(selector))
+    expect(rules).toHaveLength(4)
+    for (const [, selector, declarations] of rules) {
+      const token = selector.includes(":hover") ? "--crm-action-hover" : "--crm-action"
+      expect(declarations).toContain(`background-color: hsl(var(${token},`)
+    }
+  })
+
   it("covers every CRM route and shared component without unclassified exceptions", () => {
     const result = scanCrmButtons()
     expect(result.files).toBeGreaterThan(700)

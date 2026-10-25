@@ -85,6 +85,15 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
   --primary-foreground: var(--crm-action-foreground);
 }
 
+[data-crm-workspace] [data-crm-button="default"].bg-primary:hover:not(:disabled):not([data-crm-color-role]) {
+  background-color: hsl(var(--crm-action-hover));
+}
+
+[data-crm-workspace] [data-crm-button]:focus-visible {
+  outline: 2px solid hsl(var(--foreground));
+  outline-offset: 2px;
+}
+
 [data-crm-workspace] [data-crm-button="brand"] {
   background: hsl(var(--crm-action));
   color: hsl(var(--crm-action-foreground));
@@ -92,6 +101,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] [data-crm-workspace]:not(
 
 [data-crm-workspace] [data-crm-button="brand"]:hover:not(:disabled) {
   background: hsl(var(--crm-action-hover));
+  opacity: 1;
 }
 
 /* A selected value is not a submit/create action. This class also supports
