@@ -113,6 +113,8 @@ test('actual restore controller drains before proof and preserves candidate byte
       const shell = `set -euo pipefail
 APP_DIR='${app}'
 BACKUP_PATH='${backup}'
+IDENTITY_RELEASE_CONTROLLER=""
+IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=false
 BOOKING_RELEASE_CONTROLLER=reviewed-controller
 BOOKING_RELEASE_CANDIDATE_FILE=reviewed-candidate
 BOOKING_RELEASE_FIRST_EXPANSION=true
@@ -128,6 +130,7 @@ persist_event_platform_pm2_stop_fence() { printf 'stop\\n' >> '${trace}'; }
 node() { printf 'check:%s\\n' "$*" >> '${trace}'; return ${accepted?0:1}; }
 safe_remove_tree() { rm -rf -- "$1"; }
 ${deployFunction('with_booking_release_database')}
+${deployFunction('ensure_identity_rollback_compatible')}
 ${deployFunction('ensure_booking_rollback_compatible')}
 ${deployFunction('restore_standalone_before_pm2')}
 if restore_standalone_before_pm2; then printf 'accepted'; else printf 'blocked'; fi

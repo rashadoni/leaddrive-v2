@@ -68,6 +68,8 @@ RUNTIME_STATE_CUTOVER_FINALIZED=false
 HANDOFF_STARTED=false
 HANDOFF_RECOVERY_COMPLETE=false
 EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED=false
+IDENTITY_RELEASE_CONTROLLER=""
+IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=false
 BOOKING_RELEASE_CONTROLLER=""
 BOOKING_RELEASE_CANDIDATE_FILE=""
 BOOKING_RELEASE_FIRST_EXPANSION=false
@@ -242,7 +244,7 @@ assert_dotenv_key_allowed() {
     OPERATIONS_ACTIVATION_STARTED|GENESIS_ACTIVATION_DURABLE|OPERATIONS_CRONTAB_INTENT|OPERATIONS_SYSTEMD_UNITS|OPERATIONS_TIMERS|\
     OPERATIONS_BACKUP_LOCK_FD|OPERATIONS_SECRETS_LOCK_FD|\
     OPERATIONS_RUNTIME_FILES_LOCK_FD|OPERATIONS_LOG_LOCK_FD|\
-    OPERATIONS_LOGROTATE_FILES|BOOKING_RELEASE_*|booking_control_file|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
+    OPERATIONS_LOGROTATE_FILES|BOOKING_RELEASE_*|booking_control_file|IDENTITY_RELEASE_*|identity_control_file|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
     REVIEWED_LOG_CURSOR_AWK_RE|BACKUP_EVIDENCE_ROOT|BACKUP_CUSTODY_MARKER|\
     BACKUP_OFFLINE_RESTORE_MARKER|BACKUP_BOOTSTRAP_RESTORE_MARKER|BACKUP_OFFLINE_ALLOWED_SIGNERS|BACKUP_SIGNED_EVIDENCE_DIR|\
     EXPECTED_SHARED_SERVER_IP|\
@@ -7973,8 +7975,21 @@ with_booking_release_database() {
     load_dotenv_file "$MIGRATION_ENV_FILE" migration || return
     require_env MIGRATION_DATABASE_URL || return
     require_env MIGRATION_EXPECTED_DB_ROLE || return
-    BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" DATABASE_URL="$MIGRATION_DATABASE_URL" "$@"
+    IDENTITY_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" DATABASE_URL="$MIGRATION_DATABASE_URL" "$@"
   )
+}
+
+# Identity has its own retained cutover floor, independent of booking state.
+ensure_identity_rollback_compatible() {
+  local target="$1"
+  [ -n "$IDENTITY_RELEASE_CONTROLLER" ] || return 0
+  IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=true
+  persist_event_platform_pm2_stop_fence || return 1
+  if ! with_booking_release_database node "$IDENTITY_RELEASE_CONTROLLER" --check-rollback "$target" true; then
+    log "FATAL: identity rollback is incompatible; preserve the candidate and keep the old process stopped"
+    return 1
+  fi
+  IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=false
 }
 
 # Drain before counting so a customer request cannot race rollback admission.
@@ -7996,6 +8011,7 @@ ensure_booking_rollback_compatible() {
 
 restore_standalone_before_pm2() {
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_identity_rollback_compatible "$rollback_source" || return 1
   ensure_booking_rollback_compatible "$rollback_source" || return 1
   if [ -d "$rollback_source" ]; then
     safe_remove_tree "$APP_DIR/.next/standalone"
@@ -8010,8 +8026,8 @@ restore_standalone_before_pm2() {
 fatal_after_standalone_replacement() {
   local message="$1"
   log "FATAL: $message"
-  if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
-    log "Booking recovery is fail-closed; the previous artifact will not be restored."
+  if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ] || [ "$IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+    log "Application recovery is fail-closed; the previous artifact will not be restored."
     exit 1
   fi
   if [ "$STANDALONE_REPLACED" = "true" ] \
@@ -8027,6 +8043,7 @@ fatal_after_standalone_replacement() {
 recover_application_handoff() {
   local rollback_config rollback_code rollback_ping_code
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_identity_rollback_compatible "$rollback_source" || return 1
   ensure_booking_rollback_compatible "$rollback_source" || return 1
 
   if [ "$RUNTIME_STATE_CUTOVER_FINALIZED" != "true" ]; then
@@ -8119,8 +8136,8 @@ rollback_replaced_standalone_on_exit() {
     status=1
   fi
   if [ "$status" -ne 0 ] && [ "$HANDOFF_STARTED" = "true" ] && [ "$HANDOFF_RECOVERY_COMPLETE" != "true" ]; then
-    if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
-      log "FATAL: booking rollback is not proven; keep PM2 stopped and preserve the canonical candidate for reviewed recovery"
+    if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ] || [ "$IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+      log "FATAL: application rollback is not proven; keep PM2 stopped and preserve the canonical candidate for reviewed recovery"
     elif [ "$EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED" = "true" ]; then
       log "FATAL: previous PM2 artifact remains stopped because the Fund pilot committed without a proven rollback-client path"
       log "FATAL: preserve the database and recovery-point evidence for reviewed operator recovery: ${EVENT_PLATFORM_PILOT_BACKUP_EVIDENCE:-unavailable}"
@@ -8218,6 +8235,22 @@ case "$BOOKING_RELEASE_ADMISSION" in
   compatible) BOOKING_RELEASE_FIRST_EXPANSION=false ;;
   *) fatal_after_standalone_replacement "invalid booking artifact admission result" ;;
 esac
+
+# Keep the identity controller outside the live artifact so failure recovery
+# uses the reviewed candidate's guard before replacing or restarting any bytes.
+IDENTITY_RELEASE_CONTROL_DIR="$BACKUP_PATH/identity-release-controller"
+mkdir -p "$IDENTITY_RELEASE_CONTROL_DIR/scripts/identity" "$IDENTITY_RELEASE_CONTROL_DIR/scripts/event-platform"
+chmod 700 "$IDENTITY_RELEASE_CONTROL_DIR"
+for identity_control_file in scripts/identity/release-contract.mjs scripts/identity/release-state.sql scripts/event-platform/inspect-production.sh; do
+  tar -xOzf "$DEPLOY_TAR" "./$identity_control_file" > "$IDENTITY_RELEASE_CONTROL_DIR/$identity_control_file" \
+    || fatal_after_standalone_replacement "identity controller is missing from the immutable artifact"
+done
+tar -xOzf "$DEPLOY_TAR" ./.identity-backend-contract.json > "$IDENTITY_RELEASE_CONTROL_DIR/candidate.json" \
+  || fatal_after_standalone_replacement "immutable artifact has no identity backend contract"
+IDENTITY_RELEASE_CONTROLLER="$IDENTITY_RELEASE_CONTROL_DIR/scripts/identity/release-contract.mjs"
+with_booking_release_database node "$IDENTITY_RELEASE_CONTROLLER" --check-admission \
+  "$IDENTITY_RELEASE_CONTROL_DIR/candidate.json" "$ARTIFACT_DEPLOY_SHA" \
+  || fatal_after_standalone_replacement "identity artifact admission failed"
 
 # Resolve the durable database gate and persist the exact previous client
 # before the generic standalone path is touched. On the first cutover the old
