@@ -119,3 +119,18 @@ The existing updater automatically offers a newer release; Android requires the
 user to confirm installation. This release does not activate the person/phone
 identity migration. See docs/time-first-public-release-session-log.md for the
 actual artifact and deployment evidence.
+
+## Shared-identity release decision — 2026-10-26
+
+The owner explicitly approved the coordinated Zeytun shared-identity rollout after
+being informed that the new S23 build had not been tested because the device
+bridge was unavailable. This approval covers publishing reviewed-main Time1050
+and its compatible Field release before any selected-person conversion. The
+physical upgrade/Maestro gate for this build remains NOT RUN; neither the
+previous1048 physical pass nor an interrupted soak is relabeled as its evidence.
+Hosted tests/types, signed main build, package/permissions/certificate, exact
+versioned APK and public-redownload hash are recorded in
+`docs/evidence/identity-time-public-release-1050.json`. The updater still requires
+Android installation confirmation; release availability does not prove a device
+has installed it. The owner must confirm their own WhatsApp code and password
+on the site when explicitly converting their account.
