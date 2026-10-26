@@ -32,6 +32,7 @@ import {
   Smartphone,
   Sparkles,
   Trash2,
+  Unplug,
   Webhook,
 } from "lucide-react"
 
@@ -54,6 +55,7 @@ import {
 } from "@/lib/channels/live-connection"
 import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
 import { isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
+import { channelRemovalKind, type ChannelRemovalKind } from "@/lib/channels/channel-removal"
 
 interface ChannelConfig {
   id: string
@@ -195,6 +197,12 @@ const copy = {
     comingSoon: "Roadmap",
     edit: "Edit",
     delete: "Delete",
+    disconnect: "Disconnect",
+    disconnecting: "Disconnecting…",
+    disconnectTitle: "Disconnect {name}?",
+    disconnectBody: "The channel stops receiving and sending messages, and LeadDrive's access to Meta for it is removed. All conversations stay in the CRM. You can connect it again from its card in the catalog.",
+    deleteTitle: "Delete {name}?",
+    deleteBody: "The channel's settings are deleted and it stops receiving and sending messages. All conversations stay in the CRM. To connect it again, you will need to enter the settings anew.",
     noResults: "No channels match this search.",
     noResultsHint: "Clear the search or switch back to All to see every provider.",
     active: "active",
@@ -383,6 +391,12 @@ const copy = {
     comingSoon: "В разработке",
     edit: "Редактировать",
     delete: "Удалить",
+    disconnect: "Отключить",
+    disconnecting: "Отключаем…",
+    disconnectTitle: "Отключить {name}?",
+    disconnectBody: "Канал перестанет принимать и отправлять сообщения, доступ LeadDrive к Meta для него будет снят. Вся переписка останется в CRM. Подключить его снова можно через карточку в каталоге.",
+    deleteTitle: "Удалить {name}?",
+    deleteBody: "Настройки канала будут удалены, он перестанет принимать и отправлять сообщения. Вся переписка останется в CRM. Чтобы подключить его снова, настройки придётся ввести заново.",
     noResults: "По этому поиску каналов нет.",
     noResultsHint: "Очистите поиск или вернитесь во вкладку «Все», чтобы увидеть всех провайдеров.",
     active: "активных",
@@ -569,6 +583,12 @@ const copy = {
     comingSoon: "Planlaşdırılır",
     edit: "Redaktə et",
     delete: "Sil",
+    disconnect: "Ayır",
+    disconnecting: "Ayrılır…",
+    disconnectTitle: "{name} ayrılsın?",
+    disconnectBody: "Kanal mesaj qəbul etməyi və göndərməyi dayandıracaq, LeadDrive-ın bu kanal üçün Meta-ya girişi götürüləcək. Bütün yazışmalar CRM-də qalır. Kataloqdakı kartdan onu yenidən qoşa bilərsiniz.",
+    deleteTitle: "{name} silinsin?",
+    deleteBody: "Kanalın ayarları silinəcək və o, mesaj qəbul etməyi və göndərməyi dayandıracaq. Bütün yazışmalar CRM-də qalır. Yenidən qoşmaq üçün ayarları təzədən daxil etməli olacaqsınız.",
     noResults: "Bu axtarışa uyğun kanal yoxdur.",
     noResultsHint: "Axtarışı təmizləyin və ya bütün provayderləri görmək üçün Hamısı bölməsinə qayıdın.",
     active: "aktiv",
@@ -1635,6 +1655,7 @@ function ChannelsPageInner() {
   const [editData, setEditData] = useState<(Partial<ChannelConfig> & { settings?: Record<string, unknown> }) | undefined>()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState("")
+  const [deleteKind, setDeleteKind] = useState<ChannelRemovalKind>("delete")
   const [testPhone, setTestPhone] = useState("")
   const [testTemplateName, setTestTemplateName] = useState("hello_world")
   const [testLanguageCode, setTestLanguageCode] = useState("en_US")
@@ -2148,14 +2169,16 @@ function ChannelsPageInner() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                className="h-8 gap-1.5 px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
                 onClick={() => {
                   setDeleteId(channel.id)
                   setDeleteName(channel.configName)
+                  setDeleteKind(channelRemovalKind(channel.channelType))
                 }}
-                title={c.delete}
               >
-                <Trash2 className="h-4 w-4" />
+                {channelRemovalKind(channel.channelType) === "disconnect"
+                  ? <><Unplug className="h-3.5 w-3.5" />{c.disconnect}</>
+                  : <><Trash2 className="h-3.5 w-3.5" />{c.delete}</>}
               </Button>
             </>
           )}
@@ -2971,8 +2994,10 @@ function ChannelsPageInner() {
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId(null) }}
         onConfirm={handleDelete}
-        title="Delete Channel"
-        itemName={deleteName}
+        title={(deleteKind === "disconnect" ? c.disconnectTitle : c.deleteTitle).replace("{name}", deleteName)}
+        description={deleteKind === "disconnect" ? c.disconnectBody : c.deleteBody}
+        confirmLabel={deleteKind === "disconnect" ? c.disconnect : c.delete}
+        loadingLabel={deleteKind === "disconnect" ? c.disconnecting : undefined}
       />
     </div>
   )

@@ -220,6 +220,8 @@ vi.mock("@/lib/prisma", () => {
         return snapshot(row)
       },
     },
+    // A Meta disconnect also switches off the channel's connection record.
+    channelConnection: { updateMany: async () => ({ count: 0 }) },
     // The VoIP save takes a per-workspace advisory lock first.
     $executeRaw: async () => 1,
     $transaction: async (work: (tx: unknown) => unknown) => work(client),
@@ -453,9 +455,14 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     if (!tile) throw new Error(`nothing shows ${configName}`)
     return tile
   }
-  const trashIn = (tile: HTMLElement) => tile.querySelector<HTMLButtonElement>('button[title="Delete"]')
+  /** The row's remove button says what it does: "Delete", or "Disconnect" for a Meta channel. */
+  const removeIn = (tile: HTMLElement, label: "Delete" | "Disconnect") =>
+    [...tile.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === label) ?? null
+  const trashIn = (tile: HTMLElement) => removeIn(tile, "Delete")
   const dialog = () => container.querySelector<HTMLElement>('[role="dialog"]')
-  /** The confirm dialog's own buttons are labelled by next-intl keys (the mock returns the key). */
+  const rowNames = () =>
+    [...container.querySelectorAll<HTMLElement>('article[data-testid^="channel-row-"]')].map((row) => row.textContent ?? "").join("\n")
+  /** Cancel is labelled by its next-intl key (the mock returns the key); the confirm button by the catalog's copy. */
   const dialogButton = (label: string) =>
     [...(dialog()?.querySelectorAll("button") ?? [])].find((button) => button.textContent?.trim() === label)
   const refusal = () => dialog()?.querySelector<HTMLElement>('[role="alert"]')?.textContent ?? null
@@ -491,15 +498,18 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     // Another admin removes the support bot while this page still shows it; this admin then deletes it too.
     expect(await deleteElsewhere(supportBot)).toBe(200)
     await click(trashIn(tileShowing("Support bot")))
-    expect(dialog()?.textContent).toContain("Delete Channel")
-    await click(dialogButton("delete"))
+    expect(dialog()?.textContent).toContain("Delete Support bot?")
+    // The settings go; the conversations do not — and the dialog no longer claims otherwise.
+    expect(dialog()?.textContent).toContain("All conversations stay in the CRM.")
+    expect(dialog()?.textContent).not.toContain("deleteConfirmDesc")
+    await click(dialogButton("Delete"))
 
     // The route turned it down. The dialog stays open and says why, instead of closing as if it had worked.
     expect(deletes).toEqual([{ id: supportBot, status: 404 }])
     expect(dialog()).not.toBeNull()
     expect(refusal()).toBe("Not found")
-    // The catalog re-read the list, so the bot the other admin removed is gone from it.
-    expect(container.textContent).not.toContain("Support bot")
+    // The catalog re-read the list, so the bot the other admin removed is gone from it (the open dialog still names it).
+    expect(rowNames()).not.toContain("Support bot")
 
     // The next delete opens without the previous reason, and this time the row goes.
     await click(dialogButton("cancel"))
@@ -507,7 +517,7 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     await click(trashIn(tileShowing("Night shift bot")))
     expect(dialog()).not.toBeNull()
     expect(refusal()).toBeNull()
-    await click(dialogButton("delete"))
+    await click(dialogButton("Delete"))
 
     expect(deletes).toEqual([{ id: supportBot, status: 404 }, { id: nightBot, status: 200 }])
     expect(store.rows.has(nightBot)).toBe(false)
@@ -522,7 +532,7 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     vi.mocked(requireSessionAuth).mockResolvedValue(sessions.manager as Awaited<ReturnType<typeof requireSessionAuth>>)
 
     await click(trashIn(tileShowing("Support bot")))
-    await click(dialogButton("delete"))
+    await click(dialogButton("Delete"))
 
     // The gate answers { error: "Forbidden", message: "Only admins can manage channel configuration" }.
     expect(deletes).toEqual([{ id: bot, status: 403 }])
@@ -539,12 +549,39 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     })
 
     await click(trashIn(tileShowing("Support bot")))
-    await click(dialogButton("delete"))
+    await click(dialogButton("Delete"))
 
     expect(deletes).toEqual([{ id: bot, status: 502 }])
     // An Error with an empty message would leave the dialog's alert empty; the common "failed to delete" line stands in.
     expect(refusal()).toBe("errorDeleteFailed")
     expect(store.rows.has(bot)).toBe(true)
     expect(tileShowing("Support bot")).toBeTruthy()
+  })
+
+  it("offers to disconnect a WhatsApp number, says the conversations stay, and leaves the row switched off", async () => {
+    // Owner, 2026-10-26, on Zeytun's WhatsApp: the trash said "cannot be undone, will be permanently deleted",
+    // while for a Meta channel the route only switches the row off and clears its keys.
+    const at = tick()
+    store.rows.set("cc_wa", {
+      id: "cc_wa", organizationId: "org_1", channelType: "whatsapp", configName: "Fanum Sec",
+      botToken: null, webhookUrl: null, apiKey: null, phoneNumber: null, appId: null, appSecret: null, pageId: null,
+      accessToken: "wa-system-user-token", phoneNumberId: "444555666", businessAccountId: "111222333",
+      verifyToken: null, displayName: null, isActive: true,
+      settings: { embeddedSignup: true, registration: "registered", displayPhoneNumber: "+994 50 000 53 14" },
+      createdBy: "user_1", createdAt: at, updatedAt: at,
+    })
+    await openCatalog()
+
+    const row = tileShowing("Fanum Sec")
+    expect(removeIn(row, "Delete")).toBeNull()
+    await click(removeIn(row, "Disconnect"))
+    expect(dialog()?.textContent).toContain("Disconnect Fanum Sec?")
+    expect(dialog()?.textContent).toContain("All conversations stay in the CRM.")
+    expect(dialog()?.textContent).not.toMatch(/permanently|cannot be undone/i)
+    await click(dialogButton("Disconnect"))
+
+    expect(deletes).toEqual([{ id: "cc_wa", status: 200 }])
+    expect(store.rows.get("cc_wa")).toMatchObject({ isActive: false, accessToken: null })
+    expect(dialog()).toBeNull()
   })
 })
