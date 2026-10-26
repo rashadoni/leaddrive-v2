@@ -68,3 +68,36 @@ Independent source review confirms these paths match deployed artifact `1b98cb80
 - Source equality for companies, root layout, identity boundary/snapshot, auth, API auth and Prisma was rechecked against the deployed SHA: no diff.
 - Checks PASS: staged `git diff --cached --check`; sanitized evidence JSON parse; native temporary tab closed and original `/companies` tab retained. Only the journal and sanitized timing JSON are staged.
 - Final state: diagnosis completed, application source unchanged, checkpoint prepared on `codex/page-load-diagnostic-20261026`; no push/deployment. Next action is the targeted performance slice described above, with before/after measurements and a separately provisioned capacity gate.
+
+
+## 7. Implementation authorized; diagnosis-first correction (2026-10-26)
+
+- User challenged whether the proposed changes are the right solution. Clarified that repeated fetching does not by itself explain the first 9.2 seconds; background request arithmetic is not a capacity test. Revised order: localize server latency first, fix the evidenced bottleneck, repeat matching browser measurements, then isolated capacity verification.
+- User then instructed: «займись». Continuing investigation and targeted implementation in the original worktree/branch. Prior diagnosis-only scope is superseded for source fixes; no new push/merge/deployment authorization has been inferred.
+- Resumed from checkpoint `ebf0be1d9`; refreshed current origin/main and incorporated it without rewriting prior history. Production public artifact changed independently to `67a7920b482d3b9d180cb9c9d00b959436eb2ff5`, built 2026-10-26T10:04:45Z. Remeasure before comparing any change.
+- `leaddrive-prod` again rejected its configured dedicated key. Exploring documented existing inspection routes without copying credentials or changing authentication. App has no general admin resource-metrics endpoint in inspected source.
+- Parallel read-only review is tracing duplicate auth work across proxy and API handlers, with immediate revocation/tenant/RLS semantics preserved. No auth removal or cross-request caching is approved as an optimization shortcut.
+- Preflight: ~12.6 GiB available RAM, 110 GiB disk free, memory pressure avg10=0.00. Checks remain sequential and bounded.
+
+
+## 8. Access checks and invalidated measurement (14:41 Baku)
+
+- Verified configured dedicated production key is offered to the registered host but rejected. Local administrative root has no separate `leaddrive-prod` SSH configuration; did not try default root keys or another production destination.
+- User asked «как восстановить». Supplied additive authorized_keys command for the exact configured public key, to execute in the registered production host console/existing authorized SSH. Private key was never read into output, copied or requested. Awaiting user's completion.
+- Paired lightweight browser probes were run sequentially against health/ping/session with credentials included vs omitted. However **all session responses reported authenticated=false**, so the old Chrome session is no longer valid. The attempted auth comparison is INVALID and cannot attribute latency to auth or claim an improvement. Sanitized samples and explicit caveat saved in `docs/evidence/page-load-20261026-anonymous-pairs.json`. Current anonymous responses were 34–159 ms; different time/build/session conditions from earlier timings prevent before/after claims.
+- Source confirms proxy and route each resolve full DB-backed auth. This remains a candidate amplified cost, not a measured dominant bottleneck. No permission/auth freshness shortcut will be introduced.
+- While waiting for metrics access, preparing the separately evidenced duplicate companies-fetch correction only. It does not claim to fix the unexplained server delay. Parallel agent owns that narrow source edit; root owns diagnostics and journal.
+
+
+## 9. Narrow fix prepared; user requests Claude access-restoration prompt
+
+- User said they cannot operate the server console and requested that Codex either restore access itself or provide a ready prompt for Claude. No working alternate production administrator connection is available here; preparing an inline prompt for Claude to restore ONLY the configured public key on registered production, verify from the Codex host, and report read-only runtime metrics. No claim that a message was sent to Claude.
+- Prepared source fix in `src/app/(dashboard)/companies/page.tsx`: fetch callback depends on stable organization; effect depends on callback, user ID and role instead of the entire rotating session object. Effect-owned fetch is aborted on identity change/unmount and late aborted responses are ignored. Explicit refresh after successful edits remains intact. Auth, proxy, RLS, schema, polling and deployment are unchanged.
+- Updated the existing session-dependency regression ratchet by removing only companies from grandfathered exceptions. This fixes an observed duplicate-fetch mechanism, NOT the as-yet unexplained server latency.
+- Host preflight before verification: ~12.6 GiB available RAM, no memory pressure. Shared dependency tree package-lock SHA256 exactly matches this worktree; a temporary task-owned node_modules symlink was used, without install or dependency edits.
+- PASS: targeted `no-session-object-in-effect-deps.test.ts`, 3 tests, one worker, 2.05 seconds. This is a source regression guard; it is not a browser timing proof.
+- NOT RUN: full build/typecheck/full browser E2E (host workload rules; hosted gate needed before release); authenticated before/after browser comparison (native session is now unauthenticated and fix is not deployed); production metrics (key rejected); capacity test (no isolated authorized target).
+- Stopping point: checkpoint the narrow fix and diagnostic evidence, give user the requested Claude prompt for restoring the existing production SSH access. Next: verify restored access, measure CPU/event loop/database/pool and current authenticated request timings before selecting any deeper optimization. No push/merge/deployment performed.
+
+- Targeted ESLint returned FAILED: 4 pre-existing no-explicit-any errors and 8 existing unused-variable warnings. Running ESLint on the unchanged HEAD version reproduced the same 4 errors/8 warnings; the fix adds no new lint findings. Unrelated cleanup was not included. `git diff --check` PASS.
+- Temporary task-owned node_modules symlink removed after sequential verification; shared dependency directory preserved.

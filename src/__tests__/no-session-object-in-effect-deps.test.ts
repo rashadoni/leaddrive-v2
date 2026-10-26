@@ -35,7 +35,6 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/campaign-roi/page.tsx",
   "src/app/(dashboard)/campaigns/page.tsx",
   "src/app/(dashboard)/companies/[id]/page.tsx",
-  "src/app/(dashboard)/companies/page.tsx",
   "src/app/(dashboard)/contacts/[id]/page.tsx",
   "src/app/(dashboard)/contacts/page.tsx",
   "src/app/(dashboard)/contracts/[id]/page.tsx",
