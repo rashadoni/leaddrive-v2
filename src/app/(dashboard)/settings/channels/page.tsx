@@ -204,7 +204,7 @@ const copy = {
     disconnectTitle: "Disconnect {name}?",
     disconnectBody: "The channel stops receiving and sending messages, and LeadDrive's access to Meta for it is removed. All conversations stay in the CRM. You can connect it again from its card in the catalog.",
     deleteTitle: "Delete {name}?",
-    deleteBody: "The channel's settings are deleted and it stops receiving and sending messages. All conversations stay in the CRM. To connect it again, you will need to enter the settings anew.",
+    deleteBody: "The channel's settings are deleted and it stops receiving and sending messages. All conversations stay in the CRM. To connect it again, set it up from its card in the catalog.",
     noResults: "No channels match this search.",
     noResultsHint: "Clear the search or switch back to All to see every provider.",
     active: "active",
@@ -401,7 +401,7 @@ const copy = {
     disconnectTitle: "Отключить {name}?",
     disconnectBody: "Канал перестанет принимать и отправлять сообщения, доступ LeadDrive к Meta для него будет снят. Вся переписка останется в CRM. Подключить его снова можно через карточку в каталоге.",
     deleteTitle: "Удалить {name}?",
-    deleteBody: "Настройки канала будут удалены, он перестанет принимать и отправлять сообщения. Вся переписка останется в CRM. Чтобы подключить его снова, настройки придётся ввести заново.",
+    deleteBody: "Настройки канала будут удалены, он перестанет принимать и отправлять сообщения. Вся переписка останется в CRM. Чтобы подключить его снова, настройте его через карточку в каталоге.",
     noResults: "По этому поиску каналов нет.",
     noResultsHint: "Очистите поиск или вернитесь во вкладку «Все», чтобы увидеть всех провайдеров.",
     active: "активных",
@@ -596,7 +596,7 @@ const copy = {
     disconnectTitle: "{name} ayrılsın?",
     disconnectBody: "Kanal mesaj qəbul etməyi və göndərməyi dayandıracaq, LeadDrive-ın bu kanal üçün Meta-ya girişi götürüləcək. Bütün yazışmalar CRM-də qalır. Kataloqdakı kartdan onu yenidən qoşa bilərsiniz.",
     deleteTitle: "{name} silinsin?",
-    deleteBody: "Kanalın ayarları silinəcək və o, mesaj qəbul etməyi və göndərməyi dayandıracaq. Bütün yazışmalar CRM-də qalır. Yenidən qoşmaq üçün ayarları təzədən daxil etməli olacaqsınız.",
+    deleteBody: "Kanalın ayarları silinəcək və o, mesaj qəbul etməyi və göndərməyi dayandıracaq. Bütün yazışmalar CRM-də qalır. Yenidən qoşmaq üçün onu kataloqdakı kartdan quraşdırın.",
     noResults: "Bu axtarışa uyğun kanal yoxdur.",
     noResultsHint: "Axtarışı təmizləyin və ya bütün provayderləri görmək üçün Hamısı bölməsinə qayıdın.",
     active: "aktiv",
@@ -2217,10 +2217,10 @@ function ChannelsPageInner() {
                 onClick={() => {
                   setDeleteId(channel.id)
                   setDeleteName(channel.configName)
-                  setDeleteKind(channelRemovalKind(channel.channelType))
+                  setDeleteKind(channelRemovalKind(channel.channelType, channel.isActive))
                 }}
               >
-                {channelRemovalKind(channel.channelType) === "disconnect"
+                {channelRemovalKind(channel.channelType, channel.isActive) === "disconnect"
                   ? <><Unplug className="h-3.5 w-3.5" />{c.disconnect}</>
                   : <><Trash2 className="h-3.5 w-3.5" />{c.delete}</>}
               </Button>

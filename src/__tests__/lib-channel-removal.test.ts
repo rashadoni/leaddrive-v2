@@ -14,11 +14,20 @@ describe("channelRemovalKind", () => {
     expect(channelRemovalKind(null)).toBe("delete")
   })
 
-  it("matches the list the DELETE route actually disconnects", () => {
+  it("deletes a Meta channel that is already switched off, so it can leave the connected list", () => {
+    // Owner, 2026-10-27: Zeytun's old «Fanum Sec» WhatsApp, switched off after a new number was connected,
+    // offered only «Ayır» — which switched it off again — and never left the list.
+    expect(channelRemovalKind("whatsapp", false)).toBe("delete")
+    expect(channelRemovalKind("facebook", false)).toBe("delete")
+    expect(channelRemovalKind("whatsapp", true)).toBe("disconnect")
+  })
+
+  it("matches the list the DELETE route actually disconnects, and the route disconnects only a live row", () => {
     const src = readFileSync("src/app/api/v1/channels/[id]/route.ts", "utf8")
-    const match = src.match(/if \(\[([^\]]+)\]\.includes\(row\.channelType\)\)/)
+    const match = src.match(/const metaChannel = \[([^\]]+)\]\.includes\(row\.channelType\)/)
     expect(match, "the DELETE route's disconnect list").not.toBeNull()
     const routeList = [...match![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort()
     expect(routeList).toEqual([...DISCONNECT_ON_REMOVE_CHANNEL_TYPES].sort())
+    expect(src).toContain("if (metaChannel && row.isActive) {")
   })
 })

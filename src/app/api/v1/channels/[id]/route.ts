@@ -222,14 +222,19 @@ export async function DELETE(
     try {
       const row = await prisma.channelConfig.findFirst({
         where: { id, organizationId: orgId },
-        select: { channelType: true, pageId: true },
+        select: { channelType: true, pageId: true, isActive: true },
       })
       if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
       const dedicatedError = dedicatedChannelTypeError(row.channelType)
       if (dedicatedError) return NextResponse.json({ error: dedicatedError }, { status: 403 })
 
-      if (["facebook", "instagram", "whatsapp"].includes(row.channelType)) {
+      // A live Meta channel is disconnected, not deleted: the row stays, so the same number/page connected again
+      // through its card revives it. One that is already switched off is deleted below — otherwise it stayed in
+      // the connected list for ever, and its button only switched it off again (owner, 2026-10-27: Zeytun's old
+      // «Fanum Sec» WhatsApp after the new number was connected).
+      const metaChannel = ["facebook", "instagram", "whatsapp"].includes(row.channelType)
+      if (metaChannel && row.isActive) {
         await prisma.channelConfig.updateMany({
           where: { id, organizationId: orgId },
           data: {
@@ -273,6 +278,20 @@ export async function DELETE(
           credentialFields: ["apiKey", "appSecret", "accessToken", "verifyToken", "botToken"],
         })
         return NextResponse.json({ success: true, data: { disconnected: id } })
+      }
+      if (metaChannel) {
+        // A switched-off row may still hold keys (switched off in its form, not disconnected). Its connection
+        // record and the page's social account would outlive it holding tokens, so clear them first.
+        await prisma.channelConnection.updateMany({
+          where: { organizationId: orgId, channelConfigId: id },
+          data: { status: "disabled", apiKey: null, accessToken: null, refreshToken: null, secretRef: null },
+        })
+        if ((row.channelType === "facebook" || row.channelType === "instagram") && row.pageId) {
+          await prisma.socialAccount.updateMany({
+            where: { organizationId: orgId, platform: row.channelType, handle: row.pageId },
+            data: { isActive: false, accessToken: null, tokenExpiresAt: null },
+          })
+        }
       }
 
       const result = await prisma.channelConfig.deleteMany({
