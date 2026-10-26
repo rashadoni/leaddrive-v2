@@ -86,3 +86,9 @@
 
 - Published1f5a5c552: PostgreSQL40296788368/job121484677300 SUCCESS (44files/893tests,20operator tests and real schema/RLS/race gates). Actual-cookie40296788285/job121484676910 SUCCESS; receipt docs/evidence/identity-admin-phone-conflict-browser.json has17acceptance groups, actualCookie=true, productionMutation=false, providerMessages=false. Private conflict projection passes for CRM and linked/unlinked/inactive cards, foreign tenant exclusion and no writes; complete bootstrap/common-password/fresh-login and Time/Field separation also pass.
 - pr-scope/runner-policy/scan SUCCESS. Required static-checks121493151375 and typecheck121493151469 still in progress; no merge until they succeed. No new code changes after fixture correction. PhysicalAndroid NOT RUN (no ADB; this follow-up is private web review, not a native change).
+
+## 2026-10-26T10:00:24Z — PR1093 merged after complete qualification
+
+- All five required checks plus actual-cookie and PostgreSQL SUCCESS on published1f5a5c552. Static121493151375 reports18 pre-existing failing files/18 baseline and no new failures (not an all-green global suite). Typecheck121493151469 SUCCESS. Refreshed main registry confirms registered13.140.132.245:/opt/leaddrive-v2; no routing change.
+- PR1093 description rewritten around final private conflict review, validation and limits. Merged normally without bypass; merge17dc0b81714fea99026eb69686e76abfd4d4cdf8 at10:00:24Z. Normal release40303988258 pending behind earlier main releases40302575707/40300617231. No cancellation of other tasks or release guards changed.
+- Current state: production ownership conflict is confirmed, exact profile identity still unavailable from aggregate inventory. New private conflict panel is merged, NOT yet deployed. Next: follow included main artifact through build/quality/deploy, verify public build-info and ping, then obtain actual matching profile details through owner-authenticated review.
