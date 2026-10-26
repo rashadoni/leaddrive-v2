@@ -215,4 +215,15 @@ describe("agent card — signing in by a code from WhatsApp", () => {
     await show(true, { ...CARD, phone: "" })
     expect(note()).toBe(ru.mtmForms.codeLoginNoPhone)
   })
+
+  it("sends an explicit phone removal when an inactive card's incorrect number is cleared", async () => {
+    await show(true, { ...CARD, status: "INACTIVE" })
+    await type(field("phone") as HTMLInputElement, "")
+    await save()
+    expect(writes()).toHaveLength(1)
+    expect(writes()[0]).toMatchObject({ method: "PUT", url: "/api/v1/mtm/agents/agent-1", body: { phone: null } })
+    expect(writes()[0].body.status).not.toBe("ACTIVE")
+    expect(writes()[0].body).not.toHaveProperty("userId")
+    expect(onSaved).toHaveBeenCalledOnce()
+  })
 })

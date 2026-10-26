@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    if (!agent) {
+    if (!agent || (agent.fieldDeletedAt && agent.role !== "EMPLOYEE")) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
     if ((parsed.data.application === "TIME" && (agent.role === "AGENT" || !agent.attendanceParticipant))

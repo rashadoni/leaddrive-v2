@@ -6285,6 +6285,8 @@ model MtmAgent {
   passwordHash   String? // for mobile app login
   role           MtmAgentRole   @default(AGENT)
   status         MtmAgentStatus @default(ACTIVE)
+  /// Removed from Route & Field; retained for historical references and independent Time/CRM access.
+  fieldDeletedAt DateTime? @db.Timestamp(3)
   /// Whether this field agent may create and edit their own route drafts.
   /// Managers and administrators always plan within their normal scope.
   canPlanOwnRoutes Boolean       @default(true)
@@ -6416,6 +6418,7 @@ model MtmAgent {
   @@unique([organizationId, externalCode])
   @@unique([organizationId, id])
   @@index([organizationId])
+  @@index([organizationId, fieldDeletedAt])
   @@index([userId])
   @@index([managerId])
   @@index([teamId])

@@ -212,6 +212,11 @@ describe("resolveMobileAuth — revocation check", () => {
     expect(result).toBeNull()
   })
 
+  it("REJECTED: removed Field agent cannot use an otherwise current active token", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...ACTIVE_AGENT, fieldDeletedAt: new Date() } as any)
+    expect(await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/visits"))).toBeNull()
+  })
+
   it("REJECTED: agent status INACTIVE → returns null", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(INACTIVE_AGENT as any)
     const req = makeRequestWithMobileBearer("/api/v1/mtm/visits")

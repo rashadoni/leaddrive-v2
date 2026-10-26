@@ -11994,6 +11994,24 @@
     "attachChange": "{add} təyin et, {remove} çıxar"
   },
   "mtmAgents": {
+    "deleteLinkedBody": "{name} kartına bağlı qeydlər var. Silinmə dayandırılıb; məlumatlar saxlanılıb.",
+    "deleteKeptReasons": "Səbəb: {reasons}.",
+    "deleteKeptPhoneHelp": "İşləməyən əməkdaşın kartında nömrə saxlanılır. Nömrə səhv yazılıbsa, kartı açıb WhatsApp sahəsini düzəldin və ya boşaldın. Tarixçə qalacaq.",
+    "deleteKeptEdit": "Kartı dəyiş",
+    "deleteReason": {
+      "visits": "ziyarətlər",
+      "routes": "marşrutlar",
+      "tasks": "tapşırıqlar",
+      "time": "vaxt uçotu və kadr qeydləri",
+      "location": "məkan tarixçəsi",
+      "hr": "kadr müraciətləri",
+      "team": "tabe əməkdaşlar",
+      "messages": "yazışmalar",
+      "files": "fayllar və fotolar",
+      "identity": "ortaq hesabla əlaqə",
+      "dependency": "bağlı qeydlər; dəqiq səbəb yoxlanmalıdır",
+      "other": "digər bölmələrdə saxlanmış qeydlər"
+    },
     "hint": {
       "export": "Göstərilən əməkdaşları CSV-yə yüklə: ad, email, telefon, rol, status və son aktivlik.",
       "add": "Yeni əməkdaş kartı: rol, rəhbər, etiketlər və marşrut hüquqları.",
@@ -12099,7 +12117,7 @@
     "colPlan": "Plan",
     "colApp": "Tətbiq",
     "colContacts": "Əlaqə",
-    "deleteConfirm": "{name} müştərilərə təyinatları ilə birlikdə həmişəlik silinəcək. Yalnız iş tarixçəsi olmayan əməkdaşı belə silmək olar — tarixçə varsa, onu qeyri-aktiv etməyi təklif edəcəyik.",
+    "deleteConfirm": "{name} saha agentlərindən silinsin? Kart siyahıdan çıxarılacaq, Field-ə giriş bağlanacaq. İş tarixçəsi, Time və CRM-ə giriş saxlanılacaq.",
     "deleteKeptTitle": "Bu əməkdaşı silmək olmur",
     "deleteKeptBody": "{name} adlı əməkdaşın artıq iş tarixçəsi var — ziyarətlər, marşrutlar, tapşırıqlar və ya iş vaxtı uçotu, və o saxlanmalıdır. Əməkdaşı qeyri-aktiv edin: o, tətbiqə daxil ola bilməyəcək, bütün tarixçə isə qalacaq.",
     "deleteKeptAlreadyInactive": "{name} adlı əməkdaşın iş tarixçəsi var, ona görə onu silmək olmur. Əməkdaş artıq işləmir: tətbiqə daxil ola bilmir, tarixçə saxlanılıb.",

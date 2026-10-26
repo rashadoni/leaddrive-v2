@@ -11998,6 +11998,24 @@
     "attachChange": "Assign {add}, take off {remove}"
   },
   "mtmAgents": {
+    "deleteLinkedBody": "The card for {name} has linked records. Deletion was stopped; the data is preserved.",
+    "deleteKeptReasons": "Reason: {reasons}.",
+    "deleteKeptPhoneHelp": "An inactive card keeps its phone number. If the number is incorrect, open the card and correct or clear the WhatsApp field. The history will remain.",
+    "deleteKeptEdit": "Edit card",
+    "deleteReason": {
+      "visits": "visits",
+      "routes": "routes",
+      "tasks": "tasks",
+      "time": "attendance and personnel records",
+      "location": "location history",
+      "hr": "HR requests",
+      "team": "direct reports",
+      "messages": "messages",
+      "files": "files and photos",
+      "identity": "shared account link",
+      "dependency": "linked records; the exact cause needs investigation",
+      "other": "records retained in other sections"
+    },
     "hint": {
       "export": "Download the employees shown as CSV: name, email, phone, role, status and last activity.",
       "add": "A new employee card: role, manager, labels and route rights.",
@@ -12103,7 +12121,7 @@
     "colPlan": "Plan",
     "colApp": "App",
     "colContacts": "Contacts",
-    "deleteConfirm": "{name} will be deleted for good, together with their client attachments. Only an employee without work history can be deleted this way — if there is any, we will offer to make them inactive instead.",
+    "deleteConfirm": "Remove {name} from field agents? The card will leave the list and Field access will be closed. Work history and access to Time and CRM will be preserved.",
     "deleteKeptTitle": "This employee cannot be deleted",
     "deleteKeptBody": "{name} already has work history — visits, routes, tasks or time records — and it has to be kept. Make the employee inactive: they will not be able to sign in to the app, and all the history stays.",
     "deleteKeptAlreadyInactive": "{name} has work history, so they cannot be deleted. The employee is already out of work: they cannot sign in to the app, and the history is kept.",

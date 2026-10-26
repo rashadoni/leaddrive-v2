@@ -114,7 +114,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     // answer, and for the first nothing is read at all.
     if (!isAgentInRouteScope(access.actor, agentId)) return locationShareLinkNotFound()
     const agent = await prisma.mtmAgent.findFirst({
-      where: { id: agentId, organizationId: orgId, status: "ACTIVE" },
+      where: { id: agentId, organizationId: orgId, status: "ACTIVE", fieldDeletedAt: null },
       select: { id: true },
     })
     if (!agent) return locationShareLinkNotFound()
@@ -193,7 +193,7 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
     // answer, and for the first nothing is read at all.
     if (!isAgentInRouteScope(access.actor, agentId)) return locationShareLinkNotFound()
     const agent = await prisma.mtmAgent.findFirst({
-      where: { id: agentId, organizationId: orgId, status: "ACTIVE" },
+      where: { id: agentId, organizationId: orgId, status: "ACTIVE", fieldDeletedAt: null },
       select: { id: true },
     })
     if (!agent) return locationShareLinkNotFound()

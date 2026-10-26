@@ -180,6 +180,7 @@ export async function resolveMobileAuth(
       select: {
         role: true,
         status: true,
+        fieldDeletedAt: true,
         userId: true,
         passwordHash: true,
         organization: {
@@ -192,7 +193,7 @@ export async function resolveMobileAuth(
       console.warn(`[mobile-auth][revocation] agent not found — agentId=${decoded.agentId} orgId=${decoded.orgId}`)
       return null
     }
-    if (agent.status !== "ACTIVE") {
+    if (agent.status !== "ACTIVE" || (agent.fieldDeletedAt && agent.role !== "EMPLOYEE")) {
       console.warn(`[mobile-auth][revocation] agent not ACTIVE — agentId=${decoded.agentId} status=${agent.status}`)
       return null
     }

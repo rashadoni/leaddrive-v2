@@ -50,6 +50,10 @@ const check = name => result.checks.push(name)
 try {
   const [role] = await admin.$queryRaw`SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname='identity_crm_browser'`
   assert.equal(role?.rolsuper, false); assert.equal(role.rolbypassrls, false)
+  const [cardPrivileges] = await admin.$queryRaw`SELECT
+    has_column_privilege('identity_crm_browser', 'mtm_agents', 'phone', 'UPDATE') AS "canCorrectPhone",
+    has_table_privilege('identity_crm_browser', 'mtm_agents', 'DELETE') AS "canDeleteCard"`
+  assert.equal(cardPrivileges.canCorrectPhone, true); assert.equal(cardPrivileges.canDeleteCard, false)
   const [table] = await admin.$queryRaw`SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid='identity_accounts'::regclass`
   assert.equal(table.relrowsecurity, true); assert.equal(table.relforcerowsecurity, true)
   if (process.argv[2] === "prepare") {
@@ -489,6 +493,49 @@ try {
     await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { status: "INACTIVE" } })
     assert.equal((await (await reviewBootstrap()).json()).conflicts[0].active, false)
     await admin.mtmAgent.delete({ where: { id: bootstrapCard } })
+    phase("FIELD_REMOVAL_PRESERVES_HISTORY_AND_FREES_STANDALONE_PHONE")
+    const retiredCard = userId("inactive-trial")
+    await admin.user.update({ where: { id: userId("bootstrap") }, data: { phone: bootstrapPhone } })
+    await admin.mtmAgent.create({ data: { id: retiredCard, organizationId: company,
+      name: "Fictional inactive trial", role: "AGENT", status: "INACTIVE", phone: bootstrapPhone } })
+    const trialCustomer = await admin.mtmCustomer.create({ data: { organizationId: company, name: "Fictional trial customer" } })
+    const trialVisit = await admin.mtmVisit.create({ data: { organizationId: company, agentId: retiredCard, customerId: trialCustomer.id } })
+    assert.equal((await reviewBootstrap()).status(), 409)
+    const retained = await initialAdmin.current.request.delete(`/api/v1/mtm/agents/${retiredCard}`, { timeout: 120000 })
+    assert.equal(retained.status(), 200)
+    const archived = await admin.mtmAgent.findUniqueOrThrow({ where: { id: retiredCard } })
+    assert.ok(archived.fieldDeletedAt)
+    assert.equal(archived.phone, null)
+    assert.equal(archived.passwordHash, null)
+    assert.equal(archived.status, "INACTIVE")
+    assert.equal(archived.userId, null)
+    assert.equal(await admin.mtmVisit.count({ where: { id: trialVisit.id, agentId: retiredCard } }), 1)
+    const fieldList = await initialAdmin.current.request.get('/api/v1/mtm/agents?limit=200', { timeout: 120000 })
+    assert.equal(fieldList.status(), 200)
+    const listedAgents = (await fieldList.json()).data.agents
+    assert.ok(Array.isArray(listedAgents))
+    assert.ok(!listedAgents.some(a => a.id === retiredCard))
+    assert.equal((await initialAdmin.current.request.put(`/api/v1/mtm/agents/${retiredCard}`, { data: { status: "ACTIVE" } })).status(), 404)
+    assert.equal((await initialAdmin.current.request.delete(`/api/v1/mtm/agents/${retiredCard}`)).status(), 200)
+    assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId("bootstrap") }, select: { phone: true } })).phone, bootstrapPhone)
+    assert.equal((await reviewBootstrap()).status(), 200)
+    assert.equal(await admin.mtmAuditLog.count({ where: { organizationId: company, entityId: retiredCard, action: "AGENT_DELETE" } }), 1)
+    const rollbackCard = userId("removal-audit-failure")
+    await admin.mtmAgent.create({ data: { id: rollbackCard, organizationId: company, name: "Audit rollback", phone: "+994507770096", role: "AGENT", status: "ACTIVE" } })
+    await admin.$executeRawUnsafe(`CREATE FUNCTION identity_field_removal_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF NEW.action = 'AGENT_DELETE' AND NEW."entityId" = 'identity-crm-browser-removal-audit-failure' THEN RAISE EXCEPTION 'SYNTHETIC_FIELD_DELETE_AUDIT_FAILURE'; END IF; RETURN NEW; END $$`)
+    await admin.$executeRawUnsafe('CREATE TRIGGER identity_field_removal_fail_audit BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION identity_field_removal_fail_audit()')
+    try {
+      assert.equal((await initialAdmin.current.request.delete(`/api/v1/mtm/agents/${rollbackCard}`, { timeout: 120000 })).status(), 500)
+      const kept = await admin.mtmAgent.findUniqueOrThrow({ where: { id: rollbackCard } })
+      assert.equal(kept.fieldDeletedAt, null)
+      assert.equal(kept.phone, "+994507770096")
+    } finally {
+      await admin.$executeRawUnsafe('DROP TRIGGER identity_field_removal_fail_audit ON mtm_audit_logs')
+      await admin.$executeRawUnsafe('DROP FUNCTION identity_field_removal_fail_audit()')
+    }
+    check("field_removal_audit_failure_rolls_back_phone_and_card_removal")
+    check("field_removal_hides_retained_card_and_unblocks_bootstrap_without_deleting_history_or_changing_administrator")
     await admin.user.update({ where: { id: userId("bootstrap-mfa") }, data: { phone: bootstrapPhone } })
     assert.deepEqual((await (await reviewBootstrap()).json()).conflicts, [
       { id: userId("bootstrap-mfa"), kind: "crm", name: otherAdmin.name, active: true, ownerName: null },
@@ -500,6 +547,10 @@ try {
     const isolatedReview = await reviewBootstrap()
     assert.equal(isolatedReview.status(), 200)
     assert.equal(JSON.stringify(await isolatedReview.json()).includes("Foreign tenant private card"), false)
+    assert.equal((await initialAdmin.current.request.delete(`/api/v1/mtm/agents/${foreignBootstrapCard}`, { timeout: 120000 })).status(), 404)
+    const foreignCorrection = await initialAdmin.current.request.put(`/api/v1/mtm/agents/${foreignBootstrapCard}`, { timeout: 120000, data: { phone: null } })
+    assert.equal(foreignCorrection.status(), 404)
+    assert.equal((await admin.mtmAgent.findUniqueOrThrow({ where: { id: foreignBootstrapCard }, select: { phone: true } })).phone, bootstrapPhone)
     await admin.mtmAgent.delete({ where: { id: foreignBootstrapCard } })
     assert.equal(await admin.identityAccount.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
     assert.equal(await admin.identityPhoneProof.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
@@ -725,6 +776,33 @@ try {
     assert.equal((await preservedFieldLogin.json()).data.agent.id, userId("onboarding-field"))
     assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: userId("onboarding") } }), 2)
     check("actual_admin_review_public_first_login_activates_common_password_and_separate_time_card_with_hr_fields_preserving_field_actor_without_implicit_crm_or_receipt_authentication")
+    phase("ACTUAL_FIELD_REMOVAL_PRESERVES_TIME_SESSION_AND_COMMON_CREDENTIAL")
+    const retainedFieldToken = (await preservedFieldLogin.json()).data.token
+    const personBeforeRemoval = await admin.identityAccount.findUniqueOrThrow({ where: accountKey("onboarding") })
+    const claimBeforeRemoval = await admin.identityPhoneClaim.findUniqueOrThrow({ where: accountKey("onboarding") })
+    const removalResponse = await administrator.current.request.delete(`/api/v1/mtm/agents/${userId("onboarding-field")}`, { timeout: 120000 })
+    assert.equal(removalResponse.status(), 200)
+    assert.ok((await admin.mtmAgent.findUniqueOrThrow({ where: { id: userId("onboarding-field") } })).fieldDeletedAt)
+    const personAfterRemoval = await admin.identityAccount.findUniqueOrThrow({ where: accountKey("onboarding") })
+    assert.equal(personAfterRemoval.passwordHash, personBeforeRemoval.passwordHash)
+    assert.equal(personAfterRemoval.credentialEpoch, personBeforeRemoval.credentialEpoch)
+    assert.equal(personAfterRemoval.version, personBeforeRemoval.version + 1)
+    const fieldMembershipKey = { organizationId_userId_application: { organizationId: company, userId: userId("onboarding"), application: "ROUTE_FIELD" } }
+    const removedMembership = await admin.identityApplicationMembership.findUniqueOrThrow({ where: fieldMembershipKey })
+    assert.equal(removedMembership.status, "REVOKED")
+    assert.equal(await admin.identityEvent.count({ where: { organizationId: company, userId: userId("onboarding"),
+      action: "ACTOR_LIFECYCLE_CHANGED", application: "ROUTE_FIELD", actorId: userId("onboarding-field"),
+      membershipStatus: "REVOKED", requestId: { startsWith: "field-remove:" } } }), 1)
+    await assert.rejects(admin.identityApplicationMembership.update({ where: fieldMembershipKey, data: { status: "ACTIVE", version: { increment: 1 } } }), /MTM_FIELD_ACTOR_REMOVED/)
+    assert.deepEqual(await admin.identityPhoneClaim.findUniqueOrThrow({ where: accountKey("onboarding") }), claimBeforeRemoval)
+    assert.equal((await firstClient.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: { Authorization: `Bearer ${retainedFieldToken}` } })).status(), 401)
+    assert.equal((await firstClient.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: { Authorization: `Bearer ${firstData.token}` } })).status(), 200)
+    await reserveAuthPost()
+    assert.equal((await firstClient.request.post("/api/v1/mtm/mobile/auth", { timeout: 120000, data: {
+      organizationSlug: company, application: "ROUTE_FIELD", phone: invitation.phone, password: firstPassword,
+    } })).status(), 401)
+    await assert.rejects(admin.mtmAgent.update({ where: { id: userId("onboarding-field") }, data: { fieldDeletedAt: null } }), /MTM_FIELD_REMOVAL_RETAINED/)
+    check("actual_field_removal_revokes_existing_token_and_new_login_preserves_time_token_common_password_and_verified_phone")
     phase("ACTUAL_TIME_ONLY_PERSON_WITHOUT_CRM_OR_FIELD_GRANTS")
     const onlyPhone = "+994507770021"
     const onlyLookup = await administrator.current.request.post("/api/v1/identity/time/lookup", { timeout: 120000, data: { phone: onlyPhone } })
