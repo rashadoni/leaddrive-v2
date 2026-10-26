@@ -282,13 +282,23 @@ VISIT_EVENTS_SQL = (
 )
 
 
+def guarded(check, config):
+    """A newer check that breaks reports its error instead of taking the slot,
+    outbox and Fund views of this probe down with it (2026-10-26)."""
+    try:
+        return check(config)
+    except Exception as error:  # noqa: BLE001 - any failure is reported, not raised
+        return {"error": f"{type(error).__name__}: {error}"[:300]}
+
+
 def visit_events(config):
     """Recently changed MTM visits whose events are missing or disagree with them."""
     code, out, err = run(["sudo", "-u", "postgres", "psql", "-XAtq", "-F", "\t", "-d", config.get("database", "postgres"),
                           "-c", VISIT_EVENTS_SQL], timeout=30, cwd="/")
     if code != 0:
         return {"error": (err.strip().splitlines() or [f"exit {code}"])[-1][:300]}
-    visits, unstarted, drift, sample = out.strip().split("\t")
+    # The last column is empty when nothing is wrong: never strip tabs.
+    visits, unstarted, drift, sample = out.rstrip("\n").split("\t")
     return {"windowSeconds": EVENTS_WINDOW_S, "visits": int(visits), "unstarted": int(unstarted), "drift": int(drift),
             "sample": sample or None}
 
@@ -309,7 +319,7 @@ def source(config):
         slots.append({"name": name, "active": active == "t", "walStatus": status, "retainedBytes": int(retained),
                       "safeBytes": int(safe) if int(safe) >= 0 else None})
     return {"expectedSlot": config.get("expectedSlot"), "slots": slots, "outbox": outbox(config), "fundShadow": fund_shadow(config),
-            "visitEvents": visit_events(config)}
+            "visitEvents": guarded(visit_events, config)}
 
 
 def heartbeat():
