@@ -64,3 +64,9 @@
 - Merged current reviewed main1b98cb806 into preserved feature branch; resolved only add/add session journal by retaining the complete append-only record. No unrelated changes edited.
 - Prepared private read-only conflict details for existing administrator self-review: at most6 tenant-scoped CRM/card matches with name, type, active status and linked CRM name; no phone/email/credentials/grants. UI opens existing inspection pages in a new tab and clears stale matches when input changes. No relink, grant, OTP or claim mutation; other bootstrap actions do not return details. This makes the remaining refusal reviewable rather than asking the owner to guess the hidden record.
 - RAM available12174MiB/disk110GiB/PSI0. Local25 HTTP/UI tests PASS; scoped lint PASS, translation parity PASS, syntax/diff PASS. Added hosted actual-cookie PostgreSQL assertions for unlinked/linked/inactive card, CRM duplicate, foreign-tenant exclusion and no writes. Full type/build/PG/browser NOT RUN locally (host policy), hosted qualification next.
+
+## 2026-10-26T08:47:00Z — conflict-detail qualification published
+
+- Published652b3d1d1aae2415e620989a10f2e52a1669b481, opened draft PR1093 https://github.com/rashadoni/leaddrive-v2/pull/1093 and attached it to this task; marked ready after local checks. This is private conflict visibility, not proof that the account ownership problem is fixed.
+- Hosted actual-cookie40294395665/job121476801593, PostgreSQL40294395605/job121476801368 queued; required PR checks40294473599 queued. No merge while these gates are pending.
+- Main1b98cb806 release40291710231 quality121468069724 SUCCESS, build121468070043 still running. Read-only runtime inventory remains pending exact main/deployed match. No main releases cancelled, no production data changed.
