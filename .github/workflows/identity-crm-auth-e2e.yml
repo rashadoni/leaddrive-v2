@@ -135,7 +135,9 @@ jobs:
           GRANT INSERT, UPDATE ON identity_application_grants, identity_application_memberships TO identity_crm_browser;
           GRANT INSERT ON identity_events, identity_accounts TO identity_crm_browser;
           GRANT INSERT ON mtm_agents, identity_actor_bindings TO identity_crm_browser;
-          GRANT UPDATE (position, "teamId", "departmentId", "updatedAt", "passwordHash", "attendanceParticipant") ON mtm_agents TO identity_crm_browser;
+          -- The retained-card correction scenario uses the real legacy edit API.
+          -- Keep column-scoped writes and RLS; this role still cannot delete cards.
+          GRANT UPDATE (position, "teamId", "departmentId", "updatedAt", "passwordHash", "attendanceParticipant", phone) ON mtm_agents TO identity_crm_browser;
           GRANT INSERT ON mtm_departments, mtm_teams, workforce_employment_events TO identity_crm_browser;
           GRANT UPDATE ("departmentId", "updatedAt") ON mtm_teams TO identity_crm_browser;
           GRANT UPDATE (id) ON mtm_settings TO identity_crm_browser;

@@ -50,6 +50,10 @@ const check = name => result.checks.push(name)
 try {
   const [role] = await admin.$queryRaw`SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname='identity_crm_browser'`
   assert.equal(role?.rolsuper, false); assert.equal(role.rolbypassrls, false)
+  const [cardPrivileges] = await admin.$queryRaw`SELECT
+    has_column_privilege('identity_crm_browser', 'mtm_agents', 'phone', 'UPDATE') AS "canCorrectPhone",
+    has_table_privilege('identity_crm_browser', 'mtm_agents', 'DELETE') AS "canDeleteCard"`
+  assert.equal(cardPrivileges.canCorrectPhone, true); assert.equal(cardPrivileges.canDeleteCard, false)
   const [table] = await admin.$queryRaw`SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid='identity_accounts'::regclass`
   assert.equal(table.relrowsecurity, true); assert.equal(table.relforcerowsecurity, true)
   if (process.argv[2] === "prepare") {
@@ -520,6 +524,9 @@ try {
     const isolatedReview = await reviewBootstrap()
     assert.equal(isolatedReview.status(), 200)
     assert.equal(JSON.stringify(await isolatedReview.json()).includes("Foreign tenant private card"), false)
+    const foreignCorrection = await initialAdmin.current.request.put(`/api/v1/mtm/agents/${foreignBootstrapCard}`, { timeout: 120000, data: { phone: null } })
+    assert.equal(foreignCorrection.status(), 404)
+    assert.equal((await admin.mtmAgent.findUniqueOrThrow({ where: { id: foreignBootstrapCard }, select: { phone: true } })).phone, bootstrapPhone)
     await admin.mtmAgent.delete({ where: { id: foreignBootstrapCard } })
     assert.equal(await admin.identityAccount.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
     assert.equal(await admin.identityPhoneProof.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
