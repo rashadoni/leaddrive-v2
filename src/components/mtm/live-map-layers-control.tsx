@@ -135,7 +135,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
                         data-testid={`live-map-base-map-${option.id}`}
                         className={cn(
                           "inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                          chosen ? "border-foreground font-semibold" : "border-border hover:bg-muted",
+                          chosen ? "crm-choice-selected" : "border-border hover:bg-muted",
                         )}
                       >
                         {option.label}

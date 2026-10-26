@@ -400,21 +400,21 @@ export default function PricingPage() {
         </div>
         <div data-crm-tabs="" data-tour-id="pricing-tabs" className="flex gap-2">
           <Button data-crm-tab="" data-state={activeTab === "model" ? "active" : "inactive"}
-            variant={activeTab === "model" ? "default" : "outline"}
+            variant={activeTab === "model" ? "selected" : "outline"}
             onClick={() => setActiveTab("model")}
             className="gap-1"
           >
             {tp("tabModel")} <InfoHint text={tp("hintTabPricing")} size={12} />
           </Button>
           <Button data-crm-tab="" data-state={activeTab === "edit" ? "active" : "inactive"}
-            variant={activeTab === "edit" ? "default" : "outline"}
+            variant={activeTab === "edit" ? "selected" : "outline"}
             onClick={() => setActiveTab("edit")}
             className="gap-1"
           >
             {tp("tabEdit")} <InfoHint text={tp("hintTabEdit")} size={12} />
           </Button>
           <Button data-crm-tab="" data-state={activeTab === "sales" ? "active" : "inactive"}
-            variant={activeTab === "sales" ? "default" : "outline"}
+            variant={activeTab === "sales" ? "selected" : "outline"}
             onClick={() => setActiveTab("sales")}
             className="gap-1"
           >

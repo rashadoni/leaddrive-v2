@@ -68,7 +68,13 @@ describe("ticket workspace navigation state", () => {
 
   it("uses an accessible active page-size treatment in compact tables", () => {
     expect(dataTableSource).toContain('compact')
-    expect(dataTableSource).toContain('bg-primary font-medium text-primary-foreground')
+    expect(dataTableSource).toContain('crm-choice-selected')
+    const styles = readFileSync("src/app/crm-workspace.css", "utf8")
+    const selected = styles.match(/\[data-crm-workspace\] \.crm-choice-selected[^{}]*\{([^}]+)\}/)?.[1]
+    expect(selected).toContain("background-color: hsl(var(--muted))")
+    const selectedText = styles.match(/\[data-crm-workspace\] \.crm-choice-selected:not\(\.crm-choice-semantic\)[^{]*\{([^}]+)\}/)?.[1]
+    expect(selectedText).toContain("color: hsl(var(--foreground))")
+    expect(selected).toContain("border-color: hsl(var(--input))")
     expect(dataTableSource).not.toContain('compact && "bg-orange-')
   })
 

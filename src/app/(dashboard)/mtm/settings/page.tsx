@@ -567,7 +567,7 @@ export default function MtmSettingsPage() {
   }
 
   const renderSwitch = (item: SettingItem, disabled: boolean) => (
-    <button
+    <button data-crm-color-role="toggle"
       type="button"
       role="switch"
       aria-checked={!!settings[item.key]}

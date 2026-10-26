@@ -73,6 +73,9 @@ describe("shared disposable Fund fixture boundary", () => {
       // Operator-only drill on the real cluster; opt-in LD_KAFKA_FUND_DRILL=1,
       // its database is the disposable ld-drill-pg created by fund-drill.sh.
       "scripts/event-platform/cluster/fund-drill.ts",
+      // CI gate of the pilot runner's node-postgres adapter and provision-role.sql,
+      // on the same disposable loopback service as the other Postgres gates.
+      "scripts/event-platform/fund-shadow/pilot.integration.ts",
       "scripts/event-platform/test-broker-postgres.ts",
       "scripts/event-platform/test-cdc-fund-postgres.ts",
       "src/__tests__/event-platform-fund-shadow-fixture.test.ts",

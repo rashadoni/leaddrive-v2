@@ -138,6 +138,7 @@ export function AppLauncher({ org, open, onOpenChange }: AppLauncherProps) {
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
+          data-crm-workspace=""
           aria-describedby={undefined}
           onOpenAutoFocus={(e) => {
             e.preventDefault()

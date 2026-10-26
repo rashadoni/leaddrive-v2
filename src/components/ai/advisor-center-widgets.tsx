@@ -620,14 +620,14 @@ export function AdvisorFilters({
   return (
     <div className="mb-3 space-y-2">
       <div className="flex flex-wrap gap-1.5 pb-1">
-        <Button size="sm" variant={selectedDomain === "all" ? "default" : "outline"} className="h-9" onClick={() => onDomainChange("all")}>
+        <Button size="sm" variant={selectedDomain === "all" ? "selected" : "outline"} className="h-9" onClick={() => onDomainChange("all")}>
           {labels.allModules}
         </Button>
         {domains.slice(0, 10).map((domain) => (
           <Button
             key={domain.key}
             size="sm"
-            variant={selectedDomain === domain.key ? "default" : "outline"}
+            variant={selectedDomain === domain.key ? "selected" : "outline"}
             className="h-9"
             onClick={() => onDomainChange(domain.key)}
           >
@@ -1180,7 +1180,7 @@ export function AdvisorAskPanel({
         {filters.map((filter) => (
           <Button
             key={filter.key}
-            variant={selectedFilter === filter.key ? "default" : "outline"}
+            variant={selectedFilter === filter.key ? "selected" : "outline"}
             size="sm"
             onClick={() => onFilterPrompt(filter.key, filter.label)}
           >

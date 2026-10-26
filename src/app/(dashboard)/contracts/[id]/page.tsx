@@ -3526,7 +3526,6 @@ export default function ContractDetailPage() {
             <Button
               onClick={handleWaiveConfirm}
               disabled={waiveLoading}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
             >
               {t("deviationsWaiveConfirm")}
             </Button>

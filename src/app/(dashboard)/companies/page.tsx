@@ -253,7 +253,7 @@ export default function CompaniesPage() {
       {/* Status filter tabs */}
       <div className="flex flex-wrap gap-2">
         <Button
-          variant={activeFilter === "all" ? "default" : "outline"}
+          variant={activeFilter === "all" ? "selected" : "outline"}
           size="sm"
           onClick={() => setActiveFilter("all")}
         >
@@ -262,7 +262,7 @@ export default function CompaniesPage() {
         {Object.entries(statusLabels).map(([key, label]) => (
           <Button
             key={key}
-            variant={activeFilter === key ? "default" : "outline"}
+            variant={activeFilter === key ? "selected" : "outline"}
             size="sm"
             onClick={() => setActiveFilter(key)}
           >

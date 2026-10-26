@@ -194,7 +194,7 @@ export function MtmFilterMore({ open, onToggle, count, label, testId }: { open: 
       data-testid={testId}
       aria-expanded={open}
       onClick={onToggle}
-      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "border-foreground font-semibold text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
+      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "crm-choice-selected text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
     >
       <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
       {label}
@@ -235,7 +235,7 @@ export function MtmQuickChips({ label, chips, value, onChange, renderChip }: {
             data-testid={chip.testId}
             aria-pressed={on}
             onClick={() => onChange(chip.value)}
-            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "border-foreground font-semibold text-foreground" : "border-border bg-card text-foreground hover:bg-muted/60"}`}
+            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "crm-choice-selected text-foreground" : "border-border bg-card text-foreground hover:bg-muted/60"}`}
           >
             {chip.label}
             {typeof chip.count === "number" ? (

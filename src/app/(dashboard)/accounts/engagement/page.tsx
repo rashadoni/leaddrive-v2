@@ -176,7 +176,7 @@ export default function AccountEngagementPage() {
               onClick={() => setStageFilter(null)}
               className={`px-3 py-1.5 rounded-lg text-sm border ${
                 stageFilter === null
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? "crm-choice-selected  "
                   : "bg-card hover:bg-muted border-border"
               }`}
             >
@@ -190,7 +190,7 @@ export default function AccountEngagementPage() {
                   onClick={() => setStageFilter(key)}
                   className={`px-3 py-1.5 rounded-lg text-sm border ${
                     stageFilter === key
-                      ? "bg-primary text-primary-foreground border-primary"
+                      ? "crm-choice-selected  "
                       : "bg-card hover:bg-muted border-border"
                   }`}
                 >

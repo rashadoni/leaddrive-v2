@@ -30918,6 +30918,7 @@
     "identification": {
       "test_call": "pharmacy not identified",
       "phone_unique": "recognised by number",
+      "phone_shared": "recognised by number and name",
       "named_on_call": "named on the call",
       "unidentified": "pharmacy not identified"
     },
@@ -31075,7 +31076,14 @@
     "linkOpened": "Press «Start» in the bot that opened.",
     "openAgain": "Open again",
     "checkLinked": "I pressed Start",
-    "linkSteps": "Open the bot and press «Start». The link works for 15 minutes."
+    "linkSteps": "Open the bot and press «Start». The link works for 15 minutes.",
+    "linkedTitle": "Linked employees",
+    "linkedDesc": "They work with the CRM in the bot and get their notices there — the same ones as the bell, by their notification settings.",
+    "colEmployee": "Employee",
+    "unlinkUserHint": "The bot stops answering {name} and sends no more notices to that Telegram.",
+    "statusUnknown": "Could not check the status.",
+    "reload": "Try again",
+    "statusLoading": "Checking the status"
   },
   "whatsappSignupWindow": {
     "title": "Connect WhatsApp",

@@ -1416,7 +1416,7 @@ function WorkforceConfigurationScope({ organizationId, role, sessionStatus }: {
               <div className="mt-3 flex flex-wrap gap-2">
                 {weekdays.map((day) => {
                   const selected = shiftForm.daysOfWeek.includes(day.value)
-                  return <Button key={day.value} type="button" variant={selected ? "default" : "outline"} className="min-h-11" aria-pressed={selected} onClick={() => setShiftForm((current) => ({ ...current, daysOfWeek: selected ? current.daysOfWeek.filter((value) => value !== day.value) : [...current.daysOfWeek, day.value] }))}>{t("weekdays." + day.key)}</Button>
+                  return <Button key={day.value} type="button" variant={selected ? "selected" : "outline"} className="min-h-11" aria-pressed={selected} onClick={() => setShiftForm((current) => ({ ...current, daysOfWeek: selected ? current.daysOfWeek.filter((value) => value !== day.value) : [...current.daysOfWeek, day.value] }))}>{t("weekdays." + day.key)}</Button>
                 })}
               </div>
             </fieldset>

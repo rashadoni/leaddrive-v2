@@ -65,8 +65,40 @@ test("database credentials stay in a constrained child environment with explicit
   assert.equal(env.PGUSER, "fixture_owner"); assert.equal(env.PGSSLMODE, "require")
   assert.match(env.PGOPTIONS, /default_transaction_read_only=on/)
   assert.match(databaseEnvironment(app, db, false).PGOPTIONS, /default_transaction_read_only=off/)
-  for (const url of [db.replace("fixture_db", "another_db"), db.replace("127.0.0.1", "another-host"), db + "&options=unsafe", db + "&sslmode=disable", "not-a-url"]) {
+  // Parsing is not target admission: the CLI verifies actual cluster/database
+  // identity and an observed live app backend before inventory or any write.
+  assert.equal(databaseEnvironment(app, db.replace("127.0.0.1", "another-host"), true).PGHOST, "another-host")
+  for (const url of [db + "&options=unsafe", db + "&sslmode=disable", "not-a-url"]) {
     assert.throws(() => databaseEnvironment(app, url, true), /DATABASE_CONFIG_INVALID/)
+  }
+})
+test("managed PostgreSQL CA and verify-full survive sanitized operator connection", () => {
+  const app = "postgresql://fixture_app:fixture@db.invalid:5432/fixture_db?sslmode=verify-full&sslrootcert=%2Fetc%2Fleaddrive%2Fmanaged-postgres-ca.crt"
+  const db = app.replace("fixture_app", "fixture_owner")
+  const previous = process.env.PGOPTIONS
+  process.env.PGOPTIONS = "-c default_transaction_read_only=off"
+  try {
+    const env = databaseEnvironment(app, db, true)
+    assert.equal(env.PGSSLROOTCERT, "/etc/leaddrive/managed-postgres-ca.crt")
+    assert.equal(env.PGSSLMODE, "verify-full")
+    assert.equal(env.PGUSER, "fixture_owner")
+    assert.match(env.PGOPTIONS, /default_transaction_read_only=on/)
+    assert.match(databaseEnvironment(app, db, false).PGOPTIONS, /default_transaction_read_only=off/)
+    for (const suffix of ["&sslrootcert=/another-ca", "&options=-c%20default_transaction_read_only=off", "&hostaddr=another-host"]) {
+      assert.throws(() => databaseEnvironment(app, db + suffix, true), /DATABASE_CONFIG_INVALID/)
+    }
+    for (const value of ["relative-ca", "", "%00", "%2Fca%0Aoverride"]) {
+      assert.throws(() => databaseEnvironment(app, db.replace("%2Fetc%2Fleaddrive%2Fmanaged-postgres-ca.crt", value), true), /DATABASE_CONFIG_INVALID_OPTION/)
+    }
+  } finally {
+    if (previous === undefined) delete process.env.PGOPTIONS
+    else process.env.PGOPTIONS = previous
+  }
+})
+test("database refusals expose only fixed reason categories, never URL material", () => {
+  const app = "postgresql://fixture_app:private-fixture@db.invalid/fixture_db"
+  for (const [db, reason] of [[app + "?sslmode=require&sslmode=disable", "DUPLICATE"], [app + "?secret-option=private-fixture", "OPTION"]]) {
+    assert.throws(() => databaseEnvironment(app, db, true), error => error.message === `IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_${reason}`)
   }
 })
 function fileFixture(work) {

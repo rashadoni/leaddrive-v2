@@ -472,7 +472,7 @@ function SocialMonitoringNavigation({
                     onClick={() => onChange(item.value)}
                     className={`flex min-h-11 min-w-0 items-center justify-start gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm ${
                       active
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? "crm-choice-selected  shadow-sm"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >

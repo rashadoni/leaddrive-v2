@@ -14,6 +14,7 @@ const buttonVariants = cva(
         outline: "border border-input bg-card hover:bg-muted/50 text-foreground",
         "destructive-outline": "border border-red-300 bg-card text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        selected: "crm-choice-selected border border-input bg-muted text-foreground font-semibold shadow-none hover:bg-muted/80",
         ghost: "hover:bg-muted/50 text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },

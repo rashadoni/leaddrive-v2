@@ -565,7 +565,7 @@ export default function MtmAgentsPage() {
               aria-describedby="mtm-agents-managers-tile-hint"
               data-testid="mtm-agents-managers-tile"
               onClick={toggleManagers}
-              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-foreground font-semibold text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
+              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "crm-choice-selected text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
             >
               <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
               {t("statManagers")} ({totalManagers})

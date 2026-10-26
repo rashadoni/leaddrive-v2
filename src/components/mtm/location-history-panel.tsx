@@ -644,7 +644,7 @@ export function LocationHistoryPanel() {
                       type="button"
                       aria-pressed={layers[layer]}
                       onClick={() => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
-                      className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[layer] ? "border-foreground font-semibold text-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                      className={`min-h-11 rounded-md border px-3 py-2 text-xs transition-colors ${layers[layer] ? "crm-choice-selected text-foreground" : "text-muted-foreground hover:bg-muted"}`}
                     >
                       {t(`layer.${layer}`)}
                     </button>

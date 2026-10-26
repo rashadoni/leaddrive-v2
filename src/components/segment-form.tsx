@@ -345,7 +345,7 @@ export function SegmentForm({ open, onOpenChange, onSaved, initialData, orgId }:
                     type="button"
                     onClick={() => setAdvancedMode(!advancedMode)}
                     className={cn("flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-border transition-colors",
-                      advancedMode ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground hover:text-foreground border-muted"
+                      advancedMode ? "crm-choice-selected  " : "text-muted-foreground hover:text-foreground border-muted"
                     )}
                   >
                     <GitBranch className="h-3 w-3" /> {advancedMode ? "Advanced" : "Advanced"}

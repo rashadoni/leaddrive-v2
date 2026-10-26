@@ -74,6 +74,7 @@ export function WhatsAppSignupWindow({
         <p className="text-sm font-medium text-emerald-700">{labels.done}</p>
       ) : (
         <button
+          data-crm-color-role="provider"
           type="button"
           onClick={start}
           disabled={phase === "working"}

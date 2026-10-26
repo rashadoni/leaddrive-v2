@@ -233,3 +233,18 @@ test('every outbox event older than the grace must be in Kafka; extras are fine'
   assert.match(withParity(undefined, events)[0].detail, /обновить/, 'an old production probe says so')
   assert.deepEqual(ids(withParity({ error: 'permission denied' }, events)), ['parity-unavailable'])
 })
+
+test('the Fund shadow pilot: disagreement and lag are warnings, agreement is silent', () => {
+  const withShadow = (fundShadow) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.fundShadow = fundShadow
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  }
+  assert.deepEqual(withShadow({ builds: [{ buildKey: 'pilot-1', wrong: 0, stale: 0, funds: 3 }] }), [])
+  assert.deepEqual(withShadow(undefined), [], 'an older production probe says nothing')
+  const found = withShadow({ builds: [{ buildKey: 'pilot-1', wrong: 1, stale: 2, funds: 3 }] })
+  assert.deepEqual(ids(found), ['fund-shadow-stale:pilot-1', 'fund-shadow-wrong:pilot-1'])
+  assert.ok(found.every((p) => p.severity === 'warning'), 'the shadow never changes what users see')
+  assert.match(found.find((p) => p.id.startsWith('fund-shadow-wrong')).detail, /у 1 из 3 фондов/)
+  assert.deepEqual(ids(withShadow({ error: 'permission denied' })), ['fund-shadow-unknown'])
+})

@@ -103,23 +103,24 @@
 
   .support-page-shell :where(button, a, [role="button"]).bg-primary,
   .support-ai-search .ai-search-btn {
-    background-color: hsl(20 92% 38%) !important;
+    background-color: hsl(var(--crm-action, 20 92% 38%)) !important;
+    color: hsl(var(--crm-action-foreground, 0 0% 100%));
   }
 
   .support-page-shell :where(button, a, [role="button"]).bg-primary:hover,
   .support-ai-search .ai-search-btn:hover {
-    background-color: hsl(20 92% 32%) !important;
+    background-color: hsl(var(--crm-action-hover, 20 92% 32%)) !important;
   }
 
-  /* The shared brand orange is an accent, but white 14 px button text on its
-     default shade is only 3.6:1. Customer-facing primary actions use the same
-     hue at an AA-safe lightness without changing primary text/focus accents. */
+  /* Inside CRM, support follows the common action pair. Public customer
+     portals keep their existing AA-safe orange fallback outside that scope. */
   .customer-support-surface :where(button, a, [role="button"]).bg-primary {
-    background-color: hsl(20 92% 38%) !important;
+    background-color: hsl(var(--crm-action, 20 92% 38%)) !important;
+    color: hsl(var(--crm-action-foreground, 0 0% 100%));
   }
 
   .customer-support-surface :where(button, a, [role="button"]).bg-primary:hover {
-    background-color: hsl(20 92% 32%) !important;
+    background-color: hsl(var(--crm-action-hover, 20 92% 32%)) !important;
   }
 
   .support-case-workspace {
@@ -559,7 +560,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] main {
   transition: background-color 0.5s ease, color 0.4s ease, border-color 0.4s ease;
 }
 
-html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-card {
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-card:not(.crm-choice-selected) {
   background-color: hsl(var(--card)) !important;
 }
 
@@ -608,10 +609,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .shadow-\[0_1px_3px_rgba\
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Wallpaper: keep buttons visible and opaque */
-html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-primary:not([data-crm-tab]):not([data-crm-filter]) {
-  background-color: hsl(var(--crm-action, 20 90% 38%)) !important;
-}
+/* Action colours come from crm-workspace.css, including on wallpaper. */
 
 html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-destructive {
   background-color: hsl(0 84% 55%) !important;
@@ -660,8 +658,8 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-field svg {
   color: hsl(210 15% 74%) !important;
 }
 html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-btn {
-  background-color: hsl(215 25% 30% / 0.75) !important;
-  color: hsl(0 0% 96%) !important;
+  background-color: hsl(var(--crm-action, 215 25% 30% / 0.75)) !important;
+  color: hsl(var(--crm-action-foreground, 0 0% 96%)) !important;
   box-shadow: none !important;
 }
 
@@ -812,8 +810,8 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-btn {
   align-items: center;
   justify-content: center;
   border-radius: 13px;
-  color: oklch(0.98 0.01 40);
-  background: hsl(var(--crm-action, 20 90% 38%));
+  color: hsl(var(--crm-action-foreground, 0 0% 100%));
+  background: hsl(var(--crm-action, 0 0% 9%));
   transition: transform 120ms cubic-bezier(0.25, 1, 0.5, 1), background-color 120ms cubic-bezier(0.25, 1, 0.5, 1), opacity 120ms cubic-bezier(0.25, 1, 0.5, 1);
 }
 
@@ -851,8 +849,8 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-btn {
 
 .dashboard-welcome-action--primary {
   border-color: transparent;
-  color: oklch(0.98 0.01 40);
-  background: hsl(var(--crm-action, 20 90% 38%));
+  color: hsl(var(--crm-action-foreground, 0 0% 100%));
+  background: hsl(var(--crm-action, 0 0% 9%));
 }
 
 .dashboard-welcome-action svg {
@@ -1098,7 +1096,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-help >
 
   .dashboard-welcome-action--primary:hover,
   .dashboard-welcome-command button:not(:disabled):hover {
-    background: hsl(var(--crm-action-hover, 20 90% 33%));
+    background: hsl(var(--crm-action-hover, 0 0% 18%));
   }
 
   .dashboard-welcome-brief-action:hover svg {
@@ -1249,8 +1247,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-comman
    reference has these controls near-solid, not translucent: at 0.42 the video
    showed through and the labels lost contrast on bright frames. They are
    filled with the dark ground at 0.86 so a control reads as a control.
-   The primary action keeps its orange: exactly one thing here should pull the
-   eye. */
+   The primary action uses the shared light-on-dark action pair. */
 html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-action {
   border-color: hsl(0 0% 100% / 0.16);
   background: hsl(220 40% 7% / 0.86);
@@ -1291,7 +1288,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome--brief
 
 html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-action--primary {
   border-color: transparent;
-  background: hsl(var(--crm-action, 20 90% 38%));
+  background: hsl(var(--crm-action, 0 0% 9%));
 }
 
 html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief,

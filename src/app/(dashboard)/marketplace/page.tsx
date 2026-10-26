@@ -692,7 +692,7 @@ function FilterChip({
       className={cn(
         "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm transition-colors",
         active
-          ? "border-primary bg-primary text-primary-foreground"
+          ? " crm-choice-selected "
           : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
       )}
     >

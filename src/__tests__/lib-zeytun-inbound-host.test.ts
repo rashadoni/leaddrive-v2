@@ -9,6 +9,7 @@ import { type ZeytunCallDatabase } from "@/lib/voice-agent/pharmacy/zeytun-call-
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
 import { getRlsContext, runWithRlsBypass } from "@/lib/rls-context"
 import { payload } from "./fixtures/zeytun-balances"
+import { clientRow, clientsXml } from "./fixtures/zeytun-clients"
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
@@ -86,6 +87,30 @@ describe("private inbound pilot host", () => {
     // No version in the grant: the snapshot on disk is taken as it is.
     const catalog = await f.host.loadCatalog(line)
     expect(catalog.version).toMatch(/^[a-f0-9]{64}$/)
+  })
+  it("finds the pharmacies 1C lists for the caller's number, and none from a stale or absent list", async () => {
+    const f = await fixture()
+    const pharmacySource = { organizationId: "clients-test", scopeKey: "c".repeat(64) }
+    const line: InboundPilotConfig = { version: 1, enabled: true, purpose: "zeytun_line", id: "dddddddd-1111-4111-8111-111111111111",
+      organizationId: f.config.organizationId, channelConfigId: f.config.channelConfigId, issuedAt: f.config.issuedAt,
+      expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
+      approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey }, pharmacySource }
+    expect(await f.host.findPharmacies!(line, "+994500000001")).toEqual([])
+    const xml = clientsXml([
+      clientRow(),
+      clientRow({ GUIDE: "55555555-6666-4777-8888-999999999999", Name: "Nur Aptek", Phone: "994500000002" }),
+      clientRow({ GUIDE: "66666666-6666-4777-8888-999999999999", Name: "Səfa", Phone: "994500000002" }),
+    ])
+    await new ZeytunSnapshotStore(join(f.root, "catalog"), pharmacySource.organizationId, pharmacySource.scopeKey).save({
+      payload: xml, version: createHash("sha256").update(xml).digest("hex"),
+      context: { organizationId: pharmacySource.organizationId, observedAt: new Date().toISOString(), source: "live" } })
+    const host = createInboundPilotHost(f.options)
+    expect(await host.findPharmacies!(line, "+994500000001")).toEqual([
+      { guid: "33333333-4444-4555-8666-777777777777", name: "Sınaq aptek", address: "Synthetic address" }])
+    expect((await host.findPharmacies!(line, "+994500000002")).map((p) => p.name).sort()).toEqual(["Nur Aptek", "Səfa"])
+    expect(await host.findPharmacies!(line, "+994500000009")).toEqual([])
+    // The rehearsal grant has no pharmacy list.
+    expect(await host.findPharmacies!(f.config, "+994500000001")).toEqual([])
   })
   it("reads only the snapshot header to learn whether it changed", async () => {
     const f = await fixture()

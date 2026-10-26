@@ -30914,6 +30914,7 @@
     "identification": {
       "test_call": "aptek müəyyən edilmir",
       "phone_unique": "nömrə ilə tanındı",
+      "phone_shared": "nömrə və adı ilə tanındı",
       "named_on_call": "zəngdə adını dedi",
       "unidentified": "aptek tanınmadı"
     },
@@ -31071,7 +31072,14 @@
     "linkOpened": "Açılan botda «Start» basın.",
     "openAgain": "Yenidən aç",
     "checkLinked": "Start basdım",
-    "linkSteps": "Botu açın və «Start» basın. Link 15 dəqiqə keçərlidir."
+    "linkSteps": "Botu açın və «Start» basın. Link 15 dəqiqə keçərlidir.",
+    "linkedTitle": "Bağlı əməkdaşlar",
+    "linkedDesc": "Onlar botda CRM ilə işləyir və öz bildirişlərini ora alır — zəngdəkilərlə eyni, öz bildiriş ayarlarına görə.",
+    "colEmployee": "Əməkdaş",
+    "unlinkUserHint": "Bot {name} adlı əməkdaşa daha cavab vermir və bu Telegram-a bildiriş göndərmir.",
+    "statusUnknown": "Vəziyyəti yoxlamaq alınmadı.",
+    "reload": "Yenidən yoxla",
+    "statusLoading": "Vəziyyət yoxlanılır"
   },
   "whatsappSignupWindow": {
     "title": "WhatsApp-ı qoşmaq",

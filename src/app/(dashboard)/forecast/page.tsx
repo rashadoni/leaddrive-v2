@@ -124,7 +124,7 @@ export default function ForecastPage() {
                 onClick={() => setSelectedQuarter(q)}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   selectedQuarter === q
-                    ? "bg-primary text-primary-foreground"
+                    ? "crm-choice-selected "
                     : "bg-muted hover:bg-muted/80"
                 }`}
               >

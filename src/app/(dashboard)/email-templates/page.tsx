@@ -201,7 +201,7 @@ export default function EmailTemplatesPage() {
         <span className="text-sm text-muted-foreground font-medium flex items-center gap-1">{tc("languageFilter")} <InfoHint text={t("hintColLanguage")} size={12} /></span>
         <Button
           size="sm"
-          variant={filterLang === "all" ? "default" : "outline"}
+          variant={filterLang === "all" ? "selected" : "outline"}
           onClick={() => setFilterLang("all")}
         >
           {t("allLangs")} ({templates.length}) <InfoHint text={t("hintTotalTemplates")} size={12} />
@@ -211,7 +211,7 @@ export default function EmailTemplatesPage() {
             <Button
               key={lang}
               size="sm"
-              variant={filterLang === lang ? "default" : "outline"}
+              variant={filterLang === lang ? "selected" : "outline"}
               onClick={() => setFilterLang(lang)}
             >
               {langFlags[lang]} {lang.toUpperCase()} ({langCounts[lang]})
@@ -225,7 +225,7 @@ export default function EmailTemplatesPage() {
         <span className="text-sm text-muted-foreground font-medium flex items-center gap-1">{tc("categoryFilter")} <InfoHint text={t("hintColCategory")} size={12} /></span>
         <Button
           size="sm"
-          variant={filterCategory === "all" ? "default" : "outline"}
+          variant={filterCategory === "all" ? "selected" : "outline"}
           onClick={() => setFilterCategory("all")}
         >
           {t("allCategories")}
@@ -235,7 +235,7 @@ export default function EmailTemplatesPage() {
             <Button
               key={key}
               size="sm"
-              variant={filterCategory === key ? "default" : "outline"}
+              variant={filterCategory === key ? "selected" : "outline"}
               onClick={() => setFilterCategory(key)}
             >
               {categoryIcons[key]} {label} ({catCounts[key]})

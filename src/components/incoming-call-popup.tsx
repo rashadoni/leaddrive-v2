@@ -334,7 +334,7 @@ export function IncomingCallPopup({
         {(canAnswerInBrowser || answerPhase !== "idle") && (
           <div className="mb-3">
             {answerPhase === "idle" ? (
-              <Button
+              <Button data-crm-color-role="call"
                 type="button"
                 size="sm"
                 className="w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-700"

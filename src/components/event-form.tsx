@@ -136,7 +136,7 @@ export function EventForm({ open, onOpenChange, onSaved, orgId, initialData }: E
               key={s.n}
               onClick={() => setStep(s.n)}
               className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                step === s.n ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                step === s.n ? "crm-choice-selected " : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
               {s.label}

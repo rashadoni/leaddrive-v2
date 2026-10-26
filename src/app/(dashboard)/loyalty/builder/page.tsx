@@ -389,7 +389,7 @@ export default function LoyaltyBuilderPage() {
                     <h2 className="text-sm font-semibold">{t("memberPortalTitle")}</h2>
                     <p className="text-xs text-muted-foreground">{t("memberPortalHint")}</p>
                   </div>
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     role="switch"
                     aria-checked={!!memberPortal}
@@ -427,7 +427,7 @@ export default function LoyaltyBuilderPage() {
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{t("autoEarnSkippedHint")}</p>
                     )}
                   </div>
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     role="switch"
                     aria-checked={!!autoEarn}

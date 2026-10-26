@@ -91,13 +91,13 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
           </kbd>
         </button>
 
-        {/* App Launcher — primary-accent waffle button opens the all-apps grid overlay */}
+        {/* App Launcher — secondary navigation button opens the all-apps grid overlay */}
         <button
           onClick={onOpenLauncher}
           data-tour-id="app-launcher"
           title={`${tNav("allApps")} (⌘⇧K)`}
           aria-label={tNav("allApps")}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm ring-1 ring-black/10 transition-all hover:bg-primary/90 hover:shadow-md active:scale-[0.98] sm:px-3.5 cursor-pointer" data-crm-button="default"
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-input bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] sm:px-3.5 cursor-pointer" data-crm-button="outline"
         >
           <LayoutGrid className="h-4 w-4" />
           <span className="hidden sm:inline">{tNav("allApps")}</span>
@@ -229,7 +229,7 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
                         title={t(LANGUAGE_KEYS[code])}
                         aria-pressed={code === locale}
                         className={`min-h-8 rounded-md px-2 text-xs font-medium uppercase transition-colors ${
-                          code === locale ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60"
+                          code === locale ? "crm-choice-selected " : "text-muted-foreground hover:bg-muted/60"
                         }`}
                       >
                         {code}

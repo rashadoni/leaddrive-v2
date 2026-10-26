@@ -138,7 +138,7 @@ export function ChannelReplyMatrixView({
                           value === m
                             ? m === "agent"
                               ? "bg-zinc-200 text-foreground dark:bg-zinc-700"
-                              : "bg-violet-500 text-white"
+                              : "crm-choice-selected"
                             : "text-muted-foreground hover:bg-muted",
                         )}
                       >

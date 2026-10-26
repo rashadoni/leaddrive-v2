@@ -128,7 +128,7 @@ export function MembersSection() {
         <button
           type="button"
           onClick={() => setTierFilter("")}
-          className={`rounded-full border px-2.5 py-1 text-xs ${tierFilter === "" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          className={`rounded-full border px-2.5 py-1 text-xs ${tierFilter === "" ? "crm-choice-selected " : "hover:bg-muted"}`}
         >
           {tc("all")}
         </button>
@@ -137,7 +137,7 @@ export function MembersSection() {
             key={tier}
             type="button"
             onClick={() => setTierFilter(tier)}
-            className={`rounded-full border px-2.5 py-1 text-xs capitalize ${tierFilter === tier ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+            className={`rounded-full border px-2.5 py-1 text-xs capitalize ${tierFilter === tier ? "crm-choice-selected " : "hover:bg-muted"}`}
           >
             {tier}
           </button>

@@ -237,21 +237,27 @@ async function submitLeadDriveForm(e) {
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="default">{c.name} *</Badge>
                   <Badge variant="default">{c.email} *</Badge>
-                  <Badge
-                    variant={showPhone ? "default" : "outline"}
-                    className="cursor-pointer"
+                  <Button
+                    type="button"
+                    size="sm"
+                    aria-pressed={showPhone}
+                    variant={showPhone ? "selected" : "outline"}
                     onClick={() => setShowPhone(!showPhone)}
-                  >{c.phone}</Badge>
-                  <Badge
-                    variant={showCompany ? "default" : "outline"}
-                    className="cursor-pointer"
+                  >{c.phone}</Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    aria-pressed={showCompany}
+                    variant={showCompany ? "selected" : "outline"}
                     onClick={() => setShowCompany(!showCompany)}
-                  >{c.company}</Badge>
-                  <Badge
-                    variant={showMessage ? "default" : "outline"}
-                    className="cursor-pointer"
+                  >{c.company}</Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    aria-pressed={showMessage}
+                    variant={showMessage ? "selected" : "outline"}
                     onClick={() => setShowMessage(!showMessage)}
-                  >{c.message}</Badge>
+                  >{c.message}</Button>
                 </div>
                 <p className="text-xs text-muted-foreground">{c.fieldsHint}</p>
               </div>

@@ -149,7 +149,7 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView, ev
           `Реестр схем на ${label(m.name)} не отвечает.`))
       }
     }
-    if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source))
+    if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source), ...fundShadowProblems(data.source?.fundShadow))
     if (data.backupWatch) {
       const age = data.time * 1000 - (data.backupWatch.lastPass ?? 0)
       if (!data.backupWatch.lastPass || age > LIMITS.backupWatchStaleMs) {
@@ -188,6 +188,21 @@ export function parityProblems(outbox, events) {
   const [firstId, , firstAt] = missing[0]
   return [problem('events-missing', 'critical', 'События из базы не дошли до Kafka',
     `${missing.length} событий из outbox прода старше ${Math.round(outbox.graceSeconds / 60)} минут нет в Kafka (${topics.slice(0, 3).join(', ')}${topics.length > 3 ? ` и ещё ${topics.length - 3}` : ''}). Самое раннее записано в ${bakuTime(firstAt)}, eventId ${firstId}. Переносчик их пропустил или отстал; их нужно догрузить.`)]
+}
+
+// The Fund shadow pilot never changes what users see, so its findings are
+// warnings: the shadow disagrees with the CRM, or stopped following it.
+export function fundShadowProblems(fundShadow) {
+  if (!fundShadow) return []
+  if (fundShadow.error) return [problem('fund-shadow-unknown', 'warning', 'Не видно теневой пилот Fund', `Сторож не смог прочитать теневые балансы: ${fundShadow.error}.`)]
+  const out = []
+  for (const b of fundShadow.builds ?? []) {
+    if (b.wrong > 0) out.push(problem(`fund-shadow-wrong:${b.buildKey}`, 'warning', 'Теневой пилот Fund: балансы не совпадают',
+      `В сборке ${b.buildKey} у ${b.wrong} из ${b.funds} фондов теневой баланс, посчитанный из Kafka, не совпадает с балансом в CRM после тех же событий. Пользователи этого не видят; это находка пилота, её нужно разобрать.`))
+    if (b.stale > 0) out.push(problem(`fund-shadow-stale:${b.buildKey}`, 'warning', 'Теневой пилот Fund отстаёт',
+      `В сборке ${b.buildKey} ${b.stale} из ${b.funds} фондов не догнали события старше 30 минут: обработчик на kafka-p-connect-uk не работает или падает.`))
+  }
+  return out
 }
 
 function sourceProblems(source) {

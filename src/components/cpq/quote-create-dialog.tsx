@@ -236,9 +236,9 @@ export function QuoteCreateDialog({ open, onOpenChange, onCreated }: QuoteCreate
           <div>
             <Label>{t("dialog.discount")}</Label>
             <div className="flex items-center gap-2 mt-1">
-              <Button variant={discountMode === "none" ? "default" : "outline"} size="sm" onClick={() => setDiscountMode("none")}>{t("dialog.discountNone")}</Button>
-              <Button variant={discountMode === "amount" ? "default" : "outline"} size="sm" onClick={() => setDiscountMode("amount")}>{t("dialog.discountAmount")}</Button>
-              <Button variant={discountMode === "pct" ? "default" : "outline"} size="sm" onClick={() => setDiscountMode("pct")}>%</Button>
+              <Button variant={discountMode === "none" ? "selected" : "outline"} size="sm" onClick={() => setDiscountMode("none")}>{t("dialog.discountNone")}</Button>
+              <Button variant={discountMode === "amount" ? "selected" : "outline"} size="sm" onClick={() => setDiscountMode("amount")}>{t("dialog.discountAmount")}</Button>
+              <Button variant={discountMode === "pct" ? "selected" : "outline"} size="sm" onClick={() => setDiscountMode("pct")}>%</Button>
               {discountMode !== "none" && (
                 <Input
                   type="number"

@@ -403,7 +403,7 @@ export default function ProjectsPage() {
                 .map((p, idx, arr) => (
                   <span key={p}>
                     {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-muted-foreground px-1">...</span>}
-                    <Button variant={p === currentPage ? "default" : "outline"} size="sm" className="w-9" onClick={() => goToPage(p)}>
+                    <Button variant={p === currentPage ? "selected" : "outline"} size="sm" className="w-9" onClick={() => goToPage(p)}>
                       {p}
                     </Button>
                   </span>

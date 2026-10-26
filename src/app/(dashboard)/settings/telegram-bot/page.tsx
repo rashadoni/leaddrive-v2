@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { AlertCircle, CheckCircle, Loader2, PlugZap, Send } from "lucide-react"
+import { AlertCircle, CheckCircle, Loader2, PlugZap, Send, Unlink } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Hint } from "@/components/hint"
 
 interface BotView { connected: boolean; botUsername: string | null; linkedUsers: number }
+interface LinkedEmployee { userId: string; name: string; telegramUsername: string | null; linkedAt: string }
 
 const ERROR_KEYS: Record<string, string> = {
   INVALID_TOKEN: "errInvalidToken",
@@ -24,18 +25,49 @@ const ERROR_KEYS: Record<string, string> = {
   NO_ENCRYPTION_KEY: "errNoKey",
 }
 
+/** The bot's status, with one quiet retry: a server restart takes a few seconds. */
+async function fetchBotStatus(): Promise<BotView | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2000))
+    const body = await fetch("/api/v1/settings/telegram-bot", { cache: "no-store" }).then((r) => r.json()).catch(() => null)
+    if (body?.success) return body.data
+  }
+  return null
+}
+
 export default function TelegramBotSettingsPage() {
   const t = useTranslations("telegramStaff")
   const [view, setView] = useState<BotView | null>(null)
+  // A status the server has not answered is unknown, not «not connected»: a
+  // page opened while the server was switching versions showed «Qoşulmayıb»
+  // for a connected bot (2026-10-26).
+  const [statusFailed, setStatusFailed] = useState(false)
   const [token, setToken] = useState("")
   const [busy, setBusy] = useState<"save" | "off" | null>(null)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  const [links, setLinks] = useState<LinkedEmployee[]>([])
+  const [unlinking, setUnlinking] = useState<string | null>(null)
+
   const load = useCallback(() => {
-    void fetch("/api/v1/settings/telegram-bot", { cache: "no-store" }).then((r) => r.json()).then((body) => {
-      if (body?.success) setView(body.data)
+    void fetchBotStatus().then((status) => {
+      if (status) setView(status)
+      else setStatusFailed(true)
+    })
+    void fetch("/api/v1/settings/telegram-bot/links", { cache: "no-store" }).then((r) => r.json()).then((body) => {
+      if (body?.success) setLinks(body.data)
     }).catch(() => undefined)
   }, [])
+
+  async function unlink(userId: string) {
+    setUnlinking(userId)
+    const body = await fetch(`/api/v1/settings/telegram-bot/links/${encodeURIComponent(userId)}`, { method: "DELETE" }).then((r) => r.json()).catch(() => null)
+    setUnlinking(null)
+    if (body?.success) {
+      setLinks(body.data)
+      setView((current) => (current ? { ...current, linkedUsers: body.data.length } : current))
+    }
+  }
   useEffect(load, [load])
 
   async function send(method: "PUT" | "DELETE") {
@@ -74,8 +106,15 @@ export default function TelegramBotSettingsPage() {
               <span className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                 <CheckCircle className="h-4 w-4" aria-hidden="true" />@{view.botUsername} · {t("linkedUsers", { count: view.linkedUsers })}
               </span>
-            ) : (
+            ) : view ? (
               <span className="text-sm text-muted-foreground">{t("notConnected")}</span>
+            ) : statusFailed ? (
+              <span className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />{t("statusUnknown")}
+                <Button variant="outline" size="sm" onClick={() => { setStatusFailed(false); load() }}>{t("reload")}</Button>
+              </span>
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label={t("statusLoading")} />
             )}
           </div>
           <CardDescription>{t("cardDesc")}</CardDescription>
@@ -113,6 +152,42 @@ export default function TelegramBotSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {links.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("linkedTitle")}</CardTitle>
+            <CardDescription>{t("linkedDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-3 font-medium">{t("colEmployee")}</th>
+                  <th className="py-2 pr-3 font-medium">Telegram</th>
+                  <th className="py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {links.map((link) => (
+                  <tr key={link.userId} className="border-b last:border-0">
+                    <td className="py-2 pr-3">{link.name}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{link.telegramUsername ? `@${link.telegramUsername}` : "—"}</td>
+                    <td className="py-2 text-right">
+                      <Hint text={t("unlinkUserHint", { name: link.name })}>
+                        <Button variant="outline" size="sm" onClick={() => void unlink(link.userId)} disabled={unlinking !== null}>
+                          {unlinking === link.userId ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Unlink className="h-4 w-4" aria-hidden="true" />}
+                          {t("unlink")}
+                        </Button>
+                      </Hint>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   )
 }

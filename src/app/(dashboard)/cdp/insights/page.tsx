@@ -499,7 +499,7 @@ export default function CalculatedInsightsPage() {
                         aria-pressed={riskFilter === r}
                         className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
                           riskFilter === r
-                            ? "bg-primary text-primary-foreground border-primary"
+                            ? "crm-choice-selected  "
                             : "border-border hover:bg-muted"
                         }`}
                       >

@@ -1361,7 +1361,7 @@ function viewTabClass(active: boolean): string {
 }
 
 function filterChipClass(active: boolean): string {
-  return `h-10 rounded-full ${active ? "border-foreground font-semibold text-foreground" : "text-muted-foreground"}`
+  return `h-10 rounded-full ${active ? "crm-choice-selected text-foreground" : "text-muted-foreground"}`
 }
 
 export default function MtmRoutesPage() {

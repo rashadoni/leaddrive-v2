@@ -1603,7 +1603,7 @@ function ConsoleInner({
                 "h-11 rounded-md px-4 text-sm font-medium outline-none transition-colors",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 audioMode === mode
-                  ? "bg-primary text-primary-foreground"
+                  ? "crm-choice-selected "
                   : "text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >

@@ -401,12 +401,12 @@ export default function ContactDetailPage() {
                   <ClickToCallButton phone={contact.phone!} contactId={contact.id} contactName={contact.fullName} />
                 )}
                 {isVisible("email") && contact.email && (
-                  <a href={`mailto:${contact.email}`} title={tc("email")} className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors shadow-sm" data-crm-button="default">
-                    <Mail className="h-3.5 w-3.5 text-white" />
+                  <a href={`mailto:${contact.email}`} title={tc("email")} className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center transition-colors shadow-sm" data-crm-button="default">
+                    <Mail className="h-3.5 w-3.5" />
                   </a>
                 )}
                 {isVisible("phone") && contact.phone && (
-                  <a href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`} target="_blank" title="WhatsApp" className="h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center transition-colors shadow-sm">
+                  <a data-crm-color-role="provider" href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`} target="_blank" title="WhatsApp" className="h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center transition-colors shadow-sm">
                     <MessageSquare className="h-3.5 w-3.5 text-white" />
                   </a>
                 )}

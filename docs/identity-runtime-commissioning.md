@@ -72,3 +72,26 @@ live-process admission, the selected person's number or physical Android login
 have been exercised. Record those results separately when the approved steps
 actually run. Direct production SSH from this development chat currently
 refuses authentication; this workflow uses the existing protected Actions route.
+
+## Production connection compatibility
+
+The operator preserves the root-configured PostgreSQL `sslmode` and absolute
+`sslrootcert` path in a sanitized libpq environment, including `verify-full`
+with the managed database CA. Duplicate/unknown options remain refusals; no TLS
+fallback is attempted. Different root-configured endpoint aliases are accepted
+only after read-only probes prove the same PostgreSQL system identifier,
+database name/OID and primary, and the migration connection observes exactly
+one randomly named live application backend in that database. Matching physical
+clone metadata alone is insufficient. This follows the existing deployment
+database admission and runs before inventory, key preparation or company writes.
+Connection refusals report only fixed configuration/probe/target categories,
+never addresses, database names, roles or credentials. A target refusal leaves
+activation pending; do not edit connection URLs or bypass the proof to proceed.
+PM2 inspection uses `/root/.pm2`, matching the normal production deploy.
+
+The configured `connect_timeout` is accepted as a unique signed decimal int32
+hint, including literal/encoded plus signs. The operator always imposes its own
+five-second connection timeout; zero/negative hints cannot disable that bound.
+Whitespace, overflow, fractions and duplicate options are refused. This follows
+the earlier production connection compatibility fix recorded in
+`hrm-release-preflight-session-log.md` (2026-10-07).

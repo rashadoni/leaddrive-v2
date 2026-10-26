@@ -225,7 +225,7 @@ export default function AgentDesktopPage() {
           {loadError !== "forbidden" && (
             <Button
               data-testid="agent-desktop-retry-load"
-              className="mt-4 min-h-11 bg-foreground text-background hover:bg-foreground/90"
+              className="mt-4 min-h-11"
               onClick={() => void loadDashboard()}
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -384,7 +384,7 @@ export default function AgentDesktopPage() {
           {nextTicket && (
             <Button
               asChild
-              className="min-h-11 shrink-0 bg-foreground text-background hover:bg-foreground/90"
+              className="min-h-11 shrink-0"
             >
               <Link href={`/tickets/${nextTicket.id}`}>
                 {t("openNext")}

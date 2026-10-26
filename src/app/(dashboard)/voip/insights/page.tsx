@@ -219,7 +219,7 @@ export default function ConversationInsightsPage() {
                 onClick={() => setDays(opt.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm border ${
                   days === opt.key
-                    ? "bg-primary text-primary-foreground border-primary"
+                    ? "crm-choice-selected  "
                     : "bg-card hover:bg-muted border-border"
                 }`}
               >
