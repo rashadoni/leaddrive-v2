@@ -165,16 +165,18 @@ export function EQaimeDashboard() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex h-9 items-center rounded-lg border border-input bg-card p-1 text-sm">
+        {/* A choice, not an action: the shared «selected» style, not the orange one (crm-button-hierarchy). */}
+        <div className="inline-flex items-center gap-1">
           {(["inbox", "outbox"] as const).map((dir) => (
-            <button
+            <Button
               key={dir}
               type="button"
+              aria-pressed={direction === dir}
+              variant={direction === dir ? "selected" : "outline"}
               onClick={() => refilter(setDirection)(dir)}
-              className={`rounded-md px-3 py-1 ${direction === dir ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               {t(dir)} · {data?.tiles[dir].count ?? 0}
-            </button>
+            </Button>
           ))}
         </div>
         <select value={period} onChange={(e) => refilter(setPeriod)(e.target.value as Period)} className="h-9 rounded-md border border-input bg-card px-3 text-sm">
