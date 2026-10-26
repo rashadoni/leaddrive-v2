@@ -101,23 +101,36 @@ export default function CompaniesPage() {
   const [totalUsersApi, setTotalUsers] = useState(0)
   const [totalContactsApi, setTotalContacts] = useState(0)
   const orgId = session?.user?.organizationId
+  const userId = session?.user?.id
+  const role = session?.user?.role
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async (signal?: AbortSignal) => {
     try {
       const res = await fetch("/api/v1/companies?category=client&limit=500", {
         headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+        signal,
       })
       const json = await res.json()
-      if (json.success) {
+      if (!signal?.aborted && json.success) {
         setCompanies(json.data.companies)
         setTotal(json.data.total)
         if (json.data.totalUsers !== undefined) setTotalUsers(json.data.totalUsers)
         if (json.data.totalContacts !== undefined) setTotalContacts(json.data.totalContacts)
       }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+      if (!signal?.aborted) console.error(err)
+    } finally {
+      if (!signal?.aborted) setLoading(false)
+    }
+  }, [orgId])
 
-  useEffect(() => { fetchCompanies() }, [session])
+  // Auth.js replaces the session object when it refreshes the token. Only a
+  // different person, organization or role needs a new companies request.
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchCompanies(controller.signal)
+    return () => controller.abort()
+  }, [fetchCompanies, userId, role])
 
   // Drop bulk selection on filter change — selected ids could point at
   // companies no longer in view (Phase D, mirrors deals/leads).
