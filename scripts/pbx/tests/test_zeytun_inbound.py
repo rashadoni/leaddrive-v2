@@ -466,6 +466,28 @@ class SpeechRelayTests(unittest.TestCase):
         # The provider's own audio never reached the core.
         self.assertNotIn("AQABAA==", json.dumps(self.injected))
 
+    def test_a_short_reply_is_voiced_before_the_model_ends_its_turn(self):
+        # 2026-10-26: "Başqa nə əlavə edək?" waited for turnComplete at 40 characters.
+        tts = FakeTts()
+        relay = self.relay(tts)
+        relay.TAIL_GRACE_SECONDS = 5.0
+        relay.filter(self.content("Başqa nə əlavə edək? ", audio=True))
+        self.assertTrue(self.wait_for(lambda events: len(events) >= 1, seconds=1))
+        self.assertEqual(tts.texts, ["Başqa nə əlavə edək?"])
+
+    def test_a_long_first_sentence_starts_at_its_first_clause_but_not_inside_a_number(self):
+        tts = FakeTts()
+        relay = self.relay(tts)
+        # "1,33" is a number: no cut there; the clause break after it may start the clip.
+        relay.filter(self.content("Parasetamolun qutusu 1,33 manatdır, ", audio=True))
+        self.assertTrue(self.wait_for(lambda events: len(events) >= 1, seconds=1))
+        relay.filter(self.content("Sopharma istehsalıdır. Başqa nə lazımdır? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        # Still two TTS requests for the reply at most: the first clause, then the rest.
+        # (Money is read out in words: "1,33 manat" is "1 manat 33 qəpik".)
+        self.assertEqual(tts.texts, ["Parasetamolun qutusu 1 manat 33 qəpikdir,", "Sopharma istehsalıdır. Başqa nə lazımdır?"])
+
     def test_caller_input_and_other_fields_still_reach_the_core_at_once(self):
         relay = self.relay(FakeTts())
         event = {"serverContent": {"inputTranscription": {"text": "Salam"}}}
