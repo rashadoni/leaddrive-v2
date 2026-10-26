@@ -30920,7 +30920,18 @@
     "missingToken": "Əvvəlcə giriş tokenini yapışdırın.",
     "missingEvent": "Göndərmək üçün ən azı bir hadisə seçin.",
     "errNoPixelAccess": "Bu token bu pikselə göndərə bilmir: onu həmin pikselin ayarlarında yaradın.",
-    "lastSentAt": "Son göndərmə {time}"
+    "lastSentAt": "Son göndərmə {time}",
+    "ga4Desc": "Lidlər və qazanılan sövdələşmələr GA4-ə hadisə kimi gedir — Google Ads onları buradan götürə bilər.",
+    "ga4MeasurementId": "Ölçmə ID",
+    "ga4MeasurementIdHint": "GA4 → Admin → Data streams → veb axınınız (G-…)",
+    "ga4Secret": "API sirri",
+    "ga4SecretHint": "Həmin axın → Measurement Protocol API secrets → Create.",
+    "ga4ConsentHint": "Google-a telefon və e-poçt getmir — yalnız saytdakı ziyarətin ID-si (_ga) və məbləğ. Razılıq olmadan göndərmə açılmır.",
+    "ga4SaveHint": "Google-un yoxlama serveri ID-ni və hadisəni yoxlayır; heç nə yazılmır. Sonra «Test hadisəsi göndər» sirrin düzgün olduğunu göstərir.",
+    "ga4TestHint": "«leaddrive_test» hadisəsini debug rejimində göndərir: GA4 → Admin → DebugView onu bir dəqiqəyə göstərir. Bu lid deyil, konversiya sayılmır.",
+    "ga4TestSent": "Göndərildi. GA4 → Admin → DebugView-u açın: sirr düzgündürsə, «leaddrive_test» bir dəqiqəyə görünəcək.",
+    "ga4ErrMeasurementId": "Ölçmə ID G-XXXXXXXXXX kimi olur.",
+    "ga4MissingSecret": "Əvvəlcə API sirrini yapışdırın."
   },
   "pharmacyPhoneOrders": {
     "title": "Telefon sifarişləri",

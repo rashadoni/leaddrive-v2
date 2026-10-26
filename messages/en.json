@@ -30924,7 +30924,18 @@
     "missingToken": "Paste the access token first.",
     "missingEvent": "Tick at least one event to send.",
     "errNoPixelAccess": "This token cannot send to this pixel: generate it in the settings of the same pixel.",
-    "lastSentAt": "Last sent {time}"
+    "lastSentAt": "Last sent {time}",
+    "ga4Desc": "Leads and won deals go to GA4 as events — Google Ads can import them from there.",
+    "ga4MeasurementId": "Measurement ID",
+    "ga4MeasurementIdHint": "GA4 → Admin → Data streams → your web stream (G-…)",
+    "ga4Secret": "API secret",
+    "ga4SecretHint": "The same stream → Measurement Protocol API secrets → Create.",
+    "ga4ConsentHint": "No phone or e-mail goes to Google — only the website visit's id (_ga) and the amount. Without consent sending stays off.",
+    "ga4SaveHint": "Google's validation server checks the id and the event; nothing is recorded. Then «Send a test event» shows whether the secret is right.",
+    "ga4TestHint": "Sends a «leaddrive_test» event in debug mode: GA4 → Admin → DebugView shows it within a minute. It is not a lead, so no conversion counts it.",
+    "ga4TestSent": "Sent. Open GA4 → Admin → DebugView: «leaddrive_test» appears within a minute if the secret is right.",
+    "ga4ErrMeasurementId": "The measurement ID looks like G-XXXXXXXXXX.",
+    "ga4MissingSecret": "Paste the API secret first."
   },
   "pharmacyPhoneOrders": {
     "title": "Phone orders",

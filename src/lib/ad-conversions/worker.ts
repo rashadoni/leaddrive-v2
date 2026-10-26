@@ -1,13 +1,15 @@
 /**
- * The ad-conversions cron's pass, per active destination:
+ * The ad-conversions cron's pass, per active destination (Meta or GA4):
  *
  *  1. Queue — new leads and newly won deals since the destination was turned
- *     on (and never older than Meta accepts). (destination, event, record) is
- *     unique, so a record is queued once however often this runs.
- *  2. Send — waiting events in one batch. An event older than Meta's window,
- *     one whose record is gone, or one with nothing to match the person by is
- *     marked "skipped" with the reason instead of being sent: one bad event
- *     must never fail the batch.
+ *     on (and never older than the platform accepts: Meta 7 days, GA4 72
+ *     hours). (destination, event, record) is unique, so a record is queued
+ *     once however often this runs.
+ *  2. Send — waiting events: to Meta in one batch, to GA4 one per request.
+ *     An event older than the platform's window, one whose record is gone, or
+ *     (Meta only) one with nothing to match the person by is marked "skipped"
+ *     with the reason instead of being sent: one bad event must never fail
+ *     the batch.
  *
  * Which leads count: only inbound ones — a tracked form, a booking, the
  * website, Meta's own channels and WhatsApp. A cold call, a referral, an
@@ -24,7 +26,8 @@ import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { storedAttribution } from "./attribution"
 import { decryptDestinationSecret } from "./destination"
-import { buildMetaEvent, MAX_EVENT_AGE_MS, MetaApiError, sendMetaEvents } from "./meta"
+import { buildMetaEvent, MAX_EVENT_AGE_MS, sendMetaEvents } from "./meta"
+import { buildGa4Body, GA4_MAX_EVENT_AGE_MS, sendGa4Event } from "./ga4"
 
 const INBOUND_SOURCES = new Set(["web_form", "website", "landing_page", "instagram", "facebook", "messenger", "whatsapp"])
 const INBOUND_PREFIXES = ["form:", "booking:"]
@@ -39,9 +42,12 @@ export function isInboundLead(lead: { source: string | null; adAttribution: unkn
 
 type Destination = NonNullable<Awaited<ReturnType<typeof prisma.adConversionDestination.findFirst>>>
 
+/** How old an event the platform still accepts: Meta 7 days, GA4 72 hours (each less a margin). */
+const maxAge = (destination: Destination) => (destination.platform === "ga4" ? GA4_MAX_EVENT_AGE_MS : MAX_EVENT_AGE_MS)
+
 async function queue(destination: Destination, now: Date): Promise<number> {
   const orgId = destination.organizationId
-  const floor = new Date(now.getTime() - MAX_EVENT_AGE_MS)
+  const floor = new Date(now.getTime() - maxAge(destination))
   const since = destination.activatedAt && destination.activatedAt > floor ? destination.activatedAt : floor
   const rows: { eventName: string; entityType: string; entityId: string; eventTime: Date; recordLabel: string }[] = []
 
@@ -137,7 +143,7 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
 
   const ready: { id: string; attempts: number; payload: Record<string, unknown> }[] = []
   for (const event of due as { id: string; attempts: number; eventName: string; entityType: string; entityId: string; eventTime: Date }[]) {
-    if (now.getTime() - event.eventTime.getTime() > MAX_EVENT_AGE_MS) {
+    if (now.getTime() - event.eventTime.getTime() > maxAge(destination)) {
       await skip(event.id, "skip_too_old")
       continue
     }
@@ -146,12 +152,16 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
       await skip(event.id, "skip_gone")
       continue
     }
-    const payload = buildMetaEvent({
-      eventId: `leaddrive:${event.entityType}:${event.entityId}`,
-      eventName: event.eventName === "purchase" ? "Purchase" : "Lead",
-      eventTime: event.eventTime,
-      ...subject,
-    })
+    // GA4 needs no contact data — the visit id or a pseudonymous one — so it
+    // never skips for «nothing to match by».
+    const payload = destination.platform === "ga4"
+      ? buildGa4Body({ eventName: event.eventName as "lead" | "purchase", eventTime: event.eventTime, entityId: `${event.entityType}:${event.entityId}`, attribution: subject.attribution, value: "value" in subject ? subject.value : undefined, currency: "currency" in subject ? subject.currency : undefined })
+      : buildMetaEvent({
+        eventId: `leaddrive:${event.entityType}:${event.entityId}`,
+        eventName: event.eventName === "purchase" ? "Purchase" : "Lead",
+        eventTime: event.eventTime,
+        ...subject,
+      })
     if (!payload) {
       await skip(event.id, "skip_no_match")
       continue
@@ -159,6 +169,34 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
     ready.push({ id: event.id, attempts: event.attempts, payload })
   }
   if (ready.length === 0) return totals
+
+  const fail = async (item: { id: string; attempts: number }, error: unknown) => {
+    const reason = (error instanceof Error ? error.message : "Send failed").slice(0, 300)
+    const attempts = item.attempts + 1
+    await prisma.adConversionEvent.updateMany({
+      where: { id: item.id, organizationId: orgId, status: "pending" },
+      data: { attempts, reason, ...(attempts >= MAX_ATTEMPTS ? { status: "failed" } : {}) },
+    })
+    if (attempts >= MAX_ATTEMPTS) totals.failed += 1
+  }
+
+  if (destination.platform === "ga4") {
+    // One person per request (client_id is per request), so each event stands alone.
+    const apiSecret = decryptDestinationSecret(orgId, destination.secretCiphertext)
+    for (const item of ready) {
+      try {
+        await sendGa4Event({ measurementId: destination.publicId, apiSecret, body: item.payload })
+        await prisma.adConversionEvent.updateMany({
+          where: { id: item.id, organizationId: orgId, status: "pending" },
+          data: { status: "sent", sentAt: now, reason: null, attempts: { increment: 1 } },
+        })
+        totals.sent += 1
+      } catch (error) {
+        await fail(item, error)
+      }
+    }
+    return totals
+  }
 
   try {
     await sendMetaEvents({
@@ -173,15 +211,7 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
     })
     totals.sent += ready.length
   } catch (error) {
-    const reason = (error instanceof MetaApiError ? error.message : error instanceof Error ? error.message : "Send failed").slice(0, 300)
-    for (const item of ready) {
-      const attempts = item.attempts + 1
-      await prisma.adConversionEvent.updateMany({
-        where: { id: item.id, organizationId: orgId, status: "pending" },
-        data: { attempts, reason, ...(attempts >= MAX_ATTEMPTS ? { status: "failed" } : {}) },
-      })
-      if (attempts >= MAX_ATTEMPTS) totals.failed += 1
-    }
+    for (const item of ready) await fail(item, error)
   }
   return totals
 }
@@ -196,7 +226,7 @@ export async function processDestination(destination: Destination, now = new Dat
 /** The cron's whole pass. */
 export async function runAdConversions(now = new Date()) {
   const destinations = await runWithRlsBypass(() =>
-    prisma.adConversionDestination.findMany({ where: { isActive: true, consentConfirmedAt: { not: null }, platform: "meta" } }),
+    prisma.adConversionDestination.findMany({ where: { isActive: true, consentConfirmedAt: { not: null }, platform: { in: ["meta", "ga4"] } } }),
   )
   const totals = { destinations: 0, queued: 0, sent: 0, skipped: 0, failed: 0 }
   for (const destination of destinations as Destination[]) {
