@@ -1069,9 +1069,12 @@ jobs:
             MANIFEST_COPIED=$((MANIFEST_COPIED + 1))
           done < <(find .next/server/app -name '*_client-reference-manifest.js')
           echo "::notice::Copied $MANIFEST_COPIED client-reference-manifest file(s)"
-          mkdir -p .next/standalone/node_modules
-          cp -r node_modules/.prisma .next/standalone/node_modules/.prisma
-          cp -r node_modules/@prisma .next/standalone/node_modules/@prisma
+          # Next may already have traced part of these directories. Copy their
+          # contents into place, rather than nesting another @prisma/.prisma
+          # under the existing destination and leaving traced files untouched.
+          mkdir -p .next/standalone/node_modules/.prisma .next/standalone/node_modules/@prisma
+          cp -r node_modules/.prisma/. .next/standalone/node_modules/.prisma/
+          cp -r node_modules/@prisma/. .next/standalone/node_modules/@prisma/
 
           mkdir -p .next/standalone/public
           cp -r public/. .next/standalone/public/

@@ -6,7 +6,7 @@
  */
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { cpSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -200,6 +200,38 @@ describe("patch-prisma-fluent-field-map safeguards", () => {
         expect(workflow.indexOf("- name: Create deployment tarball")).toBeGreaterThan(checkAt)
       }
     }
+  })
+
+  it("assembles direct Prisma files over existing traced directories without nesting packages", () => {
+    const workflow = readFileSync(path.join(ROOT, ".github/workflows/deploy.yml"), "utf8")
+    const assembly = workflow.slice(workflow.indexOf("- name: Assemble standalone bundle"), workflow.indexOf("- name: Verify Prisma fluent optimization"))
+    const commands = assembly.split("\n").map((line) => line.trim())
+      .filter((line) => /^(mkdir -p|cp -r) .*node_modules\/(\.prisma|@prisma)/.test(line))
+    expect(commands.filter((line) => line.startsWith("cp -r"))).toHaveLength(2)
+    expect(commands.some((line) => line.startsWith("mkdir -p"))).toBe(true)
+
+    const root = mkdtempSync(path.join(scratch, "assembly-"))
+    const write = (file: string, text: string) => {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+      writeFileSync(path.join(root, file), text)
+    }
+    const files = [
+      [".prisma/client/index.js", "current generated client"],
+      ["@prisma/client/package.json", "current package"],
+      ["@prisma/client/runtime/library.js", "patched CommonJS runtime"],
+      ["@prisma/client/runtime/library.mjs", "patched ESM runtime"],
+    ]
+    for (const [file, contents] of files) write(`node_modules/${file}`, contents)
+    // Next's trace already supplies directories and some files; ESM can be
+    // absent from a CJS application trace. Copying a directory into an existing
+    // directory would create @prisma/@prisma instead of completing this tree.
+    write(".next/standalone/node_modules/.prisma/client/index.js", "stale client")
+    write(".next/standalone/node_modules/@prisma/client/runtime/library.js", "stale runtime")
+    const run = spawnSync("bash", ["-eu", "-c", commands.join("\n")], { cwd: root, encoding: "utf8", timeout: 10_000 })
+    expect(run.status, `${run.stdout}\n${run.stderr}`).toBe(0)
+    for (const [file, contents] of files) expect(readFileSync(path.join(root, ".next/standalone/node_modules", file), "utf8")).toBe(contents)
+    expect(existsSync(path.join(root, ".next/standalone/node_modules/@prisma/@prisma"))).toBe(false)
+    expect(existsSync(path.join(root, ".next/standalone/node_modules/.prisma/.prisma"))).toBe(false)
   })
 })
 
