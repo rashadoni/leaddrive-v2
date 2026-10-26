@@ -5,6 +5,8 @@ import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { readIdentityArtifact } from "./release-contract.mjs"
+import { databaseEnvironment, verifyDatabaseTarget } from "./commission-database.mjs"
+export { databaseEnvironment } from "./commission-database.mjs"
 
 const APP = "/opt/leaddrive-v2"
 const ENV = "/etc/leaddrive/app.env"
@@ -67,33 +69,6 @@ export function planKeyPreparation(source, state, runningValues) {
   return { source: source + "\n" + KEYS.map((key, index) => `${key}='${rings[index]}'`).join("\n") + "\n", created: true }
 }
 
-export function databaseEnvironment(appUrl, migrationUrl, readOnly) {
-  try {
-    const app = new URL(appUrl), db = new URL(migrationUrl)
-    for (const url of [app, db]) if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || url.pathname.length < 2 || url.hash) throw new Error()
-    if (app.hostname !== db.hostname || (app.port || "5432") !== (db.port || "5432") || app.pathname !== db.pathname) fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_TARGET")
-    const env = { PATH: process.env.PATH, LANG: "C.UTF-8", PGHOST: db.hostname, PGPORT: db.port || "5432",
-      PGDATABASE: decodeURIComponent(db.pathname.slice(1)), PGUSER: decodeURIComponent(db.username), PGPASSWORD: decodeURIComponent(db.password),
-      PGCONNECT_TIMEOUT: "5", PGAPPNAME: "identity-runtime-commission",
-      PGOPTIONS: `-c default_transaction_read_only=${readOnly ? "on" : "off"} -c statement_timeout=5000 -c lock_timeout=3000 -c search_path=public` }
-    const seen = new Set()
-    for (const [key, value] of db.searchParams) {
-      if (seen.has(key)) fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_DUPLICATE")
-      seen.add(key)
-      if (key === "schema" && value === "public") continue
-      if (key === "sslmode" && ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"].includes(value)) env.PGSSLMODE = value
-      // The managed PostgreSQL deployment uses an explicit CA with verify-full.
-      // Forward the root-owned configuration literally; never remove TLS
-      // verification or inherit unrelated libpq overrides from the environment.
-      else if (key === "sslrootcert" && path.isAbsolute(value) && value.length <= 1024 && !/[\0\r\n]/.test(value)) env.PGSSLROOTCERT = value
-      else fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_OPTION")
-    }
-    return env
-  } catch (error) {
-    if (/^IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_(TARGET|DUPLICATE|OPTION)$/.test(error.message ?? "")) throw error
-    fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID")
-  }
-}
 
 function safeFile(file, mode = 0o600, uid = 0, gid = 0) {
   const parent = lstatSync(path.dirname(file))
@@ -186,10 +161,11 @@ export function commission(input) {
   if (!artifact || artifact.artifactSha !== input.sha) fail("IDENTITY_COMMISSION_DEPLOYED_SHA_MISMATCH")
   const source = safeFile(ENV), migration = safeFile(MIGRATION)
   const appUrl = envValue(source, "DATABASE_URL"), migrationUrl = envValue(migration, "MIGRATION_DATABASE_URL")
+  verifyDatabaseTarget(appUrl, migrationUrl)
   const state = JSON.parse(sql(inventorySql, databaseEnvironment(appUrl, migrationUrl, true), { slug: input.slug }))
   assertInventory(state)
   const configured = parseRings(KEYS.map(key => envValue(source, key))) !== null
-  if (input.mode === "inspect") return { ...state, configured, sourceSha: input.sha, mutation: false }
+  if (input.mode === "inspect") return { ...state, configured, databaseTargetVerified: true, sourceSha: input.sha, mutation: false }
   const live = processes()
   if (input.mode === "prepare-keys") {
     const plan = planKeyPreparation(source, state, live.flat())
