@@ -2088,6 +2088,22 @@ jobs:
                fi
              fi'
 
+      # Zeytun's phone line answers from a catalog parsed into the web process.
+      # A fresh release has none: the first call parsed 14 MB inside the
+      # station's 5 s for the session request and the agent stayed silent
+      # (2026-10-26). Parse it now; "not_configured" is a host without the line.
+      - name: Warm Zeytun's phone line
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             WARM_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh /api/cron/zeytun-line-warm || true)"
+             printf "%s\n" "$WARM_OUTPUT"
+             if printf "%s\n" "$WARM_OUTPUT" | grep -Eq '\''"outcome":"(warm|not_configured)"'\''; then exit 0; fi
+             echo "FATAL: Zeytun line catalog did not load (see output above)"
+             exit 1'
+
       # The voice assistant is pinned to a provider model, and Google retires
       # models on its own calendar: a retired id fails every session and no test
       # of ours can see it, because every test stops at the request we send.
