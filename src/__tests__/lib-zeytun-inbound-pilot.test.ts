@@ -318,6 +318,18 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
   })
 
+  it("greets by the pharmacy 1C lists for the caller's number", async () => {
+    const f = lineFixture()
+    const findPharmacies = vi.fn(async () => [{ guid: "g1", name: "Zəfər Aptek", address: null }])
+    const handle = createInboundPilotHandler(token, { ...f.dependencies, findPharmacies })
+    const body = await (await handle(request())).json()
+    expect(body.opening).toContain("«Zəfər Aptek» kimi qeydə alınıb")
+    expect(findPharmacies).toHaveBeenCalledWith(expect.objectContaining({ purpose: "zeytun_line" }), "+994552223344")
+    // A directory that fails keeps the plain greeting.
+    const failing = createInboundPilotHandler(token, { ...f.dependencies, findPharmacies: vi.fn(async () => { throw new Error("x") }) })
+    expect((await (await failing(request())).json()).opening).toBe(ZEYTUN_LINE_OPENING)
+  })
+
   it("hands the station the catalog's maker words for recognition", async () => {
     const f = lineFixture()
     f.catalog.vocabulary = ["Sopharma", "Berlin-Chemie"]

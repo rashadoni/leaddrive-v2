@@ -30914,6 +30914,7 @@
     "identification": {
       "test_call": "aptek müəyyən edilmir",
       "phone_unique": "nömrə ilə tanındı",
+      "phone_shared": "nömrə və adı ilə tanındı",
       "named_on_call": "zəngdə adını dedi",
       "unidentified": "aptek tanınmadı"
     },

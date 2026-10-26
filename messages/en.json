@@ -30918,6 +30918,7 @@
     "identification": {
       "test_call": "pharmacy not identified",
       "phone_unique": "recognised by number",
+      "phone_shared": "recognised by number and name",
       "named_on_call": "named on the call",
       "unidentified": "pharmacy not identified"
     },

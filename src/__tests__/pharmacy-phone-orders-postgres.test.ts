@@ -109,6 +109,8 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     sql(adminUrl!, `CREATE DATABASE "${scratch!.name}"`)
     prismaCli(["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"], { ...process.env, DATABASE_URL: scratch!.adminScratch })
     sql(scratch!.adminScratch, migrationGuards())
+    // The shared-number identification widens the CHECK (its own migration).
+    sql(scratch!.adminScratch, readFileSync(path.join(ROOT, "prisma/migrations/20261104100000_pharmacy_phone_orders_shared_number/migration.sql"), "utf8"))
     sql(adminUrl!, `DROP ROLE IF EXISTS "${scratch!.role}"`)
     sql(adminUrl!, `CREATE ROLE "${scratch!.role}" LOGIN PASSWORD '${scratch!.password}' NOSUPERUSER NOBYPASSRLS`)
     sql(scratch!.adminScratch, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"`)
@@ -226,6 +228,19 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     const confirmed = await (await patch(order.id, { action: "confirm", revision: 3 })).json()
     expect(confirmed.data).toMatchObject({ status: "confirmed", confirmedBy: "Nigar", total: "50.00" })
     expect((await patch(order.id, { action: "remove_line", revision: 4, lineId: order.lines[1].id })).status).toBe(409)
+  })
+
+  it("keeps the 1C pharmacy a number named, and refuses an identification it does not know", async () => {
+    const saved = await save(app as unknown as PrismaClient, {
+      organizationId: ZEYTUN, providerCallId: callId(6), callStartedAt: "2026-10-24T06:42:00.000Z", callerPhoneE164: PHONE,
+      identification: "phone_shared", pharmacyName: "Nur Aptek", pharmacyGuid: "55555555-6666-4777-8888-999999999999",
+      pharmacyAddress: "Bakı, Yasamal", catalog: CATALOG, lines: [LIST[0]],
+    })
+    expect(saved.status).toBe("saved")
+    const row = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(6) } })
+    expect(row).toMatchObject({ pharmacyIdentification: "phone_shared", pharmacyName: "Nur Aptek",
+      pharmacyGuid: "55555555-6666-4777-8888-999999999999", pharmacyAddress: "Bakı, Yasamal" })
+    await expect(admin.pharmacyPhoneOrder.update({ where: { id: row.id }, data: { pharmacyIdentification: "guessed" } })).rejects.toThrow()
   })
 
   it("records a rejection with its reason", async () => {
