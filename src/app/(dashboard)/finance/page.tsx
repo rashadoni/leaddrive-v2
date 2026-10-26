@@ -9,7 +9,8 @@ import { ARDashboard } from "@/components/finance/ar-dashboard"
 import { APDashboard } from "@/components/finance/ap-dashboard"
 import { FundManager } from "@/components/finance/fund-manager"
 import { PaymentsDashboard } from "@/components/finance/payments-dashboard"
-import { LayoutDashboard, FileText, CreditCard, PiggyBank, Banknote } from "lucide-react"
+import { EQaimeDashboard } from "@/components/finance/e-qaime-dashboard"
+import { LayoutDashboard, FileText, CreditCard, PiggyBank, Banknote, FileSpreadsheet } from "lucide-react"
 import { DidYouKnow } from "@/components/did-you-know"
 import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
@@ -29,6 +30,7 @@ export default function FinancePage() {
     { value: "payables", label: t("tabAP"), icon: CreditCard },
     { value: "funds", label: t("tabFunds"), icon: PiggyBank },
     { value: "payments", label: t("tabPayments"), icon: Banknote },
+    { value: "e-qaime", label: t("tabEqaime"), icon: FileSpreadsheet },
   ] as const
 
   return (
@@ -66,6 +68,10 @@ export default function FinancePage() {
 
         <TabsContent value="payments">
           <PaymentsDashboard />
+        </TabsContent>
+
+        <TabsContent value="e-qaime">
+          <EQaimeDashboard />
         </TabsContent>
       </Tabs>
     </div>
