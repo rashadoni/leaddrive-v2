@@ -36,6 +36,7 @@ type WidgetConfigMap = Record<string, Partial<DashboardWidgetConfig>>
 type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string
 type FetchHeaders = Record<string, string>
 type SessionUserWithDashboardScope = {
+  id?: string | null
   organizationId?: string | number | null
   role?: string | null
 }
@@ -98,8 +99,11 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
   weeklyMetrics: null,
 }
 
-async function fetchJsonWithTimeout<T>(url: string, headers: FetchHeaders, timeoutMs = 12000): Promise<T | null> {
+async function fetchJsonWithTimeout<T>(url: string, headers: FetchHeaders, signal: AbortSignal, timeoutMs = 12000): Promise<T | null> {
   const controller = new AbortController()
+  const abort = () => controller.abort()
+  signal.addEventListener("abort", abort, { once: true })
+  if (signal.aborted) controller.abort()
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
 
   try {
@@ -110,6 +114,7 @@ async function fetchJsonWithTimeout<T>(url: string, headers: FetchHeaders, timeo
     return null
   } finally {
     window.clearTimeout(timeout)
+    signal.removeEventListener("abort", abort)
   }
 }
 
@@ -179,7 +184,7 @@ export default function DashboardPage() {
   const [loyaltyOverview, setLoyaltyOverview] = useState<LoyaltyDashboardOverview | null>(null)
   const [widgetConfig, setWidgetConfig] = useState<WidgetConfigMap | null>(null)
   const [quickActionHrefs, setQuickActionHrefs] = useState<string[] | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loadState, setLoadState] = useState<{ scope: string | null; complete: boolean }>({ scope: null, complete: false })
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   useAutoTour("dashboard")
   const org = useMemo(() => orgFromSession(session?.user), [session?.user])
@@ -187,45 +192,47 @@ export default function DashboardPage() {
   // (field contacts, pharmacy promotions) like the sidebar does. Kept apart
   // from `org` so loading the switches does not re-run the data effects.
   const navOrg = useNavOrgContext(session?.user)
+  const organizationId = scopedUser?.organizationId == null ? null : String(scopedUser.organizationId)
+  const canLoadLoyalty = org.role === "superadmin" || hasModule(org, "loyalty")
+  // Session refreshes replace user/org objects and can briefly report loading
+  // with the same user still present. Only a change in data scope needs a fetch.
+  const requestScope = organizationId && sessionStatus !== "unauthenticated"
+    ? JSON.stringify([scopedUser?.id || session?.user?.email || null, organizationId, org.role, canLoadLoyalty])
+    : null
+  // Invalidate during render, before children can see previous-scope data.
+  // This also covers switching away and back before the next batch completes.
+  if (loadState.scope !== requestScope) setLoadState({ scope: requestScope, complete: false })
+  const loading = requestScope
+    ? loadState.scope !== requestScope || !loadState.complete
+    : sessionStatus === "loading"
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
 
     async function loadDashboard() {
-      if (sessionStatus === "loading") return
+      if (!requestScope || !organizationId) return
 
-      const orgId = scopedUser?.organizationId
-      if (!orgId) {
-        setLoading(false)
-        return
-      }
-
-      setLoading(true)
-
-      const headers = { "x-organization-id": String(orgId) }
-      const canLoadLoyalty = org.role === "superadmin" || hasModule(org, "loyalty")
-      const dashboardPromise = fetchJsonWithTimeout<DashboardApiResponse>("/api/v1/dashboard/executive", headers)
-      const configPromise = fetchJsonWithTimeout<WidgetConfigApiResponse>("/api/v1/dashboard/widget-config", headers)
+      const headers = { "x-organization-id": organizationId }
+      const dashboardPromise = fetchJsonWithTimeout<DashboardApiResponse>("/api/v1/dashboard/executive", headers, controller.signal)
+      const configPromise = fetchJsonWithTimeout<WidgetConfigApiResponse>("/api/v1/dashboard/widget-config", headers, controller.signal)
       const loyaltyPromise = canLoadLoyalty
-        ? fetchJsonWithTimeout<LoyaltyDashboardOverview>("/api/v1/loyalty-overview", headers)
+        ? fetchJsonWithTimeout<LoyaltyDashboardOverview>("/api/v1/loyalty-overview", headers, controller.signal)
         : Promise.resolve(null)
 
       const [dashboardRes, configRes, loyaltyRes] = await Promise.all([dashboardPromise, configPromise, loyaltyPromise])
-      if (cancelled) return
+      if (controller.signal.aborted) return
 
       setData(dashboardRes?.success && dashboardRes.data ? dashboardRes.data : EMPTY_DASHBOARD_DATA)
       setLoyaltyOverview(loyaltyRes)
-      if (configRes?.success && configRes.data?.widgets) setWidgetConfig(configRes.data.widgets)
-      if (configRes?.success && Array.isArray(configRes.data?.quickActions)) {
-        setQuickActionHrefs(configRes.data.quickActions)
-      }
+      setWidgetConfig(configRes?.success && configRes.data?.widgets ? configRes.data.widgets : null)
+      setQuickActionHrefs(configRes?.success && Array.isArray(configRes.data?.quickActions) ? configRes.data.quickActions : null)
       setLastUpdated(new Date())
-      setLoading(false)
+      setLoadState({ scope: requestScope, complete: true })
     }
 
     void loadDashboard()
-    return () => { cancelled = true }
-  }, [org, scopedUser?.organizationId, sessionStatus])
+    return () => controller.abort()
+  }, [requestScope, organizationId, canLoadLoyalty])
 
   function timeAgo(d: string): string {
     const diff = Date.now() - new Date(d).getTime()
@@ -296,7 +303,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (!data) return <div className="py-20 text-center text-muted-foreground">{t("noData")}</div>
+  if (!requestScope || !data) return <div className="py-20 text-center text-muted-foreground">{t("noData")}</div>
 
   const dashboardData = data
   const { pipeline, leads, activity, risks, forecast, campaigns, events, weeklyMetrics } = dashboardData
