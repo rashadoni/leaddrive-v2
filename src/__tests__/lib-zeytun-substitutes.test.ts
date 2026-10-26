@@ -48,8 +48,17 @@ describe("substitutes on the phone line: same substance, same strength, same for
     expect(names("substitute: ACETYLCYSTEINE; 300 mg; effervescent tablet")).toEqual([])
   })
 
-  it("finds nothing when the substance, the strength or the form is missing or unknown", () => {
-    for (const text of ["substitute: ACETYLCYSTEINE", "substitute: ACETYLCYSTEINE; 600 mg", "substitute: ACETYLCYSTEINE; ; effervescent tablet",
+  it("without a form offers every form of that strength, each to be named to the caller", () => {
+    // The caller said only "Fluimucil 600": effervescent tablets and sachets, never 200 mg, never out of stock or restricted.
+    expect(names("substitute: ACETYLCYSTEINE; 600 mg")).toEqual([
+      "Мукорин лонг 600 мг № 10 (Шипучие таблетки) (Тест) (Германия)",
+      "Мукорин 600 мг № 10 (Саше) (Тест) (Германия)",
+      "Ацетин 0,6 г № 20 (Шипучие таблетки) (Тест) (Индия)",
+    ])
+  })
+
+  it("finds nothing when the substance or the strength is missing, or the form is unknown", () => {
+    for (const text of ["substitute: ACETYLCYSTEINE", "substitute: ACETYLCYSTEINE; ; effervescent tablet",
       "substitute: ; 600 mg; effervescent tablet", "substitute: ACETYLCYSTEINE; 600 mg; something", "substitute: АЦЕТИЛЦИСТЕИН; 600 mg; effervescent tablet"]) {
       expect(names(text), text).toEqual([])
     }
@@ -68,5 +77,19 @@ describe("substitutes on the phone line: same substance, same strength, same for
     expect(formKey("Глазные капли")).not.toBe(formKey("Капли"))
     expect(formKey("Жеват.таб")).not.toBe(formKey("Таблетки"))
     expect(parseSubstituteRequest("substitute: SITAGLIPTIN; 100 mg; tablet")).toEqual({ inn: "SITAGLIPTIN", strength: { amount: 100, unit: "mg" }, form: "tablet" })
+  })
+})
+
+describe("the price unit of an item 1C counts in pieces but names as a box", () => {
+  it("prices per box when the Azerbaijani name marks the box over a generic «шт»", async () => {
+    const { listPrice } = await import("@/lib/voice-agent/pharmacy/zeytun-inbound-pilot")
+    const asOf = "2026-10-26T12:00:00Z"
+    // A.S.S. long 600 №10: «шт» in 1C, «/*qutu/*» in its name, 5.54 the box (2026-10-26 call).
+    expect(listPrice({ priceAsReported: "5.54", baseUnitAsReported: "шт ", nameAz: "Asetilsistein 600 mq №10 (fışıldayan tablet) /*qutu/* \\*Salutas\\*" }, asOf))
+      .toMatchObject({ amount: "5.54", per: "qutu" })
+    // No mark, or a unit that is not the generic piece: as before.
+    expect(listPrice({ priceAsReported: "5.67", baseUnitAsReported: "шт", nameAz: "Aspirator" }, asOf)).toMatchObject({ per: "ədəd" })
+    expect(listPrice({ priceAsReported: "2.78", baseUnitAsReported: "флак", nameAz: "Almagel /*qutu/*" }, asOf)).toMatchObject({ per: "flakon" })
+    expect(listPrice({ priceAsReported: "1.33", baseUnitAsReported: "упак", nameAz: "Parasetamol /*qutu/*" }, asOf)).toMatchObject({ per: "qutu" })
   })
 })

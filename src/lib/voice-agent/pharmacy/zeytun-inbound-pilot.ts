@@ -6,6 +6,7 @@ import { searchResponse, searchRestrictions } from "./zeytun-search-boundary"
 import { openingForCandidates, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type PhoneOrderCatalog,
   type PhoneOrderLineInput, type PhoneOrderSaveResult } from "./phone-orders"
+import { SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
 
 const id = z.string().trim().min(1).max(128)
 const hash = z.string().regex(/^[a-f0-9]{64}$/)
@@ -71,10 +72,15 @@ const SPOKEN_UNITS: Record<string, string> = {
 /** The feed's price for one base unit. Owner, 2026-10-23: one price for all
  * of Zeytun's pharmacies and it is final ("это цена для аптек конечная"), so it
  * may be read to the caller. It is a list price, never a total or an offer. */
-export function listPrice(item: { priceAsReported?: unknown; baseUnitAsReported?: unknown }, asOf: string) {
+export function listPrice(item: { priceAsReported?: unknown; baseUnitAsReported?: unknown; nameAz?: unknown }, asOf: string) {
   const amount = item.priceAsReported, unit = item.baseUnitAsReported
   if (typeof amount !== "string" || !/^\d{1,7}(?:\.\d{1,4})?$/.test(amount) || !/[1-9]/.test(amount)) return null
-  const per = typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] : undefined
+  // 2026-10-26 call: A.S.S. long 600 №10 is "шт" in 1C and "/*qutu/*" in its
+  // Azerbaijani name; its 5.54 is the box (73 items like it). Read per piece,
+  // three boxes could not be priced. A generic "шт" defers to that mark.
+  const boxed = typeof unit === "string" && unit.trim().toLowerCase() === "шт" &&
+    typeof item.nameAz === "string" && /\/\*\s*qutu\s*\/\*/iu.test(item.nameAz)
+  const per = boxed ? "qutu" : typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] : undefined
   return per ? { amount, currency: "AZN", per, asOf } : null
 }
 /** The call's catalog as the order writer reads it: one product id, exactly. */
@@ -148,6 +154,12 @@ export const ZEYTUN_LINE_PROMPT = [
     "The caller claims to be a pharmacy, NOT verified. The opening asks which one; if unclear ask once more, then go on. Never infer it from the number or CRM history."],
   ["say once that this test call cannot confirm them", "say once that you cannot confirm them on this call"],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it."],
+  // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
+  // повторял заказы, а просто принимает и говорит номер заказа и обработки».
+  ["At the end read the complete preliminary list ONCE, with quantities in the caller's units and unresolved details, and ask for corrections once. Once the caller agrees, call save_order_list ONCE",
+    "When the caller has nothing more to add, do not read the list back unless asked; call save_order_list ONCE"],
+  ["If it returns saved, say the list is recorded as orderNumber for Zeytun's manager to check: a request, not an accepted order.",
+    "If it returns saved, say only that the order is accepted as orderNumber and passed to Zeytun's manager for processing."],
   // Owner, 2026-10-26: offer a substitute with the same substance, «та же
   // доза и та же форма». The bridge takes at most 4000 characters, so the
   // line's wording is shortened elsewhere to make room for the rule.
@@ -164,7 +176,7 @@ export const ZEYTUN_LINE_PROMPT = [
   ["Keep each quantity in the unit the caller said: qutu (box), ədəd (piece), ampula, flakon; never turn boxes into pieces or back. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit and is not added to the old one.",
     "Keep each quantity in the caller's unit (qutu, ədəd, ampula, flakon); never convert. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit, never adds."],
   ["in the final list say it is not found in the catalog.",
-    "in the final list say it is not found in the catalog.\nSubstitute: only if no lookup result has the caller's strength and form. If you surely know the product's INN, search text \"substitute: INN; strength; form\" (e.g. \"substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet\"); if strength or form is unknown, ask first. Offer at most two returned items as the same substance, strength and form; add one only after a clear yes, saving its externalId with the caller's original words in spoken. If nothing returns, say there is no such substitute."],
+    "the line stays unresolved.\nSubstitute: when the caller's product is not found, or none has their strength and form, at once, unasked, search text \"substitute: INN; strength; form\" if you surely know its INN (e.g. \"substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet\"); leave form out if the caller gave none, ask the strength if unknown. Offer at most two returned items, naming substance, strength and form; add one only after a clear yes, saving its externalId with the caller's original words in spoken. If none returns, say there is no such substitute."],
   ["Price: only when the caller asks, and only for a product already narrowed to one lookup candidate. If that candidate has listPrice, say the amount in manat per its unit (per qutu, per ədəd, ...). Never mention the price list date unless asked. Never round and never offer a discount.",
     "Price: only when asked, and only for a product narrowed to one candidate: say its listPrice in manat per its unit. Never round or offer a discount; mention the price list date only if asked."],
   ["No medical advice, substitution or dosage.",
@@ -305,6 +317,12 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced })
       }
       const result = catalog.search(input.query)
+      // What the agent asked as a substitute and how many it got: product
+      // words only, no caller. 2026-10-26 call: the agent said it could not
+      // verify a substitute and nothing showed what it had searched.
+      if (input.query.text && SUBSTITUTE_PREFIX.test(input.query.text)) {
+        console.log("[zeytun-line] substitute", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount }))
+      }
       return searchResponse({ status: result.status, mode: "owner_inbound_preview", customerVerified: false,
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount > 1,
         candidates: result.candidates.slice(0, 5).map(item => {

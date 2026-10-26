@@ -7,8 +7,10 @@
  * names the substance; nothing here trusts it beyond an exact match.
  */
 
-/** The agent's request: `substitute: INN; strength; form`. */
-export type SubstituteRequest = { inn: string; strength: Strength; form: string }
+/** The agent's request: `substitute: INN; strength; form`. The form is left
+ * out when the caller named none: then every form of that strength, each
+ * named to the caller, who chooses. */
+export type SubstituteRequest = { inn: string; strength: Strength; form: string | null }
 export type Strength = { amount: number; unit: "mg" | "mcg" | "ml" | "%" | "iu" }
 
 export const SUBSTITUTE_PREFIX = /^\s*substitute\s*:/iu
@@ -87,11 +89,14 @@ export function formKey(text: string): string | null {
   return FORMS.find(([, pattern]) => pattern.test(text))?.[0] ?? null
 }
 
-/** `substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet` → its parts, or null when one is missing. */
+/** `substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet` → its parts, or
+ * null when the substance or strength is missing, or a form is given that is
+ * none of the known ones (an unknown form must not widen to every form). */
 export function parseSubstituteRequest(text: string): SubstituteRequest | null {
   if (!SUBSTITUTE_PREFIX.test(text)) return null
   const [inn, strength, form] = text.replace(SUBSTITUTE_PREFIX, "").split(";").map(part => part.trim())
   const parsed = strength ? strengthOf(strength) : null
-  if (!inn || !innKey(inn) || !parsed || !form || !formKey(form)) return null
-  return { inn: innKey(inn), strength: parsed, form: formKey(form)! }
+  if (!inn || !innKey(inn) || !parsed) return null
+  if (form && !formKey(form)) return null
+  return { inn: innKey(inn), strength: parsed, form: form ? formKey(form) : null }
 }
