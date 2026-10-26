@@ -300,12 +300,14 @@ export function FinanceDashboard() {
   )
 }
 
-function SummaryRow({ label, value, color, bold }: { label: string; value: number; color: string; bold?: boolean }) {
+// A null value is "there is none" (the expense plan, since 2026-10-07): a dash,
+// not a crash of the whole overview and not a misleading 0.
+function SummaryRow({ label, value, color, bold }: { label: string; value: number | null; color: string; bold?: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <span className={`text-xs ${bold ? "font-semibold" : "text-muted-foreground"}`}>{label}</span>
-      <span className={`text-sm tabular-nums ${bold ? "font-bold" : "font-medium"}`} style={{ color }}>
-        {fmt(value)} {getCurrencySymbol()}
+      <span className={`text-sm tabular-nums ${bold ? "font-bold" : "font-medium"}`} style={{ color: value == null ? undefined : color }}>
+        {value == null ? "—" : `${fmt(value)} ${getCurrencySymbol()}`}
       </span>
     </div>
   )
