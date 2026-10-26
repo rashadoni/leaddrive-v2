@@ -512,7 +512,9 @@ try {
     assert.equal(await admin.mtmVisit.count({ where: { id: trialVisit.id, agentId: retiredCard } }), 1)
     const fieldList = await initialAdmin.current.request.get('/api/v1/mtm/agents?limit=200', { timeout: 120000 })
     assert.equal(fieldList.status(), 200)
-    assert.ok(!(await fieldList.json()).data.some(a => a.id === retiredCard))
+    const listedAgents = (await fieldList.json()).data.agents
+    assert.ok(Array.isArray(listedAgents))
+    assert.ok(!listedAgents.some(a => a.id === retiredCard))
     assert.equal((await initialAdmin.current.request.put(`/api/v1/mtm/agents/${retiredCard}`, { data: { status: "ACTIVE" } })).status(), 404)
     assert.equal((await initialAdmin.current.request.delete(`/api/v1/mtm/agents/${retiredCard}`)).status(), 200)
     assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId("bootstrap") }, select: { phone: true } })).phone, bootstrapPhone)
