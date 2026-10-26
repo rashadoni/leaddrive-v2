@@ -1,7 +1,7 @@
 "use client"
 
 import { TrendingUp, TrendingDown, Minus } from "lucide-react"
-import { DEFAULT_CURRENCY } from "@/lib/constants"
+import { useOrgDefaultCurrency } from "@/lib/use-org-default-currency"
 
 interface FinanceKpiCardProps {
   title: string
@@ -13,6 +13,7 @@ interface FinanceKpiCardProps {
   color: string
   variance?: number
   variancePct?: number | null
+  /** Defaults to the organisation's currency (not the browser build's "USD"); "" shows none. */
   currency?: string
   invertVariance?: boolean // true for expenses: over plan = bad
 }
@@ -23,7 +24,9 @@ function fmt(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
-export function FinanceKpiCard({ title, value, plan, planLabel, sub, icon, color, variance, variancePct, currency = DEFAULT_CURRENCY, invertVariance }: FinanceKpiCardProps) {
+export function FinanceKpiCard({ title, value, plan, planLabel, sub, icon, color, variance, variancePct, currency, invertVariance }: FinanceKpiCardProps) {
+  const orgCurrency = useOrgDefaultCurrency()
+  const shownCurrency = currency ?? orgCurrency ?? ""
   const isPositive = invertVariance ? (variancePct ?? 0) <= 0 : (variancePct ?? 0) >= 0
   const varianceColor = variancePct === 0 || variancePct == null ? "text-muted-foreground" : isPositive ? "text-green-600" : "text-red-600"
   const VarianceIcon = variancePct === 0 || variancePct == null ? Minus : isPositive ? TrendingUp : TrendingDown
@@ -38,7 +41,7 @@ export function FinanceKpiCard({ title, value, plan, planLabel, sub, icon, color
           <div className="min-w-0">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight">{title}</p>
             <p className="text-2xl font-bold mt-1 tabular-nums tracking-tight leading-none text-foreground">
-              {fmt(value)} <span className="text-xs font-normal text-muted-foreground">{currency}</span>
+              {fmt(value)} <span className="text-xs font-normal text-muted-foreground">{shownCurrency}</span>
             </p>
             {plan != null && plan > 0 && (
               <div className="flex items-center gap-1.5 mt-1.5">

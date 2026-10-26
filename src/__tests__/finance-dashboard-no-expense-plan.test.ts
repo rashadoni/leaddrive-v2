@@ -42,12 +42,20 @@ vi.mock("recharts", async (importOriginal) => {
   return { ...actual, ResponsiveContainer: Box }
 })
 
+// The organisation's currency comes from the server, as in the browser: the
+// session names the organisation, /api/v1/organization/default-currency answers.
+vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { organizationId: "org-1" } }, status: "authenticated" }) }))
+
 import { FinanceDashboard } from "@/components/finance/finance-dashboard"
 
 let container: HTMLDivElement
 let root: Root
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  vi.stubGlobal("fetch", vi.fn(async (url: string) =>
+    String(url).includes("/api/v1/organization/default-currency")
+      ? new Response(JSON.stringify({ success: true, data: { defaultCurrency: "AZN" } }), { status: 200 })
+      : new Response("{}", { status: 404 })))
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -55,6 +63,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => { root.unmount() })
   container.remove()
+  vi.unstubAllGlobals()
 })
 
 describe("finance overview without an expense plan", () => {
@@ -64,5 +73,15 @@ describe("finance overview without an expense plan", () => {
     expect(text).toContain("—")
     expect(text).toContain("1,000") // the revenue plan still shows
     expect(text).toContain("300")   // and the expenses actually spent
+  })
+
+  it("shows amounts in the organisation's currency, not the browser build's USD", async () => {
+    await act(async () => { root.render(createElement(FinanceDashboard)) })
+    await act(async () => {}) // the currency answer arrives
+    const text = container.textContent ?? ""
+    expect(text).toContain("AZN")
+    expect(text).toContain("₼")
+    expect(text).not.toContain("USD")
+    expect(text).not.toContain("$")
   })
 })

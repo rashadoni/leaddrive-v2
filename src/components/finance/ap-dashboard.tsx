@@ -17,7 +17,7 @@ import {
 } from "recharts"
 import { Plus, DollarSign, AlertTriangle, Clock, CreditCard, Trash2, ArrowRight, XCircle } from "lucide-react"
 import type { Bill } from "@/lib/finance/types"
-import { getCurrencySymbol } from "@/lib/constants"
+import { useOrgCurrencySymbol } from "@/lib/use-org-default-currency"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 
 type CreateBillMutation = ReturnType<typeof useCreateBill>
@@ -38,6 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function APDashboard() {
   const t = useTranslations("finance.ap")
+  const cur = useOrgCurrencySymbol()
   const locale = useLocale()
   const searchParams = useSearchParams()
   const [dateFrom, setDateFrom] = useState("")
@@ -124,8 +125,8 @@ export function APDashboard() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard title={t("totalPayables")} value={`${fmt(stats?.total || 0)} ${getCurrencySymbol()}`} icon={<CreditCard className="w-5 h-5" />} color="#8b5cf6" />
-        <SummaryCard title={t("overdueTotal")} value={`${fmt(stats?.overdueTotal || 0)} ${getCurrencySymbol()}`} icon={<AlertTriangle className="w-5 h-5" />} color="#ef4444" />
+        <SummaryCard title={t("totalPayables")} value={`${fmt(stats?.total || 0)} ${cur}`} icon={<CreditCard className="w-5 h-5" />} color="#8b5cf6" />
+        <SummaryCard title={t("overdueTotal")} value={`${fmt(stats?.overdueTotal || 0)} ${cur}`} icon={<AlertTriangle className="w-5 h-5" />} color="#ef4444" />
         <SummaryCard title={t("overdueCount")} value={String(stats?.overdueCount || 0)} icon={<Clock className="w-5 h-5" />} color="#f59e0b" />
       </div>
 
@@ -151,7 +152,7 @@ export function APDashboard() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
-                  <Tooltip formatter={(value) => [`${fmt(Number(value ?? 0))} ${getCurrencySymbol()}`, t("tooltipAmount")]} />
+                  <Tooltip formatter={(value) => [`${fmt(Number(value ?? 0))} ${cur}`, t("tooltipAmount")]} />
                   <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                     {stats.aging.map((_, i) => (
                       <Cell key={i} fill={AGING_COLORS[i]} />
@@ -182,7 +183,7 @@ export function APDashboard() {
                         <p className="text-xs text-muted-foreground">{t("billCount", { count: v.billCount })}</p>
                       </div>
                     </div>
-                    <p className="text-sm font-bold tabular-nums">{fmt(v.amount)} {getCurrencySymbol()}</p>
+                    <p className="text-sm font-bold tabular-nums">{fmt(v.amount)} {cur}</p>
                   </div>
                 ))}
               </div>
