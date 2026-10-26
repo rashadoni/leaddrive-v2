@@ -21,6 +21,7 @@ import { useFieldPermissions } from "@/hooks/use-field-permissions"
 import { ClickToCallButton } from "@/components/call-widget"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { CompanyMonitoringLink } from "@/components/social/company-monitoring-link"
+import { CompanyPhoneOrders, PharmacySourceNote } from "@/components/pharmacy-orders/company-phone-orders"
 
 interface CompanyDetail {
   id: string
@@ -41,6 +42,12 @@ interface CompanyDetail {
   slaPolicyId: string | null
   creditLimit: number | null
   creditCurrency: string | null
+  category: string
+  managerId: string | null
+  /** Set on a pharmacy from Zeytun's 1C list: 1C owns its name, address, city and phone. */
+  externalSource: string | null
+  externalSyncedAt: string | null
+  externalRemovedAt: string | null
   createdAt: string
   contacts: Array<{ id: string; fullName: string; position: string | null; email: string | null; phone: string | null }>
   deals: Array<{ id: string; name: string; stage: string; valueAmount: number; currency: string; createdAt: string }>
@@ -91,6 +98,7 @@ export default function CompanyDetailPage() {
   const t = useTranslations("companies")
   const tc = useTranslations("common")
   const tv = useTranslations("companyVoen")
+  const tp = useTranslations("pharmacyPhoneOrders")
   const locale = useLocale()
   const [company, setCompany] = useState<CompanyDetail | null>(null)
   useAutoTour("companyDetail")
@@ -208,6 +216,8 @@ export default function CompanyDetailPage() {
         </Button>
       </div>
 
+      {company.externalSource ? <PharmacySourceNote company={company} /> : null}
+
       {/* Мониторинг бренда: один и тот же клиент больше не заводится дважды. */}
       <CompanyMonitoringLink companyId={String(company.id)} companyName={company.name} />
 
@@ -251,8 +261,9 @@ export default function CompanyDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue={company.externalSource ? "phone-orders" : "overview"} className="space-y-4">
         <TabsList className="bg-muted/60 p-1 h-auto flex-wrap" data-tour-id="company-tabs">
+          {company.externalSource ? <TabsTrigger value="phone-orders" className="rounded-md text-sm">{tp("companyTabOrders")}</TabsTrigger> : null}
           <TabsTrigger value="overview" className="rounded-md text-sm">{t("tabOverview")} <InfoHint text={t("hintTabOverview")} size={12} className="ml-1" /></TabsTrigger>
           <TabsTrigger value="contacts" className="rounded-md text-sm">{t("tabContacts")} ({company.contacts?.length || 0}) <InfoHint text={t("hintTabContacts")} size={12} className="ml-1" /></TabsTrigger>
           <TabsTrigger value="deals" className="rounded-md text-sm">{t("tabDeals")} ({company.deals?.length || 0}) <InfoHint text={t("hintTabDeals")} size={12} className="ml-1" /></TabsTrigger>
@@ -475,6 +486,12 @@ export default function CompanyDetailPage() {
           </Card>
         </TabsContent>
 
+        {company.externalSource ? (
+          <TabsContent value="phone-orders">
+            <CompanyPhoneOrders company={company} onSaved={fetchCompany} />
+          </TabsContent>
+        ) : null}
+
         {/* Pricing */}
         <TabsContent value="pricing" className="space-y-4">
           {pricingLoading ? (
@@ -617,6 +634,7 @@ export default function CompanyDetailPage() {
           slaPolicyId: company.slaPolicyId,
           creditLimit: company.creditLimit != null ? String(company.creditLimit) : "",
           creditCurrency: company.creditCurrency || "",
+          externalSource: company.externalSource,
         }}
       />
     </div>
