@@ -48,8 +48,8 @@ describe("agent desktop UX contract", () => {
     expect(page).toContain('<dd className="mt-1">')
     expect(page).not.toContain('<p className="mt-1 text-xs text-muted-foreground">{t("sampleSize"')
     expect(page).not.toContain('<p className="sr-only">{metric.hint}</p>')
-    expect(page).toMatch(/<Button\s+data-testid="agent-desktop-retry-load"\s+className="mt-4 min-h-11"/s)
-    expect(page).toMatch(/<Button\s+asChild\s+className="min-h-11 shrink-0"/s)
+    expect(page).toMatch(/<Button\s+data-testid="agent-desktop-retry-load"\s+className="mt-4 min-h-11"/)
+    expect(page).toMatch(/<Button\s+asChild\s+className="min-h-11 shrink-0"/)
   })
 
   it("localizes every active queue priority and status", () => {
