@@ -66,6 +66,8 @@ for (const path of [
   "src/app/admin/tenants/[id]/tenant-capabilities-panel.tsx", "src/app/api/v1/admin/tenants/[id]/route.ts",
   "src/app/api/v1/admin/tenants/[id]/capabilities/route.ts", "src/lib/tenant-capabilities.ts",
   "src/lib/workforce/default-configuration-provisioning.ts", "src/lib/modules.ts",
+  "src/lib/capabilities-overview.ts", "src/components/marketplace/capabilities-overview.tsx",
+  "src/app/(dashboard)/marketplace/page.tsx", "src/app/api/v1/settings/capabilities/overview/route.ts",
   "messages/en.json", "messages/ru.json", "messages/az.json",
 ]) {
   const bytes = await readFile(new URL(`../${path}`, import.meta.url))
@@ -224,9 +226,17 @@ try {
   record("own and legacy tenants cannot reactivate via admin actions or raw retained flags")
 
   stage = "crm-navigation-and-catalog"
-  const catalogResponse = editor.waitForResponse(res => new URL(res.url()).pathname === "/api/v1/apps" && res.request().method() === "GET", { timeout: 120_000 })
+  const catalogResponse = editor.waitForResponse(res => new URL(res.url()).pathname === "/api/v1/settings/capabilities/overview" && res.request().method() === "GET", { timeout: 120_000 })
   await editor.goto("/marketplace", { waitUntil: "domcontentloaded", timeout: 120_000 })
-  assert.equal((await catalogResponse).status(), 200)
+  const overviewResponse = await catalogResponse
+  assert.equal(overviewResponse.status(), 200)
+  assert.equal(overviewResponse.headers()["cache-control"], "private, no-store")
+  const overview = (await overviewResponse.json()).data.capabilities
+  for (const key of [workforceKey, "attendance-qr", "attendance-device-trust"]) {
+    assert.ok(!overview.some(item => item.id === key), `Withdrawn overview entry: ${key}`)
+  }
+  assert.ok(overview.some(item => item.id === "route-field" && item.status === "available" && item.openHref), "Field remains available in the client overview")
+  await editor.getByRole("heading", { name: messages.en.capabilitiesPage.title, exact: true }).waitFor({ state: "visible", timeout: 120_000 })
   const fieldGroup = editor.locator('[data-testid="sidebar-group-toggle"][data-group="Route & Field"]')
   await fieldGroup.waitFor({ state: "visible", timeout: 120_000 })
   if (await fieldGroup.getAttribute("aria-expanded") === "false") await fieldGroup.click()
@@ -235,7 +245,7 @@ try {
   assert.equal(await editor.locator('a[href="/workforce"], a[href^="/workforce/"], a[href^="/marketplace/demo/workforce-hrm"], a[href^="/marketplace/demo/attendance-"]').count(), 0)
   assert.equal(await editor.getByText("Workforce HRM", { exact: true }).count(), 0)
   await editor.screenshot({ path: `${output}/marketplace-navigation-withdrawn.png` })
-  record("authenticated CRM navigation and marketplace omit HRM, keep Route & Field")
+  record("authenticated CRM navigation and capability overview omit HRM, keep Route & Field")
 
   stage = "direct-page-api-and-cron-denial"
   for (const path of ["/workforce", "/workforce/timesheet", "/workforce/reports", "/workforce/requests", "/workforce/configuration", "/%77orkforce", "/marketplace/demo/workforce-hrm", "/marketplace/demo/attendance-qr", "/marketplace/demo/attendance-device-trust"]) {

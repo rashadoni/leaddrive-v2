@@ -111,3 +111,11 @@
 - После обновления базы повторно проверяются целевые 64 теста, parity переводов и узкий TypeScript graph. Основной экран и model task-owned paths сохраняются.
 - Граница проверки: real authenticated Zeytun остаётся NOT RUN без browser session. Широкие typecheck/build должны получить реальный success на финальном PR SHA; skipped для code PR не принимается как PASS.
 - Статус: draft PR готов к переводу в review после завершения финальной локальной сверки; затем ожидание пяти обязательных проверок и production build по штатному workflow.
+
+## 2026-10-27 — hosted проверки и обновление браузерного сценария
+
+- PR #1127 переведён в ready после финального push. На head `9b1203d9fedff648281f8e360035d26b213ee9b4` реально прошли pr-scope, runner-policy, scan и общий typecheck; static-checks дошёл до полного unit-набора. Production build в PR не запрошен label; обязательная сборка выполняется deploy workflow до допуска к выкладке.
+- Дополнительный hosted HRM browser job `121867868619` в run `40406945162` обнаружил устаревший сценарий: после перехода на `/marketplace` ожидался GET `/api/v1/apps`, который новый обзор не вызывает. Ошибка воспроизведена в CI на шаге crm-navigation-and-catalog; лог проверен. Production не менялся.
+- Сценарий обновлён на реальный GET `/api/v1/settings/capabilities/overview`, добавлены проверка private/no-store, отсутствия выведенных Workforce/QR/Device Trust и наличия доступного Route & Field с рабочей ссылкой. Проверки отсутствия HRM в sidebar, прямых страниц/API, RLS и сохранности истории сохранены. В source bindings добавлены реальные новые page/component/API/model.
+- Узкая проверка `node --check scripts/hrm-crm-withdrawal-browser-evidence.mjs` и `git diff --check` прошли. Повторный полный authenticated browser stand на Contabo — NOT RUN по ограничению нагрузки; повторяется hosted CI после checkpoint/push. Ресурсы перед проверкой: 10 GiB available, pressure 0, 105 GiB disk free.
+- Точка продолжения: обновить PR этим исправлением и дождаться проверок нового head; не сливать до успеха обязательных gates и проверки исправленного browser job.
