@@ -395,7 +395,7 @@ jobs:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
 
       - name: Event-platform SDK PostgreSQL concurrency gate
-        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts
+        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts src/__tests__/mtm-visit-events-postgres.test.ts
         env:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
 
