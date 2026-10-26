@@ -14,9 +14,12 @@
 \set ON_ERROR_STOP 1
 \prompt '' verifier
 BEGIN;
+-- Its result row would echo the inputs (the verifier among them) to the log.
+\o /dev/null
 SELECT set_config('ld.org', :'org', true), set_config('ld.role', :'role', true),
   set_config('ld.build_id', :'build_id', true), set_config('ld.build_key', :'build_key', true),
   set_config('ld.code_sha', :'code_sha', true), set_config('ld.verifier', :'verifier', true);
+\o
 
 DO $$
 DECLARE
