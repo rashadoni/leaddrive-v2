@@ -10,6 +10,7 @@ import {
   nonNegativeFinancialAmountSchema,
 } from "@/lib/validation/numeric"
 import { voenInput } from "@/lib/companies/az-taxpayer-registry"
+import { PHARMACY_SOURCE_FIELDS } from "@/lib/pharmacy-orders/pharmacy-source"
 
 const updateCompanySchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -37,7 +38,14 @@ const updateCompanySchema = z.object({
   creditCurrency: z.string().max(10).nullable().optional(),
   voen: z.string().max(40).nullable().optional(),
   director: z.string().max(200).nullable().optional(),
+  managerId: z.string().max(64).nullable().optional(),
 })
+
+/** A change to a field the company's outside register owns (1C for a pharmacy). */
+function sourceFieldChanges(current: Record<string, unknown>, data: Record<string, unknown>) {
+  const same = (a: unknown, b: unknown) => (a ?? "") === (b ?? "")
+  return PHARMACY_SOURCE_FIELDS.filter(field => field in data && !same(current[field], data[field]))
+}
 
 export const GET = withRlsAuth("companies", "read", async (_req, { orgId, role }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
@@ -51,6 +59,7 @@ export const GET = withRlsAuth("companies", "read", async (_req, { orgId, role }
         contracts: { where: { organizationId: orgId }, orderBy: { createdAt: "desc" } },
         activities: { where: { organizationId: orgId }, orderBy: { createdAt: "desc" }, take: 20 },
         slaPolicy: { select: { id: true, name: true, priority: true, resolutionHours: true, firstResponseHours: true } },
+        manager: { select: { id: true, name: true } },
       },
     })
     if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -75,6 +84,17 @@ export const PUT = withRlsAuth("companies", "write", async (req, { orgId, role }
   if (parsed.data.director !== undefined) data.director = parsed.data.director?.trim() || null
 
   try {
+    const current = await prisma.company.findFirst({ where: { id, organizationId: orgId },
+      select: { externalSource: true, name: true, address: true, city: true, phone: true } })
+    if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (current.externalSource) {
+      const fields = sourceFieldChanges(current, data)
+      if (fields.length) return NextResponse.json({ error: "Edited in 1C", code: "SOURCE_MANAGED", fields }, { status: 409 })
+    }
+    if (data.managerId) {
+      const manager = await prisma.user.findFirst({ where: { id: data.managerId as string, organizationId: orgId }, select: { id: true } })
+      if (!manager) return NextResponse.json({ error: "Unknown manager", code: "INVALID_MANAGER" }, { status: 400 })
+    }
     const fieldPerms = await getFieldPermissions(orgId, role, "company")
     const allowedData = filterWritableFields(data, fieldPerms, role)
     const company = await prisma.company.updateMany({
@@ -99,7 +119,9 @@ export const DELETE = withRlsAuth("companies", "delete", async (_req, { orgId },
   const { id } = await params
 
   try {
-    const existing = await prisma.company.findFirst({ where: { id, organizationId: orgId }, select: { name: true } })
+    const existing = await prisma.company.findFirst({ where: { id, organizationId: orgId }, select: { name: true, externalSource: true } })
+    // A pharmacy from 1C is closed in 1C: deleted here, the next load brings it back.
+    if (existing?.externalSource) return NextResponse.json({ error: "Edited in 1C", code: "SOURCE_MANAGED" }, { status: 409 })
     const result = await prisma.company.deleteMany({ where: { id, organizationId: orgId } })
     if (result.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
     // Null out tasks that linked to this now-deleted company (no FK → not auto-nulled).

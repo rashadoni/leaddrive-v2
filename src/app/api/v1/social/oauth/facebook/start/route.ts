@@ -174,4 +174,4 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
     path: "/",
   })
   return res
-})
+}, { channel: true })

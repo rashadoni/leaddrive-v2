@@ -2,11 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { NextRequest } from "next/server"
 
 /**
- * gateChannelsAccess ([P3]) — browser-admin + omni-channel feature gate for the
- * channels-config API, with the GRANDFATHER rule so an existing channel-using
- * tenant is never locked out.
- * Pass if: authenticated admin AND (superadmin OR has omnichannel OR already has
- * ≥1 ChannelConfig). Else → 401/403.
+ * gateChannelsAccess ([P3]) — the browser-admin gate for the channels-config API.
+ * Since 2026-10-26 Channels live in Settings for every tenant (owner: «каналы могут
+ * использоваться в разных модулях»), so the omni-channel module no longer decides:
+ * pass if an authenticated session admin (or superadmin). Else → 401/403.
  * Org-scoping at the query layer remains the cross-tenant boundary (tested elsewhere).
  */
 
@@ -40,7 +39,7 @@ beforeEach(() => {
   state.channelCount = 0
 })
 
-describe("gateChannelsAccess — browser-admin + omnichannel gate", () => {
+describe("gateChannelsAccess — browser-admin gate, any module", () => {
   it("BLOCKS an API-key/mobile request without a browser session", async () => {
     state.hasSession = false
     const g = await gateChannelsAccess(req)
@@ -57,23 +56,14 @@ describe("gateChannelsAccess — browser-admin + omnichannel gate", () => {
     expect((g as Response).status).toBe(403)
   })
 
-  it("ALLOWS a tenant WITH the omnichannel module", async () => {
+  it("ALLOWS an admin of a tenant WITHOUT the omnichannel module and with no channels yet", async () => {
+    state.hasModule = false; state.channelCount = 0
+    expect(ok(await gateChannelsAccess(req))).toBe(true)
+  })
+  it("ALLOWS an admin of a tenant WITH the omnichannel module", async () => {
     state.hasModule = true
     expect(ok(await gateChannelsAccess(req))).toBe(true)
   })
-
-  it("BLOCKS (403) a non-omnichannel tenant with NO existing channels", async () => {
-    state.hasModule = false; state.channelCount = 0
-    const g = await gateChannelsAccess(req)
-    expect(blocked(g)).toBe(true)
-    expect((g as Response).status).toBe(403)
-  })
-
-  it("GRANDFATHERS a non-omnichannel tenant that ALREADY has a ChannelConfig (no lockout)", async () => {
-    state.hasModule = false; state.channelCount = 1
-    expect(ok(await gateChannelsAccess(req))).toBe(true)
-  })
-
   it("superadmin BYPASSES even without module or channels", async () => {
     state.role = "superadmin"; state.hasModule = false; state.channelCount = 0
     expect(ok(await gateChannelsAccess(req))).toBe(true)

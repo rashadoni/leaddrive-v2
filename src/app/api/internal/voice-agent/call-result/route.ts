@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { AI_CONNECTED_PENDING_RESULT } from "@/lib/voice-agent/call-history"
 import {
   analyzeVoiceCall,
@@ -812,9 +813,6 @@ async function recordInboundAiResult(params: {
 /** PBX-only terminal call-result endpoint. Tenant and call ownership are server-derived. */
 export async function POST(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID
-  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
-
   const bodyText = await request.text()
   if (Buffer.byteLength(bodyText, "utf8") > 250_000) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 })
@@ -827,6 +825,10 @@ export async function POST(request: NextRequest) {
   }
   const parsed = voiceAgentCallResultSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: "Invalid call result" }, { status: 400 })
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId: parsed.data.callId }))?.organizationId
+  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
 
   const session = await runWithTenant(organizationId, () => prisma.voiceCallSession.findFirst({
     where: {

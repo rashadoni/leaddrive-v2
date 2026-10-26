@@ -53,6 +53,7 @@ vi.mock("@/lib/mobile-auth", async () => {
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const MIGRATION = "prisma/migrations/20261103090000_pharmacy_phone_orders/migration.sql"
+const COMPANIES_MIGRATION = "prisma/migrations/20261106090000_pharmacy_companies/migration.sql"
 const ZEYTUN = "org-zeytun"
 const OTHER = "org-other"
 const NOSPA = "11111111-1111-4111-8111-111111111111"
@@ -111,6 +112,18 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     sql(scratch!.adminScratch, migrationGuards())
     // The shared-number identification widens the CHECK (its own migration).
     sql(scratch!.adminScratch, readFileSync(path.join(ROOT, "prisma/migrations/20261104100000_pharmacy_phone_orders_shared_number/migration.sql"), "utf8"))
+    // Pharmacies as companies: the register-key CHECK and the manager's identification, from that migration.
+    const companies = readFileSync(path.join(ROOT, COMPANIES_MIGRATION), "utf8")
+    const keyCheck = companies.match(/ALTER TABLE "companies" ADD CONSTRAINT "companies_external_key_check"[\s\S]*?;/)
+    const identification = companies.slice(companies.indexOf(`ALTER TABLE "pharmacy_phone_orders" DROP CONSTRAINT`))
+    if (!keyCheck || !identification.includes("manager_selected")) throw new Error("pharmacy company guards not found in the migration")
+    sql(scratch!.adminScratch, `${keyCheck[0]}\n${identification}`)
+    // companies is under the same FORCE policy in production (an older migration).
+    sql(scratch!.adminScratch, `ALTER TABLE "companies" ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE "companies" FORCE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation ON "companies"
+        USING ("organizationId" = current_setting('app.org_id', true) OR current_setting('app.rls_bypass', true) = 'on')
+        WITH CHECK ("organizationId" = current_setting('app.org_id', true) OR current_setting('app.rls_bypass', true) = 'on');`)
     sql(adminUrl!, `DROP ROLE IF EXISTS "${scratch!.role}"`)
     sql(adminUrl!, `CREATE ROLE "${scratch!.role}" LOGIN PASSWORD '${scratch!.password}' NOSUPERUSER NOBYPASSRLS`)
     sql(scratch!.adminScratch, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"`)
@@ -143,6 +156,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
 
   beforeEach(async () => {
     await admin.pharmacyPhoneOrder.deleteMany({})
+    await admin.company.deleteMany({})
     session.current = { user: { id: "user-zeytun", organizationId: ZEYTUN, role: "admin", email: "manager@zeytun.test", name: "Nigar" } }
   })
 
@@ -250,5 +264,119 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(rejected.data).toMatchObject({ status: "rejected", rejectedBy: "Nigar", rejectReason: "Dublikat" })
     // The status CHECKs hold the pair together in the database too.
     await expect(admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { rejectedAt: null } })).rejects.toThrow()
+  })
+
+  /* ─── Pharmacies from 1C as companies ─────────────────────────────── */
+
+  const GUID = (n: number) => `${String(n).padStart(8, "0")}-aaaa-4bbb-8ccc-dddddddddddd`
+  const pharmacyRows = (count: number, rename: Record<number, string> = {}) => Array.from({ length: count }, (_, i) => ({
+    guid: GUID(i + 1), name: rename[i + 1] ?? `Aptek ${i + 1}`, address: `Küçə ${i + 1}`, city: "Bakı",
+    // The first two share the caller's number, as 107 numbers do in Zeytun's list.
+    phone: i < 2 ? PHONE : `+99450222${String(i).padStart(4, "0")}`,
+  }))
+  const T1 = new Date("2026-10-26T06:22:08.000Z")
+  const T2 = new Date("2026-10-26T07:22:08.000Z")
+  const T3 = new Date("2026-10-26T08:22:08.000Z")
+  const T4 = new Date("2026-10-26T09:22:08.000Z")
+  async function sync(rows: ReturnType<typeof pharmacyRows>, at: Date) {
+    const { syncPharmacyCompanies } = await import("@/lib/pharmacy-orders/pharmacy-companies")
+    return syncPharmacyCompanies(app as unknown as PrismaClient, ZEYTUN, rows, at)
+  }
+  const companyId = async (guid: string) => (await admin.company.findFirstOrThrow({ where: { externalId: guid } })).id
+
+  it("loads 1C's pharmacies as companies, changes only what 1C owns, and keeps a closed one", async () => {
+    expect(await sync(pharmacyRows(30), T1)).toMatchObject({ created: 30, updated: 0, removed: 0 })
+    const first = await admin.company.findFirstOrThrow({ where: { externalId: GUID(1) } })
+    expect(first).toMatchObject({ organizationId: ZEYTUN, name: "Aptek 1", address: "Küçə 1", city: "Bakı", phone: PHONE,
+      status: "active", externalSource: "zeytun_1c", externalSyncedAt: T1, externalRemovedAt: null })
+    // What the CRM keeps on top of 1C.
+    await admin.company.update({ where: { id: first.id }, data: { description: "Sifarişi Aynur qəbul edir", category: "partner", managerId: "user-zeytun" } })
+    // The same list again changes nothing.
+    expect(await sync(pharmacyRows(30), T1)).toEqual({ created: 0, updated: 0, removed: 0, returned: 0, removalsHeld: 0, linkedOrders: 0 })
+    // 1C renamed one pharmacy and closed another.
+    expect(await sync(pharmacyRows(29, { 1: "Aptek Bir" }), T2)).toMatchObject({ created: 0, updated: 1, removed: 1 })
+    expect(await admin.company.findFirstOrThrow({ where: { id: first.id } })).toMatchObject({ name: "Aptek Bir", externalSyncedAt: T2,
+      description: "Sifarişi Aynur qəbul edir", category: "partner", managerId: "user-zeytun" })
+    expect(await admin.company.findFirstOrThrow({ where: { externalId: GUID(30) } })).toMatchObject({ status: "inactive", externalRemovedAt: T2 })
+    expect(await admin.company.count()).toBe(30)
+    // It reopened.
+    expect(await sync(pharmacyRows(30, { 1: "Aptek Bir" }), T3)).toMatchObject({ returned: 1, removed: 0 })
+    expect(await admin.company.findFirstOrThrow({ where: { externalId: GUID(30) } })).toMatchObject({ status: "active", externalRemovedAt: null })
+    // A list that suddenly lacks more than twenty pharmacies (and a fifth) is not believed.
+    expect(await sync(pharmacyRows(9, { 1: "Aptek Bir" }), T4)).toMatchObject({ removed: 0, removalsHeld: 21 })
+    expect(await admin.company.count({ where: { externalRemovedAt: { not: null } } })).toBe(0)
+    // Another organization sees none of them; a read without any context is stopped before the database.
+    const { runWithTenant } = await import("@/lib/rls-context")
+    expect(await runWithTenant(OTHER, () => app.company.count())).toBe(0)
+    await expect(app.company.count()).rejects.toThrow("RLS-GUARD")
+    // Half a register key is refused by the database.
+    await expect(admin.company.create({ data: { organizationId: ZEYTUN, name: "x", externalSource: "zeytun_1c" } })).rejects.toThrow()
+  })
+
+  it("links a call's order to its pharmacy, and an order taken before the list was loaded", async () => {
+    const shared = { organizationId: ZEYTUN, callStartedAt: "2026-10-24T06:42:00.000Z", callerPhoneE164: PHONE,
+      identification: "phone_unique" as const, pharmacyName: "Aptek 3", pharmacyGuid: GUID(3), catalog: CATALOG, lines: [LIST[0]] }
+    await save(app as unknown as PrismaClient, { ...shared, providerCallId: callId(20) })
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(20) } })).companyId).toBeNull()
+    expect(await sync(pharmacyRows(30), T1)).toMatchObject({ created: 30, linkedOrders: 1 })
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(20) } })).companyId).toBe(await companyId(GUID(3)))
+    await save(app as unknown as PrismaClient, { ...shared, providerCallId: callId(21) })
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(21) } })).companyId).toBe(await companyId(GUID(3)))
+  })
+
+  it("lets a manager name the pharmacy of a shared number, and lists the pharmacies with their orders", async () => {
+    await sync(pharmacyRows(30), T1)
+    // The number has two pharmacies; the caller named one, the agent could not tell which.
+    await save(app as unknown as PrismaClient, { organizationId: ZEYTUN, providerCallId: callId(30), callStartedAt: "2026-10-24T06:42:00.000Z",
+      callerPhoneE164: PHONE, identification: "named_on_call", pharmacyName: "Aptek 2", catalog: CATALOG, lines: [LIST[0]] })
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(30) } })
+    const { GET: candidatesRoute } = await import("@/app/api/v1/pharmacy-orders/[id]/pharmacies/route")
+    const byPhone = (await (await candidatesRoute(json("GET", `/api/v1/pharmacy-orders/${order.id}/pharmacies`), params(order.id))).json()).data
+    expect(byPhone).toMatchObject({ spoken: "Aptek 2", byPhone: true })
+    expect(byPhone.candidates.map((c: { name: string; fitsWords: boolean }) => [c.name, c.fitsWords])).toEqual([["Aptek 1", false], ["Aptek 2", true]])
+    const searched = (await (await candidatesRoute(json("GET", `/api/v1/pharmacy-orders/${order.id}/pharmacies?q=Aptek%2017`), params(order.id))).json()).data
+    expect(searched.candidates.map((c: { name: string }) => c.name)).toEqual(["Aptek 17"])
+
+    const target = await companyId(GUID(2))
+    const named = await (await patch(order.id, { action: "set_pharmacy", revision: 1, companyId: target })).json()
+    expect(named.data.pharmacy).toMatchObject({ identification: "manager_selected", name: "Aptek 2", company: { id: target, name: "Aptek 2" } })
+    // A card still on revision 1 does not overwrite it; a company of no pharmacy register is refused.
+    expect((await patch(order.id, { action: "set_pharmacy", revision: 1, companyId: await companyId(GUID(1)) })).status).toBe(409)
+    const plain = await admin.company.create({ data: { organizationId: ZEYTUN, name: "Not a pharmacy" } })
+    expect((await patch(order.id, { action: "set_pharmacy", revision: 2, companyId: plain.id })).status).toBe(400)
+
+    const { GET: pharmaciesRoute } = await import("@/app/api/v1/pharmacy-orders/pharmacies/route")
+    const listed = (await (await pharmaciesRoute(json("GET", "/api/v1/pharmacy-orders/pharmacies"))).json()).data
+    expect(listed.counts).toEqual({ all: 30, ordered: 1, dormant: 0, shared: 2, removed: 0 })
+    expect(listed.rows[0]).toMatchObject({ name: "Aptek 2", sharedWith: 2, monthOrders: 1, monthTotal: "125.00" })
+    expect(listed.syncedAt).toBe(T1.toISOString())
+    // Forty days on, the same pharmacy is the one to call.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { createdAt: new Date(Date.now() - 40 * 86_400_000) } })
+    const later = (await (await pharmaciesRoute(json("GET", "/api/v1/pharmacy-orders/pharmacies?filter=dormant"))).json()).data
+    expect(later.counts).toMatchObject({ ordered: 0, dormant: 1 })
+    expect(later.rows).toHaveLength(1)
+    expect(later.rows[0]).toMatchObject({ name: "Aptek 2", daysSinceOrder: 40 })
+
+    const { GET: companyOrdersRoute } = await import("@/app/api/v1/companies/[id]/phone-orders/route")
+    const tab = (await (await companyOrdersRoute(json("GET", `/api/v1/companies/${target}/phone-orders`), params(target))).json()).data
+    expect(tab).toMatchObject({ monthOrders: 0, orders: [{ label: "TS-1001", total: "125.00" }] })
+  })
+
+  it("keeps what 1C owns out of the company form, and does not delete a 1C pharmacy", async () => {
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { modules: { mtm: true, crm: true } } })
+    await sync(pharmacyRows(3), T1)
+    const id = await companyId(GUID(1))
+    const companyRoute = await import("@/app/api/v1/companies/[id]/route")
+    const put = (body: Record<string, unknown>) => companyRoute.PUT(json("PUT", `/api/v1/companies/${id}`, body), params(id))
+    const renamed = await put({ name: "Renamed", description: "x" })
+    expect(renamed.status).toBe(409)
+    expect(await renamed.json()).toMatchObject({ code: "SOURCE_MANAGED", fields: ["name"] })
+    // The form sends 1C's values back unchanged with the CRM's own fields: that saves.
+    expect((await put({ name: "Aptek 1", phone: PHONE, address: "Küçə 1", city: "Bakı", description: "Qeyd", managerId: "user-zeytun" })).status).toBe(200)
+    expect(await admin.company.findFirstOrThrow({ where: { id } })).toMatchObject({ name: "Aptek 1", description: "Qeyd", managerId: "user-zeytun" })
+    // A manager from another organization is not a manager here.
+    expect((await put({ managerId: "user-other" })).status).toBe(400)
+    expect((await companyRoute.DELETE(json("DELETE", `/api/v1/companies/${id}`), params(id))).status).toBe(409)
+    expect(await admin.company.count({ where: { id } })).toBe(1)
   })
 })

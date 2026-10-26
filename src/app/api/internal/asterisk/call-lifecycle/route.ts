@@ -6,6 +6,7 @@ import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { matchCallParty } from "@/lib/calls/party-match"
 
 export const dynamic = "force-dynamic"
@@ -613,11 +614,6 @@ export async function POST(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID?.trim()
-  if (!organizationId) {
-    return NextResponse.json({ error: "Call lifecycle is not configured" }, { status: 503 })
-  }
-
   const bodyText = await request.text()
   if (Buffer.byteLength(bodyText, "utf8") > MAX_BODY_BYTES) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 })
@@ -633,6 +629,15 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid lifecycle event" }, { status: 400 })
   }
+
+  // The call's own organization; for the first event of an inbound call, the
+  // holder of the number dialled; otherwise the installation default.
+  const owner = await voiceOrganizationFor({ callId: parsed.data.callId,
+    dialled: parsed.data.state === "ringing" ? parsed.data.toNumber : null })
+  if (!owner) {
+    return NextResponse.json({ error: "Call lifecycle is not configured" }, { status: 503 })
+  }
+  const organizationId = owner.organizationId
 
   const payload = safeEventPayload(parsed.data)
   try {

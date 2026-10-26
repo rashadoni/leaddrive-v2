@@ -289,7 +289,6 @@
   },
   "navDesc": {
     "adConversions": "Лиды и выигранные сделки — в Meta (реклама в Facebook и Instagram)",
-    "telegramBot": "Свой бот, где сотрудники спрашивают о задачах и создают лидов",
     "onlineBooking": "Ссылка, по которой клиент сам записывается на свободное время",
     "bookingWorkspace": "Встречи команды, онлайн-запись и страницы бронирования",
     "skillRouting": "Навыки агентов и очереди тикетов",
@@ -537,7 +536,6 @@
   },
   "nav": {
     "adConversions": "Конверсии в рекламу",
-    "telegramBot": "Telegram-бот",
     "onlineBooking": "Онлайн-запись",
     "bookingWorkspace": "Встречи и запись",
     "skillRouting": "Маршрутизация",
@@ -5108,6 +5106,9 @@
     "auditLogDesc": "Просмотр всей активности системы",
     "noAuditLogs": "Событий аудита пока нет",
     "noAuditLogsHint": "В этом тенанте ещё нет записанных событий безопасности или изменений данных. Входы, изменения записей, экспорты и действия админов появятся здесь автоматически.",
+    "channelsTitle": "Каналы",
+    "channelsDesc": "WhatsApp, Telegram, Instagram, Facebook, SMS и почта — для всех модулей",
+    "channelsHint": "Канал подключается один раз и работает во входящих, полевых продажах, продажах и поддержке. Здесь же Telegram-бот для сотрудников.",
     "integrationsTitle": "Интеграции",
     "integrationsDesc": "Вебхуки, Google Calendar, Slack, Zapier",
     "integrationsHint": "Настройка внешних интеграций",
@@ -8215,6 +8216,7 @@
     }
   },
   "forms": {
+    "sourceManaged": "Название, телефон, город и адрес приходят из 1С и правятся там.",
     "recurrenceRule": "Повтор",
     "recurrenceNever": "Не повторять",
     "recurrenceDaily": "Ежедневно",
@@ -30938,7 +30940,8 @@
       "phone_unique": "узнана по номеру",
       "phone_shared": "узнана по номеру и названию",
       "named_on_call": "назвалась в звонке",
-      "unidentified": "аптека не определена"
+      "unidentified": "аптека не определена",
+      "manager_selected": "выбрана менеджером"
     },
     "colOrder": "Заказ",
     "colDate": "Дата",
@@ -31017,7 +31020,66 @@
     "errorStale": "Заказ изменили в другом месте — страница обновлена.",
     "errorGeneric": "Не получилось, попробуйте ещё раз.",
     "errorCatalog": "Каталог сейчас недоступен.",
-    "loading": "Загрузка…"
+    "loading": "Загрузка…",
+    "pharmacyChange": "Сменить аптеку",
+    "pharmacyChoose": "Выбрать аптеку",
+    "pharmacySaid": "Звонящий сказал:",
+    "pharmacyShared": "{count, plural, one {На этом номере # аптека.} few {На этом номере # аптеки. Выберите, какая заказала:} many {На этом номере # аптек. Выберите, какая заказала:} other {На этом номере # аптеки. Выберите, какая заказала:}}",
+    "pharmacyOne": "В 1С на этом номере одна аптека:",
+    "pharmacyNoneByPhone": "В 1С на этом номере нет аптеки. Найдите её по названию:",
+    "pharmacyFitsWords": "совпадает со словами",
+    "pharmacySearch": "Нет в списке? Поиск по всем аптекам: название, адрес, телефон",
+    "pharmacyLinkTo": "Привязать к {name}",
+    "pharmacyLink": "Привязать аптеку",
+    "viewOrders": "Заказы",
+    "viewPharmacies": "Аптеки",
+    "pharmaciesTitle": "Аптеки",
+    "pharmaciesSubtitle": "Аптеки приходят из 1С сами. Название, адрес и телефон правятся в 1С.",
+    "pharmaciesSynced": "Обновлено из 1С {date}",
+    "pharmaciesSearch": "Поиск: название, адрес, телефон",
+    "pharmaciesEmpty": "Аптек пока нет. Они появятся, когда загрузится список аптек из 1С (каждые полчаса).",
+    "pharmaciesColPhone": "Телефон",
+    "pharmaciesColManager": "Менеджер",
+    "pharmaciesColLastOrder": "Последний заказ",
+    "pharmaciesColMonth": "За 30 дней",
+    "pharmaciesDaysAgo": "{count, plural, one {# день назад} few {# дня назад} many {# дней назад} other {# дня назад}}",
+    "pharmaciesShared": "{count, plural, one {общий номер · # аптека} few {общий номер · # аптеки} many {общий номер · # аптек} other {общий номер · # аптеки}}",
+    "pharmaciesNoManager": "не назначен",
+    "pharmaciesRemoved": "неактивна в 1С",
+    "pharmaciesMore": "Показано {shown} из {total}. Уточните поиск, чтобы увидеть остальные.",
+    "companyActive": "активна в 1С",
+    "companyRemoved": "неактивна в 1С",
+    "companySynced": "Аптека из 1С · обновлено {date}",
+    "companyFrom1c": "Аптека из 1С",
+    "companyMonthOrders": "Заказов за 30 дней",
+    "companyMonthTotal": "Сумма за 30 дней",
+    "companyCadence": "Обычно заказывает",
+    "companyEveryDays": "{count, plural, one {раз в # день} few {раз в # дня} many {раз в # дней} other {раз в # дня}}",
+    "companyNoOrders": "Телефонных заказов от этой аптеки пока нет.",
+    "companyColWhat": "Что",
+    "companyFrom1cTitle": "Из 1С",
+    "companyEditedIn1c": "правится в 1С",
+    "companyName": "Название",
+    "companyCrmTitle": "В CRM",
+    "companySaving": "сохраняю…",
+    "companySaved": "сохранено",
+    "companyEditedHere": "правится здесь",
+    "companyCategory": "Категория",
+    "companyNote": "Заметка",
+    "companyTabOrders": "Заказы",
+    "pharmaciesFilter": {
+      "all": "Все",
+      "ordered": "Заказывали за 30 дней",
+      "dormant": "Не заказывали 30+ дней",
+      "shared": "Общий номер",
+      "removed": "Неактивные в 1С"
+    },
+    "companyCategoryValue": {
+      "client": "Клиент",
+      "partner": "Партнёр",
+      "prospect": "Потенциальный",
+      "inactive": "Неактивный"
+    }
   },
   "timeAppDownload": {
     "pageTitle": "LeadDrive Time для Android",
@@ -31059,7 +31121,8 @@
     "applyHint": "Заполняет пустые поля названия, адреса и директора. Сохраняется, только когда вы сохраните компанию."
   },
   "telegramStaff": {
-    "title": "Telegram-бот",
+    "backToChannels": "Каналы",
+    "title": "Telegram для сотрудников",
     "desc": "Собственный Telegram-бот организации: сотрудники обычными словами спрашивают о своих задачах, сделках и клиентах и создают лида или задачу, не открывая CRM. Каждый видит только то, что ему можно видеть в CRM.",
     "cardTitle": "Бот для сотрудников",
     "cardDesc": "Нужен отдельный бот — не тот, в который пишут ваши клиенты.",
@@ -31114,6 +31177,22 @@
     "notFromCatalog": "Откройте это окно из CRM: Настройки → Каналы → WhatsApp.",
     "notConfigured": "Подключение WhatsApp через Meta на этом сервере недоступно."
   },
+  "voiceLineNumbers": {
+    "title": "Голосовые номера",
+    "adminHint": "Звонки на эти номера получает эта организация и её голосовой агент. Номер может принадлежать только одной организации.",
+    "tenantHint": "Звонки на эти номера принимает ваш голосовой агент. Номера подключает LeadDrive.",
+    "loading": "Загрузка…",
+    "none": "Номеров пока нет.",
+    "noLabel": "без подписи",
+    "remove": "Убрать",
+    "number": "Номер",
+    "label": "Подпись",
+    "labelPlaceholder": "Например, «Заказы»",
+    "add": "Добавить",
+    "taken": "Этот номер уже у организации «{holder}».",
+    "invalid": "Номер не похож на телефонный: пишите +994… или 012…",
+    "generic": "Не получилось, попробуйте ещё раз."
+  },
   "dealLines": {
     "title": "Товары",
     "colProduct": "Товар",
@@ -31139,5 +31218,15 @@
     "saveHint": "Сохраняет строки, а сумма сделки становится их итогом.",
     "save": "Сохранить",
     "amountFromLines": "Считается из товаров в карточке сделки."
+  },
+  "productAiFill": {
+    "button": "Заполнить ИИ",
+    "buttonHint": "По названию ИИ предлагает описание, категорию, тип, особенности и теги. Цена и SKU — ваши. Ничего не сохраняется, пока вы не сохраните товар.",
+    "nameFirst": "Сначала напишите название товара.",
+    "hint": "Заполняются только пустые поля; цена и SKU — никогда.",
+    "errBudget": "Лимит ИИ на этот месяц исчерпан.",
+    "errNoModule": "Модуль Da Vinci AI не подключён в вашей организации.",
+    "errUnavailable": "ИИ сейчас не отвечает. Попробуйте через минуту.",
+    "nothingToFill": "Всё уже заполнено — ничего не изменено."
   }
 }

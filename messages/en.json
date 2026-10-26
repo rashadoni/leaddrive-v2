@@ -289,7 +289,6 @@
   },
   "navDesc": {
     "adConversions": "Send leads and won deals to Meta (Facebook and Instagram ads)",
-    "telegramBot": "Your own bot where employees ask about their tasks and create leads",
     "onlineBooking": "A link where customers book a free time themselves",
     "bookingWorkspace": "Team meetings, online booking and booking pages",
     "skillRouting": "Agent skills and ticket queues",
@@ -537,7 +536,6 @@
   },
   "nav": {
     "adConversions": "Ad conversions",
-    "telegramBot": "Telegram bot",
     "onlineBooking": "Online booking",
     "bookingWorkspace": "Meetings & booking",
     "skillRouting": "Skill Routing",
@@ -5108,6 +5106,9 @@
     "auditLogDesc": "View all system activity",
     "noAuditLogs": "No audit events yet",
     "noAuditLogsHint": "This tenant has no recorded security or data-change events yet. Logins, record changes, exports and admin actions will appear here automatically.",
+    "channelsTitle": "Channels",
+    "channelsDesc": "WhatsApp, Telegram, Instagram, Facebook, SMS and e-mail — for every module",
+    "channelsHint": "Connect a messaging channel once and use it in the inbox, field sales, sales and support. The employees' Telegram bot is here too.",
     "integrationsTitle": "Integrations",
     "integrationsDesc": "Webhooks, Google Calendar, Slack, Zapier",
     "integrationsHint": "Configure external integrations",
@@ -8215,6 +8216,7 @@
     }
   },
   "forms": {
+    "sourceManaged": "Name, phone, city and address come from 1C and are edited there.",
     "recurrenceRule": "Repeat",
     "recurrenceNever": "Never",
     "recurrenceDaily": "Daily",
@@ -30938,7 +30940,8 @@
       "phone_unique": "recognised by number",
       "phone_shared": "recognised by number and name",
       "named_on_call": "named on the call",
-      "unidentified": "pharmacy not identified"
+      "unidentified": "pharmacy not identified",
+      "manager_selected": "picked by a manager"
     },
     "colOrder": "Order",
     "colDate": "Date",
@@ -31017,7 +31020,66 @@
     "errorStale": "The order changed elsewhere — the page was refreshed.",
     "errorGeneric": "That did not work, try again.",
     "errorCatalog": "The catalog is unavailable right now.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "pharmacyChange": "Change pharmacy",
+    "pharmacyChoose": "Choose a pharmacy",
+    "pharmacySaid": "The caller said:",
+    "pharmacyShared": "{count, plural, one {This number belongs to # pharmacy.} other {This number belongs to # pharmacies. Choose the one that ordered:}}",
+    "pharmacyOne": "1C lists one pharmacy for this number:",
+    "pharmacyNoneByPhone": "1C lists no pharmacy for this number. Find it by name:",
+    "pharmacyFitsWords": "fits the caller's words",
+    "pharmacySearch": "Not in the list? Search all pharmacies: name, address, phone",
+    "pharmacyLinkTo": "Link to {name}",
+    "pharmacyLink": "Link the pharmacy",
+    "viewOrders": "Orders",
+    "viewPharmacies": "Pharmacies",
+    "pharmaciesTitle": "Pharmacies",
+    "pharmaciesSubtitle": "Pharmacies come from 1C by themselves. Name, address and phone are edited in 1C.",
+    "pharmaciesSynced": "Updated from 1C {date}",
+    "pharmaciesSearch": "Search: name, address, phone",
+    "pharmaciesEmpty": "No pharmacies yet. They appear here once the 1C pharmacy list is loaded (every half hour).",
+    "pharmaciesColPhone": "Phone",
+    "pharmaciesColManager": "Manager",
+    "pharmaciesColLastOrder": "Last order",
+    "pharmaciesColMonth": "In 30 days",
+    "pharmaciesDaysAgo": "{count, plural, one {# day ago} other {# days ago}}",
+    "pharmaciesShared": "{count, plural, one {shared number · # pharmacy} other {shared number · # pharmacies}}",
+    "pharmaciesNoManager": "not assigned",
+    "pharmaciesRemoved": "inactive in 1C",
+    "pharmaciesMore": "Showing {shown} of {total}. Narrow the search to see the rest.",
+    "companyActive": "active in 1C",
+    "companyRemoved": "inactive in 1C",
+    "companySynced": "Pharmacy from 1C · updated {date}",
+    "companyFrom1c": "Pharmacy from 1C",
+    "companyMonthOrders": "Orders in 30 days",
+    "companyMonthTotal": "Total in 30 days",
+    "companyCadence": "Usually orders",
+    "companyEveryDays": "{count, plural, one {every day} other {every # days}}",
+    "companyNoOrders": "No phone orders from this pharmacy yet.",
+    "companyColWhat": "What",
+    "companyFrom1cTitle": "From 1C",
+    "companyEditedIn1c": "edited in 1C",
+    "companyName": "Name",
+    "companyCrmTitle": "In the CRM",
+    "companySaving": "saving…",
+    "companySaved": "saved",
+    "companyEditedHere": "edited here",
+    "companyCategory": "Category",
+    "companyNote": "Note",
+    "companyTabOrders": "Orders",
+    "pharmaciesFilter": {
+      "all": "All",
+      "ordered": "Ordered in 30 days",
+      "dormant": "No order for 30+ days",
+      "shared": "Shared number",
+      "removed": "Inactive in 1C"
+    },
+    "companyCategoryValue": {
+      "client": "Client",
+      "partner": "Partner",
+      "prospect": "Prospect",
+      "inactive": "Inactive"
+    }
   },
   "timeAppDownload": {
     "pageTitle": "LeadDrive Time for Android",
@@ -31059,7 +31121,8 @@
     "applyHint": "Fills the empty name, address and director fields. Saved only when you save the company."
   },
   "telegramStaff": {
-    "title": "Telegram bot",
+    "backToChannels": "Channels",
+    "title": "Telegram for employees",
     "desc": "Your organization's own Telegram bot: employees ask it in plain words about their tasks, deals and customers and create a lead or a task without opening the CRM. Each employee sees only what they may see in the CRM.",
     "cardTitle": "Bot for employees",
     "cardDesc": "Use a separate bot — not the one your customers write to.",
@@ -31114,6 +31177,22 @@
     "notFromCatalog": "Open this window from Settings → Channels → WhatsApp in your CRM.",
     "notConfigured": "Connecting WhatsApp through Meta is not available on this server."
   },
+  "voiceLineNumbers": {
+    "title": "Voice numbers",
+    "adminHint": "Calls to these numbers go to this organization and its voice agent. A number belongs to one organization only.",
+    "tenantHint": "Your voice agent answers calls to these numbers. LeadDrive connects the numbers.",
+    "loading": "Loading…",
+    "none": "No numbers yet.",
+    "noLabel": "no label",
+    "remove": "Remove",
+    "number": "Number",
+    "label": "Label",
+    "labelPlaceholder": "For example, “Orders”",
+    "add": "Add",
+    "taken": "This number already belongs to “{holder}”.",
+    "invalid": "That does not look like a phone number: write +994… or 012…",
+    "generic": "That did not work, try again."
+  },
   "dealLines": {
     "title": "Products",
     "colProduct": "Product",
@@ -31139,5 +31218,15 @@
     "saveHint": "Saves the lines and sets the deal's amount to their total.",
     "save": "Save",
     "amountFromLines": "Counted from the products on the deal card."
+  },
+  "productAiFill": {
+    "button": "Fill with AI",
+    "buttonHint": "From the name, AI suggests the description, category, type, features and tags. Price and SKU stay yours. Nothing is saved until you save the product.",
+    "nameFirst": "Write the product name first.",
+    "hint": "Fills only empty fields; price and SKU are never filled.",
+    "errBudget": "This month's AI limit is used up.",
+    "errNoModule": "Da Vinci AI is not enabled for your organization.",
+    "errUnavailable": "AI is not answering right now. Try again in a minute.",
+    "nothingToFill": "Everything is already filled in — nothing was changed."
   }
 }

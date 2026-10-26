@@ -6,6 +6,8 @@ import { runWithTenant } from "../../rls-context"
 
 export const PHONE_ORDERS_TABLE = "pharmacy_phone_orders"
 export const PHONE_ORDER_MAX_LINES = 30
+/** Company.externalSource of a pharmacy loaded from Zeytun's 1C list (externalId = its 1C GUID). */
+export const PHARMACY_COMPANY_SOURCE = "zeytun_1c"
 
 /** A line as the station forwards it from the model's save call. */
 export const phoneOrderLineInputSchema = z.strictObject({
@@ -103,6 +105,10 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       include: { lines: { orderBy: { position: "asc" } } },
     })
     const lineRows = lines.map(line => ({ ...line, organizationId: orgId }))
+    // The pharmacy's card, when 1C's list is loaded into companies.
+    const company = input.pharmacyGuid ? await tx.company.findFirst({
+      where: { organizationId: orgId, externalSource: PHARMACY_COMPANY_SOURCE, externalId: input.pharmacyGuid }, select: { id: true },
+    }) : null
     const summary = {
       total: total.toFixed(2), currency: "AZN" as const,
       priced: lines.filter(line => line.lineTotal).length,
@@ -120,7 +126,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       const updated = await tx.pharmacyPhoneOrder.update({
         where: { id: existing.id },
         data: { ...(input.pharmacyName ? { pharmacyName: input.pharmacyName, pharmacyIdentification: input.identification,
-            pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null } : {}),
+            pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null, companyId: company?.id ?? null } : {}),
           totalAmount: total, revision: { increment: 1 }, catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey,
           catalogVersion: input.catalog.version, catalogObservedAt: new Date(input.catalog.observedAt) },
       })
@@ -134,7 +140,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
         callStartedAt: new Date(input.callStartedAt),
         callerPhone: encryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", input.callerPhoneE164),
         pharmacyIdentification: input.identification, pharmacyName: input.pharmacyName ?? null,
-        pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null,
+        pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null, companyId: company?.id ?? null,
         catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey, catalogVersion: input.catalog.version,
         catalogObservedAt: new Date(input.catalog.observedAt), totalAmount: total,
         lines: { create: lineRows },
