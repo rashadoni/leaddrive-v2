@@ -12,11 +12,15 @@ import { credentialSetupHint } from "./credential-setup"
 import { activateReviewedIdentityInTransaction, type IdentityActivationPlan } from "./activation"
 import { assertIdentityActivationRuntime } from "./activation-runtime"
 import { isIdentityAuthExplicitlyEnabled, readIdentityMobileTenantPolicy } from "./tenant-policy"
+import type { IdentitySelfBootstrapConflict } from "./self-bootstrap-conflict"
+export class IdentitySelfBootstrapConflictError extends IdentityRegistryError {
+  constructor(readonly conflicts: IdentitySelfBootstrapConflict[]) { super("IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT") }
+}
 const unavailable = (reason = "UNAVAILABLE") => new IdentityRegistryError(`IDENTITY_SELF_BOOTSTRAP_${reason}`)
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex")
 export const IdentitySelfBootstrapRequest = z.object({ phone: z.string().min(7).max(40), sourceRevision: z.string().regex(/^[a-f0-9]{64}$/), requestId: z.string().uuid() }).strict()
 
-async function source(tx: Prisma.TransactionClient, actor: IdentityAdministrator, phone: string) {
+async function source(tx: Prisma.TransactionClient, actor: IdentityAdministrator, phone: string, explainConflict = false) {
   if (actor.mode !== "LEGACY") throw unavailable()
   const scope = { organizationId: actor.organizationId, userId: actor.userId }
   const [person] = await tx.$queryRaw<Array<{ name: string; role: string; phone: string | null; updatedAt: Date }>>`
@@ -45,7 +49,27 @@ async function source(tx: Prisma.TransactionClient, actor: IdentityAdministrator
       UNION ALL SELECT 1 FROM mtm_agents WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId}
       AND NULLIF(phone,'') IS NOT NULL AND NOT identity_legacy_phone_conflicts(phone,${phone})) AS "ownMismatch"`
   const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId: scope.organizationId, normalizedPhone: phone } }, select: { userId: true } })
-  if (collision.otherOwner || (claim && claim.userId !== scope.userId)) throw unavailable("PHONE_CONFLICT")
+  if (collision.otherOwner || (claim && claim.userId !== scope.userId)) {
+    if (!explainConflict) throw unavailable("PHONE_CONFLICT")
+    // This runs only after the current tenant administrator and MFA checks.
+    // Include hidden/inactive cards, but no phone, email, credential or grant.
+    // Equal phone/name is diagnostic evidence, never permission to relink.
+    const conflicts = await tx.$queryRaw<IdentitySelfBootstrapConflict[]>`SELECT * FROM (
+      SELECT u.id,'crm'::text AS kind,left(u.name,200) AS name,
+        (u."isActive" AND u."anonymizedAt" IS NULL) AS active,NULL::text AS "ownerName"
+      FROM users u WHERE u."organizationId"=${scope.organizationId} AND u.id<>${scope.userId}
+        AND (identity_legacy_phone_conflicts(u.phone,${phone}) OR EXISTS (
+          SELECT 1 FROM identity_phone_claims c WHERE c."organizationId"=${scope.organizationId}
+            AND c."userId"=u.id AND c."normalizedPhone"=${phone}))
+      UNION ALL
+      SELECT a.id,CASE WHEN a.role='EMPLOYEE' THEN 'time' ELSE 'field' END,
+        left(a.name,200),(a.status='ACTIVE'),left(u.name,200)
+      FROM mtm_agents a LEFT JOIN users u ON u."organizationId"=a."organizationId" AND u.id=a."userId"
+      WHERE a."organizationId"=${scope.organizationId} AND a."userId" IS DISTINCT FROM ${scope.userId}
+        AND identity_legacy_phone_conflicts(a.phone,${phone})
+    ) matches ORDER BY kind,id LIMIT 6`
+    throw new IdentitySelfBootstrapConflictError(conflicts)
+  }
   if (collision.ownMismatch) throw unavailable("PHONE_MISMATCH")
   const applications: Array<{ application: IdentityApplication; role: string; actorId: string | null }> = [{ application: "CRM", role: "admin", actorId: null }]
   const card = cards[0]
@@ -70,7 +94,7 @@ export async function reviewIdentitySelfBootstrap(client: RegistryClient, actor:
   const phone = normalizeIdentityPhone(rawPhone)
   if (!phone) throw unavailable("PHONE_INVALID")
   return withIdentityAdministrator(client, actor, async tx => {
-    const current = await source(tx, actor, phone)
+    const current = await source(tx, actor, phone, true)
     return { name: current.person.name, phone, sourceRevision: current.revision, applications: current.applications.map(p => ({ application: p.application, role: p.role })) }
   })
 }

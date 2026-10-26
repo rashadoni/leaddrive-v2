@@ -33,6 +33,7 @@ const password = process.env.IDENTITY_CRM_FIXTURE_PASSWORD
 assert.match(password ?? "", /^[a-f0-9]{48}$/)
 const admin = makeRlsTestPrisma(ownerUrl.href)
 const company = "identity-crm-browser-company"
+const operatorCompany = "identity-commission-fixture"
 const userId = suffix => `identity-crm-browser-${suffix}`
 const email = suffix => `${suffix}@identity-crm.invalid`
 const accountKey = suffix => ({ organizationId_userId: { organizationId: company, userId: userId(suffix) } })
@@ -89,7 +90,6 @@ try {
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
     phase("OPERATOR_COMPANY_OPT_IN_SQL")
     const { inventorySql, enableSql, databaseEnvironment, assertInventory } = await import("./commission-runtime.mjs")
-    const operatorCompany = "identity-commission-fixture"
     await admin.organization.create({ data: { id: operatorCompany, slug: operatorCompany, name: "Fictional operator company" } })
     const operatorSql = (query, readonly = true) => execFileSync("psql", ["-X", "-qAt", "--set=ON_ERROR_STOP=1",
       `--set=slug=${operatorCompany}`, `--set=sha=${head}`, "--set=operator=fixture-operator",
@@ -471,13 +471,40 @@ try {
     await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { phone: "+994507770098" } })
     assert.equal((await (await reviewBootstrap()).json()).error, "IDENTITY_SELF_BOOTSTRAP_PHONE_MISMATCH")
     await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { phone: bootstrapPhone, userId: null } })
-    assert.equal((await (await reviewBootstrap()).json()).error, "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT")
+    const unlinkedConflict = await reviewBootstrap()
+    assert.equal(unlinkedConflict.status(), 409)
+    assert.match(unlinkedConflict.headers()["cache-control"], /no-store/)
+    assert.deepEqual(await unlinkedConflict.json(), { error: "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT", conflicts: [
+      { id: bootstrapCard, kind: "field", name: "Fictional administrator card", active: true, ownerName: null },
+    ] })
     await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { userId: userId("bootstrap-mfa") } })
-    assert.equal((await (await reviewBootstrap()).json()).error, "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT")
+    const linkedConflict = await (await reviewBootstrap()).json()
+    assert.equal(linkedConflict.error, "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT")
+    const otherAdmin = await admin.user.findUniqueOrThrow({ where: { id: userId("bootstrap-mfa") }, select: { name: true } })
+    assert.deepEqual(linkedConflict.conflicts, [
+      { id: bootstrapCard, kind: "field", name: "Fictional administrator card", active: true, ownerName: otherAdmin.name },
+    ])
+    // Inactive cards still reserve identity history and must remain visible in
+    // conflict review; their state is not permission to take their phone.
+    await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { status: "INACTIVE" } })
+    assert.equal((await (await reviewBootstrap()).json()).conflicts[0].active, false)
     await admin.mtmAgent.delete({ where: { id: bootstrapCard } })
+    await admin.user.update({ where: { id: userId("bootstrap-mfa") }, data: { phone: bootstrapPhone } })
+    assert.deepEqual((await (await reviewBootstrap()).json()).conflicts, [
+      { id: userId("bootstrap-mfa"), kind: "crm", name: otherAdmin.name, active: true, ownerName: null },
+    ])
+    await admin.user.update({ where: { id: userId("bootstrap-mfa") }, data: { phone: "+994507770023" } })
+    const foreignBootstrapCard = `${bootstrapCard}-foreign`
+    await admin.mtmAgent.create({ data: { id: foreignBootstrapCard, organizationId: operatorCompany,
+      name: "Foreign tenant private card", role: "AGENT", status: "ACTIVE", phone: bootstrapPhone } })
+    const isolatedReview = await reviewBootstrap()
+    assert.equal(isolatedReview.status(), 200)
+    assert.equal(JSON.stringify(await isolatedReview.json()).includes("Foreign tenant private card"), false)
+    await admin.mtmAgent.delete({ where: { id: foreignBootstrapCard } })
     assert.equal(await admin.identityAccount.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
     assert.equal(await admin.identityPhoneProof.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
     check("empty_optional_phone_allows_first_proof_but_mismatched_and_foreign_or_unlinked_owners_remain_blocked")
+    check("private_conflict_review_identifies_crm_and_active_inactive_unlinked_field_cards_without_cross_tenant_disclosure_or_writes")
     const bootstrapReviewResponse = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: { action: "review", phone: bootstrapPhone } })
     assert.equal(bootstrapReviewResponse.status(), 200)
     const bootstrapReview = (await bootstrapReviewResponse.json()).data

@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { IdentitySelfBootstrapConflicts, type IdentitySelfBootstrapConflict } from "@/lib/identity/self-bootstrap-conflict"
 const errorMessages: Record<string, string> = {
   IDENTITY_PASSWORD_WEAK: "identitySetupPasswordWeak",
   IDENTITY_CODE_INVALID: "identitySetupCodeInvalid",
@@ -29,6 +30,7 @@ export function IdentitySelfBootstrap({ onClose }: { onClose: () => void }) {
   const [proof, setProof] = useState<string | null>(null), [code, setCode] = useState(""), [setup, setSetup] = useState<string | null>(null)
   const [password, setPassword] = useState(""), [repeat, setRepeat] = useState("")
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [done, setDone] = useState(false)
+  const [conflicts, setConflicts] = useState<IdentitySelfBootstrapConflict[]>([])
   const request = useRef<string | null>(null)
   async function run(action: "review" | "request" | "confirm" | "finish") {
     if (busy || done) return
@@ -36,11 +38,15 @@ export function IdentitySelfBootstrap({ onClose }: { onClose: () => void }) {
     const body = action === "review" ? { action, phone } : action === "request" ? {
       action, phone: review?.phone, sourceRevision: review?.sourceRevision, requestId: request.current ??= crypto.randomUUID(), language: locale,
     } : action === "confirm" ? { action, proofId: proof, code } : { action, setupToken: setup, password }
-    setBusy(true); setError(null)
+    setBusy(true); setError(null); setConflicts([])
     try {
       const response = await fetch("/api/v1/identity/self-bootstrap", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store" })
       const result = await response.json().catch(() => null)
       if (!response.ok || !result?.success) {
+        if (action === "review" && response.status === 409 && result?.error === "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT") {
+          const details = IdentitySelfBootstrapConflicts.safeParse(result.conflicts)
+          if (details.success) setConflicts(details.data)
+        }
         const known = typeof result?.error === "string" && Object.hasOwn(errorMessages, result.error)
           ? errorMessages[result.error] : null
         setError(response.status === 429 ? "identitySetupRateLimit"
@@ -71,7 +77,7 @@ export function IdentitySelfBootstrap({ onClose }: { onClose: () => void }) {
     </> : <>
       <p>{p("identitySetupHint")}</p>
       {!review ? <>
-        <label className="block space-y-2"><span>{p("identitySetupOwnPhone")}</span><Input type="tel" autoComplete="tel" maxLength={40} value={phone} disabled={busy} onChange={e => setPhone(e.target.value)} /></label>
+        <label className="block space-y-2"><span>{p("identitySetupOwnPhone")}</span><Input type="tel" autoComplete="tel" maxLength={40} value={phone} disabled={busy} onChange={e => { setPhone(e.target.value); setConflicts([]); setError(null) }} /></label>
         <Button type="button" disabled={busy} onClick={() => run("review")}>{p("identitySetupReview")}</Button>
       </> : !proof ? <>
         <p>{p("identitySetupPerson", { name: review.name, phone: review.phone })}</p>
@@ -94,5 +100,21 @@ export function IdentitySelfBootstrap({ onClose }: { onClose: () => void }) {
       <Button type="button" variant="outline" disabled={busy} onClick={onClose}>{p("cancel")}</Button>
     </>}
     {error ? <p role="alert" className="text-destructive">{p(error)}</p> : null}
+    {conflicts.length > 0 ? <div className="space-y-2" data-testid="identity-phone-conflicts">
+      <p>{p("identitySetupConflictsHint")}</p>
+      <ul className="space-y-2">{conflicts.map(profile => <li key={`${profile.kind}:${profile.id}`} className="rounded-lg border p-3">
+        <p className="font-medium">{profile.name}</p>
+        <p>{p(profile.kind === "crm" ? "identitySetupConflictCrm" : profile.kind === "time" ? "identitySetupConflictTime" : "identitySetupConflictField")}
+          {!profile.active ? ` · ${p("identitySetupConflictInactive")}` : ""}</p>
+        {profile.kind !== "crm" ? <p>{profile.ownerName === null
+          ? p("identitySetupConflictUnlinked") : p("identitySetupConflictOwner", { name: profile.ownerName })}</p> : null}
+        <Link className="inline-flex min-h-11 items-center underline" target="_blank" rel="noopener noreferrer" prefetch={false}
+          href={profile.kind === "crm" ? "/settings/users" : profile.kind === "time"
+            ? `/mtm/attendance/people/${encodeURIComponent(profile.id)}` : `/mtm/agents/${encodeURIComponent(profile.id)}`}>
+          {p(profile.kind === "crm" ? "identitySetupConflictOpenUsers" : "identitySetupConflictOpenCard")}
+        </Link>
+      </li>)}</ul>
+      {conflicts.length === 6 ? <p>{p("identitySetupConflictMore")}</p> : null}
+    </div> : null}
   </div>
 }
