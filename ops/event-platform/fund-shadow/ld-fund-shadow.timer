@@ -1,11 +1,16 @@
 # Installed by provision.sh fund-shadow-install; enabled by fund-shadow-enable
 # only after a first manual run succeeded. Stopping the pilot is disabling
-# this timer: the CRM never reads the shadow, so nothing needs rolling back.
+# this timer; an organization whose Fund screen shows Kafka balances then sees
+# its cards fall back to the CRM balance after their next operation (switch
+# it to «CRM» first). Nothing needs rolling back: no command reads the shadow.
 [Unit]
-Description=Run the Fund shadow pilot every 5 minutes
+Description=Run the Fund shadow pilot every minute
 
 [Timer]
-OnCalendar=*:1/5
+# Every minute since the Fund screen can show Kafka balances (2026-10-26): a
+# card waits for Kafka only while its last operation is not yet folded. A run
+# still going when the next tick comes is not started twice (oneshot unit).
+OnCalendar=minutely
 AccuracySec=10s
 Persistent=false
 Unit=ld-fund-shadow.service

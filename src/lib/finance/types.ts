@@ -122,6 +122,8 @@ export interface Fund {
   targetAmountExact?: string | null
   currentBalance: number
   currentBalanceExact?: string
+  /** Which number currentBalance is: see src/lib/finance/fund-balance-source.ts. */
+  balanceSource?: "kafka" | "kafka-catching-up" | "crm"
   currency: string
   color?: string | null
   isActive: boolean
@@ -317,4 +319,10 @@ export interface PaymentOrdersStats {
   totalExecuted: number
   totalAmount: number
   executedAmount: number
+}
+
+export interface FundBalanceSourceState {
+  /** The organization has a running Kafka shadow build of its Fund balances. */
+  available: boolean
+  source: "crm" | "kafka"
 }

@@ -27,6 +27,7 @@ import type {
   UpdatePaymentOrderInput,
   BankAccount,
   CreateBankAccountInput,
+  FundBalanceSourceState,
 } from "./types"
 
 function useOrgId() {
@@ -216,6 +217,34 @@ export function useFunds() {
     queryKey: ["finance", "funds", orgId],
     queryFn: () => apiFetch<Fund[]>("/api/finance/funds", orgId),
     enabled: !!orgId,
+    // A card that waits for Kafka to fold its latest operation looks again
+    // shortly; the pilot worker runs every minute.
+    refetchInterval: (query) => (query.state.data?.some(f => f.balanceSource === "kafka-catching-up") ? 20_000 : false),
+  })
+}
+
+export function useFundBalanceSource() {
+  const orgId = useOrgId()
+  return useQuery({
+    queryKey: ["finance", "fund-balance-source", orgId],
+    queryFn: () => apiFetch<FundBalanceSourceState>("/api/finance/funds/balance-source", orgId),
+    enabled: !!orgId,
+  })
+}
+
+export function useSetFundBalanceSource() {
+  const orgId = useOrgId()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (source: FundBalanceSourceState["source"]) =>
+      apiFetch<FundBalanceSourceState>("/api/finance/funds/balance-source", orgId, {
+        method: "PUT",
+        body: JSON.stringify({ source }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["finance", "fund-balance-source", orgId] })
+      qc.invalidateQueries({ queryKey: ["finance", "funds", orgId] })
+    },
   })
 }
 

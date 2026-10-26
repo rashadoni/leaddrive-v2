@@ -391,3 +391,26 @@ the CRM never reads it, nothing is promoted and nothing leaves the system.
   platform migrations: provisioning twice, node-postgres fold equal to the
   Prisma fold and to the source balance, duplicates, the watch's parity query,
   tenant isolation, refused writes to the source, timeout rollback.
+
+### Fund screen: balance from CRM or Kafka (2026-10-26)
+
+Owner: «Да, начинай перевод Fund на Kafka с LeadDrive Inc.: показывать балансы
+её фондов из Kafka, с возвратом одной кнопкой»; mockup approved («Давай, делай
+по этому макету»). `src/lib/finance/fund-balance-source.ts`:
+
+- The switch «Баланс из CRM / Kafka» on «Финансы → Фонды» exists only for an
+  organization with a running shadow build of `finance.fund-balance`, for those
+  who may run the funds (finance write). It is one key,
+  `organizations.settings.fundBalanceSource`, set in place with `jsonb_set`;
+  every change is in the audit log (`finance_fund_balance_source_changed`).
+- With «Kafka» the Fund list and card take a fund's balance from the newest
+  running shadow build only when it has folded the fund's latest event
+  (`aggregateVersion` = event head) in the fund's currency; otherwise the CRM
+  balance with «Kafka ещё догоняет». A fund without event history keeps its
+  CRM balance. So the screen never shows a number the CRM has moved past.
+- Display only: deposits and withdrawals still check `funds.currentBalance`,
+  nothing is promoted, «CRM» switches back at once.
+- The pilot timer runs every minute so a card waits for Kafka briefly.
+- Tested on real PostgreSQL in `pilot.integration.ts` (`screen_kafka_read`),
+  routes and switch in `api-finance-fund-balance-source.test.ts`, the screen
+  in `finance-fund-manager-balance-source.test.ts`.

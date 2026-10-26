@@ -15,6 +15,7 @@ import { Client } from "pg"
 import { consumeFundShadowRecord } from "../../../src/lib/event-platform/fund-shadow-consumer"
 import { createFundShadowPostgresFixture, fundShadowDatabase } from "../../../src/__tests__/fixtures/fund-shadow-postgres"
 import { pgFundShadowDatabase } from "./pg-database"
+import { KAFKA_FUND_BALANCES_SQL } from "../../../src/lib/finance/fund-balance-source-sql"
 import { scramVerifier } from "./scram.mjs"
 
 async function main() {
@@ -138,7 +139,21 @@ async function main() {
     assert.equal(watched["pilot-1"], undefined, "the watch no longer expects the retired pilot to follow the stream")
     assert.deepEqual(watched["pilot-2"], { wrong: 0, stale: 0, funds: 1 })
 
-    console.log("fund_shadow_pilot_integration=PASS; provision_idempotent=PASS; pg_equals_prisma=PASS; duplicate=PASS; watch_parity_query=PASS; tenant_isolation=PASS; source_untouchable=PASS; timeout_rollback=PASS; two_orgs=PASS; next_pilot_and_retire=PASS")
+    // The Fund screen's Kafka read (src/lib/finance/fund-balance-source-sql.ts):
+    // current shadow = its balance; a shadow one event behind = not fresh, so
+    // the screen keeps the CRM balance.
+    const screen = async (o: string) => (await admin.query(KAFKA_FUND_BALANCES_SQL, [o])).rows as Array<{ fundId: string; balance: string | null; fresh: boolean }>
+    const [shown] = await screen(org)
+    assert.deepEqual({ fresh: shown.fresh, balance: shown.balance }, { fresh: true, balance: source[0].balance })
+    await admin.query(`UPDATE fund_balance_projections SET "aggregateVersion" = "aggregateVersion" - 1 WHERE "organizationId" = $1 AND "buildKey" = 'pilot-2'`, [org])
+    assert.equal((await screen(org))[0].fresh, false, "a shadow behind the fund's head is not shown")
+    // (A shadow in another currency cannot exist: the database refuses it with
+    // "fund balance projection currency mismatch"; the read checks it anyway.)
+    await admin.query(`UPDATE fund_balance_projections SET "aggregateVersion" = "aggregateVersion" + 1 WHERE "organizationId" = $1 AND "buildKey" = 'pilot-2'`, [org])
+    assert.equal((await screen(org))[0].fresh, true)
+    assert.ok((await screen(other.scope.organizationId)).every(r => r.fresh === false), "a retired pilot's balances are never shown")
+
+    console.log("fund_shadow_pilot_integration=PASS; provision_idempotent=PASS; pg_equals_prisma=PASS; duplicate=PASS; watch_parity_query=PASS; tenant_isolation=PASS; source_untouchable=PASS; timeout_rollback=PASS; two_orgs=PASS; next_pilot_and_retire=PASS; screen_kafka_read=PASS")
   } finally {
     await Promise.allSettled(clients.map(c => c.end()))
     await db.close()
