@@ -33,7 +33,7 @@ export type LineOwner = { organizationId: string; channelConfigId: string | null
 export async function lineNumberOwner(dialled: string | null | undefined): Promise<LineOwner | null> {
   const e164 = normalizeLineNumber(dialled)
   if (!e164) return null
-  const row = await runWithRlsBypass(() => prisma.voiceLineNumber.findUnique({
+  const row: LineOwner | null = await runWithRlsBypass(() => prisma.voiceLineNumber.findUnique({
     where: { e164 }, select: { organizationId: true, channelConfigId: true },
   }))
   return row ?? null
@@ -43,11 +43,11 @@ export async function lineNumberOwner(dialled: string | null | undefined): Promi
  * no such call or (never expected: the station mints a UUID per call) the id
  * appears in two organizations. */
 export async function callOrganization(callId: string): Promise<string | null> {
-  const rows = await runWithRlsBypass(() => prisma.callLog.findMany({
+  const rows: Array<{ organizationId: string }> = await runWithRlsBypass(() => prisma.callLog.findMany({
     where: { provider: "asterisk", providerCallId: callId },
     select: { organizationId: true }, take: 3,
   }))
-  const organizations = new Set(rows.map((row) => row.organizationId))
+  const organizations = new Set<string>(rows.map((row) => row.organizationId))
   return organizations.size === 1 ? [...organizations][0] : null
 }
 

@@ -161,8 +161,10 @@ describe.skipIf(!scratch)("phone numbers to organizations on a real Postgres", (
 
   it("keeps the table to its organization for the application's role, and refuses a malformed number in the database", async () => {
     await admin.voiceLineNumber.create({ data: { organizationId: "org-zeytun", e164: "+994125553065" } })
-    const raw = await app.$queryRaw<{ count: bigint }[]>`SELECT count(*)::bigint AS count FROM voice_line_numbers`
-    expect(Number(raw[0].count)).toBe(0)
+    const { runWithTenant } = await import("@/lib/rls-context")
+    // Another organization's context sees none of it; its own sees its row.
+    expect(await runWithTenant("org-clinic", () => app.voiceLineNumber.count())).toBe(0)
+    expect(await runWithTenant("org-zeytun", () => app.voiceLineNumber.count())).toBe(1)
     await expect(admin.voiceLineNumber.create({ data: { organizationId: "org-clinic", e164: "0125553065" } })).rejects.toThrow()
   })
 })
