@@ -217,6 +217,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
             <HistoryRow at={order.createdAt} locale={locale}>{t("historySaved")}</HistoryRow>
             {noticeStatus === "sent" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-emerald-600">{t("historyNoticeSent")}</span></HistoryRow> : null}
             {noticeStatus === "failed" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-red-600">{t("historyNoticeFailed")}</span></HistoryRow> : null}
+            {noticeStatus === "no_recipient" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeNoRecipient")}</span></HistoryRow> : null}
             {noticeStatus === "not_connected" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeOff")}</span></HistoryRow> : null}
             {order.confirmedAt ? <HistoryRow at={order.confirmedAt} locale={locale}>{t("historyConfirmed", { name: order.confirmedBy ?? t("someone") })}</HistoryRow> : null}
             {order.rejectedAt ? <HistoryRow at={order.rejectedAt} locale={locale}>{t("historyRejected", { name: order.rejectedBy ?? t("someone"), reason: order.rejectReason ?? "" })}</HistoryRow> : null}
