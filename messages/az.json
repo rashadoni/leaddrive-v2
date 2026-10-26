@@ -9671,7 +9671,14 @@
         "advanceInvoice": "Avans",
         "returnInvoice": "Qaytarma",
         "resale": "Təkrar satış",
-        "exportNoteInvoice": "İxrac"
+        "exportNoteInvoice": "İxrac",
+        "agent": "Agent",
+        "recycling": "Emal",
+        "taxCodex163": "VM 163-cü maddə",
+        "taxCodex177_5": "VM 177.5-ci maddə",
+        "returnByAgent": "Agent tərəfindən qaytarma",
+        "returnRecycled": "Emaldan qaytarma",
+        "exciseGoodsTransfer": "Aksizli malların ötürülməsi"
       },
       "status": {
         "approved": "Təsdiqlənib",
@@ -9692,7 +9699,8 @@
         "created": "Yaradılıb",
         "taxInvoiceSent": "Göndərilib",
         "taxInvoiceCancelled": "Ləğv edilib",
-        "taxInvoiceCreatedBySystem": "Sistem yaradıb"
+        "taxInvoiceCreatedBySystem": "Sistem yaradıb",
+        "correctionRefused": "Düzəlişdən imtina edilib"
       },
       "export": {
         "direction": "İstiqamət",

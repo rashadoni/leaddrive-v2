@@ -197,9 +197,8 @@
   let stopRequested = false
 
   async function run(period, directions) {
-    const c = claims()
-    if (!c || !/^\d{10}$/.test(String(c.voen || ""))) throw new SessionExpired()
-    const own = { voen: String(c.voen), name: String(c.organizationName || c.voen) }
+    const own = C.ownCompany(claims())
+    if (!own) throw new SessionExpired()
     let found = 0
     let opened = 0
     let pdfs = 0
@@ -348,7 +347,8 @@
   let leaddriveReady = false
   async function refreshHeader() {
     const c = claims()
-    $(".portal").textContent = c && c.voen ? say("portalCompany", { name: c.organizationName || "", voen: c.voen }) : say("signInPortal")
+    const own = C.ownCompany(c)
+    $(".portal").textContent = own ? say("portalCompany", { name: own.name, voen: own.voen }) : say("signInPortal")
     leaddriveReady = false
     const session = await chrome.runtime.sendMessage({ type: "ld-session" }).catch(() => null)
     if (session && session.ok && session.json && session.json.data) {
@@ -361,7 +361,7 @@
       $(".ld").textContent = say("signInLeadDrive")
       notice("")
     }
-    startButton.disabled = running || !(c && c.voen) || !leaddriveReady
+    startButton.disabled = running || !own || !leaddriveReady
     startButton.textContent = running ? say("stop") : say("start")
     if (running) startButton.disabled = false
   }
@@ -419,7 +419,7 @@
   // Shown only to a signed-in company: the portal keeps its pass from the sign-in on.
   let autoChecked = false
   async function watchSignIn() {
-    const signedIn = Boolean(claims() && claims().voen)
+    const signedIn = Boolean(C.ownCompany(claims()))
     if (signedIn && !host.isConnected) document.documentElement.appendChild(host)
     if (!signedIn && host.isConnected && !running) host.remove()
     if (signedIn && !autoChecked) {

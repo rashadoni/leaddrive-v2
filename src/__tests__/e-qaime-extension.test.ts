@@ -84,6 +84,23 @@ describe("asking the portal", () => {
     expect(body.types).toEqual(["current", "corrected"])
   })
 
+  it("names the statuses and kinds as the portal's own list does, cancellations included", () => {
+    // Seen on the live portal 2026-10-26: its list sends both fields, and it
+    // refuses status words it does not know ("cancelled" → HTTP 400; its word is "canceled").
+    const body = core.searchBody("inbox", { from: "2026-10-01", to: "2026-10-31" }, 0)
+    expect(body.statuses).toEqual(expect.arrayContaining(["approved", "onApproval", "approvedBySystem", "canceled", "deleted"]))
+    expect(body.statuses).not.toContain("cancelled")
+    expect(body.statuses).not.toContain("rejected")
+    expect(body.kinds).toEqual(expect.arrayContaining(["defaultInvoice", "advanceInvoice", "returnInvoice", "resale", "exportNoteInvoice"]))
+    expect(body.kinds).toHaveLength(12)
+  })
+
+  it("names a sole proprietor, whose pass has no organization name", () => {
+    expect(core.ownCompany({ voen: "1601175582", organizationName: null, fullName: "Rəşad Rəhimov" })).toEqual({ voen: "1601175582", name: "Rəşad Rəhimov" })
+    expect(core.ownCompany({ voen: "1400000000", organizationName: "Nümunə MMC", fullName: "X" })).toEqual({ voen: "1400000000", name: "Nümunə MMC" })
+    expect(core.ownCompany({ voen: "abc" })).toBeNull()
+  })
+
   it("reads the company from the portal's pass", () => {
     const payload = Buffer.from(JSON.stringify({ voen: "1400000000", organizationName: "Nümunə MMC", exp: 1 })).toString("base64url")
     expect(core.tokenClaims(`Bearer x.${payload}.y`)).toMatchObject({ voen: "1400000000", organizationName: "Nümunə MMC" })

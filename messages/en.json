@@ -9675,7 +9675,14 @@
         "advanceInvoice": "Advance",
         "returnInvoice": "Return",
         "resale": "Resale",
-        "exportNoteInvoice": "Export"
+        "exportNoteInvoice": "Export",
+        "agent": "Agent",
+        "recycling": "Processing",
+        "taxCodex163": "Tax Code art. 163",
+        "taxCodex177_5": "Tax Code art. 177.5",
+        "returnByAgent": "Return by agent",
+        "returnRecycled": "Return of processed goods",
+        "exciseGoodsTransfer": "Excise goods transfer"
       },
       "status": {
         "approved": "Approved",
@@ -9696,7 +9703,8 @@
         "created": "Created",
         "taxInvoiceSent": "Sent",
         "taxInvoiceCancelled": "Cancelled",
-        "taxInvoiceCreatedBySystem": "Created by the system"
+        "taxInvoiceCreatedBySystem": "Created by the system",
+        "correctionRefused": "Correction refused"
       },
       "export": {
         "direction": "Direction",

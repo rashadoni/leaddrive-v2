@@ -11,7 +11,11 @@
  *     fail outright, so a period is read a month at a time, and a month that
  *     still overflows is split into days;
  *   - dates are sent as "DD-MM-YYYY 00:00", the end being the next day;
- *   - the invoice number filter, when given, is an array.
+ *   - the invoice number filter, when given, is an array;
+ *   - a search names the statuses and the kinds it wants, as the portal's own
+ *     list does (seen on its «Elektron qaimə-fakturalar» screen, 2026-10-26).
+ *     The portal checks the status words: a cancelled invoice is "canceled",
+ *     and "cancelled", "rejected" or "cancelledBySystem" are refused (HTTP 400).
  */
 (function (root, factory) {
   const api = factory()
@@ -26,6 +30,11 @@
   const TOKEN_KEY = "aztax-jwt"
   const PAGE_SIZE = 50
   const OFFSET_LIMIT = 10000
+  /** The portal's own list asks for these; "canceled" and "deleted" are added so that a cancellation reaches LeadDrive too. */
+  const STATUSES = ["approved", "onApproval", "updateApproval", "updateRequested", "cancelRequested", "approvedBySystem",
+    "onApprovalEdited", "deactivated", "cancelationRefused", "correctionRefused", "canceled", "deleted"]
+  const KINDS = ["defaultInvoice", "agent", "resale", "recycling", "taxCodex163", "taxCodex177_5", "returnInvoice",
+    "returnByAgent", "returnRecycled", "exportNoteInvoice", "exciseGoodsTransfer", "advanceInvoice"]
   /** The new system starts here; earlier invoices live in another section. */
   const FIRST_DAY = "2020-01-01"
 
@@ -76,6 +85,9 @@
     return {
       sortBy: "creationDate",
       sortAsc: true,
+      statuses: STATUSES,
+      types: ["current", "corrected"],
+      kinds: KINDS,
       creationDateFrom: portalDate(start),
       creationDateTo: portalDate(after),
       actionOwner: null,
@@ -90,7 +102,6 @@
       senderName: null,
       senderTin: null,
       serialNumber: null,
-      types: ["current", "corrected"],
     }
   }
 
@@ -110,6 +121,17 @@
       answer && answer.data && answer.data.totalCount, answer && answer.data && answer.data.total]
     for (const value of candidates) if (Number.isFinite(Number(value)) && value !== null && value !== "") return Number(value)
     return null
+  }
+
+  /**
+   * The company in the portal's pass. A sole proprietor's pass has no
+   * organizationName (seen 2026-10-26): the name is then the person's.
+   */
+  function ownCompany(claims) {
+    const voen = String((claims && claims.voen) || "")
+    if (!/^\d{10}$/.test(voen)) return null
+    const name = String(claims.organizationName || claims.fullName || claims.individualName || voen).trim()
+    return { voen: voen, name: name || voen }
   }
 
   /** The claims of the portal's pass: voen, organizationName, fullName, exp … */
@@ -209,7 +231,7 @@
   }
 
   return {
-    PORTAL, API, RENEW_URL, TOKEN_KEY, PAGE_SIZE, OFFSET_LIMIT, FIRST_DAY,
+    PORTAL, API, RENEW_URL, TOKEN_KEY, PAGE_SIZE, OFFSET_LIMIT, FIRST_DAY, STATUSES, KINDS, ownCompany,
     parseDay, ymd, portalDate, monthChunks, dayChunks, searchBody, listOf, totalOf,
     tokenClaims, isoOf, importInvoice, plan, defaultPeriod, bytesToBase64,
   }

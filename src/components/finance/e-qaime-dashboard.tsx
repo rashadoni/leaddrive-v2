@@ -56,7 +56,8 @@ export function periodRange(period: Period, today = new Date()): { from?: string
 
 const GREEN = new Set(["approved", "approvedBySystem", "acceptedBySystem", "taxInvoiceSent"])
 const GREY = new Set(["cancelled", "canceled", "cancelledBySystem", "rejected", "deleted", "deactivated", "taxInvoiceCancelled"])
-const STATUS_FILTERS = ["approved", "onApproval", "cancelled"] as const
+/** The portal's own words: a cancelled invoice is "canceled" in the current system. */
+const STATUS_FILTERS = ["approved", "onApproval", "canceled"] as const
 
 function statusClass(status: string): string {
   if (GREEN.has(status)) return "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300"

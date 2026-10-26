@@ -9675,7 +9675,14 @@
         "advanceInvoice": "Аванс",
         "returnInvoice": "Возврат",
         "resale": "Перепродажа",
-        "exportNoteInvoice": "Экспорт"
+        "exportNoteInvoice": "Экспорт",
+        "agent": "Агентская",
+        "recycling": "Переработка",
+        "taxCodex163": "По ст. 163 НК",
+        "taxCodex177_5": "По ст. 177.5 НК",
+        "returnByAgent": "Возврат агентом",
+        "returnRecycled": "Возврат переработки",
+        "exciseGoodsTransfer": "Передача подакцизных товаров"
       },
       "status": {
         "approved": "Подтверждена",
@@ -9696,7 +9703,8 @@
         "created": "Создана",
         "taxInvoiceSent": "Отправлена",
         "taxInvoiceCancelled": "Отменена",
-        "taxInvoiceCreatedBySystem": "Создана системой"
+        "taxInvoiceCreatedBySystem": "Создана системой",
+        "correctionRefused": "В исправлении отказано"
       },
       "export": {
         "direction": "Направление",
