@@ -101,3 +101,6 @@ Independent source review confirms these paths match deployed artifact `1b98cb80
 
 - Targeted ESLint returned FAILED: 4 pre-existing no-explicit-any errors and 8 existing unused-variable warnings. Running ESLint on the unchanged HEAD version reproduced the same 4 errors/8 warnings; the fix adds no new lint findings. Unrelated cleanup was not included. `git diff --check` PASS.
 - Temporary task-owned node_modules symlink removed after sequential verification; shared dependency directory preserved.
+
+- Correction after inspecting the complete baseline lint output: unchanged HEAD has **4 errors / 9 warnings**, current fix has **4 errors / 8 warnings**. The previous "same 4 errors/8 warnings" statement is superseded: the effect-dependency warning is removed; the existing any errors remain.
+- Narrow fix and anonymous diagnostic evidence checkpoint: `2332fb947`. Application build/typecheck and authenticated before/after remain NOT RUN for the reasons above. Working branch retained; nothing published or deployed.
