@@ -164,6 +164,11 @@ jobs:
               export SOCIAL_BRIGHT_DATA_LIVE_ROUTING=1
               export SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS="$ORG"
               pm2 restart leaddrive-v2 --update-env >/dev/null
+              # The scheduler's process (pm2 leaddrive-v2-jobs) runs the jobs these keys
+              # steer and keeps its own copy of the environment until restarted too.
+              if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
+                pm2 restart leaddrive-v2-jobs --update-env >/dev/null
+              fi
               echo "routing ON (brandprotection only); pm2 restarted"
               ;;
             routing-off)
@@ -172,6 +177,11 @@ jobs:
               export SOCIAL_BRIGHT_DATA_LIVE_ROUTING=0
               export SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS=""
               pm2 restart leaddrive-v2 --update-env >/dev/null
+              # The scheduler's process (pm2 leaddrive-v2-jobs) runs the jobs these keys
+              # steer and keeps its own copy of the environment until restarted too.
+              if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
+                pm2 restart leaddrive-v2-jobs --update-env >/dev/null
+              fi
               echo "routing OFF; allowlist cleared; pm2 restarted"
               ;;
             run-free-web-news-all)
