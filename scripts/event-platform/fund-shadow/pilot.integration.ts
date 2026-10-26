@@ -44,7 +44,9 @@ async function main() {
     const role = "ld_fund_shadow_itest", buildId = randomUUID(), buildKey = "pilot-1"
     const password = randomBytes(24).toString("hex")
     const provision = () => provisionAs(org, role, buildId, buildKey, password)
-    assert.match(provision(), new RegExp(`fund_shadow_role=${role} build=${buildId} status=running`))
+    const first = provision()
+    assert.match(first, new RegExp(`fund_shadow_role=${role} build=${buildId} status=running`))
+    assert.doesNotMatch(first, /SCRAM-SHA-256|\$4096:/, "the verifier never reaches the output or the operator's log")
     assert.match(provision(), /status=running/, "a second run with the same values changes nothing and still succeeds")
 
     const url = new URL(adminUrl); url.pathname = `/${database}`

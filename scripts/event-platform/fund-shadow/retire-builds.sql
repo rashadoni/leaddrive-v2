@@ -9,7 +9,10 @@
 -- deleted: their shadow rows, checkpoints and inbox stay as evidence.
 \set ON_ERROR_STOP 1
 BEGIN;
+-- Its result row would echo the inputs to the log.
+\o /dev/null
 SELECT set_config('ld.keep_key', :'keep_key', true), set_config('ld.keep_roles', :'keep_roles', true);
+\o
 DO $$
 DECLARE
   keep_key text := current_setting('ld.keep_key');
