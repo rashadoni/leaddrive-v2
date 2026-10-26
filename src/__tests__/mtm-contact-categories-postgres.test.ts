@@ -554,6 +554,29 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(await bypass(() => prisma.mtmAuditLog.count({ where: { action: "AGENT_DELETE", entityId: agent.id } }))).toBe(1)
     })
 
+    it("stops push delivery to a removed Field actor while keeping an independent Time phone reachable", async () => {
+      const { notifyAgents } = await import("@/lib/mtm/push-notify")
+      const { agentsReachableByPush } = await import("@/lib/mtm/agent-task-glance")
+      const field = await hire("Removed push recipient")
+      const person = await bypass(() => prisma.user.create({ data: { organizationId: ORG,
+        email: `time-push-${field.id}@fixture.invalid`, name: "Time push recipient", role: "viewer", passwordHash: "!fixture-no-login" }, select: { id: true } }))
+      const time = await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, userId: person.id,
+        name: "Time push recipient", role: "EMPLOYEE", attendanceParticipant: true }, select: { id: true } }))
+      await bypass(() => prisma.mtmDeviceToken.createMany({ data: [
+        { organizationId: ORG, agentId: field.id, token: `fixture-field-${field.id}` },
+        { organizationId: ORG, agentId: time.id, token: `fixture-time-${time.id}` },
+      ] }))
+      expect((await remove(field.id)).status).toBe(200)
+      const send = vi.fn(async ({ messages }: { messages: Array<{ token: string }> }) =>
+        messages.map(({ token }) => ({ token, ok: true as const })))
+      const sent = await bypass(() => notifyAgents({ client: prisma, organizationId: ORG,
+        agentIds: [field.id, time.id], title: "Synthetic", body: "No provider access", configured: true, send: send as never }))
+      expect(sent).toEqual({ sent: 1, failed: 0, retired: 0 })
+      expect(send.mock.calls[0][0].messages.map(m => m.token)).toEqual([`fixture-time-${time.id}`])
+      expect(await bypass(() => agentsReachableByPush(prisma, ORG, [field.id, time.id], true))).toEqual(new Set([time.id]))
+      expect(await bypass(() => prisma.mtmDeviceToken.count({ where: { agentId: field.id } }))).toBe(1)
+    })
+
     it("still refuses to rewrite or erase the team history of an employee who exists", async () => {
       const agent = await hire("Still employed")
       const erase = bypass(() => prisma.$executeRaw`DELETE FROM "workforce_employee_team_memberships" WHERE "agentId" = ${agent.id}`)
