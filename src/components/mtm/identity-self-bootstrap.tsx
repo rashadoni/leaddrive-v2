@@ -4,6 +4,22 @@ import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+const errorMessages: Record<string, string> = {
+  IDENTITY_PASSWORD_WEAK: "identitySetupPasswordWeak",
+  IDENTITY_CODE_INVALID: "identitySetupCodeInvalid",
+  IDENTITY_SELF_BOOTSTRAP_PHONE_INVALID: "identitySetupPhoneInvalid",
+  IDENTITY_SELF_BOOTSTRAP_PHONE_MISMATCH: "identitySetupPhoneMismatch",
+  IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT: "identitySetupPhoneConflict",
+  IDENTITY_SELF_BOOTSTRAP_TENANT_ADMIN_REQUIRED: "identitySetupTenantAdminRequired",
+  IDENTITY_SELF_BOOTSTRAP_CARD_REVIEW_REQUIRED: "identitySetupCardReviewRequired",
+  IDENTITY_SELF_BOOTSTRAP_STATE_REVIEW_REQUIRED: "identitySetupCardReviewRequired",
+  IDENTITY_SELF_BOOTSTRAP_APPLICATION_UNAVAILABLE: "identitySetupApplicationUnavailable",
+  IDENTITY_SELF_BOOTSTRAP_TENANT_DISABLED: "identitySetupUnavailable",
+  IDENTITY_ACTIVATION_RUNTIME_UNAVAILABLE: "identitySetupUnavailable",
+  IDENTITY_CODE_DELIVERY_UNAVAILABLE: "identitySetupDeliveryFailed",
+  IDENTITY_PROOF_RESEND_LATER: "identitySetupRateLimit",
+  IDENTITY_ADMIN_REQUIRED: "identitySetupSessionRequired",
+}
 type Review = { name: string; phone: string; sourceRevision: string; applications: Array<{ application: string; role: string }> }
 /** All code/password state stays in memory. Each step uses the current private
  * cookie/MFA context; no public mobile setup capability can bootstrap an admin. */
@@ -25,9 +41,10 @@ export function IdentitySelfBootstrap({ onClose }: { onClose: () => void }) {
       const response = await fetch("/api/v1/identity/self-bootstrap", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store" })
       const result = await response.json().catch(() => null)
       if (!response.ok || !result?.success) {
-        setError(result?.error === "IDENTITY_PASSWORD_WEAK" ? "identitySetupPasswordWeak"
-          : result?.error === "IDENTITY_CODE_INVALID" ? "identitySetupCodeInvalid"
-          : response.status === 429 ? "identitySetupRateLimit" : "identitySetupFailed")
+        const known = typeof result?.error === "string" && Object.hasOwn(errorMessages, result.error)
+          ? errorMessages[result.error] : null
+        setError(response.status === 429 ? "identitySetupRateLimit"
+          : known ?? (response.status === 401 ? "identitySetupSessionRequired" : "identitySetupFailed"))
         return
       }
       if (action === "review") {

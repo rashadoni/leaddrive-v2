@@ -12,7 +12,7 @@ import { credentialSetupHint } from "./credential-setup"
 import { activateReviewedIdentityInTransaction, type IdentityActivationPlan } from "./activation"
 import { assertIdentityActivationRuntime } from "./activation-runtime"
 import { isIdentityAuthExplicitlyEnabled, readIdentityMobileTenantPolicy } from "./tenant-policy"
-const unavailable = () => new IdentityRegistryError("IDENTITY_SELF_BOOTSTRAP_UNAVAILABLE")
+const unavailable = (reason = "UNAVAILABLE") => new IdentityRegistryError(`IDENTITY_SELF_BOOTSTRAP_${reason}`)
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex")
 export const IdentitySelfBootstrapRequest = z.object({ phone: z.string().min(7).max(40), sourceRevision: z.string().regex(/^[a-f0-9]{64}$/), requestId: z.string().uuid() }).strict()
 
@@ -23,30 +23,36 @@ async function source(tx: Prisma.TransactionClient, actor: IdentityAdministrator
     SELECT name,role,phone,"updatedAt" FROM users WHERE "organizationId"=${scope.organizationId} AND id=${scope.userId}
     AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
   // Tenant administrators only: platform accounts have a separate lifecycle.
-  if (person?.role !== "admin") throw unavailable()
+  if (person?.role !== "admin") throw unavailable("TENANT_ADMIN_REQUIRED")
   const flag = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: scope.organizationId, key: "identityAuthV1" } }, select: { value: true } })
-  if (!isIdentityAuthExplicitlyEnabled(flag?.value)) throw unavailable()
+  if (!isIdentityAuthExplicitlyEnabled(flag?.value)) throw unavailable("TENANT_DISABLED")
   const account = await tx.identityAccount.findUnique({ where: { organizationId_userId: scope },
     select: { version: true, credentialEpoch: true, contactRevision: true, cutoverAt: true } })
   if (account?.cutoverAt) throw unavailable()
   const cards = await tx.$queryRaw<Array<{ id: string; name: string; role: string; status: string; phone: string | null; attendanceParticipant: boolean; attendanceExcluded: boolean; updatedAt: Date }>>`
     SELECT id,name,role,status,phone,"attendanceParticipant","attendanceExcluded","updatedAt" FROM mtm_agents
     WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId} ORDER BY id LIMIT 2 FOR SHARE`
-  if (cards.length > 1 || cards.some(c => c.status !== "ACTIVE" || !["ADMIN", "MANAGER", "SUPERVISOR", "AGENT", "EMPLOYEE"].includes(c.role))) throw unavailable()
-  const [collision] = await tx.$queryRaw<Array<{ found: boolean }>>`SELECT EXISTS(
-    SELECT 1 FROM users WHERE "organizationId"=${scope.organizationId} AND phone IS NOT NULL AND
-      ((id<>${scope.userId} AND identity_legacy_phone_conflicts(phone,${phone})) OR (id=${scope.userId} AND NOT identity_legacy_phone_conflicts(phone,${phone})))
-    UNION ALL SELECT 1 FROM mtm_agents WHERE "organizationId"=${scope.organizationId} AND phone IS NOT NULL AND
-      (("userId" IS DISTINCT FROM ${scope.userId} AND identity_legacy_phone_conflicts(phone,${phone})) OR ("userId"=${scope.userId} AND NOT identity_legacy_phone_conflicts(phone,${phone})))
-  ) AS found`
+  if (cards.length > 1 || cards.some(c => c.status !== "ACTIVE" || !["ADMIN", "MANAGER", "SUPERVISOR", "AGENT", "EMPLOYEE"].includes(c.role))) throw unavailable("CARD_REVIEW_REQUIRED")
+  // An empty legacy optional phone is absent, just like NULL. It must not
+  // block a first verified phone; nonempty mismatches still require review.
+  const [collision] = await tx.$queryRaw<Array<{ otherOwner: boolean; ownMismatch: boolean }>>`SELECT
+    EXISTS(SELECT 1 FROM users WHERE "organizationId"=${scope.organizationId} AND id<>${scope.userId}
+      AND identity_legacy_phone_conflicts(phone,${phone})
+      UNION ALL SELECT 1 FROM mtm_agents WHERE "organizationId"=${scope.organizationId} AND "userId" IS DISTINCT FROM ${scope.userId}
+      AND identity_legacy_phone_conflicts(phone,${phone})) AS "otherOwner",
+    EXISTS(SELECT 1 FROM users WHERE "organizationId"=${scope.organizationId} AND id=${scope.userId}
+      AND NULLIF(phone,'') IS NOT NULL AND NOT identity_legacy_phone_conflicts(phone,${phone})
+      UNION ALL SELECT 1 FROM mtm_agents WHERE "organizationId"=${scope.organizationId} AND "userId"=${scope.userId}
+      AND NULLIF(phone,'') IS NOT NULL AND NOT identity_legacy_phone_conflicts(phone,${phone})) AS "ownMismatch"`
   const claim = await tx.identityPhoneClaim.findUnique({ where: { organizationId_normalizedPhone: { organizationId: scope.organizationId, normalizedPhone: phone } }, select: { userId: true } })
-  if (collision.found || (claim && claim.userId !== scope.userId)) throw unavailable()
+  if (collision.otherOwner || (claim && claim.userId !== scope.userId)) throw unavailable("PHONE_CONFLICT")
+  if (collision.ownMismatch) throw unavailable("PHONE_MISMATCH")
   const applications: Array<{ application: IdentityApplication; role: string; actorId: string | null }> = [{ application: "CRM", role: "admin", actorId: null }]
   const card = cards[0]
   if (card && (card.role !== "EMPLOYEE" || (card.attendanceParticipant && !card.attendanceExcluded))) {
     const application = card.role === "EMPLOYEE" ? "TIME" : "ROUTE_FIELD"
     const policy = await readIdentityMobileTenantPolicy(tx, scope.organizationId, application)
-    if (!policy.identityEnabled || !policy.licensed) throw unavailable()
+    if (!policy.identityEnabled || !policy.licensed) throw unavailable("APPLICATION_UNAVAILABLE")
     applications.push({ application, role: card.role, actorId: card.id })
   }
   const grants = await tx.identityApplicationGrant.findMany({ where: scope, orderBy: { application: "asc" }, take: 4 })
@@ -55,14 +61,14 @@ async function source(tx: Prisma.TransactionClient, actor: IdentityAdministrator
   if (grants.some(g => !applications.some(p => p.application === g.application && p.role === g.role) || g.status !== "ACTIVE")
     || members.some(m => m.status !== "ACTIVE" || !applications.some(p => p.application === m.application && p.actorId === m.actorId))
     || bindings.some(b => b.actorId !== card?.id)
-    || await tx.identityOnboardingIntent.findFirst({ where: { ...scope, status: "ACTIVE" }, select: { id: true } })) throw unavailable()
+    || await tx.identityOnboardingIntent.findFirst({ where: { ...scope, status: "ACTIVE" }, select: { id: true } })) throw unavailable("STATE_REVIEW_REQUIRED")
   return { person, account, cards, applications, grants, members, bindings,
     revision: digest([1, scope, phone, person, cards, account, applications, grants, members, bindings]) }
 }
 
 export async function reviewIdentitySelfBootstrap(client: RegistryClient, actor: IdentityAdministrator, rawPhone: string) {
   const phone = normalizeIdentityPhone(rawPhone)
-  if (!phone) throw unavailable()
+  if (!phone) throw unavailable("PHONE_INVALID")
   return withIdentityAdministrator(client, actor, async tx => {
     const current = await source(tx, actor, phone)
     return { name: current.person.name, phone, sourceRevision: current.revision, applications: current.applications.map(p => ({ application: p.application, role: p.role })) }
@@ -77,7 +83,7 @@ export async function requestIdentitySelfBootstrap(client: RegistryClient, actor
   if (!parsed.success || actor.mode !== "LEGACY") throw unavailable()
   await admitRuntime()
   const input = parsed.data, phone = normalizeIdentityPhone(input.phone)
-  if (!phone) throw unavailable()
+  if (!phone) throw unavailable("PHONE_INVALID")
   const requestId = `bootstrap-issue:${input.requestId}`
   const reserveRequest = `bootstrap-reserve:${digest([1, actor.organizationId, actor.userId, { ...input, phone }])}`
   return withIdentityAdministrator(client, actor, async tx => {
