@@ -1,0 +1,26 @@
+{
+  "workflowRun": 40296206796,
+  "job": 121482789339,
+  "privileged": true,
+  "administratorReadiness": {
+    "tenantAdmins": 1,
+    "platformAdmins": 0,
+    "nullPhones": 0,
+    "emptyPhones": 0,
+    "nonInternationalPhones": 0,
+    "multipleCards": 0,
+    "unavailableCards": 0,
+    "emptyCardPhones": 0,
+    "mismatchedCardPhones": 0,
+    "otherPhoneOwners": 1
+  },
+  "canonicalCount": 0,
+  "proofCount": 0,
+  "companyCount": 1,
+  "flagValid": true,
+  "enabled": true,
+  "configured": true,
+  "databaseTargetVerified": true,
+  "sourceSha": "1b98cb8060dc88d8b47dc7ded65ddaca507b99fe",
+  "mutation": false
+}
