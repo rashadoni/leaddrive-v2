@@ -31218,5 +31218,31 @@
     "failed": "The connection did not finish. Close this window and try again from the channel catalog.",
     "notFromCatalog": "Open this window from Settings → Channels → WhatsApp in your CRM.",
     "notConfigured": "Connecting WhatsApp through Meta is not available on this server."
+  },
+  "dealLines": {
+    "title": "Products",
+    "colProduct": "Product",
+    "colQty": "Qty",
+    "colPrice": "Price, {currency}",
+    "colDiscount": "Discount %",
+    "colTotal": "Total",
+    "freeLinePlaceholder": "What is sold",
+    "foreignCurrency": "The price is in {from}; enter it in {to} yourself",
+    "priceMissing": "Enter the price in {currency}",
+    "removeHint": "Removes the line; the amount is recounted when you save.",
+    "remove": "Remove line",
+    "empty": "No products yet. Add them, and the deal's amount will be counted from them.",
+    "searchProduct": "Search the catalog",
+    "addProductHint": "Adds a product from «Products» with its price.",
+    "addProduct": "Add product",
+    "addFreeHint": "A line that is not in the catalog.",
+    "addFree": "Free line",
+    "totalNote": "The deal's amount is counted from the products",
+    "errSave": "Could not save. Try again.",
+    "cancel": "Cancel",
+    "invalidHint": "Check the lines: a name, a quantity above 0, a discount from 0 to 100.",
+    "saveHint": "Saves the lines and sets the deal's amount to their total.",
+    "save": "Save",
+    "amountFromLines": "Counted from the products on the deal card."
   }
 }

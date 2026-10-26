@@ -80,6 +80,7 @@ model Organization {
   telegramStaffLinks       TelegramStaffLink[]
   telegramStaffLinkTokens  TelegramStaffLinkToken[]
   telegramStaffActions     TelegramStaffAction[]
+  dealLineItems            DealLineItem[]
   bookings              Booking[]
   pharmacyPhoneOrders   PharmacyPhoneOrder[]
   pharmacyPhoneOrderLines PharmacyPhoneOrderLine[]
@@ -1670,6 +1671,10 @@ model Deal {
   // S6 CPQ — formal quotes built off this deal. Optional 1:N; deals
   // may exist without quotes, quotes may exist standalone (no deal).
   quotes Quote[]
+
+  // Product lines of the deal; when there are any, valueAmount is their sum
+  // (src/lib/deals/line-items.ts).
+  lineItems DealLineItem[]
 
   @@index([organizationId])
   @@index([organizationId, stage])
@@ -4319,6 +4324,8 @@ model Product {
   // ON DELETE SET NULL. Snapshot of productName at line-item write
   // time preserves quote integrity if the product gets renamed.
   quoteLineItems QuoteLineItem[]
+
+  dealLineItems DealLineItem[]
 
   @@index([organizationId])
   @@map("products")
@@ -23664,4 +23671,31 @@ model TelegramStaffAction {
   @@index([organizationId, status])
   @@index([linkId])
   @@map("telegram_staff_actions")
+}
+
+/// A product line of a deal (owner 2026-10-26: «товары в сделке: строки с
+/// товарами, сумма сделки из них»). Prices are in the deal's currency; a
+/// catalog product priced in another currency comes in with no price, since
+/// there are no exchange rates to convert it. Name and SKU are copied, so a
+/// later change in the catalog does not rewrite what was agreed.
+model DealLineItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dealId         String
+  deal           Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name           String
+  sku            String?
+  quantity       Decimal      @default(1) @db.Decimal(18, 4)
+  /// Null until someone enters a price in the deal's currency.
+  unitPrice      Decimal?     @db.Decimal(18, 4)
+  discountPct    Decimal      @default(0) @db.Decimal(5, 2)
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, dealId])
+  @@map("deal_line_items")
 }

@@ -23,7 +23,7 @@ interface Product {
   company?: string
 }
 
-export function NextBestOffers({ dealId, orgId }: { dealId: string; orgId?: string }) {
+export function NextBestOffers({ dealId, orgId, onAdded }: { dealId: string; orgId?: string; onAdded?: () => void }) {
   const t = useTranslations("deals")
   const tCommon = useTranslations("common")
   const recReason = useDavinciReason()
@@ -88,9 +88,11 @@ export function NextBestOffers({ dealId, orgId }: { dealId: string; orgId?: stri
       await fetch(`/api/v1/deals/${dealId}/products`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ productId: product.id, name: product.name, price: product.price, currency: product.currency }),
+        // The server prices the line from the catalog (src/lib/deals/line-items.ts).
+        body: JSON.stringify({ productId: product.id }),
       })
       setAddedIds(prev => new Set([...prev, product.id]))
+      onAdded?.()
     } catch (err) { console.error(err) }
     finally { setAdding(false) }
   }
