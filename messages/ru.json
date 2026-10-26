@@ -10025,6 +10025,13 @@
     },
     "funds": {
       "totalBalance": "Общий баланс фондов",
+      "balanceFrom": "Баланс из",
+      "balanceFromKafkaHint": "Показывать балансы фондов, посчитанные из событий Kafka",
+      "balanceFromCrmHint": "Показывать балансы фондов, как их ведёт CRM (как обычно)",
+      "balanceFromKafkaNotice": "Балансы считаются из событий Kafka. Чтобы вернуть прежний расчёт, нажмите «CRM».",
+      "balanceSourceKafka": "из Kafka",
+      "balanceSourceCatchingUp": "из CRM — Kafka ещё догоняет",
+      "balanceSourceCrmOnly": "из CRM — в Kafka нет истории",
       "newFund": "Новый фонд",
       "coverageWarning": "Фонды не обеспечены полностью",
       "coverageDetail": "Зарезервировано {reserved} AZN, но доступно только {available} AZN — обеспеченность {percent}%",

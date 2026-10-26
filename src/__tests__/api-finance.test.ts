@@ -287,6 +287,8 @@ describe("GET /api/finance/funds", () => {
       currentBalance: 0,
       targetAmountExact: null,
       currentBalanceExact: "0.0000",
+      // No Kafka pilot answered here: the CRM balance, as before the switch existed.
+      balanceSource: "crm",
     }])
     expect(prisma.fund.findMany).toHaveBeenCalledWith({
       where: { organizationId: "org-1" },

@@ -10049,6 +10049,13 @@
     },
     "funds": {
       "totalBalance": "Ümumi fond balansı",
+      "balanceFrom": "Balans mənbəyi",
+      "balanceFromKafkaHint": "Fond balanslarını Kafka hadisələrindən hesablanmış göstər",
+      "balanceFromCrmHint": "Fond balanslarını CRM-in apardığı kimi göstər (adi qayda)",
+      "balanceFromKafkaNotice": "Balanslar Kafka hadisələrindən hesablanır. Əvvəlki hesablamaya qayıtmaq üçün «CRM» düyməsini basın.",
+      "balanceSourceKafka": "Kafka-dan",
+      "balanceSourceCatchingUp": "CRM-dən — Kafka hələ çatmayıb",
+      "balanceSourceCrmOnly": "CRM-dən — Kafka-da tarixçə yoxdur",
       "newFund": "Yeni fond",
       "coverageWarning": "Fondlar tam təmin edilməyib",
       "coverageDetail": "Rezerv {reserved} AZN, lakin yalnız {available} AZN mövcuddur — təminat {percent}%",

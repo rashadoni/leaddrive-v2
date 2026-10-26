@@ -5,6 +5,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { normalizeFundRow } from "@/lib/prisma-decimal"
+import { kafkaFundBalances, readFundBalanceSource, withBalanceOrigin } from "@/lib/finance/fund-balance-source"
 import {
   AggregateVersionConflictError,
   IdempotencyConflictError,
@@ -53,7 +54,9 @@ export const GET = withRlsAuth(
       orderBy: { createdAt: "asc" },
     })
 
-    return NextResponse.json({ data: funds.map(normalizeFundRow) })
+    const { source } = await readFundBalanceSource(auth.orgId)
+    const kafka = source === "kafka" ? await kafkaFundBalances(auth.orgId) : new Map()
+    return NextResponse.json({ data: funds.map((fund: Parameters<typeof normalizeFundRow>[0]) => withBalanceOrigin(normalizeFundRow(fund), source, kafka)) })
   },
 )
 
