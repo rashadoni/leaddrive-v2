@@ -9,6 +9,7 @@ import { updateDealCommand, DealStageValidationError, dealInclude } from "@/lib/
 import { createRestActorContext } from "@/lib/crm-commands/actor-context"
 import { CrmCommandError } from "@/lib/crm-commands/errors"
 import type { Role } from "@/lib/permissions"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 export const GET = withRls(async (_req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
   const role = session?.role || "admin"
@@ -122,9 +123,9 @@ export const DELETE = withRls(async (_req, { orgId }, { params }: { params: Prom
 
   try {
     const existing = await prisma.deal.findFirst({ where: { id, organizationId: orgId }, select: { name: true } })
-    const result = await prisma.deal.deleteMany({
-      where: { id, organizationId: orgId },
-    })
+    const result = await withDealEvents(prisma, orgId, [id], async (tx) => ({
+      value: await tx.deal.deleteMany({ where: { id, organizationId: orgId } }),
+    }))
 
     if (result.count === 0) return NextResponse.json({ error: "Deal not found" }, { status: 404 })
     // Null out tasks that linked to this now-deleted deal (no FK → not auto-nulled).

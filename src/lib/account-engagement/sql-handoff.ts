@@ -12,6 +12,8 @@
  * Injectable Prisma client enables unit testing without a real database.
  */
 
+import { withDealEvents } from "@/lib/deals/deal-events"
+
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
 export interface SqlHandoffInput {
@@ -109,19 +111,23 @@ export async function performSqlHandoff(
 
   // 3. Create the deal (best-effort — failure is logged, not re-thrown).
   try {
-    const deal = await db.deal.create({
-      data: {
-        organizationId,
-        name: `${accountName} — SQL Handoff`,
-        ...(companyId ? { companyId } : {}),
-        ...(ownerUserId ? { assignedTo: ownerUserId } : {}),
-        pipelineId: defaultPipeline.id,
-        stage: stageName,
-        probability,
-        // Tags: identify origin so sales reps can filter sql-handoff deals.
-        tags: ["sql-handoff", accountId],
-      },
-      select: { id: true, name: true, stage: true },
+    // The deal and its event in one transaction (src/lib/deals/deal-events.ts).
+    const deal = await withDealEvents(db, organizationId, [], async (tx) => {
+      const created = await (tx as unknown as HandoffDb).deal.create({
+        data: {
+          organizationId,
+          name: `${accountName} — SQL Handoff`,
+          ...(companyId ? { companyId } : {}),
+          ...(ownerUserId ? { assignedTo: ownerUserId } : {}),
+          pipelineId: defaultPipeline.id,
+          stage: stageName,
+          probability,
+          // Tags: identify origin so sales reps can filter sql-handoff deals.
+          tags: ["sql-handoff", accountId],
+        },
+        select: { id: true, name: true, stage: true },
+      })
+      return { value: created, createdIds: [created.id] }
     })
     return { deal, skipped: false }
   } catch (err) {

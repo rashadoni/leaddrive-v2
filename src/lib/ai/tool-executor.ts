@@ -5,6 +5,7 @@ import { recordStageTransition } from "@/lib/revenue-intelligence/transition-rec
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { TOOL_META } from "./tools"
 import type { Role } from "@/lib/permissions"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 export interface ToolResult {
   success: boolean
@@ -136,12 +137,14 @@ async function executeUpdateDealStage(input: any, orgId: string, userId: string)
 
   const oldStage = deal.stage
   const stageChanges = oldStage !== input.stage
-  await prisma.deal.update({
-    where: { id: input.dealId },
-    // Only bump stageChangedAt on a real change — a no-op move must not
-    // reset velocity duration (parity with single-deal / bulk / sandbox).
-    data: { stage: input.stage, ...(stageChanges && { stageChangedAt: new Date() }) },
-  })
+  await withDealEvents(prisma, orgId, [input.dealId], async (tx) => ({
+    value: await tx.deal.update({
+      where: { id: input.dealId },
+      // Only bump stageChangedAt on a real change — a no-op move must not
+      // reset velocity duration (parity with single-deal / bulk / sandbox).
+      data: { stage: input.stage, ...(stageChanges && { stageChangedAt: new Date() }) },
+    }),
+  }))
   logAudit(orgId, "ai_action", "update_deal_stage", input.dealId, `AI: ${oldStage} → ${input.stage}`, { userId })
   // A12 — AI-driven stage moves must land in the pipeline waterfall too.
   // Fire-and-forget, same as the REST / bulk paths. A stage move doesn't
@@ -218,7 +221,8 @@ async function executeCreateDeal(input: any, orgId: string, userId: string): Pro
     probability = stage?.probability || 0
   }
 
-  const deal = await prisma.deal.create({
+  const deal = await withDealEvents(prisma, orgId, [], async (tx) => {
+    const created = await tx.deal.create({
     data: {
       organizationId: orgId,
       name: input.name,
@@ -231,6 +235,8 @@ async function executeCreateDeal(input: any, orgId: string, userId: string): Pro
       probability,
       assignedTo: userId,
     },
+    })
+    return { value: created, createdIds: [created.id] }
   })
   logAudit(orgId, "ai_action", "create_deal", deal.id, `AI: ${deal.name}`, { userId })
   return { success: true, data: { dealId: deal.id, name: deal.name } }

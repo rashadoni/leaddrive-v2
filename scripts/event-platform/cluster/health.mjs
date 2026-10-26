@@ -149,7 +149,7 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView, ev
           `Реестр схем на ${label(m.name)} не отвечает.`))
       }
     }
-    if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source), ...fundShadowProblems(data.source?.fundShadow), ...visitEventProblems(data.source?.visitEvents))
+    if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source), ...fundShadowProblems(data.source?.fundShadow), ...visitEventProblems(data.source?.visitEvents), ...dealEventProblems(data.source?.dealEvents))
     if (data.backupWatch) {
       const age = data.time * 1000 - (data.backupWatch.lastPass ?? 0)
       if (!data.backupWatch.lastPass || age > LIMITS.backupWatchStaleMs) {
@@ -203,6 +203,20 @@ export function visitEventProblems(visitEvents) {
     `${visitEvents.unstarted} визитов, начатых за последние ${hours} ч, не записали ни одного события (например, ${visitEvents.sample}). Визиты в CRM на месте, а в Kafka их нет: запись событий не прошла (см. «[MTM visit events] not recorded» в логе прода) или визит создан скриптом в обход приложения.`))
   if (visitEvents.drift > 0) out.push(problem('visit-events-drift', 'warning', 'События визитов MTM расходятся с CRM',
     `У ${visitEvents.drift} визитов, изменённых за последние ${hours} ч, последнее событие говорит не то, что сам визит (статус или удаление; например, ${visitEvents.sample}). Изменение прошло в CRM, а его событие не записалось.`))
+  return out
+}
+
+// Deals (PR #1123), the same rule as visits. Deals are deleted outright, so
+// a deal whose row is gone without a deal-deleted event counts as drift too.
+export function dealEventProblems(dealEvents) {
+  if (!dealEvents) return []
+  if (dealEvents.error) return [problem('deal-events-unknown', 'warning', 'Не проверены события сделок', `Сторож не смог сверить сделки с их событиями: ${dealEvents.error}.`)]
+  const hours = Math.round(dealEvents.windowSeconds / 3600)
+  const out = []
+  if (dealEvents.unstarted > 0) out.push(problem('deal-events-unstarted', 'warning', 'Сделки без событий в Kafka',
+    `${dealEvents.unstarted} сделок, созданных за последние ${hours} ч, не записали ни одного события (например, ${dealEvents.sample}). Сделки в CRM на месте, а в Kafka их нет: запись событий не прошла (см. «[Deal events] not recorded» в логе прода) или сделка создана скриптом в обход приложения.`))
+  if (dealEvents.drift > 0) out.push(problem('deal-events-drift', 'warning', 'События сделок расходятся с CRM',
+    `У ${dealEvents.drift} сделок последнее событие говорит не то, что сама сделка: другая стадия или сделка удалена без события (например, ${dealEvents.sample}). Изменение прошло в CRM, а его событие не записалось.`))
   return out
 }
 

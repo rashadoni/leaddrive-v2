@@ -249,6 +249,21 @@ test('MTM visits whose events did not get written are warnings', () => {
   assert.deepEqual(ids(withVisits({ error: 'permission denied' })), ['visit-events-unknown'])
 })
 
+test('deals whose events did not get written are warnings', () => {
+  const withDeals = (dealEvents) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.dealEvents = dealEvents
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  }
+  assert.deepEqual(withDeals({ windowSeconds: 10800, deals: 12, unstarted: 0, drift: 0, sample: null }), [])
+  assert.deepEqual(withDeals(undefined), [], 'an older production probe says nothing')
+  const found = withDeals({ windowSeconds: 10800, deals: 12, unstarted: 1, drift: 2, sample: 'deal-1' })
+  assert.deepEqual(ids(found), ['deal-events-drift', 'deal-events-unstarted'])
+  assert.ok(found.every((p) => p.severity === 'warning'), 'the deal itself is in the CRM')
+  assert.match(found.find((p) => p.id === 'deal-events-drift').detail, /^У 2 сделок.*удалена без события.*deal-1/)
+  assert.deepEqual(ids(withDeals({ error: 'permission denied' })), ['deal-events-unknown'])
+})
+
 test('the Fund shadow pilot: disagreement and lag are warnings, agreement is silent', () => {
   const withShadow = (fundShadow) => {
     const probes = healthyProbes()

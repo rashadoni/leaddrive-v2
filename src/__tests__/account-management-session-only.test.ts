@@ -42,6 +42,9 @@ vi.mock("@/lib/identity/legacy-credential-write", () => ({
 vi.mock("@/lib/prisma", () => ({
   logAudit: vi.fn(async () => undefined),
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     user: {
       findFirst: vi.fn(),
       create: vi.fn(),
@@ -59,7 +62,7 @@ vi.mock("@/lib/prisma", () => ({
     // Модели, которые трогает передача незакрытой работы при обезличивании
     // пользователя (src/lib/user-work-handover.ts). Без них tx.deal.updateMany
     // — undefined, и падение выглядело бы как поломка авторизации.
-    deal: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    deal: { updateMany: vi.fn().mockResolvedValue({ count: 0 }), findMany: vi.fn().mockResolvedValue([]) },
     lead: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     ticket: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     task: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },

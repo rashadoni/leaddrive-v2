@@ -273,6 +273,15 @@ and those whose last status event or deletion disagrees with the row («Собы
 example; no grace period, since a visit and its events commit together. A seed
 script that writes visits around the application trips the first one too.
 
+Deals (2026-10-26, PR #1123): every deal write goes through `withDealEvents`
+(`src/lib/deals/deal-events.ts`), events on `leaddrive.domain.sales.v1` →
+`ld.prod.sales.events.v1`, failing open the same way
+(`src/lib/event-platform/record-changes.ts`). The probe checks them alike
+(«Сделки без событий в Kafka», «События сделок расходятся с CRM»); since deals
+are deleted outright, a deal stream whose row is gone without
+`sales.deal-deleted.v1` counts as disagreement. Contact merges that only move
+`contactId` write no event: the events do not carry it as a change.
+
 Not covered yet: consumer lag (no consumer runs), schemas, quarantine,
 archive, projections.
 

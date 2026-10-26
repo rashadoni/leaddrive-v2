@@ -7,6 +7,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     deal: {
       findFirst: vi.fn(),
       update: vi.fn().mockResolvedValue({}),
