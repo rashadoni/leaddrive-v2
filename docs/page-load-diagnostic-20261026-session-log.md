@@ -231,3 +231,29 @@ Independent source review confirms these paths match deployed artifact `1b98cb80
 
 - Exact merge9d938258 quality/security job121578343797 completed SUCCESS: full-unit gate again18known failing files/18baseline entries, no new failures/drift. Build remains correctly superseded, so this run itself will not deploy.
 - Current descendant97e8e959 release40327393810 quality job121587528879 is through later database gates; build job121587528061 is queued for a hosted runner after the preceding076738ced build finished. No new main source edit or release mutation by this task.
+
+- By13:30UTC descendant release97e8e959 build job121587528061 is IN_PROGRESS (dependency install); hosted-runner waiting is resolved. Its quality/security job is at the final full-unit baseline gate, no failing step observed. Continue this exact run40327393810 through artifact verification and production smoke.
+
+- Current descendant97e8e959 quality/security job121587528879 SUCCESS at13:33:12UTC; all executed steps passed. Final unit-suite baseline remains18known failing files/18entries, no new failures or drift. Immutable build is in progress; no production completion claimed.
+
+- Main advanced again todee9017ace9553465bfc1b32d51f5623434754e0 at13:19:41UTC (PR1104, five Zeytun substitution files; no performance/workflow overlap). The already admitted97e8e959 build continues normally, while dee has its later release run40329614303.
+- Separate main PR-check typecheck for97 (job121590123469/run40327394293) was cancelled by main concurrency during dependency installation; Prisma generation/compiler/both type gates were NOT RUN in that repeat. It is not a code failure. PR1099 successful typecheck checked tree9763912e958bb3bd281a70d7bbdba01db3fa557a (mergeaf9cd28d… of076738c+6cf9516); actual97 tree545b76374c301ec8d62f8e7dedb5d46b2b05897f additionally contains exactly our12task paths. Therefore do not call that PR run an exact combined-tree typecheck.
+- Our performance PR60890362 typecheck/build and both9d/97 full release-quality gates remain verified PASS. Follow latest dee main typecheck job121605322768/run40329614416 for additional combined-code coverage; do not rerun the older cancelled main job and disrupt the newer run.
+
+
+## 21. Immutable optimized artifact built and verified
+
+- Descendant97e8e959 build job121587528061 SUCCESS. Logs show guarded patches applied to library.js and library.mjs at13:41:55UTC; Next compiled successfully, build exit0 at13:55:55 (14min wall, peakRSS~10.5GiB).
+- Artifact assembly and read-only verification of both direct runtime import paths SUCCESS at13:56:07. Uploaded `leaddrive-prod-97e8e959de7c0213b9b378cdb6e2e0e6f16ba217`, GitHub artifact12657280617 (~450MB), at13:56:46. This is the actual immutable artifact that contains our guarded optimization and corrected Prisma copying.
+- Production deployment/smoke job121614382534 is queued in run40327393810. Prior releases27b593a76 and076738ced completed their deploy/smoke successfully; the deployment lock is free, hosted-runner scheduling still applies. No manual server deployment performed.
+- Next: observe install and smoke completion, match public artifact identity, then run the prepared read-only deployed-getter and warmed-runtime collectors.
+
+
+## 22. Dashboard recurrence reported; continuation of authorized performance work
+
+- User reports that Zeytun /dashboard opens very slowly and shows the full loading skeleton again when scrolling upward. Both supplied screenshots show signed-in shell/wallpaper with dashboard skeletons. They do not alone prove scroll triggers network requests.
+- Applied optimize skill. Read-only audit confirms org object derives from session.user identity; dashboard load effect depends on org, calls setLoading(true), and waits for executive, config and optional loyalty together (each timeout12s). Equivalent session object replacement therefore starts another batch and replaces loaded content with skeleton. No dashboard scroll fetch handler found; layout identity key is already stable.
+- Next: reproduce with real-component lifecycle test, use stable semantic scope dependencies, abort superseded requests, and ensure user/org/role changes cannot retain prior scope data/config. Preserve all existing UI sections and access policies.
+- Native browser exposes only app.leaddrivecrm.org/companies, with previously expired session; supplied Mac Chrome Zeytun login is not an authenticated session available to this task. No credentials/cookies copied or authentication bypassed. Browser post-release page measurement remains NOT RUN for this reason.
+- Release97e8e959 job121614382534 is IN_PROGRESS (artifact upload/install preparation); prior queue statement is superseded. Continue its production smoke and read-only runtime checks independently.
+- Latest main dee9017a hosted typecheck completed: both blocking gates PASS,64baseline pairs unchanged;1353 existing compiler diagnostics remain. This covers97 plus five later Zeytun files; exact97 separate typecheck was cancelled.
