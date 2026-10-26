@@ -65,7 +65,10 @@ test("database credentials stay in a constrained child environment with explicit
   assert.equal(env.PGUSER, "fixture_owner"); assert.equal(env.PGSSLMODE, "require")
   assert.match(env.PGOPTIONS, /default_transaction_read_only=on/)
   assert.match(databaseEnvironment(app, db, false).PGOPTIONS, /default_transaction_read_only=off/)
-  for (const url of [db.replace("fixture_db", "another_db"), db.replace("127.0.0.1", "another-host"), db + "&options=unsafe", db + "&sslmode=disable", "not-a-url"]) {
+  // Parsing is not target admission: the CLI verifies actual cluster/database
+  // identity and an observed live app backend before inventory or any write.
+  assert.equal(databaseEnvironment(app, db.replace("127.0.0.1", "another-host"), true).PGHOST, "another-host")
+  for (const url of [db + "&options=unsafe", db + "&sslmode=disable", "not-a-url"]) {
     assert.throws(() => databaseEnvironment(app, url, true), /DATABASE_CONFIG_INVALID/)
   }
 })
@@ -94,8 +97,7 @@ test("managed PostgreSQL CA and verify-full survive sanitized operator connectio
 })
 test("database refusals expose only fixed reason categories, never URL material", () => {
   const app = "postgresql://fixture_app:private-fixture@db.invalid/fixture_db"
-  for (const [db, reason] of [[app.replace("db.invalid", "other.invalid"), "TARGET"],
-    [app + "?sslmode=require&sslmode=disable", "DUPLICATE"], [app + "?secret-option=private-fixture", "OPTION"]]) {
+  for (const [db, reason] of [[app + "?sslmode=require&sslmode=disable", "DUPLICATE"], [app + "?secret-option=private-fixture", "OPTION"]]) {
     assert.throws(() => databaseEnvironment(app, db, true), error => error.message === `IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_${reason}`)
   }
 })
