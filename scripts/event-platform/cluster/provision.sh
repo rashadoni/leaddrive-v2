@@ -11,7 +11,7 @@
 #   provision.sh topics CLUSTER ENV         create the governed catalog (idempotent)
 #   provision.sh install-watch ENV          health probe on every host + the watch timer here
 #   provision.sh install-backup-watch       the backup watch on BACKUP_WATCH_HOST (after install-watch)
-#   provision.sh fund-shadow-prod ORG       Fund shadow pilot, production side (login, build, pg_hba, group)
+#   provision.sh fund-shadow-prod ORG,...   Fund shadow pilot, production side (logins, builds, pg_hba, group)
 #   provision.sh fund-shadow-install        Fund shadow pilot runner on its Connect host (timer left off)
 #   provision.sh fund-shadow-run|enable|disable|status   one session now / the timer / state
 #
@@ -40,26 +40,34 @@ copy() { local name="$1" mode="$2" owner="$3" src="$4" dst="$5"
 
 backup_host() { node --input-type=module -e "import { BACKUP_WATCH_HOST } from '$here/watch.mjs'; console.log(BACKUP_WATCH_HOST)"; }
 
-# Fund shadow pilot: one runner host and one build per checkout release. A new
-# release is a new build (its codeSha is pinned), never an edited one.
+# Fund shadow pilot: one runner host and one build per organization and
+# checkout release. A new release or organization set is a new pilot number
+# (new build key and group), never an edited build. Every organization whose
+# events are on the topic must be in the plan: the worker stops at any other.
 FS_HOST=kafka-p-connect-uk
 fs_pilot_init() {
-  # fs_pilot_init ORG [new]: "new" (fund-shadow-prod) starts a build for a new
-  # release; without it the recorded build must already be this release's.
-  local org="$1" mode="${2:-}" file="$state/fund-shadow/pilot.json"
+  # fs_pilot_init ORG,... [new]: "new" (fund-shadow-prod) starts a pilot for a
+  # new release or organization set; without it the recorded pilot must
+  # already be this release's.
+  local orgs="$1" mode="${2:-}" file="$state/fund-shadow/pilot.json"
   fs_release="$(git -C "$repo" rev-parse HEAD)"
   [ -z "$(git -C "$repo" status --porcelain --untracked-files=no)" ] || die "the checkout has local changes"
   git -C "$repo" merge-base --is-ancestor HEAD origin/main || die "check out a commit of origin/main"
   mkdir -p "$state/fund-shadow"
-  if [ ! -s "$file" ] || [ "$(node -e 'console.log(require(process.argv[1]).releaseSha)' "$file")" != "$fs_release" ]; then
-    [ "$mode" = new ] || die "no build for release ${fs_release:0:12}: run fund-shadow-prod first"
+  local current=""
+  [ -s "$file" ] && current="$(node -e 'const p = require(process.argv[1]); console.log(p.releaseSha + " " + (p.orgs ?? []).map(o => o.org).sort().join(","))' "$file")"
+  local wanted="$fs_release $(tr ',' '\n' <<<"$orgs" | sort | paste -sd, -)"
+  if [ "$current" != "$wanted" ]; then
+    [ "$mode" = new ] || die "no pilot for release ${fs_release:0:12} and $orgs: run fund-shadow-prod first"
     local n=1; [ -s "$file" ] && n=$(( $(node -e 'console.log(require(process.argv[1]).number)' "$file") + 1 ))
-    node -e 'const [org, release, n] = process.argv.slice(1); process.stdout.write(JSON.stringify({ org, number: Number(n),
-      role: "ld_fund_shadow_pilot", buildId: require("node:crypto").randomUUID(), buildKey: `pilot-${n}`,
-      groupId: `ld.prod.finance.fund-shadow.v2.pilot-${n}`, releaseSha: release }, null, 1))' "$org" "$fs_release" "$n" >"$file"
+    node -e 'const [orgs, release, n] = process.argv.slice(1); const { randomUUID } = require("node:crypto")
+      process.stdout.write(JSON.stringify({ number: Number(n), buildKey: `pilot-${n}`, groupId: `ld.prod.finance.fund-shadow.v2.pilot-${n}`,
+        releaseSha: release, orgs: orgs.split(",").sort().map(org => ({ org, role: `ld_fund_shadow_${org.toLowerCase()}`, buildId: randomUUID() })) }, null, 1))' \
+      "$orgs" "$fs_release" "$n" >"$file"
   fi
-  [ "$(node -e 'console.log(require(process.argv[1]).org)' "$file")" = "$org" ] || die "the pilot is for another organization"
-  read -r fs_role fs_build fs_key fs_group < <(node -e 'const p = require(process.argv[1]); console.log(p.role, p.buildId, p.buildKey, p.groupId)' "$file")
+  read -r fs_key fs_group < <(node -e 'const p = require(process.argv[1]); console.log(p.buildKey, p.groupId)' "$file")
+  # "org role buildId" per line
+  mapfile -t fs_routes < <(node -e 'for (const o of require(process.argv[1]).orgs) console.log(o.org, o.role, o.buildId)' "$file")
 }
 
 member_role() { js '
@@ -456,28 +464,35 @@ case "${1:-}" in
     ;;
 
   fund-shadow-prod)
-    # The pilot's production side, in one place and idempotent: the restricted
-    # login and shadow build of ORG (provision-role.sql), the login's pg_hba
-    # line from the runner host only, the worker's group ACL and the group's
-    # starting offset. Touches production: run only with the owner's word.
-    org="${2:-}"; [[ "$org" =~ ^[A-Za-z0-9_-]{1,64}$ ]] || die "usage: fund-shadow-prod ORG"
-    fs_pilot_init "$org" new
+    # The pilot's production side, in one place and idempotent: per ORG its
+    # restricted login and shadow build (provision-role.sql), the logins'
+    # pg_hba lines from the runner host only, retirement of earlier pilot
+    # builds and logins, the worker's group ACL and the group's starting
+    # offset. Touches production: run only with the owner's word.
+    orgs="${2:-}"; [[ "$orgs" =~ ^[A-Za-z0-9_-]{1,64}(,[A-Za-z0-9_-]{1,64}){0,19}$ ]] || die "usage: fund-shadow-prod ORG[,ORG...]"
+    fs_pilot_init "$orgs" new
     src_key="${LD_SOURCE_SSH_KEY:-$HOME/.ssh/leaddrive_prod_2026_09_09}"
     src_ip="$(public_of "$(js 'console.log(m.loadTopology().sourceHost.name)')")" || die "source not enrolled"
     on_src() { ssh -i "$src_key" -o IdentitiesOnly=yes -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=15 "root@$src_ip" "$@"; }
-    password="$state/secrets/prod-fund-shadow-$fs_role"
-    [ -s "$password" ] || openssl rand -hex 24 >"$password"
     on_src 'install -d -m 0700 /root/ld-fund-shadow'
-    on_src 'install -m 0700 /dev/stdin /root/ld-fund-shadow/prod-apply.sh' <"$repo/scripts/event-platform/fund-shadow/prod-apply.sh"
-    on_src 'install -m 0600 /dev/stdin /root/ld-fund-shadow/provision-role.sql' <"$repo/scripts/event-platform/fund-shadow/provision-role.sql"
-    # Only the SCRAM verifier leaves this workstation for the database.
-    node "$repo/scripts/event-platform/fund-shadow/scram.mjs" <"$password" \
-      | on_src "bash /root/ld-fund-shadow/prod-apply.sh role $org $fs_role $fs_build $fs_key $fs_release"
+    for f in prod-apply.sh provision-role.sql retire-builds.sql; do
+      on_src "install -m 0600 /dev/stdin /root/ld-fund-shadow/$f" <"$repo/scripts/event-platform/fund-shadow/$f"
+    done
+    roles=()
+    for route in "${fs_routes[@]}"; do
+      read -r org role build <<<"$route"; roles+=("$role")
+      password="$state/secrets/prod-fund-shadow-$role"
+      [ -s "$password" ] || openssl rand -hex 24 >"$password"
+      # Only the SCRAM verifier leaves this workstation for the database.
+      node "$repo/scripts/event-platform/fund-shadow/scram.mjs" <"$password" \
+        | on_src "bash /root/ld-fund-shadow/prod-apply.sh role $org $role $build $fs_key $fs_release"
+    done
     runner_addr="$(js 'console.log(JSON.parse(process.argv[1]).hosts[process.argv[2]].address)' "$(cat "$inventory")" "$FS_HOST")"
-    on_src "bash /root/ld-fund-shadow/prod-apply.sh hba $fs_role $runner_addr"
+    on_src "bash /root/ld-fund-shadow/prod-apply.sh hba $runner_addr ${roles[*]}"
+    on_src "bash /root/ld-fund-shadow/prod-apply.sh retire $fs_key ${roles[*]}"
     "$0" admin kafka-p-broker-eu kafka-acls.sh --add --allow-principal User:ld-fund-worker --operation Read \
       --group ld.prod.finance.fund-shadow. --resource-pattern-type prefixed >/dev/null
-    # The prefix before PR fixing services.mjs never matched a plan's group.
+    # The prefix before PR #1073 never matched a plan's group.
     "$0" admin kafka-p-broker-eu kafka-acls.sh --remove --force --allow-principal User:ld-fund-worker --operation Read \
       --group ld.prod.fund-shadow. --resource-pattern-type prefixed >/dev/null
     # The bridge refuses a group without offsets; the shadow folds full history.
@@ -488,7 +503,7 @@ case "${1:-}" in
         --reset-offsets --to-earliest --execute >/dev/null
       echo "group $fs_group starts at the earliest offsets"
     fi
-    on_src "bash /root/ld-fund-shadow/prod-apply.sh status $fs_role"
+    on_src "bash /root/ld-fund-shadow/prod-apply.sh status"
     ;;
 
   fund-shadow-install)
@@ -497,8 +512,10 @@ case "${1:-}" in
     # runner), the runner bundle, plan/pins/host files and secrets. The timer
     # is installed but left off: fund-shadow-run first, then fund-shadow-enable.
     [ -s "$state/fund-shadow/pilot.json" ] || die "run fund-shadow-prod first"
-    fs_pilot_init "$(node -e 'console.log(require(process.argv[1]).org)' "$state/fund-shadow/pilot.json")"
-    password="$state/secrets/prod-fund-shadow-$fs_role"; [ -s "$password" ] || die "no pilot login password"
+    fs_pilot_init "$(node -e 'console.log((require(process.argv[1]).orgs ?? []).map(o => o.org).join(","))' "$state/fund-shadow/pilot.json")"
+    for route in "${fs_routes[@]}"; do
+      read -r _ role _ <<<"$route"; [ -s "$state/secrets/prod-fund-shadow-$role" ] || die "no login password for $role"
+    done
     worker_secret="$state/secrets/prod-ld-fund-worker"; [ -s "$worker_secret" ] || die "no ld-fund-worker password"
     image="$(on "$FS_HOST" "docker inspect -f '{{.Config.Image}}' $FS_HOST-connect")"
     on "$FS_HOST" 'command -v node >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null
@@ -534,7 +551,9 @@ PY
       --external:pg-native --legal-comments=none --log-level=error --outfile="$bundle/runner.cjs" \
       || die "bundle failed (npm ci --prefix ops/event-platform/fund-shadow --ignore-scripts)"
     copy "$FS_HOST" 0644 root:root "$bundle/runner.cjs" /opt/ld-fund-shadow/runner.cjs; rm -rf "$bundle"
-    topic="$("$0" admin kafka-p-broker-eu kafka-topics.sh --describe --topic ld.prod.finance.events.v1 2>/dev/null | head -1)"
+    # Whole output first: `| head -1` would cut the tool off, and under
+    # pipefail its SIGPIPE ended this command without a word.
+    topic="$("$0" admin kafka-p-broker-eu kafka-topics.sh --describe --topic ld.prod.finance.events.v1 2>/dev/null)"; topic="${topic%%$'\n'*}"
     topic_id="$(sed -n 's/.*TopicId: \([^[:space:]]*\).*/\1/p' <<<"$topic")"; partitions="$(sed -n 's/.*PartitionCount: \([0-9]*\).*/\1/p' <<<"$topic")"
     cluster_id="$(node -e 'console.log(require(process.argv[1]).clusters.primary.clusterId)' "$inventory")"
     on "$FS_HOST" 'install -d -m 0700 /etc/leaddrive-kafka/fund-shadow /etc/leaddrive-kafka/fund-shadow/secrets'
@@ -545,8 +564,8 @@ PY
       const plan = { apiVersion: "event-platform.leaddrive.io/v1", kind: "FundShadowWorkerPlan", releaseSha: release, artifactSha256: digest,
         environment: "prod", broker: { clusterId, groupId: pilot.groupId, topic: "ld.prod.finance.events.v1", topicId, partitionCount: Number(partitions) },
         limits: { maxRecords: 10000, maxDurationMs: 240000 }, kafkaSecretReference: "vault://leaddrive/kafka/ld-fund-worker",
-        routes: [{ scope: { organizationId: pilot.org, buildId: pilot.buildId, buildKey: pilot.buildKey, projectionVersion: 2,
-          codeSha: release, environment: "prod", expectedWorkerRole: pilot.role }, databaseSecretReference: `vault://leaddrive/postgres/${pilot.role}` }] }
+        routes: pilot.orgs.map(o => ({ scope: { organizationId: o.org, buildId: o.buildId, buildKey: pilot.buildKey, projectionVersion: 2,
+          codeSha: release, environment: "prod", expectedWorkerRole: o.role }, databaseSecretReference: `vault://leaddrive/postgres/${o.role}` })) }
       const host = { brokers, connectImage: image, caFile: "/etc/leaddrive-kafka/tls/ca.pem",
         database: { address: inv.hosts["leaddrive-prod"].address, tlsName: "vmi3554743.contaboserver.net",
           caFile: "/etc/leaddrive-kafka/tls/source-postgres.pem", name: "leaddrive_v2" } }
@@ -557,7 +576,11 @@ PY
         | on "$FS_HOST" "install -m 0600 /dev/stdin /etc/leaddrive-kafka/fund-shadow/$part.json"
     done
     copy "$FS_HOST" 0600 root:root "$worker_secret" /etc/leaddrive-kafka/fund-shadow/secrets/leaddrive__kafka__ld-fund-worker
-    copy "$FS_HOST" 0600 root:root "$password" "/etc/leaddrive-kafka/fund-shadow/secrets/leaddrive__postgres__$fs_role"
+    on "$FS_HOST" 'find /etc/leaddrive-kafka/fund-shadow/secrets -name "leaddrive__postgres__*" -delete'
+    for route in "${fs_routes[@]}"; do
+      read -r _ role _ <<<"$route"
+      copy "$FS_HOST" 0600 root:root "$state/secrets/prod-fund-shadow-$role" "/etc/leaddrive-kafka/fund-shadow/secrets/leaddrive__postgres__$role"
+    done
     for unit in ld-fund-shadow.service ld-fund-shadow.timer; do
       copy "$FS_HOST" 0644 root:root "$repo/ops/event-platform/fund-shadow/$unit" "/etc/systemd/system/$unit"
     done

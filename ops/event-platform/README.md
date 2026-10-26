@@ -362,12 +362,20 @@ the CRM never reads it, nothing is promoted and nothing leaves the system.
   `KafkaPartitionBridge` as `nobody` in the Connect image, the restricted
   PostgreSQL login over the overlay with TLS verified against the production
   certificate. It stops at two IDLE frames after assignment: caught up.
-- **Database**: `provision-role.sql`, run as postgres on production, creates
-  the login `ld_fund_shadow_pilot` (NOINHERIT, no BYPASSRLS, two connections)
+- **Organizations**: every organization with events on the finance topic is in
+  the plan. The worker stops at an event of any other one: it never skips an
+  event. Owner 2026-10-26, after pilot-1 stopped at another tenant's event:
+  «Да, добавь в теневой пилот Fund и две другие организации с событиями Fund:
+  обработчик остаётся строгим, пропусков нет.»
+- **Database**: `provision-role.sql`, run as postgres on production once per
+  organization, creates its login `ld_fund_shadow_<org>` (NOINHERIT, no
+  BYPASSRLS, two connections, marked by a role comment)
   with the grants and RESTRICTIVE policies the consumer is tested against,
   and the build row (`mode=shadow`, `status=running`, effects fenced). It
   refuses to run if any table lacks forced row security. Only a SCRAM verifier
-  reaches the server. `pg_hba` admits the login from the runner host only.
+  reaches the server. `pg_hba` admits the logins from the runner host only.
+  `retire-builds.sql` then abandons the builds of earlier pilots and switches
+  off their marked logins; nothing is deleted.
 - **Kafka**: identity `ld-fund-worker` (Read/Describe/DescribeConfigs on the
   finance topic; Read on groups `ld.prod.finance.fund-shadow.`), group
   `ld.prod.finance.fund-shadow.v2.pilot-<n>` started at the earliest offsets.
@@ -375,8 +383,8 @@ the CRM never reads it, nothing is promoted and nothing leaves the system.
   `funds` (counts only): `fund-shadow-wrong` when the same event version gives
   a different balance or currency, `fund-shadow-stale` when a fund is behind an
   event older than 30 minutes. Both are warnings: users never see the shadow.
-- **Order**: `provision.sh fund-shadow-prod <org>` (production: the owner
-  runs it) → `fund-shadow-install` → `fund-shadow-run` → `fund-shadow-enable`.
+- **Order**: `provision.sh fund-shadow-prod <org>,<org>,…` (production: the
+  owner runs it) → `fund-shadow-install` → `fund-shadow-run` → `fund-shadow-enable`.
   A new release is a new build (`pilot-<n+1>`, its own group), never an edited
   one. **Stop**: `fund-shadow-disable`; there is nothing to roll back.
 - Tested by `pilot.integration.ts` in `static-checks` on the real event

@@ -304,7 +304,7 @@ jobs:
         env:
           PILOT_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           PILOT_PSQL: psql -h 127.0.0.1 -p ${{ env.EVENT_PLATFORM_PG_PORT }}
-          PILOT_SQL_FILE: scripts/event-platform/fund-shadow/provision-role.sql
+          PILOT_SQL_DIR: scripts/event-platform/fund-shadow
           PGPASSWORD: postgres
 
       - name: Workforce shared-lock PostgreSQL race gate

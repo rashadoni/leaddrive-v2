@@ -58,6 +58,8 @@ BEGIN
     EXECUTE format('ALTER ROLE %I PASSWORD %L', role, current_setting('ld.verifier'));
   END IF;
   EXECUTE format('ALTER ROLE %I CONNECTION LIMIT 2', role);
+  -- retire-builds.sql switches off only logins carrying this mark.
+  EXECUTE format('COMMENT ON ROLE %I IS %L', role, 'leaddrive fund shadow pilot');
 
   -- The build the consumer checks: shadow, running, effects fenced, full history.
   SELECT id, "organizationId", "projectionName", "projectionVersion", "codeSha", mode INTO existing
