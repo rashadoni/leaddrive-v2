@@ -31212,5 +31212,15 @@
     "saveHint": "Sətirləri saxlayır, sövdələşmənin məbləği onların cəmi olur.",
     "save": "Yadda saxla",
     "amountFromLines": "Sövdələşmə kartındakı məhsullardan hesablanır."
+  },
+  "productAiFill": {
+    "button": "AI ilə doldur",
+    "buttonHint": "Ada görə AI təsvir, kateqoriya, tip, xüsusiyyətlər və teqlər təklif edir. Qiymət və SKU sizindir. Məhsulu yadda saxlayana qədər heç nə saxlanılmır.",
+    "nameFirst": "Əvvəlcə məhsulun adını yazın.",
+    "hint": "Yalnız boş sahələr doldurulur; qiymət və SKU heç vaxt.",
+    "errBudget": "Bu ay üçün AI limiti bitib.",
+    "errNoModule": "Da Vinci AI modulu təşkilatınızda qoşulmayıb.",
+    "errUnavailable": "AI hazırda cavab vermir. Bir dəqiqədən sonra yenidən cəhd edin.",
+    "nothingToFill": "Hər şey artıq doldurulub — heç nə dəyişmədi."
   }
 }
