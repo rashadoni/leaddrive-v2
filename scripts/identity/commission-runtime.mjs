@@ -71,21 +71,28 @@ export function databaseEnvironment(appUrl, migrationUrl, readOnly) {
   try {
     const app = new URL(appUrl), db = new URL(migrationUrl)
     for (const url of [app, db]) if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || url.pathname.length < 2 || url.hash) throw new Error()
-    if (app.hostname !== db.hostname || (app.port || "5432") !== (db.port || "5432") || app.pathname !== db.pathname) throw new Error()
+    if (app.hostname !== db.hostname || (app.port || "5432") !== (db.port || "5432") || app.pathname !== db.pathname) fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_TARGET")
     const env = { PATH: process.env.PATH, LANG: "C.UTF-8", PGHOST: db.hostname, PGPORT: db.port || "5432",
       PGDATABASE: decodeURIComponent(db.pathname.slice(1)), PGUSER: decodeURIComponent(db.username), PGPASSWORD: decodeURIComponent(db.password),
       PGCONNECT_TIMEOUT: "5", PGAPPNAME: "identity-runtime-commission",
       PGOPTIONS: `-c default_transaction_read_only=${readOnly ? "on" : "off"} -c statement_timeout=5000 -c lock_timeout=3000 -c search_path=public` }
     const seen = new Set()
     for (const [key, value] of db.searchParams) {
-      if (seen.has(key)) throw new Error()
+      if (seen.has(key)) fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_DUPLICATE")
       seen.add(key)
       if (key === "schema" && value === "public") continue
       if (key === "sslmode" && ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"].includes(value)) env.PGSSLMODE = value
-      else throw new Error()
+      // The managed PostgreSQL deployment uses an explicit CA with verify-full.
+      // Forward the root-owned configuration literally; never remove TLS
+      // verification or inherit unrelated libpq overrides from the environment.
+      else if (key === "sslrootcert" && path.isAbsolute(value) && value.length <= 1024 && !/[\0\r\n]/.test(value)) env.PGSSLROOTCERT = value
+      else fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_OPTION")
     }
     return env
-  } catch { fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID") }
+  } catch (error) {
+    if (/^IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_(TARGET|DUPLICATE|OPTION)$/.test(error.message ?? "")) throw error
+    fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID")
+  }
 }
 
 function safeFile(file, mode = 0o600, uid = 0, gid = 0) {
@@ -118,7 +125,10 @@ export function assertInventory(state) {
     || ![state.canonicalCount, state.proofCount].every(value => Number.isSafeInteger(value) && value >= 0)) fail("IDENTITY_COMMISSION_INVENTORY_REFUSED")
 }
 function processes() {
-  const raw = command("pm2", ["pid", "leaddrive-v2"])
+  // Match scripts/server-deploy.sh, including under the sanitized root worker.
+  const raw = command("pm2", ["pid", "leaddrive-v2"], {
+    env: { PATH: process.env.PATH, LANG: "C.UTF-8", HOME: "/root", PM2_HOME: "/root/.pm2" },
+  })
   const ids = raw.split(/\s+/)
   if (!ids.length || ids.length > 16 || ids.some(id => !/^[1-9][0-9]{0,9}$/.test(id))) fail("IDENTITY_COMMISSION_PROCESS_UNAVAILABLE")
   return ids.map(id => {
