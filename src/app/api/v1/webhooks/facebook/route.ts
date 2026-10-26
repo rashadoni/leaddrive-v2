@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
 
         const senderName = await resolveMetaSenderName({
           organizationId: channel.organizationId, platform, senderId,
-          token: channel.apiKey, igLogin: isIgLogin(channel.settings),
+          token: channel.apiKey, igLogin: isIgLogin(channel.settings), accountId: channel.pageId,
         })
         const conv = await upsertSocialConversation(
           channel.organizationId, platform, senderId,
