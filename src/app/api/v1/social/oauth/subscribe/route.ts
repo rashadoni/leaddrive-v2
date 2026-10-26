@@ -68,4 +68,4 @@ export const POST = withSocialConnectAuth("write", async (req, auth) => {
     subscribedFields: ["messages", "messaging_postbacks"],
     ...(result.success ? {} : { error: result.error }),
   }, { status: result.success ? 200 : 502 })
-})
+}, { channel: true })
