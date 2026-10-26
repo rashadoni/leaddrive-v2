@@ -993,6 +993,12 @@ jobs:
             "$DEPLOY_TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
           cat src/generated/build-sha.ts
 
+      - name: Make Prisma fluent field-map construction linear
+        # This changes runtime behavior, so it belongs to the target artifact's
+        # commit. Historical recovery targets that predate it stay unchanged.
+        if: ${{ hashFiles('scripts/ci/patch-prisma-fluent-field-map.mjs') != '' }}
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs
+
       - name: Keep Next build-worker trace events out of IPC
         # The build worker returns each compiler's result as one JSON string;
         # the server's debug trace events alone reached 349M of V8's 536.9M
@@ -1071,9 +1077,12 @@ jobs:
             MANIFEST_COPIED=$((MANIFEST_COPIED + 1))
           done < <(find .next/server/app -name '*_client-reference-manifest.js')
           echo "::notice::Copied $MANIFEST_COPIED client-reference-manifest file(s)"
-          mkdir -p .next/standalone/node_modules
-          cp -r node_modules/.prisma .next/standalone/node_modules/.prisma
-          cp -r node_modules/@prisma .next/standalone/node_modules/@prisma
+          # Next may already have traced part of these directories. Copy their
+          # contents into place, rather than nesting another @prisma/.prisma
+          # under the existing destination and leaving traced files untouched.
+          mkdir -p .next/standalone/node_modules/.prisma .next/standalone/node_modules/@prisma
+          cp -r node_modules/.prisma/. .next/standalone/node_modules/.prisma/
+          cp -r node_modules/@prisma/. .next/standalone/node_modules/@prisma/
 
           mkdir -p .next/standalone/public
           cp -r public/. .next/standalone/public/
@@ -1267,6 +1276,10 @@ jobs:
             echo "::error::final artifact must not claim the one-release Fund atomic prerequisite contract"
             exit 1
           }
+
+      - name: Verify Prisma fluent optimization in the assembled artifact
+        if: ${{ hashFiles('scripts/ci/patch-prisma-fluent-field-map.mjs') != '' }}
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs --check .next/standalone
 
       - name: Create deployment tarball
         run: |

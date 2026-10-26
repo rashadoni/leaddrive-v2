@@ -223,6 +223,23 @@ target aborts the release; retired targets are never accepted or migrated.
   copies of the installed Next files. The script refuses to run outside GitHub
   Actions unless given `--allow-local`: on a development box `node_modules/next`
   is shared by every worktree, so never pass it there.
+- CI production builds apply `scripts/ci/patch-prisma-fluent-field-map.mjs`
+  after dependency installation/client generation and before compilation.
+  Prisma 6.19.2 rebuilds a field-name map using repeated object spread on each
+  fluent model-method access. With more than 500 Organization fields this is
+  measurable synchronous work before SQL (production profile, 2026-10-26).
+  The patch uses linear `Object.fromEntries` construction in the library
+  engine's CommonJS and ESM runtimes. Query arguments, relation chaining,
+  transactions, authorization and tenant policies are unchanged.
+  It accepts only 6.19.2 and exactly the reviewed source expression; review or
+  retire it when upgrading Prisma. It validates both files before writing,
+  refuses shared/symlinked dependency trees and requires GitHub Actions or
+  `--allow-local` for an isolated disposable install. Never patch the running
+  production dependency tree. `--check .next/standalone` verifies the assembled
+  artifact without writing. Unlike the Next trace workaround, this runtime
+  patch belongs to the artifact's source commit: historical recovery targets
+  predating the script retain their original behavior. Tests use copied
+  runtimes; development/shared dependencies are left untouched.
 - PM2 runs `.next/standalone/server.js` via `/tmp/start-leaddrive.sh`
 - Start script reads `/etc/leaddrive/app.env`; `/opt/leaddrive-v2/.env` is only
   a compatibility symlink during the controlled transition.
