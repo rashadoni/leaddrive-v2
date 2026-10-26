@@ -21,6 +21,7 @@ import {
 import { CrmCommandError, notFoundError, staleWriteError, validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { updateDealCommandSchema, type UpdateDealCommandInput } from "../schemas/deal"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 /**
  * Update one deal — the single implementation behind PUT/PATCH
@@ -286,7 +287,7 @@ export async function updateDealCommand(
     delete parsed.data.valueAmount
   }
 
-  const deal = await db.deal.updateMany({
+  const deal = await withDealEvents(db, orgId, [id], async (tx) => ({ value: await tx.deal.updateMany({
     // The version check and the write are one statement when a reviewed
     // version was supplied: an edit in between is refused, not overwritten.
     where: expectedDate
@@ -321,7 +322,7 @@ export async function updateDealCommand(
           : (parseMeddpicc(parsed.data.meddpicc) as unknown as Prisma.InputJsonValue),
       }),
     } as Prisma.DealUpdateManyMutationInput,
-  })
+  }) }))
 
   if (deal.count === 0) {
     if (expectedDate) throw staleWriteError()

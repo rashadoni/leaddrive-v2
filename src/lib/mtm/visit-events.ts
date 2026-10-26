@@ -1,5 +1,5 @@
-import { appendDomainEvent, eventProducerVersion, type EventPlatformTransaction } from "@/lib/event-platform/append"
 import type { CanonicalJsonValue } from "@/lib/event-platform/canonical-json"
+import { recordStreamChanges, type ChangeTransaction, type StreamOwner } from "@/lib/event-platform/record-changes"
 
 /**
  * MTM visits on the event platform (owner 2026-10-26: «Подключай к Kafka
@@ -25,9 +25,9 @@ import type { CanonicalJsonValue } from "@/lib/event-platform/canonical-json"
  *
  * The field never waits for the platform: the events are written in a
  * savepoint whose commit checks run at once, and any failure rolls back only
- * the events. The visit itself is written as before, and the log line names
- * it. (The Kafka watch's outbox ↔ Kafka check covers the way from the outbox
- * on; a missed event never reaches the outbox, so it is the log that tells.)
+ * the events (`recordStreamChanges`). The visit itself is written as before;
+ * the log line names it, and the Kafka watch's visit check (#1115) reports a
+ * visit without events or whose last event disagrees with it.
  */
 
 const SNAPSHOT_COLUMNS = `id, "organizationId", "agentId", "customerId", "contactId", "routeId", "routePointId",
@@ -52,8 +52,7 @@ export interface MtmVisitSnapshot {
   deletedAt: Date | null
 }
 
-/** Any Prisma interactive transaction: the event SDK's needs plus savepoints. */
-type Tx = EventPlatformTransaction & { $executeRawUnsafe(query: string, ...values: unknown[]): Promise<number> }
+type Tx = ChangeTransaction
 
 async function snapshot(tx: Tx, organizationId: string, visitId: string, lock: boolean): Promise<MtmVisitSnapshot | null> {
   const rows = await tx.$queryRawUnsafe<MtmVisitSnapshot[]>(
@@ -112,24 +111,10 @@ export function mtmVisitEvents(before: MtmVisitSnapshot | null, after: MtmVisitS
   return events
 }
 
-async function hasStream(tx: Tx, organizationId: string, visitId: string) {
-  const rows = await tx.$queryRawUnsafe<Array<{ one: number }>>(
-    `SELECT 1 AS one FROM event_aggregate_heads WHERE "organizationId" = $1 AND "aggregateType" = 'visit' AND "aggregateId" = $2`,
-    organizationId, visitId,
-  )
-  return Array.isArray(rows) && rows.length > 0
+const VISITS: StreamOwner = {
+  domain: "mtm", aggregateType: "visit", eventPrefix: "mtm.visit",
+  source: "/mtm/visits", producer: "mtm-visits", label: "MTM visit",
 }
-
-function append(tx: Tx, organizationId: string, visitId: string, event: MtmVisitEvent) {
-  return appendDomainEvent(tx, {
-    organizationId, domain: "mtm", aggregateType: "visit", aggregateId: visitId,
-    eventType: `mtm.visit-${event.type}.v1`, dataSchema: `urn:leaddrive:schema:mtm.visit-${event.type}:v1`,
-    source: "/mtm/visits", classification: "confidential",
-    producer: "mtm-visits", producerVersion: eventProducerVersion(), data: event.data,
-  })
-}
-
-const COMMIT_CHECKS = "domain_events_commit_coherence_trigger, event_aggregate_heads_commit_coherence_trigger"
 
 /**
  * Write the events of this transaction's change to one visit. `before` is
@@ -138,24 +123,7 @@ const COMMIT_CHECKS = "domain_events_commit_coherence_trigger, event_aggregate_h
  */
 export async function recordMtmVisitChange(tx: Tx, organizationId: string, visitId: string, before: MtmVisitSnapshot | null): Promise<number> {
   const after = await snapshot(tx, organizationId, visitId, false)
-  const events = mtmVisitEvents(before, after)
-  if (events.length === 0) return 0
-  await tx.$executeRawUnsafe("SAVEPOINT ld_mtm_visit_events")
-  try {
-    if (before && !(await hasStream(tx, organizationId, visitId))) {
-      await append(tx, organizationId, visitId, { type: "imported", data: state(before) })
-    }
-    for (const event of events) await append(tx, organizationId, visitId, event)
-    // Run the event tables' commit checks now, inside the savepoint, so a
-    // failure surfaces here and not at the visit's COMMIT.
-    await tx.$executeRawUnsafe(`SET CONSTRAINTS ${COMMIT_CHECKS} IMMEDIATE`)
-    await tx.$executeRawUnsafe(`SET CONSTRAINTS ${COMMIT_CHECKS} DEFERRED`)
-    await tx.$executeRawUnsafe("RELEASE SAVEPOINT ld_mtm_visit_events")
-    return events.length
-  } catch (error) {
-    await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT ld_mtm_visit_events")
-    // No row data: ids and the error class only.
-    console.error("[MTM visit events] not recorded", { organizationId, visitId, error: error instanceof Error ? error.name : "unknown" })
-    return 0
-  }
+  return recordStreamChanges(tx, VISITS, organizationId, [{
+    aggregateId: visitId, imported: before ? state(before) : null, events: mtmVisitEvents(before, after),
+  }])
 }
