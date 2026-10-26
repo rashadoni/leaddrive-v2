@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-10-26T08:21:15.309437+00:00",
+  "repairPr": 1087,
+  "repairSource": "083c8d47fb70996bc756fabf6e7df9495305e21d",
+  "mergeSha": "57a29fd99515e7e5ad8fe64de8faf8f634a4cbc4",
+  "deployedSha": "fd53516a6a8ba33c979cb2fd6fd53d3f79b35746",
+  "deployRun": 40286149926,
+  "deployJob": 121462890564,
+  "artifactId": 12634509487,
+  "artifactDigest": "e3020ae7e286fd6e2dbb4abca9f271daf372684e40ad55be6ccc960493bcb145",
+  "public": [
+    {
+      "host": "app.leaddrivecrm.org",
+      "pingStatus": 200,
+      "artifactSha": "fd53516a6a8ba33c979cb2fd6fd53d3f79b35746"
+    },
+    {
+      "host": "zeytun.leaddrivecrm.org",
+      "pingStatus": 200,
+      "artifactSha": "fd53516a6a8ba33c979cb2fd6fd53d3f79b35746"
+    }
+  ]
+}
