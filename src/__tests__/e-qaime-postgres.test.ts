@@ -67,7 +67,7 @@ vi.mock("@/lib/mobile-auth", async () => {
 
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
-const MIGRATION = path.join(ROOT, "prisma/migrations/20261105100000_e_qaime_invoices/migration.sql")
+const MIGRATION = path.join(ROOT, "prisma/migrations/20261106100000_e_qaime_invoices/migration.sql")
 const ORG = "org-eqaime"
 const OTHER = "org-eqaime-other"
 const OURS = "1400000000"
