@@ -223,8 +223,8 @@ describe("Channel catalog — one tile per platform", () => {
   it("puts the employees' Telegram bot in the catalog beside the customers' one, with its own status", async () => {
     // Owner, 2026-10-26: the bot had its own Settings entry; all Telegram now lives in the channel catalog.
     await renderCatalog([], true)
-    expect(tile("telegram")?.textContent).toContain("Telegram for customers")
-    expect(tile("telegram-staff")?.textContent).toContain("Telegram for employees")
+    expect(tile("telegram")?.textContent).toContain("Telegram · customers")
+    expect(tile("telegram-staff")?.textContent).toContain("Telegram · employees")
     expect(action("telegram-staff").getAttribute("href")).toBe("/settings/channels/telegram-staff")
     expect(tile("telegram-staff")?.querySelector('[data-testid="channel-card-connected-badge"]')).toBeNull()
 
