@@ -2,7 +2,7 @@ import { AnimateIn } from "@/components/marketing/animate-in"
 import { LegalDocumentNav, legalLocale } from "@/components/marketing/legal-document-nav"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME, COMPANY_PRIVACY_EMAIL, COMPANY_REGISTRATION_NUMBER } from "@/lib/constants"
+import { COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME, COMPANY_PRIVACY_EMAIL } from "@/lib/constants"
 import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
@@ -157,9 +157,11 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
             <section>
               <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("s10")}</h2>
               <p>{t("p10")}</p>
+              {/* Owner, 2026-10-26: no VÖEN here («убери VÖEN…», then «адрес тоже
+                  оставь») — the operator's name and address stay, from the constants. */}
               <p className="mt-2">
                 <a href={`mailto:${COMPANY_PRIVACY_EMAIL}`} className="underline hover:opacity-70">{COMPANY_PRIVACY_EMAIL}</a><br />
-                {COMPANY_LEGAL_NAME}, {COMPANY_REGISTRATION_NUMBER}<br />
+                {COMPANY_LEGAL_NAME}<br />
                 {COMPANY_LEGAL_ADDRESS}
               </p>
             </section>
