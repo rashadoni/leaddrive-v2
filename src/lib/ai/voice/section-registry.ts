@@ -304,7 +304,6 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   "settings_approval-delegates": "config",
   settings_snippets: "config",
   "inbox_chatbot-rules": "config",
-  settings_channels: "config",
   "settings_ticket-categories": "config",
   "settings_sla-policies": "config",
   "settings_entitlement-templates": "config",

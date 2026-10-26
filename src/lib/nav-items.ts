@@ -279,7 +279,6 @@ export const navItems: NavItem[] = [
   { module: "omnichannel", href: "/inbox/chatbot-rules", icon: Bot, tKey: "chatbotRulesNav", group: "Communication" },
   { module: "omnichannel", href: "/inbox/automation", icon: Workflow, tKey: "inboxAutomationNav", group: "Communication" },
   { module: "omnichannel", href: "/inbox/business-hours", icon: Clock, tKey: "businessHoursNav", group: "Communication" },
-  { module: "omnichannel", href: "/settings/channels", icon: Radio, tKey: "channelsNav", group: "Communication", pageUngated: true },
   { module: "omnichannel", href: "/inbox/voip", icon: Phone, tKey: "voipCalls", group: "Communication", addon: "voip" },
   // ── Social Monitoring («Sosial monitorinq») ────────────────────────────────
   // Отдельная сайдбар-группа (по просьбе владельца, 2026-07-31): все виды
@@ -483,7 +482,10 @@ export const navItems: NavItem[] = [
   { module: "settings", href: "/settings/smtp-settings", icon: Server, tKey: "smtp", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/integrations", icon: Plug, tKey: "integrations", group: "Settings", permissionScope: "settings" },
   // The organization's own Telegram bot for its employees (task 8).
-  { module: "settings", href: "/settings/telegram-bot", icon: Send, tKey: "telegramBot", group: "Settings", allowedRoles: ADMIN_ROLES },
+  // Channels serve every module — the inbox, MTM notifications, sales, support — so they live in Settings for every
+  // tenant, not inside Omni-channel (owner, 2026-10-26: «каналы могут использоваться в разных модулях»). The
+  // employees' Telegram bot is a card in the same catalog (/settings/channels/telegram-staff); its own menu entry went.
+  { module: "settings", href: "/settings/channels", icon: Radio, tKey: "channelsNav", group: "Settings", allowedRoles: ADMIN_ROLES },
   // Telephony provider setup. Lives under Settings (not Support) because that is
   // where owners look for it — the page configures a provider connection, not a
   // support workflow. Still addon-gated: the VoIP add-on covers this page plus
