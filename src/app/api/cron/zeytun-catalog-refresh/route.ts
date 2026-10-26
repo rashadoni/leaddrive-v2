@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { requireCronAuth } from "@/lib/cron-auth"
 import { loadZeytunPharmacyCompanies } from "@/lib/pharmacy-orders/pharmacy-companies-load"
+import { warmZeytunLine } from "@/lib/voice-agent/pharmacy/zeytun-line-host"
 import { refreshZeytunLineCatalog, refreshZeytunPharmacies } from "@/lib/voice-agent/pharmacy/zeytun-catalog-refresh"
 
 export const dynamic = "force-dynamic"
@@ -26,6 +27,8 @@ export async function POST(req: NextRequest) {
       (error as { code?: unknown })?.code ?? "")
     return { outcome: "failed" as const, error: "load_failed" }
   })
-  return NextResponse.json({ ...catalog, pharmacies, companies },
+  // A catalog the tick just downloaded is parsed here, not inside a call.
+  const line = await warmZeytunLine().catch(() => ({ outcome: "failed" as const }))
+  return NextResponse.json({ ...catalog, pharmacies, companies, line },
     { status: [catalog, pharmacies, companies].some(step => step.outcome === "failed") ? 502 : 200 })
 }
