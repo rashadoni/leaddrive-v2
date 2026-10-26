@@ -11,6 +11,8 @@ import { lockPublishedRoutePoints, mtmRoutePointCheckInLockKey } from "@/lib/mtm
 
 function transactionClient(visit: Record<string, unknown>) {
   return {
+    // Visit events read the row by SQL; no row here, so none are written.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
     mtmVisit: {
       findFirst: vi.fn().mockResolvedValue(visit),
       update: vi.fn().mockResolvedValue({
