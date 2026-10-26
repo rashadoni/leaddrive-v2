@@ -31216,5 +31216,15 @@
     "saveHint": "Saves the lines and sets the deal's amount to their total.",
     "save": "Save",
     "amountFromLines": "Counted from the products on the deal card."
+  },
+  "productAiFill": {
+    "button": "Fill with AI",
+    "buttonHint": "From the name, AI suggests the description, category, type, features and tags. Price and SKU stay yours. Nothing is saved until you save the product.",
+    "nameFirst": "Write the product name first.",
+    "hint": "Fills only empty fields; price and SKU are never filled.",
+    "errBudget": "This month's AI limit is used up.",
+    "errNoModule": "Da Vinci AI is not enabled for your organization.",
+    "errUnavailable": "AI is not answering right now. Try again in a minute.",
+    "nothingToFill": "Everything is already filled in — nothing was changed."
   }
 }
