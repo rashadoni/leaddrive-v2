@@ -276,8 +276,9 @@ describe.skipIf(!scratch)("e-qaimə on a real Postgres under row-level security"
     expect((await res.json()).data).toMatchObject([{ portalId: "5001", hasPdf: true }])
     const all = await rows()
     expect(all).toHaveLength(2)
-    expect(all.find((r) => r.portalId === "5001")).toMatchObject({ status: "approved" })
-    expect(all.find((r) => r.portalId === "5001")?.pdfFile).toBeTruthy()
+    const first = all.find((r: { portalId: string }) => r.portalId === "5001")
+    expect(first).toMatchObject({ status: "approved" })
+    expect(first?.pdfFile).toBeTruthy()
   })
 
   it("the tab lists one direction, with tiles for both", async () => {

@@ -48,11 +48,14 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
     ? await prisma.user.findFirst({ where: { id: lastSync.importedByUserId, organizationId: orgId }, select: { name: true } })
     : null
 
+  type DirectionSum = { direction: string; _count: { _all: number }; _sum: { totalAmount: Prisma.Decimal | null; vatAmount: Prisma.Decimal | null } }
+  type DirectionCount = { direction: string; _count: { _all: number } }
+  type OwnCompany = { ownVoen: string; ownName: string; _count: { _all: number } }
   const zero = new Prisma.Decimal(0)
   const tiles = Object.fromEntries(E_QAIME_DIRECTIONS.map((dir) => {
-    const live = sums.find((row) => row.direction === dir)
+    const live = (sums as DirectionSum[]).find((row) => row.direction === dir)
     return [dir, {
-      count: counts.find((row) => row.direction === dir)?._count._all ?? 0,
+      count: (counts as DirectionCount[]).find((row) => row.direction === dir)?._count._all ?? 0,
       liveCount: live?._count._all ?? 0,
       total: (live?._sum.totalAmount ?? zero).toString(),
       vat: (live?._sum.vatAmount ?? zero).toString(),
@@ -65,7 +68,7 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
     pageSize: PAGE_SIZE,
     total,
     tiles,
-    companies: companies.map((row) => ({ voen: row.ownVoen, name: row.ownName, count: row._count._all })),
+    companies: (companies as OwnCompany[]).map((row) => ({ voen: row.ownVoen, name: row.ownName, count: row._count._all })),
     lastSync: lastSync
       ? {
           at: lastSync.portalSyncedAt.toISOString(),

@@ -20,7 +20,6 @@ import { eQaimeInvoiceSchema, eQaimeTotals } from "@/lib/finance/e-qaime"
 const ROOT = process.cwd()
 const EXT = path.join(ROOT, "extensions/e-qaime")
 const require = createRequire(import.meta.url)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const core = require(path.join(EXT, "core.js"))
 
 describe("the downloadable extension", () => {

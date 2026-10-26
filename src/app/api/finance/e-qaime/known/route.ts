@@ -34,7 +34,8 @@ export const POST = withRlsAuth("finance", "write", async (req, { orgId }) => {
   }
   const { ownVoen, keys } = parsed.data
 
-  const rows = await prisma.eQaimeInvoice.findMany({
+  type KnownRow = { id: string; portalId: string; priorSystem: boolean; direction: string; status: string; pdfFile: string | null }
+  const rows: KnownRow[] = await prisma.eQaimeInvoice.findMany({
     where: { organizationId: orgId, ownVoen, portalId: { in: [...new Set(keys.map((key) => key.portalId))] } },
     select: { id: true, portalId: true, priorSystem: true, direction: true, status: true, pdfFile: true },
   })
