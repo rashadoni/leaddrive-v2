@@ -1009,7 +1009,7 @@ describe("DELETE /api/v1/mtm/agents/[id]", () => {
 
     expect(res.status).toBe(409)
     const json = await res.json()
-    expect(json.code).toBe("MTM_AGENT_HAS_HISTORY")
+    expect(json.code).toBe("MTM_AGENT_DELETE_DEPENDENCY")
     expect(JSON.stringify(json)).not.toMatch(/prisma|constraint|fkey/i)
     warn.mockRestore()
   })
@@ -2000,6 +2000,20 @@ describe("an agent's WhatsApp number — the one it signs in by", () => {
       vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("a1", "050 999 88 77")] as never)
       const res = await put({ phone: "+994 50 999 88 77" })
       expect(res.status).toBe(200)
+    })
+
+    it("clears an inactive legacy card's erroneous phone without deleting or reactivating it", async () => {
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+        id: "a1", name: "Inactive trial", phone: "+994507770099", role: "AGENT", status: "INACTIVE",
+        managerId: null, userId: null, teamId: null, tags: [], mapColor: null,
+      } as never)
+      const res = await put({ phone: null })
+      expect(res.status).toBe(200)
+      expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith({
+        where: { id: "a1", organizationId: ORG }, data: { phone: null },
+      })
+      expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
+      expect(prisma.user.updateMany).not.toHaveBeenCalled()
     })
   })
 })

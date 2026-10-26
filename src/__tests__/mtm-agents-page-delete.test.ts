@@ -35,7 +35,10 @@ vi.mock("next/link", () => ({
 vi.mock("next-auth/react", () => ({ useSession: () => session }))
 vi.mock("@/hooks/use-mtm-org-settings", () => ({ useMtmFeature: () => ({ enabled: true, ready: true }) }))
 vi.mock("@/components/help/help-button", () => ({ HelpButton: () => null }))
-vi.mock("@/components/mtm/agent-form", () => ({ MtmAgentForm: () => null }))
+vi.mock("@/components/mtm/agent-form", () => ({
+  MtmAgentForm: ({ open, initialData }: { open: boolean; initialData?: { id: string; name: string } }) =>
+    open ? createElement("div", { "data-testid": "opened-agent-editor", "data-agent-id": initialData?.id }, initialData?.name) : null,
+}))
 // The card's «…» menu is a Radix popover, which jsdom cannot open; its items are what matter here.
 vi.mock("@/components/ui/dropdown-menu", () => {
   const pass = ({ children }: { children?: ReactNode }) => createElement("div", null, children)
@@ -60,7 +63,7 @@ type Call = { method: string; url: string; body: Record<string, unknown> | null 
 let agents: Agent[] = []
 let calls: Call[] = []
 /** How the server answers a DELETE for each employee. */
-let deletion: Record<string, "deleted" | "has-history" | "broken"> = {}
+let deletion: Record<string, "deleted" | "has-history" | "dependency" | "broken"> = {}
 let root: Root | null = null
 
 function stubServer() {
@@ -71,6 +74,9 @@ function stubServer() {
     calls.push({ method, url, body })
     const id = url.split("?")[0].split("/").pop() ?? ""
     if (method === "DELETE") {
+      if (deletion[id] === "dependency") {
+        return new Response(JSON.stringify({ code: "MTM_AGENT_DELETE_DEPENDENCY" }), { status: 409 })
+      }
       if (deletion[id] === "has-history") {
         return new Response(JSON.stringify({ error: "This employee has work history and cannot be permanently deleted. Deactivate them instead.", code: "MTM_AGENT_HAS_HISTORY", data: { kinds: ["MtmVisit.agentId"] } }), { status: 409 })
       }
@@ -110,10 +116,10 @@ const cards = () => Array.from(document.querySelectorAll<HTMLElement>("[data-tes
 const card = (name: string) => cards().find((item) => item.textContent?.includes(name))
 const button = (name: string) => Array.from(document.querySelectorAll("button")).find((item) => item.textContent?.trim() === name)
 
-async function openPage(locale = "ru") {
+async function openPage(locale = "ru", trialStatus = "ACTIVE") {
   agents = [
     { id: "agent-anar", name: "Anar Məmmədov", role: "AGENT", status: "ACTIVE", clients: 42, lastSeenAt: null },
-    { id: "agent-trial", name: "Sınaq Agenti", role: "AGENT", status: "ACTIVE", clients: 0, lastSeenAt: null },
+    { id: "agent-trial", name: "Sınaq Agenti", role: "AGENT", status: trialStatus, clients: 0, lastSeenAt: null },
   ]
   stubServer()
   const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as AbstractIntlMessages
@@ -185,6 +191,34 @@ describe("agents page: deleting an employee", () => {
     const alert = document.querySelector("[role='alert']")?.textContent ?? ""
     expect(alert).toBe(words<{ generic: string }>("ru", "mtmApiErrors").generic)
     expect(document.body.textContent).not.toMatch(/prisma|constraint/i)
+  })
+
+  it("names retained visits and opens the inactive card for correction without changing any data", async () => {
+    await openPage("ru", "INACTIVE")
+    deletion["agent-trial"] = "has-history"
+    await askToDelete("Sınaq Agenti")
+    await click(button(words<{ delete: string }>("ru", "common").delete))
+    const page = words<{ deleteKeptEdit: string; deleteKeptPhoneHelp: string; deleteReason: { visits: string } }>("ru", "mtmAgents")
+    await until(() => Boolean(button(page.deleteKeptEdit)), "edit retained card")
+    expect(document.body.textContent).toContain(page.deleteKeptPhoneHelp)
+    expect(document.body.textContent).toContain(page.deleteReason.visits)
+    expect(document.body.textContent).not.toContain("MtmVisit")
+    await click(button(page.deleteKeptEdit))
+    expect(document.querySelector("[data-testid='opened-agent-editor']")?.getAttribute("data-agent-id")).toBe("agent-trial")
+    expect(calls.filter(call => call.method === "PUT")).toEqual([])
+    expect(cards()).toHaveLength(2)
+    expect(agents.find(agent => agent.id === "agent-trial")?.status).toBe("INACTIVE")
+  })
+
+  it("does not assert work history when the database only reported a linked record", async () => {
+    await openPage("ru", "INACTIVE")
+    deletion["agent-trial"] = "dependency"
+    await askToDelete("Sınaq Agenti")
+    await click(button(words<{ delete: string }>("ru", "common").delete))
+    const page = words<{ deleteKeptEdit: string; deleteLinkedBody: string; deleteKeptAlreadyInactive: string }>("ru", "mtmAgents")
+    await until(() => Boolean(button(page.deleteKeptEdit)), "dependency refusal")
+    expect(document.body.textContent).toContain(page.deleteLinkedBody.replace("{name}", "Sınaq Agenti"))
+    expect(document.body.textContent).not.toContain(page.deleteKeptAlreadyInactive.replace("{name}", "Sınaq Agenti"))
   })
 
   it.each(["en", "ru", "az"])("has the %s words for both dialogs", (locale) => {

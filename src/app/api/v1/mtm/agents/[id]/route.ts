@@ -508,7 +508,12 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
       || (e instanceof Error && /foreign key constraint|is immutable|cannot be deleted/i.test(e.message))
     ) {
       console.warn("[MTM/agents/[id] DELETE] refused by the database", e)
-      return agentHasHistory()
+      // A constraint refusal alone does not prove work history. Keep the
+      // record, but distinguish an unclassified dependency from counted facts.
+      return NextResponse.json({
+        error: "This card still has linked records. Nothing was deleted.",
+        code: "MTM_AGENT_DELETE_DEPENDENCY",
+      }, { status: 409 })
     }
     console.error("[MTM/agents/[id] DELETE]", e)
     return NextResponse.json({ error: "Failed to delete", code: "MTM_AGENT_DELETE_FAILED" }, { status: 500 })

@@ -489,6 +489,26 @@ try {
     await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { status: "INACTIVE" } })
     assert.equal((await (await reviewBootstrap()).json()).conflicts[0].active, false)
     await admin.mtmAgent.delete({ where: { id: bootstrapCard } })
+    phase("INACTIVE_DUPLICATE_PHONE_CORRECTION_PRESERVES_HISTORY")
+    const retiredCard = userId("inactive-trial")
+    await admin.user.update({ where: { id: userId("bootstrap") }, data: { phone: bootstrapPhone } })
+    await admin.mtmAgent.create({ data: { id: retiredCard, organizationId: company,
+      name: "Fictional inactive trial", role: "AGENT", status: "INACTIVE", phone: bootstrapPhone } })
+    const trialCustomer = await admin.mtmCustomer.create({ data: { organizationId: company, name: "Fictional trial customer" } })
+    const trialVisit = await admin.mtmVisit.create({ data: { organizationId: company, agentId: retiredCard, customerId: trialCustomer.id } })
+    assert.equal((await reviewBootstrap()).status(), 409)
+    const retained = await initialAdmin.current.request.delete(`/api/v1/mtm/agents/${retiredCard}`, { timeout: 120000 })
+    assert.equal(retained.status(), 409)
+    assert.equal((await retained.json()).code, "MTM_AGENT_HAS_HISTORY")
+    const corrected = await initialAdmin.current.request.put(`/api/v1/mtm/agents/${retiredCard}`, { timeout: 120000, data: { phone: null } })
+    assert.equal(corrected.status(), 200)
+    assert.deepEqual(await admin.mtmAgent.findUniqueOrThrow({ where: { id: retiredCard }, select: { phone: true, status: true, userId: true } }),
+      { phone: null, status: "INACTIVE", userId: null })
+    assert.equal(await admin.mtmVisit.count({ where: { id: trialVisit.id, agentId: retiredCard } }), 1)
+    assert.equal((await admin.user.findUniqueOrThrow({ where: { id: userId("bootstrap") }, select: { phone: true } })).phone, bootstrapPhone)
+    assert.equal((await reviewBootstrap()).status(), 200)
+    assert.equal(await admin.mtmAuditLog.count({ where: { organizationId: company, entityId: retiredCard, action: "AGENT_UPDATE" } }), 1)
+    check("inactive_legacy_duplicate_phone_correction_unblocks_bootstrap_without_deleting_history_or_changing_administrator")
     await admin.user.update({ where: { id: userId("bootstrap-mfa") }, data: { phone: bootstrapPhone } })
     assert.deepEqual((await (await reviewBootstrap()).json()).conflicts, [
       { id: userId("bootstrap-mfa"), kind: "crm", name: otherAdmin.name, active: true, ownerName: null },

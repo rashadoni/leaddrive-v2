@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime, formatTime } from "@/lib/format-date"
 import { mtmWorkdayBreakSummary } from "@/lib/mtm/workday-break-summary"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { agentDeletionReasons } from "@/lib/mtm/agent-deletion-reasons"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { useMtmFeature } from "@/hooks/use-mtm-org-settings"
 import { MTM_AGENT_APP_ACTIVE_WINDOW_MS } from "@/lib/mtm/agent-card-activity"
@@ -67,6 +68,7 @@ export default function MtmAgentsPage() {
   // An employee with work history cannot be deleted; the refusal turns into
   // the offer that does what the manager came for — take them out of work.
   const [keptItem, setKeptItem] = useState<{ id: string; name: string; status: string } | null>(null)
+  const [keptReasons, setKeptReasons] = useState<string[]>([])
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("activity")
@@ -214,12 +216,13 @@ export default function MtmAgentsPage() {
     if (!deleteItem) return
     const res = await fetch(`/api/v1/mtm/agents/${deleteItem.id}`, { method: "DELETE", headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
     if (!res.ok) {
-      const body = await res.json().catch(() => null) as { code?: string } | null
+      const body = await res.json().catch(() => null) as { code?: string; data?: { kinds?: unknown } } | null
       // Prod 2026-10-06: the dialog printed «Invalid `prisma.mtmAgent.deleteMany()`
       // invocation: Foreign key constraint violated…». A refusal is shown in
       // the reader's words; «has history» is not an error to read and close but
       // a different action to offer.
-      if (res.status === 409 && (body?.code === "MTM_AGENT_HAS_HISTORY" || body?.code === "WORKFORCE_RETENTION_BLOCKED")) {
+      if (res.status === 409 && ["MTM_AGENT_HAS_HISTORY", "WORKFORCE_RETENTION_BLOCKED", "MTM_AGENT_DELETE_DEPENDENCY"].includes(body?.code ?? "")) {
+        setKeptReasons(agentDeletionReasons(body?.code, body?.data?.kinds))
         setKeptItem(deleteItem)
         return
       }
@@ -229,7 +232,14 @@ export default function MtmAgentsPage() {
   }
 
   async function confirmDeactivate() {
-    if (!keptItem || keptItem.status !== "ACTIVE") return
+    if (!keptItem) return
+    if (keptItem.status !== "ACTIVE") {
+      // Keep the complete card, including its current number. Opening the
+      // editor must never clear a phone or reactivate the employee itself.
+      const card = agents.find(agent => agent.id === keptItem.id)
+      if (card) { setEditData(card); setFormOpen(true) }
+      return
+    }
     const res = await fetch(`/api/v1/mtm/agents/${keptItem.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {}) },
@@ -614,8 +624,12 @@ export default function MtmAgentsPage() {
         onOpenChange={(open) => { if (!open) setKeptItem(null) }}
         onConfirm={confirmDeactivate}
         title={t("deleteKeptTitle")}
-        description={keptItem ? t(keptItem.status === "ACTIVE" ? "deleteKeptBody" : "deleteKeptAlreadyInactive", { name: keptItem.name }) : undefined}
-        confirmLabel={t(keptItem?.status === "ACTIVE" ? "deleteKeptAction" : "deleteKeptClose")}
+        description={keptItem ? [
+          t(keptReasons.includes("dependency") ? "deleteLinkedBody" : keptItem.status === "ACTIVE" ? "deleteKeptBody" : "deleteKeptAlreadyInactive", { name: keptItem.name }),
+          t("deleteKeptReasons", { reasons: keptReasons.map(reason => t(`deleteReason.${reason}`)).join(", ") }),
+          ...(keptItem.status !== "ACTIVE" ? [t("deleteKeptPhoneHelp")] : []),
+        ].join(" ") : undefined}
+        confirmLabel={t(keptItem?.status === "ACTIVE" ? "deleteKeptAction" : "deleteKeptEdit")}
         confirmVariant="default"
       />
     </div>

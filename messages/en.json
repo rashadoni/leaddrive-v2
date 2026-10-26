@@ -11865,6 +11865,24 @@
     "attachChange": "Assign {add}, take off {remove}"
   },
   "mtmAgents": {
+    "deleteLinkedBody": "The card for {name} has linked records. Deletion was stopped; the data is preserved.",
+    "deleteKeptReasons": "Reason: {reasons}.",
+    "deleteKeptPhoneHelp": "An inactive card keeps its phone number. If the number is incorrect, open the card and correct or clear the WhatsApp field. The history will remain.",
+    "deleteKeptEdit": "Edit card",
+    "deleteReason": {
+      "visits": "visits",
+      "routes": "routes",
+      "tasks": "tasks",
+      "time": "attendance and personnel records",
+      "location": "location history",
+      "hr": "HR requests",
+      "team": "direct reports",
+      "messages": "messages",
+      "files": "files and photos",
+      "identity": "shared account link",
+      "dependency": "linked records; the exact cause needs investigation",
+      "other": "records retained in other sections"
+    },
     "hint": {
       "export": "Download the employees shown as CSV: name, email, phone, role, status and last activity.",
       "add": "A new employee card: role, manager, labels and route rights.",
