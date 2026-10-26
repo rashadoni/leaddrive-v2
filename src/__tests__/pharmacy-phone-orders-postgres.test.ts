@@ -18,7 +18,7 @@ import { createRequire } from "node:module"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import type { Prisma, PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -378,5 +378,53 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect((await put({ managerId: "user-other" })).status).toBe(400)
     expect((await companyRoute.DELETE(json("DELETE", `/api/v1/companies/${id}`), params(id))).status).toBe(409)
     expect(await admin.company.count({ where: { id } })).toBe(1)
+  })
+
+  it("tells the managers of a new order on WhatsApp once, and records how it went", async () => {
+    const { notifyManagersOfPhoneOrder } = await import("@/lib/pharmacy-orders/manager-notice")
+    await saveCall(40, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(40) } })
+    const sender = async () => ({ id: "ch", organizationId: ZEYTUN, accessToken: "token", phoneNumberId: "pn1",
+      businessAccountId: null, verifyToken: null, appSecret: null, displayName: null })
+    const sent: Array<{ url: string; body: { to: string; template: { name: string; components: Array<{ parameters: Array<{ text: string }> }> } } }> = []
+    const fetchOk = (async (url: string, init: { body: string }) => {
+      sent.push({ url, body: JSON.parse(init.body) })
+      return new Response(JSON.stringify({ messages: [{ id: `wamid.${sent.length}` }] }), { status: 200 })
+    }) as unknown as typeof fetch
+    const notify = (deps: Parameters<typeof notifyManagersOfPhoneOrder>[3]) => notifyManagersOfPhoneOrder(app as unknown as PrismaClient, ZEYTUN, order.id, deps)
+
+    // No number set: nothing is sent, and the card says why.
+    expect(await notify({ fetch: fetchOk, sender })).toMatchObject({ status: "no_recipient" })
+    expect(sent).toHaveLength(0)
+    // Once recorded, a second save of the call does not try again.
+    expect(await notify({ fetch: fetchOk, sender })).toBeNull()
+
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { managerNotice: Prisma.DbNull } })
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: { pharmacyPhoneOrders: { managerWhatsApp: ["+994501112233", "+994552223344"] } } } })
+    expect(await notify({ fetch: fetchOk, sender })).toMatchObject({ status: "sent", sent: 2, messageIds: ["wamid.1", "wamid.2"] })
+    expect(sent.map(item => item.body.to)).toEqual(["994501112233", "994552223344"])
+    expect(sent[0].url).toContain("/pn1/messages")
+    expect(sent[0].body.template.name).toBe("phone_order_new")
+    // Order number, pharmacy and total in the text; the button opens this order's card.
+    expect(sent[0].body.template.components[0].parameters.map(item => item.text)).toEqual(["TS-1001", "—", "125.00"])
+    expect(sent[0].body.template.components[1].parameters[0].text).toBe(order.id)
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).managerNotice).toMatchObject({ status: "sent", sent: 2 })
+    expect(await notify({ fetch: fetchOk, sender })).toBeNull()
+    expect(sent).toHaveLength(2)
+
+    // Meta refuses one number: the notice is failed with Meta's code, never its text.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { managerNotice: Prisma.DbNull } })
+    let calls = 0
+    const fetchHalf = (async () => ++calls === 1
+      ? new Response(JSON.stringify({ messages: [{ id: "wamid.x" }] }), { status: 200 })
+      : new Response(JSON.stringify({ error: { code: 131026, message: "Message undeliverable to +994552223344" } }), { status: 400 })) as unknown as typeof fetch
+    const failed = await notify({ fetch: fetchHalf, sender })
+    expect(failed).toEqual(expect.objectContaining({ status: "failed", error: "meta_131026", sent: 1 }))
+    expect(JSON.stringify(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } }))).not.toContain("552223344")
+
+    // No WhatsApp channel: not connected.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { managerNotice: Prisma.DbNull } })
+    expect(await notify({ fetch: fetchOk, sender: async () => null })).toMatchObject({ status: "not_connected" })
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
   })
 })
