@@ -72,3 +72,12 @@ live-process admission, the selected person's number or physical Android login
 have been exercised. Record those results separately when the approved steps
 actually run. Direct production SSH from this development chat currently
 refuses authentication; this workflow uses the existing protected Actions route.
+
+## Production connection compatibility
+
+The operator preserves the root-configured PostgreSQL `sslmode` and absolute
+`sslrootcert` path in a sanitized libpq environment, including `verify-full`
+with the managed database CA. Duplicate/unknown options and a mismatched
+application/migration target remain refusals; no TLS fallback is attempted.
+Connection refusals report only fixed target/duplicate/option categories.
+PM2 inspection uses `/root/.pm2`, matching the normal production deploy.
