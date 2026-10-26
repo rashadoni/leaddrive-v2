@@ -206,7 +206,7 @@ export function visitEventProblems(visitEvents) {
   return out
 }
 
-// Deals (PR #1121), the same rule as visits. Deals are deleted outright, so
+// Deals (PR #1123), the same rule as visits. Deals are deleted outright, so
 // a deal whose row is gone without a deal-deleted event counts as drift too.
 export function dealEventProblems(dealEvents) {
   if (!dealEvents) return []

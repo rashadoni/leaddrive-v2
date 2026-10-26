@@ -273,7 +273,7 @@ and those whose last status event or deletion disagrees with the row («Собы
 example; no grace period, since a visit and its events commit together. A seed
 script that writes visits around the application trips the first one too.
 
-Deals (2026-10-26, PR #1121): every deal write goes through `withDealEvents`
+Deals (2026-10-26, PR #1123): every deal write goes through `withDealEvents`
 (`src/lib/deals/deal-events.ts`), events on `leaddrive.domain.sales.v1` →
 `ld.prod.sales.events.v1`, failing open the same way
 (`src/lib/event-platform/record-changes.ts`). The probe checks them alike

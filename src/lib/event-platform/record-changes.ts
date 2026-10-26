@@ -3,7 +3,7 @@ import type { CanonicalJsonValue } from "./canonical-json"
 
 /**
  * Write the events of a CRM row's change in the row's own transaction,
- * failing open (MTM visits #1114, deals #1121).
+ * failing open (MTM visits #1114, deals #1123).
  *
  * The events go in a savepoint whose commit checks run at once; any failure
  * rolls back only the events and logs the ids, never the business write.

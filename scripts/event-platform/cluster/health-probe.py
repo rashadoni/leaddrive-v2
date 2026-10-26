@@ -308,7 +308,7 @@ def visit_events(config):
     return stream_check(config, VISIT_EVENTS_SQL, "visits")
 
 
-# Deals (PR #1121) the same way. Deals are deleted outright, so "drift" also
+# Deals (PR #1123) the same way. Deals are deleted outright, so "drift" also
 # counts deal streams whose row is gone without a deal-deleted event.
 DEAL_EVENT_STAGE = (
     "case e.\"eventType\" when 'sales.deal-stage-changed.v1' then e.data->>'toStage' else e.data->>'stage' end"
