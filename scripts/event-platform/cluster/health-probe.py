@@ -243,6 +243,108 @@ def fund_shadow(config):
     return {"builds": builds}
 
 
+# MTM visits (PR #1114) write their events in the visit's own transaction, but
+# fail open: a failed append rolls back only the events. Such a gap never
+# reaches the outbox, so the parity check cannot see it; this does. Both
+# counts compare committed state with committed events, so no grace period.
+# "unstarted": created since the first visit event, in the window, no event.
+# "drift": has a stream, yet its last status event or its deletion disagrees
+# with the row. Ids and counts only.
+VISIT_EVENT_STATUS = (
+    "case e.\"eventType\" when 'mtm.visit-imported.v1' then e.data->>'status' "
+    "when 'mtm.visit-started.v1' then 'CHECKED_IN' when 'mtm.visit-reopened.v1' then 'CHECKED_IN' "
+    "when 'mtm.visit-completed.v1' then 'CHECKED_OUT' when 'mtm.visit-cancelled.v1' then 'CANCELLED' end"
+)
+VISIT_EVENTS_SQL = (
+    "with first as (select min(\"occurredAt\") as at from domain_events "
+    "where \"aggregateType\" = 'visit' and \"eventType\" = 'mtm.visit-started.v1'), "
+    "recent as (select v.id, v.\"organizationId\", v.status::text as status, v.\"deletedAt\" is not null as deleted, "
+    "v.\"createdAt\" from mtm_visits v "
+    f"where v.\"updatedAt\" >= (now() at time zone 'utc') - interval '{EVENTS_WINDOW_S} seconds'), "
+    "last as (select distinct on (e.\"organizationId\", e.\"aggregateId\") e.\"organizationId\", e.\"aggregateId\", "
+    f"{VISIT_EVENT_STATUS} as status from domain_events e "
+    "join recent r on r.\"organizationId\" = e.\"organizationId\" and r.id = e.\"aggregateId\" "
+    "where e.\"aggregateType\" = 'visit' and e.\"eventType\" in ('mtm.visit-imported.v1', 'mtm.visit-started.v1', "
+    "'mtm.visit-reopened.v1', 'mtm.visit-completed.v1', 'mtm.visit-cancelled.v1') "
+    "order by e.\"organizationId\", e.\"aggregateId\", e.\"aggregateVersion\" desc), "
+    "deleted as (select distinct e.\"organizationId\", e.\"aggregateId\" from domain_events e "
+    "join recent r on r.\"organizationId\" = e.\"organizationId\" and r.id = e.\"aggregateId\" "
+    "where e.\"aggregateType\" = 'visit' and e.\"eventType\" = 'mtm.visit-deleted.v1'), "
+    "checked as (select r.id, "
+    "(l.\"aggregateId\" is null and r.\"createdAt\" >= (select at from first) and not exists ("
+    "select 1 from event_aggregate_heads h where h.\"organizationId\" = r.\"organizationId\" "
+    "and h.\"aggregateType\" = 'visit' and h.\"aggregateId\" = r.id)) as unstarted, "
+    "(l.\"aggregateId\" is not null and (l.status is distinct from r.status or r.deleted <> (d.\"aggregateId\" is not null))) as drift "
+    "from recent r left join last l on l.\"organizationId\" = r.\"organizationId\" and l.\"aggregateId\" = r.id "
+    "left join deleted d on d.\"organizationId\" = r.\"organizationId\" and d.\"aggregateId\" = r.id) "
+    "select count(*), count(*) filter (where unstarted), count(*) filter (where drift), "
+    "coalesce(min(id) filter (where unstarted or drift), '') from checked"
+)
+
+
+def guarded(check, config):
+    """A newer check that breaks reports its error instead of taking the slot,
+    outbox and Fund views of this probe down with it (2026-10-26)."""
+    try:
+        return check(config)
+    except Exception as error:  # noqa: BLE001 - any failure is reported, not raised
+        return {"error": f"{type(error).__name__}: {error}"[:300]}
+
+
+def stream_check(config, sql, rows_key):
+    """One row "<rows>\t<unstarted>\t<drift>\t<example id or empty>"."""
+    code, out, err = run(["sudo", "-u", "postgres", "psql", "-XAtq", "-F", "\t", "-d", config.get("database", "postgres"),
+                          "-c", sql], timeout=30, cwd="/")
+    if code != 0:
+        return {"error": (err.strip().splitlines() or [f"exit {code}"])[-1][:300]}
+    # The last column is empty when nothing is wrong: never strip tabs.
+    rows, unstarted, drift, sample = out.rstrip("\n").split("\t")
+    return {"windowSeconds": EVENTS_WINDOW_S, rows_key: int(rows), "unstarted": int(unstarted), "drift": int(drift),
+            "sample": sample or None}
+
+
+def visit_events(config):
+    """Recently changed MTM visits whose events are missing or disagree with them."""
+    return stream_check(config, VISIT_EVENTS_SQL, "visits")
+
+
+# Deals (PR #1123) the same way. Deals are deleted outright, so "drift" also
+# counts deal streams whose row is gone without a deal-deleted event.
+DEAL_EVENT_STAGE = (
+    "case e.\"eventType\" when 'sales.deal-stage-changed.v1' then e.data->>'toStage' else e.data->>'stage' end"
+)
+DEAL_EVENTS_SQL = (
+    "with first as (select min(\"occurredAt\") as at from domain_events "
+    "where \"aggregateType\" = 'deal' and \"eventType\" = 'sales.deal-created.v1'), "
+    "recent as (select d.id, d.\"organizationId\", d.stage, d.\"createdAt\" from deals d "
+    f"where d.\"updatedAt\" >= (now() at time zone 'utc') - interval '{EVENTS_WINDOW_S} seconds'), "
+    "last as (select distinct on (e.\"organizationId\", e.\"aggregateId\") e.\"organizationId\", e.\"aggregateId\", "
+    f"{DEAL_EVENT_STAGE} as stage from domain_events e "
+    "join recent r on r.\"organizationId\" = e.\"organizationId\" and r.id = e.\"aggregateId\" "
+    "where e.\"aggregateType\" = 'deal' and e.\"eventType\" in ('sales.deal-imported.v1', 'sales.deal-created.v1', "
+    "'sales.deal-stage-changed.v1') "
+    "order by e.\"organizationId\", e.\"aggregateId\", e.\"aggregateVersion\" desc), "
+    "checked as (select r.id, "
+    "(l.\"aggregateId\" is null and r.\"createdAt\" >= (select at from first) and not exists ("
+    "select 1 from event_aggregate_heads h where h.\"organizationId\" = r.\"organizationId\" "
+    "and h.\"aggregateType\" = 'deal' and h.\"aggregateId\" = r.id)) as unstarted, "
+    "(l.\"aggregateId\" is not null and l.stage is distinct from r.stage) as drift "
+    "from recent r left join last l on l.\"organizationId\" = r.\"organizationId\" and l.\"aggregateId\" = r.id), "
+    "gone as (select h.\"aggregateId\" as id from event_aggregate_heads h where h.\"aggregateType\" = 'deal' "
+    "and not exists (select 1 from deals d where d.\"organizationId\" = h.\"organizationId\" and d.id = h.\"aggregateId\") "
+    "and not exists (select 1 from domain_events e where e.\"organizationId\" = h.\"organizationId\" "
+    "and e.\"aggregateType\" = 'deal' and e.\"aggregateId\" = h.\"aggregateId\" and e.\"eventType\" = 'sales.deal-deleted.v1')) "
+    "select (select count(*) from checked), (select count(*) from checked where unstarted), "
+    "(select count(*) from checked where drift) + (select count(*) from gone), "
+    "coalesce((select min(id) from (select id from checked where unstarted or drift union all select id from gone) x), '')"
+)
+
+
+def deal_events(config):
+    """Recently changed deals whose events are missing or disagree with them."""
+    return stream_check(config, DEAL_EVENTS_SQL, "deals")
+
+
 def source(config):
     slot_sql = (
         "select slot_name, active, coalesce(wal_status, ''), "
@@ -258,7 +360,8 @@ def source(config):
         name, active, status, retained, safe = line.split("\t")
         slots.append({"name": name, "active": active == "t", "walStatus": status, "retainedBytes": int(retained),
                       "safeBytes": int(safe) if int(safe) >= 0 else None})
-    return {"expectedSlot": config.get("expectedSlot"), "slots": slots, "outbox": outbox(config), "fundShadow": fund_shadow(config)}
+    return {"expectedSlot": config.get("expectedSlot"), "slots": slots, "outbox": outbox(config), "fundShadow": fund_shadow(config),
+            "visitEvents": guarded(visit_events, config), "dealEvents": guarded(deal_events, config)}
 
 
 def heartbeat():

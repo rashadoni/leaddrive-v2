@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 
 /** The pharmacies loaded from 1C with their order figures («Телефонные заказы → Аптеки»). */
-export const GET = withRlsAuth("mtm", "read", async (req: NextRequest, auth) => {
+export const GET = withRlsAuth("deals", "read", async (req: NextRequest, auth) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   const asked = req.nextUrl.searchParams.get("filter") ?? "all"
   const filter = (PHARMACY_FILTERS as readonly string[]).includes(asked) ? asked as PharmacyFilter : "all"

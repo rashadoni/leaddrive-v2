@@ -3,6 +3,7 @@ import { mtmRoutePointCheckInLockKey } from "./route-published-diff"
 import { MTM_SIMPLIFIED_VISIT_HIDDEN_ACTIONS, resolveMtmVisitPolicy } from "./visit-policies"
 
 import { coerceMtmNumberSetting } from "./setting-values"
+import { lockMtmVisitSnapshot, recordMtmVisitChange } from "./visit-events"
 
 /** MTM_SETTING_DEFAULTS.maxPhotosPerVisit — kept literal to avoid importing the prisma-bound settings module. */
 export const DEFAULT_MAX_PHOTOS_PER_VISIT = 10
@@ -257,6 +258,7 @@ export async function completeMtmVisit(
 
   const checkOutAt = input.checkOutAt ?? new Date()
   const duration = Math.max(0, Math.round((checkOutAt.getTime() - readiness.visit.checkInAt.getTime()) / 60_000))
+  const before = await lockMtmVisitSnapshot(tx, input.organizationId, input.visitId)
   let visit
   try {
     visit = await tx.mtmVisit.update({
@@ -283,6 +285,7 @@ export async function completeMtmVisit(
     if ((error as { code?: string })?.code === "P2025") return { status: "not_found" as const }
     throw error
   }
+  await recordMtmVisitChange(tx, input.organizationId, input.visitId, before)
 
   if (visit.routePointId && visit.routeId) {
     await tx.mtmRoutePoint.updateMany({

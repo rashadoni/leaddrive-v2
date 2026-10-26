@@ -43,7 +43,11 @@ function matches(where: Row, row: Row): boolean {
 function makeTx(data: Record<string, Row[]> = {}) {
   const calls: Record<string, unknown[]> = {}
   const survivors: Record<string, Row[]> = {}
+  // Строка без своего id получает его по месту в наборе: сделки выбираются
+  // по id перед записью (события сделок, src/lib/deals/deal-events.ts).
+  for (const rows of Object.values(data)) rows.forEach((row, index) => { row.id ??= `row-${index}` })
   const model = (name: string) => ({
+    findMany: vi.fn(async (args: { where: Row }) => (data[name] ?? []).filter((r) => matches(args.where, r))),
     updateMany: vi.fn(async (args: { where: Row; data: Row }) => {
       calls[name] = [...(calls[name] ?? []), args]
       const rows = data[name]
@@ -56,6 +60,9 @@ function makeTx(data: Record<string, Row[]> = {}) {
     }),
   })
   const tx = {
+    // События сделок читают строки сырым SQL; здесь их нет — событий нет.
+    $queryRawUnsafe: vi.fn(async () => []),
+    $executeRawUnsafe: vi.fn(async () => 0),
     deal: model("deal"),
     lead: model("lead"),
     ticket: model("ticket"),

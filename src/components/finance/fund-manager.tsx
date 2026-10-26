@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress"
 import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, History, Settings2, PiggyBank, AlertTriangle, Check, Clock, Info } from "lucide-react"
 import { Hint } from "@/components/hint"
 import type { Fund } from "@/lib/finance/types"
-import { getCurrencySymbol } from "@/lib/constants"
+import { useOrgCurrencySymbol } from "@/lib/use-org-default-currency"
 
 function fmt(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
@@ -24,6 +24,7 @@ const FUND_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec
 
 export function FundManager() {
   const t = useTranslations("finance.funds")
+  const cur = useOrgCurrencySymbol()
   const { data: funds, isLoading } = useFunds()
   const { data: dashboard } = useFinanceDashboard(new Date().getFullYear())
   const createFund = useCreateFund()
@@ -52,7 +53,7 @@ export function FundManager() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{t("totalBalance")}</p>
-          <p className="text-2xl font-bold tabular-nums">{fmt(totalBalance)} {getCurrencySymbol()}</p>
+          <p className="text-2xl font-bold tabular-nums">{fmt(totalBalance)} {cur}</p>
         </div>
         <div className="flex items-center gap-3">
           {kafkaAvailable && canWrite && (
@@ -357,6 +358,7 @@ function TransactionDialog({ fundId, onClose }: { fundId: string; onClose: () =>
 
 function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void }) {
   const t = useTranslations("finance.funds")
+  const cur = useOrgCurrencySymbol()
   const { data: rules, isLoading } = useFundRules(fundId)
   const createRule = useCreateFundRule()
   const deleteRule = useDeleteFundRule()
@@ -399,7 +401,7 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
                 <Input type="number" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="%" className="w-20" />
               )}
               {trigger === "fixed_monthly" && (
-                <Input type="number" value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={getCurrencySymbol()} className="w-24" />
+                <Input type="number" value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={cur} className="w-24" />
               )}
               <Button size="sm" onClick={handleAdd} disabled={createRule.isPending}><Plus className="w-4 h-4" /></Button>
             </div>
@@ -415,7 +417,7 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
                 <p className="text-sm font-medium">{rule.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {rule.triggerType === "revenue_percentage" && `${((rule.percentage || 0) * 100).toFixed(0)}% ${t("ruleRevenue")}`}
-                  {rule.triggerType === "fixed_monthly" && `${fmt(rule.fixedAmount || 0)} ${getCurrencySymbol()}/${t("ruleFixed")}`}
+                  {rule.triggerType === "fixed_monthly" && `${fmt(rule.fixedAmount || 0)} ${cur}/${t("ruleFixed")}`}
                   {rule.triggerType === "invoice_paid" && t("ruleInvoice")}
                 </p>
               </div>

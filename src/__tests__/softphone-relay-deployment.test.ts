@@ -37,12 +37,12 @@ function loadApps(env: Record<string, string | undefined>) {
 describe("relay deployment", () => {
   it("does not exist on a server that was never given its secrets", () => {
     const apps = loadApps({ SOFTPHONE_RELAY_SECRET: undefined, SOFTPHONE_PBX_SECRET: undefined })
-    expect(apps.map((a) => a.name)).toEqual(["leaddrive-v2"])
+    expect(apps.map((a) => a.name)).toEqual(["leaddrive-v2", "leaddrive-v2-jobs"])
   })
 
   it("needs BOTH secrets, not one", () => {
     const half = loadApps({ SOFTPHONE_RELAY_SECRET: "a".repeat(48), SOFTPHONE_PBX_SECRET: undefined })
-    expect(half.map((a) => a.name)).toEqual(["leaddrive-v2"])
+    expect(half.map((a) => a.name)).toEqual(["leaddrive-v2", "leaddrive-v2-jobs"])
   })
 
   it("ships beside the web app once the server is configured", () => {

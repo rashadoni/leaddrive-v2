@@ -14,7 +14,6 @@ import {
   KeyRound,
   MapPin,
   PackageOpen,
-  PhoneIncoming,
   Radio,
   Route,
   Settings,
@@ -82,7 +81,6 @@ export const MTM_TOOL_GROUPS = [
     items: [
       { href: "/mtm/tasks", icon: ClipboardList, navKey: "mtmTasks" },
       { href: "/mtm/promotions", icon: FileBadge, navKey: "mtmPromotions", orgSetting: "pharmacyPromotionsEnabled" },
-      { href: "/pharmacy-orders", icon: PhoneIncoming, navKey: "pharmacyPhoneOrders", feature: "pharmacy_phone_orders" },
     ],
   },
   {

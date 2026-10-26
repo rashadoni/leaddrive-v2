@@ -120,6 +120,7 @@ import {
   WORKFORCE_ANDROID_VERSION_CODE_HEADER,
 } from "@/lib/workforce/mobile-release-policy"
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
+import { lockMtmVisitSnapshot, recordMtmVisitChange } from "@/lib/mtm/visit-events"
 
 const mobileHrmRequestReplaySelect = {
   id: true,
@@ -1339,6 +1340,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   },
                   select: { id: true, status: true, checkInAt: true, customerId: true, contactId: true, routeId: true, routePointId: true },
                 })
+                await recordMtmVisitChange(tx, orgId, visit.id, null)
                 await createVisitRequirementSnapshot(tx, {
                   organizationId: orgId,
                   visitId: visit.id,
@@ -1441,6 +1443,7 @@ export const POST = withMobileRls(async (req, auth) => {
               errorMsg = "Cannot revert terminal visit status"
               serverData = existing
             } else if (data.status === "CHECKED_OUT") {
+              const fenceBefore = await lockMtmVisitSnapshot(tx, orgId, existing.id)
               const visitFence = await tx.mtmVisit.updateMany({
                 where: {
                   id: data.id,
@@ -1461,6 +1464,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 opStatus = "conflict"
                 errorMsg = "Visit changed or is no longer owned by agent"
               } else {
+                await recordMtmVisitChange(tx, orgId, existing.id, fenceBefore)
                 const routeBefore = existing.routeId
                   ? await tx.mtmRoute.findFirst({
                       where: { id: existing.routeId, organizationId: orgId },
@@ -1519,6 +1523,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 }
               }
             } else {
+              const changeBefore = await lockMtmVisitSnapshot(tx, orgId, existing.id)
               const changed = await tx.mtmVisit.updateMany({
                 where: {
                   id: data.id,
@@ -1543,6 +1548,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 opStatus = "conflict"
                 errorMsg = "Visit changed or is no longer owned by agent"
               } else {
+                await recordMtmVisitChange(tx, orgId, existing.id, changeBefore)
                 const updated = await tx.mtmVisit.findFirst({
                   where: { id: data.id, organizationId: orgId, agentId, deletedAt: null },
                   select: { id: true, status: true, checkInAt: true, checkOutAt: true },
@@ -1615,10 +1621,12 @@ export const POST = withMobileRls(async (req, auth) => {
               select: { id: true, visitId: true, actionKey: true, status: true, completedAt: true },
             })
             if (visitActionInput.actionKey === "NEXT_ACTION" && nextAction) {
+              const nextActionBefore = await lockMtmVisitSnapshot(tx, orgId, visit.id)
               await tx.mtmVisit.updateMany({
                 where: { id: visit.id, organizationId: orgId, agentId, status: "CHECKED_IN", deletedAt: null },
                 data: { nextActionDueAt: nextAction.dueDate },
               })
+              await recordMtmVisitChange(tx, orgId, visit.id, nextActionBefore)
               const sourceKey = `visit-next-action:${visit.id}`
               const existingTask = await tx.mtmTask.findFirst({
                 where: { organizationId: orgId, sourceKey },

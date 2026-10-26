@@ -122,7 +122,13 @@ class ZeytunSpeechRelay:
     dropped rather than spoken as a new answer.
     """
     MARK = "zeytunTtsRelay"
-    MIN_CHARS = 40
+    # The first clip sets the reply's delay: it goes out at the first sentence
+    # end from MIN_CHARS on, or, while no sentence has ended, at the first
+    # clause break from CLAUSE_MIN_CHARS on. Owner, 2026-10-26, of slow
+    # answers: «пусть станция начинает озвучку раньше». At 40 characters a
+    # short reply ("Başqa nə əlavə edək?") waited for the model's whole turn.
+    MIN_CHARS = 12
+    CLAUSE_MIN_CHARS = 24
     # Each TTS clip starts and ends right on the voice; back to back on an
     # 8 kHz line the first and last sounds were swallowed (owner, 2026-10-23:
     # «слово обрывается, или начало, или конец»). Air before and after a
@@ -176,6 +182,12 @@ class ZeytunSpeechRelay:
                 if match.end() >= self.MIN_CHARS:
                     cut = match.end()
                     break
+            if cut is None:
+                # A comma needs a space after it: "1,33 manat" is one number.
+                for match in re.finditer(r"[,;:—–]\s", text):
+                    if match.end() >= self.CLAUSE_MIN_CHARS:
+                        cut = match.end()
+                        break
             if cut is None:
                 return
             piece, turn["buffer"] = text[:cut].strip(), text[cut:]

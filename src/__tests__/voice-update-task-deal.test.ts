@@ -35,6 +35,9 @@ const db = vi.hoisted(() => ({
 }))
 
 const client = vi.hoisted(() => ({
+  // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+  $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+  $executeRawUnsafe: vi.fn().mockResolvedValue(0),
   task: { findFirst: db.taskFindFirst, updateMany: db.taskUpdateMany, update: db.taskUpdate },
   taskActivity: { createMany: db.taskActivityCreateMany },
   taskCollaborator: { deleteMany: vi.fn(), createMany: vi.fn() },

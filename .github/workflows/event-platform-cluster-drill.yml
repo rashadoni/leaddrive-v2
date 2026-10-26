@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: 22
       - name: Topology and renderer unit tests
-        run: node --test scripts/event-platform/topology.test.mjs scripts/event-platform/cluster/render.test.mjs scripts/event-platform/cluster/network.test.mjs scripts/event-platform/cluster/provision.test.mjs scripts/event-platform/cluster/services.test.mjs scripts/event-platform/cluster/health.test.mjs
+        run: node --test scripts/event-platform/topology.test.mjs scripts/event-platform/cluster/render.test.mjs scripts/event-platform/cluster/network.test.mjs scripts/event-platform/cluster/provision.test.mjs scripts/event-platform/cluster/services.test.mjs scripts/event-platform/cluster/health.test.mjs scripts/event-platform/cluster/health-probe.test.mjs
       - name: WireGuard mesh and firewall drill
         run: |
           sudo apt-get update -qq

@@ -6,6 +6,7 @@ import { VisitResultSchema, parseBody } from "@/lib/mtm-validators"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { mutableVisitWhere } from "@/lib/mtm/visit-scope"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import { lockMtmVisitSnapshot, recordMtmVisitChange } from "@/lib/mtm/visit-events"
 
 type ResultActionKey = "VISIT_NOTE" | "FEEDBACK" | "NEXT_ACTION"
 type RequirementRow = { id: string; actionKey: ResultActionKey; mode: "REQUIRED" | "OPTIONAL" | "HIDDEN" }
@@ -62,6 +63,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (
       // The update itself is the lock/fence: tenant, current primary-agent
       // scope, id, and active state are all re-evaluated atomically before any
       // action result or follow-up task can be written.
+      const snapshot = await lockMtmVisitSnapshot(tx, auth.orgId, id)
       const visitUpdate = await tx.mtmVisit.updateMany({
         where: mutableVisitWhere(actor, auth.orgId, { id, status: "CHECKED_IN" }),
         data: {
@@ -72,6 +74,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (
         },
       })
       if (visitUpdate.count !== 1) throw new VisitMutationFenceError()
+      await recordMtmVisitChange(tx, auth.orgId, id, snapshot)
 
       const updatedVisit = await tx.mtmVisit.findFirst({
         where: mutableVisitWhere(actor, auth.orgId, { id }),

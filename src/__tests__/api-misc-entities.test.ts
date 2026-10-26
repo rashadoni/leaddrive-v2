@@ -468,6 +468,7 @@ describe("Channels", () => {
       id: "ig_1",
       channelType: "instagram",
       pageId: "ig-account-1",
+      isActive: true,
     } as any)
     vi.mocked(prisma.channelConfig.updateMany).mockResolvedValue({ count: 1 } as any)
     vi.mocked(prisma.channelConnection.updateMany).mockResolvedValue({ count: 1 } as any)

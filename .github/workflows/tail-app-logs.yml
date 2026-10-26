@@ -1,6 +1,6 @@
 name: Inspect production safely
 
-# Read-only diagnostics: print the tail of the leaddrive-v2 PM2 error log,
+# Read-only diagnostics: print the tail of the leaddrive-v2 (and -jobs) PM2 error logs,
 # report backup-gate readiness with every configured value redacted, inspect
 # anonymized PostgreSQL TLS metadata, or list bounded log-source metadata
 # without reading any log contents, or report bounded Support rollout counts
@@ -289,6 +289,11 @@ jobs:
           echo ""
           echo "=== last $LINES error-log lines (leaddrive-v2) ==="
           pm2 logs leaddrive-v2 --err --lines "$LINES" --nostream 2>/dev/null | tail -"$LINES"
+          # Scheduled jobs run in their own process (ecosystem.config.cjs), so
+          # a failing cron writes here, not into the web app's log above.
+          echo ""
+          echo "=== last $LINES error-log lines (leaddrive-v2-jobs) ==="
+          pm2 logs leaddrive-v2-jobs --err --lines "$LINES" --nostream 2>/dev/null | tail -"$LINES"
           REMOTE
       - name: Report PostgreSQL backup readiness
         if: ${{ inputs.view == 'backup-readiness' }}

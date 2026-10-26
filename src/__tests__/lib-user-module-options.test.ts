@@ -37,7 +37,7 @@ describe("user card and reviewer dialog: every sidebar section has a tick", () =
     const [mtm] = userModuleOptions(["mtm"], translate)
     expect(mtm.groups).toEqual(["Route & Field", "Personnel"])
     expect(mtm.label).toBe("Marşrut & Sahə · Kadr uçotu")
-    expect(mtm.pagesText).toContain(translate("pharmacyPhoneOrders"))
+    expect(mtm.pagesText).not.toContain(translate("pharmacyPhoneOrders"))
     expect(mtm.pagesText).toContain(translate("personnelToday"))
   })
 
@@ -71,9 +71,11 @@ describe("tenant editor: a page behind its own flag gets a switch from the sideb
   it("shows the page as on only when both the group and the flag are on", () => {
     const row = TENANT_MODULE_SECTIONS.flatMap((section) => section.items).find((entry) => entry.href === "/pharmacy-orders")!
     const capabilities = { "route-field": false, personnel: false }
-    expect(isTenantModulePageEnabled({ features: ["mtm"], capabilities }, row)).toBe(false)
+    // A sales page now (owner, 2026-10-26): the sales group and the flag, MTM not needed.
+    expect(isTenantModulePageEnabled({ features: ["sales"], capabilities }, row)).toBe(false)
     expect(isTenantModulePageEnabled({ features: ["pharmacy_phone_orders"], capabilities }, row)).toBe(false)
-    expect(isTenantModulePageEnabled({ features: ["mtm", "pharmacy_phone_orders"], capabilities }, row)).toBe(true)
+    expect(isTenantModulePageEnabled({ features: ["sales", "pharmacy_phone_orders"], capabilities }, row)).toBe(true)
+    expect(isTenantModulePageEnabled({ features: ["mtm", "pharmacy_phone_orders"], capabilities }, row)).toBe(false)
   })
 
   it("keeps no hand-written switch for a nav flag in the editor", () => {

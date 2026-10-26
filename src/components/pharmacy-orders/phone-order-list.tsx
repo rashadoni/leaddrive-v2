@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
 import { PhoneOrderStatus, formatMoney, formatOrderDate, type PhoneOrderStatusValue } from "./phone-order-format"
+import { ManagerNoticeSettings } from "./manager-notice-settings"
 import { PhoneOrdersViews } from "./phone-orders-views"
 
 type Row = {
@@ -40,6 +41,7 @@ export function PhoneOrderList() {
         <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
       <PhoneOrdersViews active="orders" />
+      <ManagerNoticeSettings />
       <div className="flex gap-5 border-b border-border text-sm">
         {FILTERS.map(value => (
           <button key={value || "all"} type="button" onClick={() => { if (value !== filter) { setRows(null); setFilter(value) } }}

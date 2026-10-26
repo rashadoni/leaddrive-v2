@@ -17,6 +17,7 @@ import { z } from "zod"
 import { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
+import { withDealEvents } from "./deal-events"
 
 export const MAX_DEAL_LINES = 200
 
@@ -115,7 +116,11 @@ export async function replaceDealLines(orgId: string, userId: string | null, dea
     }
     const before = decimalToNumber(deal.valueAmount)
     const after = lines.length > 0 ? linesTotal(lines) : before
-    if (lines.length > 0) await tx.deal.updateMany({ where: { id: dealId, organizationId: orgId }, data: { valueAmount: new Prisma.Decimal(after) } })
+    if (lines.length > 0) {
+      await withDealEvents(tx, orgId, [dealId], async (t) => ({
+        value: await t.deal.updateMany({ where: { id: dealId, organizationId: orgId }, data: { valueAmount: new Prisma.Decimal(after) } }),
+      }))
+    }
     return { name: deal.name, before, after }
   })
   if (result.before !== result.after) {
