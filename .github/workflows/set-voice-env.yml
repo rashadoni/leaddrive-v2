@@ -343,9 +343,13 @@ jobs:
               export "$name=$(read_env_value "$BACKUP" "$name")"
             done
             pm2 restart leaddrive-v2 --update-env >/dev/null 2>&1 || true
+            pm2 describe leaddrive-v2-jobs >/dev/null 2>&1 && pm2 restart leaddrive-v2-jobs --update-env >/dev/null 2>&1 || true
           }
 
           pm2 restart leaddrive-v2 --update-env >/dev/null || { rollback; echo "FATAL: PM2 restart failed; env rolled back"; exit 1; }
+          if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
+            pm2 restart leaddrive-v2-jobs --update-env >/dev/null || { rollback; echo "FATAL: PM2 restart failed; env rolled back"; exit 1; }
+          fi
           PID="$(pm2 pid leaddrive-v2 | tail -1)"
           [ -n "$PID" ] && [ "$PID" != "0" ] || { rollback; echo "FATAL: PM2 process is not running; env rolled back"; exit 1; }
           tr '\0' '\n' < "/proc/$PID/environ" | grep -qx 'VOICE_REALTIME_PROVIDER=gemini_live' || {
@@ -354,6 +358,15 @@ jobs:
           tr '\0' '\n' < "/proc/$PID/environ" | grep -q '^GEMINI_API_KEY=.' || {
             rollback; echo "FATAL: PM2 did not inherit GEMINI_API_KEY; env rolled back"; exit 1;
           }
+          # The scheduler's process runs the voice jobs; it must hold the same two values.
+          if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
+            JOBS_PID="$(pm2 pid leaddrive-v2-jobs | tail -1)"
+            [ -n "$JOBS_PID" ] && [ "$JOBS_PID" != "0" ] \
+              && tr '\0' '\n' < "/proc/$JOBS_PID/environ" | grep -qx 'VOICE_REALTIME_PROVIDER=gemini_live' \
+              && tr '\0' '\n' < "/proc/$JOBS_PID/environ" | grep -q '^GEMINI_API_KEY=.' || {
+              rollback; echo "FATAL: the jobs process did not inherit the Gemini Live env; env rolled back"; exit 1;
+            }
+          fi
           HEALTHY=false
           for attempt in 1 2 3 4 5; do
             if curl -fsS --max-time 10 http://127.0.0.1:3001/api/v1/ping >/dev/null; then

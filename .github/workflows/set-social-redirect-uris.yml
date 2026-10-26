@@ -86,6 +86,11 @@ jobs:
             # shell env over it, so export exactly the keys we appended.
             export INSTAGRAM_REDIRECT_URI="$IG_URI" TIKTOK_REDIRECT_URI="$TT_URI"
             pm2 restart leaddrive-v2 --update-env
+            # The scheduler's process (pm2 leaddrive-v2-jobs) runs the jobs these keys
+            # steer and keeps its own copy of the environment until restarted too.
+            if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
+              pm2 restart leaddrive-v2-jobs --update-env >/dev/null
+            fi
             echo "--- health ---"
             sleep 12
             curl -sS -o /dev/null -w "ping HTTP %{http_code}\n" --max-time 15 \
