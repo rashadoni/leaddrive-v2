@@ -121,7 +121,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
               data-testid={testId}
               className={cn(
                 "flex h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                selected.length > 0 || every?.chosen ? "border-foreground font-semibold" : "border-input bg-background",
+                selected.length > 0 || every?.chosen ? "crm-choice-selected" : "border-input bg-background",
               )}
             >
               <span className={cn("truncate", selected.length === 0 && !everyChosen && "text-muted-foreground")}>{summary}</span>

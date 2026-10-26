@@ -679,7 +679,7 @@ export default function DealsPage() {
                   className={cn(
                     "rounded-full px-2.5 py-1 text-xs transition-colors",
                     stageFilter === "all"
-                      ? "bg-foreground text-background font-medium"
+                      ? "crm-choice-selected"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >

@@ -13,6 +13,7 @@ const publicSurfaces = [
   'src/components/ui/shimmer-button.tsx',
 ];
 const basePrimary = /(?:["`\s])bg-primary(?=[\s"`])/;
+const privateNeutral = /(?:["`\s])bg-foreground(?=[\s"`])/;
 const customFill = /(?:["`\s])(?:bg-(?:orange|amber|blue|indigo|purple|violet|cyan|teal|emerald|green)-[4-9]\d\d(?=[\s"`])|bg-\[#[\da-fA-F]+\])/;
 const selection = /filter|selected|activeTab|discountMode|clientMode|addMode|myTasksOnly|flowView|overdue|currentPage|startsAt|daysBeforeDeadline|\bview\b/i;
 const roles = new Set(['status', 'provider', 'call', 'toggle']);
@@ -34,6 +35,7 @@ export function findButtonViolations(source, file = 'fixture.tsx') {
         if (tag === 'Badge' && attrs.onClick && !semantic && variant.includes('"default"')) add('interactive-badge-uses-primary');
         if (tag === 'Button' && variant.startsWith('{') && variant.includes('"default"') && selection.test(variant) && !semantic) add('selection-uses-primary');
         if (tag !== 'Button' && basePrimary.test(classes) && !attrs['data-crm-button'] && !attrs['data-crm-tab'] && !attrs['data-crm-filter'] && !semantic) add('native-primary-without-shared-style');
+        if (privateNeutral.test(classes) && !semantic) add('local-neutral-control-style');
         if (customFill.test(classes) && !semantic) add('local-action-colour');
         if (tag === 'Button' && /default|brand/.test(variant) && /(?:["`\s])text-white(?=[\s"`])/.test(classes) && !semantic && !/bg-(?:red|rose)-/.test(classes)) add('fixed-white-text-breaks-dark-primary');
       }

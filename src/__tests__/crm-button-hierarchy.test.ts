@@ -45,6 +45,8 @@ describe("CRM action hierarchy source guard", () => {
     ['<Button variant={activeFilter === key ? "default" : "outline"} />', "selection-uses-primary"],
     ['<button className="bg-primary text-primary-foreground">Save</button>', "native-primary-without-shared-style"],
     ['<Button className="bg-orange-600 text-white">Save</Button>', "local-action-colour"],
+    ['<button aria-pressed={view === key} className={view === key ? "bg-foreground text-background" : "text-muted-foreground"} />', "local-neutral-control-style"],
+    ['<Button className="bg-foreground text-background">Save</Button>', "local-neutral-control-style"],
     ['<Button className="text-white">Save</Button>', "fixed-white-text-breaks-dark-primary"],
     ['<a className="bg-[#EA580C]">Create</a>', "local-action-colour"],
   ])("detects a future bypass: %s", (source, rule) => {

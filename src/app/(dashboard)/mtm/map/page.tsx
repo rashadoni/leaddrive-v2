@@ -1574,7 +1574,7 @@ export default function MtmMapPage() {
               onClick={() => setFollowSelected((on) => !on)}
               data-testid="live-map-follow"
               className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${followSelected
-                ? "border-foreground font-semibold text-foreground"
+                ? "crm-choice-selected text-foreground"
                 : "border-zinc-300 text-foreground hover:bg-muted dark:border-zinc-600"}`}
             >
               <Crosshair className="h-3 w-3" aria-hidden="true" />{tMap("follow")}

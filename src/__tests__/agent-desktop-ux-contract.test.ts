@@ -43,12 +43,13 @@ describe("agent desktop UX contract", () => {
 
   it("keeps urgent states legible and metric definition markup valid", () => {
     const page = source("src/app/(dashboard)/support/agent-desktop/page.tsx")
-    expect(page).toContain("bg-foreground text-background hover:bg-foreground/90")
+    expect(page).not.toContain("bg-foreground text-background")
     expect(page).toContain("font-semibold text-red-700 dark:text-red-300")
     expect(page).toContain('<dd className="mt-1">')
     expect(page).not.toContain('<p className="mt-1 text-xs text-muted-foreground">{t("sampleSize"')
     expect(page).not.toContain('<p className="sr-only">{metric.hint}</p>')
-    expect(page.match(/bg-foreground text-background hover:bg-foreground\/90/g)).toHaveLength(2)
+    expect(page).toMatch(/<Button\s+data-testid="agent-desktop-retry-load"\s+className="mt-4 min-h-11"/)
+    expect(page).toMatch(/<Button\s+asChild\s+className="min-h-11 shrink-0"/)
   })
 
   it("localizes every active queue priority and status", () => {

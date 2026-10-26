@@ -393,7 +393,7 @@ export default function MtmTasksPage() {
                   type="button"
                   aria-pressed={pressed}
                   onClick={() => { setStatus(chip.value); setPage(1) }}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "border-foreground font-semibold text-foreground" : "border-border hover:bg-muted"}`}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "crm-choice-selected text-foreground" : "border-border hover:bg-muted"}`}
                 >
                   <span className={pressed ? "" : chip.tone}>{chip.label}</span>
                   {!data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}

@@ -141,7 +141,7 @@ export function RosterColumnMenuPanel({
               onClick={() => onSort(direction)}
               className={cn(
                 "inline-flex min-h-9 items-center gap-1.5 rounded-md border px-2 text-left text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                current ? "border-foreground font-semibold" : "border-border hover:bg-muted",
+                current ? "crm-choice-selected" : "border-border hover:bg-muted",
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
