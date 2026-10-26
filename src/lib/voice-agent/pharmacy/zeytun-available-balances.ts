@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { PharmacyOrderError } from "./contracts"
 import { PharmacyNameSearch } from "./name-search"
+import { formKey, innKey, parseSubstituteRequest, sameStrength, strengthOf, SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
 
 export const ZEYTUN_BALANCES_MAX_BYTES = 25 * 1024 * 1024
 const text = z.string().trim().max(512)
@@ -105,6 +106,8 @@ export class ZeytunAvailableBalances {
   private readonly codes = new Map<string, Set<string>>()
   private readonly barcodes = new Map<string, Set<string>>()
   private readonly names = new PharmacyNameSearch(true)
+  /** 1C's active substance (INN) → items, for substitutes only. */
+  private readonly substances = new Map<string, Set<string>>()
 
   constructor(payload: string | Uint8Array, context: ZeytunBalancesContext) {
     const checkedContext = contextSchema.safeParse(context)
@@ -134,6 +137,8 @@ export class ZeytunAvailableBalances {
       this.addLookup(this.codes, item.itemCode, item.externalId)
       for (const barcode of item.barcodes) this.addLookup(this.barcodes, barcode.value, item.externalId)
       // Pharmacological names are not aliases: one substance can have many SKUs.
+      // They are searched only by an explicit substitute request.
+      if (item.pharmacologicalName && innKey(item.pharmacologicalName)) this.addLookup(this.substances, innKey(item.pharmacologicalName), item.externalId)
     }
   }
 
@@ -161,6 +166,7 @@ export class ZeytunAvailableBalances {
     if (request.externalId) ids = this.items.has(request.externalId) ? [request.externalId] : []
     else if (request.itemCode) ids = [...(this.codes.get(request.itemCode) ?? [])]
     else if (request.barcode) ids = [...(this.barcodes.get(request.barcode) ?? [])]
+    else if (SUBSTITUTE_PREFIX.test(request.text!)) ids = this.substitutes(request.text!)
     else ids = this.names.find(request.text!)
     return {
       catalogVersion: this.version, observedAt: this.context.observedAt, source: this.context.source,
@@ -170,6 +176,23 @@ export class ZeytunAvailableBalances {
       candidates: ids.slice(0, 5).map((id) => structuredClone(this.items.get(id)!)),
       canResolveIdentity: false as const, canSubmitTo1c: false as const,
     }
+  }
+
+  /**
+   * Items with the same active substance, strength and form as asked
+   * (`substitute: INN; strength; form`). Never a psychotropic, potent or
+   * out-of-stock item. A request missing any of the three finds nothing.
+   */
+  private substitutes(text: string): string[] {
+    const request = parseSubstituteRequest(text)
+    if (!request) return []
+    return [...(this.substances.get(request.inn) ?? [])].filter((id) => {
+      const item = this.items.get(id)!
+      if (item.sourceFlags.psychotropic || item.sourceFlags.potent || item.sourceFlags.defectura) return false
+      if (formKey(item.category.name) !== request.form) return false
+      const strength = strengthOf(item.name) ?? (item.nameAz ? strengthOf(item.nameAz) : null)
+      return strength !== null && sameStrength(strength, request.strength)
+    })
   }
 
   /**
