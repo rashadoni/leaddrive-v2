@@ -68,7 +68,7 @@ export function buildGa4Body(input: {
   }
 }
 
-async function post(path: string, measurementId: string, apiSecret: string, body: Record<string, unknown>): Promise<Response> {
+async function postToGoogle(path: string, measurementId: string, apiSecret: string, body: Record<string, unknown>): Promise<Response> {
   const url = `${ENDPOINT}${path}?measurement_id=${encodeURIComponent(measurementId)}&api_secret=${encodeURIComponent(apiSecret)}`
   try {
     return await fetch(url, {
@@ -84,13 +84,13 @@ async function post(path: string, measurementId: string, apiSecret: string, body
 }
 
 export async function sendGa4Event(input: { measurementId: string; apiSecret: string; body: Record<string, unknown> }): Promise<void> {
-  const response = await post("/mp/collect", input.measurementId, input.apiSecret, input.body)
+  const response = await postToGoogle("/mp/collect", input.measurementId, input.apiSecret, input.body)
   if (!response.ok) throw new Ga4Error(`Google answered HTTP ${response.status}`, response.status)
 }
 
 /** Google's validation server: records nothing, and names what it would refuse. */
 export async function validateGa4(input: { measurementId: string; apiSecret: string; body: Record<string, unknown> }): Promise<void> {
-  const response = await post("/debug/mp/collect", input.measurementId, input.apiSecret, input.body)
+  const response = await postToGoogle("/debug/mp/collect", input.measurementId, input.apiSecret, input.body)
   if (!response.ok) throw new Ga4Error(`Google answered HTTP ${response.status}`, response.status)
   const json = (await response.json().catch(() => null)) as { validationMessages?: { description?: string }[] } | null
   const problem = json?.validationMessages?.[0]

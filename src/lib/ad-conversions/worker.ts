@@ -170,7 +170,9 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
   }
   if (ready.length === 0) return totals
 
-  const fail = async (item: { id: string; attempts: number }, error: unknown) => {
+  // A name of its own: scripts/rls/find-context-gaps.py keys helpers by name,
+  // and a prisma-writing «fail» taints the 249 calls of the 18 other «fail»s.
+  const recordSendFailure = async (item: { id: string; attempts: number }, error: unknown) => {
     const reason = (error instanceof Error ? error.message : "Send failed").slice(0, 300)
     const attempts = item.attempts + 1
     await prisma.adConversionEvent.updateMany({
@@ -192,7 +194,7 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
         })
         totals.sent += 1
       } catch (error) {
-        await fail(item, error)
+        await recordSendFailure(item, error)
       }
     }
     return totals
@@ -211,7 +213,7 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
     })
     totals.sent += ready.length
   } catch (error) {
-    for (const item of ready) await fail(item, error)
+    for (const item of ready) await recordSendFailure(item, error)
   }
   return totals
 }
