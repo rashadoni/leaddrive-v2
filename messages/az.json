@@ -31100,6 +31100,22 @@
     "notFromCatalog": "Bu pəncərəni CRM-dən açın: Ayarlar → Kanallar → WhatsApp.",
     "notConfigured": "Bu serverdə WhatsApp-ı Meta vasitəsilə qoşmaq mümkün deyil."
   },
+  "voiceLineNumbers": {
+    "title": "Səs nömrələri",
+    "adminHint": "Bu nömrələrə gələn zəngləri bu təşkilat və onun səsli agenti qəbul edir. Bir nömrə yalnız bir təşkilata aid ola bilər.",
+    "tenantHint": "Bu nömrələrə gələn zəngləri səsli agentiniz qəbul edir. Nömrələri LeadDrive qoşur.",
+    "loading": "Yüklənir…",
+    "none": "Hələ nömrə yoxdur.",
+    "noLabel": "izahsız",
+    "remove": "Sil",
+    "number": "Nömrə",
+    "label": "İzah",
+    "labelPlaceholder": "Məsələn, «Sifarişlər»",
+    "add": "Əlavə et",
+    "taken": "Bu nömrə artıq «{holder}» təşkilatındadır.",
+    "invalid": "Nömrə telefon nömrəsinə oxşamır: +994… və ya 012… yazın",
+    "generic": "Alınmadı, yenidən cəhd edin."
+  },
   "dealLines": {
     "title": "Məhsullar",
     "colProduct": "Məhsul",

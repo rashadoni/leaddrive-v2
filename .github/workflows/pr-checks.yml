@@ -386,6 +386,15 @@ jobs:
           AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           AD_CONVERSIONS_DB_GATE: required
 
+      - name: Voice line numbers database gate
+        # Number -> organization on a real Postgres: a call finds its client by
+        # the number dialled and then by the call, a number nobody holds stays
+        # with the default organization, and no number is held twice.
+        run: npx vitest run src/__tests__/voice-line-numbers-postgres.test.ts
+        env:
+          VOICE_LINE_NUMBERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          VOICE_LINE_NUMBERS_DB_GATE: required
+
       - name: Pharmacy phone orders database gate
         # Phone orders on a real Postgres under the application's role: the
         # list a call saves, a second save from the same call, eight calls

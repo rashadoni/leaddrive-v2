@@ -4,6 +4,12 @@ import { NextRequest } from "next/server"
 
 // Real Prisma error classes, without generating the complete application DB
 // client just to exercise this mocked database/notification boundary.
+// The number -> organization lookup is its own suite (voice-line-numbers-postgres);
+// here every call belongs to the installation's default organization, as before it.
+vi.mock("@/lib/voip/line-numbers", () => ({
+  voiceOrganizationFor: async () => process.env.VOICE_AGENT_ORGANIZATION_ID
+    ? { organizationId: process.env.VOICE_AGENT_ORGANIZATION_ID, channelConfigId: null } : null,
+}))
 vi.mock("@prisma/client", async () => ({ Prisma: await import("@prisma/client/runtime/library") }))
 
 const mocks = vi.hoisted(() => ({

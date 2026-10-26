@@ -9,6 +9,8 @@ import { TENANT_MODULE_CONTROLS } from "@/lib/admin-sidebar-catalog"
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "tenant-a" }), useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("next/link", () => ({ default: ({ children, href }: { children?: ReactNode; href: string }) => createElement("a", { href }, children) }))
+// The phone numbers panel loads its own list; this suite counts the tenant page's own requests.
+vi.mock("@/components/admin/voice-numbers-panel", () => ({ VoiceNumbersPanel: () => null }))
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const IntlProvider = NextIntlClientProvider as FunctionComponent<Omit<ComponentProps<typeof NextIntlClientProvider>, "children"> & { children?: ReactNode }>
 let container: HTMLDivElement
