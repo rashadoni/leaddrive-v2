@@ -18,7 +18,8 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { InfoHint } from "@/components/info-hint"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
-import { Package, Plus, Pencil, Trash2, DollarSign, Tag, Layers, CheckCircle, XCircle } from "lucide-react"
+import { Package, Plus, Pencil, Trash2, DollarSign, Tag, Layers, CheckCircle, XCircle, Sparkles, Loader2 } from "lucide-react"
+import { Hint } from "@/components/hint"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useTranslations } from "next-intl"
@@ -88,6 +89,17 @@ export default function ProductsPage() {
   const [sku, setSku] = useState("")
   const [productType, setProductType] = useState("other")
   const [saving, setSaving] = useState(false)
+  // «AI ilə doldur» (src/lib/products/ai-fill.ts): which fields the AI filled
+  // (marked until edited), and which choices the person made themselves.
+  const [aiFields, setAiFields] = useState<Set<string>>(new Set())
+  const [touched, setTouched] = useState<Set<string>>(new Set())
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiNote, setAiNote] = useState("")
+  const ta = useTranslations("productAiFill")
+  const edited = (field: string) => {
+    setAiFields((current) => { const next = new Set(current); next.delete(field); return next })
+    setTouched((current) => new Set(current).add(field))
+  }
 
   const headers = (): Record<string, string> => orgId ? { "x-organization-id": String(orgId), "Content-Type": "application/json" } : { "Content-Type": "application/json" }
 
@@ -101,7 +113,38 @@ export default function ProductsPage() {
 
   useEffect(() => { fetchProducts() }, [session])
 
+  function resetAi() {
+    setAiFields(new Set()); setTouched(new Set()); setAiNote("")
+  }
+
+  /** Fills only what is still empty; what the person wrote or chose stays. */
+  async function fillWithAi() {
+    setAiBusy(true)
+    setAiNote("")
+    const res = await fetch("/api/v1/products/ai-fill", { method: "POST", headers: headers(), body: JSON.stringify({ name: name.trim() }) }).catch(() => null)
+    const json = await res?.json().catch(() => null)
+    setAiBusy(false)
+    if (!res?.ok || !json?.success) {
+      setAiNote(ta(json?.code === "AI_BUDGET" ? "errBudget" : json?.code === "NO_AI_MODULE" ? "errNoModule" : "errUnavailable"))
+      return
+    }
+    const card = json.data as { description: string | null; category: string | null; productType: string | null; features: string[]; tags: string[]; unclear: string | null }
+    const filled = new Set<string>()
+    if (card.description && !description.trim()) { setDescription(card.description); filled.add("description") }
+    if (card.category && !editItem && !touched.has("category")) { setCategory(card.category); filled.add("category") }
+    if (card.productType && !editItem && !touched.has("productType")) { setProductType(card.productType); filled.add("productType") }
+    if (card.features.length > 0 && !featuresStr.trim()) { setFeaturesStr(card.features.join(", ")); filled.add("features") }
+    if (card.tags.length > 0 && !tagsStr.trim()) { setTagsStr(card.tags.join(", ")); filled.add("tags") }
+    setAiFields(filled)
+    setAiNote(card.unclear ?? (filled.size === 0 ? ta("nothingToFill") : ""))
+  }
+
+  const AiMark = ({ field }: { field: string }) => aiFields.has(field)
+    ? <span className="ml-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">AI</span>
+    : null
+
   function openCreate() {
+    resetAi()
     setEditItem(null)
     setName(""); setDescription(""); setCategory("service"); setPrice(""); resetCurrency()
     setIsActive(true); setFeaturesStr(""); setTagsStr(""); setSku(""); setProductType("other")
@@ -109,6 +152,7 @@ export default function ProductsPage() {
   }
 
   function openEdit(p: Product) {
+    resetAi()
     setEditItem(p)
     setName(p.name)
     setDescription(p.description || "")
@@ -307,16 +351,25 @@ export default function ProductsPage() {
         <DialogContent className="space-y-4">
           <div>
             <Label>{t("nameLabel")} *</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder={t("namePlaceholder")} />
+            <div className="flex gap-2">
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder={t("namePlaceholder")} />
+              <Hint text={name.trim().length >= 2 ? ta("buttonHint") : ta("nameFirst")} wrap>
+                <Button type="button" variant="outline" className="shrink-0" onClick={() => void fillWithAi()} disabled={aiBusy || name.trim().length < 2}>
+                  {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+                  {ta("button")}
+                </Button>
+              </Hint>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{aiNote || ta("hint")}</p>
           </div>
           <div>
-            <Label>{t("descriptionLabel")}</Label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={3} />
+            <Label>{t("descriptionLabel")}<AiMark field="description" /></Label>
+            <Textarea value={description} onChange={e => { setDescription(e.target.value); edited("description") }} placeholder={t("descriptionPlaceholder")} rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>{tc("category")}</Label>
-              <Select value={category} onChange={e => setCategory(e.target.value)}>
+              <Label>{tc("category")}<AiMark field="category" /></Label>
+              <Select value={category} onChange={e => { setCategory(e.target.value); edited("category") }}>
                 {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </Select>
             </div>
@@ -347,8 +400,8 @@ export default function ProductsPage() {
               <Input value={sku} onChange={e => setSku(e.target.value)} placeholder="e.g. HW-1001" />
             </div>
             <div>
-              <Label>Type</Label>
-              <Select value={productType} onChange={e => setProductType(e.target.value)}>
+              <Label>Type<AiMark field="productType" /></Label>
+              <Select value={productType} onChange={e => { setProductType(e.target.value); edited("productType") }}>
                 {LINE_TYPES.map((lt) => (
                   <option key={lt} value={lt}>{lt.charAt(0).toUpperCase() + lt.slice(1)}</option>
                 ))}
@@ -356,12 +409,12 @@ export default function ProductsPage() {
             </div>
           </div>
           <div>
-            <Label>{t("featuresLabel")}</Label>
-            <Input value={featuresStr} onChange={e => setFeaturesStr(e.target.value)} placeholder={t("featuresPlaceholder")} />
+            <Label>{t("featuresLabel")}<AiMark field="features" /></Label>
+            <Input value={featuresStr} onChange={e => { setFeaturesStr(e.target.value); edited("features") }} placeholder={t("featuresPlaceholder")} />
           </div>
           <div>
-            <Label>{t("tagsLabel")}</Label>
-            <Input value={tagsStr} onChange={e => setTagsStr(e.target.value)} placeholder={t("tagsPlaceholder")} />
+            <Label>{t("tagsLabel")}<AiMark field="tags" /></Label>
+            <Input value={tagsStr} onChange={e => { setTagsStr(e.target.value); edited("tags") }} placeholder={t("tagsPlaceholder")} />
           </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} id="isActive" className="rounded" />
