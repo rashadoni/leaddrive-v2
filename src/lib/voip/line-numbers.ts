@@ -66,3 +66,13 @@ export async function voiceOrganizationFor(input: { callId?: string | null; dial
   const fallback = process.env.VOICE_AGENT_ORGANIZATION_ID?.trim()
   return fallback ? { organizationId: fallback, channelConfigId: null } : null
 }
+
+/** Whether the organization holds a number routed to this channel: what lets a
+ * phone line's agent run in an organization other than the default one. */
+export async function organizationHoldsLine(organizationId: string, channelConfigId: string): Promise<boolean> {
+  if (!organizationId || !channelConfigId) return false
+  const row: { id: string } | null = await runWithRlsBypass(() => prisma.voiceLineNumber.findFirst({
+    where: { organizationId, channelConfigId }, select: { id: true },
+  }))
+  return row !== null
+}

@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
+import { organizationHoldsLine } from "@/lib/voip/line-numbers"
 
 import { createInboundPilotHost } from "./zeytun-inbound-host"
 import { inboundPilotConfigSchema, isLineGrant } from "./zeytun-inbound-pilot"
@@ -18,6 +19,7 @@ export function zeytunLineHost(): Host {
     runtimeOrganizationId: process.env.VOICE_AGENT_ORGANIZATION_ID ?? "",
     database: prisma,
     orders: prisma as unknown as PrismaClient,
+    holdsLine: organizationHoldsLine,
   })
 }
 
