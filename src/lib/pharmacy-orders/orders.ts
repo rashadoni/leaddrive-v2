@@ -38,11 +38,11 @@ export async function listPhoneOrders(orgId: string, status?: string) {
     where: { organizationId: orgId, ...(status ? { status } : {}) },
     orderBy: { createdAt: "desc" },
     take: 200,
-    include: { lines: { select: { status: true } } },
+    include: { lines: { select: { status: true } }, company: { select: { name: true } } },
   })
   return orders.map(order => ({
     id: order.id, label: phoneOrderLabel(order.number), status: order.status, createdAt: order.createdAt.toISOString(),
-    callStartedAt: order.callStartedAt.toISOString(), pharmacyName: order.pharmacyName,
+    callStartedAt: order.callStartedAt.toISOString(), pharmacyName: order.company?.name ?? order.pharmacyName,
     pharmacyIdentification: order.pharmacyIdentification, total: money(order.totalAmount), currency: order.currency,
     lineCount: order.lines.length, notFoundCount: order.lines.filter(line => line.status === "not_found").length,
   }))
@@ -51,7 +51,7 @@ export async function listPhoneOrders(orgId: string, status?: string) {
 export async function getPhoneOrder(orgId: string, id: string) {
   const order = await prisma.pharmacyPhoneOrder.findFirst({
     where: { id, organizationId: orgId },
-    include: { lines: { orderBy: { position: "asc" } } },
+    include: { lines: { orderBy: { position: "asc" } }, company: { select: { id: true, name: true, address: true, city: true } } },
   })
   if (!order) throw new PhoneOrderError("not_found", 404)
   const phone = decryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", order.callerPhone)
@@ -67,7 +67,8 @@ export async function getPhoneOrder(orgId: string, id: string) {
     // `callerPhone` is masked for operators by withCustomerPhonePrivacy when the
     // organization hides customer phones; the masked twin is for display.
     callerPhone: phone, callerPhoneMasked: maskPhone(phone),
-    pharmacy: { identification: order.pharmacyIdentification, guid: order.pharmacyGuid, name: order.pharmacyName, address: order.pharmacyAddress },
+    pharmacy: { identification: order.pharmacyIdentification, guid: order.pharmacyGuid, name: order.pharmacyName, address: order.pharmacyAddress,
+      company: order.company },
     catalog: { version: order.catalogVersion, observedAt: order.catalogObservedAt.toISOString() },
     total: money(order.totalAmount), currency: order.currency,
     confirmedAt: order.confirmedAt?.toISOString() ?? null, confirmedBy: nameOf(order.confirmedById),

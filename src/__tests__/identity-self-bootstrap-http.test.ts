@@ -11,6 +11,7 @@ vi.mock("@/lib/identity/phone-proof-dispatch", () => ({ dispatchStagedPhoneProof
 vi.mock("@/lib/mtm/mobile-login-code-flow", () => ({ codeFlowRateLimit: m.limit }))
 vi.mock("@/lib/mtm/whatsapp-login-code", () => ({ loginCodeSender: m.sender, loginCodeTemporarilyUnavailable: () => false, sendLoginCodeToWhatsApp: m.send }))
 import { POST } from "@/app/api/v1/identity/self-bootstrap/route"
+import { IdentitySelfBootstrapConflictError } from "@/lib/identity/self-bootstrap"
 const actor = { organizationId: "fixture-org", userId: "fixture-admin", mode: "LEGACY" }
 const request = { action: "request", phone: "+994507770099", sourceRevision: "a".repeat(64), requestId: "87f4a730-a185-4771-9532-2f37ab37acdd", language: "ru" }
 const call = (data: unknown) => POST(new NextRequest("https://fixture.example/api/v1/identity/self-bootstrap", { method: "POST", body: JSON.stringify(data) }))
@@ -20,6 +21,17 @@ beforeEach(() => {
   m.confirm.mockResolvedValue({ status: "CONFIRMED", setupToken: ["lds1", "fixture"].join(".") }); m.finish.mockResolvedValue({ status: "ACTIVE" })
 })
 describe("live administrator self-bootstrap HTTP boundary", () => {
+  it("returns bounded private conflict details only from the administrator review", async () => {
+    const conflicts = [{ id: "fixture-card", kind: "field" as const, name: "Fictional field card", active: false, ownerName: null }]
+    m.review.mockRejectedValue(new IdentitySelfBootstrapConflictError(conflicts))
+    const response = await call({ action: "review", phone: request.phone })
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT", conflicts })
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(m.request).not.toHaveBeenCalled(); expect(m.sender).not.toHaveBeenCalled(); expect(m.dispatch).not.toHaveBeenCalled()
+    m.request.mockRejectedValue(new IdentitySelfBootstrapConflictError(conflicts))
+    expect(await (await call(request)).json()).toEqual({ error: "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT" })
+  })
   it.each([401, 403])("retains current cookie/MFA refusal %s", async status => {
     m.admin.mockResolvedValue(NextResponse.json({ error: "denied" }, { status }))
     expect((await call(request)).status).toBe(status); expect(m.request).not.toHaveBeenCalled(); expect(m.sender).not.toHaveBeenCalled()

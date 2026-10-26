@@ -34,6 +34,33 @@ beforeEach(async () => {
 })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
 describe("administrator self-bootstrap UI", () => {
+  it("shows the conflicting card without authorizing a link and clears stale details when the phone changes", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT", conflicts: [
+      { id: "fixture/card", kind: "field", name: "Fictional field card", active: false, ownerName: "Other fictional user" },
+      { id: "fixture-time", kind: "time", name: "Fictional time card", active: true, ownerName: null },
+      { id: "fixture-crm", kind: "crm", name: "Fictional CRM user", active: true, ownerName: null },
+    ] }), { status: 409 }))
+    await type("identitySetupOwnPhone", "+994507770099"); await click("identitySetupReview")
+    expect(container.textContent).toContain("Fictional field card")
+    expect(container.textContent).toContain(p("identitySetupConflictOwner", { name: "Other fictional user" }))
+    expect(container.textContent).toContain(p("identitySetupConflictUnlinked"))
+    const links = [...container.querySelectorAll("a")]
+    expect(links.map(a => a.getAttribute("href"))).toEqual(["/mtm/agents/fixture%2Fcard", "/mtm/attendance/people/fixture-time", "/settings/users"])
+    expect(links.every(a => a.target === "_blank" && a.rel.includes("noopener"))).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('input[autocomplete="one-time-code"]')).toBeNull()
+    await type("identitySetupOwnPhone", "+994507770098")
+    expect(container.querySelector('[data-testid="identity-phone-conflicts"]')).toBeNull()
+  })
+  it("ignores unrecognized conflict payloads and never renders supplied URLs or extra sensitive fields", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT", conflicts: [
+      { id: "fixture", kind: "field", name: "Private payload", active: true, ownerName: null, phone: "+994507770099", href: "https://unexpected.example" },
+    ] }), { status: 409 }))
+    await click("identitySetupReview")
+    expect(container.querySelectorAll("a")).toHaveLength(0)
+    expect(container.textContent).not.toContain("Private payload")
+    expect(container.textContent).toContain(p("identitySetupPhoneConflict"))
+  })
   it("reviews the administrator's own identity before sending and requires a fresh login after password setup", async () => {
     expect(container.textContent).toContain(p("identitySetupOwnPhone"))
     await type("identitySetupOwnPhone", "+994507770099"); await click("identitySetupReview")

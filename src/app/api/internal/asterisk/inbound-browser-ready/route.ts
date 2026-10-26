@@ -6,6 +6,7 @@ import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { INBOUND_BROWSER_CLAIM_LEASE_MS } from "@/lib/voip/browser-softphone"
 import { shouldAiAnswer } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerSelection } from "@/lib/voip/inbound-answer-config"
@@ -114,9 +115,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID?.trim()
-  if (!organizationId) return NextResponse.json({ ready: false })
-
   const raw = await request.text()
   if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
@@ -131,6 +129,10 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId: parsed.data.callId }))?.organizationId
+  if (!organizationId) return NextResponse.json({ ready: false })
 
   const now = new Date()
   try {

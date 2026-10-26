@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Loader2, Save, Check, Handshake, Mail, MessageSquare, Ticket, Wallet, BarChart3, Target, MapPin, Settings, Zap, Upload, X, Sparkles, HeartPulse, Umbrella, Landmark, Tv2, Flame, FileText, Award, Activity, Phone, Users } from "lucide-react"
 import Link from "next/link"
+import { VoiceNumbersPanel } from "@/components/admin/voice-numbers-panel"
 import { MODULE_REGISTRY, type ModuleId, ADDON_MODULES, withRequiredModules } from "@/lib/modules"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -812,6 +813,8 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               </div>
             </div>
           </Card>
+
+          <VoiceNumbersPanel tenantId={tenantId} />
 
           <Card className="p-5">
             <h3 className="text-base font-semibold mb-4">{t("tenants.branding")}</h3>

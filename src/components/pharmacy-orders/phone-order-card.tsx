@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { cn } from "@/lib/utils"
 
+import { OrderPharmacy, type OrderPharmacyValue } from "./order-pharmacy"
 import { PhoneOrderStatus, formatMoney, formatOrderDate, type PhoneOrderStatusValue } from "./phone-order-format"
 
 type Line = {
@@ -21,7 +22,7 @@ type Line = {
 type Order = {
   id: string; label: string; status: PhoneOrderStatusValue; revision: number; createdAt: string; callStartedAt: string
   callerPhone: string; callerPhoneMasked: string
-  pharmacy: { identification: string; guid: string | null; name: string | null; address: string | null }
+  pharmacy: OrderPharmacyValue & { guid: string | null }
   catalog: { version: string; observedAt: string }
   total: string; currency: string
   confirmedAt: string | null; confirmedBy: string | null; rejectedAt: string | null; rejectedBy: string | null; rejectReason: string | null
@@ -76,7 +77,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
   const found = order.lines.filter(line => line.status === "resolved").length
   const missing = order.lines.length - found
   const testCall = order.pharmacy.identification === "test_call"
-  const pharmacyName = order.pharmacy.name ?? (testCall ? t("testCallName") : "—")
+  const pharmacyName = order.pharmacy.company?.name ?? order.pharmacy.name ?? (testCall ? t("testCallName") : "—")
   const noticeStatus = order.managerNotice?.status
 
   return (
@@ -206,22 +207,8 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       <div className="grid gap-4 md:grid-cols-2">
         <section className={cn(CARD, "px-4 py-3")}>
           <h2 className="text-sm font-semibold">{t("pharmacyTitle")}</h2>
-          {!order.pharmacy.name ? (
-            <p className="mt-2 text-sm text-muted-foreground">{t(testCall ? "testCallNote" : "unidentifiedNote")}</p>
-          ) : order.pharmacy.identification === "named_on_call" ? (
-            <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-              <Field label={t("pharmacySpokenName")} value={order.pharmacy.name} strong />
-              <Field label={t("pharmacyHow")} value={t("identification.named_on_call")} />
-              <p className="col-span-2 text-[11px] text-muted-foreground">{t("spokenNameNote")}</p>
-            </div>
-          ) : (
-            <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-              <Field label={t("pharmacyName")} value={order.pharmacy.name} strong />
-              <Field label={t("pharmacyAddress")} value={order.pharmacy.address} />
-              <Field label={t("pharmacyHow")} value={t(`identification.${order.pharmacy.identification}`)} />
-              <Field label={t("pharmacyCode")} value={order.pharmacy.guid} />
-            </div>
-          )}
+          <OrderPharmacy orderId={order.id} pharmacy={order.pharmacy} busy={busy}
+            onSet={companyId => act({ action: "set_pharmacy", companyId })} />
         </section>
         <section className={cn(CARD, "px-4 py-3")}>
           <h2 className="text-sm font-semibold">{t("historyTitle")}</h2>
@@ -258,15 +245,6 @@ function Kpi({ title, sub, small, children }: { title: string; sub: React.ReactN
       <span className="text-xs font-medium text-muted-foreground">{title}</span>
       <div className={cn("truncate font-bold leading-none tracking-tight tabular-nums", small ? "text-lg" : "text-2xl")}>{children}</div>
       <div className="text-[11px] text-muted-foreground">{sub}</div>
-    </div>
-  )
-}
-
-function Field({ label, value, strong }: { label: string; value: string | null; strong?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className={cn("truncate", strong && "font-semibold")}>{value ?? "—"}</div>
     </div>
   )
 }

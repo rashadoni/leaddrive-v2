@@ -8,7 +8,7 @@ import { requireIdentityAdministrator } from "@/lib/identity/administrator-reque
 import { IdentityRegistryError } from "@/lib/identity/contract"
 import { identityRuntimeKeys } from "@/lib/identity/runtime-keys"
 import { reviewIdentitySelfBootstrap, requestIdentitySelfBootstrap, confirmIdentitySelfBootstrap, finishIdentitySelfBootstrap,
-  IdentitySelfBootstrapRequest } from "@/lib/identity/self-bootstrap"
+  IdentitySelfBootstrapRequest, IdentitySelfBootstrapConflictError } from "@/lib/identity/self-bootstrap"
 import { dispatchStagedPhoneProof } from "@/lib/identity/phone-proof-dispatch"
 import { claimStagedPhoneProofDelivery, recordStagedPhoneProofDelivery } from "@/lib/identity/phone-proof-registry"
 import { codeFlowRateLimit } from "@/lib/mtm/mobile-login-code-flow"
@@ -66,6 +66,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     const known = error instanceof IdentityRegistryError
+    if (value.action === "review" && error instanceof IdentitySelfBootstrapConflictError) {
+      return NextResponse.json({ error: error.code, conflicts: error.conflicts }, { status: 409, headers })
+    }
     return NextResponse.json({ error: known ? error.code : "IDENTITY_SELF_BOOTSTRAP_FAILED" }, { status: known ? error.code === "IDENTITY_ADMIN_REQUIRED" ? 403 : 409 : 500, headers })
   }
 }
