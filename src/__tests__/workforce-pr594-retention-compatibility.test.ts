@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
-import { Prisma } from "@prisma/client"
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
   return { prisma: makeMtmPrismaMock() }
@@ -33,53 +32,25 @@ beforeEach(() => {
 })
 afterEach(() => vi.restoreAllMocks())
 
-describe("PR594 retention compatibility using actual history discovery and DELETE handler", () => {
-  it("keeps a schedule-only exception subject even without workdays or snapshots", async () => {
+describe("Field removal preserves Workforce retention", () => {
+  it.each(["workforceExceptionCase", "workforceTimesheetApproval"] as const)("retains %s while removing Field access", async model => {
+    vi.mocked(prisma[model].count).mockResolvedValue(1)
+    const response = await remove()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ success: true })
+    expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ fieldDeletedAt: expect.any(Date) }) }))
+    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
+    expect(prisma[model].deleteMany).not.toHaveBeenCalled()
+  })
+  it("retains historical relations, including setup-only links", async () => {
     expect(agentHistoryRelations()).toContainEqual({ model: "WorkforceExceptionCase", field: "agentId" })
-    vi.mocked(prisma.workforceExceptionCase.count).mockResolvedValue(1)
-    const response = await remove()
-    expect(response.status).toBe(409)
-    expect(await response.json()).toMatchObject({ code: "MTM_AGENT_HAS_HISTORY", data: { kinds: ["WorkforceExceptionCase.agentId"] } })
-    expect(prisma.workforceExceptionCase.count).toHaveBeenCalledWith({ where: { organizationId: "org-a", agentId: "subject-a" } })
-    expect(prisma.mtmAgentWorkday.count).toHaveBeenCalled()
+    expect((await remove()).status).toBe(200)
+    expect(prisma.mtmLocationShareLink.deleteMany).not.toHaveBeenCalled()
     expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
   })
-  it("preserves the earlier approval-only retention refusal", async () => {
-    vi.mocked(prisma.workforceTimesheetApproval.count).mockResolvedValue(1)
-    const response = await remove()
-    expect(response.status).toBe(409)
-    expect(await response.json()).toMatchObject({ code: "WORKFORCE_RETENTION_BLOCKED" })
-    expect(prisma.workforceExceptionCase.count).not.toHaveBeenCalled()
-    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
-  })
-  it("retains PR594's setup-only deletion exception", async () => {
-    expect(agentHistoryRelations()).not.toContainEqual({ model: "WorkforceEmployeeTeamMembership", field: "agentId" })
-    const response = await remove()
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ success: true })
-    expect(prisma.mtmAgent.deleteMany).toHaveBeenCalledWith({ where: { id: "subject-a", organizationId: "org-a" } })
-  })
-  // «Ссылка на местоположение» (2026-10-10). A link to an employee's position
-  // is a row that points at him, and «history» is read from the schema — so
-  // without its line in SETUP_NOT_HISTORY an employee a manager once made a
-  // link for could never be deleted again (409 MTM_AGENT_HAS_HISTORY), and
-  // nothing else in the suite would have said so.
-  it("does not take a link to an employee's position for his work history: he is deleted, and the links go with him", async () => {
-    // The relation is there for the discovery to find…
-    const model = Prisma.dmmf.datamodel.models.find((candidate) => candidate.name === "MtmLocationShareLink")
-    expect(model?.fields.find((field) => field.type === "MtmAgent")?.relationFromFields).toEqual(["organizationId", "agentId"])
-    // …and it is named as setup, not counted as history.
-    expect(agentHistoryRelations()).not.toContainEqual({ model: "MtmLocationShareLink", field: "agentId" })
-    vi.mocked(prisma.mtmLocationShareLink.count).mockResolvedValue(3)
-    const response = await remove()
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ success: true })
-    expect(prisma.mtmLocationShareLink.count).not.toHaveBeenCalled()
-    expect(prisma.mtmAgent.deleteMany).toHaveBeenCalledWith({ where: { id: "subject-a", organizationId: "org-a" } })
-  })
-  it("refuses deletion when the history lookup fails; no database detail crosses the HTTP boundary", async () => {
+  it("refuses removal when the audit fails, without exposing database details", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
-    vi.mocked(prisma.workforceExceptionCase.count).mockRejectedValue(new Error("PRIVATE-HISTORY-QUERY"))
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValueOnce(new Error("PRIVATE-AUDIT-QUERY"))
     const response = await remove()
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ error: "Failed to delete", code: "MTM_AGENT_DELETE_FAILED" })
