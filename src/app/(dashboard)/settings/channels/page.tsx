@@ -1801,7 +1801,7 @@ function ChannelsPageInner() {
     setTestSending(true)
     setTestResult(null)
     try {
-      const res = await fetch("/api/v1/whatsapp/test", {
+      const res = await fetch("/api/v1/channels/whatsapp/test", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
