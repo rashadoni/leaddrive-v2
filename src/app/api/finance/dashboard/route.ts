@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { getCurrencySymbol } from "@/lib/constants"
+import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { parseOptionalDateRange } from "@/lib/finance/date-range"
 
@@ -246,7 +247,8 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   // === Alerts ===
   // `message` is kept as an English fallback; the UI renders `messageKey` + `params`
   // through next-intl (see finance-alerts.tsx). `params` carry pre-formatted strings.
-  const cur = getCurrencySymbol()
+  // The organisation's currency, not the deployment's: the amounts are its own.
+  const cur = getCurrencySymbol(await resolveOrgDefaultCurrency(orgId))
   const alerts: any[] = []
   if (overdueInvoices.length > 0) {
     alerts.push({

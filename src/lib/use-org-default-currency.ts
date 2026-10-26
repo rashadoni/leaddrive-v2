@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
-import { DEFAULT_CURRENCY } from "@/lib/currency"
+import { DEFAULT_CURRENCY, getCurrencySymbol } from "@/lib/currency"
 
 /**
  * The currency new records start in for the signed-in organisation, from
@@ -57,6 +57,17 @@ export function useOrgDefaultCurrency(): string | null {
     }
   }, [orgKey])
   return code
+}
+
+/**
+ * The sign for amounts already kept in the organisation's currency — the
+ * finance totals, which add records up without converting them. Empty until
+ * the answer arrives: a "$" in the meantime would be the browser's guess, and
+ * that guess is exactly what showed «512,500 $» over funds held in AZN.
+ */
+export function useOrgCurrencySymbol(): string {
+  const code = useOrgDefaultCurrency()
+  return code ? getCurrencySymbol(code) : ""
 }
 
 /**

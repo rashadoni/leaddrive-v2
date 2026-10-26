@@ -9,7 +9,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
 } from "recharts"
 import { AlertTriangle, DollarSign, Clock, Building2 } from "lucide-react"
-import { getCurrencySymbol } from "@/lib/constants"
+import { useOrgCurrencySymbol } from "@/lib/use-org-default-currency"
 
 function fmt(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
@@ -26,6 +26,7 @@ const AGING_LABEL_KEYS: Record<string, string> = {
 
 export function ARDashboard() {
   const t = useTranslations("finance.ar")
+  const cur = useOrgCurrencySymbol()
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const hasCustomRange = !!dateFrom && !!dateTo
@@ -74,8 +75,8 @@ export function ARDashboard() {
       </div>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard title={t("totalAr")} value={`${fmt(data.total)} ${getCurrencySymbol()}`} icon={<DollarSign className="w-5 h-5" />} color="#3b82f6" />
-        <SummaryCard title={t("overdueTotal")} value={`${fmt(data.overdueTotal)} ${getCurrencySymbol()}`} icon={<AlertTriangle className="w-5 h-5" />} color="#ef4444" />
+        <SummaryCard title={t("totalAr")} value={`${fmt(data.total)} ${cur}`} icon={<DollarSign className="w-5 h-5" />} color="#3b82f6" />
+        <SummaryCard title={t("overdueTotal")} value={`${fmt(data.overdueTotal)} ${cur}`} icon={<AlertTriangle className="w-5 h-5" />} color="#ef4444" />
         <SummaryCard title={t("overdueCount")} value={String(data.overdueCount)} icon={<Clock className="w-5 h-5" />} color="#f59e0b" />
       </div>
 
@@ -92,7 +93,7 @@ export function ARDashboard() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
-                  <Tooltip formatter={((value: number) => [`${fmt(value)} ${getCurrencySymbol()}`, t("amount")]) as any} />
+                  <Tooltip formatter={((value: number) => [`${fmt(value)} ${cur}`, t("amount")]) as any} />
                   <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                     {agingData.map((_, i) => (
                       <Cell key={i} fill={AGING_COLORS[i % AGING_COLORS.length]} />
@@ -126,7 +127,7 @@ export function ARDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold tabular-nums">{fmt(d.amount)} {getCurrencySymbol()}</p>
+                      <p className="text-sm font-bold tabular-nums">{fmt(d.amount)} {cur}</p>
                       {d.overdueAmount > 0 && (
                         <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                           {fmt(d.overdueAmount)} {t("overdue")}
@@ -169,7 +170,7 @@ export function ARDashboard() {
                       <td className="py-2 px-2 text-muted-foreground">{i + 1}</td>
                       <td className="py-2 px-2 font-medium">{inv.invoiceNumber}</td>
                       <td className="py-2 px-2">{inv.companyName}</td>
-                      <td className="py-2 px-2 text-right font-bold tabular-nums text-red-600">{fmt(inv.balanceDue)} {getCurrencySymbol()}</td>
+                      <td className="py-2 px-2 text-right font-bold tabular-nums text-red-600">{fmt(inv.balanceDue)} {cur}</td>
                       <td className="py-2 px-2 text-right">
                         <Badge variant={inv.daysOverdue > 60 ? "destructive" : "secondary"} className="text-xs">
                           {inv.daysOverdue} {t("daysAbbr")}
