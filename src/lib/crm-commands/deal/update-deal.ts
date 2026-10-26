@@ -12,6 +12,7 @@ import { decimalToNumber } from "@/lib/prisma-decimal"
 import { applyAutoEarn } from "@/lib/loyalty"
 import { parseMeddpicc } from "@/lib/meddpicc"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
+import { dealHasLines } from "@/lib/deals/line-items"
 import type { CrmCommandActorContext } from "../actor-context"
 import {
   dispatchOrDeferCommandEffects,
@@ -274,6 +275,16 @@ export async function updateDealCommand(
       currency: true,
     },
   })
+
+  // A deal with product lines takes its amount from them (src/lib/deals/
+  // line-items.ts): a typed amount is ignored, and the currency the lines are
+  // priced in cannot change under them.
+  if ((parsed.data.valueAmount !== undefined || parsed.data.currency) && existing && await dealHasLines(orgId, id, db)) {
+    if (parsed.data.currency && parsed.data.currency !== existing.currency) {
+      throw validationError("This deal's amount comes from its product lines; change their prices instead of the currency")
+    }
+    delete parsed.data.valueAmount
+  }
 
   const deal = await db.deal.updateMany({
     // The version check and the write are one statement when a reviewed

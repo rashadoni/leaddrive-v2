@@ -31099,5 +31099,31 @@
     "failed": "Qoşulma tamamlanmadı. Pəncərəni bağlayın və kanallar kataloqundan yenidən cəhd edin.",
     "notFromCatalog": "Bu pəncərəni CRM-dən açın: Ayarlar → Kanallar → WhatsApp.",
     "notConfigured": "Bu serverdə WhatsApp-ı Meta vasitəsilə qoşmaq mümkün deyil."
+  },
+  "dealLines": {
+    "title": "Məhsullar",
+    "colProduct": "Məhsul",
+    "colQty": "Say",
+    "colPrice": "Qiymət, {currency}",
+    "colDiscount": "Endirim %",
+    "colTotal": "Cəmi",
+    "freeLinePlaceholder": "Nə satılır",
+    "foreignCurrency": "Qiymət {from}-dədir — {to} ilə özünüz yazın",
+    "priceMissing": "Qiyməti {currency} ilə yazın",
+    "removeHint": "Sətri silir; məbləğ yadda saxlayanda yenidən hesablanır.",
+    "remove": "Sətri sil",
+    "empty": "Hələ məhsul yoxdur. Əlavə edin — sövdələşmənin məbləği onlardan hesablanacaq.",
+    "searchProduct": "Kataloqda axtar",
+    "addProductHint": "«Məhsullar»-dan məhsulu qiyməti ilə əlavə edir.",
+    "addProduct": "Məhsul əlavə et",
+    "addFreeHint": "Kataloqda olmayan sətir.",
+    "addFree": "Sərbəst sətir",
+    "totalNote": "Sövdələşmənin məbləği məhsullardan hesablanır",
+    "errSave": "Saxlanılmadı. Yenidən cəhd edin.",
+    "cancel": "Ləğv et",
+    "invalidHint": "Sətirləri yoxlayın: ad, 0-dan böyük say, 0-dan 100-ə qədər endirim.",
+    "saveHint": "Sətirləri saxlayır, sövdələşmənin məbləği onların cəmi olur.",
+    "save": "Yadda saxla",
+    "amountFromLines": "Sövdələşmə kartındakı məhsullardan hesablanır."
   }
 }
