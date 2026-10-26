@@ -5,12 +5,14 @@ import { getCurrencySymbol } from "@/lib/constants"
 import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { parseOptionalDateRange } from "@/lib/finance/date-range"
+import { isOverdueItem, openBillsWhere, openInvoicesWhere } from "@/lib/finance/open-items"
 
 type InvoiceRow = { id: string; invoiceNumber: string | null; totalAmount: unknown; balanceDue: unknown; dueDate: Date | null; issueDate: Date | null; status: string; companyId: string | null }
 type BillRow = { id: string; totalAmount: unknown; balanceDue: unknown; dueDate: Date | null; issueDate: Date | null; status: string; category: string | null; vendorName: string | null }
 type CashFlowRow = { month: number; entryType: string; amount: number }
 type SalesForecastRow = { month: number; amount: number | null }
 type FundRow = { currentBalance: unknown }
+type OpenItemRow = { balanceDue: unknown; dueDate: Date | null }
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 const EXPENSE_COLORS = ["#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]
@@ -62,6 +64,8 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
     cashFlowEntries,
     salesForecasts,
     funds,
+    openInvoices,
+    openBills,
   ] = await Promise.all([
     // Invoices — ALL statuses, not just the unpaid ones. A/R still uses only the
     // unpaid subset (filtered below), but revenue now comes from what has
@@ -107,6 +111,11 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
       where: { organizationId: orgId, isActive: true },
       select: { currentBalance: true },
     }),
+    // A/R and A/P — what is owed now, by the rule «Debitor»/«Kreditor» use
+    // (src/lib/finance/open-items.ts): open statuses, any issue year unless an
+    // explicit date range was asked for.
+    prisma.invoice.findMany({ where: openInvoicesWhere(orgId, dateRangeFilter), select: { balanceDue: true, dueDate: true } }),
+    prisma.bill.findMany({ where: openBillsWhere(orgId, dateRangeFilter), select: { balanceDue: true, dueDate: true } }),
   ])
 
   // === KPIs ===
@@ -129,8 +138,11 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
     if (dateRangeFilter) return d >= dateRangeFilter.gte && d <= dateRangeFilter.lte
     return d.getUTCFullYear() === year
   }
-  const collected = (row: { totalAmount: unknown; balanceDue: unknown }): number =>
-    decimalToNumber(row.totalAmount) - decimalToNumber(row.balanceDue)
+  // «Paid» is paid in full, payment rows or not — the reading of
+  // /api/v1/invoices/fix-balances. Setting the status leaves balanceDue behind,
+  // and without this such an invoice was neither revenue nor debt.
+  const collected = (row: { totalAmount: unknown; balanceDue: unknown; status: string }): number =>
+    row.status === "paid" ? decimalToNumber(row.totalAmount) : decimalToNumber(row.totalAmount) - decimalToNumber(row.balanceDue)
 
   const invoiceRows = invoices as InvoiceRow[]
   const billRows = bills as BillRow[]
@@ -157,20 +169,20 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   const totalOutflows = (cashFlowEntries as CashFlowRow[]).filter((e: CashFlowRow) => e.entryType === "outflow").reduce((s: number, e: CashFlowRow) => s + e.amount, 0)
   const cashBalance = totalInflows - totalOutflows
 
-  // A/R — balanceDue is Decimal(18,4) after migration; decimalToNumber() prevents += string-concat.
-  // The query now returns PAID invoices too (revenue needs them), and a paid one
-  // carries balanceDue 0 — harmless in the sums, but it would sail through the
-  // "due date has passed" test and inflate overdueCount. Nothing is overdue once
-  // it is settled, so both filters require an outstanding balance.
-  const outstanding = (row: { balanceDue: unknown }): boolean => decimalToNumber(row.balanceDue) > 0
-  const arTotal = invoiceRows.reduce((s: number, i: InvoiceRow) => s + decimalToNumber(i.balanceDue), 0)
-  const overdueInvoices = invoiceRows.filter((i: InvoiceRow) => outstanding(i) && (i.status === "overdue" || (i.dueDate && new Date(i.dueDate) < now)))
-  const arOverdue = overdueInvoices.reduce((s: number, i: InvoiceRow) => s + decimalToNumber(i.balanceDue), 0)
-
-  // A/P — same reasoning as A/R above.
-  const apTotal = billRows.reduce((s: number, b: BillRow) => s + decimalToNumber(b.balanceDue), 0)
-  const overdueBills = billRows.filter((b: BillRow) => outstanding(b) && (b.status === "overdue" || (b.dueDate && new Date(b.dueDate) < now)))
-  const apOverdue = overdueBills.reduce((s: number, b: BillRow) => s + decimalToNumber(b.balanceDue), 0)
+  // A/R and A/P — the open items queried above, never the year's invoices and
+  // bills: an invoice marked «paid» keeps its balanceDue (PUT with a status
+  // does not touch it), and counting it made this screen disagree with
+  // «Debitor». balanceDue is Decimal(18,4); decimalToNumber() prevents += string-concat.
+  const arRows = openInvoices as OpenItemRow[]
+  const apRows = openBills as OpenItemRow[]
+  const sumDue = (rows: OpenItemRow[]): number => rows.reduce((s: number, r: OpenItemRow) => s + decimalToNumber(r.balanceDue), 0)
+  const overdueOf = (rows: OpenItemRow[]): OpenItemRow[] => rows.filter((r: OpenItemRow) => isOverdueItem(decimalToNumber(r.balanceDue), r.dueDate, now))
+  const arTotal = sumDue(arRows)
+  const overdueInvoices = overdueOf(arRows)
+  const arOverdue = sumDue(overdueInvoices)
+  const apTotal = sumDue(apRows)
+  const overdueBills = overdueOf(apRows)
+  const apOverdue = sumDue(overdueBills)
 
   // === Revenue Trend (months in range — 1..12 for full year, startMonth..endMonth for custom range) ===
   const revenueTrend = []
@@ -236,7 +248,7 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
     { label: "61-90 days", amount: 0, count: 0 },
     { label: "90+", amount: 0, count: 0 },
   ]
-  ;(invoices as InvoiceRow[]).forEach((inv: InvoiceRow) => {
+  arRows.forEach((inv: OpenItemRow) => {
     if (!inv.dueDate) return
     const daysOverdue = Math.floor((now.getTime() - new Date(inv.dueDate).getTime()) / 86400000)
     const bucket = daysOverdue <= 0 ? 0 : daysOverdue <= 30 ? 1 : daysOverdue <= 60 ? 2 : daysOverdue <= 90 ? 3 : 4

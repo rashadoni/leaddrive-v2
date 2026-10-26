@@ -410,6 +410,15 @@ jobs:
         env:
           BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
 
+      - name: Finance open items database gate
+        # «İcmal» and «Debitor»/«Kreditor» on a real Postgres name the same debt:
+        # open statuses only (an invoice marked «paid» is not owed, whatever its
+        # balance), any issue year, and a «paid» one counts as collected revenue.
+        run: npx vitest run src/__tests__/finance-open-items-postgres.test.ts
+        env:
+          FINANCE_OPEN_ITEMS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          FINANCE_OPEN_ITEMS_DB_GATE: required
+
       - name: Deal line items database gate
         # A deal's product lines on a real Postgres: the amount is their sum, an
         # ordinary deal edit cannot overwrite it or change the currency under
