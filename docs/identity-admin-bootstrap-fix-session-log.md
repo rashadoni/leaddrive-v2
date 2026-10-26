@@ -70,3 +70,9 @@
 - Published652b3d1d1aae2415e620989a10f2e52a1669b481, opened draft PR1093 https://github.com/rashadoni/leaddrive-v2/pull/1093 and attached it to this task; marked ready after local checks. This is private conflict visibility, not proof that the account ownership problem is fixed.
 - Hosted actual-cookie40294395665/job121476801593, PostgreSQL40294395605/job121476801368 queued; required PR checks40294473599 queued. No merge while these gates are pending.
 - Main1b98cb806 release40291710231 quality121468069724 SUCCESS, build121468070043 still running. Read-only runtime inventory remains pending exact main/deployed match. No main releases cancelled, no production data changed.
+
+## 2026-10-26 — exact-head browser fixture correction and production inspection dispatch
+
+- PostgreSQL40294395605/job121476801368 SUCCESS on652b3d1d1:44files/893tests and20operator checks passed. Actual-cookie40294395665 failed at line498 with RUNTIME after unlinked/linked/inactive card and CRM owner assertions passed: operatorCompany identifier was scoped to the separate prepare branch, inaccessible to verify. Moved the fixture constant to module scope; no application change. Node syntax/diff checks PASS.
+- Pushed corrected1f5a5c552c10106b6e830b79e45ef41eda13f1f8. Actual-cookie40296788285/job121484676910 and PostgreSQL40296788368/job121484677300 queued; required checks40296788297 queued. Previous successful check is not claimed qualification of the new exact head.
+- Verified public installed artifact and current main both1b98cb8060dc88d8b47dc7ded65ddaca507b99fe. Dispatched protected identity-runtime-commission operation=inspect/company_slug=zeytun at that exact revision, run40296206796/job121482789339. No prepare-keys/enable-company/data mutation. Main release40291710231 completed SUCCESS; inspection is queued for a hosted executor. Current stopping point is waiting for production read-only inventory and corrected exact-head CI.
