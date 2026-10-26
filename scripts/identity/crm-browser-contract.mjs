@@ -33,6 +33,7 @@ const password = process.env.IDENTITY_CRM_FIXTURE_PASSWORD
 assert.match(password ?? "", /^[a-f0-9]{48}$/)
 const admin = makeRlsTestPrisma(ownerUrl.href)
 const company = "identity-crm-browser-company"
+const operatorCompany = "identity-commission-fixture"
 const userId = suffix => `identity-crm-browser-${suffix}`
 const email = suffix => `${suffix}@identity-crm.invalid`
 const accountKey = suffix => ({ organizationId_userId: { organizationId: company, userId: userId(suffix) } })
@@ -89,7 +90,6 @@ try {
     await admin.mtmSetting.create({ data: { organizationId: company, key: "identityAuthV1", value: { version: 1, enabled: true } } })
     phase("OPERATOR_COMPANY_OPT_IN_SQL")
     const { inventorySql, enableSql, databaseEnvironment, assertInventory } = await import("./commission-runtime.mjs")
-    const operatorCompany = "identity-commission-fixture"
     await admin.organization.create({ data: { id: operatorCompany, slug: operatorCompany, name: "Fictional operator company" } })
     const operatorSql = (query, readonly = true) => execFileSync("psql", ["-X", "-qAt", "--set=ON_ERROR_STOP=1",
       `--set=slug=${operatorCompany}`, `--set=sha=${head}`, "--set=operator=fixture-operator",
