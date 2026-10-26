@@ -4,9 +4,9 @@ import { chmodSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, sy
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
-import { commissionInput, envValue, parseRings, planKeyPreparation, databaseEnvironment, assertInventory, assertLiveKeys, replaceEnvironment } from "./commission-runtime.mjs"
+import { commissionInput, envValue, parseRings, planKeyPreparation, databaseEnvironment, assertInventory, readinessKeys, assertLiveKeys, replaceEnvironment } from "./commission-runtime.mjs"
 
-const state = { privileged: true, flagValid: true, companyCount: 1, enabled: false, canonicalCount: 0, proofCount: 0 }
+const state = { administratorReadiness: Object.fromEntries(readinessKeys.map(key => [key, 0])), privileged: true, flagValid: true, companyCount: 1, enabled: false, canonicalCount: 0, proofCount: 0 }
 const values = [1, 2].map(n => JSON.stringify({ active: "fixture", keys: { fixture: String(n).repeat(64) } }))
 const source = `UNRELATED='preserve literal $(command) and spaces'\nIDENTITY_MOBILE_SESSION_KEYS='${values[0]}'\nIDENTITY_PHONE_PROOF_KEYS='${values[1]}'\n`
 
@@ -50,6 +50,12 @@ test("operator inventory must be unfiltered and identify exactly one active comp
   assertInventory(state)
   for (const change of [{ privileged: false }, { flagValid: false }, { companyCount: 0 }, { companyCount: 2 }, { enabled: "true" }, { canonicalCount: -1 }, { proofCount: 0.5 }]) {
     assert.throws(() => assertInventory({ ...state, ...change }), /INVENTORY_REFUSED/)
+  }
+})
+test("administrator diagnostics allow only finite aggregate counters, never identities or phone values", () => {
+  for (const readiness of [null, {}, { ...state.administratorReadiness, phone: "+994507770099" },
+    { ...state.administratorReadiness, emptyPhones: "private" }, { ...state.administratorReadiness, tenantAdmins: -1 }]) {
+    assert.throws(() => assertInventory({ ...state, administratorReadiness: readiness }), /INVENTORY_REFUSED/)
   }
 })
 test("opt-in requires both dedicated rings in every live application process", () => {
