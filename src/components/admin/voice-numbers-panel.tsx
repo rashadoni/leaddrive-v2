@@ -23,8 +23,9 @@ export function VoiceNumbersPanel({ tenantId }: { tenantId: string }) {
   const [busy, setBusy] = useState(false)
   const url = `/api/v1/admin/tenants/${tenantId}/voice-numbers`
 
-  const apply = (body: { data?: { numbers: NumberRow[]; channels: Channel[] } }) => {
-    if (body.data) { setNumbers(body.data.numbers); setChannels(body.data.channels) }
+  const apply = (body: { data?: { numbers?: NumberRow[]; channels?: Channel[] } }) => {
+    // Anything but the panel's own answer shows as "no numbers", never a crash of the tenant page.
+    if (body.data) { setNumbers(Array.isArray(body.data.numbers) ? body.data.numbers : []); setChannels(Array.isArray(body.data.channels) ? body.data.channels : []) }
   }
   const load = useCallback(async () => {
     const response = await fetch(url, { cache: "no-store" })
