@@ -1,9 +1,25 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { assertDatabaseIdentity, assertLiveDatabase, verifyDatabaseTarget } from "./commission-database.mjs"
+import { assertDatabaseIdentity, assertLiveDatabase, databaseEnvironment, verifyDatabaseTarget } from "./commission-database.mjs"
 
 const app = { cluster: "123456789", database: "fixture", oid: "16384", recovery: false, readonly: true, role: "fixture_app" }
 const migration = { ...app, role: "fixture_owner" }
+
+test("libpq connect_timeout hints preserve fixed budgets and readonly across valid signed int32 values", () => {
+  const base = "postgresql://fixture:private@127.0.0.1/fixture"
+  for (const hint of ["5", "0", "-1", "+10", "%2B10", "2147483647", "-2147483648"]) {
+    const url = `${base}?connect_timeout=${hint}`
+    const env = databaseEnvironment(url, url, true)
+    assert.equal(env.PGCONNECT_TIMEOUT, "5")
+    assert.match(env.PGOPTIONS, /default_transaction_read_only=on/)
+    assert.match(env.PGOPTIONS, /statement_timeout=5000/)
+  }
+  for (const hint of ["", "%2010", "10%20", "1.5", "1e3", "2147483648", "-2147483649", "--1", "1;echo"]) {
+    const url = `${base}?connect_timeout=${hint}`
+    assert.throws(() => databaseEnvironment(url, url, true), /CONFIG_INVALID_CONNECT_TIMEOUT/)
+  }
+  assert.throws(() => databaseEnvironment(base, `${base}?connect_timeout=1&connect_timeout=2`, true), /CONFIG_INVALID_DUPLICATE/)
+})
 
 test("database admission compares actual cluster/database identity, independently of login role", () => {
   assertDatabaseIdentity(app, migration)
@@ -25,7 +41,10 @@ test("actual PostgreSQL aliases share one live readonly database; another databa
   assert.equal(alias.hostname, "127.0.0.1", "Hosted fixture must be disposable loopback PostgreSQL")
   assert.equal(alias.pathname, "/identity_snapshot_contract_test")
   alias.hostname = "localhost"
-  assert.equal(verifyDatabaseTarget(alias.href, fixtureUrl), true)
+  alias.search = "?connect_timeout=+0"
+  const migrationWithHint = new URL(fixtureUrl)
+  migrationWithHint.search = "?connect_timeout=-1"
+  assert.equal(verifyDatabaseTarget(alias.href, migrationWithHint.href), true)
   const another = new URL(fixtureUrl)
   another.pathname = "/postgres"
   assert.throws(() => verifyDatabaseTarget(alias.href, another.href), /DATABASE_TARGET_REFUSED/)

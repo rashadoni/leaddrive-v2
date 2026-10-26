@@ -17,6 +17,17 @@ export function databaseEnvironment(appUrl, migrationUrl, readOnly) {
       if (seen.has(key)) fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_DUPLICATE")
       seen.add(key)
       if (key === "schema" && value === "public") continue
+      if (key === "connect_timeout") {
+        // libpq integer hints may include a literal + (not form-urlencoded
+        // whitespace). Preserve RFC URI decoding, validate int32, then keep
+        // the operator's fixed five-second budget even for unlimited hints.
+        const pair = db.search.slice(1).split("&").find(part => decodeURIComponent(part.split("=")[0]) === key)
+        const hint = decodeURIComponent(pair.slice(pair.indexOf("=") + 1))
+        if (!/^[+-]?[0-9]{1,10}$/.test(hint) || Number(hint) < -2147483648 || Number(hint) > 2147483647) {
+          fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_CONNECT_TIMEOUT")
+        }
+        continue
+      }
       if (key === "sslmode" && ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"].includes(value)) env.PGSSLMODE = value
       // The managed PostgreSQL deployment uses an explicit CA with verify-full.
       // Forward the root-owned configuration literally; never remove TLS
@@ -26,7 +37,7 @@ export function databaseEnvironment(appUrl, migrationUrl, readOnly) {
     }
     return env
   } catch (error) {
-    if (/^IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_(TARGET|DUPLICATE|OPTION)$/.test(error.message ?? "")) throw error
+    if (/^IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID_(TARGET|DUPLICATE|OPTION|CONNECT_TIMEOUT)$/.test(error.message ?? "")) throw error
     fail("IDENTITY_COMMISSION_DATABASE_CONFIG_INVALID")
   }
 }
