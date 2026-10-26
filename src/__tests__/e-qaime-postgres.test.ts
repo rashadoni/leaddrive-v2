@@ -29,8 +29,8 @@
  */
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { homedir, tmpdir } from "node:os"
 import path from "node:path"
 import ExcelJS from "exceljs"
 import { NextRequest } from "next/server"
@@ -162,6 +162,7 @@ describe.skipIf(!scratch)("e-qaimə on a real Postgres under row-level security"
   let pdf!: typeof import("@/app/api/finance/e-qaime/[id]/pdf/route")
   let exportGet!: typeof import("@/app/api/finance/e-qaime/export/route").GET
   let runtimeDir = ""
+  let logDir = ""
 
   beforeAll(async () => {
     const control = adminUrl!
@@ -178,10 +179,12 @@ describe.skipIf(!scratch)("e-qaimə on a real Postgres under row-level security"
     sql(scratch!.adminScratch, `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
     sql(scratch!.adminScratch, `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${scratch!.role}"`)
 
-    runtimeDir = mkdtempSync(path.join(tmpdir(), "e-qaime-runtime-"))
+    // The real external-runtime guard rejects /tmp, as it should in production;
+    // a configured runtime root asks for a log root outside the checkout too.
+    runtimeDir = mkdtempSync(path.join(homedir(), ".e-qaime-runtime-test-"))
     process.env.LEADDRIVE_RUNTIME_DIR = runtimeDir
-    // A configured runtime root asks for a log root outside the checkout too.
-    process.env.LEADDRIVE_LOG_DIR = mkdtempSync(path.join(tmpdir(), "e-qaime-logs-"))
+    logDir = mkdtempSync(path.join(homedir(), ".e-qaime-logs-test-"))
+    process.env.LEADDRIVE_LOG_DIR = logDir
 
     app = (await import("@/lib/prisma")).prisma
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
@@ -203,6 +206,7 @@ describe.skipIf(!scratch)("e-qaimə on a real Postgres under row-level security"
 
   afterAll(async () => {
     await app?.$disconnect()
+    for (const dir of [runtimeDir, logDir]) if (dir) rmSync(dir, { recursive: true, force: true })
     if (scratch) {
       sql(adminUrl!, `DROP DATABASE IF EXISTS "${scratch.name}" WITH (FORCE);`)
       sql(adminUrl!, `DROP ROLE IF EXISTS "${scratch.role}"`)
