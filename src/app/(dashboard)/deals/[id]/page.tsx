@@ -33,6 +33,7 @@ import { useFieldPermissions } from "@/hooks/use-field-permissions"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { DealLineItems } from "@/components/deals/deal-line-items"
 import { STAGE_COLORS } from "@/lib/constants"
 import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
 
@@ -276,6 +277,7 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
 // ── Main page ──
 export default function DealDetailPage() {
   const t = useTranslations("deals")
+  const tl = useTranslations("dealLines")
   const tc = useTranslations("common")
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -287,6 +289,10 @@ export default function DealDetailPage() {
   const [deal, setDeal] = useState<Deal | null>(null)
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
+  // Product lines: a remount key for «Next best offers» adding one, and
+  // whether there are any (the edit form then locks amount and currency).
+  const [linesKey, setLinesKey] = useState(0)
+  const [lineCount, setLineCount] = useState(0)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [timelineKey, setTimelineKey] = useState(0)
   const [offersCount, setOffersCount] = useState(0)
@@ -593,7 +599,7 @@ export default function DealDetailPage() {
           </div>
 
           {/* Next Best Offers — right after record info, as in the Creatio reference */}
-          <NextBestOffers dealId={id} orgId={orgId} />
+          <NextBestOffers dealId={id} orgId={orgId} onAdded={() => { setLinesKey(k => k + 1); fetchDeal() }} />
         </div>
 
         {/* AI RAIL — 3rd column on xl, below the left rail otherwise */}
@@ -654,6 +660,11 @@ export default function DealDetailPage() {
             })()}
           </CollapsibleSection>
 
+          {/* Product lines — the deal's amount is their sum (src/lib/deals/line-items.ts) */}
+          <CollapsibleSection title={tl("title")}>
+            <DealLineItems key={linesKey} dealId={id} orgId={orgId} onSaved={fetchDeal} onCountChange={setLineCount} />
+          </CollapsibleSection>
+
           {/* Customer details — collapsible, inside the content column as in Creatio */}
           {(deal.contact || deal.company) && (
             <CollapsibleSection title={t("customerDetails")}>
@@ -710,6 +721,7 @@ export default function DealDetailPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         onSaved={fetchDeal}
+        amountFromLines={lineCount > 0}
         initialData={{
           id: deal.id,
           name: deal.name,
