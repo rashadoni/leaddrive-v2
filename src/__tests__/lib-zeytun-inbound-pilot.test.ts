@@ -309,6 +309,10 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).not.toMatch(/test participant|test call|rehearsal/i)
     expect(ZEYTUN_LINE_PROMPT).toContain("NOT verified")
     expect(ZEYTUN_LINE_PROMPT).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
+    // Owner, 2026-10-26: a substitute with the same substance, strength and form, only after a clear yes.
+    expect(ZEYTUN_LINE_PROMPT).toContain('"substitute: INN; strength; form"')
+    expect(ZEYTUN_LINE_PROMPT).toContain("only after a clear yes")
+    expect(ZEYTUN_LINE_PROMPT).not.toContain("substitution or dosage")
   })
 
   it("answers any caller with the line's opening and claims each call by itself", async () => {

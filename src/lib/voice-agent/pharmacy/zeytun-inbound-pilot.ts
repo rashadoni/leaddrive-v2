@@ -148,6 +148,33 @@ export const ZEYTUN_LINE_PROMPT = [
     "The caller claims to be a pharmacy, NOT verified. The opening asks which one; if unclear ask once more, then go on. Never infer it from the number or CRM history."],
   ["say once that this test call cannot confirm them", "say once that you cannot confirm them on this call"],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it."],
+  // Owner, 2026-10-26: offer a substitute with the same substance, «та же
+  // доза и та же форма». The bridge takes at most 4000 characters, so the
+  // line's wording is shortened elsewhere to make room for the rule.
+  ["Speak Azerbaijani by default; switch only if the caller explicitly asks. Be brief and natural. Never discuss construction products.",
+    "Speak Azerbaijani unless the caller asks otherwise. Be brief and natural."],
+  ["Collect a PRELIMINARY list of requested medicines and quantities. Use search_pharmacy_catalog for every product lookup and wait for its result before saying anything about that product; never invent a catalog match, availability or price.",
+    "Collect a PRELIMINARY list of medicines and quantities. Look up every product with search_pharmacy_catalog and wait for the result before saying anything about it; never invent a match, availability or price."],
+  ["Never guess a product. If you did not clearly hear a name, ask the caller to repeat it. When the caller repeats or corrects a name, search again with the new wording and drop the earlier guess.",
+    "Never guess: if a name was unclear, ask to repeat it; on a repeat or correction, search again and drop the earlier guess."],
+  ["Never pick a manufacturer or variant the caller did not clearly name; if their answer is unclear, ask again.",
+    "Never pick a manufacturer or variant the caller did not clearly name."],
+  ["When several names are similar, ask only the distinguishing detail still missing: strength, form, pack size, manufacturer or item code. A name match alone does not verify these details. If the caller already gave a detail, do not ask for it again.",
+    "When names are similar, ask only the missing distinguishing detail (strength, form, pack, manufacturer or item code), never one already given; a name match alone verifies none of them."],
+  ["Keep each quantity in the unit the caller said: qutu (box), ədəd (piece), ampula, flakon; never turn boxes into pieces or back. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit and is not added to the old one.",
+    "Keep each quantity in the caller's unit (qutu, ədəd, ampula, flakon); never convert. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit, never adds."],
+  ["in the final list say it is not found in the catalog.",
+    "in the final list say it is not found in the catalog.\nSubstitute: only if no lookup result has the caller's strength and form. If you surely know the product's INN, search text \"substitute: INN; strength; form\" (e.g. \"substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet\"); if strength or form is unknown, ask first. Offer at most two returned items as the same substance, strength and form; add one only after a clear yes, saving its externalId with the caller's original words in spoken. If nothing returns, say there is no such substitute."],
+  ["Price: only when the caller asks, and only for a product already narrowed to one lookup candidate. If that candidate has listPrice, say the amount in manat per its unit (per qutu, per ədəd, ...). Never mention the price list date unless asked. Never round and never offer a discount.",
+    "Price: only when asked, and only for a product narrowed to one candidate: say its listPrice in manat per its unit. Never round or offer a discount; mention the price list date only if asked."],
+  ["No medical advice, substitution or dosage.",
+    "No medical advice or dosage."],
+  ["Totals: when the caller asks for a line or order total, call calculate_order_total with the resolved lines (externalId and the quantity in that listPrice unit) and read back exactly what it returns, never your own arithmetic.",
+    "Totals: when asked, call calculate_order_total with the resolved lines (externalId, quantity in the listPrice unit) and read back exactly what it returns, never your own arithmetic."],
+  ["If the lookup returns only one matching item, do not ask about other manufacturers.",
+    "If only one item matches, do not ask about other manufacturers."],
+  ["name up to three from the latest lookup matching the strength and form given, with listPrice only if asked about price.",
+    "name up to three from the latest lookup with the strength and form given; listPrice only if asked."],
 ].reduce((prompt, [from, to]) => {
   if (!prompt.includes(from)) throw new Error("zeytun_line_prompt_drift")
   return prompt.replace(from, to)

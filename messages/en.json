@@ -10025,6 +10025,13 @@
     },
     "funds": {
       "totalBalance": "Total Fund Balance",
+      "balanceFrom": "Balance from",
+      "balanceFromKafkaHint": "Show fund balances calculated from Kafka events",
+      "balanceFromCrmHint": "Show fund balances as the CRM keeps them (the usual way)",
+      "balanceFromKafkaNotice": "Balances are calculated from Kafka events. To go back to the usual calculation, press «CRM».",
+      "balanceSourceKafka": "from Kafka",
+      "balanceSourceCatchingUp": "from CRM — Kafka is catching up",
+      "balanceSourceCrmOnly": "from CRM — no history in Kafka",
       "newFund": "New Fund",
       "coverageWarning": "Funds are not fully covered",
       "coverageDetail": "Reserved {reserved} AZN, but only {available} AZN available — coverage {percent}%",
