@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Hint } from "@/components/hint"
+import { formatDate, formatDateTime } from "@/lib/format-date"
 import { eQaimeQuery, useEQaimeInvoices, type EQaimeRowView, type EQaimeTile } from "@/lib/finance/hooks"
 
 /**
@@ -125,8 +126,7 @@ export function EQaimeDashboard() {
     window.postMessage({ source: "leaddrive-crm", type: "eqaime-open-portal" }, window.location.origin)
   }
 
-  const when = (iso: string) =>
-    new Date(iso).toLocaleString(locale, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+  const when = (iso: string) => formatDateTime(iso, locale, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
 
   return (
     <div className="space-y-4">
@@ -270,7 +270,7 @@ function Row({ row, money }: { row: EQaimeRowView; money: (v: string | number) =
     <tr className={`border-b last:border-0 hover:bg-muted/40 ${grey ? "text-muted-foreground" : ""}`}>
       <td className="px-3 py-2">
         <div className="font-semibold tabular-nums">{row.serialNumber}</div>
-        <div className="text-[11px] text-muted-foreground">{new Date(row.issuedAt).toLocaleDateString(locale)}</div>
+        <div className="text-[11px] text-muted-foreground">{formatDate(row.issuedAt, locale)}</div>
       </td>
       <td className="px-2 py-2">
         <div className="font-medium">{row.counterpartyName}</div>

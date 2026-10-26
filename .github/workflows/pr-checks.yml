@@ -420,6 +420,17 @@ jobs:
           COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           COMPANY_VOEN_DB_GATE: required
 
+      - name: E-qaimə database gate
+        # Finance → «E-qaimə» on a real Postgres under row-level security, the
+        # app connected as a role that cannot bypass it: an invoice is filed
+        # under the signed-in company only, totals are summed from the lines
+        # (VAT = 18 % of the 18 % base), a second reading keeps the sealed PDF,
+        # another organization sees nothing, the Excel file has a row a product.
+        run: npx vitest run src/__tests__/e-qaime-postgres.test.ts
+        env:
+          E_QAIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          E_QAIME_DB_GATE: required
+
       - name: Online booking database gate
         # Online booking (/book/<slug>) on a real Postgres: eight customers on
         # one time get one meeting, and two overlapping meetings of one host

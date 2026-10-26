@@ -520,6 +520,14 @@ jobs:
           COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           COMPANY_VOEN_DB_GATE: required
 
+      - name: E-qaimə database gate
+        # Same gate as in pr-checks: e-qaimə invoices under row-level security,
+        # their totals, their sealed PDFs (see the test's header).
+        run: npx vitest run src/__tests__/e-qaime-postgres.test.ts
+        env:
+          E_QAIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          E_QAIME_DB_GATE: required
+
       - name: Online booking database gate
         # Same gate as in pr-checks: one meeting per host per time, by the real
         # booking transaction (see the test's header).
