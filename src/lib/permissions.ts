@@ -714,7 +714,10 @@ export const ROUTE_MODULE_MAP: Record<string, Module> = {
   "/api/v1/sla-policies": "settings",
   "/api/v1/pipeline-stages": "settings",
   "/api/v1/inbox": "inbox",
-  "/api/v1/channels": "inbox",
+  // Channels are Settings for every tenant since 2026-10-26, not part of the Omni-channel inbox: WhatsApp,
+  // Telegram and e-mail also serve MTM, sales and support. Every handler under it is admin-only
+  // (lib/channels-access), so this entry only stops the proxy's module gate from asking for `omnichannel`.
+  "/api/v1/channels": "settings",
   // The three finance namespaces that live OUTSIDE /api/v1. Their handlers name
   // the scope themselves (withRlsAuth), so these entries are not what gates a
   // role — they are what lets the proxy's tenant module gate see the path, and

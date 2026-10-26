@@ -96,4 +96,18 @@ describe("withSocialConnectAuth", () => {
     expect((await route(req(), auth("superadmin") as never)).status).toBe(200)
     expect(deps.orgHasModule).not.toHaveBeenCalled()
   })
+
+  it("connects a messaging channel (Facebook/Instagram/Page subscribe) without either module — Channels is Settings now", async () => {
+    // Owner, 2026-10-26: Channels moved to Settings for every tenant. The monitoring-only providers keep the gate.
+    grant()
+    const channelRoute = withSocialConnectAuth("write", ok, { channel: true })
+    expect((await channelRoute(req(), auth("admin") as never)).status).toBe(200)
+    const monitoringRoute = withSocialConnectAuth("write", ok)
+    expect((await monitoringRoute(req(), auth("admin") as never)).status).toBe(403)
+    // Still admin-only and session-only.
+    expect((await channelRoute(req(), auth("manager") as never)).status).toBe(403)
+    deps.getSession.mockResolvedValue(null)
+    expect((await channelRoute(req(), auth("admin") as never)).status).toBe(401)
+  })
+
 })

@@ -289,7 +289,6 @@
   },
   "navDesc": {
     "adConversions": "Send leads and won deals to Meta (Facebook and Instagram ads)",
-    "telegramBot": "Your own bot where employees ask about their tasks and create leads",
     "onlineBooking": "A link where customers book a free time themselves",
     "bookingWorkspace": "Team meetings, online booking and booking pages",
     "skillRouting": "Agent skills and ticket queues",
@@ -537,7 +536,6 @@
   },
   "nav": {
     "adConversions": "Ad conversions",
-    "telegramBot": "Telegram bot",
     "onlineBooking": "Online booking",
     "bookingWorkspace": "Meetings & booking",
     "skillRouting": "Skill Routing",
@@ -5108,6 +5106,9 @@
     "auditLogDesc": "View all system activity",
     "noAuditLogs": "No audit events yet",
     "noAuditLogsHint": "This tenant has no recorded security or data-change events yet. Logins, record changes, exports and admin actions will appear here automatically.",
+    "channelsTitle": "Channels",
+    "channelsDesc": "WhatsApp, Telegram, Instagram, Facebook, SMS and e-mail — for every module",
+    "channelsHint": "Connect a messaging channel once and use it in the inbox, field sales, sales and support. The employees' Telegram bot is here too.",
     "integrationsTitle": "Integrations",
     "integrationsDesc": "Webhooks, Google Calendar, Slack, Zapier",
     "integrationsHint": "Configure external integrations",
@@ -31049,7 +31050,8 @@
     "applyHint": "Fills the empty name, address and director fields. Saved only when you save the company."
   },
   "telegramStaff": {
-    "title": "Telegram bot",
+    "backToChannels": "Channels",
+    "title": "Telegram for employees",
     "desc": "Your organization's own Telegram bot: employees ask it in plain words about their tasks, deals and customers and create a lead or a task without opening the CRM. Each employee sees only what they may see in the CRM.",
     "cardTitle": "Bot for employees",
     "cardDesc": "Use a separate bot — not the one your customers write to.",

@@ -289,7 +289,6 @@
   },
   "navDesc": {
     "adConversions": "Lidlər və qazanılan sövdələşmələr — Meta-ya (Facebook və Instagram reklamı)",
-    "telegramBot": "Əməkdaşların tapşırıqları soruşduğu və lid yaratdığı öz botunuz",
     "onlineBooking": "Müştərinin boş vaxta özü yazıldığı link",
     "bookingWorkspace": "Komanda görüşləri, onlayn yazılış və yazılış səhifələri",
     "skillRouting": "Agent bacarıqları və bilet növbələri",
@@ -537,7 +536,6 @@
   },
   "nav": {
     "adConversions": "Reklam konversiyaları",
-    "telegramBot": "Telegram-bot",
     "onlineBooking": "Onlayn yazılış",
     "bookingWorkspace": "Görüşlər və yazılış",
     "skillRouting": "Bacarıq marşrutu",
@@ -5108,6 +5106,9 @@
     "auditLogDesc": "Bütün sistem fəaliyyətinə baxın",
     "noAuditLogs": "Hələ audit hadisəsi yoxdur",
     "noAuditLogsHint": "Bu tenantda hələ təhlükəsizlik və ya data dəyişikliyi hadisəsi qeydə alınmayıb. Girişlər, qeyd dəyişiklikləri, ixraclar və admin əməliyyatları burada avtomatik görünəcək.",
+    "channelsTitle": "Kanallar",
+    "channelsDesc": "WhatsApp, Telegram, Instagram, Facebook, SMS və e-poçt — bütün modullar üçün",
+    "channelsHint": "Kanal bir dəfə qoşulur və gələnlər qutusunda, sahə satışında, satışda və dəstəkdə işləyir. Əməkdaşlar üçün Telegram-bot da buradadır.",
     "integrationsTitle": "İnteqrasiyalar",
     "integrationsDesc": "Vebhuklar, Google Calendar, Slack, Zapier",
     "integrationsHint": "Xarici inteqrasiyaları quraşdırın",
@@ -31045,7 +31046,8 @@
     "applyHint": "Boş ad, ünvan və direktor sahələrini doldurur. Şirkəti yadda saxlayanda saxlanılır."
   },
   "telegramStaff": {
-    "title": "Telegram-bot",
+    "backToChannels": "Kanallar",
+    "title": "Əməkdaşlar üçün Telegram",
     "desc": "Təşkilatınızın öz Telegram-botu: əməkdaşlar adi sözlərlə tapşırıqları, sövdələşmələri və müştəriləri barədə soruşur, CRM-i açmadan lid və ya tapşırıq yaradır. Hər kəs yalnız CRM-də ona açıq olanı görür.",
     "cardTitle": "Əməkdaşlar üçün bot",
     "cardDesc": "Ayrı bot lazımdır — müştərilərinizin yazdığı bot yox.",

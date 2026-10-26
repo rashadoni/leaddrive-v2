@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChevronRight, CreditCard, Users, Zap, LayoutDashboard, Lock, FileText, Plug, Keyboard, BellRing, Globe2, Building2, Bot, Sparkles } from "lucide-react"
+import { ChevronRight, CreditCard, Users, Zap, LayoutDashboard, Lock, FileText, Plug, Keyboard, BellRing, Globe2, Building2, Bot, Sparkles, Radio } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { useSession } from "next-auth/react"
 import { accessibleNavItems, orgFromSession } from "@/lib/nav-items"
@@ -35,6 +35,7 @@ export default function SettingsPage() {
     { icon: BellRing, title: t("notificationsTitle"), description: t("notificationsDesc"), href: "/settings/notifications", hint: t("notificationsHint") },
     { icon: Lock, title: t("security"), description: t("securityDesc"), href: "/settings/security", hint: t("hintSecurity") },
     { icon: FileText, title: t("auditLog"), description: t("auditLogDesc"), href: "/settings/audit-log", hint: t("hintAuditLog") },
+    { icon: Radio, title: t("channelsTitle"), description: t("channelsDesc"), href: "/settings/channels", hint: t("channelsHint") },
     { icon: Plug, title: t("integrationsTitle"), description: t("integrationsDesc"), href: "/settings/integrations", hint: t("integrationsHint") },
     { icon: Keyboard, title: t("macrosTitle"), description: t("macrosDesc"), href: "/settings/macros", hint: t("macrosHint") },
     { icon: Globe2, title: t("customDomainsTitle"), description: t("customDomainsDesc"), href: "/settings/custom-domains", hint: t("hintCustomDomains") },

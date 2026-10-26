@@ -174,6 +174,8 @@ const TILE_VISUALS: Record<string, TileVisual> = {
   "other-email": { bg: "#52525b", icon: lucideGlyph(Mail) },
   "website-chat": { bg: "#f97316", icon: lucideGlyph(MessageCircle) },
 }
+// The employees' bot wears the same Telegram mark; its title says whose it is.
+TILE_VISUALS["telegram-staff"] = TILE_VISUALS.telegram
 const NEUTRAL_TILE_VISUAL: TileVisual = { bg: "#71717a", icon: lucideGlyph(Webhook) }
 
 function whatsappWebhookUrl(orgSlug?: string | null) {
@@ -359,6 +361,9 @@ const copy = {
       facebook: "Connect Facebook Messenger from your tenant's own Meta app.",
       instagram: "Connect Instagram Direct via Facebook Page or Instagram Login.",
       telegram: "Connect a Telegram Bot for real-time customer support.",
+      telegramClientsTitle: "Telegram for customers",
+      telegramStaffTitle: "Telegram for employees",
+      telegramStaff: "Your own bot where employees ask about tasks and create leads. A separate bot from the customers' one.",
       vk: "Connect VKontakte messages alongside the rest of your inbox.",
       customBusiness: "Use Integrations to register a webhook for channels that are not covered natively, then route inbound events into Inbox.",
       twilioCall: "Cloud telephony for outbound calls, call logs, recordings and insights.",
@@ -551,6 +556,9 @@ const copy = {
       facebook: "Facebook Messenger через собственное Meta-приложение tenant-а.",
       instagram: "Instagram Direct через Facebook Page или Instagram Login.",
       telegram: "Telegram Bot для realtime-поддержки клиентов.",
+      telegramClientsTitle: "Telegram для клиентов",
+      telegramStaffTitle: "Telegram для сотрудников",
+      telegramStaff: "Свой бот, где сотрудники спрашивают о задачах и создают лидов. Отдельный от бота для клиентов.",
       vk: "Сообщения VKontakte рядом с остальными каналами инбокса.",
       customBusiness: "Используйте Integrations, чтобы зарегистрировать webhook для каналов без нативной интеграции и направлять входящие события в Inbox.",
       twilioCall: "Облачная телефония: исходящие звонки, журнал, записи и инсайты.",
@@ -743,6 +751,9 @@ const copy = {
       facebook: "Facebook Messenger tenant-ın öz Meta tətbiqi ilə qoşulur.",
       instagram: "Instagram Direct — Facebook Page və ya Instagram Login ilə.",
       telegram: "Realtime müştəri dəstəyi üçün Telegram Bot qoşun.",
+      telegramClientsTitle: "Müştərilər üçün Telegram",
+      telegramStaffTitle: "Əməkdaşlar üçün Telegram",
+      telegramStaff: "Əməkdaşların tapşırıqlar barədə soruşduğu və lid yaratdığı öz botunuz. Müştəri botundan ayrıdır.",
       vk: "VKontakte mesajları bütün inbox kanalları ilə birlikdə işləyir.",
       customBusiness: "Nativ inteqrasiya olmayan kanallar üçün Integrations bölməsində webhook qeydiyyatdan keçirin və daxil olan hadisələri Inbox-a yönləndirin.",
       twilioCall: "Bulud telefoniyası: gedən zənglər, jurnal, qeydlər və insight-lar.",
@@ -818,12 +829,24 @@ const catalogCards = (c: (typeof copy)[LocaleKey]): CatalogCard[] => [
     id: "telegram",
     tab: "business",
     channelType: "telegram",
-    title: "Telegram",
+    title: c.cards.telegramClientsTitle,
     description: c.cards.telegram,
     icon: Send,
     logo: "✈",
     accent: "from-orange-500/18 via-amber-500/8 to-transparent border-orange-400/20",
     action: { type: "form", channelType: "telegram", presetName: "Telegram Bot" },
+  },
+  {
+    // The employees' bot (lib/telegram-staff) is not a ChannelConfig the form can edit: it has its own screen and
+    // endpoint. Its card sits beside the customers' one so all Telegram lives in one catalog (owner, 2026-10-26).
+    id: "telegram-staff",
+    tab: "business",
+    title: c.cards.telegramStaffTitle,
+    description: c.cards.telegramStaff,
+    icon: Send,
+    logo: "✈",
+    accent: "from-orange-500/18 via-amber-500/8 to-transparent border-orange-400/20",
+    action: { type: "link", href: "/settings/channels/telegram-staff" },
   },
   {
     id: "vkontakte",
@@ -1691,6 +1714,24 @@ function ChannelsPageInner() {
 
   useEffect(() => { fetchChannels() }, [fetchChannels])
 
+  // The employees' Telegram bot is not a ChannelConfig the list route returns; its card asks its own endpoint.
+  // Unknown (no answer) stays null, so the card never claims "not connected" for a bot it could not ask about.
+  const [staffBot, setStaffBot] = useState<{ connected: boolean; botUsername: string | null } | null>(null)
+  useEffect(() => {
+    let alive = true
+    fetch("/api/v1/settings/telegram-bot", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { success?: boolean; data?: { connected?: boolean; botUsername?: string | null } } | null) => {
+        if (alive && body?.success && body.data) {
+          setStaffBot({ connected: Boolean(body.data.connected), botUsername: body.data.botUsername ?? null })
+        }
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+
   // The WhatsApp tile starts Meta's Embedded Signup itself (components/channels/whatsapp-embedded-signup).
   const whatsappSignup = useWhatsAppEmbeddedSignup({
     cancelledMessage: c.esCancelled,
@@ -1946,7 +1987,8 @@ function ChannelsPageInner() {
     // The tile reads the same state as every other place (lib/channels/live-connection): a saved row is
     // not a connection, and a row Meta does not deliver for never wears "Connected".
     const connectionState = connected ? channelConnectionState(connected) : null
-    const connectionLive = connectionState === "live"
+    const staffBotLive = card.id === "telegram-staff" && staffBot?.connected === true
+    const connectionLive = connectionState === "live" || staffBotLive
     const connectionBroken = Boolean(connected) && !connectionLive
     const brokenBadge = connectionState ? cardBrokenBadge(c, connectionState, claimedCopy) : null
     const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
@@ -1965,6 +2007,8 @@ function ChannelsPageInner() {
           : c.tileConnect
     const subtitle = card.id === "tiktok"
       ? card.description
+      : card.id === "telegram-staff"
+        ? staffBotLive && staffBot?.botUsername ? `@${staffBot.botUsername}` : card.description
       : whatsappWorking
         ? c.esWorking
         : connectionLive

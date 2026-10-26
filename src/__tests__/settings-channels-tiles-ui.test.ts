@@ -160,12 +160,18 @@ describe("Channel catalog — one tile per platform", () => {
     vi.restoreAllMocks()
   })
 
-  async function renderCatalog(channels: ApiChannel[], embeddedSignupConfigured: boolean) {
+  async function renderCatalog(
+    channels: ApiChannel[],
+    embeddedSignupConfigured: boolean,
+    staffBot: { connected: boolean; botUsername: string | null } = { connected: false, botUsername: null },
+  ) {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       const body = url.includes("/api/v1/channels/whatsapp/embedded-signup")
         ? (embeddedSignupConfigured ? { configured: true, appId: "2414060595720618", configId: "1142677331680804" } : { configured: false })
-        : { success: true, data: channels }
+        : url.includes("/api/v1/settings/telegram-bot")
+          ? { success: true, data: { ...staffBot, linkedUsers: 0 } }
+          : { success: true, data: channels }
       return { ok: true, status: 200, json: async () => body }
     }))
     await act(async () => {
@@ -212,6 +218,21 @@ describe("Channel catalog — one tile per platform", () => {
     expect(action("facebook").getAttribute("href")).toBe("/api/v1/social/oauth/facebook/start?from=channels-facebook")
     // The Instagram path Meta's reviewer follows: Settings -> Channels -> Instagram -> Instagram Login.
     expect(action("instagram").getAttribute("href")).toBe("/api/v1/social/oauth/instagram/start?from=channels-instagram")
+  })
+
+  it("puts the employees' Telegram bot in the catalog beside the customers' one, with its own status", async () => {
+    // Owner, 2026-10-26: the bot had its own Settings entry; all Telegram now lives in the channel catalog.
+    await renderCatalog([], true)
+    expect(tile("telegram")?.textContent).toContain("Telegram for customers")
+    expect(tile("telegram-staff")?.textContent).toContain("Telegram for employees")
+    expect(action("telegram-staff").getAttribute("href")).toBe("/settings/channels/telegram-staff")
+    expect(tile("telegram-staff")?.querySelector('[data-testid="channel-card-connected-badge"]')).toBeNull()
+
+    await act(async () => root.unmount())
+    root = createRoot(container)
+    await renderCatalog([], true, { connected: true, botUsername: "zeytun_staff_bot" })
+    expect(tile("telegram-staff")?.querySelector('[data-testid="channel-card-connected-badge"]')).not.toBeNull()
+    expect(tile("telegram-staff")?.textContent).toContain("@zeytun_staff_bot")
   })
 
   it("opens native TikTok OAuth settings without inferring readiness from a saved channel row", async () => {
