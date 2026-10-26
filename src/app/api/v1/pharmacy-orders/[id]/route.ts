@@ -15,7 +15,7 @@ function failure(error: unknown) {
   throw error
 }
 
-export const GET = withRlsAuth("mtm", "read", async (_req: NextRequest, auth, { params }: Context) => {
+export const GET = withRlsAuth("deals", "read", async (_req: NextRequest, auth, { params }: Context) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   try {
     return NextResponse.json({ data: await getPhoneOrder(auth.orgId, (await params).id) })
@@ -27,7 +27,7 @@ const setPharmacySchema = z.strictObject({ action: z.literal("set_pharmacy"), re
   companyId: z.string().min(1).max(64) })
 
 /** One manager action (confirm, reject, a line change, the pharmacy) under the order's revision. */
-export const PATCH = withRlsAuth("mtm", "write", async (req: NextRequest, auth, { params }: Context) => {
+export const PATCH = withRlsAuth("deals", "write", async (req: NextRequest, auth, { params }: Context) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   const body = await req.json().catch(() => null)
   const id = (await params).id

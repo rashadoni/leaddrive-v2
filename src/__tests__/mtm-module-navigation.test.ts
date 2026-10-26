@@ -51,12 +51,13 @@ describe("MTM module navigation", () => {
 
     expect(new Set(MTM_ALL_NAVIGATION_HREFS).size).toBe(MTM_ALL_NAVIGATION_HREFS.length)
     expect([...MTM_ALL_NAVIGATION_HREFS].sort()).toEqual(existingMtmHrefs.sort())
-    expect(MTM_TOOL_GROUPS.flatMap((group) => group.items)).toHaveLength(16)
+    expect(MTM_TOOL_GROUPS.flatMap((group) => group.items)).toHaveLength(15)
   })
 
   it("uses progressive groups that explain how secondary tools relate", () => {
     expect(MTM_TOOL_GROUPS.map((group) => [group.key, group.items.map((item) => item.href)])).toEqual([
-      ["work", ["/mtm/tasks", "/mtm/promotions", "/pharmacy-orders"]],
+      // Phone orders moved to Sales (owner, 2026-10-26).
+      ["work", ["/mtm/tasks", "/mtm/promotions"]],
       ["reference", ["/mtm/customers", "/mtm/contacts", "/mtm/agents", "/mtm/products"]],
       ["control", ["/mtm/alerts", "/mtm/photos", "/mtm/operations"]],
       ["analytics", ["/mtm/reports", "/mtm/attendance", "/mtm/leaderboard", "/mtm/activity"]],

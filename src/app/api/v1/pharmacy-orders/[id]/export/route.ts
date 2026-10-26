@@ -7,7 +7,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 type Context = { params: Promise<{ id: string }> }
 
 /** The order's lines as .xlsx for entering into 1C. */
-export const GET = withRlsAuth("mtm", "read", async (_req: NextRequest, auth, { params }: Context) => {
+export const GET = withRlsAuth("deals", "read", async (_req: NextRequest, auth, { params }: Context) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   try {
     const order = await getPhoneOrder(auth.orgId, (await params).id)

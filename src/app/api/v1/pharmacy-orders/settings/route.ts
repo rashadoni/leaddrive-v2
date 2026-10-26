@@ -8,7 +8,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { withRlsAuth } from "@/lib/with-rls"
 
 /** Who gets the WhatsApp message about a new phone order, and whether a WhatsApp channel is there to send it. */
-export const GET = withRlsAuth("mtm", "read", async (_req: NextRequest, auth) => {
+export const GET = withRlsAuth("deals", "read", async (_req: NextRequest, auth) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   const [org, channel] = await Promise.all([
     runWithRlsBypass(() => prisma.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true } })),
@@ -20,7 +20,7 @@ export const GET = withRlsAuth("mtm", "read", async (_req: NextRequest, auth) =>
 const bodySchema = z.strictObject({ phones: z.array(z.string().max(40)).max(5) })
 
 /** An admin or manager sets the numbers; anything that is not a phone number is refused, not dropped. */
-export const PUT = withRlsAuth("mtm", "write", async (req: NextRequest, auth) => {
+export const PUT = withRlsAuth("deals", "write", async (req: NextRequest, auth) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   if (!["admin", "manager"].includes(auth.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 })
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))

@@ -583,6 +583,8 @@ export const ROUTE_MODULE_MAP: Record<string, Module> = {
   "/api/v1/companies": "companies",
   "/api/v1/contacts": "contacts",
   "/api/v1/deals": "deals",
+  // Phone orders sit with sales (owner, 2026-10-26), gated like deals.
+  "/api/v1/pharmacy-orders": "deals",
   "/api/v1/leads": "leads",
   "/api/v1/tasks": "tasks",
   "/api/v1/bookings": "bookings",
@@ -886,7 +888,6 @@ export const ROUTE_MODULE_MAP: Record<string, Module> = {
   // handler; this map is used only by the web admin panel
   // middleware (cookie-session auth path).
   "/api/v1/mtm": "mtm",
-  "/api/v1/pharmacy-orders": "mtm",
   // Workforce has its own capability wrapper. It is intentionally not mapped
   // to a group ModuleId here; see CAPABILITY_GATED_PERMISSION_SCOPES.
   "/api/v1/workforce": "workforce",

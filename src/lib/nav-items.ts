@@ -196,6 +196,8 @@ export const navItems: NavItem[] = [
   // sidebar, right after CRM.
   { module: "sales", href: "/leads", icon: UserPlus, tKey: "leads", group: "Sales" },
   { module: "sales", href: "/deals", icon: Handshake, tKey: "deals", group: "Sales" },
+  // Owner, 2026-10-26: phone orders are sales («продажи»), not field work; rights as deals.
+  { module: "sales", feature: "pharmacy_phone_orders", href: "/pharmacy-orders", icon: PhoneIncoming, tKey: "pharmacyPhoneOrders", group: "Sales", permissionScope: "deals" },
   ...(BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", searchKeys: ["onlineBooking"], group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
   { module: "sales", href: "/quotes", icon: FileBadge, tKey: "quotes", group: "Sales" },
   { module: "sales", href: "/sequences", icon: Zap, tKey: "sequences", group: "Sales" },
@@ -357,7 +359,6 @@ export const navItems: NavItem[] = [
   { module: "mtm", href: "/mtm/operations", icon: Radio, tKey: "mtmOperations", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/visits", icon: CheckSquare, tKey: "mtmVisits", group: "Route & Field" },
   { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field", orgSetting: "pharmacyPromotionsEnabled" },
-  { module: "mtm", feature: "pharmacy_phone_orders", href: "/pharmacy-orders", icon: PhoneIncoming, tKey: "pharmacyPhoneOrders", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/tasks", icon: ClipboardList, tKey: "mtmTasks", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/customers", icon: Building2, tKey: "mtmCustomers", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field", orgSetting: "fieldContactsEnabled" },
