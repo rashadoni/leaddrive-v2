@@ -8,7 +8,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 type Context = { params: Promise<{ id: string }> }
 
 /** Pharmacies to name the order with: the caller's number's ones, or a search (`q`). */
-export const GET = withRlsAuth("mtm", "read", async (req: NextRequest, auth, { params }: Context) => {
+export const GET = withRlsAuth("deals", "read", async (req: NextRequest, auth, { params }: Context) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   try {
     const query = req.nextUrl.searchParams.get("q") ?? ""

@@ -132,8 +132,8 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     const { PrismaClient: Client } = await import("@prisma/client")
     admin = new Client<Prisma.PrismaClientOptions>({ datasourceUrl: scratch!.adminScratch })
     await admin.organization.createMany({ data: [
-      { id: ZEYTUN, name: "Zeytun Pharma", slug: "zeytun", modules: { mtm: true }, features: ["mtm", "pharmacy_phone_orders"] },
-      { id: OTHER, name: "Other", slug: "other", modules: { mtm: true }, features: ["mtm"] },
+      { id: ZEYTUN, name: "Zeytun Pharma", slug: "zeytun", modules: { mtm: true, sales: true }, features: ["mtm", "sales", "pharmacy_phone_orders"] },
+      { id: OTHER, name: "Other", slug: "other", modules: { mtm: true, sales: true }, features: ["mtm", "sales"] },
     ] })
     await admin.user.createMany({ data: [
       { id: "user-zeytun", organizationId: ZEYTUN, email: "manager@zeytun.test", name: "Nigar", passwordHash: "-", role: "admin" },
@@ -215,7 +215,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     session.current = { user: { id: "user-other", organizationId: OTHER, role: "admin", email: "admin@other.test", name: "Other" } }
     // The other organization has no phone orders feature: the list is not there at all.
     expect((await list(json("GET", "/api/v1/pharmacy-orders"))).status).toBe(404)
-    await admin.organization.update({ where: { id: OTHER }, data: { features: ["mtm", "pharmacy_phone_orders"] } })
+    await admin.organization.update({ where: { id: OTHER }, data: { features: ["mtm", "sales", "pharmacy_phone_orders"] } })
     const listed = await (await list(json("GET", "/api/v1/pharmacy-orders"))).json()
     expect(listed.data).toEqual([])
     const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(3) } })

@@ -6,7 +6,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 type Context = { params: Promise<{ id: string }> }
 
 /** The order's catalog for the manager's "pick a product": newest snapshot, eight items. */
-export const GET = withRlsAuth("mtm", "read", async (req: NextRequest, auth, { params }: Context) => {
+export const GET = withRlsAuth("deals", "read", async (req: NextRequest, auth, { params }: Context) => {
   if (!(await phoneOrdersEnabled(auth.orgId))) return NextResponse.json({ error: "not_found" }, { status: 404 })
   const text = req.nextUrl.searchParams.get("q")?.trim() ?? ""
   if (text.length < 2) return NextResponse.json({ data: { items: [] } })

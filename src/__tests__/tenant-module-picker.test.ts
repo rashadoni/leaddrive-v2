@@ -108,15 +108,16 @@ describe("unified tenant module picker", () => {
   })
 
   it("switches a flagged page on its own row, inside its group", async () => {
-    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "mtm"], { crm: true, mtm: true })))
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "sales"], { crm: true, sales: true })))
     await render("az")
     const row = container.querySelector('[data-page-feature="pharmacy_phone_orders"]')!
-    expect(row.closest("[data-module-group]")?.getAttribute("data-module-group")).toBe("Route & Field")
+    // Phone orders are a sales page (owner, 2026-10-26).
+    expect(row.closest("[data-module-group]")?.getAttribute("data-module-group")).toBe("Sales")
     expect(row.textContent).toContain(messages("az").nav.pharmacyPhoneOrders)
     expect(row.className).toContain("line-through")
     await click(pageFeature("pharmacy_phone_orders"))
     expect(row.className).not.toContain("line-through")
-    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "mtm", "pharmacy_phone_orders"], { crm: true, mtm: true })))
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "sales", "pharmacy_phone_orders"], { crm: true, sales: true })))
     await click(button(messages("az").admin.tenants.save))
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).features).toContain("pharmacy_phone_orders")
   })
