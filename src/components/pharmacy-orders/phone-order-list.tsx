@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
 import { PhoneOrderStatus, formatMoney, formatOrderDate, type PhoneOrderStatusValue } from "./phone-order-format"
+import { PhoneOrdersViews } from "./phone-orders-views"
 
 type Row = {
   id: string; label: string; status: PhoneOrderStatusValue; createdAt: string; callStartedAt: string
@@ -38,6 +39,7 @@ export function PhoneOrderList() {
         <h1 className="text-[22px] font-bold tracking-tight">{t("title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
+      <PhoneOrdersViews active="orders" />
       <div className="flex gap-5 border-b border-border text-sm">
         {FILTERS.map(value => (
           <button key={value || "all"} type="button" onClick={() => { if (value !== filter) { setRows(null); setFilter(value) } }}

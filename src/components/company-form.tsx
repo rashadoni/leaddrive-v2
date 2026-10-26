@@ -40,7 +40,7 @@ interface CompanyFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: () => void
-  initialData?: Partial<CompanyFormData> & { id?: string }
+  initialData?: Partial<CompanyFormData> & { id?: string; externalSource?: string | null }
   orgId?: string
 }
 
@@ -49,6 +49,8 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
   const tc = useTranslations("common")
   const tv = useTranslations("companyVoen")
   const isEdit = !!initialData?.id
+  // A company from an outside register (1C): its name, phone, city and address are edited there.
+  const sourceLocked = Boolean(initialData?.externalSource)
   const [form, setForm] = useState<CompanyFormData>({
     name: initialData?.name || "",
     industry: initialData?.industry || "",
@@ -153,11 +155,12 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
         <DialogContent>
           {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
           <div className="grid gap-4">
+            {sourceLocked ? <p className="text-xs text-muted-foreground">{t("sourceManaged")}</p> : null}
             <VoenField value={form.voen} onChange={(v) => update("voen", v)} companyId={initialData?.id} orgId={orgId} onApply={applyRegistryCard} />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="name">{`${tc("name")} *`}</Label>
-                <Input id="name" value={form.name} onChange={(e) => update("name", e.target.value)} required />
+                <Input id="name" value={form.name} onChange={(e) => update("name", e.target.value)} required disabled={sourceLocked} />
               </div>
               <div>
                 <Label htmlFor="director">{tv("director")}</Label>
@@ -185,7 +188,7 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
               </div>
               <div>
                 <Label htmlFor="phone">{tc("phone")}</Label>
-                <Input id="phone" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+                <Input id="phone" value={form.phone} onChange={(e) => update("phone", e.target.value)} disabled={sourceLocked} />
               </div>
             </div>
             <div>
@@ -195,7 +198,7 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="city">{tc("city")}</Label>
-                <Input id="city" value={form.city} onChange={(e) => update("city", e.target.value)} />
+                <Input id="city" value={form.city} onChange={(e) => update("city", e.target.value)} disabled={sourceLocked} />
               </div>
               <div>
                 <Label htmlFor="country">{tc("country")}</Label>
@@ -204,7 +207,7 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
             </div>
             <div>
               <Label htmlFor="address">{tc("address")}</Label>
-              <Input id="address" value={form.address} onChange={(e) => update("address", e.target.value)} />
+              <Input id="address" value={form.address} onChange={(e) => update("address", e.target.value)} disabled={sourceLocked} />
             </div>
             <div>
               <Label htmlFor="slaPolicy">{t("slaPolicy")}</Label>
