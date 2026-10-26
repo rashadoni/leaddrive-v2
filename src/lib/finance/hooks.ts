@@ -549,3 +549,70 @@ export function useDeleteBankAccount() {
     },
   })
 }
+
+// ─── E-qaimə (invoices read from e-Taxes by the Chrome extension) ─────────
+
+export interface EQaimeRowView {
+  id: string
+  direction: "inbox" | "outbox"
+  serialNumber: string
+  kind: string | null
+  docType: string | null
+  status: string
+  issuedAt: string
+  ownVoen: string
+  ownName: string
+  counterpartyVoen: string | null
+  counterpartyName: string
+  company: { id: string; name: string } | null
+  netAmount: string
+  vatAmount: string
+  exciseAmount: string
+  roadTaxAmount: string
+  totalAmount: string
+  sourceSerials: string[]
+  hasPdf: boolean
+  portalSyncedAt: string
+}
+
+export interface EQaimeTile {
+  count: number
+  liveCount: number
+  total: string
+  vat: string
+}
+
+export interface EQaimeList {
+  data: EQaimeRowView[]
+  page: number
+  pageSize: number
+  total: number
+  tiles: { inbox: EQaimeTile; outbox: EQaimeTile }
+  companies: { voen: string; name: string; count: number }[]
+  lastSync: { at: string; ownVoen: string; ownName: string; by: string | null } | null
+}
+
+/** The tab's query string; the Excel link takes the same one. */
+export function eQaimeQuery(filters: Record<string, string | number | undefined>): string {
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") qs.set(key, String(value))
+  }
+  return qs.toString()
+}
+
+export function useEQaimeInvoices(filters: Record<string, string | number | undefined>) {
+  const orgId = useOrgId()
+  const query = eQaimeQuery(filters)
+  return useQuery({
+    queryKey: ["finance", "e-qaime", query, orgId],
+    queryFn: async (): Promise<EQaimeList> => {
+      const res = await fetch(`/api/finance/e-qaime?${query}`, { headers: { "x-organization-id": orgId } })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "API error")
+      return json as EQaimeList
+    },
+    enabled: !!orgId,
+    placeholderData: (previous) => previous,
+  })
+}
