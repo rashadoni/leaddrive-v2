@@ -9,7 +9,63 @@
     "date": "2026-10-26",
     "what": "take",
     "branch": "erp/002-client-questionnaire-and-sample-file"
+   },
+   {
+    "date": "2026-10-26",
+    "what": "step",
+    "step": 1
+   },
+   {
+    "date": "2026-10-26",
+    "what": "step",
+    "step": 2
+   },
+   {
+    "date": "2026-10-26",
+    "what": "step",
+    "step": 3
+   },
+   {
+    "date": "2026-10-26",
+    "what": "step",
+    "step": 4
+   },
+   {
+    "date": "2026-10-26",
+    "what": "step",
+    "step": 5
+   },
+   {
+    "date": "2026-10-26",
+    "what": "note"
    }
-  ]
+  ],
+  "steps_done": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "note": {
+   "date": "2026-10-26",
+   "branch": "erp/002-client-questionnaire-and-sample-file",
+   "steps_at_note": 5,
+   "steps_done": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "next_step": 6,
+   "rules_done": [],
+   "rules_open": [
+    "u4-D-9.1"
+   ],
+   "rules_waiting": [],
+   "blocked": "owner",
+   "blocked_rules": []
+  }
  }
 }
