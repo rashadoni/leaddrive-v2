@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "headSha": "8aa99da6cb7e2a2a7a03ea0ad0a42cc2df896928",
+  "actualCookie": true,
+  "productionMutation": false,
+  "providerMessages": false,
+  "checks": [
+    "canonical_person_cannot_use_old_password_or_implicit_tenant",
+    "actual_authjs_cookie_shared_password_private_hint_hidden_and_viewer_permissions_despite_legacy_admin_role",
+    "sibling_mobile_grant_does_not_revoke_crm_but_crm_revoke_reactivate_requires_new_login",
+    "shared_credential_epoch_and_opt_out_revoke_real_cookie_without_legacy_fallback",
+    "shared_password_or_actual_session_update_cannot_satisfy_crm_mfa_or_forge_private_grants",
+    "existing_owned_time_card_connected_without_duplicate_or_hr_history_rewrite",
+    "actual_admin_explicit_time_registration_preserves_person_field_history_common_credential_and_all_job_metadata_with_atomic_audit_rollback_and_safe_replay",
+    "field_removal_audit_failure_rolls_back_phone_and_card_removal",
+    "field_removal_hides_retained_card_and_unblocks_bootstrap_without_deleting_history_or_changing_administrator",
+    "empty_optional_phone_allows_first_proof_but_mismatched_and_foreign_or_unlinked_owners_remain_blocked",
+    "private_conflict_review_identifies_crm_and_active_inactive_unlinked_field_cards_without_cross_tenant_disclosure_or_writes",
+    "live_legacy_administrator_self_bootstrap_preserves_mfa_rolls_back_failed_retirement_and_requires_fresh_common_password_login",
+    "explicit_time_connection_makes_technical_card_visible_without_rewriting_effective_date",
+    "pending_time_review_visible_and_cancellable_with_safe_retry_new_review_and_retained_history_binding",
+    "actual_admin_review_public_first_login_activates_common_password_and_separate_time_card_with_hr_fields_preserving_field_actor_without_implicit_crm_or_receipt_authentication",
+    "actual_field_removal_revokes_existing_token_and_new_login_preserves_time_token_common_password_and_verified_phone",
+    "time_only_existing_person_gets_no_temporary_crm_or_field_grant_and_pending_time_cannot_be_bypassed",
+    "actual_public_recovery_is_application_bound_changes_common_password_revokes_both_old_sessions_and_preserves_separate_actors_without_provider_messages",
+    "actual_public_phone_login_shared_password_separate_actor_profiles_time_cannot_enter_field_and_time_revocation_preserves_field",
+    "actual_cookie_admin_enrolls_separate_time_field_actors_without_crm_access_and_revocation_mfa_viewer_scope_are_enforced"
+  ],
+  "workflowRunId": 40325213342,
+  "workflowUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40325213342"
+}
