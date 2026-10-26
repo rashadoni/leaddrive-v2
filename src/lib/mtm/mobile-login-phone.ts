@@ -87,7 +87,7 @@ export type PhoneOwner =
 export async function findPhoneOwner(client: LookupClient, organizationId: string, entered: string): Promise<PhoneOwner> {
   if (phoneDigits(entered).length < MIN_SIGNIFICANT_DIGITS) return { kind: "none" }
   const agents = await client.mtmAgent.findMany({
-    where: { organizationId, status: "ACTIVE" },
+    where: { organizationId, status: "ACTIVE", OR: [{ fieldDeletedAt: null }, { role: "EMPLOYEE" }] },
     select: { id: true, phone: true, userId: true },
   })
   const linkedIds = agents.filter(agent => !agent.phone && agent.userId).map(agent => agent.userId!)

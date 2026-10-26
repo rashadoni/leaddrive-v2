@@ -6,13 +6,13 @@ import { DEFAULT_CURRENCY } from "@/lib/constants"
 interface FinanceKpiCardProps {
   title: string
   value: number
-  plan?: number
+  plan?: number | null
   planLabel?: string
   sub?: string
   icon: React.ReactNode
   color: string
   variance?: number
-  variancePct?: number
+  variancePct?: number | null
   currency?: string
   invertVariance?: boolean // true for expenses: over plan = bad
 }
@@ -25,8 +25,8 @@ function fmt(n: number): string {
 
 export function FinanceKpiCard({ title, value, plan, planLabel, sub, icon, color, variance, variancePct, currency = DEFAULT_CURRENCY, invertVariance }: FinanceKpiCardProps) {
   const isPositive = invertVariance ? (variancePct ?? 0) <= 0 : (variancePct ?? 0) >= 0
-  const varianceColor = variancePct === 0 || variancePct === undefined ? "text-muted-foreground" : isPositive ? "text-green-600" : "text-red-600"
-  const VarianceIcon = variancePct === 0 || variancePct === undefined ? Minus : isPositive ? TrendingUp : TrendingDown
+  const varianceColor = variancePct === 0 || variancePct == null ? "text-muted-foreground" : isPositive ? "text-green-600" : "text-red-600"
+  const VarianceIcon = variancePct === 0 || variancePct == null ? Minus : isPositive ? TrendingUp : TrendingDown
   const signalColor = ["#22c55e", "#ef4444", "#f59e0b"].includes(color.toLowerCase()) ? color : undefined
 
   return (
@@ -40,10 +40,10 @@ export function FinanceKpiCard({ title, value, plan, planLabel, sub, icon, color
             <p className="text-2xl font-bold mt-1 tabular-nums tracking-tight leading-none text-foreground">
               {fmt(value)} <span className="text-xs font-normal text-muted-foreground">{currency}</span>
             </p>
-            {plan !== undefined && plan > 0 && (
+            {plan != null && plan > 0 && (
               <div className="flex items-center gap-1.5 mt-1.5">
                 <span className="text-[10px] text-muted-foreground">{planLabel || "Plan"}: {fmt(plan)}</span>
-                {variancePct !== undefined && (
+                {variancePct != null && (
                   <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${varianceColor}`}>
                     <VarianceIcon className="w-3 h-3" />
                     {variancePct > 0 ? "+" : ""}{variancePct}%

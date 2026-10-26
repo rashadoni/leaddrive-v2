@@ -40,12 +40,11 @@ describe("the downloadable extension", () => {
     expect(manifest.host_permissions).toEqual([
       "https://new.e-taxes.gov.az/*",
       "https://*.leaddrivecrm.org/*",
-      "http://localhost:3000/*",
     ])
     const scripts = manifest.content_scripts.map((s: { matches: string[]; js: string[] }) => [s.matches, s.js])
     expect(scripts).toEqual([
       [["https://new.e-taxes.gov.az/*"], ["core.js", "etaxes.js"]],
-      [["https://*.leaddrivecrm.org/*", "http://localhost:3000/*"], ["leaddrive.js"]],
+      [["https://*.leaddrivecrm.org/*"], ["leaddrive.js"]],
     ])
   })
 

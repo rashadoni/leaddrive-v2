@@ -56,6 +56,17 @@ describe("canonical mobile runtime application boundary", () => {
     mocks.card.mockResolvedValue({ name: "Fictional", email: null, role: "AGENT", attendanceParticipant: false, attendanceExcluded: false })
     expect(await resolveIdentityMobileRuntime(request("/api/v1/mtm/agents"), token, client)).toMatchObject({ agentId: "card-ROUTE_FIELD", identityApplication: "ROUTE_FIELD", tenantCapabilities: { routeField: true, personnel: false } })
   })
+  it("rejects a removed Field actor even while its grant and signed token remain current", async () => {
+    const fresh = state("ROUTE_FIELD"), token = issueIdentityMobileSession(fresh, "ROUTE_FIELD", key, now)
+    mocks.state.mockResolvedValue(fresh)
+    mocks.card.mockResolvedValue({ name: "Removed", email: null, role: "AGENT", fieldDeletedAt: now })
+    expect(await resolveIdentityMobileRuntime(request("/api/v1/mtm/agents"), token, client)).toBeNull()
+  })
+  it("does not apply Field removal to independent Time admission", async () => {
+    const token = issueIdentityMobileSession(state(), "TIME", key, now)
+    mocks.card.mockResolvedValue({ name: "Time", email: null, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false, fieldDeletedAt: now })
+    expect(await resolveIdentityMobileRuntime(request(), token, client)).toMatchObject({ identityApplication: "TIME" })
+  })
   it("does not query or fall back when the dedicated key is missing", async () => {
     const token = issueIdentityMobileSession(state(), "TIME", key, now)
     vi.stubEnv("IDENTITY_MOBILE_SESSION_KEYS", "")

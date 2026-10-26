@@ -2,10 +2,11 @@
 
 export interface FinanceKPI {
   label: string
-  plan: number
+  /** null where there is no plan: the expense plan has none since 2026-10-07. */
+  plan: number | null
   fact: number
-  variance: number
-  variancePct: number
+  variance: number | null
+  variancePct: number | null
 }
 
 export interface AgingBucket {

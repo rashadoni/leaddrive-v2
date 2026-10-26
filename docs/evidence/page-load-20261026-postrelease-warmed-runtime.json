@@ -1,0 +1,208 @@
+{
+  "kind": "bounded-runtime-snapshot",
+  "startedAt": "2026-10-26T14:31:17.540951Z",
+  "production": {
+    "host": "13.140.132.245",
+    "appDirectory": "/opt/leaddrive-v2",
+    "processName": "leaddrive-v2"
+  },
+  "hostLogicalCpus": 6,
+  "method": {
+    "ssh": "fresh, ControlMaster=no, ControlPath=none",
+    "mutations": "none; existing process and aggregate system metrics only",
+    "cpuSampleSeconds": 5,
+    "nginxWindowSeconds": 300
+  },
+  "pm2": {
+    "capturedAt": "2026-10-26T14:31:17.893451Z",
+    "processCount": 1,
+    "processes": [
+      {
+        "pid": 244333,
+        "status": "online",
+        "executionMode": "fork_mode",
+        "restartCount": 0,
+        "cpuPercentSnapshot": 138.3,
+        "memoryBytesSnapshot": 1023512576,
+        "metrics": {
+          "Used Heap Size": {
+            "value": 601.43,
+            "unit": "MiB"
+          },
+          "Heap Usage": {
+            "value": 92.24,
+            "unit": "%"
+          },
+          "Heap Size": {
+            "value": 652.05,
+            "unit": "MiB"
+          },
+          "Event Loop Latency p95": {
+            "value": 44.14,
+            "unit": "ms"
+          },
+          "Event Loop Latency": {
+            "value": 0.75,
+            "unit": "ms"
+          },
+          "Active handles": {
+            "value": 6.0
+          },
+          "Active requests": {
+            "value": 0.0
+          },
+          "HTTP": {
+            "value": 0.65,
+            "unit": "req/min"
+          },
+          "HTTP P95 Latency": {
+            "value": 2362.999999999999,
+            "unit": "ms"
+          },
+          "HTTP Mean Latency": {
+            "value": 522.0,
+            "unit": "ms"
+          }
+        },
+        "startedAt": "2026-10-26T14:24:50.314000Z",
+        "uptimeSeconds": 387.579
+      }
+    ]
+  },
+  "processCpu": {
+    "startedAt": "2026-10-26T14:31:17.893457Z",
+    "pid": 244333,
+    "intervalSeconds": 1,
+    "sampleCountRequested": 5,
+    "cpuPercentConvention": "percent of one logical CPU; may exceed 100 with process threads",
+    "finishedAt": "2026-10-26T14:31:22.897933Z",
+    "samples": [
+      {
+        "userPercent": 0.0,
+        "systemPercent": 0.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 0.0
+      },
+      {
+        "userPercent": 1.0,
+        "systemPercent": 0.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 1.0
+      },
+      {
+        "userPercent": 0.0,
+        "systemPercent": 0.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 0.0
+      },
+      {
+        "userPercent": 0.0,
+        "systemPercent": 0.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 0.0
+      },
+      {
+        "userPercent": 0.0,
+        "systemPercent": 0.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 0.0
+      }
+    ],
+    "average": {
+      "userPercent": 0.2,
+      "systemPercent": 0.0,
+      "guestPercent": 0.0,
+      "waitPercent": 0.0,
+      "cpuPercent": 0.2
+    },
+    "sampleCountActual": 5
+  },
+  "postgres": {
+    "capturedAt": "2026-10-26T14:31:22.970925Z",
+    "scope": "all client backends across databases on local port 5432, excluding this inspection connection",
+    "counts": {
+      "maxConnections": 100,
+      "clientConnections": 22,
+      "active": 0,
+      "idle": 22,
+      "idleInTransaction": 0,
+      "idleInTransactionAborted": 0,
+      "blocked": 0,
+      "waitingForLock": 0,
+      "databaseCount": 1,
+      "deadlocksCumulative": 0
+    },
+    "caveat": "one snapshot; cumulative deadlocks are not a five-minute measurement; no SQL/connection-wait timing collected"
+  },
+  "nginx": {
+    "windowStart": "2026-10-26T14:26:22.970975Z",
+    "windowEnd": "2026-10-26T14:31:22.970975Z",
+    "windowSeconds": 300,
+    "scope": "parsed standard HTTP request entries in the nginx access log, not filtered by vhost or authentication",
+    "sources": [
+      {
+        "file": "/var/log/nginx/access.log",
+        "tailLinesRead": 20000,
+        "parsedLines": 19997,
+        "tailLimitReached": true
+      }
+    ],
+    "oldestReadRecordBeforeWindow": true,
+    "unparsableTailLines": 3,
+    "requestCount": 140,
+    "requestsPerSecond": 0.4667,
+    "statusClasses": {
+      "2xx": 129,
+      "3xx": 6,
+      "4xx": 5
+    },
+    "pathGroups": {
+      "/api/v1/notifications/*": 42,
+      "/api/*": 28,
+      "/api/v1/calls/active": 25,
+      "/api/auth/session": 12,
+      "/api/v1/mtm/*": 12,
+      "/api/v1/users/*": 12,
+      "/api/v1/ping": 3,
+      "/api/v1/public/build-info": 3,
+      "/api/finance/*": 2,
+      "/other-page-or-asset": 1
+    },
+    "privacy": "only allowlisted coarse route groups; no addresses, identifiers, query strings, user agents or raw log lines saved"
+  },
+  "loopbackBuildInfo": {
+    "capturedAt": "2026-10-26T14:31:23.456538Z",
+    "httpStatus": 200,
+    "artifactSha": "97e8e959de7c0213b9b378cdb6e2e0e6f16ba217",
+    "sha": "97e8e959de7c",
+    "builtAt": "2026-10-26T13:41:55Z"
+  },
+  "pm2ProcessesAfter": [
+    {
+      "pid": 244333,
+      "status": "online",
+      "startedAtEpochMs": 1793024690314
+    }
+  ],
+  "finishedAt": "2026-10-26T14:31:23.765038Z",
+  "limitations": [
+    "Uncontrolled live traffic; not a controlled latency comparison or capacity test.",
+    "PM2 HTTP/event-loop values are existing rolling metrics; their internal windows are not aligned with the five-second CPU sample.",
+    "PostgreSQL connection/lock state is instantaneous and does not exclude intermittent contention.",
+    "Nginx counts describe preceding wall-clock traffic; unknown routes are grouped and authentication is not determined.",
+    "No authenticated browser page timing, SQL duration, CPU profile, restart or runtime setting change."
+  ],
+  "comparability": "uncontrolled live traffic; not a controlled latency baseline",
+  "publicBuildInfo": {
+    "capturedAt": "2026-10-26T14:31:23.971089Z",
+    "httpStatus": 200,
+    "artifactSha": "97e8e959de7c0213b9b378cdb6e2e0e6f16ba217",
+    "sha": "97e8e959de7c",
+    "builtAt": "2026-10-26T13:41:55Z"
+  }
+}

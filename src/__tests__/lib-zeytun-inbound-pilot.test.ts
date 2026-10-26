@@ -313,6 +313,10 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain('"substitute: INN; strength; form"')
     expect(ZEYTUN_LINE_PROMPT).toContain("only after a clear yes")
     expect(ZEYTUN_LINE_PROMPT).not.toContain("substitution or dosage")
+    expect(ZEYTUN_LINE_PROMPT).toContain("unasked")
+    // Owner, 2026-10-26: no read-back at the end unless asked; the order number and that it is being processed.
+    expect(ZEYTUN_LINE_PROMPT).toContain("do not read the list back unless asked")
+    expect(ZEYTUN_LINE_PROMPT).toContain("passed to Zeytun's manager for processing")
   })
 
   it("answers any caller with the line's opening and claims each call by itself", async () => {

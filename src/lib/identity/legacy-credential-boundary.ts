@@ -130,8 +130,8 @@ async function readLegacyBoundaryState(tx: Prisma.TransactionClient, organizatio
     linkedUserId = principal.userId
     userIds.add(principal.userId)
   } else {
-    const actor = await tx.mtmAgent.findFirst({ where: { id: principal.actorId, organizationId }, select: { userId: true, status: true } })
-    if (!actor || (requireActive && actor.status !== "ACTIVE")) return "UNAVAILABLE" as const
+    const actor = await tx.mtmAgent.findFirst({ where: { id: principal.actorId, organizationId }, select: { userId: true, status: true, role: true, fieldDeletedAt: true } })
+    if (!actor || (requireActive && (actor.status !== "ACTIVE" || (actor.fieldDeletedAt && actor.role !== "EMPLOYEE")))) return "UNAVAILABLE" as const
     linkedUserId = actor.userId
     if (linkedUserId) userIds.add(linkedUserId)
     const binding = await tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId, actorId: principal.actorId } }, select: { userId: true } })

@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "LeadDrive e-Qaimə",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "e-Taxes-dəki elektron qaimələri LeadDrive-a gətirir: Maliyyə → E-qaimə.",
   "permissions": ["storage"],
   "host_permissions": [
     "https://new.e-taxes.gov.az/*",
-    "https://*.leaddrivecrm.org/*",
-    "http://localhost:3000/*"
+    "https://*.leaddrivecrm.org/*"
   ],
+  "homepage_url": "https://app.leaddrivecrm.org/legal/privacy#e-qaime-extension",
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
@@ -17,7 +17,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.leaddrivecrm.org/*", "http://localhost:3000/*"],
+      "matches": ["https://*.leaddrivecrm.org/*"],
       "js": ["leaddrive.js"],
       "run_at": "document_idle"
     }

@@ -43,9 +43,10 @@ export async function readIdentityMobileState(tx: Prisma.TransactionClient, orga
   if (!company || !person || !account || !claim || !grant || !membership) return null
   const [binding, actor, policy] = await Promise.all([
     tx.identityActorBinding.findUnique({ where: { organizationId_actorId: { organizationId, actorId: membership.actorId } }, select: { organizationId: true, userId: true, actorId: true } }),
-    tx.mtmAgent.findFirst({ where: { organizationId, id: membership.actorId }, select: { id: true, organizationId: true, userId: true, status: true } }),
+    tx.mtmAgent.findFirst({ where: { organizationId, id: membership.actorId }, select: { id: true, organizationId: true, userId: true, status: true, fieldDeletedAt: true } }),
     tenantPolicy(tx, organizationId, application),
   ])
+  if (application === "ROUTE_FIELD" && actor?.fieldDeletedAt) return null
   if (!binding || !actor || grant.application !== application || membership.application !== application) return null
   return { company: { ...company, identityMobileEnabled: policy.identityEnabled },
     person: { organizationId: person.organizationId, userId: person.id, isActive: person.isActive, anonymizedAt: person.anonymizedAt },

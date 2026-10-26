@@ -41,13 +41,13 @@ export async function resolveIdentityMobileRuntime(req: NextRequest, token: stri
       if (!state) return null
       const [card, company] = await Promise.all([
         tx.mtmAgent.findFirst({ where: { organizationId: claims.organizationId, id: claims.actorId }, select: {
-          name: true, email: true, role: true, attendanceParticipant: true, attendanceExcluded: true,
+          name: true, email: true, role: true, fieldDeletedAt: true, attendanceParticipant: true, attendanceExcluded: true,
         } }),
         tx.organization.findFirst({ where: { id: claims.organizationId }, select: { plan: true, addons: true, features: true, modules: true } }),
       ])
       if (!card || !company || card.role !== state.grant?.role) return null
       if (claims.application === "TIME" && (card.role !== "EMPLOYEE" || !card.attendanceParticipant || card.attendanceExcluded)) return null
-      if (claims.application === "ROUTE_FIELD" && card.role === "EMPLOYEE") return null
+      if (claims.application === "ROUTE_FIELD" && (card.role === "EMPLOYEE" || card.fieldDeletedAt)) return null
       return { state, card, company }
     })
     if (!snapshot.value) return null

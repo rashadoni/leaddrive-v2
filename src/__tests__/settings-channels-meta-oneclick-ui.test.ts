@@ -241,7 +241,7 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     const send = [...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === "Send")!
     expect(send.disabled).toBe(false)
     await act(async () => send.click())
-    const request = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/v1/whatsapp/test")
+    const request = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/v1/channels/whatsapp/test")
     expect(request).toBeDefined()
     expect(JSON.parse(String(request![1]?.body))).toEqual({
       to: "+994501234567", channelConfigId: "wa-b", templateName: "hello_world", languageCode: "en_US",

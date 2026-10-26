@@ -144,7 +144,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   // a ready session. The 6s watchdog is the backstop: a hung/failing session still
   // renders the page eventually (its fetch may 401, but at least it's not a blank
   // shell forever). status === "unauthenticated" is left to middleware (redirect).
-  const childrenReady = status === "authenticated" || hydrationTimedOut
+  // SessionProvider.update() briefly reports loading while retaining the user.
+  // Keep mounted page state through that refresh; identity and access gates below
+  // still reset or block the page when the user, organization or rights change.
+  const childrenReady = status === "authenticated" || (status === "loading" && !!user) || hydrationTimedOut
   const {
     contentSearchVisible,
     showFloatingAiLauncher,

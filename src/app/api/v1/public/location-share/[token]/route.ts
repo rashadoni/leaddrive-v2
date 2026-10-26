@@ -164,7 +164,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       // that was closed, or the field product being taken away from it —
       // the same entitlement the managers' own map is behind.
       const agent = await prisma.mtmAgent.findFirst({
-        where: { id: link.agentId, organizationId, status: "ACTIVE" },
+        where: { id: link.agentId, organizationId, status: "ACTIVE", fieldDeletedAt: null },
         select: {
           name: true,
           organization: { select: { name: true, isActive: true, plan: true, addons: true, features: true, modules: true } },
