@@ -209,6 +209,40 @@ def outbox(config):
             "rows": [[r[0], r[1], int(r[2])] for r in rows]}
 
 
+FUND_SHADOW_SQL = (
+    'select b."buildKey", '
+    'count(*) filter (where p.id is not null and p."aggregateVersion" = h."currentVersion" '
+    'and (p.balance <> f."currentBalance"::numeric(18,4) or p.currency <> f.currency)), '
+    'count(*) filter (where (p.id is null or p."aggregateVersion" < h."currentVersion") '
+    "and h.\"updatedAt\" < (now() at time zone 'utc') - interval '30 minutes'), count(*) "
+    'from projection_builds b '
+    'join event_aggregate_heads h on h."organizationId" = b."organizationId" and h."aggregateType" = \'fund\' '
+    'join funds f on f."organizationId" = h."organizationId" and f.id = h."aggregateId" '
+    'left join fund_balance_projections p on p."organizationId" = f."organizationId" and p."fundId" = f.id '
+    'and p."buildKey" = b."buildKey" and p.status = \'shadow\' and p."projectionVersion" = b."projectionVersion" '
+    "where b.\"projectionName\" = 'finance.fund-balance' and b.mode = 'shadow' and b.status = 'running' "
+    'group by b."buildKey" order by 1'
+)
+
+
+def fund_shadow(config):
+    """Per running shadow Fund build: how many funds disagree with the source.
+
+    Counts only, never amounts or names. "wrong": the shadow has folded the
+    same event version as the source, yet balance or currency differ. "stale":
+    the shadow is missing or behind an event older than 30 minutes.
+    """
+    code, out, err = run(["sudo", "-u", "postgres", "psql", "-XAtq", "-F", "\t", "-d", config.get("database", "postgres"),
+                          "-c", FUND_SHADOW_SQL], timeout=30, cwd="/")
+    if code != 0:
+        return {"error": (err.strip().splitlines() or [f"exit {code}"])[-1][:300]}
+    builds = []
+    for line in out.splitlines():
+        key, wrong, stale, funds = line.split("\t")
+        builds.append({"buildKey": key, "wrong": int(wrong), "stale": int(stale), "funds": int(funds)})
+    return {"builds": builds}
+
+
 def source(config):
     slot_sql = (
         "select slot_name, active, coalesce(wal_status, ''), "
@@ -224,7 +258,7 @@ def source(config):
         name, active, status, retained, safe = line.split("\t")
         slots.append({"name": name, "active": active == "t", "walStatus": status, "retainedBytes": int(retained),
                       "safeBytes": int(safe) if int(safe) >= 0 else None})
-    return {"expectedSlot": config.get("expectedSlot"), "slots": slots, "outbox": outbox(config)}
+    return {"expectedSlot": config.get("expectedSlot"), "slots": slots, "outbox": outbox(config), "fundShadow": fund_shadow(config)}
 
 
 def heartbeat():

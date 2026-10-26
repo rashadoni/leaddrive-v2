@@ -138,6 +138,9 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
   let settings!: typeof import("@/app/api/v1/settings/telegram-bot/route")
   let profile!: typeof import("@/app/api/v1/profile/telegram/route")
   let webhook!: typeof import("@/app/api/v1/webhooks/telegram-staff/[botId]/route").POST
+  let adminLinks!: typeof import("@/app/api/v1/settings/telegram-bot/links/[userId]/route").DELETE
+  let createTask!: typeof import("@/lib/crm-commands/task/create-task").createTaskCommand
+  let tenant!: typeof import("@/lib/rls-context").runWithTenant
   let updateId = 100
 
   beforeAll(async () => {
@@ -150,6 +153,9 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
     settings = await import("@/app/api/v1/settings/telegram-bot/route")
     profile = await import("@/app/api/v1/profile/telegram/route")
     webhook = (await import("@/app/api/v1/webhooks/telegram-staff/[botId]/route")).POST
+    adminLinks = (await import("@/app/api/v1/settings/telegram-bot/links/[userId]/route")).DELETE
+    createTask = (await import("@/lib/crm-commands/task/create-task")).createTaskCommand
+    tenant = (await import("@/lib/rls-context")).runWithTenant
     await bypass(async () => {
       for (const [id, slug] of [[ORG, "tg-shop"], [OTHER_ORG, "tg-other"]]) {
         await prisma.organization.create({ data: { id, name: slug, slug, modules: { crm: true, sales: true, ai: true, settings: true } } })
@@ -279,6 +285,23 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
     expect(pending?.payload).toMatchObject({ phone: "+994503330928" })
   })
 
+  it("sends the employee a task a colleague gave them, in Azerbaijani with a link, but not one they gave themselves", async () => {
+    const giveTask = (by: string, title: string) => tenant(ORG, () => createTask(
+      { organizationId: ORG, userId: by, role: by === "u-admin" ? "admin" : "sales", source: "rest" },
+      { title, assignedTo: "u-admin", dueDate: "2026-10-26T07:00:00.000Z" },
+    ))
+    await giveTask("u-sales", "Delta MMC-yə təklif göndər")
+    await vi.waitFor(() => expect(sent().length).toBe(1), { timeout: 5000 })
+    const notice = sent()[0]
+    expect(notice).toMatchObject({ chat_id: "5001", text: "Sizə tapşırıq verildi: «Delta MMC-yə təklif göndər»\nMüddət: 26.10.2026 11:00\nVerən: Rauf" })
+    expect(JSON.stringify(notice.reply_markup)).toMatch(/CRM-də aç.*\/tasks\//)
+
+    tg.calls = []
+    await giveTask("u-admin", "Özümə xatırlatma")
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    expect(sent()).toEqual([])
+  })
+
   it("answers a retried update once", async () => {
     const row = await bot()
     const update = { update_id: ++updateId, ...message(9999, "salam") }
@@ -294,6 +317,27 @@ pgDescribe("the employees' Telegram bot on a real Postgres", () => {
 
     expect(sent()).toEqual([expect.objectContaining({ chat_id: "5001", text: expect.stringContaining("yenidən bağlayın") })])
     expect(await bypass(() => prisma.telegramStaffLink.count({ where: { organizationId: ORG } }))).toBe(0)
+    expect(model.seen).toEqual([])
+  })
+
+  it("lets an admin unlink an employee — the bot then treats them as a stranger — and not a salesperson", async () => {
+    await bypass(() => prisma.user.update({ where: { id: "u-admin" }, data: { passwordChangedAt: null } }))
+    const issued = await (await profile.POST(request("POST", "/api/v1/profile/telegram"))).json()
+    await deliver(message(5001, `/start ${new URL(issued.data.url).searchParams.get("start")}`))
+    expect(await bypass(() => prisma.telegramStaffLink.count({ where: { organizationId: ORG } }))).toBe(1)
+
+    session.current = { user: { id: "u-sales", organizationId: ORG, role: "sales", email: "sales@tg-shop.test", name: "Rauf" } }
+    const refused = await adminLinks(request("DELETE", "/api/v1/settings/telegram-bot/links/u-admin"), { params: Promise.resolve({ userId: "u-admin" }) })
+    expect(refused.status).toBe(403)
+
+    session.current = { user: { id: "u-admin", organizationId: ORG, role: "admin", email: "admin@tg-shop.test", name: "Leyla" } }
+    const done = await adminLinks(request("DELETE", "/api/v1/settings/telegram-bot/links/u-admin"), { params: Promise.resolve({ userId: "u-admin" }) })
+    expect(done.status).toBe(200)
+    expect((await done.json()).data).toEqual([])
+
+    tg.calls = []
+    await deliver(message(5001, "mənim tapşırıqlarım"))
+    expect(sent()).toEqual([expect.objectContaining({ chat_id: "5001", text: expect.stringContaining("bağlı deyil") })])
     expect(model.seen).toEqual([])
   })
 })

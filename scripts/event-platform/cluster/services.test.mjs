@@ -27,6 +27,15 @@ test('each service identity gets only the access its job needs', () => {
     if (bridge.includes(`admin.${call}(`)) assert.match(financeGrant, new RegExp(`--operation ${operation}\\b`), `bridge calls ${call}`)
   }
 
+  // The worker plan's group pattern must sit under the granted group prefix.
+  const admission = readFileSync(new URL('../../../src/lib/event-platform/worker-admission.ts', import.meta.url), 'utf8')
+  const pattern = admission.match(/new RegExp\(`\^(ld\\\\\.\$\{environment\}[^`]*?)v\$\{projectionVersion\}/)
+  assert.ok(pattern, 'worker plan group pattern found')
+  const planPrefix = pattern[1].replaceAll('\\\\', '').replace('${environment}', 'prod')
+  const groupGrant = fund.find((g) => g.includes('--group'))
+  assert.match(groupGrant, /--resource-pattern-type prefixed/)
+  assert.ok(planPrefix.startsWith(groupGrant.match(/--group (\S+)/)[1]), `group ACL covers ${planPrefix}`)
+
   const registry = grantsFor(PRINCIPALS.registry)
   for (const g of registry.filter((g) => g.includes('--topic'))) {
     assert.match(g, /--topic ld\.prod\.registry\. .*--resource-pattern-type prefixed/)

@@ -345,3 +345,41 @@ worker, production service unit, resolved secret configuration, authenticated
 operator approval or Kafka activation. The separate full CDC drill, recovery
 proof, production HA/TLS/ACL and operational gates must not be inferred from
 these direct-child test markers.
+
+## Fund shadow pilot (A6, shadow only) — 2026-10-25
+
+Owner decision 2026-10-25: a shadow pilot of the Fund projection for
+LeadDrive Inc., with the owner's own Mac restore accepted for A3 in this scope
+only (`docs/event-platform/KAFKA_IMPLEMENTATION_BACKLOG.md`). The shadow worker
+folds Fund events from Kafka into its own build of `fund_balance_projections`;
+the CRM never reads it, nothing is promoted and nothing leaves the system.
+
+- **Runner**: `scripts/event-platform/fund-shadow/runner.ts`, bundled with the
+  pinned `ops/event-platform/fund-shadow` packages, on `kafka-p-connect-uk`
+  under the `ld-fund-shadow` timer (every 5 minutes). One finite session per
+  tick: `validateKafkaWorkerPlan`, `verifyKafkaWorkerArtifact` (bridge classes
+  + the Connect image's client jars, built on the host from this checkout),
+  `KafkaPartitionBridge` as `nobody` in the Connect image, the restricted
+  PostgreSQL login over the overlay with TLS verified against the production
+  certificate. It stops at two IDLE frames after assignment: caught up.
+- **Database**: `provision-role.sql`, run as postgres on production, creates
+  the login `ld_fund_shadow_pilot` (NOINHERIT, no BYPASSRLS, two connections)
+  with the grants and RESTRICTIVE policies the consumer is tested against,
+  and the build row (`mode=shadow`, `status=running`, effects fenced). It
+  refuses to run if any table lacks forced row security. Only a SCRAM verifier
+  reaches the server. `pg_hba` admits the login from the runner host only.
+- **Kafka**: identity `ld-fund-worker` (Read/Describe/DescribeConfigs on the
+  finance topic; Read on groups `ld.prod.finance.fund-shadow.`), group
+  `ld.prod.finance.fund-shadow.v2.pilot-<n>` started at the earliest offsets.
+- **Watch**: the production probe compares every running shadow build with
+  `funds` (counts only): `fund-shadow-wrong` when the same event version gives
+  a different balance or currency, `fund-shadow-stale` when a fund is behind an
+  event older than 30 minutes. Both are warnings: users never see the shadow.
+- **Order**: `provision.sh fund-shadow-prod <org>` (production: the owner
+  runs it) → `fund-shadow-install` → `fund-shadow-run` → `fund-shadow-enable`.
+  A new release is a new build (`pilot-<n+1>`, its own group), never an edited
+  one. **Stop**: `fund-shadow-disable`; there is nothing to roll back.
+- Tested by `pilot.integration.ts` in `static-checks` on the real event
+  platform migrations: provisioning twice, node-postgres fold equal to the
+  Prisma fold and to the source balance, duplicates, the watch's parity query,
+  tenant isolation, refused writes to the source, timeout rollback.
