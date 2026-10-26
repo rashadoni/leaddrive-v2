@@ -180,8 +180,9 @@ export class ZeytunAvailableBalances {
 
   /**
    * Items with the same active substance, strength and form as asked
-   * (`substitute: INN; strength; form`). Never a psychotropic, potent or
-   * out-of-stock item. A request missing any of the three finds nothing.
+   * (`substitute: INN; strength; form`; every known form when the form is
+   * left out). Never a psychotropic, potent or out-of-stock item. Without a
+   * substance or a strength it finds nothing.
    */
   private substitutes(text: string): string[] {
     const request = parseSubstituteRequest(text)
@@ -189,7 +190,7 @@ export class ZeytunAvailableBalances {
     return [...(this.substances.get(request.inn) ?? [])].filter((id) => {
       const item = this.items.get(id)!
       if (item.sourceFlags.psychotropic || item.sourceFlags.potent || item.sourceFlags.defectura) return false
-      if (formKey(item.category.name) !== request.form) return false
+      if (request.form ? formKey(item.category.name) !== request.form : !formKey(item.category.name)) return false
       const strength = strengthOf(item.name) ?? (item.nameAz ? strengthOf(item.nameAz) : null)
       return strength !== null && sameStrength(strength, request.strength)
     })
