@@ -838,6 +838,9 @@ jobs:
           printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
 
+      - name: Make Prisma fluent field-map construction linear
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs
+
       - name: Keep Next build-worker trace events out of IPC
         # Same patch as deploy.yml: without it the server compiler's result
         # outgrows V8's string limit and the build hangs. See the script.
