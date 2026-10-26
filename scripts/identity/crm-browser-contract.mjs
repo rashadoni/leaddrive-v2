@@ -96,6 +96,16 @@ try {
       "--set=setting_id=identity-commission-setting", "--set=audit_id=identity-commission-audit"], {
       encoding: "utf8", input: query, env: databaseEnvironment(appUrl.href, ownerUrl.href, readonly), timeout: 15000, stdio: ["pipe", "pipe", "pipe"],
     })
+    phase("OPERATOR_ADMINISTRATOR_DIAGNOSTICS")
+    const diagnosticAdmin = `${operatorCompany}-admin`
+    await admin.user.create({ data: { id: diagnosticAdmin, organizationId: operatorCompany, name: "Fictional diagnostic admin",
+      email: "diagnostic@identity-crm.invalid", role: "admin", phone: "", passwordHash: legacyHash } })
+    const emptyInventory = JSON.parse(operatorSql(inventorySql)); assertInventory(emptyInventory)
+    assert.equal(emptyInventory.administratorReadiness.tenantAdmins, 1)
+    assert.equal(emptyInventory.administratorReadiness.emptyPhones, 1)
+    assert.equal(emptyInventory.administratorReadiness.otherPhoneOwners, 0)
+    assert.equal(JSON.stringify(emptyInventory).includes(diagnosticAdmin), false)
+    await admin.user.delete({ where: { id: diagnosticAdmin } })
     phase("OPERATOR_COMPANY_INVENTORY")
     const operatorBefore = JSON.parse(operatorSql(inventorySql)); assertInventory(operatorBefore); assert.equal(operatorBefore.enabled, false)
     await admin.$executeRawUnsafe(`CREATE FUNCTION identity_commission_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
@@ -441,6 +451,33 @@ try {
     assert.equal(initialAdmin.error, null)
     const initialMfa = await login("bootstrap-mfa", `${password}-legacy`)
     assert.equal((await initialMfa.current.request.post(bootstrapApi, { timeout: 120000, data: { action: "review", phone: "+994507770023" } })).status(), 403)
+    phase("LIVE_BOOTSTRAP_EMPTY_OPTIONAL_PHONE_AND_OWNERSHIP_BOUNDARIES")
+    const reviewBootstrap = () => initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: { action: "review", phone: bootstrapPhone } })
+    for (const phone of [null, ""]) {
+      await admin.user.update({ where: { id: userId("bootstrap") }, data: { phone } })
+      assert.equal((await reviewBootstrap()).status(), 200, "An absent optional phone must allow first verified setup")
+    }
+    await admin.user.update({ where: { id: userId("bootstrap") }, data: { phone: "+994507770098" } })
+    const mismatch = await reviewBootstrap()
+    assert.equal(mismatch.status(), 409)
+    assert.equal((await mismatch.json()).error, "IDENTITY_SELF_BOOTSTRAP_PHONE_MISMATCH")
+    await admin.user.update({ where: { id: userId("bootstrap") }, data: { phone: "" } })
+    const bootstrapCard = userId("bootstrap-card")
+    await admin.mtmAgent.create({ data: { id: bootstrapCard, organizationId: company, userId: userId("bootstrap"),
+      name: "Fictional administrator card", role: "AGENT", status: "ACTIVE", phone: "" } })
+    const blankCardReview = await reviewBootstrap()
+    assert.equal(blankCardReview.status(), 200)
+    assert.ok((await blankCardReview.json()).data.applications.some(a => a.application === "ROUTE_FIELD"))
+    await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { phone: "+994507770098" } })
+    assert.equal((await (await reviewBootstrap()).json()).error, "IDENTITY_SELF_BOOTSTRAP_PHONE_MISMATCH")
+    await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { phone: bootstrapPhone, userId: null } })
+    assert.equal((await (await reviewBootstrap()).json()).error, "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT")
+    await admin.mtmAgent.update({ where: { id: bootstrapCard }, data: { userId: userId("bootstrap-mfa") } })
+    assert.equal((await (await reviewBootstrap()).json()).error, "IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT")
+    await admin.mtmAgent.delete({ where: { id: bootstrapCard } })
+    assert.equal(await admin.identityAccount.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
+    assert.equal(await admin.identityPhoneProof.count({ where: { organizationId: company, userId: userId("bootstrap") } }), 0)
+    check("empty_optional_phone_allows_first_proof_but_mismatched_and_foreign_or_unlinked_owners_remain_blocked")
     const bootstrapReviewResponse = await initialAdmin.current.request.post(bootstrapApi, { timeout: 120000, data: { action: "review", phone: bootstrapPhone } })
     assert.equal(bootstrapReviewResponse.status(), 200)
     const bootstrapReview = (await bootstrapReviewResponse.json()).data

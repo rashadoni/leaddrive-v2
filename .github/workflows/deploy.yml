@@ -418,7 +418,7 @@ jobs:
         env:
           PILOT_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           PILOT_PSQL: psql -h 127.0.0.1 -p 5432
-          PILOT_SQL_FILE: scripts/event-platform/fund-shadow/provision-role.sql
+          PILOT_SQL_DIR: scripts/event-platform/fund-shadow
           PGPASSWORD: postgres
 
       - name: Workforce shared-lock PostgreSQL race gate
@@ -511,6 +511,13 @@ jobs:
         run: node --test scripts/booking/release-contract.test.mjs
         env:
           BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Deal line items database gate
+        # Same gate as in pr-checks: a deal's product lines (see the test's header).
+        run: npx vitest run src/__tests__/deal-line-items-postgres.test.ts
+        env:
+          DEAL_LINES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEAL_LINES_DB_GATE: required
 
       - name: Telegram staff bot database gate
         # Same gate as in pr-checks: the employee Telegram bot (see the test's header).

@@ -87,7 +87,28 @@ function sql(input, env, parameters) {
 }
 export const inventorySql = `BEGIN READ ONLY;
 SET LOCAL app.rls_bypass = 'on';
+WITH administrators AS (
+ SELECT u.id,u."organizationId",u.role,u.phone, CASE
+   WHEN regexp_replace(u.phone,'[^0-9+]','','g') ~ '^\\+[1-9][0-9]{6,14}$'
+   THEN regexp_replace(u.phone,'[^0-9+]','','g') ELSE NULL END AS canonical_phone
+ FROM users u JOIN organizations o ON o.id=u."organizationId"
+ WHERE o.slug=:'slug' AND u."isActive" AND u."anonymizedAt" IS NULL AND u.role IN ('admin','superadmin')
+)
 SELECT json_build_object('privileged',(SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname=current_user),
+ 'administratorReadiness',(SELECT json_build_object(
+   'tenantAdmins',count(*) FILTER (WHERE role='admin'),
+   'platformAdmins',count(*) FILTER (WHERE role='superadmin'),
+   'nullPhones',count(*) FILTER (WHERE role='admin' AND phone IS NULL),
+   'emptyPhones',count(*) FILTER (WHERE role='admin' AND phone=''),
+   'nonInternationalPhones',count(*) FILTER (WHERE role='admin' AND NULLIF(phone,'') IS NOT NULL AND canonical_phone IS NULL),
+   'multipleCards',count(*) FILTER (WHERE role='admin' AND (SELECT count(*) FROM mtm_agents a WHERE a."organizationId"=u."organizationId" AND a."userId"=u.id)>1),
+   'unavailableCards',count(*) FILTER (WHERE role='admin' AND EXISTS(SELECT 1 FROM mtm_agents a WHERE a."organizationId"=u."organizationId" AND a."userId"=u.id AND (a.status<>'ACTIVE' OR a.role NOT IN ('ADMIN','MANAGER','SUPERVISOR','AGENT','EMPLOYEE')))),
+   'emptyCardPhones',count(*) FILTER (WHERE role='admin' AND EXISTS(SELECT 1 FROM mtm_agents a WHERE a."organizationId"=u."organizationId" AND a."userId"=u.id AND a.phone='')),
+   'mismatchedCardPhones',count(*) FILTER (WHERE role='admin' AND canonical_phone IS NOT NULL AND EXISTS(SELECT 1 FROM mtm_agents a WHERE a."organizationId"=u."organizationId" AND a."userId"=u.id AND NULLIF(a.phone,'') IS NOT NULL AND NOT identity_legacy_phone_conflicts(a.phone,u.canonical_phone))),
+   'otherPhoneOwners',count(*) FILTER (WHERE role='admin' AND canonical_phone IS NOT NULL AND EXISTS(
+     SELECT 1 FROM users other WHERE other."organizationId"=u."organizationId" AND other.id<>u.id AND identity_legacy_phone_conflicts(other.phone,u.canonical_phone)
+     UNION ALL SELECT 1 FROM mtm_agents a WHERE a."organizationId"=u."organizationId" AND a."userId" IS DISTINCT FROM u.id AND identity_legacy_phone_conflicts(a.phone,u.canonical_phone)))
+ ) FROM administrators u),
  'canonicalCount',(SELECT count(*) FROM identity_accounts WHERE "cutoverAt" IS NOT NULL),
  'proofCount',(SELECT count(*) FROM identity_phone_proofs),
  'companyCount',(SELECT count(*) FROM organizations WHERE slug=:'slug' AND "isActive"),
@@ -95,7 +116,13 @@ SELECT json_build_object('privileged',(SELECT rolsuper OR rolbypassrls FROM pg_r
  'enabled',COALESCE((SELECT s.value='{"version":1,"enabled":true}'::jsonb FROM mtm_settings s JOIN organizations o ON o.id=s."organizationId" WHERE o.slug=:'slug' AND s.key='identityAuthV1'),false));
 COMMIT;`
 
+export const readinessKeys = ["tenantAdmins", "platformAdmins", "nullPhones", "emptyPhones", "nonInternationalPhones",
+  "multipleCards", "unavailableCards", "emptyCardPhones", "mismatchedCardPhones", "otherPhoneOwners"]
 export function assertInventory(state) {
+  const readiness = state?.administratorReadiness
+  if (!readiness || typeof readiness !== "object" || Array.isArray(readiness)
+    || Object.keys(readiness).length !== readinessKeys.length
+    || readinessKeys.some(key => !Number.isSafeInteger(readiness[key]) || readiness[key] < 0)) fail("IDENTITY_COMMISSION_INVENTORY_REFUSED")
   if (!state || state.privileged !== true || state.flagValid !== true || state.companyCount !== 1 || typeof state.enabled !== "boolean"
     || ![state.canonicalCount, state.proofCount].every(value => Number.isSafeInteger(value) && value >= 0)) fail("IDENTITY_COMMISSION_INVENTORY_REFUSED")
 }

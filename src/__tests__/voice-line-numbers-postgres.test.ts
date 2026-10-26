@@ -67,7 +67,7 @@ function schemaWithoutEmbeddings(): string {
 }
 /** `db push` builds neither the CHECK nor the policy: both come from the migration. */
 function migrationGuards(): string {
-  const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261105090000_voice_line_numbers/migration.sql"), "utf8")
+  const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261105093000_voice_line_numbers/migration.sql"), "utf8")
   const check = /CONSTRAINT "voice_line_numbers_e164_check" CHECK (\(.*\))/.exec(migration)
   if (!check) throw new Error("voice line number CHECK not found in the migration")
   return `ALTER TABLE "voice_line_numbers" ADD CONSTRAINT "voice_line_numbers_e164_check" CHECK ${check[1]};\n` +

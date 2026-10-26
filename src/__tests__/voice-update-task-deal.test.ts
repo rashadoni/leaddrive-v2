@@ -39,6 +39,7 @@ const client = vi.hoisted(() => ({
   taskActivity: { createMany: db.taskActivityCreateMany },
   taskCollaborator: { deleteMany: vi.fn(), createMany: vi.fn() },
   deal: { findFirst: db.dealFindFirst, updateMany: db.dealUpdateMany },
+  dealLineItem: { count: async () => 0 },
   user: { findFirst: db.userFindFirst, count: vi.fn(async () => 0) },
   division: { findFirst: db.divisionFindFirst },
   boardPermission: { findUnique: db.boardPermissionFindUnique },

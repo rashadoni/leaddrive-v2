@@ -54,6 +54,23 @@ describe("administrator self-bootstrap UI", () => {
     expect(container.querySelector('input[type="password"]')).toBeNull()
     expect(container.querySelector("a")?.getAttribute("href")).toBe("/login?callbackUrl=%2Fmtm%2Fattendance%2Fpeople")
   })
+  it.each([
+    ["IDENTITY_SELF_BOOTSTRAP_PHONE_MISMATCH", "identitySetupPhoneMismatch"],
+    ["IDENTITY_SELF_BOOTSTRAP_PHONE_CONFLICT", "identitySetupPhoneConflict"],
+    ["IDENTITY_SELF_BOOTSTRAP_PHONE_INVALID", "identitySetupPhoneInvalid"],
+    ["IDENTITY_SELF_BOOTSTRAP_TENANT_ADMIN_REQUIRED", "identitySetupTenantAdminRequired"],
+    ["IDENTITY_SELF_BOOTSTRAP_CARD_REVIEW_REQUIRED", "identitySetupCardReviewRequired"],
+    ["IDENTITY_SELF_BOOTSTRAP_APPLICATION_UNAVAILABLE", "identitySetupApplicationUnavailable"],
+    ["IDENTITY_ADMIN_REQUIRED", "identitySetupSessionRequired"],
+  ])("explains %s without advancing or requesting a WhatsApp code", async (code, message) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: code }), { status: 409 }))
+    await type("identitySetupOwnPhone", "+994507770099"); await click("identitySetupReview")
+    expect(container.textContent).toContain(p(message))
+    expect(container.textContent).not.toContain(code)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('input[autocomplete="one-time-code"]')).toBeNull()
+    expect(container.querySelector('input[type="tel"]')?.getAttribute("value")).toBe("+994507770099")
+  })
   it("does not advance to code entry after a denied review or leak server details", async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: "PRIVATE_FAILURE_DETAILS" }), { status: 403 }))
     await type("identitySetupOwnPhone", "+994507770099"); await click("identitySetupReview")
