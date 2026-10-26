@@ -19,7 +19,8 @@ export function mtmTabClass(active: boolean): string {
  * colour of a status chip — its status said by the colour of its words.
  */
 export function mtmChipClass(active: boolean, tone?: string): string {
-  const state = active ? `crm-choice-selected${tone ? " crm-choice-semantic" : ""}` : ""
+  // Utility fallback preserves consumers outside the authenticated CRM scope.
+  const state = active ? `crm-choice-selected border-foreground font-semibold${tone ? " crm-choice-semantic" : ""}` : ""
   const text = tone ?? (active ? "text-foreground" : "text-muted-foreground")
   return `${state} ${text}`.trim()
 }

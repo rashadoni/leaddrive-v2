@@ -64,9 +64,9 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
   })
 
   it("uses the shared neutral selected chip and preserves semantic status text", () => {
-    expect(mtmChipClass(true)).toBe("crm-choice-selected text-foreground")
+    expect(mtmChipClass(true)).toBe("crm-choice-selected border-foreground font-semibold text-foreground")
     expect(mtmChipClass(false)).toBe("text-muted-foreground")
-    expect(mtmChipClass(true, "text-red-600")).toBe("crm-choice-selected crm-choice-semantic text-red-600")
+    expect(mtmChipClass(true, "text-red-600")).toBe("crm-choice-selected border-foreground font-semibold crm-choice-semantic text-red-600")
     expect(mtmChipClass(false, "text-red-600")).toBe("text-red-600")
   })
 
