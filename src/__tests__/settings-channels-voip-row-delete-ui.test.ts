@@ -558,6 +558,32 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     expect(tileShowing("Support bot")).toBeTruthy()
   })
 
+  it("deletes a WhatsApp number that is already switched off, so it leaves the list", async () => {
+    // Owner, 2026-10-27, Zeytun: the old «Fanum Sec» number was switched off after a new one was connected, and
+    // its only button, «Ayır», switched it off again — the row never left the connected list.
+    const at = tick()
+    store.rows.set("cc_old", {
+      id: "cc_old", organizationId: "org_1", channelType: "whatsapp", configName: "Fanum Sec",
+      botToken: null, webhookUrl: null, apiKey: null, phoneNumber: null, appId: null, appSecret: null, pageId: null,
+      accessToken: "kept-system-user-token", phoneNumberId: "444555666", businessAccountId: "111222333",
+      verifyToken: null, displayName: null, isActive: false,
+      settings: { embeddedSignup: true, registration: "registered" },
+      createdBy: "user_1", createdAt: at, updatedAt: at,
+    })
+    await openCatalog()
+
+    const row = tileShowing("Fanum Sec")
+    expect(removeIn(row, "Disconnect")).toBeNull()
+    await click(removeIn(row, "Delete"))
+    expect(dialog()?.textContent).toContain("Delete Fanum Sec?")
+    expect(dialog()?.textContent).toContain("All conversations stay in the CRM.")
+    await click(dialogButton("Delete"))
+
+    expect(deletes).toEqual([{ id: "cc_old", status: 200 }])
+    expect(store.rows.has("cc_old")).toBe(false)
+    expect(rowNames()).not.toContain("Fanum Sec")
+  })
+
   it("offers to disconnect a WhatsApp number, says the conversations stay, and leaves the row switched off", async () => {
     // Owner, 2026-10-26, on Zeytun's WhatsApp: the trash said "cannot be undone, will be permanently deleted",
     // while for a Meta channel the route only switches the row off and clears its keys.
