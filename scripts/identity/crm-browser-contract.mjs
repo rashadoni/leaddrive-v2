@@ -790,6 +790,9 @@ try {
     const fieldMembershipKey = { organizationId_userId_application: { organizationId: company, userId: userId("onboarding"), application: "ROUTE_FIELD" } }
     const removedMembership = await admin.identityApplicationMembership.findUniqueOrThrow({ where: fieldMembershipKey })
     assert.equal(removedMembership.status, "REVOKED")
+    assert.equal(await admin.identityEvent.count({ where: { organizationId: company, userId: userId("onboarding"),
+      action: "ACTOR_LIFECYCLE_CHANGED", application: "ROUTE_FIELD", actorId: userId("onboarding-field"),
+      membershipStatus: "REVOKED", requestId: { startsWith: "field-remove:" } } }), 1)
     await assert.rejects(admin.identityApplicationMembership.update({ where: fieldMembershipKey, data: { status: "ACTIVE", version: { increment: 1 } } }), /MTM_FIELD_ACTOR_REMOVED/)
     assert.deepEqual(await admin.identityPhoneClaim.findUniqueOrThrow({ where: accountKey("onboarding") }), claimBeforeRemoval)
     assert.equal((await firstClient.request.get("/api/v1/mtm/mobile/profile", { timeout: 120000, headers: { Authorization: `Bearer ${retainedFieldToken}` } })).status(), 401)

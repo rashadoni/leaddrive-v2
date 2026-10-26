@@ -39,7 +39,7 @@ BEGIN
     INSERT INTO public.identity_events (id,"organizationId","userId","requestId","requestHash",action,"accountVersion",application,
       "actorId","membershipStatus","membershipVersion","grantVersion","credentialEpoch","createdAt")
       VALUES (event_id,changed.organization_id,changed.user_id,'field-remove:' || event_id,
-        encode(sha256(convert_to(event_id,'UTF8')),'hex'),'FIELD_ACTOR_REMOVED',account_version,'ROUTE_FIELD',
+        encode(sha256(convert_to(event_id,'UTF8')),'hex'),'ACTOR_LIFECYCLE_CHANGED',account_version,'ROUTE_FIELD',
         NEW.id,'REVOKED',changed.membership_version,changed.grant_version,changed.credential_epoch,clock_timestamp());
   END LOOP;
   RETURN NEW;
