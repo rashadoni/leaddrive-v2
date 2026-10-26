@@ -234,6 +234,21 @@ test('every outbox event older than the grace must be in Kafka; extras are fine'
   assert.deepEqual(ids(withParity({ error: 'permission denied' }, events)), ['parity-unavailable'])
 })
 
+test('MTM visits whose events did not get written are warnings', () => {
+  const withVisits = (visitEvents) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.visitEvents = visitEvents
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  }
+  assert.deepEqual(withVisits({ windowSeconds: 10800, visits: 40, unstarted: 0, drift: 0, sample: null }), [])
+  assert.deepEqual(withVisits(undefined), [], 'an older production probe says nothing')
+  const found = withVisits({ windowSeconds: 10800, visits: 40, unstarted: 2, drift: 1, sample: 'visit-1' })
+  assert.deepEqual(ids(found), ['visit-events-drift', 'visit-events-unstarted'])
+  assert.ok(found.every((p) => p.severity === 'warning'), 'the visit itself is in the CRM')
+  assert.match(found.find((p) => p.id === 'visit-events-unstarted').detail, /^2 визитов, начатых за последние 3 ч.*visit-1/)
+  assert.deepEqual(ids(withVisits({ error: 'permission denied' })), ['visit-events-unknown'])
+})
+
 test('the Fund shadow pilot: disagreement and lag are warnings, agreement is silent', () => {
   const withShadow = (fundShadow) => {
     const probes = healthyProbes()

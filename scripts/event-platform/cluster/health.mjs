@@ -149,7 +149,7 @@ export function evaluate({ topology, inventory, probes, cluster: clusterView, ev
           `Реестр схем на ${label(m.name)} не отвечает.`))
       }
     }
-    if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source), ...fundShadowProblems(data.source?.fundShadow))
+    if (m.roles.includes(SOURCE_ROLE)) problems.push(...sourceProblems(data.source), ...fundShadowProblems(data.source?.fundShadow), ...visitEventProblems(data.source?.visitEvents))
     if (data.backupWatch) {
       const age = data.time * 1000 - (data.backupWatch.lastPass ?? 0)
       if (!data.backupWatch.lastPass || age > LIMITS.backupWatchStaleMs) {
@@ -188,6 +188,22 @@ export function parityProblems(outbox, events) {
   const [firstId, , firstAt] = missing[0]
   return [problem('events-missing', 'critical', 'События из базы не дошли до Kafka',
     `${missing.length} событий из outbox прода старше ${Math.round(outbox.graceSeconds / 60)} минут нет в Kafka (${topics.slice(0, 3).join(', ')}${topics.length > 3 ? ` и ещё ${topics.length - 3}` : ''}). Самое раннее записано в ${bakuTime(firstAt)}, eventId ${firstId}. Переносчик их пропустил или отстал; их нужно догрузить.`)]
+}
+
+// MTM visits write their events in the visit's own transaction but fail
+// open (PR #1114): the visit is kept, its events are not. Such a gap never
+// reaches the outbox, so the parity check cannot see it. Warnings: users see
+// the visit; Kafka lacks it.
+export function visitEventProblems(visitEvents) {
+  if (!visitEvents) return []
+  if (visitEvents.error) return [problem('visit-events-unknown', 'warning', 'Не проверены события визитов MTM', `Сторож не смог сверить визиты MTM с их событиями: ${visitEvents.error}.`)]
+  const hours = Math.round(visitEvents.windowSeconds / 3600)
+  const out = []
+  if (visitEvents.unstarted > 0) out.push(problem('visit-events-unstarted', 'warning', 'Визиты MTM без событий в Kafka',
+    `${visitEvents.unstarted} визитов, начатых за последние ${hours} ч, не записали ни одного события (например, ${visitEvents.sample}). Визиты в CRM на месте, а в Kafka их нет: запись событий не прошла (см. «[MTM visit events] not recorded» в логе прода) или визит создан скриптом в обход приложения.`))
+  if (visitEvents.drift > 0) out.push(problem('visit-events-drift', 'warning', 'События визитов MTM расходятся с CRM',
+    `У ${visitEvents.drift} визитов, изменённых за последние ${hours} ч, последнее событие говорит не то, что сам визит (статус или удаление; например, ${visitEvents.sample}). Изменение прошло в CRM, а его событие не записалось.`))
+  return out
 }
 
 // The Fund shadow pilot never changes what users see, so its findings are

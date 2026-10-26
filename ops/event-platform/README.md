@@ -263,6 +263,16 @@ a false loss. Extra or repeated records in Kafka are not a problem. Rows older
 than the window are checked by the passes that saw them; a watch that was down
 longer than 3 hours leaves that stretch unchecked.
 
+MTM visit events (2026-10-26, PR #1114): a visit writes its events in its own
+transaction but fails open, so a failed append keeps the visit and drops only
+its events — a gap the outbox never sees. Every pass the production probe takes
+the visits changed in the last 3 hours and counts those created since the first
+`mtm.visit-started.v1` with no event at all («Визиты MTM без событий в Kafka»),
+and those whose last status event or deletion disagrees with the row («События
+визитов MTM расходятся с CRM»). Both are warnings, with one visit id as an
+example; no grace period, since a visit and its events commit together. A seed
+script that writes visits around the application trips the first one too.
+
 Not covered yet: consumer lag (no consumer runs), schemas, quarantine,
 archive, projections.
 
