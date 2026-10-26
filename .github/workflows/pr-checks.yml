@@ -304,7 +304,7 @@ jobs:
         env:
           PILOT_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           PILOT_PSQL: psql -h 127.0.0.1 -p ${{ env.EVENT_PLATFORM_PG_PORT }}
-          PILOT_SQL_FILE: scripts/event-platform/fund-shadow/provision-role.sql
+          PILOT_SQL_DIR: scripts/event-platform/fund-shadow
           PGPASSWORD: postgres
 
       - name: Workforce shared-lock PostgreSQL race gate
@@ -400,6 +400,15 @@ jobs:
         run: node --test scripts/booking/release-contract.test.mjs
         env:
           BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Deal line items database gate
+        # A deal's product lines on a real Postgres: the amount is their sum, an
+        # ordinary deal edit cannot overwrite it or change the currency under
+        # it, and a price in another currency is not copied.
+        run: npx vitest run src/__tests__/deal-line-items-postgres.test.ts
+        env:
+          DEAL_LINES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEAL_LINES_DB_GATE: required
 
       - name: Telegram staff bot database gate
         # The organization's employee Telegram bot on a real Postgres: a forged

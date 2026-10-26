@@ -6,7 +6,8 @@
 //
 //   PILOT_PG_ADMIN_URL=postgresql://postgres:postgres@HOST:PORT/event_platform_test \
 //   PILOT_PSQL="docker exec -i CONTAINER psql" node pilot.integration.cjs
-// (CI: PILOT_PSQL="psql -h 127.0.0.1 -p PORT", PILOT_SQL_FILE=<repo path>)
+// with provision-role.sql and retire-builds.sql in PILOT_SQL_DIR (default /tmp).
+// (CI: PILOT_PSQL="psql -h 127.0.0.1 -p PORT", PILOT_SQL_DIR=scripts/event-platform/fund-shadow)
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { randomBytes, randomUUID } from "node:crypto"
@@ -34,16 +35,23 @@ async function main() {
     for (const record of a.records) await consumeFundShadowRecord(fundShadowDatabase(a.client), a.scope, record)
 
     // The pilot: the production provisioning SQL, then node-postgres.
-    const role = "ld_fund_shadow_itest", buildId = randomUUID(), buildKey = "pilot-itest"
+    const sqlDir = process.env.PILOT_SQL_DIR ?? "/tmp"
+    const sql = (file: string, variables: Record<string, string>, input = "") => execFileSync(psql[0], [...psql.slice(1), "-X", "-q", "-At",
+      "-U", "postgres", "-d", database, ...Object.entries(variables).flatMap(([k, v]) => ["-v", `${k}=${v}`]), "-f", `${sqlDir}/${file}`],
+    { input, encoding: "utf8", timeout: 30_000 })
+    const provisionAs = (o: string, r: string, b: string, k: string, p: string) =>
+      sql("provision-role.sql", { org: o, role: r, build_id: b, build_key: k, code_sha: codeSha }, `${scramVerifier(p)}\n`)
+    const role = "ld_fund_shadow_itest", buildId = randomUUID(), buildKey = "pilot-1"
     const password = randomBytes(24).toString("hex")
-    const provision = () => execFileSync(psql[0], [...psql.slice(1), "-X", "-q", "-At", "-U", "postgres", "-d", database,
-      "-v", `org=${org}`, "-v", `role=${role}`, "-v", `build_id=${buildId}`, "-v", `build_key=${buildKey}`, "-v", `code_sha=${codeSha}`,
-      "-f", process.env.PILOT_SQL_FILE ?? "/tmp/provision-role.sql"], { input: `${scramVerifier(password)}\n`, encoding: "utf8", timeout: 30_000 })
-    assert.match(provision(), new RegExp(`fund_shadow_role=${role} build=${buildId} status=running`))
+    const provision = () => provisionAs(org, role, buildId, buildKey, password)
+    const first = provision()
+    assert.match(first, new RegExp(`fund_shadow_role=${role} build=${buildId} status=running`))
+    assert.doesNotMatch(first, /SCRAM-SHA-256|\$4096:/, "the verifier never reaches the output or the operator's log")
     assert.match(provision(), /status=running/, "a second run with the same values changes nothing and still succeeds")
 
     const url = new URL(adminUrl); url.pathname = `/${database}`
-    const login = () => { const c = new Client({ host: url.hostname, port: Number(url.port), database, user: role, password }); clients.push(c); return c }
+    const loginAs = (user: string, secret: string) => { const c = new Client({ host: url.hostname, port: Number(url.port), database, user, password: secret }); clients.push(c); return c }
+    const login = () => loginAs(role, password)
     const client = login(); await client.connect()
     const scope = { ...a.scope, buildId, buildKey, expectedWorkerRole: role }
     const pilot = pgFundShadowDatabase(client)
@@ -100,7 +108,37 @@ async function main() {
     assert.equal(await pilot.$transaction(async tx => (await tx.$queryRawUnsafe<Array<{ one: number }>>("SELECT 1 AS one"))[0].one,
       { isolationLevel: "Serializable", maxWait: 1000, timeout: 5000 }), 1)
 
-    console.log("fund_shadow_pilot_integration=PASS; provision_idempotent=PASS; pg_equals_prisma=PASS; duplicate=PASS; watch_parity_query=PASS; tenant_isolation=PASS; source_untouchable=PASS; timeout_rollback=PASS")
+    // A second organization in the same pilot: its own login and build, and
+    // the same worker folds both, each through its own login.
+    const roleB = "ld_fund_shadow_itest_b", buildB = randomUUID(), passwordB = randomBytes(24).toString("hex")
+    assert.match(provisionAs(other.scope.organizationId, roleB, buildB, "pilot-1", passwordB), /status=running/)
+    const clientB = loginAs(roleB, passwordB); await clientB.connect()
+    const scopeB = { ...other.scope, buildId: buildB, buildKey: "pilot-1", expectedWorkerRole: roleB }
+    for (const record of other.records) await consumeFundShadowRecord(pgFundShadowDatabase(clientB), scopeB, record)
+    assert.deepEqual((await parity())["pilot-1"], { wrong: 0, stale: 0, funds: 2 })
+
+    // The next pilot (new release): same login, new build pilot-2. The login
+    // now reaches only the new build; then the earlier pilot is retired.
+    const buildA2 = randomUUID()
+    assert.match(provisionAs(org, role, buildA2, "pilot-2", password), /status=running/)
+    await client.end(); await probe.end() // the login allows two connections at a time
+    const client2 = login(); await client2.connect()
+    const scope2 = { ...a.scope, buildId: buildA2, buildKey: "pilot-2", expectedWorkerRole: role }
+    for (const record of a.records) await consumeFundShadowRecord(pgFundShadowDatabase(client2), scope2, record)
+    await assert.rejects(consumeFundShadowRecord(pgFundShadowDatabase(client2), scope, a.records[0]), "the login no longer reaches pilot-1")
+    assert.match(sql("retire-builds.sql", { keep_key: "pilot-2", keep_roles: role }), /fund_shadow_retired builds=2 logins_off=1/)
+    assert.match(sql("retire-builds.sql", { keep_key: "pilot-2", keep_roles: role }), /builds=2 logins_off=1/, "retiring twice changes nothing")
+    const statuses = (await admin.query(`SELECT "buildKey", status FROM projection_builds WHERE "buildKey" LIKE 'pilot-%' ORDER BY 1, 2`)).rows
+    assert.deepEqual(statuses, [{ buildKey: "pilot-1", status: "abandoned" }, { buildKey: "pilot-1", status: "abandoned" }, { buildKey: "pilot-2", status: "running" }])
+    const logins = Object.fromEntries((await admin.query(`SELECT rolname, rolcanlogin FROM pg_roles WHERE rolname = ANY($1)`,
+      [[role, roleB, a.scope.expectedWorkerRole]])).rows.map(r => [r.rolname, r.rolcanlogin]))
+    assert.deepEqual(logins, { [role]: true, [roleB]: false, [a.scope.expectedWorkerRole]: true }, "only marked pilot logins are switched off")
+    await assert.rejects(loginAs(roleB, passwordB).connect(), "a retired login cannot connect")
+    const watched = await parity()
+    assert.equal(watched["pilot-1"], undefined, "the watch no longer expects the retired pilot to follow the stream")
+    assert.deepEqual(watched["pilot-2"], { wrong: 0, stale: 0, funds: 1 })
+
+    console.log("fund_shadow_pilot_integration=PASS; provision_idempotent=PASS; pg_equals_prisma=PASS; duplicate=PASS; watch_parity_query=PASS; tenant_isolation=PASS; source_untouchable=PASS; timeout_rollback=PASS; two_orgs=PASS; next_pilot_and_retire=PASS")
   } finally {
     await Promise.allSettled(clients.map(c => c.end()))
     await db.close()

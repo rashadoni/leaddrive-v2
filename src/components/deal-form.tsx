@@ -36,11 +36,14 @@ interface DealFormProps {
   initialData?: Record<string, any>
   orgId?: string
   pipelineId?: string
+  /** The deal has product lines: its amount and currency follow them. */
+  amountFromLines?: boolean
 }
 
-export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipelineId }: DealFormProps) {
+export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipelineId, amountFromLines }: DealFormProps) {
   const t = useTranslations("forms")
   const tc = useTranslations("common")
+  const tl = useTranslations("dealLines")
   const stageLabel = useStageLabel()
   const isEdit = !!initialData?.id
   const [form, setForm] = useState({
@@ -320,11 +323,12 @@ export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipe
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="valueAmount">{tc("amount")}</Label>
-                <Input id="valueAmount" type="number" min="0" step="0.01" value={form.valueAmount} onChange={e => update("valueAmount", e.target.value)} />
+                <Input id="valueAmount" type="number" min="0" step="0.01" value={form.valueAmount} onChange={e => update("valueAmount", e.target.value)} disabled={amountFromLines} />
+                {amountFromLines ? <p className="mt-1 text-xs text-muted-foreground">{tl("amountFromLines")}</p> : null}
               </div>
               <div>
                 <Label htmlFor="currency">{tc("currency")}</Label>
-                <Select value={currency} onChange={e => setCurrency(e.target.value)}>
+                <Select value={currency} onChange={e => setCurrency(e.target.value)} disabled={amountFromLines}>
                   {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
                     <option key={code} value={code}>{code} {sym}</option>
                   ))}

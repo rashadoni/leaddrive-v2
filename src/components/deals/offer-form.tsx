@@ -121,6 +121,26 @@ export function OfferForm({
     }).catch(() => {}).finally(() => setLoadingData(false))
   }, [orgId])
 
+  // A new offer from a deal starts with the deal's product lines
+  // (src/lib/deals/line-items.ts) instead of one line with the deal's amount.
+  useEffect(() => {
+    if (offer?.id) return
+    const h: Record<string, string> = orgId ? { "x-organization-id": orgId } : {} as Record<string, string>
+    fetch(`/api/v1/deals/${dealId}/line-items`, { headers: h }).then(r => r.json()).then((res) => {
+      const lines = res?.success ? res.data.lines as { productId: string | null; name: string; quantity: number; unitPrice: number | null; discountPct: number; total: number }[] : []
+      if (lines.length === 0) return
+      setItems((current) => current.length > 0 ? current : lines.map((line, index) => ({
+        ...(line.productId ? { productId: line.productId } : {}),
+        name: line.name,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice ?? 0,
+        discount: line.discountPct,
+        total: line.total,
+        sortOrder: index,
+      })))
+    }).catch(() => {})
+  }, [dealId, offer?.id, orgId])
+
   // Auto-fill from company when selected
   useEffect(() => {
     if (clientSource === "crm" && selectedCompanyId) {
