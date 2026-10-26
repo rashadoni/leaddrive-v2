@@ -31076,7 +31076,10 @@
     "linkedTitle": "Bağlı əməkdaşlar",
     "linkedDesc": "Onlar botda CRM ilə işləyir və öz bildirişlərini ora alır — zəngdəkilərlə eyni, öz bildiriş ayarlarına görə.",
     "colEmployee": "Əməkdaş",
-    "unlinkUserHint": "Bot {name} adlı əməkdaşa daha cavab vermir və bu Telegram-a bildiriş göndərmir."
+    "unlinkUserHint": "Bot {name} adlı əməkdaşa daha cavab vermir və bu Telegram-a bildiriş göndərmir.",
+    "statusUnknown": "Vəziyyəti yoxlamaq alınmadı.",
+    "reload": "Yenidən yoxla",
+    "statusLoading": "Vəziyyət yoxlanılır"
   },
   "whatsappSignupWindow": {
     "title": "WhatsApp-ı qoşmaq",

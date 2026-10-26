@@ -25,9 +25,23 @@ const ERROR_KEYS: Record<string, string> = {
   NO_ENCRYPTION_KEY: "errNoKey",
 }
 
+/** The bot's status, with one quiet retry: a server restart takes a few seconds. */
+async function fetchBotStatus(): Promise<BotView | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2000))
+    const body = await fetch("/api/v1/settings/telegram-bot", { cache: "no-store" }).then((r) => r.json()).catch(() => null)
+    if (body?.success) return body.data
+  }
+  return null
+}
+
 export default function TelegramBotSettingsPage() {
   const t = useTranslations("telegramStaff")
   const [view, setView] = useState<BotView | null>(null)
+  // A status the server has not answered is unknown, not «not connected»: a
+  // page opened while the server was switching versions showed «Qoşulmayıb»
+  // for a connected bot (2026-10-26).
+  const [statusFailed, setStatusFailed] = useState(false)
   const [token, setToken] = useState("")
   const [busy, setBusy] = useState<"save" | "off" | null>(null)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -36,9 +50,10 @@ export default function TelegramBotSettingsPage() {
   const [unlinking, setUnlinking] = useState<string | null>(null)
 
   const load = useCallback(() => {
-    void fetch("/api/v1/settings/telegram-bot", { cache: "no-store" }).then((r) => r.json()).then((body) => {
-      if (body?.success) setView(body.data)
-    }).catch(() => undefined)
+    void fetchBotStatus().then((status) => {
+      if (status) setView(status)
+      else setStatusFailed(true)
+    })
     void fetch("/api/v1/settings/telegram-bot/links", { cache: "no-store" }).then((r) => r.json()).then((body) => {
       if (body?.success) setLinks(body.data)
     }).catch(() => undefined)
@@ -91,8 +106,15 @@ export default function TelegramBotSettingsPage() {
               <span className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                 <CheckCircle className="h-4 w-4" aria-hidden="true" />@{view.botUsername} · {t("linkedUsers", { count: view.linkedUsers })}
               </span>
-            ) : (
+            ) : view ? (
               <span className="text-sm text-muted-foreground">{t("notConnected")}</span>
+            ) : statusFailed ? (
+              <span className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />{t("statusUnknown")}
+                <Button variant="outline" size="sm" onClick={() => { setStatusFailed(false); load() }}>{t("reload")}</Button>
+              </span>
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label={t("statusLoading")} />
             )}
           </div>
           <CardDescription>{t("cardDesc")}</CardDescription>
