@@ -117,6 +117,7 @@ model Organization {
   cashFlowEntries            CashFlowEntry[]
   cashFlowAlerts             CashFlowAlert[]
   bills                      Bill[]
+  eQaimeInvoices             EQaimeInvoice[]
   billPayments               BillPayment[]
   funds                      Fund[]
   fundTransactions           FundTransaction[]
@@ -1535,6 +1536,7 @@ model Company {
   projects        Project[]
   tickets         Ticket[]
   vendorBills     Bill[]           @relation("VendorBills")
+  eQaimeInvoices  EQaimeInvoice[]  @relation("EQaimeCounterparty")
 
   // B10 Entitlement Process
   entitlements Entitlement[]
@@ -5245,6 +5247,70 @@ model BillPayment {
   @@index([billId])
   @@index([organizationId])
   @@map("bill_payments")
+}
+
+/// An electronic invoice (e-qaimə) read from the tax portal new.e-taxes.gov.az
+/// by the LeadDrive Chrome extension, in the browser of an accountant signed in
+/// there (the portal answers Azerbaijani addresses only, and its pass never
+/// reaches this server). One row per invoice per company it was read for: the
+/// same invoice is outgoing for its seller and incoming for its buyer, and an
+/// organization may keep the books of both.
+model EQaimeInvoice {
+  id                    String       @id @default(cuid())
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The company signed in to the portal when the invoice was read.
+  ownVoen               String
+  ownName               String
+  /// "inbox" (we are the buyer) or "outbox" (we are the seller).
+  direction             String
+  /// The portal's own id of the invoice, and whether it lives in the section
+  /// for invoices issued before 2020 (another API, other ids).
+  portalId              String
+  priorSystem           Boolean      @default(false)
+  sourceSystem          String?
+  /// "MT" and twelve digits.
+  serialNumber          String
+  /// defaultInvoice, advanceInvoice, returnInvoice, resale, exportNoteInvoice.
+  kind                  String?
+  /// current or corrected.
+  docType               String?
+  /// The portal's status word: approved, onApproval, cancelled, …
+  status                String
+  issuedAt              DateTime
+  counterpartyVoen      String?
+  counterpartyName      String
+  /// The CRM company with the counterparty's VÖEN, when there is one.
+  counterpartyCompanyId String?
+  counterpartyCompany   Company?     @relation("EQaimeCounterparty", fields: [counterpartyCompanyId], references: [id], onDelete: SetNull)
+  /// Sums of the lines, computed here from them. The portal writes prices and
+  /// amounts with up to six decimals, hence the scale.
+  netAmount             Decimal      @db.Decimal(20, 6)
+  vatAmount             Decimal      @db.Decimal(20, 6)
+  exciseAmount          Decimal      @default(0) @db.Decimal(20, 6)
+  roadTaxAmount         Decimal      @default(0) @db.Decimal(20, 6)
+  totalAmount           Decimal      @db.Decimal(20, 6)
+  comment               String?
+  comment2              String?
+  /// The lines as read: name, tax classifier code, unit, quantity, price, the
+  /// base amount and the four VAT bases (vat18 is the base taxed at 18 %, not
+  /// the tax), excise and road tax.
+  items                 Json
+  /// For a return or a correction: the invoices it refers to.
+  sourceSerials         String[]     @default([])
+  /// The portal's PDF, sealed for the organization (tenant-file-encryption).
+  pdfFile               String?
+  pdfSize               Int?
+  importedByUserId      String?
+  portalSyncedAt        DateTime     @default(now())
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@unique([organizationId, ownVoen, direction, portalId, priorSystem])
+  @@index([organizationId, direction, issuedAt])
+  @@index([organizationId, serialNumber])
+  @@index([organizationId, counterpartyVoen])
+  @@map("e_qaime_invoices")
 }
 
 model Fund {
