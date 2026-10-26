@@ -31080,7 +31080,10 @@
     "linkedTitle": "Linked employees",
     "linkedDesc": "They work with the CRM in the bot and get their notices there — the same ones as the bell, by their notification settings.",
     "colEmployee": "Employee",
-    "unlinkUserHint": "The bot stops answering {name} and sends no more notices to that Telegram."
+    "unlinkUserHint": "The bot stops answering {name} and sends no more notices to that Telegram.",
+    "statusUnknown": "Could not check the status.",
+    "reload": "Try again",
+    "statusLoading": "Checking the status"
   },
   "whatsappSignupWindow": {
     "title": "Connect WhatsApp",
