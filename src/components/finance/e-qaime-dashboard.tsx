@@ -23,6 +23,12 @@ import { eQaimeQuery, useEQaimeInvoices, type EQaimeRowView, type EQaimeTile } f
  */
 
 export const E_QAIME_EXTENSION_ZIP = "/downloads/leaddrive-e-qaime.zip"
+/**
+ * The extension's page in the Chrome Web Store, once it is published there
+ * (docs/e-qaime-chrome-web-store.md). Until then the tab offers the zip and the
+ * four manual steps.
+ */
+export const E_QAIME_STORE_URL: string | null = null
 /** The attribute the extension's content script puts on <html> of LeadDrive pages. */
 const EXTENSION_MARK = "data-leaddrive-eqaime"
 
@@ -322,18 +328,31 @@ function InstallDialog({ open, onClose }: { open: boolean; onClose: () => void }
         <DialogHeader>
           <DialogTitle>{t("installTitle")}</DialogTitle>
         </DialogHeader>
-        <ol className="list-decimal space-y-2 pl-5 text-sm">
-          <li>{t("installStep1")}</li>
-          <li>{t("installStep2")}</li>
-          <li>{t("installStep3")}</li>
-          <li>{t("installStep4")}</li>
-        </ol>
+        {E_QAIME_STORE_URL ? (
+          <ol className="list-decimal space-y-2 pl-5 text-sm">
+            <li>{t("installStoreStep1")}</li>
+            <li>{t("installStoreStep2")}</li>
+          </ol>
+        ) : (
+          <ol className="list-decimal space-y-2 pl-5 text-sm">
+            <li>{t("installStep1")}</li>
+            <li>{t("installStep2")}</li>
+            <li>{t("installStep3")}</li>
+            <li>{t("installStep4")}</li>
+          </ol>
+        )}
         <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">{t("installNote")}</p>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>{t("close")}</Button>
-          <Button asChild className="gap-2">
-            <a href={E_QAIME_EXTENSION_ZIP} download><Download className="h-4 w-4" />{t("installDownload")}</a>
-          </Button>
+          {E_QAIME_STORE_URL ? (
+            <Button asChild className="gap-2">
+              <a href={E_QAIME_STORE_URL} target="_blank" rel="noopener noreferrer"><Puzzle className="h-4 w-4" />{t("installStore")}</a>
+            </Button>
+          ) : (
+            <Button asChild className="gap-2">
+              <a href={E_QAIME_EXTENSION_ZIP} download><Download className="h-4 w-4" />{t("installDownload")}</a>
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

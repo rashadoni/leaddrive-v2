@@ -17,8 +17,7 @@ function allowedOrigin(origin) {
   try {
     const url = new URL(origin)
     if (url.origin !== origin) return false
-    if (url.protocol === "https:" && (url.hostname === "leaddrivecrm.org" || url.hostname.endsWith(".leaddrivecrm.org"))) return true
-    return url.protocol === "http:" && url.hostname === "localhost" && url.port === "3000"
+    return url.protocol === "https:" && (url.hostname === "leaddrivecrm.org" || url.hostname.endsWith(".leaddrivecrm.org"))
   } catch {
     return false
   }
