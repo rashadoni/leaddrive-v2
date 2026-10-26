@@ -543,7 +543,7 @@ export default function KnowledgeBasePage() {
                   onClick={() => setStatusFilter(status)}
                   className={cn(
                     "min-h-11 shrink-0 rounded-md px-3 text-xs font-medium outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring",
-                    filterStatus === status ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    filterStatus === status ? "crm-choice-selected" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   {status === "all" ? t("filterAll") : status === "published" ? t("filterPublished") : t("filterDrafts")}
@@ -747,14 +747,14 @@ function CategoryFilterButton({
       onClick={onClick}
       className={cn(
         "mb-0.5 min-h-11 w-full rounded-lg px-3 py-2 text-left outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring",
-        active ? "bg-foreground text-background" : "hover:bg-muted",
+        active ? "crm-choice-selected" : "hover:bg-muted",
       )}
     >
       <span className="flex items-center gap-2 text-sm font-medium">
         <span className="min-w-0 flex-1 truncate">{name}</span>
-        <span className={cn("text-xs", active ? "text-background/70" : "text-muted-foreground")}>{total}</span>
+        <span className="text-xs text-muted-foreground">{total}</span>
       </span>
-      <span className={cn("mt-0.5 flex items-center gap-2 text-[11px]", active ? "text-background/70" : "text-muted-foreground")}>
+      <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />{t("publishedCount", { count: published })}</span>
         <span className="inline-flex items-center gap-1"><FilePenLine className="h-3 w-3" />{t("draftCount", { count: draft })}</span>
       </span>

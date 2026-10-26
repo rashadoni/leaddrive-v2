@@ -470,15 +470,15 @@ export function MtmRoutePlanner() {
               ) : null}
             </div>
             <Hint text={t("hint.onlyDue", { month: monthLabel })}>
-              <button type="button" data-testid="mtm-route-planner-only-due" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
+              <button type="button" data-testid="mtm-route-planner-only-due" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "border crm-choice-selected" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
                 {t("onlyDue", { month: monthLabel, count: duePlaces })}
               </button>
             </Hint>
-            <button type="button" data-testid="mtm-route-planner-all" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
+            <button type="button" data-testid="mtm-route-planner-all" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "border crm-choice-selected" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
               {t("all", { count: allPlaces.length })}
             </button>
             {categories.map((value) => (
-              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
+              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "border crm-choice-selected" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
                 {t("category", { category: value })}
               </button>
             ))}

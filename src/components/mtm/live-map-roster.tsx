@@ -426,7 +426,7 @@ export function LiveMapRoster({
       data-testid="live-map-roster-filters-button"
       aria-expanded={filtersOpen}
       onClick={filtersFloat ? undefined : () => setFiltersOpen((open) => !open)}
-      className={cn(TOOL_BUTTON, (filteredColumns.length > 0 || filtersOpen) && "border-foreground font-semibold")}
+      className={cn(TOOL_BUTTON, (filteredColumns.length > 0 || filtersOpen) && "crm-choice-selected")}
     >
       <Filter className={cn("h-3.5 w-3.5", filteredColumns.length > 0 && "fill-current")} aria-hidden="true" />{tMap("roster.filters")}
       {filteredColumns.length > 0 ? <span className="tabular-nums">· {filteredColumns.length}</span> : null}
@@ -467,7 +467,7 @@ export function LiveMapRoster({
                     data-testid={`live-map-roster-filters-value-${column}-${option.value}`}
                     className={cn(
                       "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors [@media(pointer:coarse)]:min-h-11",
-                      on ? "border-foreground font-semibold text-foreground" : "border-border hover:bg-muted",
+                      on ? "crm-choice-selected text-foreground" : "border-border hover:bg-muted",
                       option.count === 0 && !on && "text-muted-foreground",
                     )}
                   >
@@ -872,7 +872,7 @@ export function LiveMapRoster({
                       data-testid={`live-map-roster-sort-${direction}`}
                       className={cn(
                         "inline-flex min-h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                        view.sort.direction === direction ? "border-foreground font-semibold" : "border-border hover:bg-muted",
+                        view.sort.direction === direction ? "crm-choice-selected" : "border-border hover:bg-muted",
                       )}
                     >
                       {tMap(`roster.sort.${SORT_KIND[view.sort.column]}.${direction}`)}

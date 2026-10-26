@@ -527,7 +527,7 @@ export default function LeadsPage() {
                 className={cn(
                   "px-3 py-1 text-sm rounded-full border transition-colors",
                   statusFilter === item.key
-                    ? "bg-foreground text-background border-foreground font-medium"
+                    ? "crm-choice-selected"
                     : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"
                 )}
               >
@@ -604,7 +604,7 @@ export default function LeadsPage() {
                   className={cn(
                     "p-2 transition-colors",
                     viewMode === mode
-                      ? "bg-foreground text-background"
+                      ? "text-foreground"
                       : "text-muted-foreground hover:bg-muted"
                   )}
                 >

@@ -811,7 +811,7 @@ export default function TicketsPage() {
               </label>
               <div data-tour-id="tickets-kanban-toggle" className="order-first flex h-11 min-w-32 shrink-0 rounded-md border bg-card p-0.5 sm:order-none sm:h-9 sm:w-auto" role="group" aria-label={t("viewLabel")}>
                 {workspaceViews.map(({ key, label, icon: Icon }) => (
-                  <button key={key} type="button" aria-label={label} title={label} aria-pressed={view === key} onClick={() => selectView(key)} className={cn("flex min-h-11 min-w-11 flex-1 items-center justify-center rounded px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 motion-reduce:transition-none sm:min-h-8 sm:min-w-8", view === key ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                  <button key={key} type="button" aria-label={label} title={label} aria-pressed={view === key} onClick={() => selectView(key)} className={cn("flex min-h-11 min-w-11 flex-1 items-center justify-center rounded px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 motion-reduce:transition-none sm:min-h-8 sm:min-w-8", view === key ? "crm-choice-selected" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                     <Icon className="h-3.5 w-3.5" />
                     <span className={view === key ? "ml-1 whitespace-nowrap sm:sr-only" : "sr-only"}>{label}</span>
                   </button>

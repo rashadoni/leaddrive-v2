@@ -560,7 +560,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] main {
   transition: background-color 0.5s ease, color 0.4s ease, border-color 0.4s ease;
 }
 
-html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-card {
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-card:not(.crm-choice-selected) {
   background-color: hsl(var(--card)) !important;
 }
 

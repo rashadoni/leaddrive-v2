@@ -72,7 +72,8 @@ describe("ticket workspace navigation state", () => {
     const styles = readFileSync("src/app/crm-workspace.css", "utf8")
     const selected = styles.match(/\[data-crm-workspace\] \.crm-choice-selected[^{}]*\{([^}]+)\}/)?.[1]
     expect(selected).toContain("background-color: hsl(var(--muted))")
-    expect(selected).toContain("color: hsl(var(--foreground))")
+    const selectedText = styles.match(/\[data-crm-workspace\] \.crm-choice-selected:not\(\.crm-choice-semantic\)[^{]*\{([^}]+)\}/)?.[1]
+    expect(selectedText).toContain("color: hsl(var(--foreground))")
     expect(selected).toContain("border-color: hsl(var(--input))")
     expect(dataTableSource).not.toContain('compact && "bg-orange-')
   })
