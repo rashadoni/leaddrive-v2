@@ -83,10 +83,11 @@ function scopedAgentIdFilter(administration: MtmAgentAdministration, id: string)
   return administration.kind === "scoped" ? { equals: id, in: administration.agentIds } : id
 }
 
-function workforceRetentionBlocked() {
+function workforceRetentionBlocked(kinds: string[] = []) {
   return NextResponse.json({
     error: "This employee has Workforce time history and must be archived instead of permanently deleted.",
     code: "WORKFORCE_RETENTION_BLOCKED",
+    data: { kinds },
   }, { status: 409 })
 }
 
@@ -419,19 +420,19 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
       // Time history is governed by a separate retention contract. Check it
       // before the FK cascade reaches the database fact guard, so admins
       // receive a clear archive/deactivate action rather than an opaque error.
-      const retentionCounts = await Promise.all([
-        tx.mtmAgentWorkday.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmAgentWorkdayEvent.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmAgentLocation.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmHrmRequest.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmWorkCalendarDay.count({
+      const retentionChecks = {
+        "MtmAgentWorkday.agentId": tx.mtmAgentWorkday.count({ where: { organizationId: orgId, agentId: id } }),
+        "MtmAgentWorkdayEvent.agentId": tx.mtmAgentWorkdayEvent.count({ where: { organizationId: orgId, agentId: id } }),
+        "MtmAgentLocation.agentId": tx.mtmAgentLocation.count({ where: { organizationId: orgId, agentId: id } }),
+        "MtmHrmRequest.agentId": tx.mtmHrmRequest.count({ where: { organizationId: orgId, agentId: id } }),
+        "MtmWorkCalendarDay.agentId": tx.mtmWorkCalendarDay.count({
           where: {
             organizationId: orgId,
             agentId: id,
             source: { in: ["HRM", "WORKFORCE_LEAVE", "WORKFORCE_ABSENCE"] },
           },
         }),
-        tx.mtmAuditLog.count({
+        "MtmAuditLog.agentId": tx.mtmAuditLog.count({
           where: {
             organizationId: orgId,
             agentId: id,
@@ -448,16 +449,18 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
             ],
           },
         }),
-        tx.workforceShiftAssignment.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforcePolicySnapshot.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceShiftSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceWorkdayScheduleSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceAttendanceException.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceTimeCorrection.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceTimesheetApproval.count({ where: { organizationId: orgId, agentId: id } }),
-      ])
-      if (retentionCounts.some((count) => count > 0)) {
-        return { kind: "retention_blocked" as const }
+        "WorkforceShiftAssignment.agentId": tx.workforceShiftAssignment.count({ where: { organizationId: orgId, agentId: id } }),
+        "WorkforcePolicySnapshot.agentId": tx.workforcePolicySnapshot.count({ where: { organizationId: orgId, agentId: id } }),
+        "WorkforceShiftSnapshot.agentId": tx.workforceShiftSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
+        "WorkforceWorkdayScheduleSnapshot.agentId": tx.workforceWorkdayScheduleSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
+        "WorkforceAttendanceException.agentId": tx.workforceAttendanceException.count({ where: { organizationId: orgId, agentId: id } }),
+        "WorkforceTimeCorrection.agentId": tx.workforceTimeCorrection.count({ where: { organizationId: orgId, agentId: id } }),
+        "WorkforceTimesheetApproval.agentId": tx.workforceTimesheetApproval.count({ where: { organizationId: orgId, agentId: id } }),
+      }
+      const retentionKinds = (await Promise.all(Object.entries(retentionChecks).map(async ([kind, count]) =>
+        await count > 0 ? kind : null))).filter((kind): kind is string => kind !== null)
+      if (retentionKinds.length > 0) {
+        return { kind: "retention_blocked" as const, history: retentionKinds }
       }
       // Visits, routes, tasks, photos, promotions… — whatever else points at
       // the employee. Without this the delete cascaded through their visits
@@ -473,7 +476,7 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
       return { kind: "deleted" as const, before }
     })
     if (deletion.kind === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })
-    if (deletion.kind === "retention_blocked") return workforceRetentionBlocked()
+    if (deletion.kind === "retention_blocked") return workforceRetentionBlocked(deletion.history)
     if (deletion.kind === "has_history") return agentHasHistory(deletion.history)
     if (deletion.kind === "role_forbidden") return mtmScopedAgentRoleForbidden()
 

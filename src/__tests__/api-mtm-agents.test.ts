@@ -928,6 +928,17 @@ describe("DELETE /api/v1/mtm/agents/[id]", () => {
     expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
   })
 
+  it("identifies retained location records instead of hiding their reason under generic time history", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Trial", role: "AGENT" } as never)
+    mockAgentWorkforceRetentionClear()
+    vi.mocked(prisma.mtmAgentLocation.count).mockResolvedValueOnce(1)
+    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: "WORKFORCE_RETENTION_BLOCKED", data: { kinds: ["MtmAgentLocation.agentId"] } })
+    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
+  })
+
   it("blocks permanent deletion when only a Workforce transition audit remains", async () => {
     mockAgentAdministrator()
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
