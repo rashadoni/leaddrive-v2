@@ -38,6 +38,10 @@ HTTP_TIMEOUT_SECONDS = 2.0
 MAX_SPOOL_FILES = 1_000
 DRAIN_BATCH_SIZE = 100
 PARTY_RE = re.compile(r"^[+0-9A-Za-z*#(). _-]{1,64}$")
+# The number the caller dialled, as the channel reports it (CALLERID(dnid)).
+# Owner, 2026-10-26: each client gets its own SIP number, and the CRM picks the
+# client by it. The station's CDR shows the provider's DIDs as 994 + nine digits.
+DIALLED_RE = re.compile(r"^\+?[0-9]{5,20}$")
 TERMINAL_STATES = frozenset({"connected", "no_answer", "busy", "failed", "cancelled"})
 SPOOL_STATE_ORDER = {
     "ringing": 0,
@@ -497,7 +501,10 @@ def run_mode(
 
     if mode == "ringing":
         from_number = agi_variables.get("agi_callerid", "").strip()
-        to_number = arguments[1].strip() if len(arguments) == 2 else ""
+        # The dialled number when the channel has one; otherwise the route's
+        # alias, which the CRM reads as "the installation's default client".
+        dialled = agi_variables.get("agi_dnid", "").strip()
+        to_number = dialled if DIALLED_RE.fullmatch(dialled) else (arguments[1].strip() if len(arguments) == 2 else "")
         if not PARTY_RE.fullmatch(from_number) or not PARTY_RE.fullmatch(to_number):
             _agi_set(output, "FANUM_INBOUND_EVENT_OK", "0")
             return 1
