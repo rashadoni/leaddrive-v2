@@ -1,0 +1,15 @@
+{
+ "key": "002",
+ "kind": "card",
+ "state": {
+  "taken_by": "erp/002-client-questionnaire-and-sample-file",
+  "taken_at": "2026-10-26",
+  "history": [
+   {
+    "date": "2026-10-26",
+    "what": "take",
+    "branch": "erp/002-client-questionnaire-and-sample-file"
+   }
+  ]
+ }
+}
