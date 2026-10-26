@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useEffect, useState } from "react"
 
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -62,10 +63,9 @@ export function PharmacyList() {
       <PhoneOrdersViews active="pharmacies" />
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {FILTERS.map(value => (
-          <button key={value} type="button" onClick={() => setFilter(value)}
-            className={cn("rounded-full px-3 py-1", filter === value ? "bg-foreground font-medium text-background" : "border border-border hover:bg-muted/40")}>
+          <Button key={value} type="button" size="sm" variant={filter === value ? "selected" : "outline"} onClick={() => setFilter(value)}>
             {t(`pharmaciesFilter.${value}`)}{data ? ` · ${data.counts[value]}` : ""}
-          </button>
+          </Button>
         ))}
         <Input className="ml-auto w-full sm:w-[300px]" value={query} placeholder={t("pharmaciesSearch")} onChange={event => setQuery(event.target.value)} />
       </div>
