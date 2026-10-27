@@ -7,7 +7,7 @@ import { z } from "zod"
 import type { PrismaClient } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
-import { notifyManagersOfCallOrder } from "@/lib/pharmacy-orders/manager-notice"
+import { announceCallOrder } from "@/lib/pharmacy-orders/manager-notice"
 import { runWithTenant } from "@/lib/rls-context"
 import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { matchCallParty } from "@/lib/calls/party-match"
@@ -65,10 +65,10 @@ const TERMINAL_STATES = new Set<string>(terminalLifecycleSchema.shape.state.opti
 /** The AI's last save can still be on its way when the caller hangs up. */
 const ORDER_NOTICE_DELAY_MS = 5_000
 
-/** A phone order the call left is announced to the managers once it is over. */
+/** A phone order the call left is announced to the managers, and sent to the pharmacy, once it is over. */
 function notifyOrderAfterCall(organizationId: string, callId: string) {
   setTimeout(() => {
-    void notifyManagersOfCallOrder(prisma as unknown as PrismaClient, organizationId, callId)
+    void announceCallOrder(prisma as unknown as PrismaClient, organizationId, callId)
       .catch((error: unknown) => console.warn("[asterisk-human-lifecycle] order notice failed",
         error instanceof Error ? error.name : typeof error))
   }, ORDER_NOTICE_DELAY_MS).unref?.()

@@ -74,7 +74,7 @@ export async function getPhoneOrder(orgId: string, id: string) {
     total: money(order.totalAmount), currency: order.currency,
     confirmedAt: order.confirmedAt?.toISOString() ?? null, confirmedBy: nameOf(order.confirmedById),
     rejectedAt: order.rejectedAt?.toISOString() ?? null, rejectedBy: nameOf(order.rejectedById), rejectReason: order.rejectReason,
-    managerNotice: order.managerNotice, pharmacyNotice: order.pharmacyNotice,
+    managerNotice: order.managerNotice, pharmacyReceipt: order.pharmacyReceipt, pharmacyNotice: order.pharmacyNotice,
     lines: order.lines.map(line => ({
       id: line.id, position: line.position, status: line.status, externalId: line.externalId, itemCode: line.itemCode,
       productName: line.productName, spokenText: line.spokenText, quantity: line.quantity, unit: line.unit,

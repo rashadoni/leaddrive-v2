@@ -184,7 +184,7 @@ export function createInboundPilotHost(options: {
         const caller = callerNumber(call.fromNumber)
         const identity = identifyPharmacy(await findPharmacies(config, caller).catch(() => []), pharmacy)
         // The agent saves after every line; the managers hear of the order
-        // when the call ends (call-lifecycle → notifyManagersOfCallOrder).
+        // when the call ends (call-lifecycle → announceCallOrder).
         return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
           ...("pharmacy" in identity
             ? { pharmacyName: identity.pharmacy.name, pharmacyGuid: identity.pharmacy.guid, pharmacyAddress: identity.pharmacy.address }

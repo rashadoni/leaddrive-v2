@@ -31398,6 +31398,7 @@
     "historyNoticeSent": "Менеджеру ушло сообщение в WhatsApp",
     "historyNoticeFailed": "Сообщение менеджеру в WhatsApp не ушло",
     "historyNoticeOff": "WhatsApp не подключён — менеджеру сообщение не уходит",
+    "historyPharmacyReceiptSent": "Аптеке ушёл состав заказа в WhatsApp",
     "historyPharmacyConfirmedSent": "Аптеке ушло подтверждение в WhatsApp",
     "historyPharmacyRejectedSent": "Аптеке ушёл отказ в WhatsApp",
     "historyPharmacyFailed": "Сообщение аптеке в WhatsApp не ушло",

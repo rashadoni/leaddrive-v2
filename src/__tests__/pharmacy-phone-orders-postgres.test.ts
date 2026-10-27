@@ -457,8 +457,8 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
   // Owner, 2026-10-27: a long order must not be lost. The agent saves the list
   // after every line, so the managers hear of it when the call is over, and
   // the card does not change while the agent is still writing it.
-  it("tells the managers when the call is over, and keeps the card shut while the call still runs", async () => {
-    const { notifyManagersOfCallOrder } = await import("@/lib/pharmacy-orders/manager-notice")
+  it("tells the managers and sends the pharmacy its list when the call is over, and keeps the card shut while the call still runs", async () => {
+    const { announceCallOrder } = await import("@/lib/pharmacy-orders/manager-notice")
     await saveCall(41, LIST.slice(0, 1))
     await saveCall(41, LIST)
     const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(41) } })
@@ -474,21 +474,31 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.callLog.update({ where: { id: call.id }, data: { status: "completed", endedAt: new Date() } })
     const sender = async () => ({ id: "ch", organizationId: ZEYTUN, accessToken: "token", phoneNumberId: "pn1",
       businessAccountId: null, verifyToken: null, appSecret: null, displayName: null })
-    const sent: string[] = []
+    const sent: Array<{ to: string; template: { name: string; components: Array<{ parameters: Array<{ text: string }> }> } }> = []
     const fetchOk = (async (_url: string, init: { body: string }) => {
-      sent.push(init.body)
-      return new Response(JSON.stringify({ messages: [{ id: "wamid.1" }] }), { status: 200 })
+      sent.push(JSON.parse(init.body))
+      return new Response(JSON.stringify({ messages: [{ id: `wamid.${sent.length}` }] }), { status: 200 })
     }) as unknown as typeof fetch
+    const announce = (orgId: string, id: string) => announceCallOrder(app as unknown as PrismaClient, orgId, id, { fetch: fetchOk, sender })
     await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: { pharmacyPhoneOrders: { managerWhatsApp: ["+994501112233"] } } } })
-    // The whole list, once: the notice is sent with the call's final total.
-    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(41), { fetch: fetchOk, sender }))
-      .toMatchObject({ status: "sent", sent: 1 })
-    expect(JSON.parse(sent[0]).template.components[0].parameters.map((item: { text: string }) => item.text)).toEqual(["TS-1001", "—", "125.00"])
-    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(41), { fetch: fetchOk, sender })).toBeNull()
+    // The whole list, once: the managers get the call's final total, the
+    // pharmacy every line on the number it called from — a found line by its
+    // catalog name, a line still to be found in the caller's words.
+    expect(await announce(ZEYTUN, callId(41))).toEqual({
+      manager: expect.objectContaining({ status: "sent", sent: 1 }),
+      pharmacy: expect.objectContaining({ status: "sent", messageId: "wamid.2" }),
+    })
+    const texts = (index: number) => sent[index].template.components[0].parameters.map(item => item.text)
+    expect(sent.map(message => [message.template.name, message.to])).toEqual([["phone_order_new", "994501112233"], ["phone_order_received", PHONE.slice(1)]])
+    expect(texts(0)).toEqual(["TS-1001", "—", "125.00"])
+    expect(texts(1)).toEqual(["TS-1001",
+      "No-şpa 2ml 40 mq № 25 — 10 qutu; Кетонал 2 мл № 10 — 5 ədəd; fluimusil altı yüz, üç qutu (yoxlanılır) — 3 qutu", "125.00"])
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).pharmacyReceipt).toMatchObject({ status: "sent" })
+    expect(await announce(ZEYTUN, callId(41))).toEqual({ manager: null, pharmacy: null })
     // A call that left no order, and another organization's call id, send nothing.
-    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(42), { fetch: fetchOk, sender })).toBeNull()
-    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, OTHER, callId(41), { fetch: fetchOk, sender })).toBeNull()
-    expect(sent).toHaveLength(1)
+    expect(await announce(ZEYTUN, callId(42))).toBeNull()
+    expect(await announce(OTHER, callId(41))).toBeNull()
+    expect(sent).toHaveLength(2)
 
     // Over: the manager decides as before.
     const done = await patch(order.id, { action: "reject", reason: "dublikat", revision: order.revision })

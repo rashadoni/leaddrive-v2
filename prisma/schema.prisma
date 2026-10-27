@@ -23503,6 +23503,8 @@ model PharmacyPhoneOrder {
   managerNotice          Json?
   /// Delivery state of the pharmacy's WhatsApp message about the manager's decision: { status, kind, at, messageId?, error? }.
   pharmacyNotice         Json?
+  /// Delivery state of the pharmacy's WhatsApp list sent when the call ends: { status, at, messageId?, error? }.
+  pharmacyReceipt        Json?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 
