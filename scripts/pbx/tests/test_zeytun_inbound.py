@@ -152,6 +152,56 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(self.save([{"quantity": 1, "unit": "qutu", "spoken": "x"}], key="done")["response"],
                          {"status": "already_reviewed", "orderNumber": "TS-7"})
 
+    def transfer_bridge(self, reply):
+        phrase = "Sizi menecerə qoşuram, xətdə qalın."
+        requests, handed = [], []
+        def request(body):
+            requests.append(body)
+            if body["action"] == "session":
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 60, "transfer": phrase}
+            return reply(phrase)
+        bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
+        self.assertEqual(bridge.open()["transfer"], phrase)
+        bridge.on_transfer = handed.append
+        return bridge, requests, handed, phrase
+
+    def transfer(self, bridge, args=None, key="transfer-1"):
+        self.finished.clear()
+        call = {"id": key, "name": "transfer_to_manager"}
+        if args is not None:
+            call["args"] = args
+        bridge.handle({"toolCall": {"functionCalls": [call]}}, self.send, lambda: self.current)
+        self.assertTrue(self.finished.wait(2))
+        return self.sent[-1]["toolResponse"]["functionResponses"][0]["response"]
+
+    def test_transfer_to_a_manager_is_offered_only_when_the_crm_names_its_phrase(self):
+        # Owner, 2026-10-27: «переводить на менеджеров Зейтуна в браузере CRM».
+        names = [d["name"] for d in self.bridge.tools()[0]["functionDeclarations"]]
+        self.assertNotIn("transfer_to_manager", names)
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
+            self.handle({"toolCall": {"functionCalls": [{"id": "t", "name": "transfer_to_manager"}]}})
+        bridge, _requests, _handed, _phrase = self.transfer_bridge(lambda phrase: {"status": "unavailable"})
+        names = [d["name"] for d in bridge.tools()[0]["functionDeclarations"]]
+        self.assertEqual(names[-1], "transfer_to_manager")
+
+    def test_a_transfer_the_crm_took_arms_the_leg_end_before_the_model_hears_it(self):
+        bridge, requests, handed, phrase = self.transfer_bridge(lambda phrase: {"status": "transferring", "say": phrase})
+        self.assertEqual(self.transfer(bridge, {}), {"status": "transferring", "say": phrase})
+        self.assertEqual(requests[-1], {"action": "transfer", "callId": CALL})
+        self.assertEqual(handed, [phrase])
+
+    def test_any_other_answer_keeps_the_ai_on_the_call(self):
+        for reply in [lambda phrase: {"status": "unavailable"}, lambda phrase: {"status": "transferring", "say": "Başqa söz"},
+                      lambda phrase: {"status": "transferring"}, lambda phrase: None]:
+            bridge, _requests, handed, _phrase = self.transfer_bridge(reply)
+            self.assertEqual(self.transfer(bridge, key="t-%d" % len(self.sent)), {"status": "unavailable"})
+            self.assertEqual(handed, [])
+        # Arguments the tool does not take never reach the CRM.
+        bridge, requests, handed, _phrase = self.transfer_bridge(lambda phrase: {"status": "transferring", "say": phrase})
+        self.assertEqual(self.transfer(bridge, {"to": "someone"}), {"status": "unavailable"})
+        self.assertEqual([r["action"] for r in requests], ["session"])
+
     def test_transcription_pins_azerbaijani_with_order_vocabulary_only(self):
         config = self.bridge.transcription()
         self.assertEqual(set(config), {"languageCodes", "customVocabulary"})

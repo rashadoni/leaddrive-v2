@@ -8,6 +8,7 @@ import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
 import { savePhoneOrderFromCall } from "./phone-orders"
+import { requestAiHandoff } from "../../voip/inbound-handoff"
 import { notifyManagersOfPhoneOrder } from "../../pharmacy-orders/manager-notice"
 import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
@@ -36,6 +37,8 @@ export function createInboundPilotHost(options: {
    * (voice_line_numbers). A line grant runs in such an organization even when
    * it is not the installation's default one. */
   holdsLine?: (organizationId: string, channelConfigId: string) => Promise<boolean>
+  /** Whether the organization's managers can take calls in the CRM browser. */
+  transferAvailable?: (organizationId: string) => Promise<boolean>
 }): InboundPilotDependencies {
   // The rehearsal belongs to the installation's default organization. The
   // line runs where its number is: owner, 2026-10-26 («переноси линию Зейтуна
@@ -108,7 +111,7 @@ export function createInboundPilotHost(options: {
         return tx.$queryRaw<Array<Omit<InboundPilotCall, "startedAt"> & { startedAt: Date }>>`
           WITH candidates AS (
             SELECT id, "organizationId", "channelConfigId", "providerCallId", provider, direction, "callMode", status,
-              "wasAnswered", "endedAt", "startedAt", "fromNumber", "targetPhoneE164"
+              "wasAnswered", "endedAt", "startedAt", "fromNumber", "targetPhoneE164", "handoffState"
             FROM call_logs WHERE "organizationId"=${config.organizationId} AND provider='asterisk' AND "providerCallId"=${callId} LIMIT 2
           ) SELECT c.* FROM candidates c
           JOIN organizations org ON org.id=c."organizationId" AND org."isActive"=true
@@ -193,6 +196,15 @@ export function createInboundPilotHost(options: {
         return saved
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
+    ...(options.orders && options.transferAvailable ? {
+      // Owner, 2026-10-27: the caller asks for a person, the managers' browsers
+      // ring. Only where someone can take a browser call; once per call.
+      requestTransfer: async (config, call) => {
+        if (!(await allowedOrganization(config)) || !(await options.transferAvailable!(config.organizationId).catch(() => false))) return "unavailable"
+        const ref = { organizationId: config.organizationId, callLogId: call.id, providerCallId: call.providerCallId }
+        return await runWithTenant(config.organizationId, () => requestAiHandoff(options.orders!, ref)) ? "transferring" : "unavailable"
+      },
+    } satisfies Pick<InboundPilotDependencies, "requestTransfer"> : {}),
     async claim(config, call) {
       if (!(await allowedOrganization(config))) return false
       // Parent permissions are checked by loadConfig before a claim. Exclusive

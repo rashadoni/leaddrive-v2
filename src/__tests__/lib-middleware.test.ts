@@ -1219,6 +1219,20 @@ describe("middleware", async () => {
     expect(vi.mocked(checkRateLimit)).toHaveBeenCalledTimes(1)
   })
 
+  it("lets the exact inbound AI handoff route reach bearer auth without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const req = makeReq({
+      pathname: "/api/internal/asterisk/inbound-handoff",
+      method: "POST",
+      auth: null,
+      headers: { "x-real-ip": "7.7.7.7" },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("webhook:voice-agent-runtime:7.7.7.7")
+  })
+
   it("keeps paths adjacent to inbound browser readiness behind a session", async () => {
     const req = makeReq({
       pathname: "/api/internal/asterisk/inbound-browser-ready/debug",

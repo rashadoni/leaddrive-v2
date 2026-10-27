@@ -1,6 +1,8 @@
 import type { PrismaClient } from "@prisma/client"
 
+import { getOrgModuleContext } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { browserSoftphoneAllowed } from "@/lib/voip/browser-softphone"
 import { organizationHoldsLine } from "@/lib/voip/line-numbers"
 
 import { createInboundPilotHost } from "./zeytun-inbound-host"
@@ -20,6 +22,7 @@ export function zeytunLineHost(): Host {
     database: prisma,
     orders: prisma as unknown as PrismaClient,
     holdsLine: organizationHoldsLine,
+    transferAvailable: async (organizationId) => browserSoftphoneAllowed((await getOrgModuleContext(organizationId)).modules),
   })
 }
 
