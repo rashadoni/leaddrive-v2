@@ -175,3 +175,9 @@
 - Первый запуск fixture выявил отсутствующий process.env в изолированном esbuild preview из-за импорта общих constants. Исправлен только fixture adapter: пустое synthetic env и публичные defaults, без реальных credentials. Исходный Next UI не менялся по этой причине; повторный прогон успешен.
 - Evidence: docs/evidence/capabilities-contact-2026-10-27/{browser-fixture.json,light.png,dark.png}. Полные build/typecheck/E2E на Contabo — NOT RUN по host policy; выполняются hosted CI после push. Авторизованный production Zeytun — NOT RUN из-за отсутствия browser control для пользовательской панели.
 - Следующий шаг: checkpoint/push/PR, показать владельцу конкретное изменение действия и дождаться go-ahead на новый mailto-путь согласно AGENTS.md / delivery layer 4. Не считать прежнее одобрение экрана с /contact автоматическим одобрением другого способа обращения.
+
+## 2026-10-27 — follow-up PR подготовлен
+
+- Checkpoint 8f6756a8575499fd3bce7b54acd08b99f6a63b3c опубликован. Создан draft PR https://github.com/rashadoni/leaddrive-v2/pull/1131 и прикреплён к чату. База — reviewed main 885bce7fdf5d197a43b5bcc7469da97d9f6e2069.
+- После фиксации этой ссылки PR переводится в ready для реальных hosted checks на финальном head. Scope UI-only: action mailto + прозрачная инструкция. Merge/production не начинались; владелец ещё не одобрил этот конкретный способ обращения.
+- Текущая точка: готовое проверяемое изменение и evidence, ожидание hosted gates и go-ahead на новый клиентский сценарий. Самостоятельный authenticated production browser review также остаётся NOT RUN — инструмент управления пользовательской in-app сессией не предоставлен.
