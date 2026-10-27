@@ -116,13 +116,17 @@ asterisk -rx "core show application AudioSocket" 2>/dev/null \
   | grep -Fq 'AudioSocket(' \
   || fail "Asterisk AudioSocket is unavailable"
 # The AI talks on a Local leg; the caller hears ringing while a manager is sought.
+# Read each report whole before matching: `asterisk -rx … | grep -q` lets grep
+# exit at the first match while Dial's long help is still being written, the
+# writer dies of SIGPIPE, and pipefail reported a present Dial as missing
+# (station, 2026-10-27).
 for application in Dial Playtones StopPlaytones; do
-  asterisk -rx "core show application $application" 2>/dev/null \
-    | grep -Fq "$application(" \
+  application_report="$(asterisk -rx "core show application $application" 2>/dev/null || true)"
+  grep -Fq -- "$application(" <<<"$application_report" \
     || fail "Asterisk $application is unavailable"
 done
-asterisk -rx "core show channeltypes" 2>/dev/null \
-  | grep -Eq '^[[:space:]]*Local[[:space:]]' \
+channel_types_report="$(asterisk -rx "core show channeltypes" 2>/dev/null || true)"
+grep -Eq '^[[:space:]]*Local[[:space:]]' <<<"$channel_types_report" \
   || fail "Asterisk Local channels are unavailable"
 ss -ltnH 2>/dev/null | grep -Eq '127\.0\.0\.1:9093|\[::1\]:9093' \
   || fail "browser bridge is not listening on loopback"
