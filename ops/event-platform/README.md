@@ -266,8 +266,8 @@ longer than 3 hours leaves that stretch unchecked.
 MTM visit events (2026-10-26, PR #1114): a visit writes its events in its own
 transaction but fails open, so a failed append keeps the visit and drops only
 its events — a gap the outbox never sees. Every pass the production probe takes
-the visits changed in the last 3 hours and counts those created since the first
-`mtm.visit-started.v1` with no event at all («Визиты MTM без событий в Kafka»),
+the visits changed in the last 3 hours and counts those created in that window
+with no event at all («Визиты MTM без событий в Kafka»),
 and those whose last status event or deletion disagrees with the row («События
 визитов MTM расходятся с CRM»). Both are warnings, with one visit id as an
 example; no grace period, since a visit and its events commit together. A seed
@@ -281,6 +281,20 @@ Deals (2026-10-26, PR #1123): every deal write goes through `withDealEvents`
 are deleted outright, a deal stream whose row is gone without
 `sales.deal-deleted.v1` counts as disagreement. Contact merges that only move
 `contactId` write no event: the events do not carry it as a change.
+
+Writes without a tenant (2026-10-27): the event tables' policies admit only
+rows of `app.org_id` and have no `rls_bypass` arm, so a visit or deal written
+under `runWithRlsBypass` — a cron in the jobs process — had every event
+refused. The first live morning showed 61 «[MTM visit events] not recorded»
+in `jobs-error.log` and not one visit event in Kafka, while the watch stayed
+quiet: «without events» then counted only rows created after the first
+started event, and there was none. Now `recordStreamChanges` enters the
+write's own organization for the events when the transaction has no tenant,
+and leaves it again; a different tenant already in place stays and refuses the
+rows. The check counts rows created in its window, whatever came before. The
+PostgreSQL tests run these cases as `event_app`, a role without BYPASSRLS: the
+superuser the suite connects as passes every policy, which is how the failure
+stayed green. The log line now carries Prisma's code and the SQLSTATE.
 
 Not covered yet: consumer lag (no consumer runs), schemas, quarantine,
 archive, projections.

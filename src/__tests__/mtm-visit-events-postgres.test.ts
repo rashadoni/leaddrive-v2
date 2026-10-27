@@ -115,4 +115,40 @@ postgresDescribe("MTM visit events on PostgreSQL", () => {
     expect(row.status).toBe("CHECKED_OUT")
     expect(await stream(id)).toEqual([])
   })
+
+  // As in production: the application's role is subject to the event tables'
+  // policies, which admit only rows of `app.org_id` and know no rls_bypass.
+  // The superuser this suite connects as would pass any policy, which is how
+  // 61 demo-pulse visits (a cron, under the bypass) lost their events on prod
+  // on 2026-10-27 while this file was green.
+  const asApplication = async (tx: Prisma.TransactionClient, settings: Record<string, string>) => {
+    const [{ schema }] = await tx.$queryRawUnsafe<Array<{ schema: string }>>(`SELECT nspname AS schema FROM pg_namespace WHERE oid = pg_my_temp_schema()`)
+    await tx.$executeRawUnsafe(`GRANT USAGE ON SCHEMA "${schema}" TO event_app`)
+    await tx.$executeRawUnsafe(`GRANT ALL ON mtm_visits TO event_app`)
+    await tx.$executeRawUnsafe(`SET LOCAL ROLE event_app`)
+    for (const [name, value] of Object.entries(settings)) await tx.$queryRawUnsafe(`SELECT set_config($1, $2, true)`, name, value)
+  }
+  const tenantNow = async (tx: Prisma.TransactionClient) =>
+    (await tx.$queryRawUnsafe<Array<{ org: string | null }>>(`SELECT current_setting('app.org_id', true) AS org`))[0].org ?? ""
+
+  it("a visit written without a tenant (a cron under the RLS bypass) still gets its events, and no tenant is left behind", async () => {
+    const id = await newVisit()
+    await prisma.$transaction(async tx => {
+      await asApplication(tx, { "app.rls_bypass": "on" })
+      expect(await recordMtmVisitChange(tx as never, "org-b", id, null)).toBe(1)
+      expect(await tenantNow(tx)).toBe("")
+    })
+    expect((await stream(id)).map(e => e.type)).toEqual(["mtm.visit-started.v1"])
+  })
+
+  it("inside another tenant's transaction the events are refused, the visit kept, the tenant unchanged", async () => {
+    const id = await newVisit()
+    await prisma.$transaction(async tx => {
+      await asApplication(tx, { "app.org_id": "org-a" })
+      expect(await recordMtmVisitChange(tx as never, "org-b", id, null)).toBe(0)
+      expect(await tenantNow(tx)).toBe("org-a")
+    })
+    expect(await prisma.$queryRawUnsafe(`SELECT id FROM mtm_visits WHERE id = $1`, id)).toEqual([{ id }])
+    expect(await stream(id)).toEqual([])
+  })
 })
