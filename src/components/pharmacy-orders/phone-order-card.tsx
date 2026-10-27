@@ -27,6 +27,7 @@ type Order = {
   total: string; currency: string
   confirmedAt: string | null; confirmedBy: string | null; rejectedAt: string | null; rejectedBy: string | null; rejectReason: string | null
   managerNotice: { status?: string; at?: string } | null
+  pharmacyReceipt: { status?: string; at?: string } | null
   pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string } | null
   lines: Line[]
 }
@@ -221,6 +222,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
             {noticeStatus === "failed" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-red-600">{t("historyNoticeFailed")}</span></HistoryRow> : null}
             {noticeStatus === "no_recipient" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeNoRecipient")}</span></HistoryRow> : null}
             {noticeStatus === "not_connected" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeOff")}</span></HistoryRow> : null}
+            <PharmacyReceiptRow receipt={order.pharmacyReceipt} locale={locale} />
             {order.confirmedAt ? <HistoryRow at={order.confirmedAt} locale={locale}>{t("historyConfirmed", { name: order.confirmedBy ?? t("someone") })}</HistoryRow> : null}
             {order.rejectedAt ? <HistoryRow at={order.rejectedAt} locale={locale}>{t("historyRejected", { name: order.rejectedBy ?? t("someone"), reason: order.rejectReason ?? "" })}</HistoryRow> : null}
             <PharmacyNoticeRow notice={order.pharmacyNotice} locale={locale} />
@@ -251,6 +253,17 @@ function Kpi({ title, sub, small, children }: { title: string; sub: React.ReactN
       <div className="text-[11px] text-muted-foreground">{sub}</div>
     </div>
   )
+}
+
+/** What happened to the pharmacy's WhatsApp list sent when the call ended. */
+function PharmacyReceiptRow({ receipt, locale }: { receipt: Order["pharmacyReceipt"]; locale: string }) {
+  const t = useTranslations("pharmacyPhoneOrders")
+  if (!receipt?.status || receipt.status === "sending") return null
+  const [text, colour] = receipt.status === "sent" ? [t("historyPharmacyReceiptSent"), "text-emerald-600"]
+    : receipt.status === "failed" ? [t("historyPharmacyFailed"), "text-red-600"]
+    : receipt.status === "no_number" ? [t("historyPharmacyNoNumber"), "text-muted-foreground"]
+    : [t("historyPharmacyOff"), "text-muted-foreground"]
+  return <HistoryRow at={receipt.at} locale={locale}><span className={colour}>{text}</span></HistoryRow>
 }
 
 /** What happened to the pharmacy's WhatsApp message about the decision. */

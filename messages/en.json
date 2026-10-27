@@ -31398,6 +31398,7 @@
     "historyNoticeSent": "WhatsApp sent to the manager",
     "historyNoticeFailed": "WhatsApp to the manager failed",
     "historyNoticeOff": "WhatsApp not connected — no message to the manager",
+    "historyPharmacyReceiptSent": "The pharmacy got its order list on WhatsApp",
     "historyPharmacyConfirmedSent": "The pharmacy got the confirmation on WhatsApp",
     "historyPharmacyRejectedSent": "The pharmacy got the refusal on WhatsApp",
     "historyPharmacyFailed": "The WhatsApp message to the pharmacy did not go through",

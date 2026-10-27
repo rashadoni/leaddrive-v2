@@ -31394,6 +31394,7 @@
     "historyNoticeSent": "Menecerə WhatsApp göndərildi",
     "historyNoticeFailed": "Menecerə WhatsApp göndərilmədi",
     "historyNoticeOff": "WhatsApp qoşulmayıb — menecerə mesaj getmir",
+    "historyPharmacyReceiptSent": "Aptekə WhatsApp-da sifarişin tərkibi getdi",
     "historyPharmacyConfirmedSent": "Aptekə WhatsApp-da təsdiq getdi",
     "historyPharmacyRejectedSent": "Aptekə WhatsApp-da imtina getdi",
     "historyPharmacyFailed": "Aptekə WhatsApp mesajı getmədi",

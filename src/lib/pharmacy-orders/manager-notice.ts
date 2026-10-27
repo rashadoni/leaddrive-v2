@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { runWithTenant } from "@/lib/rls-context"
 import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
+import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { PHONE_ORDERS_TABLE, phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
 import { resolveWhatsAppConfig, type WhatsAppConfig } from "@/lib/whatsapp"
 
@@ -121,16 +122,87 @@ export async function notifyManagersOfPhoneOrder(db: PrismaClient, orgId: string
 }
 
 /**
- * The call is over: tell the managers about the order it left, if any. The
- * agent saves the list after every line (owner, 2026-10-27: a long order must
- * not be lost), so the notice waits for the end of the call instead of its
- * first line. The order is the call's own: same organization, same call id.
+ * The call is over: tell the managers about the order it left, if any, and
+ * send the pharmacy its list. The agent saves the list after every line
+ * (owner, 2026-10-27: a long order must not be lost), so both wait for the end
+ * of the call instead of its first line. The order is the call's own: same
+ * organization, same call id. Each message claims its own column, so a
+ * repeated end of call sends neither twice.
  */
-export async function notifyManagersOfCallOrder(db: PrismaClient, orgId: string, providerCallId: string,
-  deps: Parameters<typeof notifyManagersOfPhoneOrder>[3] = {}): Promise<ManagerNotice | null> {
+export async function announceCallOrder(db: PrismaClient, orgId: string, providerCallId: string,
+  deps: Parameters<typeof notifyManagersOfPhoneOrder>[3] = {}): Promise<{ manager: ManagerNotice | null; pharmacy: PharmacyReceipt | null } | null> {
   const order = await runWithTenant(orgId, () => db.pharmacyPhoneOrder.findFirst({
-    where: { organizationId: orgId, providerCallId, managerNotice: { equals: Prisma.DbNull } }, select: { id: true } }))
-  return order ? notifyManagersOfPhoneOrder(db, orgId, order.id, deps) : null
+    where: { organizationId: orgId, providerCallId }, select: { id: true } }))
+  if (!order) return null
+  const manager = await notifyManagersOfPhoneOrder(db, orgId, order.id, deps)
+  const pharmacy = await sendPharmacyReceipt(db, orgId, order.id, deps)
+  return { manager, pharmacy }
+}
+
+/* ─── The pharmacy gets its list when the call is over ─────────────── */
+
+/**
+ * Owner, 2026-10-27 («Да, подавай шаблон с составом заказа по этому тексту»):
+ * the order number, every line on one line (a template parameter cannot hold
+ * a line break) and the total, to the number that called.
+ */
+export const PHARMACY_RECEIPT_TEMPLATE = "phone_order_received"
+/** Room for the lines inside Meta's 1024-character body, next to the template's own words. */
+const RECEIPT_LINES_MAX = 700
+
+export type PharmacyReceipt =
+  | { status: "sent"; at: string; messageId: string | null }
+  | { status: "failed"; at: string; error: string }
+  | { status: "not_connected" | "no_number"; at: string }
+
+type ReceiptLine = { status: string; productName: string | null; spokenText: string; quantity: number; unit: string }
+
+/**
+ * The order's lines as the pharmacy reads them: the catalog name of a found
+ * line, the caller's own words for one the manager still has to find. Whole
+ * lines only; what does not fit is counted, not cut in the middle.
+ */
+export function receiptLines(lines: ReceiptLine[]): string {
+  const items = lines.map(line => oneLine(`${line.status === "resolved" && line.productName ? readableProductName(line.productName)
+    : `${line.spokenText} (yoxlanılır)`} — ${line.quantity} ${line.unit}`, RECEIPT_LINES_MAX - 40))
+  let text = ""
+  for (const [index, item] of items.entries()) {
+    const rest = items.length - index - 1
+    const next = text ? `${text}; ${item}` : item
+    const tail = rest ? `; və daha ${rest} mövqe` : ""
+    if (text && `${next}${tail}`.length > RECEIPT_LINES_MAX) return `${text}; və daha ${items.length - index} mövqe`
+    text = next
+  }
+  return text || "—"
+}
+
+/** Send the pharmacy its list once, on the number it called from; claimed first (pharmacyReceipt still empty). */
+export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, orderId: string,
+  deps: { fetch?: Fetch; now?: () => Date; sender?: (orgId: string) => Promise<WhatsAppConfig | null> } = {}): Promise<PharmacyReceipt | null> {
+  const now = deps.now ?? (() => new Date())
+  return runWithTenant(orgId, async () => {
+    const claimed = await db.pharmacyPhoneOrder.updateMany({
+      where: { id: orderId, organizationId: orgId, pharmacyReceipt: { equals: Prisma.DbNull } },
+      data: { pharmacyReceipt: { status: "sending", at: now().toISOString() } },
+    })
+    if (claimed.count !== 1) return null
+    const order = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId },
+      select: { number: true, totalAmount: true, callerPhone: true,
+        lines: { orderBy: { position: "asc" }, select: { status: true, productName: true, spokenText: true, quantity: true, unit: true } } } })
+    if (!order) return null
+    const record = async (receipt: PharmacyReceipt) => {
+      await db.pharmacyPhoneOrder.updateMany({ where: { id: orderId, organizationId: orgId }, data: { pharmacyReceipt: receipt } })
+      return receipt
+    }
+    const at = () => now().toISOString()
+    const phone = decryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", order.callerPhone)
+    if (!/^\+[1-9]\d{7,14}$/u.test(phone)) return record({ status: "no_number", at: at() })
+    const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
+    if (!sender) return record({ status: "not_connected", at: at() })
+    const result = await sendTemplate(sender, phone, { name: PHARMACY_RECEIPT_TEMPLATE,
+      body: [phoneOrderLabel(order.number), receiptLines(order.lines), order.totalAmount.toFixed(2)] }, deps.fetch ?? fetch)
+    return record(result.ok ? { status: "sent", at: at(), messageId: result.id } : { status: "failed", at: at(), error: result.error })
+  })
 }
 
 /* ─── The pharmacy hears the manager's decision ────────────────────── */
