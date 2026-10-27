@@ -257,6 +257,19 @@ export async function GET(req: NextRequest) {
   // since the minute before the first of them.
   const staged = Boolean(pinnedApp)
 
+  // «Turn on monitoring» on a page's row in Settings → Channels (`channels-monitoring`) writes monitoring accounts
+  // and nothing else. Wiring inbox rows here would switch back on the inbox row of EVERY Page the person granted and
+  // of each linked Instagram account: in tenant `leaddrive` on 2026-10-27 that would have moved @leaddrive.az's
+  // Direct — kept in Fanumsec by the owner since 2026-09-11 — back into the demo workspace. The row the button
+  // was pressed on is the one the page lands on.
+  const monitoringOnly = ret === "channels-monitoring"
+  const originPageId = monitoringOnly && originChannelId
+    ? (await prisma.channelConfig.findFirst({
+        where: { id: originChannelId, organizationId: payload.orgId },
+        select: { pageId: true },
+      }))?.pageId ?? null
+    : null
+
   for (const page of pages) {
     if (!staged && !messenger) {
       const encryptedPageToken = encryptToken(page.access_token, `oauth:facebook:${page.id}`)
@@ -286,8 +299,12 @@ export async function GET(req: NextRequest) {
     fbCount++
     // Also wire this page as an INBOX channel (ChannelConfig + Meta DM-webhook subscription) so its
     // Messenger DMs reach the inbox, not just Social Monitoring. Idempotent + fail-soft.
-    const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged })
-    if (returnCardType === "facebook" && pageChannel.channelId) wiredForReturnCard.push(pageChannel.channelId)
+    if (monitoringOnly) {
+      if (originChannelId && page.id === originPageId) wiredForReturnCard.push(originChannelId)
+    } else {
+      const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged })
+      if (returnCardType === "facebook" && pageChannel.channelId) wiredForReturnCard.push(pageChannel.channelId)
+    }
 
     const ig = messenger ? undefined : page.instagram_business_account
     if (ig) {
@@ -319,8 +336,10 @@ export async function GET(req: NextRequest) {
         })
       }
       igCount++
-      const igChannel = await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token, { staged })
-      if (returnCardType === "instagram" && igChannel.channelId) wiredForReturnCard.push(igChannel.channelId)
+      if (!monitoringOnly) {
+        const igChannel = await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token, { staged })
+        if (returnCardType === "instagram" && igChannel.channelId) wiredForReturnCard.push(igChannel.channelId)
+      }
     }
   }
 
