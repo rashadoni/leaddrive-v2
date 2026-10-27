@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, ZEYTUN_LINE_RETURN_OPENING, ZEYTUN_TRANSFER_PHRASE, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 
 const now = Date.parse("2026-10-22T12:00:00Z"), token = "t".repeat(48)
@@ -374,5 +374,57 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
       lines: [{ quantity: 2, unit: "qutu", spoken: "iki qutu" }] }))
     expect(await response.json()).toMatchObject({ status: "saved", orderNumber: "TS-1001" })
     expect((f.saveOrder.mock.calls[0] as unknown[])[4]).toBe("Zəfər Aptek")
+  })
+
+  describe("handing the call to a manager in the CRM browser", () => {
+    // Owner, 2026-10-27: «переводить на менеджеров Зейтуна в браузере CRM, как обычный входящий».
+    const transfer = () => request({ action: "transfer", callId: call.providerCallId })
+    function withTransfer(answer: "transferring" | "unavailable" = "transferring") {
+      const f = lineFixture()
+      const requestTransfer = vi.fn(async () => answer)
+      return { ...f, requestTransfer, handle: createInboundPilotHandler(token, { ...f.dependencies, saveOrder: f.saveOrder, requestTransfer }) }
+    }
+
+    it("offers the station the transfer phrase and keeps the rule inside the prompt limit", async () => {
+      const f = withTransfer()
+      expect((await (await f.handle(request())).json()).transfer).toBe(ZEYTUN_TRANSFER_PHRASE)
+      expect(ZEYTUN_LINE_PROMPT).toContain("If the caller asks for a person, call transfer_to_manager.")
+      expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(4000)
+      expect(ZEYTUN_LINE_RETURN_OPENING.length).toBeLessThanOrEqual(500)
+      // Without a way to transfer (or on the owner's rehearsal) the station is told nothing.
+      expect((await (await lineFixture().handle(request())).json())).not.toHaveProperty("transfer")
+    })
+
+    it("asks the CRM once for this claimed call and says the phrase only when it took the transfer", async () => {
+      const f = withTransfer()
+      expect(await (await f.handle(transfer())).json()).toEqual({ status: "transferring", say: ZEYTUN_TRANSFER_PHRASE })
+      expect(f.requestTransfer).toHaveBeenCalledWith(expect.objectContaining({ purpose: "zeytun_line" }), expect.objectContaining({ id: call.id }))
+      expect(f.dependencies.isClaimed).toHaveBeenCalled()
+      const busy = withTransfer("unavailable")
+      expect(await (await busy.handle(transfer())).json()).toEqual({ status: "unavailable" })
+    })
+
+    it("never transfers a call that is not the line's live AI call", async () => {
+      const unclaimed = withTransfer()
+      unclaimed.dependencies.isClaimed.mockResolvedValue(false)
+      expect((await unclaimed.handle(transfer())).status).toBe(403)
+      const ringing = withTransfer()
+      ringing.dependencies.loadCall.mockResolvedValue({ ...pharmacyCall, callMode: "human", status: "ringing", handoffState: "ringing" })
+      expect((await ringing.handle(transfer())).status).toBe(403)
+      expect(unclaimed.requestTransfer).not.toHaveBeenCalled()
+      expect(ringing.requestTransfer).not.toHaveBeenCalled()
+      // The owner's rehearsal grant has no transfer.
+      const rehearsal = fixture()
+      const requestTransfer = vi.fn(async () => "transferring" as const)
+      const handle = createInboundPilotHandler(token, { ...rehearsal.dependencies, requestTransfer })
+      expect(await (await handle(transfer())).json()).toEqual({ status: "unavailable" })
+      expect(requestTransfer).not.toHaveBeenCalled()
+    })
+
+    it("greets a call nobody answered as one the AI takes back, not as a new call", async () => {
+      const f = withTransfer()
+      f.dependencies.loadCall.mockImplementation(async () => structuredClone({ ...pharmacyCall, handoffState: "returned" }))
+      expect((await (await f.handle(request())).json()).opening).toBe(ZEYTUN_LINE_RETURN_OPENING)
+    })
   })
 })

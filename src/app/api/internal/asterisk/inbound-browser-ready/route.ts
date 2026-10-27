@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { INBOUND_BROWSER_CLAIM_LEASE_MS } from "@/lib/voip/browser-softphone"
+import { HANDOFF_CONNECTED } from "@/lib/voip/inbound-handoff"
 import { shouldAiAnswer } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerSelection } from "@/lib/voip/inbound-answer-config"
 
@@ -158,9 +159,13 @@ export async function POST(request: NextRequest) {
         userId: true,
         browserAnswerClaimToken: true,
         browserAnswerClaimExpiresAt: true,
+        handoffState: true,
       },
     }))
     if (!call?.providerCallId) return NextResponse.json({ ready: false })
+    // The AI handed this call to a person: it rings the browsers until the
+    // station gives it back, never the AI again through the answer setting.
+    const handedOff = call.handoffState === "ringing"
 
     // A repeated poll after the AI took the call must keep saying so; a bare
     // "not ready" would let the station time out and hang up on the caller.
@@ -178,7 +183,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (!hasLiveBrowserClaim) {
-      if (call.status !== "ringing") return NextResponse.json({ ready: false })
+      if (call.status !== "ringing" || handedOff) return NextResponse.json({ ready: false })
       const { policy, channelConfigId } = await runWithTenant(organizationId, () => loadInboundAnswerSelection(organizationId))
       const aiNow = shouldAiAnswer({
         policy,
@@ -237,12 +242,14 @@ export async function POST(request: NextRequest) {
         userId: call.userId,
         browserAnswerClaimToken: call.browserAnswerClaimToken,
         browserAnswerClaimExpiresAt: { gt: reservedAt },
+        handoffState: call.handoffState,
       },
       data: {
         status: "answering",
         browserAnswerClaimExpiresAt: new Date(
           reservedAt.getTime() + INBOUND_BROWSER_CLAIM_LEASE_MS,
         ),
+        ...(handedOff ? HANDOFF_CONNECTED : {}),
       },
     }))
     return NextResponse.json({ ready: reserved.count === 1 })

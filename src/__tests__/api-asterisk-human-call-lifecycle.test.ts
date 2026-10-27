@@ -329,6 +329,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         conversationOutcome: true,
         startedAt: true,
         endedAt: true,
+        handoffState: true,
       },
     })
     expect(mocks.callLogUpdateMany).toHaveBeenCalledWith({
@@ -341,6 +342,9 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         callSid: callId,
         providerOutcome: null,
         endedAt: null,
+        // A call the AI handed off rings the browsers: the AI leg's late
+        // answer must not take it out of "ringing".
+        AND: [{ OR: [{ handoffState: null }, { handoffState: { in: ["requested", "connected", "returned"] } }] }],
       },
       data: {
         status: "in-progress",

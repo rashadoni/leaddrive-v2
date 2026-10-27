@@ -35,15 +35,19 @@ type LeadDisplayRow = {
 export const GET = withRlsAuth("voip", "read", async (_req, auth) => {
   try {
     const role = auth.role || "viewer"
+    const since = new Date(Date.now() - 5 * 60 * 1000)
     const activeCalls: ActiveCallRow[] = await prisma.callLog.findMany({
       where: {
         organizationId: auth.orgId,
-        AND: [accessibleCallWhere(role, auth.userId)],
         status: { in: ["ringing", "answering", "in-progress", "initiated"] },
-        // Provider delivery may be delayed or replayed. Use the provider's
-        // observed start, not the database insertion time, so a spooled old
-        // ringing event cannot appear as a live call.
-        startedAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+        AND: [
+          accessibleCallWhere(role, auth.userId),
+          // Provider delivery may be delayed or replayed. Use the provider's
+          // observed start, not the database insertion time, so a spooled old
+          // ringing event cannot appear as a live call. A call the AI handed
+          // to a person rings from the handoff, however long the AI talked.
+          { OR: [{ startedAt: { gte: since } }, { handoffRequestedAt: { gte: since } }] },
+        ],
       },
       select: {
         id: true,

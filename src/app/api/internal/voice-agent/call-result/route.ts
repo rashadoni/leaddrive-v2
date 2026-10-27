@@ -757,10 +757,12 @@ async function recordInboundAiResult(params: {
   const scope: Prisma.CallLogWhereInput = {
     organizationId,
     provider: "asterisk",
-    callMode: "ai",
     direction: "inbound",
     providerCallId: params.callId,
     callSid: params.callId,
+    // The AI's part of a call it handed to a salesperson (owner, 2026-10-27):
+    // the row may already ring the browsers as a human call when this arrives.
+    OR: [{ callMode: "ai" }, { handoffState: { not: null } }],
   }
   const call = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
     where: scope,
@@ -783,13 +785,13 @@ async function recordInboundAiResult(params: {
   if (written.count === 0) {
     const stored = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
       where: { ...scope, id: call.id },
-      select: { transcription: true, conversationOutcome: true },
+      select: { transcription: true, conversationOutcome: true, handoffState: true },
     }))
-    if (
-      !stored
-      || stored.conversationOutcome !== conversationOutcome
-      || (stored.transcription ?? null) !== transcription
-    ) {
+    const repeated = Boolean(stored
+      && stored.conversationOutcome === conversationOutcome
+      && (stored.transcription ?? null) === transcription)
+    if (!repeated && !(stored?.handoffState === "returned"
+      && await appendReturnedTurns(organizationId, { ...scope, id: call.id }, stored, transcription, customerSpoke))) {
       return conflictingTerminalResult()
     }
   }
@@ -808,6 +810,30 @@ async function recordInboundAiResult(params: {
     insightsWhere: scope,
     placeCallback: false,
   })
+}
+
+/**
+ * The AI's second part of a call it handed off and got back because nobody
+ * answered: its turns follow the first part's. A compare-and-set on the stored
+ * text, so a replay of the same result changes nothing.
+ */
+async function appendReturnedTurns(
+  organizationId: string,
+  where: Prisma.CallLogWhereInput,
+  stored: { transcription: string | null; conversationOutcome: string | null },
+  transcription: string | null,
+  customerSpoke: boolean,
+): Promise<boolean> {
+  const before = stored.transcription ?? ""
+  if (transcription === null || before.endsWith(transcription)) return true
+  const written = await runWithTenant(organizationId, () => prisma.callLog.updateMany({
+    where: { ...where, transcription: stored.transcription, conversationOutcome: stored.conversationOutcome },
+    data: {
+      transcription: before ? `${before}\n\n${transcription}` : transcription,
+      conversationOutcome: customerSpoke || stored.conversationOutcome === "customer_spoke" ? "customer_spoke" : "no_customer_speech",
+    },
+  }))
+  return written.count === 1
 }
 
 /** PBX-only terminal call-result endpoint. Tenant and call ownership are server-derived. */

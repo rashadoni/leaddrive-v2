@@ -103,6 +103,7 @@ type BoundHumanCall = {
   conversationOutcome: string | null
   startedAt: Date | null
   endedAt: Date | null
+  handoffState: string | null
 }
 
 type ApplyResult = "applied" | "existing"
@@ -215,6 +216,7 @@ async function loadBoundCall(
       conversationOutcome: true,
       startedAt: true,
       endedAt: true,
+      handoffState: true,
     },
   })
 }
@@ -361,6 +363,12 @@ async function applyLifecycleEvent(params: {
         // CallLog. It is still journaled so an exact retry is a no-op.
         return "existing"
       }
+      if (call.handoffState === "ringing") {
+        // The AI handed this call to the browsers and it is ringing them
+        // again: the AI leg's late answer must not take the ringing away
+        // from the popup. The station reports the browser's answer itself.
+        return "existing"
+      }
 
       const updated = await tx.callLog.updateMany({
         where: {
@@ -372,6 +380,7 @@ async function applyLifecycleEvent(params: {
           callSid: params.input.callId,
           providerOutcome: null,
           endedAt: null,
+          AND: [{ OR: [{ handoffState: null }, { handoffState: { in: ["requested", "connected", "returned"] } }] }],
         },
         data: {
           status: "in-progress",
@@ -386,6 +395,7 @@ async function applyLifecycleEvent(params: {
         && (
           refreshed.providerOutcome !== null
           || refreshed.endedAt !== null
+          || refreshed.handoffState === "ringing"
           || (
             refreshed.status === "in-progress"
             && refreshed.wasAnswered
@@ -501,7 +511,8 @@ async function applyLifecycleEvent(params: {
         providerOutcome: state,
         // The AI's own result (customer spoke or not) may already be stored;
         // the telephony outcome must not erase it.
-        ...(call.callMode === "ai" ? {} : { conversationOutcome: null }),
+        // So may the AI's part of a call it handed to a salesperson.
+        ...(call.callMode === "ai" || call.handoffState ? {} : { conversationOutcome: null }),
         duration: durationSeconds,
         endedAt: occurredAt,
         browserAnswerClaimToken: null,
@@ -563,6 +574,7 @@ async function existingReplayResult(params: {
         conversationOutcome: true,
         startedAt: true,
         endedAt: true,
+        handoffState: true,
       },
     })
     if (!call || !ringingIdentityMatches(call, params.input)) {

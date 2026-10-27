@@ -32,7 +32,12 @@ CONFIG_PATH = Path("/etc/fanum-pbx-coordinator.env")
 SPOOL_DIR = Path("/var/spool/fanum-inbound-browser-events")
 LIFECYCLE_PATH = "/api/internal/asterisk/call-lifecycle"
 READINESS_PATH = "/api/internal/asterisk/inbound-browser-ready"
+HANDOFF_PATH = "/api/internal/asterisk/inbound-handoff"
 READY_TIMEOUT_SECONDS = 25.0
+# Owner, 2026-10-27: the AI hands a call to a person; the managers' browsers
+# ring this long before the call goes back to the AI (HANDOFF_RING_SECONDS in
+# src/lib/voip/inbound-handoff.ts).
+MANAGER_WAIT_SECONDS = 30.0
 READY_POLL_SECONDS = 1.0
 HTTP_TIMEOUT_SECONDS = 2.0
 MAX_SPOOL_FILES = 1_000
@@ -67,6 +72,7 @@ class RuntimeConfig:
     lifecycle_url: str
     readiness_url: str
     runtime_token: str
+    handoff_url: str = ""
 
 
 class LifecycleClient(Protocol):
@@ -74,6 +80,9 @@ class LifecycleClient(Protocol):
         ...
 
     def answer_route(self, call_id: str) -> str:
+        ...
+
+    def handoff(self, call_id: str, action: str) -> bool:
         ...
 
 
@@ -143,6 +152,7 @@ def load_runtime_config(path: Path = CONFIG_PATH) -> RuntimeConfig:
         lifecycle_url=lifecycle_url,
         readiness_url=readiness_url,
         runtime_token=token,
+        handoff_url=urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, HANDOFF_PATH, "", "")),
     )
 
 
@@ -211,6 +221,27 @@ class HttpLifecycleClient:
         if decoded.get("route") == "ai":
             return "ai"
         return ""
+
+    def handoff(self, call_id: str, action: str) -> bool:
+        """`start`: did the AI hand this call to a person (ring the browsers)?
+        `return`: nobody answered, give it back to the AI. Every failure is
+        False: the call then ends, or stays with a browser already bridged."""
+        expected = {"start": "handoff", "return": "returned"}.get(action)
+        if expected is None or not self._config.handoff_url:
+            return False
+        for _attempt in range(2):
+            try:
+                status, body = self._post(self._config.handoff_url, {"callId": call_id, "action": action})
+            except (OSError, TimeoutError, urllib.error.URLError, ValueError):
+                continue
+            if 500 <= status < 600:
+                continue
+            try:
+                decoded = json.loads(body.decode("utf-8"))
+            except (UnicodeError, json.JSONDecodeError):
+                return False
+            return 200 <= status < 300 and isinstance(decoded, dict) and decoded.get(expected) is True
+        return False
 
     def browser_ready(self, call_id: str) -> bool:
         return self.answer_route(call_id) == "browser"
@@ -525,6 +556,29 @@ def run_mode(
         )
         _agi_set(output, "FANUM_BROWSER_READY", "1" if route == "browser" else "0")
         if route == "ai":
+            _agi_set(output, "FANUM_INBOUND_ROUTE", "ai")
+        return 0
+
+    if mode == "handoff" and len(arguments) == 1:
+        # After the AI leg: a network call is fine here, the caller is
+        # already answered and hears the AI's last words fade.
+        _agi_set(output, "FANUM_HANDOFF", "1" if client.handoff(call_id, "start") else "0")
+        return 0
+
+    if mode == "manager" and len(arguments) == 1:
+        route = _wait_ready(
+            client,
+            call_id,
+            timeout_seconds=MANAGER_WAIT_SECONDS,
+            monotonic=monotonic,
+            sleep=sleep,
+        )
+        if route == "browser":
+            _agi_set(output, "FANUM_BROWSER_READY", "1")
+            return 0
+        _agi_set(output, "FANUM_BROWSER_READY", "0")
+        # A caller who hung up while it rang is not given back to the AI.
+        if not _hangup_requested and client.handoff(call_id, "return"):
             _agi_set(output, "FANUM_INBOUND_ROUTE", "ai")
         return 0
 

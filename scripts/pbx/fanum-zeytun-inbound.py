@@ -435,6 +435,11 @@ class ZeytunInboundBridge:
     # agreed list goes to the CRM, which resolves and prices it against the
     # catalog itself; the model's words only name the lines.
     SAVE_NAME = "save_order_list"
+    # Owner, 2026-10-27: «переводить на менеджеров Зейтуна в браузере CRM, как
+    # обычный входящий». The CRM records the request; the agent says the
+    # CRM's phrase, the station ends this AI leg after it (closing_keys) and
+    # rings the managers' browsers. Offered only when the CRM names a phrase.
+    TRANSFER_NAME = "transfer_to_manager"
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
     # against the live API on 8 kHz mu-law audio, two-word Azerbaijani turns
@@ -500,12 +505,15 @@ class ZeytunInboundBridge:
         self.tts_model = None
         self.relay = None
         self.vocabulary = ()
+        self.transfer_phrase = None
+        # Set by the core: called with the phrase once the CRM took the transfer.
+        self.on_transfer = None
 
     def _request(self, body):
         # The first session also builds the pinned catalog once. Keep that
         # cold start separate from the short deadline for spoken lookups.
         action = body.get("action")
-        return self._post_json(self.url, body, timeout=5 if action == "session" else 4 if action == "order" else 2)
+        return self._post_json(self.url, body, timeout=5 if action == "session" else 4 if action in ("order", "transfer") else 2)
 
     def _post_json(self, url, body, timeout=2):
         req = urllib.request.Request(url,
@@ -550,10 +558,14 @@ class ZeytunInboundBridge:
             closing = value.get("closing")
             if closing is not None and (not isinstance(closing, str) or not 3 <= len(closing) <= 120):
                 raise ValueError()
+            transfer = value.get("transfer")
+            if transfer is not None and (not isinstance(transfer, str) or not 3 <= len(transfer) <= 120):
+                raise ValueError()
             voice, pin = value.get("voice"), value.get("pinSpeechLanguage")
             self.expires = self.clock() + seconds
             self.active = True
             self.closing = closing
+            self.transfer_phrase = transfer
             self.voice = voice if voice in self.VOICES else None
             self.pin_language = pin is not False
             # Owner, 2026-10-23: "эту ставь" - the gemini-3.8-flash-tts voice.
@@ -571,7 +583,7 @@ class ZeytunInboundBridge:
             if (isinstance(speech, dict) and speech.get("engine") == "tts"
                     and speech.get("model") in ZeytunGeminiTts.MODELS and speech.get("voice") in self.VOICES):
                 self.tts_model, self.tts_voice = speech["model"], speech["voice"]
-            return {"prompt": prompt, "opening": opening, "maxSeconds": seconds, "closing": closing}
+            return {"prompt": prompt, "opening": opening, "maxSeconds": seconds, "closing": closing, "transfer": transfer}
         except Exception:
             raise ZeytunPilotUnavailable("pilot_session_unavailable") from None
 
@@ -604,7 +616,10 @@ class ZeytunInboundBridge:
                                 "spoken": {"type": "STRING", "description": "The caller's own words for this line, at most 160 characters."}},
                  "required": ["quantity", "unit", "spoken"]}},
                  "pharmacy": {"type": "STRING", "description": "The pharmacy as the caller named it, at most 120 characters; omit when not named."}},
-                 "required": ["lines"]}}]}]
+                 "required": ["lines"]}}] + ([
+            {"name": self.TRANSFER_NAME,
+             "description": "Hand this call to a Zeytun manager in the CRM. Call it only when the caller asks for a person. If it returns transferring, say exactly its say text and nothing after it: the line then rings the managers. If it returns unavailable, say that no manager can answer right now and keep taking the order yourself.",
+             "parameters": {"type": "OBJECT", "properties": {}}}] if self.transfer_phrase else [])}]
 
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
@@ -789,6 +804,13 @@ class ZeytunInboundBridge:
             notes[key] = items
         return {"status": "saved", "orderNumber": number, "total": total, "currency": "AZN", **notes}
 
+    def safe_transfer(self, value):
+        """Transferring only with the exact phrase this session was given."""
+        if (isinstance(value, dict) and value.get("status") == "transferring"
+                and self.transfer_phrase and value.get("say") == self.transfer_phrase):
+            return {"status": "transferring", "say": self.transfer_phrase}
+        return {"status": "unavailable"}
+
     def handle(self, event, send, current):
         """Network work never runs on the audio/event thread. send also fences
         the actual websocket/epoch under the core's existing recovery lock.
@@ -814,7 +836,9 @@ class ZeytunInboundBridge:
             if not isinstance(call, dict):
                 raise ZeytunPilotUnavailable("invalid_tool_call")
             key, name = call.get("id"), call.get("name")
-            if not isinstance(key, str) or not 1 <= len(key) <= 128 or name not in (self.NAME, self.TOTAL_NAME, self.SAVE_NAME):
+            if (not isinstance(key, str) or not 1 <= len(key) <= 128
+                    or name not in (self.NAME, self.TOTAL_NAME, self.SAVE_NAME, self.TRANSFER_NAME)
+                    or (name == self.TRANSFER_NAME and not self.transfer_phrase)):
                 raise ZeytunPilotUnavailable("invalid_tool_call")
             if name == self.TOTAL_NAME:
                 with self.lock:
@@ -828,7 +852,9 @@ class ZeytunInboundBridge:
                     send({"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}})
                 continue
             saving = name == self.SAVE_NAME
-            args = self.order_request(call.get("args")) if saving else self.query(call.get("args"))
+            transferring = name == self.TRANSFER_NAME
+            args = (({} if call.get("args") in (None, {}) else None) if transferring
+                    else self.order_request(call.get("args")) if saving else self.query(call.get("args")))
             response = lambda body, key=key, name=name: {"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}}
             error = None
             with self.lock:
@@ -849,16 +875,26 @@ class ZeytunInboundBridge:
                     self.pending[key] = marker
             if error is not None:
                 if current():
-                    send(response({"status": "not_saved", "reason": error} if saving else self.unavailable(error)))
+                    send(response({"status": "unavailable"} if transferring
+                                  else {"status": "not_saved", "reason": error} if saving else self.unavailable(error)))
                 continue
-            def work(key=key, marker=marker, args=args, response=response, saving=saving):
+            def work(key=key, marker=marker, args=args, response=response, saving=saving, transferring=transferring):
                 try:
-                    if saving:
+                    if transferring:
+                        result = self.safe_transfer(self.request({"action": "transfer", "callId": self.call_id}))
+                    elif saving:
                         result = self.safe_saved(self.request({"action": "order", "callId": self.call_id, **args}))
                     else:
                         result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
                 except Exception:
-                    result = {"status": "not_saved"} if saving else self.unavailable()
+                    result = {"status": "unavailable"} if transferring else {"status": "not_saved"} if saving else self.unavailable()
+                if result.get("status") == "transferring" and self.on_transfer:
+                    # Before the model hears it: the phrase it is about to say
+                    # must already end this leg.
+                    try:
+                        self.on_transfer(self.transfer_phrase)
+                    except Exception:
+                        result = {"status": "unavailable"}
                 # The core's send callback serializes this final check/send with
                 # cancellation, interruption, hangup and websocket replacement.
                 def deliver():
@@ -878,7 +914,7 @@ class ZeytunInboundBridge:
                             self.pending.pop(key, None)
                     self.workers.release()
             try:
-                threading.Thread(target=work, name="zeytun-order-save" if saving else "zeytun-catalog-lookup", daemon=True).start()
+                threading.Thread(target=work, name="zeytun-transfer" if transferring else "zeytun-order-save" if saving else "zeytun-catalog-lookup", daemon=True).start()
             except Exception:
                 with self.lock:
                     self.pending.pop(key, None)
