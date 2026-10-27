@@ -23495,6 +23495,8 @@ model PharmacyPhoneOrder {
   rejectReason           String?
   /// Delivery state of the manager's WhatsApp notice: { status, at, messageId?, error? }.
   managerNotice          Json?
+  /// Delivery state of the pharmacy's WhatsApp message about the manager's decision: { status, kind, at, messageId?, error? }.
+  pharmacyNotice         Json?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 
