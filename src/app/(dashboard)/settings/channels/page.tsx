@@ -76,6 +76,25 @@ interface ChannelConfig {
   hasAppSecret?: boolean
   /** Another workspace's claim on this pageId wins inbound routing (computed by the channels API). */
   claimedElsewhere?: boolean
+  /** Facebook/Instagram rows of a workspace with Social Monitoring: whether it collects this page
+   *  (lib/channels/meta-monitoring-state). Absent on every other row. */
+  monitoring?: { state: "on" | "off" | "awaiting_meta"; lastPolledAt: string | null }
+}
+
+/** Where a row's «turn on monitoring» goes: the monitoring Facebook login, landing back on this row. */
+function monitoringStartHref(channel: ChannelConfig): string {
+  const params = new URLSearchParams({ from: "channels-monitoring" })
+  if (channel.channelType === "facebook") params.set("channelId", channel.id)
+  return `/api/v1/social/oauth/facebook/start?${params.toString()}`
+}
+
+/** «11:17» today, «26.10 21:54» on another day. */
+function formatPolledAt(iso: string, locale: string): string {
+  const at = new Date(iso)
+  const sameDay = at.toDateString() === new Date().toDateString()
+  return at.toLocaleString(locale, sameDay
+    ? { hour: "2-digit", minute: "2-digit" }
+    : { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
 }
 
 /** `settings.channelClaimedElsewhere.*` from messages — the one state whose copy lives in next-intl. */
@@ -205,6 +224,15 @@ const copy = {
     disconnectBody: "The channel stops receiving and sending messages, and LeadDrive's access to Meta for it is removed. All conversations stay in the CRM. You can connect it again from its card in the catalog.",
     deleteTitle: "Delete {name}?",
     deleteBody: "The channel's settings are deleted and it stops receiving and sending messages. All conversations stay in the CRM. To connect it again, set it up from its card in the catalog.",
+    messagingOn: "Messaging",
+    monitoringOn: "Monitoring",
+    monitoringPolled: "posts collected {time}",
+    monitoringOff: "Monitoring off",
+    monitoringAwaiting: "Monitoring: waiting for Meta approval",
+    monitoringAwaitingHint: "Posts and comments of this page will be collected once Meta approves reading them for the LeadDrive app. Messaging already works.",
+    monitoringTurnOn: "Turn on monitoring",
+    disconnectBodySocial: "New messages from this page stop arriving in the Inbox, and Social Monitoring stops collecting its posts and comments. All conversations and collected mentions stay in the CRM. You can connect it again from its card in the catalog.",
+    deleteBodySocial: "The channel's settings are deleted: messages from this page stop arriving and Social Monitoring stops collecting its posts and comments. All conversations and collected mentions stay in the CRM. To connect it again, use its card in the catalog.",
     noResults: "No channels match this search.",
     noResultsHint: "Clear the search or switch back to All to see every provider.",
     active: "active",
@@ -402,6 +430,15 @@ const copy = {
     disconnectBody: "Канал перестанет принимать и отправлять сообщения, доступ LeadDrive к Meta для него будет снят. Вся переписка останется в CRM. Подключить его снова можно через карточку в каталоге.",
     deleteTitle: "Удалить {name}?",
     deleteBody: "Настройки канала будут удалены, он перестанет принимать и отправлять сообщения. Вся переписка останется в CRM. Чтобы подключить его снова, настройте его через карточку в каталоге.",
+    messagingOn: "Переписка",
+    monitoringOn: "Мониторинг",
+    monitoringPolled: "посты собраны {time}",
+    monitoringOff: "Мониторинг выключен",
+    monitoringAwaiting: "Мониторинг: ждёт разрешения Meta",
+    monitoringAwaitingHint: "Посты и комментарии этой страницы начнут собираться, когда Meta разрешит приложению LeadDrive их читать. Переписка уже работает.",
+    monitoringTurnOn: "Включить мониторинг",
+    disconnectBodySocial: "Новые сообщения с этой страницы перестанут приходить во «Входящие», а «Мониторинг соцсетей» перестанет собирать её посты и комментарии. Вся переписка и уже собранные упоминания останутся в CRM. Подключить страницу снова можно через карточку в каталоге.",
+    deleteBodySocial: "Настройки канала будут удалены: сообщения с этой страницы перестанут приходить, а «Мониторинг соцсетей» перестанет собирать её посты и комментарии. Вся переписка и собранные упоминания останутся в CRM. Подключить снова можно через карточку в каталоге.",
     noResults: "По этому поиску каналов нет.",
     noResultsHint: "Очистите поиск или вернитесь во вкладку «Все», чтобы увидеть всех провайдеров.",
     active: "активных",
@@ -597,6 +634,15 @@ const copy = {
     disconnectBody: "Kanal mesaj qəbul etməyi və göndərməyi dayandıracaq, LeadDrive-ın bu kanal üçün Meta-ya girişi götürüləcək. Bütün yazışmalar CRM-də qalır. Kataloqdakı kartdan onu yenidən qoşa bilərsiniz.",
     deleteTitle: "{name} silinsin?",
     deleteBody: "Kanalın ayarları silinəcək və o, mesaj qəbul etməyi və göndərməyi dayandıracaq. Bütün yazışmalar CRM-də qalır. Yenidən qoşmaq üçün onu kataloqdakı kartdan quraşdırın.",
+    messagingOn: "Mesajlaşma",
+    monitoringOn: "Monitorinq",
+    monitoringPolled: "paylaşımlar {time} yığılıb",
+    monitoringOff: "Monitorinq söndürülüb",
+    monitoringAwaiting: "Monitorinq: Meta icazəsi gözlənilir",
+    monitoringAwaitingHint: "Meta LeadDrive tətbiqinə oxumağa icazə verəndə bu səhifənin paylaşımları və şərhləri yığılmağa başlayacaq. Mesajlaşma artıq işləyir.",
+    monitoringTurnOn: "Monitorinqi yandır",
+    disconnectBodySocial: "Bu səhifədən yeni mesajlar «Gələn qutusu»na gəlməyəcək, «Sosial Monitorinq» isə onun paylaşımlarını və şərhlərini yığmağı dayandıracaq. Bütün yazışmalar və artıq yığılmış qeydlər CRM-də qalır. Səhifəni kataloqdakı kartdan yenidən qoşa bilərsiniz.",
+    deleteBodySocial: "Kanalın ayarları silinəcək: bu səhifədən mesajlar gəlməyəcək, «Sosial Monitorinq» isə onun paylaşımlarını və şərhlərini yığmağı dayandıracaq. Bütün yazışmalar və yığılmış qeydlər CRM-də qalır. Yenidən qoşmaq üçün kataloqdakı kartdan istifadə edin.",
     noResults: "Bu axtarışa uyğun kanal yoxdur.",
     noResultsHint: "Axtarışı təmizləyin və ya bütün provayderləri görmək üçün Hamısı bölməsinə qayıdın.",
     active: "aktiv",
@@ -1679,6 +1725,8 @@ function ChannelsPageInner() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState("")
   const [deleteKind, setDeleteKind] = useState<ChannelRemovalKind>("delete")
+  // Facebook/Instagram rows also feed Social Monitoring; their confirm text says it stops too.
+  const [deleteMonitored, setDeleteMonitored] = useState(false)
   const [testPhone, setTestPhone] = useState("")
   const [testTemplateName, setTestTemplateName] = useState("hello_world")
   const [testLanguageCode, setTestLanguageCode] = useState("en_US")
@@ -2161,9 +2209,39 @@ function ChannelsPageInner() {
                   className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
                 >
                   <CheckCircle2 className="h-3 w-3" />
-                  {c.connected}
+                  {channel.monitoring ? c.messagingOn : c.connected}
                 </span>
               )}
+              {channel.monitoring?.state === "on" ? (
+                <span
+                  data-testid="channel-row-monitoring"
+                  data-state="on"
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                  {channel.monitoring.lastPolledAt
+                    ? `${c.monitoringOn} · ${c.monitoringPolled.replace("{time}", formatPolledAt(channel.monitoring.lastPolledAt, locale))}`
+                    : c.monitoringOn}
+                </span>
+              ) : channel.monitoring?.state === "off" ? (
+                <span
+                  data-testid="channel-row-monitoring"
+                  data-state="off"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                >
+                  {c.monitoringOff}
+                </span>
+              ) : channel.monitoring?.state === "awaiting_meta" ? (
+                <span
+                  data-testid="channel-row-monitoring"
+                  data-state="awaiting_meta"
+                  title={c.monitoringAwaitingHint}
+                  className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                >
+                  <Clock3 className="h-3 w-3" />
+                  {c.monitoringAwaiting}
+                </span>
+              ) : null}
             </div>
             <div className="text-xs text-muted-foreground">
               {[card?.title || channel.channelType, channelProvider(channel), channel.phoneNumber].filter(Boolean).join(" · ")}
@@ -2184,6 +2262,11 @@ function ChannelsPageInner() {
             </Button>
           ) : (
             <>
+              {channel.monitoring?.state === "off" && (
+                <Button asChild size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
+                  <a href={monitoringStartHref(channel)} data-testid="channel-row-monitoring-on">{c.monitoringTurnOn}</a>
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="secondary"
@@ -2218,6 +2301,7 @@ function ChannelsPageInner() {
                   setDeleteId(channel.id)
                   setDeleteName(channel.configName)
                   setDeleteKind(channelRemovalKind(channel.channelType, channel.isActive))
+                  setDeleteMonitored(Boolean(channel.monitoring))
                 }}
               >
                 {channelRemovalKind(channel.channelType, channel.isActive) === "disconnect"
@@ -3039,7 +3123,9 @@ function ChannelsPageInner() {
         onOpenChange={(open) => { if (!open) setDeleteId(null) }}
         onConfirm={handleDelete}
         title={(deleteKind === "disconnect" ? c.disconnectTitle : c.deleteTitle).replace("{name}", deleteName)}
-        description={deleteKind === "disconnect" ? c.disconnectBody : c.deleteBody}
+        description={deleteMonitored
+          ? (deleteKind === "disconnect" ? c.disconnectBodySocial : c.deleteBodySocial)
+          : (deleteKind === "disconnect" ? c.disconnectBody : c.deleteBody)}
         confirmLabel={deleteKind === "disconnect" ? c.disconnect : c.delete}
         loadingLabel={deleteKind === "disconnect" ? c.disconnecting : undefined}
       />

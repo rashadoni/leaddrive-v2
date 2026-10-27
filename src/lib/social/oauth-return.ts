@@ -17,9 +17,13 @@
 // the connected list shows the row — instead of the setup wizard's page (owner: «каша»). The catalog reads
 // `oauth` to know which channel type the result is about and renders the same banner the wizard does
 // (lib/channels/meta-oauth-return-banner).
+// `channels-monitoring` is the «turn on monitoring» button on a Facebook/Instagram row of the catalog: the same
+// Facebook login as Social Monitoring's (the monitoring Meta app — the Messenger app cannot read posts yet), but it
+// lands back on the row it was pressed on (lib/channels/meta-monitoring-state).
 const RETURN_TARGETS = {
   "channels-facebook": "/settings/channels?oauth=facebook",
   "channels-instagram": "/settings/channels?oauth=instagram",
+  "channels-monitoring": "/settings/channels?oauth=facebook",
 } as const
 
 const DEFAULT_RETURN_PATH = "/social-monitoring"
@@ -33,6 +37,7 @@ export type OAuthReturnKey = keyof typeof RETURN_TARGETS
 const RETURN_CHANNEL_TYPES: Record<OAuthReturnKey, "facebook" | "instagram"> = {
   "channels-facebook": "facebook",
   "channels-instagram": "instagram",
+  "channels-monitoring": "facebook",
 }
 
 /**
