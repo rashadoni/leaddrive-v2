@@ -26516,6 +26516,8 @@
     "open": "Bölməni aç",
     "configure": "Qur",
     "discuss": "Qoşulmanı müzakirə et",
+    "discussSubject": "LeadDrive moduluna giriş",
+    "discussHint": "Seçilmiş modul haqqında e-poçt qaralaması açılacaq. Onu e-poçt proqramınızda göndərin və ya birbaşa yazın:",
     "contactAdmin": "Bağlantıları və girişi təşkilatınızın administratoru idarə edir.",
     "accessNote": "Giriş təşkilatın parametrləri və rolunuzla müəyyən edilir. Bu səhifə tarifi dəyişmir və ödənişli modulları aktivləşdirmir.",
     "connectionNote": "Modula giriş xarici xidmətlə bağlantını təsdiqləmir. Bağlantının vəziyyətini mövcud parametrlərdə yoxlayın.",

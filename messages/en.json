@@ -26520,6 +26520,8 @@
     "open": "Open workspace",
     "configure": "Configure",
     "discuss": "Discuss access",
+    "discussSubject": "LeadDrive module access",
+    "discussHint": "This opens an email draft about the selected module. Send it in your email app, or write directly to:",
     "contactAdmin": "Your organisation’s administrator manages connections and access.",
     "accessNote": "Access follows your organisation’s settings and your role. This page does not change your plan or activate paid modules.",
     "connectionNote": "Module access does not confirm a connection to an external service. Check the connection in its existing settings.",
