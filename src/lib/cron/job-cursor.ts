@@ -35,17 +35,29 @@ export function prismaJobCursorStore(db: Pick<PrismaClient, "$queryRaw"> = prism
       if (!validCursor(previousCursor) || !validCursor(nextCursor)) {
         throw new Error("JOB_CURSOR_VALUE_INVALID")
       }
-      const rows = await db.$queryRaw<CursorRow[]>`
-        INSERT INTO "system_job_cursors" ("name", "cursor", "version", "updatedAt")
-        SELECT ${name}, ${nextCursor}, 1, CURRENT_TIMESTAMP
-        WHERE ${previousCursor}::text IS NULL
-        ON CONFLICT ("name") DO UPDATE
-        SET "cursor" = EXCLUDED."cursor",
-            "version" = "system_job_cursors"."version" + 1,
-            "updatedAt" = CURRENT_TIMESTAMP
-        WHERE "system_job_cursors"."cursor" IS NOT DISTINCT FROM ${previousCursor}
-        RETURNING "cursor"
-      `
+      // Only a null cursor may create the row. A non-null previous cursor is a
+      // plain UPDATE: as one INSERT … SELECT … WHERE previous IS NULL it
+      // selected no row, ON CONFLICT never fired, and every swap after the
+      // first failed (mtm-attendance-reminders answered 500 from 2026-10-13).
+      const rows = previousCursor === null
+        ? await db.$queryRaw<CursorRow[]>`
+          INSERT INTO "system_job_cursors" ("name", "cursor", "version", "updatedAt")
+          VALUES (${name}, ${nextCursor}, 1, CURRENT_TIMESTAMP)
+          ON CONFLICT ("name") DO UPDATE
+          SET "cursor" = EXCLUDED."cursor",
+              "version" = "system_job_cursors"."version" + 1,
+              "updatedAt" = CURRENT_TIMESTAMP
+          WHERE "system_job_cursors"."cursor" IS NULL
+          RETURNING "cursor"
+        `
+        : await db.$queryRaw<CursorRow[]>`
+          UPDATE "system_job_cursors"
+          SET "cursor" = ${nextCursor},
+              "version" = "version" + 1,
+              "updatedAt" = CURRENT_TIMESTAMP
+          WHERE "name" = ${name} AND "cursor" = ${previousCursor}
+          RETURNING "cursor"
+        `
       return rows.length === 1
     },
   }
