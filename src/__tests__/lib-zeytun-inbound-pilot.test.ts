@@ -376,7 +376,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect((await f.handle(request())).status).toBe(403)
   })
 
-  it("takes a newer snapshot but never a stale one, and lasts at most a month", async () => {
+  it("takes a newer snapshot but never a stale one, and an end date at most a month away", async () => {
     const f = lineFixture()
     expect((await f.handle(search())).status).toBe(200)
     const stale = lineFixture()
@@ -385,6 +385,25 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     const long = lineFixture()
     long.dependencies.loadConfig.mockImplementation(async () => ({ ...structuredClone(line), expiresAt: new Date(now + 32 * 24 * 3600_000).toISOString() }))
     expect(await (await long.handle(request())).json()).toEqual({ enabled: false })
+  })
+
+  // Owner, 2026-10-27: the line must not stop by itself on its renewal date.
+  it("without an end date lasts as long as the number is the organization's, with the full call length", async () => {
+    const open = lineFixture()
+    const { expiresAt: _dropped, ...endless } = structuredClone(line)
+    open.dependencies.loadConfig.mockImplementation(async () => structuredClone(endless))
+    const session = await (await open.handle(request())).json()
+    expect(session).toMatchObject({ enabled: true, maxSeconds: 900 })
+    expect(session).not.toHaveProperty("expiresAt")
+    expect((await open.handle(search())).status).toBe(200)
+    // Not before it was issued; a rehearsal without its end is no grant at all.
+    const early = lineFixture()
+    early.dependencies.loadConfig.mockImplementation(async () => ({ ...structuredClone(endless), issuedAt: new Date(now + 60_000).toISOString() }))
+    expect((await early.handle(search())).status).toBe(403)
+    const { expiresAt: _end, ...rehearsal } = config
+    const f = fixture()
+    f.dependencies.loadConfig.mockResolvedValue(rehearsal)
+    expect((await f.handle(search())).status).toBe(503)
   })
 
   it("saves the list with the pharmacy the caller named", async () => {
