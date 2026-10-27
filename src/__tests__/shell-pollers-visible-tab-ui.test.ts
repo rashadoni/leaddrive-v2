@@ -12,7 +12,9 @@
  *
  * The shell's real pollers are rendered together — VoipCallProvider, Sidebar,
  * NotificationBell, TicketNotifier — over a stubbed network, and the test
- * counts what reaches it.
+ * counts what reaches it. Rendered without ShellEventsProvider, they run as
+ * they do when the event stream is down: polling, the fallback. The stream
+ * itself is shell-events-live-ui.test.ts.
  */
 import { act, createElement, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -222,7 +224,7 @@ describe("the shell's pollers on an idle tab", () => {
     for (const poller of POLLERS) expect({ poller, asked: asked(poller) }).toEqual({ poller, asked: 1 })
   })
 
-  it("an idle tab on screen keeps its rhythm: calls 5 s, bell 10 s, tickets 2 s then 12 s, inbox 20 s, chat 30 s", async () => {
+  it("without the event stream an idle tab keeps its rhythm: calls 5 s, bell 10 s, tickets 12 s, inbox 20 s, chat 30 s", async () => {
     await render()
     await advance(0)
     const start = askedAll()
@@ -233,7 +235,7 @@ describe("the shell's pollers on an idle tab", () => {
       tickets: asked(TICKETS) - start[TICKETS],
       inbox: asked(INBOX_BADGE) - start[INBOX_BADGE],
       chat: asked(WEB_CHAT) - start[WEB_CHAT],
-    }).toEqual({ calls: 12, bell: 6, tickets: 6, inbox: 3, chat: 2 })
+    }).toEqual({ calls: 12, bell: 6, tickets: 5, inbox: 3, chat: 2 })
   })
 
   it("an organisation without the inbox module is never asked for the web-chat count", async () => {

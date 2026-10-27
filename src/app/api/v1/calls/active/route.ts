@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { accessibleCallWhere } from "@/lib/calls/access"
+import { ACTIVE_CALL_STATUSES, activeCallWindow } from "@/lib/calls/active-call-window"
 import { checkPermission } from "@/lib/permissions"
 import { withRlsAuth } from "@/lib/with-rls"
 
@@ -35,19 +36,12 @@ type LeadDisplayRow = {
 export const GET = withRlsAuth("voip", "read", async (_req, auth) => {
   try {
     const role = auth.role || "viewer"
-    const since = new Date(Date.now() - 5 * 60 * 1000)
     const activeCalls: ActiveCallRow[] = await prisma.callLog.findMany({
       where: {
         organizationId: auth.orgId,
-        status: { in: ["ringing", "answering", "in-progress", "initiated"] },
-        AND: [
-          accessibleCallWhere(role, auth.userId),
-          // Provider delivery may be delayed or replayed. Use the provider's
-          // observed start, not the database insertion time, so a spooled old
-          // ringing event cannot appear as a live call. A call the AI handed
-          // to a person rings from the handoff, however long the AI talked.
-          { OR: [{ startedAt: { gte: since } }, { handoffRequestedAt: { gte: since } }] },
-        ],
+        status: { in: ACTIVE_CALL_STATUSES },
+        // Shared with the shell event watcher, so it announces exactly what this shows.
+        AND: [accessibleCallWhere(role, auth.userId), activeCallWindow(Date.now())],
       },
       select: {
         id: true,

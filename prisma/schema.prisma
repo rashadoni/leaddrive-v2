@@ -3280,6 +3280,7 @@ model Notification {
   createdAt      DateTime @default(now())
 
   @@index([organizationId, userId])
+  @@index([organizationId, createdAt])
   @@map("notifications")
 }
 

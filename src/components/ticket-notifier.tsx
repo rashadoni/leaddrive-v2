@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
-import { startVisibleInterval } from "@/lib/client/visible-interval"
+import { useShellRefresh } from "@/components/shell-events-provider"
 import { useTicketBadge } from "@/contexts/ticket-badge-context"
 
 const POLL_INTERVAL = 12_000
@@ -100,11 +100,9 @@ export function TicketNotifier() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!hasSession) return
-    // First poll 2 s after mount; on screen only, and at once when the tab comes back.
-    return startVisibleInterval(() => void poll(), POLL_INTERVAL, { firstTickAfterMs: 2000 })
-  }, [hasSession, poll])
+  // Read when the shell's event stream says a ticket arrived; without the
+  // stream, every POLL_INTERVAL. On screen only, and at once when the tab comes back.
+  useShellRefresh("tickets", () => void poll(), POLL_INTERVAL, hasSession)
 
   return null
 }
