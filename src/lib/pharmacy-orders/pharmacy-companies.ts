@@ -124,8 +124,8 @@ export const PHARMACY_FILTERS = ["all", "ordered", "dormant", "shared", "removed
 export type PharmacyFilter = typeof PHARMACY_FILTERS[number]
 
 /** The list on «Телефонные заказы → Аптеки»: the counts for each filter and
- * up to `limit` pharmacies, the most recent orderer first. */
-export async function listPharmacies(db: PrismaClient, orgId: string, input: { filter: PharmacyFilter; q: string; now?: Date; limit?: number }) {
+ * one page of pharmacies, the most recent orderer first. */
+export async function listPharmacies(db: PrismaClient, orgId: string, input: { filter: PharmacyFilter; q: string; now?: Date; page?: number }) {
   const now = input.now ?? new Date()
   const since = new Date(now.getTime() - 30 * DAY)
   const [companies, allTime, recent] = await Promise.all([
@@ -170,10 +170,16 @@ export async function listPharmacies(db: PrismaClient, orgId: string, input: { f
   const found = rows.filter(matches[input.filter]).filter(row => !q
     || [row.name, row.address, row.city].some(value => value?.toLocaleLowerCase("az").includes(q))
     || (digits.length >= 4 && (row.phone ?? "").replace(/\D/gu, "").includes(digits)))
-  found.sort((a, b) => (b.lastOrderAt ?? "").localeCompare(a.lastOrderAt ?? "") || a.name.localeCompare(b.name, "az"))
+  found.sort((a, b) => (b.lastOrderAt ?? "").localeCompare(a.lastOrderAt ?? "") || a.name.localeCompare(b.name, "az") || a.id.localeCompare(b.id))
   const syncedAt = companies.reduce<Date | null>((max, company) =>
     company.externalSyncedAt && (!max || company.externalSyncedAt > max) ? company.externalSyncedAt : max, null)
-  return { counts, total: found.length, rows: found.slice(0, input.limit ?? 100), syncedAt: syncedAt?.toISOString() ?? null }
+  const pageSize = 100
+  const totalPages = Math.max(1, Math.ceil(found.length / pageSize))
+  const requestedPage = Number.isSafeInteger(input.page) && input.page! > 0 ? input.page! : 1
+  const page = Math.min(requestedPage, totalPages)
+  const offset = (page - 1) * pageSize
+  return { counts, total: found.length, page, pageSize, totalPages,
+    rows: found.slice(offset, offset + pageSize), syncedAt: syncedAt?.toISOString() ?? null }
 }
 
 /** The «Заказы» tab of a pharmacy's card: its orders and three figures. */

@@ -362,6 +362,32 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(tab).toMatchObject({ monthOrders: 0, orders: [{ label: "TS-1001", total: "125.00" }] })
   })
 
+  it("serves every pharmacy through the paged route under tenant RLS", async () => {
+    await sync(pharmacyRows(243), T1)
+    const { GET: pharmaciesRoute } = await import("@/app/api/v1/pharmacy-orders/pharmacies/route")
+    const pages = []
+    for (let page = 1; page <= 3; page++) {
+      const response = await pharmaciesRoute(json("GET", `/api/v1/pharmacy-orders/pharmacies?page=${page}`))
+      expect(response.status).toBe(200)
+      pages.push((await response.json()).data)
+    }
+    expect(pages.map(page => page.rows.length)).toEqual([100, 100, 43])
+    for (const [index, page] of pages.entries()) {
+      expect(page).toMatchObject({ page: index + 1, pageSize: 100, totalPages: 3, total: 243, counts: { all: 243 } })
+    }
+    const ids = pages.flatMap(page => page.rows.map((row: { id: string }) => row.id))
+    expect(new Set(ids).size).toBe(243)
+    expect([...ids].sort()).toEqual((await admin.company.findMany({ where: { organizationId: ZEYTUN }, select: { id: true } })).map(row => row.id).sort())
+    const searched = (await (await pharmaciesRoute(json("GET", "/api/v1/pharmacy-orders/pharmacies?q=Aptek%20243&page=3"))).json()).data
+    expect(searched).toMatchObject({ page: 1, total: 1, totalPages: 1, rows: [{ name: "Aptek 243" }] })
+    const invalid = (await (await pharmaciesRoute(json("GET", "/api/v1/pharmacy-orders/pharmacies?page=NaN"))).json()).data
+    expect(invalid).toMatchObject({ page: 1, total: 243 })
+    const { runWithTenant } = await import("@/lib/rls-context")
+    const { listPharmacies } = await import("@/lib/pharmacy-orders/pharmacy-companies")
+    expect(await runWithTenant(OTHER, () => listPharmacies(app as unknown as PrismaClient, OTHER, { filter: "all", q: "", page: 3 })))
+      .toMatchObject({ total: 0, page: 1, rows: [] })
+  })
+
   it("keeps what 1C owns out of the company form, and does not delete a 1C pharmacy", async () => {
     await admin.organization.update({ where: { id: ZEYTUN }, data: { modules: { mtm: true, crm: true } } })
     await sync(pharmacyRows(3), T1)
