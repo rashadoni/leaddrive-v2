@@ -20,7 +20,7 @@ import {
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
-import { startVisibleInterval } from "@/lib/client/visible-interval"
+import { useShellRefresh } from "@/components/shell-events-provider"
 import { deriveSection } from "@/lib/notifications/taxonomy"
 import { onNotificationPreferencesChanged } from "@/lib/notifications/preferences-changed"
 import {
@@ -196,13 +196,11 @@ export function NotificationBell() {
     } catch {}
   }, [orgId, t])
 
-  // 10s — snappier toast popups for inbound + participant notifications (was 30s).
-  // On screen only; a tab coming back asks at once, so what arrived meanwhile
-  // pops up on return.
-  useEffect(() => {
-    if (identityKey === null) return
-    return startVisibleInterval(() => void fetchNotifications(), 10000, { firstTickAfterMs: 0 })
-  }, [identityKey, fetchNotifications])
+  // Read when the shell's event stream says a notification arrived for this
+  // person; without the stream, every 10 s (snappier toast popups for inbound +
+  // participant notifications, was 30s). On screen only; a tab coming back
+  // reads at once, so what arrived meanwhile pops up on return.
+  useShellRefresh("notifications", () => void fetchNotifications(), 10000, identityKey !== null)
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     setOpen(nextOpen)

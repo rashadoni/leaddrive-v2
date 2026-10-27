@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { useSession } from "next-auth/react"
 import { IncomingCallPopup } from "./incoming-call-popup"
 import { selectVoipPopupCall } from "@/lib/voip/active-call-selection"
-import { startVisibleInterval } from "@/lib/client/visible-interval"
+import { useShellRefresh } from "./shell-events-provider"
 
 interface ActiveCall {
   id: string
@@ -67,13 +67,11 @@ export function VoipCallProvider({ children }: { children: React.ReactNode }) {
     }
   }, [hasSessionUser])
 
-  // Only a tab on screen asks: the popup is answered by a click, and nothing
-  // here rings. The tab coming back asks at once, so a call still ringing
-  // shows up the moment the person returns.
-  useEffect(() => {
-    if (!hasSessionUser) return
-    return startVisibleInterval(() => void fetchActiveCalls(), POLL_INTERVAL, { firstTickAfterMs: 0 })
-  }, [hasSessionUser, fetchActiveCalls])
+  // Read when the shell's event stream says a call changed (it rang, was
+  // answered or claimed, ended); without the stream, every POLL_INTERVAL as
+  // before. Only a tab on screen reads: the popup is answered by a click, and
+  // nothing here rings. A tab coming back reads at once.
+  useShellRefresh("calls", () => void fetchActiveCalls(), POLL_INTERVAL, hasSessionUser)
 
   useEffect(() => {
     if (!currentUserId) return

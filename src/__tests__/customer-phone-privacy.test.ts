@@ -46,6 +46,13 @@ describe("phone privacy response boundary", () => {
     expect((await withCustomerPhonePrivacy(req(path), "org1", auth, handler)).status).toBe(403)
     expect(handler).not.toHaveBeenCalled()
   })
+  it.each(["/api/v1/inbox/stream", "/api/v1/shell/events"])("lets the signal-only stream %s through, and no other stream", async path => {
+    const stream = () => new Response("event: calls\ndata: {}\n\n", { headers: { "content-type": "text/event-stream; charset=utf-8" } })
+    const passed = await withCustomerPhonePrivacy(req(path), "org1", auth, stream)
+    expect(passed.status).toBe(200)
+    expect(passed.headers.get("content-type")).toContain("text/event-stream")
+    expect((await withCustomerPhonePrivacy(req("/api/v1/contacts/stream"), "org1", auth, stream)).status).toBe(403)
+  })
   it("refuses an unexpected binary response", async () => {
     const res = await withCustomerPhonePrivacy(req(), "org1", auth, () => new Response("994501234567", { headers: { "content-type": "text/csv" } }))
     expect(res.status).toBe(403)

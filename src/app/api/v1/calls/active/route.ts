@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { accessibleCallWhere } from "@/lib/calls/access"
+import { ACTIVE_CALL_MAX_AGE_MS, ACTIVE_CALL_STATUSES } from "@/lib/calls/active-call-window"
 import { checkPermission } from "@/lib/permissions"
 import { withRlsAuth } from "@/lib/with-rls"
 
@@ -39,11 +40,8 @@ export const GET = withRlsAuth("voip", "read", async (_req, auth) => {
       where: {
         organizationId: auth.orgId,
         AND: [accessibleCallWhere(role, auth.userId)],
-        status: { in: ["ringing", "answering", "in-progress", "initiated"] },
-        // Provider delivery may be delayed or replayed. Use the provider's
-        // observed start, not the database insertion time, so a spooled old
-        // ringing event cannot appear as a live call.
-        startedAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+        status: { in: ACTIVE_CALL_STATUSES },
+        startedAt: { gte: new Date(Date.now() - ACTIVE_CALL_MAX_AGE_MS) },
       },
       select: {
         id: true,

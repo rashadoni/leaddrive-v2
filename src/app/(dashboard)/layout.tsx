@@ -25,6 +25,7 @@ import { TicketBadgeProvider } from "@/contexts/ticket-badge-context"
 import { DashboardWallpaper } from "@/components/dashboard-wallpaper"
 import { TicketNotifier } from "@/components/ticket-notifier"
 import { VoipCallProvider } from "@/components/voip-call-provider"
+import { ShellEventsProvider } from "@/components/shell-events-provider"
 import { TourProvider } from "@/components/tour/tour-provider"
 import { TourRenderer } from "@/components/tour/tour-renderer"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -167,6 +168,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <TicketBadgeProvider>
           <TourProvider>
+          <ShellEventsProvider>
           <VoipCallProvider>
           <TooltipProvider delayDuration={200}>
           <LauncherPrefsProvider>
@@ -244,6 +246,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </LauncherPrefsProvider>
           </TooltipProvider>
           </VoipCallProvider>
+          </ShellEventsProvider>
           </TourProvider>
           </TicketBadgeProvider>
         </QueryClientProvider>
