@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
+import { startVisibleInterval } from "@/lib/client/visible-interval"
 import { useTicketBadge } from "@/contexts/ticket-badge-context"
 
 const POLL_INTERVAL = 12_000
@@ -27,8 +28,8 @@ export function TicketNotifier() {
   const t = useTranslations("ticketNotification")
   const { setNewTicketCount, resetBadge, lastCheckedAt, updateLastChecked } = useTicketBadge()
   const prevCountRef = useRef(0)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stoppedRef = useRef(false)
+  const hasSession = Boolean(session)
 
   // Reset badge when user navigates to tickets page
   useEffect(() => {
@@ -58,13 +59,18 @@ export function TicketNotifier() {
     )
   }, [t, router])
 
+  // The poll reads these when it runs. As its dependencies they restarted it,
+  // with an extra request 2 s later, on every navigation, every session read
+  // and every new ticket.
+  const current = useRef({ lastCheckedAt, pathname, setNewTicketCount, playSound, showToast, updateLastChecked })
+  useEffect(() => {
+    current.current = { lastCheckedAt, pathname, setNewTicketCount, playSound, showToast, updateLastChecked }
+  })
+
   const poll = useCallback(async () => {
     if (stoppedRef.current) return
-    if (document.visibilityState !== "visible") return
-    if (!session) return
-
     try {
-      const res = await fetch(`/api/v1/tickets/new-count?since=${encodeURIComponent(lastCheckedAt)}`)
+      const res = await fetch(`/api/v1/tickets/new-count?since=${encodeURIComponent(current.current.lastCheckedAt)}`)
       // 401 (unauthenticated) or 403 (no tickets access for this org, e.g. a
       // monitoring-only tenant): stop polling instead of re-firing every tick
       // and flooding the console with the same forbidden request.
@@ -80,32 +86,25 @@ export function TicketNotifier() {
       const { latest } = data
 
       if (count > 0 && count !== prevCountRef.current) {
-        setNewTicketCount(count)
-        if (latest && !pathname?.startsWith("/tickets")) {
-          playSound()
-          showToast(latest)
+        const now = current.current
+        now.setNewTicketCount(count)
+        if (latest && !now.pathname?.startsWith("/tickets")) {
+          now.playSound()
+          now.showToast(latest)
         }
-        updateLastChecked()
+        now.updateLastChecked()
       }
       prevCountRef.current = count
     } catch {
       // Network error — skip this poll
     }
-  }, [session, lastCheckedAt, setNewTicketCount, playSound, showToast, updateLastChecked, pathname])
+  }, [])
 
   useEffect(() => {
-    if (!session) return
-
-    // Initial poll
-    const timeout = setTimeout(poll, 2000)
-
-    intervalRef.current = setInterval(poll, POLL_INTERVAL)
-
-    return () => {
-      clearTimeout(timeout)
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [session, poll])
+    if (!hasSession) return
+    // First poll 2 s after mount; on screen only, and at once when the tab comes back.
+    return startVisibleInterval(() => void poll(), POLL_INTERVAL, { firstTickAfterMs: 2000 })
+  }, [hasSession, poll])
 
   return null
 }

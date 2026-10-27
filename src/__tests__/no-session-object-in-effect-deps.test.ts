@@ -55,7 +55,6 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/notifications/page.tsx",
   "src/app/(dashboard)/offers/[id]/page.tsx",
   "src/app/(dashboard)/offers/page.tsx",
-  "src/app/(dashboard)/page.tsx",
   "src/app/(dashboard)/pricing/page.tsx",
   "src/app/(dashboard)/products/[id]/page.tsx",
   "src/app/(dashboard)/products/page.tsx",
@@ -67,8 +66,6 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/settings/workflows/page.tsx",
   "src/app/(dashboard)/tasks/page.tsx",
   "src/components/ai/voice-console.tsx",
-  "src/components/notification-bell.tsx",
-  "src/components/ticket-notifier.tsx",
   "src/hooks/use-field-permissions.ts",
 ])
 

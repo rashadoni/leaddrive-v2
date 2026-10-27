@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEven
 import { Logo } from "@/components/logo"
 import { useTranslations } from "next-intl"
 import { useTicketBadge } from "@/contexts/ticket-badge-context"
+import { startVisibleInterval } from "@/lib/client/visible-interval"
 
 // Hoisted out of their own group and shown directly under /dashboard. Both are
 // AI surfaces a director opens first thing, and both lived in Analytics — which
@@ -117,9 +118,10 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     return () => media.removeEventListener("change", syncViewport)
   }, [])
 
+  // Once per page load. This used to share the effect below, which re-runs
+  // when the menu learns the organisation's modules, so every load registered
+  // the subscription twice (vapid-key + subscribe, two pairs).
   useEffect(() => {
-    let cancelled = false
-
     // Lazy-ask Notification permission + register Web Push subscription on
     // first user click. Browsers reject both without a user gesture; once
     // granted, push works even when the browser is fully closed (sw.js).
@@ -140,6 +142,14 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
         import("@/lib/push-client").then(m => m.registerPush()).catch(() => {})
       }
     }
+  }, [])
+
+  // Both badges are asked for only while the tab is on screen
+  // (startVisibleInterval). A visitor writing to a hidden or closed tab is
+  // announced by the web push the message route sends; the local Notification
+  // below covers a tab on screen in a window that is not focused.
+  useEffect(() => {
+    let cancelled = false
 
     const notify = (delta: number) => {
       if (typeof window === "undefined" || !("Notification" in window)) return
@@ -179,16 +189,22 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
         }
       } catch {}
     }
-    let webChatId: ReturnType<typeof setInterval> | undefined
     if (webChatEnabled) {
-      tick()
-      webChatId = setInterval(tick, 30000)
-    } else {
-      setWebChatUnread(0)
+      const stopWebChat = startVisibleInterval(() => void tick(), 30000, { firstTickAfterMs: 0 })
+      return () => {
+        cancelled = true
+        stopWebChat()
+      }
     }
+    setWebChatUnread(0)
+    return () => { cancelled = true }
+  }, [webChatEnabled])
 
-    // Inbox notification badge — unread inbox_message notifications for this user (the assignee + the
-    // collaborators fan-out). 20s poll so the menu badge tracks the bell without much extra load.
+  // Inbox notification badge — unread inbox_message notifications for this user (the assignee + the
+  // collaborators fan-out). 20s poll so the menu badge tracks the bell without much extra load.
+  // Its own effect: it does not depend on the modules, so it no longer runs twice per page load.
+  useEffect(() => {
+    let cancelled = false
     const pollInboxNotif = async () => {
       try {
         const res = await fetch("/api/v1/notifications?entityType=inbox_message")
@@ -197,19 +213,17 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
         if (!cancelled && data?.success) setInboxNotifCount(data.data.unreadCount || 0)
       } catch {}
     }
-    pollInboxNotif()
-    const inboxId = setInterval(pollInboxNotif, 20000)
+    const stopInbox = startVisibleInterval(() => void pollInboxNotif(), 20000, { firstTickAfterMs: 0 })
     // Immediate refresh when the inbox marks its notifications read (don't wait up to 20s for the poll).
     const onInboxRead = () => pollInboxNotif()
     window.addEventListener("inbox-notifs-read", onInboxRead)
 
     return () => {
       cancelled = true
-      if (webChatId) clearInterval(webChatId)
-      clearInterval(inboxId)
+      stopInbox()
       window.removeEventListener("inbox-notifs-read", onInboxRead)
     }
-  }, [webChatEnabled])
+  }, [])
 
   // Filter sidebar items by org modules/features/plan. The gate logic lives in
   // `accessibleNavItems` (@/lib/nav-items) so the sidebar, App Launcher, Cmd+K

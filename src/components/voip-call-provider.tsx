@@ -1,9 +1,10 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { IncomingCallPopup } from "./incoming-call-popup"
 import { selectVoipPopupCall } from "@/lib/voip/active-call-selection"
+import { startVisibleInterval } from "@/lib/client/visible-interval"
 
 interface ActiveCall {
   id: string
@@ -47,8 +48,6 @@ export function VoipCallProvider({ children }: { children: React.ReactNode }) {
     userId: string
     enabled: boolean
   } | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
-
   const fetchActiveCalls = useCallback(async () => {
     if (!hasSessionUser) return
     try {
@@ -68,16 +67,12 @@ export function VoipCallProvider({ children }: { children: React.ReactNode }) {
     }
   }, [hasSessionUser])
 
+  // Only a tab on screen asks: the popup is answered by a click, and nothing
+  // here rings. The tab coming back asks at once, so a call still ringing
+  // shows up the moment the person returns.
   useEffect(() => {
     if (!hasSessionUser) return
-
-    const firstPoll = setTimeout(() => void fetchActiveCalls(), 0)
-    intervalRef.current = setInterval(fetchActiveCalls, POLL_INTERVAL)
-
-    return () => {
-      clearTimeout(firstPoll)
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
+    return startVisibleInterval(() => void fetchActiveCalls(), POLL_INTERVAL, { firstTickAfterMs: 0 })
   }, [hasSessionUser, fetchActiveCalls])
 
   useEffect(() => {
