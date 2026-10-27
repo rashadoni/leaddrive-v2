@@ -18,7 +18,7 @@ type Row = {
   manager: { id: string; name: string | null } | null; removed: boolean
   lastOrderAt: string | null; daysSinceOrder: number | null; monthOrders: number; monthTotal: string
 }
-type Data = { counts: Record<Filter, number>; total: number; rows: Row[]; syncedAt: string | null }
+type Data = { counts: Record<Filter, number>; total: number; page: number; pageSize: number; totalPages: number; rows: Row[]; syncedAt: string | null }
 
 /** «Телефонные заказы → Аптеки»: the 1C pharmacies with what they ordered. */
 export function PharmacyList() {
@@ -26,19 +26,33 @@ export function PharmacyList() {
   const locale = useLocale()
   const [filter, setFilter] = useState<Filter>("all")
   const [query, setQuery] = useState("")
+  const [page, setPage] = useState(1)
   const [data, setData] = useState<Data | null>(null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    let live = true
+    const controller = new AbortController()
     const timer = setTimeout(async () => {
-      const response = await fetch(`/api/v1/pharmacy-orders/pharmacies?filter=${filter}&q=${encodeURIComponent(query.trim())}`, { cache: "no-store" })
-      if (!live) return
-      setFailed(!response.ok)
-      setData(response.ok ? (await response.json()).data : null)
+      try {
+        const response = await fetch(`/api/v1/pharmacy-orders/pharmacies?filter=${filter}&q=${encodeURIComponent(query.trim())}&page=${page}`, {
+          cache: "no-store", signal: controller.signal,
+        })
+        const result = response.ok ? (await response.json()).data as Data : null
+        if (controller.signal.aborted) return
+        setFailed(!response.ok)
+        setData(result)
+      } catch {
+        if (!controller.signal.aborted) { setFailed(true); setData(null) }
+      }
     }, query ? 300 : 0)
-    return () => { live = false; clearTimeout(timer) }
-  }, [filter, query])
+    return () => { controller.abort(); clearTimeout(timer) }
+  }, [filter, query, page])
+
+  const changePage = (nextPage: number) => {
+    setPage(nextPage)
+    setData(null)
+    setFailed(false)
+  }
 
   const lastOrder = (row: Row) => {
     if (!row.lastOrderAt || row.daysSinceOrder === null) return <span className="text-muted-foreground">—</span>
@@ -63,12 +77,24 @@ export function PharmacyList() {
       <PhoneOrdersViews active="pharmacies" />
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {FILTERS.map(value => (
-          <Button key={value} type="button" size="sm" variant={filter === value ? "selected" : "outline"} onClick={() => setFilter(value)}>
+          <Button key={value} type="button" size="sm" variant={filter === value ? "selected" : "outline"} onClick={() => { if (value !== filter) { setFilter(value); changePage(1) } }}>
             {t(`pharmaciesFilter.${value}`)}{data ? ` · ${data.counts[value]}` : ""}
           </Button>
         ))}
-        <Input className="ml-auto w-full sm:w-[300px]" value={query} placeholder={t("pharmaciesSearch")} onChange={event => setQuery(event.target.value)} />
+        <Input className="ml-auto w-full sm:w-[300px]" value={query} placeholder={t("pharmaciesSearch")} onChange={event => { setQuery(event.target.value); changePage(1) }} />
       </div>
+      {data && data.total > 0 ? (
+        <nav aria-label={t("pharmaciesPagination")} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-muted-foreground" aria-live="polite">
+            {t("pharmaciesRange", { from: (data.page - 1) * data.pageSize + 1, to: (data.page - 1) * data.pageSize + data.rows.length, total: data.total })}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="outline" disabled={data.page <= 1} onClick={() => changePage(data.page - 1)}>{t("pharmaciesPrevious")}</Button>
+            <span className="text-xs tabular-nums text-muted-foreground">{t("pharmaciesPage", { page: data.page, total: data.totalPages })}</span>
+            <Button type="button" size="sm" variant="outline" disabled={data.page >= data.totalPages} onClick={() => changePage(data.page + 1)}>{t("pharmaciesNext")}</Button>
+          </div>
+        </nav>
+      ) : null}
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
         {data === null && !failed ? <p className="px-4 py-6 text-sm text-muted-foreground">{t("loading")}</p>
           : failed || !data ? <p className="px-4 py-6 text-sm text-red-600">{t("errorGeneric")}</p>
@@ -110,9 +136,6 @@ export function PharmacyList() {
                   ))}
                 </tbody>
               </table>
-              {data.total > data.rows.length ? (
-                <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">{t("pharmaciesMore", { shown: data.rows.length, total: data.total })}</p>
-              ) : null}
             </div>
           )}
       </section>

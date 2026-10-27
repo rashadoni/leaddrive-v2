@@ -11,5 +11,6 @@ export const GET = withRlsAuth("deals", "read", async (req: NextRequest, auth) =
   const asked = req.nextUrl.searchParams.get("filter") ?? "all"
   const filter = (PHARMACY_FILTERS as readonly string[]).includes(asked) ? asked as PharmacyFilter : "all"
   const q = (req.nextUrl.searchParams.get("q") ?? "").slice(0, 80)
-  return NextResponse.json({ data: await listPharmacies(prisma, auth.orgId, { filter, q }) })
+  const page = Number(req.nextUrl.searchParams.get("page") ?? "1")
+  return NextResponse.json({ data: await listPharmacies(prisma, auth.orgId, { filter, q, page }) })
 })
