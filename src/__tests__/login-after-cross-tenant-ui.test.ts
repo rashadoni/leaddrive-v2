@@ -70,6 +70,12 @@ async function submit() {
   await act(async () => {
     container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
   })
+  // Until the attempt has an outcome — the page went on, or said "wrong" — not
+  // a fixed number of turns: the first test of the file also pays for loading
+  // the sign-in helper, and five turns were sometimes not enough (CI, #1143).
+  for (let turn = 0; turn < 200 && !nav.push.mock.calls.length && !text().includes("auth.invalidCredentials"); turn += 1) {
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)) })
+  }
   for (let turn = 0; turn < 5; turn += 1) await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
 }
 
