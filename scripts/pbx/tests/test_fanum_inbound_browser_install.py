@@ -25,6 +25,17 @@ class InboundBrowserInstallTest(unittest.TestCase):
         self.assertRegex(preflight, r"grep -Fq ['\"]AudioSocket\(['\"]")
         self.assertNotIn("Transmit and receive PCM audio", preflight)
 
+    def test_long_reports_are_read_whole_before_grep_q_matches_them(self):
+        # 2026-10-27: `asterisk -rx "core show application Dial" | grep -Fq` under
+        # pipefail failed on a station that has Dial: grep -q exits early, the
+        # writer gets SIGPIPE. Long reports are captured first, then matched.
+        source = INSTALLER_PATH.read_text(encoding="utf-8")
+        self.assertNotRegex(source, r'core show application \$application"[^\n]*\n?\s*\|\s*grep')
+        self.assertNotRegex(source, r'core show channeltypes"[^\n]*\n?\s*\|\s*grep')
+        self.assertIn('grep -Fiq -- "$application(" <<<"$application_report"', source)
+        # The station's help prints PlayTones( for the dialplan's Playtones().
+        self.assertIn("for application in Dial PlayTones StopPlayTones; do", source)
+
 
 if __name__ == "__main__":
     unittest.main()
