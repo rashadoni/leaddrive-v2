@@ -50,13 +50,24 @@ vi.mock("next/link", () => ({
 // the bell's fetch callback and restart its poll, which the real hook never does.
 const t = vi.hoisted(() => Object.assign((key: string) => key, { has: () => false, rich: (key: string) => key }))
 vi.mock("next-intl", () => ({ useTranslations: () => t, useLocale: () => "az" }))
-vi.mock("sonner", () => ({ toast: Object.assign(() => {}, { warning: () => {} }) }))
+const toast = vi.hoisted(() => Object.assign(vi.fn(), { warning: vi.fn() }))
+vi.mock("sonner", () => ({ toast }))
 vi.mock("@/contexts/ticket-badge-context", () => ({ useTicketBadge: () => badge }))
+const registerPush = vi.hoisted(() => vi.fn(async () => ({ ok: true })))
+vi.mock("@/lib/push-client", () => ({ registerPush }))
+
+/** What the two notification APIs hold right now. */
+const server = vi.hoisted(() => ({
+  notifications: [] as Array<{ id: string; type: string; title: string; message: string; entityType: string; isRead: boolean; createdAt: string }>,
+  sectionPush: true,
+}))
 
 import { VoipCallProvider } from "@/components/voip-call-provider"
 import { Sidebar } from "@/components/sidebar"
 import { NotificationBell } from "@/components/notification-bell"
 import { TicketNotifier } from "@/components/ticket-notifier"
+import { announceNotificationPreferencesChanged } from "@/lib/notifications/preferences-changed"
+import { deriveSection } from "@/lib/notifications/taxonomy"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -74,10 +85,11 @@ const askedAll = () => Object.fromEntries([...POLLERS, PREFERENCES].map((key) =>
 
 function answer(key: string): unknown {
   if (key === CALLS) return { success: true, data: [] }
-  if (key === BELL || key === INBOX_BADGE) return { success: true, data: { notifications: [], unreadCount: 0 } }
+  if (key === BELL) return { success: true, data: { notifications: server.notifications, unreadCount: server.notifications.length } }
+  if (key === INBOX_BADGE) return { success: true, data: { notifications: [], unreadCount: 0 } }
   if (key === WEB_CHAT) return { success: true, data: { count: 0 } }
   if (key === TICKETS) return { count: 0 }
-  if (key === PREFERENCES) return { success: true, data: { sections: [] } }
+  if (key === PREFERENCES) return { success: true, data: { sections: [{ key: deriveSection("deal"), push: server.sectionPush, types: [] }] } }
   return { success: true, data: {}, browserCalls: false }
 }
 
@@ -117,6 +129,10 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-27T09:00:00.000Z"))
   requests = []
   visibility = "visible"
+  server.notifications = []
+  server.sectionPush = true
+  toast.mockClear()
+  registerPush.mockClear()
   state.session = {
     iat: 1,
     user: {
@@ -226,6 +242,50 @@ describe("the shell's pollers on an idle tab", () => {
     await advance(60_000)
     expect(asked(WEB_CHAT)).toBe(0)
     expect(asked(CALLS)).toBeGreaterThan(0)
+  })
+
+  it("a preference saved in settings reaches the bell without a reload", async () => {
+    await render()
+    await advance(0)
+    const deal = (id: string) => ({
+      id, type: "info", title: `Deal ${id}`, message: "", entityType: "deal", isRead: false, createdAt: "2026-10-27T09:00:00.000Z",
+    })
+
+    server.notifications = [deal("n-1")]
+    await advance(10_000)
+    expect(toast).toHaveBeenCalledTimes(1)
+
+    // The settings page switches pop-ups off for the section and says so.
+    server.sectionPush = false
+    announceNotificationPreferencesChanged()
+    await advance(0)
+    expect(asked(PREFERENCES)).toBe(2)
+
+    server.notifications = [deal("n-2"), deal("n-1")]
+    await advance(10_000)
+    expect(toast).toHaveBeenCalledTimes(1)
+
+    // Saved in another tab of the same browser: heard as a storage event.
+    window.dispatchEvent(new StorageEvent("storage", { key: "ld-notification-preferences-changed-at", newValue: "1" }))
+    await advance(0)
+    expect(asked(PREFERENCES)).toBe(3)
+  })
+
+  it("registers the push subscription once per load, also when the menu learns the modules", async () => {
+    Object.defineProperty(window, "Notification", { configurable: true, value: { permission: "granted" } })
+    try {
+      state.session = { ...state.session, user: { ...state.session.user, modules: { crm: true, support: true } } }
+      await render()
+      await advance(0)
+      // The organisation's modules arrive: the inbox appears in the menu.
+      state.session = { ...state.session, user: { ...state.session.user, modules: { crm: true, omnichannel: true, support: true } } }
+      await render()
+      await advance(0)
+      expect(asked(WEB_CHAT)).toBe(1)
+      expect(registerPush).toHaveBeenCalledTimes(1)
+    } finally {
+      Reflect.deleteProperty(window, "Notification")
+    }
   })
 
   it("navigating does not restart the ticket poll", async () => {

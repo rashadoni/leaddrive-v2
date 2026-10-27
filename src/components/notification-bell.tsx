@@ -22,6 +22,7 @@ import { toast } from "sonner"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
 import { startVisibleInterval } from "@/lib/client/visible-interval"
 import { deriveSection } from "@/lib/notifications/taxonomy"
+import { onNotificationPreferencesChanged } from "@/lib/notifications/preferences-changed"
 import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
@@ -111,7 +112,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (identityKey === null) return
-    fetch("/api/v1/users/me/notification-preferences")
+    const load = () => fetch("/api/v1/users/me/notification-preferences")
       .then((r) => readJsonSafely<ApiEnvelope<{ sections: Array<{ key: string; push: boolean; types?: Array<{ key: string; enabled: boolean }> }> }>>(r))
       .then((json) => {
         if (json?.success && json.data) {
@@ -126,6 +127,10 @@ export function NotificationBell() {
         }
       })
       .catch(() => {/* best-effort: keep toasting if fetch fails */})
+    void load()
+    // Read once per sign-in, and again when the settings page saves them here
+    // or in another tab of this browser.
+    return onNotificationPreferencesChanged(() => { void load() })
   }, [identityKey])
 
   const fetchNotifications = useCallback(async () => {

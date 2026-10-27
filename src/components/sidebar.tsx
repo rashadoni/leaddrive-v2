@@ -145,9 +145,11 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
   }, [])
 
   // Both badges are asked for only while the tab is on screen
-  // (startVisibleInterval). A visitor writing to a hidden or closed tab is
-  // announced by the web push the message route sends; the local Notification
-  // below covers a tab on screen in a window that is not focused.
+  // (startVisibleInterval). A visitor writing while the tab is hidden or closed
+  // reaches people through the web push the message route sends: the assignee
+  // and collaborators, or admins, managers and support while the chat is
+  // unassigned. A sales user with only a hidden tab no longer gets the local
+  // Notification below; it now covers a tab on screen in an unfocused window.
   useEffect(() => {
     let cancelled = false
 
