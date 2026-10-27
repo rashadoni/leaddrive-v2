@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { accessibleCallWhere } from "@/lib/calls/access"
-import { ACTIVE_CALL_MAX_AGE_MS, ACTIVE_CALL_STATUSES } from "@/lib/calls/active-call-window"
+import { ACTIVE_CALL_STATUSES, activeCallWindow } from "@/lib/calls/active-call-window"
 import { checkPermission } from "@/lib/permissions"
 import { withRlsAuth } from "@/lib/with-rls"
 
@@ -39,9 +39,9 @@ export const GET = withRlsAuth("voip", "read", async (_req, auth) => {
     const activeCalls: ActiveCallRow[] = await prisma.callLog.findMany({
       where: {
         organizationId: auth.orgId,
-        AND: [accessibleCallWhere(role, auth.userId)],
         status: { in: ACTIVE_CALL_STATUSES },
-        startedAt: { gte: new Date(Date.now() - ACTIVE_CALL_MAX_AGE_MS) },
+        // Shared with the shell event watcher, so it announces exactly what this shows.
+        AND: [accessibleCallWhere(role, auth.userId), activeCallWindow(Date.now())],
       },
       select: {
         id: true,

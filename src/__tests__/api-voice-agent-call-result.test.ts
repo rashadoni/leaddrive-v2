@@ -1000,7 +1000,11 @@ describe("POST /api/internal/voice-agent/call-result", () => {
 
     expect(response.status).toBe(404)
     expect(mocks.findCallLog).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ callMode: "ai", direction: "inbound", providerCallId: callId }),
+      where: expect.objectContaining({
+        OR: [{ callMode: "ai" }, { handoffState: { not: null } }],
+        direction: "inbound",
+        providerCallId: callId,
+      }),
     }))
     expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
     expect(mocks.transaction).not.toHaveBeenCalled()
@@ -1011,10 +1015,11 @@ describe("POST /api/internal/voice-agent/call-result", () => {
     const inboundScope = {
       organizationId: "org-test",
       provider: "asterisk",
-      callMode: "ai",
       direction: "inbound",
       providerCallId: callId,
       callSid: callId,
+      // The AI's part of a call it handed to a salesperson's browser.
+      OR: [{ callMode: "ai" }, { handoffState: { not: null } }],
     }
 
     beforeEach(() => {
@@ -1106,6 +1111,35 @@ describe("POST /api/internal/voice-agent/call-result", () => {
 
       expect(response.status).toBe(409)
       expect(mocks.analyzeVoiceCall).not.toHaveBeenCalled()
+    })
+
+    it("adds the AI's second part after a handoff nobody answered, once", async () => {
+      const first = "Agent: Salam!\nMüştəri: Menecerlə danışmaq istəyirəm."
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 })
+      mocks.findCallLog
+        .mockResolvedValueOnce({ id: "inbound-call-1", transcription: first, conversationOutcome: "customer_spoke", consentAudit: null })
+        .mockResolvedValueOnce({ transcription: first, conversationOutcome: "customer_spoke", handoffState: "returned" })
+
+      const response = await POST(request({ callId, durationSeconds: 70,
+        turns: [{ role: "customer", text: "Onda iki qutu Mukorin yazın." }] }))
+
+      expect(response.status).toBe(200)
+      const append = mocks.callLogUpdateMany.mock.calls[1]?.[0]
+      expect(append.where).toEqual({ ...inboundScope, id: "inbound-call-1", transcription: first, conversationOutcome: "customer_spoke" })
+      expect(append.data.transcription.startsWith(`${first}\n\n`)).toBe(true)
+      expect(append.data.transcription).toContain("Onda iki qutu Mukorin yazın.")
+      expect(append.data.conversationOutcome).toBe("customer_spoke")
+
+      // The same second result again changes nothing.
+      mocks.callLogUpdateMany.mockClear()
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 })
+      mocks.findCallLog
+        .mockResolvedValueOnce({ id: "inbound-call-1", transcription: append.data.transcription, conversationOutcome: "customer_spoke", consentAudit: null })
+        .mockResolvedValueOnce({ transcription: append.data.transcription, conversationOutcome: "customer_spoke", handoffState: "returned" })
+      const replay = await POST(request({ callId, durationSeconds: 70,
+        turns: [{ role: "customer", text: "Onda iki qutu Mukorin yazın." }] }))
+      expect(replay.status).toBe(200)
+      expect(mocks.callLogUpdateMany.mock.calls.filter(([args]) => "transcription" in (args.data ?? {}))).toHaveLength(1)
     })
   })
 

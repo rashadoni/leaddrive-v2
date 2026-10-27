@@ -148,6 +148,9 @@ const VOICE_AGENT_CALL_RESULT_PATH = "/api/internal/voice-agent/call-result"
 const VOICE_AGENT_CALL_SOURCE_PATH = "/api/internal/voice-agent/call-source"
 const ASTERISK_HUMAN_CALL_LIFECYCLE_PATH = "/api/internal/asterisk/call-lifecycle"
 const ASTERISK_INBOUND_BROWSER_READY_PATH = "/api/internal/asterisk/inbound-browser-ready"
+// After the AI leg of an inbound call ends, the station asks here whether the
+// agent handed the call to a person (owner, 2026-10-27). Same bearer token.
+const ASTERISK_INBOUND_HANDOFF_PATH = "/api/internal/asterisk/inbound-handoff"
 // The relay asks this one whether a browser's parking ticket is genuine; it
 // authenticates with a shared secret header and never sees a session cookie.
 // Omitted when the softphone shipped, and the omission is invisible from the
@@ -168,6 +171,7 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
   VOICE_AGENT_CALL_SOURCE_PATH,
   ASTERISK_HUMAN_CALL_LIFECYCLE_PATH,
   ASTERISK_INBOUND_BROWSER_READY_PATH,
+  ASTERISK_INBOUND_HANDOFF_PATH,
   SOFTPHONE_VERIFY_TICKET_PATH,
   VOICE_AGENT_CALL_CONTINUATION_PATH,
 ])

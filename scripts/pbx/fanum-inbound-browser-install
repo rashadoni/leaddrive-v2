@@ -35,13 +35,15 @@ readonly INCLUDE_LINE='#include "fanum-inbound-browser.conf"'
 # Station evidence captured by the read-only probe immediately before this
 # bundle was written.  Drift refuses the install before the first write.
 readonly EXPECTED_EXTENSIONS_FANUM_SHA256="6cc0489756b948f94b5d5acfe686d883376a7661f432adb34c130fd1dd95f6c4"
-readonly EXPECTED_AI_CORE_SHA256="e38400b8d339f94b78c60f44c70e3cdcac5ed71269614c3be08c0d086bd94386"
+# The Zeytun line core with the transfer tool; the station package installs it
+# (pbx-voice-core-onefile-deploy.sh) before this installer runs.
+readonly EXPECTED_AI_CORE_SHA256="da1b74bb561b509ed5010d735943d3f740d78c799c31d16f2a931b747596a887"
 
 # Filled from the reviewed repository files.  Site configuration is never part
 # of this list.
-readonly EXPECTED_HELPER_SHA256="05e09d88735a9bc8372be5afc759a7bc395f49e86598777ea51e86035cf45bb3"
-readonly EXPECTED_TRANSFORM_SHA256="2b4551ebf7da275c03795917f6af4d9996e66974cda70e4aa3d7ebc871354807"
-readonly EXPECTED_DIALPLAN_SHA256="6abfc9b7fd0b1eae406519d324c85f2d704d5020b4e529ca6ed4caf09f45c2e3"
+readonly EXPECTED_HELPER_SHA256="339e4c86b4160215a3900181f28ecc9cbb426e439796f2c986704381f2bef327"
+readonly EXPECTED_TRANSFORM_SHA256="f95e281b2f8d79bc4060797ef41c0a99ee8f87d07e07c1b95c8cd9114d1fa255"
+readonly EXPECTED_DIALPLAN_SHA256="fa02ff6fee068128b24fe46d6c381e41ab6549b6edd08d098c1fb9dee71af7a4"
 readonly EXPECTED_SERVICE_SHA256="133014e6229cbcf1bc6ff4a131eac5ad9975e9f9d696ef18a5d337ac9d4a778f"
 readonly EXPECTED_TIMER_SHA256="a6522acabc29b5f098eab6f6793569aa0a6b67a5ab34e4d60ad34fc58783f01b"
 
@@ -54,7 +56,7 @@ loaded_context_fingerprint() {
     context="from-fanum-provider"
     report="$(asterisk -rx "dialplan show $context" 2>&1)" || return 1
     printf '%s\0%s\0%s\0' "$context" 0 "$report"
-    for context in fanum-inbound-browser fanum-inbound-browser-terminal; do
+    for context in fanum-inbound-browser fanum-inbound-ai-leg fanum-inbound-browser-terminal; do
       if report="$(asterisk -rx "dialplan show $context" 2>&1)"; then
         command_status=0
       else
@@ -113,6 +115,15 @@ systemctl is-active --quiet fanum-softphone-tunnel || fail "browser tunnel is no
 asterisk -rx "core show application AudioSocket" 2>/dev/null \
   | grep -Fq 'AudioSocket(' \
   || fail "Asterisk AudioSocket is unavailable"
+# The AI talks on a Local leg; the caller hears ringing while a manager is sought.
+for application in Dial Playtones StopPlaytones; do
+  asterisk -rx "core show application $application" 2>/dev/null \
+    | grep -Fq "$application(" \
+    || fail "Asterisk $application is unavailable"
+done
+asterisk -rx "core show channeltypes" 2>/dev/null \
+  | grep -Eq '^[[:space:]]*Local[[:space:]]' \
+  || fail "Asterisk Local channels are unavailable"
 ss -ltnH 2>/dev/null | grep -Eq '127\.0\.0\.1:9093|\[::1\]:9093' \
   || fail "browser bridge is not listening on loopback"
 
@@ -420,15 +431,21 @@ mapfile -t provider_config_references < <(
   || fail "provider context has competing configuration sources"
 browser_report="$(asterisk -rx "dialplan show fanum-inbound-browser" 2>&1)" \
   || fail "could not read the loaded browser route"
+ai_leg_report="$(asterisk -rx "dialplan show fanum-inbound-ai-leg" 2>&1)" \
+  || fail "could not read the loaded AI leg route"
 terminal_report="$(asterisk -rx "dialplan show fanum-inbound-browser-terminal" 2>&1)" \
   || fail "could not read the loaded browser terminal route"
-printf '%s\n%s\n' "$browser_report" "$terminal_report" \
+printf '%s\n%s\n%s\n' "$browser_report" "$ai_leg_report" "$terminal_report" \
   | python3 "$TRANSFORM_SRC" --verify-browser-loaded -
 browser_config_references=()
+ai_leg_config_references=()
 terminal_config_references=()
 mapfile -t browser_config_references < <(
   grep -rIlF --include='*.conf' -- '[fanum-inbound-browser]' /etc/asterisk 2>/dev/null \
     | sort
+)
+mapfile -t ai_leg_config_references < <(
+  grep -rIlF --include='*.conf' -- '[fanum-inbound-ai-leg]' /etc/asterisk 2>/dev/null | sort
 )
 mapfile -t terminal_config_references < <(
   grep -rIlF --include='*.conf' -- '[fanum-inbound-browser-terminal]' /etc/asterisk \
@@ -436,6 +453,8 @@ mapfile -t terminal_config_references < <(
 )
 [ "${#browser_config_references[@]}" -eq 1 ] \
   && [ "${browser_config_references[0]}" = "$DIALPLAN_DST" ] \
+  && [ "${#ai_leg_config_references[@]}" -eq 1 ] \
+  && [ "${ai_leg_config_references[0]}" = "$DIALPLAN_DST" ] \
   && [ "${#terminal_config_references[@]}" -eq 1 ] \
   && [ "${terminal_config_references[0]}" = "$DIALPLAN_DST" ] \
   || fail "browser contexts have competing configuration sources"

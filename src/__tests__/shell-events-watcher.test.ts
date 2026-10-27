@@ -225,13 +225,17 @@ describe("shell event watcher", () => {
     expect(tab.heard).toEqual([{ kind: "calls" }])
   })
 
-  it("asks only for what is recent: active calls of the last 5 minutes, rows of the last 10", async () => {
+  it("asks only for what is recent: the popup's own call window, rows of the last 10 minutes", async () => {
     listen()
     await vi.advanceTimersByTimeAsync(0)
     const { prisma } = await import("@/lib/prisma")
-    const callsWhere = vi.mocked(prisma.callLog.findMany).mock.calls[0][0] as { where: { status: { in: string[] }; startedAt: { gte: Date } }; take: number }
+    const callsWhere = vi.mocked(prisma.callLog.findMany).mock.calls[0][0] as { where: { status: { in: string[] }; OR: Array<Record<string, { gte: Date }>> }; take: number }
     expect(callsWhere.where.status.in).toEqual(["ringing", "answering", "in-progress", "initiated"])
-    expect(callsWhere.where.startedAt.gte.toISOString()).toBe("2026-10-27T08:55:00.000Z")
+    // Started in the last five minutes — or handed by the AI to a person in them.
+    expect(callsWhere.where.OR.map((clause) => Object.fromEntries(Object.entries(clause).map(([field, range]) => [field, range.gte.toISOString()])))).toEqual([
+      { startedAt: "2026-10-27T08:55:00.000Z" },
+      { handoffRequestedAt: "2026-10-27T08:55:00.000Z" },
+    ])
     expect(callsWhere.take).toBe(500)
     for (const [model, field] of [["notification", "createdAt"], ["ticket", "createdAt"], ["webChatSession", "lastMessageAt"]] as const) {
       const where = (vi.mocked(prisma[model].groupBy).mock.calls[0][0] as { where: Record<string, { gt: Date }> }).where

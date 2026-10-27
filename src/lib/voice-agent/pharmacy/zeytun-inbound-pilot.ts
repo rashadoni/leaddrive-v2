@@ -50,6 +50,8 @@ const callSchema = z.strictObject({
   status: z.literal("in-progress"), wasAnswered: z.literal(true), endedAt: z.null(),
   startedAt: z.iso.datetime({ offset: true }), fromNumber: z.string().min(1).max(64),
   targetPhoneE164: z.string(),
+  /** The AI handing this call to a person; "returned" when nobody answered. */
+  handoffState: z.enum(["requested", "ringing", "connected", "returned"]).nullish(),
 })
 export type InboundPilotCall = z.infer<typeof callSchema>
 const awaitingAnswerSchema = callSchema.extend({ status: z.literal("answering"), wasAnswered: z.literal(false) })
@@ -105,6 +107,9 @@ export type InboundPilotDependencies = {
   isClaimed: (config: InboundPilotConfig, call: InboundPilotCall) => Promise<boolean>
   /** The pharmacies 1C lists for this number (at most five); empty when none or unknown. */
   findPharmacies?: (config: InboundPilotConfig, phoneE164: string) => Promise<PharmacyCandidate[]>
+  /** The agent hands the call to the organization's managers in the CRM
+   * browser; "unavailable" when no one there can take calls or it was done once. */
+  requestTransfer?: (config: LineGrant, call: InboundPilotCall) => Promise<"transferring" | "unavailable">
   /** Saves the call's list to config.orderOrganizationId's phone orders. */
   saveOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotCall,
     catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[], pharmacy?: string) => Promise<PhoneOrderSaveResult>
@@ -130,6 +135,11 @@ export const ZEYTUN_INBOUND_VOICE: { voice: string | null; pinSpeechLanguage: bo
 // the Live model's answers with this TTS (ZeytunSpeechRelay); it accepts only
 // a model and voice it knows and otherwise keeps the model's own voice.
 export const ZEYTUN_INBOUND_SPEECH = { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat" } as const
+/** Said once the CRM has taken the transfer; the station ends the AI's part
+ * after it and rings the managers (closing_keys, as for the goodbye). */
+export const ZEYTUN_TRANSFER_PHRASE = "Sizi menecerə qoşuram, xətdə qalın."
+/** The AI has the call back: nobody answered the transfer in time. */
+export const ZEYTUN_LINE_RETURN_OPENING = "Bağışlayın, menecerlər hazırda cavab vermir. Sifarişinizi mən qəbul edim. Hansı preparatları istəyirsiniz?"
 export const ZEYTUN_INBOUND_OPENING = "Salam! Zeytunun süni intellekt köməkçisiyəm. Bu sınaq zəngində sifariş siyahınızı hazırlayaq. Hansı preparatdan başlayaq?"
 const PROMPT_TEMPLATE = `You are Zeytun's AI assistant receiving an INBOUND B2B pharmacy order rehearsal.
 The caller is the owner's test participant, NOT an authenticated pharmacy. Do not use any CRM customer history or infer a pharmacy identity from the caller's number.
@@ -179,8 +189,10 @@ export const ZEYTUN_LINE_PROMPT = [
     "the line stays unresolved.\nSubstitute: when the caller's product is not found, or none has their strength and form, at once, unasked, search text \"substitute: INN; strength; form\" if you surely know its INN (e.g. \"substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet\"); leave form out if the caller gave none, ask the strength if unknown. Offer at most two returned items, naming substance, strength and form; add one only after a clear yes, saving its externalId with the caller's original words in spoken. If none returns, say there is no such substitute."],
   ["Price: only when the caller asks, and only for a product already narrowed to one lookup candidate. If that candidate has listPrice, say the amount in manat per its unit (per qutu, per ədəd, ...). Never mention the price list date unless asked. Never round and never offer a discount.",
     "Price: only when asked, and only for a product narrowed to one candidate: say its listPrice in manat per its unit. Never round or offer a discount; mention the price list date only if asked."],
+  // Owner, 2026-10-27: «переводить на менеджеров Зейтуна в браузере CRM». The
+  // tool's own description carries the rest of the rule (prompt length).
   ["No medical advice, substitution or dosage.",
-    "No medical advice or dosage."],
+    "No medical advice or dosage. If the caller asks for a person, call transfer_to_manager."],
   ["Totals: when the caller asks for a line or order total, call calculate_order_total with the resolved lines (externalId and the quantity in that listPrice unit) and read back exactly what it returns, never your own arithmetic.",
     "Totals: when asked, call calculate_order_total with the resolved lines (externalId, quantity in the listPrice unit) and read back exactly what it returns, never your own arithmetic."],
   ["If the lookup returns only one matching item, do not ask about other manufacturers.",
@@ -194,6 +206,7 @@ export const ZEYTUN_LINE_PROMPT = [
 const bodySchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("session"), callId: z.uuid() }),
   z.strictObject({ action: z.literal("search"), callId: z.uuid(), query: zeytunBalanceQuerySchema }),
+  z.strictObject({ action: z.literal("transfer"), callId: z.uuid() }),
   z.strictObject({ action: z.literal("order"), callId: z.uuid(),
     lines: z.array(phoneOrderLineInputSchema).min(1).max(PHONE_ORDER_MAX_LINES),
     pharmacy: z.string().trim().min(1).max(120).optional() }),
@@ -304,8 +317,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         // A directory that cannot be read only costs the greeting its name.
         const candidates = line && dependencies.findPharmacies
           ? await dependencies.findPharmacies(config, internationalNumber(call.fromNumber) ?? "").catch(() => []) : []
+        const opening = !line ? ZEYTUN_INBOUND_OPENING
+          : call.handoffState === "returned" ? ZEYTUN_LINE_RETURN_OPENING : openingForCandidates(ZEYTUN_LINE_OPENING, candidates)
         return searchResponse({ enabled: true, variant: "pharmacy_inbound_preview", prompt: line ? ZEYTUN_LINE_PROMPT : ZEYTUN_INBOUND_PROMPT,
-          opening: line ? openingForCandidates(ZEYTUN_LINE_OPENING, candidates) : ZEYTUN_INBOUND_OPENING, closing: ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
+          opening, closing: ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
+          ...(line && dependencies.requestTransfer ? { transfer: ZEYTUN_TRANSFER_PHRASE } : {}),
           maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: (catalog.vocabulary ?? []).slice(0, 400) })
       }
       if (input.action === "order") {
@@ -315,6 +331,12 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         if (saved.status === "already_reviewed") return searchResponse({ status: "already_reviewed", orderNumber: phoneOrderLabel(saved.number) })
         return searchResponse({ status: "saved", orderNumber: phoneOrderLabel(saved.number), changed: saved.changed,
           total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced })
+      }
+      if (input.action === "transfer") {
+        const status = isLineGrant(config) && dependencies.requestTransfer
+          ? await dependencies.requestTransfer(config, call) : "unavailable"
+        console.log("[zeytun-line] transfer", JSON.stringify({ status }))
+        return searchResponse({ status, ...(status === "transferring" ? { say: ZEYTUN_TRANSFER_PHRASE } : {}) })
       }
       const result = catalog.search(input.query)
       // What the agent asked as a substitute and how many it got: product

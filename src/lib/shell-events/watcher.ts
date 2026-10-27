@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
-import { ACTIVE_CALL_MAX_AGE_MS, ACTIVE_CALL_STATUSES } from "@/lib/calls/active-call-window"
+import { ACTIVE_CALL_STATUSES, activeCallWindow } from "@/lib/calls/active-call-window"
 import { logOperationalFailure } from "@/lib/telemetry/operational-failure"
 
 /**
@@ -154,7 +154,7 @@ async function readSignals(orgs: string[], now: number) {
         where: {
           organizationId: { in: orgs },
           status: { in: ACTIVE_CALL_STATUSES },
-          startedAt: { gte: new Date(now - ACTIVE_CALL_MAX_AGE_MS) },
+          ...activeCallWindow(now),
         },
         select: { id: true, organizationId: true, status: true, claimedByUserId: true, browserAnswerClaimExpiresAt: true },
         orderBy: { id: "asc" },

@@ -40,6 +40,15 @@ def build(source, bridge):
                 # as on demo calls; without it the call ran to its ceiling.
                 folded = closing_words(pilot["closing"]).replace(" ", "")
                 self.closing_keys = tuple(dict.fromkeys([folded, folded.replace("ə", "e")]))
+            if pilot.get("transfer"):
+                # Owner, 2026-10-27: once the CRM took a transfer, its phrase
+                # ends this AI leg like the goodbye; the dialplan keeps the
+                # caller and rings the managers' browsers.
+                def add_transfer_closing(phrase):
+                    folded = closing_words(phrase).replace(" ", "")
+                    with self.state_lock:
+                        self.closing_keys = tuple(dict.fromkeys(self.closing_keys + (folded, folded.replace("ə", "e"))))
+                self.pharmacy_bridge.on_transfer = add_transfer_closing
             self.is_callback = False
             fetched, continuation_box, continuation_thread = True, {}, None
         else:
