@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { COMPANY_EMAIL } from "@/lib/constants"
 import type { CapabilityGoal, CapabilityOverview, OverviewStatus } from "@/lib/capabilities-overview"
 
 export interface CapabilitiesCopy {
@@ -20,6 +21,8 @@ export interface CapabilitiesCopy {
   open: string
   configure: string
   discuss: string
+  discussSubject: string
+  discussHint: string
   contactAdmin: string
   accessNote: string
   connectionNote: string
@@ -42,6 +45,7 @@ export function CapabilitiesOverviewContent({ overview, copy }: { overview: Capa
   if (!selected) return <p className="rounded-xl border border-border bg-card p-6 text-muted-foreground">{copy.empty}</p>
   const selectedCopy = copy.modules[selected.id]
   const selectedStatus = copy.statuses[selected.status]
+  const discussHref = `mailto:${COMPANY_EMAIL}?subject=${encodeURIComponent(`${copy.discussSubject}: ${selectedCopy.name}`)}`
 
   const selectedPanel = (
       <section ref={detail} id={detailId} aria-live="polite" aria-atomic="true" className="scroll-mt-6 rounded-xl border border-border bg-card p-5 sm:p-6" data-crm-card="">
@@ -57,9 +61,10 @@ export function CapabilitiesOverviewContent({ overview, copy }: { overview: Capa
         <div className="mt-5 flex flex-wrap gap-3">
           {selected.openHref ? <Button asChild className="min-h-11 sm:min-h-9"><Link href={selected.openHref}>{copy.open}<ArrowRight className="h-4 w-4" /></Link></Button> : null}
           {selected.setupHref && selected.setupHref !== selected.openHref ? <Button asChild variant="outline" className="min-h-11 sm:min-h-9"><Link href={selected.setupHref}><Settings2 className="h-4 w-4" />{copy.configure}</Link></Button> : null}
-          {selected.status === "requires_access" && overview.canManage ? <Button asChild variant="outline" className="min-h-11 sm:min-h-9"><Link href="/contact">{copy.discuss}</Link></Button> : null}
+          {selected.status === "requires_access" && overview.canManage ? <Button asChild variant="outline" className="min-h-11 sm:min-h-9"><a href={discussHref}>{copy.discuss}</a></Button> : null}
           {(selected.status === "requires_access" || selected.status === "restricted") && !overview.canManage ? <p className="text-sm leading-6 text-muted-foreground">{copy.contactAdmin}</p> : null}
         </div>
+        {selected.status === "requires_access" && overview.canManage ? <p className="mt-3 max-w-[70ch] text-sm leading-6 text-muted-foreground">{copy.discussHint}{" "}<a href={discussHref} className="underline underline-offset-4">{COMPANY_EMAIL}</a></p> : null}
       </section>
   )
 
