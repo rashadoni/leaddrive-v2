@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client"
 
 import { getOrgModuleContext } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { shellPresentUserIds } from "@/lib/shell-events/presence"
 import { browserSoftphoneAllowed } from "@/lib/voip/browser-softphone"
 import { organizationHoldsLine } from "@/lib/voip/line-numbers"
 
@@ -22,8 +23,23 @@ export function zeytunLineHost(): Host {
     database: prisma,
     orders: prisma as unknown as PrismaClient,
     holdsLine: organizationHoldsLine,
-    transferAvailable: async (organizationId) => browserSoftphoneAllowed((await getOrgModuleContext(organizationId)).modules),
+    transferAvailable: async (organizationId) => managerCanAnswer(organizationId),
   })
+}
+
+/**
+ * Whether a transfer would reach a person (owner, 2026-10-27: «перевод на
+ * менеджера только в рабочее время или когда менеджер в сети»): someone who
+ * may answer in the browser has the CRM open now. With nobody there the agent
+ * hears "unavailable" and takes the order itself, instead of the pharmacy
+ * listening to 30 s of ringing at night.
+ */
+export async function managerCanAnswer(organizationId: string,
+  present: (orgId: string) => string[] = shellPresentUserIds): Promise<boolean> {
+  const users = present(organizationId)
+  if (!users.length) return false
+  const { modules } = await getOrgModuleContext(organizationId)
+  return users.some(userId => browserSoftphoneAllowed(modules, userId))
 }
 
 /**

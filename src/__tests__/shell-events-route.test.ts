@@ -40,6 +40,7 @@ vi.mock("@/lib/shell-events/watcher", () => ({
 }))
 
 import { GET } from "@/app/api/v1/shell/events/route"
+import { resetShellPresenceForTests, shellPresentUserIds } from "@/lib/shell-events/presence"
 
 const ALL_MODULES = { voip: true, support: true, omnichannel: true }
 
@@ -92,6 +93,7 @@ beforeEach(() => {
   auth.modules = { ...ALL_MODULES }
   watcher.listener = null
   watcher.unsubscribed = 0
+  resetShellPresenceForTests()
 })
 
 afterEach(() => {
@@ -189,6 +191,36 @@ describe("GET /api/v1/shell/events", () => {
     const response = await GET(new NextRequest("https://app.leaddrivecrm.org/api/v1/shell/events"), undefined as never)
     expect(response.status).toBe(401)
     expect(watcher.listener).toBeNull()
+  })
+
+  // Owner, 2026-10-27: the AI line offers a transfer to a manager only while
+  // one could answer — someone with the CRM open who would see the call.
+  it("counts a person who may answer calls as present while the tab is open", async () => {
+    const first = await open()
+    await first.read()
+    expect(shellPresentUserIds("synthetic-org-a")).toEqual(["synthetic-user-a"])
+    const second = await open()
+    await second.read()
+    first.abort()
+    // Another tab of the same person is still open.
+    expect(shellPresentUserIds("synthetic-org-a")).toEqual(["synthetic-user-a"])
+    second.abort()
+    expect(shellPresentUserIds("synthetic-org-a")).toEqual([])
+  })
+
+  it("does not count someone who cannot answer a call: a viewer, or a tenant without calls", async () => {
+    auth.result = person({ role: "viewer" })
+    const viewer = await open()
+    expect(connectedKinds(await viewer.read())).toContain("calls")
+    expect(shellPresentUserIds("synthetic-org-a")).toEqual([])
+    viewer.abort()
+
+    auth.result = person()
+    auth.modules = { voip: false }
+    const noCalls = await open()
+    await noCalls.read()
+    expect(shellPresentUserIds("synthetic-org-a")).toEqual([])
+    noCalls.abort()
   })
 
   it("lets go of the watcher when the tab goes away", async () => {
