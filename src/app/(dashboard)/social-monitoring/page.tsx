@@ -518,6 +518,9 @@ const CONNECT_CHANNELS: Array<{ key: string; label: string; bg: string; icon: Re
     icon: <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px]"><path d="M17.5 3h3l-6.6 7.5L21.7 21h-5.9l-4.2-5.5L6.5 21H3.4l7-8L2.6 3h6l3.8 5zM16.4 19.2h1.6L7.6 4.7H5.9z"/></svg> },
 ]
 
+/** Connected in Settings → Channels, not here (see ConnectChannelTiles). */
+const META_CHANNEL_KEYS: ReadonlySet<string> = new Set(["facebook", "instagram"])
+
 function ConnectChannelTiles({ accounts, connectedPages, headers }: { accounts: Account[]; connectedPages: ConnectedPage[]; headers: Record<string, string> }) {
   const t = useTranslations("socialMonitoring")
   // Which providers' OAuth is actually configured (tenant app or env) — tiles for
@@ -535,9 +538,26 @@ function ConnectChannelTiles({ accounts, connectedPages, headers }: { accounts: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headers["x-organization-id"]])
 
+  // Facebook and Instagram are connected once, in Settings → Channels, for the Inbox and monitoring alike
+  // (owner, 2026-10-27: «нужна чтоб один канал был»); their row there says whether the page is collected.
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-      {CONNECT_CHANNELS.map(c => {
+    <div className="space-y-2.5">
+    <div data-testid="monitoring-meta-in-channels" className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3 sm:flex-row sm:items-center">
+      <div className="flex shrink-0 -space-x-1.5" aria-hidden="true">
+        {CONNECT_CHANNELS.filter(c => META_CHANNEL_KEYS.has(c.key)).map(c => (
+          <span key={c.key} className="flex h-9 w-9 items-center justify-center rounded-lg text-white ring-2 ring-card" style={{ background: c.bg }}>{c.icon}</span>
+        ))}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold">{t("metaInChannelsTitle")}</div>
+        <div className="text-[11px] text-muted-foreground">{t("metaInChannelsDesc")}</div>
+      </div>
+      <Button asChild size="sm" className="h-8 shrink-0">
+        <a href="/settings/channels">{t("openChannels")}</a>
+      </Button>
+    </div>
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      {CONNECT_CHANNELS.filter(c => !META_CHANNEL_KEYS.has(c.key)).map(c => {
         const count = accounts.filter(a => a.platform === c.key && a.isActive && Boolean(a.accessToken)).length
           + connectedPages.filter(page => page.platform === c.key && page.connected).length
         const connected = count > 0
@@ -590,6 +610,7 @@ function ConnectChannelTiles({ accounts, connectedPages, headers }: { accounts: 
           </div>
         )
       })}
+    </div>
     </div>
   )
 }
@@ -5034,17 +5055,17 @@ export default function SocialMonitoringPage() {
               // Public-search platforms: any handle/keyword works.
               // OAuth-gated platforms (Meta/TikTok): can only track owned accounts — require sign-in.
               const OAUTH_PLATFORMS: Record<string, { label: string; start: string | null; note: string }> = {
+                // Facebook and Instagram are connected in Settings → Channels — one connection for the Inbox and
+                // monitoring (see ConnectChannelTiles).
                 facebook: {
-                  label: t("connectFacebookPage"),
-                  start: "/api/v1/social/oauth/facebook/start",
-                  note: t("oauthNoteFacebook"),
+                  label: t("openChannels"),
+                  start: "/settings/channels",
+                  note: t("metaInChannelsNote"),
                 },
                 instagram: {
-                  label: t("connectInstagramBusiness"),
-                  // Instagram Direct uses the Instagram-Login API (separate flow), NOT the Facebook
-                  // page-token path — Meta retired FB-Login IG messaging (it returns "(#3)").
-                  start: "/api/v1/social/oauth/instagram/start",
-                  note: t("oauthNoteInstagram"),
+                  label: t("openChannels"),
+                  start: "/settings/channels",
+                  note: t("metaInChannelsNote"),
                 },
                 tiktok: {
                   label: t("connectTikTok"),
