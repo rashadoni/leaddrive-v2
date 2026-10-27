@@ -256,9 +256,7 @@ VISIT_EVENT_STATUS = (
     "when 'mtm.visit-completed.v1' then 'CHECKED_OUT' when 'mtm.visit-cancelled.v1' then 'CANCELLED' end"
 )
 VISIT_EVENTS_SQL = (
-    "with first as (select min(\"occurredAt\") as at from domain_events "
-    "where \"aggregateType\" = 'visit' and \"eventType\" = 'mtm.visit-started.v1'), "
-    "recent as (select v.id, v.\"organizationId\", v.status::text as status, v.\"deletedAt\" is not null as deleted, "
+    "with recent as (select v.id, v.\"organizationId\", v.status::text as status, v.\"deletedAt\" is not null as deleted, "
     "v.\"createdAt\" from mtm_visits v "
     f"where v.\"updatedAt\" >= (now() at time zone 'utc') - interval '{EVENTS_WINDOW_S} seconds'), "
     "last as (select distinct on (e.\"organizationId\", e.\"aggregateId\") e.\"organizationId\", e.\"aggregateId\", "
@@ -271,7 +269,7 @@ VISIT_EVENTS_SQL = (
     "join recent r on r.\"organizationId\" = e.\"organizationId\" and r.id = e.\"aggregateId\" "
     "where e.\"aggregateType\" = 'visit' and e.\"eventType\" = 'mtm.visit-deleted.v1'), "
     "checked as (select r.id, "
-    "(l.\"aggregateId\" is null and r.\"createdAt\" >= (select at from first) and not exists ("
+    f"(l.\"aggregateId\" is null and r.\"createdAt\" >= (now() at time zone 'utc') - interval '{EVENTS_WINDOW_S} seconds' and not exists ("
     "select 1 from event_aggregate_heads h where h.\"organizationId\" = r.\"organizationId\" "
     "and h.\"aggregateType\" = 'visit' and h.\"aggregateId\" = r.id)) as unstarted, "
     "(l.\"aggregateId\" is not null and (l.status is distinct from r.status or r.deleted <> (d.\"aggregateId\" is not null))) as drift "
@@ -314,9 +312,7 @@ DEAL_EVENT_STAGE = (
     "case e.\"eventType\" when 'sales.deal-stage-changed.v1' then e.data->>'toStage' else e.data->>'stage' end"
 )
 DEAL_EVENTS_SQL = (
-    "with first as (select min(\"occurredAt\") as at from domain_events "
-    "where \"aggregateType\" = 'deal' and \"eventType\" = 'sales.deal-created.v1'), "
-    "recent as (select d.id, d.\"organizationId\", d.stage, d.\"createdAt\" from deals d "
+    "with recent as (select d.id, d.\"organizationId\", d.stage, d.\"createdAt\" from deals d "
     f"where d.\"updatedAt\" >= (now() at time zone 'utc') - interval '{EVENTS_WINDOW_S} seconds'), "
     "last as (select distinct on (e.\"organizationId\", e.\"aggregateId\") e.\"organizationId\", e.\"aggregateId\", "
     f"{DEAL_EVENT_STAGE} as stage from domain_events e "
@@ -325,7 +321,7 @@ DEAL_EVENTS_SQL = (
     "'sales.deal-stage-changed.v1') "
     "order by e.\"organizationId\", e.\"aggregateId\", e.\"aggregateVersion\" desc), "
     "checked as (select r.id, "
-    "(l.\"aggregateId\" is null and r.\"createdAt\" >= (select at from first) and not exists ("
+    f"(l.\"aggregateId\" is null and r.\"createdAt\" >= (now() at time zone 'utc') - interval '{EVENTS_WINDOW_S} seconds' and not exists ("
     "select 1 from event_aggregate_heads h where h.\"organizationId\" = r.\"organizationId\" "
     "and h.\"aggregateType\" = 'deal' and h.\"aggregateId\" = r.id)) as unstarted, "
     "(l.\"aggregateId\" is not null and l.stage is distinct from r.stage) as drift "

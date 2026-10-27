@@ -62,6 +62,18 @@ export async function recordStreamChanges(
   const savepoint = `ld_${owner.aggregateType.replace(/[^a-z]/g, "_")}_events`
   await tx.$executeRawUnsafe(`SAVEPOINT ${savepoint}`)
   try {
+    // The event tables have no rls_bypass arm: their policies admit only rows
+    // of `app.org_id`. A write made under runWithRlsBypass (crons, the jobs
+    // process) carries no org, so every event was refused there (2026-10-27:
+    // 61 visits of the MTM demo pulse, none in Kafka). Without a tenant in
+    // the transaction, enter this write's own organization for the events and
+    // leave it again below; a different tenant already in place stays, and
+    // its policy refuses the rows (fail closed, logged).
+    const rows = await tx.$queryRawUnsafe<Array<{ org: string }>>(
+      `SELECT coalesce(current_setting('app.org_id', true), '') AS org`,
+    )
+    const entered = (Array.isArray(rows) ? rows[0]?.org ?? "" : "") === ""
+    if (entered) await tx.$queryRawUnsafe(`SELECT set_config('app.org_id', $1, true)`, organizationId)
     let written = 0
     for (const change of due) {
       const write = (event: StreamEvent) => appendDomainEvent(tx, {
@@ -80,6 +92,7 @@ export async function recordStreamChanges(
     // failure surfaces here and not at the business row's COMMIT.
     await tx.$executeRawUnsafe(`SET CONSTRAINTS ${COMMIT_CHECKS} IMMEDIATE`)
     await tx.$executeRawUnsafe(`SET CONSTRAINTS ${COMMIT_CHECKS} DEFERRED`)
+    if (entered) await tx.$queryRawUnsafe(`SELECT set_config('app.org_id', '', true)`)
     await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${savepoint}`)
     return written
   } catch (error) {
@@ -89,6 +102,9 @@ export async function recordStreamChanges(
       organizationId,
       ids: due.map((change) => change.aggregateId),
       error: error instanceof Error ? error.name : "unknown",
+      // Prisma's code (P2004, P2010…) and PostgreSQL's SQLSTATE say why without row data.
+      code: (error as { code?: unknown })?.code ?? null,
+      sqlState: (error as { meta?: { code?: unknown } })?.meta?.code ?? null,
     })
     return 0
   }
