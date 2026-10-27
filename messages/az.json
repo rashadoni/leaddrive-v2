@@ -676,7 +676,7 @@
     "voip": "VoIP",
     "voipCalls": "VoIP Zənglər",
     "financeNotifications": "Maliyyə bildirişləri",
-    "marketplace": "Marketplace",
+    "marketplace": "LeadDrive imkanları",
     "projects": "Layihələr",
     "mtmDashboard": "Panel",
     "mtmMap": "Canlı Xəritə",
@@ -26501,7 +26501,228 @@
       "publishFailed": "Dərc edilmədi"
     }
   },
+  "capabilitiesPage": {
+    "title": "LeadDrive imkanları",
+    "subtitle": "Biznes tapşırığını seçin. Komandanıza hansı modulların əlçatan olduğunu və onları harada quracağınızı görün.",
+    "loading": "Təşkilatın imkanları yüklənir…",
+    "error": "İmkanları yükləmək alınmadı. Yenidən cəhd edin.",
+    "forbidden": "Təşkilatın icmalına giriş yoxdur. Administratora müraciət edin və ya yenidən daxil olun.",
+    "retry": "Yenidən cəhd et",
+    "empty": "Əlçatan imkanlar tapılmadı. Administratora müraciət edin.",
+    "open": "Bölməni aç",
+    "configure": "Qur",
+    "discuss": "Qoşulmanı müzakirə et",
+    "contactAdmin": "Bağlantıları və girişi təşkilatınızın administratoru idarə edir.",
+    "accessNote": "Giriş təşkilatın parametrləri və rolunuzla müəyyən edilir. Bu səhifə tarifi dəyişmir və ödənişli modulları aktivləşdirmir.",
+    "connectionNote": "Modula giriş xarici xidmətlə bağlantını təsdiqləmir. Bağlantının vəziyyətini mövcud parametrlərdə yoxlayın.",
+    "installedApps": "Quraşdırılmış tətbiqlər",
+    "installedAppsHint": "Təşkilatda artıq quraşdırılmış tətbiqlərin parametrləri və idarə edilməsi.",
+    "back": "İmkanlara qayıt",
+    "goals": {
+      "customers": {
+        "title": "Müştərilərlə işləyin",
+        "description": "Satış, kommunikasiya və müştəri münasibətlərinin inkişafı."
+      },
+      "team": {
+        "title": "Komandanın işini təşkil edin",
+        "description": "Müraciətlər, səfərlər və əməkdaşların iş uçotu."
+      },
+      "operations": {
+        "title": "Məlumatları və prosesləri idarə edin",
+        "description": "Sənədlər, analitika, köməkçi və təşkilatın parametrləri."
+      },
+      "industry": {
+        "title": "Sahə imkanları",
+        "description": "Sizin sahəniz üçün qoşulmuş həllər."
+      }
+    },
+    "statuses": {
+      "available": {
+        "label": "Əlçatandır",
+        "hint": "Modul təşkilata əlçatandır. İş bölməsi səlahiyyətləriniz daxilində açılır."
+      },
+      "requires_access": {
+        "label": "Qoşulma lazımdır",
+        "hint": "Bu modula giriş hazırda aktiv deyil. Qoşulma şərtlərini LeadDrive ilə razılaşdıra bilərsiniz."
+      },
+      "requested": {
+        "label": "Sorğu saxlanılıb",
+        "hint": "Giriş sorğusu saxlanılıb. Şərtləri və növbəti addımı dəqiqləşdirmək üçün LeadDrive-a müraciət edin."
+      },
+      "restricted": {
+        "label": "Giriş məhduddur",
+        "hint": "Bu iş bölməsi rolunuza əlçatan deyil və ya təşkilat parametrləri dəyişməlidir."
+      }
+    },
+    "modules": {
+      "crm": {
+        "name": "Müştəri bazası",
+        "summary": "Müştəriləri və iş tarixçəsini bir yerdə saxlayın.",
+        "benefits": [
+          "Şirkətlər və əlaqələr",
+          "Ümumi tapşırıqlar və layihələr"
+        ]
+      },
+      "sales": {
+        "name": "Satış",
+        "summary": "Hər müştəri üzrə sövdələşmələri və növbəti addımları idarə edin.",
+        "benefits": [
+          "Sövdələşmə mərhələləri və məsul əməkdaşlar",
+          "Kommersiya təklifləri və satış planı"
+        ]
+      },
+      "omnichannel": {
+        "name": "Kommunikasiya",
+        "summary": "Komandanın yazışmalarını ümumi növbədə işləyin.",
+        "benefits": [
+          "Inbox-da dialoqlar və ünsiyyət tarixçəsi",
+          "WhatsApp və digər dəstəklənən kanalların qoşulması"
+        ]
+      },
+      "voip": {
+        "name": "Telefoniya",
+        "summary": "Zənglərə və danışıqların nəticələrinə baxın.",
+        "benefits": [
+          "Zəng tarixçəsi və danışıq analitikası",
+          "Kanal kataloqunda bağlantıların qurulması"
+        ]
+      },
+      "marketing": {
+        "name": "Marketinq",
+        "summary": "Kampaniyaları və auditoriyalarla işi planlaşdırın.",
+        "benefits": [
+          "Müştəri seqmentləri və kampaniyalar",
+          "Qarşılıqlı əlaqə ssenariləri və nəticələr"
+        ]
+      },
+      "loyalty": {
+        "name": "Loyallıq proqramı",
+        "summary": "Daimi müştərilərin mükafatlandırılma qaydalarını idarə edin.",
+        "benefits": [
+          "Səviyyələr və bal qazanma qaydaları",
+          "Promokodlar və proqram əməliyyatları"
+        ]
+      },
+      "support": {
+        "name": "Müştəri dəstəyi",
+        "summary": "Müraciətləri məsul şəxsləri və müddətləri olan növbədə toplayın.",
+        "benefits": [
+          "Müraciətlər və məsul əməkdaşlar",
+          "Emala nəzarət və dəstək qaydaları"
+        ]
+      },
+      "route-field": {
+        "name": "Səyyar satış",
+        "summary": "Ziyarətləri planlaşdırın və icrasına nəzarət edin.",
+        "benefits": [
+          "Marşrutlar və planlaşdırılmış ziyarətlər",
+          "Əməkdaşların tapşırıqları, nəticələri və hesabatları"
+        ]
+      },
+      "personnel": {
+        "name": "İş vaxtının uçotu",
+        "summary": "İş vaxtı qeydlərinə və komandanın tabelinə baxın.",
+        "benefits": [
+          "Əməkdaşların qeydləri və tabel",
+          "İş vaxtı hesabatları və parametrləri"
+        ]
+      },
+      "contracts": {
+        "name": "Müqavilələr",
+        "summary": "Sənədlərə və müqavilə ilə iş mərhələlərinə nəzarət edin.",
+        "benefits": [
+          "Müqavilələr, şablonlar və təsdiqləmələr",
+          "Müddətlər və sənədlərlə iş tarixçəsi"
+        ]
+      },
+      "finance": {
+        "name": "Maliyyə",
+        "summary": "Maliyyə sənədləri və planlaşdırma ilə işləyin.",
+        "benefits": [
+          "Hesablar və maliyyə əməliyyatları",
+          "Büdcələmə və maliyyə analitikası"
+        ]
+      },
+      "analytics": {
+        "name": "Hesabatlar və analitika",
+        "summary": "Təşkilatın iş nəticələrinə baxın.",
+        "benefits": [
+          "Əlçatan hesabatlar",
+          "Göstəricilərin və nəticələrin təhlili"
+        ]
+      },
+      "social": {
+        "name": "Qeyd monitorinqi",
+        "summary": "Qurulmuş mənbələrdən qeydləri toplayın və yoxlayın.",
+        "benefits": [
+          "Monitorinq ssenariləri və saxlanılmış nəticələr",
+          "Qeydlərin yoxlanması və hesabatlar"
+        ]
+      },
+      "ai": {
+        "name": "Da Vinci AI",
+        "summary": "Əlçatan CRM tapşırıqları üçün köməkçidən istifadə edin.",
+        "benefits": [
+          "Səlahiyyətləriniz daxilində məlumatların təhlili",
+          "Tövsiyələr və köməkçinin əlçatan alətləri"
+        ]
+      },
+      "settings": {
+        "name": "Parametrlər və inteqrasiyalar",
+        "summary": "Təşkilatın girişlərini və bağlantılarını idarə edin.",
+        "benefits": [
+          "İstifadəçilər, rollar və təhlükəsizlik parametrləri",
+          "Mövcud inteqrasiya quraşdırma formaları"
+        ]
+      },
+      "health": {
+        "name": "Səhiyyə",
+        "summary": "Təşkilatınıza qoşulmuş səhiyyə funksiyalarını açın.",
+        "benefits": [
+          "Səhiyyə iş bölmələri",
+          "Təyin edilmiş səlahiyyətlər daxilində giriş"
+        ]
+      },
+      "insurance": {
+        "name": "Sığorta",
+        "summary": "Təşkilatınıza qoşulmuş sığorta funksiyalarını açın.",
+        "benefits": [
+          "Sığorta iş bölmələri",
+          "Təyin edilmiş səlahiyyətlər daxilində giriş"
+        ]
+      },
+      "public-sector": {
+        "name": "Dövlət sektoru",
+        "summary": "Təşkilatınıza qoşulmuş sahə bölmələrini açın.",
+        "benefits": [
+          "Dövlət sektoru bölmələri",
+          "Təyin edilmiş səlahiyyətlər daxilində giriş"
+        ]
+      },
+      "media": {
+        "name": "Media",
+        "summary": "Təşkilatınıza qoşulmuş media funksiyalarını açın.",
+        "benefits": [
+          "Media iş bölmələri",
+          "Təyin edilmiş səlahiyyətlər daxilində giriş"
+        ]
+      },
+      "energy": {
+        "name": "Energetika",
+        "summary": "Təşkilatınıza qoşulmuş energetika funksiyalarını açın.",
+        "benefits": [
+          "Sahə üzrə iş bölmələri",
+          "Təyin edilmiş səlahiyyətlər daxilində giriş"
+        ]
+      }
+    }
+  },
   "marketplacePage": {
+    "installedHeader": {
+      "title": "Quraşdırılmış tətbiqlər",
+      "subtitle": "Təşkilatda artıq quraşdırılmış tətbiqlərin parametrləri və idarə edilməsi.",
+      "back": "İmkanlara qayıt"
+    },
     "header": {
       "title": "Tətbiq Mağazası",
       "subtitle": "LeadDrive-ı xüsusi sahələr, inteqrasiyalar və avtomatlaşdırmalarla genişləndirən tətbiqləri nəzərdən keçirin və quraşdırın."

@@ -676,7 +676,7 @@
     "voip": "VoIP",
     "voipCalls": "VoIP Calls",
     "financeNotifications": "Finance Notifications",
-    "marketplace": "Marketplace",
+    "marketplace": "LeadDrive capabilities",
     "projects": "Projects",
     "mtmDashboard": "Dashboard",
     "mtmMap": "Live Map",
@@ -26505,7 +26505,228 @@
       "publishFailed": "Publish failed"
     }
   },
+  "capabilitiesPage": {
+    "title": "LeadDrive capabilities",
+    "subtitle": "Choose a business task. See which modules your team can access and where to configure them.",
+    "loading": "Loading organisation capabilities…",
+    "error": "Could not load capabilities. Please try again.",
+    "forbidden": "You cannot access this overview. Contact your administrator or sign in again.",
+    "retry": "Try again",
+    "empty": "No available capabilities were found. Contact your administrator.",
+    "open": "Open workspace",
+    "configure": "Configure",
+    "discuss": "Discuss access",
+    "contactAdmin": "Your organisation’s administrator manages connections and access.",
+    "accessNote": "Access follows your organisation’s settings and your role. This page does not change your plan or activate paid modules.",
+    "connectionNote": "Module access does not confirm a connection to an external service. Check the connection in its existing settings.",
+    "installedApps": "Installed apps",
+    "installedAppsHint": "Settings and management for apps already installed in your organisation.",
+    "back": "Back to capabilities",
+    "goals": {
+      "customers": {
+        "title": "Work with customers",
+        "description": "Sales, communication and customer relationships."
+      },
+      "team": {
+        "title": "Organise teamwork",
+        "description": "Support requests, field visits and employee time."
+      },
+      "operations": {
+        "title": "Manage data and processes",
+        "description": "Documents, analytics, an assistant and organisation settings."
+      },
+      "industry": {
+        "title": "Industry capabilities",
+        "description": "Industry solutions enabled for your organisation."
+      }
+    },
+    "statuses": {
+      "available": {
+        "label": "Available",
+        "hint": "Your organisation can access this module. The workspace follows your permissions."
+      },
+      "requires_access": {
+        "label": "Access required",
+        "hint": "This module is not currently enabled. Discuss access and setup with LeadDrive."
+      },
+      "requested": {
+        "label": "Request recorded",
+        "hint": "An access request has been recorded. Contact LeadDrive to confirm the terms and next step."
+      },
+      "restricted": {
+        "label": "Access restricted",
+        "hint": "Your role cannot open this workspace, or organisation settings need to be changed."
+      }
+    },
+    "modules": {
+      "crm": {
+        "name": "Customer records",
+        "summary": "Keep customers and your working history in one place.",
+        "benefits": [
+          "Companies and contacts",
+          "Shared tasks and projects"
+        ]
+      },
+      "sales": {
+        "name": "Sales",
+        "summary": "Manage deals and the next steps for each customer.",
+        "benefits": [
+          "Deal stages and responsible salespeople",
+          "Quotes and sales planning"
+        ]
+      },
+      "omnichannel": {
+        "name": "Communication",
+        "summary": "Handle team conversations in a shared inbox.",
+        "benefits": [
+          "Conversations and communication history",
+          "Connect WhatsApp and other supported channels"
+        ]
+      },
+      "voip": {
+        "name": "Telephony",
+        "summary": "Review calls and conversation outcomes.",
+        "benefits": [
+          "Call history and conversation analytics",
+          "Configure connections in the channel catalogue"
+        ]
+      },
+      "marketing": {
+        "name": "Marketing",
+        "summary": "Plan campaigns and work with audiences.",
+        "benefits": [
+          "Customer segments and campaigns",
+          "Customer journeys and results"
+        ]
+      },
+      "loyalty": {
+        "name": "Loyalty programme",
+        "summary": "Manage rewards for returning customers.",
+        "benefits": [
+          "Tiers and earning rules",
+          "Promo codes and programme operations"
+        ]
+      },
+      "support": {
+        "name": "Customer support",
+        "summary": "Organise requests into queues with owners and deadlines.",
+        "benefits": [
+          "Requests and responsible team members",
+          "Processing controls and support rules"
+        ]
+      },
+      "route-field": {
+        "name": "Field sales",
+        "summary": "Plan visits and track their completion.",
+        "benefits": [
+          "Routes and planned visits",
+          "Team tasks, outcomes and reports"
+        ]
+      },
+      "personnel": {
+        "name": "Time and attendance",
+        "summary": "Review attendance records and team timesheets.",
+        "benefits": [
+          "Employee records and timesheets",
+          "Attendance reports and settings"
+        ]
+      },
+      "contracts": {
+        "name": "Contracts",
+        "summary": "Track documents and the stages of contract work.",
+        "benefits": [
+          "Contracts, templates and approvals",
+          "Deadlines and document history"
+        ]
+      },
+      "finance": {
+        "name": "Finance",
+        "summary": "Work with financial documents and planning.",
+        "benefits": [
+          "Invoices and financial operations",
+          "Budgeting and financial analytics"
+        ]
+      },
+      "analytics": {
+        "name": "Reports and analytics",
+        "summary": "Review your organisation’s results.",
+        "benefits": [
+          "Available reports",
+          "Analysis of business metrics and outcomes"
+        ]
+      },
+      "social": {
+        "name": "Mention monitoring",
+        "summary": "Collect and review mentions from configured sources.",
+        "benefits": [
+          "Monitoring scenarios and saved results",
+          "Mention review and reports"
+        ]
+      },
+      "ai": {
+        "name": "Da Vinci AI",
+        "summary": "Use an assistant for the CRM tasks available to you.",
+        "benefits": [
+          "Analyse data within your permissions",
+          "Recommendations and available assistant tools"
+        ]
+      },
+      "settings": {
+        "name": "Settings and integrations",
+        "summary": "Manage organisation access and connections.",
+        "benefits": [
+          "Users, roles and security settings",
+          "Existing integration setup forms"
+        ]
+      },
+      "health": {
+        "name": "Healthcare",
+        "summary": "Open the healthcare features enabled for your organisation.",
+        "benefits": [
+          "Healthcare workspaces",
+          "Access within assigned permissions"
+        ]
+      },
+      "insurance": {
+        "name": "Insurance",
+        "summary": "Open the insurance features enabled for your organisation.",
+        "benefits": [
+          "Insurance workspaces",
+          "Access within assigned permissions"
+        ]
+      },
+      "public-sector": {
+        "name": "Public sector",
+        "summary": "Open the industry workspaces enabled for your organisation.",
+        "benefits": [
+          "Public sector workspaces",
+          "Access within assigned permissions"
+        ]
+      },
+      "media": {
+        "name": "Media",
+        "summary": "Open the media features enabled for your organisation.",
+        "benefits": [
+          "Media workspaces",
+          "Access within assigned permissions"
+        ]
+      },
+      "energy": {
+        "name": "Energy",
+        "summary": "Open the energy features enabled for your organisation.",
+        "benefits": [
+          "Industry workspaces",
+          "Access within assigned permissions"
+        ]
+      }
+    }
+  },
   "marketplacePage": {
+    "installedHeader": {
+      "title": "Installed apps",
+      "subtitle": "Settings and management for apps already installed in your organisation.",
+      "back": "Back to capabilities"
+    },
     "header": {
       "title": "App Marketplace",
       "subtitle": "Browse and install apps that extend LeadDrive with custom fields, integrations, and automations."
