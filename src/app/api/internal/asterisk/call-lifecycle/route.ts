@@ -4,7 +4,10 @@ import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
+import type { PrismaClient } from "@prisma/client"
+
 import { prisma } from "@/lib/prisma"
+import { notifyManagersOfCallOrder } from "@/lib/pharmacy-orders/manager-notice"
 import { runWithTenant } from "@/lib/rls-context"
 import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { matchCallParty } from "@/lib/calls/party-match"
@@ -57,6 +60,19 @@ const unknownNoRedialLifecycleSchema = z.object({
   state: z.literal("unknown_no_redial"),
   occurredAt: occurredAtSchema,
 }).strict()
+
+const TERMINAL_STATES = new Set<string>(terminalLifecycleSchema.shape.state.options)
+/** The AI's last save can still be on its way when the caller hangs up. */
+const ORDER_NOTICE_DELAY_MS = 5_000
+
+/** A phone order the call left is announced to the managers once it is over. */
+function notifyOrderAfterCall(organizationId: string, callId: string) {
+  setTimeout(() => {
+    void notifyManagersOfCallOrder(prisma as unknown as PrismaClient, organizationId, callId)
+      .catch((error: unknown) => console.warn("[asterisk-human-lifecycle] order notice failed",
+        error instanceof Error ? error.name : typeof error))
+  }, ORDER_NOTICE_DELAY_MS).unref?.()
+}
 
 const lifecycleSchema = z.union([
   ringingLifecycleSchema,
@@ -661,6 +677,7 @@ export async function POST(request: NextRequest) {
         now: new Date(),
       })
     })
+    if (TERMINAL_STATES.has(parsed.data.state)) notifyOrderAfterCall(organizationId, parsed.data.callId)
     return NextResponse.json({ success: true, result })
   } catch (error) {
     if (error instanceof LifecycleCallNotFoundError) {

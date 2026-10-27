@@ -440,6 +440,13 @@ class ZeytunInboundBridge:
     # CRM's phrase, the station ends this AI leg after it (closing_keys) and
     # rings the managers' browsers. Offered only when the CRM names a phrase.
     TRANSFER_NAME = "transfer_to_manager"
+    # Owner, 2026-10-27: a long order must not be lost. The CRM allows a call
+    # up to 15 minutes (the core's own ceiling is 900 s) and the agent saves
+    # the list after every line, so the per-call tool budget and the prompt
+    # (which now carries that rule) are larger than the 5-minute pilot's.
+    MAX_CALL_SECONDS = 900
+    MAX_PROMPT_CHARS = 6000
+    MAX_TOOL_CALLS = 256
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
     # against the live API on 8 kHz mu-law audio, two-word Azerbaijani turns
@@ -549,9 +556,9 @@ class ZeytunInboundBridge:
             if not isinstance(value, dict) or value.get("enabled") is not True or value.get("variant") != "pharmacy_inbound_preview":
                 raise ValueError()
             prompt, opening, seconds = value.get("prompt"), value.get("opening"), value.get("maxSeconds")
-            if (not isinstance(prompt, str) or not 1 <= len(prompt) <= 4000
+            if (not isinstance(prompt, str) or not 1 <= len(prompt) <= self.MAX_PROMPT_CHARS
                     or not isinstance(opening, str) or not 1 <= len(opening) <= 500
-                    or type(seconds) is not int or not 30 <= seconds <= 300):
+                    or type(seconds) is not int or not 30 <= seconds <= self.MAX_CALL_SECONDS):
                 raise ValueError()
             # Server's ceiling is bounded again locally; the core counts it from
             # AudioSocket connect. Never parse a model-supplied expiry or URL.
@@ -608,7 +615,7 @@ class ZeytunInboundBridge:
                                 "unit": {"type": "STRING", "description": "The unit of that quantity: qutu, ədəd, flakon, ..."}},
                  "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}},
             {"name": self.SAVE_NAME,
-             "description": "Record the final list the caller agreed to, for Zeytun's manager to check. Call once after the caller agrees, again only if they change it. Include every line, resolved or not. Returns orderNumber when saved.",
+             "description": "Record the caller's list for Zeytun's manager to check. Call it after every line that is settled, with the whole list so far, and once more when the caller has nothing to add. Include every line, resolved or not. Returns orderNumber when saved.",
              "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
                  "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup; omit when the product was not resolved."},
                                 "quantity": {"type": "INTEGER", "description": "Whole number, in the unit the caller said."},
@@ -843,7 +850,7 @@ class ZeytunInboundBridge:
             if name == self.TOTAL_NAME:
                 with self.lock:
                     repeated = key in self.seen or key in self.pending
-                    if len(self.seen) < 128:
+                    if len(self.seen) < self.MAX_TOOL_CALLS:
                         self.seen.add(key)
                     expired = not self.active or self.clock() >= self.expires
                 body = ({"status": "duplicate_request"} if repeated else {"status": "pilot_expired"} if expired
@@ -862,13 +869,13 @@ class ZeytunInboundBridge:
                     continue
                 if key in self.seen:
                     error = "duplicate_request"
-                elif not self.active or self.clock() >= self.expires or len(self.seen) >= 128:
+                elif not self.active or self.clock() >= self.expires or len(self.seen) >= self.MAX_TOOL_CALLS:
                     error = "pilot_expired"
                 elif args is None:
                     error = "invalid_request"
                 elif not self.workers.acquire(blocking=False):
                     error = "search_busy"
-                if len(self.seen) < 128:
+                if len(self.seen) < self.MAX_TOOL_CALLS:
                     self.seen.add(key)
                 if error is None:
                     marker = object()

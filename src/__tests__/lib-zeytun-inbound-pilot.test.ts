@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest"
 import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, ZEYTUN_LINE_RETURN_OPENING, ZEYTUN_TRANSFER_PHRASE, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
+/** The station's own limits (scripts/pbx/fanum-zeytun-inbound.py): it refuses a longer prompt or call outright. */
+const BRIDGE = (() => {
+  const source = readFileSync(join(process.cwd(), "scripts/pbx/fanum-zeytun-inbound.py"), "utf8")
+  const constant = (name: string) => Number(source.match(new RegExp(`^\\s+${name} = (\\d+)$`, "mu"))?.[1])
+  return { promptChars: constant("MAX_PROMPT_CHARS"), callSeconds: constant("MAX_CALL_SECONDS") }
+})()
 
 const now = Date.parse("2026-10-22T12:00:00Z"), token = "t".repeat(48)
 export const config: Extract<InboundPilotConfig, { purpose: "owner_inbound_preview" }> = {
@@ -303,7 +312,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
   }
 
   it("keeps its texts inside the bridge limits and never calls the caller a test", () => {
-    expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(4000)
+    expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(BRIDGE.promptChars)
     expect(ZEYTUN_LINE_OPENING.length).toBeLessThanOrEqual(500)
     expect(ZEYTUN_LINE_OPENING).not.toMatch(/sınaq/i)
     expect(ZEYTUN_LINE_PROMPT).not.toMatch(/test participant|test call|rehearsal/i)
@@ -317,12 +326,22 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     // Owner, 2026-10-26: no read-back at the end unless asked; the order number and that it is being processed.
     expect(ZEYTUN_LINE_PROMPT).toContain("do not read the list back unless asked")
     expect(ZEYTUN_LINE_PROMPT).toContain("passed to Zeytun's manager for processing")
+    // Owner, 2026-10-27: a long order must not be lost — the list is saved after every line, silently.
+    expect(ZEYTUN_LINE_PROMPT).toContain("After each settled line, silently call save_order_list with the whole list so far")
+    expect(ZEYTUN_LINE_PROMPT).toContain("call save_order_list once more")
+    expect(ZEYTUN_LINE_PROMPT).not.toContain("save_order_list ONCE")
+  })
+
+  it("allows a call the station's own ceiling, not the rehearsal's five minutes", async () => {
+    expect(BRIDGE.callSeconds).toBe(900)
+    const body = await (await lineFixture().handle(request())).json()
+    expect(body.maxSeconds).toBe(BRIDGE.callSeconds)
   })
 
   it("answers any caller with the line's opening and claims each call by itself", async () => {
     const f = lineFixture()
     const body = await (await f.handle(request())).json()
-    expect(body).toMatchObject({ enabled: true, variant: "pharmacy_inbound_preview", opening: ZEYTUN_LINE_OPENING, prompt: ZEYTUN_LINE_PROMPT, maxSeconds: 300 })
+    expect(body).toMatchObject({ enabled: true, variant: "pharmacy_inbound_preview", opening: ZEYTUN_LINE_OPENING, prompt: ZEYTUN_LINE_PROMPT, maxSeconds: 900 })
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
   })
 
@@ -389,7 +408,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
       const f = withTransfer()
       expect((await (await f.handle(request())).json()).transfer).toBe(ZEYTUN_TRANSFER_PHRASE)
       expect(ZEYTUN_LINE_PROMPT).toContain("If the caller asks for a person, call transfer_to_manager.")
-      expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(4000)
+      expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(BRIDGE.promptChars)
       expect(ZEYTUN_LINE_RETURN_OPENING.length).toBeLessThanOrEqual(500)
       // Without a way to transfer (or on the owner's rehearsal) the station is told nothing.
       expect((await (await lineFixture().handle(request())).json())).not.toHaveProperty("transfer")

@@ -31426,6 +31426,7 @@
     "rejectReason": "Reason",
     "rejectSubmit": "Reject",
     "errorStale": "The order changed elsewhere — the page was refreshed.",
+    "errorCallInProgress": "The call is still going on — the assistant is adding to this order. Try again after the pharmacy hangs up.",
     "errorGeneric": "That did not work, try again.",
     "errorCatalog": "The catalog is unavailable right now.",
     "loading": "Loading…",

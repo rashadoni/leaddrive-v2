@@ -40,7 +40,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
   const locale = useLocale()
   const [order, setOrder] = useState<Order | null>(null)
   // A message key, translated when drawn: the loaders below must not depend on `t`.
-  const [error, setError] = useState<"errorGeneric" | "errorStale" | "errorCatalog" | null>(null)
+  const [error, setError] = useState<"errorGeneric" | "errorStale" | "errorCatalog" | "errorCallInProgress" | null>(null)
   const [busy, setBusy] = useState(false)
   const [picker, setPicker] = useState<Picker | null>(null)
   const [rejecting, setRejecting] = useState(false)
@@ -64,7 +64,8 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       })
       if (response.ok) { setOrder((await response.json()).data); return true }
       const code = (await response.json().catch(() => ({})))?.error
-      setError(code === "stale_revision" || code === "not_pending" ? "errorStale" : code === "catalog_unavailable" ? "errorCatalog" : "errorGeneric")
+      setError(code === "stale_revision" || code === "not_pending" ? "errorStale" : code === "catalog_unavailable" ? "errorCatalog"
+        : code === "call_in_progress" ? "errorCallInProgress" : "errorGeneric")
       if (code === "stale_revision" || code === "not_pending") await load()
       return false
     } finally { setBusy(false) }

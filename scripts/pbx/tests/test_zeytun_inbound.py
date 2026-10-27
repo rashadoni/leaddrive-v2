@@ -301,6 +301,24 @@ class TransportTests(unittest.TestCase):
             with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
                 bridge_with(bad).open()
 
+    def test_a_line_call_may_last_fifteen_minutes_with_a_longer_prompt(self):
+        # Owner, 2026-10-27: a long order must not be lost; the core's own ceiling is 900 s.
+        def bridge_with(seconds, prompt="Test rules"):
+            def request(body):
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": prompt,
+                        "opening": "Test greeting", "maxSeconds": seconds}
+            return bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
+        self.assertEqual(bridge_with(900, "p" * 6000).open()["maxSeconds"], 900)
+        for seconds, prompt in [(901, "p"), (900, "p" * 6001), (29, "p")]:
+            with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
+                bridge_with(seconds, prompt).open()
+
+    def test_the_agent_saves_the_list_after_every_line(self):
+        tools = self.bridge.tools()[0]["functionDeclarations"]
+        save = next(tool for tool in tools if tool["name"] == "save_order_list")
+        self.assertIn("after every line", save["description"])
+        self.assertNotIn("Call once", save["description"])
+
     def test_agent_voice_is_pinned_to_azerbaijani(self):
         self.assertEqual(self.bridge.speech_language(), "az-AZ")
         self.assertIsNone(self.bridge.speech_voice())
