@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { announceNotificationPreferencesChanged } from "@/lib/notifications/preferences-changed"
 
 interface TypeRow {
   key: string
@@ -82,6 +83,8 @@ export default function NotificationsSettingsPage() {
           prev.map((s) => (s.key === sectionKey ? { ...s, push: !newValue } : s))
         )
         toast.error(t("saveError") ?? "Failed to save")
+      } else {
+        announceNotificationPreferencesChanged()
       }
     } catch {
       setSections((prev) =>
@@ -124,6 +127,8 @@ export default function NotificationsSettingsPage() {
           )
         )
         toast.error(t("saveError") ?? "Failed to save")
+      } else {
+        announceNotificationPreferencesChanged()
       }
     } catch {
       setSections((prev) =>
