@@ -153,6 +153,7 @@ beforeEach(() => {
   registerPush.mockClear()
   FakeEventSource.opened = []
   vi.stubGlobal("EventSource", FakeEventSource)
+  vi.spyOn(Math, "random").mockReturnValue(0.5)
   state.session = {
     iat: 1,
     user: {
@@ -213,18 +214,35 @@ describe("the shell on a live event stream", () => {
     expect(requests.length - start).toBe(25)
   })
 
-  it("an event reads only its part", async () => {
+  it("an event reads only its part, half a second later, and a burst of events reads once", async () => {
     await render()
     await stream().emit("connected")
+    await advance(5_000)
     const start = requests.length
 
     await stream().emit("calls")
+    expect(requests.length).toBe(start) // spread: not every tab of the office at once
+    await advance(500)
     expect(requests.slice(start)).toEqual([CALLS])
+
+    // A call that rings, is answered and claimed within seconds: one read
+    // per three seconds, whatever the number of events.
+    await stream().emit("calls")
+    await stream().emit("calls")
+    await stream().emit("calls")
+    await advance(2_900)
+    expect(asked(CALLS)).toBe(2)
+    await advance(100)
+    expect(asked(CALLS)).toBe(3)
+    await advance(10_000)
+    expect(asked(CALLS)).toBe(3)
+
+    const before = requests.length
     await stream().emit("notifications")
-    expect(requests.slice(start + 1).sort()).toEqual([BELL, INBOX_BADGE].sort())
     await stream().emit("tickets")
     await stream().emit("webchat")
-    expect(requests.slice(start + 3)).toEqual([TICKETS, WEB_CHAT])
+    await advance(500)
+    expect(requests.slice(before).sort()).toEqual([BELL, INBOX_BADGE, TICKETS, WEB_CHAT].sort())
   })
 
   it("events while the tab is hidden are read once, when it is shown", async () => {
@@ -242,6 +260,38 @@ describe("the shell on a live event stream", () => {
     expect(requests.slice(start).sort()).toEqual([CALLS, TICKETS].sort())
   })
 
+  it("the badges catch up on return when the last read is older than 30 s: a count read down elsewhere", async () => {
+    await render()
+    await stream().emit("connected")
+    await show("hidden")
+    await advance(20_000)
+    const start = requests.length
+    await show("visible")
+    expect(requests.length).toBe(start) // 20 s: still fresh
+    await show("hidden")
+    await advance(20_000)
+    await show("visible")
+    expect(requests.slice(start).sort()).toEqual([BELL, INBOX_BADGE].sort())
+  })
+
+  it("a tab hidden for a minute closes its stream and reconnects when shown", async () => {
+    await render()
+    await stream().emit("connected")
+    await show("hidden")
+    await advance(59_000)
+    expect(stream().readyState).not.toBe(FakeEventSource.CLOSED)
+    await advance(1_000)
+    expect(stream().readyState).toBe(FakeEventSource.CLOSED)
+    expect(FakeEventSource.opened).toHaveLength(1)
+
+    const start = requests.length
+    await show("visible")
+    expect(FakeEventSource.opened).toHaveLength(2)
+    expect(requests.length).toBe(start) // waits for `connected`
+    await stream().emit("connected")
+    expect(requests.slice(start).sort()).toEqual([...POLLERS].sort())
+  })
+
   it("a stream that never connects leaves the tab polling as before after 4 s", async () => {
     await render()
     await advance(3_900)
@@ -252,10 +302,35 @@ describe("the shell on a live event stream", () => {
     expect(asked(CALLS)).toBe(13)
   })
 
-  it("a refused stream falls back at once", async () => {
+  it("a refused stream (a 502 while a deploy restarts the app) polls at once and tries a new stream later", async () => {
     await render()
     await stream().fail(true)
     for (const poller of POLLERS) expect({ poller, asked: asked(poller) }).toEqual({ poller, asked: 1 })
+
+    await advance(9_900)
+    expect(FakeEventSource.opened).toHaveLength(1)
+    await advance(100)
+    expect(FakeEventSource.opened).toHaveLength(2)
+    // Still polling while the new one connects.
+    const callsBefore = asked(CALLS)
+    await advance(5_000)
+    expect(asked(CALLS)).toBe(callsBefore + 1)
+
+    await stream().emit("connected")
+    const back = requests.length
+    await advance(60_000)
+    expect(requests.length).toBe(back)
+  })
+
+  it("refused again, the next try waits twice as long", async () => {
+    await render()
+    await stream().fail(true)
+    await advance(10_000)
+    await stream().fail(true)
+    await advance(19_900)
+    expect(FakeEventSource.opened).toHaveLength(2)
+    await advance(100)
+    expect(FakeEventSource.opened).toHaveLength(3)
   })
 
   it("a dropped stream polls after 15 s, and its return reads once and stops the polling", async () => {

@@ -213,7 +213,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
       if (mounted.current && data?.success) setInboxNotifCount(data.data.unreadCount || 0)
     } catch {}
   }, [])
-  useShellRefresh("notifications", () => void readInboxBadge(), 20000)
+  useShellRefresh("notifications", () => void readInboxBadge(), 20000, true, { readOnReturnAfterMs: 30_000 })
   useEffect(() => {
     // Immediate refresh when the inbox marks its notifications read (don't wait for the next read).
     const onInboxRead = () => { void readInboxBadge() }

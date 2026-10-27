@@ -200,7 +200,10 @@ export function NotificationBell() {
   // person; without the stream, every 10 s (snappier toast popups for inbound +
   // participant notifications, was 30s). On screen only; a tab coming back
   // reads at once, so what arrived meanwhile pops up on return.
-  useShellRefresh("notifications", () => void fetchNotifications(), 10000, identityKey !== null)
+  useShellRefresh("notifications", () => void fetchNotifications(), 10000, identityKey !== null, {
+    // Read in another tab lowers the count without an event: catch up when shown.
+    readOnReturnAfterMs: 30_000,
+  })
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     setOpen(nextOpen)

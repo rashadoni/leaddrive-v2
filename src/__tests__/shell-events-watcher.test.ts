@@ -86,6 +86,7 @@ beforeEach(() => {
   db.chats = []
   db.fail = false
   db.queries = 0
+  vi.clearAllMocks()
   resetShellEventWatcherForTests()
 })
 
@@ -195,19 +196,46 @@ describe("shell event watcher", () => {
     expect(db.queries).toBe(0)
   })
 
-  it("survives a failing database and still lets the stream say connected", async () => {
+  it("says ready only after a look that worked, and keeps watching through a failing database", async () => {
     db.fail = true
     const tab = listen()
     let ready = false
     void tab.ready.then(() => { ready = true })
     await vi.advanceTimersByTimeAsync(0)
-    expect(ready).toBe(true)
     await tick(2)
+    expect(ready).toBe(false) // the tab polls meanwhile (its own 4 s fallback)
 
     db.fail = false
     await tick() // the first good look is the baseline
+    expect(ready).toBe(true)
     db.calls = [{ id: "call-1", organizationId: ORG, status: "ringing", claimedByUserId: null, browserAnswerClaimExpiresAt: null }]
     await tick()
     expect(tab.heard).toEqual([{ kind: "calls" }])
+  })
+
+  it("gives up on a look that hangs and goes on with the next", async () => {
+    const tab = listen()
+    await vi.advanceTimersByTimeAsync(0)
+    const { prisma } = await import("@/lib/prisma")
+    vi.mocked(prisma.callLog.findMany).mockImplementationOnce(() => new Promise(() => {}) as never)
+    await tick()
+    await vi.advanceTimersByTimeAsync(15_000)
+    db.calls = [{ id: "call-1", organizationId: ORG, status: "ringing", claimedByUserId: null, browserAnswerClaimExpiresAt: null }]
+    await tick(2)
+    expect(tab.heard).toEqual([{ kind: "calls" }])
+  })
+
+  it("asks only for what is recent: active calls of the last 5 minutes, rows of the last 10", async () => {
+    listen()
+    await vi.advanceTimersByTimeAsync(0)
+    const { prisma } = await import("@/lib/prisma")
+    const callsWhere = vi.mocked(prisma.callLog.findMany).mock.calls[0][0] as { where: { status: { in: string[] }; startedAt: { gte: Date } }; take: number }
+    expect(callsWhere.where.status.in).toEqual(["ringing", "answering", "in-progress", "initiated"])
+    expect(callsWhere.where.startedAt.gte.toISOString()).toBe("2026-10-27T08:55:00.000Z")
+    expect(callsWhere.take).toBe(500)
+    for (const [model, field] of [["notification", "createdAt"], ["ticket", "createdAt"], ["webChatSession", "lastMessageAt"]] as const) {
+      const where = (vi.mocked(prisma[model].groupBy).mock.calls[0][0] as { where: Record<string, { gt: Date }> }).where
+      expect({ model, since: where[field].gt.toISOString() }).toEqual({ model, since: "2026-10-27T08:50:00.000Z" })
+    }
   })
 })

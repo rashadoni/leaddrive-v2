@@ -143,18 +143,45 @@ describe("GET /api/v1/shell/events", () => {
     stream.abort()
   })
 
-  it("follows the role: a viewer hears no more than the routes would show them", async () => {
-    auth.result = person({ role: "viewer" })
+  it("follows the role: ticketing reads tickets, not calls or the inbox", async () => {
+    auth.result = person({ role: "ticketing" })
     const stream = await open()
-    const kinds = connectedKinds(await stream.read())!
-    const { checkPermission } = await import("@/lib/permissions")
-    expect(kinds).toEqual([
-      "notifications",
-      ...(checkPermission("viewer", "voip", "read") ? ["calls"] : []),
-      ...(checkPermission("viewer", "tickets", "read") ? ["tickets"] : []),
-      ...(checkPermission("viewer", "inbox", "read") ? ["webchat"] : []),
-    ].sort())
+    expect(connectedKinds(await stream.read())).toEqual(["notifications", "tickets"])
+    emit({ kind: "calls" })
+    emit({ kind: "webchat" })
+    emit({ kind: "tickets" })
+    expect(events(await stream.read())).toEqual(["tickets"])
     stream.abort()
+  })
+
+  it("subscribes nothing when the tab left while authentication ran", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const response = await GET(new NextRequest("https://app.leaddrivecrm.org/api/v1/shell/events", { signal: controller.signal }), undefined as never)
+    await response.body!.getReader().read()
+    expect(watcher.listener).toBeNull()
+  })
+
+  it("closes after at most 35 minutes, so the browser reconnects and the kinds are decided again", async () => {
+    vi.useFakeTimers()
+    try {
+      const response = await GET(new NextRequest("https://app.leaddrivecrm.org/api/v1/shell/events"), undefined as never)
+      const reader = response.body!.getReader()
+      let done = false
+      void (async () => {
+        for (;;) {
+          const chunk = await reader.read()
+          if (chunk.done) { done = true; return }
+        }
+      })()
+      await vi.advanceTimersByTimeAsync(24 * 60_000)
+      expect(done).toBe(false)
+      await vi.advanceTimersByTimeAsync(11 * 60_000)
+      expect(done).toBe(true)
+      expect(watcher.unsubscribed).toBe(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("passes on what requireAuth refuses, before any stream", async () => {

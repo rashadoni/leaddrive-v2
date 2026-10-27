@@ -183,6 +183,19 @@ async function readSignals(orgs: string[], now: number) {
   })
 }
 
+// A look that has not answered by then counts as failed, so one stuck query
+// cannot stop the watcher for every tab.
+const TICK_TIMEOUT_MS = 15_000
+
+function withinTime<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error("shell events look timed out")), ms)
+    timer.unref?.()
+  })
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer))
+}
+
 /** True when the window gained a row: a newer time, or more rows. */
 function grew(previous: Recent | undefined, next: Recent): boolean {
   if (!previous) return true
@@ -195,7 +208,7 @@ async function tick(w: Watcher) {
   const events: Array<{ orgId: string; event: ShellEvent }> = []
   try {
     const now = Date.now()
-    const { calls, notifications, tickets, chats } = await readSignals(orgs, now)
+    const { calls, notifications, tickets, chats } = await withinTime(readSignals(orgs, now), TICK_TIMEOUT_MS)
 
     // Which calls a popup shows depends on status and on whether a browser
     // claim is still fresh — and a claim lapses without anything being written.
@@ -254,15 +267,20 @@ async function tick(w: Watcher) {
       w.baselined.add(orgId)
     }
   } catch {
-    // Keep watching; a tab that hears nothing still checks on its own every
-    // few minutes. Logged at most once a minute, without the error itself.
+    // Keep watching; a connected tab still reads on its own every two minutes,
+    // and one still waiting for `connected` polls. Logged at most once a
+    // minute, without the error itself.
     if (Date.now() - w.lastFailureLoggedAt > 60_000) {
       w.lastFailureLoggedAt = Date.now()
       logOperationalFailure("shell-events-watch")
     }
   } finally {
     w.ticking = false
+    // `ready` waits for a look that worked: an organisation recorded from a
+    // failed look would take its next good one as the baseline, silently. The
+    // tab polls meanwhile (its 4 s fallback).
     for (const orgId of orgs) {
+      if (!w.baselined.has(orgId)) continue
       for (const resolve of w.waiting.get(orgId) ?? []) resolve()
       w.waiting.delete(orgId)
     }
