@@ -88,6 +88,34 @@ describe("private inbound pilot host", () => {
     const catalog = await f.host.loadCatalog(line)
     expect(catalog.version).toMatch(/^[a-f0-9]{64}$/)
   })
+  it("runs the line in the organization that holds its number, and the rehearsal only in the default one", async () => {
+    const f = await fixture()
+    // Owner, 2026-10-26: «переноси линию Зейтуна в его организацию».
+    const line: InboundPilotConfig = { version: 1, enabled: true, purpose: "zeytun_line", id: "dddddddd-1111-4111-8111-111111111111",
+      organizationId: "org-zeytun", channelConfigId: "channel-zeytun", issuedAt: f.config.issuedAt,
+      expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
+      approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey } }
+    const call = { ...f.call, organizationId: "org-zeytun", channelConfigId: "channel-zeytun" }
+    // Without a number of its own the other organization's grant reads and claims nothing.
+    expect(await f.host.loadCall(line, call.providerCallId)).toBeNull()
+    expect(await f.host.claim(line, call)).toBe(false)
+    const asked: string[] = []
+    const holdsLine = async (organizationId: string, channelConfigId: string) => {
+      asked.push(`${organizationId}/${channelConfigId}`)
+      return organizationId === "org-zeytun" && channelConfigId === "channel-zeytun"
+    }
+    const host = createInboundPilotHost({ ...f.options, holdsLine })
+    f.state.rows = [{ ...call, startedAt: new Date(call.startedAt) }]
+    expect(await host.loadCall(line, call.providerCallId)).toMatchObject({ organizationId: "org-zeytun", channelConfigId: "channel-zeytun" })
+    // The call is read under its own organization's context, not the default one.
+    expect(f.state.queries.at(-1)?.rls).toEqual({ orgId: "org-zeytun" })
+    expect(await host.claim(line, call)).toBe(true)
+    expect(asked).toContain("org-zeytun/channel-zeytun")
+    // A number routed to another channel does not open this one.
+    expect(await host.loadCall({ ...line, channelConfigId: "channel-other" }, call.providerCallId)).toBeNull()
+    // The rehearsal never moves: another organization's rehearsal grant is refused even with a number.
+    expect(await host.loadCall({ ...f.config, organizationId: "org-zeytun", channelConfigId: "channel-zeytun" }, call.providerCallId)).toBeNull()
+  })
   it("finds the pharmacies 1C lists for the caller's number, and none from a stale or absent list", async () => {
     const f = await fixture()
     const pharmacySource = { organizationId: "clients-test", scopeKey: "c".repeat(64) }

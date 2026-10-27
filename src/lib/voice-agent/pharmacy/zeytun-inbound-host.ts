@@ -32,7 +32,16 @@ export function createInboundPilotHost(options: {
   configFile: string; snapshotDirectory: string; runtimeOrganizationId: string; database: ZeytunCallDatabase
   /** The application client the phone orders are written with (tenant RLS). */
   orders?: PrismaClient
+  /** Whether an organization holds a line number routed to this VoIP channel
+   * (voice_line_numbers). A line grant runs in such an organization even when
+   * it is not the installation's default one. */
+  holdsLine?: (organizationId: string, channelConfigId: string) => Promise<boolean>
 }): InboundPilotDependencies {
+  // The rehearsal belongs to the installation's default organization. The
+  // line runs where its number is: owner, 2026-10-26 («переноси линию Зейтуна
+  // в его организацию»), the number assigned to Zeytun with its own channel.
+  const allowedOrganization = async (config: InboundPilotConfig) => config.organizationId === options.runtimeOrganizationId
+    || (isLineGrant(config) && Boolean(options.holdsLine) && await options.holdsLine!(config.organizationId, config.channelConfigId))
   let catalog: { key: string; at: number; value: ReturnType<InboundPilotDependencies["loadCatalog"]>; next?: Promise<void> } | null = null
   // The pharmacy list is small (~1 200 rows, ~0.1 s to parse): re-read when
   // its header changes, looked at no more than once a minute.
@@ -92,7 +101,7 @@ export function createInboundPilotHost(options: {
       return config
     },
     async loadCall(config, callId) {
-      if (config.organizationId !== options.runtimeOrganizationId) return null
+      if (!(await allowedOrganization(config))) return null
       const rows = await runWithTenant(config.organizationId, () => options.database.$transaction(async tx => {
         await tx.$queryRaw`SELECT set_config('app.org_id', ${config.organizationId}, true),
           set_config('app.rls_bypass', 'off', true), set_config('statement_timeout', '1500ms', true), set_config('lock_timeout', '500ms', true)`
@@ -185,7 +194,7 @@ export function createInboundPilotHost(options: {
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
     async claim(config, call) {
-      if (config.organizationId !== options.runtimeOrganizationId) return false
+      if (!(await allowedOrganization(config))) return false
       // Parent permissions are checked by loadConfig before a claim. Exclusive
       // creation binds this grant to one call across processes/restarts.
       let handle
