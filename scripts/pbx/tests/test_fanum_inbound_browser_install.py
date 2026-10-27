@@ -32,7 +32,9 @@ class InboundBrowserInstallTest(unittest.TestCase):
         source = INSTALLER_PATH.read_text(encoding="utf-8")
         self.assertNotRegex(source, r'core show application \$application"[^\n]*\n?\s*\|\s*grep')
         self.assertNotRegex(source, r'core show channeltypes"[^\n]*\n?\s*\|\s*grep')
-        self.assertIn('grep -Fq -- "$application(" <<<"$application_report"', source)
+        self.assertIn('grep -Fiq -- "$application(" <<<"$application_report"', source)
+        # The station's help prints PlayTones( for the dialplan's Playtones().
+        self.assertIn("for application in Dial PlayTones StopPlayTones; do", source)
 
 
 if __name__ == "__main__":
