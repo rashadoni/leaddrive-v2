@@ -27,6 +27,7 @@ type Order = {
   total: string; currency: string
   confirmedAt: string | null; confirmedBy: string | null; rejectedAt: string | null; rejectedBy: string | null; rejectReason: string | null
   managerNotice: { status?: string; at?: string } | null
+  pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string } | null
   lines: Line[]
 }
 type CatalogItem = { externalId: string; itemCode: string; name: string; price: { amount: string; per: string } | null }
@@ -221,6 +222,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
             {noticeStatus === "not_connected" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeOff")}</span></HistoryRow> : null}
             {order.confirmedAt ? <HistoryRow at={order.confirmedAt} locale={locale}>{t("historyConfirmed", { name: order.confirmedBy ?? t("someone") })}</HistoryRow> : null}
             {order.rejectedAt ? <HistoryRow at={order.rejectedAt} locale={locale}>{t("historyRejected", { name: order.rejectedBy ?? t("someone"), reason: order.rejectReason ?? "" })}</HistoryRow> : null}
+            <PharmacyNoticeRow notice={order.pharmacyNotice} locale={locale} />
           </ol>
         </section>
       </div>
@@ -248,6 +250,18 @@ function Kpi({ title, sub, small, children }: { title: string; sub: React.ReactN
       <div className="text-[11px] text-muted-foreground">{sub}</div>
     </div>
   )
+}
+
+/** What happened to the pharmacy's WhatsApp message about the decision. */
+function PharmacyNoticeRow({ notice, locale }: { notice: Order["pharmacyNotice"]; locale: string }) {
+  const t = useTranslations("pharmacyPhoneOrders")
+  if (!notice?.status || notice.status === "sending") return null
+  const rejected = notice.kind === "rejected"
+  const [text, colour] = notice.status === "sent" ? [t(rejected ? "historyPharmacyRejectedSent" : "historyPharmacyConfirmedSent"), "text-emerald-600"]
+    : notice.status === "failed" ? [t("historyPharmacyFailed"), "text-red-600"]
+    : notice.status === "no_number" ? [t("historyPharmacyNoNumber"), "text-muted-foreground"]
+    : [t("historyPharmacyOff"), "text-muted-foreground"]
+  return <HistoryRow at={notice.at} locale={locale}><span className={colour}>{text}</span></HistoryRow>
 }
 
 function HistoryRow({ at, locale, children }: { at: string | undefined; locale: string; children: React.ReactNode }) {

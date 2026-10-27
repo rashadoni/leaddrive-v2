@@ -427,4 +427,46 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(await notify({ fetch: fetchOk, sender: async () => null })).toMatchObject({ status: "not_connected" })
     await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
   })
+
+  it("tells the pharmacy of the manager's decision once, on the number it called from", async () => {
+    const { notifyPharmacyOfDecision } = await import("@/lib/pharmacy-orders/manager-notice")
+    await saveCall(50, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(50) } })
+    const sender = async () => ({ id: "ch", organizationId: ZEYTUN, accessToken: "token", phoneNumberId: "pn1",
+      businessAccountId: null, verifyToken: null, appSecret: null, displayName: null })
+    const sent: Array<{ to: string; template: { name: string; components: Array<{ type: string; parameters: Array<{ text: string }> }> } }> = []
+    const fetchOk = (async (_url: string, init: { body: string }) => {
+      sent.push(JSON.parse(init.body))
+      return new Response(JSON.stringify({ messages: [{ id: `wamid.${sent.length}` }] }), { status: 200 })
+    }) as unknown as typeof fetch
+    const notify = (deps: Parameters<typeof notifyPharmacyOfDecision>[3]) => notifyPharmacyOfDecision(app as unknown as PrismaClient, ZEYTUN, order.id, deps)
+
+    // Still waiting for review: nothing to tell.
+    expect(await notify({ fetch: fetchOk, sender })).toBeNull()
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { status: "confirmed", confirmedAt: new Date(), confirmedById: "user-zeytun" } })
+    expect(await notify({ fetch: fetchOk, sender })).toMatchObject({ status: "sent", kind: "confirmed", messageId: "wamid.1" })
+    expect(sent[0].to).toBe(PHONE.slice(1))
+    expect(sent[0].template.name).toBe("phone_order_confirmed")
+    expect(sent[0].template.components).toEqual([{ type: "body", parameters: [{ type: "text", text: "TS-1001" }, { type: "text", text: "125.00" }] }])
+    // Once only.
+    expect(await notify({ fetch: fetchOk, sender })).toBeNull()
+    expect(sent).toHaveLength(1)
+
+    // A refusal carries the manager's reason on one line, as Meta requires.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { status: "rejected", confirmedAt: null, confirmedById: null,
+      rejectedAt: new Date(), rejectedById: "user-zeytun", rejectReason: "Anbarda\n\nyoxdur\t  hələ", pharmacyNotice: Prisma.DbNull } })
+    expect(await notify({ fetch: fetchOk, sender })).toMatchObject({ status: "sent", kind: "rejected" })
+    expect(sent[1].template.name).toBe("phone_order_rejected")
+    expect(sent[1].template.components[0].parameters.map(item => item.text)).toEqual(["TS-1001", "Anbarda yoxdur hələ"])
+
+    // Meta refuses: failed, with its code only.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { pharmacyNotice: Prisma.DbNull } })
+    const fetchRefused = (async () => new Response(JSON.stringify({ error: { code: 131026, message: `Undeliverable to ${PHONE}` } }), { status: 400 })) as unknown as typeof fetch
+    expect(await notify({ fetch: fetchRefused, sender })).toMatchObject({ status: "failed", error: "meta_131026" })
+    expect(JSON.stringify((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).pharmacyNotice)).not.toContain("501234567")
+
+    // No WhatsApp channel.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { pharmacyNotice: Prisma.DbNull } })
+    expect(await notify({ fetch: fetchOk, sender: async () => null })).toMatchObject({ status: "not_connected", kind: "rejected" })
+  })
 })

@@ -1,9 +1,10 @@
-import { Prisma } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
 import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
 import type { SheetSpec } from "@/lib/export/tabular"
 import { featureFlagsToArray } from "@/lib/modules"
+import { notifyPharmacyOfDecision } from "@/lib/pharmacy-orders/manager-notice"
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
@@ -73,7 +74,7 @@ export async function getPhoneOrder(orgId: string, id: string) {
     total: money(order.totalAmount), currency: order.currency,
     confirmedAt: order.confirmedAt?.toISOString() ?? null, confirmedBy: nameOf(order.confirmedById),
     rejectedAt: order.rejectedAt?.toISOString() ?? null, rejectedBy: nameOf(order.rejectedById), rejectReason: order.rejectReason,
-    managerNotice: order.managerNotice,
+    managerNotice: order.managerNotice, pharmacyNotice: order.pharmacyNotice,
     lines: order.lines.map(line => ({
       id: line.id, position: line.position, status: line.status, externalId: line.externalId, itemCode: line.itemCode,
       productName: line.productName, spokenText: line.spokenText, quantity: line.quantity, unit: line.unit,
@@ -211,6 +212,11 @@ export async function applyPhoneOrderAction(orgId: string, userId: string, id: s
     const total = after.reduce((sum, row) => row.lineTotal ? sum.add(row.lineTotal) : sum, new Prisma.Decimal(0)).toDecimalPlaces(2)
     await tx.pharmacyPhoneOrder.update({ where: { id }, data: { totalAmount: total } })
   }, { isolationLevel: "ReadCommitted", maxWait: 2000, timeout: 5000 })
+  // The pharmacy hears the decision on WhatsApp; the manager does not wait for it.
+  if (action.action === "confirm" || action.action === "reject") {
+    void notifyPharmacyOfDecision(prisma as unknown as PrismaClient, orgId, id)
+      .catch((error: unknown) => console.warn("[phone-orders] pharmacy notice failed", error instanceof Error ? error.name : typeof error))
+  }
   return getPhoneOrder(orgId, id)
 }
 

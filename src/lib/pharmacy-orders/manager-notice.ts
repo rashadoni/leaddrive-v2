@@ -2,7 +2,8 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
 import { runWithTenant } from "@/lib/rls-context"
-import { phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
+import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
+import { PHONE_ORDERS_TABLE, phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
 import { resolveWhatsAppConfig, type WhatsAppConfig } from "@/lib/whatsapp"
 
 /**
@@ -48,7 +49,7 @@ export type ManagerNotice =
 type Fetch = typeof fetch
 
 /** One template message to one number; Meta's error code, never its text (it can quote the number). */
-async function sendOne(sender: WhatsAppConfig, to: string, values: { label: string; pharmacy: string; total: string; orderId: string },
+async function sendTemplate(sender: WhatsAppConfig, to: string, template: { name: string; body: string[]; urlSuffix?: string },
   doFetch: Fetch): Promise<{ ok: true; id: string | null } | { ok: false; error: string }> {
   let response: Response
   try {
@@ -58,11 +59,11 @@ async function sendOne(sender: WhatsAppConfig, to: string, values: { label: stri
       body: JSON.stringify({
         messaging_product: "whatsapp", to: to.replace(/\D/gu, ""), type: "template",
         template: {
-          name: process.env.PHONE_ORDER_NOTICE_TEMPLATE?.trim() || PHONE_ORDER_NOTICE_TEMPLATE,
+          name: template.name,
           language: { code: "az" },
           components: [
-            { type: "body", parameters: [values.label, values.pharmacy, values.total].map(text => ({ type: "text", text })) },
-            { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: values.orderId }] },
+            { type: "body", parameters: template.body.map(text => ({ type: "text", text })) },
+            ...(template.urlSuffix ? [{ type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: template.urlSuffix }] }] : []),
           ],
         },
       }),
@@ -110,10 +111,62 @@ export async function notifyManagersOfPhoneOrder(db: PrismaClient, orgId: string
     const ids: string[] = []
     let sent = 0, error: string | null = null
     for (const phone of phones) {
-      const result = await sendOne(sender, phone, values, deps.fetch ?? fetch)
+      const result = await sendTemplate(sender, phone, { name: process.env.PHONE_ORDER_NOTICE_TEMPLATE?.trim() || PHONE_ORDER_NOTICE_TEMPLATE,
+        body: [values.label, values.pharmacy, values.total], urlSuffix: values.orderId }, deps.fetch ?? fetch)
       if (result.ok) { sent++; if (result.id) ids.push(result.id) } else error ??= result.error
     }
     // Any number that did not get it makes the notice failed: the manager may not know.
     return record(error ? { status: "failed", at: at(), error, sent } : { status: "sent", at: at(), sent, messageIds: ids })
+  })
+}
+
+/* ─── The pharmacy hears the manager's decision ────────────────────── */
+
+/** Owner, 2026-10-27 («подходит»): confirmed or rejected, to the number that called. */
+export const PHARMACY_DECISION_TEMPLATES = { confirmed: "phone_order_confirmed", rejected: "phone_order_rejected" } as const
+
+export type PharmacyNotice =
+  | { status: "sent"; kind: "confirmed" | "rejected"; at: string; messageId: string | null }
+  | { status: "failed"; kind: "confirmed" | "rejected"; at: string; error: string }
+  | { status: "not_connected" | "no_number"; kind: "confirmed" | "rejected"; at: string }
+
+/** A template text parameter: one line, no tabs or runs of spaces (Meta refuses them), at most `max` characters. */
+function oneLine(text: string, max: number) {
+  return text.replace(/\s+/gu, " ").trim().slice(0, max) || "—"
+}
+
+/**
+ * Tell the pharmacy that its order was confirmed or rejected, once, on the
+ * number it called from — a landline in 1C has no WhatsApp. Claimed first
+ * (pharmacyNotice still empty), so a repeated decision never sends twice.
+ */
+export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, orderId: string,
+  deps: { fetch?: Fetch; now?: () => Date; sender?: (orgId: string) => Promise<WhatsAppConfig | null> } = {}): Promise<PharmacyNotice | null> {
+  const now = deps.now ?? (() => new Date())
+  return runWithTenant(orgId, async () => {
+    const order = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId },
+      select: { number: true, status: true, totalAmount: true, rejectReason: true, callerPhone: true } })
+    if (!order || (order.status !== "confirmed" && order.status !== "rejected")) return null
+    const kind = order.status
+    const claimed = await db.pharmacyPhoneOrder.updateMany({
+      where: { id: orderId, organizationId: orgId, pharmacyNotice: { equals: Prisma.DbNull } },
+      data: { pharmacyNotice: { status: "sending", kind, at: now().toISOString() } },
+    })
+    if (claimed.count !== 1) return null
+    const record = async (notice: PharmacyNotice) => {
+      await db.pharmacyPhoneOrder.updateMany({ where: { id: orderId, organizationId: orgId }, data: { pharmacyNotice: notice } })
+      return notice
+    }
+    const at = () => now().toISOString()
+    const phone = decryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", order.callerPhone)
+    if (!/^\+[1-9]\d{7,14}$/u.test(phone)) return record({ status: "no_number", kind, at: at() })
+    const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
+    if (!sender) return record({ status: "not_connected", kind, at: at() })
+    const label = phoneOrderLabel(order.number)
+    const result = await sendTemplate(sender, phone, {
+      name: PHARMACY_DECISION_TEMPLATES[kind],
+      body: kind === "confirmed" ? [label, order.totalAmount.toFixed(2)] : [label, oneLine(order.rejectReason ?? "", 300)],
+    }, deps.fetch ?? fetch)
+    return record(result.ok ? { status: "sent", kind, at: at(), messageId: result.id } : { status: "failed", kind, at: at(), error: result.error })
   })
 }
