@@ -31422,6 +31422,7 @@
     "rejectReason": "Səbəb",
     "rejectSubmit": "Rədd et",
     "errorStale": "Sifariş başqa yerdə dəyişdirilib — səhifə yeniləndi.",
+    "errorCallInProgress": "Zəng hələ davam edir — köməkçi bu sifarişi tamamlayır. Aptek dəstəyi qoyandan sonra yenidən cəhd edin.",
     "errorGeneric": "Alınmadı, yenidən cəhd edin.",
     "errorCatalog": "Kataloq hazırda əlçatan deyil.",
     "loading": "Yüklənir…",

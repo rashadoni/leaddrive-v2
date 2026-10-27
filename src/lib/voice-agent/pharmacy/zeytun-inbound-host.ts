@@ -9,7 +9,6 @@ import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPil
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
 import { savePhoneOrderFromCall } from "./phone-orders"
 import { requestAiHandoff } from "../../voip/inbound-handoff"
-import { notifyManagersOfPhoneOrder } from "../../pharmacy-orders/manager-notice"
 import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import type { PrismaClient } from "@prisma/client"
@@ -184,16 +183,12 @@ export function createInboundPilotHost(options: {
         // matching nothing in 1C is kept as said, never as a 1C pharmacy.
         const caller = callerNumber(call.fromNumber)
         const identity = identifyPharmacy(await findPharmacies(config, caller).catch(() => []), pharmacy)
-        const saved = await savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
+        // The agent saves after every line; the managers hear of the order
+        // when the call ends (call-lifecycle → notifyManagersOfCallOrder).
+        return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
           ...("pharmacy" in identity
             ? { pharmacyName: identity.pharmacy.name, pharmacyGuid: identity.pharmacy.guid, pharmacyAddress: identity.pharmacy.address }
             : "spoken" in identity ? { pharmacyName: identity.spoken } : {}) })
-        // The manager hears of a new order on WhatsApp; the call does not wait for it.
-        if (saved.status === "saved" && saved.created) {
-          void notifyManagersOfPhoneOrder(options.orders!, config.orderOrganizationId, saved.orderId)
-            .catch((error: unknown) => console.warn("[zeytun-line] manager notice failed", error instanceof Error ? error.name : typeof error))
-        }
-        return saved
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
     ...(options.orders && options.transferAvailable ? {

@@ -44,6 +44,10 @@ export const isLineGrant = (config: InboundPilotConfig): config is LineGrant => 
 /** Longest window of one grant: a rehearsal is one call in half an hour; the
  * line runs until the owner moves it, re-armed at most monthly. */
 const GRANT_WINDOW_MS = { owner_inbound_preview: 30 * 60_000, zeytun_line: 31 * 24 * 60 * 60_000 } as const
+/** Longest call. Owner, 2026-10-27: a long order must not be lost — the line's
+ * five minutes cut off a pharmacy's list mid-way, and nothing was saved. The
+ * station core's own ceiling is 900 s; the rehearsal keeps its five minutes. */
+const CALL_MAX_SECONDS = { owner_inbound_preview: 300, zeytun_line: 900 } as const
 const callSchema = z.strictObject({
   id, organizationId: id, channelConfigId: id, providerCallId: z.uuid(),
   provider: z.literal("asterisk"), direction: z.literal("inbound"), callMode: z.literal("ai"),
@@ -166,8 +170,10 @@ export const ZEYTUN_LINE_PROMPT = [
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it."],
   // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
   // повторял заказы, а просто принимает и говорит номер заказа и обработки».
+  // Owner, 2026-10-27: a long order must not be lost. A list saved only at
+  // the end was gone when the call broke off; each settled line is saved now.
   ["At the end read the complete preliminary list ONCE, with quantities in the caller's units and unresolved details, and ask for corrections once. Once the caller agrees, call save_order_list ONCE",
-    "When the caller has nothing more to add, do not read the list back unless asked; call save_order_list ONCE"],
+    "After each settled line, silently call save_order_list with the whole list so far; never mention these saves or their number. When the caller has nothing more to add, do not read the list back unless asked; call save_order_list once more"],
   ["If it returns saved, say the list is recorded as orderNumber for Zeytun's manager to check: a request, not an accepted order.",
     "If it returns saved, say only that the order is accepted as orderNumber and passed to Zeytun's manager for processing."],
   // Owner, 2026-10-26: offer a substitute with the same substance, «та же
@@ -250,7 +256,9 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
     if (request.method !== "POST") return searchResponse({ error: "method_not_allowed" }, 405)
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) return searchResponse({ error: "unsupported_content_type" }, 415)
     if (clock() - windowStart >= 60_000) { windowStart = clock(); count = 0; perCall.clear() }
-    if (inFlight >= 4 || count >= 120) return searchResponse({ error: "rate_limited" }, 429)
+    // Several pharmacies at once, each saving after every line: 2026-10-27,
+    // four requests in flight for the whole server was three callers' worth.
+    if (inFlight >= 16 || count >= 600) return searchResponse({ error: "rate_limited" }, 429)
     count++; inFlight++
     try {
       const body = await readJsonRequestWithinLimit(request, 16_384)
@@ -311,7 +319,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       if (!finalConfig.success || inboundPilotDigest(finalConfig.data) !== inboundPilotDigest(config) ||
           !active(config, clock()) || !finalCall || finalCall.id !== call.id) return denied()
       if (input.action === "session") {
-        const seconds = Math.min(300, Math.floor((Date.parse(config.expiresAt) - clock()) / 1000))
+        const seconds = Math.min(CALL_MAX_SECONDS[config.purpose], Math.floor((Date.parse(config.expiresAt) - clock()) / 1000))
         if (seconds < 30) return denied()
         const line = isLineGrant(config)
         // A directory that cannot be read only costs the greeting its name.

@@ -428,6 +428,49 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
   })
 
+  // Owner, 2026-10-27: a long order must not be lost. The agent saves the list
+  // after every line, so the managers hear of it when the call is over, and
+  // the card does not change while the agent is still writing it.
+  it("tells the managers when the call is over, and keeps the card shut while the call still runs", async () => {
+    const { notifyManagersOfCallOrder } = await import("@/lib/pharmacy-orders/manager-notice")
+    await saveCall(41, LIST.slice(0, 1))
+    await saveCall(41, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(41) } })
+    const call = await admin.callLog.create({ data: { organizationId: ZEYTUN, direction: "inbound", fromNumber: PHONE, toNumber: "+994125550000",
+      provider: "asterisk", providerCallId: callId(41), callMode: "ai", status: "in-progress", wasAnswered: true, startedAt: new Date() } })
+
+    // Still on the line: the manager's change would be overwritten by the next save.
+    const running = await patch(order.id, { action: "reject", reason: "dublikat", revision: order.revision })
+    expect(running.status).toBe(409)
+    expect(await running.json()).toMatchObject({ error: "call_in_progress" })
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).status).toBe("pending_review")
+
+    await admin.callLog.update({ where: { id: call.id }, data: { status: "completed", endedAt: new Date() } })
+    const sender = async () => ({ id: "ch", organizationId: ZEYTUN, accessToken: "token", phoneNumberId: "pn1",
+      businessAccountId: null, verifyToken: null, appSecret: null, displayName: null })
+    const sent: string[] = []
+    const fetchOk = (async (_url: string, init: { body: string }) => {
+      sent.push(init.body)
+      return new Response(JSON.stringify({ messages: [{ id: "wamid.1" }] }), { status: 200 })
+    }) as unknown as typeof fetch
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: { pharmacyPhoneOrders: { managerWhatsApp: ["+994501112233"] } } } })
+    // The whole list, once: the notice is sent with the call's final total.
+    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(41), { fetch: fetchOk, sender }))
+      .toMatchObject({ status: "sent", sent: 1 })
+    expect(JSON.parse(sent[0]).template.components[0].parameters.map((item: { text: string }) => item.text)).toEqual(["TS-1001", "—", "125.00"])
+    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(41), { fetch: fetchOk, sender })).toBeNull()
+    // A call that left no order, and another organization's call id, send nothing.
+    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(42), { fetch: fetchOk, sender })).toBeNull()
+    expect(await notifyManagersOfCallOrder(app as unknown as PrismaClient, OTHER, callId(41), { fetch: fetchOk, sender })).toBeNull()
+    expect(sent).toHaveLength(1)
+
+    // Over: the manager decides as before.
+    const done = await patch(order.id, { action: "reject", reason: "dublikat", revision: order.revision })
+    expect(done.status).toBe(200)
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
+    await admin.callLog.deleteMany({})
+  })
+
   it("tells the pharmacy of the manager's decision once, on the number it called from", async () => {
     const { notifyPharmacyOfDecision } = await import("@/lib/pharmacy-orders/manager-notice")
     await saveCall(50, LIST)

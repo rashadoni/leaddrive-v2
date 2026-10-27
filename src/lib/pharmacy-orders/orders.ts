@@ -22,7 +22,7 @@ export async function phoneOrdersEnabled(orgId: string): Promise<boolean> {
 }
 
 export class PhoneOrderError extends Error {
-  constructor(readonly code: "not_found" | "stale_revision" | "not_pending" | "invalid" | "catalog_unavailable", readonly status: number) {
+  constructor(readonly code: "not_found" | "stale_revision" | "not_pending" | "invalid" | "catalog_unavailable" | "call_in_progress", readonly status: number) {
     super(code)
   }
 }
@@ -152,6 +152,19 @@ function priced(item: PickedItem, quantity: number, lineUnit: string) {
   return { unitPrice: price, lineTotal: price ? price.mul(quantity).toDecimalPlaces(2) : null }
 }
 
+/** A call this old is over even if its end was never reported (the line's ceiling is 15 minutes). */
+const CALL_RUNNING_MAX_MS = 20 * 60_000
+
+/** Whether the order's call is still on the line. */
+async function callStillRunning(orgId: string, providerCallId: string) {
+  const call = await prisma.callLog.findFirst({
+    where: { organizationId: orgId, provider: "asterisk", providerCallId, endedAt: null,
+      startedAt: { gte: new Date(Date.now() - CALL_RUNNING_MAX_MS) } },
+    select: { id: true },
+  })
+  return Boolean(call)
+}
+
 /**
  * One manager action under the order's revision: a card opened before another
  * person's change gets 409 instead of overwriting it. Lines change only while
@@ -159,8 +172,11 @@ function priced(item: PickedItem, quantity: number, lineUnit: string) {
  */
 export async function applyPhoneOrderAction(orgId: string, userId: string, id: string, action: PhoneOrderAction) {
   const head = await prisma.pharmacyPhoneOrder.findFirst({ where: { id, organizationId: orgId },
-    select: { catalogSource: true, catalogScopeKey: true } })
+    select: { catalogSource: true, catalogScopeKey: true, providerCallId: true } })
   if (!head) throw new PhoneOrderError("not_found", 404)
+  // The agent saves the list after every line and each save replaces it: a
+  // manager's change made while the call still runs would be overwritten.
+  if (await callStillRunning(orgId, head.providerCallId)) throw new PhoneOrderError("call_in_progress", 409)
   // The catalog is read before the transaction: parsing it never holds a row lock.
   const item = action.action === "pick_product" || action.action === "add_line"
     ? await pickedItem(head.catalogSource, head.catalogScopeKey, action.externalId) : null

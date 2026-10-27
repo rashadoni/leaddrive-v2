@@ -120,6 +120,19 @@ export async function notifyManagersOfPhoneOrder(db: PrismaClient, orgId: string
   })
 }
 
+/**
+ * The call is over: tell the managers about the order it left, if any. The
+ * agent saves the list after every line (owner, 2026-10-27: a long order must
+ * not be lost), so the notice waits for the end of the call instead of its
+ * first line. The order is the call's own: same organization, same call id.
+ */
+export async function notifyManagersOfCallOrder(db: PrismaClient, orgId: string, providerCallId: string,
+  deps: Parameters<typeof notifyManagersOfPhoneOrder>[3] = {}): Promise<ManagerNotice | null> {
+  const order = await runWithTenant(orgId, () => db.pharmacyPhoneOrder.findFirst({
+    where: { organizationId: orgId, providerCallId, managerNotice: { equals: Prisma.DbNull } }, select: { id: true } }))
+  return order ? notifyManagersOfPhoneOrder(db, orgId, order.id, deps) : null
+}
+
 /* ─── The pharmacy hears the manager's decision ────────────────────── */
 
 /** Owner, 2026-10-27 («подходит»): confirmed or rejected, to the number that called. */
