@@ -1,5 +1,7 @@
 import { sseFrame, SSE_HEARTBEAT } from "@/lib/inbox-stream"
+import { checkPermission } from "@/lib/permissions"
 import { shellEventKindsFor } from "@/lib/shell-events/kinds"
+import { markShellPresent } from "@/lib/shell-events/presence"
 import { subscribeShellEvents } from "@/lib/shell-events/watcher"
 import { withRlsAuth } from "@/lib/with-rls"
 
@@ -29,6 +31,7 @@ export const GET = withRlsAuth(undefined, undefined, async (req, auth) => {
   const encoder = new TextEncoder()
   let closed = false
   let unsubscribe = () => {}
+  let leave = () => {}
   let beat: ReturnType<typeof setInterval> | undefined
   let lifetime: ReturnType<typeof setTimeout> | undefined
 
@@ -46,6 +49,7 @@ export const GET = withRlsAuth(undefined, undefined, async (req, auth) => {
         if (closed) return
         closed = true
         unsubscribe()
+        leave()
         if (beat) clearInterval(beat)
         if (lifetime) clearTimeout(lifetime)
         try {
@@ -82,10 +86,14 @@ export const GET = withRlsAuth(undefined, undefined, async (req, auth) => {
       await subscription.ready
       if (closed) return
       send(sseFrame({ kinds: [...kinds] }, "connected"))
+      // Someone who would see an incoming call's popup and may answer it: the
+      // AI offers a transfer to a manager only while there is one.
+      if (kinds.has("calls") && checkPermission(auth.role, "voip", "write")) leave = markShellPresent(auth.orgId, auth.userId)
     },
     cancel() {
       closed = true
       unsubscribe()
+      leave()
       if (beat) clearInterval(beat)
       if (lifetime) clearTimeout(lifetime)
     },
