@@ -30,7 +30,10 @@ const ownerPreviewGrantSchema = z.strictObject({
 const lineGrantSchema = z.strictObject({
   version: z.literal(1), enabled: z.literal(true), purpose: z.literal("zeytun_line"),
   id: z.uuid(), organizationId: id, channelConfigId: id,
-  issuedAt: z.iso.datetime({ offset: true }), expiresAt: z.iso.datetime({ offset: true }),
+  /** Owner, 2026-10-27: the line must not stop by itself. Without an end it
+   * lasts while the organization holds the number on this channel
+   * (`voice_line_numbers`, checked on every call); with one, at most a month. */
+  issuedAt: z.iso.datetime({ offset: true }), expiresAt: z.iso.datetime({ offset: true }).optional(),
   approvalReference: id,
   approvedSource: z.strictObject({ organizationId: id, scopeKey: hash }),
   orderOrganizationId: id,
@@ -41,8 +44,8 @@ export const inboundPilotConfigSchema = z.discriminatedUnion("purpose", [ownerPr
 export type InboundPilotConfig = z.infer<typeof inboundPilotConfigSchema>
 export type LineGrant = z.infer<typeof lineGrantSchema>
 export const isLineGrant = (config: InboundPilotConfig): config is LineGrant => config.purpose === "zeytun_line"
-/** Longest window of one grant: a rehearsal is one call in half an hour; the
- * line runs until the owner moves it, re-armed at most monthly. */
+/** Longest window of a grant with an end: a rehearsal is one call in half an
+ * hour; a line given an end date runs at most a month. */
 const GRANT_WINDOW_MS = { owner_inbound_preview: 30 * 60_000, zeytun_line: 31 * 24 * 60 * 60_000 } as const
 /** Longest call. Owner, 2026-10-27: a long order must not be lost — the line's
  * five minutes cut off a pharmacy's list mid-way, and nothing was saved. The
@@ -219,8 +222,11 @@ const bodySchema = z.discriminatedUnion("action", [
 ])
 const denied = () => searchResponse({ enabled: false, status: "pilot_not_authorized", candidates: [], ...searchRestrictions }, 403)
 function active(config: InboundPilotConfig, now: number) {
-  const start = Date.parse(config.issuedAt), end = Date.parse(config.expiresAt)
-  return Number.isFinite(now) && now >= start && now < end && end > start && end - start <= GRANT_WINDOW_MS[config.purpose]
+  const start = Date.parse(config.issuedAt)
+  if (!Number.isFinite(now) || !Number.isFinite(start) || now < start) return false
+  if (config.expiresAt === undefined) return isLineGrant(config)
+  const end = Date.parse(config.expiresAt)
+  return now < end && end > start && end - start <= GRANT_WINDOW_MS[config.purpose]
 }
 function internationalNumber(value: unknown) {
   if (typeof value !== "string") return null
@@ -319,7 +325,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       if (!finalConfig.success || inboundPilotDigest(finalConfig.data) !== inboundPilotDigest(config) ||
           !active(config, clock()) || !finalCall || finalCall.id !== call.id) return denied()
       if (input.action === "session") {
-        const seconds = Math.min(CALL_MAX_SECONDS[config.purpose], Math.floor((Date.parse(config.expiresAt) - clock()) / 1000))
+        const seconds = config.expiresAt === undefined ? CALL_MAX_SECONDS[config.purpose]
+          : Math.min(CALL_MAX_SECONDS[config.purpose], Math.floor((Date.parse(config.expiresAt) - clock()) / 1000))
         if (seconds < 30) return denied()
         const line = isLineGrant(config)
         // A directory that cannot be read only costs the greeting its name.
