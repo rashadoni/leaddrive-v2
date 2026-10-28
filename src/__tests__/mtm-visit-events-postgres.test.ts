@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { PrismaClient, type Prisma } from "@prisma/client"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { lockMtmVisitSnapshot, mtmVisitEvents, recordMtmVisitChange, type MtmVisitSnapshot } from "@/lib/mtm/visit-events"
 
 // MTM visits on the event platform (owner 2026-10-26: «Подключай к Kafka
@@ -36,6 +36,25 @@ describe("which events a change to a visit makes", () => {
   })
 })
 
+// The check-in's coordinates (Baku), with more decimals than an ISO timestamp
+// can hold (milliseconds): a fragment like «40.4» also matches a clock reading
+// `…T04:44:40.412Z`, which is how deploy run 40451263826 (2026-10-27) failed
+// with no coordinate in any event. At four decimals rounding and truncation
+// agree (40.4092, 49.8671), so `toFixed(4)` finds either and anything longer.
+const CHECK_IN = { lat: 40.409214, lng: 49.867131 }
+// By word (checkInLat, lat_deg, latitude, coords…), so correlationid is not «lat».
+const isCoordinateKey = (key: string) =>
+  /latitude|longitude|lng|coord|lat$/i.test(key) || key.split(/(?=[A-Z])|[^A-Za-z]/).some(word => /^(lat|lon)$/i.test(word))
+/** Paths in a parsed event that name a coordinate or carry one of CHECK_IN's values. */
+const coordinateLeaks = (value: unknown, path = "$"): string[] => {
+  if (typeof value === "number") return Object.values(CHECK_IN).some(c => Math.abs(value - c) < 1e-4) ? [path] : []
+  if (typeof value === "string") return Object.values(CHECK_IN).some(c => value.includes(c.toFixed(4))) ? [path] : []
+  if (!value || typeof value !== "object") return []
+  return Object.entries(value).flatMap(([key, inner]) => [
+    ...(isCoordinateKey(key) ? [`${path}.${key}`] : []), ...coordinateLeaks(inner, `${path}.${key}`),
+  ])
+}
+
 const databaseUrl = process.env.EVENT_PLATFORM_TEST_DATABASE_URL
 const postgresDescribe = databaseUrl ? describe : describe.skip
 
@@ -52,9 +71,10 @@ postgresDescribe("MTM visit events on PostgreSQL", () => {
   })
   afterAll(async () => { await prisma?.$disconnect() })
 
-  const newVisit = async (organizationId = "org-b") => {
+  const newVisit = async (organizationId = "org-b", checkInAt: string | null = null) => {
     const id = `visit-${randomUUID()}`
-    await prisma.$executeRawUnsafe(`INSERT INTO mtm_visits (id, "organizationId", "agentId", "customerId", "checkInLat", "checkInLng") VALUES ($1, $2, 'agent-1', 'customer-1', 40.4, 49.8)`, id, organizationId)
+    await prisma.$executeRawUnsafe(`INSERT INTO mtm_visits (id, "organizationId", "agentId", "customerId", "checkInLat", "checkInLng", "checkInAt")
+      VALUES ($1, $2, 'agent-1', 'customer-1', $3, $4, coalesce($5::timestamp, CURRENT_TIMESTAMP::timestamp))`, id, organizationId, CHECK_IN.lat, CHECK_IN.lng, checkInAt)
     return id
   }
   const stream = (id: string) => prisma.$queryRawUnsafe<Array<{ type: string; version: string; topic: string; envelope: string }>>(
@@ -62,20 +82,29 @@ postgresDescribe("MTM visit events on PostgreSQL", () => {
      JOIN event_outbox o ON o."eventId" = e.id WHERE e."aggregateType" = 'visit' AND e."aggregateId" = $1 ORDER BY e."aggregateVersion"`, id)
 
   it("a check-in and its checkout reach the mtm topic, in order, without coordinates", async () => {
-    const id = await newVisit()
-    await prisma.$transaction(async tx => { expect(await recordMtmVisitChange(tx as never, "org-b", id, null)).toBe(1) })
-    await prisma.$transaction(async tx => {
-      const before = await lockMtmVisitSnapshot(tx as never, "org-b", id)
-      await tx.$executeRawUnsafe(`UPDATE mtm_visits SET status = 'CHECKED_OUT', "checkOutAt" = CURRENT_TIMESTAMP, duration = 25, outcome = 'SUCCESSFUL' WHERE id = $1`, id)
-      expect(await recordMtmVisitChange(tx as never, "org-b", id, before)).toBe(2)
-    })
-    const events = await stream(id)
-    expect(events.map(e => [e.type, e.version, e.topic])).toEqual([
-      ["mtm.visit-started.v1", "1", "leaddrive.domain.mtm.v1"],
-      ["mtm.visit-completed.v1", "2", "leaddrive.domain.mtm.v1"],
-      ["mtm.visit-result-recorded.v1", "3", "leaddrive.domain.mtm.v1"],
-    ])
-    expect(events.map(e => e.envelope).join("")).not.toMatch(/40\.4|49\.8|Lat|Lng/)
+    // Every time in these events carries a coordinate's first digits (…40.4…,
+    // …49.8…), on every run: the check must read keys and values, not text.
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-10-27T04:44:40.412Z"))
+    try {
+      const id = await newVisit("org-b", "2026-10-27 04:44:40.400")
+      await prisma.$transaction(async tx => { expect(await recordMtmVisitChange(tx as never, "org-b", id, null)).toBe(1) })
+      await prisma.$transaction(async tx => {
+        const before = await lockMtmVisitSnapshot(tx as never, "org-b", id)
+        await tx.$executeRawUnsafe(`UPDATE mtm_visits SET status = 'CHECKED_OUT', "checkOutAt" = '2026-10-27 05:09:49.800', duration = 25, outcome = 'SUCCESSFUL' WHERE id = $1`, id)
+        expect(await recordMtmVisitChange(tx as never, "org-b", id, before)).toBe(2)
+      })
+      const events = await stream(id)
+      expect(events.map(e => [e.type, e.version, e.topic])).toEqual([
+        ["mtm.visit-started.v1", "1", "leaddrive.domain.mtm.v1"],
+        ["mtm.visit-completed.v1", "2", "leaddrive.domain.mtm.v1"],
+        ["mtm.visit-result-recorded.v1", "3", "leaddrive.domain.mtm.v1"],
+      ])
+      expect(events.map(e => e.envelope).join("")).toMatch(/40\.4.*49\.8/s) // what the old fragment check tripped on
+      expect(events.flatMap(e => coordinateLeaks(JSON.parse(e.envelope)))).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("a visit made before the events existed gets its state first, once", async () => {
