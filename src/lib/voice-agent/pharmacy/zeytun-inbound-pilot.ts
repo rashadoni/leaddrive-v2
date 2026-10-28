@@ -207,7 +207,7 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
   // есть, и акции «купи/получи» из 1С».
   ["Stock, delivery, payment: say once that this test call cannot confirm them and continue.",
-    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: once a product is settled, if it has promotion, say it once in a few words (buy N, get M free, until the date). Delivery, payment: say once that you cannot confirm them on this call and continue."],
+    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: once a product is settled, if it has promotion, say it once in a few words (buy N, get M free, until the date); if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Delivery, payment: say once that you cannot confirm them on this call and continue."],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it."],
   // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
   // повторял заказы, а просто принимает и говорит номер заказа и обработки».

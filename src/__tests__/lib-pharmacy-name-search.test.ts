@@ -67,4 +67,23 @@ describe("PharmacyNameSearch word ranking for spoken requests", () => {
     expect(index.find("Noşpa ampula")).not.toContain("ketonal-amp")
     expect(index.find("Ketonal 30 qr (Krem) (LEK) (Sloveniya)")[0]).toBe("ketonal-krem")
   })
+
+  // Live call 2026-10-28: "Adefa" found nothing. Two of three Zeytun feed
+  // names are Cyrillic only; the caller's words arrive in Azerbaijani Latin.
+  it("finds a Cyrillic-only feed name from the caller's Latin spelling", () => {
+    const index = search()
+    index.add("adefa", "Адефа № 30 (Таблетки) (Pharmex Rom Industry Srl) (Румыния)")
+    index.add("adzhisept", "Аджисепт ананас № 24 (Пастилки) (AGİO PHARMACEUTİCALS LTD,) (Индия)")
+    index.add("glukoza", "Глюкоза 5% 200 мл (Раствор) (Новофарм) (Украина)")
+    index.add("shalfey", "Шалфей № 20 (Пастилки) (Натур Продукт) (Нидерланды)")
+    expect(index.find("Adefa")[0]).toBe("adefa")
+    expect(index.find("Adefa otuzluq tablet")[0]).toBe("adefa")
+    expect(index.find("Acisept ananas")[0]).toBe("adzhisept")
+    expect(index.find("Ajisept")[0]).toBe("adzhisept")
+    expect(index.find("Qlükoza")[0]).toBe("glukoza")
+    expect(index.find("Şalfey")[0]).toBe("shalfey")
+    expect(index.find("Shalfey")[0]).toBe("shalfey")
+    // The Latin feed is ranked as before.
+    expect(index.find("Ketanol").slice(0, 2).sort()).toEqual(["ketonal-amp", "ketonal-krem"])
+  })
 })

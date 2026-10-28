@@ -417,6 +417,9 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     const rehearsal = await found(item({}), fixture())
     expect(rehearsal).not.toHaveProperty("stock")
     expect(rehearsal).not.toHaveProperty("promotion")
+    // Owner, 2026-10-28: «если аптека берёт меньше, чем нужно для акции, пусть
+    // ИИ один раз предложит добрать до акции».
+    expect(ZEYTUN_LINE_PROMPT).toContain("if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy")
   })
 
   // Owner, 2026-10-27: the line must not stop by itself on its renewal date.
