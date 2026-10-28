@@ -3,7 +3,7 @@ import { normalizePharmacyLabel } from "./contracts"
 function trigrams(text: string): Set<string> {
   const characters = Array.from(`  ${text} `)
   const result = new Set<string>()
-  for (let i = 0; i + 2 < characters.length; i++) result.add(characters.slice(i, i + 3).join(""))
+  for (let i = 0; i + 2 < characters.length; i++) result.add(characters[i] + characters[i + 1] + characters[i + 2])
   return result
 }
 
@@ -88,10 +88,12 @@ export class PharmacyNameSearch {
       this.terms.set(label, new Set([id]))
       const grams = trigrams(label)
       this.sizes.set(label, grams.size)
+      // ~1 million postings for Zeytun's feed (2026-10-28: 26 692 labels): one
+      // lookup per gram, not a lookup and a store.
       for (const gram of grams) {
-        const terms = this.postings.get(gram) ?? new Set<string>()
-        terms.add(label)
-        this.postings.set(gram, terms)
+        const terms = this.postings.get(gram)
+        if (terms) terms.add(label)
+        else this.postings.set(gram, new Set([label]))
       }
     }
   }

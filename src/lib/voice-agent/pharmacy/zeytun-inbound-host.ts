@@ -132,7 +132,7 @@ export function createInboundPilotHost(options: {
         // The rehearsal is pinned to the version the owner approved; the line
         // takes the newest live snapshot the refresh cron saved.
         if (!snapshot || (!isLineGrant(config) && snapshot.version !== config.approvedSource.catalogVersion)) throw new Error("snapshot_unavailable")
-        const feed = new ZeytunAvailableBalances(snapshot.payload, snapshot.context)
+        const feed = await ZeytunAvailableBalances.build(snapshot.payload, snapshot.context)
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
           observedAt: snapshot.context.observedAt, source: snapshot.context.source, vocabulary: feed.manufacturerWords(400),
           search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query) }
@@ -146,7 +146,8 @@ export function createInboundPilotHost(options: {
       // The line lives for weeks: look at the store every ten minutes in the
       // background and keep answering from the parsed copy meanwhile. Only the
       // header is read first: the same snapshot re-observed by the refresh cron
-      // takes its new date without a re-parse, which holds this process ~2 s.
+      // takes its new date without a rebuild (~3 s of this process's CPU, in
+      // slices: ZeytunAvailableBalances.build).
       // A failed look keeps the copy; the request path's age gate still applies.
       if (isLineGrant(config) && !catalog.next && Date.now() - catalog.at >= 10 * 60_000) {
         const current = catalog

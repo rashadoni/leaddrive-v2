@@ -218,3 +218,46 @@ describe("bounded AvailableBalances reader", () => {
     expect(feed.manufacturerWords(1)).toEqual(["Sopharma"])
   })
 })
+
+describe("Zeytun feed built a slice at a time", () => {
+  // 2026-10-28 on prod: building the 14 MB feed held the web process 3.2 s.
+  const many = Array.from({ length: 300 }, (_, n) => {
+    const r = row()
+    return { ...r, Номенклатура: { ...r.Номенклатура, Guid: `11111111-2222-4333-8444-${String(n).padStart(12, "0")}`, Номер: `SN-${n}`,
+      Наименование: `${["Адефа", "Кетонал", "Но-шпа", "Тестмедин"][n % 4]} ${n} мг № 20 (Таблетки) (${["Sopharma", "KRKA"][n % 2]} ) (Болгария)`,
+      НаименованиеАз: n % 3 ? "" : `Preparat ${n} \\*Sopharma Asc , Bolqarıstan\\*`,
+      МассивШтрихкодов: [{ ТипШтрихкода: "EAN13", Штрихкод: `48${String(n).padStart(11, "0")}` }] } }
+  })
+
+  it("answers exactly as the feed built at once", async () => {
+    const at = new ZeytunAvailableBalances(payload(many), context)
+    const sliced = await ZeytunAvailableBalances.build(payload(many), context, 0)
+    expect(sliced.summary("tenant-test")).toEqual(at.summary("tenant-test"))
+    expect(sliced.manufacturerWords()).toEqual(at.manufacturerWords())
+    for (const query of [{ text: "Adefa" }, { text: "Noşpa 20" }, { text: "ketanol" }, { text: "Preparat 30" },
+      { itemCode: "SN-7" }, { barcode: "4800000000042" }, { externalId: many[5].Номенклатура.Guid }]) {
+      expect(sliced.search("tenant-test", query)).toEqual(at.search("tenant-test", query))
+    }
+    // Cyrillic name, Latin words: the line's case from the 2026-10-28 call.
+    expect(sliced.search("tenant-test", { text: "Adefa" }).candidates[0].name).toMatch(/^Адефа/u)
+  })
+
+  it("lets the event loop run between rows", async () => {
+    let turns = 0, running = true
+    const spin = () => { if (running) { turns++; setImmediate(spin) } }
+    setImmediate(spin)
+    await ZeytunAvailableBalances.build(payload(many), context, 0)
+    running = false
+    // Decode, parse, and one turn per row at the least.
+    expect(turns).toBeGreaterThanOrEqual(many.length)
+  })
+
+  it("rejects what the feed built at once rejects", async () => {
+    const bad = row()
+    bad.Номенклатура.Guid = "00000000-0000-0000-0000-000000000000"
+    for (const input of [payload([row(), row()]), payload([bad]), payload([{ Цена: 5 }]), payload([]), "<html>not JSON</html>",
+      Uint8Array.from([0xff, 0xfe])]) {
+      await expect(ZeytunAvailableBalances.build(input, context)).rejects.toThrow("invalid_catalog")
+    }
+  })
+})
