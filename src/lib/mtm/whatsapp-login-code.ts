@@ -1,11 +1,13 @@
 import { resolveWhatsAppConfig, type WhatsAppConfig } from "@/lib/whatsapp"
+import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
 /**
- * Sends the MTM sign-in code to WhatsApp from LeadDrive's own number, for every
- * company — the same number the inbox and the demo already use (owner,
- * 2026-09-22: «пусть будут посылаться с номера который у меня уже
- * зарегистрирован»).
+ * Sends the MTM sign-in code to WhatsApp from LeadDrive's own number — the
+ * same number the inbox and the demo already use (owner, 2026-09-22: «пусть
+ * будут посылаться с номера который у меня уже зарегистрирован») — or, for a
+ * company listed in `COMPANY_SENDER_PHONE_NUMBER_IDS`, from that company's own
+ * number. Each sending account needs its own approved copy of the template.
  *
  * WhatsApp lets a business write first only with a template Meta approved.
  * The code goes in an «Authentication» template with a «Copy code» button
@@ -44,28 +46,88 @@ export function templateLanguages(preferred: string | null | undefined): string[
 /**
  * Meta's answers that mean «this template cannot be sent at all» — not
  * «this number cannot be reached». While one is fresh the button is answered
- * with «not available» for everybody, without looking the number up.
+ * with «not available» for everybody that number sends to, without looking
+ * the number up. Remembered per sending number: one company's missing template
+ * says nothing about another company's sender.
  */
 const TEMPLATE_MISSING = 132001
 const TEMPLATE_UNUSABLE = new Set([132015, 132016])
 const UNAVAILABLE_FOR_MS = 10 * 60_000
-let unavailableUntil = 0
+const unavailableUntil = new Map<string, number>()
 
-export function loginCodeTemporarilyUnavailable(now = Date.now()): boolean {
-  return now < unavailableUntil
+export function loginCodeTemporarilyUnavailable(sender: Pick<WhatsAppConfig, "phoneNumberId">, now = Date.now()): boolean {
+  return now < (unavailableUntil.get(sender.phoneNumberId) ?? 0)
 }
 
 /** For tests. */
 export function resetLoginCodeAvailability(): void {
-  unavailableUntil = 0
+  unavailableUntil.clear()
 }
 
-export async function loginCodeSender(): Promise<WhatsAppConfig | null> {
-  const organizationId = loginCodeSenderOrganizationId()
+type Env = Partial<Record<string, string | undefined>>
+
+/**
+ * The number LeadDrive's shared channel sends from — Meta's phone number id,
+ * named, not «the first active channel». On 2026-10-29 LeadDrive Inc. had two
+ * active WhatsApp channels (…30 65 and …80 49) and Postgres handed back the
+ * one whose account has no `leaddrive_login_code`: every code failed as
+ * template_missing. …30 65 is the number the codes went from since 2026-10-15
+ * (owner, 2026-09-22: «с номера который у меня уже зарегистрирован»).
+ */
+const SHARED_SENDER_PHONE_NUMBER_ID = "984538588084578" // +994 10 531 30 65, «Lead Drive CRM»
+
+/**
+ * Companies whose codes go from their own WhatsApp number, by the company's
+ * organization id. The channel is looked up in that same organization, so an
+ * entry can only ever send from the company's own number.
+ */
+const COMPANY_SENDER_PHONE_NUMBER_IDS: Readonly<Record<string, string>> = {
+  // Zeytun Pharma, +994 99 301 29 14 (owner, 2026-10-29: «+994 99 301 29 14»).
+  cmu9ih71e01vbkpd4fvgjhlba: "1421873671003286",
+}
+
+function companySenders(env: Env): Readonly<Record<string, string>> {
+  const raw = env.MTM_LOGIN_CODE_COMPANY_SENDERS?.trim()
+  if (!raw) return COMPANY_SENDER_PHONE_NUMBER_IDS
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      && Object.values(parsed).every(value => typeof value === "string" && value.trim())) return parsed as Record<string, string>
+  } catch { /* falls through */ }
+  // A broken override must not quietly hand a company's codes to another sender.
+  throw new Error("MTM_LOGIN_CODE_COMPANY_SENDERS must be a JSON object of organization id → phone number id")
+}
+
+/** Which organization's channel, and which of its numbers, sends this company's codes. */
+export function loginCodeSenderFor(companyId: string, env: Env = process.env): { organizationId: string; phoneNumberId: string } | null {
+  const own = companySenders(env)[companyId]?.trim()
+  if (own) return { organizationId: companyId, phoneNumberId: own }
+  const organizationId = loginCodeSenderOrganizationId(env)
   if (!organizationId) return null
+  return { organizationId, phoneNumberId: env.MTM_LOGIN_CODE_SENDER_PHONE_NUMBER_ID?.trim() || SHARED_SENDER_PHONE_NUMBER_ID }
+}
+
+export async function loginCodeSender(companyId: string, env: Env = process.env): Promise<WhatsAppConfig | null> {
+  const chosen = loginCodeSenderFor(companyId, env)
+  if (!chosen) return null
+  const { organizationId, phoneNumberId } = chosen
   // channel_configs is a tenant table; the sender is read by server
   // configuration alone, never from a request.
-  return await runWithRlsBypass(() => resolveWhatsAppConfig(organizationId))
+  return await runWithRlsBypass(async () => {
+    const rows = await prisma.channelConfig.findMany({
+      where: { organizationId, channelType: "whatsapp", isActive: true, OR: [{ phoneNumberId }, { phoneNumber: phoneNumberId }] },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    })
+    for (const row of rows) {
+      const sender = await resolveWhatsAppConfig(organizationId, { channelConfigId: row.id })
+      if (sender?.phoneNumberId === phoneNumberId) return sender
+    }
+    // No other channel stands in: a number without the template would only
+    // turn «not configured» into a code that never arrives.
+    console.warn("[MTM login code] the configured sender number has no active WhatsApp channel", { organizationId, phoneNumberId })
+    return null
+  })
 }
 
 export type LoginCodeDelivery =
@@ -116,13 +178,13 @@ export async function sendLoginCodeToWhatsApp(
     const code = body?.error?.code
     if (code === TEMPLATE_MISSING) { missing++; continue }
     if (code !== undefined && TEMPLATE_UNUSABLE.has(code)) {
-      unavailableUntil = now() + UNAVAILABLE_FOR_MS
+      unavailableUntil.set(sender.phoneNumberId, now() + UNAVAILABLE_FOR_MS)
       return { status: "unavailable", reason: `template_${code}` }
     }
     return { status: "failed", reason: code ? `meta_${code}` : `http_${response.status}` }
   }
   if (missing === languages.length) {
-    unavailableUntil = now() + UNAVAILABLE_FOR_MS
+    unavailableUntil.set(sender.phoneNumberId, now() + UNAVAILABLE_FOR_MS)
     return { status: "unavailable", reason: "template_missing" }
   }
   return { status: "failed", reason: "no_language" }

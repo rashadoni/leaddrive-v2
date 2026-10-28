@@ -67,9 +67,8 @@ export async function POST(req: NextRequest) {
       const organization = await companyBySlug(organizationSlug)
       if (!organization) return codeFlowError(404, "MTM_COMPANY_NOT_FOUND", "Company not found")
       // Decided before the number is looked at, so it says nothing about it.
-      if (loginCodeTemporarilyUnavailable()) return unavailable()
-      const sender = await loginCodeSender()
-      if (!sender) return unavailable()
+      const sender = await loginCodeSender(organization.id)
+      if (!sender || loginCodeTemporarilyUnavailable(sender)) return unavailable()
 
       if (application) {
         const recovery = await requestIdentityMobileRecovery(prisma, organization.id, { phone, application }, async ({ to, code, signal }) => {
