@@ -105,6 +105,14 @@ class ZeytunGeminiTts:
         return produced
 
 
+# The line's opening, voiced once per process: (voice, model, text) -> PCM
+# chunks. Owner, 2026-10-28: «долго… несколько секунд тишина, а потом
+# включается ассистент». The opening is fixed text from the CRM, so a call
+# need not wait for the model to say it or for the TTS to voice it again.
+ZEYTUN_OPENING_AUDIO = {}
+ZEYTUN_OPENING_AUDIO_MAX = 4
+
+
 class ZeytunSpeechRelay:
     """Re-voices the Live model's answers through a TTS voice the owner chose.
 
@@ -163,6 +171,7 @@ class ZeytunSpeechRelay:
         self.lock = threading.Condition()
         self.turns = []
         self.epoch = None
+        self.prefilled = False
         self.worker = threading.Thread(target=self._run, name="zeytun-tts", daemon=True)
         self.worker.start()
 
@@ -170,7 +179,28 @@ class ZeytunSpeechRelay:
     def _new_turn():
         return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None, "created": time.monotonic(),
                 "final_taken": False, "finished": False, "cancelled": False, "made": 0,
-                "passthrough": False, "spoken": False}
+                "passthrough": False, "spoken": False, "prefill": False}
+
+    def prefill(self, text, epoch=None):
+        """Voice the call's fixed opening now, as the greeting generation's turn.
+
+        The core has just asked the model to say exactly this text. Its words
+        for that generation are not voiced again; its boundaries are still
+        held until the opening is queued, as for any turn.
+        """
+        text = text.strip() if isinstance(text, str) else ""
+        with self.lock:
+            if self.prefilled or self.turns or not text:
+                return False
+            self.prefilled = True
+            # The greeting generation arrives on this socket: it must not read
+            # as a replacement that cancels what was queued for an old one.
+            self.epoch = epoch
+            turn = self._new_turn()
+            turn["prefill"], turn["pieces"], turn["made"] = True, [text], 1
+            self.turns.append(turn)
+            self.lock.notify_all()
+        return True
 
     def _split_locked(self, turn):
         # Only the first sentence goes out alone (it sets the reply's delay);
@@ -272,8 +302,9 @@ class ZeytunSpeechRelay:
                 return not content
             if not turn["cancelled"]:
                 turn["original"].extend(audio)
-                turn["buffer"] += text
-                self._split_locked(turn)
+                if not turn["prefill"]:
+                    turn["buffer"] += text
+                    self._split_locked(turn)
             for key in ("generationComplete", "turnComplete"):
                 if content.get(key) is not True:
                     continue
@@ -377,8 +408,8 @@ class ZeytunSpeechRelay:
                 turn["spoken"] = True
 
             try:
-                self.tts.stream(zeytun_speakable_text(piece), on_pcm,
-                                lambda: not turn["cancelled"] and self.speakable())
+                self._stream(turn, zeytun_speakable_text(piece), on_pcm,
+                             lambda: not turn["cancelled"] and self.speakable())
             except Exception as error:
                 # Our own codes say why (tts_http_403, tts_no_audio, ...); never a body.
                 reason = str(error) if isinstance(error, ZeytunPilotUnavailable) else type(error).__name__
@@ -404,6 +435,27 @@ class ZeytunSpeechRelay:
             held, turn["held"] = turn["held"], []
         for key in held:
             self._emit({key: True})
+
+    def _stream(self, turn, text, on_pcm, keep_going):
+        if not turn["prefill"]:
+            return self.tts.stream(text, on_pcm, keep_going)
+        key = (getattr(self.tts, "voice", None), getattr(self.tts, "url", "").split("?")[0], text)
+        cached = ZEYTUN_OPENING_AUDIO.get(key)
+        if cached:
+            self.log("opening_cached")
+            for pcm in cached:
+                if not keep_going():
+                    break
+                on_pcm(pcm)
+            return sum(len(pcm) for pcm in cached)
+        chunks = []
+        produced = self.tts.stream(text, lambda pcm: (chunks.append(pcm), on_pcm(pcm)), keep_going)
+        # Only a whole opening is kept: a cut one would be cut on every call.
+        if produced and chunks and keep_going():
+            if len(ZEYTUN_OPENING_AUDIO) >= ZEYTUN_OPENING_AUDIO_MAX:
+                ZEYTUN_OPENING_AUDIO.clear()
+            ZEYTUN_OPENING_AUDIO[key] = tuple(chunks)
+        return produced
 
     def _fallback(self, turn, reason):
         # Nothing of the TTS was heard: the caller hears the model instead.
