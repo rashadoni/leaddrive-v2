@@ -174,6 +174,8 @@ describe.skipIf(!hasTools)("cron-trigger.sh warms the line where the station is 
 describe("the deploy replaces the line without a gap", () => {
   const deploy = readFileSync(join(ROOT, "scripts/server-deploy.sh"), "utf8")
   const step7c = deploy.slice(deploy.indexOf("# ── Step 7c:"), deploy.indexOf("# ── Step 8:"))
+  const dirs: string[] = []
+  afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }) })
 
   it("never stops the line before the web app's `pm2 start`", () => {
     const startAt = deploy.search(/^pm2 start "\$PM2_CONFIG" 2>\/dev\/null/m)
@@ -182,15 +184,36 @@ describe("the deploy replaces the line without a gap", () => {
     expect(stopPhase).not.toMatch(/fuser -k "\$LINE_/)
   })
 
-  it("counts every form of it among the processes the Fund fence must stop", () => {
+  it("leaves the answering slot running through the Fund fence, which every deploy runs", () => {
+    // 2026-10-28: the fence (run on every deploy with a booking controller)
+    // stopped the slots too, and the station got 8 s of 502s. The slots run
+    // from their own copy and write no Fund or booking state.
     const fence = deploy.slice(
       deploy.indexOf("persist_event_platform_pm2_stop_fence() {"),
       deploy.indexOf("quiesce_event_platform_pilot() {"),
     )
-    expect(fence.match(/"\$LINE_SLOT_A_PROCESS" "\$LINE_SLOT_B_PROCESS"/g)).toHaveLength(3)
-    expect(fence).toContain('pm2 delete "$LINE_SLOT_A_PROCESS"')
-    expect(fence).toContain('pm2 delete "$LINE_SLOT_B_PROCESS"')
-    expect(fence).toContain('["3001", "3002", "3003", "3004", "3005"]')
+    expect(deploy).toMatch(/^if \[ -n "\$BOOKING_RELEASE_CONTROLLER" \]; then persist_event_platform_pm2_stop_fence; fi$/m)
+    expect(fence).not.toContain("LINE_SLOT_")
+    expect(fence).not.toMatch(/"300[45]"/)
+    expect(fence).toContain('pm2 delete "$LINE_PM2_PROCESS"')
+    expect(fence).toContain('["3001", "3002", "3003"]')
+  })
+
+  it.skipIf(spawnSync("node", ["--version"]).status !== 0)("the fence's own classifier does not pick a slot", () => {
+    const fence = deploy.slice(deploy.indexOf("persist_event_platform_pm2_stop_fence() {"), deploy.indexOf("quiesce_event_platform_pilot() {"))
+    const classifier = fence.slice(fence.indexOf("<<'NODE'\n") + 8, fence.indexOf("\nNODE\n"))
+    const dir = mkdtempSync(join(tmpdir(), "line-fence-"))
+    dirs.push(dir)
+    const state = join(dir, "jlist.json")
+    writeFileSync(state, JSON.stringify([
+      { pm_id: 1, name: "leaddrive-v2", pm2_env: { pm_cwd: "/opt/leaddrive-v2/.next/standalone", env: { PORT: "3001" } } },
+      { pm_id: 7, name: "leaddrive-v2-line-a", pm2_env: { pm_cwd: "/opt/leaddrive-v2/line-releases/x-a",
+        pm_exec_path: "/opt/leaddrive-v2/line-releases/x-a/server.js", cwd: "/opt/leaddrive-v2/line-releases/x-a", env: { PORT: "3004" } } },
+    ]))
+    writeFileSync(join(dir, "classify.js"), classifier)
+    const run = spawnSync("node", [join(dir, "classify.js"), state, "leaddrive-v2", "softphone-relay", "leaddrive-v2-jobs", "leaddrive-v2-line",
+      "/opt/leaddrive-v2/.next/standalone"], { encoding: "utf8" })
+    expect(run.stdout.trim().split("\n")).toEqual(["1"])
   })
 
   it("runs only after the web handoff, and never rolls the web app back on its account", () => {
@@ -201,8 +224,6 @@ describe("the deploy replaces the line without a gap", () => {
   })
 
   const hasBash = spawnSync("bash", ["--version"]).status === 0
-  const dirs: string[] = []
-  afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }) })
 
   /** Runs Step 7c as written, with pm2/curl/nginx/systemctl/fuser/sleep stubbed. */
   function runStep7c(options: { online: string[]; warm?: string; activePort?: string }) {
