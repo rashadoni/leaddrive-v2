@@ -77,15 +77,21 @@ describe("pm2 runs the scheduler beside the web app", () => {
     expect(jobs.error_file).not.toBe(web.error_file)
   })
 
-  it("gives only the web process the perf map, and nothing beyond it", () => {
-    // Diagnostics for the web thread's once-a-minute busy spell (2026-10-28):
-    // the flag names functions for `perf` and changes nothing else. The jobs
-    // process is not the one people wait on.
+  it("keeps pm2's metrics agent out of both server processes", () => {
+    // Profiled on production 2026-10-28: @pm2/io, which pm2 loads into every
+    // app unless told not to, was the largest piece of the web thread's own work
+    // between requests (one-second timers sorting latency samples).
     const apps = loadApps()
-    const web = apps.find((a) => a.name === "leaddrive-v2")!
-    const jobs = apps.find((a) => a.name === "leaddrive-v2-jobs")!
-    expect(web.node_args).toEqual(["--perf-basic-prof-only-functions"])
-    expect(jobs.node_args).toEqual([])
+    for (const name of ["leaddrive-v2", "leaddrive-v2-jobs"]) {
+      const app = apps.find((a) => a.name === name)!
+      expect([name, app.pmx]).toEqual([name, false])
+    }
+  })
+
+  it("starts node without the temporary perf map flag", () => {
+    // --perf-basic-prof-only-functions was on the web process for one profile
+    // (2026-10-28); left on, it writes a growing /tmp/perf-<pid>.map per restart.
+    for (const app of loadApps()) expect(app.node_args ?? []).not.toContain("--perf-basic-prof-only-functions")
   })
 
   it("lets the web process grow past the sawtooth pm2 was killing it on", () => {
