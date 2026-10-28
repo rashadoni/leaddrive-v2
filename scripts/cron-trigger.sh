@@ -99,6 +99,39 @@ case "$LOCK_WAIT_SECONDS" in
     ;;
 esac
 
+# Where in the minute a scheduled tick starts. Measured on production
+# 2026-10-28: cron started every `* * * * *` line in the same second — sixteen
+# jobs in an ordinary minute, more on the fifth — and for 2–3 s the run queue
+# held 13–22 threads on six cores (the jobs process, its Prisma engine, up to
+# eight PostgreSQL backends). The web process was idle and still waited for a
+# core: requests that take 0.02 s took 0.4–1.4 s through nginx, and the PBX
+# station hung up a call whose "ringing" went unanswered for 2 s. The work per
+# minute is small; it was only ever the shape of it.
+#
+# The crontab sets CRON_TRIGGER_SPREAD_SECONDS (install-resilience-crons.sh),
+# and each target then waits its own fixed offset inside that window, derived
+# from its name so a tick lands at the same second every minute and two ticks
+# of one target are still a minute apart. The wait comes before the lock, so a
+# verifier never queues behind a schedule that is only sleeping. A caller that
+# waits for the lock is a verifier asking for an answer now, and a run by hand
+# does not set the variable: neither is delayed.
+SPREAD_SECONDS="${CRON_TRIGGER_SPREAD_SECONDS:-0}"
+case "$SPREAD_SECONDS" in
+  '' | *[!0-9]*)
+    echo "$(date): [${NAME}] ERROR - CRON_TRIGGER_SPREAD_SECONDS must be whole seconds" >&2
+    exit 1
+    ;;
+esac
+# Past a minute the offset would push one tick into the next and the lock
+# would turn every other tick into a SKIPPED one.
+if [ "$SPREAD_SECONDS" -gt 59 ]; then
+  echo "$(date): [${NAME}] ERROR - CRON_TRIGGER_SPREAD_SECONDS must stay under a minute" >&2
+  exit 1
+fi
+if [ "$SPREAD_SECONDS" -gt 0 ] && [ "$LOCK_WAIT_SECONDS" -eq 0 ]; then
+  sleep "$(( $(printf '%s' "$TARGET" | cksum | cut -d' ' -f1) % SPREAD_SECONDS ))"
+fi
+
 if [ "$LOCK_WAIT_SECONDS" -gt 0 ]; then
   # Waiting callers capture stdout to assert on the endpoint's response, so the
   # line explaining why there is no response must not land inside the text being

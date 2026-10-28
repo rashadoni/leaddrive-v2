@@ -79,6 +79,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
 {
   cat "$CLEAN"
   printf '%s\n' "$BEGIN_MARKER"
+  # Spread the ticks over the minute instead of starting them all in its first
+  # second: cron-trigger.sh waits a fixed per-target offset below this many
+  # seconds (why — the comment above its use there). cron hands an environment
+  # line to every command after it, so it stays first in the block.
+  printf '%s\n' "CRON_TRIGGER_SPREAD_SECONDS=50"
   printf '%s\n' "* * * * * $TRIGGER /api/v1/journeys/process >> $LOG 2>&1"
   printf '%s\n' "5 */6 * * * $TRIGGER finance-deadlines >> $LOG 2>&1"
   printf '%s\n' "*/15 * * * * $TRIGGER mtm-auto-checkout >> $LOG 2>&1"
