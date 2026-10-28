@@ -418,7 +418,7 @@ class TransportTests(unittest.TestCase):
         replies = iter([{"enabled": False, "status": "awaiting_answered"},
             {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules", "opening": "Test greeting", "maxSeconds": 60}])
         self.bridge.request = lambda body: sessions.append(body) or next(replies)
-        self.bridge._post_json = lambda url, body: announced.append((url, body)) or {"success": True}
+        self.bridge._post_json = lambda url, body, timeout=2: announced.append((url, body)) or {"success": True}
         self.assertEqual(self.bridge.open()["opening"], "Test greeting")
         self.assertEqual(len(sessions), 2)
         self.assertEqual(len(announced), 1)
@@ -472,7 +472,8 @@ class TransportTests(unittest.TestCase):
             self.bridge._request({"action": "session", "callId": CALL})
             self.bridge._request({"action": "search", "callId": CALL, "query": {"text": "Medicine"}})
             self.assertTrue(self.bridge._announce_answered())
-        self.assertEqual([row[2] for row in observed if row[0] == "open"], [5, 2, 2])
+        # A lookup and the answer ACK outlast the CRM's 1-4 s top-of-minute stalls.
+        self.assertEqual([row[2] for row in observed if row[0] == "open"], [5, 4, 5])
         self.assertEqual([row[1] for row in observed if row[0] == "read"], [32769] * 3)
 
     def test_missing_identity_or_quote_flags_reject_entire_result(self):

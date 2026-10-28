@@ -568,11 +568,19 @@ class ZeytunInboundBridge:
         # Set by the core: called with the phrase once the CRM took the transfer.
         self.on_transfer = None
 
+    # At the top of each minute the CRM answered in 1-4 s (measured 2026-10-28,
+    # the hour a call was hung up for a 2 s deadline). A lookup that times out
+    # tells the caller the catalog is unavailable, and a failed answer ACK ends
+    # the AI call before its greeting, so neither may be shorter than that.
+    LOOKUP_TIMEOUT_SECONDS = 4
+    ANSWER_ACK_TIMEOUT_SECONDS = 5
+
     def _request(self, body):
         # The first session also builds the pinned catalog once. Keep that
-        # cold start separate from the short deadline for spoken lookups.
+        # cold start separate from the shorter deadline for spoken lookups.
         action = body.get("action")
-        return self._post_json(self.url, body, timeout=5 if action == "session" else 4 if action in ("order", "transfer") else 2)
+        return self._post_json(self.url, body, timeout=5 if action == "session" else 6 if action in ("order", "transfer")
+                               else self.LOOKUP_TIMEOUT_SECONDS)
 
     def _post_json(self, url, body, timeout=2):
         req = urllib.request.Request(url,
@@ -591,7 +599,7 @@ class ZeytunInboundBridge:
         body = {"eventId": str(uuid.uuid5(uuid.NAMESPACE_URL, "zeytun-inbound-media:" + self.call_id)),
                 "callId": self.call_id, "state": "answered",
                 "occurredAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.clock()))}
-        result = self._post_json(self.lifecycle_url, body)
+        result = self._post_json(self.lifecycle_url, body, timeout=self.ANSWER_ACK_TIMEOUT_SECONDS)
         return isinstance(result, dict) and result.get("success") is True
 
     def open(self):
