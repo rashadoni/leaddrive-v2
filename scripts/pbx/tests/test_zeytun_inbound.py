@@ -758,6 +758,69 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
         self.assertEqual(tts.texts, ["Yeni sessiya cavabı, zəhmət olmasa təkrar deyin."])
 
+    # Owner, 2026-10-28: «несколько секунд тишина, а потом включается ассистент».
+    def test_the_fixed_opening_is_voiced_before_the_model_says_it_and_only_once(self):
+        bridge_module.ZEYTUN_OPENING_AUDIO.clear()
+        tts = FakeTts()
+        relay = self.relay(tts)
+        opening = "Salam! Zeytunun köməkçisiyəm. Hansı preparatdan başlayaq?"
+        self.assertTrue(relay.prefill(opening, epoch=3))
+        # Heard before the model has produced anything of the greeting.
+        self.assertTrue(self.wait_for(lambda events: len(events) >= 1, seconds=1))
+        self.assertEqual(tts.texts, [opening])
+        # The model's greeting generation arrives on the same socket: its words
+        # are not voiced again and its boundaries follow the opening.
+        self.assertTrue(relay.filter(self.content("Salam! Zeytunun köməkçisiyəm. ", audio=True), epoch=3))
+        self.assertTrue(relay.filter(self.content("Hansı preparatdan başlayaq? ", audio=True), epoch=3))
+        self.assertTrue(relay.filter(self.content(generationComplete=True, turnComplete=True), epoch=3))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, [opening])
+        self.assertEqual(self.kinds(), [("audio", opening + " "), ("audio", None), ("audio", None),
+                                        ("generationComplete", None), ("turnComplete", None)])
+        # The next reply is the model's own words, voiced as usual.
+        relay.filter(self.content("Parasetamol tapıldı. ", audio=True), epoch=3)
+        relay.filter(self.content(turnComplete=True), epoch=3)
+        self.assertTrue(self.wait_for(lambda events: sum(bool(e["serverContent"].get("turnComplete")) for e in events) == 2))
+        self.assertEqual(tts.texts, [opening, "Parasetamol tapıldı."])
+        # Only one opening per call, and none once a turn has begun.
+        self.assertFalse(relay.prefill(opening, epoch=3))
+
+    def test_the_opening_is_voiced_once_per_process_and_replayed_from_memory(self):
+        bridge_module.ZEYTUN_OPENING_AUDIO.clear()
+
+        class Counting(FakeTts):
+            voice, url = "Sulafat", "https://example/tts?key=secret"
+            def stream(self, text, on_pcm, keep_going):
+                super().stream(text, on_pcm, keep_going)
+                return 960 * self.chunks
+        opening = "Salam! Zeytunun köməkçisiyəm."
+        first = Counting()
+        relay = self.relay(first)
+        relay.prefill(opening, epoch=1)
+        relay.filter(self.content(turnComplete=True), epoch=1)
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.injected.clear()
+        second = Counting()
+        relay = self.relay(second)
+        relay.prefill(opening, epoch=1)
+        relay.filter(self.content(turnComplete=True), epoch=1)
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(first.texts, [opening])
+        self.assertEqual(second.texts, [])  # no TTS request: the same audio from memory
+        self.assertEqual(self.kinds()[:3], [("audio", opening + " "), ("audio", None), ("audio", None)])
+        # The key is never part of what is remembered.
+        self.assertNotIn("secret", json.dumps([list(map(str, key)) for key in bridge_module.ZEYTUN_OPENING_AUDIO]))
+
+    def test_an_opening_cut_by_the_caller_is_not_remembered(self):
+        bridge_module.ZEYTUN_OPENING_AUDIO.clear()
+        tts = FakeTts(chunks=50)
+        relay = self.relay(tts)
+        relay.prefill("Salam! Zeytunun köməkçisiyəm.", epoch=1)
+        self.assertTrue(self.wait_for(lambda events: len(events) >= 1, seconds=1))
+        relay.filter(self.content(interrupted=True), epoch=1)
+        time.sleep(0.2)
+        self.assertEqual(bridge_module.ZEYTUN_OPENING_AUDIO, {})
+
     def test_amounts_are_read_as_manat_and_qepik(self):
         self.assertEqual(bridge_module.zeytun_speakable_text("Qiyməti 1.33 manatdır."), "Qiyməti 1 manat 33 qəpikdir.")
         self.assertEqual(bridge_module.zeytun_speakable_text("Cəmi 264.79 manat."), "Cəmi 264 manat 79 qəpik.")
@@ -831,10 +894,19 @@ class ArtifactTests(unittest.TestCase):
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
             self.assertEqual(ast.dump(ast.parse(expected).body[0]), ast.dump(new_methods[name]), name)
-        self.assertEqual(set(new_methods) - set(old_methods), {"_send_pharmacy_result"})
+        self.assertEqual(set(new_methods) - set(old_methods), {
+            "_send_pharmacy_result", "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
+            "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay"})
         start = ast.unparse(new_methods["start"])
         self.assertIn("ZEYTUN_INBOUND_PILOT_ENABLED", start)
-        self.assertIn("instruction_for_call()", start)
+        # The kill switch is still asked on every pharmacy call, in parallel
+        # with the provider socket, and awaited before the greeting is sent.
+        self.assertIn("instruction_for_call()", ast.unparse(new_methods["_pharmacy_kill_switch"]))
+        self.assertIn("target=self._pharmacy_kill_switch", start)
+        self.assertLess(start.index("self._pharmacy_await_kill_switch(early)"), start.index("self._greeting_event()"))
+        # The fixed opening is voiced as soon as the greeting is asked for.
+        self.assertLess(start.index("self.greeting_sent = True"),
+                        start.index("relay.prefill(self.crm_opening_text, self.gemini_ws_epoch)"))
         self.assertIn("self.pharmacy_preview = True", start)
         self.assertIn("self.closing_keys = tuple(", start)
         self.assertNotIn("self.is_demo_call = True", start)
@@ -870,6 +942,48 @@ class ArtifactTests(unittest.TestCase):
         # cannot silently fall back to per-turn language detection.
         self.assertEqual(globals_["_setup_event"](obj, "resume-handle")["setup"]["inputAudioTranscription"],
                          {"languageCodes": ["az-AZ"]})
+        # The early socket and the kill switch, as patched.
+        early_functions = ast.Module(body=[new_methods[name] for name in (
+            "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
+            "_pharmacy_kill_switch", "_pharmacy_await_kill_switch")], type_ignores=[])
+        class Disabled(Exception):
+            pass
+        class Socket:
+            closed = False
+            def close(self): self.closed = True
+        logged = []
+        scope = {"time": time, "latency": lambda *args, **fields: logged.append((args, fields)),
+                 "GEMINI_LIVE_SETUP_TIMEOUT_SECONDS": 1.0, "VoiceAgentDisabled": Disabled,
+                 "instruction_for_call": lambda: None}
+        exec(compile(early_functions, "isolated-early-functions", "exec"), scope)
+        def early():
+            return {"lock": threading.Lock(), "ws": None, "closed": False, "thread": None, "kill": None, "kill_error": None}
+        sock = Socket()
+        session = SimpleNamespace(call_id="c", _open_gemini_websocket=lambda: sock)
+        for name in ("_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
+                     "_pharmacy_kill_switch", "_pharmacy_await_kill_switch"):
+            setattr(session, name, (lambda f: lambda *a: f(session, *a))(scope[name]))
+        state = early()
+        state["thread"] = threading.Thread(target=session._pharmacy_open_early, args=(state,))
+        state["thread"].start()
+        self.assertIs(session._pharmacy_take_early(state), sock)  # the call uses the socket opened early
+        self.assertFalse(sock.closed)
+        # A call refused by the CRM closes a socket that opens after it.
+        late, state = Socket(), early()
+        session._open_gemini_websocket = lambda: late
+        session._pharmacy_drop_early(state)
+        session._pharmacy_open_early(state)
+        self.assertTrue(late.closed)
+        # Without the early socket the core opens its own, as before.
+        self.assertIsNone(session._pharmacy_take_early(early()))
+        # A disabled agent stops the call before the greeting.
+        state = early()
+        scope["instruction_for_call"] = lambda: (_ for _ in ()).throw(Disabled("voice agent disabled"))
+        state["kill"] = threading.Thread(target=session._pharmacy_kill_switch, args=(state,))
+        state["kill"].start()
+        with self.assertRaises(Disabled):
+            session._pharmacy_await_kill_switch(state)
+        session._pharmacy_await_kill_switch(early())  # not a pharmacy call: nothing to wait for
         ws, received = object(), []
         obj.gemini_event_lock = threading.RLock(); obj.state_lock = threading.Lock()
         obj.closed = False; obj.hangup_started = False; obj.ws = ws; obj.gemini_ws_epoch = 2

@@ -24,13 +24,30 @@ def build(source, bridge):
     end = text.index("        ws = None\n", start)
     normal = text[start:end]
     pilot = '''        pilot = None
+        # Owner, 2026-10-28: «несколько секунд тишина, а потом включается
+        # ассистент». The provider socket does not depend on the CRM's answer:
+        # it opens while the CRM is asked, and the kill switch is awaited
+        # before the greeting rather than before the socket.
+        early = {"lock": threading.Lock(), "ws": None, "closed": False, "thread": None,
+                 "kill": None, "kill_error": None}
         if os.environ.get("ZEYTUN_INBOUND_PILOT_ENABLED") == "1":
-            self.pharmacy_bridge = ZeytunInboundBridge(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, self.call_id)
-            pilot = self.pharmacy_bridge.open()
+            early["thread"] = threading.Thread(target=self._pharmacy_open_early, args=(early,),
+                                               name="gemini-early-open", daemon=True)
+            early["thread"].start()
+            asked = time.monotonic()
+            try:
+                self.pharmacy_bridge = ZeytunInboundBridge(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, self.call_id)
+                pilot = self.pharmacy_bridge.open()
+            except Exception:
+                self._pharmacy_drop_early(early)
+                raise
+            latency("zeytun_session", self.call_id, ms=round((time.monotonic() - asked) * 1000), pilot=bool(pilot))
         if pilot:
             # Preserve the normal kill switch / voice-policy handshake, without
             # querying this ambiguous test phone's CRM history or source.
-            instruction_for_call()
+            early["kill"] = threading.Thread(target=self._pharmacy_kill_switch, args=(early,),
+                                             name="voice-kill-switch", daemon=True)
+            early["kill"].start()
             self.pharmacy_preview = True
             self.instruction = demo_instruction("", pilot["prompt"])
             self.crm_opening_text = pilot["opening"]
@@ -55,7 +72,68 @@ def build(source, bridge):
 '''
     text = text[:start] + pilot + "".join("    " + line if line.strip() else line for line in normal.splitlines(True)) + text[end:]
     replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            setup["tools"] = self.pharmacy_bridge.tools()\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            language, voice = self.pharmacy_bridge.speech_language(), self.pharmacy_bridge.speech_voice()\n            if language:\n                setup["generationConfig"]["speechConfig"]["languageCode"] = language\n            if voice:\n                setup["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] = voice\n        return {"setup": setup}\n')
-    method = '''    def _send_pharmacy_result(self, active_ws, expected_epoch, payload):
+    method = '''    def _pharmacy_open_early(self, early):
+        opened = time.monotonic()
+        try:
+            ws = self._open_gemini_websocket()
+        except Exception as error:
+            latency("gemini_early_open", self.call_id, status=type(error).__name__)
+            return
+        with early["lock"]:
+            if early["closed"]:
+                ws.close()
+                return
+            early["ws"] = ws
+        latency("gemini_early_open", self.call_id, status="open", ms=round((time.monotonic() - opened) * 1000))
+
+    def _pharmacy_take_early(self, early):
+        if early["thread"] is not None:
+            early["thread"].join(GEMINI_LIVE_SETUP_TIMEOUT_SECONDS)
+        with early["lock"]:
+            early["closed"] = True
+            ws, early["ws"] = early["ws"], None
+        return ws
+
+    def _pharmacy_drop_early(self, early):
+        with early["lock"]:
+            early["closed"] = True
+            ws, early["ws"] = early["ws"], None
+        if ws is not None:
+            ws.close()
+
+    def _pharmacy_kill_switch(self, early):
+        asked = time.monotonic()
+        try:
+            instruction_for_call()
+        except Exception as error:
+            early["kill_error"] = error
+        latency("voice_kill_switch", self.call_id, ms=round((time.monotonic() - asked) * 1000),
+                status="disabled" if early["kill_error"] is not None else "enabled")
+
+    def _pharmacy_await_kill_switch(self, early):
+        if early["kill"] is None:
+            return
+        early["kill"].join(5.0)
+        if early["kill"].is_alive():
+            raise VoiceAgentDisabled("voice agent disabled")
+        if early["kill_error"] is not None:
+            raise early["kill_error"]
+
+    def _pharmacy_speech_relay(self):
+        return self.pharmacy_bridge.speech_relay(
+            GEMINI_KEY,
+            inject=lambda value: self._handle_gemini_event(value, self.ws),
+            speakable=lambda: not (self.closed or self.hangup_started or self.discarding_response),
+            alive=lambda: not self.closed,
+            room=lambda: self.output_queue.qsize() < GEMINI_LIVE_AUDIO_QUEUE_FRAMES * 4 // 5,
+            log=lambda status, **fields: latency("zeytun_tts", self.call_id, status=status, **fields),
+            # Model audio proves the session lives: re-arm a pending watchdog.
+            progress=lambda: ((self._pause_resume_progress_for_speech(), self._resume_progress_after_speech())
+                              if self.resume_progress_pending and not self.resume_progress_waiting_for_speech else None),
+            recovering=lambda: bool(self.reconnecting or self.fresh_recovery_waiting_for_audio
+                                    or self.fresh_recovery_input_fenced))
+
+    def _send_pharmacy_result(self, active_ws, expected_epoch, payload):
         with self.gemini_event_lock:
             with self.state_lock:
                 if (self.closed or self.hangup_started or self.ws is not active_ws
@@ -74,23 +152,54 @@ def build(source, bridge):
             send = lambda payload: self._send_pharmacy_result(active_ws, epoch, payload)
             if self.pharmacy_bridge.handle(event, send, current):
                 return
-            relay = self.pharmacy_bridge.speech_relay(
-                GEMINI_KEY,
-                inject=lambda value: self._handle_gemini_event(value, self.ws),
-                speakable=lambda: not (self.closed or self.hangup_started or self.discarding_response),
-                alive=lambda: not self.closed,
-                room=lambda: self.output_queue.qsize() < GEMINI_LIVE_AUDIO_QUEUE_FRAMES * 4 // 5,
-                log=lambda status, **fields: latency("zeytun_tts", self.call_id, status=status, **fields),
-                # Model audio proves the session lives: re-arm a pending watchdog.
-                progress=lambda: ((self._pause_resume_progress_for_speech(), self._resume_progress_after_speech())
-                                  if self.resume_progress_pending and not self.resume_progress_waiting_for_speech else None),
-                recovering=lambda: bool(self.reconnecting or self.fresh_recovery_waiting_for_audio
-                                        or self.fresh_recovery_input_fenced))
+            relay = self._pharmacy_speech_relay()
             if relay is not None and relay.filter(event, epoch):
                 return
         self._accept_resumption_update(event)
         if "goAway" in event:'''
     replace(anchor, replacement)
+    replace('''        ws = None
+        try:
+            ws = self._open_gemini_websocket()
+            self._await_setup(ws)
+        except Exception:
+            if ws is not None:
+                ws.close()
+            raise
+        self.setup_complete = True
+''', '''        ws = None
+        try:
+            ws = self._pharmacy_take_early(early) or self._open_gemini_websocket()
+            self._await_setup(ws)
+            self._pharmacy_await_kill_switch(early)
+        except Exception:
+            if ws is not None:
+                ws.close()
+            self._pharmacy_drop_early(early)
+            raise
+        self.setup_complete = True
+''')
+    # The opening is fixed text: the caller hears it now, not after the model
+    # has said it and the TTS has voiced it again (about two seconds).
+    replace('''            self.greeting_sent = True
+            latency(
+                "greeting",
+                self.call_id,
+                status="sent",
+                engine="gemini_live",
+            )
+''', '''            self.greeting_sent = True
+            latency(
+                "greeting",
+                self.call_id,
+                status="sent",
+                engine="gemini_live",
+            )
+            if self.pharmacy_preview and not self.is_callback:
+                relay = self._pharmacy_speech_relay()
+                if relay is not None and relay.prefill(self.crm_opening_text, self.gemini_ws_epoch):
+                    latency("zeytun_opening", self.call_id, status="prefill")
+''')
     # Owner, 2026-10-25: «после прощания почему не кладёт трубку?» — the goodbye
     # ended at 20:35:14.5 and the station still waited (3 s for a caller who
     # might answer it, then 1.5 s): the caller hung up first. A pharmacy call
