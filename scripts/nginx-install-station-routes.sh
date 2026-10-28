@@ -83,6 +83,12 @@ if [ "$MODE" = "remove" ]; then
   fi
 else
   install -m 0644 "$UPSTREAM_SRC" "$UPSTREAM_DST"
+  # The deploy moves the primary between the line's slots and records which
+  # one answers; a reinstall must not point nginx back at the other.
+  active_port="$(head -c 16 "${LINE_ACTIVE_PORT_FILE:-/var/lib/leaddrive-v2/line-active-port}" 2>/dev/null | tr -d '[:space:]' || true)"
+  case "$active_port" in
+    300[3-9]) sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$|    server 127.0.0.1:${active_port} max_fails=1 fail_timeout=5s;|" "$UPSTREAM_DST" ;;
+  esac
   install -m 0644 "$ROUTES_SRC" "$ROUTES_DST"
   if ! included; then
     if ! with_include > "$BACKUP/site.new"; then

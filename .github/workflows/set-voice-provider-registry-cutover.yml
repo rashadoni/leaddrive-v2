@@ -303,7 +303,7 @@ jobs:
           JOBS_PM2_PROCESS="leaddrive-v2-jobs"
           # The phone station's process answers call results and lifecycle
           # events, which read the same gates; restarted and asserted too.
-          LINE_PM2_PROCESS="leaddrive-v2-line"
+          LINE_PM2_PROCESSES="leaddrive-v2-line-a leaddrive-v2-line-b"
           HEALTH_URL="http://127.0.0.1:3001/api/v1/ping"
           LOCK_FILE=""
           # The deploy pipeline writes this marker inside the standalone bundle
@@ -462,9 +462,11 @@ jobs:
             if pm2 describe "$JOBS_PM2_PROCESS" >/dev/null 2>&1; then
               printf '%s\n' "$JOBS_PM2_PROCESS"
             fi
-            if pm2 describe "$LINE_PM2_PROCESS" >/dev/null 2>&1; then
-              printf '%s\n' "$LINE_PM2_PROCESS"
-            fi
+            for line_app in $LINE_PM2_PROCESSES; do
+              if pm2 describe "$line_app" >/dev/null 2>&1; then
+                printf '%s\n' "$line_app"
+              fi
+            done
           }
 
           assert_automation_off() {
@@ -589,9 +591,11 @@ jobs:
             if pm2 describe "$JOBS_PM2_PROCESS" >/dev/null 2>&1; then
               pm2 restart "$JOBS_PM2_PROCESS" --update-env >/dev/null
             fi
-            if pm2 describe "$LINE_PM2_PROCESS" >/dev/null 2>&1; then
-              pm2 restart "$LINE_PM2_PROCESS" --update-env >/dev/null
-            fi
+            for line_app in $LINE_PM2_PROCESSES; do
+              if pm2 describe "$line_app" >/dev/null 2>&1; then
+                pm2 restart "$line_app" --update-env >/dev/null
+              fi
+            done
             health_check
             if ! assert_runtime_flags "$provider_flag" "$pause_flag"; then
               echo "FATAL: PM2 runtime voice gates do not match the requested safe state"

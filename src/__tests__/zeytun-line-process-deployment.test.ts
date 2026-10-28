@@ -1,5 +1,5 @@
 import { execFile, spawnSync } from "node:child_process"
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createServer, type Server } from "node:http"
 import type { AddressInfo } from "node:net"
 import { tmpdir } from "node:os"
@@ -41,22 +41,33 @@ function loadApps(env: Record<string, string | undefined> = {}) {
   }
 }
 
-describe("pm2 runs the phone line beside the web app", () => {
-  it("starts the same bundle on loopback :3003 with the web app's environment", () => {
-    const apps = loadApps({ APP_HOSTNAME: "0.0.0.0" })
-    const web = apps.find((a) => a.name === "leaddrive-v2")!
-    const line = apps.find((a) => a.name === "leaddrive-v2-line")!
-    expect(line.script).toBe(web.script)
-    expect(line.cwd).toBe(web.cwd)
-    expect(String(line.env.PORT)).toBe("3003")
-    expect(line.env.HOSTNAME).toBe("127.0.0.1")
-    expect(line.pmx).toBe(false)
-    const { PORT: _a, HOSTNAME: _b, LEADDRIVE_PROCESS_ROLE: webRole, ...webEnv } = web.env
-    const { PORT: _c, HOSTNAME: _d, LEADDRIVE_PROCESS_ROLE: lineRole, ...lineEnv } = line.env
-    expect([webRole, lineRole]).toEqual(["web", "line"])
-    expect(lineEnv).toEqual(webEnv)
-    expect(line.out_file).not.toBe(web.out_file)
-    expect(line.error_file).not.toBe(web.error_file)
+describe("pm2 runs the phone line from its own release, in a slot", () => {
+  it("is not part of the web app's own `pm2 start`", () => {
+    const names = loadApps({ LINE_RELEASE_DIR: undefined, LINE_SLOT: undefined }).map((a) => a.name)
+    expect(names.filter((n) => n.startsWith("leaddrive-v2-line"))).toEqual([])
+  })
+
+  it("starts the named slot from the release copy on loopback, with the web app's environment", () => {
+    for (const [slot, port] of [["a", "3004"], ["b", "3005"]]) {
+      const apps = loadApps({ APP_HOSTNAME: "0.0.0.0", LINE_RELEASE_DIR: "/opt/leaddrive-v2/line-releases/abc-" + slot, LINE_SLOT: slot })
+      const web = apps.find((a) => a.name === "leaddrive-v2")!
+      const line = apps.find((a) => a.name === `leaddrive-v2-line-${slot}`)!
+      expect(line.script).toBe(`/opt/leaddrive-v2/line-releases/abc-${slot}/server.js`)
+      expect(line.cwd).toBe(`/opt/leaddrive-v2/line-releases/abc-${slot}`)
+      expect(String(line.env.PORT)).toBe(port)
+      expect(line.env.HOSTNAME).toBe("127.0.0.1")
+      expect(line.pmx).toBe(false)
+      const { PORT: _a, HOSTNAME: _b, LEADDRIVE_PROCESS_ROLE: webRole, ...webEnv } = web.env
+      const { PORT: _c, HOSTNAME: _d, LEADDRIVE_PROCESS_ROLE: lineRole, ...lineEnv } = line.env
+      expect([webRole, lineRole]).toEqual(["web", "line"])
+      expect(lineEnv).toEqual(webEnv)
+      expect(line.out_file).not.toBe(web.out_file)
+    }
+  })
+
+  it("ignores a slot it does not know", () => {
+    const names = loadApps({ LINE_RELEASE_DIR: "/x", LINE_SLOT: "c" }).map((a) => a.name)
+    expect(names.some((n) => n.startsWith("leaddrive-v2-line"))).toBe(false)
   })
 })
 
@@ -65,8 +76,10 @@ describe("nginx sends the station to the line's process, the web app as backup",
   const routes = readFileSync(join(ROOT, "ops/nginx/leaddrive-station-routes.conf"), "utf8")
   const directives = (text: string) => text.split("\n").filter((l) => l.trim() && !l.trim().startsWith("#")).join("\n")
 
-  it("tries :3003 first and falls back to :3001", () => {
-    expect(directives(upstream)).toMatch(/server 127\.0\.0\.1:3003[^;]*;\s+server 127\.0\.0\.1:3001 backup;/)
+  it("tries the line's slot first and falls back to :3001, in the form the deploy rewrites", () => {
+    expect(directives(upstream)).toMatch(/^    server 127\.0\.0\.1:3004 max_fails=1 fail_timeout=5s;\n    server 127\.0\.0\.1:3001 backup;$/m)
+    const deploy = readFileSync(join(ROOT, "scripts/server-deploy.sh"), "utf8")
+    expect(deploy).toContain("^    server 127\\.0\\.0\\.1:[0-9]+ max_fails=1 fail_timeout=5s;$")
   })
 
   it("covers every route under the two prefixes the station calls", () => {
@@ -158,41 +171,123 @@ describe.skipIf(!hasTools)("cron-trigger.sh warms the line where the station is 
   })
 })
 
-describe("the deploy carries the line's process", () => {
+describe("the deploy replaces the line without a gap", () => {
   const deploy = readFileSync(join(ROOT, "scripts/server-deploy.sh"), "utf8")
+  const step7c = deploy.slice(deploy.indexOf("# ── Step 7c:"), deploy.indexOf("# ── Step 8:"))
 
-  it("pins its name and port and denies both to the app's dotenv", () => {
-    expect(deploy).toMatch(/^LINE_PM2_PROCESS="leaddrive-v2-line"$/m)
-    expect(deploy).toMatch(/^LINE_PORT=3003$/m)
-    expect(deploy).toMatch(/^unset PM2_NAME PM2_JOBS_NAME PM2_LINE_NAME$/m)
-    expect(deploy).toContain("LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|")
+  it("never stops the line before the web app's `pm2 start`", () => {
+    const startAt = deploy.search(/^pm2 start "\$PM2_CONFIG" 2>\/dev\/null/m)
+    const stopPhase = deploy.slice(deploy.indexOf("# ── Step 4:"), startAt)
+    expect(stopPhase).not.toMatch(/pm2 delete "\$LINE_/)
+    expect(stopPhase).not.toMatch(/fuser -k "\$LINE_/)
   })
 
-  it("takes it down before `pm2 start`, in a handoff rollback and in the Fund fence", () => {
-    const startAt = deploy.search(/^pm2 start "\$PM2_CONFIG"/m)
-    const deleteAt = deploy.search(/^pm2 delete "\$LINE_PM2_PROCESS" 2>\/dev\/null \|\| true$/m)
-    expect(deleteAt).toBeGreaterThan(-1)
-    expect(deleteAt).toBeLessThan(startAt)
-    const rollbackStart = deploy.indexOf('pm2 start "$rollback_config"')
-    const recovery = deploy.lastIndexOf('load_dotenv_file "$APP_ENV_FILE"', rollbackStart)
-    expect(deploy.slice(recovery, rollbackStart)).toContain('pm2 delete "$LINE_PM2_PROCESS"')
+  it("counts every form of it among the processes the Fund fence must stop", () => {
     const fence = deploy.slice(
       deploy.indexOf("persist_event_platform_pm2_stop_fence() {"),
       deploy.indexOf("quiesce_event_platform_pilot() {"),
     )
-    expect(fence.match(/"\$JOBS_PM2_PROCESS" "\$LINE_PM2_PROCESS"/g)).toHaveLength(3)
-    expect(fence).toContain('pm2 delete "$LINE_PM2_PROCESS"')
+    expect(fence.match(/"\$LINE_SLOT_A_PROCESS" "\$LINE_SLOT_B_PROCESS"/g)).toHaveLength(3)
+    expect(fence).toContain('pm2 delete "$LINE_SLOT_A_PROCESS"')
+    expect(fence).toContain('pm2 delete "$LINE_SLOT_B_PROCESS"')
+    expect(fence).toContain('["3001", "3002", "3003", "3004", "3005"]')
   })
 
-  it("checks it only after the web handoff, and never rolls the web app back on its account", () => {
-    const block = deploy.slice(deploy.indexOf("# ── Step 7c:"), deploy.indexOf("# ── Step 8:"))
+  it("runs only after the web handoff, and never rolls the web app back on its account", () => {
     expect(deploy.indexOf("# ── Step 7c:")).toBeGreaterThan(deploy.indexOf("# ── Step 7b:"))
-    expect(block).toContain('"$LINE_HEALTH_URL/api/v1/ping"')
-    expect(block).toContain('"$LINE_HEALTH_URL/api/cron/pii-key-check"')
-    expect(block).toContain('pm2 delete "$LINE_PM2_PROCESS"')
-    expect(block).not.toContain("HEALTHY=false")
-    expect(block).not.toContain("recover_application_handoff")
+    expect(step7c).not.toContain("HEALTHY=false")
+    expect(step7c).not.toContain("recover_application_handoff")
     expect(deploy).toContain("jobs=$JOBS_STATUS line=$LINE_STATUS")
+  })
+
+  const hasBash = spawnSync("bash", ["--version"]).status === 0
+  const dirs: string[] = []
+  afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }) })
+
+  /** Runs Step 7c as written, with pm2/curl/nginx/systemctl/fuser/sleep stubbed. */
+  function runStep7c(options: { online: string[]; warm?: string; activePort?: string }) {
+    const dir = mkdtempSync(join(tmpdir(), "line-7c-"))
+    dirs.push(dir)
+    const bin = join(dir, "bin"), app = join(dir, "app")
+    mkdirSync(bin); mkdirSync(join(app, ".next/standalone"), { recursive: true })
+    writeFileSync(join(app, ".next/standalone/server.js"), "")
+    const calls = join(dir, "calls.log")
+    const stub = (name: string, body: string) => {
+      writeFileSync(join(bin, name), `#!/bin/bash\necho "${name} $*" >> "${calls}"\n${body}\n`)
+      chmodSync(join(bin, name), 0o755)
+    }
+    stub("pm2", `case "$1" in
+  describe) for n in ${options.online.join(" ")}; do [ "$n" = "$2" ] && { echo "│ status │ online │"; exit 0; }; done; exit 1 ;;
+  jlist) echo "[]" ;;
+esac
+exit 0`)
+    stub("curl", `url="\${@: -1}"
+case "$url" in
+  */api/v1/ping) printf 200 ;;
+  */api/cron/pii-key-check) printf '{"ok":true,"source":"file"}' ;;
+  */api/cron/zeytun-line-warm) printf '%s' '${options.warm ?? '{"outcome":"warm","ms":5}'}' ;;
+esac`)
+    stub("nginx", "exit 0")
+    stub("systemctl", "exit 0")
+    stub("fuser", "exit 1")
+    stub("sleep", "exit 0")
+    const upstream = join(dir, "upstream.conf")
+    writeFileSync(upstream, readFileSync(join(ROOT, "ops/nginx/leaddrive-station-upstream.conf"), "utf8").replace(":3004 max_fails", ":3003 max_fails"))
+    const state = join(dir, "active-port")
+    if (options.activePort) writeFileSync(state, `${options.activePort}\n`)
+    const script = [
+      "set -uo pipefail",
+      `log() { echo "LOG $*"; }`, `fatal() { echo "FATAL $*"; exit 1; }`, "harden_pm2_reboot_dump() { return 0; }",
+      `APP_DIR="${app}"`, `PM2_CONFIG="${app}/.next/standalone/ecosystem.config.cjs"`, `DEPLOY_SHA=abc1234`, `CRON_SECRET=s`,
+      `LINE_PM2_PROCESS=leaddrive-v2-line`, `LINE_PORT=3003`,
+      `LINE_SLOT_A_PROCESS=leaddrive-v2-line-a`, `LINE_SLOT_B_PROCESS=leaddrive-v2-line-b`,
+      `LINE_SLOT_A_PORT=3004`, `LINE_SLOT_B_PORT=3005`,
+      `LINE_RELEASES_DIR="${app}/line-releases"`, `LINE_ACTIVE_PORT_FILE="${state}"`, `LINE_NGINX_UPSTREAM="${upstream}"`,
+      step7c,
+      `echo "STATUS $LINE_STATUS"`,
+    ].join("\n")
+    const run = spawnSync("bash", ["-c", script], { encoding: "utf8", env: { PATH: `${bin}:${process.env.PATH}` } })
+    return {
+      out: run.stdout + run.stderr,
+      calls: readFileSync(calls, "utf8").split("\n").filter(Boolean),
+      upstream: readFileSync(upstream, "utf8"),
+      state: existsSync(state) ? readFileSync(state, "utf8").trim() : "",
+      releases: existsSync(join(app, "line-releases")) ? readdirSync(join(app, "line-releases")) : [],
+    }
+  }
+
+  it.skipIf(!hasBash)("hands the station from slot a to b: start, warm, nginx, then stop a", () => {
+    const run = runStep7c({ online: ["leaddrive-v2-line-a"], activePort: "3004" })
+    expect(run.out).toContain("STATUS ok")
+    const order = (needle: string) => run.calls.findIndex((c) => c.includes(needle))
+    expect(order("pm2 start")).toBeGreaterThan(-1)
+    expect(run.calls[order("pm2 start")]).toContain("--only leaddrive-v2-line-b")
+    expect(order("zeytun-line-warm")).toBeGreaterThan(order("pm2 start"))
+    expect(order("systemctl reload nginx")).toBeGreaterThan(order("zeytun-line-warm"))
+    expect(order("pm2 delete leaddrive-v2-line-a")).toBeGreaterThan(order("systemctl reload nginx"))
+    expect(run.upstream).toMatch(/^    server 127\.0\.0\.1:3005 max_fails=1 fail_timeout=5s;$/m)
+    expect(run.state).toBe("3005")
+    expect(run.releases).toEqual(["abc1234-b"])
+  })
+
+  it.skipIf(!hasBash)("retires the first form of the line (:3003) the same way, into slot a", () => {
+    const run = runStep7c({ online: ["leaddrive-v2-line"] })
+    expect(run.out).toContain("STATUS ok")
+    expect(run.calls.find((c) => c.startsWith("pm2 start"))).toContain("--only leaddrive-v2-line-a")
+    expect(run.calls).toContain("pm2 delete leaddrive-v2-line")
+    expect(run.upstream).toMatch(/:3004 max_fails/)
+    expect(run.state).toBe("3004")
+  })
+
+  it.skipIf(!hasBash)("keeps the answering slot when the new one cannot load the catalog", () => {
+    const run = runStep7c({ online: ["leaddrive-v2-line-a"], activePort: "3004", warm: '{"outcome":"failed"}' })
+    expect(run.out).toContain("STATUS kept-previous")
+    expect(run.calls).toContain("pm2 delete leaddrive-v2-line-b")
+    expect(run.calls).not.toContain("pm2 delete leaddrive-v2-line-a")
+    expect(run.calls.some((c) => c.startsWith("systemctl"))).toBe(false)
+    expect(run.upstream).toMatch(/:3003 max_fails/)
+    expect(run.state).toBe("3004")
+    expect(run.releases).toEqual([])
   })
 })
 
@@ -208,8 +303,8 @@ describe("operator jobs restart the line's process into a new environment", () =
         if (/^\s*#/.test(line)) return
         if (!/pm2 restart (leaddrive-v2|"\$PM2_PROCESS") --update-env/.test(line)) return
         webRestarts += 1
-        const after = lines.slice(index + 1, index + 10).join("\n")
-        if (!/pm2 restart (leaddrive-v2-line|"\$LINE_PM2_PROCESS") --update-env/.test(after)) offenders.push(`${name}:${index + 1}`)
+        const after = lines.slice(index + 1, index + 14).join("\n")
+        if (!/for line_app in (leaddrive-v2-line-a leaddrive-v2-line-b|\$LINE_PM2_PROCESSES)[\s\S]*pm2 restart "\$line_app" --update-env/.test(after)) offenders.push(`${name}:${index + 1}`)
       })
     }
     expect(webRestarts).toBeGreaterThan(5)
@@ -218,8 +313,8 @@ describe("operator jobs restart the line's process into a new environment", () =
 
   it("asserts the voice gates on the line's process too: it answers call results", () => {
     const cutover = readFileSync(join(dir, "set-voice-provider-registry-cutover.yml"), "utf8")
-    expect(cutover).toContain('LINE_PM2_PROCESS="leaddrive-v2-line"')
+    expect(cutover).toContain('LINE_PM2_PROCESSES="leaddrive-v2-line-a leaddrive-v2-line-b"')
     const lister = cutover.slice(cutover.indexOf("voice_runtime_processes() {"), cutover.indexOf("assert_automation_off() {"))
-    expect(lister).toContain('"$LINE_PM2_PROCESS"')
+    expect(lister).toContain('for line_app in $LINE_PM2_PROCESSES')
   })
 })

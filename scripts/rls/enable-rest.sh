@@ -50,11 +50,11 @@ guard_hit_for() {
   command -v pm2 >/dev/null 2>&1 || return 1     # no pm2 here → can't check → treat clean
   [[ -n "$model" ]] || return 1
   # Every server process: scheduled jobs run in leaddrive-v2-jobs, the PBX's
-  # requests in leaddrive-v2-line, and a cron path is
+  # requests in leaddrive-v2-line-a/-b (one pair of log files), and a cron path is
   # the likeliest to query without tenant context.
   { pm2 logs leaddrive-v2 --lines 200 --nostream 2>/dev/null
     pm2 logs leaddrive-v2-jobs --lines 200 --nostream 2>/dev/null
-    pm2 logs leaddrive-v2-line --lines 200 --nostream 2>/dev/null; } \
+    tail -q -n 200 /var/lib/leaddrive-v2-logs/line-out.log /var/lib/leaddrive-v2-logs/line-error.log 2>/dev/null; } \
     | grep -Eq "RLS-GUARD.*org-scoped ${model}\."
 }
 

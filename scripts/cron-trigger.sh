@@ -47,11 +47,19 @@ fi
 # tick held that thread for the people waiting on their pages. The exceptions
 # are the endpoints whose whole purpose is the memory of the process that
 # answers: Zeytun's phone line parses its catalog INTO the process that answers
-# the station — pm2 `leaddrive-v2-line`, loopback :3003 — so warming it anywhere
-# else would warm nothing. An explicit APP_URL wins.
+# the station — pm2 `leaddrive-v2-line-<slot>`, on the loopback port the deploy
+# wrote to LINE_ACTIVE_PORT_FILE when it pointed nginx there — so warming it
+# anywhere else would warm nothing. An explicit APP_URL wins.
 WEB_APP_URL="${WEB_APP_URL:-http://localhost:3001}"
 JOBS_APP_URL="${JOBS_APP_URL:-http://localhost:3002}"
-LINE_APP_URL="${LINE_APP_URL:-http://localhost:3003}"
+LINE_ACTIVE_PORT_FILE="${LINE_ACTIVE_PORT_FILE:-/var/lib/leaddrive-v2/line-active-port}"
+if [ -z "${LINE_APP_URL:-}" ]; then
+  LINE_ACTIVE_PORT="$(head -c 16 "$LINE_ACTIVE_PORT_FILE" 2>/dev/null | tr -d '[:space:]' || true)"
+  case "$LINE_ACTIVE_PORT" in
+    300[3-9]) LINE_APP_URL="http://localhost:${LINE_ACTIVE_PORT}" ;;
+    *) LINE_APP_URL="http://localhost:3003" ;;
+  esac
+fi
 case "$ENDPOINT" in
   /api/cron/zeytun-line-warm | /api/cron/zeytun-line-warm[?]* | \
   /api/cron/zeytun-catalog-refresh | /api/cron/zeytun-catalog-refresh[?]*)

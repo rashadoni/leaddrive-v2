@@ -29,11 +29,20 @@ PM2_PROCESS="leaddrive-v2"
 # loopback :3002, so scheduled jobs never hold the web process's thread.
 JOBS_PM2_PROCESS="leaddrive-v2-jobs"
 JOBS_HEALTH_URL="http://localhost:3002"
-# The phone station's own process (ecosystem.config.cjs): the same bundle on
-# loopback :3003; nginx sends the station's routes there, the web app is its
-# fallback (ops/nginx/leaddrive-station-routes.conf).
+# The phone station's own process (ecosystem.config.cjs). It runs from a copy of
+# its release under $APP_DIR/line-releases, in slot a (:3004) or b (:3005), and
+# a deploy replaces it without a gap (Step 7c). nginx sends the station's routes
+# to the active slot, the web app is its fallback
+# (ops/nginx/leaddrive-station-*.conf). LINE_PM2_PROCESS/LINE_PORT name the
+# first form of it (PR #1160: standalone, :3003), retired by the first Step 7c.
 LINE_PM2_PROCESS="leaddrive-v2-line"
-LINE_HEALTH_URL="http://localhost:3003"
+LINE_SLOT_A_PROCESS="leaddrive-v2-line-a"
+LINE_SLOT_B_PROCESS="leaddrive-v2-line-b"
+LINE_SLOT_A_PORT=3004
+LINE_SLOT_B_PORT=3005
+LINE_RELEASES_DIR="$APP_DIR/line-releases"
+LINE_ACTIVE_PORT_FILE="/var/lib/leaddrive-v2/line-active-port"
+LINE_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-station-upstream.conf"
 PM2_HOME="/root/.pm2"
 # Production health and the PM2 fence are bound to one canonical name/port.
 # Never let an ambient CI variable rename the process or move it off the port
@@ -242,7 +251,9 @@ assert_dotenv_key_allowed() {
     DEPLOY_TAR|DEPLOY_LOCK_FILE|DEPLOY_PREFLIGHT_ONLY|DEPLOY_MODE|EXPECTED_DEPLOY_SHA_ARG|DEPLOY_SHA|DEPLOY_SHA_FILE|\
     ARTIFACT_DEPLOY_SHA|BACKUP_DIR|BACKUP_PATH|MAX_BACKUPS|HEALTH_URL|PM2_PROCESS|PM2_HOME|PM2_NAME|APP_PORT|\
     JOBS_PM2_PROCESS|JOBS_HEALTH_URL|PM2_JOBS_NAME|JOBS_PORT|\
-    LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|\
+    LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|LINE_SLOT|LINE_RELEASE_DIR|\
+    LINE_SLOT_A_PROCESS|LINE_SLOT_B_PROCESS|LINE_SLOT_A_PORT|LINE_SLOT_B_PORT|\
+    LINE_RELEASES_DIR|LINE_ACTIVE_PORT_FILE|LINE_NGINX_UPSTREAM|\
     DEFAULT_RUNTIME_DIR|DEFAULT_LOG_DIR|RUNTIME_DIR|RUNTIME_UPLOADS_DIR|\
     RUNTIME_STATE_DIR|RUNTIME_ARCHIVE_DIR|LOG_DIR|HELP_VIDEO_ASSET_DIR_DEFAULT|\
     HELP_VIDEO_RUNTIME_ROOT|VOICE_OPERATOR_STATE_DIR_RESOLVED|OPS_ROOT|\
@@ -1721,6 +1732,7 @@ persist_event_platform_pm2_stop_fence() {
     fatal_after_standalone_replacement "cannot inspect live PM2 state before the Fund fence"
   }
   protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
+    "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1733,7 +1745,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003", "3004", "3005"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 for (const item of processes) {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   if (protectedNames.has(item.name || env.name)
@@ -1764,17 +1776,19 @@ NODE
   pm2 delete softphone-relay 2>/dev/null || true
   pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
   pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+  pm2 delete "$LINE_SLOT_A_PROCESS" 2>/dev/null || true
+  pm2 delete "$LINE_SLOT_B_PROCESS" 2>/dev/null || true
   fuser -k 3001/tcp 2>/dev/null || true
   fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
-  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" "$LINE_SLOT_A_PORT/tcp" "$LINE_SLOT_B_PORT/tcp" 2>/dev/null || true
   if fuser 3001/tcp >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the protected web port after the Fund fence"
   fi
   if fuser "$JOBS_PORT/tcp" >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the jobs port after the Fund fence"
   fi
-  if fuser "$LINE_PORT/tcp" >/dev/null 2>&1; then
-    fatal_after_standalone_replacement "a process still owns the line port after the Fund fence"
+  if fuser "$LINE_PORT/tcp" "$LINE_SLOT_A_PORT/tcp" "$LINE_SLOT_B_PORT/tcp" >/dev/null 2>&1; then
+    fatal_after_standalone_replacement "a process still owns a line port after the Fund fence"
   fi
 
   live_state=$(mktemp /tmp/leaddrive-event-platform-pm2-live.XXXXXX) || \
@@ -1784,6 +1798,7 @@ NODE
     fatal_after_standalone_replacement "cannot inspect live PM2 state after the Fund fence"
   }
   live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
+    "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1796,7 +1811,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003", "3004", "3005"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -1819,6 +1834,7 @@ NODE
   harden_pm2_reboot_dump || \
     fatal_after_standalone_replacement "cannot harden the stopped PM2 reboot fence"
   saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
+    "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1831,7 +1847,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003", "3004", "3005"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -9123,8 +9139,9 @@ pm2 delete softphone-relay 2>/dev/null || true
 # same `pm2 start` refusal applies to it. While the web process is down for the
 # next seconds, cron-trigger.sh finds 3002 closed and sends the schedule to 3001.
 pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
-# The phone line's process, likewise; nginx sends the station to 3001 meanwhile.
-pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+# The phone line's process is NOT stopped here: it keeps answering the station
+# until Step 7c has its successor warm and checked (owner, 2026-10-28:
+# «обновление без перерыва»).
 
 # Delete the web process last (ignore errors if not found). It now exits about
 # two seconds after SIGINT (src/lib/server-shutdown-deadline.ts) instead of
@@ -9134,11 +9151,10 @@ pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 # Kill ANY process holding port 3001 (orphan from previous deploys)
 fuser -k 3001/tcp 2>/dev/null || true
 fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
-fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
 # A killed process releases its port within milliseconds; wait for that rather
 # than a fixed two seconds, and no longer than the fixed wait used to be.
 for _ in $(seq 1 20); do
-  ss -tln | grep -qE ":(3001|$JOBS_PORT|$LINE_PORT) " || break
+  ss -tln | grep -qE ":(3001|$JOBS_PORT) " || break
   sleep 0.1
 done
 
@@ -9339,36 +9355,106 @@ else
   JOBS_STATUS="fallback-to-web"
 fi
 
-# ── Step 7c: The phone line's own process ──────────────────
-# Same rule as the jobs process: checked after the web handoff, and a failure
-# removes it instead of rolling back a healthy CRM. nginx then sends the
-# station's routes to the web process (backup upstream) and cron-trigger.sh
-# warms the line's catalog there — the way it worked before this process.
-LINE_STATUS="down"
-LINE_PING_CODE="000"
-LINE_KEY_STATUS=""
-for i in 1 2 3 4 5 6; do
-  LINE_PING_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$LINE_HEALTH_URL/api/v1/ping" 2>/dev/null || echo "000")
-  if [ "$LINE_PING_CODE" = "200" ]; then
-    LINE_KEY_STATUS="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" \
-      "$LINE_HEALTH_URL/api/cron/pii-key-check" 2>/dev/null || true)"
-    if [ "$LINE_KEY_STATUS" = '{"ok":true,"source":"file"}' ]; then
-      LINE_STATUS="ok"
-    fi
-    break
+# ── Step 7c: The phone line's own process, replaced without a gap ──
+# Owner, 2026-10-28: «обновление без перерыва». The line is never stopped first.
+# The new release gets its own copy (hard links: the next deploy removes
+# .next/standalone, never this), starts in the free slot, is checked like the
+# web app, parses Zeytun's catalog, and only then does nginx send the station
+# there; the old slot answers until that moment and gets a drain period after.
+# Checked after the web handoff and never part of it: whatever fails here keeps
+# the line that was answering, and never rolls the web app back.
+line_port_of() { case "$1" in "$LINE_SLOT_A_PROCESS") echo "$LINE_SLOT_A_PORT" ;; "$LINE_SLOT_B_PROCESS") echo "$LINE_SLOT_B_PORT" ;; *) echo "$LINE_PORT" ;; esac; }
+
+line_ready() {
+  local url="$1" ping key warm
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    ping=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url/api/v1/ping" 2>/dev/null || echo "000")
+    [ "$ping" = "200" ] && break
+    sleep 5
+  done
+  [ "$ping" = "200" ] || { log "WARNING: new line slot at $url never answered ping"; return 1; }
+  key="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/pii-key-check" 2>/dev/null || true)"
+  [ "$key" = '{"ok":true,"source":"file"}' ] || { log "WARNING: new line slot at $url: PII key check said ${key:-nothing}"; return 1; }
+  # The catalog must be in memory before the first call reaches this slot.
+  warm="$(curl -s --max-time 180 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/zeytun-line-warm" 2>/dev/null || true)"
+  printf '%s\n' "$warm" | grep -Eq '"outcome":"(warm|not_configured)"' \
+    || { log "WARNING: new line slot at $url did not load the catalog: ${warm:-no response}"; return 1; }
+  log "Line slot at $url: ping 200, PII key from its env file, catalog $warm"
+}
+
+# Point nginx's station upstream at a port. Only where the station routes are
+# installed (scripts/nginx-install-station-routes.sh); elsewhere the station is
+# answered by the web app and there is nothing to switch.
+line_point_nginx() {
+  local port="$1" backup
+  [ -f "$LINE_NGINX_UPSTREAM" ] || return 0
+  grep -Eq '^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$' "$LINE_NGINX_UPSTREAM" \
+    || { log "WARNING: $LINE_NGINX_UPSTREAM has no primary server line to switch"; return 1; }
+  backup="$(mktemp /tmp/leaddrive-station-upstream.XXXXXX)" || return 1
+  cp -p "$LINE_NGINX_UPSTREAM" "$backup"
+  sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$|    server 127.0.0.1:${port} max_fails=1 fail_timeout=5s;|" "$LINE_NGINX_UPSTREAM"
+  if ! nginx -t >/dev/null 2>&1; then
+    cp -p "$backup" "$LINE_NGINX_UPSTREAM"; rm -f "$backup"
+    log "WARNING: nginx -t refused the station upstream on :$port; restored"
+    return 1
   fi
-  [ "$i" -lt 6 ] && sleep 5
+  rm -f "$backup"
+  # A reload is graceful: old workers finish the requests they hold.
+  systemctl reload nginx || { log "WARNING: nginx reload failed"; return 1; }
+}
+
+LINE_STATUS="kept-previous"
+LINE_OLD_PROCESS=""
+for candidate in "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" "$LINE_PM2_PROCESS"; do
+  if pm2 describe "$candidate" 2>/dev/null | grep -q "status.*online"; then
+    active_port="$(cat "$LINE_ACTIVE_PORT_FILE" 2>/dev/null || true)"
+    # Two slots online after an interrupted deploy: the one in the state file.
+    if [ -z "$LINE_OLD_PROCESS" ] || [ "$(line_port_of "$candidate")" = "$active_port" ]; then
+      LINE_OLD_PROCESS="$candidate"
+    fi
+  fi
 done
-if [ "$LINE_STATUS" = "ok" ]; then
-  log "Line process: healthy on $LINE_HEALTH_URL (ping 200, PII master key from its env file)"
-else
-  log "WARNING: line process unhealthy (ping=$LINE_PING_CODE, key=${LINE_KEY_STATUS:-no response}); removing it so the station is answered by the web process"
+if [ "$LINE_OLD_PROCESS" = "$LINE_SLOT_A_PROCESS" ]; then LINE_NEW_SLOT=b; else LINE_NEW_SLOT=a; fi
+LINE_NEW_PROCESS="leaddrive-v2-line-$LINE_NEW_SLOT"
+LINE_NEW_PORT="$(line_port_of "$LINE_NEW_PROCESS")"
+LINE_NEW_DIR="$LINE_RELEASES_DIR/${DEPLOY_SHA:-unknown}-$LINE_NEW_SLOT"
+log "Line: replacing ${LINE_OLD_PROCESS:-nothing} with $LINE_NEW_PROCESS on :$LINE_NEW_PORT"
+
+# A leftover in the free slot (an interrupted deploy) is not answering anyone.
+pm2 delete "$LINE_NEW_PROCESS" 2>/dev/null || true
+fuser -k "$LINE_NEW_PORT/tcp" 2>/dev/null || true
+mkdir -p "$LINE_RELEASES_DIR" && chmod 0750 "$LINE_RELEASES_DIR"
+rm -rf -- "$LINE_NEW_DIR"
+if cp -al -- "$APP_DIR/.next/standalone" "$LINE_NEW_DIR" \
+   && LINE_RELEASE_DIR="$LINE_NEW_DIR" LINE_SLOT="$LINE_NEW_SLOT" \
+      pm2 start "$PM2_CONFIG" --only "$LINE_NEW_PROCESS" >/dev/null 2>&1 \
+   && line_ready "http://127.0.0.1:$LINE_NEW_PORT" \
+   && line_point_nginx "$LINE_NEW_PORT"; then
+  printf '%s\n' "$LINE_NEW_PORT" > "$LINE_ACTIVE_PORT_FILE.tmp" && mv -f "$LINE_ACTIVE_PORT_FILE.tmp" "$LINE_ACTIVE_PORT_FILE"
+  if [ -n "$LINE_OLD_PROCESS" ]; then
+    # Requests the old slot already holds finish there; nginx sends nothing new.
+    sleep 20
+    pm2 delete "$LINE_OLD_PROCESS" 2>/dev/null || true
+  fi
+  # The first form of the line (standalone, :3003) may also be running beside a
+  # slot — an older artifact's rollback starts it — answering nobody.
   pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
-  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
-  pm2 save --force 2>/dev/null || fatal "cannot persist PM2 application state without the line process"
-  harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
-  LINE_STATUS="fallback-to-web"
+  LINE_STATUS="ok"
+  log "Line process: $LINE_NEW_PROCESS on :$LINE_NEW_PORT answers the station"
+  # Only the new release runs now; earlier copies are links nobody uses.
+  for dir in "$LINE_RELEASES_DIR"/*; do
+    [ -d "$dir" ] && [ "$dir" != "$LINE_NEW_DIR" ] && rm -rf -- "$dir"
+  done
+else
+  log "WARNING: new line release not admitted; ${LINE_OLD_PROCESS:-the web app (nothing else)} keeps answering the station"
+  pm2 delete "$LINE_NEW_PROCESS" 2>/dev/null || true
+  fuser -k "$LINE_NEW_PORT/tcp" 2>/dev/null || true
+  # The answering slot runs from its own, earlier copy: only this one goes.
+  rm -rf -- "$LINE_NEW_DIR"
+  [ -n "$LINE_OLD_PROCESS" ] || LINE_STATUS="fallback-to-web"
 fi
+pm2 save --force 2>/dev/null || fatal "cannot persist PM2 application state after the line handover"
+harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
 
 # ── Step 8: Install external singleton/outbox schedules ─────
 RESILIENCE_CRON_INSTALLER="$APP_DIR/.next/standalone/scripts/install-resilience-crons.sh"
