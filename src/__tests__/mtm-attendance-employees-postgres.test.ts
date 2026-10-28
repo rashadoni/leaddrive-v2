@@ -869,7 +869,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       name: "Fictional branch", address: "Fictional address", latitude: 40.4, longitude: 49.8, radiusMeters: 150, active: false, createdBy: "setup-admin" } }))
     expect((await done()).branches).toBe(false)
   })
-  it("finds a hidden CRM profile and hires it through the existing card without duplicating identity", async () => {
+  it("adds a hidden CRM profile from the add form through its existing card without duplicating identity", async () => {
     const { readAttendancePhoneMatch } = await import("@/lib/mtm/attendance-phone-match")
     const { createAttendanceEmployee } = await import("@/lib/mtm/attendance-employee-create")
     const org = "employee-pg-phone-match", phone = "+994550009901"
@@ -893,7 +893,6 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       })
       const before = await snapshot()
       expect((await store.readAttendanceEmployees(actor)).employees.map(row => row.id)).not.toContain(card.id)
-      await expect(createAttendanceEmployee(actor, { name: "Fictional new form", phone })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN" })
       const match = { kind: "attendance", agentId: card.id, name: card.name, enrolled: false }
       expect(await readAttendancePhoneMatch(actor, { phone: "+994 (55) 000-99-01" })).toEqual(match)
       expect(await snapshot()).toEqual(before)
@@ -902,10 +901,15 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       await expect(readAttendancePhoneMatch(actor, { phone, organizationId: "employee-pg-b" })).rejects.toMatchObject({ status: 400 })
       expect(await readAttendancePhoneMatch(actor, { phone: "+994550009909" })).toEqual({ kind: "none" })
       expect((await store.readAttendanceEmployee(actor, card.id)).employee.id).toBe(card.id)
-      await store.updateAttendanceEmployee(actor, card.id, { name: card.name, position: null, teamId: null, departmentId: null, managerId: null, hireDate: "2026-10-25" })
+      // Owner, 2026-10-29: «пусть добавляется как сотрудник». The add form with
+      // an existing CRM user's number adds that person through their own card.
+      const added = await createAttendanceEmployee(actor, { name: "Fictional new form", phone: "+994 (55) 000-99-01", position: "Fictional head", hireDate: "2026-10-25" })
+      expect(added).toMatchObject({ userId: "phone-match-person", agentId: card.id, name: card.name, existing: true })
       expect(await readAttendancePhoneMatch(actor, { phone })).toEqual({ ...match, enrolled: true })
       const hired = (await store.readAttendanceEmployees(actor)).employees.find(row => row.id === card.id)!
-      expect(hired.history).toMatchObject([{ kind: "HIRE", date: "2026-10-25" }])
+      expect(hired).toMatchObject({ position: "Fictional head", history: [{ kind: "HIRE", date: "2026-10-25" }] })
+      // Now in the list: a second add is refused, the form points to the page.
+      await expect(createAttendanceEmployee(actor, { name: "Fictional new form", phone })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN" })
       const after = await snapshot()
       expect(after.users).toBe(before.users); expect(after.cards).toBe(before.cards)
       for (const key of ["id", "passwordHash", "role", "phone", "email", "hiddenModules", "isActive"] as const) expect(after.user[key]).toEqual(before.user[key])
