@@ -387,6 +387,38 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(await (await long.handle(request())).json()).toEqual({ enabled: false })
   })
 
+  // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
+  // есть, и акции «купи/получи» из 1С».
+  it("tells the agent the stock in the price's unit and today's buy-N-get-M offer", async () => {
+    const item = (over: Record<string, unknown>) => ({ externalId: "cccccccc-1111-4111-8111-111111111111", itemCode: "TEST-01",
+      name: "Medicine 10 mg", nameAz: null, baseUnitAsReported: "упак", priceAsReported: "2.5", quantityAsReported: "42",
+      promotionAsReported: { enabled: true, buy: 10, get: 1, validFromRaw: "20261001", validToRaw: "20261022" }, ...over })
+    const found = async (candidate: Record<string, unknown>, f: Pick<ReturnType<typeof fixture>, "catalog" | "handle"> = lineFixture()) => {
+      ;(f.catalog.search as ReturnType<typeof vi.fn>).mockReturnValue({ status: "candidates", candidateCount: 1, candidates: [candidate] })
+      return (await (await f.handle(search())).json()).candidates[0]
+    }
+    // Baku's date: the offer's last day is still on at 16:00 there.
+    expect(await found(item({}))).toMatchObject({ stock: { quantity: 42, per: "qutu" },
+      promotion: { buy: 10, get: 1, per: "qutu", until: "2026-10-22" } })
+    // 1C shows at most 100: that is "100 or more", and a fraction is not a whole box.
+    expect((await found(item({ quantityAsReported: "100" }))).stock).toEqual({ quantity: 100, per: "qutu", orMore: true })
+    expect((await found(item({ quantityAsReported: "7.5" }))).stock).toEqual({ quantity: 7, per: "qutu" })
+    // A unit we have no word for, or no number: no stock is said.
+    expect(await found(item({ baseUnitAsReported: "тюб" }))).not.toHaveProperty("stock")
+    // Over, not started, switched off, or a flag without both numbers: no offer.
+    for (const promotionAsReported of [
+      { enabled: true, buy: 10, get: 1, validFromRaw: "20260901", validToRaw: "20260930" },
+      { enabled: true, buy: 10, get: 1, validFromRaw: "20261101", validToRaw: "20261130" },
+      { enabled: false, buy: 10, get: 1, validFromRaw: "20261001", validToRaw: "20261031" },
+      { enabled: true, buy: 0, get: 0, validFromRaw: "20261001", validToRaw: "20261031" },
+      { enabled: true, buy: 10, get: 1, validFromRaw: "00010101", validToRaw: "00010101" },
+    ]) expect(await found(item({ promotionAsReported }))).not.toHaveProperty("promotion")
+    // The owner's rehearsal keeps its old rule: stock is not confirmed there.
+    const rehearsal = await found(item({}), fixture())
+    expect(rehearsal).not.toHaveProperty("stock")
+    expect(rehearsal).not.toHaveProperty("promotion")
+  })
+
   // Owner, 2026-10-27: the line must not stop by itself on its renewal date.
   it("without an end date lasts as long as the number is the organization's, with the full call length", async () => {
     const open = lineFixture()

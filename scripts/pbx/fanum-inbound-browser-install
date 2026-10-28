@@ -37,7 +37,7 @@ readonly INCLUDE_LINE='#include "fanum-inbound-browser.conf"'
 readonly EXPECTED_EXTENSIONS_FANUM_SHA256="6cc0489756b948f94b5d5acfe686d883376a7661f432adb34c130fd1dd95f6c4"
 # The Zeytun line core (transfer tool; 15-minute calls saved line by line); the station package installs it
 # (pbx-voice-core-onefile-deploy.sh) before this installer runs.
-readonly EXPECTED_AI_CORE_SHA256="6519646f1338d7186a4c7590db789d1dd6570264d4ecd9aa5814322240ecb2a2"
+readonly EXPECTED_AI_CORE_SHA256="acefecaee3f690a7188dae0486ae75f532905d2c9d20e91e9ea09354a499155e"
 
 # Filled from the reviewed repository files.  Site configuration is never part
 # of this list.
