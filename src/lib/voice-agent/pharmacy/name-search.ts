@@ -30,11 +30,21 @@ function editDistance(left: string[], right: string[], limit: number): number {
   return previous[right.length]
 }
 
+// Two of three Zeytun feed names exist only in Cyrillic ("Адефа № 30"), while
+// the caller's words arrive in Azerbaijani Latin ("Adefa"); live call
+// 2026-10-28 found nothing. Folded, both scripts are the same letters.
+const CYRILLIC_LATIN: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "o", ж: "j", з: "z", и: "i", й: "y", к: "k", л: "l",
+  м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "x", ц: "s", ч: "ç", ш: "ş",
+  щ: "ş", ъ: "", ы: "i", ь: "", э: "e", ю: "yu", я: "ya",
+}
+
 // Recognizers write the same sound with different letters: "Moshpa" and
 // "Noşpa", "Ketenal", "Ushag" and "uşaq". Spelling slack is measured on this
 // folded form, where Azerbaijani letters and their digraphs are one letter.
 function foldSpelling(word: string): string[] {
-  return Array.from(word.replace(/sh/gu, "ş").replace(/ch/gu, "ç").replace(/gh/gu, "ğ")
+  const latin = word.replace(/дж/gu, "c").replace(/[а-яё]/gu, (ch) => CYRILLIC_LATIN[ch] ?? ch).replace(/dj/gu, "c")
+  return Array.from(latin.replace(/sh/gu, "ş").replace(/ch/gu, "ç").replace(/gh/gu, "ğ")
     .replace(/[şç]/gu, (ch) => (ch === "ş" ? "s" : "c")).replace(/ğ/gu, "g").replace(/ı/gu, "i")
     .replace(/ö/gu, "o").replace(/ü/gu, "u").replace(/ə/gu, "e"))
 }
