@@ -78,7 +78,7 @@ export async function fetchZeytunAvailableBalances(
   if (response.status === 401 || response.status === 403) throw new ZeytunBalanceReadError("authentication_required")
   if (!response.ok || response.status !== 200) throw new ZeytunBalanceReadError("upstream_unavailable")
   try {
-    const feed = new ZeytunAvailableBalances(response.bodyBytes, {
+    const feed = await ZeytunAvailableBalances.build(response.bodyBytes, {
       organizationId: config.organizationId, source: "live", observedAt: new Date().toISOString(),
     })
     return { feed, payload: response.bodyBytes, scopeKey: zeytunBalanceScopeKey(config) }

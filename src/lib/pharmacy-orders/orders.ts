@@ -99,7 +99,7 @@ async function orderCatalog(source: string, scopeKey: string): Promise<CatalogHa
     const snapshot = await new ZeytunSnapshotStore(root, source, scopeKey).load()
     if (!snapshot) throw new PhoneOrderError("catalog_unavailable", 503)
     return { version: snapshot.version, observedAt: snapshot.context.observedAt, source,
-      feed: new ZeytunAvailableBalances(snapshot.payload, snapshot.context) }
+      feed: await ZeytunAvailableBalances.build(snapshot.payload, snapshot.context) }
   })()
   catalogCache.set(key, { at: Date.now(), value })
   value.catch(() => catalogCache.delete(key))
