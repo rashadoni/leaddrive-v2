@@ -100,7 +100,8 @@ postgresDescribe("MTM visit events on PostgreSQL", () => {
         ["mtm.visit-completed.v1", "2", "leaddrive.domain.mtm.v1"],
         ["mtm.visit-result-recorded.v1", "3", "leaddrive.domain.mtm.v1"],
       ])
-      expect(events.map(e => e.envelope).join("")).toMatch(/40\.4.*49\.8/s) // what the old fragment check tripped on
+      const text = events.map(e => e.envelope).join("")
+      expect([text.includes("40.4"), text.includes("49.8")]).toEqual([true, true]) // what the old fragment check tripped on
       expect(events.flatMap(e => coordinateLeaks(JSON.parse(e.envelope)))).toEqual([])
     } finally {
       vi.useRealTimers()
