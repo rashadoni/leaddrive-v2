@@ -40,6 +40,13 @@ READY_TIMEOUT_SECONDS = 25.0
 MANAGER_WAIT_SECONDS = 30.0
 READY_POLL_SECONDS = 1.0
 HTTP_TIMEOUT_SECONDS = 2.0
+# Owner's call, 2026-10-28: hung up after the first ring. At the top of the
+# minute the CRM answered this event in over 2 s (1-4 s measured that hour),
+# and one timeout ended the call. The caller hears ringing meanwhile, and a
+# repeated event (same eventId and callId) is the same call to the CRM, so
+# ringing is retried within this budget before the call is given up.
+RINGING_DELIVERY_SECONDS = 8.0
+RINGING_RETRY_PAUSE_SECONDS = 0.25
 MAX_SPOOL_FILES = 1_000
 DRAIN_BATCH_SIZE = 100
 PARTY_RE = re.compile(r"^[+0-9A-Za-z*#(). _-]{1,64}$")
@@ -55,6 +62,9 @@ SPOOL_STATE_ORDER = {
 }
 
 _hangup_requested = False
+# Indirection for tests; the station uses the real clock.
+_clock = time.monotonic
+_sleep = time.sleep
 
 
 class ConfigurationError(Exception):
@@ -409,7 +419,12 @@ def _send_ringing_durable(
             queued = _queue_payload(payload, spool_dir)
             if queued is None:
                 return SendResult.RETRY
+            deadline = _clock() + RINGING_DELIVERY_SECONDS
             result = client.send_lifecycle(payload)
+            while (result is SendResult.RETRY and not _hangup_requested
+                   and _clock() + RINGING_RETRY_PAUSE_SECONDS + HTTP_TIMEOUT_SECONDS <= deadline):
+                _sleep(RINGING_RETRY_PAUSE_SECONDS)
+                result = client.send_lifecycle(payload)
             if result is not SendResult.RETRY:
                 _remove_spooled(queued)
             return result

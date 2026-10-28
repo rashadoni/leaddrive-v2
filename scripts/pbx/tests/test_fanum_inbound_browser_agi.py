@@ -370,8 +370,52 @@ class InboundBrowserAgiTest(unittest.TestCase):
 
         self.assertTrue(result)
 
+    def test_a_slow_crm_gets_ringing_again_within_the_budget_instead_of_a_hang_up(self):
+        # 2026-10-28: one 2 s timeout at the top of the minute hung up a call.
+        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY, agi.SendResult.RETRY, agi.SendResult.SENT])
+        output = io.StringIO()
+        now = [0.0]
+        with tempfile.TemporaryDirectory() as temporary, \
+                mock.patch.object(agi, "_clock", lambda: now[0]), \
+                mock.patch.object(agi, "_sleep", lambda seconds: now.__setitem__(0, now[0] + seconds + agi.HTTP_TIMEOUT_SECONDS)):
+            result = agi.run_mode(
+                mode="ringing",
+                arguments=[CALL_ID, DID],
+                agi_variables={"agi_callerid": CALLER},
+                client=client,
+                spool_dir=Path(temporary),
+                output=output,
+            )
+            self.assertEqual(list(Path(temporary).glob("*.json")), [])
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue(), 'SET VARIABLE FANUM_INBOUND_EVENT_OK "1"\n')
+        # The same event each time: the CRM takes a repeat as the same call.
+        self.assertEqual(len(client.lifecycle_payloads), 3)
+        self.assertEqual({payload["eventId"] for payload in client.lifecycle_payloads},
+                         {client.lifecycle_payloads[0]["eventId"]})
+
+    def test_ringing_stops_retrying_at_its_budget(self):
+        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        now = [0.0]
+        with tempfile.TemporaryDirectory() as temporary, \
+                mock.patch.object(agi, "_clock", lambda: now[0]), \
+                mock.patch.object(agi, "_sleep", lambda seconds: now.__setitem__(0, now[0] + seconds + agi.HTTP_TIMEOUT_SECONDS)):
+            result = agi.run_mode(
+                mode="ringing",
+                arguments=[CALL_ID, DID],
+                agi_variables={"agi_callerid": CALLER},
+                client=client,
+                spool_dir=Path(temporary),
+                output=io.StringIO(),
+            )
+        self.assertEqual(result, 1)
+        # The fake counts each try's 2 s inside the pause before it: tries at
+        # 0, 2.25, 4.5 and 6.75 s; a fifth could not finish inside 8 s.
+        self.assertEqual(len(client.lifecycle_payloads), 4)
+
     def test_retryable_ringing_is_spooled_locally_before_the_call_is_rejected(self):
-        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY])
+        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        self.enterContext(mock.patch.object(agi, "RINGING_DELIVERY_SECONDS", 0.0))
         output = io.StringIO()
         with tempfile.TemporaryDirectory() as temporary:
             spool = Path(temporary)
@@ -396,7 +440,8 @@ class InboundBrowserAgiTest(unittest.TestCase):
             self.assertNotIn("runtime-token", queued[0].read_text(encoding="utf-8"))
 
     def test_spool_delivers_ringing_before_its_terminal_missed_call(self):
-        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY])
+        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        self.enterContext(mock.patch.object(agi, "RINGING_DELIVERY_SECONDS", 0.0))
         succeeding = FakeClient(
             lifecycle_results=[agi.SendResult.SENT, agi.SendResult.SENT],
         )
@@ -426,7 +471,8 @@ class InboundBrowserAgiTest(unittest.TestCase):
             )
 
     def test_spool_order_does_not_depend_on_wall_clock(self):
-        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY])
+        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        self.enterContext(mock.patch.object(agi, "RINGING_DELIVERY_SECONDS", 0.0))
         succeeding = FakeClient(
             lifecycle_results=[agi.SendResult.SENT, agi.SendResult.SENT],
         )
