@@ -169,10 +169,12 @@ jobs:
               if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
                 pm2 restart leaddrive-v2-jobs --update-env >/dev/null
               fi
-              # The phone line's process (pm2 leaddrive-v2-line) keeps its own copy too.
-              if pm2 describe leaddrive-v2-line >/dev/null 2>&1; then
-                pm2 restart leaddrive-v2-line --update-env >/dev/null
-              fi
+              # The phone line's process (pm2 leaddrive-v2-line-a or -b) keeps its own copy too.
+              for line_app in leaddrive-v2-line-a leaddrive-v2-line-b; do
+                if pm2 describe "$line_app" >/dev/null 2>&1; then
+                  pm2 restart "$line_app" --update-env >/dev/null
+                fi
+              done
               echo "routing ON (brandprotection only); pm2 restarted"
               ;;
             routing-off)
@@ -186,10 +188,12 @@ jobs:
               if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
                 pm2 restart leaddrive-v2-jobs --update-env >/dev/null
               fi
-              # The phone line's process (pm2 leaddrive-v2-line) keeps its own copy too.
-              if pm2 describe leaddrive-v2-line >/dev/null 2>&1; then
-                pm2 restart leaddrive-v2-line --update-env >/dev/null
-              fi
+              # The phone line's process (pm2 leaddrive-v2-line-a or -b) keeps its own copy too.
+              for line_app in leaddrive-v2-line-a leaddrive-v2-line-b; do
+                if pm2 describe "$line_app" >/dev/null 2>&1; then
+                  pm2 restart "$line_app" --update-env >/dev/null
+                fi
+              done
               echo "routing OFF; allowlist cleared; pm2 restarted"
               ;;
             run-free-web-news-all)

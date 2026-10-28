@@ -1,7 +1,11 @@
 const APP_DIR = process.env.APP_DIR || "/opt/leaddrive-v2"
 const APP_PORT = process.env.APP_PORT || 3001
 const JOBS_PORT = process.env.JOBS_PORT || 3002
-const LINE_PORT = process.env.LINE_PORT || 3003
+// The phone line runs from a release directory of its own, in one of two
+// slots, and only when the deploy names one (scripts/server-deploy.sh, Step 7c).
+const LINE_RELEASE_DIR = process.env.LINE_RELEASE_DIR || ""
+const LINE_SLOT = process.env.LINE_SLOT || ""
+const LINE_SLOT_PORTS = { a: 3004, b: 3005 }
 const APP_ENV_FILE = process.env.APP_ENV_FILE || "/etc/leaddrive/app.env"
 const RUNTIME_DIR = process.env.LEADDRIVE_RUNTIME_DIR || "/var/lib/leaddrive-v2"
 const LOG_DIR = process.env.LEADDRIVE_LOG_DIR || "/var/lib/leaddrive-v2-logs"
@@ -18,10 +22,10 @@ const MTM_DOCUMENT_STORAGE_DIR = process.env.MTM_DOCUMENT_STORAGE_DIR || `${RUNT
 // while /api/v1/ping went from 0.1 s to 7 s and a dashboard's requests waited
 // 4–11 s each. Jobs coordinate through SystemJobLease in PostgreSQL, not
 // through process memory, so where they run changes nothing about what they do.
-const serverApp = ({ name, role, port, hostname, errorFile, outFile, maxMemory }) => ({
+const serverApp = ({ name, role, port, hostname, errorFile, outFile, maxMemory, root = `${APP_DIR}/.next/standalone` }) => ({
   name,
-  script: `${APP_DIR}/.next/standalone/server.js`,
-  cwd: `${APP_DIR}/.next/standalone`,
+  script: `${root}/server.js`,
+  cwd: root,
   interpreter: "node",
   // pm2 otherwise loads its metrics agent, @pm2/io, INTO the app: it wraps the
   // http module to time every request and, on one-second timers, counts the
@@ -104,19 +108,32 @@ module.exports = {
     // 14 MB catalog is parsed into this process's memory. On the web process
     // those questions waited behind people's pages and the minute's jobs: a
     // call dropped after the first ring on 2026-10-28 because "ringing" took
-    // 1–4 s. If this process is down, nginx and cron-trigger.sh send the same
-    // requests to the web process, as before it existed.
-    serverApp({
-      name: process.env.PM2_LINE_NAME || "leaddrive-v2-line",
-      role: "line",
-      port: LINE_PORT,
-      // nginx reaches it on loopback; never on another interface.
-      hostname: "127.0.0.1",
-      errorFile: `${LOG_DIR}/line-error.log`,
-      outFile: `${LOG_DIR}/line-out.log`,
-      // The parsed catalog and pharmacy list plus the app's own working set.
-      maxMemory: "2048M",
-    }),
+    // 1–4 s. If no line process answers, nginx and cron-trigger.sh send the
+    // same requests to the web process, as before it existed.
+    //
+    // A deploy never stops it first (owner, 2026-10-28: «обновление без
+    // перерыва»). It runs from its own copy of a release
+    // ($APP_DIR/line-releases/<sha>), which the next deploy does not replace,
+    // in slot a (:3004) or b (:3005). The deploy starts the new release in the
+    // free slot — `pm2 start <this file> --only leaddrive-v2-line-<slot>` with
+    // LINE_RELEASE_DIR and LINE_SLOT — warms and checks it, points nginx at it,
+    // and only then stops the old one. The plain `pm2 start` of the web app
+    // never names a slot, so it never touches the line.
+    ...(LINE_RELEASE_DIR && LINE_SLOT_PORTS[LINE_SLOT]
+      ? [serverApp({
+          name: `leaddrive-v2-line-${LINE_SLOT}`,
+          role: "line",
+          port: LINE_SLOT_PORTS[LINE_SLOT],
+          root: LINE_RELEASE_DIR,
+          // nginx reaches it on loopback; never on another interface.
+          hostname: "127.0.0.1",
+          // Both slots write the same files: one place to read station_timing.
+          errorFile: `${LOG_DIR}/line-error.log`,
+          outFile: `${LOG_DIR}/line-out.log`,
+          // The parsed catalog and pharmacy list plus the app's own working set.
+          maxMemory: "2048M",
+        })]
+      : []),
     // The softphone relay — the process that joins a salesperson's browser to
     // an answered call. Present ONLY when the server has been given its
     // secrets, which is what keeps it out of a production file that lacks

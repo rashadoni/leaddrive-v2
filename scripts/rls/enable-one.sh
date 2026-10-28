@@ -96,5 +96,5 @@ SQL
 ok "RLS enabled on \"$TABLE\"."
 show_status
 echo
-info "Now watch ~a day before the next table:  pm2 logs leaddrive-v2 leaddrive-v2-jobs leaddrive-v2-line | grep RLS-GUARD"
+info "Now watch ~a day before the next table:  pm2 logs leaddrive-v2 leaddrive-v2-jobs leaddrive-v2-line-a leaddrive-v2-line-b | grep RLS-GUARD"
 info "Rollback if needed:  bash scripts/rls/enable-one.sh $TABLE --rollback"

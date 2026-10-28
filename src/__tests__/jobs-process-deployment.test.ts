@@ -82,8 +82,8 @@ describe("pm2 runs the scheduler beside the web app", () => {
     // Profiled on production 2026-10-28: @pm2/io, which pm2 loads into every
     // app unless told not to, was the largest piece of the web thread's own work
     // between requests (one-second timers sorting latency samples).
-    const apps = loadApps()
-    for (const name of ["leaddrive-v2", "leaddrive-v2-jobs", "leaddrive-v2-line"]) {
+    const apps = loadApps({ LINE_RELEASE_DIR: "/opt/leaddrive-v2/line-releases/x-a", LINE_SLOT: "a" })
+    for (const name of ["leaddrive-v2", "leaddrive-v2-jobs", "leaddrive-v2-line-a"]) {
       const app = apps.find((a) => a.name === name)!
       expect([name, app.pmx]).toEqual([name, false])
     }
@@ -285,7 +285,7 @@ describe("the deploy carries the jobs process", () => {
     )
     expect(fence.match(/"\$PM2_PROCESS" softphone-relay "\$JOBS_PM2_PROCESS"/g)).toHaveLength(3)
     expect(fence).toContain('pm2 delete "$JOBS_PM2_PROCESS"')
-    expect(fence).toContain('["3001", "3002", "3003"]')
+    expect(fence).toContain('["3001", "3002", "3003", "3004", "3005"]')
   })
 
   it("checks it only after the web handoff, and never rolls the web app back on its account", () => {
