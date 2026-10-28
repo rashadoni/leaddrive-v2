@@ -301,6 +301,9 @@ jobs:
           # these gates exist to stop, with its own copy of the environment.
           # Every gate below is restarted into and asserted on both processes.
           JOBS_PM2_PROCESS="leaddrive-v2-jobs"
+          # The phone station's process answers call results and lifecycle
+          # events, which read the same gates; restarted and asserted too.
+          LINE_PM2_PROCESS="leaddrive-v2-line"
           HEALTH_URL="http://127.0.0.1:3001/api/v1/ping"
           LOCK_FILE=""
           # The deploy pipeline writes this marker inside the standalone bundle
@@ -459,6 +462,9 @@ jobs:
             if pm2 describe "$JOBS_PM2_PROCESS" >/dev/null 2>&1; then
               printf '%s\n' "$JOBS_PM2_PROCESS"
             fi
+            if pm2 describe "$LINE_PM2_PROCESS" >/dev/null 2>&1; then
+              printf '%s\n' "$LINE_PM2_PROCESS"
+            fi
           }
 
           assert_automation_off() {
@@ -582,6 +588,9 @@ jobs:
             pm2 restart "$PM2_PROCESS" --update-env >/dev/null
             if pm2 describe "$JOBS_PM2_PROCESS" >/dev/null 2>&1; then
               pm2 restart "$JOBS_PM2_PROCESS" --update-env >/dev/null
+            fi
+            if pm2 describe "$LINE_PM2_PROCESS" >/dev/null 2>&1; then
+              pm2 restart "$LINE_PM2_PROCESS" --update-env >/dev/null
             fi
             health_check
             if ! assert_runtime_flags "$provider_flag" "$pause_flag"; then

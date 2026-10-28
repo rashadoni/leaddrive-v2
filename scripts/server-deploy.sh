@@ -29,14 +29,20 @@ PM2_PROCESS="leaddrive-v2"
 # loopback :3002, so scheduled jobs never hold the web process's thread.
 JOBS_PM2_PROCESS="leaddrive-v2-jobs"
 JOBS_HEALTH_URL="http://localhost:3002"
+# The phone station's own process (ecosystem.config.cjs): the same bundle on
+# loopback :3003; nginx sends the station's routes there, the web app is its
+# fallback (ops/nginx/leaddrive-station-routes.conf).
+LINE_PM2_PROCESS="leaddrive-v2-line"
+LINE_HEALTH_URL="http://localhost:3003"
 PM2_HOME="/root/.pm2"
 # Production health and the PM2 fence are bound to one canonical name/port.
 # Never let an ambient CI variable rename the process or move it off the port
 # that the handoff proves. App dotenv files are denied these keys below too.
-unset PM2_NAME PM2_JOBS_NAME
+unset PM2_NAME PM2_JOBS_NAME PM2_LINE_NAME
 APP_PORT=3001
 JOBS_PORT=3002
-export PM2_HOME APP_PORT JOBS_PORT
+LINE_PORT=3003
+export PM2_HOME APP_PORT JOBS_PORT LINE_PORT
 MAX_BACKUPS=5
 DEFAULT_RUNTIME_DIR="/var/lib/leaddrive-v2"
 DEFAULT_LOG_DIR="/var/lib/leaddrive-v2-logs"
@@ -236,6 +242,7 @@ assert_dotenv_key_allowed() {
     DEPLOY_TAR|DEPLOY_LOCK_FILE|DEPLOY_PREFLIGHT_ONLY|DEPLOY_MODE|EXPECTED_DEPLOY_SHA_ARG|DEPLOY_SHA|DEPLOY_SHA_FILE|\
     ARTIFACT_DEPLOY_SHA|BACKUP_DIR|BACKUP_PATH|MAX_BACKUPS|HEALTH_URL|PM2_PROCESS|PM2_HOME|PM2_NAME|APP_PORT|\
     JOBS_PM2_PROCESS|JOBS_HEALTH_URL|PM2_JOBS_NAME|JOBS_PORT|\
+    LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|\
     DEFAULT_RUNTIME_DIR|DEFAULT_LOG_DIR|RUNTIME_DIR|RUNTIME_UPLOADS_DIR|\
     RUNTIME_STATE_DIR|RUNTIME_ARCHIVE_DIR|LOG_DIR|HELP_VIDEO_ASSET_DIR_DEFAULT|\
     HELP_VIDEO_RUNTIME_ROOT|VOICE_OPERATOR_STATE_DIR_RESOLVED|OPS_ROOT|\
@@ -1713,7 +1720,7 @@ persist_event_platform_pm2_stop_fence() {
     rm -f -- "$live_state"
     fatal_after_standalone_replacement "cannot inspect live PM2 state before the Fund fence"
   }
-  protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" \
+  protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1726,7 +1733,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 for (const item of processes) {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   if (protectedNames.has(item.name || env.name)
@@ -1756,13 +1763,18 @@ NODE
   pm2 delete "$PM2_PROCESS" 2>/dev/null || true
   pm2 delete softphone-relay 2>/dev/null || true
   pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
   fuser -k 3001/tcp 2>/dev/null || true
   fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
   if fuser 3001/tcp >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the protected web port after the Fund fence"
   fi
   if fuser "$JOBS_PORT/tcp" >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the jobs port after the Fund fence"
+  fi
+  if fuser "$LINE_PORT/tcp" >/dev/null 2>&1; then
+    fatal_after_standalone_replacement "a process still owns the line port after the Fund fence"
   fi
 
   live_state=$(mktemp /tmp/leaddrive-event-platform-pm2-live.XXXXXX) || \
@@ -1771,7 +1783,7 @@ NODE
     rm -f -- "$live_state"
     fatal_after_standalone_replacement "cannot inspect live PM2 state after the Fund fence"
   }
-  live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" \
+  live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1784,7 +1796,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -1806,7 +1818,7 @@ NODE
     fatal_after_standalone_replacement "cannot persist the stopped PM2 state before replacing standalone"
   harden_pm2_reboot_dump || \
     fatal_after_standalone_replacement "cannot harden the stopped PM2 reboot fence"
-  saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" \
+  saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1819,7 +1831,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -8095,6 +8107,10 @@ recover_application_handoff() {
   # entry for it at all. Without it the schedule falls back to the web port.
   pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
   fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  # The same for the line's process; an older artifact without it leaves the
+  # station on the web port, where nginx falls back.
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
   rollback_config="$APP_DIR/.next/standalone/ecosystem.config.cjs"
   if [ ! -f "$rollback_config" ]; then
     log "FATAL: rollback PM2 configuration is missing from standalone backup"
@@ -9107,6 +9123,8 @@ pm2 delete softphone-relay 2>/dev/null || true
 # same `pm2 start` refusal applies to it. While the web process is down for the
 # next seconds, cron-trigger.sh finds 3002 closed and sends the schedule to 3001.
 pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+# The phone line's process, likewise; nginx sends the station to 3001 meanwhile.
+pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
 
 # Delete the web process last (ignore errors if not found). It now exits about
 # two seconds after SIGINT (src/lib/server-shutdown-deadline.ts) instead of
@@ -9116,10 +9134,11 @@ pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 # Kill ANY process holding port 3001 (orphan from previous deploys)
 fuser -k 3001/tcp 2>/dev/null || true
 fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
 # A killed process releases its port within milliseconds; wait for that rather
 # than a fixed two seconds, and no longer than the fixed wait used to be.
 for _ in $(seq 1 20); do
-  ss -tln | grep -qE ":(3001|$JOBS_PORT) " || break
+  ss -tln | grep -qE ":(3001|$JOBS_PORT|$LINE_PORT) " || break
   sleep 0.1
 done
 
@@ -9320,6 +9339,37 @@ else
   JOBS_STATUS="fallback-to-web"
 fi
 
+# ── Step 7c: The phone line's own process ──────────────────
+# Same rule as the jobs process: checked after the web handoff, and a failure
+# removes it instead of rolling back a healthy CRM. nginx then sends the
+# station's routes to the web process (backup upstream) and cron-trigger.sh
+# warms the line's catalog there — the way it worked before this process.
+LINE_STATUS="down"
+LINE_PING_CODE="000"
+LINE_KEY_STATUS=""
+for i in 1 2 3 4 5 6; do
+  LINE_PING_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$LINE_HEALTH_URL/api/v1/ping" 2>/dev/null || echo "000")
+  if [ "$LINE_PING_CODE" = "200" ]; then
+    LINE_KEY_STATUS="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" \
+      "$LINE_HEALTH_URL/api/cron/pii-key-check" 2>/dev/null || true)"
+    if [ "$LINE_KEY_STATUS" = '{"ok":true,"source":"file"}' ]; then
+      LINE_STATUS="ok"
+    fi
+    break
+  fi
+  [ "$i" -lt 6 ] && sleep 5
+done
+if [ "$LINE_STATUS" = "ok" ]; then
+  log "Line process: healthy on $LINE_HEALTH_URL (ping 200, PII master key from its env file)"
+else
+  log "WARNING: line process unhealthy (ping=$LINE_PING_CODE, key=${LINE_KEY_STATUS:-no response}); removing it so the station is answered by the web process"
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
+  pm2 save --force 2>/dev/null || fatal "cannot persist PM2 application state without the line process"
+  harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
+  LINE_STATUS="fallback-to-web"
+fi
+
 # ── Step 8: Install external singleton/outbox schedules ─────
 RESILIENCE_CRON_INSTALLER="$APP_DIR/.next/standalone/scripts/install-resilience-crons.sh"
 [ -x "$RESILIENCE_CRON_INSTALLER" ] || fatal "Resilience cron installer is missing or not executable"
@@ -9396,5 +9446,5 @@ rm -f "$DEPLOY_TAR" /tmp/server-deploy.sh
 # ── Step 11: Deploy summary (greppable single-line audit row) ──
 COMMIT_SHORT="${DEPLOY_SHA:0:7}"
 PRISMA_ENGINE_NAME=$(ls $PRISMA_ENGINE_PATTERN 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "missing")
-log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS"
+log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS line=$LINE_STATUS"
 log "Deploy complete! App running on $HEALTH_URL"

@@ -169,6 +169,10 @@ jobs:
               if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
                 pm2 restart leaddrive-v2-jobs --update-env >/dev/null
               fi
+              # The phone line's process (pm2 leaddrive-v2-line) keeps its own copy too.
+              if pm2 describe leaddrive-v2-line >/dev/null 2>&1; then
+                pm2 restart leaddrive-v2-line --update-env >/dev/null
+              fi
               echo "routing ON (brandprotection only); pm2 restarted"
               ;;
             routing-off)
@@ -181,6 +185,10 @@ jobs:
               # steer and keeps its own copy of the environment until restarted too.
               if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
                 pm2 restart leaddrive-v2-jobs --update-env >/dev/null
+              fi
+              # The phone line's process (pm2 leaddrive-v2-line) keeps its own copy too.
+              if pm2 describe leaddrive-v2-line >/dev/null 2>&1; then
+                pm2 restart leaddrive-v2-line --update-env >/dev/null
               fi
               echo "routing OFF; allowlist cleared; pm2 restarted"
               ;;

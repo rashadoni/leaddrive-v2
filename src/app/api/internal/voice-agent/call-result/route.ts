@@ -22,6 +22,7 @@ import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -837,7 +838,7 @@ async function appendReturnedTurns(
 }
 
 /** PBX-only terminal call-result endpoint. Tenant and call ownership are server-derived. */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const bodyText = await request.text()
   if (Buffer.byteLength(bodyText, "utf8") > 250_000) {
@@ -1201,3 +1202,5 @@ export async function POST(request: NextRequest) {
     placeCallback: true,
   })
 }
+
+export const POST = withStationTiming("call-result", handlePost)
