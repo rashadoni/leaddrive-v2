@@ -704,6 +704,12 @@ class ZeytunInboundBridge:
                 with self.lock:
                     if len(self.prices) < 256:
                         self.prices[projected["externalId"]] = (Decimal(price["amount"]), price["per"])
+            stock = self.stock(item.get("stock"))
+            if stock is not None:
+                projected["stock"] = stock
+            promotion = self.promotion(item.get("promotion"))
+            if promotion is not None:
+                projected["promotion"] = promotion
             result["candidates"].append({**projected, "identityVerified": False})
         return result
 
@@ -721,6 +727,33 @@ class ZeytunInboundBridge:
                 or not isinstance(as_of, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T[0-9:.]{8,15}Z", as_of)):
             return None
         return {"amount": amount, "currency": currency, "per": per, "asOf": as_of}
+
+    # Owner, 2026-10-27: the agent tells the pharmacy what the warehouse has
+    # when it asks for more, and 1C's "buy N, get M" offer. The same rule as
+    # the price: only these exact shapes reach the model, anything else is
+    # dropped. 1C shows at most 100, which the CRM marks as orMore.
+    STOCK_SHOWN_MAX = 100
+
+    def stock(self, value):
+        if not isinstance(value, dict) or set(value) - {"quantity", "per", "orMore"} or not {"quantity", "per"} <= set(value):
+            return None
+        quantity, per, more = value["quantity"], value["per"], value.get("orMore")
+        if type(quantity) is not int or not 0 <= quantity <= self.STOCK_SHOWN_MAX or per not in self.LIST_PRICE_UNITS:
+            return None
+        if "orMore" in value and (more is not True or quantity != self.STOCK_SHOWN_MAX):
+            return None
+        return {"quantity": quantity, "per": per, **({"orMore": True} if more is True else {})}
+
+    def promotion(self, value):
+        if not isinstance(value, dict) or set(value) - {"buy", "get", "per", "until"} or not {"buy", "get", "until"} <= set(value):
+            return None
+        buy, get, until = value["buy"], value["get"], value["until"]
+        if (type(buy) is not int or type(get) is not int or not 1 <= buy <= 100000 or not 1 <= get <= 100000
+                or not isinstance(until, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", until)):
+            return None
+        if "per" in value and value["per"] not in self.LIST_PRICE_UNITS:
+            return None
+        return {"buy": buy, "get": get, "until": until, **({"per": value["per"]} if "per" in value else {})}
 
     def order_total(self, args):
         """Exact sum on the station; a line without a price returned in this

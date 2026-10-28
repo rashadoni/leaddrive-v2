@@ -69,7 +69,7 @@ export type InboundPilotCatalog = {
   search: (query: z.infer<typeof zeytunBalanceQuerySchema>) => {
     status: string; candidateCount: number
     candidates: Array<{ externalId: string; itemCode: string; name: string; nameAz: string | null
-      priceAsReported?: unknown; baseUnitAsReported?: unknown }>
+      priceAsReported?: unknown; baseUnitAsReported?: unknown; quantityAsReported?: unknown; promotionAsReported?: unknown }>
   }
 }
 // 1C base units as the caller would say them. A unit missing here (tube,
@@ -82,15 +82,50 @@ const SPOKEN_UNITS: Record<string, string> = {
  * of Zeytun's pharmacies and it is final ("это цена для аптек конечная"), so it
  * may be read to the caller. It is a list price, never a total or an offer. */
 export function listPrice(item: { priceAsReported?: unknown; baseUnitAsReported?: unknown; nameAz?: unknown }, asOf: string) {
-  const amount = item.priceAsReported, unit = item.baseUnitAsReported
+  const amount = item.priceAsReported
   if (typeof amount !== "string" || !/^\d{1,7}(?:\.\d{1,4})?$/.test(amount) || !/[1-9]/.test(amount)) return null
+  const per = spokenUnit(item)
+  return per ? { amount, currency: "AZN", per, asOf } : null
+}
+/** The item's 1C base unit as the caller says it, or null for one we have no word for. */
+function spokenUnit(item: { baseUnitAsReported?: unknown; nameAz?: unknown }): string | null {
+  const unit = item.baseUnitAsReported
   // 2026-10-26 call: A.S.S. long 600 №10 is "шт" in 1C and "/*qutu/*" in its
   // Azerbaijani name; its 5.54 is the box (73 items like it). Read per piece,
   // three boxes could not be priced. A generic "шт" defers to that mark.
   const boxed = typeof unit === "string" && unit.trim().toLowerCase() === "шт" &&
     typeof item.nameAz === "string" && /\/\*\s*qutu\s*\/\*/iu.test(item.nameAz)
-  const per = boxed ? "qutu" : typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] : undefined
-  return per ? { amount, currency: "AZN", per, asOf } : null
+  return boxed ? "qutu" : typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] ?? null : null
+}
+/** 1C shows at most this many: 100 in the feed means "100 or more" (2026-10-23 snapshot: 2 935 of 8 834 at exactly 100). */
+const STOCK_SHOWN_MAX = 100
+/**
+ * What the warehouse has, in the price's unit. Owner, 2026-10-27: «ИИ говорит
+ * аптеке остаток, если просят больше, чем есть». Whole units only; the feed's
+ * own ceiling is "or more", never a count.
+ */
+export function catalogStock(item: { quantityAsReported?: unknown; baseUnitAsReported?: unknown; nameAz?: unknown }) {
+  const raw = item.quantityAsReported, per = spokenUnit(item)
+  if (typeof raw !== "string" || !/^\d{1,9}(?:\.\d+)?$/.test(raw) || !per) return null
+  const quantity = Math.floor(Number(raw))
+  return quantity >= STOCK_SHOWN_MAX ? { quantity: STOCK_SHOWN_MAX, per, orMore: true as const } : { quantity, per }
+}
+/**
+ * A "buy N, get M" promotion 1C runs on the item today (Baku date, both ends
+ * included). Owner, 2026-10-27: the AI tells the pharmacy of 1C's «купи/получи».
+ * A flag without both numbers is some other kind of promotion: not said.
+ */
+export function activePromotion(item: { promotionAsReported?: unknown; baseUnitAsReported?: unknown; nameAz?: unknown }, now: number) {
+  const promotion = item.promotionAsReported as { enabled?: unknown; buy?: unknown; get?: unknown; validFromRaw?: unknown; validToRaw?: unknown } | null | undefined
+  if (!promotion || promotion.enabled !== true) return null
+  const { buy, get, validFromRaw: from, validToRaw: to } = promotion
+  if (!Number.isInteger(buy) || !Number.isInteger(get) || (buy as number) < 1 || (get as number) < 1) return null
+  if (typeof from !== "string" || typeof to !== "string" || !/^\d{8}$/.test(from) || !/^\d{8}$/.test(to)) return null
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Baku", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date(now)).replaceAll("-", "")
+  if (today < from || today > to) return null
+  const per = spokenUnit(item)
+  return { buy: buy as number, get: get as number, ...(per ? { per } : {}), until: `${to.slice(0, 4)}-${to.slice(4, 6)}-${to.slice(6)}` }
 }
 /** The call's catalog as the order writer reads it: one product id, exactly. */
 function phoneOrderCatalog(catalog: InboundPilotCatalog): PhoneOrderCatalog {
@@ -169,7 +204,10 @@ export const ZEYTUN_LINE_PROMPT = [
     "You are Zeytun's AI assistant taking INBOUND B2B pharmacy orders by phone."],
   ["The caller is the owner's test participant, NOT an authenticated pharmacy. Do not use any CRM customer history or infer a pharmacy identity from the caller's number.",
     "The caller claims to be a pharmacy, NOT verified. The opening asks which one; if unclear ask once more, then go on. Never infer it from the number or CRM history."],
-  ["say once that this test call cannot confirm them", "say once that you cannot confirm them on this call"],
+  // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
+  // есть, и акции «купи/получи» из 1С».
+  ["Stock, delivery, payment: say once that this test call cannot confirm them and continue.",
+    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: once a product is settled, if it has promotion, say it once in a few words (buy N, get M free, until the date). Delivery, payment: say once that you cannot confirm them on this call and continue."],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it."],
   // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
   // повторял заказы, а просто принимает и говорит номер заказа и обработки».
@@ -364,8 +402,10 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount > 1,
         candidates: result.candidates.slice(0, 5).map(item => {
           const price = listPrice(item, catalog.observedAt)
+          const stock = isLineGrant(config) ? catalogStock(item) : null
+          const promotion = isLineGrant(config) ? activePromotion(item, clock()) : null
           return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
-            identityVerified: false, ...(price ? { listPrice: price } : {}) }
+            identityVerified: false, ...(price ? { listPrice: price } : {}), ...(stock ? { stock } : {}), ...(promotion ? { promotion } : {}) }
         }),
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
