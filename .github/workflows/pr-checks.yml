@@ -31,7 +31,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
+  # Node 24 ahead of production (still 20 until it is switched on the host, then
+  # deploy.yml follows). 24 runs AsyncLocalStorage on AsyncContextFrame instead
+  # of a hook on every promise — the reason for the move — and the tests have to
+  # prove the RLS context holds there before production gets it. deploy.yml
+  # keeps running the same tests on 20 meanwhile, so both runtimes stay covered.
+  NODE_VERSION: "24"
 
 jobs:
   pr-scope:
