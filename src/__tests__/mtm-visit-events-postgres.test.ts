@@ -52,9 +52,16 @@ postgresDescribe("MTM visit events on PostgreSQL", () => {
   })
   afterAll(async () => { await prisma?.$disconnect() })
 
+  // Six decimals, so no timestamp can contain them: an event's times carry
+  // three (`…T04:44:40.453Z`), and the former 40.4 / 49.8 matched exactly that
+  // and failed deploy run 40451263826 on 2026-10-27.
+  const CHECK_IN_LAT = "40.409264", CHECK_IN_LNG = "49.867092"
+  const COORDINATE_KEY = /^(lat|lng|lon|latitude|longitude)$|(Lat|Lng|Lon|Latitude|Longitude)$/
+  const keysOf = (value: unknown): string[] =>
+    value && typeof value === "object" ? Object.entries(value).flatMap(([key, inner]) => [key, ...keysOf(inner)]) : []
   const newVisit = async (organizationId = "org-b") => {
     const id = `visit-${randomUUID()}`
-    await prisma.$executeRawUnsafe(`INSERT INTO mtm_visits (id, "organizationId", "agentId", "customerId", "checkInLat", "checkInLng") VALUES ($1, $2, 'agent-1', 'customer-1', 40.4, 49.8)`, id, organizationId)
+    await prisma.$executeRawUnsafe(`INSERT INTO mtm_visits (id, "organizationId", "agentId", "customerId", "checkInLat", "checkInLng") VALUES ($1, $2, 'agent-1', 'customer-1', ${CHECK_IN_LAT}, ${CHECK_IN_LNG})`, id, organizationId)
     return id
   }
   const stream = (id: string) => prisma.$queryRawUnsafe<Array<{ type: string; version: string; topic: string; envelope: string }>>(
@@ -75,7 +82,11 @@ postgresDescribe("MTM visit events on PostgreSQL", () => {
       ["mtm.visit-completed.v1", "2", "leaddrive.domain.mtm.v1"],
       ["mtm.visit-result-recorded.v1", "3", "leaddrive.domain.mtm.v1"],
     ])
-    expect(events.map(e => e.envelope).join("")).not.toMatch(/40\.4|49\.8|Lat|Lng/)
+    for (const { envelope } of events) {
+      expect(envelope).not.toContain(CHECK_IN_LAT)
+      expect(envelope).not.toContain(CHECK_IN_LNG)
+      expect(keysOf(JSON.parse(envelope)).filter(key => COORDINATE_KEY.test(key))).toEqual([])
+    }
   })
 
   it("a visit made before the events existed gets its state first, once", async () => {
