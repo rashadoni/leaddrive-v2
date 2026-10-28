@@ -17,11 +17,12 @@ const MTM_DOCUMENT_STORAGE_DIR = process.env.MTM_DOCUMENT_STORAGE_DIR || `${RUNT
 // while /api/v1/ping went from 0.1 s to 7 s and a dashboard's requests waited
 // 4–11 s each. Jobs coordinate through SystemJobLease in PostgreSQL, not
 // through process memory, so where they run changes nothing about what they do.
-const serverApp = ({ name, port, hostname, errorFile, outFile, maxMemory }) => ({
+const serverApp = ({ name, port, hostname, errorFile, outFile, maxMemory, nodeArgs = [] }) => ({
   name,
   script: `${APP_DIR}/.next/standalone/server.js`,
   cwd: `${APP_DIR}/.next/standalone`,
   interpreter: "node",
+  node_args: nodeArgs,
   instances: 1,
   exec_mode: "fork",
   env: {
@@ -67,6 +68,15 @@ module.exports = {
       // available; 2560M sits above that sawtooth and still trips on a genuine
       // runaway leak long before the machine runs out.
       maxMemory: "2560M",
+      // TEMPORARY, diagnostics (owner, 2026-10-28). Once a minute the main
+      // thread is busy for 1–5 s with almost no requests coming in; `perf` on
+      // it shows 54 % of that under a timer callback (a large sort and the
+      // scavenger), but without this map it cannot say WHICH JavaScript
+      // function. V8 appends the name and address of each compiled function to
+      // /tmp/perf-<pid>.map, which `perf report` reads; nothing else changes.
+      // The file grows with compiled code and a new one starts at each restart,
+      // so the flag goes away with the fix it exists to find.
+      nodeArgs: ["--perf-basic-prof-only-functions"],
     }),
     serverApp({
       name: process.env.PM2_JOBS_NAME || "leaddrive-v2-jobs",

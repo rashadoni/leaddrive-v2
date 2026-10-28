@@ -77,6 +77,17 @@ describe("pm2 runs the scheduler beside the web app", () => {
     expect(jobs.error_file).not.toBe(web.error_file)
   })
 
+  it("gives only the web process the perf map, and nothing beyond it", () => {
+    // Diagnostics for the web thread's once-a-minute busy spell (2026-10-28):
+    // the flag names functions for `perf` and changes nothing else. The jobs
+    // process is not the one people wait on.
+    const apps = loadApps()
+    const web = apps.find((a) => a.name === "leaddrive-v2")!
+    const jobs = apps.find((a) => a.name === "leaddrive-v2-jobs")!
+    expect(web.node_args).toEqual(["--perf-basic-prof-only-functions"])
+    expect(jobs.node_args).toEqual([])
+  })
+
   it("lets the web process grow past the sawtooth pm2 was killing it on", () => {
     // pm2 logged `exceeds --max-memory-restart` 5–15 times a day at 1536M while
     // the process swung between ~1.0 and 1.6 GB; each kill was ~30 s of 502s.
