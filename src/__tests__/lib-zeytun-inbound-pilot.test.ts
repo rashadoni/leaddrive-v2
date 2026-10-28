@@ -393,8 +393,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     const item = (over: Record<string, unknown>) => ({ externalId: "cccccccc-1111-4111-8111-111111111111", itemCode: "TEST-01",
       name: "Medicine 10 mg", nameAz: null, baseUnitAsReported: "упак", priceAsReported: "2.5", quantityAsReported: "42",
       promotionAsReported: { enabled: true, buy: 10, get: 1, validFromRaw: "20261001", validToRaw: "20261022" }, ...over })
-    const found = async (candidate: Record<string, unknown>, fixtureFor = lineFixture) => {
-      const f = fixtureFor()
+    const found = async (candidate: Record<string, unknown>, f: Pick<ReturnType<typeof fixture>, "catalog" | "handle"> = lineFixture()) => {
       ;(f.catalog.search as ReturnType<typeof vi.fn>).mockReturnValue({ status: "candidates", candidateCount: 1, candidates: [candidate] })
       return (await (await f.handle(search())).json()).candidates[0]
     }
@@ -415,7 +414,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
       { enabled: true, buy: 10, get: 1, validFromRaw: "00010101", validToRaw: "00010101" },
     ]) expect(await found(item({ promotionAsReported }))).not.toHaveProperty("promotion")
     // The owner's rehearsal keeps its old rule: stock is not confirmed there.
-    const rehearsal = await found(item({}), fixture)
+    const rehearsal = await found(item({}), fixture())
     expect(rehearsal).not.toHaveProperty("stock")
     expect(rehearsal).not.toHaveProperty("promotion")
   })
