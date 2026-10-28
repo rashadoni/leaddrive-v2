@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/lib/whatsapp", () => ({ resolveWhatsAppConfig: vi.fn() }))
 vi.mock("@/lib/rls-context", () => ({ runWithRlsBypass: (work: () => unknown) => work() }))
-import { sendLoginCodeToWhatsApp, resetLoginCodeAvailability, loginCodeTemporarilyUnavailable } from "./whatsapp-login-code"
+vi.mock("@/lib/prisma", () => ({ prisma: {} }))
+import { sendLoginCodeToWhatsApp, resetLoginCodeAvailability, loginCodeTemporarilyUnavailable, loginCodeSenderPhoneNumberId } from "./whatsapp-login-code"
 const sender = { id: "sender", organizationId: "sender-org", accessToken: "fixture", phoneNumberId: "fixture", businessAccountId: null, verifyToken: null, appSecret: null, displayName: null }
 const input = { to: "+994507770014", code: "123456", language: "ru" }
 beforeEach(() => resetLoginCodeAvailability())
@@ -26,5 +27,12 @@ describe("recovery provider lease", () => {
     })
     expect((await sendLoginCodeToWhatsApp(sender, input, { fetch, signal: controller.signal })).status).toBe("failed")
     expect(fetch).toHaveBeenCalledOnce()
+  })
+})
+
+describe("which number sends the codes", () => {
+  it("is +994 10 531 30 65 («Lead Drive CRM») unless the server names another", () => {
+    expect(loginCodeSenderPhoneNumberId({})).toBe("984538588084578")
+    expect(loginCodeSenderPhoneNumberId({ MTM_LOGIN_CODE_SENDER_PHONE_NUMBER_ID: " 555 " })).toBe("555")
   })
 })

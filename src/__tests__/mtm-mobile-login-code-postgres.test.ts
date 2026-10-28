@@ -54,6 +54,8 @@ const scratch = vi.hoisted(() => {
   process.env.NEXTAUTH_SECRET ||= "fictional-login-code-test-secret-0123456789"
   // LeadDrive's own WhatsApp channel lives in this organization.
   process.env.MTM_LOGIN_CODE_SENDER_ORGANIZATION_ID = "org-login-code-sender"
+  // …and of its WhatsApp numbers, this one sends the codes.
+  process.env.MTM_LOGIN_CODE_SENDER_PHONE_NUMBER_ID = "100200300"
   return { name, url: url.toString() }
 })
 
@@ -171,6 +173,10 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     }))
     await bypass(async () => {
       await prisma.organization.create({ data: { id: SENDER, name: "Fictional platform sender", slug: SENDER } })
+      // 2026-10-29: the sender had two active numbers and the codes went from
+      // the one without the template. That one is written first, so a «first
+      // active channel» lookup picks it.
+      await prisma.channelConfig.create({ data: { organizationId: SENDER, channelType: "whatsapp", configName: "Another WhatsApp", accessToken: "fixture-other-token", phoneNumberId: "900800700", isActive: true } })
       await prisma.channelConfig.create({ data: { organizationId: SENDER, channelType: "whatsapp", configName: "Platform WhatsApp", accessToken: "fixture-sender-token", phoneNumberId: "100200300", isActive: true } })
       await prisma.organization.create({ data: { id: ORG, name: "Fictional pharmacy company", slug: ORG, modules: { "route-field": true, personnel: true } } })
       await prisma.mtmSetting.create({ data: { organizationId: ORG, key: "attendanceEnabled", value: true } })
@@ -979,5 +985,29 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     const stranger = await ask("+994501119998")
     expect(stranger.status).toBe(503)
     expect(sent).toHaveLength(0)
+  })
+
+  it("sends from the named number even when another active number was written later, and from no other when the named one is gone", async () => {
+    await bypass(async () => {
+      await prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110001" }, data: { createdAt: new Date(Date.now() - 120_000) } })
+      await prisma.channelConfig.updateMany({ where: { organizationId: SENDER, phoneNumberId: "900800700" }, data: { configName: "Another WhatsApp, touched last" } })
+    })
+    expect((await ask("+994501110001")).status).toBe(200)
+    expect(sent.map((message) => [message.url, message.authorization])).toEqual([
+      ["https://graph.facebook.com/v21.0/100200300/messages", "Bearer fixture-sender-token"],
+    ])
+
+    sent.length = 0
+    await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110001" }, data: { createdAt: new Date(Date.now() - 120_000) } }))
+    await bypass(() => prisma.channelConfig.updateMany({ where: { organizationId: SENDER, phoneNumberId: "100200300" }, data: { isActive: false } }))
+    try {
+      const response = await ask("+994501110001")
+      expect(response.status).toBe(503)
+      expect((await response.json()).code).toBe("MTM_LOGIN_CODE_UNAVAILABLE")
+      // The other active number is not tried in its place.
+      expect(sent).toHaveLength(0)
+    } finally {
+      await bypass(() => prisma.channelConfig.updateMany({ where: { organizationId: SENDER, phoneNumberId: "100200300" }, data: { isActive: true } }))
+    }
   })
 })
