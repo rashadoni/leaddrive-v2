@@ -285,7 +285,7 @@ describe("the deploy carries the jobs process", () => {
     )
     expect(fence.match(/"\$PM2_PROCESS" softphone-relay "\$JOBS_PM2_PROCESS"/g)).toHaveLength(3)
     expect(fence).toContain('pm2 delete "$JOBS_PM2_PROCESS"')
-    expect(fence).toContain('["3001", "3002", "3003", "3004", "3005"]')
+    expect(fence).toContain('["3001", "3002", "3003"]')
   })
 
   it("checks it only after the web handoff, and never rolls the web app back on its account", () => {

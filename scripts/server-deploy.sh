@@ -1731,8 +1731,13 @@ persist_event_platform_pm2_stop_fence() {
     rm -f -- "$live_state"
     fatal_after_standalone_replacement "cannot inspect live PM2 state before the Fund fence"
   }
+  # The phone line's slots (leaddrive-v2-line-a/-b, :3004/:3005) are left
+  # running on purpose: they run from their own release copy, not from the tree
+  # this deploy replaces, write no Fund or booking state, and keep answering
+  # the station until Step 7c hands it to the new release (owner, 2026-10-28:
+  # «обновление без перерыва»; the 2026-10-28 deploy that stopped them here cost
+  # the station 8 s of 502s). Only the first, standalone form of the line is fenced.
   protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
-    "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1745,7 +1750,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002", "3003", "3004", "3005"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 for (const item of processes) {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   if (protectedNames.has(item.name || env.name)
@@ -1776,19 +1781,17 @@ NODE
   pm2 delete softphone-relay 2>/dev/null || true
   pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
   pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
-  pm2 delete "$LINE_SLOT_A_PROCESS" 2>/dev/null || true
-  pm2 delete "$LINE_SLOT_B_PROCESS" 2>/dev/null || true
   fuser -k 3001/tcp 2>/dev/null || true
   fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
-  fuser -k "$LINE_PORT/tcp" "$LINE_SLOT_A_PORT/tcp" "$LINE_SLOT_B_PORT/tcp" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
   if fuser 3001/tcp >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the protected web port after the Fund fence"
   fi
   if fuser "$JOBS_PORT/tcp" >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the jobs port after the Fund fence"
   fi
-  if fuser "$LINE_PORT/tcp" "$LINE_SLOT_A_PORT/tcp" "$LINE_SLOT_B_PORT/tcp" >/dev/null 2>&1; then
-    fatal_after_standalone_replacement "a process still owns a line port after the Fund fence"
+  if fuser "$LINE_PORT/tcp" >/dev/null 2>&1; then
+    fatal_after_standalone_replacement "a process still owns the line port after the Fund fence"
   fi
 
   live_state=$(mktemp /tmp/leaddrive-event-platform-pm2-live.XXXXXX) || \
@@ -1798,7 +1801,6 @@ NODE
     fatal_after_standalone_replacement "cannot inspect live PM2 state after the Fund fence"
   }
   live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
-    "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1811,7 +1813,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002", "3003", "3004", "3005"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -1834,7 +1836,6 @@ NODE
   harden_pm2_reboot_dump || \
     fatal_after_standalone_replacement "cannot harden the stopped PM2 reboot fence"
   saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
-    "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1847,7 +1848,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => ["3001", "3002", "3003", "3004", "3005"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
