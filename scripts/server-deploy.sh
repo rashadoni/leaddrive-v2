@@ -9075,6 +9075,16 @@ if [ -s "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" ]; then
 fi
 
 # ── Step 4: Stop old process, cut over runtime, restart PM2 ─────────
+# Everything from the web process's stop to the new one listening is 502 for
+# every caller, the phone station's calls for Zeytun's line among them.
+# Measured on the deploy of 2026-10-28 10:30 UTC: 23 s, of which 10.6 s pm2
+# waiting for the old process to exit, 1.3 s stopping the relay and the jobs
+# process after it, 2 s of a fixed sleep and ~5 s of the Fund fence below, most
+# of that its fsync of a disk full of the artifact just unpacked. So: the disk
+# is flushed while the old release still answers, the two processes nobody
+# browses to go first, and the web process last.
+sync || true
+
 log "Stopping old processes..."
 cd "$APP_DIR"
 
@@ -9082,9 +9092,6 @@ cd "$APP_DIR"
 # state. Any implicit failure must restore the previous artifact and restart
 # it; do not leave production without a PM2 process after a failed handoff.
 HANDOFF_STARTED=true
-
-# Delete existing PM2 process (ignore errors if not found)
-pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 
 # The softphone relay is a SECOND app in the same ecosystem file, present only
 # when the server holds its secrets. Two reasons this line exists:
@@ -9097,13 +9104,24 @@ pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 pm2 delete softphone-relay 2>/dev/null || true
 
 # The scheduler's server process is the third app in the same file, and the
-# same `pm2 start` refusal applies to it.
+# same `pm2 start` refusal applies to it. While the web process is down for the
+# next seconds, cron-trigger.sh finds 3002 closed and sends the schedule to 3001.
 pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+
+# Delete the web process last (ignore errors if not found). It now exits about
+# two seconds after SIGINT (src/lib/server-shutdown-deadline.ts) instead of
+# being SIGKILLed at pm2's kill_timeout.
+pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 
 # Kill ANY process holding port 3001 (orphan from previous deploys)
 fuser -k 3001/tcp 2>/dev/null || true
 fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
-sleep 2
+# A killed process releases its port within milliseconds; wait for that rather
+# than a fixed two seconds, and no longer than the fixed wait used to be.
+for _ in $(seq 1 20); do
+  ss -tln | grep -qE ":(3001|$JOBS_PORT) " || break
+  sleep 0.1
+done
 
 # Double-check port is free
 if ss -tlnp | grep -q ":3001 "; then
@@ -9151,11 +9169,34 @@ harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
 
 # ── Step 6: Health check (5 retries, longer warmup) ──────
 log "Health check (waiting for startup)..."
-sleep 15
-
-# Warm up the app — first requests to Next.js 16 standalone can 500
-curl -s -o /dev/null --max-time 10 "$HEALTH_URL/login" 2>/dev/null || true
-sleep 5
+# nginx sends traffic to the new process the moment it listens, so the first
+# requests after the restart are real calls, not this check. Wait for the port
+# (it opened ~2 s after `pm2 start` on 2026-10-28), then load the modules of the
+# routes the phone station calls in the middle of a call, so the first of those
+# does not pay for loading them. Unauthenticated: each answers 401 before it
+# reads anything. The old fixed 15 + 5 s wait stays as the outer bound.
+for _ in $(seq 1 80); do
+  ss -tln | grep -q ":3001 " && break
+  sleep 0.25
+done
+WARM_PIDS=()
+for warm_route in \
+  "POST /api/internal/asterisk/call-lifecycle" \
+  "POST /api/internal/asterisk/inbound-handoff" \
+  "POST /api/internal/asterisk/inbound-browser-ready" \
+  "POST /api/internal/voice-agent/pharmacy-inbound" \
+  "POST /api/internal/voice-agent/call-result" \
+  "GET /api/internal/voice-agent/runtime-config" \
+  "GET /api/internal/voice-agent/call-source" \
+  "GET /api/internal/voice-agent/call-continuation" \
+  "GET /api/v1/ping" \
+  "GET /login"; do
+  curl -s -o /dev/null --max-time 20 -X "${warm_route%% *}" "$HEALTH_URL${warm_route#* }" 2>/dev/null &
+  WARM_PIDS+=("$!")
+done
+# Only these: a Fund cutover keeps its own lock holder in the background.
+wait "${WARM_PIDS[@]}" || true
+log "Warmed the phone station's routes on the new process"
 
 HEALTHY=false
 for i in 1 2 3 4 5; do
