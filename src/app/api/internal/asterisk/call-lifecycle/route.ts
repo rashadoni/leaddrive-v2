@@ -11,6 +11,7 @@ import { announceCallOrder } from "@/lib/pharmacy-orders/manager-notice"
 import { runWithTenant } from "@/lib/rls-context"
 import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { matchCallParty } from "@/lib/calls/party-match"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -638,7 +639,7 @@ async function applyWithUniqueReplay(params: {
  * event may establish bounded party-number identity; every later event remains
  * the zero-customer-data transition contract used by outbound calls.
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -695,3 +696,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export const POST = withStationTiming("call-lifecycle", handlePost)

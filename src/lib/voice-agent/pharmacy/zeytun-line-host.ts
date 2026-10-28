@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client"
 import { getOrgModuleContext } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { shellPresentUserIds } from "@/lib/shell-events/presence"
+import { processRole } from "@/lib/station-timing"
 import { browserSoftphoneAllowed } from "@/lib/voip/browser-softphone"
 import { organizationHoldsLine } from "@/lib/voip/line-numbers"
 
@@ -35,11 +36,41 @@ export function zeytunLineHost(): Host {
  * listening to 30 s of ringing at night.
  */
 export async function managerCanAnswer(organizationId: string,
-  present: (orgId: string) => string[] = shellPresentUserIds): Promise<boolean> {
+  present: (orgId: string) => string[] = shellPresentUserIds,
+  where: "local" | "role" = "role"): Promise<boolean> {
+  // The open tabs are the web process's memory; the line's own process has
+  // none and asks the web process (api/cron/zeytun-manager-presence).
+  if (where === "role" && processRole() === "line") return askWebProcess(organizationId)
   const users = present(organizationId)
   if (!users.length) return false
   const { modules } = await getOrgModuleContext(organizationId)
   return users.some(userId => browserSoftphoneAllowed(modules, userId))
+}
+
+/**
+ * The web process's answer, on loopback. Asked only when the agent requests a
+ * transfer, never at the start of a call. No answer within 1.5 s, or any
+ * failure, is "nobody can answer": the agent then takes the order itself,
+ * which is what a pharmacy should get from a CRM too busy to say.
+ */
+export async function askWebProcess(organizationId: string,
+  fetchImpl: typeof fetch = fetch, timeoutMs = 1500): Promise<boolean> {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return false
+  const origin = process.env.WEB_APP_URL || "http://127.0.0.1:3001"
+  try {
+    const response = await fetchImpl(`${origin}/api/cron/zeytun-manager-presence`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-cron-secret": secret },
+      body: JSON.stringify({ organizationId }),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (!response.ok) return false
+    const value = await response.json() as { canAnswer?: unknown }
+    return value?.canAnswer === true
+  } catch {
+    return false
+  }
 }
 
 /**

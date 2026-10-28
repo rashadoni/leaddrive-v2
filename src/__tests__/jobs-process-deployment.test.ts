@@ -59,8 +59,9 @@ describe("pm2 runs the scheduler beside the web app", () => {
     expect(String(web.env.PORT)).toBe("3001")
     // Same environment apart from where it listens: a job must not behave
     // differently because of the process it landed in.
-    const { PORT: _webPort, HOSTNAME: _webHost, ...webEnv } = web.env
-    const { PORT: _jobsPort, HOSTNAME: _jobsHost, ...jobsEnv } = jobs.env
+    const { PORT: _webPort, HOSTNAME: _webHost, LEADDRIVE_PROCESS_ROLE: webRole, ...webEnv } = web.env
+    const { PORT: _jobsPort, HOSTNAME: _jobsHost, LEADDRIVE_PROCESS_ROLE: jobsRole, ...jobsEnv } = jobs.env
+    expect([webRole, jobsRole]).toEqual(["web", "jobs"])
     expect(jobsEnv).toEqual(webEnv)
   })
 
@@ -77,12 +78,12 @@ describe("pm2 runs the scheduler beside the web app", () => {
     expect(jobs.error_file).not.toBe(web.error_file)
   })
 
-  it("keeps pm2's metrics agent out of both server processes", () => {
+  it("keeps pm2's metrics agent out of every server process", () => {
     // Profiled on production 2026-10-28: @pm2/io, which pm2 loads into every
     // app unless told not to, was the largest piece of the web thread's own work
     // between requests (one-second timers sorting latency samples).
     const apps = loadApps()
-    for (const name of ["leaddrive-v2", "leaddrive-v2-jobs"]) {
+    for (const name of ["leaddrive-v2", "leaddrive-v2-jobs", "leaddrive-v2-line"]) {
       const app = apps.find((a) => a.name === name)!
       expect([name, app.pmx]).toEqual([name, false])
     }
@@ -168,8 +169,9 @@ describe.skipIf(!hasTools)("cron-trigger.sh posts to the jobs process", () => {
   async function pair(jobsRespond: Respond = ok) {
     const web = await serve(ok)
     const jobs = await serve(jobsRespond)
-    closers.push(web.close, jobs.close)
-    return { web, jobs, env: { WEB_APP_URL: web.url, JOBS_APP_URL: jobs.url } }
+    const line = await serve(ok)
+    closers.push(web.close, jobs.close, line.close)
+    return { web, jobs, line, env: { WEB_APP_URL: web.url, JOBS_APP_URL: jobs.url, LINE_APP_URL: line.url } }
   }
 
   it("sends a scheduled job to the jobs process, not to the web app", async () => {
@@ -180,8 +182,8 @@ describe.skipIf(!hasTools)("cron-trigger.sh posts to the jobs process", () => {
     expect(web.seen).toEqual([])
   })
 
-  it("sends the phone line's catalog loaders to the web process they warm", async () => {
-    const { web, jobs, env } = await pair()
+  it("sends the phone line's catalog loaders to the line's process they warm", async () => {
+    const { web, jobs, line, env } = await pair()
     for (const target of [
       "/api/cron/zeytun-line-warm",
       "zeytun-line-warm",
@@ -190,20 +192,22 @@ describe.skipIf(!hasTools)("cron-trigger.sh posts to the jobs process", () => {
     ]) {
       expect((await trigger(target, env, lockDir)).status, target).toBe(0)
     }
-    expect(web.seen.map((s) => s.url)).toEqual([
+    expect(line.seen.map((s) => s.url)).toEqual([
       "/api/cron/zeytun-line-warm",
       "/api/cron/zeytun-line-warm",
       "/api/cron/zeytun-catalog-refresh",
       "/api/cron/zeytun-catalog-refresh?force=1",
     ])
     expect(jobs.seen).toEqual([])
+    expect(web.seen).toEqual([])
   })
 
   it("does not mistake a lookalike for the phone line's loaders", async () => {
-    const { web, jobs, env } = await pair()
+    const { web, jobs, line, env } = await pair()
     expect((await trigger("/api/cron/zeytun-line-warm-extra", env, lockDir)).status).toBe(0)
     expect(jobs.seen.map((s) => s.url)).toEqual(["/api/cron/zeytun-line-warm-extra"])
     expect(web.seen).toEqual([])
+    expect(line.seen).toEqual([])
   })
 
   it("runs the job on the web process when nothing listens on the jobs port", async () => {
@@ -235,11 +239,12 @@ describe.skipIf(!hasTools)("cron-trigger.sh posts to the jobs process", () => {
   })
 
   it("leaves an explicit APP_URL alone: no routing, no fallback", async () => {
-    const { web, jobs, env } = await pair()
+    const { web, jobs, line, env } = await pair()
     const run = await trigger("mtm-cleanup", { ...env, APP_URL: await closedUrl() }, lockDir)
     expect(run.status).toBe(7)
     expect(web.seen).toEqual([])
     expect(jobs.seen).toEqual([])
+    expect(line.seen).toEqual([])
   })
 })
 
@@ -249,7 +254,7 @@ describe("the deploy carries the jobs process", () => {
   it("pins its name and port and denies both to the app's dotenv", () => {
     expect(deploy).toMatch(/^JOBS_PM2_PROCESS="leaddrive-v2-jobs"$/m)
     expect(deploy).toMatch(/^JOBS_PORT=3002$/m)
-    expect(deploy).toMatch(/^unset PM2_NAME PM2_JOBS_NAME$/m)
+    expect(deploy).toMatch(/^unset PM2_NAME PM2_JOBS_NAME( PM2_LINE_NAME)?$/m)
     expect(deploy).toContain("JOBS_PM2_PROCESS|JOBS_HEALTH_URL|PM2_JOBS_NAME|JOBS_PORT|")
   })
 
@@ -280,7 +285,7 @@ describe("the deploy carries the jobs process", () => {
     )
     expect(fence.match(/"\$PM2_PROCESS" softphone-relay "\$JOBS_PM2_PROCESS"/g)).toHaveLength(3)
     expect(fence).toContain('pm2 delete "$JOBS_PM2_PROCESS"')
-    expect(fence).toContain('["3001", "3002"]')
+    expect(fence).toContain('["3001", "3002", "3003"]')
   })
 
   it("checks it only after the web handoff, and never rolls the web app back on its account", () => {

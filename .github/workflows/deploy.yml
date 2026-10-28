@@ -2117,8 +2117,9 @@ jobs:
                fi
              fi'
 
-      # Zeytun's phone line answers from a catalog parsed into the web process.
-      # A fresh release has none: the first call parsed 14 MB inside the
+      # Zeytun's phone line answers from a catalog parsed into the process that
+      # answers the station (pm2 leaddrive-v2-line; the web process when that
+      # one is down — cron-trigger.sh picks). A fresh release has none: the first call parsed 14 MB inside the
       # station's 5 s for the session request and the agent stayed silent
       # (2026-10-26). Parse it now; "not_configured" is a host without the line.
       - name: Warm Zeytun's phone line

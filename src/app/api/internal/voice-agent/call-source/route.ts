@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -56,7 +57,7 @@ export function normalizeCallSource(value: unknown): string | null {
   return SPEAKABLE_SOURCES[key] ?? null
 }
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const callId = request.nextUrl.searchParams.get("callId")?.trim()
   // The id is the UUID the CRM minted before originating, so an unparseable one
@@ -90,3 +91,5 @@ export async function GET(request: NextRequest) {
     { headers: { "Cache-Control": "no-store" } },
   )
 }
+
+export const GET = withStationTiming("call-source", handleGet)

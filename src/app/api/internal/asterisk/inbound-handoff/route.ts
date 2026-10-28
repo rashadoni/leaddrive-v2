@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { returnHandoffToAi, startHandoffRinging } from "@/lib/voip/inbound-handoff"
 import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -29,7 +30,7 @@ function authorized(request: NextRequest): boolean {
  * the AI takes it back. Any failure answers false: the station then ends the
  * call as before, or keeps a browser it already bridged.
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const raw = await request.text()
   if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) return NextResponse.json({ error: "Invalid request" }, { status: 400 })
@@ -55,3 +56,5 @@ export async function POST(request: NextRequest) {
     return answer(false)
   }
 }
+
+export const POST = withStationTiming("inbound-handoff", handlePost)

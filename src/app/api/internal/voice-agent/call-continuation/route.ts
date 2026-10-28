@@ -17,6 +17,7 @@ import {
 import { CALLBACK_FRESHNESS_MS } from "@/lib/voice-agent/callback-decision"
 import { inboundCallContext } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerPolicy } from "@/lib/voip/inbound-answer-config"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -152,7 +153,7 @@ export async function leadConversation(params: {
   return lines.length > 0 ? lines.join("\n") : null
 }
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const callId = request.nextUrl.searchParams.get("callId")?.trim()
   if (!callId || !/^[0-9a-fA-F-]{36}$/.test(callId)) {
@@ -275,3 +276,5 @@ async function continuationFor(
     return trimTranscriptTail(original.transcription) || null
   }
 }
+
+export const GET = withStationTiming("call-continuation", handleGet)

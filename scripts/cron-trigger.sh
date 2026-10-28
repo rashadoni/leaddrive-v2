@@ -46,14 +46,16 @@ fi
 # JavaScript on one thread, and while the jobs shared the web process every
 # tick held that thread for the people waiting on their pages. The exceptions
 # are the endpoints whose whole purpose is the memory of the process that
-# answers: Zeytun's phone line parses its catalog INTO the web process, so
-# warming it anywhere else would warm nothing. An explicit APP_URL wins.
+# answers: Zeytun's phone line parses its catalog INTO the process that answers
+# the station — pm2 `leaddrive-v2-line`, loopback :3003 — so warming it anywhere
+# else would warm nothing. An explicit APP_URL wins.
 WEB_APP_URL="${WEB_APP_URL:-http://localhost:3001}"
 JOBS_APP_URL="${JOBS_APP_URL:-http://localhost:3002}"
+LINE_APP_URL="${LINE_APP_URL:-http://localhost:3003}"
 case "$ENDPOINT" in
   /api/cron/zeytun-line-warm | /api/cron/zeytun-line-warm[?]* | \
   /api/cron/zeytun-catalog-refresh | /api/cron/zeytun-catalog-refresh[?]*)
-    ROUTED_APP_URL="$WEB_APP_URL" ;;
+    ROUTED_APP_URL="$LINE_APP_URL" ;;
   *) ROUTED_APP_URL="$JOBS_APP_URL" ;;
 esac
 APP_URL_EXPLICIT="${APP_URL:+1}"
@@ -155,14 +157,16 @@ call_endpoint() {
 set +e
 RESPONSE=$(call_endpoint "$APP_URL")
 CURL_STATUS=$?
-# A jobs process that is not listening — still starting after a deploy, taken
-# down because it failed its own check, or never installed on an older release —
-# must not stop the schedule. curl's 7 means no connection was ever made, so the
-# job has not started anywhere and running it on the web process cannot run it
-# twice. Any other failure (a timeout, a dropped reply) may have reached the job
-# and is reported as it is.
+# A jobs or line process that is not listening — still starting after a deploy,
+# taken down because it failed its own check, or never installed on an older
+# release — must not stop the schedule. curl's 7 means no connection was ever
+# made, so the job has not started anywhere and running it on the web process
+# cannot run it twice. Any other failure (a timeout, a dropped reply) may have
+# reached the job and is reported as it is. For the line's loaders the web
+# process is also where nginx sends the station when the line process is down.
 if [ "$CURL_STATUS" -eq 7 ] && [ -z "$APP_URL_EXPLICIT" ] && [ "$APP_URL" != "$WEB_APP_URL" ]; then
-  echo "$(date): [${NAME}] jobs process not listening at ${APP_URL}; running on ${WEB_APP_URL}" >&2
+  if [ "$APP_URL" = "$LINE_APP_URL" ]; then WHICH_PROCESS="line"; else WHICH_PROCESS="jobs"; fi
+  echo "$(date): [${NAME}] ${WHICH_PROCESS} process not listening at ${APP_URL}; running on ${WEB_APP_URL}" >&2
   RESPONSE=$(call_endpoint "$WEB_APP_URL")
   CURL_STATUS=$?
 fi

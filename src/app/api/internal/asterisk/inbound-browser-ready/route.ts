@@ -11,6 +11,7 @@ import { INBOUND_BROWSER_CLAIM_LEASE_MS } from "@/lib/voip/browser-softphone"
 import { HANDOFF_CONNECTED } from "@/lib/voip/inbound-handoff"
 import { shouldAiAnswer } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerSelection } from "@/lib/voip/inbound-answer-config"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -111,7 +112,7 @@ async function routeToAi(params: {
  * inbound answer setting: `{ ready: false, route: "ai" }` tells the station to
  * answer and connect the caller to the AI voice agent instead.
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -257,3 +258,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ready: false })
   }
 }
+
+export const POST = withStationTiming("inbound-browser-ready", handlePost)

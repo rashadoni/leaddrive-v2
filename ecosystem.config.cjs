@@ -1,6 +1,7 @@
 const APP_DIR = process.env.APP_DIR || "/opt/leaddrive-v2"
 const APP_PORT = process.env.APP_PORT || 3001
 const JOBS_PORT = process.env.JOBS_PORT || 3002
+const LINE_PORT = process.env.LINE_PORT || 3003
 const APP_ENV_FILE = process.env.APP_ENV_FILE || "/etc/leaddrive/app.env"
 const RUNTIME_DIR = process.env.LEADDRIVE_RUNTIME_DIR || "/var/lib/leaddrive-v2"
 const LOG_DIR = process.env.LEADDRIVE_LOG_DIR || "/var/lib/leaddrive-v2-logs"
@@ -17,7 +18,7 @@ const MTM_DOCUMENT_STORAGE_DIR = process.env.MTM_DOCUMENT_STORAGE_DIR || `${RUNT
 // while /api/v1/ping went from 0.1 s to 7 s and a dashboard's requests waited
 // 4–11 s each. Jobs coordinate through SystemJobLease in PostgreSQL, not
 // through process memory, so where they run changes nothing about what they do.
-const serverApp = ({ name, port, hostname, errorFile, outFile, maxMemory }) => ({
+const serverApp = ({ name, role, port, hostname, errorFile, outFile, maxMemory }) => ({
   name,
   script: `${APP_DIR}/.next/standalone/server.js`,
   cwd: `${APP_DIR}/.next/standalone`,
@@ -42,6 +43,9 @@ const serverApp = ({ name, port, hostname, errorFile, outFile, maxMemory }) => (
     LEADDRIVE_LOG_DIR: LOG_DIR,
     HELP_VIDEO_ASSET_DIR,
     MTM_DOCUMENT_STORAGE_DIR,
+    // Read by src/lib/station-timing.ts (which process answered the station)
+    // and by the phone line's manager presence (zeytun-line-host.ts).
+    LEADDRIVE_PROCESS_ROLE: role,
   },
   error_file: errorFile,
   out_file: outFile,
@@ -60,6 +64,7 @@ module.exports = {
   apps: [
     serverApp({
       name: process.env.PM2_NAME || "leaddrive-v2",
+      role: "web",
       port: APP_PORT,
       hostname: process.env.APP_HOSTNAME || "127.0.0.1",
       errorFile: `${LOG_DIR}/error.log`,
@@ -79,6 +84,7 @@ module.exports = {
     }),
     serverApp({
       name: process.env.PM2_JOBS_NAME || "leaddrive-v2-jobs",
+      role: "jobs",
       port: JOBS_PORT,
       // Never behind nginx and never on another interface, whatever the web
       // app's own bind is set to: only this box's crontab talks to it.
@@ -89,6 +95,26 @@ module.exports = {
       outFile: `${LOG_DIR}/jobs-out.log`,
       // A restart here costs nobody a page: an interrupted job's lease expires
       // and the next tick picks it up.
+      maxMemory: "2048M",
+    }),
+    // The phone station's own process (owner, 2026-10-28: «отдельная программа
+    // для линии»). Every question the PBX asks — "ringing", "who answers",
+    // Zeytun's session, product lookups, order saves, call results — goes here
+    // through nginx (ops/nginx/leaddrive-station-routes.conf), and the line's
+    // 14 MB catalog is parsed into this process's memory. On the web process
+    // those questions waited behind people's pages and the minute's jobs: a
+    // call dropped after the first ring on 2026-10-28 because "ringing" took
+    // 1–4 s. If this process is down, nginx and cron-trigger.sh send the same
+    // requests to the web process, as before it existed.
+    serverApp({
+      name: process.env.PM2_LINE_NAME || "leaddrive-v2-line",
+      role: "line",
+      port: LINE_PORT,
+      // nginx reaches it on loopback; never on another interface.
+      hostname: "127.0.0.1",
+      errorFile: `${LOG_DIR}/line-error.log`,
+      outFile: `${LOG_DIR}/line-out.log`,
+      // The parsed catalog and pharmacy list plus the app's own working set.
       maxMemory: "2048M",
     }),
     // The softphone relay — the process that joins a salesperson's browser to

@@ -344,11 +344,15 @@ jobs:
             done
             pm2 restart leaddrive-v2 --update-env >/dev/null 2>&1 || true
             pm2 describe leaddrive-v2-jobs >/dev/null 2>&1 && pm2 restart leaddrive-v2-jobs --update-env >/dev/null 2>&1 || true
+            pm2 describe leaddrive-v2-line >/dev/null 2>&1 && pm2 restart leaddrive-v2-line --update-env >/dev/null 2>&1 || true
           }
 
           pm2 restart leaddrive-v2 --update-env >/dev/null || { rollback; echo "FATAL: PM2 restart failed; env rolled back"; exit 1; }
           if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
             pm2 restart leaddrive-v2-jobs --update-env >/dev/null || { rollback; echo "FATAL: PM2 restart failed; env rolled back"; exit 1; }
+          fi
+          if pm2 describe leaddrive-v2-line >/dev/null 2>&1; then
+            pm2 restart leaddrive-v2-line --update-env >/dev/null || { rollback; echo "FATAL: PM2 restart failed; env rolled back"; exit 1; }
           fi
           PID="$(pm2 pid leaddrive-v2 | tail -1)"
           [ -n "$PID" ] && [ "$PID" != "0" ] || { rollback; echo "FATAL: PM2 process is not running; env rolled back"; exit 1; }

@@ -17,6 +17,7 @@ import {
   PROMPT_SERVED_HASH,
 } from "@/lib/demo-center/call-prompt"
 import { claimConnectingDemoCall } from "@/lib/demo-center/call-prompt-match"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -56,7 +57,7 @@ function authorized(request: NextRequest): boolean {
  * calls. Each per-call answer is recorded on the call as a call event, which
  * is also how the demo knows the PBX has started asking per call at all.
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const callId = request.nextUrl.searchParams.get("callId")?.trim() || null
   // The id is the UUID the CRM minted before originating; anything else is a
@@ -196,3 +197,5 @@ export async function GET(request: NextRequest) {
     { headers: { "Cache-Control": "no-store" } },
   )
 }
+
+export const GET = withStationTiming("runtime-config", handleGet)

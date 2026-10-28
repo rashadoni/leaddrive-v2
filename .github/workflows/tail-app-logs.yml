@@ -294,6 +294,10 @@ jobs:
           echo ""
           echo "=== last $LINES error-log lines (leaddrive-v2-jobs) ==="
           pm2 logs leaddrive-v2-jobs --err --lines "$LINES" --nostream 2>/dev/null | tail -"$LINES"
+          # The phone station's process answers the PBX (call lifecycle, Zeytun's line).
+          echo ""
+          echo "=== last $LINES error-log lines (leaddrive-v2-line) ==="
+          pm2 logs leaddrive-v2-line --err --lines "$LINES" --nostream 2>/dev/null | tail -"$LINES"
           REMOTE
       - name: Report PostgreSQL backup readiness
         if: ${{ inputs.view == 'backup-readiness' }}
