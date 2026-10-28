@@ -1010,34 +1010,4 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
       await bypass(() => prisma.channelConfig.updateMany({ where: { organizationId: SENDER, phoneNumberId: "100200300" }, data: { isActive: true } }))
     }
   })
-
-  it("sends a company's codes from its own number when it has one, and never from that number in another organization", async () => {
-    await bypass(async () => {
-      await prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110001" }, data: { createdAt: new Date(Date.now() - 120_000) } })
-      // The same phone number id in the platform's organization must not stand in for the company's own channel.
-      await prisma.channelConfig.create({ data: { organizationId: SENDER, channelType: "whatsapp", configName: "Decoy with the company's id", accessToken: "fixture-decoy-token", phoneNumberId: "300400500", isActive: true } })
-    })
-    process.env.MTM_LOGIN_CODE_COMPANY_SENDERS = JSON.stringify({ [ORG]: "300400500" })
-    try {
-      // Named, but the company has no such channel yet: nothing is sent from anywhere.
-      const before = await ask("+994501110001")
-      expect(before.status).toBe(503)
-      expect(sent).toHaveLength(0)
-
-      const own = await bypass(() => prisma.channelConfig.create({ data: { organizationId: ORG, channelType: "whatsapp", configName: "Company's own WhatsApp", accessToken: "fixture-company-token", phoneNumberId: "300400500", isActive: true } }))
-      try {
-        expect((await ask("+994501110001")).status).toBe(200)
-        expect(sent.map((message) => [message.url, message.authorization])).toEqual([
-          ["https://graph.facebook.com/v21.0/300400500/messages", "Bearer fixture-company-token"],
-        ])
-        // Still not written into anybody's inbox log.
-        expect(await bypass(() => prisma.channelMessage.count())).toBe(0)
-      } finally {
-        await bypass(() => prisma.channelConfig.delete({ where: { id: own.id } }))
-      }
-    } finally {
-      delete process.env.MTM_LOGIN_CODE_COMPANY_SENDERS
-      await bypass(() => prisma.channelConfig.deleteMany({ where: { organizationId: SENDER, phoneNumberId: "300400500" } }))
-    }
-  })
 })

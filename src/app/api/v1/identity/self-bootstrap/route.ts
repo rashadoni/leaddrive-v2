@@ -38,8 +38,9 @@ export async function POST(req: NextRequest) {
       if (!keys.proof || !keys.mobile) throw new IdentityRegistryError("IDENTITY_ACTIVATION_RUNTIME_UNAVAILABLE")
       if (value.action === "review") return NextResponse.json({ success: true, data: await reviewIdentitySelfBootstrap(prisma, administrator, value.phone) }, { headers })
       if (value.action === "request") {
-        const sender = await loginCodeSender(administrator.organizationId)
-        if (!sender || loginCodeTemporarilyUnavailable(sender)) throw new IdentityRegistryError("IDENTITY_CODE_DELIVERY_UNAVAILABLE")
+        if (loginCodeTemporarilyUnavailable()) throw new IdentityRegistryError("IDENTITY_CODE_DELIVERY_UNAVAILABLE")
+        const sender = await loginCodeSender()
+        if (!sender) throw new IdentityRegistryError("IDENTITY_CODE_DELIVERY_UNAVAILABLE")
         const { phone, sourceRevision, requestId, language } = value
         const proof = await requestIdentitySelfBootstrap(prisma, administrator, { phone, sourceRevision, requestId }, keys.proof.active)
         const delivery = await dispatchStagedPhoneProof(administrator.organizationId, proof.proofId, {
