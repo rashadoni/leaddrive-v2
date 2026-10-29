@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { MessageCircle, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { IdentitySelfBootstrap } from "./identity-self-bootstrap"
 import { Input } from "@/components/ui/input"
 import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
 import { ATTENDANCE_EMPLOYEE_POSITION_MAX, type AttendanceDepartment, type AttendanceSection } from "@/lib/mtm/attendance-employee-contract"
@@ -46,16 +45,15 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   const [invited, setInvited] = useState(false)
   const [pendingReview, setPendingReview] = useState<Extract<IdentityTimePerson, { kind: "pending" }> | null>(null)
   const cancelRequest = useRef<string | null>(null)
-  const [administratorSetup, setAdministratorSetup] = useState(false)
   const enrollmentRequest = useRef<string | null>(null)
   const revision = useRef(0)
   const clearResult = () => { revision.current++; setError(null); setMatch(null); setCanonicalPerson(null); setLegacyPerson(null); setInvited(false); setPendingReview(null); cancelRequest.current = null; enrollmentRequest.current = null }
   const set = <K extends keyof Form>(key: K) => (value: Form[K]) => { setForm(current => ({ ...current, [key]: value })); clearResult() }
-  const close = () => { clearResult(); setAdministratorSetup(false); setOpen(false) }
+  const close = () => { clearResult(); setOpen(false) }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || canonicalPerson || legacyPerson || invited || pendingReview || administratorSetup) return
+    if (saving || canonicalPerson || legacyPerson || invited || pendingReview) return
     if (!internationalPhone(form.phone)) { setError("addEmployeePhoneInvalid"); return }
     const submittedRevision = revision.current
     setSaving(true); setError(null); setMatch(null)
@@ -65,8 +63,9 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
           position: form.position.trim() || null, ...departmentPayload(form.department), hireDate: form.hireDate || null }) })
       const body = await response.json().catch(() => null)
       if (response.status === 201 && body?.success === true) {
-        const { name, phone } = form
-        setForm(empty); setOpen(false); onAdded(name.trim(), phone.trim())
+        // A number of an existing CRM user adds that person under their own name.
+        const { name, phone } = form, added = typeof body.data?.name === "string" ? body.data.name : name.trim()
+        setForm(empty); setOpen(false); onAdded(added, phone.trim())
         return
       }
       if (submittedRevision !== revision.current) return
@@ -88,10 +87,6 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
           }
           if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "legacy") {
             setLegacyPerson(candidate.data); setPreserveCrm(false); enrollmentRequest.current = null
-            return
-          }
-          if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "administrator_setup") {
-            setAdministratorSetup(true)
             return
           }
           if (canonicalLookup.ok && canonicalBody?.success && candidate.success && candidate.data.kind === "pending") {
@@ -208,7 +203,6 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
     <p className="flex max-w-prose items-start gap-3 rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm" data-testid="attendance-add-employee-code-note">
       <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{p("addEmployeeCodeNote")}</span></p>
     {error ? <p role="alert" className="text-sm text-destructive">{p(error)}</p> : null}
-    {administratorSetup ? <IdentitySelfBootstrap onClose={() => setAdministratorSetup(false)} /> : null}
     {pendingReview ? <div role="status" className="max-w-prose space-y-3 rounded-xl border p-4 text-sm" data-testid="attendance-pending-review">
       <p>{p("addEmployeePhoneProfile", { name: pendingReview.name })}</p>
       <p>{p(invited ? "addEmployeeIdentityInviteReady" : "addEmployeeIdentityPending")}</p>
@@ -246,7 +240,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         </Button>
       </> : match.kind === "other" ? <p className="text-muted-foreground">{p("addEmployeePhoneOtherProfile")}</p> : null}
     </div> : null}
-    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving || !!canonicalPerson || !!legacyPerson || !!pendingReview || invited || administratorSetup}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
+    <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 rounded-full" disabled={saving || !!canonicalPerson || !!legacyPerson || !!pendingReview || invited}>{p(saving ? "addEmployeeSaving" : "addEmployeeSubmit")}</Button>
       <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={saving} onClick={close}>{p("cancel")}</Button></div>
   </form>
 }

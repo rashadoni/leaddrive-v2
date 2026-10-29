@@ -1291,30 +1291,29 @@ try {
     const form = page.getByTestId('attendance-add-employee-form')
     await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
     await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await form.locator('input[type="date"]').fill(today)
     // The fixture's actual user quota is full. Existing-person hiring must not
-    // require another seat; new-account creation remains refused.
+    // require another seat (owner, 2026-10-29: «пусть добавляется как
+    // сотрудник»): the add form hires that person through their own card.
     assert.ok(fixture.organization.maxUsers !== -1 && before.users >= fixture.organization.maxUsers)
-    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 403)
-    const result = page.getByTestId('attendance-phone-match')
-    await result.waitFor()
-    assert.ok((await result.innerText()).includes(name))
-    // Also exercise the original PHONE_TAKEN branch with a free fixture seat.
-    try {
-      await fixture.admin.organization.update({ where: { id: organizationId }, data: { maxUsers: before.users + 1 } })
-      await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
-      await result.waitFor()
-    } finally {
-      await fixture.admin.organization.update({ where: { id: organizationId }, data: { maxUsers: fixture.organization.maxUsers } })
-    }
-    assert.ok((await result.innerText()).includes(pt('addEmployeePhoneExistingHire')))
-    await page.screenshot({ path: `${output}/existing-crm-phone-match.png`, fullPage: false })
-    await result.getByRole('link', { name: pt('addEmployeePhoneOpenProfile'), exact: true }).click()
-    await page.locator('#employee-hire-date').fill(today)
-    await clickResponse(page.getByRole('button', { name: pt('employeeSave'), exact: true }), `${apiRoot}/employees/${card.id}`)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 201)
+    await form.waitFor({ state: 'detached' })
     const directory = await api('admin', '/employees')
     const hired = directory.employees.find(row => row.id === card.id)
     assert.ok(hired); assert.equal(hired.history[0].kind, 'HIRE'); assert.equal(hired.history[0].date, today)
     assert.deepEqual({ users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }, before)
+    // Already in the list: a second add is refused and points to their page.
+    await page.getByTestId('attendance-add-employee').click()
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
+    const result = page.getByTestId('attendance-phone-match')
+    await result.waitFor()
+    assert.ok((await result.innerText()).includes(name))
+    assert.ok((await result.innerText()).includes(pt('addEmployeePhoneAlreadyEnrolled')))
+    await page.screenshot({ path: `${output}/existing-crm-phone-match.png`, fullPage: false })
+    await result.getByRole('link', { name: pt('addEmployeePhoneOpenProfile'), exact: true }).click()
+    await page.getByTestId('attendance-employee-back').waitFor()
     const afterUser = await fixture.admin.user.findUniqueOrThrow({ where: { id: user.id } })
     const afterCard = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: card.id } })
     for (const key of ['id', 'phone', 'email', 'role', 'passwordHash', 'hiddenModules']) assert.deepEqual(afterUser[key], user[key])
