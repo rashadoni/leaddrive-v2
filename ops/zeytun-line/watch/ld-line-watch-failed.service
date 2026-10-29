@@ -1,0 +1,9 @@
+# Installed by scripts/zeytun-line/install-watch.sh.
+# A watch that crashes must not look like a healthy line: watch.mjs
+# --notify-failure tells the owner, at most once every six hours.
+[Unit]
+Description=Tell the owner the Zeytun line watch itself failed
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@ --notify-failure
