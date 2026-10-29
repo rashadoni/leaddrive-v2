@@ -330,6 +330,11 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("After each settled line, silently call save_order_list with the whole list so far")
     expect(ZEYTUN_LINE_PROMPT).toContain("call save_order_list once more")
     expect(ZEYTUN_LINE_PROMPT).not.toContain("save_order_list ONCE")
+    // Owner's call 2026-10-29: a misheard name the lookup found is read back and asked, not called missing.
+    expect(ZEYTUN_LINE_PROMPT).not.toContain("never the nearest name")
+    expect(ZEYTUN_LINE_PROMPT).toContain("read it back once in Azerbaijani letters, even if written in Cyrillic, and ask if it is the one")
+    expect(ZEYTUN_LINE_PROMPT).toContain("take it only after a clear yes")
+    expect(ZEYTUN_INBOUND_PROMPT).toContain("never the nearest name")
   })
 
   it("allows a call the station's own ceiling, not the rehearsal's five minutes", async () => {

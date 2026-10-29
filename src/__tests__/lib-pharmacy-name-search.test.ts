@@ -78,6 +78,10 @@ describe("PharmacyNameSearch word ranking for spoken requests", () => {
     index.add("shalfey", "Шалфей № 20 (Пастилки) (Натур Продукт) (Нидерланды)")
     expect(index.find("Adefa")[0]).toBe("adefa")
     expect(index.find("Adefa otuzluq tablet")[0]).toBe("adefa")
+    // Owner's call 2026-10-29: recognition heard "Adexa", "Adelfa", "Ədəfa".
+    expect(index.find("Adexa")[0]).toBe("adefa")
+    expect(index.find("Adelfa")[0]).toBe("adefa")
+    expect(index.find("Ədəfa")[0]).toBe("adefa")
     expect(index.find("Acisept ananas")[0]).toBe("adzhisept")
     expect(index.find("Ajisept")[0]).toBe("adzhisept")
     expect(index.find("Qlükoza")[0]).toBe("glukoza")
