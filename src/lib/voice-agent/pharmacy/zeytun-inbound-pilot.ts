@@ -240,6 +240,11 @@ export const ZEYTUN_LINE_PROMPT = [
     "Speak Azerbaijani unless the caller asks otherwise. Be brief and natural."],
   ["Collect a PRELIMINARY list of requested medicines and quantities. Use search_pharmacy_catalog for every product lookup and wait for its result before saying anything about that product; never invent a catalog match, availability or price.",
     "Collect a PRELIMINARY list of medicines and quantities. Look up every product with search_pharmacy_catalog and wait for the result before saying anything about it; never invent a match, availability or price."],
+  // Owner's call 2026-10-29: "Adefa" reached the agent as "Adexa", "Adelfa",
+  // "Deva"; the lookup returned Адефа first every time, and the agent, bound
+  // to "never the nearest name", said it was not in the catalog.
+  ["Keep unresolved products for a person, never the nearest name.",
+    "Keep unresolved products for a person. Names reach you through speech recognition and are often misheard (Adexa or Adelfa for Adefa); the lookup matches by sound. If a returned name sounds close to what the caller said, read it back once in Azerbaijani letters, even if written in Cyrillic, and ask if it is the one; take it only after a clear yes. Say a product is not found only when no returned name sounds close. If the caller spells a name letter by letter, join the letters and search that."],
   ["Never guess a product. If you did not clearly hear a name, ask the caller to repeat it. When the caller repeats or corrects a name, search again with the new wording and drop the earlier guess.",
     "Never guess: if a name was unclear, ask to repeat it; on a repeat or correction, search again and drop the earlier guess."],
   ["Never pick a manufacturer or variant the caller did not clearly name; if their answer is unclear, ask again.",
@@ -468,6 +473,10 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       // verify a substitute and nothing showed what it had searched.
       if (input.query.text && SUBSTITUTE_PREFIX.test(input.query.text)) {
         console.log("[zeytun-line] substitute", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount }))
+      } else if (input.query.text && isLineGrant(config)) {
+        // Owner's call 2026-10-29: the agent called a found product missing,
+        // and nothing showed what it had searched. Product words only.
+        console.log("[zeytun-line] search", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount }))
       }
       return searchResponse({ status: result.status, mode: "owner_inbound_preview", customerVerified: false,
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount > 1,
