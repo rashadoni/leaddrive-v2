@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { useFormatter, useTranslations } from "next-intl"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
 import { MonitorSmartphone, ShieldCheck } from "lucide-react"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
 import { Button } from "@/components/ui/button"
+import { formatDateTime, formatTime } from "@/lib/format-date"
 import type { AttendanceBranchScreenDirectory, AttendanceBranchScreenPairing } from "@/lib/mtm/attendance-qr-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/branch-screens"
@@ -19,7 +20,7 @@ const PAIRING_POLL_MS = 5_000
  * screens. It never shows a code itself (owner, 2026-10-29).
  */
 export function MtmAttendanceQrDisplay() {
-  const t = useTranslations("mtmAttendance"), format = useFormatter()
+  const t = useTranslations("mtmAttendance"), locale = useLocale(), timeZone = useTimeZone()
   const [directory, setDirectory] = useState<AttendanceBranchScreenDirectory | null>(null)
   const [busy, setBusy] = useState(false), [error, setError] = useState(false), [denied, setDenied] = useState(false)
   const [pairing, setPairing] = useState<(AttendanceBranchScreenPairing & { screensBefore: number }) | null>(null)
@@ -78,7 +79,7 @@ export function MtmAttendanceQrDisplay() {
     await mutate(() => fetch(`${ENDPOINT}/${encodeURIComponent(screenId)}/revoke`, { method: "POST" }))
     await load()
   }
-  const when = (iso: string) => format.dateTime(new Date(iso), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+  const when = (iso: string) => formatDateTime(iso, locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone })
   const screenUrl = typeof window === "undefined" ? "/screen" : `${window.location.host}/screen`
   if (denied) return <p role="status">{t("reportAccessUnavailable")}</p>
   return <main className="min-w-0 space-y-5" data-testid="attendance-qr-display">
@@ -112,7 +113,7 @@ export function MtmAttendanceQrDisplay() {
             {pairing?.branch.id === branch.id && <div className="space-y-2 rounded-xl border bg-muted/40 p-4" data-testid="attendance-qr-pairing">
               <p className="text-sm">{t("qrScreenPairOpen", { url: screenUrl })}</p>
               <p className="font-mono text-3xl font-semibold tracking-widest" data-testid="attendance-qr-pairing-code">{pairing.code}</p>
-              <p className="text-xs text-muted-foreground">{t("qrScreenPairHint", { time: format.dateTime(new Date(pairing.expiresAt), { hour: "2-digit", minute: "2-digit" }) })}</p>
+              <p className="text-xs text-muted-foreground">{t("qrScreenPairHint", { time: formatTime(pairing.expiresAt, locale, { hour: "2-digit", minute: "2-digit", timeZone }) })}</p>
               <Button type="button" variant="outline" className="min-h-11" onClick={() => setPairing(null)}>{t("qrScreenPairClose")}</Button>
             </div>}
           </div>
