@@ -19,6 +19,7 @@ model Organization {
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
+  attendanceBranchScreens MtmAttendanceBranchScreen[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
   attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
@@ -8913,8 +8914,32 @@ model MtmAttendanceBranch {
   createdAt DateTime @default(now())
   revisions MtmAttendanceBranchRevision[]
   assignments MtmAttendancePrimaryBranchRevision[]
+  screens MtmAttendanceBranchScreen[]
   @@unique([organizationId, id])
   @@map("mtm_attendance_branches")
+}
+
+/// A screen at the branch's entrance (a tablet) that alone shows the branch
+/// QR. Created with a one-time pairing code; paired, it holds a secret whose
+/// SHA-256 is kept here. Revoked screens stay for the audit trail.
+model MtmAttendanceBranchScreen {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branchId String
+  branch MtmAttendanceBranch @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+  codeHash String? @unique @db.VarChar(64)
+  codeExpiresAt DateTime?
+  secretHash String? @unique @db.VarChar(64)
+  pairedAt DateTime?
+  lastSeenAt DateTime?
+  revokedAt DateTime?
+  revokedBy String?
+  createdBy String
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@index([organizationId, branchId, createdAt])
+  @@map("mtm_attendance_branch_screens")
 }
 
 /// Never updated, including name/address/active. Evidence freezes revisionId.
@@ -23135,6 +23160,8 @@ model MtmAttendanceQrEvidence {
   branchRevisionId String?
   branchRevision MtmAttendanceBranchRevision? @relation(fields: [organizationId, branchRevisionId], references: [organizationId, id], onDelete: Restrict)
   nonceFingerprint String? @db.VarChar(64)
+  /// AWAY_FROM_BRANCH only: metres between the phone's own fix and the QR branch's point.
+  awayDistanceMeters Int?
   createdAt DateTime @default(now())
   @@unique([organizationId, eventId])
   @@unique([organizationId, agentId, nonceFingerprint, action])

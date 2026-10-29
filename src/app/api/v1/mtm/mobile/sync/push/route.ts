@@ -3094,8 +3094,9 @@ export const POST = withMobileRls(async (req, auth) => {
               if (workdayInput.action === "START" || workdayInput.action === "FINISH") {
                 await enforceAttendanceInstallationApproval(tx, { organizationId: orgId, agentId }, req.headers.get("x-field-device-id"))
               }
-              await recordAttendanceQr(tx, { organizationId: orgId, agentId }, workdayInput, event.id, workdayInput.action === "FINISH" && beforeWorkday?.status === "PAUSED")
+              // The mark's own fix first: the QR is checked against it (AWAY_FROM_BRANCH).
               await recordAttendanceMarkEvidence(tx, { scope: { organizationId: orgId, agentId }, input: workdayInput, workday, event, beforeWorkday }, { organizationId: orgId, agentId, role: auth.role })
+              await recordAttendanceQr(tx, { organizationId: orgId, agentId }, workdayInput, event.id, workdayInput.action === "FINISH" && beforeWorkday?.status === "PAUSED")
               if (!workforceWorkday) return
               const prepared = await prepareWorkforceAttendanceVerification(tx, {
                 organizationId: orgId,

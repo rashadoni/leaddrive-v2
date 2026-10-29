@@ -15,13 +15,18 @@ export async function readAttendanceQrRule(tx: Prisma.TransactionClient, organiz
   const row = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: ATTENDANCE_QR_RULE_KEY } }, select: { value: true } })
   return row?.value === true
 }
+/** The QR rule and the branch screens are configured by a current administrator only. */
+export async function requireAttendanceQrAdmin(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer) {
+  if (reviewer.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
+    WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
+  if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+}
 export async function saveAttendanceQrRule(reviewer: AttendanceReviewer, enabled: boolean) {
   if (reviewer.principalType !== "session" || typeof enabled !== "boolean") throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await lockAttendanceQrPolicy(tx, reviewer.organizationId, true)
-    const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
-      WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-    if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+    await requireAttendanceQrAdmin(tx, reviewer)
     const before = await readAttendanceQrRule(tx, reviewer.organizationId)
     if (before === enabled) return { changed: false }
     await tx.mtmSetting.upsert({ where: { organizationId_key: { organizationId: reviewer.organizationId, key: ATTENDANCE_QR_RULE_KEY } },
