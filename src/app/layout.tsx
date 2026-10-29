@@ -55,6 +55,8 @@ const PUBLIC_PORTAL_PATHS = new Set([
 // path (LOCATION_SHARE_LINK_PAGE_PATH in src/lib/mtm/location-share-link.ts);
 // a test keeps the two equal.
 const PUBLIC_LOCATION_SHARE_LINK_PATH = "/share/location"
+// The branch screen at an entrance (src/app/screen): a tablet with no account.
+const PUBLIC_BRANCH_SCREEN_PATH = "/screen"
 
 /**
  * Do not serialize the complete CRM catalog into unauthenticated auth/portal
@@ -81,6 +83,9 @@ function messagesForClient(
   // catalog — which is every module's labels, a megabyte and a half of them.
   if (normalizedPath === PUBLIC_LOCATION_SHARE_LINK_PATH || normalizedPath.startsWith(`${PUBLIC_LOCATION_SHARE_LINK_PATH}/`)) {
     return { mtmLocationShareLink: messages.mtmLocationShareLink } as AbstractIntlMessages
+  }
+  if (normalizedPath === PUBLIC_BRANCH_SCREEN_PATH) {
+    return { attendanceBranchScreen: messages.attendanceBranchScreen } as AbstractIntlMessages
   }
   return null
 }

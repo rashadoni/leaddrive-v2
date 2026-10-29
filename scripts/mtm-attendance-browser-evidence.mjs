@@ -22,6 +22,8 @@ const english = JSON.parse(await readFile('messages/en.json', 'utf8'))
 const messages = english.mtmAttendance
 /** Personnel labels (`personnel.*`), for the screens rebuilt on 2026-10-14. */
 const pt = key => { const value = key.split('.').reduce((node, part) => node?.[part], english.personnel); assert.equal(typeof value, 'string', `Missing label personnel.${key}`); return value }
+/** The branch screen's own labels (`attendanceBranchScreen.*`). */
+const st = key => { const value = english.attendanceBranchScreen?.[key]; assert.equal(typeof value, 'string', `Missing label attendanceBranchScreen.${key}`); return value }
 const t = (key, vars = {}) => {
   assert.equal(typeof messages[key], 'string', `Missing label ${key}`)
   return messages[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
@@ -530,7 +532,7 @@ try {
     assert.equal((await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })).status, 'COMPLETED')
     return { detector: 'synthetic seeded case; detector logic NOT_RUN here', reviewPreservesWorkday: true }
   })
-  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
+  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-screens', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
   for (const route of routes) await run(`page:${route || 'report'}`, 'browser-navigation', async () => {
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}${pageEndpoints[route]}` && response.request().method() === 'GET', { timeout: 120000 })
     void loaded.catch(() => {})
@@ -727,62 +729,97 @@ try {
     assert.equal(correctionResult.decisionNote, 'Fictional correction rejected with context')
     return { correctionComparison: true, correctionDecisionReturnedToEmployee: true }
   })
-  await run('browser-qr-toggle-refresh-hide', 'browser-action+database-backed-http', async () => {
+  await run('browser-qr-branch-screen-pair-show-revoke', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
     await readyPage('branch-qr')
     const toggle = page.getByRole('switch', { name: t('qrRule') })
     assert.equal(await toggle.getAttribute('aria-checked'), 'false')
-    let visibilitySession, windowId
+    let kioskContext, visibilitySession, windowId
     try {
       // The component aborts the old PUT response while loading its new state.
       // Prove the real status and resulting state without reading a discarded body.
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'true', 'QR enabled')
       assert.equal((await api('admin', '/branch-qr')).enabled, true)
-      const qr = page.getByRole('img', { name: t('qrImageAlt') })
+      // A signed-in browser shows no code and cannot mint one (owner, 2026-10-29).
+      assert.equal(await page.locator('main img').count(), 0)
+      await api('admin', '/branch-qr', { method: 'POST', body: { branchId: state.branch.id }, status: 410 })
+      const row = page.getByTestId('attendance-qr-branch').filter({ hasText: state.branch.name })
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 120000 })
+      const pairing = await clickResponse(button('qrScreenPair', row), `${apiRoot}/branch-screens`)
+      assert.equal(await row.getByTestId('attendance-qr-pairing-code').textContent(), pairing.code)
+      // The tablet at the branch: a browser with no CRM session at all.
+      kioskContext = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1024, height: 768 }, locale: 'en-US' })
+      await kioskContext.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort())
+      const kiosk = await kioskContext.newPage()
+      await kiosk.goto('/screen?lang=en', { waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      await kiosk.locator('#branch-screen-code').fill(pairing.code.toLowerCase())
+      const paired = kiosk.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/public/attendance-screen/pair', { timeout: 120000 })
+      void paired.catch(() => {})
+      await kiosk.getByRole('button', { name: st('pairButton'), exact: true }).click()
+      assert.equal((await paired).status(), 200)
+      const qr = kiosk.getByRole('img', { name: st('qrAlt') })
       await qr.waitFor({ timeout: 120000 })
       assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
-      await button('qrRefresh').click()
-      await qr.waitFor({ timeout: 120000 })
+      assert.equal(await kiosk.getByTestId('branch-screen-branch').textContent(), state.branch.name)
+      // The secret is an httpOnly cookie of the screen's own routes: no script reads it.
+      assert.equal(await kiosk.evaluate(() => document.cookie.includes('ld_branch_screen')), false)
+      const [cookie] = (await kioskContext.cookies()).filter(item => item.name === 'ld_branch_screen')
+      assert.equal(cookie?.httpOnly, true); assert.equal(cookie?.path, '/api/v1/public/attendance-screen')
+      await row.getByText(t('qrScreenJustPaired'), { exact: true }).waitFor({ timeout: 30000 })
+      await kiosk.screenshot({ path: `${output}/branch-screen-qr.png`, fullPage: false })
       // Release Playwright's own per-session capture handle before minimizing
       // the native window. A separate CDP session cannot undo that override.
       // Never assign document.visibilityState or dispatch synthetic events.
-      visibilitySession = playwrightFocusSession(page)
+      visibilitySession = playwrightFocusSession(kiosk)
       await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
       ;({ windowId } = await visibilitySession.send('Browser.getWindowForTarget'))
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } })
       await poll(async () => (await visibilitySession.send('Browser.getWindowBounds', { windowId })).bounds.windowState === 'minimized', 'Native Chromium window minimized')
       await poll(async () => {
-        const visibilityState = await page.evaluate(() => document.visibilityState)
-        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session' }
+        const visibilityState = await kiosk.evaluate(() => document.visibilityState)
+        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session', page: 'branch screen' }
         return visibilityState === 'hidden'
       }, 'QR native window background visibility')
       await poll(async () => await qr.count() === 0, 'QR hidden in background')
       manifest.qrLifecycle.qrAbsentWhileHidden = true
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-      await page.bringToFront()
-      await poll(async () => await page.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
+      await kiosk.bringToFront()
+      await poll(async () => await kiosk.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
       await qr.waitFor({ timeout: 120000 })
       manifest.qrLifecycle.qrRestoredInForeground = true
+      // Disconnected: the screen's next request is refused and it asks for a code again.
+      const [screen] = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens
+      await button('qrScreenRevoke', row).click()
+      await clickResponse(button('qrScreenRevokeYes', row), `${apiRoot}/branch-screens/${screen.id}/revoke`)
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 30000 })
+      await kiosk.reload({ waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      await page.bringToFront()
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
-      assert.equal(await qr.count(), 0)
     } finally {
       // Failed lifecycle assertions must still leave the disposable policy OFF.
       try {
         await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
       } finally {
-        if (visibilitySession) {
-          try {
-            if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-            await page.bringToFront()
-          } finally {
-            await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+        try {
+          if (visibilitySession) {
+            try {
+              if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
+            } finally {
+              await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+            }
           }
+        } finally {
+          await kioskContext?.close()
+          await page.bringToFront()
         }
       }
     }
-    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
+    return { enabledThenDisabled: true, signedInBrowserGetsNoCode: true, pairedWithoutSignIn: true, secretHttpOnly: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, revokedScreenUnpaired: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
     await readyPage('request-limits')

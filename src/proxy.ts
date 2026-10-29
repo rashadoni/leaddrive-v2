@@ -87,7 +87,7 @@ function isPersonnelApiPath(pathname: string): boolean {
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/", "/field", "/time", "/book/", "/connect/whatsapp"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/", "/field", "/time", "/screen", "/book/", "/connect/whatsapp"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -677,6 +677,8 @@ const authMiddleware = auth(async (req) => {
     // the invoice's document language.
     // The app download pages are public links with an AZ · RU · EN switch.
     const appDownloadPage = matchesPublicPath(pathname, "/field") || matchesPublicPath(pathname, "/time")
+    // The branch screen (a tablet at the entrance, no account) has the same switch.
+    const branchScreenPage = matchesPublicPath(pathname, "/screen")
     const linkLocaleQuery = pathname.startsWith("/legal/")
       || pathname.startsWith("/share/location/")
       || pathname.startsWith("/ticket-closure/")
@@ -685,6 +687,7 @@ const authMiddleware = auth(async (req) => {
       // The WhatsApp signup window on the app host speaks the language of the tenant tab that opened it.
       || matchesPublicPath(pathname, "/connect/whatsapp")
       || appDownloadPage
+      || branchScreenPage
       ? req.nextUrl.searchParams.get("lang")
       : null
     // The guided demo exists in exactly one language — the scenario's — so it
@@ -704,7 +707,7 @@ const authMiddleware = auth(async (req) => {
         ? linkLocaleQuery
         // An agent opening the link for the first time has no language cookie;
         // these apps are used in Azerbaijan, so their pages start in Azerbaijani.
-        : localeCookie ?? (appDownloadPage ? "az" : undefined))
+        : localeCookie ?? (appDownloadPage || branchScreenPage ? "az" : undefined))
     if (publicLocale) {
       requestHeaders.set("x-locale", publicLocale)
     }

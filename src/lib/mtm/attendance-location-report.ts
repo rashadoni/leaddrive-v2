@@ -8,12 +8,13 @@ export type AttendanceReportMark = {
   state: Exclude<AttendanceLocationFinding, "BREAK_PRIVACY"> | "NOT_RECORDED"
   branch: { id: string; revisionId: string; name: string } | null
   distanceMeters: number | null
-  qr?: { state: AttendanceQrState; branch: { id: string; revisionId: string; name: string } | null }
+  /** `branch` is the code's branch when VERIFIED or AWAY_FROM_BRANCH; `awayDistanceMeters` only for the latter. */
+  qr?: { state: AttendanceQrState; branch: { id: string; revisionId: string; name: string } | null; awayDistanceMeters?: number }
 }
 export type AttendanceLocationReportEvidence = {
   eventId: string; action: string; claimedAt: Date; serverReceivedAt: Date; locationState: string
   branchId: string | null; branchRevisionId: string | null; branchName: string | null; distanceMeters: number | null
-  qrState?: string | null; qrBranchId?: string | null; qrBranchRevisionId?: string | null; qrBranchName?: string | null
+  qrState?: string | null; qrBranchId?: string | null; qrBranchRevisionId?: string | null; qrBranchName?: string | null; qrAwayDistanceMeters?: number | null
 }
 const STATES: readonly string[] = ["INSIDE", "OUTSIDE", "UNCERTAIN", "UNCONFIGURED", "UNAVAILABLE", "NO_CONSENT"]
 /** Only canonical endpoint events may acquire evidence; PAUSE/RESUME never do. */
@@ -30,10 +31,14 @@ export function attendanceReportMarks(row: MtmAttendanceReportRow, evidence: Rea
     return [{ eventId: event.id, action: event.type, claimedAt: event.claimedAt ?? event.occurredAt,
       serverReceivedAt: event.serverReceivedAt, state, branch,
       distanceMeters: branch && distance != null && Number.isSafeInteger(distance) && distance >= 0 ? distance : null,
-      ...(valid && item.locationState !== "BREAK_PRIVACY" && item.qrState && (ATTENDANCE_QR_STATES as readonly string[]).includes(item.qrState) ? { qr: { state: item.qrState as AttendanceQrState,
-        branch: item.qrState === "VERIFIED" && item.qrBranchId && item.qrBranchRevisionId && item.qrBranchName
-          ? { id: item.qrBranchId, revisionId: item.qrBranchRevisionId, name: item.qrBranchName } : null } } : {}) }]
+      ...(valid && item.locationState !== "BREAK_PRIVACY" && item.qrState && (ATTENDANCE_QR_STATES as readonly string[]).includes(item.qrState) ? { qr: attendanceReportQr(item) } : {}) }]
   })
+}
+function attendanceReportQr(item: AttendanceLocationReportEvidence): NonNullable<AttendanceReportMark["qr"]> {
+  const state = item.qrState as AttendanceQrState, away = item.qrAwayDistanceMeters
+  const branch = (state === "VERIFIED" || state === "AWAY_FROM_BRANCH") && item.qrBranchId && item.qrBranchRevisionId && item.qrBranchName
+    ? { id: item.qrBranchId, revisionId: item.qrBranchRevisionId, name: item.qrBranchName } : null
+  return { state, branch, ...(state === "AWAY_FROM_BRANCH" && away != null && Number.isSafeInteger(away) && away >= 0 ? { awayDistanceMeters: away } : {}) }
 }
 export const ATTENDANCE_LOCATION_STATE_MESSAGES: Record<AttendanceReportMark["state"] | "QR_UNCONFIRMED", string> = {
   QR_UNCONFIRMED: "qrReportUnconfirmed", INSIDE: "locationReportInside", OUTSIDE: "locationReportOutside", UNCERTAIN: "locationReportUncertain",
@@ -42,7 +47,8 @@ export const ATTENDANCE_LOCATION_STATE_MESSAGES: Record<AttendanceReportMark["st
 type Text = (key: string, values?: Record<string, string | number>) => string
 export function attendanceMarkText(mark: AttendanceReportMark, t: Text): string {
   if (mark.state === "NOT_RECORDED" && !mark.qr) return "—"
-  const qr = mark.qr ? [mark.qr.branch?.name, t(`qrState${mark.qr.state}`)].filter(Boolean).join(" · ") : null
+  const qr = mark.qr ? [mark.qr.branch?.name, mark.qr.state === "AWAY_FROM_BRANCH" && mark.qr.awayDistanceMeters !== undefined
+    ? t("qrStateAWAY_FROM_BRANCH", { meters: mark.qr.awayDistanceMeters }) : t(`qrState${mark.qr.state}`)].filter(Boolean).join(" · ") : null
   const location = mark.state === "NOT_RECORDED" ? null : [mark.branch?.name, t(ATTENDANCE_LOCATION_STATE_MESSAGES[mark.state]),
     mark.distanceMeters === null ? null : t("locationReportDistance", { meters: mark.distanceMeters })].filter(Boolean).join(" · ")
   return [qr, qr && location ? t("qrGpsObservation", { value: location }) : location].filter(Boolean).join("; ")
