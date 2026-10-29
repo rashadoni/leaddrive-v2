@@ -107,7 +107,7 @@ class TransportTests(unittest.TestCase):
         product = "bbbbbbbb-2222-4222-8222-222222222222"
         response = self.save([{"externalId": product.upper(), "quantity": 10.0, "unit": " qutu ", "spoken": "noşpa on qutu"},
                               {"quantity": 3, "unit": "qutu", "spoken": "fluimusil üç qutu"}])
-        self.assertEqual(self.requests[-1], {"action": "order", "callId": CALL, "lines": [
+        self.assertEqual(self.requests[-1], {"action": "order", "callId": CALL, "seq": 1, "lines": [
             {"quantity": 10, "unit": "qutu", "spoken": "noşpa on qutu", "externalId": product},
             {"quantity": 3, "unit": "qutu", "spoken": "fluimusil üç qutu"}]})
         self.assertEqual(response["name"], "save_order_list")
@@ -116,7 +116,7 @@ class TransportTests(unittest.TestCase):
 
     def test_save_carries_the_pharmacy_the_caller_named(self):
         self.save_args({"lines": [{"quantity": 2, "unit": "qutu", "spoken": "iki qutu"}], "pharmacy": " Zəfər Aptek "})
-        self.assertEqual(self.requests[-1], {"action": "order", "callId": CALL,
+        self.assertEqual(self.requests[-1], {"action": "order", "callId": CALL, "seq": 1,
             "lines": [{"quantity": 2, "unit": "qutu", "spoken": "iki qutu"}], "pharmacy": "Zəfər Aptek"})
         sent = len(self.requests)
         for bad in [{"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}], "pharmacy": ""},
@@ -480,6 +480,154 @@ class TransportTests(unittest.TestCase):
         for field in ["customerVerified", "canQuote", "canSubmitTo1c", "canResolveIdentity", "requiresOperatorReview"]:
             data = result(); del data[field]
             self.assertEqual(self.bridge.safe_result(data)["candidates"], [])
+
+
+class OrderSpoolTests(unittest.TestCase):
+    """Owner, 2026-10-28: «станция досылает заказ, если CRM не ответила»."""
+    LINE = [{"quantity": 2, "unit": "qutu", "spoken": "iki qutu noşpa"}]
+    SAVED = {"status": "saved", "orderNumber": "TS-1031", "total": "4.20", "notFound": [], "unpriced": []}
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = os.path.join(self.tmp.name, "spool")
+        self.now = 1000.0
+        self.posts, self.logs = [], []
+        self.answer = lambda body: self.SAVED
+        def post(body):
+            self.posts.append(body)
+            return self.answer(body)
+        self.spool = bridge_module.ZeytunOrderSpool(self.dir, post, clock=lambda: self.now,
+            log=lambda status, call_id=None, **fields: self.logs.append((status, call_id, fields)))
+        self.crm = lambda body: self.SAVED
+        def request(body):
+            if body["action"] == "session":
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 900}
+            return self.crm(body)
+        self.bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now, spool=self.spool)
+        self.bridge.open()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def kept(self):
+        return sorted(name for name in os.listdir(self.dir) if name.endswith(".json"))
+
+    @staticmethod
+    def silent(body):
+        raise urllib.error.URLError("timed out")
+
+    def test_a_save_the_crm_did_not_answer_is_kept_and_delivered_later(self):
+        self.crm = self.silent
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "queued"})
+        self.assertEqual(self.kept(), [CALL + ".json"])
+        self.assertEqual(os.stat(os.path.join(self.dir, CALL + ".json")).st_mode & 0o777, 0o600)
+        # Not resent while its own request could still be on the way.
+        self.spool.drain_once()
+        self.assertEqual(self.posts, [])
+        self.now += 11
+        self.spool.drain_once()
+        self.assertEqual(self.posts, [{"action": "order", "callId": CALL, "seq": 1, "lines": self.LINE}])
+        self.assertEqual(self.kept(), [])
+        self.assertEqual(self.logs[-1][:2], ("delivered", CALL))
+        self.assertEqual(self.logs[-1][2]["orderNumber"], "TS-1031")
+
+    def test_an_answered_save_leaves_nothing_behind(self):
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["status"], "saved")
+        self.assertEqual(self.kept(), [])
+
+    def test_a_crm_that_says_no_is_not_resent(self):
+        def refused(body):
+            raise urllib.error.HTTPError(URL, 403, "Forbidden", {}, None)
+        self.crm = refused
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "not_saved"})
+        self.assertEqual(self.kept(), [])
+
+    def test_without_a_disk_the_model_is_never_told_queued(self):
+        self.bridge.spool = None
+        self.crm = self.silent
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "not_saved"})
+
+    def test_the_newest_list_is_kept_and_an_older_answer_does_not_drop_it(self):
+        self.crm = self.silent
+        self.bridge.save_order({"lines": self.LINE})
+        longer = self.LINE + [{"quantity": 1, "unit": "flakon", "spoken": "bir flakon"}]
+        self.bridge.save_order({"lines": longer, "pharmacy": "Zəfər"})
+        self.spool.settle(CALL, 1)
+        self.assertEqual(self.kept(), [CALL + ".json"])
+        self.now += 11
+        self.spool.drain_once()
+        self.assertEqual(self.posts, [{"action": "order", "callId": CALL, "seq": 2, "lines": longer, "pharmacy": "Zəfər"}])
+        self.assertEqual(self.kept(), [])
+
+    def test_a_silent_crm_is_retried_with_growing_waits_and_a_refusal_is_set_aside(self):
+        self.crm = self.silent
+        self.bridge.save_order({"lines": self.LINE})
+        self.answer = self.silent
+        attempts = []
+        for _ in range(40):
+            self.now += 5
+            before = len(self.posts)
+            self.spool.drain_once()
+            if len(self.posts) > before:
+                attempts.append(self.now)
+        self.assertEqual([round(b - a) for a, b in zip(attempts, attempts[1:])][:3], [10, 20, 30])
+        self.assertEqual(self.kept(), [CALL + ".json"])
+        def refused(body):
+            raise urllib.error.HTTPError(URL, 400, "Bad Request", {}, None)
+        self.answer = refused
+        self.now += 61
+        self.spool.drain_once()
+        self.assertEqual(self.kept(), [])
+        self.assertEqual(len(os.listdir(os.path.join(self.dir, "failed"))), 1)
+        self.assertEqual(self.logs[-1], ("failed", CALL, {"reason": "http_400"}))
+
+    def test_a_list_older_than_a_day_is_set_aside_unsent(self):
+        self.crm = self.silent
+        self.bridge.save_order({"lines": self.LINE})
+        self.now += 24 * 3600 + 1
+        self.spool.drain_once()
+        self.assertEqual(self.posts, [])
+        self.assertEqual(self.kept(), [])
+        self.assertEqual(self.logs[-1], ("failed", CALL, {"reason": "expired"}))
+
+    def test_a_reviewed_order_settles_the_kept_list(self):
+        self.crm = self.silent
+        self.bridge.save_order({"lines": self.LINE})
+        self.answer = lambda body: {"status": "already_reviewed", "orderNumber": "TS-1031"}
+        self.now += 11
+        self.spool.drain_once()
+        self.assertEqual(self.kept(), [])
+
+    def test_a_file_that_is_not_an_entry_is_set_aside(self):
+        with open(os.path.join(self.dir, CALL + ".json"), "w") as handle:
+            handle.write('{"v":1,"callId":"%s","seq":1,"keptAt":1,"order":{"lines":[],"x":1}}' % CALL)
+        self.spool.drain_once()
+        self.assertEqual(self.posts, [])
+        self.assertEqual(self.kept(), [])
+
+    def test_a_directory_that_cannot_be_made_disables_the_spool(self):
+        blocker = os.path.join(self.tmp.name, "file")
+        open(blocker, "w").close()
+        spool = bridge_module.ZeytunOrderSpool(os.path.join(blocker, "spool"), lambda body: None)
+        self.assertFalse(spool.ready)
+        self.assertFalse(spool.keep(CALL, 1, {"lines": self.LINE}))
+
+    def test_the_model_reads_queued_from_the_tool_answer(self):
+        self.crm = self.silent
+        sent, done = [], threading.Event()
+        def send(payload):
+            body = payload() if callable(payload) else payload
+            sent.append(body)
+            done.set()
+            return True
+        self.bridge.handle({"toolCall": {"functionCalls": [{"id": "s1", "name": "save_order_list",
+                            "args": {"lines": self.LINE}}]}}, send, lambda: True)
+        self.assertTrue(done.wait(2))
+        self.assertEqual(sent[0]["toolResponse"]["functionResponses"][0]["response"], {"status": "queued"})
+        save = next(tool for tool in self.bridge.tools()[0]["functionDeclarations"] if tool["name"] == "save_order_list")
+        self.assertIn("queued", save["description"])
 
 
 class FakeTts:

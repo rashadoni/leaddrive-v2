@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client"
 
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { announceCallOrder } from "@/lib/pharmacy-orders/manager-notice"
 import { prisma } from "@/lib/prisma"
 import { shellPresentUserIds } from "@/lib/shell-events/presence"
 import { processRole } from "@/lib/station-timing"
@@ -25,6 +26,7 @@ export function zeytunLineHost(): Host {
     orders: prisma as unknown as PrismaClient,
     holdsLine: organizationHoldsLine,
     transferAvailable: async (organizationId) => managerCanAnswer(organizationId),
+    announceOrder: (organizationId, providerCallId) => announceCallOrder(prisma as unknown as PrismaClient, organizationId, providerCallId),
   })
 }
 

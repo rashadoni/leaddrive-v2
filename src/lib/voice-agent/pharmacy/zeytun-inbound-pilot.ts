@@ -61,6 +61,16 @@ const callSchema = z.strictObject({
   handoffState: z.enum(["requested", "ringing", "connected", "returned"]).nullish(),
 })
 export type InboundPilotCall = z.infer<typeof callSchema>
+/** A call that is over, whose list the station is still delivering: it
+ * resends a save the CRM did not answer, for a day (owner, 2026-10-28). A
+ * call a manager took after the agent's transfer is human by then. */
+const endedCallSchema = callSchema.extend({
+  callMode: z.enum(["ai", "human"]), status: z.literal("completed"), endedAt: z.iso.datetime({ offset: true }),
+})
+export type InboundPilotEndedCall = z.infer<typeof endedCallSchema>
+export type InboundPilotOrderCall = InboundPilotCall | InboundPilotEndedCall
+/** How long after its end a call's list is still taken from the station (its spool keeps it as long). */
+export const LATE_ORDER_WINDOW_MS = 24 * 60 * 60_000
 const awaitingAnswerSchema = callSchema.extend({ status: z.literal("answering"), wasAnswered: z.literal(false) })
 export type InboundPilotCatalog = {
   organizationId: string; scopeKey: string; version: string; observedAt: string; source: "live" | "attachment"
@@ -146,15 +156,16 @@ export type InboundPilotDependencies = {
   loadCatalog: (config: InboundPilotConfig) => Promise<InboundPilotCatalog>
   /** Atomic one-call claim shared by all app processes on this host. */
   claim: (config: InboundPilotConfig, call: InboundPilotCall) => Promise<boolean>
-  isClaimed: (config: InboundPilotConfig, call: InboundPilotCall) => Promise<boolean>
+  isClaimed: (config: InboundPilotConfig, call: InboundPilotOrderCall) => Promise<boolean>
   /** The pharmacies 1C lists for this number (at most five); empty when none or unknown. */
   findPharmacies?: (config: InboundPilotConfig, phoneE164: string) => Promise<PharmacyCandidate[]>
   /** The agent hands the call to the organization's managers in the CRM
    * browser; "unavailable" when no one there can take calls or it was done once. */
   requestTransfer?: (config: LineGrant, call: InboundPilotCall) => Promise<"transferring" | "unavailable">
   /** Saves the call's list to config.orderOrganizationId's phone orders. */
-  saveOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotCall,
-    catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[], pharmacy?: string) => Promise<PhoneOrderSaveResult>
+  saveOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotOrderCall,
+    catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[], pharmacy?: string,
+    delivery?: { seq?: number; afterCall: boolean }) => Promise<PhoneOrderSaveResult>
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
@@ -217,6 +228,10 @@ export const ZEYTUN_LINE_PROMPT = [
     "After each settled line, silently call save_order_list with the whole list so far; never mention these saves or their number. When the caller has nothing more to add, do not read the list back unless asked; call save_order_list once more"],
   ["If it returns saved, say the list is recorded as orderNumber for Zeytun's manager to check: a request, not an accepted order.",
     "If it returns saved, say only that the order is accepted as orderNumber and passed to Zeytun's manager for processing."],
+  // Owner, 2026-10-28: the station keeps a list the CRM did not answer and
+  // delivers it itself; the caller hears it is accepted, without a number.
+  ["Otherwise say it could not be recorded.",
+    "If it returns queued, say the same without a number. Otherwise say it could not be recorded."],
   // Owner, 2026-10-26: offer a substitute with the same substance, «та же
   // доза и та же форма». The bridge takes at most 4000 characters, so the
   // line's wording is shortened elsewhere to make room for the rule.
@@ -256,7 +271,9 @@ const bodySchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("transfer"), callId: z.uuid() }),
   z.strictObject({ action: z.literal("order"), callId: z.uuid(),
     lines: z.array(phoneOrderLineInputSchema).min(1).max(PHONE_ORDER_MAX_LINES),
-    pharmacy: z.string().trim().min(1).max(120).optional() }),
+    pharmacy: z.string().trim().min(1).max(120).optional(),
+    /** The station's number for this save of the call; it resends only with one. */
+    seq: z.number().int().min(1).max(1_000_000).optional() }),
 ])
 const denied = () => searchResponse({ enabled: false, status: "pilot_not_authorized", candidates: [], ...searchRestrictions }, 403)
 function active(config: InboundPilotConfig, now: number) {
@@ -272,7 +289,7 @@ function internationalNumber(value: unknown) {
   const digits = compact.startsWith("+") ? compact.slice(1) : compact
   return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : null
 }
-function matchingCallIdentity(call: Omit<InboundPilotCall, "status" | "wasAnswered">, config: InboundPilotConfig, callId: string, now: number) {
+function matchingCallIdentity(call: Pick<InboundPilotOrderCall, "organizationId" | "channelConfigId" | "providerCallId" | "fromNumber" | "targetPhoneE164" | "startedAt">, config: InboundPilotConfig, callId: string, now: number) {
   // The line takes whoever dialled; the rehearsal only the owner's test number.
   const caller = isLineGrant(config) ||
     (call.targetPhoneE164 === config.testPhoneE164 && internationalNumber(call.fromNumber) === config.testPhoneE164)
@@ -283,6 +300,12 @@ function matchingCallIdentity(call: Omit<InboundPilotCall, "status" | "wasAnswer
 function eligibleCall(raw: unknown, config: InboundPilotConfig, callId: string, now: number) {
   const parsed = callSchema.safeParse(raw)
   return parsed.success && matchingCallIdentity(parsed.data, config, callId, now) ? parsed.data : null
+}
+function endedCall(raw: unknown, config: InboundPilotConfig, callId: string, now: number) {
+  const parsed = endedCallSchema.safeParse(raw)
+  if (!parsed.success || !matchingCallIdentity(parsed.data, config, callId, now)) return null
+  const age = now - Date.parse(parsed.data.endedAt)
+  return age >= -60_000 && age <= LATE_ORDER_WINDOW_MS ? parsed.data : null
 }
 
 /** Inbound-only owner rehearsal. No CRM subject lookup: shared phone numbers
@@ -323,7 +346,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       // only moves the work earlier; nothing of it reaches this response.
       void dependencies.loadCatalog(config).catch(() => undefined)
       const rawCall = await dependencies.loadCall(config, input.callId)
-      const call = eligibleCall(rawCall, config, input.callId, clock())
+      // Only a save the station numbered may arrive after the call: that is its spool resending.
+      const late = input.action === "order" && input.seq !== undefined
+      const callFrom = (value: unknown): InboundPilotOrderCall | null =>
+        eligibleCall(value, config, input.callId, clock()) ?? (late ? endedCall(value, config, input.callId, clock()) : null)
+      const call = callFrom(rawCall)
       if (!call) {
         const waiting = awaitingAnswerSchema.safeParse(rawCall)
         if (input.action === "session" && waiting.success && matchingCallIdentity(waiting.data, config, input.callId, clock())) {
@@ -356,9 +383,9 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       const latest = inboundPilotConfigSchema.safeParse(await dependencies.loadConfig())
       if (!latest.success || inboundPilotDigest(latest.data) !== inboundPilotDigest(config) || !active(config, clock())) return denied()
       const claimed = input.action === "session"
-        ? await dependencies.claim(config, call) : await dependencies.isClaimed(config, call)
+        ? call.endedAt === null && await dependencies.claim(config, call) : await dependencies.isClaimed(config, call)
       if (!claimed || !active(config, clock())) return denied()
-      const finalCall = eligibleCall(await dependencies.loadCall(config, input.callId), config, input.callId, clock())
+      const finalCall = callFrom(await dependencies.loadCall(config, input.callId))
       const finalConfig = inboundPilotConfigSchema.safeParse(await dependencies.loadConfig())
       if (!finalConfig.success || inboundPilotDigest(finalConfig.data) !== inboundPilotDigest(config) ||
           !active(config, clock()) || !finalCall || finalCall.id !== call.id) return denied()
@@ -380,13 +407,14 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       if (input.action === "order") {
         const orderOrganizationId = config.orderOrganizationId
         if (!orderOrganizationId || !dependencies.saveOrder) return searchResponse({ status: "orders_disabled" })
-        const saved = await dependencies.saveOrder({ ...config, orderOrganizationId }, call, phoneOrderCatalog(catalog), input.lines, input.pharmacy)
+        const saved = await dependencies.saveOrder({ ...config, orderOrganizationId }, finalCall, phoneOrderCatalog(catalog), input.lines,
+          input.pharmacy, { seq: input.seq, afterCall: finalCall.endedAt !== null })
         if (saved.status === "already_reviewed") return searchResponse({ status: "already_reviewed", orderNumber: phoneOrderLabel(saved.number) })
         return searchResponse({ status: "saved", orderNumber: phoneOrderLabel(saved.number), changed: saved.changed,
           total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced })
       }
       if (input.action === "transfer") {
-        const status = isLineGrant(config) && dependencies.requestTransfer
+        const status = isLineGrant(config) && dependencies.requestTransfer && call.endedAt === null
           ? await dependencies.requestTransfer(config, call) : "unavailable"
         console.log("[zeytun-line] transfer", JSON.stringify({ status }))
         return searchResponse({ status, ...(status === "transferring" ? { say: ZEYTUN_TRANSFER_PHRASE } : {}) })

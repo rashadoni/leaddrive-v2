@@ -202,6 +202,33 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(await admin.pharmacyPhoneOrderLine.count()).toBe(1)
   })
 
+  // Owner, 2026-10-28: «станция досылает заказ, если CRM не ответила».
+  it("keeps the call's newest list against a late or repeated send, and never a manager's change after the call", async () => {
+    const send = (seq: number, lines: Parameters<typeof save>[1]["lines"], afterCall = false) => save(app as unknown as PrismaClient, {
+      organizationId: ZEYTUN, providerCallId: callId(3), callStartedAt: "2026-10-24T06:42:00.000Z",
+      callerPhoneE164: PHONE, identification: "test_call", catalog: CATALOG, lines, seq, afterCall })
+    const lines = async () => (await admin.pharmacyPhoneOrderLine.findMany({ orderBy: { position: "asc" } })).map(line => [line.spokenText, line.quantity])
+    await send(2, LIST)
+    // An older save that arrives later, and the same save again, change nothing.
+    expect(await send(1, [LIST[0]])).toMatchObject({ status: "saved", changed: false, total: "125.00", notFound: [LIST[2].spoken] })
+    expect(await send(2, LIST)).toMatchObject({ status: "saved", changed: false })
+    expect(await lines()).toHaveLength(3)
+    // The end of the call already told everyone; the station delivers a longer list after it.
+    await admin.pharmacyPhoneOrder.updateMany({ data: { managerNotice: { status: "sent" }, pharmacyReceipt: { status: "sent" } } })
+    expect(await send(3, [{ ...LIST[0], quantity: 15 }, LIST[1], LIST[2]], true)).toMatchObject({ status: "saved", changed: true, revision: 2, total: "187.50" })
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(3) }, include: { lines: { orderBy: { position: "asc" } } } })
+    expect([order.managerNotice, order.pharmacyReceipt, order.stationSeq, order.stationRevision]).toEqual([null, null, 3, 2])
+    // A manager changes it; a later delivery for the same call leaves the change alone.
+    expect((await patch(order.id, { action: "set_quantity", revision: 2, lineId: order.lines[0].id, quantity: 4 })).status).toBe(200)
+    expect(await send(4, [LIST[0]], true)).toEqual({ status: "already_reviewed", number: order.number })
+    expect(await lines()).toEqual([[LIST[0].spoken, 4], [LIST[1].spoken, 5], [LIST[2].spoken, 3]])
+    // An order saved only after its call is created as usual.
+    const created = await save(app as unknown as PrismaClient, { organizationId: ZEYTUN, providerCallId: callId(5),
+      callStartedAt: "2026-10-24T06:42:00.000Z", callerPhoneE164: PHONE, identification: "test_call", catalog: CATALOG,
+      lines: LIST, seq: 1, afterCall: true })
+    expect(created).toMatchObject({ status: "saved", created: true, number: order.number + 1 })
+  })
+
   it("numbers eight calls that end at once without a gap or a repeat", async () => {
     const results = await Promise.all(Array.from({ length: 8 }, (_, i) => saveCall(10 + i, [LIST[0]])))
     const numbers = results.map(result => result.number).sort()

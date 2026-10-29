@@ -5,7 +5,8 @@ import { runWithTenant } from "../../rls-context"
 import { readPrivate } from "./zeytun-private-file"
 import { ZeytunAvailableBalances } from "./zeytun-available-balances"
 import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
-import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies } from "./zeytun-inbound-pilot"
+import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies,
+  type InboundPilotOrderCall } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
 import { savePhoneOrderFromCall } from "./phone-orders"
 import { requestAiHandoff } from "../../voip/inbound-handoff"
@@ -38,6 +39,9 @@ export function createInboundPilotHost(options: {
   holdsLine?: (organizationId: string, channelConfigId: string) => Promise<boolean>
   /** Whether the organization's managers can take calls in the CRM browser. */
   transferAvailable?: (organizationId: string) => Promise<boolean>
+  /** Tell the managers and the pharmacy about an order the station delivered
+   * after the call ended (call-lifecycle did it at the end, without it). */
+  announceOrder?: (organizationId: string, providerCallId: string) => Promise<unknown>
 }): InboundPilotDependencies {
   // The rehearsal belongs to the installation's default organization. The
   // line runs where its number is: owner, 2026-10-26 («переноси линию Зейтуна
@@ -68,12 +72,12 @@ export function createInboundPilotHost(options: {
       .map((client) => ({ guid: client.counterpartyGuid, name: client.name, address: client.address || null }))
   }
   // The rehearsal binds its grant to one call; the line claims each call apart.
-  const claimPath = (config: InboundPilotConfig, call: InboundPilotCall) => join(dirname(options.configFile),
+  const claimPath = (config: InboundPilotConfig, call: InboundPilotOrderCall) => join(dirname(options.configFile),
     isLineGrant(config) ? `line-${config.id}-${call.providerCallId}.claim` : `inbound-${config.id}.claim`)
-  const claimValue = (config: InboundPilotConfig, call: InboundPilotCall) => ({
+  const claimValue = (config: InboundPilotConfig, call: InboundPilotOrderCall) => ({
     grantDigest: inboundPilotDigest(config), callId: call.providerCallId, callLogId: call.id,
   })
-  const isClaimed = async (config: InboundPilotConfig, call: InboundPilotCall) => {
+  const isClaimed = async (config: InboundPilotConfig, call: InboundPilotOrderCall) => {
     try { return JSON.stringify(await readPrivate(claimPath(config, call), 2048)) === JSON.stringify(claimValue(config, call)) }
     catch { return false }
   }
@@ -95,6 +99,26 @@ export function createInboundPilotHost(options: {
     }, { isolationLevel: "ReadCommitted", maxWait: CALL_TX_MAX_WAIT_MS, timeout: CALL_TX_TIMEOUT_MS }))
     return rows.length === 1 && rows[0].id === call.id
   }
+  // The pilot's caller is the owner's test participant: the order is
+  // marked a test call and names no pharmacy (shared numbers in 1C cannot
+  // identify one). The number is the grant's, which the call matched.
+  const saveFromCall = async (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotOrderCall,
+    base: Omit<Parameters<typeof savePhoneOrderFromCall>[1], "callerPhoneE164" | "identification">, pharmacy?: string) => {
+    if (!isLineGrant(config)) {
+      return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: config.testPhoneE164, identification: "test_call" })
+    }
+    // The 1C pharmacy when the number names one the caller did not
+    // contradict, or the one of a shared number the caller named; a name
+    // matching nothing in 1C is kept as said, never as a 1C pharmacy.
+    const caller = callerNumber(call.fromNumber)
+    const identity = identifyPharmacy(await findPharmacies(config, caller).catch(() => []), pharmacy)
+    // The agent saves after every line; the managers hear of the order
+    // when the call ends (call-lifecycle → announceCallOrder).
+    return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
+      ...("pharmacy" in identity
+        ? { pharmacyName: identity.pharmacy.name, pharmacyGuid: identity.pharmacy.guid, pharmacyAddress: identity.pharmacy.address }
+        : "spoken" in identity ? { pharmacyName: identity.spoken } : {}) })
+  }
   return {
     async loadConfig() {
       if (!options.configFile) return null
@@ -107,7 +131,7 @@ export function createInboundPilotHost(options: {
       const rows = await runWithTenant(config.organizationId, () => options.database.$transaction(async tx => {
         await tx.$queryRaw`SELECT set_config('app.org_id', ${config.organizationId}, true),
           set_config('app.rls_bypass', 'off', true), set_config('statement_timeout', '1500ms', true), set_config('lock_timeout', '500ms', true)`
-        return tx.$queryRaw<Array<Omit<InboundPilotCall, "startedAt"> & { startedAt: Date }>>`
+        return tx.$queryRaw<Array<Omit<InboundPilotCall, "startedAt" | "endedAt"> & { startedAt: Date; endedAt: Date | null }>>`
           WITH candidates AS (
             SELECT id, "organizationId", "channelConfigId", "providerCallId", provider, direction, "callMode", status,
               "wasAnswered", "endedAt", "startedAt", "fromNumber", "targetPhoneE164", "handoffState"
@@ -121,7 +145,8 @@ export function createInboundPilotHost(options: {
         `
       }, { isolationLevel: "ReadCommitted", maxWait: CALL_TX_MAX_WAIT_MS, timeout: CALL_TX_TIMEOUT_MS }))
       if (rows.length !== 1 || !(rows[0].startedAt instanceof Date)) return null
-      return { ...rows[0], startedAt: rows[0].startedAt.toISOString() }
+      const endedAt = rows[0].endedAt
+      return { ...rows[0], startedAt: rows[0].startedAt.toISOString(), endedAt: endedAt instanceof Date ? endedAt.toISOString() : endedAt }
     },
     async loadCatalog(config) {
       const key = inboundPilotDigest(config)
@@ -170,26 +195,17 @@ export function createInboundPilotHost(options: {
     isClaimed,
     findPharmacies,
     ...(options.orders ? {
-      // The pilot's caller is the owner's test participant: the order is
-      // marked a test call and names no pharmacy (shared numbers in 1C cannot
-      // identify one). The number is the grant's, which the call matched.
-      saveOrder: async (config, call, catalog, lines, pharmacy) => {
+      saveOrder: async (config, call, catalog, lines, pharmacy, delivery) => {
         const base = { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
-          callStartedAt: call.startedAt, catalog, lines }
-        if (!isLineGrant(config)) {
-          return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: config.testPhoneE164, identification: "test_call" })
+          callStartedAt: call.startedAt, catalog, lines, seq: delivery?.seq, afterCall: delivery?.afterCall === true }
+        const saved = await saveFromCall(config, call, base, pharmacy)
+        // The end of the call announced the order as it was then (or found
+        // none): a list delivered later is announced again, as it now is.
+        if (base.afterCall && saved.status === "saved" && saved.changed && options.announceOrder) {
+          void options.announceOrder(config.orderOrganizationId, call.providerCallId)
+            .catch((error: unknown) => console.warn("[zeytun-line] late order notice failed", error instanceof Error ? error.name : typeof error))
         }
-        // The 1C pharmacy when the number names one the caller did not
-        // contradict, or the one of a shared number the caller named; a name
-        // matching nothing in 1C is kept as said, never as a 1C pharmacy.
-        const caller = callerNumber(call.fromNumber)
-        const identity = identifyPharmacy(await findPharmacies(config, caller).catch(() => []), pharmacy)
-        // The agent saves after every line; the managers hear of the order
-        // when the call ends (call-lifecycle → announceCallOrder).
-        return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
-          ...("pharmacy" in identity
-            ? { pharmacyName: identity.pharmacy.name, pharmacyGuid: identity.pharmacy.guid, pharmacyAddress: identity.pharmacy.address }
-            : "spoken" in identity ? { pharmacyName: identity.spoken } : {}) })
+        return saved
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
     ...(options.orders && options.transferAvailable ? {

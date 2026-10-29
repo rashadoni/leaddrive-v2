@@ -36,7 +36,8 @@ def build(source, bridge):
             early["thread"].start()
             asked = time.monotonic()
             try:
-                self.pharmacy_bridge = ZeytunInboundBridge(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, self.call_id)
+                self.pharmacy_bridge = ZeytunInboundBridge(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, self.call_id,
+                    spool=zeytun_order_spool(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, latency))
                 pilot = self.pharmacy_bridge.open()
             except Exception:
                 self._pharmacy_drop_early(early)
@@ -213,6 +214,13 @@ def build(source, bridge):
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:
         replace(phrase, phrase.replace('self.is_demo_call', '(self.is_demo_call or self.pharmacy_preview)'))
+    # Owner, 2026-10-28: the station resends an order the CRM did not answer.
+    # Started with the service, so what a previous run left is sent before
+    # the first call after a restart.
+    replace('    logging.info("Fanum Voice Core listening on %s:%s",HOST,PORT)\n',
+            '    if os.environ.get("ZEYTUN_INBOUND_PILOT_ENABLED") == "1":\n'
+            '        zeytun_order_spool(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, latency)\n'
+            '    logging.info("Fanum Voice Core listening on %s:%s",HOST,PORT)\n')
     ast.parse(text)
     return text.encode("utf-8")
 
