@@ -44,6 +44,10 @@ export type PhoneOrderSaveInput = {
   pharmacyAddress?: string | null
   catalog: PhoneOrderCatalog
   lines: PhoneOrderLineInput[]
+  /** The station's number for this save of the call (1, 2, ...); absent from an older station. */
+  seq?: number
+  /** The call had ended: the station is delivering a save the CRM did not answer in time. */
+  afterCall?: boolean
 }
 
 export type PhoneOrderSaveResult =
@@ -91,6 +95,12 @@ function sameLines(before: Array<Omit<ResolvedLine, "unitPrice" | "lineTotal"> &
  * order per call: a repeated save from the same call replaces the lines while
  * the order still waits for review, and is refused once a manager confirmed
  * or rejected it — the call can no longer change what a person decided on.
+ *
+ * The station resends a save the CRM did not answer, also after the call
+ * (owner, 2026-10-28). A save older than the one the order holds (seq) leaves
+ * it as it is; a save after the call is refused once a manager changed the
+ * order, and one that changes the list clears the end-of-call messages, so
+ * the managers and the pharmacy get the list as it now is.
  */
 export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrderSaveInput): Promise<PhoneOrderSaveResult> {
   if (input.lines.length < 1 || input.lines.length > PHONE_ORDER_MAX_LINES) throw new Error("invalid_order_lines")
@@ -115,22 +125,38 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       unpriced: lines.filter(line => line.status === "resolved" && !line.lineTotal).map(line => line.spokenText),
       notFound: lines.filter(line => line.status === "not_found").map(line => line.spokenText),
     }
+    const seq = input.seq ?? null
     if (existing) {
       if (existing.status !== "pending_review") return { status: "already_reviewed" as const, number: existing.number }
+      if (input.afterCall && existing.revision !== existing.stationRevision) return { status: "already_reviewed" as const, number: existing.number }
+      if (seq !== null && existing.stationSeq !== null && seq <= existing.stationSeq) {
+        const held = existing.lines
+        return { status: "saved" as const, orderId: existing.id, number: existing.number, revision: existing.revision,
+          created: false, changed: false, total: existing.totalAmount.toFixed(2), currency: "AZN" as const,
+          priced: held.filter(line => line.lineTotal).length,
+          unpriced: held.filter(line => line.status === "resolved" && !line.lineTotal).map(line => line.spokenText),
+          notFound: held.filter(line => line.status === "not_found").map(line => line.spokenText) }
+      }
       if (sameLines(existing.lines.map(line => ({ ...line, status: line.status as ResolvedLine["status"] })), lines)) {
+        if (seq !== null) await tx.pharmacyPhoneOrder.update({ where: { id: existing.id }, data: { stationSeq: seq } })
         return { status: "saved" as const, orderId: existing.id, number: existing.number, revision: existing.revision,
           created: false, changed: false, ...summary }
       }
-      await tx.pharmacyPhoneOrderLine.deleteMany({ where: { orderId: existing.id, organizationId: orgId } })
-      await tx.pharmacyPhoneOrderLine.createMany({ data: lineRows.map(line => ({ ...line, orderId: existing.id })) })
-      const updated = await tx.pharmacyPhoneOrder.update({
-        where: { id: existing.id },
+      // Claimed at the revision read above: a manager's change since then
+      // (possible once the call is over) wins over the call's list.
+      const bumped = await tx.pharmacyPhoneOrder.updateMany({
+        where: { id: existing.id, organizationId: orgId, revision: existing.revision, status: "pending_review" },
         data: { ...(input.pharmacyName ? { pharmacyName: input.pharmacyName, pharmacyIdentification: input.identification,
             pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null, companyId: company?.id ?? null } : {}),
           totalAmount: total, revision: { increment: 1 }, catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey,
-          catalogVersion: input.catalog.version, catalogObservedAt: new Date(input.catalog.observedAt) },
+          catalogVersion: input.catalog.version, catalogObservedAt: new Date(input.catalog.observedAt),
+          stationSeq: seq, stationRevision: existing.revision + 1,
+          ...(input.afterCall ? { managerNotice: Prisma.DbNull, pharmacyReceipt: Prisma.DbNull } : {}) },
       })
-      return { status: "saved" as const, orderId: updated.id, number: updated.number, revision: updated.revision,
+      if (bumped.count !== 1) return { status: "already_reviewed" as const, number: existing.number }
+      await tx.pharmacyPhoneOrderLine.deleteMany({ where: { orderId: existing.id, organizationId: orgId } })
+      await tx.pharmacyPhoneOrderLine.createMany({ data: lineRows.map(line => ({ ...line, orderId: existing.id })) })
+      return { status: "saved" as const, orderId: existing.id, number: existing.number, revision: existing.revision + 1,
         created: false, changed: true, ...summary }
     }
     const last = await tx.pharmacyPhoneOrder.aggregate({ where: { organizationId: orgId }, _max: { number: true } })
@@ -143,6 +169,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
         pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null, companyId: company?.id ?? null,
         catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey, catalogVersion: input.catalog.version,
         catalogObservedAt: new Date(input.catalog.observedAt), totalAmount: total,
+        stationSeq: seq, stationRevision: 1,
         lines: { create: lineRows },
       },
     })

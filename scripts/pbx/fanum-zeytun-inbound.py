@@ -8,6 +8,7 @@ import array
 import base64
 from decimal import Decimal
 import json
+import os
 import re
 import threading
 import time
@@ -477,6 +478,239 @@ class ZeytunSpeechRelay:
             self._emit(content)
 
 
+def zeytun_post_json(url, token, body, timeout):
+    req = urllib.request.Request(url,
+        data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}, method="POST")
+    with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout) as response:
+        raw = response.read(32769)
+        if len(raw) > 32768:
+            raise ZeytunPilotUnavailable("pilot_response_too_large")
+        return json.loads(raw)
+
+
+def zeytun_retryable(error):
+    """A CRM that did not answer (network, timeout, 5xx, 429), as opposed to one that said no."""
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code in (408, 425, 429) or error.code >= 500
+    return not isinstance(error, ZeytunPilotUnavailable)
+
+
+def zeytun_failure(error):
+    return "http_%d" % error.code if isinstance(error, urllib.error.HTTPError) else type(error).__name__
+
+
+class ZeytunOrderSpool:
+    """The order list waits on the station's disk until the CRM has it.
+
+    Owner, 2026-10-28 («станция досылает заказ, если CRM не ответила»): the
+    agent saves the whole list after every line, and a save the CRM did not
+    answer was gone with the call. Each save is written here first, one file
+    per call (the newer list replaces the older), and removed once the CRM
+    answers. A thread of the core resends what is left, during the call and
+    after it, for a day. The CRM keeps a call's newest list by its seq, so a
+    late or repeated send never brings an older list back.
+    """
+    DIRECTORY = "/var/spool/zeytun-phone-orders"
+    RETRY_SECONDS = (10, 20, 30, 60)
+    KEEP_SECONDS = 24 * 3600
+    MAX_FILES = 500
+    TICK_SECONDS = 5
+    POST_TIMEOUT_SECONDS = 10
+
+    def __init__(self, directory, post, clock=time.time, log=None):
+        self.directory = directory
+        self.failed = os.path.join(directory, "failed")
+        self.post = post
+        self.clock = clock
+        self.log = log or (lambda status, call_id=None, **fields: None)
+        self.lock = threading.Lock()
+        # callId -> (next attempt, attempts so far). A list just kept waits
+        # one interval: its own save is still on the way to the CRM.
+        self.retry = {}
+        self.wake = threading.Event()
+        self.thread = None
+        try:
+            os.makedirs(self.failed, mode=0o700, exist_ok=True)
+            self.ready = all(os.access(path, os.W_OK | os.X_OK) for path in (directory, self.failed))
+        except OSError:
+            self.ready = False
+
+    def _path(self, call_id):
+        return os.path.join(self.directory, str(uuid.UUID(call_id)) + ".json")
+
+    def _read(self, path):
+        """The kept entry, None when there is none; raises on a file that is not one."""
+        try:
+            with open(path, "rb") as handle:
+                raw = handle.read(65537)
+        except FileNotFoundError:
+            return None
+        value = json.loads(raw) if len(raw) <= 65536 else None
+        order = ZeytunInboundBridge.order_request(value.get("order")) if isinstance(value, dict) else None
+        if (order is None or value.get("v") != 1 or type(value.get("seq")) is not int or value["seq"] < 1
+                or type(value.get("keptAt")) not in (int, float)
+                or value.get("callId") != os.path.basename(path)[:-len(".json")]):
+            raise ValueError("invalid_spool_entry")
+        return {"callId": value["callId"], "seq": value["seq"], "keptAt": value["keptAt"], "order": order}
+
+    def _sync_directory(self):
+        fd = os.open(self.directory, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def keep(self, call_id, seq, order):
+        """Write the call's list before the CRM is asked; False when it is not on disk."""
+        if not self.ready:
+            return False
+        path = self._path(call_id)
+        data = json.dumps({"v": 1, "callId": call_id, "seq": seq, "keptAt": self.clock(), "order": order},
+                          ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        temporary = os.path.join(self.directory, ".%s.%s.tmp" % (call_id, uuid.uuid4().hex))
+        with self.lock:
+            try:
+                try:
+                    current = self._read(path)
+                except Exception:
+                    current = None
+                if current is not None and current["seq"] >= seq:
+                    return True
+                if not os.path.exists(path) and sum(1 for n in os.listdir(self.directory) if n.endswith(".json")) >= self.MAX_FILES:
+                    self.log("full", call_id)
+                    return False
+                fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                try:
+                    view = memoryview(data)
+                    while view:
+                        view = view[os.write(fd, view):]
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+                os.replace(temporary, path)
+                self._sync_directory()
+                self.retry[call_id] = (self.clock() + self.RETRY_SECONDS[0], self.retry.get(call_id, (0, 0))[1])
+                return True
+            except Exception as error:
+                try:
+                    os.unlink(temporary)
+                except OSError:
+                    pass
+                self.log("write_failed", call_id, error_type=type(error).__name__)
+                return False
+
+    def settle(self, call_id, seq):
+        """The CRM answered the list `seq`: an entry no newer than it is done."""
+        if not self.ready:
+            return
+        path = self._path(call_id)
+        with self.lock:
+            try:
+                current = self._read(path)
+            except Exception:
+                current = {"seq": seq}
+            if current is not None and current["seq"] <= seq:
+                try:
+                    os.unlink(path)
+                except FileNotFoundError:
+                    pass
+                self.retry.pop(call_id, None)
+
+    def _fail(self, name, call_id, reason):
+        """Set aside an entry the CRM refused or that outlived the day; never resent."""
+        with self.lock:
+            source = os.path.join(self.directory, name)
+            try:
+                if sum(1 for _ in os.listdir(self.failed)) < self.MAX_FILES:
+                    os.replace(source, os.path.join(self.failed, "%d-%s" % (int(self.clock()), name)))
+                else:
+                    os.unlink(source)
+            except OSError:
+                pass
+            if call_id:
+                self.retry.pop(call_id, None)
+        self.log("failed", call_id, reason=reason)
+
+    def drain_once(self):
+        if not self.ready:
+            return
+        try:
+            names = sorted(name for name in os.listdir(self.directory) if name.endswith(".json"))
+        except OSError:
+            return
+        for name in names[:100]:
+            now = self.clock()
+            try:
+                with self.lock:
+                    entry = self._read(os.path.join(self.directory, name))
+                    due, attempts = self.retry.get(entry["callId"], (0, 0)) if entry else (0, 0)
+            except Exception:
+                self._fail(name, None, "invalid_entry")
+                continue
+            if entry is None or now < due:
+                continue
+            call_id = entry["callId"]
+            if now - entry["keptAt"] > self.KEEP_SECONDS:
+                self._fail(name, call_id, "expired")
+                continue
+            try:
+                value = self.post({"action": "order", "callId": call_id, "seq": entry["seq"], **entry["order"]})
+            except Exception as error:
+                if not zeytun_retryable(error):
+                    self._fail(name, call_id, zeytun_failure(error))
+                    continue
+                with self.lock:
+                    if os.path.exists(os.path.join(self.directory, name)):
+                        self.retry[call_id] = (now + self.RETRY_SECONDS[min(attempts, len(self.RETRY_SECONDS) - 1)], attempts + 1)
+                self.log("retry", call_id, attempt=attempts + 1, reason=zeytun_failure(error))
+                continue
+            saved = ZeytunInboundBridge.safe_saved(value)
+            if saved["status"] == "not_saved":
+                self._fail(name, call_id, "not_saved")
+                continue
+            self.settle(call_id, entry["seq"])
+            self.log("delivered", call_id, attempt=attempts + 1, seq=entry["seq"], order=saved["status"],
+                     orderNumber=saved["orderNumber"])
+
+    def start(self):
+        with self.lock:
+            if self.thread is None and self.ready:
+                self.thread = threading.Thread(target=self._run, name="zeytun-order-spool", daemon=True)
+                self.thread.start()
+        return self
+
+    def _run(self):
+        while True:
+            try:
+                self.drain_once()
+            except Exception as error:
+                self.log("drain_error", None, error_type=type(error).__name__)
+            self.wake.wait(self.TICK_SECONDS)
+            self.wake.clear()
+
+
+_ZEYTUN_ORDER_SPOOL = None
+_ZEYTUN_ORDER_SPOOL_LOCK = threading.Lock()
+
+
+def zeytun_order_spool(runtime_url, token, log):
+    """The core's one spool, started once; None when the CRM is not the line's."""
+    global _ZEYTUN_ORDER_SPOOL
+    with _ZEYTUN_ORDER_SPOOL_LOCK:
+        if _ZEYTUN_ORDER_SPOOL is None:
+            try:
+                url = ZeytunInboundBridge.endpoints(runtime_url, token)[0]
+            except ZeytunPilotUnavailable:
+                return None
+            spool = ZeytunOrderSpool(os.environ.get("ZEYTUN_ORDER_SPOOL_DIR") or ZeytunOrderSpool.DIRECTORY,
+                lambda body: zeytun_post_json(url, token, body, ZeytunOrderSpool.POST_TIMEOUT_SECONDS),
+                log=lambda status, call_id=None, **fields: log("zeytun_order_spool", call_id, status=status, **fields))
+            log("zeytun_order_spool", None, status="ready" if spool.ready else "unavailable", dir=spool.directory)
+            _ZEYTUN_ORDER_SPOOL = spool.start()
+        return _ZEYTUN_ORDER_SPOOL
+
+
 class ZeytunInboundBridge:
     NAME = "search_pharmacy_catalog"
     # Owner, 2026-10-23: the agent must total the order ("не может цены
@@ -534,22 +768,28 @@ class ZeytunInboundBridge:
         "мазь", "гель", "крем", "спрей", "саше", "флакон", "упаковка", "коробка", "штук",
     )
 
-    def __init__(self, runtime_url, token, call_id, request=None, clock=None, announce_answered=None):
+    @staticmethod
+    def endpoints(runtime_url, token):
+        """The line's CRM addresses, derived only from the pinned runtime URL."""
         parsed = urllib.parse.urlsplit(runtime_url)
         if (parsed.scheme != "https" or parsed.hostname != "app.leaddrivecrm.org"
                 or parsed.port not in (None, 443) or parsed.username or parsed.password
                 or parsed.path != "/api/internal/voice-agent/runtime-config"
                 or parsed.query or parsed.fragment or not token):
             raise ZeytunPilotUnavailable("pilot_transport_unavailable")
-        self.url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc,
-            "/api/internal/voice-agent/pharmacy-inbound", "", ""))
-        self.lifecycle_url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc,
-            "/api/internal/asterisk/call-lifecycle", "", ""))
+        return (urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/api/internal/voice-agent/pharmacy-inbound", "", "")),
+                urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/api/internal/asterisk/call-lifecycle", "", "")))
+
+    def __init__(self, runtime_url, token, call_id, request=None, clock=None, announce_answered=None, spool=None):
+        self.url, self.lifecycle_url = self.endpoints(runtime_url, token)
         self.call_id = str(uuid.UUID(call_id))
         self.token = token
         self.clock = clock or time.time
         self.request = request or self._request
         self.announce_answered = announce_answered or self._announce_answered
+        # Where a save waits when the CRM does not answer it (ZeytunOrderSpool).
+        self.spool = spool
+        self.order_seq = 0
         self.lock = threading.Lock()
         self.pending = {}
         self.workers = threading.BoundedSemaphore(2)
@@ -583,14 +823,7 @@ class ZeytunInboundBridge:
                                else self.LOOKUP_TIMEOUT_SECONDS)
 
     def _post_json(self, url, body, timeout=2):
-        req = urllib.request.Request(url,
-            data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
-            headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"}, method="POST")
-        with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout) as response:
-            raw = response.read(32769)
-            if len(raw) > 32768:
-                raise ZeytunPilotUnavailable("pilot_response_too_large")
-            return json.loads(raw)
+        return zeytun_post_json(url, self.token, body, timeout)
 
     def _announce_answered(self):
         # This bridge is opened only after accepting the call's AudioSocket.
@@ -675,7 +908,7 @@ class ZeytunInboundBridge:
                                 "unit": {"type": "STRING", "description": "The unit of that quantity: qutu, ədəd, flakon, ..."}},
                  "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}},
             {"name": self.SAVE_NAME,
-             "description": "Record the caller's list for Zeytun's manager to check. Call it after every line that is settled, with the whole list so far, and once more when the caller has nothing to add. Include every line, resolved or not. Returns orderNumber when saved.",
+             "description": "Record the caller's list for Zeytun's manager to check. Call it after every line that is settled, with the whole list so far, and once more when the caller has nothing to add. Include every line, resolved or not. Returns orderNumber when saved, or queued when the line keeps the list and delivers it to the manager itself.",
              "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
                  "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup; omit when the product was not resolved."},
                                 "quantity": {"type": "INTEGER", "description": "Whole number, in the unit the caller said."},
@@ -904,6 +1137,26 @@ class ZeytunInboundBridge:
             notes[key] = items
         return {"status": "saved", "orderNumber": number, "total": total, "currency": "AZN", **notes}
 
+    def save_order(self, args):
+        """One save: kept on the station's disk, then sent. A CRM that does not
+        answer leaves it kept, and the model hears queued: the spool delivers
+        it. A CRM that answers, yes or no, settles it."""
+        with self.lock:
+            self.order_seq += 1
+            seq = self.order_seq
+        kept = self.spool is not None and self.spool.keep(self.call_id, seq, args)
+        try:
+            value = self.request({"action": "order", "callId": self.call_id, "seq": seq, **args})
+        except Exception as error:
+            if kept and zeytun_retryable(error):
+                return {"status": "queued"}
+            if kept:
+                self.spool.settle(self.call_id, seq)
+            return {"status": "not_saved"}
+        if kept:
+            self.spool.settle(self.call_id, seq)
+        return self.safe_saved(value)
+
     def safe_transfer(self, value):
         """Transferring only with the exact phrase this session was given."""
         if (isinstance(value, dict) and value.get("status") == "transferring"
@@ -983,7 +1236,7 @@ class ZeytunInboundBridge:
                     if transferring:
                         result = self.safe_transfer(self.request({"action": "transfer", "callId": self.call_id}))
                     elif saving:
-                        result = self.safe_saved(self.request({"action": "order", "callId": self.call_id, **args}))
+                        result = self.save_order(args)
                     else:
                         result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
                 except Exception:

@@ -23494,6 +23494,10 @@ model PharmacyPhoneOrder {
   totalAmount            Decimal      @db.Decimal(14, 2)
   /// Bumped by every save from the call and every manager edit.
   revision               Int          @default(1)
+  /// The newest station save of the call this order holds (its seq); an older one is ignored.
+  stationSeq             Int?
+  /// The revision the station's last save left; another revision means a manager changed the order.
+  stationRevision        Int?
   confirmedById          String?
   confirmedAt            DateTime?
   rejectedById           String?

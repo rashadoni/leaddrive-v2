@@ -449,6 +449,64 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect((f.saveOrder.mock.calls[0] as unknown[])[4]).toBe("Zəfər Aptek")
   })
 
+  // Owner, 2026-10-28: «станция досылает заказ, если CRM не ответила».
+  describe("a list the station delivers after the call", () => {
+    const lines = [{ quantity: 2, unit: "qutu", spoken: "iki qutu" }]
+    const ended = (endedAgo: number, extra: Record<string, unknown> = {}) => ({ ...pharmacyCall, status: "completed",
+      endedAt: new Date(now - endedAgo).toISOString(), ...extra })
+    const late = (seq?: number) => request({ action: "order", callId: call.providerCallId, lines, ...(seq ? { seq } : {}) })
+
+    it("is taken for a day after the call, numbered, and marked as after the call", async () => {
+      const f = lineFixture()
+      f.dependencies.loadCall.mockImplementation(async () => structuredClone(ended(23 * 3600_000)))
+      const response = await f.handle(late(4))
+      expect(await response.json()).toMatchObject({ status: "saved", orderNumber: "TS-1001" })
+      expect((f.saveOrder.mock.calls[0] as unknown[])[5]).toEqual({ seq: 4, afterCall: true })
+      expect(f.dependencies.isClaimed).toHaveBeenCalled()
+    })
+
+    it("a call a manager took after the transfer still takes the agent's list", async () => {
+      const f = lineFixture()
+      f.dependencies.loadCall.mockImplementation(async () => structuredClone(ended(60_000, { callMode: "human", handoffState: "connected" })))
+      expect((await f.handle(late(2))).status).toBe(200)
+    })
+
+    it("a live call's save carries its number and is not marked as after the call", async () => {
+      const f = lineFixture()
+      await f.handle(late(3))
+      expect((f.saveOrder.mock.calls[0] as unknown[])[5]).toEqual({ seq: 3, afterCall: false })
+    })
+
+    it("is refused without a number, after a day, unanswered, unclaimed, or for anything but a list", async () => {
+      const cases: Array<[unknown, Request, boolean?]> = [
+        [ended(60_000), late()],
+        [ended(24 * 3600_000 + 1), late(2)],
+        [ended(60_000, { wasAnswered: false }), late(2)],
+        [ended(60_000, { status: "no_answer" }), late(2)],
+        [ended(60_000), late(2), false],
+        [ended(60_000), search()],
+        [ended(60_000), request({ action: "transfer", callId: call.providerCallId })],
+      ]
+      for (const [record, body, claimed] of cases) {
+        const f = lineFixture()
+        f.dependencies.loadCall.mockImplementation(async () => structuredClone(record))
+        if (claimed === false) f.dependencies.isClaimed.mockResolvedValue(false)
+        expect((await f.handle(body)).status).toBe(403)
+        expect(f.saveOrder).not.toHaveBeenCalled()
+      }
+      // A session for a call that is over never claims it again.
+      const f = lineFixture()
+      f.dependencies.loadCall.mockImplementation(async () => structuredClone(ended(60_000)))
+      await f.handle(request())
+      expect(f.dependencies.claim).not.toHaveBeenCalled()
+    })
+
+    it("tells the agent what to say when the station keeps the list itself", () => {
+      expect(ZEYTUN_LINE_PROMPT).toContain("If it returns queued, say the same without a number.")
+      expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(BRIDGE.promptChars)
+    })
+  })
+
   describe("handing the call to a manager in the CRM browser", () => {
     // Owner, 2026-10-27: «переводить на менеджеров Зейтуна в браузере CRM, как обычный входящий».
     const transfer = () => request({ action: "transfer", callId: call.providerCallId })
