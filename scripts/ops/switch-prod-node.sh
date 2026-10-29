@@ -7,8 +7,10 @@
 #                                  processes do not come up healthy on 24
 #   switch-prod-node.sh rollback   back to the saved Node 20 package
 #
-# Run as root on the production host. From the dev box:
-#   ssh -i ~/.ssh/leaddrive_prod_2026_09_09 root@13.140.132.245 'bash -s apply' < scripts/ops/switch-prod-node.sh
+# Run as root on the production host, through switch-prod-node-remote.sh from
+# the dev box (it detaches the run from the connection). Production was switched
+# with it on 2026-10-28 (20.20.2 -> 24.22.2); `rollback` returns to the package
+# saved then in /var/backups/leaddrive/node20-rollback.
 #
 # Why 24: from Node 24 AsyncLocalStorage runs on AsyncContextFrame instead of an
 # async_hooks PromiseHook that runs on every promise — ~20% of the web thread's

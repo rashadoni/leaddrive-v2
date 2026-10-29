@@ -94,7 +94,9 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20"
+  # Production runs Node 24 since 2026-10-28 (scripts/ops/switch-prod-node.sh),
+  # so the artifact is built and tested on the runtime that will execute it.
+  NODE_VERSION: "24"
   EXPECTED_PRODUCTION_HOST: "13.140.132.245"
   DEPLOY_TARGET_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume' && inputs.bootstrap_resume_sha || github.sha }}
   # This is deliberately non-production material. Historical source is
