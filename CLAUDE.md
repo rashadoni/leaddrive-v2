@@ -160,6 +160,13 @@
   `ms` обработчика, `queuedMs` — сколько запрос ждал до обработчика (по
   заголовку nginx `X-Request-Start`), `proc`. Новый маршрут для станции —
   под эти два префикса и в обёртку `withStationTiming`.
+- **Прод на Node 24 с 2026-10-28** (nodesource apt, все процессы pm2), сборка
+  деплоя и проверки PR — тоже на 24. Node ставится на хосте пакетом, а не из
+  артефакта: менять мажор — `scripts/ops/switch-prod-node-remote.sh
+  check|apply|rollback` с dev-бокса, в тихий час (перезапуск всех процессов
+  pm2, ~30 с без веба и линии). Пакет Node 20 для отката лежит в
+  `/var/backups/leaddrive/node20-rollback`, журнал —
+  `/var/log/leaddrive-node-switch.log`.
 - Приложение — PWA: после деплоя пользователи могут видеть старый UI из кэша
   service worker'а — это не баг деплоя (лечится жёстким обновлением).
 - Шаги «Verify … scheduler» дёргают на проде `cron-trigger.sh`. У него локальный
