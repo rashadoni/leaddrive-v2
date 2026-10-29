@@ -21,7 +21,7 @@ function dependencies(overrides: { catalogAgeMs?: number; config?: unknown; call
     state,
     loadConfig: vi.fn(async () => ("config" in overrides ? overrides.config : structuredClone(line))),
     loadCatalog: vi.fn(async () => catalog),
-    loadCall: vi.fn(overrides.call ?? (async () => null)),
+    loadCall: vi.fn(async (_config: unknown, _callId: string): Promise<unknown> => (overrides.call ? overrides.call() : null)),
     clock: () => state.now,
   }
 }
@@ -81,7 +81,7 @@ describe("the line watch", () => {
     expect(refused[0].detail).toContain("каталог Зейтуна")
     expect(refused[0].detail).not.toContain("база")
     expect(watch.evaluate({ ...ready, body: { ...ready.body, proc: "web" } }).map((p: { id: string }) => p.id)).toEqual(["line-on-web"])
-    expect(watch.evaluate({ ...ready, ms: 3500 }).map((p: { id: string }) => [p.id, p.severity])).toEqual([["line-slow", "warning"]])
+    expect(watch.evaluate({ ...ready, ms: 3500 }).map((p: { id: string; severity: string }) => [p.id, p.severity])).toEqual([["line-slow", "warning"]])
   })
 
   it("tells a problem after two passes, reminds hourly while the line is down, and tells its end after two clean passes", () => {
