@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto"
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto"
 import { z } from "zod"
 import { readJsonRequestWithinLimit } from "../../request-body-limit"
 import { zeytunBalanceQuerySchema } from "./zeytun-available-balances"
@@ -308,6 +308,46 @@ function endedCall(raw: unknown, config: InboundPilotConfig, callId: string, now
   return age >= -60_000 && age <= LATE_ORDER_WINDOW_MS ? parsed.data : null
 }
 
+/** The grant's own catalog, live and at most a day old: otherwise every lookup is refused. */
+function catalogServes(catalog: InboundPilotCatalog, config: InboundPilotConfig, now: number) {
+  const age = now - Date.parse(catalog.observedAt)
+  return catalog.organizationId === config.approvedSource.organizationId && catalog.scopeKey === config.approvedSource.scopeKey &&
+    (isLineGrant(config) || catalog.version === config.approvedSource.catalogVersion) && catalog.source === "live" &&
+    Number.isFinite(age) && age >= 0 && age <= 24 * 60 * 60_000
+}
+
+export type LineHealth = { ok: boolean; checks: { grant: boolean; catalog: boolean; database: boolean } }
+/**
+ * Whether the line would take a call now (owner, 2026-10-28: «сторож линии с
+ * сообщением в Telegram»): the same three things a call needs before the agent
+ * says a word — an active line grant, its catalog live and at most a day old,
+ * and the call lookup in the database (a random call id: the query runs and
+ * finds nothing). Only the three answers leave the process. One check per ten
+ * seconds whoever asks; the watch asks once a minute.
+ */
+export function createLineHealthCheck(dependencies: Pick<InboundPilotDependencies, "loadConfig" | "loadCatalog" | "loadCall" | "clock">) {
+  const clock = dependencies.clock ?? Date.now
+  let last: { at: number; value: Promise<LineHealth> } | null = null
+  const check = async (): Promise<LineHealth> => {
+    const checks = { grant: false, catalog: false, database: false }
+    try {
+      const parsed = inboundPilotConfigSchema.safeParse(await dependencies.loadConfig())
+      const config = parsed.success ? parsed.data : null
+      checks.grant = config !== null && isLineGrant(config) && active(config, clock())
+      if (config && checks.grant) {
+        const [catalog, call] = await Promise.allSettled([dependencies.loadCatalog(config), dependencies.loadCall(config, randomUUID())])
+        checks.catalog = catalog.status === "fulfilled" && catalogServes(catalog.value, config, clock())
+        checks.database = call.status === "fulfilled"
+      }
+    } catch { /* a check that threw stays false */ }
+    return { ok: checks.grant && checks.catalog && checks.database, checks }
+  }
+  return () => {
+    if (!last || clock() - last.at >= 10_000) last = { at: clock(), value: check() }
+    return last.value
+  }
+}
+
 /** Inbound-only owner rehearsal. No CRM subject lookup: shared phone numbers
  * cannot identify an actual pharmacy. The ordinary customer handler stays strict.
  * Only catalog labels leave this boundary; no price, stock, history or order API.
@@ -375,10 +415,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         return input.action === "session" && !ours ? searchResponse({ enabled: false }) : denied()
       }
       const catalog = await dependencies.loadCatalog(config)
-      const age = clock() - Date.parse(catalog.observedAt)
-      if (catalog.organizationId !== config.approvedSource.organizationId || catalog.scopeKey !== config.approvedSource.scopeKey ||
-          (!isLineGrant(config) && catalog.version !== config.approvedSource.catalogVersion) || catalog.source !== "live" ||
-          !Number.isFinite(age) || age < 0 || age > 24 * 60 * 60_000) return denied()
+      if (!catalogServes(catalog, config, clock())) return denied()
       // Recheck after awaits: a config edit/removal revokes this exact grant.
       const latest = inboundPilotConfigSchema.safeParse(await dependencies.loadConfig())
       if (!latest.success || inboundPilotDigest(latest.data) !== inboundPilotDigest(config) || !active(config, clock())) return denied()

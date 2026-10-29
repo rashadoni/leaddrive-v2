@@ -166,6 +166,8 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
   "/api/internal/voice-agent/control-plane-test",
   "/api/internal/voice-agent/maintenance-attestation",
   "/api/internal/voice-agent/pharmacy-inbound",
+  // The line watch: no token, only yes/no answers (route comment).
+  "/api/internal/voice-agent/line-health",
   VOICE_AGENT_RUNTIME_CONFIG_PATH,
   VOICE_AGENT_CALL_RESULT_PATH,
   VOICE_AGENT_CALL_SOURCE_PATH,
