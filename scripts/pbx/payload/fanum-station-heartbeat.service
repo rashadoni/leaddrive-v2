@@ -1,0 +1,23 @@
+[Unit]
+Description=Tell the CRM this PBX station is there (trunk, voice program)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/lib/fanum-voice/fanum-station-heartbeat.py
+
+[Service]
+Type=oneshot
+User=asterisk
+Group=asterisk
+UMask=0077
+ExecStart=/usr/local/lib/fanum-voice/fanum-station-heartbeat.py
+TimeoutStartSec=40s
+NoNewPrivileges=yes
+PrivateTmp=yes
+# full, not strict: `asterisk -rx` and `systemctl is-active` talk over sockets in /run.
+ProtectSystem=full
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=yes

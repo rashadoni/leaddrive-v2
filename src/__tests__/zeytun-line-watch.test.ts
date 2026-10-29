@@ -1,8 +1,10 @@
-import { readFileSync } from "node:fs"
+import { chmodSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
 
 import { createLineHealthCheck, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { loadStationReport, recordStationHeartbeat, stationState } from "@/lib/voice-agent/pharmacy/station-heartbeat"
 import * as watch from "../../scripts/zeytun-line/watch.mjs"
 
 // Owner, 2026-10-28: «сторож линии с сообщением в Telegram».
@@ -29,13 +31,13 @@ function dependencies(overrides: { catalogAgeMs?: number; config?: unknown; call
 describe("whether the line would take a call now", () => {
   it("is ready with an active grant, a fresh live catalog and a database that answers", async () => {
     const d = dependencies()
-    expect(await createLineHealthCheck(d)()).toEqual({ ok: true, checks: { grant: true, catalog: true, database: true } })
+    expect(await createLineHealthCheck(d)()).toEqual({ ok: true, checks: { grant: true, catalog: true, database: true }, station: null })
     // The call lookup ran with a call id nobody has.
     expect(d.loadCall.mock.calls[0]?.[1]).toMatch(/^[0-9a-f-]{36}$/)
   })
 
   it("names what is missing: no grant, a stale catalog, a database that fails", async () => {
-    expect(await createLineHealthCheck(dependencies({ config: null }))()).toEqual({ ok: false, checks: { grant: false, catalog: false, database: false } })
+    expect(await createLineHealthCheck(dependencies({ config: null }))()).toEqual({ ok: false, checks: { grant: false, catalog: false, database: false }, station: null })
     expect((await createLineHealthCheck(dependencies({ catalogAgeMs: 25 * 3600_000 }))()).checks).toEqual({ grant: true, catalog: false, database: true })
     expect((await createLineHealthCheck(dependencies({ call: async () => { throw new Error("db") } }))()).checks)
       .toEqual({ grant: true, catalog: true, database: false })
@@ -61,6 +63,41 @@ describe("whether the line would take a call now", () => {
     const route = readFileSync(join(process.cwd(), "src/app/api/internal/voice-agent/line-health/route.ts"), "utf8")
     expect(route).toContain("{ ...health, proc: processRole() }")
     expect(readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8")).toContain('"/api/internal/voice-agent/line-health"')
+  })
+})
+
+// Owner, 2026-10-29: the watch could not see the station behind Fanum's VPN.
+describe("the station's once-a-minute report", () => {
+  it("is kept next to the grant, readable only by the app, and read back as one word", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "station-heartbeat-"))
+    chmodSync(dir, 0o700)
+    const grant = join(dir, "inbound-grant.json")
+    try {
+      expect(await loadStationReport(grant)).toBeNull()
+      await recordStationHeartbeat({ trunkRegistered: true, voiceActive: true }, new Date(now), grant)
+      const report = await loadStationReport(grant)
+      expect(report).toEqual({ trunkRegistered: true, voiceActive: true, at: new Date(now).toISOString() })
+      expect(stationState(report, now + 60_000)).toBe("ok")
+      expect(stationState(report, now + 3 * 60_000 + 1)).toBe("silent")
+      await recordStationHeartbeat({ trunkRegistered: false, voiceActive: true }, new Date(now), grant)
+      expect(stationState(await loadStationReport(grant), now)).toBe("trunk_down")
+      await recordStationHeartbeat({ trunkRegistered: true, voiceActive: false }, new Date(now), grant)
+      expect(stationState(await loadStationReport(grant), now)).toBe("voice_down")
+    } finally { rmSync(dir, { recursive: true, force: true }) }
+  })
+
+  it("reaches the line health answer; a report that cannot be read is a silent station", async () => {
+    const d = dependencies()
+    const report = { trunkRegistered: false, voiceActive: true, at: new Date(now).toISOString() }
+    expect((await createLineHealthCheck({ ...d, loadStation: async () => report })()).station).toBe("trunk_down")
+    expect((await createLineHealthCheck({ ...d, loadStation: async () => { throw new Error("perm") } })()).station).toBe("silent")
+  })
+
+  it("is a station route: timed, reachable without a session, same token", () => {
+    const route = readFileSync(join(process.cwd(), "src/app/api/internal/asterisk/station-heartbeat/route.ts"), "utf8")
+    expect(route).toContain('withStationTiming("station-heartbeat"')
+    expect(route).toContain("FANUM_VOICE_RUNTIME_TOKEN")
+    expect(readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8")).toContain('"/api/internal/asterisk/station-heartbeat"')
   })
 })
 
@@ -105,6 +142,22 @@ describe("the line watch", () => {
     expect(pass(down, now + 4000_000)).toEqual([])
     expect(pass([], now + 4060_000)).toEqual([])
     expect(state.incidents).toEqual({})
+  })
+
+  it("alarms on a silent station, a lost trunk or a stopped voice program, and not before the first report", () => {
+    for (const [station, id] of [["silent", "station-silent"], ["trunk_down", "station-trunk"], ["voice_down", "station-voice"]]) {
+      expect(watch.evaluate({ ...ready, body: { ...ready.body, station } }).map((p: { id: string; severity: string }) => [p.id, p.severity]))
+        .toEqual([[id, "critical"]])
+    }
+    expect(watch.evaluate({ ...ready, body: { ...ready.body, station: null } })).toEqual([])
+    expect(watch.evaluate({ ...ready, body: { ...ready.body, station: "ok" } })).toEqual([])
+  })
+
+  it("the backup stands by while the workstation's heartbeat is fresh, and says so when it is not", () => {
+    expect(watch.primarySilence(now - 11 * 60_000, now)).toBeNull()
+    expect(watch.primarySilence(now - 13 * 60_000, now)).toMatchObject({ id: "primary-watch-silent", severity: "critical" })
+    expect(watch.primarySilence(Number.NaN, now)?.detail).toContain("с момента установки")
+    expect(watch.BACKUP_PREFIX).toBe("[запасной сторож] ")
   })
 
   it("asks the line by the station's road, and reads a timeout as no answer", async () => {

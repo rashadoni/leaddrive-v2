@@ -1103,6 +1103,15 @@ describe("middleware", async () => {
     expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("webhook:voice-agent-runtime:7.7.7.8")
   })
 
+  it("lets the station's heartbeat reach its bearer check without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/internal/asterisk/station-heartbeat", method: "POST", auth: null, headers: { "x-real-ip": "7.7.7.9" },
+    }))
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+  })
+
   it("keeps paths adjacent to the pharmacy pilot route behind a session", async () => {
     const req = makeReq({
       pathname: "/api/internal/voice-agent/pharmacy-inbound/debug",

@@ -1,0 +1,12 @@
+# Installed by scripts/zeytun-line/install-backup-watch.sh.
+[Unit]
+Description=Run the backup Zeytun line watch every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:40
+AccuracySec=5s
+Persistent=false
+Unit=ld-line-backup-watch.service
+
+[Install]
+WantedBy=timers.target
