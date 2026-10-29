@@ -255,3 +255,44 @@ export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, 
     return record(result.ok ? { status: "sent", kind, at: at(), messageId: result.id } : { status: "failed", kind, at: at(), error: result.error })
   })
 }
+
+/* ─── Meta refuses a message after accepting it ────────────────────── */
+
+/**
+ * Meta answers a send with a message id and only later, on the webhook, says
+ * whether it was delivered. Owner's call 2026-10-29: both messages of TS-1005
+ * were accepted, then failed 10 s later («Business eligibility payment
+ * issue», 131042), and the card kept saying "sent". A failure for a message
+ * one of the order's notices sent turns that notice into failed, with Meta's
+ * code; the card shows it in red like any other failure.
+ */
+export async function recordPhoneOrderMessageFailure(db: PrismaClient, orgId: string, messageId: string, code: unknown, now = new Date()) {
+  const error = `meta_${typeof code === "number" || typeof code === "string" ? String(code).slice(0, 16) : "unknown"}`
+  return runWithTenant(orgId, async () => {
+    let changed = 0
+    const managers = await db.pharmacyPhoneOrder.findMany({
+      where: { organizationId: orgId, managerNotice: { path: ["messageIds"], array_contains: [messageId] } },
+      select: { id: true, managerNotice: true },
+    })
+    for (const order of managers) {
+      const notice = order.managerNotice as { status?: unknown; sent?: unknown } | null
+      if (notice?.status !== "sent") continue
+      const sent = typeof notice.sent === "number" ? Math.max(0, notice.sent - 1) : 0
+      changed += (await db.pharmacyPhoneOrder.updateMany({ where: { id: order.id, organizationId: orgId },
+        data: { managerNotice: { status: "failed", at: now.toISOString(), error, sent } } })).count
+    }
+    for (const column of ["pharmacyReceipt", "pharmacyNotice"] as const) {
+      const orders = await db.pharmacyPhoneOrder.findMany({
+        where: { organizationId: orgId, [column]: { path: ["messageId"], equals: messageId } },
+        select: { id: true, [column]: true },
+      }) as Array<{ id: string } & Record<typeof column, unknown>>
+      for (const order of orders) {
+        const previous = order[column] as { status?: unknown; kind?: unknown } | null
+        if (previous?.status !== "sent") continue
+        changed += (await db.pharmacyPhoneOrder.updateMany({ where: { id: order.id, organizationId: orgId },
+          data: { [column]: { status: "failed", at: now.toISOString(), error, ...(previous.kind ? { kind: previous.kind } : {}) } } })).count
+      }
+    }
+    return changed
+  })
+}

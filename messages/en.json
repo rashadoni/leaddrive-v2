@@ -31402,6 +31402,7 @@
     "historyPharmacyConfirmedSent": "The pharmacy got the confirmation on WhatsApp",
     "historyPharmacyRejectedSent": "The pharmacy got the refusal on WhatsApp",
     "historyPharmacyFailed": "The WhatsApp message to the pharmacy did not go through",
+    "historyMetaPayment": "Meta did not deliver it: a payment problem on the WhatsApp Business account (Billing in Meta Business).",
     "historyPharmacyNoNumber": "The caller's number is not a phone number — nothing sent to the pharmacy",
     "historyPharmacyOff": "WhatsApp is not connected — nothing sent to the pharmacy",
     "historyNoticeNoRecipient": "No manager number set — no WhatsApp message was sent",

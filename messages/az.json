@@ -31398,6 +31398,7 @@
     "historyPharmacyConfirmedSent": "Aptekə WhatsApp-da təsdiq getdi",
     "historyPharmacyRejectedSent": "Aptekə WhatsApp-da imtina getdi",
     "historyPharmacyFailed": "Aptekə WhatsApp mesajı getmədi",
+    "historyMetaPayment": "Meta çatdırmadı: WhatsApp hesabının ödənişində problem var (Meta Business-də «Hesablar və ödəniş»).",
     "historyPharmacyNoNumber": "Zəng edənin nömrəsi telefon nömrəsi deyil — aptekə heç nə getmədi",
     "historyPharmacyOff": "WhatsApp qoşulmayıb — aptekə heç nə getmədi",
     "historyNoticeNoRecipient": "Menecerin nömrəsi göstərilməyib — WhatsApp mesajı getmədi",
