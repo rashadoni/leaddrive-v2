@@ -534,6 +534,24 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.callLog.deleteMany({})
   })
 
+  // TS-1005, 2026-10-29: Meta accepted both messages, then refused them (131042) and the card said "sent".
+  it("turns a notice Meta refused after accepting it into failed, with Meta's code", async () => {
+    const { recordPhoneOrderMessageFailure } = await import("@/lib/pharmacy-orders/manager-notice")
+    await saveCall(43, LIST)
+    await admin.pharmacyPhoneOrder.updateMany({ where: { providerCallId: callId(43) }, data: {
+      managerNotice: { status: "sent", at: "2026-10-29T13:14:48.775Z", sent: 1, messageIds: ["wamid.M"] },
+      pharmacyReceipt: { status: "sent", at: "2026-10-29T13:14:49.477Z", messageId: "wamid.R" } } })
+    const at = new Date("2026-10-29T13:14:59.000Z")
+    // Another organization's webhook, or a message no order sent, changes nothing.
+    expect(await recordPhoneOrderMessageFailure(app as unknown as PrismaClient, OTHER, "wamid.M", 131042, at)).toBe(0)
+    expect(await recordPhoneOrderMessageFailure(app as unknown as PrismaClient, ZEYTUN, "wamid.other", 131042, at)).toBe(0)
+    expect(await recordPhoneOrderMessageFailure(app as unknown as PrismaClient, ZEYTUN, "wamid.M", 131042, at)).toBe(1)
+    expect(await recordPhoneOrderMessageFailure(app as unknown as PrismaClient, ZEYTUN, "wamid.R", 131042, at)).toBe(1)
+    const row = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(43) } })
+    expect(row.managerNotice).toEqual({ status: "failed", at: at.toISOString(), error: "meta_131042", sent: 0 })
+    expect(row.pharmacyReceipt).toEqual({ status: "failed", at: at.toISOString(), error: "meta_131042" })
+  })
+
   it("tells the pharmacy of the manager's decision once, on the number it called from", async () => {
     const { notifyPharmacyOfDecision } = await import("@/lib/pharmacy-orders/manager-notice")
     await saveCall(50, LIST)

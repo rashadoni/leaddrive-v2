@@ -26,9 +26,9 @@ type Order = {
   catalog: { version: string; observedAt: string }
   total: string; currency: string
   confirmedAt: string | null; confirmedBy: string | null; rejectedAt: string | null; rejectedBy: string | null; rejectReason: string | null
-  managerNotice: { status?: string; at?: string } | null
-  pharmacyReceipt: { status?: string; at?: string } | null
-  pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string } | null
+  managerNotice: { status?: string; at?: string; error?: string } | null
+  pharmacyReceipt: { status?: string; at?: string; error?: string } | null
+  pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string; error?: string } | null
   lines: Line[]
 }
 type CatalogItem = { externalId: string; itemCode: string; name: string; price: { amount: string; per: string } | null }
@@ -219,7 +219,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
             <HistoryRow at={order.callStartedAt} locale={locale}>{t("historyCalled")}</HistoryRow>
             <HistoryRow at={order.createdAt} locale={locale}>{t("historySaved")}</HistoryRow>
             {noticeStatus === "sent" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-emerald-600">{t("historyNoticeSent")}</span></HistoryRow> : null}
-            {noticeStatus === "failed" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-red-600">{t("historyNoticeFailed")}</span></HistoryRow> : null}
+            {noticeStatus === "failed" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-red-600">{t("historyNoticeFailed")}</span><FailureReason error={order.managerNotice?.error} /></HistoryRow> : null}
             {noticeStatus === "no_recipient" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeNoRecipient")}</span></HistoryRow> : null}
             {noticeStatus === "not_connected" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeOff")}</span></HistoryRow> : null}
             <PharmacyReceiptRow receipt={order.pharmacyReceipt} locale={locale} />
@@ -263,7 +263,7 @@ function PharmacyReceiptRow({ receipt, locale }: { receipt: Order["pharmacyRecei
     : receipt.status === "failed" ? [t("historyPharmacyFailed"), "text-red-600"]
     : receipt.status === "no_number" ? [t("historyPharmacyNoNumber"), "text-muted-foreground"]
     : [t("historyPharmacyOff"), "text-muted-foreground"]
-  return <HistoryRow at={receipt.at} locale={locale}><span className={colour}>{text}</span></HistoryRow>
+  return <HistoryRow at={receipt.at} locale={locale}><span className={colour}>{text}</span>{receipt.status === "failed" ? <FailureReason error={receipt.error} /> : null}</HistoryRow>
 }
 
 /** What happened to the pharmacy's WhatsApp message about the decision. */
@@ -275,7 +275,13 @@ function PharmacyNoticeRow({ notice, locale }: { notice: Order["pharmacyNotice"]
     : notice.status === "failed" ? [t("historyPharmacyFailed"), "text-red-600"]
     : notice.status === "no_number" ? [t("historyPharmacyNoNumber"), "text-muted-foreground"]
     : [t("historyPharmacyOff"), "text-muted-foreground"]
-  return <HistoryRow at={notice.at} locale={locale}><span className={colour}>{text}</span></HistoryRow>
+  return <HistoryRow at={notice.at} locale={locale}><span className={colour}>{text}</span>{notice.status === "failed" ? <FailureReason error={notice.error} /> : null}</HistoryRow>
+}
+
+/** Meta's reason, when it is one the manager can act on (131042: the WhatsApp account's payment). */
+function FailureReason({ error }: { error: string | undefined }) {
+  const t = useTranslations("pharmacyPhoneOrders")
+  return error === "meta_131042" ? <span className="block text-xs text-muted-foreground">{t("historyMetaPayment")}</span> : null
 }
 
 function HistoryRow({ at, locale, children }: { at: string | undefined; locale: string; children: React.ReactNode }) {

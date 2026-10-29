@@ -31402,6 +31402,7 @@
     "historyPharmacyConfirmedSent": "Аптеке ушло подтверждение в WhatsApp",
     "historyPharmacyRejectedSent": "Аптеке ушёл отказ в WhatsApp",
     "historyPharmacyFailed": "Сообщение аптеке в WhatsApp не ушло",
+    "historyMetaPayment": "Meta не доставила: проблема с оплатой WhatsApp-аккаунта («Счета и оплата» в Meta Business).",
     "historyPharmacyNoNumber": "Номер звонящего не телефонный — аптеке ничего не ушло",
     "historyPharmacyOff": "WhatsApp не подключён — аптеке ничего не ушло",
     "historyNoticeNoRecipient": "Номер менеджера не указан — сообщение в WhatsApp не ушло",

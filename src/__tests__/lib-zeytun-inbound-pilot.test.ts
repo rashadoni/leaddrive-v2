@@ -335,6 +335,13 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("read it back once in Azerbaijani letters, even if written in Cyrillic, and ask if it is the one")
     expect(ZEYTUN_LINE_PROMPT).toContain("take it only after a clear yes")
     expect(ZEYTUN_INBOUND_PROMPT).toContain("never the nearest name")
+    // Owner's call 2026-10-29 (TS-1005): the promotion went unsaid, "numero dos" passed for yes,
+    // ampoules were written after "cream", prices came unasked, the pharmacy kept its case ending.
+    expect(ZEYTUN_LINE_PROMPT).toContain("say the offer in that same reply")
+    expect(ZEYTUN_LINE_PROMPT).toContain("an unclear or unrelated answer is not a yes: ask again")
+    expect(ZEYTUN_LINE_PROMPT).toContain("if they named two different forms, ask which one before writing it")
+    expect(ZEYTUN_LINE_PROMPT).toContain("never unasked when confirming a line")
+    expect(ZEYTUN_LINE_PROMPT).toContain("in its base form without case endings")
   })
 
   it("allows a call the station's own ceiling, not the rehearsal's five minutes", async () => {
