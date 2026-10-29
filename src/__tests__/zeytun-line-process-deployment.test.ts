@@ -254,6 +254,8 @@ esac`)
     stub("sleep", "exit 0")
     const upstream = join(dir, "upstream.conf")
     writeFileSync(upstream, readFileSync(join(ROOT, "ops/nginx/leaddrive-station-upstream.conf"), "utf8").replace(":3004 max_fails", ":3003 max_fails"))
+    const web = join(dir, "web-upstream.conf")
+    writeFileSync(web, readFileSync(join(ROOT, "ops/nginx/leaddrive-web-upstream.conf"), "utf8"))
     const state = join(dir, "active-port")
     if (options.activePort) writeFileSync(state, `${options.activePort}\n`)
     const script = [
@@ -263,7 +265,7 @@ esac`)
       `LINE_PM2_PROCESS=leaddrive-v2-line`, `LINE_PORT=3003`,
       `LINE_SLOT_A_PROCESS=leaddrive-v2-line-a`, `LINE_SLOT_B_PROCESS=leaddrive-v2-line-b`,
       `LINE_SLOT_A_PORT=3004`, `LINE_SLOT_B_PORT=3005`,
-      `LINE_RELEASES_DIR="${app}/line-releases"`, `LINE_ACTIVE_PORT_FILE="${state}"`, `LINE_NGINX_UPSTREAM="${upstream}"`,
+      `LINE_RELEASES_DIR="${app}/line-releases"`, `LINE_ACTIVE_PORT_FILE="${state}"`, `LINE_NGINX_UPSTREAM="${upstream}"`, `WEB_NGINX_UPSTREAM="${web}"`,
       step7c,
       `echo "STATUS $LINE_STATUS"`,
     ].join("\n")
@@ -272,6 +274,7 @@ esac`)
       out: run.stdout + run.stderr,
       calls: readFileSync(calls, "utf8").split("\n").filter(Boolean),
       upstream: readFileSync(upstream, "utf8"),
+      web: readFileSync(web, "utf8"),
       state: existsSync(state) ? readFileSync(state, "utf8").trim() : "",
       releases: existsSync(join(app, "line-releases")) ? readdirSync(join(app, "line-releases")) : [],
     }
@@ -287,6 +290,9 @@ esac`)
     expect(order("systemctl reload nginx")).toBeGreaterThan(order("zeytun-line-warm"))
     expect(order("pm2 delete leaddrive-v2-line-a")).toBeGreaterThan(order("systemctl reload nginx"))
     expect(run.upstream).toMatch(/^    server 127\.0\.0\.1:3005 max_fails=1 fail_timeout=5s;$/m)
+    // People's pages fall back to the slot that is live now, never the one just deleted.
+    expect(run.web).toMatch(/^    server 127\.0\.0\.1:3005 backup; # line slot$/m)
+    expect(run.web).toMatch(/^    server 127\.0\.0\.1:3001 max_fails=1 fail_timeout=3s;$/m)
     expect(run.state).toBe("3005")
     expect(run.releases).toEqual(["abc1234-b"])
   })
@@ -307,6 +313,7 @@ esac`)
     expect(run.calls).not.toContain("pm2 delete leaddrive-v2-line-a")
     expect(run.calls.some((c) => c.startsWith("systemctl"))).toBe(false)
     expect(run.upstream).toMatch(/:3003 max_fails/)
+    expect(run.web).toMatch(/:3004 backup; # line slot/)
     expect(run.state).toBe("3004")
     expect(run.releases).toEqual([])
   })

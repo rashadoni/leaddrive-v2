@@ -7,6 +7,7 @@ import { openingForCandidates, type PharmacyCandidate } from "./zeytun-pharmacy-
 import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type PhoneOrderCatalog,
   type PhoneOrderLineInput, type PhoneOrderSaveResult } from "./phone-orders"
 import { SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
+import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 
 const id = z.string().trim().min(1).max(128)
 const hash = z.string().regex(/^[a-f0-9]{64}$/)
@@ -316,16 +317,18 @@ function catalogServes(catalog: InboundPilotCatalog, config: InboundPilotConfig,
     Number.isFinite(age) && age >= 0 && age <= 24 * 60 * 60_000
 }
 
-export type LineHealth = { ok: boolean; checks: { grant: boolean; catalog: boolean; database: boolean } }
+export type LineHealth = { ok: boolean; checks: { grant: boolean; catalog: boolean; database: boolean }; station: StationState }
 /**
  * Whether the line would take a call now (owner, 2026-10-28: «сторож линии с
  * сообщением в Telegram»): the same three things a call needs before the agent
  * says a word — an active line grant, its catalog live and at most a day old,
  * and the call lookup in the database (a random call id: the query runs and
  * finds nothing). Only the three answers leave the process. One check per ten
- * seconds whoever asks; the watch asks once a minute.
+ * seconds whoever asks; the watch asks once a minute. `station` is the PBX's
+ * own last report (station-heartbeat.ts): null until it first reported.
  */
-export function createLineHealthCheck(dependencies: Pick<InboundPilotDependencies, "loadConfig" | "loadCatalog" | "loadCall" | "clock">) {
+export function createLineHealthCheck(dependencies: Pick<InboundPilotDependencies, "loadConfig" | "loadCatalog" | "loadCall" | "clock">
+  & { loadStation?: () => Promise<StationReport | null> }) {
   const clock = dependencies.clock ?? Date.now
   let last: { at: number; value: Promise<LineHealth> } | null = null
   const check = async (): Promise<LineHealth> => {
@@ -340,7 +343,10 @@ export function createLineHealthCheck(dependencies: Pick<InboundPilotDependencie
         checks.database = call.status === "fulfilled"
       }
     } catch { /* a check that threw stays false */ }
-    return { ok: checks.grant && checks.catalog && checks.database, checks }
+    // A report that cannot be read is a station nobody can vouch for.
+    const station = dependencies.loadStation
+      ? await dependencies.loadStation().then(report => stationState(report, clock()), (): StationState => "silent") : null
+    return { ok: checks.grant && checks.catalog && checks.database, checks, station }
   }
   return () => {
     if (!last || clock() - last.at >= 10_000) last = { at: clock(), value: check() }

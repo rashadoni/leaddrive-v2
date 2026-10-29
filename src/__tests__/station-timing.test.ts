@@ -86,7 +86,7 @@ describe("every route the station calls is timed", () => {
   it.each([
     "asterisk/call-lifecycle", "asterisk/inbound-browser-ready", "asterisk/inbound-handoff",
     "voice-agent/pharmacy-inbound", "voice-agent/runtime-config", "voice-agent/call-result",
-    "voice-agent/call-source", "voice-agent/call-continuation",
+    "voice-agent/call-source", "voice-agent/call-continuation", "asterisk/station-heartbeat",
   ])("%s", (route) => {
     const source = readFileSync(join(process.cwd(), "src/app/api/internal", route, "route.ts"), "utf8")
     expect(source).toMatch(new RegExp(`export const (GET|POST) = withStationTiming\\("${route.split("/")[1]}", `))

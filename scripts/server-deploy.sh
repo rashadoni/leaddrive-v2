@@ -43,6 +43,8 @@ LINE_SLOT_B_PORT=3005
 LINE_RELEASES_DIR="$APP_DIR/line-releases"
 LINE_ACTIVE_PORT_FILE="/var/lib/leaddrive-v2/line-active-port"
 LINE_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-station-upstream.conf"
+# People's pages fall back to the line's live slot while the web restarts.
+WEB_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-web-upstream.conf"
 PM2_HOME="/root/.pm2"
 # Production health and the PM2 fence are bound to one canonical name/port.
 # Never let an ambient CI variable rename the process or move it off the port
@@ -253,7 +255,7 @@ assert_dotenv_key_allowed() {
     JOBS_PM2_PROCESS|JOBS_HEALTH_URL|PM2_JOBS_NAME|JOBS_PORT|\
     LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|LINE_SLOT|LINE_RELEASE_DIR|\
     LINE_SLOT_A_PROCESS|LINE_SLOT_B_PROCESS|LINE_SLOT_A_PORT|LINE_SLOT_B_PORT|\
-    LINE_RELEASES_DIR|LINE_ACTIVE_PORT_FILE|LINE_NGINX_UPSTREAM|\
+    LINE_RELEASES_DIR|LINE_ACTIVE_PORT_FILE|LINE_NGINX_UPSTREAM|WEB_NGINX_UPSTREAM|\
     DEFAULT_RUNTIME_DIR|DEFAULT_LOG_DIR|RUNTIME_DIR|RUNTIME_UPLOADS_DIR|\
     RUNTIME_STATE_DIR|RUNTIME_ARCHIVE_DIR|LOG_DIR|HELP_VIDEO_ASSET_DIR_DEFAULT|\
     HELP_VIDEO_RUNTIME_ROOT|VOICE_OPERATOR_STATE_DIR_RESOLVED|OPS_ROOT|\
@@ -9220,6 +9222,7 @@ for warm_route in \
   "POST /api/internal/asterisk/call-lifecycle" \
   "POST /api/internal/asterisk/inbound-handoff" \
   "POST /api/internal/asterisk/inbound-browser-ready" \
+  "POST /api/internal/asterisk/station-heartbeat" \
   "POST /api/internal/voice-agent/pharmacy-inbound" \
   "POST /api/internal/voice-agent/call-result" \
   "GET /api/internal/voice-agent/runtime-config" \
@@ -9387,19 +9390,26 @@ line_ready() {
 # installed (scripts/nginx-install-station-routes.sh); elsewhere the station is
 # answered by the web app and there is nothing to switch.
 line_point_nginx() {
-  local port="$1" backup
+  local port="$1" backup web_backup=""
   [ -f "$LINE_NGINX_UPSTREAM" ] || return 0
   grep -Eq '^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$' "$LINE_NGINX_UPSTREAM" \
     || { log "WARNING: $LINE_NGINX_UPSTREAM has no primary server line to switch"; return 1; }
   backup="$(mktemp /tmp/leaddrive-station-upstream.XXXXXX)" || return 1
   cp -p "$LINE_NGINX_UPSTREAM" "$backup"
   sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$|    server 127.0.0.1:${port} max_fails=1 fail_timeout=5s;|" "$LINE_NGINX_UPSTREAM"
+  # The web's backup follows the same slot: the old one is deleted below.
+  if [ -n "${WEB_NGINX_UPSTREAM:-}" ] && [ -f "$WEB_NGINX_UPSTREAM" ]; then
+    web_backup="$(mktemp /tmp/leaddrive-web-upstream.XXXXXX)" || { cp -p "$backup" "$LINE_NGINX_UPSTREAM"; rm -f "$backup"; return 1; }
+    cp -p "$WEB_NGINX_UPSTREAM" "$web_backup"
+    sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ backup; # line slot$|    server 127.0.0.1:${port} backup; # line slot|" "$WEB_NGINX_UPSTREAM"
+  fi
   if ! nginx -t >/dev/null 2>&1; then
     cp -p "$backup" "$LINE_NGINX_UPSTREAM"; rm -f "$backup"
+    if [ -n "$web_backup" ]; then cp -p "$web_backup" "$WEB_NGINX_UPSTREAM"; rm -f "$web_backup"; fi
     log "WARNING: nginx -t refused the station upstream on :$port; restored"
     return 1
   fi
-  rm -f "$backup"
+  rm -f "$backup" ${web_backup:+"$web_backup"}
   # A reload is graceful: old workers finish the requests they hold.
   systemctl reload nginx || { log "WARNING: nginx reload failed"; return 1; }
 }
