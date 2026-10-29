@@ -134,6 +134,25 @@ def build(source, bridge):
             recovering=lambda: bool(self.reconnecting or self.fresh_recovery_waiting_for_audio
                                     or self.fresh_recovery_input_fenced))
 
+    def _pharmacy_tool_progress(self):
+        # Owner's call 2026-10-29: the caller interrupted, the agent looked the
+        # product up instead of speaking, and the 2 s "resume progress"
+        # watchdog took the live session for wedged and tore it down (new
+        # session, a recovery phrase in another voice, then two more drops).
+        # A tool call is the model working on the answer it owes.
+        timer = None
+        with self.state_lock:
+            if not self.resume_progress_pending:
+                return
+            self.resume_progress_epoch += 1
+            self.resume_progress_pending = False
+            self.resume_progress_waiting_for_speech = False
+            self.resume_progress_ws = None
+            self.resume_progress_pcm_floor = None
+            timer, self.resume_progress_timer = self.resume_progress_timer, None
+        self._cancel_timer(timer)
+        latency("realtime_response_progress", self.call_id, status="tool_call", engine="gemini_live")
+
     def _send_pharmacy_result(self, active_ws, expected_epoch, payload):
         with self.gemini_event_lock:
             with self.state_lock:
@@ -152,6 +171,8 @@ def build(source, bridge):
                 and self.ws is active_ws and self.gemini_ws_epoch == epoch)
             send = lambda payload: self._send_pharmacy_result(active_ws, epoch, payload)
             if self.pharmacy_bridge.handle(event, send, current):
+                if "toolCall" in event:
+                    self._pharmacy_tool_progress()
                 return
             relay = self._pharmacy_speech_relay()
             if relay is not None and relay.filter(event, epoch):
@@ -214,6 +235,11 @@ def build(source, bridge):
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:
         replace(phrase, phrase.replace('self.is_demo_call', '(self.is_demo_call or self.pharmacy_preview)'))
+    # A pharmacy answer is voiced by the TTS relay, ~1 s after the model's
+    # text: the 2 s bound left one second for the model itself. The core
+    # already caps the bound at 5 s.
+    replace("            min(5.0, GEMINI_LIVE_RESUME_PROGRESS_TIMEOUT_SECONDS),\n",
+            "            min(5.0, 5.0 if self.pharmacy_preview else GEMINI_LIVE_RESUME_PROGRESS_TIMEOUT_SECONDS),\n")
     # Owner, 2026-10-28: the station resends an order the CRM did not answer.
     # Started with the service, so what a previous run left is sent before
     # the first call after a restart.

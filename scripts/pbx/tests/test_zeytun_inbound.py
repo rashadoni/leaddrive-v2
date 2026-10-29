@@ -1030,7 +1030,7 @@ class ArtifactTests(unittest.TestCase):
         new_methods = {node.name: node for node in changed["GeminiLiveSession"].body if isinstance(node, ast.FunctionDef)}
         differences = {name for name in old_methods if ast.dump(old_methods[name]) != ast.dump(new_methods[name])}
         allowed = {"__init__", "start", "_setup_event", "_handle_current_gemini_event",
-                   "_fresh_recovery_prompt", "_fresh_recovery_event"}
+                   "_fresh_recovery_prompt", "_fresh_recovery_event", "_arm_resume_progress_watchdog"}
         # Recovery method names are discovered from the pinned source; assert
         # their changed content is confined to the four neutral-wording checks.
         # The deadline loop changes only its two farewell waits, for pharmacy calls.
@@ -1045,7 +1045,16 @@ class ArtifactTests(unittest.TestCase):
             self.assertEqual(ast.dump(ast.parse(expected).body[0]), ast.dump(new_methods[name]), name)
         self.assertEqual(set(new_methods) - set(old_methods), {
             "_send_pharmacy_result", "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
-            "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay"})
+            "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay", "_pharmacy_tool_progress"})
+        # A lookup or save the model calls after an interruption is progress,
+        # not a wedged session; a pharmacy call gets the core's 5 s ceiling.
+        handler = ast.unparse(new_methods["_handle_current_gemini_event"])
+        self.assertIn("self._pharmacy_tool_progress()", handler)
+        self.assertIn("5.0 if self.pharmacy_preview else GEMINI_LIVE_RESUME_PROGRESS_TIMEOUT_SECONDS",
+                      ast.unparse(new_methods["_arm_resume_progress_watchdog"]))
+        progress = ast.unparse(new_methods["_pharmacy_tool_progress"])
+        self.assertIn("self.resume_progress_pending = False", progress)
+        self.assertIn("self._cancel_timer(timer)", progress)
         start = ast.unparse(new_methods["start"])
         self.assertIn("ZEYTUN_INBOUND_PILOT_ENABLED", start)
         # The kill switch is still asked on every pharmacy call, in parallel
