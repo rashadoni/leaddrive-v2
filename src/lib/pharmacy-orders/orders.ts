@@ -106,12 +106,12 @@ async function orderCatalog(source: string, scopeKey: string): Promise<CatalogHa
   return value
 }
 
-type PickedItem = { externalId: string; itemCode: string; name: string; price: { amount: string; per: string } | null }
+type PickedItem = { externalId: string; itemCode: string; name: string; sourceName: string; price: { amount: string; per: string } | null }
 
 function project(catalog: CatalogHandle, item: { externalId: string; itemCode: string; name: string; nameAz: string | null
   priceAsReported?: unknown; baseUnitAsReported?: unknown }): PickedItem {
   const price = listPrice(item, catalog.observedAt)
-  return { externalId: item.externalId, itemCode: item.itemCode, name: item.nameAz?.trim() || item.name,
+  return { externalId: item.externalId, itemCode: item.itemCode, name: item.nameAz?.trim() || item.name, sourceName: item.name,
     price: price ? { amount: price.amount, per: price.per } : null }
 }
 
@@ -209,13 +209,13 @@ export async function applyPhoneOrderAction(orgId: string, userId: string, id: s
       }
       case "pick_product":
         await tx.pharmacyPhoneOrderLine.update({ where: { id: line!.id }, data: { status: "resolved", externalId: item!.externalId,
-          itemCode: item!.itemCode, productName: item!.name, ...priced(item!, line!.quantity, line!.unit) } })
+          itemCode: item!.itemCode, productName: item!.name, sourceName: item!.sourceName, ...priced(item!, line!.quantity, line!.unit) } })
         break
       case "add_line": {
         if (lines.length >= PHONE_ORDER_MAX_LINES) throw new PhoneOrderError("invalid", 400)
         const position = (lines.at(-1)?.position ?? 0) + 1
         await tx.pharmacyPhoneOrderLine.create({ data: { organizationId: orgId, orderId: id, position, status: "resolved",
-          externalId: item!.externalId, itemCode: item!.itemCode, productName: item!.name, spokenText: "—",
+          externalId: item!.externalId, itemCode: item!.itemCode, productName: item!.name, sourceName: item!.sourceName, spokenText: "—",
           quantity: action.quantity, unit: action.unit, ...priced(item!, action.quantity, action.unit) } })
         break
       }

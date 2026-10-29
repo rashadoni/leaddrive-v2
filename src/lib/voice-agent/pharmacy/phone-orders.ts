@@ -61,7 +61,7 @@ export function phoneOrderLabel(number: number) {
 
 type ResolvedLine = {
   position: number; status: "resolved" | "not_found"; externalId: string | null; itemCode: string | null
-  productName: string | null; spokenText: string; quantity: number; unit: string
+  productName: string | null; sourceName: string | null; spokenText: string; quantity: number; unit: string
   unitPrice: Prisma.Decimal | null; lineTotal: Prisma.Decimal | null
 }
 
@@ -74,12 +74,12 @@ export function resolvePhoneOrderLines(catalog: PhoneOrderCatalog, lines: PhoneO
     const item = line.externalId ? catalog.find(line.externalId) : null
     const unit = line.unit.trim().toLowerCase()
     if (!item) {
-      return { position: index + 1, status: "not_found", externalId: null, itemCode: null, productName: null,
+      return { position: index + 1, status: "not_found", externalId: null, itemCode: null, productName: null, sourceName: null,
         spokenText: line.spoken, quantity: line.quantity, unit, unitPrice: null, lineTotal: null }
     }
     const price = item.listPrice && item.listPrice.per === unit ? new Prisma.Decimal(item.listPrice.amount) : null
     return { position: index + 1, status: "resolved", externalId: item.externalId, itemCode: item.itemCode,
-      productName: item.nameAz?.trim() || item.name, spokenText: line.spoken, quantity: line.quantity, unit,
+      productName: item.nameAz?.trim() || item.name, sourceName: item.name, spokenText: line.spoken, quantity: line.quantity, unit,
       unitPrice: price, lineTotal: price ? price.mul(line.quantity).toDecimalPlaces(2) : null }
   })
 }

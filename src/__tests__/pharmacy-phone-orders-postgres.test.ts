@@ -552,6 +552,67 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(row.pharmacyReceipt).toEqual({ status: "failed", at: at.toISOString(), error: "meta_131042" })
   })
 
+  // Owner, 2026-10-29: the order as a PDF like Zeytun's 1C printout, «если точно уверен, что это не будет маркетинговое».
+  it("sends the order as a 1C-named PDF only while Meta holds the template for utility, and the plain list otherwise", async () => {
+    const { sendPharmacyReceipt, notifyPharmacyOfDecision } = await import("@/lib/pharmacy-orders/manager-notice")
+    await saveCall(52, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(52) },
+      include: { lines: { orderBy: { position: "asc" } } } })
+    // The name exactly as 1C has it travels with the line.
+    expect(order.lines.map(line => line.sourceName)).toEqual(["Но-шпа 2мл 40 мг № 25", "Кетонал 2 мл № 10", null])
+    const sender = (waba: string) => async () => ({ id: "ch", organizationId: ZEYTUN, accessToken: "token", phoneNumberId: "pn1",
+      businessAccountId: waba, verifyToken: null, appSecret: null, displayName: null })
+    const meta = (category: string, upload = true) => {
+      const calls: Array<{ url: string; body: unknown }> = []
+      const doFetch = (async (url: string, init?: { body?: unknown }) => {
+        calls.push({ url, body: typeof init?.body === "string" ? JSON.parse(init.body) : init?.body })
+        if (url.includes("/message_templates")) return new Response(JSON.stringify({ data: [
+          { name: new URL(url).searchParams.get("name"), language: "az", status: "APPROVED", category }] }), { status: 200 })
+        if (url.endsWith("/media")) return upload ? new Response(JSON.stringify({ id: "media-1" }), { status: 200 }) : new Response("{}", { status: 500 })
+        return new Response(JSON.stringify({ messages: [{ id: `wamid.${calls.length}` }] }), { status: 200 })
+      }) as unknown as typeof fetch
+      return { calls, doFetch }
+    }
+    const sent = (calls: Array<{ url: string; body: unknown }>) =>
+      calls.filter(call => call.url.endsWith("/messages")).map(call => call.body as { template: { name: string; components: Array<{ type: string; parameters: unknown[] }> } })
+
+    // Utility: the PDF goes, uploaded to WhatsApp, with the number and the total in the text.
+    const utility = meta("UTILITY")
+    expect(await sendPharmacyReceipt(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: utility.doFetch, sender: sender("waba-u") }))
+      .toMatchObject({ status: "sent", format: "pdf" })
+    const upload = utility.calls.find(call => call.url.endsWith("/media"))!.body as FormData
+    const file = upload.get("file") as File
+    expect([upload.get("type"), file.name, file.size > 1000]).toEqual(["application/pdf", "Sifariş TS-1001.pdf", true])
+    expect(new TextDecoder("latin1").decode(new Uint8Array(await file.arrayBuffer())).startsWith("%PDF")).toBe(true)
+    expect(sent(utility.calls)).toHaveLength(1)
+    expect(sent(utility.calls)[0].template.name).toBe("phone_order_received_pdf")
+    expect(sent(utility.calls)[0].template.components).toEqual([
+      { type: "header", parameters: [{ type: "document", document: { id: "media-1", filename: "Sifariş TS-1001.pdf" } }] },
+      { type: "body", parameters: [{ type: "text", text: "TS-1001" }, { type: "text", text: "125.00" }] }])
+
+    // Meta moved it to marketing: no PDF, the plain utility list instead.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { pharmacyReceipt: Prisma.DbNull } })
+    const marketing = meta("MARKETING")
+    expect(await sendPharmacyReceipt(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: marketing.doFetch, sender: sender("waba-m") }))
+      .toMatchObject({ status: "sent" })
+    expect(marketing.calls.some(call => call.url.endsWith("/media"))).toBe(false)
+    expect(sent(marketing.calls).map(body => body.template.name)).toEqual(["phone_order_received"])
+
+    // The file does not upload: the plain confirmation, never a message without its file.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { status: "confirmed", confirmedAt: new Date(), confirmedById: "user-zeytun" } })
+    const broken = meta("UTILITY", false)
+    expect(await notifyPharmacyOfDecision(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: broken.doFetch, sender: sender("waba-b") }))
+      .toMatchObject({ status: "sent", kind: "confirmed" })
+    expect(sent(broken.calls).map(body => body.template.name)).toEqual(["phone_order_confirmed"])
+
+    // Utility again: the confirmed order goes as its PDF.
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { pharmacyNotice: Prisma.DbNull } })
+    const confirmed = meta("UTILITY")
+    expect(await notifyPharmacyOfDecision(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: confirmed.doFetch, sender: sender("waba-c") }))
+      .toMatchObject({ status: "sent", kind: "confirmed", format: "pdf" })
+    expect(sent(confirmed.calls).map(body => body.template.name)).toEqual(["phone_order_confirmed_pdf"])
+  })
+
   it("tells the pharmacy of the manager's decision once, on the number it called from", async () => {
     const { notifyPharmacyOfDecision } = await import("@/lib/pharmacy-orders/manager-notice")
     await saveCall(50, LIST)

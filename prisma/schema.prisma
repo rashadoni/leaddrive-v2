@@ -23537,6 +23537,8 @@ model PharmacyPhoneOrderLine {
   externalId     String?
   itemCode       String?
   productName    String?
+  /// The name exactly as 1C has it (Наименование), for the pharmacy's order document.
+  sourceName     String?
   /// What the caller said for this line, as the model heard it.
   spokenText     String
   quantity       Int

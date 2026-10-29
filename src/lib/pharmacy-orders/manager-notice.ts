@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { runWithTenant } from "@/lib/rls-context"
 import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
+import { phoneOrderPdf, type OrderPdfInput } from "@/lib/pharmacy-orders/order-pdf"
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { PHONE_ORDERS_TABLE, phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
 import { resolveWhatsAppConfig, type WhatsAppConfig } from "@/lib/whatsapp"
@@ -50,7 +51,8 @@ export type ManagerNotice =
 type Fetch = typeof fetch
 
 /** One template message to one number; Meta's error code, never its text (it can quote the number). */
-async function sendTemplate(sender: WhatsAppConfig, to: string, template: { name: string; body: string[]; urlSuffix?: string },
+async function sendTemplate(sender: WhatsAppConfig, to: string,
+  template: { name: string; body: string[]; urlSuffix?: string; document?: { id: string; filename: string } },
   doFetch: Fetch): Promise<{ ok: true; id: string | null } | { ok: false; error: string }> {
   let response: Response
   try {
@@ -63,6 +65,7 @@ async function sendTemplate(sender: WhatsAppConfig, to: string, template: { name
           name: template.name,
           language: { code: "az" },
           components: [
+            ...(template.document ? [{ type: "header", parameters: [{ type: "document", document: template.document }] }] : []),
             { type: "body", parameters: template.body.map(text => ({ type: "text", text })) },
             ...(template.urlSuffix ? [{ type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: template.urlSuffix }] }] : []),
           ],
@@ -76,6 +79,77 @@ async function sendTemplate(sender: WhatsAppConfig, to: string, template: { name
   const body = await response.json().catch(() => null) as { messages?: Array<{ id?: string }>; error?: { code?: number } } | null
   if (response.ok) return { ok: true, id: body?.messages?.[0]?.id ?? null }
   return { ok: false, error: body?.error?.code ? `meta_${body.error.code}` : `http_${response.status}` }
+}
+
+/* ─── The order document: only as a utility message ────────────────── */
+
+/**
+ * Owner, 2026-10-29: the pharmacy gets its order as a PDF like Zeytun's 1C
+ * printout («делай, если точно уверен, что это не будет маркетинговое и не
+ * по цене маркетинговых»). Meta decides a template's category and may change
+ * it; the PDF template is used only while Meta reports it APPROVED and
+ * UTILITY at send time, and otherwise the plain utility template goes out
+ * as before. A PDF that cannot be built or uploaded falls back the same way.
+ */
+export const PDF_TEMPLATES = { received: "phone_order_received_pdf", confirmed: "phone_order_confirmed_pdf" } as const
+const TEMPLATE_CHECK_MS = 10 * 60_000
+const templateChecks = new Map<string, { at: number; utility: boolean }>()
+
+export async function templateIsUtility(sender: WhatsAppConfig, name: string, doFetch: Fetch, now = Date.now()): Promise<boolean> {
+  if (!sender.businessAccountId) return false
+  const key = `${sender.businessAccountId}:${name}`
+  const cached = templateChecks.get(key)
+  if (cached && now - cached.at < TEMPLATE_CHECK_MS) return cached.utility
+  let utility = false
+  try {
+    const response = await doFetch(`${GRAPH_API_BASE}/${sender.businessAccountId}/message_templates?name=${encodeURIComponent(name)}&fields=name,status,category,language&limit=20`,
+      { headers: { Authorization: `Bearer ${sender.accessToken}` }, signal: AbortSignal.timeout(SEND_TIMEOUT_MS) })
+    const body = await response.json().catch(() => null) as { data?: Array<{ name?: string; status?: string; category?: string; language?: string }> } | null
+    utility = response.ok && (body?.data ?? []).some(t => t.name === name && t.language === "az" && t.status === "APPROVED" && t.category === "UTILITY")
+  } catch { utility = false }
+  // A failed look is not remembered: the next message asks again.
+  templateChecks.set(key, { at: now, utility })
+  return utility
+}
+
+async function uploadPdf(sender: WhatsAppConfig, bytes: Uint8Array<ArrayBuffer>, filename: string, doFetch: Fetch): Promise<string | null> {
+  try {
+    const form = new FormData()
+    form.append("messaging_product", "whatsapp")
+    form.append("type", "application/pdf")
+    form.append("file", new Blob([bytes], { type: "application/pdf" }), filename)
+    const response = await doFetch(`${GRAPH_API_BASE}/${sender.phoneNumberId}/media`, { method: "POST",
+      headers: { Authorization: `Bearer ${sender.accessToken}` }, body: form, signal: AbortSignal.timeout(20_000) })
+    const body = await response.json().catch(() => null) as { id?: string } | null
+    return response.ok && typeof body?.id === "string" ? body.id : null
+  } catch { return null }
+}
+
+type DocumentLine = { status: string; productName: string | null; sourceName: string | null; spokenText: string; quantity: number; unit: string
+  unitPrice: Prisma.Decimal | null; lineTotal: Prisma.Decimal | null }
+
+/** The order document as the pharmacy reads it: 1C's own name when the line is found, the caller's words when not. */
+export function orderDocument(order: { number: number; callStartedAt: Date; totalAmount: Prisma.Decimal; pharmacyName: string | null
+  company: { name: string } | null; lines: DocumentLine[] }, status: OrderPdfInput["status"]): OrderPdfInput {
+  return { company: "ZEYTUN PHARMACEUTICALS", label: phoneOrderLabel(order.number), takenAt: order.callStartedAt,
+    pharmacy: order.company?.name ?? order.pharmacyName, status, total: order.totalAmount.toFixed(2),
+    lines: order.lines.map(line => {
+      const found = line.status === "resolved"
+      const name = found ? (line.sourceName ?? (line.productName ? readableProductName(line.productName) : line.spokenText)) : line.spokenText
+      return { name, found, quantity: line.quantity, unit: line.unit,
+        price: line.unitPrice ? line.unitPrice.toFixed(2) : null, total: line.lineTotal ? line.lineTotal.toFixed(2) : null }
+    }) }
+}
+
+/** The PDF template when Meta still holds it for utility and the file uploads; null means "send the plain one". */
+async function sendOrderDocument(sender: WhatsAppConfig, phone: string, template: string, document: OrderPdfInput, doFetch: Fetch) {
+  if (!(await templateIsUtility(sender, template, doFetch))) return null
+  const filename = `Sifariş ${document.label}.pdf`
+  const media = await uploadPdf(sender, phoneOrderPdf(document), filename, doFetch)
+  if (!media) return null
+  const result = await sendTemplate(sender, phone, { name: template, body: [document.label, document.total],
+    document: { id: media, filename } }, doFetch)
+  return result.ok ? result : null
 }
 
 /**
@@ -151,7 +225,7 @@ export const PHARMACY_RECEIPT_TEMPLATE = "phone_order_received"
 const RECEIPT_LINES_MAX = 700
 
 export type PharmacyReceipt =
-  | { status: "sent"; at: string; messageId: string | null }
+  | { status: "sent"; at: string; messageId: string | null; format?: "pdf" }
   | { status: "failed"; at: string; error: string }
   | { status: "not_connected" | "no_number"; at: string }
 
@@ -187,8 +261,9 @@ export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, order
     })
     if (claimed.count !== 1) return null
     const order = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId },
-      select: { number: true, totalAmount: true, callerPhone: true,
-        lines: { orderBy: { position: "asc" }, select: { status: true, productName: true, spokenText: true, quantity: true, unit: true } } } })
+      select: { number: true, totalAmount: true, callerPhone: true, callStartedAt: true, pharmacyName: true, company: { select: { name: true } },
+        lines: { orderBy: { position: "asc" }, select: { status: true, productName: true, sourceName: true, spokenText: true, quantity: true,
+          unit: true, unitPrice: true, lineTotal: true } } } })
     if (!order) return null
     const record = async (receipt: PharmacyReceipt) => {
       await db.pharmacyPhoneOrder.updateMany({ where: { id: orderId, organizationId: orgId }, data: { pharmacyReceipt: receipt } })
@@ -199,6 +274,8 @@ export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, order
     if (!/^\+[1-9]\d{7,14}$/u.test(phone)) return record({ status: "no_number", at: at() })
     const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
     if (!sender) return record({ status: "not_connected", at: at() })
+    const withPdf = await sendOrderDocument(sender, phone, PDF_TEMPLATES.received, orderDocument(order, { kind: "received" }), deps.fetch ?? fetch)
+    if (withPdf) return record({ status: "sent", at: at(), messageId: withPdf.id, format: "pdf" })
     const result = await sendTemplate(sender, phone, { name: PHARMACY_RECEIPT_TEMPLATE,
       body: [phoneOrderLabel(order.number), receiptLines(order.lines), order.totalAmount.toFixed(2)] }, deps.fetch ?? fetch)
     return record(result.ok ? { status: "sent", at: at(), messageId: result.id } : { status: "failed", at: at(), error: result.error })
@@ -211,7 +288,7 @@ export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, order
 export const PHARMACY_DECISION_TEMPLATES = { confirmed: "phone_order_confirmed", rejected: "phone_order_rejected" } as const
 
 export type PharmacyNotice =
-  | { status: "sent"; kind: "confirmed" | "rejected"; at: string; messageId: string | null }
+  | { status: "sent"; kind: "confirmed" | "rejected"; at: string; messageId: string | null; format?: "pdf" }
   | { status: "failed"; kind: "confirmed" | "rejected"; at: string; error: string }
   | { status: "not_connected" | "no_number"; kind: "confirmed" | "rejected"; at: string }
 
@@ -230,7 +307,10 @@ export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, 
   const now = deps.now ?? (() => new Date())
   return runWithTenant(orgId, async () => {
     const order = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId },
-      select: { number: true, status: true, totalAmount: true, rejectReason: true, callerPhone: true } })
+      select: { number: true, status: true, totalAmount: true, rejectReason: true, callerPhone: true, callStartedAt: true, confirmedAt: true,
+        pharmacyName: true, company: { select: { name: true } },
+        lines: { orderBy: { position: "asc" }, select: { status: true, productName: true, sourceName: true, spokenText: true, quantity: true,
+          unit: true, unitPrice: true, lineTotal: true } } } })
     if (!order || (order.status !== "confirmed" && order.status !== "rejected")) return null
     const kind = order.status
     const claimed = await db.pharmacyPhoneOrder.updateMany({
@@ -248,6 +328,11 @@ export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, 
     const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
     if (!sender) return record({ status: "not_connected", kind, at: at() })
     const label = phoneOrderLabel(order.number)
+    if (kind === "confirmed") {
+      const withPdf = await sendOrderDocument(sender, phone, PDF_TEMPLATES.confirmed,
+        orderDocument(order, { kind: "confirmed", at: order.confirmedAt ?? now() }), deps.fetch ?? fetch)
+      if (withPdf) return record({ status: "sent", kind, at: at(), messageId: withPdf.id, format: "pdf" })
+    }
     const result = await sendTemplate(sender, phone, {
       name: PHARMACY_DECISION_TEMPLATES[kind],
       body: kind === "confirmed" ? [label, order.totalAmount.toFixed(2)] : [label, oneLine(order.rejectReason ?? "", 300)],
