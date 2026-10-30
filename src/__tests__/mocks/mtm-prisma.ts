@@ -282,6 +282,7 @@ export interface MtmPrismaMock {
   mtmCustomerCreateRequest: ModelMock
   mtmCustomerLocationRequest: ModelMock
   mtmJointFieldSession: ModelMock
+  mtmJointVisitPlan: ModelMock
   mtmVisitEvaluation: ModelMock
   mtmContactCreateRequest: ModelMock
   mtmDeviceToken: ModelMock
@@ -498,6 +499,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmCustomerCreateRequest: makeModel(),
     mtmCustomerLocationRequest: makeModel(),
     mtmJointFieldSession: makeModel(),
+    mtmJointVisitPlan: makeModel(),
     mtmVisitEvaluation: makeModel(),
     mtmContactCreateRequest: makeModel(),
     mtmDeviceToken: makeModel(),

@@ -16380,6 +16380,8 @@
     "action": {
       "JOINT_VISIT_START": "Joint visit started",
       "JOINT_VISIT_END": "Joint visit ended",
+      "JOINT_VISIT_PLAN": "Joint visit planned",
+      "JOINT_VISIT_PLAN_CANCEL": "Joint visit cancelled",
       "VISIT_EVALUATION_SAVE": "Agent rated on a visit",
       "WORKDAY_REOPEN": "Workday reopened",
       "WORKDAY_REOPEN_UNDO": "Reopen undone",

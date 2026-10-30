@@ -28,6 +28,7 @@ import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot, waitingLocationRequestCovers, type WaitingLocationPlace } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { attachJointManagerToVisit } from "@/lib/mtm/joint-visit"
+import { attachPlannedJointManager } from "@/lib/mtm/joint-visit-plan"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
 import {
@@ -1402,20 +1403,31 @@ export const POST = withMobileRls(async (req, auth) => {
                 }
                 // «Этот визит — вместе с руководителем? Да» (joint visit,
                 // owner 2026-10-20). Only a session that manager opened with
-                // this agent makes it so; an unbacked «yes» leaves the visit
-                // as it is and never refuses the check-in.
+                // this agent, or his plan of the day at this stop, makes it
+                // so; an unbacked «yes» leaves the visit as it is and never
+                // refuses the check-in.
                 let joint: { managerId: string; accepted: boolean } | null = null
                 if (typeof data.jointManagerId === "string" && data.jointManagerId) {
                   const settings = await getMtmSettings(orgId)
+                  const jointInput = {
+                    organizationId: orgId,
+                    visitId: visit.id,
+                    agentId,
+                    managerAgentId: data.jointManagerId,
+                    checkInAt: visit.checkInAt,
+                    timezone: isValidTimezone(settings.timezone) ? settings.timezone : "UTC",
+                  }
+                  const sessionAccepted = await attachJointManagerToVisit(tx, jointInput)
+                  // A joint visit the manager planned at this stop backs the
+                  // «yes» too, and learns which visit it became (2026-10-30).
                   joint = {
                     managerId: data.jointManagerId,
-                    accepted: await attachJointManagerToVisit(tx, {
-                      organizationId: orgId,
-                      visitId: visit.id,
-                      agentId,
-                      managerAgentId: data.jointManagerId,
-                      checkInAt: visit.checkInAt,
-                      timezone: isValidTimezone(settings.timezone) ? settings.timezone : "UTC",
+                    accepted: await attachPlannedJointManager(tx, {
+                      ...jointInput,
+                      routePointId: visit.routePointId,
+                      customerId: visit.customerId,
+                      contactId: visit.contactId,
+                      sessionAccepted,
                     }),
                   }
                 }

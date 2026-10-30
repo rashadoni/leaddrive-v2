@@ -24,6 +24,11 @@ import {
  *    criterion did not happen; a comment. From the check-in until the end of
  *    the next organization-local day.
  *
+ * Since 2026-10-30 the manager can also plan the joint visits ahead — which
+ * client of the agent's day route, or an extra one added to it
+ * (src/lib/mtm/joint-visit-plan.ts). A plan of the day backs the agent's «yes»
+ * at that stop like an open session does.
+ *
  * The agent never reads a rating («агент оценку не видит»).
  */
 
@@ -188,6 +193,15 @@ export async function attachJointManagerToVisit(
   })
   const session = sessions.find((row) => jointSessionCovers(row, input.checkInAt, input.timezone))
   if (!session) return false
+  await writeJointObserver(db, { ...input, sessionId: session.id })
+  return true
+}
+
+/** The manager on the visit as its OBSERVER, pointing at the session that backs the agent's «yes». */
+export async function writeJointObserver(
+  db: Db,
+  input: { organizationId: string; visitId: string; managerAgentId: string; checkInAt: Date; sessionId: string },
+): Promise<void> {
   await db.mtmVisitParticipant.upsert({
     where: { visitId_agentId: { visitId: input.visitId, agentId: input.managerAgentId } },
     create: {
@@ -196,13 +210,12 @@ export async function attachJointManagerToVisit(
       agentId: input.managerAgentId,
       role: "OBSERVER",
       joinedAt: input.checkInAt,
-      jointSessionId: session.id,
+      jointSessionId: input.sessionId,
     },
     // The manager may already be on the visit from a route assignment: the
     // agent's answer adds the session to that row, it does not change its role.
-    update: { jointSessionId: session.id },
+    update: { jointSessionId: input.sessionId },
   })
-  return true
 }
 
 /** The manager this visit was joint with, by the agent's own answer; null if none. */

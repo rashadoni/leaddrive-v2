@@ -114,6 +114,9 @@ const META: Record<string, ActionMeta> = {
   // rating of the agent's work on a visit (the rating itself is not journalled).
   JOINT_VISIT_START:   { icon: UsersRound,    tone: "teal" },
   JOINT_VISIT_END:     { icon: Flag,          tone: "slate" },
+  // 2026-10-30: the manager planned (or took back) a joint visit at a client of the agent's route.
+  JOINT_VISIT_PLAN:    { icon: UsersRound,    tone: "teal" },
+  JOINT_VISIT_PLAN_CANCEL: { icon: Flag,      tone: "slate" },
   VISIT_EVALUATION_SAVE: { icon: Star,        tone: "violet" },
 }
 
