@@ -943,7 +943,8 @@ try {
     await readyPage('location-settings')
     const editor = page.getByTestId('geo-policy-editor')
     await editor.locator('#geo-text-en').fill('')
-    assert.equal(await editor.getByLabel(t('geoPolicyEnable')).isEnabled(), false)
+    // The double check is chosen above the agreement; it waits for all three texts.
+    assert.equal(await page.getByTestId('geo-policy-status').getByLabel(t('geoPolicyEnable')).isEnabled(), false)
     await clickResponse(button('geoPolicySave', editor), `${apiRoot}/location-policy`)
     assert.equal((await api('admin', '/location-policy')).policy.enabled, false)
     await readyPage('branches/report')
