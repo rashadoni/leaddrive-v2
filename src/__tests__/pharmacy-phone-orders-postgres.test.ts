@@ -582,7 +582,8 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
       .toMatchObject({ status: "sent", format: "pdf" })
     const upload = utility.calls.find(call => call.url.endsWith("/media"))!.body as FormData
     const file = upload.get("file") as File
-    expect([upload.get("type"), file.name, file.size > 1000]).toEqual(["application/pdf", "Sifariş TS-1001.pdf", true])
+    // The upload's own name is ASCII; the pharmacy sees the message's filename.
+    expect([upload.get("type"), file.name, file.size > 1000]).toEqual(["application/pdf", "Sifaris-TS-1001.pdf", true])
     expect(new TextDecoder("latin1").decode(new Uint8Array(await file.arrayBuffer())).startsWith("%PDF")).toBe(true)
     expect(sent(utility.calls)).toHaveLength(1)
     expect(sent(utility.calls)[0].template.name).toBe("phone_order_received_pdf")
@@ -594,7 +595,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { pharmacyReceipt: Prisma.DbNull } })
     const marketing = meta("MARKETING")
     expect(await sendPharmacyReceipt(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: marketing.doFetch, sender: sender("waba-m") }))
-      .toMatchObject({ status: "sent" })
+      .toMatchObject({ status: "sent", pdfSkipped: "not_utility" })
     expect(marketing.calls.some(call => call.url.endsWith("/media"))).toBe(false)
     expect(sent(marketing.calls).map(body => body.template.name)).toEqual(["phone_order_received"])
 
@@ -602,7 +603,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { status: "confirmed", confirmedAt: new Date(), confirmedById: "user-zeytun" } })
     const broken = meta("UTILITY", false)
     expect(await notifyPharmacyOfDecision(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: broken.doFetch, sender: sender("waba-b") }))
-      .toMatchObject({ status: "sent", kind: "confirmed" })
+      .toMatchObject({ status: "sent", kind: "confirmed", pdfSkipped: "upload_failed" })
     expect(sent(broken.calls).map(body => body.template.name)).toEqual(["phone_order_confirmed"])
 
     // Utility again: the confirmed order goes as its PDF.
@@ -611,6 +612,20 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(await notifyPharmacyOfDecision(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: confirmed.doFetch, sender: sender("waba-c") }))
       .toMatchObject({ status: "sent", kind: "confirmed", format: "pdf" })
     expect(sent(confirmed.calls).map(body => body.template.name)).toEqual(["phone_order_confirmed_pdf"])
+
+    // Meta took the PDF, then refused it on the webhook: the plain confirmation goes, once, and the card says why.
+    const { recordPhoneOrderMessageFailure } = await import("@/lib/pharmacy-orders/manager-notice")
+    const pdfId = ((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).pharmacyNotice as { messageId: string }).messageId
+    const fallback = meta("UTILITY")
+    const at = new Date("2026-10-30T09:00:00.000Z")
+    const refuse = () => recordPhoneOrderMessageFailure(app as unknown as PrismaClient, ZEYTUN, pdfId, 131053, at,
+      { fetch: fallback.doFetch, sender: sender("waba-c") })
+    expect(await refuse()).toBe(1)
+    expect(await refuse()).toBe(0)
+    expect(sent(fallback.calls).map(body => body.template.name)).toEqual(["phone_order_confirmed"])
+    expect(fallback.calls.some(call => call.url.endsWith("/media"))).toBe(false)
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).pharmacyNotice)
+      .toMatchObject({ status: "sent", kind: "confirmed", pdfSkipped: "meta_131053", at: at.toISOString() })
   })
 
   it("tells the pharmacy of the manager's decision once, on the number it called from", async () => {
