@@ -15,7 +15,7 @@
  */
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Prisma, type PrismaClient } from "@prisma/client"
@@ -48,6 +48,23 @@ vi.mock("@/lib/auth", () => ({ auth: async () => session.current }))
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
+})
+
+/** Zeytun's 1C, stood in for at the one door every outbound POST goes through. */
+type ErpAnswer = { status: number; json?: unknown } | "no_answer"
+const erp = vi.hoisted(() => ({
+  calls: [] as Array<{ url: string; body: Record<string, unknown>; authorization: string }>,
+  answer: (_url: string, _body: Record<string, unknown>): ErpAnswer => "no_answer",
+}))
+vi.mock("@/lib/integrations/webhook-url-guard", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/webhook-url-guard")>()
+  return { ...actual, postOutboundResource: async (url: string, options: { body: string; headers?: Record<string, string> }) => {
+    const body = JSON.parse(options.body) as Record<string, unknown>
+    erp.calls.push({ url, body, authorization: options.headers?.Authorization ?? "" })
+    const answer = erp.answer(url, body)
+    if (answer === "no_answer") throw new Error("outbound_timeout")
+    return { ok: answer.status < 300, status: answer.status, url, redirects: 0, bodyBytes: new TextEncoder().encode(JSON.stringify(answer.json ?? {})) }
+  } }
 })
 
 const ROOT = process.cwd()
@@ -685,5 +702,142 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     // No WhatsApp channel.
     await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { pharmacyNotice: Prisma.DbNull } })
     expect(await notify({ fetch: fetchOk, sender: async () => null })).toMatchObject({ status: "not_connected", kind: "rejected" })
+  })
+
+  /* ─── Zeytun's 1C takes the confirmed order ───────────────────────── */
+
+  const WAREHOUSE = "33333333-4444-4555-8666-777777777777"
+  const PHARMACY = "55555555-6666-4777-8888-999999999999"
+  const CREATE = "https://1c.zeytun.test/hs/orders/CreateOrder"
+  const STATUS = "https://1c.zeytun.test/hs/orders/OrderStatus"
+  const BALANCES = { organizationId: ZEYTUN, endpoint: "https://1c.zeytun.test/hs/AvailableBalances", username: "crm", password: "catalog-pw",
+    request: { GUID: "44444444-5555-4666-8777-888888888888", METRO: false, Warehouse: WAREHOUSE } }
+  /** The private directory beside the line's grant, as on the host: 0700, files 0600. */
+  async function withErp(orders: Record<string, unknown> | null, run: (scopeKey: string) => Promise<void>) {
+    const { zeytunBalanceScopeKey } = await import("@/lib/voice-agent/pharmacy/zeytun-balance-client")
+    const directory = mkdtempSync(path.join(tmpdir(), "zeytun-erp-"))
+    writeFileSync(path.join(directory, "zeytun-1c-connection.json"), JSON.stringify(BALANCES), { mode: 0o600 })
+    if (orders) writeFileSync(path.join(directory, "zeytun-1c-orders.json"), JSON.stringify(orders), { mode: 0o600 })
+    process.env.ZEYTUN_INBOUND_PILOT_FILE = path.join(directory, "inbound-grant.json")
+    erp.calls.length = 0
+    try { await run(zeytunBalanceScopeKey(BALANCES)) } finally {
+      delete process.env.ZEYTUN_INBOUND_PILOT_FILE
+      erp.answer = () => "no_answer"
+      rmSync(directory, { recursive: true, force: true })
+    }
+  }
+  const ORDERS = { organizationId: ZEYTUN, createEndpoint: CREATE, statusEndpoint: STATUS, username: "crm-orders", password: "orders-pw" }
+  const saveForErp = (n: number, scopeKey: string, lines: Parameters<typeof save>[1]["lines"]) => save(app as unknown as PrismaClient, {
+    organizationId: ZEYTUN, providerCallId: callId(n), callStartedAt: "2026-10-24T06:42:00.000Z", callerPhoneE164: PHONE,
+    identification: "phone_unique", pharmacyName: "Nur Aptek", pharmacyGuid: PHARMACY, pharmacyAddress: "Bakı, Yasamal",
+    catalog: { ...CATALOG, scopeKey }, lines,
+  })
+  const opened = async (id: string) => (await (await card.GET(json("GET", `/api/v1/pharmacy-orders/${id}`), params(id))).json()).data
+
+  // Owner, 2026-10-30: «давай с нашей стороны сделаем» — confirm sends the order to 1C.
+  it("confirms an order only once 1C has written it, shows a refusal line by line, and records what the manager changed", async () => {
+    await withErp(ORDERS, async scopeKey => {
+      await saveForErp(60, scopeKey, [LIST[0], LIST[1]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(60) }, include: { lines: { orderBy: { position: "asc" } } } })
+      expect((await opened(order.id)).erp).toMatchObject({ connection: "on", state: null })
+
+      // Five pieces of a product 1C sells by the box cannot go: 1C posts what it gets.
+      const unit = await patch(order.id, { action: "confirm", revision: 1 })
+      expect([unit.status, (await unit.json()).error]).toEqual([400, "erp_unit"])
+      expect(erp.calls).toHaveLength(0)
+      expect((await patch(order.id, { action: "remove_line", revision: 1, lineId: order.lines[1].id })).status).toBe(200)
+      expect((await patch(order.id, { action: "set_quantity", revision: 2, lineId: order.lines[0].id, quantity: 12 })).status).toBe(200)
+
+      // 1C refuses and writes nothing: the order waits, with each line's reason.
+      erp.answer = () => ({ status: 200, json: { code: 1, Ошибки: [{ Код: "нет_остатка", Номенклатура: NOSPA.toUpperCase(), Текст: "Qalıq 8" }] } })
+      const refused = (await (await patch(order.id, { action: "confirm", revision: 3 })).json()).data
+      expect(refused).toMatchObject({ status: "pending_review", confirmedAt: null,
+        erp: { state: "refused", errors: [{ code: "нет_остатка", position: 1, text: "Qalıq 8" }] } })
+      expect(erp.calls).toHaveLength(1)
+      expect(erp.calls[0]).toEqual({ url: CREATE, authorization: `Basic ${Buffer.from("crm-orders:orders-pw").toString("base64")}`, body: {
+        ВнешнийИД: order.id, ВнешнийНомер: "TS-1001", GUID: PHARMACY, METRO: false, Warehouse: WAREHOUSE, Дата: "20261024104200",
+        Комментарий: "Телефонный заказ TS-1001. Подтвердил: Nigar", Товары: [{ Номенклатура: NOSPA, Количество: 12, Цена: 12.5 }] } })
+      expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).pharmacyNotice).toBeNull()
+
+      // The manager fixes the line and confirms again; 1C writes its own price.
+      expect((await patch(order.id, { action: "set_quantity", revision: refused.revision, lineId: order.lines[0].id, quantity: 8 })).status).toBe(200)
+      erp.answer = () => ({ status: 200, json: { code: 0, data: { Создан: true,
+        Документ: { Guid: "doc-1", Номер: "ЗК-000123", Дата: "20261030120000", Сумма: 98.4 },
+        Товары: [{ Номенклатура: NOSPA, Количество: 8, Цена: 12.3, Сумма: 98.4 }] } } })
+      const confirmed = (await (await patch(order.id, { action: "confirm", revision: refused.revision + 1 })).json()).data
+      expect(confirmed).toMatchObject({ status: "confirmed", confirmedBy: "Nigar", edits: 3, erp: { state: "created",
+        document: { guid: "doc-1", number: "ЗК-000123", total: "98.40", existing: false },
+        differences: [{ position: 1, sentQuantity: 8, quantity: 8, sentPrice: "12.5000", price: "12.30" }] } })
+      expect(erp.calls).toHaveLength(2)
+      const row = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })
+      expect((row.managerEdits as Array<Record<string, unknown>>).map(edit => [edit.action, edit.position, edit.from, edit.to, edit.by])).toEqual([
+        ["remove_line", 2, KETONAL, undefined, "user-zeytun"], ["set_quantity", 1, 10, 12, "user-zeytun"], ["set_quantity", 1, 12, 8, "user-zeytun"]])
+      // Confirmed in 1C: nothing changes it any more.
+      expect((await patch(order.id, { action: "set_quantity", revision: confirmed.revision, lineId: order.lines[0].id, quantity: 1 })).status).toBe(409)
+    })
+  })
+
+  it("never writes an order twice: after no clear answer it freezes the order and asks 1C before anything else", async () => {
+    await withErp(ORDERS, async scopeKey => {
+      await saveForErp(61, scopeKey, [LIST[0]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(61) }, include: { lines: true } })
+      // The create times out and 1C does not have it yet: maybe still on its way.
+      erp.answer = url => url === CREATE ? "no_answer" : { status: 200, json: { code: 0, data: { Найден: false } } }
+      const unknown = (await (await patch(order.id, { action: "confirm", revision: 1 })).json()).data
+      expect(unknown).toMatchObject({ status: "pending_review", erp: { state: "unknown", error: "no_answer" } })
+      expect(erp.calls.map(call => call.url)).toEqual([CREATE, STATUS])
+      expect(erp.calls[1].body).toEqual({ ВнешнийИД: order.id })
+      // Frozen: the lines 1C may hold are not changed, and the order is not rejected behind 1C's back.
+      for (const action of [{ action: "set_quantity", lineId: order.lines[0].id, quantity: 3 }, { action: "reject", reason: "Dublikat" }]) {
+        const response = await patch(order.id, { ...action, revision: unknown.revision })
+        expect([response.status, (await response.json()).error]).toEqual([409, "erp_pending"])
+      }
+      // The next click asks first: 1C has it, so nothing is created again.
+      erp.answer = url => url === STATUS ? { status: 200, json: { code: 0, data: { Найден: true, Документ: { Guid: "doc-2", Номер: "ЗК-000124" } } } }
+        : { status: 500 }
+      const settled = (await (await patch(order.id, { action: "confirm", revision: unknown.revision })).json()).data
+      expect(settled).toMatchObject({ status: "confirmed", erp: { state: "created", document: { number: "ЗК-000124", existing: true }, differences: [] } })
+      expect(erp.calls.map(call => call.url)).toEqual([CREATE, STATUS, STATUS])
+
+      // A send in flight is not doubled by a second click; one its process left behind is asked about.
+      await saveForErp(62, scopeKey, [LIST[0]])
+      const other = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(62) } })
+      await admin.pharmacyPhoneOrder.update({ where: { id: other.id }, data: { erpState: "sending", erpAttemptAt: new Date() } })
+      expect((await (await patch(other.id, { action: "confirm", revision: 1 })).json()).error).toBe("erp_pending")
+      await admin.pharmacyPhoneOrder.update({ where: { id: other.id }, data: { erpAttemptAt: new Date(Date.now() - 5 * 60_000) } })
+      erp.answer = url => url === STATUS ? { status: 200, json: { code: 0, data: { Найден: false } } }
+        : { status: 200, json: { code: 0, data: { Создан: true, Документ: { Guid: "doc-3", Номер: "ЗК-000125" } } } }
+      expect((await (await patch(other.id, { action: "confirm", revision: 1 })).json()).data).toMatchObject({ status: "confirmed",
+        erp: { document: { number: "ЗК-000125" } } })
+      expect(erp.calls.slice(3).map(call => call.url)).toEqual([STATUS, CREATE])
+    })
+  })
+
+  it("does not quietly skip 1C when its connection is set up wrongly, and works as before without one", async () => {
+    // Plain HTTP: the document is posted on arrival, so the method is called over HTTPS only.
+    await withErp({ ...ORDERS, createEndpoint: "http://1c.zeytun.test/hs/orders/CreateOrder" }, async scopeKey => {
+      await saveForErp(63, scopeKey, [LIST[0]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(63) } })
+      expect((await opened(order.id)).erp.connection).toBe("broken")
+      const response = await patch(order.id, { action: "confirm", revision: 1 })
+      expect([response.status, (await response.json()).error]).toEqual([503, "erp_unavailable"])
+      expect(erp.calls).toHaveLength(0)
+    })
+    // A wrong login is a refusal that wrote nothing, not a "maybe".
+    await withErp(ORDERS, async scopeKey => {
+      await saveForErp(64, scopeKey, [LIST[0]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(64) } })
+      erp.answer = () => ({ status: 401 })
+      expect((await (await patch(order.id, { action: "confirm", revision: 1 })).json()).data).toMatchObject({ status: "pending_review",
+        erp: { state: "refused", errors: [{ code: "http_401", position: null }] } })
+    })
+    // No order connection: «Подтвердить» confirms in CRM alone, as before.
+    await withErp(null, async scopeKey => {
+      await saveForErp(65, scopeKey, [LIST[0]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(65) } })
+      expect((await (await patch(order.id, { action: "confirm", revision: 1 })).json()).data).toMatchObject({ status: "confirmed",
+        erp: { connection: "off", state: null } })
+      expect(erp.calls).toHaveLength(0)
+    })
   })
 })

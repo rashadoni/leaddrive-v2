@@ -23593,6 +23593,16 @@ model PharmacyPhoneOrder {
   pharmacyNotice         Json?
   /// Delivery state of the pharmacy's WhatsApp list sent when the call ends: { status, at, messageId?, error? }.
   pharmacyReceipt        Json?
+  /// The order in Zeytun's 1C: sending | created | refused | unknown (no clear answer: 1C is asked before anything is sent again).
+  erpState               String?
+  /// When the current or last send to 1C began; a send older than two minutes is treated as unknown.
+  erpAttemptAt           DateTime?
+  /// The 1C document: { guid, number, date, total, existing }.
+  erpDocument            Json?
+  /// What 1C answered besides the document: { errors?, differences?, error? }.
+  erpResult              Json?
+  /// Every change a manager made after the call: [{ action, at, by, position?, from?, to? }].
+  managerEdits           Json?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 

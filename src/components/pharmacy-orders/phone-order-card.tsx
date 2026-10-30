@@ -29,7 +29,27 @@ type Order = {
   managerNotice: { status?: string; at?: string; error?: string } | null
   pharmacyReceipt: { status?: string; at?: string; error?: string; format?: string; pdfSkipped?: string } | null
   pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string; error?: string; format?: string; pdfSkipped?: string } | null
+  erp: Erp
+  edits: number
   lines: Line[]
+}
+type Erp = {
+  connection: "on" | "off" | "broken"; state: "sending" | "created" | "refused" | "unknown" | null; attemptAt: string | null
+  document: { number: string; total: string | null; existing: boolean } | null
+  errors: Array<{ code: string; position: number | null; text: string | null }>
+  differences: Array<{ position: number; sentQuantity: number; quantity: number; sentPrice: string; price: string | null }>
+}
+type ErrorKey = "errorGeneric" | "errorStale" | "errorCatalog" | "errorCallInProgress"
+  | "errorErpPending" | "errorErpUnit" | "errorErpPharmacy" | "errorErpUnavailable" | "errorErpCatalog"
+const ERROR_KEYS: Record<string, ErrorKey> = {
+  stale_revision: "errorStale", not_pending: "errorStale", catalog_unavailable: "errorCatalog", call_in_progress: "errorCallInProgress",
+  erp_pending: "errorErpPending", erp_unit: "errorErpUnit", erp_pharmacy: "errorErpPharmacy", erp_unavailable: "errorErpUnavailable",
+  erp_catalog: "errorErpCatalog",
+}
+/** 1C's refusal codes the card names in words (docs/zeytun-1c-create-order-request.md); any other shows as 1C sent it. */
+const ERP_REASONS: Record<string, string> = {
+  аптека_не_найдена: "pharmacy", товар_не_найден: "product", нет_остатка: "stock", неверное_количество: "quantity",
+  нет_договора: "contract", склад_не_найден: "warehouse", прочее: "other", http_401: "access", http_403: "access",
 }
 type CatalogItem = { externalId: string; itemCode: string; name: string; price: { amount: string; per: string } | null }
 type Picker = { mode: "pick"; line: Line } | { mode: "add" }
@@ -41,7 +61,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
   const locale = useLocale()
   const [order, setOrder] = useState<Order | null>(null)
   // A message key, translated when drawn: the loaders below must not depend on `t`.
-  const [error, setError] = useState<"errorGeneric" | "errorStale" | "errorCatalog" | "errorCallInProgress" | null>(null)
+  const [error, setError] = useState<ErrorKey | null>(null)
   const [busy, setBusy] = useState(false)
   const [picker, setPicker] = useState<Picker | null>(null)
   const [rejecting, setRejecting] = useState(false)
@@ -65,9 +85,8 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       })
       if (response.ok) { setOrder((await response.json()).data); return true }
       const code = (await response.json().catch(() => ({})))?.error
-      setError(code === "stale_revision" || code === "not_pending" ? "errorStale" : code === "catalog_unavailable" ? "errorCatalog"
-        : code === "call_in_progress" ? "errorCallInProgress" : "errorGeneric")
-      if (code === "stale_revision" || code === "not_pending") await load()
+      setError(ERROR_KEYS[code] ?? "errorGeneric")
+      if (code === "stale_revision" || code === "not_pending" || code === "erp_pending") await load()
       return false
     } finally { setBusy(false) }
   }, [load, order, orderId])
@@ -82,6 +101,13 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
   const testCall = order.pharmacy.identification === "test_call"
   const pharmacyName = order.pharmacy.company?.name ?? order.pharmacy.name ?? (testCall ? t("testCallName") : "—")
   const noticeStatus = order.managerNotice?.status
+  // With 1C taking orders, a line 1C cannot take (no price: not in 1C's base
+  // unit) or an unknown pharmacy keeps «Подтвердить» shut, as the server does.
+  const erpOn = order.erp.connection === "on"
+  const unpriced = erpOn ? order.lines.filter(line => line.status === "resolved" && !line.unitPrice).length : 0
+  const noPharmacy = erpOn && !order.pharmacy.guid
+  const erpWaiting = order.erp.state === "sending" || order.erp.state === "unknown"
+  const confirmBlock = missing ? "confirmBlocked" : unpriced ? "confirmBlockedUnit" : noPharmacy ? "confirmBlockedPharmacy" : null
 
   return (
     <div className="flex min-w-0 flex-col gap-4 px-4 py-5 sm:px-7">
@@ -102,9 +128,12 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
           <Button asChild variant="outline"><a href={`tel:${order.callerPhone}`}>{t("call")}</a></Button>
           {pending ? (
             <>
-              <Button variant="outline" className="text-red-600" disabled={busy} onClick={() => setRejecting(true)}>{t("reject")}</Button>
-              <Hint text={missing ? t("confirmBlocked") : t("confirmHint")} wrap={missing > 0}>
-                <Button disabled={busy || missing > 0} onClick={() => void act({ action: "confirm" })}>{t("confirm")}</Button>
+              <Button variant="outline" className="text-red-600" disabled={busy || erpWaiting} onClick={() => setRejecting(true)}>{t("reject")}</Button>
+              <Hint text={confirmBlock ? t(confirmBlock) : erpWaiting ? t("confirmHintErpRetry") : erpOn ? t("confirmHintErp") : t("confirmHint")}
+                wrap={Boolean(confirmBlock) || erpOn}>
+                <Button disabled={busy || Boolean(confirmBlock)} onClick={() => void act({ action: "confirm" })}>
+                  {busy && erpOn ? t("confirmSending") : erpWaiting ? t("confirmRetry") : t("confirm")}
+                </Button>
               </Hint>
             </>
           ) : null}
@@ -112,6 +141,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       </div>
 
       {error ? <p role="alert" className="rounded-xl border border-border bg-card px-4 py-2 text-sm text-red-600 shadow-[inset_3px_0_0_#dc2626]">{t(error)}</p> : null}
+      {pending ? <ErpBanner erp={order.erp} /> : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi title={t("kpiTotal")} sub={t("kpiTotalSub", { date: formatOrderDate(order.catalog.observedAt, locale, false) })}>
@@ -131,7 +161,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       <section className={cn(CARD, "overflow-hidden")}>
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <h2 className="text-sm font-semibold">{t("linesTitle")}</h2>
-          {pending ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setPicker({ mode: "add" })}>{t("addLine")}</Button> : null}
+          {pending ? <Button size="sm" variant="outline" disabled={busy || erpWaiting} onClick={() => setPicker({ mode: "add" })}>{t("addLine")}</Button> : null}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -175,7 +205,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
                           <Button size="sm" className="h-8 px-3" disabled={busy || !Number(editing.quantity)}
                             onClick={async () => { if (await act({ action: "set_quantity", lineId: line.id, quantity: Number(editing.quantity) })) setEditing(null) }}>{t("save")}</Button>
                         </span>
-                      ) : pending ? (
+                      ) : pending && !erpWaiting ? (
                         <button type="button" className="rounded-md px-1 underline decoration-dotted underline-offset-4 hover:bg-muted/60"
                           onClick={() => setEditing({ lineId: line.id, quantity: String(line.quantity) })}>{line.quantity} {line.unit}</button>
                       ) : `${line.quantity} ${line.unit}`}
@@ -188,9 +218,9 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
                     <td className="py-2 pr-4 text-right font-semibold">{line.lineTotal ? formatMoney(line.lineTotal, locale) : "—"}</td>
                     {pending ? (
                       <td className="whitespace-nowrap py-1.5 pr-4 text-right">
-                        <Button size="sm" variant="outline" className="h-7 px-2.5" disabled={busy} onClick={() => setPicker({ mode: "pick", line })}>{unresolved ? t("pick") : t("change")}</Button>
+                        <Button size="sm" variant="outline" className="h-7 px-2.5" disabled={busy || erpWaiting} onClick={() => setPicker({ mode: "pick", line })}>{unresolved ? t("pick") : t("change")}</Button>
                         {order.lines.length > 1 ? (
-                          <Button size="sm" variant="outline" className="ml-1.5 h-7 px-2.5 text-red-600" disabled={busy} onClick={() => void act({ action: "remove_line", lineId: line.id })}>{t("remove")}</Button>
+                          <Button size="sm" variant="outline" className="ml-1.5 h-7 px-2.5 text-red-600" disabled={busy || erpWaiting} onClick={() => void act({ action: "remove_line", lineId: line.id })}>{t("remove")}</Button>
                         ) : null}
                       </td>
                     ) : null}
@@ -226,7 +256,14 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
             {noticeStatus === "no_recipient" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeNoRecipient")}</span></HistoryRow> : null}
             {noticeStatus === "not_connected" ? <HistoryRow at={order.managerNotice?.at} locale={locale}><span className="text-muted-foreground">{t("historyNoticeOff")}</span></HistoryRow> : null}
             <PharmacyReceiptRow receipt={order.pharmacyReceipt} locale={locale} />
+            {order.edits ? <HistoryRow at={undefined} locale={locale}>{t("historyEdits", { count: order.edits })}</HistoryRow> : null}
             {order.confirmedAt ? <HistoryRow at={order.confirmedAt} locale={locale}>{t("historyConfirmed", { name: order.confirmedBy ?? t("someone") })}</HistoryRow> : null}
+            {order.erp.state === "created" && order.erp.document ? <HistoryRow at={order.confirmedAt ?? undefined} locale={locale}>
+              <span className="text-emerald-600">{t(order.erp.document.existing ? "historyErpExisting" : "historyErpCreated", { number: order.erp.document.number })}</span>
+              {order.erp.differences.map(diff => <span key={diff.position} className="block text-xs text-amber-700 dark:text-amber-500">
+                {t("historyErpDifference", { position: diff.position, sentQuantity: diff.sentQuantity, quantity: diff.quantity,
+                  sentPrice: formatMoney(diff.sentPrice, locale), price: diff.price === null ? "—" : formatMoney(diff.price, locale) })}</span>)}
+            </HistoryRow> : null}
             {order.rejectedAt ? <HistoryRow at={order.rejectedAt} locale={locale}>{t("historyRejected", { name: order.rejectedBy ?? t("someone"), reason: order.rejectReason ?? "" })}</HistoryRow> : null}
             <PharmacyNoticeRow notice={order.pharmacyNotice} locale={locale} />
           </ol>
@@ -244,6 +281,33 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       ) : null}
       {rejecting ? <RejectDialog busy={busy} onClose={() => setRejecting(false)}
         onReject={async reason => { if (await act({ action: "reject", reason })) setRejecting(false) }} /> : null}
+    </div>
+  )
+}
+
+/** Where the order stands with 1C before it is confirmed: refused (each line's reason), or sent with no clear answer. */
+function ErpBanner({ erp }: { erp: Erp }) {
+  const t = useTranslations("pharmacyPhoneOrders")
+  if (erp.connection === "broken") {
+    return <p role="status" className="rounded-xl border border-border bg-card px-4 py-2 text-sm text-red-600 shadow-[inset_3px_0_0_#dc2626]">{t("erpBroken")}</p>
+  }
+  if (erp.state === "sending" || erp.state === "unknown") {
+    return <p role="status" className="rounded-xl border border-border bg-card px-4 py-2 text-sm text-amber-700 shadow-[inset_3px_0_0_#f59e0b] dark:text-amber-500">
+      {t(erp.state === "sending" ? "erpSending" : "erpUnknown")}</p>
+  }
+  if (erp.state !== "refused") return null
+  return (
+    <div role="alert" className="rounded-xl border border-border bg-card px-4 py-2 text-sm shadow-[inset_3px_0_0_#dc2626]">
+      <p className="font-semibold text-red-600">{t("erpRefused")}</p>
+      <ul className="mt-1 space-y-0.5">
+        {erp.errors.map((error, index) => {
+          const reason = ERP_REASONS[error.code] ? t(`erpReason.${ERP_REASONS[error.code]}`) : error.code
+          return <li key={index}>
+            {error.position === null ? reason : t("erpRefusedLine", { position: error.position, reason })}
+            {error.text ? <span className="text-muted-foreground"> — {error.text}</span> : null}
+          </li>
+        })}
+      </ul>
     </div>
   )
 }
