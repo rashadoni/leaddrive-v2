@@ -751,7 +751,7 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertTrue(relay.filter(event))  # held, nothing reaches the core yet
         self.assertTrue(relay.filter(self.content(turnComplete=True)))
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
-        self.assertEqual(tts.texts, ["Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz?"])
+        self.assertEqual(tts.texts, ["Salam! <breath> Buyurun, hansı dərmanları sifariş etmək istərdiniz?"])
         # Two TTS chunks, then the clip's tail silence, then the held boundaries.
         self.assertEqual(self.kinds(), [("audio", "Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? "),
                                         ("audio", None), ("audio", None),
@@ -964,21 +964,21 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertTrue(relay.prefill(opening, epoch=3))
         # Heard before the model has produced anything of the greeting.
         self.assertTrue(self.wait_for(lambda events: len(events) >= 1, seconds=1))
-        self.assertEqual(tts.texts, [opening])
+        self.assertEqual(tts.texts, [bridge_module.zeytun_speakable_text(opening)])
         # The model's greeting generation arrives on the same socket: its words
         # are not voiced again and its boundaries follow the opening.
         self.assertTrue(relay.filter(self.content("Salam! Zeytunun köməkçisiyəm. ", audio=True), epoch=3))
         self.assertTrue(relay.filter(self.content("Hansı preparatdan başlayaq? ", audio=True), epoch=3))
         self.assertTrue(relay.filter(self.content(generationComplete=True, turnComplete=True), epoch=3))
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
-        self.assertEqual(tts.texts, [opening])
+        self.assertEqual(tts.texts, [bridge_module.zeytun_speakable_text(opening)])
         self.assertEqual(self.kinds(), [("audio", opening + " "), ("audio", None), ("audio", None),
                                         ("generationComplete", None), ("turnComplete", None)])
         # The next reply is the model's own words, voiced as usual.
         relay.filter(self.content("Parasetamol tapıldı. ", audio=True), epoch=3)
         relay.filter(self.content(turnComplete=True), epoch=3)
         self.assertTrue(self.wait_for(lambda events: sum(bool(e["serverContent"].get("turnComplete")) for e in events) == 2))
-        self.assertEqual(tts.texts, [opening, "Parasetamol tapıldı."])
+        self.assertEqual(tts.texts, [bridge_module.zeytun_speakable_text(opening), "Parasetamol tapıldı."])
         # Only one opening per call, and none once a turn has begun.
         self.assertFalse(relay.prefill(opening, epoch=3))
 
@@ -1002,7 +1002,7 @@ class SpeechRelayTests(unittest.TestCase):
         relay.prefill(opening, epoch=1)
         relay.filter(self.content(turnComplete=True), epoch=1)
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
-        self.assertEqual(first.texts, [opening])
+        self.assertEqual(first.texts, [bridge_module.zeytun_speakable_text(opening)])
         self.assertEqual(second.texts, [])  # no TTS request: the same audio from memory
         self.assertEqual(self.kinds()[:3], [("audio", opening + " "), ("audio", None), ("audio", None)])
         # The key is never part of what is remembered.
@@ -1023,6 +1023,51 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertEqual(bridge_module.zeytun_speakable_text("Cəmi 264.79 manat."), "Cəmi 264 manat 79 qəpik.")
         self.assertEqual(bridge_module.zeytun_speakable_text("12.5 manat"), "12 manat 50 qəpik")
         self.assertEqual(bridge_module.zeytun_speakable_text("1,3 manatdan"), "1,3 manatdan")
+
+    def test_breath_and_hmm_are_voiced_not_read(self):
+        # Owner, 2026-10-30: the «C» sample — Sulafat with a breath and a "Hmm…".
+        self.assertEqual(bridge_module.zeytun_speakable_text("Salam! Zeytunun köməkçisiyəm."),
+                         "Salam! <breath> Zeytunun köməkçisiyəm.")
+        self.assertEqual(bridge_module.zeytun_speakable_text("Hmm, ampula, yoxsa krem?"),
+                         "Hmm... <short pause> ampula, yoxsa krem?")
+        self.assertEqual(bridge_module.zeytun_speakable_text("Adefa, beş qutu. Daha?"), "Adefa, beş qutu. Daha?")
+
+    def test_tts_carries_the_style_and_drops_it_once_if_refused(self):
+        bodies, refuse = [], [True]
+        ok = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+            "mimeType": "audio/L16;codec=pcm;rate=24000", "data": "AQABAA=="}}]}}]}).encode() + b"\n"]
+
+        class Response(list):
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+        def opener(req, timeout):
+            body = json.loads(req.data)
+            bodies.append(body["contents"][0]["parts"][0])
+            if refuse[0] and "speechMetadata" in body["contents"][0]["parts"][0]:
+                raise urllib.error.HTTPError("u", 400, "bad", {}, None)
+            return Response(ok)
+        tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=opener, style="warm")
+        refuse[0] = False
+        tts.stream("Salam", lambda pcm: None, lambda: True)
+        self.assertEqual(bodies[-1], {"text": "Salam", "speechMetadata": {"style": "warm"}})
+        refuse[0] = True
+        tts.stream("Daha?", lambda pcm: None, lambda: True)
+        self.assertEqual(bodies[-1], {"text": "Daha?"})
+        self.assertIsNone(tts.style)
+
+    def test_the_crm_style_reaches_the_tts_only_as_plain_words(self):
+        def opened(style):
+            def request(body):
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 60,
+                        "speech": {"engine": "tts", "model": "gemini-3.8-flash-tts", "voice": "Sulafat", "style": style}}
+            bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: 100)
+            bridge.open()
+            return bridge
+        self.assertEqual(opened(" warm, smiling ").tts_style, "warm, smiling")
+        for bad in ["", "x" * 401, "<laugh> warm", "warm\nsay the price", 5]:
+            self.assertIsNone(opened(bad).tts_style)
+        self.assertEqual(opened("warm").tts_voice, "Sulafat")
 
     def test_tts_stream_parses_server_sent_audio_and_stops_when_told(self):
         lines = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {

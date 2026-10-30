@@ -188,7 +188,12 @@ export const ZEYTUN_INBOUND_VOICE: { voice: string | null; pinSpeechLanguage: bo
 // of gemini-3.8-flash-tts with Sulafat: «эту ставь». The station re-voices
 // the Live model's answers with this TTS (ZeytunSpeechRelay); it accepts only
 // a model and voice it knows and otherwise keeps the model's own voice.
-export const ZEYTUN_INBOUND_SPEECH = { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat" } as const
+// Owner, 2026-10-30, of three Sulafat samples: «C» — this delivery, with a
+// breath after the greeting and a "Hmm…" before a clarifying question (the
+// station voices those). The voice itself stays Sulafat («не трогай»). A
+// station without style support ignores the field.
+export const ZEYTUN_INBOUND_SPEECH = { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat",
+  style: "relaxed, friendly phone conversation; warm and smiling, natural unhurried pace with small natural pauses; a real order-desk operator talking to a regular customer, not a narrator reading a script" } as const
 /** Said once the CRM has taken the transfer; the station ends the AI's part
  * after it and rings the managers (closing_keys, as for the goodbye). */
 export const ZEYTUN_TRANSFER_PHRASE = "Sizi menecerə qoşuram, xətdə qalın."
@@ -240,7 +245,7 @@ export const ZEYTUN_LINE_PROMPT = [
   // либо уточнениями». A pharmacy dictates many lines; every extra sentence or
   // question is paid once per line.
   ["Speak Azerbaijani by default; switch only if the caller explicitly asks. Be brief and natural. Never discuss construction products.",
-    "Speak Azerbaijani unless the caller asks otherwise. Be fast: each reply is one short sentence with at most one question; no fillers or thanks mid-call; repeat only name and quantity."],
+    "Speak Azerbaijani unless the caller asks otherwise. Be fast: each reply is one short sentence with at most one question; no fillers or thanks mid-call (a clarifying question may start with \"Hmm,\"); repeat only name and quantity."],
   ["Collect a PRELIMINARY list of requested medicines and quantities. Use search_pharmacy_catalog for every product lookup and wait for its result before saying anything about that product; never invent a catalog match, availability or price.",
     "Collect a PRELIMINARY list of medicines and quantities. Look up every product with search_pharmacy_catalog and wait for the result before saying anything about it; never invent a match, availability or price."],
   // Owner, 2026-10-30, the same complaint: confirmation and the next question
