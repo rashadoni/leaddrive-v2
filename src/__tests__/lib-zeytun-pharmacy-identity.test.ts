@@ -20,7 +20,7 @@ describe("who is calling the line, from 1C's pharmacy list", () => {
   })
 
   it("greets by the number's pharmacy, lists a shared number's, and otherwise asks", () => {
-    expect(openingForCandidates(BASE, [zefer])).toContain("«Zəfər Aptek №3» kimi qeydə alınıb, düzdür?")
+    expect(openingForCandidates(BASE, [zefer])).toContain("«Zəfər Aptek №3» kimi qeydə alınıb. Düzdürsə, sifarişinizi deyin.")
     const shared = openingForCandidates(BASE, [zefer, nur, sefa])
     expect(shared).toContain("«Zəfər Aptek №3», «Nur Aptek MMC» və «Səfa-Farm»")
     expect(shared.length).toBeLessThanOrEqual(500)

@@ -68,6 +68,8 @@ describe("single-call inbound owner rehearsal", () => {
     // The station re-voices the agent with this TTS; it accepts only a model and voice it knows.
     expect(body).toMatchObject({ voice: null, pinSpeechLanguage: false,
       speech: { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat" } })
+    // The delivery the owner chose («C»); plain words, never a tag the station would refuse.
+    expect(body.speech.style).toMatch(/^[^<>[\]{}]{1,400}$/)
     expect(body.prompt).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
     // No maker words in this catalog: an empty hint list, never a missing field.
     expect(body.vocabulary).toEqual([])
@@ -342,6 +344,16 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("if they named two different forms, ask which one before writing it")
     expect(ZEYTUN_LINE_PROMPT).toContain("never unasked when confirming a line")
     expect(ZEYTUN_LINE_PROMPT).toContain("in its base form without case endings")
+    // Owner, 2026-10-30: «долго принимает заказ… краткими ответами либо уточнениями».
+    expect(ZEYTUN_LINE_PROMPT).toContain("each reply is one short sentence with at most one question")
+    expect(ZEYTUN_LINE_PROMPT).toContain("invite the next in the same reply")
+    expect(ZEYTUN_LINE_PROMPT).not.toContain("Acknowledge a clear line briefly")
+    expect(ZEYTUN_LINE_PROMPT).toContain("look up two at a time, confirm them in one reply")
+    expect(ZEYTUN_LINE_PROMPT).toContain("take it without asking. If it only sounds close, read it back once")
+    expect(ZEYTUN_LINE_PROMPT).toContain("and in that same reply the closing sentence below")
+    expect(ZEYTUN_LINE_PROMPT).toContain("answer the opening with products and name no other pharmacy")
+    // Owner, 2026-10-30, of the Sulafat samples: «C» — a "Hmm…" before a clarifying question.
+    expect(ZEYTUN_LINE_PROMPT).toContain('a clarifying question may start with "Hmm,"')
   })
 
   it("allows a call the station's own ceiling, not the rehearsal's five minutes", async () => {

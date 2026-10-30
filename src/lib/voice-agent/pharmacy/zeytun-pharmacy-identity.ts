@@ -44,7 +44,9 @@ export function pharmacyNameMatches(spoken: string, name: string) {
 /** The line's greeting for the candidates the caller's number has in 1C. */
 export function openingForCandidates(base: string, candidates: PharmacyCandidate[]) {
   if (candidates.length === 1) {
-    return `Salam! Zeytunun süni intellekt köməkçisiyəm. Nömrəniz «${spokenPharmacyName(candidates[0].name)}» kimi qeydə alınıb, düzdür?`
+    // Owner, 2026-10-30 («долго принимает заказ»): the pharmacy confirms and
+    // starts its order in one answer instead of a yes and a second turn.
+    return `Salam! Zeytunun süni intellekt köməkçisiyəm. Nömrəniz «${spokenPharmacyName(candidates[0].name)}» kimi qeydə alınıb. Düzdürsə, sifarişinizi deyin.`
   }
   if (candidates.length >= 2 && candidates.length <= MAX_SPOKEN_CANDIDATES) {
     const names = candidates.map((candidate) => `«${spokenPharmacyName(candidate.name)}»`)

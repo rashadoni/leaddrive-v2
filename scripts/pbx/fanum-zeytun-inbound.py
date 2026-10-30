@@ -42,30 +42,50 @@ def zeytun_speakable_text(text):
         if cents == "00":
             return whole + " manat" + suffix
         return whole + " manat " + str(int(cents)) + " qəpik" + ("dir" if suffix else "")
-    return re.sub(r"\b(\d+)[.,](\d{1,2})\s*(?:manat|AZN)(\w*)", money, text)
+    text = re.sub(r"\b(\d+)[.,](\d{1,2})\s*(?:manat|AZN)(\w*)", money, text)
+    # Owner, 2026-10-30, of the sample with a breath and a "Hmm…" («C»): the
+    # 3.8 TTS voices these angle-bracket events instead of reading them.
+    text = re.sub(r"^Salam!\s+", "Salam! <breath> ", text)
+    return re.sub(r"^(?:Hmm+|Hım+|Hm+)[.,…]*\s+", "Hmm... <short pause> ", text, flags=re.IGNORECASE)
 
 
 class ZeytunGeminiTts:
     """Streaming gemini TTS for one call: plain text in, PCM16 24 kHz out.
 
-    Plain text only - an instruction in the request is read aloud (measured
-    2026-10-23: the style prefix became the first 3.5 s of the sample).
+    Plain text only - an instruction in the text is read aloud (measured
+    2026-10-23: the style prefix became the first 3.5 s of the sample). The
+    delivery goes in the part's speechMetadata.style instead (3.8 TTS; owner,
+    2026-10-30, chose that sample: «C»); a request it refuses (400) is sent
+    once more without it, and the call keeps the plain delivery.
     """
     MODELS = frozenset({"gemini-3.8-flash-tts"})
     # First audio arrives in ~0.7 s; a turn waiting longer than this falls
     # back to the model's own voice rather than leave the line silent.
     TIMEOUT_SECONDS = 4
 
-    def __init__(self, key, model, voice, opener=None):
+    def __init__(self, key, model, voice, opener=None, style=None):
         if not key or model not in self.MODELS or voice not in ZeytunInboundBridge.VOICES:
             raise ZeytunPilotUnavailable("tts_unavailable")
+        self.style = style
         self.url = ("https://generativelanguage.googleapis.com/v1beta/models/" + model
                     + ":streamGenerateContent?alt=sse&key=" + urllib.parse.quote(key, safe=""))
         self.voice = voice
         self.open = opener or (lambda req, timeout: urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout))
 
     def stream(self, text, on_pcm, keep_going):
-        body = {"contents": [{"role": "user", "parts": [{"text": text}]}],
+        try:
+            return self._stream(text, on_pcm, keep_going, self.style)
+        except ZeytunPilotUnavailable as error:
+            if not self.style or str(error) != "tts_http_400":
+                raise
+            self.style = None
+        return self._stream(text, on_pcm, keep_going, None)
+
+    def _stream(self, text, on_pcm, keep_going, style):
+        part = {"text": text}
+        if style:
+            part["speechMetadata"] = {"style": style}
+        body = {"contents": [{"role": "user", "parts": [part]}],
                 "generationConfig": {"responseModalities": ["AUDIO"],
                                      "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.voice}}}}}
         req = urllib.request.Request(self.url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
@@ -790,6 +810,8 @@ class ZeytunInboundBridge:
         # Where a save waits when the CRM does not answer it (ZeytunOrderSpool).
         self.spool = spool
         self.order_seq = 0
+        # The call's order number once the CRM has given it (one order per call).
+        self.order_number = None
         self.lock = threading.Lock()
         self.pending = {}
         self.workers = threading.BoundedSemaphore(2)
@@ -802,6 +824,7 @@ class ZeytunInboundBridge:
         self.pin_language = True
         self.tts_voice = None
         self.tts_model = None
+        self.tts_style = None
         self.relay = None
         self.vocabulary = ()
         self.transfer_phrase = None
@@ -883,6 +906,11 @@ class ZeytunInboundBridge:
             if (isinstance(speech, dict) and speech.get("engine") == "tts"
                     and speech.get("model") in ZeytunGeminiTts.MODELS and speech.get("voice") in self.VOICES):
                 self.tts_model, self.tts_voice = speech["model"], speech["voice"]
+                # How the voice speaks, never what it says: plain words only.
+                style = speech.get("style")
+                if (isinstance(style, str) and 1 <= len(style.strip()) <= 400 and style.isprintable()
+                        and not re.search(r"[<>\[\]{}]", style)):
+                    self.tts_style = style.strip()
             return {"prompt": prompt, "opening": opening, "maxSeconds": seconds, "closing": closing, "transfer": transfer}
         except Exception:
             raise ZeytunPilotUnavailable("pilot_session_unavailable") from None
@@ -940,7 +968,7 @@ class ZeytunInboundBridge:
         if self.tts_model is None:
             return None
         if self.relay is None:
-            engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice)
+            engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style)
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
                                            progress=progress, recovering=recovering)
         return self.relay
@@ -1140,11 +1168,30 @@ class ZeytunInboundBridge:
     def save_order(self, args):
         """One save: kept on the station's disk, then sent. A CRM that does not
         answer leaves it kept, and the model hears queued: the spool delivers
-        it. A CRM that answers, yes or no, settles it."""
+        it. A CRM that answers, yes or no, settles it.
+
+        Owner, 2026-10-30: «долго принимает заказ». The agent saves after every
+        line, and each save held its next words (and a lookup slot) for the
+        CRM's answer, 1-4 s at the top of a minute. Once this call has its
+        order number, a list kept on disk is answered at once with that number
+        and sent behind the reply; the spool still delivers it if the CRM does
+        not answer. The first save, and any save without a disk, still waits.
+        """
         with self.lock:
             self.order_seq += 1
             seq = self.order_seq
+            number = self.order_number
         kept = self.spool is not None and self.spool.keep(self.call_id, seq, args)
+        if kept and number is not None:
+            try:
+                threading.Thread(target=self._send_order, args=(seq, args, kept),
+                                 name="zeytun-order-send", daemon=True).start()
+                return {"status": "saved", "orderNumber": number}
+            except Exception:
+                pass
+        return self._send_order(seq, args, kept)
+
+    def _send_order(self, seq, args, kept):
         try:
             value = self.request({"action": "order", "callId": self.call_id, "seq": seq, **args})
         except Exception as error:
@@ -1155,7 +1202,11 @@ class ZeytunInboundBridge:
             return {"status": "not_saved"}
         if kept:
             self.spool.settle(self.call_id, seq)
-        return self.safe_saved(value)
+        result = self.safe_saved(value)
+        if result["status"] == "saved":
+            with self.lock:
+                self.order_number = result["orderNumber"]
+        return result
 
     def safe_transfer(self, value):
         """Transferring only with the exact phrase this session was given."""
