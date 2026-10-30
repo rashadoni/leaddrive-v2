@@ -19675,6 +19675,13 @@
     "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
   },
   "attendanceBranchScreen": {
+    "notAtBranchTitle": "No QR: this screen is not at the branch",
+    "notAtBranchAway": "This screen is about {distance} from the branch. Only a screen at the branch itself shows the QR.",
+    "locationDenied": "Allow this screen to use location in the browser settings: without it the QR is not shown.",
+    "locationUnavailable": "This device doesn't report its location. A branch QR needs a tablet or computer that can determine its place.",
+    "locationImprecise": "The screen's place can't be determined precisely yet. The QR appears as soon as it is.",
+    "distanceMeters": "{meters} m",
+    "distanceKm": "{km} km",
     "pageTitle": "Branch screen",
     "languageLabel": "Language",
     "loading": "Loading…",
@@ -19692,6 +19699,11 @@
     "offline": "No connection to the server. The code returns as soon as it's back."
   },
   "mtmAttendance": {
+    "qrScreenAway": "Not at the branch · {distance}",
+    "qrScreenNoFix": "Place unknown",
+    "qrScreenDistanceMeters": "{meters} m",
+    "qrScreenDistanceKm": "{km} km",
+    "qrScreenPlaceHint": "A screen shows the QR only while it stands at the branch: allow it location access on first launch.",
     "explanationAskLate": "Explain being late on {date}: {minutes} min",
     "explanationAskAbsent": "Explain your absence on {date}",
     "explanationAskBody": "HR asks for an explanation. Write it in the app under «Explanations».",

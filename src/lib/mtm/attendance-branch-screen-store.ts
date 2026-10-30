@@ -12,9 +12,11 @@ import { directory, issueBranchQrImage, lockBranches } from "@/lib/mtm/attendanc
 import {
   BRANCH_SCREEN_CODE_LIFETIME_MS,
   generateBranchScreenCode,
+  evaluateBranchScreenPlace,
   generateBranchScreenSecret,
   hashBranchScreenCode,
   hashBranchScreenSecret,
+  type BranchScreenFix,
 } from "@/lib/mtm/attendance-branch-screen-security"
 import type {
   AttendanceBranchScreenDirectory,
@@ -35,7 +37,7 @@ const fail = (code: string, status = 403): never => { throw new AttendanceReques
 const LAST_SEEN_STAMP_MS = 60_000
 
 async function currentBranch(tx: Tx, organizationId: string, branchId: string) {
-  const [branch] = await tx.$queryRaw<{ id: string; branchId: string; name: string; active: boolean }[]>`SELECT id,"branchId",name,active
+  const [branch] = await tx.$queryRaw<{ id: string; branchId: string; name: string; active: boolean; latitude: number; longitude: number; radiusMeters: number }[]>`SELECT id,"branchId",name,active,latitude,longitude,"radiusMeters"
     FROM mtm_attendance_branch_revisions WHERE "organizationId"=${organizationId} AND "branchId"=${branchId} ORDER BY version DESC LIMIT 1`
   return branch?.active ? branch : null
 }
@@ -46,15 +48,22 @@ export async function readAttendanceBranchScreens(reviewer: AttendanceReviewer):
     const listing = await directory(tx, reviewer)
     const screens = listing.branches.length ? await tx.mtmAttendanceBranchScreen.findMany({
       where: { organizationId: reviewer.organizationId, branchId: { in: listing.branches.map(branch => branch.id) }, pairedAt: { not: null }, revokedAt: null },
-      select: { id: true, branchId: true, pairedAt: true, lastSeenAt: true }, orderBy: [{ pairedAt: "asc" }, { id: "asc" }], take: 2001,
+      select: { id: true, branchId: true, pairedAt: true, lastSeenAt: true, placeState: true, placeDistanceMeters: true, placeCheckedAt: true }, orderBy: [{ pairedAt: "asc" }, { id: "asc" }], take: 2001,
     }) : []
     if (screens.length > 2000) return fail("TOO_LARGE", 422)
     return {
       enabled: listing.enabled, canConfigure: listing.canConfigure,
       branches: listing.branches.map(branch => ({ ...branch, screens: screens.filter(screen => screen.branchId === branch.id)
-        .map(screen => ({ id: screen.id, pairedAt: screen.pairedAt!.toISOString(), lastSeenAt: screen.lastSeenAt?.toISOString() ?? null })) })),
+        .map(screen => ({ id: screen.id, pairedAt: screen.pairedAt!.toISOString(), lastSeenAt: screen.lastSeenAt?.toISOString() ?? null,
+          place: placeOf(screen) })) })),
     }
   }, { timeout: 15000 })
+}
+
+const PLACE_STATES = new Set(["AT_BRANCH", "AWAY", "NO_FIX"])
+function placeOf(screen: { placeState: string | null; placeDistanceMeters: number | null; placeCheckedAt: Date | null }) {
+  if (!screen.placeState || !PLACE_STATES.has(screen.placeState) || !screen.placeCheckedAt) return null
+  return { state: screen.placeState as "AT_BRANCH" | "AWAY" | "NO_FIX", distanceMeters: screen.placeDistanceMeters, checkedAt: screen.placeCheckedAt.toISOString() }
 }
 
 /** A one-time code for the tablet at this branch. The code itself is never stored. */
@@ -132,12 +141,16 @@ export async function pairAttendanceBranchScreen(rawCode: unknown): Promise<{ se
   }, { timeout: 15000 }))
 }
 
-/** What the paired screen shows now: a fresh 60-second code of its branch, or why not. */
-export async function issueAttendanceScreenQr(secret: unknown): Promise<AttendanceBranchScreenQr> {
+/**
+ * What the paired screen shows now: a fresh 60-second code of its branch, or
+ * why not. `fix` is the screen's own position; a code goes only to a screen
+ * standing at its branch.
+ */
+export async function issueAttendanceScreenQr(secret: unknown, fix: BranchScreenFix | null): Promise<AttendanceBranchScreenQr> {
   const secretHash = hashBranchScreenSecret(secret)
   if (!secretHash) return { state: "UNPAIRED" }
   const screen = await runWithRlsBypass(() => prisma.mtmAttendanceBranchScreen.findUnique({
-    where: { secretHash }, select: { id: true, organizationId: true, branchId: true, revokedAt: true, lastSeenAt: true } }))
+    where: { secretHash }, select: { id: true, organizationId: true, branchId: true, revokedAt: true, lastSeenAt: true, placeState: true, placeDistanceMeters: true } }))
   if (!screen || screen.revokedAt) return { state: "UNPAIRED" }
   return runWithTenant(screen.organizationId, () => prisma.$transaction(async (tx: Tx): Promise<AttendanceBranchScreenQr> => {
     await lockAttendanceQrPolicy(tx, screen.organizationId)
@@ -150,13 +163,18 @@ export async function issueAttendanceScreenQr(secret: unknown): Promise<Attendan
     const live = await tx.mtmAttendanceBranchScreen.findFirst({ where: { organizationId: screen.organizationId, id: screen.id, revokedAt: null }, select: { id: true } })
     if (!live) return { state: "UNPAIRED" }
     const now = new Date()
-    if (!screen.lastSeenAt || now.getTime() - screen.lastSeenAt.getTime() >= LAST_SEEN_STAMP_MS) {
-      await tx.mtmAttendanceBranchScreen.updateMany({ where: { organizationId: screen.organizationId, id: screen.id, revokedAt: null }, data: { lastSeenAt: now } })
-    }
     const branch = await currentBranch(tx, screen.organizationId, screen.branchId)
-    if (!branch) return { state: "BRANCH_UNAVAILABLE", organizationName: tenant.name }
+    const place = branch ? evaluateBranchScreenPlace(fix, branch) : null
+    // The verdict is written when it changes, the time seen at most once a minute.
+    const placeChanged = place && (place.state !== screen.placeState || (place.state === "AWAY" && place.distanceMeters !== screen.placeDistanceMeters))
+    if (placeChanged || !screen.lastSeenAt || now.getTime() - screen.lastSeenAt.getTime() >= LAST_SEEN_STAMP_MS) {
+      await tx.mtmAttendanceBranchScreen.updateMany({ where: { organizationId: screen.organizationId, id: screen.id, revokedAt: null },
+        data: { lastSeenAt: now, ...(place ? { placeState: place.state, placeDistanceMeters: place.distanceMeters, placeCheckedAt: now } : {}) } })
+    }
+    if (!branch || !place) return { state: "BRANCH_UNAVAILABLE", organizationName: tenant.name }
     const shown = { organizationName: tenant.name, branch: { id: branch.branchId, name: branch.name } }
     if (!tenant.qrOn) return { state: "QR_OFF", ...shown }
+    if (place.state !== "AT_BRANCH") return { state: "NOT_AT_BRANCH", reason: place.state, distanceMeters: place.distanceMeters, ...shown }
     return { state: "SHOWING", ...shown, ...await issueBranchQrImage(screen.organizationId, branch.branchId, branch.id, now) }
   }, { timeout: 15000 }))
 }

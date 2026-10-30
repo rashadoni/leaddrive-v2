@@ -6,11 +6,14 @@ import * as store from "@/lib/mtm/attendance-branch-screen-store"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { POST as PAIR } from "@/app/api/v1/public/attendance-screen/pair/route"
 import { POST as QR } from "@/app/api/v1/public/attendance-screen/qr/route"
-import { generateBranchScreenCode, generateBranchScreenSecret, hashBranchScreenCode, hashBranchScreenSecret, normalizeBranchScreenCode } from "@/lib/mtm/attendance-branch-screen-security"
+import { evaluateBranchScreenPlace, generateBranchScreenCode, generateBranchScreenSecret, hashBranchScreenCode, hashBranchScreenSecret, normalizeBranchScreenCode, parseBranchScreenFix } from "@/lib/mtm/attendance-branch-screen-security"
 
 const SECRET = generateBranchScreenSecret().secret
 const pair = (body: string) => new NextRequest("http://localhost/api/v1/public/attendance-screen/pair", { method: "POST", body, headers: { "content-type": "application/json" } })
-const qr = (cookie?: string) => new NextRequest("http://localhost/api/v1/public/attendance-screen/qr", { method: "POST", headers: cookie ? { cookie: `ld_branch_screen=${cookie}` } : {} })
+const qr = (cookie?: string, body?: unknown) => new NextRequest("http://localhost/api/v1/public/attendance-screen/qr", { method: "POST",
+  headers: { ...(cookie ? { cookie: `ld_branch_screen=${cookie}` } : {}), ...(body === undefined ? {} : { "content-type": "application/json" }) },
+  ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+const FIX = { latitude: 40.3777, longitude: 49.8920, accuracy: 20, ageMs: 5_000 }
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(consumePublicRateLimit).mockResolvedValue({ allowed: true, retryAfterSeconds: 0, unavailable: false } as never)
@@ -26,6 +29,24 @@ describe("branch screen codes", () => {
     expect(hashBranchScreenSecret(SECRET)).toMatch(/^[a-f0-9]{64}$/)
     expect(hashBranchScreenSecret(`${SECRET}x`)).toBeNull()
     expect(generateBranchScreenSecret().secret).not.toBe(SECRET)
+  })
+  // Owner, 2026-10-30: a laptop paired at home showed the branch's code at home.
+  it("give a code only to a screen whose own fix puts it at its branch", () => {
+    const branch = { latitude: 40.3777, longitude: 49.8920, radiusMeters: 100 }
+    expect(evaluateBranchScreenPlace(FIX, branch)).toEqual({ state: "AT_BRANCH", distanceMeters: 0 })
+    // About 3.3 km north: away, with the distance for the administrator.
+    const home = evaluateBranchScreenPlace({ ...FIX, latitude: 40.4077 }, branch)
+    expect(home.state).toBe("AWAY"); expect(home.distanceMeters).toBeGreaterThan(3000)
+    // Coarse enough to be anywhere nearby, or too old, or none: no code.
+    expect(evaluateBranchScreenPlace({ ...FIX, accuracy: 1500 }, branch)).toEqual({ state: "NO_FIX", distanceMeters: null })
+    expect(evaluateBranchScreenPlace({ ...FIX, ageMs: 3 * 60_000 }, branch)).toEqual({ state: "NO_FIX", distanceMeters: null })
+    expect(evaluateBranchScreenPlace(null, branch)).toEqual({ state: "NO_FIX", distanceMeters: null })
+    // Beyond even a coarse circle is still plainly away.
+    expect(evaluateBranchScreenPlace({ ...FIX, latitude: 40.4077, accuracy: 1500 }, branch).state).toBe("AWAY")
+    // Just outside the radius, but the accuracy circle reaches it: at the branch.
+    expect(evaluateBranchScreenPlace({ ...FIX, latitude: 40.3787, accuracy: 30 }, branch).state).toBe("AT_BRANCH")
+    expect(parseBranchScreenFix({ fix: FIX })).toEqual(FIX)
+    for (const bad of [null, {}, { fix: { ...FIX, latitude: 91 } }, { fix: { ...FIX, extra: 1 } }, { fix: { ...FIX, accuracy: "20" } }]) expect(parseBranchScreenFix(bad)).toBeNull()
   })
 })
 describe("public branch screen routes", () => {
@@ -56,13 +77,17 @@ describe("public branch screen routes", () => {
     expect(consumePublicRateLimit).toHaveBeenCalledWith("mtm-attendance-screen-pair:ip", expect.any(String), { maxRequests: 10, windowSeconds: 900 })
   })
   it("gives the paired screen its code and clears the cookie of an unpaired one", async () => {
-    const shown = await QR(qr(SECRET))
-    expect(store.issueAttendanceScreenQr).toHaveBeenCalledWith(SECRET)
+    const shown = await QR(qr(SECRET, { fix: FIX }))
+    expect(store.issueAttendanceScreenQr).toHaveBeenCalledWith(SECRET, FIX)
     expect(await shown.json()).toMatchObject({ success: true, data: { state: "SHOWING", branch: { id: "b" } } })
     vi.mocked(store.issueAttendanceScreenQr).mockResolvedValue({ state: "UNPAIRED" })
     const gone = await QR(qr("mtms1.revoked"))
     expect(await gone.json()).toEqual({ success: true, data: { state: "UNPAIRED" } })
     expect(gone.headers.get("set-cookie")).toMatch(/ld_branch_screen=;.*Max-Age=0/i)
+  })
+  it("passes no position on when the screen sent none or sent nonsense", async () => {
+    await QR(qr(SECRET)); await QR(qr(SECRET, { fix: { latitude: "home" } }))
+    expect(vi.mocked(store.issueAttendanceScreenQr).mock.calls).toEqual([[SECRET, null], [SECRET, null]])
   })
   it("hides failures behind one answer", async () => {
     vi.mocked(store.issueAttendanceScreenQr).mockRejectedValue(new Error("private DB payload"))

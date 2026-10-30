@@ -718,6 +718,16 @@ describe("middleware", async () => {
     expect(elsewhere.filter((value) => !value.includes("geolocation=()"))).toEqual([])
   })
 
+  // The branch screen has no account, yet must say where it stands before it is
+  // given a code (owner, 2026-10-30). Only that page asks; its API does not.
+  it("lets the branch screen page ask for its location, and not its API or a look-alike path", async () => {
+    const policy = async (pathname: string) =>
+      (await authMiddleware(makeReq({ pathname, auth: null, host: "app.leaddrivecrm.org" }))).headers.get("permissions-policy") ?? ""
+    expect(await policy("/screen")).toBe("camera=(), microphone=(), geolocation=(self)")
+    expect(await policy("/screenshots")).not.toContain("geolocation=(self)")
+    expect(await policy("/api/v1/public/attendance-screen/qr")).not.toContain("geolocation=(self)")
+  })
+
   // «Səslə soruşun» (owner, 2026-10-20): the private demo's button records a
   // question in the browser, so that page may ask for the microphone — only
   // while the demo's voice switch is on, and no other public page ever.

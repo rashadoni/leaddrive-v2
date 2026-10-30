@@ -19671,6 +19671,13 @@
     "managerNoTeamHint": "Yalnız öz komandalarınızın qaydalarını dəyişə bilərsiniz, amma əməkdaş kartınız hələ heç bir komandaya daxil deyil. Administratordan kartınıza komanda təyin etməsini xahiş edin."
   },
   "attendanceBranchScreen": {
+    "notAtBranchTitle": "QR göstərilmir: ekran filialda deyil",
+    "notAtBranchAway": "Bu ekran indi filialdan təxminən {distance} uzaqdadır. QR-ı yalnız filialın özündə olan ekran göstərir.",
+    "locationDenied": "Brauzer parametrlərində bu ekrana məkana giriş icazəsi verin: icazəsiz QR göstərilmir.",
+    "locationUnavailable": "Bu cihaz öz məkanını bildirmir. Filial QR-ı üçün məkanı təyin edən planşet və ya kompüter lazımdır.",
+    "locationImprecise": "Ekranın harada olduğunu dəqiq təyin etmək alınmır. Məkan təyin olunan kimi QR görünəcək.",
+    "distanceMeters": "{meters} m",
+    "distanceKm": "{km} km",
     "pageTitle": "Filial ekranı",
     "languageLabel": "Dil",
     "loading": "Yüklənir…",
@@ -19688,6 +19695,11 @@
     "offline": "Serverlə əlaqə yoxdur. Əlaqə bərpa olunan kimi kod görünəcək."
   },
   "mtmAttendance": {
+    "qrScreenAway": "Filialda deyil · {distance}",
+    "qrScreenNoFix": "Məkan təyin olunmayıb",
+    "qrScreenDistanceMeters": "{meters} m",
+    "qrScreenDistanceKm": "{km} km",
+    "qrScreenPlaceHint": "Ekran QR-ı yalnız özü filialda olduqda göstərir: ilk açılışda ona məkana giriş icazəsi verin.",
     "explanationAskLate": "{date} gecikməsini izah edin: {minutes} dəq",
     "explanationAskAbsent": "{date} işə gəlməməyinizi izah edin",
     "explanationAskBody": "Kadrlar izahat istəyir. Onu tətbiqdə «İzahatlar» bölməsində yazın.",
