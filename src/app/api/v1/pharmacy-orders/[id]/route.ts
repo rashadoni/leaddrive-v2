@@ -34,7 +34,7 @@ export const PATCH = withRlsAuth("deals", "write", async (req: NextRequest, auth
   const pharmacy = setPharmacySchema.safeParse(body)
   if (pharmacy.success) {
     try {
-      await setPhoneOrderPharmacy(prisma, auth.orgId, id, pharmacy.data.revision, pharmacy.data.companyId)
+      await setPhoneOrderPharmacy(prisma, auth.orgId, id, pharmacy.data.revision, pharmacy.data.companyId, auth.userId)
       return NextResponse.json({ data: await getPhoneOrder(auth.orgId, id) })
     } catch (error) { return failure(error) }
   }

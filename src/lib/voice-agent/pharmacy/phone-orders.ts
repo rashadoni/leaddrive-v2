@@ -128,6 +128,9 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
     const seq = input.seq ?? null
     if (existing) {
       if (existing.status !== "pending_review") return { status: "already_reviewed" as const, number: existing.number }
+      // A manager pressed «Подтвердить» and 1C has, may have, or refused these
+      // lines: a late save of the call must not change them under 1C.
+      if (existing.erpState !== null) return { status: "already_reviewed" as const, number: existing.number }
       if (input.afterCall && existing.revision !== existing.stationRevision) return { status: "already_reviewed" as const, number: existing.number }
       if (seq !== null && existing.stationSeq !== null && seq <= existing.stationSeq) {
         const held = existing.lines
@@ -145,7 +148,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       // Claimed at the revision read above: a manager's change since then
       // (possible once the call is over) wins over the call's list.
       const bumped = await tx.pharmacyPhoneOrder.updateMany({
-        where: { id: existing.id, organizationId: orgId, revision: existing.revision, status: "pending_review" },
+        where: { id: existing.id, organizationId: orgId, revision: existing.revision, status: "pending_review", erpState: null },
         data: { ...(input.pharmacyName ? { pharmacyName: input.pharmacyName, pharmacyIdentification: input.identification,
             pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null, companyId: company?.id ?? null } : {}),
           totalAmount: total, revision: { increment: 1 }, catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey,

@@ -5,7 +5,7 @@ import { runWithTenant } from "@/lib/rls-context"
 import { PHARMACY_COMPANY_SOURCE, PHONE_ORDERS_TABLE, phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
 import { pharmacyNameMatches } from "@/lib/voice-agent/pharmacy/zeytun-pharmacy-identity"
 
-import { PhoneOrderError } from "./orders"
+import { ERP_EDITABLE, PhoneOrderError, withEdit } from "./orders"
 
 /**
  * Pharmacies from Zeytun's 1C list as companies in the CRM. Owner, 2026-10-26
@@ -243,16 +243,27 @@ export async function orderPharmacyCandidates(db: PrismaClient, orgId: string, o
 }
 
 /** Name the order's pharmacy: any status, under the order's revision, a 1C pharmacy only. */
-export async function setPhoneOrderPharmacy(db: PrismaClient, orgId: string, orderId: string, revision: number, companyId: string) {
+export async function setPhoneOrderPharmacy(db: PrismaClient, orgId: string, orderId: string, revision: number, companyId: string,
+  userId: string) {
   const company = await db.company.findFirst({ where: { id: companyId, organizationId: orgId, externalSource: PHARMACY_COMPANY_SOURCE },
     select: { id: true, name: true, address: true, externalId: true } })
   if (!company) throw new PhoneOrderError("invalid", 400)
+  const order = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId },
+    select: { pharmacyGuid: true, managerEdits: true } })
+  if (!order) throw new PhoneOrderError("not_found", 404)
+  // The pharmacy may be named on a reviewed order too, but not under a document
+  // 1C holds or may hold: 1C would keep the old one.
   const updated = await db.pharmacyPhoneOrder.updateMany({
-    where: { id: orderId, organizationId: orgId, revision },
+    where: { id: orderId, organizationId: orgId, revision, OR: ERP_EDITABLE },
     data: { companyId: company.id, pharmacyGuid: company.externalId, pharmacyName: company.name, pharmacyAddress: company.address,
-      pharmacyIdentification: "manager_selected", revision: { increment: 1 } },
+      pharmacyIdentification: "manager_selected", revision: { increment: 1 },
+      managerEdits: withEdit(order.managerEdits, { action: "set_pharmacy", at: new Date().toISOString(), by: userId,
+        from: order.pharmacyGuid, to: company.externalId }) },
   })
   if (updated.count === 1) return
-  const exists = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId }, select: { id: true } })
-  throw exists ? new PhoneOrderError("stale_revision", 409) : new PhoneOrderError("not_found", 404)
+  const current = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId }, select: { erpState: true } })
+  throw !current ? new PhoneOrderError("not_found", 404)
+    : current.erpState === "created" ? new PhoneOrderError("not_pending", 409)
+    : current.erpState === "sending" || current.erpState === "unknown" ? new PhoneOrderError("erp_pending", 409)
+    : new PhoneOrderError("stale_revision", 409)
 }
