@@ -1036,6 +1036,13 @@ export default function MtmMapPage() {
     if (mapLook.areas) retryZones()
   }
 
+  // «Все сотрудники» under the map: leave the selected employee and frame the whole team.
+  const [everyoneTurn, setEveryoneTurn] = useState(0)
+  const showEveryone = () => {
+    if (selectedAgentRef.current) handleAgentClick(selectedAgentRef.current)
+    setEveryoneTurn((turn) => turn + 1)
+  }
+
   const handleAgentClick = (agentId: string) => {
     setSelectedStop(null)
     setFollowSelected(false)
@@ -1795,6 +1802,7 @@ export default function MtmMapPage() {
               showHeatmap={showHeatmap}
               plannedRoute={showDayRoute ? routeStops : NO_ROUTE_STOPS}
               focusAgentId={selectedAgent}
+              everyoneTurn={everyoneTurn}
               etaSeconds={etaSeconds}
               timeZone={contract?.timezone}
               showWorkdayStatus={workforceEnabled}
@@ -1863,6 +1871,7 @@ export default function MtmMapPage() {
               fullscreen={mapFullscreen}
               onFullscreenToggle={toggleMapFullscreen}
               fullscreenSupported={fullscreenSupported}
+              onShowEveryone={showEveryone}
               zoneDrawing={zonesCanWrite ? { outlineProblem: rulerOutlineProblem, onCreate: createZone } : null}
               zoneEditor={editedZone && zoneEdit ? (
                 <LiveMapZoneForm

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CircleDashed, Loader2, MapPin, Maximize, Minimize, MousePointerClick, Ruler, Search, X } from "lucide-react"
+import { CircleDashed, Loader2, MapPin, Maximize, Minimize, MousePointerClick, Ruler, Search, Users, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LiveMapReferencePoint } from "@/components/mtm/live-map"
 import { LiveMapZoneForm, type LiveMapZoneFormValues } from "@/components/mtm/live-map-zone-form"
@@ -38,7 +38,7 @@ const TOOL_ON = "border-foreground bg-card font-semibold text-foreground ring-1 
 export function LiveMapTools({
   near, referencePoint, onReferencePointChange, pickingPoint, onPickingPointChange,
   rulerActive, onRulerToggle, rulerMeters, rulerPointCount, onRulerUndo, formatDistance, rulerArea = null,
-  fullscreen, onFullscreenToggle, fullscreenSupported, zoneDrawing = null, zoneEditor = null,
+  fullscreen, onFullscreenToggle, fullscreenSupported, zoneDrawing = null, zoneEditor = null, onShowEveryone,
 }: {
   /** Roughly where the map is looking, so nearby places come first. */
   near: { latitude: number; longitude: number } | null
@@ -58,6 +58,8 @@ export function LiveMapTools({
   fullscreen: boolean
   onFullscreenToggle: () => void
   fullscreenSupported: boolean
+  /** Leaves the selected employee and frames the whole team again (owner, 2026-10-30: after one press there was no way back). */
+  onShowEveryone?: () => void
   /**
    * «Свои зоны»: what the ruler has outlined, or a circle around the picked
    * point, kept on the map under a name. Null until the server has said that
@@ -285,6 +287,13 @@ export function LiveMapTools({
           out — is all there is: on a phone the three buttons under it would
           take a third of the map. The same while a zone's form is open. */}
       <div className={cn("flex shrink-0 flex-wrap items-center gap-2", (rulerActive || pickingPoint || zoneFormShown || zoneEditor) && "max-sm:hidden")}>
+        {onShowEveryone ? (
+          <Hint side="top" text={tMap("hint.showEveryone")}>
+            <button type="button" onClick={onShowEveryone} data-testid="live-map-tool-everyone" className={cn(TOOL, TOOL_IDLE)}>
+              <Users className="h-4 w-4" aria-hidden="true" />{tMap("tools.showEveryone")}
+            </button>
+          </Hint>
+        ) : null}
         <Hint side="top" text={tMap("hint.point")}>
           <button
             type="button"

@@ -18025,6 +18025,7 @@
   },
   "mtmMap": {
     "hint": {
+      "showEveryone": "Clear the selection and show every employee on the map",
       "back": "Back to the MTM home page, with the filters you opened the map from.",
       "live": "Where the team is now: each employee's latest position. The map refreshes itself every 30 seconds.",
       "history": "Where one employee was on a chosen day: the path on the map, stops and visits by time.",
@@ -18156,6 +18157,7 @@
       "glideHint": "the marker glides to its new place instead of jumping"
     },
     "tools": {
+      "showEveryone": "All employees",
       "point": "Address or point",
       "ruler": "Ruler",
       "fullscreen": "Full screen",

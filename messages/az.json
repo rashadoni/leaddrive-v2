@@ -18021,6 +18021,7 @@
   },
   "mtmMap": {
     "hint": {
+      "showEveryone": "Seçimi götürüb bütün əməkdaşları xəritədə göstərin",
       "back": "MTM-in əsas səhifəsinə qayıt — xəritəni açdığınız filtrlərlə.",
       "live": "Komanda indi haradadır: hər əməkdaşın son koordinatı. Xəritə hər 30 saniyədən bir özü yenilənir.",
       "history": "Bir əməkdaş seçilmiş gündə harada olub: xəritədə yolu, dayanmaları və vizitləri saatı ilə.",
@@ -18152,6 +18153,7 @@
       "glideHint": "nişan yeni yerə tullanmır, sürüşür"
     },
     "tools": {
+      "showEveryone": "Bütün əməkdaşlar",
       "point": "Ünvan və ya nöqtə",
       "ruler": "Xətkeş",
       "fullscreen": "Tam ekran",
