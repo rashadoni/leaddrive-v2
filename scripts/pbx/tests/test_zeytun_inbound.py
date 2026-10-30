@@ -537,6 +537,54 @@ class OrderSpoolTests(unittest.TestCase):
         self.assertEqual(self.bridge.save_order({"lines": self.LINE})["status"], "saved")
         self.assertEqual(self.kept(), [])
 
+    def test_after_the_first_save_a_kept_list_is_answered_without_waiting_for_the_crm(self):
+        # Owner, 2026-10-30: «долго принимает заказ» — each line's save held the reply.
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["orderNumber"], "TS-1031")
+        gate, sent = threading.Event(), threading.Event()
+        def slow(body):
+            gate.wait(2)
+            sent.set()
+            return self.SAVED
+        self.crm = slow
+        longer = self.LINE + [{"quantity": 1, "unit": "flakon", "spoken": "bir flakon"}]
+        started = time.monotonic()
+        self.assertEqual(self.bridge.save_order({"lines": longer}), {"status": "saved", "orderNumber": "TS-1031"})
+        self.assertLess(time.monotonic() - started, 0.5)
+        # Kept until the CRM has it, then settled behind the reply.
+        self.assertEqual(self.kept(), [CALL + ".json"])
+        gate.set()
+        self.assertTrue(sent.wait(2))
+        until = time.monotonic() + 2
+        while self.kept() and time.monotonic() < until:
+            time.sleep(0.01)
+        self.assertEqual(self.kept(), [])
+
+    def test_a_list_sent_behind_the_reply_that_the_crm_missed_is_left_for_the_spool(self):
+        self.bridge.save_order({"lines": self.LINE})
+        sent = threading.Event()
+        def silent(body):
+            sent.set()
+            raise urllib.error.URLError("timed out")
+        self.crm = silent
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["status"], "saved")
+        self.assertTrue(sent.wait(2))
+        time.sleep(0.05)
+        self.assertEqual(self.kept(), [CALL + ".json"])
+        self.now += 11
+        self.spool.drain_once()
+        self.assertEqual(self.posts[-1]["seq"], 2)
+        self.assertEqual(self.kept(), [])
+
+    def test_the_first_save_and_a_save_without_a_disk_still_wait_for_the_crm(self):
+        self.crm = self.silent
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "queued"})
+        self.assertIsNone(self.bridge.order_number)
+        self.crm = lambda body: self.SAVED
+        self.bridge.save_order({"lines": self.LINE})
+        self.bridge.spool = None
+        self.crm = self.silent
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "not_saved"})
+
     def test_a_crm_that_says_no_is_not_resent(self):
         def refused(body):
             raise urllib.error.HTTPError(URL, 403, "Forbidden", {}, None)

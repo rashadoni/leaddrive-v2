@@ -790,6 +790,8 @@ class ZeytunInboundBridge:
         # Where a save waits when the CRM does not answer it (ZeytunOrderSpool).
         self.spool = spool
         self.order_seq = 0
+        # The call's order number once the CRM has given it (one order per call).
+        self.order_number = None
         self.lock = threading.Lock()
         self.pending = {}
         self.workers = threading.BoundedSemaphore(2)
@@ -1140,11 +1142,30 @@ class ZeytunInboundBridge:
     def save_order(self, args):
         """One save: kept on the station's disk, then sent. A CRM that does not
         answer leaves it kept, and the model hears queued: the spool delivers
-        it. A CRM that answers, yes or no, settles it."""
+        it. A CRM that answers, yes or no, settles it.
+
+        Owner, 2026-10-30: «долго принимает заказ». The agent saves after every
+        line, and each save held its next words (and a lookup slot) for the
+        CRM's answer, 1-4 s at the top of a minute. Once this call has its
+        order number, a list kept on disk is answered at once with that number
+        and sent behind the reply; the spool still delivers it if the CRM does
+        not answer. The first save, and any save without a disk, still waits.
+        """
         with self.lock:
             self.order_seq += 1
             seq = self.order_seq
+            number = self.order_number
         kept = self.spool is not None and self.spool.keep(self.call_id, seq, args)
+        if kept and number is not None:
+            try:
+                threading.Thread(target=self._send_order, args=(seq, args, kept),
+                                 name="zeytun-order-send", daemon=True).start()
+                return {"status": "saved", "orderNumber": number}
+            except Exception:
+                pass
+        return self._send_order(seq, args, kept)
+
+    def _send_order(self, seq, args, kept):
         try:
             value = self.request({"action": "order", "callId": self.call_id, "seq": seq, **args})
         except Exception as error:
@@ -1155,7 +1176,11 @@ class ZeytunInboundBridge:
             return {"status": "not_saved"}
         if kept:
             self.spool.settle(self.call_id, seq)
-        return self.safe_saved(value)
+        result = self.safe_saved(value)
+        if result["status"] == "saved":
+            with self.lock:
+                self.order_number = result["orderNumber"]
+        return result
 
     def safe_transfer(self, value):
         """Transferring only with the exact phrase this session was given."""

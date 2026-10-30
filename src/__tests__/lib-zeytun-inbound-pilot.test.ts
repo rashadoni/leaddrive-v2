@@ -342,6 +342,14 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("if they named two different forms, ask which one before writing it")
     expect(ZEYTUN_LINE_PROMPT).toContain("never unasked when confirming a line")
     expect(ZEYTUN_LINE_PROMPT).toContain("in its base form without case endings")
+    // Owner, 2026-10-30: «долго принимает заказ… краткими ответами либо уточнениями».
+    expect(ZEYTUN_LINE_PROMPT).toContain("each reply is one short sentence with at most one question")
+    expect(ZEYTUN_LINE_PROMPT).toContain("invite the next in the same reply")
+    expect(ZEYTUN_LINE_PROMPT).not.toContain("Acknowledge a clear line briefly")
+    expect(ZEYTUN_LINE_PROMPT).toContain("look up two at a time, confirm them in one reply")
+    expect(ZEYTUN_LINE_PROMPT).toContain("take it without asking. If it only sounds close, read it back once")
+    expect(ZEYTUN_LINE_PROMPT).toContain("and in that same reply the closing sentence below")
+    expect(ZEYTUN_LINE_PROMPT).toContain("answer the opening with products and name no other pharmacy")
   })
 
   it("allows a call the station's own ceiling, not the rehearsal's five minutes", async () => {
