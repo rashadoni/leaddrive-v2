@@ -15,7 +15,7 @@ export type OrderPdfInput = {
   label: string
   takenAt: Date
   pharmacy: string | null
-  status: { kind: "received" } | { kind: "confirmed"; at: Date }
+  status: { kind: "received" } | { kind: "confirmed"; at: Date } | { kind: "rejected"; at: Date }
   lines: OrderPdfLine[]
   total: string
 }
@@ -46,7 +46,8 @@ export function phoneOrderPdf(input: OrderPdfInput): Uint8Array<ArrayBuffer> {
   doc.setFontSize(12).text(`Sifariş ${input.label} — ${bakuTime(input.takenAt)}`, MM.left, y)
   y += 6
   doc.setFont(PDF_FONT, "normal").setFontSize(9.5)
-  doc.text(input.status.kind === "confirmed" ? `Təsdiqləndi: ${bakuTime(input.status.at)}` : "Menecerin yoxlamasını gözləyir", MM.left, y)
+  doc.text(input.status.kind === "confirmed" ? `Təsdiqləndi: ${bakuTime(input.status.at)}`
+    : input.status.kind === "rejected" ? `Rədd edildi: ${bakuTime(input.status.at)}` : "Menecerin yoxlamasını gözləyir", MM.left, y)
   y += 5
   doc.text("Telefonla qəbul edilib (süni intellekt köməkçisi)", MM.left, y)
   y += 8

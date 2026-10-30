@@ -142,6 +142,25 @@ export function orderDocument(order: { number: number; callStartedAt: Date; tota
     }) }
 }
 
+const DOCUMENT_SELECT = { number: true, status: true, callStartedAt: true, confirmedAt: true, rejectedAt: true, totalAmount: true,
+  pharmacyName: true, company: { select: { name: true } },
+  lines: { orderBy: { position: "asc" }, select: { status: true, productName: true, sourceName: true, spokenText: true, quantity: true,
+    unit: true, unitPrice: true, lineTotal: true } } } satisfies Prisma.PharmacyPhoneOrderSelect
+
+/**
+ * The same file the pharmacy gets, for the manager to download from the
+ * order's card (owner, 2026-10-30: to forward it by hand, say when the
+ * pharmacy called from a landline). The status line follows the order now.
+ */
+export async function phoneOrderPdfFile(db: PrismaClient, orgId: string, orderId: string): Promise<{ filename: string; bytes: Uint8Array<ArrayBuffer> } | null> {
+  const order = await runWithTenant(orgId, () => db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId }, select: DOCUMENT_SELECT }))
+  if (!order) return null
+  const status: OrderPdfInput["status"] = order.status === "confirmed" ? { kind: "confirmed", at: order.confirmedAt ?? order.callStartedAt }
+    : order.status === "rejected" ? { kind: "rejected", at: order.rejectedAt ?? order.callStartedAt } : { kind: "received" }
+  const document = orderDocument(order, status)
+  return { filename: `Sifariş ${document.label}.pdf`, bytes: phoneOrderPdf(document) }
+}
+
 /**
  * The PDF template when Meta still holds it for utility and the file uploads.
  * Otherwise why not, kept on the order next to the plain message that went

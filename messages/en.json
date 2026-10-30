@@ -31454,6 +31454,8 @@
     "historyAsPdf": "as a PDF file",
     "historyPdfNotUtility": "As text: Meta has not approved the PDF template as a utility message yet.",
     "historyPdfFailed": "As text: the PDF did not go through ({reason}).",
+    "downloadPdf": "Download PDF",
+    "pdfHint": "The same file the pharmacy gets in WhatsApp — to forward it by hand.",
     "historyMetaPayment": "Meta did not deliver it: a payment problem on the WhatsApp Business account (Billing in Meta Business).",
     "historyPharmacyNoNumber": "The caller's number is not a phone number — nothing sent to the pharmacy",
     "historyPharmacyOff": "WhatsApp is not connected — nothing sent to the pharmacy",

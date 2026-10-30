@@ -31454,6 +31454,8 @@
     "historyAsPdf": "файлом PDF",
     "historyPdfNotUtility": "Текстом: Meta ещё не одобрила шаблон с PDF как служебный.",
     "historyPdfFailed": "Текстом: PDF не прошёл ({reason}).",
+    "downloadPdf": "Скачать PDF",
+    "pdfHint": "Тот же файл, что аптека получает в WhatsApp, — чтобы переслать его вручную.",
     "historyMetaPayment": "Meta не доставила: проблема с оплатой WhatsApp-аккаунта («Счета и оплата» в Meta Business).",
     "historyPharmacyNoNumber": "Номер звонящего не телефонный — аптеке ничего не ушло",
     "historyPharmacyOff": "WhatsApp не подключён — аптеке ничего не ушло",
