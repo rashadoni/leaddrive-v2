@@ -100,16 +100,16 @@ export async function templateIsUtility(sender: WhatsAppConfig, name: string, do
   const key = `${sender.businessAccountId}:${name}`
   const cached = templateChecks.get(key)
   if (cached && now - cached.at < TEMPLATE_CHECK_MS) return cached.utility
-  let utility = false
   try {
     const response = await doFetch(`${GRAPH_API_BASE}/${sender.businessAccountId}/message_templates?name=${encodeURIComponent(name)}&fields=name,status,category,language&limit=20`,
       { headers: { Authorization: `Bearer ${sender.accessToken}` }, signal: AbortSignal.timeout(SEND_TIMEOUT_MS) })
     const body = await response.json().catch(() => null) as { data?: Array<{ name?: string; status?: string; category?: string; language?: string }> } | null
-    utility = response.ok && (body?.data ?? []).some(t => t.name === name && t.language === "az" && t.status === "APPROVED" && t.category === "UTILITY")
-  } catch { utility = false }
-  // A failed look is not remembered: the next message asks again.
-  templateChecks.set(key, { at: now, utility })
-  return utility
+    // A failed look is not remembered: the next message asks again.
+    if (!response.ok || !body?.data) return false
+    const utility = body.data.some(t => t.name === name && t.language === "az" && t.status === "APPROVED" && t.category === "UTILITY")
+    templateChecks.set(key, { at: now, utility })
+    return utility
+  } catch { return false }
 }
 
 async function uploadPdf(sender: WhatsAppConfig, bytes: Uint8Array<ArrayBuffer>, filename: string, doFetch: Fetch): Promise<string | null> {
@@ -117,7 +117,8 @@ async function uploadPdf(sender: WhatsAppConfig, bytes: Uint8Array<ArrayBuffer>,
     const form = new FormData()
     form.append("messaging_product", "whatsapp")
     form.append("type", "application/pdf")
-    form.append("file", new Blob([bytes], { type: "application/pdf" }), filename)
+    // The upload's own name stays ASCII (multipart headers); the pharmacy sees the message's filename.
+    form.append("file", new Blob([bytes], { type: "application/pdf" }), filename.normalize("NFKD").replace(/[^\x20-\x7e]/gu, "").replace(/\s+/gu, "-"))
     const response = await doFetch(`${GRAPH_API_BASE}/${sender.phoneNumberId}/media`, { method: "POST",
       headers: { Authorization: `Bearer ${sender.accessToken}` }, body: form, signal: AbortSignal.timeout(20_000) })
     const body = await response.json().catch(() => null) as { id?: string } | null
@@ -141,15 +142,26 @@ export function orderDocument(order: { number: number; callStartedAt: Date; tota
     }) }
 }
 
-/** The PDF template when Meta still holds it for utility and the file uploads; null means "send the plain one". */
-async function sendOrderDocument(sender: WhatsAppConfig, phone: string, template: string, document: OrderPdfInput, doFetch: Fetch) {
-  if (!(await templateIsUtility(sender, template, doFetch))) return null
+/**
+ * The PDF template when Meta still holds it for utility and the file uploads.
+ * Otherwise why not, kept on the order next to the plain message that went
+ * instead: a PDF that never goes must show on the card, not only in a log.
+ */
+async function sendOrderDocument(sender: WhatsAppConfig, phone: string, template: string, document: OrderPdfInput, doFetch: Fetch)
+  : Promise<{ ok: true; id: string | null } | { ok: false; pdfSkipped: string }> {
+  if (!(await templateIsUtility(sender, template, doFetch))) return { ok: false, pdfSkipped: "not_utility" }
   const filename = `Sifariş ${document.label}.pdf`
-  const media = await uploadPdf(sender, phoneOrderPdf(document), filename, doFetch)
-  if (!media) return null
+  let bytes: Uint8Array<ArrayBuffer>
+  try { bytes = phoneOrderPdf(document) } catch { return { ok: false, pdfSkipped: "build_failed" } }
+  const media = await uploadPdf(sender, bytes, filename, doFetch)
+  if (!media) return { ok: false, pdfSkipped: "upload_failed" }
   const result = await sendTemplate(sender, phone, { name: template, body: [document.label, document.total],
     document: { id: media, filename } }, doFetch)
-  return result.ok ? result : null
+  return result.ok ? result : { ok: false, pdfSkipped: result.error }
+}
+
+function logPdfSkipped(orderId: string, template: string, reason: string) {
+  if (reason !== "not_utility") console.warn(`[phone-order] pdf not sent ${JSON.stringify({ orderId, template, reason })}`)
 }
 
 /**
@@ -225,8 +237,8 @@ export const PHARMACY_RECEIPT_TEMPLATE = "phone_order_received"
 const RECEIPT_LINES_MAX = 700
 
 export type PharmacyReceipt =
-  | { status: "sent"; at: string; messageId: string | null; format?: "pdf" }
-  | { status: "failed"; at: string; error: string }
+  | { status: "sent"; at: string; messageId: string | null; format?: "pdf"; pdfSkipped?: string }
+  | { status: "failed"; at: string; error: string; pdfSkipped?: string }
   | { status: "not_connected" | "no_number"; at: string }
 
 type ReceiptLine = { status: string; productName: string | null; spokenText: string; quantity: number; unit: string }
@@ -250,9 +262,13 @@ export function receiptLines(lines: ReceiptLine[]): string {
   return text || "—"
 }
 
+type PharmacyDeps = { fetch?: Fetch; now?: () => Date; sender?: (orgId: string) => Promise<WhatsAppConfig | null>
+  /** Meta refused the PDF after accepting it: send the plain message, and say why on the order. */
+  pdfFailed?: string }
+
 /** Send the pharmacy its list once, on the number it called from; claimed first (pharmacyReceipt still empty). */
 export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, orderId: string,
-  deps: { fetch?: Fetch; now?: () => Date; sender?: (orgId: string) => Promise<WhatsAppConfig | null> } = {}): Promise<PharmacyReceipt | null> {
+  deps: PharmacyDeps = {}): Promise<PharmacyReceipt | null> {
   const now = deps.now ?? (() => new Date())
   return runWithTenant(orgId, async () => {
     const claimed = await db.pharmacyPhoneOrder.updateMany({
@@ -274,11 +290,14 @@ export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, order
     if (!/^\+[1-9]\d{7,14}$/u.test(phone)) return record({ status: "no_number", at: at() })
     const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
     if (!sender) return record({ status: "not_connected", at: at() })
-    const withPdf = await sendOrderDocument(sender, phone, PDF_TEMPLATES.received, orderDocument(order, { kind: "received" }), deps.fetch ?? fetch)
-    if (withPdf) return record({ status: "sent", at: at(), messageId: withPdf.id, format: "pdf" })
+    const withPdf = deps.pdfFailed ? { ok: false as const, pdfSkipped: deps.pdfFailed }
+      : await sendOrderDocument(sender, phone, PDF_TEMPLATES.received, orderDocument(order, { kind: "received" }), deps.fetch ?? fetch)
+    if (withPdf.ok) return record({ status: "sent", at: at(), messageId: withPdf.id, format: "pdf" })
+    logPdfSkipped(orderId, PDF_TEMPLATES.received, withPdf.pdfSkipped)
     const result = await sendTemplate(sender, phone, { name: PHARMACY_RECEIPT_TEMPLATE,
       body: [phoneOrderLabel(order.number), receiptLines(order.lines), order.totalAmount.toFixed(2)] }, deps.fetch ?? fetch)
-    return record(result.ok ? { status: "sent", at: at(), messageId: result.id } : { status: "failed", at: at(), error: result.error })
+    const pdfSkipped = withPdf.pdfSkipped
+    return record(result.ok ? { status: "sent", at: at(), messageId: result.id, pdfSkipped } : { status: "failed", at: at(), error: result.error, pdfSkipped })
   })
 }
 
@@ -288,8 +307,8 @@ export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, order
 export const PHARMACY_DECISION_TEMPLATES = { confirmed: "phone_order_confirmed", rejected: "phone_order_rejected" } as const
 
 export type PharmacyNotice =
-  | { status: "sent"; kind: "confirmed" | "rejected"; at: string; messageId: string | null; format?: "pdf" }
-  | { status: "failed"; kind: "confirmed" | "rejected"; at: string; error: string }
+  | { status: "sent"; kind: "confirmed" | "rejected"; at: string; messageId: string | null; format?: "pdf"; pdfSkipped?: string }
+  | { status: "failed"; kind: "confirmed" | "rejected"; at: string; error: string; pdfSkipped?: string }
   | { status: "not_connected" | "no_number"; kind: "confirmed" | "rejected"; at: string }
 
 /** A template text parameter: one line, no tabs or runs of spaces (Meta refuses them), at most `max` characters. */
@@ -303,7 +322,7 @@ function oneLine(text: string, max: number) {
  * (pharmacyNotice still empty), so a repeated decision never sends twice.
  */
 export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, orderId: string,
-  deps: { fetch?: Fetch; now?: () => Date; sender?: (orgId: string) => Promise<WhatsAppConfig | null> } = {}): Promise<PharmacyNotice | null> {
+  deps: PharmacyDeps = {}): Promise<PharmacyNotice | null> {
   const now = deps.now ?? (() => new Date())
   return runWithTenant(orgId, async () => {
     const order = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId },
@@ -328,16 +347,21 @@ export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, 
     const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
     if (!sender) return record({ status: "not_connected", kind, at: at() })
     const label = phoneOrderLabel(order.number)
+    let pdfSkipped: string | undefined
     if (kind === "confirmed") {
-      const withPdf = await sendOrderDocument(sender, phone, PDF_TEMPLATES.confirmed,
-        orderDocument(order, { kind: "confirmed", at: order.confirmedAt ?? now() }), deps.fetch ?? fetch)
-      if (withPdf) return record({ status: "sent", kind, at: at(), messageId: withPdf.id, format: "pdf" })
+      const withPdf = deps.pdfFailed ? { ok: false as const, pdfSkipped: deps.pdfFailed }
+        : await sendOrderDocument(sender, phone, PDF_TEMPLATES.confirmed,
+          orderDocument(order, { kind: "confirmed", at: order.confirmedAt ?? now() }), deps.fetch ?? fetch)
+      if (withPdf.ok) return record({ status: "sent", kind, at: at(), messageId: withPdf.id, format: "pdf" })
+      logPdfSkipped(orderId, PDF_TEMPLATES.confirmed, withPdf.pdfSkipped)
+      pdfSkipped = withPdf.pdfSkipped
     }
     const result = await sendTemplate(sender, phone, {
       name: PHARMACY_DECISION_TEMPLATES[kind],
       body: kind === "confirmed" ? [label, order.totalAmount.toFixed(2)] : [label, oneLine(order.rejectReason ?? "", 300)],
     }, deps.fetch ?? fetch)
-    return record(result.ok ? { status: "sent", kind, at: at(), messageId: result.id } : { status: "failed", kind, at: at(), error: result.error })
+    return record(result.ok ? { status: "sent", kind, at: at(), messageId: result.id, pdfSkipped }
+      : { status: "failed", kind, at: at(), error: result.error, pdfSkipped })
   })
 }
 
@@ -351,7 +375,8 @@ export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, 
  * one of the order's notices sent turns that notice into failed, with Meta's
  * code; the card shows it in red like any other failure.
  */
-export async function recordPhoneOrderMessageFailure(db: PrismaClient, orgId: string, messageId: string, code: unknown, now = new Date()) {
+export async function recordPhoneOrderMessageFailure(db: PrismaClient, orgId: string, messageId: string, code: unknown, now = new Date(),
+  deps: Omit<PharmacyDeps, "pdfFailed" | "now"> = {}) {
   const error = `meta_${typeof code === "number" || typeof code === "string" ? String(code).slice(0, 16) : "unknown"}`
   return runWithTenant(orgId, async () => {
     let changed = 0
@@ -372,8 +397,20 @@ export async function recordPhoneOrderMessageFailure(db: PrismaClient, orgId: st
         select: { id: true, [column]: true },
       }) as Array<{ id: string } & Record<typeof column, unknown>>
       for (const order of orders) {
-        const previous = order[column] as { status?: unknown; kind?: unknown } | null
+        const previous = order[column] as { status?: unknown; kind?: unknown; format?: unknown } | null
         if (previous?.status !== "sent") continue
+        if (previous.format === "pdf") {
+          // The PDF itself was refused (its file, its template): the pharmacy
+          // still gets the plain message, once — the column is freed only
+          // while it still names this message, and the send claims it again.
+          const freed = await db.pharmacyPhoneOrder.updateMany({ where: { id: order.id, organizationId: orgId,
+            [column]: { path: ["messageId"], equals: messageId } }, data: { [column]: Prisma.DbNull } })
+          if (freed.count !== 1) continue
+          const resend = { ...deps, pdfFailed: error, now: () => now }
+          await (column === "pharmacyReceipt" ? sendPharmacyReceipt(db, orgId, order.id, resend) : notifyPharmacyOfDecision(db, orgId, order.id, resend))
+          changed += 1
+          continue
+        }
         changed += (await db.pharmacyPhoneOrder.updateMany({ where: { id: order.id, organizationId: orgId },
           data: { [column]: { status: "failed", at: now.toISOString(), error, ...(previous.kind ? { kind: previous.kind } : {}) } } })).count
       }

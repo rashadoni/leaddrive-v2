@@ -54,13 +54,17 @@ export function phoneOrderPdf(input: OrderPdfInput): Uint8Array<ArrayBuffer> {
   doc.setFont(PDF_FONT, "normal").text(input.pharmacy ?? "—", MM.left + 13, y)
   y += 7
 
+  // A long order runs over several pages: each one repeats the table's head
+  // and says which order and page it is, so a printed sheet stands alone.
+  const PAGE_BOTTOM = 280
   const row = (cells: string[], bold: boolean, fill?: boolean) => {
     doc.setFont(PDF_FONT, bold ? "bold" : "normal").setFontSize(9)
     const wrapped = cells.map((cell, i) => doc.splitTextToSize(cell, COLUMNS[i].width - 3) as string[])
     const height = Math.max(...wrapped.map(lines => lines.length)) * 4.2 + 3
-    if (y + height > 280) { doc.addPage(); y = MM.top }
+    if (!fill && y + height > PAGE_BOTTOM) { doc.addPage(); y = MM.top; head() }
     let x = MM.left
     if (fill) { doc.setFillColor(242, 242, 242); doc.rect(MM.left, y, MM.right - MM.left, height, "F") }
+    doc.setFont(PDF_FONT, bold ? "bold" : "normal").setFontSize(9)
     wrapped.forEach((lines, i) => {
       const col = COLUMNS[i]
       doc.rect(x, y, col.width, height)
@@ -73,19 +77,31 @@ export function phoneOrderPdf(input: OrderPdfInput): Uint8Array<ArrayBuffer> {
     })
     y += height
   }
+  const head = () => row(COLUMNS.map(c => c.title), true, true)
   doc.setDrawColor(150)
-  row(COLUMNS.map(c => c.title), true, true)
+  head()
   input.lines.forEach((line, i) => row([String(i + 1), line.found ? line.name : `${line.name} (yoxlanılır)`, String(line.quantity),
     line.unit, line.price ? money(line.price) : "—", line.total ? money(line.total) : "—"], false))
 
+  const unpriced = input.lines.some(line => !line.found || !line.total)
+  if (y + 7 + (unpriced ? 6 : 0) > PAGE_BOTTOM + 8) { doc.addPage(); y = MM.top }
   y += 7
   doc.setFont(PDF_FONT, "bold").setFontSize(11)
-  doc.text("Cəmi:", MM.right - 45, y)
-  doc.text(`${money(input.total)} AZN`, MM.right, y, { align: "right" })
-  if (input.lines.some(line => !line.found || !line.total)) {
+  const amount = `${money(input.total)} AZN`
+  doc.text(amount, MM.right, y, { align: "right" })
+  doc.text("Cəmi:", MM.right - doc.getTextWidth(amount) - 4, y, { align: "right" })
+  if (unpriced) {
     y += 6
     doc.setFont(PDF_FONT, "normal").setFontSize(8.5)
     doc.text("Qiyməti olmayan sətirlər cəmə daxil deyil; menecer onları yoxlayır.", MM.right, y, { align: "right" })
+  }
+  const pages = doc.getNumberOfPages()
+  if (pages > 1) {
+    doc.setFont(PDF_FONT, "normal").setFontSize(8.5).setTextColor(110)
+    for (let page = 1; page <= pages; page++) {
+      doc.setPage(page)
+      doc.text(`Sifariş ${input.label} — səhifə ${page} / ${pages}`, MM.right, 290, { align: "right" })
+    }
   }
   return new Uint8Array(doc.output("arraybuffer"))
 }

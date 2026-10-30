@@ -27,8 +27,8 @@ type Order = {
   total: string; currency: string
   confirmedAt: string | null; confirmedBy: string | null; rejectedAt: string | null; rejectedBy: string | null; rejectReason: string | null
   managerNotice: { status?: string; at?: string; error?: string } | null
-  pharmacyReceipt: { status?: string; at?: string; error?: string } | null
-  pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string; error?: string } | null
+  pharmacyReceipt: { status?: string; at?: string; error?: string; format?: string; pdfSkipped?: string } | null
+  pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string; error?: string; format?: string; pdfSkipped?: string } | null
   lines: Line[]
 }
 type CatalogItem = { externalId: string; itemCode: string; name: string; price: { amount: string; per: string } | null }
@@ -263,7 +263,8 @@ function PharmacyReceiptRow({ receipt, locale }: { receipt: Order["pharmacyRecei
     : receipt.status === "failed" ? [t("historyPharmacyFailed"), "text-red-600"]
     : receipt.status === "no_number" ? [t("historyPharmacyNoNumber"), "text-muted-foreground"]
     : [t("historyPharmacyOff"), "text-muted-foreground"]
-  return <HistoryRow at={receipt.at} locale={locale}><span className={colour}>{text}</span>{receipt.status === "failed" ? <FailureReason error={receipt.error} /> : null}</HistoryRow>
+  return <HistoryRow at={receipt.at} locale={locale}><span className={colour}>{text}</span><DeliveryFormat message={receipt} />
+    {receipt.status === "failed" ? <FailureReason error={receipt.error} /> : null}</HistoryRow>
 }
 
 /** What happened to the pharmacy's WhatsApp message about the decision. */
@@ -275,7 +276,17 @@ function PharmacyNoticeRow({ notice, locale }: { notice: Order["pharmacyNotice"]
     : notice.status === "failed" ? [t("historyPharmacyFailed"), "text-red-600"]
     : notice.status === "no_number" ? [t("historyPharmacyNoNumber"), "text-muted-foreground"]
     : [t("historyPharmacyOff"), "text-muted-foreground"]
-  return <HistoryRow at={notice.at} locale={locale}><span className={colour}>{text}</span>{notice.status === "failed" ? <FailureReason error={notice.error} /> : null}</HistoryRow>
+  return <HistoryRow at={notice.at} locale={locale}><span className={colour}>{text}</span><DeliveryFormat message={notice} />
+    {notice.status === "failed" ? <FailureReason error={notice.error} /> : null}</HistoryRow>
+}
+
+/** Whether the pharmacy got the order as its PDF, or as text and why. */
+function DeliveryFormat({ message }: { message: { format?: string; pdfSkipped?: string } }) {
+  const t = useTranslations("pharmacyPhoneOrders")
+  if (message.format === "pdf") return <span className="text-muted-foreground"> · {t("historyAsPdf")}</span>
+  if (!message.pdfSkipped) return null
+  return <span className="block text-xs text-muted-foreground">
+    {message.pdfSkipped === "not_utility" ? t("historyPdfNotUtility") : t("historyPdfFailed", { reason: message.pdfSkipped })}</span>
 }
 
 /** Meta's reason, when it is one the manager can act on (131042: the WhatsApp account's payment). */
