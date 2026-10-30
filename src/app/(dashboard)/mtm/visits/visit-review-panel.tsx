@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, Camera, CheckCircle2, Circle, Clock, FileText, Flag, ListChecks, LogIn, LogOut, MapPin, Minus, PenLine, Presentation, UserRound, X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, MapPin, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
@@ -12,7 +12,7 @@ import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
 import { JointVisitReviewBlock, type JointVisitReview } from "@/components/mtm/visit-evaluation-views"
 import { formatDateTime, formatTime as formatClockTime } from "@/lib/format-date"
 import { useMtmDistanceText } from "@/components/mtm/visit-place-badge"
-import { visitRoadmap, visitRoadmapProgress, type VisitRoadmapStep } from "@/lib/mtm/visit-roadmap"
+import { visitRoadmap, type VisitRoadmapStep } from "@/lib/mtm/visit-roadmap"
 import {
   reviewActionRows,
   visitDurationMinutes,
@@ -108,69 +108,60 @@ export function visitStatusClasses(status: string): string {
 /** What the page may reuse from a review load instead of fetching the visit again. */
 export type ReviewedVisitFacts = Pick<VisitReviewData["visit"], "id" | "status" | "checkOutAt" | "duration" | "checkOutLat" | "checkOutLng">
 
-const ROADMAP_ICON: Record<string, typeof LogIn> = {
-  checkIn: LogIn,
-  presentation: Presentation,
-  photo: Camera,
-  signature: PenLine,
-  tasks: ListChecks,
-  result: Flag,
-  checkOut: LogOut,
+/** Policy steps the list draws from the visit's own evidence; the rest are listed by their action name. */
+const ROADMAP_ACTIONS = new Set(["PRESENTATION", "PHOTO", "SIGNATURE", "VISIT_NOTE"])
+
+/** One line of «Как прошёл визит»: what the agent did, in the order he did it. */
+interface VisitStepRow {
+  key: string
+  state: "done" | "missing" | "pending"
+  title: string
+  /** Time, count or what is wrong, at the right of the line. */
+  aside?: string | null
+  detail?: ReactNode
 }
 
 /**
- * The visit as checkpoints: one row of circles a supervisor reads at a
- * glance, instead of four blocks they read in words. Green is evidence, red
- * is a step the policy asked for and nobody recorded, pale is a step this
- * visit never asked for — never red, or every optional step would accuse the
- * agent of skipping it.
+ * The visit as a list of what happened (owner, 2026-10-30: the row of seven
+ * circles, five of them «не требовалось», was «слишком запутанно»). Only the
+ * steps that happened or were owed are lines; what this visit never asked for
+ * is one quiet sentence under them. Green is done, red is a required step
+ * nobody recorded, an empty ring is a step still ahead.
  */
-function RoadmapTrack({ steps, t }: { steps: VisitRoadmapStep[]; t: Translator }) {
+function VisitSteps({ rows, notRequired, footer }: { rows: VisitStepRow[]; notRequired: ReactNode; footer: ReactNode }) {
   return (
-    <ol className="flex flex-wrap items-start gap-y-3" data-testid="mtm-visit-roadmap">
-      {steps.map((step, index) => {
-        const Icon = ROADMAP_ICON[step.key] ?? Circle
-        const tone = step.state === "done"
-          ? "border-emerald-500 text-emerald-700 dark:text-emerald-300"
-          : step.state === "missing"
-            ? "border-red-500 text-red-700 dark:text-red-300"
-            : "border-zinc-300 bg-muted text-muted-foreground dark:border-border"
-        const detail = step.detailKey === "openedCount"
-          ? t("review.stepOpened", { count: step.count ?? 0 })
-          : step.detailKey === "photoCount"
-            ? t("review.stepPhotos", { count: step.count ?? 0 })
-            : step.detailKey === "taskCount"
-              ? t("review.stepTasksCount", { done: step.count ?? 0, total: step.total ?? 0 })
-              : step.detailKey === "visitOpen"
-                ? t("review.stepVisitOpen")
-                : step.detailKey === "required"
-                  ? t("review.stepRequired")
-                  : step.detailKey === "notRequired"
-                    ? t("review.stepNotRequired")
-                    : null
-        return (
-          <li key={step.key} className="flex min-w-[104px] flex-1 items-start gap-2">
-            <div className="flex flex-col items-center">
-              <span className={`flex h-9 w-9 items-center justify-center rounded-full border-2 ${tone}`}>
-                {step.state === "done"
-                  ? <CheckCircle2 className="h-4.5 w-4.5" aria-hidden="true" />
-                  : step.state === "missing"
-                    ? <X className="h-4.5 w-4.5" aria-hidden="true" />
-                    : <Minus className="h-4.5 w-4.5" aria-hidden="true" />}
+    <>
+      <ol className="divide-y divide-border" data-testid="mtm-visit-steps">
+        {rows.map((row) => (
+          <li key={row.key} className="flex items-start gap-3 py-3" data-testid={`mtm-visit-step-${row.key}`}>
+            {row.state === "done" ? (
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white dark:bg-emerald-500">
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               </span>
+            ) : row.state === "missing" ? (
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-red-500 bg-card text-red-700 dark:text-red-300">
+                <X className="h-4 w-4" aria-hidden="true" />
+              </span>
+            ) : (
+              <span className="mt-0.5 h-7 w-7 shrink-0 rounded-full border-2 border-zinc-300 dark:border-zinc-600" aria-hidden="true" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+                <span className={`text-sm font-semibold ${row.state === "pending" ? "text-muted-foreground" : "text-foreground"}`}>{row.title}</span>
+                {row.aside ? (
+                  <span className={`text-sm ${row.state === "missing" ? "font-semibold text-red-700 dark:text-red-300" : "text-muted-foreground"}`}>{row.aside}</span>
+                ) : null}
+              </div>
+              {row.detail ? <div className="mt-1.5 space-y-1.5">{row.detail}</div> : null}
             </div>
-            <div className="min-w-0 pt-0.5">
-              <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                {t(`review.step${step.key.charAt(0).toUpperCase()}${step.key.slice(1)}`)}
-              </p>
-              {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
-            </div>
-            {index === steps.length - 1 ? null : <span className="mt-4 hidden h-0.5 flex-1 bg-zinc-200 dark:bg-zinc-800 lg:block" aria-hidden="true" />}
           </li>
-        )
-      })}
-    </ol>
+        ))}
+      </ol>
+      <div className="mt-2 space-y-1 rounded-xl bg-muted/50 px-3.5 py-3 text-sm text-muted-foreground">
+        {notRequired}
+        {footer}
+      </div>
+    </>
   )
 }
 
@@ -328,50 +319,35 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
     requirements: visit.requirementSnapshot?.requirements ?? [],
     actionResults: visit.actionResults,
   })
-  const roadmapProgress = visitRoadmapProgress(roadmap)
   const signature = visit.actionResults.filter((item) => item.actionKey === "SIGNATURE" && item.status === "COMPLETED").at(-1) ?? null
   const signerName = typeof signature?.evidence?.signerName === "string" && signature.evidence.signerName.trim() ? signature.evidence.signerName.trim() : null
   const signedAt = typeof signature?.evidence?.signedAt === "string" ? signature.evidence.signedAt : signature?.completedAt ?? null
   const locationLine = [visit.customer.address, visit.customer.city].filter((part) => part && part.trim()).join(", ")
   const hasResult = Boolean(visit.outcome || visit.resultNotes || visit.nextActionDueAt)
 
-  const placeRow = (label: string, check: PlaceCheck | null, kind: "checkIn" | "checkOut") => {
-    let tone = "text-muted-foreground"
-    let Icon = MapPin
-    let text: string
-    if (!check) {
-      // Only a check-out can be skipped: still open, or ended without one (cancelled).
-      text = place.checkOutSkipped === "visit_open" ? t("review.placeNotFinished") : t("review.placeNoCheckout")
-    } else if (check.state === "at_point") {
-      tone = "text-emerald-700 dark:text-emerald-300"
-      Icon = CheckCircle2
-      text = tPlace("atPoint")
-    } else if (check.state === "outside") {
-      tone = "text-amber-700 dark:text-amber-300"
-      Icon = AlertTriangle
-      text = tPlace("outside", { distance: distanceText(check.distanceMeters ?? 0) })
-    } else if (check.state === "no_gps") {
-      tone = "text-amber-700 dark:text-amber-300"
-      Icon = AlertTriangle
-      text = kind === "checkOut" ? tPlace("checkoutGpsMissing") : tPlace("noGps")
-    } else {
-      text = tPlace("noPin")
+  /** Where the agent stood when he marked the step, in words: a warning only when it is one. */
+  const placeDetail = (check: PlaceCheck | null, kind: "checkIn" | "checkOut") => {
+    if (!check) return null
+    if (check.state === "at_point") {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+          <MapPin className="h-4 w-4" aria-hidden="true" />
+          {tPlace("atPoint")}{check.distanceMeters != null ? ` · ${distanceText(check.distanceMeters)}` : ""}
+        </span>
+      )
     }
-    return (
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
-        <dt className="text-sm text-muted-foreground">{label}</dt>
-        <dd className="text-right">
-          <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${tone}`}>
-            <Icon className="h-4 w-4" aria-hidden="true" />{text}
-          </span>
-          {check?.distanceMeters != null ? (
-            <span className="block text-xs text-muted-foreground">
-              {tPlace("distanceDetail", { distance: distanceText(check.distanceMeters), radius: distanceText(check.radiusMeters) })}
-            </span>
-          ) : null}
-        </dd>
-      </div>
-    )
+    if (check.state === "outside" || check.state === "no_gps") {
+      const text = check.state === "outside"
+        ? t(kind === "checkIn" ? "review.checkedInFar" : "review.checkedOutFar", { distance: distanceText(check.distanceMeters ?? 0), radius: distanceText(check.radiusMeters) })
+        : kind === "checkOut" ? tPlace("checkoutGpsMissing") : tPlace("noGps")
+      return (
+        <span className="inline-flex items-start gap-1.5 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card px-2.5 py-1.5 text-sm font-medium text-foreground dark:border-l-amber-500">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+          {text}
+        </span>
+      )
+    }
+    return <span className="text-sm text-muted-foreground">{tPlace("noPin")}</span>
   }
 
   const blockTitle = (text: string) => <h3 className="text-sm font-semibold text-foreground">{text}</h3>
@@ -440,13 +416,108 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
     text: signature ? t("review.factSignature") : t("review.factNoSignature"),
   })
 
-  // What the visit does not have is one quiet line at the end, not three
-  // half-empty blocks in the middle.
-  const missing: string[] = []
-  if (!photoCount) missing.push(t("review.photosTitle"))
-  if (!visit.notes?.trim()) missing.push(t("review.noteTitle"))
-  if (!hasResult) missing.push(t("review.resultTitle"))
-  if (!visit.presentationSessions.length) missing.push(t("review.presentationsTitle"))
+  const minutesText = (minutes: number) => minutes >= 60
+    ? t("review.durationHm", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+    : t("review.duration", { minutes })
+  const open = visit.status === "CHECKED_IN" && !visit.checkOutAt
+  const openMinutes = Math.max(0, Math.round((now.getTime() - new Date(visit.checkInAt).getTime()) / 60_000))
+  const stepsChip = leftOpen
+    ? { tone: "border border-border text-amber-700 dark:text-amber-300", text: t("statusLeftOpen"), live: false }
+    : open
+      ? { tone: "border border-border text-emerald-700 dark:text-emerald-300", text: t("review.chipOpen", { duration: minutesText(openMinutes) }), live: true }
+      : { tone: "bg-muted text-foreground", text: duration != null && visit.checkOutAt
+          ? t("review.chipDone", { duration: minutesText(duration), from: formatTime(visit.checkInAt), to: formatTime(visit.checkOutAt) })
+          : `${formatTime(visit.checkInAt)} — ${visit.checkOutAt ? formatTime(visit.checkOutAt) : t("notFinished")}`, live: false }
+
+  const mapLink = (latitude: number | null | undefined, longitude: number | null | undefined, label: string) => {
+    const href = mapHref(latitude, longitude)
+    return href ? <a className="block text-sm font-medium text-primary hover:underline" href={href} target="_blank" rel="noreferrer">{label}</a> : null
+  }
+  const stepOf = (key: VisitRoadmapStep["key"]) => roadmap.find((step) => step.key === key)
+  const steps: VisitStepRow[] = [{
+    key: "arrived",
+    state: "done",
+    title: t("review.steps.arrived"),
+    aside: formatTime(visit.checkInAt),
+    detail: (
+      <>
+        {placeDetail(place.checkIn, "checkIn")}
+        {/* Why a visit «вне зоны» was accepted: its agent had reported the pin as wrong, from that very place. */}
+        {visit.locationRequest && ["SUBMITTED", "APPROVED", "REJECTED", "CANCELLED"].includes(visit.locationRequest.status) ? (
+          <p
+            data-testid="mtm-visit-review-location-request"
+            className={visit.locationRequest.status === "SUBMITTED"
+              ? "rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs"
+              : "rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"}
+          >
+            {t(`review.locationRequest.${visit.locationRequest.status}`)}
+          </p>
+        ) : null}
+        {mapLink(visit.checkInLat, visit.checkInLng, t("review.whereCheckedIn"))}
+      </>
+    ),
+  }]
+  const presentationStep = stepOf("presentation")
+  if (presentationStep && presentationStep.state !== "skipped") steps.push({
+    key: "presentation",
+    state: presentationStep.state === "done" ? "done" : "missing",
+    title: t("review.steps.presentation"),
+    aside: presentationStep.state === "done" ? t("review.presentationsCount", { count: visit.presentationSessions.length }) : t("review.stepMissing"),
+  })
+  const photoStep = stepOf("photo")
+  if (photoStep && photoStep.state !== "skipped") steps.push({
+    key: "photo",
+    state: photoStep.state === "done" ? "done" : "missing",
+    title: t("review.steps.photo"),
+    aside: photoStep.state === "done" ? t("review.photosCount", { count: photoCount }) : t("review.stepMissing"),
+  })
+  const signatureStep = stepOf("signature")
+  if (signatureStep && signatureStep.state !== "skipped") steps.push({
+    key: "signature",
+    state: signatureStep.state === "done" ? "done" : "missing",
+    title: t("review.steps.signature"),
+    aside: signatureStep.state === "done" ? signerName ?? (signedAt ? formatTime(signedAt) : null) : t("review.stepMissing"),
+  })
+  // The policy's other steps (stock check, feedback…) belong on the same list,
+  // not in a second one further down.
+  for (const row of actionRows.filter((item) => !ROADMAP_ACTIONS.has(item.actionKey))) {
+    steps.push({
+      key: `action-${row.actionKey}`,
+      state: row.done ? "done" : "missing",
+      title: tw(`actions.${row.actionKey}`),
+      aside: row.done
+        ? row.minCount > 1 || row.count > 1 ? t("review.stepActionCount", { count: row.count, min: row.minCount }) : null
+        : t("review.stepMissing"),
+    })
+  }
+  const resultStep = stepOf("result")
+  if (resultStep && resultStep.state !== "skipped") steps.push({
+    key: "result",
+    state: resultStep.state === "done" ? "done" : "missing",
+    title: t("review.steps.result"),
+    aside: resultStep.state === "done" ? (visit.outcome ? tw(`outcomes.${visit.outcome}`) : null) : t("review.stepMissing"),
+  })
+  steps.push(visit.checkOutAt ? {
+    key: "left",
+    state: "done",
+    title: t("review.steps.left"),
+    aside: formatTime(visit.checkOutAt),
+    detail: (
+      <>
+        {placeDetail(place.checkOut, "checkOut")}
+        {mapLink(visit.checkOutLat, visit.checkOutLng, t("review.whereCheckedOut"))}
+      </>
+    ),
+  } : {
+    key: "left",
+    state: "pending",
+    title: t("review.steps.left"),
+    aside: open ? t("review.stepStillThere") : t("review.placeNoCheckout"),
+  })
+  // Tasks are counted on the agent's phone, not here: the list says nothing about them.
+  const notRequired = roadmap
+    .filter((step) => step.state === "skipped" && ["presentation", "photo", "signature", "result"].includes(step.key))
+    .map((step) => t(`review.step${step.key.charAt(0).toUpperCase()}${step.key.slice(1)}`).toLocaleLowerCase(locale))
 
   return shell(
     <>
@@ -514,58 +585,49 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
           manager who was there made of the agent's work. */}
       {visit.jointVisit ? <JointVisitReviewBlock jointVisit={visit.jointVisit} timezone={data.timezone} /> : null}
 
-      <div className="border-b border-border px-4 py-3 sm:px-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold text-foreground">{t("review.roadmapTitle")}</h3>
-          <span className="text-xs text-muted-foreground">
-            {t("review.roadmapProgress", { done: roadmapProgress.done, total: roadmapProgress.total })}
+      <section className="border-b border-border px-4 py-3 sm:px-5" data-testid="mtm-visit-roadmap">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-foreground">{t("review.roadmapTitle")}</h3>
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${stepsChip.tone}`}>
+            {stepsChip.live ? <span className="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400" aria-hidden="true" /> : null}
+            {stepsChip.text}
           </span>
         </div>
-        <div className="mt-2">
-          <RoadmapTrack steps={roadmap} t={t} />
-        </div>
-      </div>
+        <VisitSteps
+          rows={steps}
+          notRequired={notRequired.length ? (
+            <p><span className="font-medium text-foreground">{t("review.notRequiredList")}</span> {notRequired.join(", ")}.</p>
+          ) : null}
+          footer={(
+            <div>
+              <p>
+                <span className="font-medium text-foreground">{t("review.openTasksLine")}</span>{" "}
+                {data.openTasks.count > 0 ? (
+                  <>{data.openTasks.count} — <Link href="/mtm/tasks" className="font-medium text-primary hover:underline">{t("review.openTasksLink")}</Link></>
+                ) : t("review.openTasksNone")}
+              </p>
+              {data.openTasks.items.length ? (
+                <ul className="mt-1 space-y-0.5">
+                  {data.openTasks.items.map((task) => (
+                    <li key={task.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                      <span className="min-w-0 truncate text-foreground">{task.title}</span>
+                      <span className="text-xs">
+                        {tw(`priorities.${task.priority}`)}
+                        {task.dueDate ? ` · ${t("review.taskDue", { date: formatFull(task.dueDate) })}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          )}
+        />
+      </section>
 
+      {/* The evidence itself — presentations, photos, outcome, signature — only when there is some. */}
+      {visit.presentationSessions.length || visit.photos.length || visit.notes?.trim() || hasResult || signature ? (
       <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="divide-y divide-border px-4 sm:px-5 lg:border-r lg:border-border lg:dark:border-border">
-          <section className="py-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              {blockTitle(t("review.sectionProgress"))}
-              <span className="text-xs text-muted-foreground">
-                {visit.route
-                  ? `${visit.route.name || t("review.routeUnnamed")}${visit.routePoint ? ` · ${t("review.routePoint", { number: visit.routePoint.orderIndex + 1 })}` : ""}`
-                  : visit.primaryAgentHidden ? t("review.routeHidden") : t("review.unplanned")}
-              </span>
-            </div>
-            <dl className="mt-1 divide-y divide-border">
-              {placeRow(t("review.placeCheckIn"), place.checkIn, "checkIn")}
-              {placeRow(t("review.placeCheckOut"), place.checkOut, "checkOut")}
-            </dl>
-            {/* Why a visit «вне зоны» was accepted: its agent had reported the pin as wrong, from that very place. */}
-            {visit.locationRequest && ["SUBMITTED", "APPROVED", "REJECTED", "CANCELLED"].includes(visit.locationRequest.status) ? (
-              <p
-                data-testid="mtm-visit-review-location-request"
-                className={visit.locationRequest.status === "SUBMITTED"
-                  ? "mt-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs"
-                  : "mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"}
-              >
-                {t(`review.locationRequest.${visit.locationRequest.status}`)}
-              </p>
-            ) : null}
-            <p className="mt-1 flex flex-wrap gap-x-4 text-xs">
-              {mapHref(visit.checkInLat, visit.checkInLng) ? (
-                <a className="inline-flex items-center gap-1 font-medium text-primary hover:underline" href={mapHref(visit.checkInLat, visit.checkInLng) as string} target="_blank" rel="noreferrer">
-                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />{t("review.placeCheckIn")} · {t("review.mapLink")}
-                </a>
-              ) : null}
-              {mapHref(visit.checkOutLat, visit.checkOutLng) ? (
-                <a className="inline-flex items-center gap-1 font-medium text-primary hover:underline" href={mapHref(visit.checkOutLat, visit.checkOutLng) as string} target="_blank" rel="noreferrer">
-                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />{t("review.placeCheckOut")} · {t("review.mapLink")}
-                </a>
-              ) : null}
-            </p>
-          </section>
-
           {visit.presentationSessions.length ? (
             <section className="py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -672,63 +734,9 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
               </p>
             </section>
           ) : null}
-
-          {actionRows.length ? (
-            <section className="py-3">
-              {blockTitle(t("review.actionsTitle"))}
-              <ul className="mt-1 divide-y divide-border text-sm" data-testid="mtm-visit-review-actions">
-                {actionRows.map((row) => (
-                  <li key={row.actionKey} className="flex items-center justify-between gap-3 py-1.5">
-                    <span className="flex items-center gap-2 text-foreground">
-                      {row.done
-                        ? <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-                        : <Circle className={`h-4 w-4 ${row.required ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} aria-hidden="true" />}
-                      {tw(`actions.${row.actionKey}`)}
-                      <span className="text-xs text-muted-foreground">{row.required ? t("review.actionRequired") : t("review.actionOptional")}</span>
-                    </span>
-                    <span className={`text-xs font-medium ${row.done ? "text-emerald-700 dark:text-emerald-300" : row.required ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
-                      {row.done ? t("review.actionDone") : t("review.actionNotDone")}
-                      {row.minCount > 1 || row.count > 1 ? ` · ${row.count}/${row.minCount}` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          <section className="py-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                {t("review.openTasksShort")}
-              </h3>
-              <span className="text-xs text-muted-foreground">{t("review.openTasks", { count: data.openTasks.count })}</span>
-            </div>
-            {data.openTasks.items.length ? (
-              <ul className="mt-1.5 space-y-1 text-sm">
-                {data.openTasks.items.map((task) => (
-                  <li key={task.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <span className="min-w-0 truncate text-foreground">{task.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {tw(`priorities.${task.priority}`)}
-                      {task.dueDate ? ` · ${t("review.taskDue", { date: formatFull(task.dueDate) })}` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {data.openTasks.count > 0 ? (
-              <Link href="/mtm/tasks" className="mt-1.5 inline-block text-sm font-medium text-primary hover:underline">{t("review.openTasksLink")}</Link>
-            ) : null}
-          </section>
-
-          {missing.length ? (
-            <section className="py-3">
-              <p className="text-xs text-muted-foreground">{t("review.nothingRecorded", { items: missing.join(", ").toLocaleLowerCase(locale) })}</p>
-            </section>
-          ) : null}
         </div>
       </div>
+      ) : null}
     </>,
   )
 }
