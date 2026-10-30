@@ -8933,6 +8933,10 @@ model MtmAttendanceBranchScreen {
   secretHash String? @unique @db.VarChar(64)
   pairedAt DateTime?
   lastSeenAt DateTime?
+  /// AT_BRANCH | AWAY | NO_FIX — the screen's last verdict, never its coordinates.
+  placeState String? @db.VarChar(16)
+  placeDistanceMeters Int?
+  placeCheckedAt DateTime?
   revokedAt DateTime?
   revokedBy String?
   createdBy String

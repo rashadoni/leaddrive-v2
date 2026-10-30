@@ -351,7 +351,10 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
   // address or pressed reload there. It is a widening, stated plainly: any
   // signed-in page may now ASK; the browser still shows its own prompt, and
   // marketing, public, login, /embed, /portal and API responses stay denied.
-  const geoPolicy = signedInApp ? "geolocation=(self)" : "geolocation=()"
+  // The branch screen (/screen, no account) must say where it stands before it
+  // is given a code (owner, 2026-10-30): it may ask too, and only it.
+  const branchScreen = !!pathname && matchesPublicPath(pathname, "/screen")
+  const geoPolicy = signedInApp || branchScreen ? "geolocation=(self)" : "geolocation=()"
   response.headers.set("Permissions-Policy", `${cameraPolicy}, ${micPolicy}, ${geoPolicy}`)
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
   return response

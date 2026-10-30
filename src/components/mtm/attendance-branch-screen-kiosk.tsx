@@ -8,9 +8,11 @@ import type { AttendanceBranchScreenQr } from "@/lib/mtm/attendance-qr-contract"
 
 const PAIR_ENDPOINT = "/api/v1/public/attendance-screen/pair"
 const QR_ENDPOINT = "/api/v1/public/attendance-screen/qr"
-// The next code is fetched a little before this one runs out, so the screen never stands empty.
-const REFRESH_BEFORE_MS = 5_000
+// The next code (and the position it needs) is fetched a little before this one runs out, so the screen never stands empty.
+const REFRESH_BEFORE_MS = 15_000
 const RETRY_MS = 15_000
+// A fresh position before every code: a still tablet's watcher may stay silent for hours.
+const FIX_OPTIONS = { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 }
 const LANGUAGES = [{ code: "az", label: "AZ" }, { code: "ru", label: "RU" }, { code: "en", label: "EN" }] as const
 
 type Showing = Extract<AttendanceBranchScreenQr, { state: "SHOWING" }> & { deadline: number }
@@ -20,6 +22,11 @@ type View =
   | { kind: "showing"; code: Showing }
   | { kind: "waiting"; state: "QR_OFF" | "BRANCH_UNAVAILABLE"; organizationName?: string; branchName?: string }
   | { kind: "offline"; organizationName?: string; branchName?: string }
+  | { kind: "away"; reason: "AWAY" | "NO_FIX"; distanceMeters: number | null; organizationName: string; branchName: string }
+type Geo = "off" | "waiting" | "ok" | "denied" | "unavailable"
+type Fix = { latitude: number; longitude: number; accuracy: number; at: number }
+
+const isHidden = () => document.visibilityState === "hidden"
 
 /** The whole branch screen: the pairing form until paired, then the branch's live QR. */
 export function AttendanceBranchScreenKiosk() {
@@ -27,21 +34,54 @@ export function AttendanceBranchScreenKiosk() {
   const [view, setView] = useState<View>({ kind: "loading" })
   const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [seconds, setSeconds] = useState(0)
   const mounted = useRef(false), timer = useRef<ReturnType<typeof setTimeout> | null>(null), last = useRef<{ organizationName?: string; branchName?: string }>({})
+  // The screen's own position (owner, 2026-10-30): a code is given only to a screen at its branch.
+  const [geo, setGeo] = useState<Geo>("off")
+  // Positions are asked for only once the screen is known to be paired: an unpaired page asks for nothing.
+  const geoRef = useRef<Geo>("off"), fix = useRef<Fix | null>(null), locating = useRef(false)
+  const setGeoState = useCallback((value: Geo) => { geoRef.current = value; setGeo(value) }, [])
+  /** The browser's current position, kept with the moment it was taken; a failure keeps the last one (the server judges its age). */
+  const locate = useCallback(() => new Promise<void>(resolve => {
+    if (!("geolocation" in navigator)) { setGeoState("unavailable"); return resolve() }
+    if (geoRef.current === "off") setGeoState("waiting")
+    navigator.geolocation.getCurrentPosition(position => {
+      fix.current = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy, at: position.timestamp || Date.now() }
+      setGeoState("ok"); resolve()
+    }, error => {
+      if (error.code === error.PERMISSION_DENIED) { fix.current = null; setGeoState("denied") }
+      else if (!fix.current) setGeoState("unavailable")
+      resolve()
+    }, FIX_OPTIONS)
+  }), [setGeoState])
   const later = useCallback((run: () => void, ms: number) => {
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(run, ms)
   }, [])
-  const fetchCode = useCallback(async () => {
+  const fetchCode = useCallback(async (): Promise<void> => {
     if (document.visibilityState === "hidden") return
+    if (locating.current) await locate()
+    // Hidden while the position was being found: the page asks again when it is shown.
+    if (!mounted.current || isHidden()) return
     const sent = performance.now()
     try {
-      const response = await fetch(QR_ENDPOINT, { method: "POST", cache: "no-store" })
+      const position = fix.current
+      const body = position ? { fix: { latitude: position.latitude, longitude: position.longitude, accuracy: position.accuracy, ageMs: Math.max(0, Date.now() - position.at) } } : {}
+      const response = await fetch(QR_ENDPOINT, { method: "POST", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
       if (!mounted.current) return
-      const body = await response.json().catch(() => null)
-      if (!response.ok || body?.success !== true) throw new Error("SCREEN_UNAVAILABLE")
-      const data = body.data as AttendanceBranchScreenQr
+      const answer = await response.json().catch(() => null)
+      if (!response.ok || answer?.success !== true) throw new Error("SCREEN_UNAVAILABLE")
+      const data = answer.data as AttendanceBranchScreenQr
       if (data.state === "UNPAIRED") { setView({ kind: "pair" }); return }
       last.current = { organizationName: data.organizationName, branchName: data.branch?.name }
+      // A paired screen asked for the first time without a position: find it, then ask again at once.
+      if (data.state === "NOT_AT_BRANCH" && data.reason === "NO_FIX" && !locating.current) {
+        locating.current = true
+        setView(current => current.kind === "showing" ? current : { kind: "loading" })
+        return fetchCode()
+      }
+      if (data.state === "NOT_AT_BRANCH") {
+        setView({ kind: "away", reason: data.reason, distanceMeters: data.distanceMeters, organizationName: data.organizationName, branchName: data.branch.name })
+        later(() => void fetchCode(), RETRY_MS); return
+      }
       if (data.state !== "SHOWING") { setView({ kind: "waiting", state: data.state, ...last.current }); later(() => void fetchCode(), RETRY_MS); return }
       const life = Date.parse(data.expiresAt) - Date.parse(data.serverNow) - (performance.now() - sent)
       if (!data.dataUrl?.startsWith("data:image/png;base64,") || !Number.isFinite(life) || life <= 0 || life > 60_000) throw new Error("SCREEN_CODE_INVALID")
@@ -54,7 +94,7 @@ export function AttendanceBranchScreenKiosk() {
       setView(current => current.kind === "showing" ? current : { kind: "offline", ...last.current })
       later(() => void fetchCode(), RETRY_MS)
     }
-  }, [later])
+  }, [later, locate])
   useEffect(() => {
     mounted.current = true
     void fetchCode()
@@ -95,10 +135,13 @@ export function AttendanceBranchScreenKiosk() {
       if (response.status === 429) { setView({ kind: "pair", limited: true }); return }
       const body = await response.json().catch(() => null)
       if (!response.ok || body?.success !== true) { setView({ kind: "pair", refused: true }); return }
-      setCode(""); setView({ kind: "loading" }); await fetchCode()
+      setCode(""); setView({ kind: "loading" }); locating.current = true; await fetchCode()
     } catch { if (mounted.current) setView({ kind: "pair", refused: true }) }
     finally { if (mounted.current) setBusy(false) }
   }
+  const distanceLabel = (meters: number) => meters < 1000
+    ? t("distanceMeters", { meters })
+    : t("distanceKm", { km: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(meters / 1000) })
   const header = (organizationName?: string, branchName?: string) => (organizationName || branchName) && <div className="space-y-1 text-center">
     {organizationName && <p className="text-base text-muted-foreground">{organizationName}</p>}
     {branchName && <h1 className="text-3xl font-semibold tracking-tight md:text-4xl" data-testid="branch-screen-branch">{branchName}</h1>}
@@ -126,6 +169,13 @@ export function AttendanceBranchScreenKiosk() {
           <p className="text-2xl font-semibold tabular-nums text-emerald-700" data-testid="branch-screen-countdown">{t("countdown", { seconds })}</p></div>
       </>}
       {view.kind === "waiting" && <>{header(view.organizationName, view.branchName)}<p role="status" className="max-w-md text-center text-lg">{t(view.state === "QR_OFF" ? "qrOff" : "branchUnavailable")}</p></>}
+      {view.kind === "away" && <>{header(view.organizationName, view.branchName)}
+        <div role="status" className="max-w-md space-y-2 text-center" data-testid="branch-screen-away">
+          <p className="text-lg font-medium">{t("notAtBranchTitle")}</p>
+          <p className="text-muted-foreground">{view.reason === "AWAY" && view.distanceMeters !== null
+            ? t("notAtBranchAway", { distance: distanceLabel(view.distanceMeters) })
+            : t(geo === "denied" ? "locationDenied" : geo === "unavailable" ? "locationUnavailable" : "locationImprecise")}</p>
+        </div></>}
       {view.kind === "offline" && <>{header(view.organizationName, view.branchName)}<p role="status" className="max-w-md text-center text-lg">{t("offline")}</p></>}
     </div>
   </main>

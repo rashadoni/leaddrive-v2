@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 import { issueAttendanceScreenQr } from "@/lib/mtm/attendance-branch-screen-store"
-import { BRANCH_SCREEN_COOKIE } from "@/lib/mtm/attendance-branch-screen-security"
+import { BRANCH_SCREEN_COOKIE, parseBranchScreenFix } from "@/lib/mtm/attendance-branch-screen-security"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { clientIp } from "@/lib/request-ip"
 import { clearScreenCookie, screenJson, screenRateLimited } from "@/lib/mtm/attendance-branch-screen-http"
@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
   if (limit.unavailable) return screenJson({ success: false, state: "UNAVAILABLE" }, 503)
   if (!limit.allowed) return screenRateLimited(limit.retryAfterSeconds)
   try {
-    const shown = await issueAttendanceScreenQr(req.cookies.get(BRANCH_SCREEN_COOKIE)?.value)
+    // The body carries the screen's own position; a missing or malformed one is "cannot tell".
+    const body = await req.json().catch(() => null)
+    const shown = await issueAttendanceScreenQr(req.cookies.get(BRANCH_SCREEN_COOKIE)?.value, parseBranchScreenFix(body))
     if (shown.state === "UNPAIRED") return clearScreenCookie(screenJson({ success: true, data: shown }))
     return screenJson({ success: true, data: shown })
   } catch {

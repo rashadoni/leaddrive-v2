@@ -1,4 +1,6 @@
 import { createHash, randomBytes, randomInt } from "node:crypto"
+import { z } from "zod"
+import { attendanceDistanceMeters } from "@/lib/mtm/attendance-location-contract"
 
 /**
  * Pairing a branch screen: an administrator gets a one-time code, types it on
@@ -46,4 +48,38 @@ export function generateBranchScreenSecret(): { secret: string; secretHash: stri
 export function hashBranchScreenSecret(secret: unknown): string | null {
   if (typeof secret !== "string" || !/^mtms1\.[A-Za-z0-9_-]{43}$/.test(secret)) return null
   return digest(`mtm-branch-screen-secret:v1:${secret}`)
+}
+
+/**
+ * The screen's own place (owner, 2026-10-30: a laptop paired at home showed
+ * the branch's code at home). Each request for a code carries the browser's
+ * latest fix; a code is issued only to a screen at its branch. The rule is the
+ * phone's: no wider than 100 m of accuracy, and the accuracy circle must reach
+ * the branch circle. A screen that cannot tell where it is shows no code.
+ */
+export const BRANCH_SCREEN_MAX_ACCURACY_METERS = 100
+// The kiosk keeps watching the position; a fix older than this is not "now".
+export const BRANCH_SCREEN_MAX_FIX_AGE_MS = 2 * 60_000
+export type BranchScreenFix = { latitude: number; longitude: number; accuracy: number; ageMs: number }
+export type BranchScreenPlace = { state: "AT_BRANCH" | "AWAY" | "NO_FIX"; distanceMeters: number | null }
+
+const fixSchema = z.object({
+  latitude: z.number().finite().min(-90).max(90), longitude: z.number().finite().min(-180).max(180),
+  accuracy: z.number().finite().min(0).max(100000), ageMs: z.number().finite().min(0).max(24 * 60 * 60_000),
+}).strict()
+
+/** The request body's `fix`, or null when there is none or it is malformed. */
+export function parseBranchScreenFix(body: unknown): BranchScreenFix | null {
+  const raw = body && typeof body === "object" ? (body as { fix?: unknown }).fix : undefined
+  const parsed = fixSchema.safeParse(raw)
+  return parsed.success ? parsed.data : null
+}
+
+export function evaluateBranchScreenPlace(fix: BranchScreenFix | null, branch: { latitude: number; longitude: number; radiusMeters: number }): BranchScreenPlace {
+  if (!fix || fix.ageMs > BRANCH_SCREEN_MAX_FIX_AGE_MS) return { state: "NO_FIX", distanceMeters: null }
+  const distance = attendanceDistanceMeters(fix, branch)
+  // Far beyond any accuracy: say so, the administrator sees where the screen went.
+  if (distance - fix.accuracy > branch.radiusMeters) return { state: "AWAY", distanceMeters: Math.round(distance) }
+  if (fix.accuracy > BRANCH_SCREEN_MAX_ACCURACY_METERS) return { state: "NO_FIX", distanceMeters: null }
+  return { state: "AT_BRANCH", distanceMeters: Math.round(distance) }
 }

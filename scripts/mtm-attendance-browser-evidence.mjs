@@ -748,8 +748,11 @@ try {
       await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 120000 })
       const pairing = await clickResponse(button('qrScreenPair', row), `${apiRoot}/branch-screens`)
       assert.equal(await row.getByTestId('attendance-qr-pairing-code').textContent(), pairing.code)
-      // The tablet at the branch: a browser with no CRM session at all.
-      kioskContext = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1024, height: 768 }, locale: 'en-US' })
+      // The tablet at the branch: a browser with no CRM session at all, standing
+      // at the branch's current point (owner, 2026-10-30: a screen elsewhere gets no code).
+      const point = await fixture.admin.mtmAttendanceBranchRevision.findFirst({ where: { branchId: state.branch.id }, orderBy: { version: 'desc' }, select: { latitude: true, longitude: true } })
+      const atBranch = { latitude: point.latitude, longitude: point.longitude, accuracy: 15 }
+      kioskContext = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1024, height: 768 }, locale: 'en-US', permissions: ['geolocation'], geolocation: atBranch })
       await kioskContext.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort())
       const kiosk = await kioskContext.newPage()
       await kiosk.goto('/screen?lang=en', { waitUntil: 'domcontentloaded', timeout: 120000 })
@@ -789,6 +792,18 @@ try {
       await poll(async () => await kiosk.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
       await qr.waitFor({ timeout: 120000 })
       manifest.qrLifecycle.qrRestoredInForeground = true
+      // Carried ~3 km away: at its next refresh the screen shows no code and
+      // says why; the administrator's list marks it; back at the branch the code returns.
+      await kioskContext.setGeolocation({ ...atBranch, latitude: atBranch.latitude + 0.03 })
+      await kiosk.getByTestId('branch-screen-away').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      assert.ok((await kiosk.getByTestId('branch-screen-away').textContent()).includes(st('notAtBranchTitle')))
+      const awayPlace = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens[0].place
+      assert.equal(awayPlace.state, 'AWAY'); assert.ok(awayPlace.distanceMeters > 3000)
+      await kiosk.screenshot({ path: `${output}/branch-screen-away.png`, fullPage: false })
+      await kioskContext.setGeolocation(atBranch)
+      await qr.waitFor({ timeout: 120000 })
+      manifest.qrLifecycle.qrWithheldAwayFromBranch = true
       // Disconnected: the screen's next request is refused and it asks for a code again.
       const [screen] = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens
       await button('qrScreenRevoke', row).click()

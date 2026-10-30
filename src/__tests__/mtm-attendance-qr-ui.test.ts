@@ -10,7 +10,8 @@ import { MtmAttendanceQrDisplay } from "@/components/mtm/attendance-qr-display"
 const messages = Object.fromEntries(["ru", "az", "en"].map(lang => [lang, JSON.parse(readFileSync(`messages/${lang}.json`, "utf8"))]))
 const ru = messages.ru.mtmAttendance
 const endpoint = "/api/v1/mtm/attendance/branch-screens"
-const screened = { id: "10000000-0000-4000-8000-000000000001", name: "Demo branch 01", screens: [{ id: "20000000-0000-4000-8000-000000000001", pairedAt: "2026-10-29T06:00:00Z", lastSeenAt: new Date().toISOString() }] }
+const screened = { id: "10000000-0000-4000-8000-000000000001", name: "Demo branch 01", screens: [{ id: "20000000-0000-4000-8000-000000000001", pairedAt: "2026-10-29T06:00:00Z", lastSeenAt: new Date().toISOString(),
+  place: { state: "AT_BRANCH", distanceMeters: 12, checkedAt: new Date().toISOString() } as { state: string; distanceMeters: number | null; checkedAt: string } | null }] }
 const bare = { id: "10000000-0000-4000-8000-000000000002", name: "Demo branch 02", screens: [] as typeof screened.screens }
 const response = (data: unknown, status = 200) => new Response(JSON.stringify({ success: status < 400, data }), { status })
 let root: Root, host: HTMLDivElement
@@ -47,6 +48,17 @@ describe("branch screens in Personnel → Settings → QR", () => {
     expect(rows[0].querySelector('[data-testid="attendance-qr-screen"]')!.textContent).toContain(ru.qrScreenOnline)
     expect(rows[1].querySelector('[data-testid="attendance-qr-branch-unscreened"]')!.textContent).toBe(ru.qrScreenNone)
   })
+  // Owner, 2026-10-30: a laptop paired at home showed the branch's code at home.
+  it("marks a screen that is away from its branch, or cannot say where it is", async () => {
+    directory.branches[0].screens[0].place = { state: "AWAY", distanceMeters: 3300, checkedAt: new Date().toISOString() }
+    await render()
+    const screen = () => host.querySelector('[data-testid="attendance-qr-screen"]')!.textContent!
+    expect(screen()).toContain("Не в филиале · 3,3 км")
+    await act(async () => root.unmount()); root = createRoot(host)
+    directory.branches[0].screens[0].place = { state: "NO_FIX", distanceMeters: null, checkedAt: new Date().toISOString() }
+    await render()
+    expect(screen()).toContain(ru.qrScreenNoFix); expect(screen()).not.toContain("Не в филиале")
+  })
   it("gives a one-time code for the chosen branch and where to type it", async () => {
     await render()
     await act(async () => { [...host.querySelectorAll('[data-testid="attendance-qr-branch"]')][1].querySelector<HTMLButtonElement>("button")!.click() })
@@ -59,7 +71,7 @@ describe("branch screens in Personnel → Settings → QR", () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
     await render()
     await act(async () => { [...host.querySelectorAll('[data-testid="attendance-qr-branch"]')][1].querySelector<HTMLButtonElement>("button")!.click() })
-    directory.branches[1].screens = [{ id: "20000000-0000-4000-8000-000000000002", pairedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() }]
+    directory.branches[1].screens = [{ id: "20000000-0000-4000-8000-000000000002", pairedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(), place: null }]
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000) })
     expect(host.querySelector('[data-testid="attendance-qr-pairing"]')).toBeNull()
     expect(host.textContent).toContain(ru.qrScreenJustPaired)

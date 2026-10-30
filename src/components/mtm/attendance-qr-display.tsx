@@ -80,6 +80,9 @@ export function MtmAttendanceQrDisplay() {
     await load()
   }
   const when = (iso: string) => formatDateTime(iso, locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone })
+  const distance = (meters: number) => meters < 1000
+    ? t("qrScreenDistanceMeters", { meters })
+    : t("qrScreenDistanceKm", { km: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(meters / 1000) })
   const screenUrl = typeof window === "undefined" ? "/screen" : `${window.location.host}/screen`
   if (denied) return <p role="status">{t("reportAccessUnavailable")}</p>
   return <main className="min-w-0 space-y-5" data-testid="attendance-qr-display">
@@ -102,6 +105,9 @@ export function MtmAttendanceQrDisplay() {
               return <div key={screen.id} className="flex flex-wrap items-center gap-3 text-sm" data-testid="attendance-qr-screen">
                 <span className="text-muted-foreground">{t("qrScreenPaired", { date: when(screen.pairedAt) })}</span>
                 <HomePill tone={online ? "green" : "amber"}>{online ? t("qrScreenOnline") : screen.lastSeenAt ? t("qrScreenOfflineSince", { date: when(screen.lastSeenAt) }) : t("qrScreenNeverSeen")}</HomePill>
+                {/* A screen away from its branch, or unable to say where it is, shows no code. */}
+                {screen.place?.state === "AWAY" && screen.place.distanceMeters !== null && <HomePill tone="red">{t("qrScreenAway", { distance: distance(screen.place.distanceMeters) })}</HomePill>}
+                {screen.place?.state === "NO_FIX" && <HomePill tone="amber">{t("qrScreenNoFix")}</HomePill>}
                 {directory.canConfigure && (confirming === screen.id
                   ? <span className="flex flex-wrap items-center gap-2"><span>{t("qrScreenRevokeConfirm")}</span>
                     <Button type="button" variant="destructive" className="min-h-11" disabled={busy} onClick={() => void revoke(screen.id)}>{t("qrScreenRevokeYes")}</Button>
@@ -113,6 +119,7 @@ export function MtmAttendanceQrDisplay() {
             {pairing?.branch.id === branch.id && <div className="space-y-2 rounded-xl border bg-muted/40 p-4" data-testid="attendance-qr-pairing">
               <p className="text-sm">{t("qrScreenPairOpen", { url: screenUrl })}</p>
               <p className="font-mono text-3xl font-semibold tracking-widest" data-testid="attendance-qr-pairing-code">{pairing.code}</p>
+              <p className="text-sm">{t("qrScreenPlaceHint")}</p>
               <p className="text-xs text-muted-foreground">{t("qrScreenPairHint", { time: formatTime(pairing.expiresAt, locale, { hour: "2-digit", minute: "2-digit", timeZone }) })}</p>
               <Button type="button" variant="outline" className="min-h-11" onClick={() => setPairing(null)}>{t("qrScreenPairClose")}</Button>
             </div>}

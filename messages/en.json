@@ -19675,6 +19675,13 @@
     "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
   },
   "attendanceBranchScreen": {
+    "notAtBranchTitle": "No QR: this screen is not at the branch",
+    "notAtBranchAway": "This screen is about {distance} from the branch. Only a screen at the branch itself shows the QR.",
+    "locationDenied": "Allow this screen to use location in the browser settings: without it the QR is not shown.",
+    "locationUnavailable": "This device doesn't report its location. A branch QR needs a tablet or computer that can determine its place.",
+    "locationImprecise": "The screen's place can't be determined precisely yet. The QR appears as soon as it is.",
+    "distanceMeters": "{meters} m",
+    "distanceKm": "{km} km",
     "pageTitle": "Branch screen",
     "languageLabel": "Language",
     "loading": "Loading…",
@@ -19692,6 +19699,11 @@
     "offline": "No connection to the server. The code returns as soon as it's back."
   },
   "mtmAttendance": {
+    "qrScreenAway": "Not at the branch · {distance}",
+    "qrScreenNoFix": "Place unknown",
+    "qrScreenDistanceMeters": "{meters} m",
+    "qrScreenDistanceKm": "{km} km",
+    "qrScreenPlaceHint": "A screen shows the QR only while it stands at the branch: allow it location access on first launch.",
     "explanationAskLate": "Explain being late on {date}: {minutes} min",
     "explanationAskAbsent": "Explain your absence on {date}",
     "explanationAskBody": "HR asks for an explanation. Write it in the app under «Explanations».",
@@ -19921,6 +19933,7 @@
     "qrStateINVALID": "QR is invalid; branch unconfirmed",
     "qrStateBRANCH_CHANGED": "Branch changed; QR unconfirmed",
     "qrStateREUSED": "QR was already used for this mark type",
+    "qrStateNO_PHONE_FIX": "QR read without the phone's place at the branch; branch not confirmed",
     "qrStateAWAY_FROM_BRANCH": "QR scanned, but the phone was {meters} m from the branch; branch unconfirmed",
     "qrScreenIntro": "A branch QR is shown only by a screen connected to that branch, such as a tablet at the entrance. A regular CRM sign-in has no code.",
     "qrScreensTitle": "Branch screens",
@@ -19939,7 +19952,7 @@
     "qrScreenPairClose": "Close",
     "qrScreenJustPaired": "Screen connected and showing the code",
     "qrScreenError": "That didn't work. Check the connection and try again.",
-    "qrScreenGpsHint": "When an employee shares location, the QR is checked against the phone's position: a phone plainly outside the branch radius doesn't confirm the branch, and the time is still saved.",
+    "qrScreenGpsHint": "When the organization collects the place of a mark, a QR confirms the branch only together with the phone's place at that branch. No phone place, or the phone far away — the branch isn't confirmed, the time is saved. A code shown over a video call won't pass either.",
     "qrGpsObservation": "GPS observation: {value}",
     "riskAll": "All",
     "riskTitle": "Marks to review",
