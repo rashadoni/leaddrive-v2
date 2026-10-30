@@ -119,7 +119,11 @@ export async function agentDayRoute(
   const routes: DayRoute[] = await db.mtmRoute.findMany({
     where: {
       organizationId: input.organizationId,
-      agentId: input.agentId,
+      // Read as his app reads it (sync pull): his own route, or one he was put on.
+      OR: [
+        { agentId: input.agentId },
+        { assignments: { some: { agentId: input.agentId, removedAt: null } } },
+      ],
       date: routeDay(input.date),
       deletedAt: null,
       status: { not: "CANCELLED" },
@@ -249,14 +253,18 @@ export async function createJointVisitPlans(
     }
 
     if (!route) {
-      // He has not planned this day yet: the joint stop starts his draft, and
-      // he plans the rest of the day around it.
+      // He has not planned this day yet: the manager's own pick starts it as a
+      // published route — she is the one who would approve it, and a draft
+      // keeps him from starting the visit (live check 2026-10-30). He adds the
+      // rest of the day to it the way he changes any published route.
       const created = await tx.mtmRoute.create({
         data: {
           organizationId: input.organizationId,
           agentId: input.agentId,
           date: day,
-          status: "DRAFT",
+          status: "PLANNED",
+          publishedAt: input.now,
+          publishedBy: input.managerUserId,
           totalPoints: 0,
           assignments: {
             create: { organizationId: input.organizationId, agentId: input.agentId, role: "PRIMARY", assignedBy: input.managerUserId },
@@ -428,6 +436,15 @@ export async function cancelJointVisitPlan(
     if (others === 0) {
       await tx.mtmRoutePoint.update({ where: { id: point.id }, data: { deletedAt: input.now, version: { increment: 1 } } })
       await bumpRoute(tx, { organizationId: input.organizationId, route: point.route })
+      // A route left with no stop and never started was only there for this
+      // visit: it goes too, rather than hang in his day as an empty route.
+      const left = await tx.mtmRoutePoint.count({ where: { routeId: point.route.id, deletedAt: null } })
+      if (left === 0 && (point.route.status === "DRAFT" || point.route.status === "PLANNED")) {
+        await tx.mtmRoute.updateMany({
+          where: { id: point.route.id, organizationId: input.organizationId, status: point.route.status, startedAt: null, deletedAt: null },
+          data: { deletedAt: input.now, version: { increment: 1 } },
+        })
+      }
     }
   }
   return {

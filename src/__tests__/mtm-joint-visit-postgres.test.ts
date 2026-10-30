@@ -676,4 +676,48 @@ pgDescribe("joint visit on a real Postgres", () => {
     const again = await call(cancelPlan, `${BASE}/mobile/manager/joint-visit/plans/${extra.id}`, "DELETE", undefined, params(extra.id))
     expect(again.status).toBe(404)
   })
+
+  it("an extra client on a day the agent has no route starts a published route, and taking it back removes it", async () => {
+    // Live check 2026-10-30: the route this created was a draft, and the agent's
+    // phone said «waiting for approval» — he could not start the joint visit.
+    const base = Date.parse(`${await today()}T00:00:00.000Z`)
+    const shift = (days: number) => new Date(base + days * 86_400_000).toISOString().slice(0, 10)
+    const day = shift(1)
+
+    phoneOf(MANAGER, "SUPERVISOR")
+    const saved = await call(plans.POST, `${BASE}/mobile/manager/joint-visit/plans`, "POST", { agentId: AYSEL, date: day, extras: [{ customerId: CUSTOMER }] })
+    expect(saved.status).toBe(201)
+    const routes = () => bypass(() => prisma.mtmRoute.findMany({
+      where: { organizationId: ORG, agentId: AYSEL },
+      select: { id: true, status: true, version: true, publishedVersion: true, publishedAt: true, deletedAt: true, totalPoints: true,
+        assignments: { select: { agentId: true, role: true } } },
+    }))
+    const [route] = await routes()
+    expect(route).toMatchObject({ status: "PLANNED", totalPoints: 1, deletedAt: null, assignments: [{ agentId: AYSEL, role: "PRIMARY" }] })
+    expect(route.publishedVersion).toBe(route.version)
+    expect(route.publishedAt).not.toBeNull()
+
+    const [plan] = (await livePlans()).filter((row: { agentId: string }) => row.agentId === AYSEL)
+    const cancelled = await call(cancelPlan, `${BASE}/mobile/manager/joint-visit/plans/${plan.id}`, "DELETE", undefined, params(plan.id))
+    expect(cancelled.status).toBe(200)
+    expect((await routes())[0].deletedAt).not.toBeNull()
+
+    // A route Aysel was put on by someone else is hers to plan on too — her app reads it so.
+    const later = shift(2)
+    await bypass(() => prisma.mtmRoute.create({
+      data: {
+        id: "route-joint-elvin-with-aysel",
+        organizationId: ORG,
+        agentId: ELVIN,
+        date: new Date(`${later}T00:00:00.000Z`),
+        status: "PLANNED",
+        publishedVersion: 1,
+        totalPoints: 1,
+        assignments: { create: { organizationId: ORG, agentId: AYSEL, role: "PARTICIPANT" } },
+        points: { create: { id: "point-joint-shared", organizationId: ORG, customerId: CUSTOMER, orderIndex: 0 } },
+      },
+    }))
+    const shared = await call(plans.GET, `${BASE}/mobile/manager/joint-visit/plans?agentId=${AYSEL}&date=${later}`)
+    expect(shared.body.data.route.stops.map((stop: { id: string }) => stop.id)).toEqual(["point-joint-shared"])
+  })
 })
