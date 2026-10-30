@@ -3,7 +3,7 @@ import { z } from "zod"
 import { readJsonRequestWithinLimit } from "../../request-body-limit"
 import { zeytunBalanceQuerySchema } from "./zeytun-available-balances"
 import { searchResponse, searchRestrictions } from "./zeytun-search-boundary"
-import { openingForCandidates, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
+import { openingForCandidates, ZEYTUN_SALES_DESK, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type PhoneOrderCatalog,
   type PhoneOrderLineInput, type PhoneOrderSaveResult } from "./phone-orders"
 import { SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
@@ -215,10 +215,15 @@ At the end read the complete preliminary list ONCE, with quantities in the calle
 When the caller says goodbye or has nothing to add after the final list, say exactly this closing sentence and nothing after it: "${ZEYTUN_INBOUND_CLOSING}" The line is hung up after it. Never say that sentence earlier in the call.`
 export const ZEYTUN_INBOUND_PROMPT = PROMPT_TEMPLATE
 /** The line's opening and rules: a real caller, not the owner's rehearsal. */
-export const ZEYTUN_LINE_OPENING = "Salam! Zeytunun süni intellekt köməkçisiyəm, sifarişinizi qəbul edirəm. Hansı aptekdən zəng edirsiniz?"
+// Owner, 2026-10-30: «не нужно чтоб говорила искусственный интеллект… лучше
+// приветствие Зейтун Фармасьютикалс, отдел продаж, какая аптека и готовность
+// принять заказ». Asked directly, the agent still says what it is (prompt).
+export const ZEYTUN_LINE_OPENING = `${ZEYTUN_SALES_DESK} Sifarişinizi qəbul etməyə hazıram. Hansı aptekdən zəng edirsiniz?`
 export const ZEYTUN_LINE_PROMPT = [
   ["You are Zeytun's AI assistant receiving an INBOUND B2B pharmacy order rehearsal.",
-    "You are Zeytun's AI assistant taking INBOUND B2B pharmacy orders by phone."],
+    // Owner, 2026-10-30: the greeting no longer says it is an AI; a direct
+    // question is still answered truthfully, never "I am a person".
+    "You take INBOUND B2B pharmacy orders by phone for Zeytun. Never call yourself AI or a robot unasked; if asked, say you are Zeytun's virtual assistant and go on; never claim to be human."],
   ["The caller is the owner's test participant, NOT an authenticated pharmacy. Do not use any CRM customer history or infer a pharmacy identity from the caller's number.",
     "The caller claims to be a pharmacy, NOT verified. The opening asks which one; if unclear ask once more, then go on. If they answer the opening with products and name no other pharmacy, take the opening's pharmacy. Never infer it from the number or CRM history."],
   // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
