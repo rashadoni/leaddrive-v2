@@ -139,7 +139,7 @@ function VisitSteps({ rows, notRequired, footer }: { rows: VisitStepRow[]; notRe
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               </span>
             ) : row.state === "missing" ? (
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-red-500 bg-card text-red-700 dark:text-red-300">
                 <X className="h-4 w-4" aria-hidden="true" />
               </span>
             ) : (
@@ -341,8 +341,8 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
         ? t(kind === "checkIn" ? "review.checkedInFar" : "review.checkedOutFar", { distance: distanceText(check.distanceMeters ?? 0), radius: distanceText(check.radiusMeters) })
         : kind === "checkOut" ? tPlace("checkoutGpsMissing") : tPlace("noGps")
       return (
-        <span className="inline-flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-sm font-medium text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="inline-flex items-start gap-1.5 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card px-2.5 py-1.5 text-sm font-medium text-foreground dark:border-l-amber-500">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           {text}
         </span>
       )
@@ -422,9 +422,9 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
   const open = visit.status === "CHECKED_IN" && !visit.checkOutAt
   const openMinutes = Math.max(0, Math.round((now.getTime() - new Date(visit.checkInAt).getTime()) / 60_000))
   const stepsChip = leftOpen
-    ? { tone: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200", text: t("statusLeftOpen"), live: false }
+    ? { tone: "border border-border text-amber-700 dark:text-amber-300", text: t("statusLeftOpen"), live: false }
     : open
-      ? { tone: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200", text: t("review.chipOpen", { duration: minutesText(openMinutes) }), live: true }
+      ? { tone: "border border-border text-emerald-700 dark:text-emerald-300", text: t("review.chipOpen", { duration: minutesText(openMinutes) }), live: true }
       : { tone: "bg-muted text-foreground", text: duration != null && visit.checkOutAt
           ? t("review.chipDone", { duration: minutesText(duration), from: formatTime(visit.checkInAt), to: formatTime(visit.checkOutAt) })
           : `${formatTime(visit.checkInAt)} — ${visit.checkOutAt ? formatTime(visit.checkOutAt) : t("notFinished")}`, live: false }
