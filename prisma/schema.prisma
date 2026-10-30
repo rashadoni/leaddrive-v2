@@ -205,6 +205,7 @@ model Organization {
   mtmLocationShareLinks                  MtmLocationShareLink[]
   mtmCustomerLocationRequests            MtmCustomerLocationRequest[]
   mtmJointFieldSessions                  MtmJointFieldSession[]
+  mtmJointVisitPlans                     MtmJointVisitPlan[]
   mtmVisitEvaluations                    MtmVisitEvaluation[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
@@ -6360,6 +6361,8 @@ model MtmAgent {
   customerLocationRequests             MtmCustomerLocationRequest[]
   jointSessionsLed                     MtmJointFieldSession[]       @relation("MtmJointFieldSessionManager")
   jointSessionsJoined                  MtmJointFieldSession[]       @relation("MtmJointFieldSessionAgent")
+  jointVisitPlansLed                   MtmJointVisitPlan[]          @relation("MtmJointVisitPlanManager")
+  jointVisitPlansJoined                MtmJointVisitPlan[]          @relation("MtmJointVisitPlanAgent")
   visitEvaluationsReceived             MtmVisitEvaluation[]         @relation("MtmVisitEvaluationAgent")
   visitEvaluationsGiven                MtmVisitEvaluation[]         @relation("MtmVisitEvaluationEvaluator")
   enteredDoctorAssessments  MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentEnteredBy")
@@ -6565,6 +6568,7 @@ model MtmCustomer {
   deletedAt              DateTime?
 
   routePoints            MtmRoutePoint[]
+  jointVisitPlans        MtmJointVisitPlan[]
   visits                 MtmVisit[]
   tasks                  MtmTask[]
   approvedRequests       MtmCustomerCreateRequest[]
@@ -6765,6 +6769,7 @@ model MtmContact {
   agentAssignments  MtmContactAgentAssignment[]
   fieldPotentials   MtmFieldPotential[]
   routePoints       MtmRoutePoint[]
+  jointVisitPlans   MtmJointVisitPlan[]
   visits            MtmVisit[]
   commitments       MtmCommitment[]
   changeRequests    MtmContactChangeRequest[]
@@ -7664,6 +7669,7 @@ model MtmRoutePoint {
 
   visits         MtmVisit[]
   changeRequests MtmRouteChangeRequest[]
+  jointVisitPlans MtmJointVisitPlan[]
 
   @@index([organizationId])
   @@index([routeId])
@@ -7723,6 +7729,7 @@ model MtmVisit {
   tasks                  MtmTask[]
   participants           MtmVisitParticipant[]
   evaluations            MtmVisitEvaluation[]
+  jointVisitPlans        MtmJointVisitPlan[]
   requirementSnapshot    MtmVisitRequirementSnapshot?
   actionResults          MtmVisitActionResult[]
   commitments            MtmCommitment[]
@@ -7823,6 +7830,52 @@ model MtmJointFieldSession {
   @@index([organizationId, agentId, startedAt])
   @@map("mtm_joint_field_sessions")
 }
+
+/// A joint visit the manager planned ahead (owner, 2026-10-30): «менеджер
+/// должен иметь право выбирать, к какому клиенту сделает визит вместе с
+/// агентом… или экстра-клиента — тогда он попадает в маршрут агента». One row
+/// per stop of the agent's route on that day; an extra client is first added
+/// to the agent's route, so both kinds point at a route stop. The plan says
+/// where they go together; the visit becomes joint, as before, by the agent's
+/// own «yes, together» at check-in (src/lib/mtm/joint-visit-plan.ts).
+model MtmJointVisitPlan {
+  id             String                  @id @default(cuid())
+  organizationId String
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  managerAgentId String
+  manager        MtmAgent                @relation("MtmJointVisitPlanManager", fields: [organizationId, managerAgentId], references: [organizationId, id], onDelete: Cascade)
+  agentId        String
+  agent          MtmAgent                @relation("MtmJointVisitPlanAgent", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  /// The route's day.
+  date           DateTime                @db.Date
+  routePointId   String?
+  routePoint     MtmRoutePoint?          @relation(fields: [routePointId], references: [id], onDelete: SetNull)
+  customerId     String
+  customer       MtmCustomer             @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Cascade)
+  contactId      String?
+  contact        MtmContact?             @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  source         MtmJointVisitPlanSource
+  /// The visit the agent marked as joint at this stop, once he has.
+  visitId        String?
+  visit          MtmVisit?               @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  cancelledAt    DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([organizationId, agentId, date])
+  @@index([organizationId, managerAgentId, date])
+  @@index([routePointId])
+  @@index([visitId])
+  @@map("mtm_joint_visit_plans")
+}
+
+enum MtmJointVisitPlanSource {
+  /// A stop the agent had planned himself.
+  ROUTE
+  /// A client the manager added to the agent's route for the joint visit.
+  EXTRA
+}
+
 
 /// A manager's rating of the agent's work on one joint visit (owner,
 /// 2026-10-20). Allowed only on a visit the agent himself marked as joint

@@ -16376,6 +16376,8 @@
     "action": {
       "JOINT_VISIT_START": "Birgə vizit başladı",
       "JOINT_VISIT_END": "Birgə vizit bitdi",
+      "JOINT_VISIT_PLAN": "Birgə vizit planlaşdırıldı",
+      "JOINT_VISIT_PLAN_CANCEL": "Birgə vizit ləğv edildi",
       "VISIT_EVALUATION_SAVE": "Vizitdə agent qiymətləndirildi",
       "WORKDAY_REOPEN": "Gün yenidən açıldı",
       "WORKDAY_REOPEN_UNDO": "Yenidən açılma ləğv edildi",

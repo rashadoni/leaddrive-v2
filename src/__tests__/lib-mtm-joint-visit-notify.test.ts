@@ -29,7 +29,7 @@ vi.mock("@/lib/mtm/push-notify", async (importOriginal) => ({
   notifyAgents: vi.fn(async (input: Record<string, unknown>) => { push.calls.push(input); return { sent: 1, failed: 0, retired: 0 } }),
 }))
 
-import { jointVisitLocale, notifyAgentOfJointVisit } from "@/lib/mtm/joint-visit-notify"
+import { jointPlanNotice, jointVisitLocale, notifyAgentOfJointVisit, notifyAgentOfJointVisitPlan } from "@/lib/mtm/joint-visit-notify"
 
 beforeEach(() => {
   db.agents.clear()
@@ -58,7 +58,7 @@ describe("the agent hears that his manager goes on visits with him", () => {
       type: "info",
       title: "Fictional Narmin сегодня с вами на визитах",
       body: "При начале визита ответьте «Да, вместе с руководителем» — тогда руководитель сможет его оценить.",
-      metadata: { domain: "route", jointSessionId: "session-1", managerAgentId: "manager-1" },
+      metadata: { domain: "route", event: "joint_visit_session", jointSessionId: "session-1", managerAgentId: "manager-1" },
     }])
   })
 
@@ -73,6 +73,58 @@ describe("the agent hears that his manager goes on visits with him", () => {
 
   it("writes nothing for a card that is not there", async () => {
     await notifyAgentOfJointVisit({ organizationId: "org-1", managerAgentId: "manager-1", agentId: "missing", sessionId: "session-3" })
+    expect(db.notifications).toEqual([])
+    expect(push.calls).toEqual([])
+  })
+})
+
+describe("the agent hears where his manager plans to go with him (2026-10-30)", () => {
+  const clients = [
+    { customerName: "Fictional Clinic", contactName: "Dr. Fictional Leyla" },
+    { customerName: "Fictional Pharmacy", contactName: null },
+  ]
+
+  it("names the clients in the bell and only how many in the push, which shows on a locked screen", async () => {
+    db.agents.set("agent-1", { name: "Fictional Elvin", user: { preferredLanguage: "ru" } })
+    await notifyAgentOfJointVisitPlan({
+      organizationId: "org-1",
+      managerAgentId: "manager-1",
+      agentId: "agent-1",
+      kind: "planned",
+      date: "2026-10-31",
+      today: "2026-10-30",
+      planIds: ["plan-1", "plan-2"],
+      clients,
+    })
+    expect(db.notifications).toEqual([{
+      organizationId: "org-1",
+      agentId: "agent-1",
+      type: "info",
+      title: "Fictional Narmin завтра идёт с вами на визит",
+      body: "Dr. Fictional Leyla (Fictional Clinic), Fictional Pharmacy. В маршруте отмечено «Совместный визит»; при начале визита ответьте «Да, вместе с руководителем».",
+      metadata: { domain: "route", event: "joint_visit_planned", date: "2026-10-31", jointVisitPlanIds: ["plan-1", "plan-2"], managerAgentId: "manager-1" },
+    }])
+    expect(push.calls).toHaveLength(1)
+    expect(push.calls[0]).toMatchObject({
+      title: "Fictional Narmin завтра идёт с вами на визит",
+      channelId: "team-messages",
+      data: { target: "Route", channel: "team-messages", event: "joint_visit_planned", date: "2026-10-31" },
+    })
+    expect(JSON.stringify(push.calls[0])).not.toMatch(/Fictional (Clinic|Pharmacy|Leyla)/)
+  })
+
+  it("says the day as a person would: today, tomorrow, or the date", () => {
+    const at = (date: string) => jointPlanNotice("az", { kind: "planned", managerName: "Saida", date, today: "2026-10-30", clients }).title
+    expect(at("2026-10-30")).toBe("Saida bu gün sizinlə birgə vizitə gedəcək")
+    expect(at("2026-10-31")).toBe("Saida sabah sizinlə birgə vizitə gedəcək")
+    expect(at("2026-11-04")).toBe("Saida 04.11 sizinlə birgə vizitə gedəcək")
+    expect(jointPlanNotice("en", { kind: "cancelled", managerName: "Saida", date: "2026-10-30", today: "2026-10-30", clients: clients.slice(1) }))
+      .toEqual({ title: "Saida cancelled the joint visit today", body: "Fictional Pharmacy — no longer a joint visit.", push: "Saida cancelled the joint visit today" })
+  })
+
+  it("writes nothing when nothing new was planned", async () => {
+    db.agents.set("agent-1", { name: "Fictional Elvin", user: null })
+    await notifyAgentOfJointVisitPlan({ organizationId: "org-1", managerAgentId: "manager-1", agentId: "agent-1", kind: "planned", date: "2026-10-30", today: "2026-10-30", planIds: [], clients: [] })
     expect(db.notifications).toEqual([])
     expect(push.calls).toEqual([])
   })

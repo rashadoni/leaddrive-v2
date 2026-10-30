@@ -16380,6 +16380,8 @@
     "action": {
       "JOINT_VISIT_START": "Совместный визит начат",
       "JOINT_VISIT_END": "Совместный визит закончен",
+      "JOINT_VISIT_PLAN": "Совместный визит запланирован",
+      "JOINT_VISIT_PLAN_CANCEL": "Совместный визит отменён",
       "VISIT_EVALUATION_SAVE": "Оценка агента на визите",
       "WORKDAY_REOPEN": "День открыт заново",
       "WORKDAY_REOPEN_UNDO": "Повторное открытие отменено",
