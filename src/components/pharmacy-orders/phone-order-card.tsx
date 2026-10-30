@@ -96,6 +96,9 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:pt-4">
           <Button asChild variant="outline"><a href={`/api/v1/pharmacy-orders/${order.id}/export`}>{t("export")}</a></Button>
+          <Hint text={t("pdfHint")}>
+            <Button asChild variant="outline"><a href={`/api/v1/pharmacy-orders/${order.id}/export/pdf`}>{t("downloadPdf")}</a></Button>
+          </Hint>
           <Button asChild variant="outline"><a href={`tel:${order.callerPhone}`}>{t("call")}</a></Button>
           {pending ? (
             <>

@@ -628,6 +628,23 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
       .toMatchObject({ status: "sent", kind: "confirmed", pdfSkipped: "meta_131053", at: at.toISOString() })
   })
 
+  // Owner, 2026-10-30: the manager downloads the same PDF from the card, to forward it by hand.
+  it("lets the manager download the order's PDF, and nobody else's", async () => {
+    const { GET: pdfRoute } = await import("@/app/api/v1/pharmacy-orders/[id]/export/pdf/route")
+    await saveCall(53, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(53) } })
+    const response = await pdfRoute(json("GET", `/api/v1/pharmacy-orders/${order.id}/export/pdf`), params(order.id))
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("application/pdf")
+    expect(response.headers.get("content-disposition")).toContain(`filename*=UTF-8''${encodeURIComponent("Sifariş TS-1001.pdf")}`)
+    const bytes = new Uint8Array(await response.arrayBuffer())
+    expect(new TextDecoder("latin1").decode(bytes.slice(0, 5))).toBe("%PDF-")
+    // An order of another organization is not found, even by its id and with the feature on.
+    await admin.organization.update({ where: { id: OTHER }, data: { features: ["mtm", "sales", "pharmacy_phone_orders"] } })
+    session.current = { user: { id: "user-other", organizationId: OTHER, role: "admin", email: "a@other.test", name: "Other" } }
+    expect((await pdfRoute(json("GET", `/api/v1/pharmacy-orders/${order.id}/export/pdf`), params(order.id))).status).toBe(404)
+  })
+
   it("tells the pharmacy of the manager's decision once, on the number it called from", async () => {
     const { notifyPharmacyOfDecision } = await import("@/lib/pharmacy-orders/manager-notice")
     await saveCall(50, LIST)

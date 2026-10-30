@@ -31437,6 +31437,8 @@
     "historyAsPdf": "PDF faylı ilə",
     "historyPdfNotUtility": "Mətnlə: Meta PDF şablonunu hələ xidməti mesaj kimi təsdiqləməyib.",
     "historyPdfFailed": "Mətnlə: PDF getmədi ({reason}).",
+    "downloadPdf": "PDF yüklə",
+    "pdfHint": "Aptekin WhatsApp-da aldığı eyni fayl — əl ilə göndərmək üçün.",
     "historyMetaPayment": "Meta çatdırmadı: WhatsApp hesabının ödənişində problem var (Meta Business-də «Hesablar və ödəniş»).",
     "historyPharmacyNoNumber": "Zəng edənin nömrəsi telefon nömrəsi deyil — aptekə heç nə getmədi",
     "historyPharmacyOff": "WhatsApp qoşulmayıb — aptekə heç nə getmədi",
