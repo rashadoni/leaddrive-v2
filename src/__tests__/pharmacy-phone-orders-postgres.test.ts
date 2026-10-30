@@ -792,6 +792,16 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
         const response = await patch(order.id, { ...action, revision: unknown.revision })
         expect([response.status, (await response.json()).error]).toEqual([409, "erp_pending"])
       }
+      // A late save from the call does not change the lines under 1C either.
+      expect(await saveForErp(61, scopeKey, [{ ...LIST[0], quantity: 99 }])).toMatchObject({ status: "already_reviewed" })
+      expect((await admin.pharmacyPhoneOrderLine.findFirstOrThrow({ where: { orderId: order.id } })).quantity).toBe(10)
+      // Without the connection nobody can ask 1C, so the order is not confirmed in CRM alone.
+      const file = path.join(path.dirname(process.env.ZEYTUN_INBOUND_PILOT_FILE!), "zeytun-1c-orders.json")
+      const connection = readFileSync(file)
+      rmSync(file)
+      const offline = await patch(order.id, { action: "confirm", revision: unknown.revision })
+      expect([offline.status, (await offline.json()).error]).toEqual([503, "erp_unavailable"])
+      writeFileSync(file, connection, { mode: 0o600 })
       // The next click asks first: 1C has it, so nothing is created again.
       erp.answer = url => url === STATUS ? { status: 200, json: { code: 0, data: { Найден: true, Документ: { Guid: "doc-2", Номер: "ЗК-000124" } } } }
         : { status: 500 }

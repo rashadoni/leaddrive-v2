@@ -2,7 +2,7 @@ import { dirname, join } from "node:path"
 import { z } from "zod"
 
 import { postOutboundResource } from "@/lib/integrations/webhook-url-guard"
-import { parseZeytunBalanceConfig, zeytunBalanceScopeKey } from "@/lib/voice-agent/pharmacy/zeytun-balance-client"
+import { parseZeytunBalanceConfig } from "@/lib/voice-agent/pharmacy/zeytun-balance-client"
 import { ZEYTUN_CONNECTION_FILE } from "@/lib/voice-agent/pharmacy/zeytun-catalog-refresh"
 import { readPrivate } from "@/lib/voice-agent/pharmacy/zeytun-private-file"
 
@@ -14,9 +14,9 @@ import { readPrivate } from "@/lib/voice-agent/pharmacy/zeytun-private-file"
  * document it already has, and OrderStatus says whether an order is there.
  *
  * The connection is one more private file beside the line's grant. Without it
- * nothing here runs and «Подтвердить» works as before; the warehouse and METRO
- * come from the catalog's own connection, so an order goes to the warehouse
- * its prices were read from. Only HTTPS: the document is posted on arrival.
+ * nothing here runs and «Подтвердить» works as before. The warehouse and METRO
+ * are the catalog connection's: the line sells from that warehouse, and 1C
+ * prices the document itself. Only HTTPS: the document is posted on arrival.
  */
 export const ZEYTUN_ORDERS_CONNECTION_FILE = "zeytun-1c-orders.json"
 
@@ -30,7 +30,7 @@ const connectionSchema = z.strictObject({
 
 export type ErpConnection = {
   createEndpoint: string; statusEndpoint: string; authorization: string
-  warehouse: string; metro: boolean; catalogScopeKey: string
+  warehouse: string; metro: boolean
 }
 
 export class ErpConnectionError extends Error {
@@ -72,7 +72,7 @@ export async function erpConnection(orgId: string, grantFile = process.env.ZEYTU
   return {
     createEndpoint: httpsOnly(parsed.data.createEndpoint), statusEndpoint: httpsOnly(parsed.data.statusEndpoint),
     authorization: `Basic ${Buffer.from(`${username}:${password}`, "utf8").toString("base64")}`,
-    warehouse: balance.request.Warehouse, metro: balance.request.METRO, catalogScopeKey: zeytunBalanceScopeKey(catalog),
+    warehouse: balance.request.Warehouse, metro: balance.request.METRO,
   }
 }
 
@@ -210,15 +210,23 @@ export async function sendErpOrder(connection: ErpConnection, payload: ReturnTyp
   return status.kind === "created" ? status : outcome
 }
 
-/** Where 1C wrote something else than was sent: the manager sees it on the card. */
+/**
+ * Where 1C wrote something else than was sent: the manager sees it on the
+ * card. Per product, summed on both sides: an order may name a product on two
+ * lines, and 1C may write a promotion's free units as a row of their own.
+ */
 export function erpDifferences(sent: Array<{ position: number; externalId: string; quantity: number; unitPrice: string }>, goods: ErpGoods) {
   if (!goods.length) return []
-  return sent.flatMap(line => {
-    const row = goods.find(item => item.externalId === line.externalId.toLowerCase())
-    if (!row) return [{ position: line.position, sentQuantity: line.quantity, quantity: 0, sentPrice: line.unitPrice, price: null }]
-    const priceMoved = row.price !== null && Math.abs(row.price - Number(line.unitPrice)) >= 0.005
-    if (row.quantity === line.quantity && !priceMoved) return []
-    return [{ position: line.position, sentQuantity: line.quantity, quantity: row.quantity, sentPrice: line.unitPrice,
-      price: row.price === null ? null : row.price.toFixed(2) }]
+  const products = [...new Set(sent.map(line => line.externalId.toLowerCase()))]
+  return products.flatMap(product => {
+    const lines = sent.filter(line => line.externalId.toLowerCase() === product)
+    const rows = goods.filter(item => item.externalId === product)
+    const sentQuantity = lines.reduce((sum, line) => sum + line.quantity, 0)
+    const quantity = rows.reduce((sum, row) => sum + row.quantity, 0)
+    // The price of the units charged for: a free row carries 0.
+    const price = rows.find(row => row.price !== null && row.price > 0)?.price ?? null
+    const priceMoved = price !== null && Math.abs(price - Number(lines[0].unitPrice)) >= 0.005
+    if (quantity === sentQuantity && !priceMoved) return []
+    return [{ position: lines[0].position, sentQuantity, quantity, sentPrice: lines[0].unitPrice, price: price === null ? null : price.toFixed(2) }]
   })
 }

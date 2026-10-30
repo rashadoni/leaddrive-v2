@@ -26,8 +26,8 @@ export async function phoneOrdersEnabled(orgId: string): Promise<boolean> {
 
 export class PhoneOrderError extends Error {
   constructor(readonly code: "not_found" | "stale_revision" | "not_pending" | "invalid" | "catalog_unavailable" | "call_in_progress"
-    // 1C: a send is under way or got no clear answer; a line not in 1C's base unit; no 1C pharmacy; the connection is broken; another warehouse.
-    | "erp_pending" | "erp_unit" | "erp_pharmacy" | "erp_unavailable" | "erp_catalog", readonly status: number) {
+    // 1C: a send is under way or got no clear answer; a line not in 1C's base unit; no 1C pharmacy; no usable connection.
+    | "erp_pending" | "erp_unit" | "erp_pharmacy" | "erp_unavailable", readonly status: number) {
     super(code)
   }
 }
@@ -227,7 +227,6 @@ async function confirmThroughErp(orgId: string, userId: string, id: string, revi
   if (order.lines.length === 0 || order.lines.some(line => line.status !== "resolved" || !line.externalId)) throw new PhoneOrderError("invalid", 400)
   if (order.lines.some(line => line.unitPrice === null)) throw new PhoneOrderError("erp_unit", 400)
   if (!order.pharmacyGuid) throw new PhoneOrderError("erp_pharmacy", 400)
-  if (order.catalogScopeKey !== connection.catalogScopeKey) throw new PhoneOrderError("erp_catalog", 409)
   const claimed = await prisma.pharmacyPhoneOrder.updateMany({
     where: { id, organizationId: orgId, revision, status: "pending_review" },
     data: { erpState: "sending", erpAttemptAt: startedAt, revision: { increment: 1 } },
@@ -272,7 +271,7 @@ async function confirmThroughErp(orgId: string, userId: string, id: string, revi
  */
 export async function applyPhoneOrderAction(orgId: string, userId: string, id: string, action: PhoneOrderAction) {
   const head = await prisma.pharmacyPhoneOrder.findFirst({ where: { id, organizationId: orgId },
-    select: { catalogSource: true, catalogScopeKey: true, providerCallId: true } })
+    select: { catalogSource: true, catalogScopeKey: true, providerCallId: true, erpState: true } })
   if (!head) throw new PhoneOrderError("not_found", 404)
   // The agent saves the list after every line and each save replaces it: a
   // manager's change made while the call still runs would be overwritten.
@@ -281,6 +280,8 @@ export async function applyPhoneOrderAction(orgId: string, userId: string, id: s
     let connection: ErpConnection | null
     try { connection = await erpConnection(orgId) } catch { throw new PhoneOrderError("erp_unavailable", 503) }
     if (connection) return confirmThroughErp(orgId, userId, id, action.revision, connection)
+    // 1C may hold this order: without its connection nobody can ask, so nothing settles it here.
+    if (head.erpState === "sending" || head.erpState === "unknown") throw new PhoneOrderError("erp_unavailable", 503)
   }
   // The catalog is read before the transaction: parsing it never holds a row lock.
   const item = action.action === "pick_product" || action.action === "add_line"

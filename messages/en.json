@@ -31434,7 +31434,6 @@
     "errorErpUnit": "A line is not in 1C's own unit. Remove it and add the product again.",
     "errorErpPharmacy": "Choose the pharmacy first.",
     "errorErpUnavailable": "The 1C connection is set up wrongly. Nothing was sent.",
-    "errorErpCatalog": "This order was priced from another 1C warehouse and cannot be sent to 1C. Enter it into 1C by hand.",
     "historyErpCreated": "Written to 1C: document {number}",
     "historyErpExisting": "Already in 1C: document {number}",
     "historyErpDifference": "Line {position}: 1C wrote {quantity} at {price} (sent {sentQuantity} at {sentPrice})",

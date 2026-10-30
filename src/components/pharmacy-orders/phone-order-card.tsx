@@ -40,11 +40,10 @@ type Erp = {
   differences: Array<{ position: number; sentQuantity: number; quantity: number; sentPrice: string; price: string | null }>
 }
 type ErrorKey = "errorGeneric" | "errorStale" | "errorCatalog" | "errorCallInProgress"
-  | "errorErpPending" | "errorErpUnit" | "errorErpPharmacy" | "errorErpUnavailable" | "errorErpCatalog"
+  | "errorErpPending" | "errorErpUnit" | "errorErpPharmacy" | "errorErpUnavailable"
 const ERROR_KEYS: Record<string, ErrorKey> = {
   stale_revision: "errorStale", not_pending: "errorStale", catalog_unavailable: "errorCatalog", call_in_progress: "errorCallInProgress",
   erp_pending: "errorErpPending", erp_unit: "errorErpUnit", erp_pharmacy: "errorErpPharmacy", erp_unavailable: "errorErpUnavailable",
-  erp_catalog: "errorErpCatalog",
 }
 /** 1C's refusal codes the card names in words (docs/zeytun-1c-create-order-request.md); any other shows as 1C sent it. */
 const ERP_REASONS: Record<string, string> = {
@@ -63,6 +62,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
   // A message key, translated when drawn: the loaders below must not depend on `t`.
   const [error, setError] = useState<ErrorKey | null>(null)
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [picker, setPicker] = useState<Picker | null>(null)
   const [rejecting, setRejecting] = useState(false)
   const [editing, setEditing] = useState<{ lineId: string; quantity: string } | null>(null)
@@ -131,8 +131,11 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
               <Button variant="outline" className="text-red-600" disabled={busy || erpWaiting} onClick={() => setRejecting(true)}>{t("reject")}</Button>
               <Hint text={confirmBlock ? t(confirmBlock) : erpWaiting ? t("confirmHintErpRetry") : erpOn ? t("confirmHintErp") : t("confirmHint")}
                 wrap={Boolean(confirmBlock) || erpOn}>
-                <Button disabled={busy || Boolean(confirmBlock)} onClick={() => void act({ action: "confirm" })}>
-                  {busy && erpOn ? t("confirmSending") : erpWaiting ? t("confirmRetry") : t("confirm")}
+                <Button disabled={busy || Boolean(confirmBlock)} onClick={async () => {
+                  setConfirming(true)
+                  try { await act({ action: "confirm" }) } finally { setConfirming(false) }
+                }}>
+                  {confirming && erpOn ? t("confirmSending") : erpWaiting ? t("confirmRetry") : t("confirm")}
                 </Button>
               </Hint>
             </>
@@ -243,7 +246,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
       <div className="grid gap-4 md:grid-cols-2">
         <section className={cn(CARD, "px-4 py-3")}>
           <h2 className="text-sm font-semibold">{t("pharmacyTitle")}</h2>
-          <OrderPharmacy orderId={order.id} pharmacy={order.pharmacy} busy={busy}
+          <OrderPharmacy orderId={order.id} pharmacy={order.pharmacy} busy={busy || erpWaiting || order.erp.state === "created"}
             onSet={companyId => act({ action: "set_pharmacy", companyId })} />
         </section>
         <section className={cn(CARD, "px-4 py-3")}>

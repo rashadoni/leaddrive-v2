@@ -263,5 +263,7 @@ export async function setPhoneOrderPharmacy(db: PrismaClient, orgId: string, ord
   if (updated.count === 1) return
   const current = await db.pharmacyPhoneOrder.findFirst({ where: { id: orderId, organizationId: orgId }, select: { erpState: true } })
   throw !current ? new PhoneOrderError("not_found", 404)
-    : current.erpState && current.erpState !== "refused" ? new PhoneOrderError("erp_pending", 409) : new PhoneOrderError("stale_revision", 409)
+    : current.erpState === "created" ? new PhoneOrderError("not_pending", 409)
+    : current.erpState === "sending" || current.erpState === "unknown" ? new PhoneOrderError("erp_pending", 409)
+    : new PhoneOrderError("stale_revision", 409)
 }

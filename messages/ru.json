@@ -31434,7 +31434,6 @@
     "errorErpUnit": "Строка не в единице 1С. Удалите её и добавьте товар заново.",
     "errorErpPharmacy": "Сначала выберите аптеку.",
     "errorErpUnavailable": "Подключение к 1С настроено с ошибкой. Ничего не отправлено.",
-    "errorErpCatalog": "Цены этого заказа взяты с другого склада 1С, отправить его в 1С нельзя. Внесите его в 1С вручную.",
     "historyErpCreated": "Записан в 1С: документ {number}",
     "historyErpExisting": "Уже был в 1С: документ {number}",
     "historyErpDifference": "Строка {position}: 1С записала {quantity} по {price} (отправлено {sentQuantity} по {sentPrice})",

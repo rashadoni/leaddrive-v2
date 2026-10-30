@@ -31430,7 +31430,6 @@
     "errorErpUnit": "Sətir 1C-nin vahidində deyil. Onu silin və məhsulu yenidən əlavə edin.",
     "errorErpPharmacy": "Əvvəlcə apteki seçin.",
     "errorErpUnavailable": "1C bağlantısı səhv qurulub. Heç nə göndərilmədi.",
-    "errorErpCatalog": "Bu sifarişin qiymətləri 1C-nin başqa anbarından götürülüb, onu 1C-yə göndərmək olmaz. 1C-yə əl ilə daxil edin.",
     "historyErpCreated": "1C-yə yazıldı: sənəd {number}",
     "historyErpExisting": "Artıq 1C-də idi: sənəd {number}",
     "historyErpDifference": "Sətir {position}: 1C {quantity} — {price} yazdı (göndərilən: {sentQuantity} — {sentPrice})",
