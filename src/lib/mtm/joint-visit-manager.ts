@@ -4,13 +4,8 @@ import { isValidMtmAgentRole, resolveAgentScope } from "@/lib/mtm/territory-scop
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
-import {
-  MTM_VISIT_EVALUATION_CRITERIA,
-  jointSessionIsOpen,
-  readVisitEvaluationScores,
-  visitEvaluationAverage,
-  visitEvaluationDeadline,
-} from "@/lib/mtm/joint-visit"
+import { jointSessionIsOpen, storedVisitEvaluation, visitEvaluationDeadline } from "@/lib/mtm/joint-visit"
+import type { MtmVisitEvaluationQuestion } from "@/lib/mtm/visit-evaluation-questions"
 import { jointPlanWindow, managerJointPlans } from "@/lib/mtm/joint-visit-plan"
 
 /**
@@ -20,9 +15,19 @@ import { jointPlanWindow, managerJointPlans } from "@/lib/mtm/joint-visit-plan"
  * one answer.
  */
 
-export async function organizationTimezone(organizationId: string): Promise<string> {
+/** The two settings a joint visit reads: the company's day and the questions it rates by. */
+export async function organizationJointVisitSettings(
+  organizationId: string,
+): Promise<{ timezone: string; questions: MtmVisitEvaluationQuestion[] }> {
   const settings = await getMtmSettings(organizationId)
-  return isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+  return {
+    timezone: isValidTimezone(settings.timezone) ? settings.timezone : "UTC",
+    questions: settings.visitEvaluationQuestions,
+  }
+}
+
+export async function organizationTimezone(organizationId: string): Promise<string> {
+  return (await organizationJointVisitSettings(organizationId)).timezone
 }
 
 type SessionRow = { id: string; startedAt: Date; endedAt: Date | null; agent: { id: string; name: string } }
@@ -36,7 +41,7 @@ type VisitRow = {
   customer: { id: string; name: string }
   contact: { id: string; displayName: string | null; specialtyName: string | null } | null
   participants: Array<{ jointSessionId: string | null }>
-  evaluations: Array<{ scores: unknown; comment: string | null; updatedAt: Date }>
+  evaluations: Array<{ scores: unknown; questions: unknown; comment: string | null; updatedAt: Date }>
 }
 
 export async function openSession(auth: MobileAuthResult, now: Date, timezone: string): Promise<SessionRow | null> {
@@ -54,7 +59,7 @@ export function sessionJson(session: SessionRow | null) {
 
 export async function jointState(auth: MobileAuthResult) {
   const now = new Date()
-  const timezone = await organizationTimezone(auth.orgId)
+  const { timezone, questions } = await organizationJointVisitSettings(auth.orgId)
   const session = await openSession(auth, now, timezone)
   const scope = isValidMtmAgentRole(auth.role)
     ? await resolveAgentScope(prisma, { organizationId: auth.orgId, agentId: auth.agentId, role: auth.role })
@@ -100,7 +105,7 @@ export async function jointState(auth: MobileAuthResult) {
       },
       evaluations: {
         where: { evaluatorAgentId: auth.agentId },
-        select: { scores: true, comment: true, updatedAt: true },
+        select: { scores: true, questions: true, comment: true, updatedAt: true },
       },
     },
   })
@@ -113,14 +118,17 @@ export async function jointState(auth: MobileAuthResult) {
     timezone,
     now: now.toISOString(),
     today: window.today,
-    criteria: MTM_VISIT_EVALUATION_CRITERIA,
+    // What the rating sheet asks, in this order: the company's list of today.
+    // `criteria` is the same list as bare ids, for the phones that read it.
+    questions,
+    criteria: questions.map((question) => question.id),
     session: sessionJson(session),
     plans,
     visits: visits.map((visit) => {
       const joint = visit.participants.length > 0
       const deadline = visitEvaluationDeadline(visit.checkInAt, timezone)
       const evaluation = visit.evaluations[0]
-      const scores = evaluation ? readVisitEvaluationScores(evaluation.scores) : null
+      const stored = evaluation ? storedVisitEvaluation(evaluation) : null
       return {
         id: visit.id,
         status: visit.status,
@@ -132,10 +140,12 @@ export async function jointState(auth: MobileAuthResult) {
         joint,
         canEvaluate: joint && now.getTime() < deadline.getTime(),
         evaluateUntil: deadline.toISOString(),
-        evaluation: evaluation && scores
+        evaluation: evaluation && stored
           ? {
-              scores,
-              average: visitEvaluationAverage(scores),
+              scores: stored.scores,
+              // The list this rating was given against, which may differ from today's.
+              questions: stored.questions,
+              average: stored.average,
               comment: evaluation.comment,
               updatedAt: evaluation.updatedAt.toISOString(),
             }
