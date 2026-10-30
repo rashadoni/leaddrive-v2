@@ -19699,6 +19699,15 @@
     "offline": "No connection to the server. The code returns as soon as it's back."
   },
   "mtmAttendance": {
+    "geoPolicyModeTitle": "How arrival at a branch is confirmed",
+    "geoPolicyModeQr": "QR at the entrance only",
+    "geoPolicyModeQrHint": "The app takes no phone location. The employee scans the QR on the screen at the entrance; the screen shows a code only while it stands at the branch. A code shown over a video call can't be caught this way.",
+    "geoPolicyModeDoubleHint": "The branch is confirmed only if both the QR and the phone are at the branch. A code shown over a video call won't pass. Each employee accepts the agreement below once.",
+    "geoPolicyModeSafer": "more reliable",
+    "geoPolicyModeNeedsAgreement": "To switch it on, fill in the agreement in three languages and confirm your lawyer approved it.",
+    "geoPolicyAgreementDraft": "Draft · employees don't see it",
+    "geoPolicyAgreementLive": "In force · shown to employees",
+    "geoPolicyAgreementPrefilled": "Filled with a sample — complete the bracketed parts and show it to your lawyer.",
     "qrScreenAway": "Not at the branch · {distance}",
     "qrScreenNoFix": "Place unknown",
     "qrScreenDistanceMeters": "{meters} m",
@@ -19952,7 +19961,7 @@
     "qrScreenPairClose": "Close",
     "qrScreenJustPaired": "Screen connected and showing the code",
     "qrScreenError": "That didn't work. Check the connection and try again.",
-    "qrScreenGpsHint": "When the organization collects the place of a mark, a QR confirms the branch only together with the phone's place at that branch. No phone place, or the phone far away — the branch isn't confirmed, the time is saved. A code shown over a video call won't pass either.",
+    "qrScreenGpsHint": "With the double check (Settings → Arrival check), a QR confirms the branch only together with the phone's place at that branch: a code shown over a video call won't pass. In QR-only mode no phone location is taken.",
     "qrGpsObservation": "GPS observation: {value}",
     "riskAll": "All",
     "riskTitle": "Marks to review",
@@ -20077,8 +20086,8 @@
     "locationReportNotRecorded": "Location not recorded",
     "locationReportDistance": "Distance from branch: {meters} m",
     "geoPolicyEyebrow": "Attendance",
-    "geoPolicyTitle": "Location consent",
-    "geoPolicySubtitle": "Configure location at the start and end of the day. First prepare the consent text with your organisation’s lawyer.",
+    "geoPolicyTitle": "Arrival check and agreement",
+    "geoPolicySubtitle": "Choose how arrival at a branch is confirmed. For the double check, employees accept the agreement below once — show it to your lawyer.",
     "geoPolicyLoading": "Loading the setting…",
     "geoPolicyRefresh": "Refresh setting",
     "geoPolicyDisabled": "Location collection is off",
@@ -20086,13 +20095,13 @@
     "geoPolicyDisabledHint": "Keep collection off until an approved text is available. Employees can start and finish their day without a location.",
     "geoPolicyEnabledHint": "Location may be sent only after the employee accepts the current text. Phone permission does not replace consent.",
     "geoPolicyPrivacy": "Location applies only to the start and end of the day. It is not recorded during a break. Without GPS, the time mark is still accepted.",
-    "geoPolicyTextTitle": "Text for employees",
+    "geoPolicyTextTitle": "Agreement with employees on the place of a mark",
     "geoPolicyLanguage_az": "In Azerbaijani",
     "geoPolicyLanguage_ru": "In Russian",
     "geoPolicyLanguage_en": "In English",
     "geoPolicyTextPlaceholder": "Paste the text approved by your organisation’s lawyer",
     "geoPolicyLegalConfirmed": "I confirm that our organisation’s lawyer has approved the texts in all three languages",
-    "geoPolicyEnable": "Enable location collection when starting and finishing the day",
+    "geoPolicyEnable": "Double check: QR + phone location",
     "geoPolicyReconsent": "After saving, employees will need to consent again. Previous settings stay in the history. An employee can withdraw consent.",
     "geoPolicySave": "Save setting",
     "geoPolicySaving": "Publishing…",
@@ -30591,8 +30600,8 @@
         "hint": "Employees scan it when they arrive"
       },
       "location": {
-        "title": "Mark location",
-        "hint": "Whether to record where an arrival was marked · administrators only"
+        "title": "Arrival check",
+        "hint": "QR only or QR + phone location · agreement with employees"
       },
       "access": {
         "title": "Who sees the timesheet",

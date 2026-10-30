@@ -19695,6 +19695,15 @@
     "offline": "Serverlə əlaqə yoxdur. Əlaqə bərpa olunan kimi kod görünəcək."
   },
   "mtmAttendance": {
+    "geoPolicyModeTitle": "Filiala gəliş necə təsdiqlənir",
+    "geoPolicyModeQr": "Yalnız girişdəki QR",
+    "geoPolicyModeQrHint": "Tətbiq telefonun məkanını götürmür. Əməkdaş girişdəki ekranda QR kodu oxudur; ekran kodu yalnız özü filialda olduqda göstərir. Video zənglə göstərilən kodu belə tutmaq olmur.",
+    "geoPolicyModeDoubleHint": "Filial yalnız həm QR, həm də telefon filialda olduqda təsdiqlənir. Video zənglə göstərilən kod keçməyəcək. Əməkdaş aşağıdakı razılaşmanı bir dəfə qəbul edir.",
+    "geoPolicyModeSafer": "daha etibarlı",
+    "geoPolicyModeNeedsAgreement": "Aktivləşdirmək üçün razılaşmanı üç dildə doldurun və hüquqşünasın təsdiqlədiyini qeyd edin.",
+    "geoPolicyAgreementDraft": "Qaralama · əməkdaşlar görmür",
+    "geoPolicyAgreementLive": "Qüvvədədir · əməkdaşlara göstərilir",
+    "geoPolicyAgreementPrefilled": "Nümunə ilə doldurulub — mötərizədəki hissələri tamamlayın və hüquqşünasa göstərin.",
     "qrScreenAway": "Filialda deyil · {distance}",
     "qrScreenNoFix": "Məkan təyin olunmayıb",
     "qrScreenDistanceMeters": "{meters} m",
@@ -19948,7 +19957,7 @@
     "qrScreenPairClose": "Bağla",
     "qrScreenJustPaired": "Ekran qoşuldu və kodu göstərir",
     "qrScreenError": "Əməliyyat alınmadı. Əlaqəni yoxlayın və təkrar edin.",
-    "qrScreenGpsHint": "Təşkilatda qeydin məkanının toplanması aktivdirsə, QR filialı yalnız telefonun həmin filialdakı məkanı ilə birlikdə təsdiqləyir. Telefonun məkanı yoxdursa və ya telefon uzaqdadırsa, filial təsdiqlənmir, vaxt saxlanılır. Video zənglə göstərilən kod da belə keçməyəcək.",
+    "qrScreenGpsHint": "«İkiqat yoxlama» rejimində (Parametrlər → Gəlişin təsdiqi) QR filialı yalnız telefonun həmin filialdakı məkanı ilə birlikdə təsdiqləyir: video zənglə göstərilən kod keçməyəcək. «Yalnız QR» rejimində telefonun məkanı götürülmür.",
     "qrGpsObservation": "GPS məlumatı: {value}",
     "riskAll": "Hamısı",
     "riskTitle": "Şübhəli qeydlər",
@@ -20073,8 +20082,8 @@
     "locationReportNotRecorded": "Yer qeydə alınmayıb",
     "locationReportDistance": "Filiala məsafə: {meters} m",
     "geoPolicyEyebrow": "İş vaxtının uçotu",
-    "geoPolicyTitle": "Məkan məlumatlarına razılıq",
-    "geoPolicySubtitle": "İşə başlama və işi bitirmə yerinin ayarı. Əvvəlcə təşkilatınızın hüquqşünası ilə razılıq mətnini hazırlayın.",
+    "geoPolicyTitle": "Gəlişin təsdiqi və razılaşma",
+    "geoPolicySubtitle": "Filiala gəlişin necə təsdiqləndiyini seçin. İkiqat yoxlama üçün əməkdaşlar aşağıdakı razılaşmanı bir dəfə qəbul edirlər — onu hüquqşünasa göstərin.",
     "geoPolicyLoading": "Ayar yüklənir…",
     "geoPolicyRefresh": "Ayarı yenilə",
     "geoPolicyDisabled": "Məkanın toplanması söndürülüb",
@@ -20082,13 +20091,13 @@
     "geoPolicyDisabledHint": "Təsdiqlənmiş mətn yoxdursa, məkanın toplanmasını söndürülmüş saxlayın. Əməkdaşlar məkan olmadan günü başlada və bitirə bilərlər.",
     "geoPolicyEnabledHint": "Məkan yalnız əməkdaş qüvvədə olan mətnlə razılaşdıqdan sonra göndərilə bilər. Telefonun icazəsi bu razılığı əvəz etmir.",
     "geoPolicyPrivacy": "Məkan yalnız günün başlanğıcına və sonuna aiddir. Fasilə zamanı qeyd edilmir. GPS yoxdursa, vaxt qeydi yenə qəbul olunur.",
-    "geoPolicyTextTitle": "Əməkdaşlar üçün mətn",
+    "geoPolicyTextTitle": "Əməkdaşlarla qeydin məkanı barədə razılaşma",
     "geoPolicyLanguage_az": "Azərbaycan dilində",
     "geoPolicyLanguage_ru": "Rus dilində",
     "geoPolicyLanguage_en": "İngilis dilində",
     "geoPolicyTextPlaceholder": "Təşkilatınızın hüquqşünasının təsdiqlədiyi mətni daxil edin",
     "geoPolicyLegalConfirmed": "Üç dildə mətnlərin təşkilatımızın hüquqşünası tərəfindən təsdiqləndiyini təsdiq edirəm",
-    "geoPolicyEnable": "Günü başladarkən və bitirərkən məkanın toplanmasını aktivləşdir",
+    "geoPolicyEnable": "İkiqat yoxlama: QR + telefonun məkanı",
     "geoPolicyReconsent": "Saxladıqdan sonra əməkdaşlar yenidən razılıq verməli olacaq. Əvvəlki ayarlar tarixçədə qalır. Əməkdaş razılığını geri götürə bilər.",
     "geoPolicySave": "Ayarı saxla",
     "geoPolicySaving": "Dərc edilir…",
@@ -30587,8 +30596,8 @@
         "hint": "Əməkdaş gələndə onu skan edir"
       },
       "location": {
-        "title": "Qeydin yeri",
-        "hint": "Gəlişin harada qeyd olunduğunu yazmaq · yalnız administrator"
+        "title": "Gəlişin təsdiqi",
+        "hint": "Yalnız QR və ya QR + telefonun məkanı · əməkdaşlarla razılaşma"
       },
       "access": {
         "title": "Tabeli kim görür",
