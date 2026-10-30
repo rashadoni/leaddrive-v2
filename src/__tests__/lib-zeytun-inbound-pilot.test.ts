@@ -317,6 +317,12 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(BRIDGE.promptChars)
     expect(ZEYTUN_LINE_OPENING.length).toBeLessThanOrEqual(500)
     expect(ZEYTUN_LINE_OPENING).not.toMatch(/sınaq/i)
+    // Owner, 2026-10-30: the sales desk and readiness to take the order, no «süni intellekt»;
+    // asked directly, the agent says it is a virtual assistant and never claims to be human.
+    expect(ZEYTUN_LINE_OPENING).toBe("Zeytun Pharmaceuticals, satış şöbəsi, salam! Sifarişinizi qəbul etməyə hazıram. Hansı aptekdən zəng edirsiniz?")
+    expect(ZEYTUN_LINE_PROMPT).toContain("Never call yourself AI or a robot unasked")
+    expect(ZEYTUN_LINE_PROMPT).toContain("if asked, say you are Zeytun's virtual assistant")
+    expect(ZEYTUN_LINE_PROMPT).toContain("never claim to be human")
     expect(ZEYTUN_LINE_PROMPT).not.toMatch(/test participant|test call|rehearsal/i)
     expect(ZEYTUN_LINE_PROMPT).toContain("NOT verified")
     expect(ZEYTUN_LINE_PROMPT).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)

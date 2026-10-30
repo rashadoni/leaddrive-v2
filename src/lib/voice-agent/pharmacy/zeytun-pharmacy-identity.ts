@@ -7,6 +7,9 @@
  * manager sees on the order says how the pharmacy was found.
  */
 
+/** How the line answers (owner, 2026-10-30): the company's sales desk, not «süni intellekt». */
+export const ZEYTUN_SALES_DESK = "Zeytun Pharmaceuticals, satış şöbəsi, salam!"
+
 export type PharmacyCandidate = { guid: string; name: string; address: string | null }
 
 export type PharmacyIdentity =
@@ -46,11 +49,11 @@ export function openingForCandidates(base: string, candidates: PharmacyCandidate
   if (candidates.length === 1) {
     // Owner, 2026-10-30 («долго принимает заказ»): the pharmacy confirms and
     // starts its order in one answer instead of a yes and a second turn.
-    return `Salam! Zeytunun süni intellekt köməkçisiyəm. Nömrəniz «${spokenPharmacyName(candidates[0].name)}» kimi qeydə alınıb. Düzdürsə, sifarişinizi deyin.`
+    return `${ZEYTUN_SALES_DESK} Nömrəniz «${spokenPharmacyName(candidates[0].name)}» kimi qeydə alınıb. Düzdürsə, sifarişinizi deyin.`
   }
   if (candidates.length >= 2 && candidates.length <= MAX_SPOKEN_CANDIDATES) {
     const names = candidates.map((candidate) => `«${spokenPharmacyName(candidate.name)}»`)
-    const text = `Salam! Zeytunun süni intellekt köməkçisiyəm. Bu nömrə bir neçə aptekdə qeydə alınıb: ${names.slice(0, -1).join(", ")} və ${names.at(-1)}. Hansından zəng edirsiniz?`
+    const text = `${ZEYTUN_SALES_DESK} Bu nömrə bir neçə aptekdə qeydə alınıb: ${names.slice(0, -1).join(", ")} və ${names.at(-1)}. Hansından zəng edirsiniz?`
     if (text.length <= 500) return text
   }
   return base

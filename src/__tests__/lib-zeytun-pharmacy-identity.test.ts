@@ -26,6 +26,11 @@ describe("who is calling the line, from 1C's pharmacy list", () => {
     expect(shared.length).toBeLessThanOrEqual(500)
     expect(openingForCandidates(BASE, [])).toBe(BASE)
     expect(openingForCandidates(BASE, [zefer, nur, sefa, zefer, nur])).toBe(BASE)
+    // Owner, 2026-10-30: the company's sales desk answers, not «süni intellekt».
+    for (const opening of [openingForCandidates(BASE, [zefer]), shared]) {
+      expect(opening.startsWith("Zeytun Pharmaceuticals, satış şöbəsi, salam!")).toBe(true)
+      expect(opening).not.toMatch(/süni intellekt/i)
+    }
   })
 
   it("takes the 1C pharmacy only when the caller did not name another", () => {
