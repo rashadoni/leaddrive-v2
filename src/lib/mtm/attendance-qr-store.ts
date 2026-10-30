@@ -77,8 +77,12 @@ export async function recordAttendanceQr(tx: Tx, scope: { organizationId: string
         if (reused.length) state = "REUSED"
         else {
           fingerprint = candidate; branchRevisionId = branch.id
-          awayDistanceMeters = await distanceAwayFromBranch(tx, scope, eventId, branch)
-          if (awayDistanceMeters !== null) state = "AWAY_FROM_BRANCH"
+          const phone = await phoneAtBranch(tx, scope, eventId, branch)
+          if (phone.state === "AWAY") { state = "AWAY_FROM_BRANCH"; awayDistanceMeters = phone.distanceMeters }
+          // Once the organization collects the place of a mark, a code alone no
+          // longer confirms the branch: shown over a video call, it reaches a
+          // phone anywhere (owner, 2026-10-30). The time is kept either way.
+          else if (phone.state === "UNKNOWN" && await locationPolicyEnabled(tx, scope.organizationId)) state = "NO_PHONE_FIX"
         }
       }
     }
@@ -90,19 +94,26 @@ export async function recordAttendanceQr(tx: Tx, scope: { organizationId: string
 /**
  * The phone's own fix for this mark, when the employee consented to send one
  * (`recordAttendanceMarkEvidence` runs first and keeps only an approved fix;
- * none on a break). A code read where that fix puts the phone outside the
- * code's branch even at the near edge of its accuracy did not confirm the
- * branch: somebody showed or sent the screen elsewhere. A fix that may still
- * be inside — or no fix at all — leaves the code as the only fact.
- * Returns the distance to the branch point in metres, or null.
+ * none on a break). AWAY: outside the code's branch even at the near edge of
+ * its accuracy — somebody showed or sent the screen elsewhere. AT: a fresh,
+ * real fix of 100 m or better whose circle reaches the branch (the rule of
+ * the mark's own location finding). Anything else — no fix, coarse, stale,
+ * mock — is UNKNOWN.
  */
-async function distanceAwayFromBranch(tx: Tx, scope: { organizationId: string; agentId: string }, eventId: string,
-  branch: { latitude: number; longitude: number; radiusMeters: number }): Promise<number | null> {
-  const [fix] = await tx.$queryRaw<{ latitude: number | null; longitude: number | null; accuracy: number | null }[]>`SELECT latitude,longitude,accuracy
+async function phoneAtBranch(tx: Tx, scope: { organizationId: string; agentId: string }, eventId: string,
+  branch: { latitude: number; longitude: number; radiusMeters: number }): Promise<{ state: "AT" | "AWAY" | "UNKNOWN"; distanceMeters: number | null }> {
+  const [fix] = await tx.$queryRaw<{ latitude: number | null; longitude: number | null; accuracy: number | null; fixAgeSeconds: number | null; isMock: boolean | null }[]>`SELECT latitude,longitude,accuracy,"fixAgeSeconds","isMock"
     FROM mtm_attendance_mark_evidence WHERE "organizationId"=${scope.organizationId} AND "agentId"=${scope.agentId} AND "eventId"=${eventId} AND "consentId" IS NOT NULL`
-  if (fix?.latitude == null || fix.longitude == null || fix.accuracy == null || !Number.isFinite(fix.accuracy) || fix.accuracy < 0) return null
+  if (fix?.latitude == null || fix.longitude == null || fix.accuracy == null || !Number.isFinite(fix.accuracy) || fix.accuracy < 0) return { state: "UNKNOWN", distanceMeters: null }
   const distance = attendanceDistanceMeters({ latitude: fix.latitude, longitude: fix.longitude }, branch)
-  return distance - fix.accuracy > branch.radiusMeters ? Math.round(distance) : null
+  if (distance - fix.accuracy > branch.radiusMeters) return { state: "AWAY", distanceMeters: Math.round(distance) }
+  const fresh = fix.fixAgeSeconds !== null && fix.fixAgeSeconds >= -30 && fix.fixAgeSeconds <= 120
+  return fix.accuracy <= 100 && fresh && fix.isMock !== true ? { state: "AT", distanceMeters: Math.round(distance) } : { state: "UNKNOWN", distanceMeters: null }
+}
+/** Whether the organization has switched on collecting the place of a mark (its current location text is on). */
+async function locationPolicyEnabled(tx: Tx, organizationId: string) {
+  const [row] = await tx.$queryRaw<{ enabled: boolean }[]>`SELECT enabled FROM mtm_attendance_location_policies WHERE "organizationId"=${organizationId} ORDER BY version DESC LIMIT 1`
+  return row?.enabled === true
 }
 /** Read the original immutable result even if policy changed or QR expired. */
 export async function readAttendanceQrReceipt(tx: Tx, scope: { organizationId: string; agentId: string }, eventId: string): Promise<AttendanceQrReceipt | null> {

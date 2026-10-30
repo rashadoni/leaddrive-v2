@@ -8,7 +8,7 @@ export type AttendanceReportMark = {
   state: Exclude<AttendanceLocationFinding, "BREAK_PRIVACY"> | "NOT_RECORDED"
   branch: { id: string; revisionId: string; name: string } | null
   distanceMeters: number | null
-  /** `branch` is the code's branch when VERIFIED or AWAY_FROM_BRANCH; `awayDistanceMeters` only for the latter. */
+  /** `branch` is the code's branch when VERIFIED, AWAY_FROM_BRANCH or NO_PHONE_FIX; `awayDistanceMeters` only for the latter. */
   qr?: { state: AttendanceQrState; branch: { id: string; revisionId: string; name: string } | null; awayDistanceMeters?: number }
 }
 export type AttendanceLocationReportEvidence = {
@@ -36,7 +36,7 @@ export function attendanceReportMarks(row: MtmAttendanceReportRow, evidence: Rea
 }
 function attendanceReportQr(item: AttendanceLocationReportEvidence): NonNullable<AttendanceReportMark["qr"]> {
   const state = item.qrState as AttendanceQrState, away = item.qrAwayDistanceMeters
-  const branch = (state === "VERIFIED" || state === "AWAY_FROM_BRANCH") && item.qrBranchId && item.qrBranchRevisionId && item.qrBranchName
+  const branch = (state === "VERIFIED" || state === "AWAY_FROM_BRANCH" || state === "NO_PHONE_FIX") && item.qrBranchId && item.qrBranchRevisionId && item.qrBranchName
     ? { id: item.qrBranchId, revisionId: item.qrBranchRevisionId, name: item.qrBranchName } : null
   return { state, branch, ...(state === "AWAY_FROM_BRANCH" && away != null && Number.isSafeInteger(away) && away >= 0 ? { awayDistanceMeters: away } : {}) }
 }
