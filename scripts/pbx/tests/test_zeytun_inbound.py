@@ -95,6 +95,35 @@ class TransportTests(unittest.TestCase):
         self.assertNotIn("not-for-model", str(response))
         self.assertEqual(self.requests[-1], {"action": "search", "callId": CALL, "query": {"text": "Medicine"}})
 
+    def test_every_tool_waits_for_its_answer(self):
+        # Owner's call 2026-10-30: async tools on gemini-3.8-live left 28 s of silence.
+        declarations = self.bridge.tools()[0]["functionDeclarations"]
+        self.assertTrue(declarations)
+        self.assertEqual({d.get("behavior") for d in declarations}, {"BLOCKING"})
+
+    def test_a_slow_lookup_asks_for_the_wait_filler_and_a_quick_one_does_not(self):
+        waits = []
+        self.bridge.on_wait = lambda: waits.append(time.monotonic())
+        self.bridge.FILLER_AFTER_SECONDS = 0.05
+        self.handle(event("quick"))
+        self.assertTrue(self.finished.wait(2))
+        time.sleep(0.15)
+        self.assertEqual(waits, [])
+        self.finished.clear()
+        self.block = True
+        self.handle(event("slow"))
+        until = time.monotonic() + 2
+        while not waits and time.monotonic() < until:
+            time.sleep(0.01)
+        self.assertEqual(len(waits), 1)
+        self.gate.set()
+        self.assertTrue(self.finished.wait(2))
+        # A save never asks for it: the agent is not looking anything up.
+        self.block = False
+        self.save([{"quantity": 1, "unit": "qutu", "spoken": "x"}], key="save-wait")
+        time.sleep(0.15)
+        self.assertEqual(len(waits), 1)
+
     def save(self, lines, key="save-1"):
         self.finished.clear()
         self.handle({"toolCall": {"functionCalls": [{"id": key, "name": "save_order_list", "args": {"lines": lines}}]}})
@@ -1024,6 +1053,29 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertEqual(bridge_module.zeytun_speakable_text("12.5 manat"), "12 manat 50 qəpik")
         self.assertEqual(bridge_module.zeytun_speakable_text("1,3 manatdan"), "1,3 manatdan")
 
+    def test_the_wait_filler_plays_only_when_ready_idle_and_not_too_often(self):
+        bridge_module.ZEYTUN_FILLER_AUDIO.clear()
+        tts = FakeTts()
+        relay = self.relay(tts)
+        self.assertFalse(relay.filler())  # nothing voiced yet: no sound rather than a wait
+        relay.prefetch_filler()
+        until = time.monotonic() + 2
+        while not bridge_module.ZEYTUN_FILLER_AUDIO and time.monotonic() < until:
+            time.sleep(0.01)
+        self.assertEqual(tts.texts, ["Hmm... <short pause> bir saniyə."])
+        self.assertTrue(relay.filler())
+        self.assertEqual(self.kinds()[0], ("audio", "Hmm... bir saniyə. "))
+        self.assertFalse(relay.filler())  # not again within FILLER_EVERY_SECONDS
+        relay.filler_at = -100.0
+        relay.filter(self.content("Tetrasiklin, yüz ədəd", audio=True))
+        self.assertFalse(relay.filler())  # never over a reply being said
+        # Another relay in the same process reuses the voiced filler.
+        second = FakeTts()
+        other = self.relay(second)
+        other.prefetch_filler()
+        time.sleep(0.05)
+        self.assertEqual(second.texts, [])
+
     def test_breath_and_hmm_are_voiced_not_read(self):
         # Owner, 2026-10-30: the «C» sample — Sulafat with a breath and a "Hmm…".
         self.assertEqual(bridge_module.zeytun_speakable_text("Salam! Zeytunun köməkçisiyəm."),
@@ -1138,7 +1190,8 @@ class ArtifactTests(unittest.TestCase):
             self.assertEqual(ast.dump(ast.parse(expected).body[0]), ast.dump(new_methods[name]), name)
         self.assertEqual(set(new_methods) - set(old_methods), {
             "_send_pharmacy_result", "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
-            "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay", "_pharmacy_tool_progress"})
+            "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay", "_pharmacy_tool_progress",
+            "_pharmacy_wait_filler"})
         # A lookup or save the model calls after an interruption is progress,
         # not a wedged session; a pharmacy call gets the core's 5 s ceiling.
         handler = ast.unparse(new_methods["_handle_current_gemini_event"])
@@ -1150,6 +1203,8 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("self._cancel_timer(timer)", progress)
         start = ast.unparse(new_methods["start"])
         self.assertIn("ZEYTUN_INBOUND_PILOT_ENABLED", start)
+        self.assertIn("self.pharmacy_bridge.on_wait = self._pharmacy_wait_filler", start)
+        self.assertIn("relay.filler()", ast.unparse(new_methods["_pharmacy_wait_filler"]))
         # The kill switch is still asked on every pharmacy call, in parallel
         # with the provider socket, and awaited before the greeting is sent.
         self.assertIn("instruction_for_call()", ast.unparse(new_methods["_pharmacy_kill_switch"]))

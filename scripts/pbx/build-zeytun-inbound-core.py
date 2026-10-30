@@ -67,6 +67,8 @@ def build(source, bridge):
                     with self.state_lock:
                         self.closing_keys = tuple(dict.fromkeys(self.closing_keys + (folded, folded.replace("ə", "e"))))
                 self.pharmacy_bridge.on_transfer = add_transfer_closing
+            # Owner's call 2026-10-30: a slow lookup is not dead air.
+            self.pharmacy_bridge.on_wait = self._pharmacy_wait_filler
             self.is_callback = False
             fetched, continuation_box, continuation_thread = True, {}, None
         else:
@@ -133,6 +135,12 @@ def build(source, bridge):
                               if self.resume_progress_pending and not self.resume_progress_waiting_for_speech else None),
             recovering=lambda: bool(self.reconnecting or self.fresh_recovery_waiting_for_audio
                                     or self.fresh_recovery_input_fenced))
+
+    def _pharmacy_wait_filler(self):
+        # The relay logs it (zeytun_tts status=wait_filler) when it plays.
+        relay = self._pharmacy_speech_relay()
+        if relay is not None:
+            relay.filler()
 
     def _pharmacy_tool_progress(self):
         # Owner's call 2026-10-29: the caller interrupted, the agent looked the
