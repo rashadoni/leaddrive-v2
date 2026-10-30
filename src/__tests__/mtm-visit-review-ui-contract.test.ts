@@ -109,7 +109,7 @@ describe("what the review shows comes from the server", () => {
   })
 
   it("summarises open tasks read-only instead of offering complete/accept/tomorrow", () => {
-    expect(panel).toContain('t("review.openTasks", { count: data.openTasks.count })')
+    expect(panel).toContain('t("review.openTasksLine")')
     expect(panel).toContain('href="/mtm/tasks"')
     expect(panel).not.toContain("updateReminder")
     expect(panel).toContain("tw(`priorities.${task.priority}`)")
@@ -191,12 +191,12 @@ describe("the visit card reads in one screen", () => {
 
   it("splits what happened from the outcome instead of stacking everything", () => {
     expect(panel).toContain("lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]")
-    expect(panel).toContain('t("review.sectionProgress")')
     expect(panel).toContain('t("review.sectionOutcome")')
   })
 
   it("says what is missing once, quietly, instead of an empty block each", () => {
-    expect(panel).toContain('t("review.nothingRecorded"')
+    // 2026-10-30: «не требовалось» is one sentence under the steps, not five lines.
+    expect(panel).toContain('t("review.notRequiredList")')
     // The empty-state blocks are gone: sections render only with content.
     expect(panel).toContain("{visit.presentationSessions.length ? (")
     expect(panel).toContain("{visit.photos.length ? (")
@@ -206,7 +206,8 @@ describe("the visit card reads in one screen", () => {
   it("shows a 13-hour visit as hours, and links both fixes to a map", () => {
     expect(panel).toContain('t("review.durationHm"')
     expect(panel).toContain("const mapHref = (latitude?: number | null, longitude?: number | null)")
-    expect(panel).toContain('t("review.mapLink")')
+    expect(panel).toContain('t("review.whereCheckedIn")')
+    expect(panel).toContain('t("review.whereCheckedOut")')
   })
 
   it("offers the customer card from the header", () => {
@@ -215,18 +216,22 @@ describe("the visit card reads in one screen", () => {
   })
 })
 
-describe("the office card shows the visit as a road", () => {
-  it("draws checkpoints instead of asking the supervisor to read four blocks", () => {
+// Owner, 2026-10-30: the row of seven circles was «слишком запутанно, не юзер
+// френдли». The road stays — as a list of what the agent did, in order
+// (rendered and read in mtm-visit-review-steps-ui.test.ts).
+describe("the office card shows the visit as a list of steps", () => {
+  it("builds the steps from the same road the field app draws", () => {
     expect(panel).toContain('data-testid="mtm-visit-roadmap"')
     expect(panel).toContain("visitRoadmap({")
     expect(panel).toContain('t("review.roadmapTitle")')
-    expect(panel).toContain('t("review.roadmapProgress"')
+    expect(panel).toContain('data-testid="mtm-visit-steps"')
   })
 
-  it("keeps red for a missed required step and pale for one never asked for", () => {
-    expect(panel).toContain('step.state === "done"')
-    expect(panel).toContain('step.state === "missing"')
+  it("keeps red for a missed required step, green for done, and leaves out what was never asked for", () => {
+    expect(panel).toContain('row.state === "done"')
+    expect(panel).toContain('row.state === "missing"')
     expect(panel).toContain("border-red-500")
-    expect(panel).toContain("border-emerald-500")
+    expect(panel).toContain("bg-emerald-600")
+    expect(panel).toContain('.state !== "skipped") steps.push({')
   })
 })
