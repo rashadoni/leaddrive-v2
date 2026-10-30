@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest } from "next/server"
 import { Prisma } from "@prisma/client"
+import bcrypt from "bcryptjs"
+
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({
+  readLegacyPhoneAssignmentBoundaryInTransaction: vi.fn(async () => "LEGACY"),
+}))
+const credentialFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    credentialFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+}))
 
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
@@ -63,6 +73,7 @@ function makeParams(id: string) {
 }
 
 beforeEach(() => {
+  credentialFence.allowed = true
   vi.clearAllMocks()
   // Route tests reuse user ids with different cards; never serve a memoized actor.
   resetMtmFieldScopeMemo()
@@ -753,6 +764,30 @@ describe("GET /api/v1/mtm/agents/[id]", () => {
 
 // ─── PUT /api/v1/mtm/agents/[id] ───────────────────────────
 describe("PUT /api/v1/mtm/agents/[id]", () => {
+  it.each([{ password: "BrandNew456!" }, { userId: null }, { phone: null }])("refuses an old credential, link or phone write when canonical ownership wins: %j", async body => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", role: "AGENT", status: "ACTIVE", userId: null, managerId: null, teamId: null } as any)
+    credentialFence.allowed = false
+    const response = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", body), makeParams("a1"))
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("does not reset credentials after a concurrent territory change", async () => {
+    mockAgentAdministrator()
+    const card = { id: "a1", role: "AGENT", status: "ACTIVE", userId: null, managerId: null, teamId: "old-team" }
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card as any)
+    vi.mocked(bcrypt.hash).mockImplementationOnce(async () => {
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...card, teamId: "new-team" } as any)
+      return "hashed-new-password" as never
+    })
+    const response = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/a1", "PUT", { password: "BrandNew456!" }), makeParams("a1"))
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
   it("returns 404 when agent not found", async () => {
     mockAgentAdministrator()
     vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 0 })
@@ -851,143 +886,68 @@ describe("PUT /api/v1/mtm/agents/[id]", () => {
 })
 
 // ─── DELETE /api/v1/mtm/agents/[id] ────────────────────────
+describe("removed Field cards in operational lists", () => {
+  it.each(["", "?status=INACTIVE", "?status=ACTIVE"])("excludes removed cards regardless of status filter %s", async suffix => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(0)
+    expect((await ListAgents(makeReq("/api/v1/mtm/agents" + suffix))).status).toBe(200)
+    expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: ORG, fieldDeletedAt: null }) }))
+  })
+})
+
 describe("DELETE /api/v1/mtm/agents/[id]", () => {
-  it("returns 404 when agent not found", async () => {
+  const card = { id: "a1", name: "Trial", role: "AGENT", userId: null,
+    attendanceParticipant: false, identityActorBinding: null, fieldDeletedAt: null }
+  beforeEach(() => {
     mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card as never)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+  })
+  it("does not reveal or change a missing or foreign tenant card", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null)
-
-    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-    expect(res.status).toBe(404)
-    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
+    expect((await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))).status).toBe(404)
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
   })
-
-  it("blocks permanent deletion when the employee has Workforce time history", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
-      id: "a1",
-      name: "Agent One",
-      email: "agent@example.com",
-      role: "AGENT",
-    } as never)
-    vi.mocked(prisma.mtmAgentWorkday.count).mockResolvedValue(1)
-
-    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-    expect(res.status).toBe(409)
-    await expect(res.json()).resolves.toMatchObject({ code: "WORKFORCE_RETENTION_BLOCKED" })
-    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
-  })
-
-  it("blocks permanent deletion when the employee has an HRM decision but no workday", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
-      id: "a1",
-      name: "Agent One",
-      email: "agent@example.com",
-      role: "AGENT",
-    } as never)
-    vi.mocked(prisma.mtmHrmRequest.count).mockResolvedValue(1)
-
-    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-    expect(res.status).toBe(409)
-    await expect(res.json()).resolves.toMatchObject({ code: "WORKFORCE_RETENTION_BLOCKED" })
-    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
-  })
-
-  it("blocks permanent deletion when only a Workforce transition audit remains", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
-      id: "a1",
-      name: "Agent One",
-      email: "agent@example.com",
-      role: "AGENT",
-    } as never)
-    vi.mocked(prisma.mtmAuditLog.count).mockResolvedValue(1)
-
-    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-    expect(res.status).toBe(409)
-    await expect(res.json()).resolves.toMatchObject({ code: "WORKFORCE_RETENTION_BLOCKED" })
-    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
-  })
-
-  it("deletes agent successfully", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
-      id: "a1",
-      name: "Agent One",
-      email: "agent@example.com",
-      role: "AGENT",
-    } as never)
-    mockAgentWorkforceRetentionClear()
-    vi.mocked(prisma.mtmAgent.deleteMany).mockResolvedValue({ count: 1 })
-
-    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-    expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.success).toBe(true)
-  })
-
-  // Owner, 2026-10-06: an employee without work history is deleted, one with
-  // history is not. Before, the delete cascaded through visits and routes — or
-  // stopped at a foreign key and put the constraint's name on the screen. What
-  // the database really does is proved in mtm-contact-categories-postgres.test.ts.
-  it("keeps an employee who has a visit and deletes nothing", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
-    mockAgentWorkforceRetentionClear()
+  it("removes an agent even with visits and time history, retaining every historical row", async () => {
     vi.mocked(prisma.mtmVisit.count).mockResolvedValue(3)
-
+    vi.mocked(prisma.mtmAgentWorkday.count).mockResolvedValue(1)
     const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-
-    expect(res.status).toBe(409)
-    const json = await res.json()
-    expect(json.code).toBe("MTM_AGENT_HAS_HISTORY")
-    expect(json.data.kinds).toEqual(["MtmVisit.agentId"])
-    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
-    vi.mocked(prisma.mtmVisit.count).mockReset()
-  })
-
-  it("does not count the clients an employee is attached to as work history", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
-    mockAgentWorkforceRetentionClear()
-    vi.mocked(prisma.mtmContactAgentAssignment.count).mockResolvedValue(2)
-    vi.mocked(prisma.mtmAgent.deleteMany).mockResolvedValue({ count: 1 })
-
-    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-
     expect(res.status).toBe(200)
-    expect(prisma.mtmAgent.deleteMany).toHaveBeenCalledTimes(1)
-    vi.mocked(prisma.mtmContactAgentAssignment.count).mockReset()
+    expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith({
+      where: { id: "a1", organizationId: ORG, fieldDeletedAt: null },
+      data: { fieldDeletedAt: expect.any(Date), phone: null, passwordHash: null },
+    })
+    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
+    expect(prisma.mtmVisit.deleteMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAgentWorkday.deleteMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "AGENT_DELETE", agentId: "a1", entityId: "a1" }) }))
   })
-
-  it("answers a database refusal with words, never with the constraint", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
-    mockAgentWorkforceRetentionClear()
-    // What production answered on 2026-10-06.
-    vi.mocked(prisma.mtmAgent.deleteMany).mockRejectedValue(new Error(
-      "Invalid `prisma.mtmAgent.deleteMany()` invocation: Foreign key constraint violated on the constraint: `workforce_employee_team_memberships_agent_fkey`",
-    ))
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-
-    expect(res.status).toBe(409)
-    const json = await res.json()
-    expect(json.code).toBe("MTM_AGENT_HAS_HISTORY")
-    expect(JSON.stringify(json)).not.toMatch(/prisma|constraint|fkey/i)
-    warn.mockRestore()
+  it.each([
+    { userId: "crm-person" }, { attendanceParticipant: true }, { identityActorBinding: { actorId: "a1" } },
+  ])("preserves another module's status, credential and phone: %j", async shared => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...card, ...shared } as never)
+    expect((await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))).status).toBe(200)
+    expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith({
+      where: { id: "a1", organizationId: ORG, fieldDeletedAt: null }, data: { fieldDeletedAt: expect.any(Date) },
+    })
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
   })
-
-  it("answers an unexpected failure without the error's own text", async () => {
-    mockAgentAdministrator()
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
-    mockAgentWorkforceRetentionClear()
-    vi.mocked(prisma.mtmAgent.deleteMany).mockRejectedValue(new Error("connection terminated unexpectedly at 10.0.0.5:5432"))
+  it("is idempotent and does not duplicate the audit or release a newly linked phone", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...card, fieldDeletedAt: new Date() } as never)
+    expect((await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))).status).toBe(200)
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+  it("does not remove an office employee through the Field endpoint", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...card, role: "EMPLOYEE" } as never)
+    expect((await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))).status).toBe(409)
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+  it("reports audit failure as failure, letting the transaction roll removal back", async () => {
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValueOnce(new Error("private database failure"))
     const error = vi.spyOn(console, "error").mockImplementation(() => {})
-
     const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
-
     expect(res.status).toBe(500)
     expect(await res.json()).toEqual({ error: "Failed to delete", code: "MTM_AGENT_DELETE_FAILED" })
     error.mockRestore()
@@ -1965,6 +1925,20 @@ describe("an agent's WhatsApp number — the one it signs in by", () => {
       vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("a1", "050 999 88 77")] as never)
       const res = await put({ phone: "+994 50 999 88 77" })
       expect(res.status).toBe(200)
+    })
+
+    it("clears an inactive legacy card's erroneous phone without deleting or reactivating it", async () => {
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+        id: "a1", name: "Inactive trial", phone: "+994507770099", role: "AGENT", status: "INACTIVE",
+        managerId: null, userId: null, teamId: null, tags: [], mapColor: null,
+      } as never)
+      const res = await put({ phone: null })
+      expect(res.status).toBe(200)
+      expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith({
+        where: { id: "a1", organizationId: ORG, fieldDeletedAt: null }, data: { phone: null },
+      })
+      expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
+      expect(prisma.user.updateMany).not.toHaveBeenCalled()
     })
   })
 })

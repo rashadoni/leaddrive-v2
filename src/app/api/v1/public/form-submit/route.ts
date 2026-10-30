@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { readAttribution } from "@/lib/ad-conversions/attribution"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
           notes: `From landing page: ${page.name}`,
           status: "new",
           priority: "medium",
+          adAttribution: readAttribution((raw as { attribution?: unknown }).attribution, { userAgent: req.headers.get("user-agent") }) ?? undefined,
         },
       })
 

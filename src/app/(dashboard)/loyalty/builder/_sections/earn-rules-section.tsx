@@ -383,7 +383,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
             <button
               onClick={openCreate}
               disabled={busy}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default"
             >
               <Plus className="w-4 h-4" />
               {t("newRule")}
@@ -391,7 +391,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
             <button
               onClick={load}
               disabled={loading || busy}
-              className="inline-flex items-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
               aria-label={tc("refresh")}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -404,7 +404,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
           <select
             value={triggerFilter}
             onChange={(e) => setTriggerFilter(e.target.value as Trigger | "")}
-            className="px-2 py-1 border border-zinc-200 dark:border-zinc-700 rounded text-sm"
+            className="px-2 py-1 border border-input rounded text-sm"
           >
             <option value="">{t("filterAll")}</option>
             {TRIGGERS.map((tr) => (
@@ -419,7 +419,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
             onChange={(e) =>
               setActiveFilter(e.target.value as "" | "true" | "false")
             }
-            className="px-2 py-1 border border-zinc-200 dark:border-zinc-700 rounded text-sm"
+            className="px-2 py-1 border border-input rounded text-sm"
           >
             <option value="">{t("filterAll")}</option>
             <option value="true">{t("statusActive")}</option>
@@ -435,7 +435,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
         )}
 
         {showForm && (
-          <MotionCard className="mb-6 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+          <MotionCard className="mb-6 p-4 border border-border rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">
                 {editingId ? t("editRule") : t("createRule")}
@@ -520,7 +520,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
                 />
               </div>
               <div className={editingId ? "" : "hidden"}>
@@ -533,7 +533,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                     setForm({ ...form, trigger: e.target.value as Trigger })
                   }
                   disabled={!!editingId}
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm disabled:bg-muted disabled:text-muted-foreground"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm disabled:bg-muted disabled:text-muted-foreground"
                 >
                   {TRIGGERS.map((tr) => (
                     <option key={tr} value={tr}>
@@ -556,7 +556,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                     setForm({ ...form, pointsRate: e.target.value })
                   }
                   placeholder={t("phPointsRate")}
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
                 />
               </div>
               )}
@@ -574,7 +574,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                     setForm({ ...form, pointsFlat: e.target.value })
                   }
                   placeholder={t("phPointsFlat")}
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
                 />
               </div>
               )}
@@ -591,7 +591,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                   onChange={(e) =>
                     setForm({ ...form, minOrderAmount: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
                 />
               </div>
               )}
@@ -606,7 +606,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                   onChange={(e) =>
                     setForm({ ...form, productCategory: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
                 />
               </div>
               )}
@@ -622,7 +622,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                   onChange={(e) =>
                     setForm({ ...form, priority: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
                 />
               </div>
               )}
@@ -655,7 +655,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                   onChange={(e) =>
                     setForm({ ...form, validFrom: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
                 />
               </div>
               )}
@@ -670,7 +670,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                   onChange={(e) =>
                     setForm({ ...form, validUntil: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
                 />
               </div>
               )}
@@ -721,7 +721,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
         {!loading && rules.length > 0 && (
           <div className="space-y-2">
             {rules.map((row) => (
-              <MotionCard key={row.id} className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard key={row.id} className="p-4 border border-border rounded-lg">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -785,14 +785,14 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                     <button
                       onClick={() => toggleActive(row)}
                       disabled={busy}
-                      className="px-2 py-1 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs hover:bg-muted disabled:opacity-50"
+                      className="px-2 py-1 border border-border rounded-md text-xs hover:bg-muted disabled:opacity-50"
                     >
                       {row.isActive ? t("disable") : t("enable")}
                     </button>
                     <button
                       onClick={() => openEdit(row)}
                       disabled={busy}
-                      className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-muted disabled:opacity-50"
+                      className="p-2 border border-border rounded-md hover:bg-muted disabled:opacity-50"
                       aria-label={tc("edit")}
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -800,7 +800,7 @@ export function EarnRulesSection({ embedded = false }: { embedded?: boolean } = 
                     <button
                       onClick={() => setDeleteTarget(row)}
                       disabled={busy}
-                      className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                      className="p-2 border border-border rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-50"
                       aria-label={tc("delete")}
                     >
                       <Trash2 className="w-3.5 h-3.5" />

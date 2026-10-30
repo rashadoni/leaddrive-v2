@@ -1,0 +1,45 @@
+{
+  "capturedAt": "2026-10-26T14:26:51.629103+00:00",
+  "expectedSha": "97e8e959de7c0213b9b378cdb6e2e0e6f16ba217",
+  "checks": [
+    {
+      "host": "app.leaddrivecrm.org",
+      "path": "/api/v1/ping",
+      "status": 200,
+      "elapsedMs": 137,
+      "data": {
+        "ok": true
+      }
+    },
+    {
+      "host": "app.leaddrivecrm.org",
+      "path": "/api/v1/public/build-info",
+      "status": 200,
+      "elapsedMs": 161,
+      "data": {
+        "artifactSha": "97e8e959de7c0213b9b378cdb6e2e0e6f16ba217",
+        "builtAt": "2026-10-26T13:41:55Z"
+      }
+    },
+    {
+      "host": "zeytun.leaddrivecrm.org",
+      "path": "/api/v1/ping",
+      "status": 200,
+      "elapsedMs": 149,
+      "data": {
+        "ok": true
+      }
+    },
+    {
+      "host": "zeytun.leaddrivecrm.org",
+      "path": "/api/v1/public/build-info",
+      "status": 200,
+      "elapsedMs": 135,
+      "data": {
+        "artifactSha": "97e8e959de7c0213b9b378cdb6e2e0e6f16ba217",
+        "builtAt": "2026-10-26T13:41:55Z"
+      }
+    }
+  ],
+  "limitation": "Public DB ping and artifact identity only; not authenticated page-load timings."
+}

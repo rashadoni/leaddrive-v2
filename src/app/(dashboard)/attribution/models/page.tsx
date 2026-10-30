@@ -595,7 +595,7 @@ export default function AttributionModelsPage() {
             <button
               onClick={openCreate}
               disabled={busy}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default"
             >
               <Plus className="w-4 h-4" />
               {t("newModel")}
@@ -604,7 +604,7 @@ export default function AttributionModelsPage() {
               onClick={() => void load()}
               disabled={loading || busy}
               aria-label={tc("refresh")}
-              className="flex items-center justify-center px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-muted disabled:opacity-50"
+              className="flex items-center justify-center px-3 py-2 rounded-lg border border-border hover:bg-muted disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
@@ -619,7 +619,7 @@ export default function AttributionModelsPage() {
         )}
 
         {showForm && (
-          <MotionCard className="mb-6 p-5 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+          <MotionCard className="mb-6 p-5 border border-border rounded-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">
                 {editingId ? t("editModel") : t("createModel")}
@@ -642,7 +642,7 @@ export default function AttributionModelsPage() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder={t("formNamePlaceholder")}
                   maxLength={120}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent"
+                  className="w-full px-3 py-2 rounded-lg border border-input bg-transparent"
                 />
               </div>
 
@@ -654,7 +654,7 @@ export default function AttributionModelsPage() {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder={t("formDescriptionPlaceholder")}
                   maxLength={500}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent"
+                  className="w-full px-3 py-2 rounded-lg border border-input bg-transparent"
                 />
               </div>
 
@@ -662,14 +662,14 @@ export default function AttributionModelsPage() {
                 <label className="block text-sm font-medium mb-1">{t("formModelType")}</label>
                 {editingId ? (
                   // modelType is immutable post-create (DB trigger) — show read-only.
-                  <div className="px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/40 text-sm">
+                  <div className="px-3 py-2 rounded-lg border border-border bg-muted/40 text-sm">
                     {t(`modelTypeLabels.${form.modelType}`)}
                   </div>
                 ) : (
                   <select
                     value={form.modelType}
                     onChange={(e) => setForm({ ...form, modelType: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent"
+                    className="w-full px-3 py-2 rounded-lg border border-input bg-transparent"
                   >
                     {CREATE_MODEL_TYPES.map((mt) => (
                       <option key={mt} value={mt}>
@@ -692,7 +692,7 @@ export default function AttributionModelsPage() {
                     step="0.5"
                     value={form.halfLifeDays}
                     onChange={(e) => setForm({ ...form, halfLifeDays: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent"
+                    className="w-full px-3 py-2 rounded-lg border border-input bg-transparent"
                   />
                   <p className="text-xs text-muted-foreground mt-1">{t("formHalfLifeHint")}</p>
                 </div>
@@ -707,7 +707,7 @@ export default function AttributionModelsPage() {
                         type="number" min="0" max="1" step="0.05"
                         value={form.firstWeight}
                         onChange={(e) => setForm({ ...form, firstWeight: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-transparent"
                       />
                     </div>
                     <div>
@@ -716,7 +716,7 @@ export default function AttributionModelsPage() {
                         type="number" min="0" max="1" step="0.05"
                         value={form.middleWeight}
                         onChange={(e) => setForm({ ...form, middleWeight: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-transparent"
                       />
                     </div>
                     <div>
@@ -725,7 +725,7 @@ export default function AttributionModelsPage() {
                         type="number" min="0" max="1" step="0.05"
                         value={form.lastWeight}
                         onChange={(e) => setForm({ ...form, lastWeight: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-transparent"
                       />
                     </div>
                   </div>
@@ -743,7 +743,7 @@ export default function AttributionModelsPage() {
                         key={p.key}
                         type="button"
                         onClick={() => applyCurvePreset(p.points)}
-                        className="px-2.5 py-1 rounded-full border border-zinc-200 dark:border-zinc-700 text-xs hover:border-primary hover:text-primary transition"
+                        className="px-2.5 py-1 rounded-full border border-border text-xs hover:border-primary hover:text-primary transition"
                       >
                         {t(`curvePreset.${p.key}`)}
                       </button>
@@ -767,13 +767,13 @@ export default function AttributionModelsPage() {
                           type="number" min="0" max="1" step="0.05"
                           value={pt.position}
                           onChange={(e) => setCurvePoint(i, "position", e.target.value)}
-                          className="flex-1 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
+                          className="flex-1 px-3 py-2 rounded-lg border border-input bg-transparent text-sm"
                         />
                         <input
                           type="number" min="0.01" step="0.1"
                           value={pt.weight}
                           onChange={(e) => setCurvePoint(i, "weight", e.target.value)}
-                          className="flex-1 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
+                          className="flex-1 px-3 py-2 rounded-lg border border-input bg-transparent text-sm"
                         />
                         <button
                           type="button"
@@ -814,7 +814,7 @@ export default function AttributionModelsPage() {
               <button
                 onClick={submit}
                 disabled={busy}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50" data-crm-button="default"
               >
                 {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                 {tc("save")}
@@ -822,7 +822,7 @@ export default function AttributionModelsPage() {
               <button
                 onClick={closeForm}
                 disabled={busy}
-                className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-muted disabled:opacity-50"
+                className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted disabled:opacity-50"
               >
                 {tc("cancel")}
               </button>
@@ -840,11 +840,11 @@ export default function AttributionModelsPage() {
         {!loading && data && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-4 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">{t("kpiTotalModels")}</p>
                 <p className="text-2xl font-bold mt-1">{data.totalModels}</p>
               </MotionCard>
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-4 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   {t("kpiActive")}
                 </p>
@@ -852,7 +852,7 @@ export default function AttributionModelsPage() {
                   {data.activeModelCount}
                 </p>
               </MotionCard>
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-4 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   {t("kpiTouchpoints")}
                 </p>
@@ -888,7 +888,7 @@ export default function AttributionModelsPage() {
                   return (
                     <MotionCard
                       key={m.id}
-                      className={`p-5 border border-zinc-200 dark:border-zinc-700 rounded-lg ${
+                      className={`p-5 border border-border rounded-lg ${
                         m.isDefault ? "border-primary" : ""
                       }`}
                     >
@@ -977,7 +977,7 @@ export default function AttributionModelsPage() {
                             {expandedId === m.id ? t("breakdownHide") : t("breakdownShow")}
                           </button>
                           {expandedId === m.id && (
-                            <div className="mt-2 rounded border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                            <div className="mt-2 rounded border border-border overflow-hidden">
                               {breakdownLoading === m.id ? (
                                 <div className="p-3 text-xs text-muted-foreground text-center">
                                   <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
@@ -1000,7 +1000,7 @@ export default function AttributionModelsPage() {
                                     {breakdown[m.id]!.map((r) => (
                                       <tr
                                         key={r.campaignId}
-                                        className="border-t border-zinc-100 dark:border-zinc-800"
+                                        className="border-t border-border"
                                       >
                                         <td className="px-2 py-1.5 truncate max-w-[10rem]">
                                           {r.campaignName}
@@ -1100,7 +1100,7 @@ export default function AttributionModelsPage() {
                         <button
                           onClick={() => openEdit(m)}
                           disabled={busy}
-                          className="flex items-center gap-1 px-2 py-1 rounded text-xs border border-zinc-200 dark:border-zinc-700 hover:bg-muted disabled:opacity-50"
+                          className="flex items-center gap-1 px-2 py-1 rounded text-xs border border-border hover:bg-muted disabled:opacity-50"
                         >
                           <Pencil className="w-3 h-3" /> {t("actionEdit")}
                         </button>
@@ -1117,7 +1117,7 @@ export default function AttributionModelsPage() {
                           <button
                             onClick={() => setDefault(m)}
                             disabled={busy}
-                            className="flex items-center gap-1 px-2 py-1 rounded text-xs border border-zinc-200 dark:border-zinc-700 hover:bg-muted disabled:opacity-50"
+                            className="flex items-center gap-1 px-2 py-1 rounded text-xs border border-border hover:bg-muted disabled:opacity-50"
                           >
                             <Star className="w-3 h-3" /> {t("actionSetDefault")}
                           </button>
@@ -1135,7 +1135,7 @@ export default function AttributionModelsPage() {
                           <button
                             onClick={() => archive(m)}
                             disabled={busy}
-                            className="flex items-center gap-1 px-2 py-1 rounded text-xs border border-zinc-200 dark:border-zinc-700 hover:bg-muted disabled:opacity-50"
+                            className="flex items-center gap-1 px-2 py-1 rounded text-xs border border-border hover:bg-muted disabled:opacity-50"
                           >
                             <Archive className="w-3 h-3" /> {t("actionArchive")}
                           </button>

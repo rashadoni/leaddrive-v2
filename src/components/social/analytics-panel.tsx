@@ -89,7 +89,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
   }, [orgId, range])
 
   if (loading) {
-    return <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 animate-pulse h-64" />
+    return <div className="rounded-lg border border-border bg-card p-5 animate-pulse h-64" />
   }
   if (!data) return null
 
@@ -127,7 +127,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
                 setLoading(true)
                 setRange(v)
               }}
-              className={`px-2.5 py-1 rounded-md border ${range === v ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+              className={`px-2.5 py-1 rounded-md border ${range === v ? "crm-choice-selected  " : "bg-background hover:bg-muted"}`}
             >
               {label}
             </button>
@@ -136,12 +136,12 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
       </div>
 
       {!hasData ? (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
           {t("noMentionsRange", { days: range })}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("metricsOverTime")}</h4>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={data.timeseries}>
@@ -156,7 +156,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("sentimentLabel")}</h4>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
@@ -169,7 +169,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("topPlatforms")}</h4>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={data.topPlatforms} layout="vertical" margin={{ left: 40, right: 10 }}>
@@ -184,7 +184,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("topAuthors")}</h4>
             {data.topAuthors.length === 0 ? (
               <p className="text-xs text-muted-foreground">{t("noAuthorData")}</p>
@@ -205,7 +205,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
           </div>
 
           {(data.operationalRollups?.surfaces || data.surfaces) && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 md:col-span-2">
+            <div className="rounded-lg border border-border bg-card p-4 md:col-span-2">
               <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("analyticsSurfacesTitle")}</h4>
               {(() => {
                 const surface = data.operationalRollups?.surfaces ?? { ...data.surfaces!, replies: data.surfaces?.replies ?? 0 }
@@ -250,8 +250,8 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
           )}
 
           {data.operationalRollups && (
-            <div className="overflow-hidden rounded-lg border border-zinc-200 bg-card md:col-span-2 dark:border-zinc-700">
-              <div className="flex flex-col gap-1 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700">
+            <div className="overflow-hidden rounded-lg border border-border bg-card md:col-span-2">
+              <div className="flex flex-col gap-1 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h4 className="text-xs font-semibold">{t("coverageCostTitle")}</h4>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">{t("coverageCostHint")}</p>
@@ -272,7 +272,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
                       <th className="px-4 py-2 font-medium">{t("statusLabel")}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                  <tbody className="divide-y divide-border">
                     {data.operationalRollups.coverage.map((row, index) => (
                       <tr key={`${row.platform}:${row.capability}:${row.adapterKey}:${index}`}>
                         <td className="px-4 py-2.5 font-medium">{row.platform}</td>
@@ -287,7 +287,7 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
                 </table>
               </div>
               {data.operationalRollups.providerCosts.length > 0 && (
-                <div className="border-t border-zinc-200 px-4 py-3 text-xs dark:border-zinc-700">
+                <div className="border-t border-border px-4 py-3 text-xs">
                   <div className="font-medium">{t("providerUnitCosts")}</div>
                   <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-muted-foreground">
                     {data.operationalRollups.providerCosts.map(row => (
@@ -302,11 +302,11 @@ export function SocialAnalyticsPanel({ orgId, days = 30 }: Props) {
           )}
 
           {data.topTerms.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 md:col-span-2">
+            <div className="rounded-lg border border-border bg-card p-4 md:col-span-2">
               <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("topKeywords")}</h4>
               <div className="flex flex-wrap gap-2">
                 {data.topTerms.map(t => (
-                  <span key={t.term} className="inline-flex items-center gap-1.5 text-xs rounded-full border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-1">
+                  <span key={t.term} className="inline-flex items-center gap-1.5 text-xs rounded-full border border-border bg-background px-3 py-1">
                     <span className="font-medium">{t.term}</span>
                     <span className="text-muted-foreground tabular-nums">· {t.count}</span>
                   </span>

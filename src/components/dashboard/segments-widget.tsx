@@ -53,7 +53,7 @@ export function SegmentsWidget({ orgId }: Props) {
   }
 
   return (
-    <div className="dashboard-bento-card rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+    <div className="dashboard-bento-card rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Tag className="h-4 w-4 text-violet-500" /> {t("widgetTitle")}

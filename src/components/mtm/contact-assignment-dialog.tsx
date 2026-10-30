@@ -257,7 +257,7 @@ export function ContactAssignmentDialog({
       <DialogContent className="space-y-4">
         {step === "PARAMETERS" ? (
           <>
-            <div className="rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+            <div className="rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <div className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
@@ -271,7 +271,7 @@ export function ContactAssignmentDialog({
                 <div>
                   <Label htmlFor="contact-assignment-target">{t("targetAgent")}</Label>
                   {lockTargetAgent && initialTargetAgentId ? (
-                    <p id="contact-assignment-target" data-testid="contact-assignment-target-locked" className="mt-1.5 flex min-h-11 items-center rounded-lg border border-zinc-200 bg-muted/35 px-3 text-sm font-medium dark:border-zinc-700">
+                    <p id="contact-assignment-target" data-testid="contact-assignment-target-locked" className="mt-1.5 flex min-h-11 items-center rounded-lg border border-border bg-muted/35 px-3 text-sm font-medium">
                       {agents.find((agent) => agent.id === initialTargetAgentId)?.name ?? "—"}
                     </p>
                   ) : (
@@ -297,7 +297,7 @@ export function ContactAssignmentDialog({
                   value={effectiveFrom}
                   min={asOf || undefined}
                   onChange={(event) => setEffectiveFrom(event.target.value)}
-                  className="mt-1.5 min-h-11 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
               </div>
             </div>
@@ -326,7 +326,7 @@ export function ContactAssignmentDialog({
               <Summary label={t("planConflicts")} value={preview.summary.routePlanConflicts} tone={preview.summary.routePlanConflicts ? "warning" : "neutral"} hint={th("hint.assignmentPlanConflicts")} />
             </div>
             {mode === "ASSIGN" ? (
-              <div className="rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
+              <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
                 {t("newOwner")}: <span className="font-medium">{preview.targetAgent?.name || "—"}</span>
                 <HintValue className="float-right text-xs text-muted-foreground" text={th("hint.assignmentEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
                 {/* Attaching takes the client from nobody — said in words, because it used to. */}
@@ -337,7 +337,7 @@ export function ContactAssignmentDialog({
                 ) : null}
               </div>
             ) : (
-              <div data-testid="contact-assignment-detach-from" className="rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
+              <div data-testid="contact-assignment-detach-from" className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
                 {sourceAgent
                   ? <>{t("detachFrom")}: <span className="font-medium">{sourceAgent.name}</span></>
                   : t("detachFromAll")}
@@ -347,7 +347,7 @@ export function ContactAssignmentDialog({
             {preview.summary.excluded > 0 ? (
               <div>
                 <h3 className="text-sm font-semibold">{t("excludedContacts")}</h3>
-                <div className="mt-2 max-h-56 divide-y divide-zinc-200 overflow-y-auto rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                <div className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
                   {preview.rows.filter((row) => !row.assignable).map((row) => (
                     <div key={row.contactId} className="p-3 text-sm">
                       <p className="font-medium">{row.displayName || row.contactId}</p>
@@ -366,7 +366,7 @@ export function ContactAssignmentDialog({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
+              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm">
                 <CheckCircle2 className="h-4 w-4" />
                 {t("noConflicts")}
               </div>
@@ -375,7 +375,7 @@ export function ContactAssignmentDialog({
         ) : null}
 
         {step === "RESULT" && result ? (
-          <div className="flex items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4">
+          <div className="flex items-start gap-3 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-4">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
               <p className="font-semibold">{t("completedTitle")}</p>
@@ -388,7 +388,7 @@ export function ContactAssignmentDialog({
         ) : null}
 
         {error ? (
-          <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+          <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -450,10 +450,10 @@ function Summary({
   return (
     <div className={`rounded-lg border p-3 ${
       tone === "positive"
-        ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
+        ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500"
         : tone === "warning"
-          ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
-          : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
+          ? "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
+          : "border-border bg-muted/30"
     }`}>
       <p className="text-xs text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>

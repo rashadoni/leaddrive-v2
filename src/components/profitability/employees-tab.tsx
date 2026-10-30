@@ -170,11 +170,11 @@ export function EmployeesTab() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant={filterDept === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterDept("all")}>
+        <Button variant={filterDept === "all" ? "selected" : "outline"} size="sm" onClick={() => setFilterDept("all")}>
           All ({totalHeadcount})
         </Button>
         {deptSummary.map(d => (
-          <Button key={d.dept} variant={filterDept === d.dept ? "default" : "outline"} size="sm" onClick={() => setFilterDept(d.dept)}>
+          <Button key={d.dept} variant={filterDept === d.dept ? "selected" : "outline"} size="sm" onClick={() => setFilterDept(d.dept)}>
             {d.dept} ({d.count})
           </Button>
         ))}
@@ -225,7 +225,7 @@ export function EmployeesTab() {
                             <select
                               value={editForm.department || "IT"}
                               onChange={e => setEditForm(prev => ({ ...prev, department: e.target.value }))}
-                              className="h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-sm"
+                              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
                             >
                               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>

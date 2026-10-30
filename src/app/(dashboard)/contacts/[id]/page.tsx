@@ -401,12 +401,12 @@ export default function ContactDetailPage() {
                   <ClickToCallButton phone={contact.phone!} contactId={contact.id} contactName={contact.fullName} />
                 )}
                 {isVisible("email") && contact.email && (
-                  <a href={`mailto:${contact.email}`} title={tc("email")} className="h-8 w-8 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-sm">
-                    <Mail className="h-3.5 w-3.5 text-white" />
+                  <a href={`mailto:${contact.email}`} title={tc("email")} className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center transition-colors shadow-sm" data-crm-button="default">
+                    <Mail className="h-3.5 w-3.5" />
                   </a>
                 )}
                 {isVisible("phone") && contact.phone && (
-                  <a href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`} target="_blank" title="WhatsApp" className="h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center transition-colors shadow-sm">
+                  <a data-crm-color-role="provider" href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`} target="_blank" title="WhatsApp" className="h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center transition-colors shadow-sm">
                     <MessageSquare className="h-3.5 w-3.5 text-white" />
                   </a>
                 )}
@@ -514,10 +514,10 @@ export default function ContactDetailPage() {
                 <div className="relative space-y-4 pl-6 before:absolute before:left-[11px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-border">
                   {contact.activities.map((activity) => (
                     <div key={activity.id} className="relative">
-                      <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-zinc-200 dark:border-zinc-700 text-xs">
+                      <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-border text-xs">
                         {activityIcons[activity.type] || "📌"}
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                      <div className="rounded-lg border border-border p-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">{activity.subject || t("activityFallback")}</span>
                           <span className="text-xs text-muted-foreground">

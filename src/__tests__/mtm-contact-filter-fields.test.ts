@@ -147,6 +147,7 @@ const CLIENTS = [
     visits: [{ id: "v-now", organizationId: ORG, deletedAt: null, status: "CHECKED_OUT", checkInAt: inMonth, checkOutAt: inMonth, outcome: null, agent: { id: SEYMUR.id, name: "Seymur Məmmədov" } }],
   }),
   client("d-003", "Nigar Hüseynova", "Kardioloq", [hospital], {
+    category: "A",
     // On tomorrow's planned route.
     routePoints: [{ id: "p-1", routeId: "route-1", plannedTime: null, orderIndex: 0, deletedAt: null, status: "PENDING", route: { organizationId: ORG, deletedAt: null, status: "PLANNED", date: new Date(TODAY.getTime() + 86_400_000) } }],
   }),
@@ -259,6 +260,12 @@ beforeEach(async () => {
   vi.mocked(prisma.mtmContact.count).mockImplementation((async (args: { where: Record<string, unknown> }) => (
     CLIENTS.filter((row) => matchesPrismaWhere(row, args.where)).length
   )) as never)
+  // The class line's counts, from the same table and the same `where`.
+  vi.mocked(prisma.mtmContact.groupBy).mockImplementation((async (args: { where: Record<string, unknown> }) => {
+    const counts = new Map<string, number>()
+    for (const row of CLIENTS.filter((row) => matchesPrismaWhere(row, args.where))) counts.set(row.category, (counts.get(row.category) ?? 0) + 1)
+    return [...counts].map(([category, all]) => ({ category, _count: { _all: all } }))
+  }) as never)
 
   vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
     const url = new URL(input, "http://localhost:3000")
@@ -381,9 +388,9 @@ describe("«Müştərilər»: the filter as named fields", () => {
   })
 
   it("keeps the rarer filters behind «Daha çox filtr», without dropdowns that have nothing to choose", async () => {
-    expect(field("mtm-contact-category")).toBeNull()
     await openFields()
-    expect(field("mtm-contact-category")).not.toBeNull()
+    // The class is not among them: it has a line of its own on the page.
+    expect(field("mtm-contact-category")).toBeNull()
     expect(field("mtm-contact-assignment-state")).not.toBeNull()
     expect(field("mtm-contact-coverage-period")).not.toBeNull()
     // Nobody in this tenant has a region, a profile or an institution kind.
@@ -399,7 +406,7 @@ describe("«Müştərilər»: the filter as named fields", () => {
   it("drops the fields a tenant switched off: no specialty filter, no specialty in the rows", async () => {
     // Column names; the first cell is the «select page» checkbox.
     const headers = () => [...container.querySelectorAll("thead th")].slice(1).map((cell) => cell.textContent?.trim())
-    expect(headers()).toEqual(["Kontakt", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
+    expect(headers()).toEqual(["Kontakt", "Kateqoriya", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
     expect(container.querySelector("tbody")?.textContent).toContain("Pediatr")
 
     // A tenant that does not visit doctors, reopening the same screen.
@@ -414,7 +421,7 @@ describe("«Müştərilər»: the filter as named fields", () => {
     await openFields()
     expect(labels().slice(0, 7)).toEqual(["Məsul əməkdaş", "Müştəri adı", "Ünvan", "Şəhər və ya rayon", "Müəssisə", "Kontakt növü", "Status"])
     expect(field("mtm-contact-specialties")).toBeNull()
-    expect(headers()).toEqual(["Kontakt", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
+    expect(headers()).toEqual(["Kontakt", "Kateqoriya", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
     expect(container.querySelector("tbody")?.textContent).not.toContain("Pediatr")
     expect(field("mtm-contact-coverage-period")).toBeNull()
     // The clients themselves are all still there.
@@ -463,8 +470,32 @@ describe("«Müştərilər»: the chips over the list", () => {
     expect(chips()[0]).toBe("Hamısı4 ✓")
   })
 
-  it("shows no class chips where every client is in one class", () => {
-    expect(container.querySelector('[data-testid^="mtm-contact-quick-category-"]')).toBeNull()
+  // Owner, 2026-10-21: «я не заметил категории клиентов. Есть ли они? Если
+  // есть, то нужно добавить в фильтр, это должно указываться как
+  // дополнительный столбец». On Zeytun all 321 were B, and the class chips,
+  // shown from two classes up, never appeared.
+  it("puts every class the tenant grades with on a line of its own, «0» included, and a press narrows the list", async () => {
+    const classLine = () => [...(field("mtm-contact-class-row")?.querySelectorAll("button[aria-pressed]") ?? [])]
+      .map((chip) => `${chip.textContent?.trim()}${chip.getAttribute("aria-pressed") === "true" ? " ✓" : ""}`)
+    expect(field("mtm-contact-class-row")?.textContent).toContain("Kateqoriya")
+    // The default classes A..D: one client A, three B, nobody C or D.
+    expect(classLine()).toEqual(["Hamısı4 ✓", "A1", "B3", "C0", "D0"])
+
+    await click(field("mtm-contact-quick-category-A"))
+    expect(listed()).toEqual(["Nigar Hüseynova"])
+    expect(navigation.router.replace).toHaveBeenLastCalledWith(expect.stringContaining("category=A"), { scroll: false })
+    // The counts stay those of every class, so another one is a press away.
+    expect(classLine()).toEqual(["Hamısı4", "A1 ✓", "B3", "C0", "D0"])
+
+    await click(field("mtm-contact-quick-category-C"))
+    expect(listed()).toEqual([])
+    await click(field("mtm-contact-quick-category-all"))
+    expect(listed()).toHaveLength(4)
+  })
+
+  it("shows the class of every client in a column of its own", () => {
+    expect(field("mtm-contact-class-d-003")?.textContent).toBe("A")
+    for (const id of ["d-001", "d-002", "d-004"]) expect(field(`mtm-contact-class-${id}`)?.textContent).toBe("B")
   })
 
   it("says once that visit norms are not set, instead of «Qayda imzalanmayıb» in every row", () => {

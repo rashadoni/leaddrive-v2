@@ -5,6 +5,11 @@ import { withRls } from "@/lib/with-rls"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { generateInvoiceHtml, getEmailTemplate } from "@/lib/invoice-html"
 import { assertSafeMailHeaderValue, createSecureSmtpTransport } from "@/lib/secure-smtp"
+import {
+  ensureInvoiceViewToken,
+  invoicePageUrl,
+  onlinePaymentAvailability,
+} from "@/lib/payments/kapitalbank/invoice-checkout"
 
 const sendSchema = z.object({
   recipientEmail: z.string().email(),
@@ -63,6 +68,18 @@ export const POST = withRls(async (req, { orgId }, { params }: { params: Promise
     const formatMoney = (n: unknown) => Number(n || 0).toLocaleString(locale, { minimumFractionDigits: 2 })
     const formatDate = (dt: unknown) => dt ? new Date(dt as string).toLocaleDateString(locale) : "—"
 
+    // A card-payment button when the organization takes card payments and
+    // this invoice can be paid by card. A failure here never stops the e-mail.
+    let payUrl: string | undefined
+    try {
+      if ((await onlinePaymentAvailability(orgId, invoice)).available) {
+        const token = await ensureInvoiceViewToken(orgId, id)
+        if (token) payUrl = invoicePageUrl(token, lang)
+      }
+    } catch (error) {
+      console.error("[invoices/send] pay link failed", error)
+    }
+
     // Generate email template based on document language (with custom templates if configured)
     const customEmailTemplates = (invoiceSettings.emailTemplates as Record<string, Record<string, string>>) || undefined
     const emailData = getEmailTemplate(lang, {
@@ -72,6 +89,7 @@ export const POST = withRls(async (req, { orgId }, { params }: { params: Promise
       currency: (invoice.currency as string) || DEFAULT_CURRENCY,
       dueDate: formatDate(invoice.dueDate),
       customMessage: d.message || undefined,
+      payUrl,
     }, customEmailTemplates)
 
     // Use custom subject if provided, otherwise use template

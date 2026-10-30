@@ -125,7 +125,7 @@ export function AiValueWidget({ orgId }: { orgId?: string }) {
             </div>
 
             {stats && stats.topApprovedFeatures.length > 0 ? (
-              <div className="space-y-1.5 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+              <div className="space-y-1.5 pt-2 border-t border-border">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("aiValueTopScenarios")}</p>
                 {stats.topApprovedFeatures.map(f => {
                   const info = labelFor(f.key)
@@ -142,7 +142,7 @@ export function AiValueWidget({ orgId }: { orgId?: string }) {
                 })}
               </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground pt-2 border-t border-zinc-200 dark:border-zinc-700">
+              <p className="text-[11px] text-muted-foreground pt-2 border-t border-border">
                 {t("aiValueEmpty")}
               </p>
             )}

@@ -23,7 +23,8 @@ import { runWithRlsBypass } from "@/lib/rls-context"
  *
  * The body is the clip itself — mono 16-bit PCM at 16 kHz in a WAV file, as
  * the page records it. Its length is read from the file before anything is
- * spent and claimed against the voice budget (assistant-voice.ts). Google
+ * spent and claimed against the voice budget — the person's twenty minutes
+ * across all their demos and the day's 300 (assistant-voice.ts). Google
  * then gets exactly the samples that were measured, in a WAV file made here —
  * never the caller's own: a file with a second `fmt ` or `data` chunk reads
  * differently in other decoders (ffmpeg takes the first `fmt ` and carries on

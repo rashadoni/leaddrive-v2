@@ -203,7 +203,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
           <button
             onClick={openCreate}
             disabled={busy}
-            className="inline-flex items-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
             {t("newReward")}
@@ -211,7 +211,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
           <button
             onClick={load}
             disabled={loading || busy}
-            className="inline-flex items-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
             aria-label={tc("refresh")}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -227,7 +227,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
       )}
 
       {showForm && (
-        <MotionCard className="mb-6 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+        <MotionCard className="mb-6 p-4 border border-border rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">
               {editingId ? t("editReward") : t("createReward")}
@@ -276,7 +276,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder={t("phName")}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm"
               />
             </div>
             <div className="md:col-span-2">
@@ -285,7 +285,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm"
               />
             </div>
             <div>
@@ -298,7 +298,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
                 step="1"
                 value={form.pointsCost}
                 onChange={(e) => setForm({ ...form, pointsCost: e.target.value })}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
               />
             </div>
             <div>
@@ -312,7 +312,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
                 value={form.stockLimit}
                 onChange={(e) => setForm({ ...form, stockLimit: e.target.value })}
                 placeholder={t("phUnlimited")}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-mono"
+                className="w-full px-3 py-2 border border-input rounded-md text-sm font-mono"
               />
             </div>
             <div className="flex items-center gap-2 md:col-span-2">
@@ -333,7 +333,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
       {loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">{tc("loading")}</p>
       ) : rewards.length === 0 ? (
-        <MotionCard className="p-8 text-center border border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg">
+        <MotionCard className="p-8 text-center border border-dashed border-border rounded-lg">
           <Gift className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm font-medium">{t("emptyTitle")}</p>
           <p className="text-xs text-muted-foreground mt-1">{t("emptyDesc")}</p>
@@ -343,7 +343,7 @@ export function RewardsSection({ embedded = false }: { embedded?: boolean } = {}
           {rewards.map((r) => (
             <MotionCard
               key={r.id}
-              className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg flex items-center justify-between gap-4"
+              className="p-4 border border-border rounded-lg flex items-center justify-between gap-4"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

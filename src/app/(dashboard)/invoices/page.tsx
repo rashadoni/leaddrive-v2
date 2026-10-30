@@ -364,8 +364,8 @@ export default function InvoicesPage() {
         actions={
           <>
             {/* Tab switcher */}
-            <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
-              <button
+            <div data-crm-tabs="" className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
+              <button data-crm-tab="" data-state={tab === "analytics" ? "active" : "inactive"}
                 onClick={() => setTab("analytics")}
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
@@ -375,7 +375,7 @@ export default function InvoicesPage() {
                 <BarChart3 className="h-4 w-4" />
                 {tc("analytics")}
               </button>
-              <button
+              <button data-crm-tab="" data-state={tab === "list" ? "active" : "inactive"}
                 onClick={() => setTab("list")}
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
@@ -457,7 +457,7 @@ export default function InvoicesPage() {
               <div
                 key={label}
                 onClick={() => filter && setStatusFilter(prev => prev === filter ? "" : filter)}
-                className={`rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3 space-y-1 transition-all ${filter ? "cursor-pointer hover:border-primary hover:shadow-sm" : ""} ${filter && statusFilter === filter ? "border-primary bg-primary/5 shadow-sm" : ""}`}
+                className={`rounded-lg border border-border bg-card p-3 space-y-1 transition-all ${filter ? "cursor-pointer hover:border-primary hover:shadow-sm" : ""} ${filter && statusFilter === filter ? "border-primary bg-primary/5 shadow-sm" : ""}`}
               >
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   {icon}
@@ -472,7 +472,7 @@ export default function InvoicesPage() {
 
           {/* Payment progress bar — per currency: the largest drawn, the others listed */}
           {progress.length > 0 && (
-            <div data-testid="invoices-payment-progress" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card px-4 py-3 space-y-2">
+            <div data-testid="invoices-payment-progress" className="rounded-lg border border-border bg-card px-4 py-3 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">{t("paymentProgress")}</span>
                 <span className="text-muted-foreground">

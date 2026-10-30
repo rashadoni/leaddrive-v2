@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { VoiceNumbersList } from "@/components/voip/voice-numbers-list"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -411,6 +412,8 @@ export default function VoipSettingsPage() {
         <TourReplayButton tourId="voip" />
         <HelpButton slug="settings-voip" variant="label" />
       </div>
+
+      <VoiceNumbersList />
 
       <Card className="bg-muted/30">
         <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">

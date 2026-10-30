@@ -521,4 +521,84 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     })
   })
 
+
+  // Owner, 2026-10-21 (after the HRSS clip, «əvvəl rəhbər, sonra HR təsdiqləyir»):
+  // with the setting on, a manager's approval passes the request to HR and only
+  // an administrator's decision counts. Off, the manager decides once, as before.
+  it("two-step approval: the manager passes a request to HR, only HR's decision counts; off, the manager decides alone", async () => {
+    const employee = { organizationId: self.organizationId, agentId: "request-pg-two-step", role: "EMPLOYEE" }
+    const admin = { organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" as const }
+    const manager = { organizationId: self.organizationId, userId: "request-pg-manager", principalType: "session" as const }
+    const upper = { organizationId: self.organizationId, userId: "request-pg-upper", principalType: "session" as const }
+    await bypass(async () => {
+      for (const [id, name] of [["request-pg-manager", "Fictional line manager"], ["request-pg-upper", "Fictional upper manager"]]) {
+        await prisma.user.create({ data: { id, organizationId: self.organizationId, name, email: `${id}@example.invalid`, role: "manager", passwordHash: "unusable-fixture-hash" } })
+      }
+      await prisma.mtmAgent.create({ data: { id: "request-pg-upper-card", organizationId: self.organizationId, name: "Fictional upper manager", role: "MANAGER", userId: "request-pg-upper", status: "ACTIVE" } })
+      await prisma.mtmAgent.create({ data: { id: "request-pg-manager-card", organizationId: self.organizationId, name: "Fictional line manager", role: "MANAGER", userId: "request-pg-manager", managerId: "request-pg-upper-card", status: "ACTIVE" } })
+      await prisma.mtmAgent.create({ data: { id: employee.agentId, organizationId: self.organizationId, name: "Fictional two-step employee", role: "EMPLOYEE", attendanceParticipant: true, managerId: "request-pg-manager-card", status: "ACTIVE" } })
+      await prisma.mtmSetting.create({ data: { organizationId: self.organizationId, key: "attendanceTwoStepApproval", value: true } })
+    })
+    const leave = (startDate: string) => ({ clientRequestId: randomUUID(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate, endDate: startDate, reason: "Fictional two-step leave" })
+    const decide = (who: typeof admin, id: string, version: string, value: "APPROVED" | "REJECTED", note: string | null = null) =>
+      tenant(self.organizationId, () => decision.decideAttendanceRequest(who, id, { decision: value, version, note }))
+    const kindOn = (date: string) => tenant(self.organizationId, async () => (await report.readMtmAttendanceReport({ organizationId: self.organizationId,
+      actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: date, to: date, form: "ALL", employeeId: employee.agentId } })).rows[0]?.kind)
+    const bellsFor = (requestId: string) => tenant(self.organizationId, async () => (await prisma.notification.findMany({ where: { entityType: "mtm_attendance_request", entityId: requestId }, select: { userId: true } })).map((row: { userId: string }) => row.userId).sort())
+
+    const first = (await tenant(self.organizationId, () => store.submitAttendanceRequest(employee, leave("2027-03-01")))).request
+    // The managers hear first; HR is not rung for a request no manager has seen.
+    expect(await bellsFor(first.id)).toEqual(["request-pg-manager", "request-pg-upper"])
+
+    const passed = await decide(manager, first.id, first.version, "APPROVED", "Fine by me")
+    expect(passed).toMatchObject({ passedToHr: true, idempotent: false, request: { status: "PENDING", decidedAt: null } })
+    expect(await decide(manager, first.id, first.version, "APPROVED", "Fine by me")).toMatchObject({ passedToHr: true, idempotent: true })
+    await tenant(self.organizationId, async () => {
+      expect(await prisma.mtmHrmRequest.findUnique({ where: { id: first.id }, select: { status: true, managerApprovedByUserId: true, managerApprovalNote: true, decidedByUserId: true } }))
+        .toEqual({ status: "PENDING", managerApprovedByUserId: "request-pg-manager", managerApprovalNote: "Fine by me", decidedByUserId: null })
+      expect(await prisma.mtmAuditLog.count({ where: { entityId: first.id, action: "MTM_ATTENDANCE_REQUEST_MANAGER_APPROVED" } })).toBe(1)
+      expect(await prisma.mtmAuditLog.count({ where: { entityId: first.id, action: "MTM_ATTENDANCE_REQUEST_DECIDED" } })).toBe(0)
+      // The employee is told nothing yet: the request is not decided.
+      expect(await prisma.mtmNotification.count({ where: { metadata: { path: ["attendanceRequestId"], equals: first.id } } })).toBe(0)
+    })
+    expect(await kindOn("2027-03-01")).not.toBe("APPROVED_REQUEST")
+    // Now HR is rung, once.
+    expect(await bellsFor(first.id)).toEqual(["request-pg-admin", "request-pg-manager", "request-pg-upper"])
+
+    // Another manager can neither approve nor reject what is HR's now, and sees no button.
+    const current = (await tenant(self.organizationId, () => review.listAttendanceRequestsForReview(upper, { requestId: first.id }))).items[0]
+    expect(current).toMatchObject({ canDecide: false, approval: { twoStep: true, awaiting: "HR", passesToHr: false, manager: { name: "Fictional line manager", note: "Fine by me" } } })
+    await expect(decide(upper, first.id, current.version, "REJECTED", "Too late for that")).rejects.toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_AWAITING_HR", status: 409 })
+    await expect(decide(manager, first.id, current.version, "APPROVED", "Changed my note")).rejects.toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_AWAITING_HR" })
+    // HR sees who approved and decides; that is the decision the employee hears.
+    const forHr = (await tenant(self.organizationId, () => review.listAttendanceRequestsForReview(admin, { requestId: first.id }))).items[0]
+    expect(forHr).toMatchObject({ canDecide: true, approval: { awaiting: "HR", passesToHr: false } })
+    await expect(decide(admin, first.id, first.version, "APPROVED")).rejects.toMatchObject({ code: "MTM_ATTENDANCE_REQUEST_CHANGED" })
+    expect(await decide(admin, first.id, forHr.version, "APPROVED")).toMatchObject({ passedToHr: false, request: { status: "APPROVED" } })
+    expect(await kindOn("2027-03-01")).toBe("APPROVED_REQUEST")
+    await tenant(self.organizationId, async () => {
+      expect(await prisma.mtmNotification.count({ where: { metadata: { path: ["attendanceRequestId"], equals: first.id } } })).toBe(1)
+      expect(await prisma.mtmHrmRequest.findUnique({ where: { id: first.id }, select: { decidedByUserId: true, managerApprovedByUserId: true } }))
+        .toEqual({ decidedByUserId: "request-pg-admin", managerApprovedByUserId: "request-pg-manager" })
+    })
+
+    // A manager's rejection is final; HR may also decide before any manager did.
+    const second = (await tenant(self.organizationId, () => store.submitAttendanceRequest(employee, leave("2027-03-08")))).request
+    const shown = (await tenant(self.organizationId, () => review.listAttendanceRequestsForReview(manager, { requestId: second.id }))).items[0]
+    expect(shown).toMatchObject({ canDecide: true, approval: { awaiting: "MANAGER", passesToHr: true, manager: null } })
+    expect(await decide(manager, second.id, second.version, "REJECTED", "Busy week")).toMatchObject({ passedToHr: false, request: { status: "REJECTED" } })
+    const third = (await tenant(self.organizationId, () => store.submitAttendanceRequest(employee, leave("2027-03-15")))).request
+    expect(await decide(admin, third.id, third.version, "APPROVED")).toMatchObject({ passedToHr: false, request: { status: "APPROVED" } })
+
+    // Off (the default): the manager's approval is the decision, as before.
+    await bypass(() => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: self.organizationId, key: "attendanceTwoStepApproval" } }, data: { value: false } }))
+    const fourth = (await tenant(self.organizationId, () => store.submitAttendanceRequest(employee, leave("2027-03-22")))).request
+    expect(await bellsFor(fourth.id)).toEqual(["request-pg-admin", "request-pg-manager", "request-pg-upper"])
+    expect(await decide(manager, fourth.id, fourth.version, "APPROVED")).toMatchObject({ passedToHr: false, request: { status: "APPROVED" } })
+    await tenant(self.organizationId, async () => {
+      expect(await prisma.mtmHrmRequest.findUnique({ where: { id: fourth.id }, select: { decidedByUserId: true, managerApprovedAt: true } }))
+        .toEqual({ decidedByUserId: "request-pg-manager", managerApprovedAt: null })
+    })
+    await bypass(() => prisma.mtmSetting.delete({ where: { organizationId_key: { organizationId: self.organizationId, key: "attendanceTwoStepApproval" } } }))
+  })
 })

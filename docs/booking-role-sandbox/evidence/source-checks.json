@@ -1,0 +1,82 @@
+{
+  "candidateSha": "39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27",
+  "checkedMergeSha": "50f205317e4d7d4ea155a786586f01c181ed7d60",
+  "pr": 1032,
+  "prUrl": "https://github.com/rashadoni/leaddrive-v2/pull/1032",
+  "recordedAt": "2026-10-25T08:28:56.074Z",
+  "checks": [
+    {
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047313/job/121113793512",
+      "name": "booking-role-browser",
+      "status": "COMPLETED"
+    },
+    {
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047385/job/121113793715",
+      "name": "pr-scope",
+      "status": "COMPLETED"
+    },
+    {
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047307/job/121113793361",
+      "name": "runner-policy",
+      "status": "COMPLETED"
+    },
+    {
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047312/job/121113793461",
+      "name": "scan",
+      "status": "COMPLETED"
+    },
+    {
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047385/job/121113794337",
+      "name": "GitHub-hosted Linux production build",
+      "status": "COMPLETED"
+    },
+    {
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047385/job/121113877839",
+      "name": "static-checks",
+      "status": "COMPLETED"
+    },
+    {
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047385/job/121113877872",
+      "name": "typecheck",
+      "status": "COMPLETED"
+    }
+  ],
+  "stand": {
+    "cases": 15,
+    "status": "PASS_ISOLATED_ROLE_BROWSER_STAND",
+    "contractTestsPassed": 17
+  },
+  "repositoryGates": {
+    "onlineBookingPostgresPassed": 27,
+    "unitFailureBaseline": {
+      "failingFiles": 18,
+      "baselineFiles": 18,
+      "newFailures": 0
+    },
+    "typecheck": {
+      "compilerExit": 2,
+      "diagnosticsTotal": 1334,
+      "gatedPairs": 64,
+      "baselinePairs": 64,
+      "newGatedDefects": 0
+    }
+  },
+  "standardOptionalBuild": "SKIPPED by existing label policy; not counted as build proof",
+  "actualHostedColdBuild": {
+    "status": "SUCCESS",
+    "elapsed": "8:31.40",
+    "maxResidentKiB": 10793060,
+    "entrypointUsed": "next start",
+    "standaloneEntrypointVerified": false
+  },
+  "productionMerge": false,
+  "productionDeploy": false,
+  "proofDocs": "Local docs-only checkpoints after candidate; no source edits or additional source push"
+}

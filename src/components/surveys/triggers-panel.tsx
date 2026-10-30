@@ -51,7 +51,7 @@ export function SurveyTriggersPanel({ surveyId, orgId, initialTriggers }: Props)
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div>
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Zap className="h-4 w-4 text-amber-500" /> {t("triggersTitle")}
@@ -61,7 +61,7 @@ export function SurveyTriggersPanel({ surveyId, orgId, initialTriggers }: Props)
 
       <div className="space-y-2">
         {TRIGGER_META.map(({ key, label, hint }) => (
-          <label key={key} className="flex items-start gap-3 p-2 rounded-md border border-zinc-200 dark:border-zinc-700 hover:bg-muted/40 cursor-pointer">
+          <label key={key} className="flex items-start gap-3 p-2 rounded-md border border-border hover:bg-muted/40 cursor-pointer">
             <input
               type="checkbox"
               checked={triggers[key]}

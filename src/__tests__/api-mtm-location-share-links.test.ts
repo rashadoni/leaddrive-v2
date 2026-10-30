@@ -493,7 +493,7 @@ describe("whose position", () => {
     expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
     // Asked of his own employee, the same statement names the organization and «active».
     await list("agent-1")
-    expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith({ where: { id: "agent-1", organizationId: ORG, status: "ACTIVE" }, select: { id: true } })
+    expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith({ where: { id: "agent-1", organizationId: ORG, status: "ACTIVE", fieldDeletedAt: null }, select: { id: true } })
   })
 
   it("lists one employee's links and nobody else's: not a colleague's, not another organization's", async () => {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { readAttribution } from "@/lib/ad-conversions/attribution"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
@@ -164,6 +165,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
               phone: phone || null,
               source: `form:${form.slug}`,
               status: "new",
+              adAttribution: readAttribution((body as { attribution?: unknown }).attribution, { userAgent: req.headers.get("user-agent") }) ?? undefined,
             },
           })
           await prisma.formSubmission.update({

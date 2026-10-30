@@ -10,6 +10,7 @@
 const LEGACY_MTM_API_PREFIX = "/api/v1/mtm/"
 const LEGACY_MTM_MOBILE_API_PREFIX = "/api/v1/mtm/mobile/"
 const V2_MTM_MOBILE_EXACT_PATHS = new Set([
+  "/api/v2/mtm/mobile/route-field/attendance/marks",
   "/api/v2/mtm/mobile/location/batch",
   // Attendance belongs to Route & Field. The old /mobile/attendance prefix
   // stays withdrawn with Workforce HRM and cannot serve these handlers.

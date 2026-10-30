@@ -22,8 +22,9 @@ const FENCE_TRANSACTION_OPTIONS = {
  * left the holder none for its work, and the whole pool timed out.
  *
  * So every opener first takes its organization's turn in this process, where
- * waiting costs no connection. Production runs one process; the advisory lock
- * still keeps the clean-slate reset script and any other process apart. Then
+ * waiting costs no connection. Production runs two — the web app and the
+ * scheduler's `leaddrive-v2-jobs` — and the advisory lock keeps them, the
+ * clean-slate reset script and any other process apart. Then
  * the opener takes one of two fence slots: at most two fence transactions per
  * process, whoever opens them, so at most two connections whatever the pool
  * (13 on production, 5 on a 2-core CI runner, 3 in the database tests).

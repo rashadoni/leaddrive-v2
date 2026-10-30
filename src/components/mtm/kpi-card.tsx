@@ -54,18 +54,18 @@ export function KpiCard({
     "bg-red-500"
 
   return (
-    <div className={cn("rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-2", className)}>
+    <div data-crm-stat="" className={cn("rounded-lg border border-border bg-card p-4 space-y-2", className)}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs text-muted-foreground leading-tight">{label}</p>
         {icon && (
-          <span className={cn("p-1.5", c.text)}>
+          <span data-crm-stat-icon="" className={cn("p-1.5", c.text)}>
             {icon}
           </span>
         )}
       </div>
 
       <div className="flex items-end gap-1">
-        <span className={cn("text-2xl font-bold tabular-nums", c.text)}>
+        <span data-crm-stat-value="" className={cn("text-2xl font-bold tabular-nums", c.text)}>
           {value.toLocaleString()}
         </span>
         {unit && <span className="text-sm text-muted-foreground mb-0.5">{unit}</span>}

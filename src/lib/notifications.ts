@@ -6,6 +6,7 @@ import { createHash } from "node:crypto"
 import { Prisma, type Notification as NotificationRow } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendPushToUser } from "@/lib/push-send"
+import { sendStaffTelegramNotice } from "@/lib/telegram-staff/notify"
 import { deriveSection } from "@/lib/notifications/taxonomy"
 import { canNotifyEntityType } from "@/lib/notifications/access"
 import { shouldPush, type NotificationPrefs } from "@/lib/notifications/prefs"
@@ -24,6 +25,7 @@ function deriveNotificationUrl(entityType?: string, entityId?: string): string {
   if (!entityType || !entityId) return "/notifications"
   switch (entityType) {
     // Phase 1 — CRM core entities
+    case "booking": return `/meetings?booking=${encodeURIComponent(entityId)}`
     case "task":    return `/tasks/${entityId}`
     // A link that lands on the notifications page when the notification is
     // ABOUT a lead is a small lie the recipient pays for with a search.
@@ -135,6 +137,18 @@ export async function deliverNotificationPush({
       kind,
     )
     if (!allowed) return
+    // The same notice in the organization's employee bot, when this person
+    // linked their Telegram. Same gate, no switch of its own.
+    void sendStaffTelegramNotice({
+      organizationId,
+      userId,
+      title,
+      message,
+      entityType,
+      entityId,
+      kind,
+      path: deriveNotificationUrl(entityType, entityId),
+    })
     await sendPushToUser(organizationId, userId, {
       title,
       body: message,

@@ -94,6 +94,19 @@ describe("GET /api/v1/settings/capabilities", () => {
 })
 
 describe("PATCH /api/v1/settings/capabilities", () => {
+  it.each([undefined, false, true])("does not let a tenant admin self-grant brand monitoring (social=%s)", async (social) => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      ...org,
+      modules: { ...org.modules, ...(social === undefined ? {} : { social }) },
+    } as any)
+
+    const res = await PATCH(makePatch({ capabilityId: "brand-monitoring", action: "enable" }), undefined)
+
+    expect(res.status).toBe(409)
+    expect(prisma.organization.update).not.toHaveBeenCalled()
+    expect(prisma.appInstallation.update).not.toHaveBeenCalled()
+  })
+
   it("records request_access without changing tenant features or plan", async () => {
     const res = await PATCH(makePatch({ capabilityId: "ai-security-monitoring", action: "request_access" }), undefined)
 

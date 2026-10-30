@@ -234,8 +234,8 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
   if (!open) return null
 
   return (
-    <section className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="customer-request-heading">
-      <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:px-5">
+    <section className="overflow-hidden rounded-xl border border-border bg-card" aria-labelledby="customer-request-heading">
+      <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 id="customer-request-heading" className="flex items-center gap-2 text-base font-semibold"><Smartphone className="h-4 w-4 text-primary" />{t("customerRequestTitle")}</h2>
@@ -247,8 +247,8 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
-        <div className="border-b border-zinc-200 dark:border-zinc-700 lg:border-b-0 lg:border-r">
-          <div className="flex overflow-x-auto border-b border-zinc-200 bg-muted/25 px-4 py-3 dark:border-zinc-700 sm:px-5" aria-label={t("customerRequestFlowLabel")}>
+        <div className="border-b border-border lg:border-b-0 lg:border-r">
+          <div className="flex overflow-x-auto border-b border-border bg-muted/25 px-4 py-3 sm:px-5" aria-label={t("customerRequestFlowLabel")}>
             {["customerRequestFlowCustomer", "customerRequestFlowLocation", "customerRequestFlowReason"].map((key, index) => (
               <div key={key} className="flex min-w-max items-center text-xs font-medium text-muted-foreground">
                 <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{index + 1}</span>
@@ -271,12 +271,12 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
                 <div><Label htmlFor="customer-request-code">{t("externalCode")}</Label><Input id="customer-request-code" value={form.externalCode} onChange={(event) => setField("externalCode", event.target.value)} /></div>
               </div>
 
-              <details className="group mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <details className="group mt-3 rounded-lg border border-border">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 text-sm font-medium marker:hidden">
                   <span><span className="block">{t("customerRequestOptional")}</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{t("customerRequestOptionalHint")}</span></span>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
                 </summary>
-                <div className="grid gap-3 border-t border-zinc-200 p-3.5 dark:border-zinc-700 sm:grid-cols-2">
+                <div className="grid gap-3 border-t border-border p-3.5 sm:grid-cols-2">
                   <div><Label htmlFor="customer-request-contact">{t("contactPerson")}</Label><Input id="customer-request-contact" value={form.contactPerson} onChange={(event) => setField("contactPerson", event.target.value)} /></div>
                   <div><Label htmlFor="customer-request-territory">{t("territoryCode")}</Label><Input id="customer-request-territory" value={form.territoryCode} onChange={(event) => setField("territoryCode", event.target.value)} /></div>
                   <div><Label htmlFor="customer-request-category">{t("category")}</Label><Select id="customer-request-category" value={form.category} onChange={(event) => setField("category", event.target.value)}>{["A", "B", "C", "D"].map((value) => <option key={value}>{value}</option>)}</Select></div>
@@ -305,13 +305,13 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
             </section>
 
             {duplicates && duplicates.length > 0 ? (
-              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
+              <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
                 <div className="flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" />{t("possibleDuplicates", { count: duplicates.length })}</div>
                 <p className="mt-1 text-xs">{duplicates.map((candidate) => candidate.name).join(", ")}</p>
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><CircleHelp className="h-3.5 w-3.5" />{t("customerRequestRequiredHint")}</p>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
                 {editingId ? <Button type="button" variant="ghost" onClick={resetForm}>{t("cancelBuilder")}</Button> : null}
@@ -327,10 +327,10 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
         </div>
 
         <div className="min-w-0">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-700"><h3 className="text-sm font-semibold">{t("myCustomerRequests")}</h3><p className="mt-0.5 text-xs text-muted-foreground">{t("myCustomerRequestsSubtitle")}</p></div>
+          <div className="border-b border-border px-4 py-3"><h3 className="text-sm font-semibold">{t("myCustomerRequests")}</h3><p className="mt-0.5 text-xs text-muted-foreground">{t("myCustomerRequestsSubtitle")}</p></div>
           {loading ? <div className="h-32 animate-pulse bg-muted/30" /> : null}
           {!loading && requests.length === 0 ? <div className="flex min-h-40 flex-col items-center justify-center px-4 text-center text-sm text-muted-foreground"><Check className="mb-2 h-5 w-5 text-emerald-600" />{t("noCustomerRequests")}</div> : null}
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <div className="divide-y divide-border">
             {requests.map((request) => (
               <article key={request.id} className="space-y-2 px-4 py-3">
                 <div className="flex items-start justify-between gap-2">

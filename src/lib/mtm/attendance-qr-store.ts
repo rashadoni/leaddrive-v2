@@ -2,22 +2,22 @@ import { isAttendanceMarkExempt } from "@/lib/mtm/attendance-self-access"
 import { randomUUID } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import QRCode from "qrcode"
-import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { resolveAttendanceReviewerScope, type AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { lockAttendanceQrPolicy, readAttendanceQrRule } from "@/lib/mtm/attendance-qr-policy"
 import { issueAttendanceQrToken, verifyAttendanceQrToken, attendanceQrNonceFingerprint } from "@/lib/mtm/attendance-qr-security"
-import type { AttendanceQrDirectory, AttendanceQrDisplay, AttendanceQrReceipt, AttendanceQrState } from "@/lib/mtm/attendance-qr-contract"
+import { attendanceQrPhoneState, type AttendanceQrDirectory, type AttendanceQrReceipt, type AttendanceQrState } from "@/lib/mtm/attendance-qr-contract"
+import { attendanceDistanceMeters } from "@/lib/mtm/attendance-location-contract"
 import type { MtmWorkdayEventInput } from "@/lib/mtm/workday"
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 type Tx = Prisma.TransactionClient
 const fail = (code: string, status = 403): never => { throw new AttendanceRequestError(`MTM_ATTENDANCE_QR_${code}`, status) }
-async function lockBranches(tx: Tx, organizationId: string) {
+export async function lockBranches(tx: Tx, organizationId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${`mtm-attendance-branches:${organizationId}`},0))`
 }
-async function directory(tx: Tx, reviewer: AttendanceReviewer): Promise<AttendanceQrDirectory & { revisions: Map<string, string> }> {
+export async function directory(tx: Tx, reviewer: AttendanceReviewer): Promise<AttendanceQrDirectory & { revisions: Map<string, string> }> {
   await lockAttendanceQrPolicy(tx, reviewer.organizationId)
   await lockBranches(tx, reviewer.organizationId)
   const actor = await resolveAttendanceReviewerScope(tx, reviewer)
@@ -40,19 +40,16 @@ async function directory(tx: Tx, reviewer: AttendanceReviewer): Promise<Attendan
 export async function readAttendanceQrDirectory(reviewer: AttendanceReviewer): Promise<AttendanceQrDirectory> {
   return prisma.$transaction(async (tx: Tx) => { const result = await directory(tx, reviewer); return { enabled: result.enabled, canConfigure: result.canConfigure, branches: result.branches } }, { timeout: 15000 })
 }
-export async function issueAttendanceBranchQr(reviewer: AttendanceReviewer, raw: unknown): Promise<AttendanceQrDisplay> {
-  const parsed = z.object({ branchId: z.string().uuid() }).strict().safeParse(raw)
-  if (!parsed.success) return fail("INVALID", 400)
-  return prisma.$transaction(async (tx: Tx) => {
-    const listing = await directory(tx, reviewer)
-    if (!listing.enabled) return fail("DISABLED", 404)
-    const branch = listing.branches.find(row => row.id === parsed.data.branchId), revision = listing.revisions.get(parsed.data.branchId)
-    if (!branch || !revision) return fail("BRANCH_UNAVAILABLE", 404)
-    const now = new Date(), issued = issueAttendanceQrToken(reviewer.organizationId, branch.id, revision, now)
-    // Only the short-lived image leaves this endpoint. No token/audit/log row.
-    const dataUrl = await QRCode.toDataURL(issued.token, { errorCorrectionLevel: "M", width: 480, margin: 4 })
-    return { branch, dataUrl, serverNow: now.toISOString(), expiresAt: issued.expiresAt.toISOString() }
-  }, { timeout: 15000 })
+/**
+ * The QR image for one branch revision. Only a paired branch screen asks for
+ * it (`attendance-branch-screen-store.ts`): a QR any signed-in computer could
+ * open confirmed a branch the phone was nowhere near (owner, 2026-10-29).
+ * Only the short-lived image leaves; no token, audit or log row is kept.
+ */
+export async function issueBranchQrImage(organizationId: string, branchId: string, revisionId: string, now: Date) {
+  const issued = issueAttendanceQrToken(organizationId, branchId, revisionId, now)
+  const dataUrl = await QRCode.toDataURL(issued.token, { errorCorrectionLevel: "M", width: 480, margin: 4 })
+  return { dataUrl, serverNow: now.toISOString(), expiresAt: issued.expiresAt.toISOString() }
 }
 
 /** One QR can be used by many employees, but one employee cannot recycle the
@@ -62,7 +59,7 @@ export async function recordAttendanceQr(tx: Tx, scope: { organizationId: string
   if (!await readAttendanceFeature(tx, scope.organizationId) || await isAttendanceMarkExempt(tx, scope)) return
   await lockAttendanceQrPolicy(tx, scope.organizationId)
   if (!await readAttendanceQrRule(tx, scope.organizationId)) return
-  let state: AttendanceQrState = "NOT_PROVIDED", branchRevisionId: string | null = null, fingerprint: string | null = null
+  let state: AttendanceQrState = "NOT_PROVIDED", branchRevisionId: string | null = null, fingerprint: string | null = null, awayDistanceMeters: number | null = null
   // Ending a paused day must not disclose the employee's private place.
   const token = finishingOnBreak ? null : input.attendanceQr?.token
   if (token) {
@@ -70,25 +67,59 @@ export async function recordAttendanceQr(tx: Tx, scope: { organizationId: string
     state = proof.state
     if (proof.state === "VERIFIED") {
       await lockBranches(tx, scope.organizationId)
-      const [branch] = await tx.$queryRaw<{ id: string; active: boolean }[]>`SELECT id,active FROM mtm_attendance_branch_revisions
-        WHERE "organizationId"=${scope.organizationId} AND "branchId"=${proof.payload.branchId} ORDER BY version DESC LIMIT 1`
+      const [branch] = await tx.$queryRaw<{ id: string; active: boolean; latitude: number; longitude: number; radiusMeters: number }[]>`SELECT id,active,latitude,longitude,"radiusMeters"
+        FROM mtm_attendance_branch_revisions WHERE "organizationId"=${scope.organizationId} AND "branchId"=${proof.payload.branchId} ORDER BY version DESC LIMIT 1`
       if (!branch?.active || branch.id !== proof.payload.revisionId) state = "BRANCH_CHANGED"
       else {
         const candidate = attendanceQrNonceFingerprint(scope.organizationId, proof.payload.nonce)
         const reused = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM mtm_attendance_qr_evidence
           WHERE "organizationId"=${scope.organizationId} AND "agentId"=${scope.agentId} AND "nonceFingerprint"=${candidate} AND action=${input.action}`
         if (reused.length) state = "REUSED"
-        else { fingerprint = candidate; branchRevisionId = branch.id }
+        else {
+          fingerprint = candidate; branchRevisionId = branch.id
+          const phone = await phoneAtBranch(tx, scope, eventId, branch)
+          if (phone.state === "AWAY") { state = "AWAY_FROM_BRANCH"; awayDistanceMeters = phone.distanceMeters }
+          // Once the organization collects the place of a mark, a code alone no
+          // longer confirms the branch: shown over a video call, it reaches a
+          // phone anywhere (owner, 2026-10-30). The time is kept either way.
+          else if (phone.state === "UNKNOWN" && await locationPolicyEnabled(tx, scope.organizationId)) state = "NO_PHONE_FIX"
+        }
       }
     }
   }
-  await tx.$executeRaw`INSERT INTO mtm_attendance_qr_evidence(id,"organizationId","agentId","eventId",action,state,"branchRevisionId","nonceFingerprint")
-    VALUES (${randomUUID()},${scope.organizationId},${scope.agentId},${eventId},${input.action},${state},${branchRevisionId},${fingerprint})`
+  await tx.$executeRaw`INSERT INTO mtm_attendance_qr_evidence(id,"organizationId","agentId","eventId",action,state,"branchRevisionId","nonceFingerprint","awayDistanceMeters")
+    VALUES (${randomUUID()},${scope.organizationId},${scope.agentId},${eventId},${input.action},${state},${branchRevisionId},${fingerprint},${awayDistanceMeters})`
+}
+
+/**
+ * The phone's own fix for this mark, when the employee consented to send one
+ * (`recordAttendanceMarkEvidence` runs first and keeps only an approved fix;
+ * none on a break). AWAY: outside the code's branch even at the near edge of
+ * its accuracy — somebody showed or sent the screen elsewhere. AT: a fresh,
+ * real fix of 100 m or better whose circle reaches the branch (the rule of
+ * the mark's own location finding). Anything else — no fix, coarse, stale,
+ * mock — is UNKNOWN.
+ */
+async function phoneAtBranch(tx: Tx, scope: { organizationId: string; agentId: string }, eventId: string,
+  branch: { latitude: number; longitude: number; radiusMeters: number }): Promise<{ state: "AT" | "AWAY" | "UNKNOWN"; distanceMeters: number | null }> {
+  const [fix] = await tx.$queryRaw<{ latitude: number | null; longitude: number | null; accuracy: number | null; fixAgeSeconds: number | null; isMock: boolean | null }[]>`SELECT latitude,longitude,accuracy,"fixAgeSeconds","isMock"
+    FROM mtm_attendance_mark_evidence WHERE "organizationId"=${scope.organizationId} AND "agentId"=${scope.agentId} AND "eventId"=${eventId} AND "consentId" IS NOT NULL`
+  if (fix?.latitude == null || fix.longitude == null || fix.accuracy == null || !Number.isFinite(fix.accuracy) || fix.accuracy < 0) return { state: "UNKNOWN", distanceMeters: null }
+  const distance = attendanceDistanceMeters({ latitude: fix.latitude, longitude: fix.longitude }, branch)
+  if (distance - fix.accuracy > branch.radiusMeters) return { state: "AWAY", distanceMeters: Math.round(distance) }
+  const fresh = fix.fixAgeSeconds !== null && fix.fixAgeSeconds >= -30 && fix.fixAgeSeconds <= 120
+  return fix.accuracy <= 100 && fresh && fix.isMock !== true ? { state: "AT", distanceMeters: Math.round(distance) } : { state: "UNKNOWN", distanceMeters: null }
+}
+/** Whether the organization has switched on collecting the place of a mark (its current location text is on). */
+async function locationPolicyEnabled(tx: Tx, organizationId: string) {
+  const [row] = await tx.$queryRaw<{ enabled: boolean }[]>`SELECT enabled FROM mtm_attendance_location_policies WHERE "organizationId"=${organizationId} ORDER BY version DESC LIMIT 1`
+  return row?.enabled === true
 }
 /** Read the original immutable result even if policy changed or QR expired. */
 export async function readAttendanceQrReceipt(tx: Tx, scope: { organizationId: string; agentId: string }, eventId: string): Promise<AttendanceQrReceipt | null> {
   const [row] = await tx.$queryRaw<{ state: AttendanceQrState; branchId: string | null; name: string | null }[]>`SELECT q.state,b."branchId",b.name
     FROM mtm_attendance_qr_evidence q LEFT JOIN mtm_attendance_branch_revisions b ON b."organizationId"=q."organizationId" AND b.id=q."branchRevisionId"
     WHERE q."organizationId"=${scope.organizationId} AND q."agentId"=${scope.agentId} AND q."eventId"=${eventId}`
-  return row ? { eventId, state: row.state, branch: row.state === "VERIFIED" && row.branchId && row.name ? { id: row.branchId, name: row.name } : null } : null
+  const state = row ? attendanceQrPhoneState(row.state) : null
+  return row && state ? { eventId, state, branch: state === "VERIFIED" && row.branchId && row.name ? { id: row.branchId, name: row.name } : null } : null
 }

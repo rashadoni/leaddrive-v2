@@ -9,6 +9,7 @@ import { sanitizeLog } from "@/lib/sanitize"
 import { sendSms } from "@/lib/sms"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { recordStageTransition } from "@/lib/revenue-intelligence/transition-recorder"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 /**
  * Apply a deal stage change from an automation (workflow / scheduled action)
@@ -23,10 +24,12 @@ async function applyDealStageUpdate(orgId: string, dealId: string, newStage: str
   })
   if (!deal) return
   const changes = deal.stage !== newStage
-  await prisma.deal.updateMany({
-    where: { id: dealId, organizationId: orgId },
-    data: { stage: newStage, ...(changes && { stageChangedAt: new Date() }) },
-  })
+  await withDealEvents(prisma, orgId, [dealId], async (tx) => ({
+    value: await tx.deal.updateMany({
+      where: { id: dealId, organizationId: orgId },
+      data: { stage: newStage, ...(changes && { stageChangedAt: new Date() }) },
+    }),
+  }))
   if (changes) {
     const amount = decimalToNumber(deal.valueAmount)
     recordStageTransition(prisma, {

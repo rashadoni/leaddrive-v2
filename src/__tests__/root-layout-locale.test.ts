@@ -11,7 +11,7 @@ describe("root layout document language", () => {
   const layout = readFileSync("src/app/layout.tsx", "utf8")
 
   it("takes the locale from next-intl's request config", () => {
-    expect(layout).toContain('import { getLocale, getMessages } from "next-intl/server"')
+    expect(layout).toContain('import { getLocale, getMessages, getTimeZone } from "next-intl/server"')
     expect(layout).toContain("const locale = await getLocale()")
   })
 

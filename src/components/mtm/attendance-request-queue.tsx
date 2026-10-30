@@ -31,6 +31,7 @@ export function MtmAttendanceRequestQueue() {
   const [busy, setBusy] = useState(false)
   const [unknown, setUnknown] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [loadedAt, setLoadedAt] = useState<string | null>(null)
   const active = useRef<AbortController | null>(null)
   const writing = useRef(false)
   const current = items.find((item) => item.id === selected)
@@ -39,18 +40,19 @@ export function MtmAttendanceRequestQueue() {
     active.current?.abort()
     const controller = new AbortController(); active.current = controller
     setBusy(true); setMessage(null); setSelected(null); setNote(""); setRevoking(false)
-    if (!after) setItems([])
+    if (!after) { setItems([]); setLoadedAt(null) }
     try {
       const query = new URLSearchParams({ status, ...(after ? { cursor: after } : {}), ...(focusedRequest ? { requestId: focusedRequest } : {}) })
       const response = await fetch(`/api/v1/mtm/attendance/requests?${query}`, { cache: "no-store", signal: controller.signal })
       const body = await response.json().catch(() => null)
       if (controller.signal.aborted) return
       if (!response.ok || body?.success !== true || !Array.isArray(body.data?.items)) {
-        if ([401, 403, 404].includes(response.status)) setItems([])
+        if ([401, 403, 404].includes(response.status)) { setItems([]); setLoadedAt(null) }
         setMessage(t([401, 403, 404].includes(response.status) ? "requestsForbidden" : "requestsLoadError")); setCursor(null); return
       }
       setItems((previous) => after ? [...previous, ...body.data.items.filter((row: AttendanceReviewItem) => !previous.some((old) => old.id === row.id))] : body.data.items)
       setCursor(body.data.nextCursor); setUnknown(false)
+      if (!after) setLoadedAt(new Date().toISOString())
       if (focusedRequest && body.data.items.some((row: AttendanceReviewItem) => row.id === focusedRequest)) setSelected(focusedRequest)
       return true
     } catch { if (!controller.signal.aborted) setMessage(t("requestsLoadError")) }
@@ -73,7 +75,11 @@ export function MtmAttendanceRequestQueue() {
       })
       const body = await response.json().catch(() => null)
       if (controller.signal.aborted) return
-      if (response.ok && body?.success === true && body.data?.request) {
+      if (response.ok && body?.success === true && body.data?.request && body.data.passedToHr === true) {
+        // Two-step approval: still pending, now HR's — read the queue as it stands.
+        writing.current = false
+        if (await load()) setMessage(t("requestsPassedToHr"))
+      } else if (response.ok && body?.success === true && body.data?.request) {
         const result = body.data.request
         setItems((previous) => previous.flatMap((row) => row.id !== current.id ? [row] : status === "ALL" ? [{ ...row, ...result }] : []))
         setSelected(null); setNote(""); setMessage(t("requestsSaved"))
@@ -127,6 +133,7 @@ export function MtmAttendanceRequestQueue() {
         <Button className="min-h-11" variant="outline" onClick={() => void load()} disabled={busy}>{t("requestsRefresh")}</Button>
       </div>
       {message && <p role="status" className="py-3 text-sm">{message}</p>}
+      {loadedAt && <p className="pb-3 text-xs text-muted-foreground" data-testid="attendance-requests-freshness">{t("requestsLoadedAt", { time: createDateFormatter(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(loadedAt)) })}</p>}
       {!busy && !message && items.length === 0 && <p className="py-8 text-sm text-muted-foreground">{t("requestsEmpty")}</p>}
       <ul className="divide-y divide-border">
         {items.map((item) => <li key={item.id} className="py-4" data-testid={`attendance-request-${item.id}`}>
@@ -137,22 +144,36 @@ export function MtmAttendanceRequestQueue() {
               {item.details.kind === "HR_RECORD" && <p className="text-xs font-medium text-muted-foreground">{t("hrRecordingCard")}</p>}
               <p className="text-xs text-muted-foreground">{t("requestsSubmitted", { date: stamp(item.submittedAt, item.details.timezone) })}</p>
             </div>
-            <HomePill tone={item.status === "PENDING" ? "amber" : item.status === "APPROVED" ? "green" : "zinc"}>{t(LABELS[item.status])}</HomePill>
+            <HomePill tone={item.status === "PENDING" ? "amber" : item.status === "APPROVED" ? "green" : "zinc"}>{item.approval?.awaiting === "HR" ? t("requestsAwaitingHr") : item.approval?.awaiting === "MANAGER" ? t("requestsAwaitingManager") : t(LABELS[item.status])}</HomePill>
             <Button className="min-h-11" variant="outline" disabled={busy} aria-expanded={item.id === selected} aria-controls={`attendance-request-details-${item.id}`} onClick={() => { setSelected(item.id === selected ? null : item.id); setNote(""); setRevoking(false) }}>{t(item.id === selected ? "requestsClose" : "requestsOpen")}</Button>
           </div>
           {item.id === selected && <div id={`attendance-request-details-${item.id}`} className="mt-4 space-y-4 rounded-lg bg-muted/40 p-4">
+            {item.details.kind === "TIME_CORRECTION" && <div className="space-y-3" data-testid="attendance-correction-comparison">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border bg-card p-3"><h3 className="text-sm font-semibold">{t("correctionBefore")}</h3>
+                  <p className="mt-1 text-sm">{item.details.correctionBasis?.kind === "WORKDAY"
+                    ? `${stamp(item.details.correctionBasis.facts.startedAt, item.details.timezone)} — ${item.details.correctionBasis.facts.completedAt ? stamp(item.details.correctionBasis.facts.completedAt, item.details.timezone) : t("correctionNoFinish")}`
+                    : t(item.details.correctionBasis?.kind === "MISSING" ? "correctionNoDay" : "correctionBasisUnavailable")}</p></div>
+                <div className="rounded-lg border bg-card p-3"><h3 className="text-sm font-semibold">{t("correctionProposed")}</h3><p className="mt-1 text-sm">{item.startDate} {item.details.startTime ?? "—"} — {item.endDate} {item.details.endTime ?? "—"}</p></div>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("correctionSnapshotHint", { timezone: item.details.timezone })}</p>
+              <Link href={`/mtm/attendance/timesheet?date=${encodeURIComponent(item.startDate)}&employeeId=${encodeURIComponent(item.agentId)}`} prefetch={false} className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline">{t("correctionOpenTimesheet")}</Link>
+            </div>}
             <div><h3 className="text-sm font-semibold">{t("requestsReason")}</h3><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.reason}</p></div>
             {item.details.attachmentIds.length > 0 && <div><h3 className="text-sm font-semibold">{t("requestsDocuments")}</h3><div className="mt-2 flex flex-wrap gap-3">{item.details.attachmentIds.map((id, index) => <a key={id} href={`/api/v1/mtm/attendance/attachments/${encodeURIComponent(id)}`} className="inline-flex min-h-11 items-center text-sm text-primary underline" target="_blank" rel="noopener noreferrer">{t("requestsDocument", { number: index + 1 })}</a>)}</div></div>}
             {item.decisionNote && <p className="whitespace-pre-wrap break-words text-sm">{item.decisionNote}</p>}
+            {item.approval?.manager && <div data-testid="attendance-request-manager-approval"><p className="text-xs text-muted-foreground">{t("requestsManagerApproved", { name: item.approval.manager.name ?? "—", date: stamp(item.approval.manager.at, item.details.timezone) })}</p>
+              {item.approval.manager.note && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.approval.manager.note}</p>}</div>}
             {item.decidedAt && <p className="text-xs text-muted-foreground">{t("requestsDecision", { name: item.reviewerName ?? "—", date: stamp(item.decidedAt, item.details.timezone) })}</p>}
             {item.cancellation && <div className="space-y-2 border-t border-border pt-4" data-testid="attendance-cancellation-history"><h3 className="text-sm font-semibold">{t("revocationHistory")}</h3><p className="text-xs text-muted-foreground">{t("revocationBy", { name: item.cancellation.byName ?? "—", date: stamp(item.cancellation.at, item.details.timezone) })}</p><p className="whitespace-pre-wrap break-words text-sm">{item.cancellation.reason}</p></div>}
             {canRevokeAttendanceLeave(item) && (revoking ? <div className="space-y-4">
-              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4"><h3 className="text-sm font-semibold">{t("revocationTitle")}</h3><p className="mt-1 text-sm">{t("revocationDescription")}</p></div>
+              <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4"><h3 className="text-sm font-semibold">{t("revocationTitle")}</h3><p className="mt-1 text-sm">{t("revocationDescription")}</p></div>
               <label className="block text-sm font-medium">{t("revocationReason")}<textarea className="mt-2 min-h-24 w-full rounded-lg border bg-background p-3 font-normal" value={note} maxLength={1000} disabled={busy || unknown} onChange={(event) => setNote(event.target.value)} /></label><p className="text-xs text-muted-foreground">{t("revocationHint")}</p>
               <div className="flex flex-wrap gap-3"><Button className="min-h-11 max-w-full whitespace-normal" variant="outline" onClick={() => void revoke()} disabled={busy || unknown || note.trim().length < 3}>{t(busy ? "requestsSaving" : "revocationConfirm")}</Button><Button className="min-h-11 max-w-full whitespace-normal" variant="outline" disabled={busy} onClick={() => { setRevoking(false); setNote("") }}>{t("revocationKeep")}</Button></div>
             </div> : <Button className="min-h-11 max-w-full whitespace-normal" variant="outline" disabled={busy || unknown} onClick={() => { setRevoking(true); setNote("") }}>{t("revocationOpen")}</Button>)}
-            {item.status === "PENDING" && <><label className="block text-sm font-medium">{t("requestsNote")}<textarea className="mt-2 min-h-24 w-full rounded-lg border bg-background p-3 font-normal" value={note} maxLength={1000} disabled={busy || unknown} onChange={(event) => setNote(event.target.value)} /></label><p className="text-xs text-muted-foreground">{t("requestsNoteHint")}</p>
-              <div className="flex flex-wrap gap-3"><Button className="min-h-11" onClick={() => void decide("APPROVED")} disabled={busy || unknown}>{t(busy ? "requestsSaving" : "requestsApprove")}</Button><Button className="min-h-11" variant="outline" onClick={() => void decide("REJECTED")} disabled={busy || unknown || note.trim().length < 3}>{t("requestsReject")}</Button></div></>}
+            {item.status === "PENDING" && item.canDecide === false && <p className="text-sm text-muted-foreground">{t("requestsHrDecides")}</p>}
+            {item.status === "PENDING" && item.canDecide !== false && <><label className="block text-sm font-medium">{t("requestsNote")}<textarea className="mt-2 min-h-24 w-full rounded-lg border bg-background p-3 font-normal" value={note} maxLength={1000} disabled={busy || unknown} onChange={(event) => setNote(event.target.value)} /></label><p className="text-xs text-muted-foreground">{t("requestsNoteHint")}</p>
+              <div className="flex flex-wrap gap-3"><Button className="min-h-11" onClick={() => void decide("APPROVED")} disabled={busy || unknown}>{t(busy ? "requestsSaving" : item.approval?.passesToHr ? "requestsPassToHr" : "requestsApprove")}</Button><Button className="min-h-11" variant="outline" onClick={() => void decide("REJECTED")} disabled={busy || unknown || note.trim().length < 3}>{t("requestsReject")}</Button></div></>}
           </div>}
         </li>)}
       </ul>

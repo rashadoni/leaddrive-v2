@@ -178,7 +178,7 @@ export function OrganizationAttributePackageSettings() {
   }
 
   return (
-    <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+    <section className="border-t border-border pt-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 text-base font-semibold"><DatabaseZap className="h-4 w-4 text-muted-foreground" />{t("title")}</h2>
@@ -190,12 +190,12 @@ export function OrganizationAttributePackageSettings() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+      <div className="mt-4 rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
         <p className="font-medium">{t("governanceTitle")}</p><p className="mt-0.5 text-xs leading-relaxed opacity-80">{t("governanceDescription")}</p>
       </div>
 
       {showCreate && canConfigure ? (
-        <div className="mt-4 rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+        <div className="mt-4 rounded-lg border border-border bg-card p-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><Label htmlFor="org-attribute-version">{t("version")}</Label><Input id="org-attribute-version" type="number" min="1" max="1000000" className="mt-1.5 min-h-11" value={form.version} onChange={(event) => setForm((current) => ({ ...current, version: event.target.value }))} /></div>
             <div><Label htmlFor="org-attribute-source">{t("sourceSystem")}</Label><Input id="org-attribute-source" className="mt-1.5 min-h-11" maxLength={120} value={form.sourceSystem} onChange={(event) => setForm((current) => ({ ...current, sourceSystem: event.target.value }))} /></div>
@@ -205,24 +205,24 @@ export function OrganizationAttributePackageSettings() {
             <div><Label htmlFor="org-attribute-file">{t("jsonFile")}</Label><Input id="org-attribute-file" type="file" accept="application/json,.json" className="mt-1.5 min-h-11" onChange={(event) => void importFile(event.target.files?.[0])} /></div>
           </div>
           <div className="mt-4"><Label htmlFor="org-attribute-rows">{t("rows")}</Label><p className="mt-1 text-xs text-muted-foreground">{t("rowsHint")}</p><Textarea id="org-attribute-rows" rows={14} spellCheck={false} className="mt-2 resize-y font-mono text-xs" value={form.rows} onChange={(event) => setForm((current) => ({ ...current, rows: event.target.value }))} /></div>
-          {error ? <p role="alert" className="mt-3 rounded-md border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">{error}</p> : null}
+          {error ? <p role="alert" className="mt-3 rounded-md border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">{error}</p> : null}
           <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="ghost" disabled={Boolean(busy)} onClick={() => setShowCreate(false)}>{t("cancel")}</Button><Hint text={busy ? null : t("hint.packageCreateDraft")}><Button disabled={Boolean(busy)} onClick={() => void createDraft()}>{busy === "create" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileJson2 className="mr-1 h-4 w-4" />}{t("createDraft")}</Button></Hint></div>
         </div>
       ) : null}
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         {ordered.map((pkg) => (
-          <article key={pkg.id} className={`rounded-lg border p-4 ${pkg.status === "ACTIVE" ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500" : "border-zinc-200 bg-card dark:border-zinc-700"}`}>
+          <article key={pkg.id} className={`rounded-lg border p-4 ${pkg.status === "ACTIVE" ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500" : "border-border bg-card"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h3 className="font-semibold">{t("packageVersion", { version: pkg.version })}</h3><HintValue text={t(PACKAGE_STATUS_HINT[pkg.status])}><Badge variant={statusVariant(pkg.status)}>{t(`statuses.${pkg.status}`)}</Badge></HintValue></div><p className="mt-1 text-xs text-muted-foreground"><HintValue text={t("hint.packageRowCount")}>{t("rowCount", { count: pkg.rowCount })}</HintValue> · {pkg.sourceSystem}</p></div>{canConfigure && pkg.status === "DRAFT" ? <Hint text={t("hint.packageActivate")}><Button size="sm" className="min-h-11 sm:min-h-8" onClick={() => { setActivation(pkg); setApprovalReference("") }}><ShieldCheck className="mr-1 h-4 w-4" />{t("activate")}</Button></Hint> : null}</div>
             <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2"><div><dt className="text-muted-foreground"><HintValue text={t("hint.packageEffectiveFrom")}>{t("effectiveFrom")}</HintValue></dt><dd className="font-medium">{pkg.effectiveFrom.slice(0, 10)}</dd></div><div><dt className="text-muted-foreground">{t("approval")}</dt><dd className="break-words font-medium">{pkg.approvalReference || "—"}</dd></div></dl>
-            <p className="mt-3 break-all border-t border-zinc-200 pt-3 font-mono text-[10px] text-muted-foreground dark:border-zinc-700"><HintValue text={t("hint.packageHash")}>SHA-256</HintValue>: {pkg.rowsHash}</p>
+            <p className="mt-3 break-all border-t border-border pt-3 font-mono text-[10px] text-muted-foreground"><HintValue text={t("hint.packageHash")}>SHA-256</HintValue>: {pkg.rowsHash}</p>
           </article>
         ))}
-        {!loading && ordered.length === 0 ? <div className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-muted-foreground dark:border-zinc-700">{t("empty")}</div> : null}
+        {!loading && ordered.length === 0 ? <div className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-muted-foreground dark:border-border">{t("empty")}</div> : null}
       </div>
 
       {activation ? (
-        <div className="mt-4 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4">
+        <div className="mt-4 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4">
           <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" /><div className="min-w-0 flex-1"><h3 className="font-semibold">{t("activationTitle", { version: activation.version })}</h3><p className="mt-1 text-sm">{t("activationWarning")}</p><p className="mt-2 break-all font-mono text-[10px]">{activation.rowsHash}</p><div className="mt-3 grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]"><div><Label htmlFor="org-attribute-approval">{t("approvalReference")}</Label><Input id="org-attribute-approval" className="mt-1.5 min-h-11" maxLength={500} value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} /></div><Button variant="ghost" className="min-h-11 self-end" disabled={Boolean(busy)} onClick={() => setActivation(null)}>{t("cancel")}</Button><Hint text={!busy && approvalReference.trim().length < 3 ? t("hint.packageApprovalNeeded") : null}><span className="inline-flex self-end" tabIndex={0}><Button className="min-h-11" disabled={Boolean(busy) || approvalReference.trim().length < 3} onClick={() => void activate()}>{busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}{t("confirmActivation")}</Button></span></Hint></div></div></div>
         </div>
       ) : null}

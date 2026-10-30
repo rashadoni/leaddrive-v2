@@ -60,7 +60,7 @@ export function useLeadTimelineStats(leadId: string, orgId?: string): LeadTimeli
 
 function RailBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</p>
       {children}
     </div>
@@ -190,7 +190,7 @@ export function LeadEvaluationCard({
     : []
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("leadEvaluation")}</p>
       <div className="flex items-center gap-2">
         <Flame className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -219,7 +219,7 @@ export function LeadEvaluationCard({
         <button
           type="button"
           onClick={onConvert}
-          className="w-full text-sm font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-2 hover:bg-muted transition-colors"
+          className="w-full text-sm font-medium rounded-lg border border-border px-3 py-2 hover:bg-muted transition-colors"
         >
           {convertLabel}
         </button>
@@ -247,7 +247,7 @@ export function LeadStatBoxes({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {boxes.map(({ label, value, icon: Icon }) => (
-        <div key={label} className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card px-4 py-3">
+        <div key={label} className="rounded-xl border border-border bg-card px-4 py-3">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Icon className="h-3.5 w-3.5" /> {label}
           </p>

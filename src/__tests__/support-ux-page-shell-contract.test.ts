@@ -113,7 +113,7 @@ describe("SupportPageShell", () => {
     expect(styles).toContain("@media (pointer: coarse)")
     expect(styles).toContain(".support-ai-search .ai-search-input")
     expect(styles).toContain(".support-ai-search .ai-search-btn")
-    expect(styles).toContain("background-color: hsl(20 92% 38%) !important")
+    expect(styles).toContain("background-color: hsl(var(--crm-action, 20 92% 38%)) !important")
     expect(styles).toContain(".support-case-workspace")
     expect(contentSearch).toContain("support-ai-search")
     expect(contentSearch).toContain("bg-card px-1.5")

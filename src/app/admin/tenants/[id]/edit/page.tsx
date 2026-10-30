@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Card } from "@/components/ui/card"
@@ -9,24 +9,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Loader2, Save, Check, Handshake, Mail, MessageSquare, Ticket, Wallet, BarChart3, Target, MapPin, Settings, Zap, Upload, X, Sparkles, HeartPulse, Umbrella, Landmark, Tv2, Flame, FileText, Award, Activity, Phone } from "lucide-react"
+import { ArrowLeft, Loader2, Save, Check, Handshake, Mail, MessageSquare, Ticket, Wallet, BarChart3, Target, MapPin, Settings, Zap, Upload, X, Sparkles, HeartPulse, Umbrella, Landmark, Tv2, Flame, FileText, Award, Activity, Phone, Users } from "lucide-react"
 import Link from "next/link"
+import { VoiceNumbersPanel } from "@/components/admin/voice-numbers-panel"
 import { MODULE_REGISTRY, type ModuleId, ADDON_MODULES, withRequiredModules } from "@/lib/modules"
 import { Switch } from "@/components/ui/switch"
 import {
-  SIDEBAR_SECTIONS,
-  TOGGLEABLE_MODULES,
-  countEnabledModules,
-  enableAllModules,
-  clearAllModules,
-  CAPABILITY_SECTIONS,
-  isCapabilityEnabled,
-  enableCapability,
-  disableCapability,
+  TENANT_MODULE_SECTIONS,
+  TENANT_MODULE_CONTROLS,
+  isTenantModuleSelected,
+  isTenantModulePageEnabled,
+  setTenantModuleSelection,
 } from "@/lib/admin-sidebar-catalog"
-import { WorkforceCapabilityControl } from "../workforce-capability-control"
+import { EDITABLE_TENANT_CAPABILITIES, getTenantEditorCapabilities, type TenantEditorCapabilities } from "@/lib/tenant-editor-entitlements"
 
-// SIDEBAR_SECTIONS + TOGGLEABLE_MODULES are derived from the live `navItems`
+// TENANT_MODULE_SECTIONS + TENANT_MODULE_CONTROLS are derived from the live `navItems`
 // (see src/lib/admin-sidebar-catalog.ts) — single source of truth, so this
 // admin module catalog can never silently drift from the real sidebar again.
 
@@ -52,7 +49,7 @@ const AI_AUTOMATION_FEATURES: { scenario: string; label: string; shadowKey: stri
 ]
 
 // NB: group order + which groups exist are DERIVED from navItems (via
-// SIDEBAR_SECTIONS / NAV_GROUP_ORDER) — this map only supplies per-group styling.
+// TENANT_MODULE_SECTIONS / NAV_GROUP_ORDER) — this map only supplies per-group styling.
 // The old hand-maintained GROUP_ORDER const was dead (never referenced) and
 // listed a phantom "ERP" group that no nav item uses, so it was removed.
 const GROUP_STYLE: Record<string, { icon: any; color: string; bg: string; border: string }> = {
@@ -68,6 +65,7 @@ const GROUP_STYLE: Record<string, { icon: any; color: string; bg: string; border
   Finance:          { icon: Wallet,        color: "text-amber-500",  bg: "bg-amber-50",   border: "border-amber-200" },
   Analytics:        { icon: BarChart3,     color: "text-purple-500", bg: "bg-purple-50",  border: "border-purple-200" },
   "Route & Field":  { icon: MapPin,        color: "text-cyan-500",   bg: "bg-cyan-50",    border: "border-cyan-200" },
+  Personnel:        { icon: Users,         color: "text-teal-600",   bg: "bg-teal-50",    border: "border-teal-200" },
   // Phase-7 industry clouds — now surfaced via navItems derivation (were absent
   // from the old hand-maintained catalog), styled to match the sidebar palette.
   "Health Cloud":       { icon: HeartPulse, color: "text-rose-500",    bg: "bg-rose-50",    border: "border-rose-200" },
@@ -87,6 +85,7 @@ interface TenantData {
   maxContacts: number
   branding: any
   features: any
+  modules?: Record<string, boolean>
   isActive: boolean
   serverType: string
   provisionedAt: string | null
@@ -105,7 +104,6 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
   // Nav-item labels live in the "nav" namespace (same keys the sidebar uses),
   // so the derived catalog resolves item.tKey through this.
   const tNav = useTranslations("nav")
-  const hrmLabel = tNav("groups.HRM")
 
   const [tenant, setTenant] = useState<TenantData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -114,11 +112,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
   const [saved, setSaved] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [hrmBusy, setHrmBusy] = useState(() => CAPABILITY_SECTIONS.some(
-    (section) => section.items.some((item) => item.capabilityId === "workforce-hrm"),
-  ))
-  const [capabilityRevision, setCapabilityRevision] = useState(0)
-  const onHrmBusyChange = useCallback((busy: boolean) => setHrmBusy(busy), [])
+  const initialCapabilities = useRef<TenantEditorCapabilities>({ "route-field": false, personnel: false })
   const saveInFlight = useRef(false)
   const mounted = useRef(true)
 
@@ -131,6 +125,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
     primaryColor: "#6C63FF",
     logo: "",
     features: [] as string[],
+    capabilities: { "route-field": false, personnel: false } as TenantEditorCapabilities,
     addons: [] as string[],
     orgLanguage: "",
     aiDailyBudgetUsd: "",
@@ -153,6 +148,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
           const branding = typeof t.branding === "string" ? JSON.parse(t.branding || "{}") : (t.branding || {})
           const featuresRaw = typeof t.features === "string" ? JSON.parse(t.features || "[]") : (t.features || [])
           const settings = typeof t.settings === "string" ? JSON.parse(t.settings || "{}") : (t.settings || {})
+          initialCapabilities.current = getTenantEditorCapabilities(t)
           setForm({
             name: t.name,
             slug: t.slug,
@@ -162,6 +158,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
             primaryColor: branding.primaryColor || "#6C63FF",
             logo: branding.logo || "",
             features: withRequiredModules(featuresRaw),
+            capabilities: initialCapabilities.current,
             addons: Array.isArray(t.addons) ? t.addons : [],
             orgLanguage: settings.language || settings.locale || "",
             landingPath: typeof settings.landingPath === "string" ? settings.landingPath : "",
@@ -230,7 +227,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
   }
 
   async function handleSave() {
-    if (saveInFlight.current || hrmBusy) return
+    if (saveInFlight.current) return
     saveInFlight.current = true
     setSaving(true)
     setError("")
@@ -261,6 +258,9 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
           maxContacts: form.maxContacts,
           branding: { primaryColor: form.primaryColor, logo: form.logo || undefined },
           features: form.features,
+          capabilityChanges: Object.fromEntries(EDITABLE_TENANT_CAPABILITIES
+            .filter((id) => form.capabilities[id] !== initialCapabilities.current[id])
+            .map((id) => [id, form.capabilities[id]])),
           addons: form.addons,
           settings: settingsPatch,
         }),
@@ -271,8 +271,15 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
         setError(data.error || "Update failed")
         return
       }
+      const capabilities = data.data?.modules
+        ? getTenantEditorCapabilities(data.data)
+        : form.capabilities
+      initialCapabilities.current = capabilities
+      setForm((previous) => ({
+        ...previous,
+        capabilities,
+      }))
       setSaved(true)
-      setCapabilityRevision((revision) => revision + 1)
       setTimeout(() => { if (mounted.current) setSaved(false) }, 3000)
     } catch (err: any) {
       if (mounted.current) setError(err.message || "Network error")
@@ -316,7 +323,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               <Check className="w-4 h-4" /> {t("tenants.saved")}
             </span>
           )}
-          <Button onClick={handleSave} disabled={saving || hrmBusy}>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
             {t("tenants.save")}
           </Button>
@@ -362,51 +369,48 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
           </Card>
 
           {/* Modules — shows every sidebar page grouped by section */}
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-5">
+          <Card className="p-5" data-tenant-module-picker>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
               <div>
                 <h3 className="text-base font-semibold">{t("tenants.activeModules")}</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {t("tenants.modulesCount", { count: countEnabledModules(form.features), total: TOGGLEABLE_MODULES.length })}
+                  {t("tenants.modulesCount", { count: TENANT_MODULE_CONTROLS.filter((control) => isTenantModuleSelected(form, control)).length, total: TENANT_MODULE_CONTROLS.length })}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm"
-                  onClick={() => setForm((f) => ({ ...f, features: enableAllModules(f.features) }))}
+                  disabled={saving}
+                  onClick={() => setForm((f) => ({ ...f, ...setTenantModuleSelection(f, TENANT_MODULE_CONTROLS, true) }))}
                 >{t("tenants.selectAll")}</Button>
                 <Button type="button" variant="outline" size="sm"
-                  onClick={() => setForm((f) => ({ ...f, features: clearAllModules(f.features) }))}
+                  disabled={saving}
+                  onClick={() => setForm((f) => ({ ...f, ...setTenantModuleSelection(f, TENANT_MODULE_CONTROLS, false) }))}
                 >{t("tenants.clearAll")}</Button>
               </div>
             </div>
 
-            {/* Sections: hide the whole card when every toggleable module in
-                 it is off. Every nav item carries a toggleable group id since
-                 the narrow-union task (no always-on `core` id remains). Hidden
-                 categories surface as compact chips below the list — clicking
-                 re-enables everything in that group. */}
+            {/* Both module and capability controls share one navigation category. */}
             {(() => {
-              const annotated = SIDEBAR_SECTIONS.map((section) => {
-                const ids = [...new Set(section.items.map((i) => i.moduleId))]
-                const active = ids.filter((id) => form.features.includes(id)).length
-                return { section, ids, active, total: ids.length }
+              const annotated = TENANT_MODULE_SECTIONS.map((section) => {
+                const active = section.controls.filter((control) => isTenantModuleSelected(form, control)).length
+                return { section, active, total: section.controls.length }
               })
               const visible = annotated.filter(({ active, total }) => total === 0 || active > 0)
               const hidden = annotated.filter(({ active, total }) => total > 0 && active === 0)
               return (
                 <>
             <div className="space-y-4">
-              {visible.map(({ section, ids: sectionModuleIds, active: activeCount, total: totalToggleable }) => {
+              {visible.map(({ section, active: activeCount, total: totalToggleable }) => {
                 const style = GROUP_STYLE[section.group] || GROUP_STYLE.Settings
                 const GroupIcon = style.icon
 
                 return (
-                  <div key={section.group} className={`rounded-xl border ${style.border} ${style.bg} overflow-hidden`}>
+                  <div key={section.group} data-module-group={section.group} className={`rounded-xl border ${style.border} ${style.bg} overflow-hidden`}>
                     {/* Group header */}
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <GroupIcon className={`w-4 h-4 ${style.color}`} />
-                        <span className={`text-sm font-semibold ${style.color}`}>{tNav(`groups.${section.group}`)}</span>
+                        <span className={`text-sm font-semibold ${style.color}`}>{section.group === "Social Monitoring" ? t("tenants.brandMonitoring") : tNav(`groups.${section.group}`)}</span>
                       </div>
                       {totalToggleable > 0 && (
                         <span className="text-xs text-muted-foreground">{activeCount}/{totalToggleable}</span>
@@ -414,47 +418,62 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
                     </div>
                     {/* Pages list */}
                     <div className="bg-white/80 px-3 py-2">
-                      {/* Module toggles — one per unique moduleId */}
-                      {sectionModuleIds.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {sectionModuleIds.map((modId) => {
-                            const isActive = form.features.includes(modId)
-                            const modDef = MODULE_REGISTRY[modId as ModuleId]
-                            return (
-                              <button
-                                key={modId}
-                                type="button"
-                                disabled={modId === "crm" && form.features.includes("support")}
-                                onClick={() => toggleFeature(modId)}
-                                title={modId === "crm" && form.features.includes("support") ? "Support requires the shared companies and clients in Основная." : undefined}
-                                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all ${
-                                  isActive
-                                    ? `${style.bg} ${style.border} border border-zinc-200 dark:border-zinc-700 shadow-sm font-medium`
-                                    : "border border-zinc-200 hover:bg-muted/30 text-muted-foreground"
-                                } ${modId === "crm" && form.features.includes("support") ? "cursor-not-allowed" : ""}`}
-                              >
-                                <div className={`w-7 h-[16px] rounded-full relative transition-colors flex-shrink-0 ${isActive ? "bg-primary" : "bg-zinc-200"}`}>
-                                  <div className={`absolute top-[2px] w-[12px] h-[12px] rounded-full bg-white shadow transition-transform ${isActive ? "left-[13px]" : "left-[2px]"}`} />
-                                </div>
-                                {modDef?.name || modId}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {section.controls.map((control) => {
+                          const isActive = isTenantModuleSelected(form, control)
+                          const label = control.kind === "module" && control.id === "mtm"
+                            ? t("tenants.fieldTools")
+                            : control.id === "social"
+                              ? t("tenants.brandMonitoring")
+                              : tNav(`groups.${section.group}`)
+                          const requiredBySupport = control.id === "crm" && form.features.includes("support")
+                          return (
+                            <label
+                              key={control.id}
+                              data-tenant-capability={control.kind === "capability" ? control.id : undefined}
+                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                                isActive ? `${style.bg} ${style.border} shadow-sm font-medium` : "border-zinc-200 text-muted-foreground"
+                              }`}
+                            >
+                              <Switch
+                                checked={isActive}
+                                disabled={saving || requiredBySupport}
+                                aria-label={label}
+                                onCheckedChange={(enabled) => setForm((f) => ({
+                                  ...f, ...setTenantModuleSelection(f, [control], enabled),
+                                }))}
+                              />
+                              {label}
+                            </label>
+                          )
+                        })}
+                      </div>
                       {/* Pages affected */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                         {section.items.map((item) => {
-                          const isEnabled = form.features.includes(item.moduleId)
+                          const isEnabled = isTenantModulePageEnabled(form, item)
+                          const { feature } = item
                           return (
                             <div
                               key={item.href}
+                              data-page-feature={feature}
                               className={`flex items-center gap-2 rounded px-2.5 py-1.5 text-xs transition-colors ${
                                 isEnabled ? "text-foreground" : "text-muted-foreground/40 line-through"
                               }`}
                             >
                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isEnabled ? "bg-green-400" : "bg-zinc-200"}`} />
-                              {tNav(item.tKey)}
+                              {feature ? (
+                                // A page behind its own flag: the group switch alone
+                                // does not show it, so the flag sits on the page row.
+                                <label className="inline-flex items-center gap-1.5 no-underline">
+                                  <Switch
+                                    checked={form.features.includes(feature)}
+                                    aria-label={tNav(item.tKey)}
+                                    onCheckedChange={() => toggleFeature(feature)}
+                                  />
+                                  {tNav(item.tKey)}
+                                </label>
+                              ) : tNav(item.tKey)}
                             </div>
                           )
                         })}
@@ -469,16 +488,17 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               <div className="mt-4 pt-4 border-t border-zinc-200" role="group" aria-label={t("tenants.hiddenCategories")}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground">{t("tenants.hiddenCategories")}</span>
-                  {hidden.map(({ section, ids }) => {
+                  {hidden.map(({ section }) => {
                     const style = GROUP_STYLE[section.group] || GROUP_STYLE.Settings
                     const GroupIcon = style.icon
-                    const groupLabel = tNav(`groups.${section.group}`)
+                    const groupLabel = section.group === "Social Monitoring" ? t("tenants.brandMonitoring") : tNav(`groups.${section.group}`)
                     const label = t("tenants.enableAllInGroup", { group: groupLabel })
                     return (
                       <button
                         key={section.group}
                         type="button"
-                        onClick={() => setForm((f) => ({ ...f, features: withRequiredModules([...f.features, ...ids]) }))}
+                        disabled={saving}
+                        onClick={() => setForm((f) => ({ ...f, ...setTenantModuleSelection(f, section.controls, true) }))}
                         className={`inline-flex items-center gap-1.5 rounded-full border border-dashed ${style.border} px-2.5 py-1 text-xs ${style.color} hover:bg-muted/40 transition-colors`}
                         aria-label={label}
                         title={label}
@@ -504,80 +524,6 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               <p className="text-xs text-amber-600 mt-4">⚠ Основная / Sales / Settings are core groups — tenant users lose those sections when disabled. Superadmin can always re-enable from this panel.</p>
             )}
           </Card>
-
-          {/* Capabilities — sidebar areas gated by a tenant capability rather
-              than a group module. They are deliberately absent from the module
-              card above (a Workforce grant must not read as an MTM module
-              toggle), which left HRM with no control anywhere at all: the whole
-              group could not be turned on or off from this editor. Each switch
-              writes the capability's own entitlement key, the same string the
-              capability resolver reads. */}
-          {CAPABILITY_SECTIONS.length > 0 && (
-            <Card className="p-5">
-              <div className="mb-5">
-                <h3 className="text-base font-semibold">{t("tenants.capabilities")}</h3>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {t("tenants.capabilitiesDesc")}
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {CAPABILITY_SECTIONS.map((section) => {
-                  const capabilityIds = [...new Set(section.items.map((item) => item.capabilityId))]
-                  return (
-                    <div key={section.group} className="rounded-lg border p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {tNav(`groups.${section.group}`)}
-                      </p>
-                      <div className="mt-3 space-y-3">
-                        {capabilityIds.map((capabilityId) => {
-                          const enabled = isCapabilityEnabled(form.features, capabilityId)
-                          const pages = section.items.filter((item) => item.capabilityId === capabilityId)
-                          if (capabilityId === "workforce-hrm") {
-                            return <WorkforceCapabilityControl
-                              key={capabilityId}
-                              tenantId={tenantId}
-                              label={hrmLabel === "HRM" ? hrmLabel : `${hrmLabel} (HRM)`}
-                              pages={pages.map((page) => tNav(page.tKey)).join(" · ")}
-                              refreshRevision={capabilityRevision}
-                              disabled={saving}
-                              onBusyChange={onHrmBusyChange}
-                            />
-                          }
-                          return (
-                            <div
-                              key={capabilityId}
-                              data-tenant-capability={capabilityId}
-                              className="flex items-start justify-between gap-4"
-                            >
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium">{capabilityId}</p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {pages.map((page) => tNav(page.tKey)).join(" · ")}
-                                </p>
-                              </div>
-                              <Switch
-                                checked={enabled}
-                                aria-label={capabilityId}
-                                onCheckedChange={(next) =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    features: next
-                                      ? enableCapability(f.features, capabilityId)
-                                      : disableCapability(f.features, capabilityId),
-                                  }))
-                                }
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </Card>
-          )}
 
           {/* AI Automation — per-scenario shadow/live toggles */}
           <Card className="p-5">
@@ -660,27 +606,8 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
             <div className="mt-5 pt-5 border-t border-zinc-200/60 dark:border-zinc-700/60 space-y-2">
               <h4 className="text-sm font-semibold">Extra features</h4>
               <p className="text-[11px] text-muted-foreground">
-                Optional modules that aren&apos;t tied to a plan tier. Available on top of the main module list.
+                Optional switches that aren&apos;t tied to a plan tier. Pages behind their own flag (complaints register, pharmacy phone orders) are switched on their row in Active Modules above.
               </p>
-              <div className="flex items-center justify-between py-2 px-3 rounded-md border border-zinc-200/40 dark:border-zinc-700/40 bg-muted/20">
-                <div>
-                  <div className="text-sm font-medium">Complaints Register</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Дополнительный раздел /complaints в группе Support (FMCG / consumer-goods use case).
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleFeature("complaints_register")}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                    form.features.includes("complaints_register")
-                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                      : "bg-transparent text-muted-foreground border border-zinc-200 dark:border-zinc-700 hover:bg-muted"
-                  }`}
-                >
-                  {form.features.includes("complaints_register") ? "on" : "off"}
-                </button>
-              </div>
               <div className="flex items-center justify-between py-2 px-3 rounded-md border border-zinc-200/40 dark:border-zinc-700/40 bg-muted/20">
                 <div>
                   <div className="text-sm font-medium">Social: Brand-protection only</div>
@@ -818,9 +745,9 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
                   <option value="">{t("tenants.landingPageAuto")}</option>
                   {/* Только страницы включённых модулей: вести вход на
                       выключенный модуль бессмысленно — гейт лэйаута его закроет. */}
-                  {SIDEBAR_SECTIONS.flatMap((section) =>
+                  {TENANT_MODULE_SECTIONS.flatMap((section) =>
                     section.items
-                      .filter((item) => form.features.includes(item.moduleId))
+                      .filter((item) => isTenantModuleSelected(form, item.control))
                       .map((item) => (
                         <option key={item.href} value={item.href}>
                           {tNav(`groups.${section.group}`)} · {tNav(item.tKey)}
@@ -886,6 +813,8 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               </div>
             </div>
           </Card>
+
+          <VoiceNumbersPanel tenantId={tenantId} />
 
           <Card className="p-5">
             <h3 className="text-base font-semibold mb-4">{t("tenants.branding")}</h3>

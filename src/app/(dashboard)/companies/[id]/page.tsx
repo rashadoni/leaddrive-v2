@@ -21,6 +21,7 @@ import { useFieldPermissions } from "@/hooks/use-field-permissions"
 import { ClickToCallButton } from "@/components/call-widget"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { CompanyMonitoringLink } from "@/components/social/company-monitoring-link"
+import { CompanyPhoneOrders, PharmacySourceNote } from "@/components/pharmacy-orders/company-phone-orders"
 
 interface CompanyDetail {
   id: string
@@ -36,6 +37,17 @@ interface CompanyDetail {
   employeeCount: number | null
   annualRevenue: number | null
   description: string | null
+  voen: string | null
+  director: string | null
+  slaPolicyId: string | null
+  creditLimit: number | null
+  creditCurrency: string | null
+  category: string
+  managerId: string | null
+  /** Set on a pharmacy from Zeytun's 1C list: 1C owns its name, address, city and phone. */
+  externalSource: string | null
+  externalSyncedAt: string | null
+  externalRemovedAt: string | null
   createdAt: string
   contacts: Array<{ id: string; fullName: string; position: string | null; email: string | null; phone: string | null }>
   deals: Array<{ id: string; name: string; stage: string; valueAmount: number; currency: string; createdAt: string }>
@@ -85,6 +97,8 @@ export default function CompanyDetailPage() {
   const { data: session } = useSession()
   const t = useTranslations("companies")
   const tc = useTranslations("common")
+  const tv = useTranslations("companyVoen")
+  const tp = useTranslations("pharmacyPhoneOrders")
   const locale = useLocale()
   const [company, setCompany] = useState<CompanyDetail | null>(null)
   useAutoTour("companyDetail")
@@ -202,6 +216,8 @@ export default function CompanyDetailPage() {
         </Button>
       </div>
 
+      {company.externalSource ? <PharmacySourceNote company={company} /> : null}
+
       {/* Мониторинг бренда: один и тот же клиент больше не заводится дважды. */}
       <CompanyMonitoringLink companyId={String(company.id)} companyName={company.name} />
 
@@ -245,8 +261,9 @@ export default function CompanyDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue={company.externalSource ? "phone-orders" : "overview"} className="space-y-4">
         <TabsList className="bg-muted/60 p-1 h-auto flex-wrap" data-tour-id="company-tabs">
+          {company.externalSource ? <TabsTrigger value="phone-orders" className="rounded-md text-sm">{tp("companyTabOrders")}</TabsTrigger> : null}
           <TabsTrigger value="overview" className="rounded-md text-sm">{t("tabOverview")} <InfoHint text={t("hintTabOverview")} size={12} className="ml-1" /></TabsTrigger>
           <TabsTrigger value="contacts" className="rounded-md text-sm">{t("tabContacts")} ({company.contacts?.length || 0}) <InfoHint text={t("hintTabContacts")} size={12} className="ml-1" /></TabsTrigger>
           <TabsTrigger value="deals" className="rounded-md text-sm">{t("tabDeals")} ({company.deals?.length || 0}) <InfoHint text={t("hintTabDeals")} size={12} className="ml-1" /></TabsTrigger>
@@ -272,6 +289,9 @@ export default function CompanyDetailPage() {
                 )}
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   {[
+                    isVisible("voen") ? ["VÖEN", company.voen || "—"] : null,
+                    isVisible("director") ? [tv("director"), company.director || "—"] : null,
+                    isVisible("address") ? [tc("address"), company.address || "—"] : null,
                     isVisible("industry") ? [tc("industry"), company.industry || "—"] : null,
                     isVisible("employeeCount") ? [tc("employees"), company.employeeCount?.toString() || "—"] : null,
                     isVisible("country") ? [tc("country"), company.country || "—"] : null,
@@ -318,7 +338,7 @@ export default function CompanyDetailPage() {
                 {(company.contacts || []).map(contact => (
                   <div
                     key={contact.id}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => router.push(`/contacts/${contact.id}`)}
                   >
                     <div className="flex items-center gap-3">
@@ -353,7 +373,7 @@ export default function CompanyDetailPage() {
                 {(company.deals || []).map(deal => (
                   <div
                     key={deal.id}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => router.push(`/deals/${deal.id}`)}
                   >
                     <div>
@@ -402,7 +422,7 @@ export default function CompanyDetailPage() {
                           <TimelineIcon type={entry.type} activityType={entry.meta?.activityType} />
                         </div>
                         <div
-                          className={`rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 transition-colors ${entry.type === "deal" ? "cursor-pointer hover:bg-muted/50" : ""}`}
+                          className={`rounded-lg border border-border p-3 transition-colors ${entry.type === "deal" ? "cursor-pointer hover:bg-muted/50" : ""}`}
                           onClick={() => entry.type === "deal" && router.push(`/deals/${entry.id}`)}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -441,7 +461,7 @@ export default function CompanyDetailPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead><tr className="border-b border-zinc-200 dark:border-zinc-700 text-left">
+                    <thead><tr className="border-b border-border text-left">
                       <th className="py-2 px-2 font-medium">Date</th>
                       <th className="py-2 px-2 font-medium">Direction</th>
                       <th className="py-2 px-2 font-medium">Duration</th>
@@ -450,7 +470,7 @@ export default function CompanyDetailPage() {
                     </tr></thead>
                     <tbody>
                       {callHistory.map((call: any) => (
-                        <tr key={call.id} className="border-b border-zinc-200 dark:border-zinc-700 hover:bg-muted/50">
+                        <tr key={call.id} className="border-b border-border hover:bg-muted/50">
                           <td className="py-2 px-2 text-muted-foreground">{new Date(call.createdAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
                           <td className="py-2 px-2"><Badge variant={call.direction === "outbound" ? "default" : "secondary"} className="text-xs">{call.direction}</Badge></td>
                           <td className="py-2 px-2">{call.duration ? `${Math.floor(call.duration / 60)}:${String(call.duration % 60).padStart(2, "0")}` : "—"}</td>
@@ -465,6 +485,12 @@ export default function CompanyDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {company.externalSource ? (
+          <TabsContent value="phone-orders">
+            <CompanyPhoneOrders company={company} onSaved={fetchCompany} />
+          </TabsContent>
+        ) : null}
 
         {/* Pricing */}
         <TabsContent value="pricing" className="space-y-4">
@@ -500,7 +526,7 @@ export default function CompanyDetailPage() {
                   {(pricingProfile.categories || []).map((pc: any) => {
                     const isExpanded = expandedPricingCats.has(pc.id)
                     return (
-                      <div key={pc.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                      <div key={pc.id} className="border border-border rounded-lg">
                         <button
                           onClick={() => {
                             const next = new Set(expandedPricingCats)
@@ -530,7 +556,7 @@ export default function CompanyDetailPage() {
                               </thead>
                               <tbody>
                                 {pc.services.map((svc: any) => (
-                                  <tr key={svc.id} className="border-t border-zinc-200 dark:border-zinc-700">
+                                  <tr key={svc.id} className="border-t border-border">
                                     <td className="py-1.5">{svc.name}</td>
                                     <td className="py-1.5 text-center text-xs text-muted-foreground">{svc.unit}</td>
                                     <td className="py-1.5 text-center font-mono">{svc.qty}</td>
@@ -557,7 +583,7 @@ export default function CompanyDetailPage() {
                   <CardContent>
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-zinc-200 dark:border-zinc-700 text-left text-muted-foreground">
+                        <tr className="border-b border-border text-left text-muted-foreground">
                           <th className="pb-2 pr-4">{tc("type")}</th>
                           <th className="pb-2 pr-4">{tc("name")}</th>
                           <th className="pb-2 pr-4 text-right">{tc("total")}</th>
@@ -567,7 +593,7 @@ export default function CompanyDetailPage() {
                       </thead>
                       <tbody>
                         {pricingSales.map((sale: any) => (
-                          <tr key={sale.id} className="border-b border-zinc-200 dark:border-zinc-700 last:border-0">
+                          <tr key={sale.id} className="border-b border-border last:border-0">
                             <td className="py-2 pr-4">
                               <Badge className={sale.type === "recurring" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"}>
                                 {sale.type === "recurring" ? t("recurring") : t("oneTime")}
@@ -577,7 +603,7 @@ export default function CompanyDetailPage() {
                             <td className="py-2 pr-4 text-right font-mono font-medium">{sale.total?.toLocaleString(undefined, { maximumFractionDigits: 2 })} ₼</td>
                             <td className="py-2 pr-4 text-xs">{sale.effectiveDate ? formatDate(sale.effectiveDate, locale) : "—"}</td>
                             <td className="py-2">
-                              <Badge variant="outline" className={sale.status === "active" ? "text-green-600 border-green-300" : "text-muted-foreground border-zinc-200 dark:border-zinc-700"}>
+                              <Badge variant="outline" className={sale.status === "active" ? "text-green-600 border-green-300" : "text-muted-foreground border-border"}>
                                 {sale.status === "active" ? t("saleActive") : sale.status === "cancelled" ? t("saleCancelled") : t("saleCompleted")}
                               </Badge>
                             </td>
@@ -603,6 +629,12 @@ export default function CompanyDetailPage() {
           website: company.website || "", phone: company.phone || "", email: company.email || "",
           address: company.address || "", city: company.city || "", country: company.country || "",
           status: company.status, description: company.description || "",
+          // Everything the form saves, or saving from here would clear it.
+          voen: company.voen || "", director: company.director || "",
+          slaPolicyId: company.slaPolicyId,
+          creditLimit: company.creditLimit != null ? String(company.creditLimit) : "",
+          creditCurrency: company.creditCurrency || "",
+          externalSource: company.externalSource,
         }}
       />
     </div>

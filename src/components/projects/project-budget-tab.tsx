@@ -40,7 +40,7 @@ export function ProjectBudgetTab({ project, members, getUserName }: ProjectBudge
       </MotionItem>
 
       <MotionItem>
-        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-5 hover:shadow-md transition-all duration-200">
+        <div className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-all duration-200">
           <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("budgetProgress")}</h3>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div className={cn("h-full rounded-full transition-all duration-700 ease-out", budgetUsedPct > 90 ? "bg-red-500" : budgetUsedPct > 70 ? "bg-amber-500" : "bg-green-500")}
@@ -55,7 +55,7 @@ export function ProjectBudgetTab({ project, members, getUserName }: ProjectBudge
 
       {membersWithCost.length > 0 && (
         <MotionItem>
-          <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-5 hover:shadow-md transition-all duration-200">
+          <div className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-all duration-200">
             <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("members")} Cost</h3>
             <div className="space-y-2">
               {membersWithCost.map(m => {
@@ -63,7 +63,7 @@ export function ProjectBudgetTab({ project, members, getUserName }: ProjectBudge
                 const userName = getUserName(m.userId)
                 const avatarColor = AVATAR_COLORS[userName.charCodeAt(0) % AVATAR_COLORS.length]
                 return (
-                  <div key={m.id} className="flex items-center justify-between text-sm py-2 border-b border-zinc-200 dark:border-zinc-700/20 last:border-0">
+                  <div key={m.id} className="flex items-center justify-between text-sm py-2 border-b border-border last:border-0">
                     <div className="flex items-center gap-2.5">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${avatarColor}`}>
                         {userName.charAt(0).toUpperCase()}

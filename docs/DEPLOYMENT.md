@@ -190,6 +190,56 @@ target aborts the release; retired targets are never accepted or migrated.
   GNU time records peak RSS in the build log. The prior 8 GiB heap was exhausted
   by the integrated server compilation in PR #747; successful CI is still
   required before release.
+- Every cold build (`LEADDRIVE_COLD_PRODUCTION_BUILD=1`, which turns on
+  Next's webpack build worker) runs `scripts/ci/patch-next-build-worker-trace.mjs`
+  after `npm ci` and before `next build`. Each worker returns its compiler's
+  result to the parent as one JSON string over IPC, and V8 cannot make a string
+  longer than 536,870,888 characters. Measured 2026-10-21 (Next 16.2.11, server
+  compiler, commit b622b96c8): `debugTraceEvents` 349,059,529 characters in
+  20,365 events — `build-module` 172.8M and `add-entry` 172.3M, because each
+  next-app-loader span carries its route's ~100 KB loader query —
+  `buildTraceContext` 186,969,077 (entriesTrace 173.6M, chunksTrace 13.4M),
+  `pluginState` 1,273,938; ≈537M in all. The worker threw
+  `RangeError: Invalid string length` in `writeChannelMessage`, the parent was
+  never told, and the step sat silent on "Creating an optimized production
+  build" until its 60-minute timeout; the parent commit, one route fewer,
+  still built. Each API route adds about 300 K characters.
+  The patch flips one literal in `next/dist/build/webpack-build/index.js`
+  (`shouldSaveTraceEvents: true` → `false` in the worker's `traceState`), so the
+  worker sends back `debugTraceEvents: []`. Those events only fed `.next/trace`,
+  a debug file nothing here reads. `buildTraceContext` is still sent: standalone
+  output tracing needs it, and it is now what grows towards the limit (187M of
+  536.9M at the measured commit — headroom, not a cure). The script refuses
+  any Next other than 16.2.x and any file where the line is not there exactly
+  once — after a Next upgrade, re-read the worker code and update it.
+  `scripts/ci/test-event-platform-assets.mjs` fails CI for a cold build whose
+  patch step is missing, has its own `if:`, may fail (`continue-on-error`,
+  `|| true`, anything else on its run line), follows a reinstall, runs in
+  another directory, or comes from a checkout other than the workflow's own
+  commit. That last one matters for `deploy.yml`: a recovery-bootstrap-resume
+  builds an older main commit that may predate the script, so the build job
+  takes the script from `github.sha` in a sparse side checkout.
+  `src/__tests__/ci-patch-next-build-worker-trace.test.ts` tests the script on
+  copies of the installed Next files. The script refuses to run outside GitHub
+  Actions unless given `--allow-local`: on a development box `node_modules/next`
+  is shared by every worktree, so never pass it there.
+- CI production builds apply `scripts/ci/patch-prisma-fluent-field-map.mjs`
+  after dependency installation/client generation and before compilation.
+  Prisma 6.19.2 rebuilds a field-name map using repeated object spread on each
+  fluent model-method access. With more than 500 Organization fields this is
+  measurable synchronous work before SQL (production profile, 2026-10-26).
+  The patch uses linear `Object.fromEntries` construction in the library
+  engine's CommonJS and ESM runtimes. Query arguments, relation chaining,
+  transactions, authorization and tenant policies are unchanged.
+  It accepts only 6.19.2 and exactly the reviewed source expression; review or
+  retire it when upgrading Prisma. It validates both files before writing,
+  refuses shared/symlinked dependency trees and requires GitHub Actions or
+  `--allow-local` for an isolated disposable install. Never patch the running
+  production dependency tree. `--check .next/standalone` verifies the assembled
+  artifact without writing. Unlike the Next trace workaround, this runtime
+  patch belongs to the artifact's source commit: historical recovery targets
+  predating the script retain their original behavior. Tests use copied
+  runtimes; development/shared dependencies are left untouched.
 - PM2 runs `.next/standalone/server.js` via `/tmp/start-leaddrive.sh`
 - Start script reads `/etc/leaddrive/app.env`; `/opt/leaddrive-v2/.env` is only
   a compatibility symlink during the controlled transition.

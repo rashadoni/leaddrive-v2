@@ -33,6 +33,7 @@ import { useFieldPermissions } from "@/hooks/use-field-permissions"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { DealLineItems } from "@/components/deals/deal-line-items"
 import { STAGE_COLORS } from "@/lib/constants"
 import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
 
@@ -102,7 +103,7 @@ function TagsInput({ tags, onChange, addTagLabel }: { tags: string[]; onChange: 
         </span>
       ))}
       <input
-        className="h-5 w-20 border border-zinc-200 dark:border-zinc-700 rounded-full px-2 text-[11px] bg-background focus:outline-none focus:ring-2 focus:ring-ring/30"
+        className="h-5 w-20 border border-input rounded-full px-2 text-[11px] bg-background focus:outline-none focus:ring-2 focus:ring-ring/30"
         placeholder={`+ ${addTagLabel}`}
         value={input}
         onChange={e => setInput(e.target.value)}
@@ -159,7 +160,7 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+      <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           {t("aiPredictionLoading")}
@@ -178,7 +179,7 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("aiPrediction")}</span>
         <button
@@ -276,6 +277,7 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
 // ── Main page ──
 export default function DealDetailPage() {
   const t = useTranslations("deals")
+  const tl = useTranslations("dealLines")
   const tc = useTranslations("common")
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -287,6 +289,10 @@ export default function DealDetailPage() {
   const [deal, setDeal] = useState<Deal | null>(null)
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
+  // Product lines: a remount key for «Next best offers» adding one, and
+  // whether there are any (the edit form then locks amount and currency).
+  const [linesKey, setLinesKey] = useState(0)
+  const [lineCount, setLineCount] = useState(0)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [timelineKey, setTimelineKey] = useState(0)
   const [offersCount, setOffersCount] = useState(0)
@@ -581,7 +587,7 @@ export default function DealDetailPage() {
       )}>
         {/* LEFT: Data sidebar */}
         <div className="space-y-4 [grid-area:left] min-w-0">
-          <div data-tour-id="deal-sidebar" className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+          <div data-tour-id="deal-sidebar" className="rounded-xl border border-border bg-card overflow-hidden">
             <DealSidebar
               deal={deal}
               orgId={orgId}
@@ -593,7 +599,7 @@ export default function DealDetailPage() {
           </div>
 
           {/* Next Best Offers — right after record info, as in the Creatio reference */}
-          <NextBestOffers dealId={id} orgId={orgId} />
+          <NextBestOffers dealId={id} orgId={orgId} onAdded={() => { setLinesKey(k => k + 1); fetchDeal() }} />
         </div>
 
         {/* AI RAIL — 3rd column on xl, below the left rail otherwise */}
@@ -613,7 +619,7 @@ export default function DealDetailPage() {
 
         {/* MAIN: tabs (Обзор | Лента), Creatio-style */}
         <div className="space-y-4 [grid-area:main] min-w-0">
-          <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+          <div className="flex gap-1 border-b border-border">
             {([
               { id: "overview" as const, label: t("tabOverview") },
               { id: "feed" as const, label: t("toolbarFeed") },
@@ -654,6 +660,11 @@ export default function DealDetailPage() {
             })()}
           </CollapsibleSection>
 
+          {/* Product lines — the deal's amount is their sum (src/lib/deals/line-items.ts) */}
+          <CollapsibleSection title={tl("title")}>
+            <DealLineItems key={linesKey} dealId={id} orgId={orgId} onSaved={fetchDeal} onCountChange={setLineCount} />
+          </CollapsibleSection>
+
           {/* Customer details — collapsible, inside the content column as in Creatio */}
           {(deal.contact || deal.company) && (
             <CollapsibleSection title={t("customerDetails")}>
@@ -691,14 +702,14 @@ export default function DealDetailPage() {
           </div>
 
           {/* Unified Timeline */}
-          <div data-tour-id="deal-timeline" className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div data-tour-id="deal-timeline" className="rounded-xl border border-border bg-card p-4">
             <ActivityTimeline key={timelineKey} dealId={id} orgId={orgId} />
           </div>
           </div>
 
           {/* Tab: MEDDPICC (D1) — mounted lazily on first open */}
           {rightTab === "meddpicc" && (
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-4">
               <DealMeddpicc dealId={id} orgId={orgId} initial={deal.meddpicc} onSaved={fetchDeal} />
             </div>
           )}
@@ -710,6 +721,7 @@ export default function DealDetailPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         onSaved={fetchDeal}
+        amountFromLines={lineCount > 0}
         initialData={{
           id: deal.id,
           name: deal.name,

@@ -370,7 +370,7 @@ export default function EventDetailPage() {
           const isActive = s === event.status
           const isPast = STATUS_PIPELINE.indexOf(s) < idx
           return (
-            <button key={s} onClick={() => updateStatus(s)}
+            <button data-crm-color-role="status" key={s} onClick={() => updateStatus(s)}
               className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
                 isActive ? "bg-primary text-white shadow-md" :
                 isPast ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -559,10 +559,10 @@ export default function EventDetailPage() {
               <CardContent className="p-4 space-y-3">
                 {/* Mode toggle */}
                 <div className="flex gap-1">
-                  <Button size="sm" variant={addMode === "crm" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setAddMode("crm")}>
+                  <Button size="sm" variant={addMode === "crm" ? "selected" : "outline"} className="h-7 text-xs" onClick={() => setAddMode("crm")}>
                     <Users className="h-3 w-3 mr-1" /> {t("fromCrmContacts")}
                   </Button>
-                  <Button size="sm" variant={addMode === "manual" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setAddMode("manual")}>
+                  <Button size="sm" variant={addMode === "manual" ? "selected" : "outline"} className="h-7 text-xs" onClick={() => setAddMode("manual")}>
                     <UserPlus className="h-3 w-3 mr-1" /> {t("manualEntry")}
                   </Button>
                 </div>
@@ -570,7 +570,7 @@ export default function EventDetailPage() {
                 {/* Role selector */}
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-muted-foreground">{tc("role")}:</label>
-                  <select className="h-7 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 text-xs" value={pRole} onChange={e => setPRole(e.target.value)}>
+                  <select className="h-7 border border-input rounded-md px-2 text-xs" value={pRole} onChange={e => setPRole(e.target.value)}>
                     {["attendee","speaker","sponsor","organizer","vip"].map(r => (
                       <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
                     ))}

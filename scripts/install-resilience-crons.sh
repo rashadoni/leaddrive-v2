@@ -52,6 +52,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/inbox-autonomous-agent/ { next }
   /cron-trigger\.sh \/api\/cron\/chatwoot-inbound-poll/ { next }
   /cron-trigger\.sh \/api\/cron\/voice-session-reaper/ { next }
+  /cron-trigger\.sh \/api\/cron\/zeytun-catalog-refresh/ { next }
   /cron-trigger\.sh \/api\/cron\/voice-call-queues/ { next }
   /cron-trigger\.sh \/api\/cron\/commitment-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/missed-inbound-reconciliation/ { next }
@@ -65,6 +66,9 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
   /cron-trigger\.sh \/api\/cron\/sla-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/ticket-closure-requests/ { next }
+  /cron-trigger\.sh \/api\/cron\/booking-effects/ { next }
+  /cron-trigger\.sh \/api\/cron\/ad-conversions/ { next }
+  /cron-trigger\.sh \/api\/cron\/kapitalbank-reconcile/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?renewal-alerts([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?contract-approval-escalations([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?contract-milestone-reminders([ ?]|$)/ { next }
@@ -75,6 +79,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
 {
   cat "$CLEAN"
   printf '%s\n' "$BEGIN_MARKER"
+  # Spread the ticks over the minute instead of starting them all in its first
+  # second: cron-trigger.sh waits a fixed per-target offset below this many
+  # seconds (why — the comment above its use there). cron hands an environment
+  # line to every command after it, so it stays first in the block.
+  printf '%s\n' "CRON_TRIGGER_SPREAD_SECONDS=50"
   printf '%s\n' "* * * * * $TRIGGER /api/v1/journeys/process >> $LOG 2>&1"
   printf '%s\n' "5 */6 * * * $TRIGGER finance-deadlines >> $LOG 2>&1"
   printf '%s\n' "*/15 * * * * $TRIGGER mtm-auto-checkout >> $LOG 2>&1"
@@ -91,6 +100,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # reservation is never settled and the monthly budget drains to zero without
   # anyone having talked. Every minute: the grace window is 90s.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/voice-session-reaper >> $LOG 2>&1"
+  # Zeytun's phone line serves only a catalog snapshot younger than a day.
+  # Half-hourly ticks; the endpoint downloads at most hourly (its own lock and
+  # persisted deadline) and does nothing without the private 1C connection file.
+  printf '%s\n' "*/30 * * * * $TRIGGER /api/cron/zeytun-catalog-refresh >> $LOG 2>&1"
   # Durable AI lead queues advance by at most one state transition per tenant
   # per tick. Dispatch remains a no-op unless both the server execution flag
   # and the tenant's VoIP queue switch are explicitly enabled.
@@ -138,6 +151,17 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # send racing the cron still deliver it once. Every minute, because the
   # promise to the user is "at the chosen time".
   printf '%s\n' "* * * * * $TRIGGER /api/cron/campaign-scheduled-send >> $LOG 2>&1"
+  # Kapital Bank has no server-to-server callback: a customer who paid and
+  # closed the tab on the bank's page never returns to tell us. This asks the
+  # bank about open card orders, the longest-waiting first, a bounded number
+  # per tick; recording is a conditional claim, so overlaps record once.
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/kapitalbank-reconcile >> $LOG 2>&1"
+  # New leads and won deals to the organizations' Meta pixels. Meta refuses a
+  # whole batch holding an event older than 7 days, so this runs often; each
+  # record is queued once (unique per destination, event and record).
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/ad-conversions >> $LOG 2>&1"
+  # Durable meeting projections and calendar/customer delivery intents.
+  printf '%s\n' "* * * * * $TRIGGER /api/cron/booking-effects >> $LOG 2>&1"
   # The demo organization's field day (owner decision 2026-09-22). A no-op for
   # every tenant without the hand-set `mtm-demo-pulse` flag; keyed writes make
   # a repeated or late tick harmless, and the endpoint holds its own lease.

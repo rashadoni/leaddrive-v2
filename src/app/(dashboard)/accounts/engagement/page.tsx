@@ -73,7 +73,7 @@ const ICP_COLORS: Record<string, string> = {
   tier_2: "border-blue-500 text-blue-700 dark:text-blue-300",
   tier_3: "border-sky-500 text-sky-700 dark:text-sky-300",
   tier_4: "border-slate-400 text-slate-600 dark:text-slate-400",
-  unscored: "border-zinc-200 dark:border-zinc-700 text-muted-foreground",
+  unscored: "border-border text-muted-foreground",
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -156,7 +156,7 @@ export default function AccountEngagementPage() {
           </div>
           <button
             onClick={() => setPromoteOpen(true)}
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90" data-crm-button="default"
           >
             <Plus className="w-4 h-4" />
             {t("promoteCta")}
@@ -176,8 +176,8 @@ export default function AccountEngagementPage() {
               onClick={() => setStageFilter(null)}
               className={`px-3 py-1.5 rounded-lg text-sm border ${
                 stageFilter === null
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card hover:bg-muted border-zinc-200 dark:border-zinc-700"
+                  ? "crm-choice-selected  "
+                  : "bg-card hover:bg-muted border-border"
               }`}
             >
               {tc("all")} ({data.totalAccounts})
@@ -190,8 +190,8 @@ export default function AccountEngagementPage() {
                   onClick={() => setStageFilter(key)}
                   className={`px-3 py-1.5 rounded-lg text-sm border ${
                     stageFilter === key
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card hover:bg-muted border-zinc-200 dark:border-zinc-700"
+                      ? "crm-choice-selected  "
+                      : "bg-card hover:bg-muted border-border"
                   }`}
                 >
                   {t(`stageLabels.${key}`)} ({count})
@@ -231,7 +231,7 @@ export default function AccountEngagementPage() {
                 <p className="text-sm mt-1">{t("emptyDesc")}</p>
                 <button
                   onClick={() => setPromoteOpen(true)}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90" data-crm-button="default"
                 >
                   <Plus className="w-4 h-4" />
                   {t("promoteCta")}
@@ -242,7 +242,7 @@ export default function AccountEngagementPage() {
                 {data.accounts.map((a) => (
                   <MotionCard
                     key={a.id}
-                    className={`p-5 border border-zinc-200 dark:border-zinc-700 rounded-lg ${
+                    className={`p-5 border border-border rounded-lg ${
                       a.isStalePriority
                         ? "border-amber-500 bg-amber-500/5"
                         : ""
@@ -376,7 +376,7 @@ export default function AccountEngagementPage() {
           </>
         )}
 
-        <div className="mt-6 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-xs text-muted-foreground space-y-1.5">
+        <div className="mt-6 rounded-lg border border-border p-4 text-xs text-muted-foreground space-y-1.5">
           <p className="font-semibold text-foreground">{t("glossary.title")}</p>
           <p><span className="font-medium text-foreground">{t("glossary.gradeTerm")}</span> — {t("glossary.grade")}</p>
           <p><span className="font-medium text-foreground">{t("glossary.tierTerm")}</span> — {t("glossary.tier")}</p>

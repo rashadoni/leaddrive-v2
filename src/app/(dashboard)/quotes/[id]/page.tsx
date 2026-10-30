@@ -595,9 +595,9 @@ export default function QuoteDetailPage() {
           <div className="border rounded-lg p-4 space-y-3">
             <Label>{t("discount.label")}</Label>
             <div className="flex items-center gap-2">
-              <Button variant={discountMode === "none" ? "default" : "outline"} size="sm" onClick={() => { setDiscountMode("none"); setDiscountValue("") }} disabled={isTerminal}>{t("discount.none")}</Button>
-              <Button variant={discountMode === "amount" ? "default" : "outline"} size="sm" onClick={() => setDiscountMode("amount")} disabled={isTerminal}>{t("discount.amount")}</Button>
-              <Button variant={discountMode === "pct" ? "default" : "outline"} size="sm" onClick={() => setDiscountMode("pct")} disabled={isTerminal}>%</Button>
+              <Button variant={discountMode === "none" ? "selected" : "outline"} size="sm" onClick={() => { setDiscountMode("none"); setDiscountValue("") }} disabled={isTerminal}>{t("discount.none")}</Button>
+              <Button variant={discountMode === "amount" ? "selected" : "outline"} size="sm" onClick={() => setDiscountMode("amount")} disabled={isTerminal}>{t("discount.amount")}</Button>
+              <Button variant={discountMode === "pct" ? "selected" : "outline"} size="sm" onClick={() => setDiscountMode("pct")} disabled={isTerminal}>%</Button>
               {discountMode !== "none" && (
                 <Input
                   type="number"

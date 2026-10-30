@@ -37,7 +37,7 @@ vi.mock("@/lib/workforce/default-configuration-provisioning", () => ({
   ensureWorkforceDefaultProfile: vi.fn(),
 }))
 
-import { PUT } from "@/app/api/v1/admin/tenants/[id]/route"
+import { GET, PUT } from "@/app/api/v1/admin/tenants/[id]/route"
 import {
   GET as GET_CAPABILITIES,
   PATCH as PATCH_CAPABILITIES,
@@ -46,7 +46,7 @@ import { prisma, logAudit } from "@/lib/prisma"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { ensureWorkforceDefaultProfile } from "@/lib/workforce/default-configuration-provisioning"
-import { featuresToStringArray } from "@/lib/tenant-capabilities"
+import { featuresToStringArray, isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 
 const AUTH = {
   orgId: "platform-org", userId: "super-1", role: "superadmin" as const,
@@ -287,3 +287,71 @@ vi.mock("@/lib/crm-product-availability", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/crm-product-availability")>(),
   isCrmCapabilityAvailable: () => true,
 }))
+
+
+describe("unified tenant editor capability persistence", () => {
+  async function save(features: string[], capabilityChanges: unknown) {
+    const response = await PUT(request("PUT", { features, capabilityChanges }), params())
+    expect(response.status).toBe(200)
+    const loaded = await GET(request("GET"), params())
+    expect(loaded.status).toBe(200)
+    return (await loaded.json()).data
+  }
+
+  it("disables and re-enables personnel despite a legacy MTM grant, preserving routes", async () => {
+    tenant.features = ["crm", "mtm", "social_discovery", "ai_auto_triage", WORKFORCE]
+    tenant.modules = { mtm: true, personnel: true, [WORKFORCE]: false, unrelated_flag: false }
+    let loaded = await save(tenant.features, { personnel: false })
+    expect(isTenantCapabilityEnabled("personnel", loaded)).toBe(false)
+    expect(isTenantCapabilityEnabled("route-field", loaded)).toBe(true)
+    expect(loaded.modules.personnel).toBe(false)
+    expect(featuresToStringArray(loaded.features)).toEqual(expect.arrayContaining(["social_discovery", "ai_auto_triage", WORKFORCE]))
+    loaded = await save(featuresToStringArray(loaded.features), { personnel: true })
+    expect(isTenantCapabilityEnabled("personnel", loaded)).toBe(true)
+    expect(loaded.modules.unrelated_flag).toBe(false)
+    expect(loaded.modules[WORKFORCE]).toBe(false)
+  })
+
+  it("can sell personnel alone and keep routes disabled", async () => {
+    tenant.features = ["crm"]
+    tenant.modules = { crm: true, "route-field": false }
+    const loaded = await save(["crm"], { personnel: true })
+    expect(isTenantCapabilityEnabled("personnel", loaded)).toBe(true)
+    expect(isTenantCapabilityEnabled("route-field", loaded)).toBe(false)
+    expect(loaded.modules.mtm).toBe(false)
+  })
+
+  it.each([true, false])("preserves independent capabilities when legacy field tools become %s", async enabled => {
+    tenant.features = enabled ? ["crm"] : ["crm", "mtm"]
+    tenant.modules = { crm: true, mtm: !enabled }
+    const before = ["route-field", "personnel"].map(id => isTenantCapabilityEnabled(id, tenant))
+    const loaded = await save(enabled ? ["crm", "mtm"] : ["crm"], {})
+    expect(["route-field", "personnel"].map(id => isTenantCapabilityEnabled(id, loaded))).toEqual(before)
+    expect(loaded.modules.mtm).toBe(enabled)
+  })
+
+  it("preserves a newer capability decision on an unrelated stale form save", async () => {
+    tenant.features = ["crm", "personnel"]
+    tenant.modules = { crm: true, personnel: true, "route-field": false }
+    const loaded = await save(["crm", "route-field"], {})
+    expect(isTenantCapabilityEnabled("personnel", loaded)).toBe(true)
+    expect(isTenantCapabilityEnabled("route-field", loaded)).toBe(false)
+    expect(featuresToStringArray(loaded.features)).toContain("personnel")
+    expect(featuresToStringArray(loaded.features)).not.toContain("route-field")
+  })
+
+  it.each([null, [], { personnel: "false" }, { "workforce-hrm": true }, { unknown: true }])(
+    "rejects malformed or non-editable capability changes %j before writing", async capabilityChanges => {
+      const response = await PUT(request("PUT", { features: ["crm"], capabilityChanges }), params())
+      expect(response.status).toBe(400)
+      expect(prisma.organization.update).not.toHaveBeenCalled()
+    },
+  )
+
+  it("keeps the capability update behind the superadmin guard", async () => {
+    vi.mocked(requireSuperAdmin).mockResolvedValue(NextResponse.json({ error: "Forbidden" }, { status: 403 }))
+    const response = await PUT(request("PUT", { capabilityChanges: { personnel: true } }), params())
+    expect(response.status).toBe(403)
+    expect(prisma.organization.update).not.toHaveBeenCalled()
+  })
+})

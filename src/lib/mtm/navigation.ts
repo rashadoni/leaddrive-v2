@@ -45,6 +45,9 @@ export interface MtmToolNavigationItem {
   orgSetting?: NavOrgSettingKey
   /** Offered to a CRM administrator only — the page's API refuses anyone else. */
   adminOnly?: boolean
+  /** Organization feature flag (Organization.features) the tool needs, as the
+   * main menu's `feature`: off unless the organization has it. */
+  feature?: string
 }
 
 export interface MtmToolNavigationGroup {
@@ -122,13 +125,15 @@ export const MTM_TOOL_GROUPS = [
 export function visibleMtmToolGroups(
   orgSettings: Partial<Record<NavOrgSettingKey, boolean>> = {},
   role?: string | null,
+  modules: Record<string, boolean> | null | undefined = {},
 ): MtmToolNavigationGroup[] {
   const admin = role === "admin" || role === "superadmin"
   return MTM_TOOL_GROUPS
     .map((group) => ({
       key: group.key,
       items: (group.items as readonly MtmToolNavigationItem[]).filter((item) =>
-        (!item.orgSetting || isNavOrgSettingOn(item.orgSetting, orgSettings[item.orgSetting])) && (!item.adminOnly || admin)),
+        (!item.orgSetting || isNavOrgSettingOn(item.orgSetting, orgSettings[item.orgSetting])) && (!item.adminOnly || admin) &&
+        (!item.feature || modules?.[item.feature] === true)),
     }))
     .filter((group) => group.items.length > 0)
 }

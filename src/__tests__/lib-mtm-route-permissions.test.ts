@@ -174,7 +174,7 @@ describe("MTM route permissions", () => {
       canSelfPublishRoutes: false,
       scopedAgentIds: ["agent-mobile"],
     })
-    expect(where).toEqual({ organizationId: "org-1", id: "agent-mobile", status: "ACTIVE" })
+    expect(where).toEqual({ organizationId: "org-1", id: "agent-mobile", status: "ACTIVE", fieldDeletedAt: null })
   })
 
   it("denies a non-admin web user without a linked active MTM agent", async () => {
@@ -214,7 +214,7 @@ describe("MTM actor lookup is deterministic (audit 2026-09-14)", () => {
       const actor = await resolveMtmRouteActor(prisma as any, { organizationId: "org-1", userId: "user-1", webRole: "manager" })
       expect(actor?.agentId).toBe("agent-old")
       expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-        where: { organizationId: "org-1", userId: "user-1", status: "ACTIVE" },
+        where: { organizationId: "org-1", userId: "user-1", status: "ACTIVE", fieldDeletedAt: null },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       }))
       expect(warn).toHaveBeenCalledWith(

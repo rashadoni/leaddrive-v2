@@ -153,6 +153,11 @@ jobs:
       - name: Install isolated Chromium
         working-directory: runtime
         run: npx playwright install --with-deps chromium
+      - name: Keep Next build-worker trace events out of IPC
+        # The controller's copy, applied to the runtime's installed Next: the
+        # before source has no copy of the script. See the script.
+        working-directory: runtime
+        run: node ../controller/scripts/ci/patch-next-build-worker-trace.mjs
       - name: Build exact runtime in production mode
         working-directory: runtime
         env:

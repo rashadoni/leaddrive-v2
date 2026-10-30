@@ -1,0 +1,44 @@
+{
+  "fixture": "Actual MarketplacePage + CapabilitiesOverviewContent + shared UI, with Next Link/locale/help adapters and synthetic GET responses",
+  "passed": [
+    "available native module",
+    "installed apps management retained",
+    "disabled capability has no workspace link",
+    "module-specific mail draft and visible email",
+    "localized mail subject in ru/en/az",
+    "mail instructions fit mobile widths",
+    "canonical channel setup",
+    "connection caveat",
+    "light/dark rendering",
+    "HTTP 500 shown as failure",
+    "retry recovers",
+    "HTTP 403 shown as denial",
+    "employee module mask and no mail action",
+    "requested state has no new email action",
+    "English and Azerbaijani copy",
+    "responsive widths"
+  ],
+  "dimensions": [
+    {
+      "width": 1024,
+      "scroll": 1009,
+      "clipped": 0
+    },
+    {
+      "width": 736,
+      "scroll": 721,
+      "clipped": 0
+    },
+    {
+      "width": 320,
+      "scroll": 305,
+      "clipped": 0
+    }
+  ],
+  "runtimeErrors": [],
+  "limitations": [
+    "Synthetic tenant and GET responses; no production identity or tenant mutation",
+    "Verified mailto URI, localized subject and UI hint; external email application and sending NOT RUN",
+    "Authenticated Zeytun browser inspection NOT RUN: this remote chat has no control of the in-app user session"
+  ]
+}

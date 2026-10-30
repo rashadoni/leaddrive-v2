@@ -73,7 +73,7 @@ export function MtmFilterSearch({
   const [draft, setDraft] = useDebouncedDraft(value, onChange, delayMs)
 
   return (
-    <label className={`flex h-10 min-w-0 ${narrow ? "flex-[1_1_12rem]" : "flex-[1_1_16rem]"} items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 dark:border-zinc-700`}>
+    <label className={`flex h-10 min-w-0 ${narrow ? "flex-[1_1_12rem]" : "flex-[1_1_16rem]"} items-center gap-2 rounded-full border border-border bg-card px-3 text-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20`}>
       <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <input
         data-testid={testId}
@@ -130,7 +130,7 @@ export function MtmFilterSelect({
   const active = value !== emptyValue
   const current = options.find((option) => option.value === value)?.label ?? (value || allLabel)
   return (
-    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-foreground pr-1.5 font-semibold text-foreground" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
+    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-foreground pr-1.5 font-semibold text-foreground" : "border-border bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground"}`}>
       <span className="truncate">{active || showValue ? `${label}: ${current}` : label}</span>
       {active && clearable && !disabled ? (
         <button
@@ -180,7 +180,7 @@ export function MtmFilterDate({
   testId?: string
 }) {
   return (
-    <label className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30 dark:border-zinc-700">
+    <label className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card px-3 text-sm text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30">
       <span>{label}</span>
       <input data-testid={testId} type={type} min={min} max={max} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
     </label>
@@ -194,7 +194,7 @@ export function MtmFilterMore({ open, onToggle, count, label, testId }: { open: 
       data-testid={testId}
       aria-expanded={open}
       onClick={onToggle}
-      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "border-foreground font-semibold text-foreground" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}
+      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "crm-choice-selected text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
     >
       <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
       {label}
@@ -235,7 +235,7 @@ export function MtmQuickChips({ label, chips, value, onChange, renderChip }: {
             data-testid={chip.testId}
             aria-pressed={on}
             onClick={() => onChange(chip.value)}
-            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "border-foreground font-semibold text-foreground" : "border-zinc-200 bg-card text-foreground hover:bg-muted/60 dark:border-zinc-700"}`}
+            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "crm-choice-selected text-foreground" : "border-border bg-card text-foreground hover:bg-muted/60"}`}
           >
             {chip.label}
             {typeof chip.count === "number" ? (
@@ -289,7 +289,7 @@ export function MtmFilterGrid({ children, testId }: { children: ReactNode; testI
 }
 
 const FIELD_BOX = "h-10 w-full min-w-0 rounded-lg border text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/20"
-const FIELD_IDLE = "border-zinc-200 bg-card dark:border-zinc-700"
+const FIELD_IDLE = "border-border bg-card"
 const FIELD_SET = "border-foreground"
 
 function MtmFilterFieldLabel({ htmlFor, id, children }: { htmlFor?: string; id?: string; children: ReactNode }) {
@@ -501,7 +501,7 @@ export function MtmFilterMultiField({
         </div>
         <PopoverContent align="start" collisionPadding={8} className="w-[max(var(--radix-popover-trigger-width),16rem)] max-w-[calc(100vw-2rem)] p-0">
           {allOptions.length > 8 ? (
-            <label className="flex items-center gap-2 border-b border-zinc-200 px-3 dark:border-zinc-700">
+            <label className="flex items-center gap-2 border-b border-border px-3">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <input
                 type="text"

@@ -49,7 +49,7 @@ describe("native TikTok connection endpoints", () => {
     expect((await POST(forged)).status).toBe(403)
     expect(m.disconnect).not.toHaveBeenCalled()
   })
-  it("enters tenant RLS before the real grandfather gate for status, mutation and OAuth start", async () => {
+  it("enters tenant RLS before the real channels gate for status, mutation and OAuth start", async () => {
     const contexts: unknown[] = []
     m.session.mockImplementation(async () => { contexts.push(getRlsContext()); return admin })
     m.disconnect.mockImplementation(async () => { expect(getRlsContext()).toEqual({ orgId: "org1" }); return true })
@@ -58,7 +58,8 @@ describe("native TikTok connection endpoints", () => {
     expect((await POST(request())).status).toBe(200)
     expect((await start(request())).status).toBe(200)
     expect(contexts).toEqual(Array.from({ length: 3 }, () => [{ bypass: true }, { orgId: "org1" }]).flat())
-    expect(m.count).toHaveBeenCalledTimes(3)
+    // Channels are Settings for every tenant since 2026-10-26: the gate no longer counts rows or asks for a module.
+    expect(m.count).not.toHaveBeenCalled()
     expect(getRlsContext()).toBeUndefined()
   })
   it("does not fall back to another principal when browser-session authorization fails", async () => {
@@ -76,12 +77,14 @@ describe("native TikTok connection endpoints", () => {
     expect((await start(request())).status).toBe(403)
     expect(m.begin).not.toHaveBeenCalled()
   })
-  it("keeps the entitlement and same-origin gates ahead of OAuth state creation", async () => {
-    m.count.mockResolvedValueOnce(0)
-    expect((await start(request())).status).toBe(403)
+  it("keeps the same-origin gate ahead of OAuth state creation, and needs no Omni-channel module", async () => {
     const forged = new NextRequest("https://crm.example/api/v1/channels/tiktok-messaging/oauth/start", { method: "POST", headers: { origin: "https://evil.example" } })
     expect((await start(forged)).status).toBe(403)
     expect(m.begin).not.toHaveBeenCalled()
+    // A tenant without the module and without any channel yet: Channels live in Settings for every tenant.
+    m.module.mockResolvedValue(false); m.count.mockResolvedValue(0)
+    expect((await start(request())).status).toBe(200)
+    expect(m.begin).toHaveBeenCalledTimes(1)
   })
   it("requires the canonical callback host and forces a code on repeated consent", async () => {
     expect((await start(request("https://other.example"))).status).toBe(503)

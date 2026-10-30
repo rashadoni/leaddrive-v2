@@ -216,6 +216,23 @@ describe("GET /api/v1/inbox", () => {
       .toMatchObject({ contactId: null, contactName: "New customer", messageCount: 1 })
   })
 
+  it.each(["A", "B"])("does not borrow canonical A when the latest WhatsApp message is on %s", async latestChannel => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG_ID)
+    const common = { organizationId: ORG_ID, channelType: "whatsapp", contactId: "c1", from: "994501234567",
+      to: "business", body: "Hi", status: "received", direction: "inbound", metadata: { waPhone: "994501234567" } }
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([
+      { ...common, id: "latest", channelConfigId: latestChannel, conversationId: null, createdAt: new Date("2026-10-22T12:00:00Z") },
+      { ...common, id: "older", channelConfigId: "A", conversationId: "sc-A", createdAt: new Date("2026-10-22T11:00:00Z") },
+    ] as never)
+    vi.mocked(prisma.contact.findMany).mockResolvedValue([{ id: "c1", fullName: "Customer", phone: "994501234567", phones: [], email: null }] as never)
+    vi.mocked(prisma.socialConversation.findMany).mockResolvedValue([])
+    const res = await GET_INBOX(makeRequest("http://localhost:3000/api/v1/inbox"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const convo = body.data.conversations.find((item: { contactId: string }) => item.contactId === "c1")
+    expect(convo).toMatchObject({ whatsappReplyBlocked: latestChannel === "B", socialConversationId: latestChannel === "B" ? null : "sc-A" })
+  })
+
   // Option-D slice-1: threads backed by a SocialConversation row surface its
   // status / assignment / snooze, fetched org-scoped.
   it("surfaces SocialConversation status/assignee/snooze for a thread with a conversationId", async () => {
@@ -254,6 +271,37 @@ describe("GET /api/v1/inbox", () => {
     expect(prisma.socialConversation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ organizationId: ORG_ID, id: { in: ["sc-1"] } }) }),
     )
+  })
+
+  it("shows the stored Instagram @username instead of the IGSID the messages carry", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG_ID)
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([
+      {
+        id: "m1", organizationId: ORG_ID, direction: "inbound", channelType: "instagram",
+        from: "4621512548170901", to: "ig-account", body: "Salam", status: "new", contactId: null,
+        conversationId: "sc-ig", createdAt: new Date("2026-10-23T20:01:10Z"), metadata: { igLogin: true },
+      },
+      {
+        id: "m2", organizationId: ORG_ID, direction: "inbound", channelType: "instagram",
+        from: "2981264768873200", to: "ig-account", body: "[media]", status: "new", contactId: null,
+        conversationId: "sc-ig-unresolved", createdAt: new Date("2026-10-23T20:00:00Z"), metadata: { igLogin: true },
+      },
+    ] as any)
+    vi.mocked(prisma.contact.findMany).mockResolvedValue([])
+    vi.mocked(prisma.socialConversation.findMany)
+      .mockResolvedValueOnce([
+        { id: "sc-ig", contactName: "@zeytun.client", status: "open", tags: [] },
+        // Profile lookup failed at the webhook: the stored name is the id itself — keep the id.
+        { id: "sc-ig-unresolved", contactName: "2981264768873200", status: "open", tags: [] },
+      ] as any)
+      .mockResolvedValueOnce([] as any)
+
+    const res = await GET_INBOX(makeRequest("http://localhost:3000/api/v1/inbox"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const byId = (id: string) => body.data.conversations.find((c: any) => c.socialConversationId === id)
+    expect(byId("sc-ig").contactName).toBe("@zeytun.client")
+    expect(byId("sc-ig-unresolved").contactName).toBe("2981264768873200")
   })
 
   it("embeds org-scoped call logs for a thread with a conversationId", async () => {

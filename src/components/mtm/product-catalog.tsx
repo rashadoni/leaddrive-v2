@@ -74,7 +74,7 @@ type Product = {
 type Draft = { file: File; name: string; version: string }
 type SaveState = "idle" | "saving" | "saved" | "failed"
 
-const CARD = "rounded-2xl border border-zinc-200 bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)] dark:border-zinc-700"
+const CARD = "rounded-2xl border border-border bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
 
 const READINESS_TONE: Record<ProductGroupReadiness, HomeTone> = {
   READY: "green",
@@ -369,7 +369,7 @@ export function MtmProductCatalog() {
 
   if (loading) {
     return (
-      <div className="grid min-h-48 place-items-center rounded-2xl border border-zinc-200 bg-card dark:border-zinc-800">
+      <div className="grid min-h-48 place-items-center rounded-2xl border border-border bg-card">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none" aria-label={t("loading")} />
       </div>
     )
@@ -386,13 +386,13 @@ export function MtmProductCatalog() {
       </header>
 
       {loadError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
           {loadError}
           <Button size="sm" variant="outline" className="ml-auto" onClick={() => void load()}>{t("retry")}</Button>
         </div>
       ) : null}
       {notice ? (
-        <div role="status" className="flex items-center gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
+        <div role="status" className="flex items-center gap-2 rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm">
           <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />{notice}
         </div>
       ) : null}
@@ -409,7 +409,7 @@ export function MtmProductCatalog() {
       ) : (
         <div className="grid items-stretch gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
           <section aria-labelledby="mtm-product-groups-title" className={cn(CARD, "min-w-0 self-stretch")}>
-            <header className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+            <header className="flex items-center gap-2 border-b border-border px-4 py-3">
               <HintValue text={t("groupsHint")} className="whitespace-nowrap text-[15px] font-semibold"><span id="mtm-product-groups-title">{t("groupsShort")}</span></HintValue>
               <HomePill tone="zinc">{groups.length}</HomePill>
               {canCreateRoot ? (
@@ -561,13 +561,13 @@ function StepCard({ testId, n, done, title, titleHint, badge, children, footer, 
 }) {
   return (
     <section data-testid={testId} className={cn(CARD, "flex min-w-0 flex-col")}>
-      <header className="flex items-center gap-3 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+      <header className="flex items-center gap-3 border-b border-border px-4 py-3">
         <StepBadge n={n} done={done} />
         <HintValue text={titleHint} className="min-w-0 truncate text-[15px] font-semibold">{title}</HintValue>
         {badge ? <span className="ml-auto flex items-center gap-2">{badge}</span> : null}
       </header>
       <div className="flex flex-1 flex-col gap-3 p-4">{children}</div>
-      {footer ? <div className={cn("rounded-b-2xl border-t border-zinc-100 px-4 py-2.5 text-xs dark:border-zinc-800", footerClassName)}>{footer}</div> : null}
+      {footer ? <div className={cn("rounded-b-2xl border-t border-border px-4 py-2.5 text-xs", footerClassName)}>{footer}</div> : null}
     </section>
   )
 }
@@ -690,7 +690,7 @@ function GroupDetail(props: {
                     data-testid={`mtm-product-${product.id}`}
                     className={cn(
                       "flex flex-wrap items-center gap-3 rounded-xl border p-3 transition-colors",
-                      isChosen ? "border-foreground" : "border-zinc-200 dark:border-zinc-700",
+                      isChosen ? "border-foreground" : "border-border",
                     )}
                   >
                     {group.canManage ? (
@@ -735,7 +735,7 @@ function GroupDetail(props: {
                           <a
                             href={`/api/v1/mtm/products/${product.id}/presentation`}
                             download={product.document?.fileName}
-                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
+                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                           >
                             <Download className="h-3.5 w-3.5" aria-hidden="true" />{t("download")}
                           </a>
@@ -764,7 +764,7 @@ function GroupDetail(props: {
 
           {group.canManage ? (
             draft ? (
-              <div data-testid="mtm-product-draft" className="space-y-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-3">
+              <div data-testid="mtm-product-draft" className="space-y-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Presentation className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate font-medium">{draft.file.name}</span>
@@ -798,7 +798,7 @@ function GroupDetail(props: {
                 onDrop={props.onDrop}
                 className={cn(
                   "flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors focus-within:ring-2 focus-within:ring-ring/40",
-                  props.dragging ? "border-primary" : "border-zinc-300 hover:border-primary/60 hover:bg-muted/40 dark:border-zinc-700",
+                  props.dragging ? "border-primary" : "border-zinc-300 hover:border-primary/60 hover:bg-muted/40 dark:border-border",
                 )}
               >
                 <UploadCloud className="h-6 w-6 text-primary" aria-hidden="true" />
@@ -923,7 +923,7 @@ function AgentChoice({ agent, chosen, pending, onChange }: {
         data-testid={`mtm-product-agent-${agent.id}`}
         className={cn(
           "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors hover:border-primary/60",
-          shown === "none" ? "border-zinc-200 dark:border-zinc-700" : "border-foreground",
+          shown === "none" ? "border-border" : "border-foreground",
         )}
       >
         <input
@@ -952,7 +952,7 @@ function AgentSummary({ agent, groupProducts }: { agent: Agent; groupProducts: P
       data-testid={`mtm-product-agent-${agent.id}`}
       className={cn(
         "flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-sm",
-        seen.length ? "border-foreground" : "border-zinc-200 dark:border-zinc-700",
+        seen.length ? "border-foreground" : "border-border",
       )}
     >
       <span className="min-w-0 flex-1">
@@ -1014,7 +1014,7 @@ function GroupForm({ tree, form, busy, error, onChange, onCancel, onCreate }: {
   return (
     <form
       data-testid="mtm-product-group-form"
-      className="space-y-2 border-b border-zinc-100 bg-muted/40 p-3 dark:border-zinc-800"
+      className="space-y-2 border-b border-border bg-muted/40 p-3"
       onSubmit={(event) => { event.preventDefault(); onCreate() }}
     >
       <label className="block space-y-1 text-xs font-medium">

@@ -193,7 +193,7 @@ export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsP
         {/* Revenue Trend — the largest currency; the others are listed, not added */}
         <div
           data-testid="invoices-analytics-trend"
-          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+          className="bg-card text-card-foreground border border-border rounded-xl p-5"
         >
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -232,7 +232,7 @@ export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsP
         </div>
 
         {/* Payment Status Donut */}
-        <div className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
+        <div className="bg-card text-card-foreground border border-border rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <PieChart className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">{t("paymentStatus")}</h3>
@@ -266,7 +266,7 @@ export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsP
         {/* Accounts Receivable Aging — the largest currency owed */}
         <div
           data-testid="invoices-analytics-aging"
-          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+          className="bg-card text-card-foreground border border-border rounded-xl p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsP
         {/* Weekly Collection — recorded payments by payment date */}
         <div
           data-testid="invoices-analytics-weekly"
-          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+          className="bg-card text-card-foreground border border-border rounded-xl p-5"
         >
           <div className="flex items-center gap-2 mb-1">
             <CalendarClock className="h-4 w-4 text-muted-foreground" />
@@ -369,7 +369,7 @@ export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsP
         {/* Auto-invoices — active recurring rules, soonest run first */}
         <div
           data-testid="invoices-analytics-recurring"
-          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+          className="bg-card text-card-foreground border border-border rounded-xl p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsP
               {rules.upcoming.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between text-xs py-1.5 border-b last:border-0 border-zinc-200/50 dark:border-zinc-700/50"
+                  className="flex items-center justify-between text-xs py-1.5 border-b last:border-0 border-border"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{item.name}</p>
@@ -412,7 +412,7 @@ export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsP
         {/* Currency Breakdown — billed invoices only */}
         <div
           data-testid="invoices-analytics-currency"
-          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+          className="bg-card text-card-foreground border border-border rounded-xl p-5"
         >
           <div className="flex items-center gap-2 mb-4">
             <Coins className="h-4 w-4 text-muted-foreground" />

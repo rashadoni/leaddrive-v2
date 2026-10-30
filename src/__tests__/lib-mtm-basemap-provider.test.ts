@@ -23,6 +23,7 @@ vi.mock("next/headers", () => ({
 vi.mock("next-intl/server", () => ({
   getLocale: vi.fn(async () => "ru"),
   getMessages: vi.fn(async () => ({})),
+  getTimeZone: vi.fn(async () => "Asia/Baku"),
 }))
 vi.mock("@/components/providers", () => ({ Providers: () => null }))
 vi.mock("sonner", () => ({ Toaster: () => null }))

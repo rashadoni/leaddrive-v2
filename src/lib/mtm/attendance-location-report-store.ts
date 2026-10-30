@@ -8,7 +8,7 @@ export async function readAttendanceLocationReportEvidence(tx: Prisma.Transactio
     SELECT e.id AS "eventId",e.type::text AS action,COALESCE(e."claimedAt",e."occurredAt") AS "claimedAt",
       COALESCE(m."serverReceivedAt",e."serverReceivedAt") AS "serverReceivedAt",m."locationState",m."distanceMeters",
       b."branchId",b.id AS "branchRevisionId",b.name AS "branchName",q.state AS "qrState",
-      qb."branchId" AS "qrBranchId",qb.id AS "qrBranchRevisionId",qb.name AS "qrBranchName"
+      qb."branchId" AS "qrBranchId",qb.id AS "qrBranchRevisionId",qb.name AS "qrBranchName",q."awayDistanceMeters" AS "qrAwayDistanceMeters"
     FROM mtm_agent_workday_events e
     LEFT JOIN mtm_attendance_mark_evidence m ON m."organizationId"=e."organizationId" AND m."eventId"=e.id AND m."agentId"=e."agentId" AND m.action=e.type::text
     LEFT JOIN mtm_attendance_branch_revisions b ON b."organizationId"=m."organizationId" AND b.id=m."branchRevisionId"

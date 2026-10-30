@@ -1,0 +1,280 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { evaluate, parseQuorumReplication, parseQuorumStatus, parseTopics } from './health.mjs'
+import { loadTopology } from './render.mjs'
+import { applySent, messages, PRIMARY_SILENT_MS, primarySilence, standbyState, step, weeklyDue } from './watch.mjs'
+
+// Output shapes as Kafka 4.3.1 prints them on the production cluster (2026-10-23).
+const STATUS = `ClusterId:              K3TZRGsp2DK1UJYj_Sxrwg
+LeaderId:               3
+LeaderEpoch:            7
+HighWatermark:          43285
+MaxFollowerLag:         0
+MaxFollowerLagTimeMs:   385
+CurrentVoters:          [{"id": 1, "endpoints": ["CONTROLLER://10.88.0.13:9093"]}, {"id": 2, "endpoints": ["CONTROLLER://10.88.0.14:9093"]}, {"id": 3, "endpoints": ["CONTROLLER://10.88.0.15:9093"]}]
+CurrentObservers:       [{"id": 102, "directoryId": "LdXnhBjT4ACkA9g0ZlJkLA"}, {"id": 103, "directoryId": "BzdjUV4NHmazNaq45yCULQ"}, {"id": 101, "directoryId": "ybnfsQXU66cjXslmW4jlMQ"}]
+`
+const replication = (stale = {}) => ['NodeId\tDirectoryId           \tLogEndOffset\tLag\tLastFetchTimestamp\tLastCaughtUpTimestamp\tStatus  \t',
+  ...[[3, 'Leader'], [1, 'Follower'], [2, 'Follower'], [102, 'Observer'], [103, 'Observer'], [101, 'Observer']].map(([id, s]) =>
+    `${id}     \tAAAAAAAAAAAAAAAAAAAAAA\t43294       \t0  \t${1792789253579 - (stale[id] ?? 100)}     \t1792789253443        \t${s}${' '.repeat(8 - s.length)}\t`)].join('\n')
+const topic = (name, rows) => [
+  `Topic: ${name}\tTopicId: Qfn15STRQeWkNGEoU2bOsw\tPartitionCount: ${rows.length}\tReplicationFactor: 3\tConfigs: compression.type=producer,min.insync.replicas=2,cleanup.policy=delete`,
+  ...rows.map(([leader, isr], i) => `\tTopic: ${name}\tPartition: ${i}\tLeader: ${leader}\tReplicas: 102,103,101\tIsr: ${isr}\tElr: \tLastKnownElr: `),
+].join('\n')
+const HEALTHY_TOPICS = [topic('ld.prod.finance.events.v1', [[102, '102,103,101'], [103, '103,101,102']]), topic('ld.prod.registry.journal', [[103, '103,101,102']])].join('\n')
+
+const topology = loadTopology()
+const inventory = { hosts: Object.fromEntries([...topology.clusters[0].hosts.map((h) => h.name), 'leaddrive-prod'].map((n, i) => [n, { publicAddress: '192.0.2.1', address: `10.88.0.${10 + i}` }])) }
+const SLOT = 'leaddrive_event_outbox_prod'
+const CONNECTOR = 'leaddrive-event-outbox-prod'
+const running = { [CONNECTOR]: { status: { connector: { state: 'RUNNING' }, tasks: [{ id: 0, state: 'RUNNING' }] } } }
+
+function healthyProbes() {
+  const probes = {}
+  for (const h of topology.clusters.find((c) => c.name === 'primary').hosts) {
+    const data = { disk: { usedPercent: 12 }, tunnel: { up: true, peers: 8, stale: 0 }, cert: { daysLeft: 800 },
+      containers: [{ name: h.name, state: 'running' }] }
+    if (h.roles.includes('connect')) {
+      data.connect = { ok: true, connectors: running, expected: [CONNECTOR] }
+      data.registry = { ok: true }
+    }
+    probes[h.name] = { ok: true, data }
+  }
+  probes['leaddrive-prod'] = { ok: true, data: { disk: { usedPercent: 16 }, tunnel: { up: true, peers: 8, stale: 0 },
+    source: { expectedSlot: SLOT, slots: [{ name: SLOT, active: true, walStatus: 'reserved', retainedBytes: 16 << 20, safeBytes: 16 * 1024 ** 3 }] } } }
+  return probes
+}
+const healthyCluster = () => ({ broker: 'kafka-p-broker-eu', data: { status: STATUS, replication: replication(), topics: HEALTHY_TOPICS } })
+const ids = (problems) => problems.map((p) => p.id).sort()
+
+test('parsers read the production output of Kafka 4.3.1', () => {
+  assert.deepEqual(parseQuorumStatus(STATUS), { leaderId: 3, voters: [1, 2, 3], observers: [102, 103, 101] })
+  const rows = parseQuorumReplication(replication())
+  assert.equal(rows.length, 6)
+  assert.deepEqual(rows[0], { nodeId: 3, lag: 0, lastFetch: 1792789253479, status: 'Leader' })
+  const t = parseTopics(HEALTHY_TOPICS)
+  assert.equal(t.partitions.length, 3)
+  assert.equal(t.minIsr['ld.prod.finance.events.v1'], 2)
+  assert.deepEqual(t.partitions[0], { topic: 'ld.prod.finance.events.v1', partition: 0, leader: 102, replicas: [102, 103, 101], isr: [102, 103, 101] })
+  assert.equal(parseTopics(topic('x', [['none', '']])).partitions[0].leader, null)
+})
+
+test('a healthy platform raises nothing', () => {
+  assert.deepEqual(evaluate({ topology, inventory, probes: healthyProbes(), cluster: healthyCluster() }), [])
+})
+
+test('the CDC slot: retention, inactivity and loss are each named', () => {
+  const at = (slot) => { const p = healthyProbes(); p['leaddrive-prod'].data.source.slots = slot ? [{ name: SLOT, active: true, walStatus: 'reserved', retainedBytes: 0, safeBytes: null, ...slot }] : []
+    return evaluate({ topology, inventory, probes: p, cluster: healthyCluster() }) }
+  assert.deepEqual(at({ retainedBytes: 64 << 20 }), [])
+  assert.deepEqual(at({ retainedBytes: 512 << 20 }).map((p) => [p.id, p.severity]), [['slot-retained', 'warning']])
+  assert.deepEqual(at({ retainedBytes: 5 * 1024 ** 3 }).map((p) => [p.id, p.severity]), [['slot-retained', 'critical']])
+  assert.match(at({ retainedBytes: 5 * 1024 ** 3, safeBytes: 11 * 1024 ** 3 })[0].detail, /5\.0 ГБ.*осталось 11\.0 ГБ/)
+  assert.deepEqual(ids(at({ active: false })), ['slot-inactive'])
+  assert.deepEqual(ids(at({ walStatus: 'unreserved', retainedBytes: 17 * 1024 ** 3 })), ['slot-unreserved'])
+  assert.deepEqual(ids(at({ walStatus: 'lost', active: false })), ['slot-lost'])
+  assert.deepEqual(ids(at(null)), ['slot-missing'])
+})
+
+test('losing a site names its broker and controller; losing two names refused writes', () => {
+  // Site UK down: broker 102 and controller 2 stop fetching, partitions shrink to two replicas.
+  const oneSite = { broker: 'kafka-p-broker-eu', data: { status: STATUS, replication: replication({ 102: 90_000, 2: 90_000 }),
+    topics: topic('ld.prod.finance.events.v1', [[103, '103,101'], [103, '103,101']]) } }
+  const p = healthyProbes(); p['kafka-p-broker-uk'] = { ok: false, error: 'timeout' }; p['kafka-p-ctrl-uk'] = { ok: false, error: 'timeout' }
+  p['kafka-p-connect-uk'] = { ok: false, error: 'timeout' }
+  // Every live host now misses the three UK peers: that is the site, not three more problems.
+  const ukAddresses = ['kafka-p-broker-uk', 'kafka-p-ctrl-uk', 'kafka-p-connect-uk'].map((n) => inventory.hosts[n].address)
+  for (const probe of Object.values(p)) if (probe.ok) probe.data.tunnel = { up: true, peers: 8, stale: 3, stalePeers: ukAddresses }
+  assert.deepEqual(ids(evaluate({ topology, inventory, probes: p, cluster: oneSite })), [
+    'broker:kafka-p-broker-uk', 'controller:kafka-p-ctrl-uk', 'host-unreachable:kafka-p-broker-uk', 'host-unreachable:kafka-p-connect-uk',
+    'host-unreachable:kafka-p-ctrl-uk', 'partitions-under-replicated'])
+  const twoSites = { ...oneSite, data: { ...oneSite.data, topics: topic('ld.prod.finance.events.v1', [[101, '101'], ['none', '']]) } }
+  const problems = evaluate({ topology, inventory, probes: p, cluster: twoSites })
+  assert.ok(problems.some((x) => x.id === 'partitions-below-min-isr' && x.severity === 'critical'))
+  assert.ok(problems.some((x) => x.id === 'partitions-offline' && x.severity === 'critical'))
+  assert.deepEqual(ids(evaluate({ topology, inventory, probes: healthyProbes(), cluster: null })), ['cluster-unreachable'])
+})
+
+test('a lost link between two live hosts is reported, a dead peer is not counted twice', () => {
+  const p = healthyProbes()
+  p['kafka-p-ctrl-eu'].data.tunnel = { up: true, peers: 8, stale: 1, stalePeers: [inventory.hosts['kafka-p-broker-gra'].address] }
+  assert.deepEqual(ids(evaluate({ topology, inventory, probes: p, cluster: healthyCluster() })), ['tunnel:kafka-p-ctrl-eu'])
+})
+
+test('a stopped connector task is critical; one silent Connect worker is a warning', () => {
+  const p = healthyProbes()
+  p['kafka-p-connect-eu'].data.connect.connectors = { [CONNECTOR]: { status: { connector: { state: 'RUNNING' }, tasks: [{ id: 0, state: 'FAILED' }] } } }
+  p['kafka-p-connect-uk'].data.connect = { ok: false, connectors: null, expected: [CONNECTOR] }
+  const problems = evaluate({ topology, inventory, probes: p, cluster: healthyCluster() })
+  assert.deepEqual(problems.map((x) => [x.id, x.severity]), [['connect-down:kafka-p-connect-uk', 'warning'], ['connector-state:leaddrive-event-outbox-prod', 'critical']])
+  assert.match(problems[1].detail, /task 0 FAILED/)
+})
+
+test('a problem is told once after two passes, reminded after a day, and its end is told', () => {
+  const problem = { id: 'slot-inactive', severity: 'critical', title: 'События из базы не уходят в Kafka', detail: '…' }
+  let state = {}
+  let s = step(state, [problem], 0)
+  assert.deepEqual(messages(s), [], 'one pass is not enough')
+  s = step({ incidents: s.incidents }, [problem], 300_000)
+  const [raise] = messages(s)
+  assert.equal(raise.kind, 'raise')
+  assert.match(raise.title, /^❗ Kafka: События из базы/)
+  applySent(s.incidents, raise, 300_000)
+  s = step({ incidents: s.incidents }, [problem], 600_000)
+  assert.deepEqual(messages(s), [], 'told once')
+  s = step({ incidents: s.incidents }, [problem], 300_000 + 24 * 3600_000)
+  assert.equal(messages(s)[0].kind, 'remind')
+  s = step({ incidents: s.incidents }, [], 300_000 + 24 * 3600_000 + 1)
+  assert.deepEqual(messages(s), [], 'one clean pass is not enough to call it fixed')
+  s = step({ incidents: s.incidents }, [], 300_000 + 24 * 3600_000 + 2)
+  const [clear] = messages(s)
+  assert.equal(clear.kind, 'clear')
+  applySent(s.incidents, clear, 0)
+  assert.deepEqual(s.incidents, {})
+  // A blip that never reached two passes leaves nothing behind.
+  s = step({}, [problem], 0)
+  assert.deepEqual(step({ incidents: s.incidents }, [], 1).incidents, {})
+})
+
+test('an unsent message is retried on the next pass', () => {
+  const problem = { id: 'disk:x', severity: 'warning', title: 't', detail: 'd' }
+  let s = step({}, [problem], 0)
+  s = step({ incidents: s.incidents }, [problem], 1)
+  assert.equal(messages(s).length, 1)
+  s = step({ incidents: s.incidents }, [problem], 2) // Telegram refused: applySent never ran
+  assert.equal(messages(s)[0].kind, 'raise')
+})
+
+test('a warning that turns critical is told again', () => {
+  const warn = { id: 'slot-retained', severity: 'warning', title: 'Слот', detail: '2 ГБ' }
+  let s = step({}, [warn], 0)
+  s = step({ incidents: s.incidents }, [warn], 1)
+  applySent(s.incidents, messages(s)[0], 1)
+  s = step({ incidents: s.incidents }, [{ ...warn, severity: 'critical', detail: '5 ГБ' }], 2)
+  const [m] = messages(s)
+  assert.match(m.title, /^❗/)
+  assert.match(m.text, /5 ГБ/)
+})
+
+test('the weekly note goes out on Monday morning in Baku, once', () => {
+  const monday10 = Date.UTC(2026, 9, 26, 6, 0) // 10:00 Baku
+  assert.equal(weeklyDue(undefined, monday10), true)
+  assert.equal(weeklyDue(monday10 - 3600_000, monday10), false)
+  assert.equal(weeklyDue(undefined, Date.UTC(2026, 9, 26, 4, 0)), false, '08:00 Baku is too early')
+  assert.equal(weeklyDue(undefined, Date.UTC(2026, 9, 27, 6, 0)), false, 'Tuesday')
+})
+
+test('the backup calls the main watch silent only after a missed pass, and tells when it is back', () => {
+  const t0 = 1792789253579
+  assert.equal(primarySilence(t0 - 5 * 60_000, t0), null, 'a pass five minutes ago is alive')
+  assert.equal(primarySilence(t0 - PRIMARY_SILENT_MS + 1000, t0), null)
+  const silent = primarySilence(t0 - 20 * 60_000, t0)
+  assert.equal(silent.severity, 'critical')
+  assert.match(silent.detail, /20 мин/)
+  assert.match(primarySilence(NaN, t0).detail, /с момента установки/, 'no heartbeat yet is silence too')
+
+  // Silence plus a Kafka problem the backup found while on duty.
+  const broker = { id: 'broker:kafka-p-broker-eu', severity: 'warning', title: 'Выпал брокер', detail: '…' }
+  let s = step({}, [silent, broker], t0)
+  s = step({ incidents: s.incidents }, [silent, broker], t0 + 300_000)
+  const [raise] = messages(s)
+  assert.deepEqual(raise.ids.sort(), [broker.id, silent.id].sort())
+  applySent(s.incidents, raise, t0 + 300_000)
+
+  // The main watch is back: the Kafka problem is its to tell, silently dropped
+  // here; the end of the silence is told after two passes.
+  let state = standbyState({ incidents: s.incidents })
+  assert.deepEqual(Object.keys(state.incidents), [silent.id])
+  s = step(state, [], t0 + 600_000)
+  assert.deepEqual(messages(s), [])
+  s = step(standbyState({ incidents: s.incidents }), [], t0 + 900_000)
+  const [clear] = messages(s)
+  assert.equal(clear.kind, 'clear')
+  assert.deepEqual(clear.ids, [silent.id])
+  // An unreported blip of silence leaves nothing in standby.
+  assert.deepEqual(standbyState({ incidents: step({}, [silent], t0).incidents }).incidents, {})
+})
+
+test('the main watch reports a backup watch that stopped passing', () => {
+  const probes = healthyProbes()
+  const gra = probes['kafka-p-broker-gra'].data
+  gra.time = 1792789253
+  gra.backupWatch = { lastPass: gra.time * 1000 - 6 * 60_000 }
+  assert.deepEqual(evaluate({ topology, inventory, probes, cluster: healthyCluster() }), [])
+  gra.backupWatch = { lastPass: gra.time * 1000 - 45 * 60_000 }
+  const [late] = evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  assert.equal(late.id, 'backup-watch:kafka-p-broker-gra')
+  assert.match(late.detail, /45 мин/)
+  gra.backupWatch = { lastPass: null }
+  assert.match(evaluate({ topology, inventory, probes, cluster: healthyCluster() })[0].detail, /ни разу/)
+})
+
+test('every outbox event older than the grace must be in Kafka; extras are fine', () => {
+  const ID = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+  const outbox = { graceSeconds: 300, rows: [[ID(1), 'leaddrive.domain.finance.v1', 1792789253579], [ID(2), 'leaddrive.domain.sales.v1', 1792789263579]] }
+  const events = { complete: true, behind: 0, ids: [ID(1), ID(2), ID(9)] }
+  const withParity = (o, e) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.outbox = o
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster(), events: e })
+  }
+  assert.deepEqual(withParity(outbox, events), [], 'all delivered; an extra or repeated record is not a problem')
+  assert.deepEqual(withParity(outbox, undefined), [], 'not attempted: nothing to say')
+
+  const [missing] = withParity(outbox, { ...events, ids: [ID(2)] })
+  assert.equal(missing.id, 'events-missing')
+  assert.equal(missing.severity, 'critical')
+  assert.match(missing.detail, /^1 событий из outbox прода старше 5 минут нет в Kafka \(leaddrive\.domain\.finance\.v1\)/)
+  assert.match(missing.detail, new RegExp(ID(1)))
+
+  // A read that stopped early must not be mistaken for lost events.
+  assert.deepEqual(ids(withParity(outbox, { complete: false, behind: 3, ids: [] })), ['parity-unavailable'])
+  assert.deepEqual(ids(withParity(outbox, { error: 'offset reset failed' })), ['parity-unavailable'])
+  assert.match(withParity(undefined, events)[0].detail, /обновить/, 'an old production probe says so')
+  assert.deepEqual(ids(withParity({ error: 'permission denied' }, events)), ['parity-unavailable'])
+})
+
+test('MTM visits whose events did not get written are warnings', () => {
+  const withVisits = (visitEvents) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.visitEvents = visitEvents
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  }
+  assert.deepEqual(withVisits({ windowSeconds: 10800, visits: 40, unstarted: 0, drift: 0, sample: null }), [])
+  assert.deepEqual(withVisits(undefined), [], 'an older production probe says nothing')
+  const found = withVisits({ windowSeconds: 10800, visits: 40, unstarted: 2, drift: 1, sample: 'visit-1' })
+  assert.deepEqual(ids(found), ['visit-events-drift', 'visit-events-unstarted'])
+  assert.ok(found.every((p) => p.severity === 'warning'), 'the visit itself is in the CRM')
+  assert.match(found.find((p) => p.id === 'visit-events-unstarted').detail, /^2 визитов, начатых за последние 3 ч.*visit-1/)
+  assert.deepEqual(ids(withVisits({ error: 'permission denied' })), ['visit-events-unknown'])
+})
+
+test('deals whose events did not get written are warnings', () => {
+  const withDeals = (dealEvents) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.dealEvents = dealEvents
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  }
+  assert.deepEqual(withDeals({ windowSeconds: 10800, deals: 12, unstarted: 0, drift: 0, sample: null }), [])
+  assert.deepEqual(withDeals(undefined), [], 'an older production probe says nothing')
+  const found = withDeals({ windowSeconds: 10800, deals: 12, unstarted: 1, drift: 2, sample: 'deal-1' })
+  assert.deepEqual(ids(found), ['deal-events-drift', 'deal-events-unstarted'])
+  assert.ok(found.every((p) => p.severity === 'warning'), 'the deal itself is in the CRM')
+  assert.match(found.find((p) => p.id === 'deal-events-drift').detail, /^У 2 сделок.*удалена без события.*deal-1/)
+  assert.deepEqual(ids(withDeals({ error: 'permission denied' })), ['deal-events-unknown'])
+})
+
+test('the Fund shadow pilot: disagreement and lag are warnings, agreement is silent', () => {
+  const withShadow = (fundShadow) => {
+    const probes = healthyProbes()
+    probes['leaddrive-prod'].data.source.fundShadow = fundShadow
+    return evaluate({ topology, inventory, probes, cluster: healthyCluster() })
+  }
+  assert.deepEqual(withShadow({ builds: [{ buildKey: 'pilot-1', wrong: 0, stale: 0, funds: 3 }] }), [])
+  assert.deepEqual(withShadow(undefined), [], 'an older production probe says nothing')
+  const found = withShadow({ builds: [{ buildKey: 'pilot-1', wrong: 1, stale: 2, funds: 3 }] })
+  assert.deepEqual(ids(found), ['fund-shadow-stale:pilot-1', 'fund-shadow-wrong:pilot-1'])
+  assert.ok(found.every((p) => p.severity === 'warning'), 'the shadow never changes what users see')
+  assert.match(found.find((p) => p.id.startsWith('fund-shadow-wrong')).detail, /у 1 из 3 фондов/)
+  assert.deepEqual(ids(withShadow({ error: 'permission denied' })), ['fund-shadow-unknown'])
+})

@@ -1321,9 +1321,9 @@ export default function InboxAutomationPage() {
                 </span>
               </div>
               <div className="mt-5 rounded-2xl border bg-background p-5">
-                <div className="rounded-xl bg-gradient-to-br from-primary/10 via-background to-muted p-5">
+                <div className="rounded-xl border border-border bg-card text-card-foreground p-5">
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <BookOpen className="h-6 w-6" />
                     </div>
                     <div>
@@ -1339,9 +1339,9 @@ export default function InboxAutomationPage() {
                     {[1, 2, 3, 4].map((step) => (
                       <div
                         key={step}
-                        className="rounded-xl bg-background/80 px-3 py-2 text-xs"
+                        className="rounded-xl bg-muted px-3 py-2 text-xs"
                       >
-                        <span className="font-semibold text-primary">
+                        <span className="font-semibold text-foreground">
                           {step}
                         </span>
                         <p className="mt-1 text-muted-foreground">
@@ -1358,7 +1358,7 @@ export default function InboxAutomationPage() {
                     key={step}
                     className="rounded-xl border bg-background px-3 py-2"
                   >
-                    <p className="text-xs font-semibold text-primary">
+                    <p className="text-xs font-semibold text-foreground">
                       {t(`help.chapter${step}Title`)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -1396,7 +1396,7 @@ export default function InboxAutomationPage() {
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl border bg-primary/5 p-4 text-sm">
+              <div className="rounded-2xl border border-border bg-card text-card-foreground p-4 text-sm">
                 <p className="font-medium">{t("help.nextActionTitle")}</p>
                 <p className="mt-1 text-muted-foreground">
                   {queues.length === 0
@@ -1521,7 +1521,7 @@ export default function InboxAutomationPage() {
             </Card>
           </div>
 
-          <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.06] via-card to-background" data-tour-id="inbox-automation-quickstart">
+          <Card className="overflow-hidden border-border bg-card text-card-foreground" data-tour-id="inbox-automation-quickstart">
             <CardHeader className="pb-3">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -1555,10 +1555,10 @@ export default function InboxAutomationPage() {
                       key={templateId}
                       type="button"
                       onClick={() => applyFlowTemplate(templateId)}
-                      className="group rounded-2xl border bg-background/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      className="group rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition group-hover:text-foreground">
                           <Icon className="h-5 w-5" />
                         </div>
                         <div className="min-w-0">
@@ -1680,7 +1680,7 @@ export default function InboxAutomationPage() {
                 {t("builderGuide.helpCta")}
               </Button>
             </div>
-            <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.03] p-3 sm:p-4">
+            <div className="mt-4 rounded-2xl border border-border bg-card text-card-foreground p-3 sm:p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="max-w-2xl">
                   <p className="text-sm font-semibold">
@@ -1708,9 +1708,9 @@ export default function InboxAutomationPage() {
                       key={templateId}
                       type="button"
                       onClick={() => applyFlowTemplate(templateId)}
-                      className="group flex min-w-0 items-center gap-2 rounded-xl border bg-background px-3 py-2 text-left text-sm transition hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      className="group flex min-w-0 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-left text-sm transition hover:border-foreground/20 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition group-hover:text-foreground">
                         <Icon className="h-4 w-4" />
                       </span>
                       <span className="min-w-0">
@@ -1738,7 +1738,7 @@ export default function InboxAutomationPage() {
                   {t("setup.safe")}
                 </Badge>
               </div>
-              <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <div className="mt-3 rounded-xl border border-border bg-card text-card-foreground p-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">
@@ -2714,7 +2714,7 @@ export default function InboxAutomationPage() {
                 {flows.length === 0 ? (
                   <div className="rounded-2xl border border-dashed bg-muted/20 p-6 text-sm">
                     <div className="mx-auto flex max-w-xl flex-col items-center text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
                         <GitBranch className="h-6 w-6" />
                       </div>
                       <p className="mt-4 text-base font-semibold text-foreground">
@@ -2758,13 +2758,13 @@ export default function InboxAutomationPage() {
                       <article
                         key={flow.id}
                         className={cn(
-                          "group relative overflow-hidden rounded-[1.35rem] border bg-background p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md",
+                          "group relative overflow-hidden rounded-[1.35rem] border bg-card text-card-foreground p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md",
                           isSelected
-                            ? "border-primary/45 bg-gradient-to-br from-primary/10 via-background to-primary/5 ring-1 ring-primary/15"
-                            : "border-border/70 hover:bg-muted/20",
+                            ? "border-foreground/30 ring-1 ring-foreground/10"
+                            : "border-border hover:border-foreground/20 hover:bg-muted/20",
                         )}
                       >
-                        <div className="pointer-events-none absolute -right-16 -top-16 h-32 w-32 rounded-full bg-primary/10 blur-3xl opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                        <div className="pointer-events-none absolute -right-16 -top-16 h-32 w-32 rounded-full bg-muted/30 blur-3xl opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                         <div className="relative grid gap-4 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:items-start">
                           <div className="min-w-0 space-y-4">
                             <div className="flex min-w-0 items-start gap-3">
@@ -2772,7 +2772,7 @@ export default function InboxAutomationPage() {
                                 className={cn(
                                   "mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-colors",
                                   isSelected
-                                    ? "border-primary/30 bg-primary text-primary-foreground shadow-sm"
+                                    ? "border-foreground/30 bg-muted text-foreground shadow-sm"
                                     : "border-border bg-muted/50 text-muted-foreground",
                                 )}
                               >
@@ -2828,7 +2828,7 @@ export default function InboxAutomationPage() {
                                   {triggerLabel(flow.trigger)}
                                 </p>
                               </div>
-                              <div className="hidden h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary sm:flex">
+                              <div className="hidden h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground sm:flex">
                                 <ArrowRight className="h-4 w-4" />
                               </div>
                               <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/35 px-3 py-2.5">
@@ -2912,7 +2912,7 @@ export default function InboxAutomationPage() {
                               ))}
                             </select>
                             <Button
-                              variant={isSelected ? "default" : "outline"}
+                              variant={isSelected ? "selected" : "outline"}
                               size="sm"
                               disabled={busy}
                               onClick={() => {
@@ -2922,7 +2922,7 @@ export default function InboxAutomationPage() {
                               className={cn(
                                 "h-10 gap-2 rounded-xl px-4 shadow-sm transition active:scale-[0.98]",
                                 !isSelected &&
-                                  "border-primary/20 bg-background hover:bg-primary/10",
+                                  "border-border bg-card hover:bg-muted",
                               )}
                             >
                               <GitBranch className="h-4 w-4" />
@@ -2948,7 +2948,7 @@ export default function InboxAutomationPage() {
                 )}
               </CardContent>
             </Card>
-            <Card className="overflow-hidden border-primary/10 bg-gradient-to-br from-background via-card to-primary/5 shadow-sm">
+            <Card className="overflow-hidden border-border bg-card text-card-foreground shadow-sm">
               <CardHeader className="border-b bg-background/75">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
@@ -3026,7 +3026,7 @@ export default function InboxAutomationPage() {
                                 {triggerLabel(selectedVisualFlow.trigger)}
                               </p>
                             </div>
-                            <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm sm:flex">
+                            <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground sm:flex">
                               <ArrowRight className="h-4 w-4" />
                             </div>
                             <div className="min-w-0 rounded-2xl bg-muted/45 px-3 py-3">
@@ -3103,8 +3103,8 @@ export default function InboxAutomationPage() {
                           </div>
                         </div>
 
-                        <aside className="border-t bg-primary/5 p-5 lg:border-l lg:border-t-0">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                        <aside className="border-t border-border bg-muted/30 p-5 lg:border-l lg:border-t-0">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                             {t("visualEditor.nextStepTitle")}
                           </p>
                           <h4 className="mt-2 font-semibold">
@@ -3218,7 +3218,7 @@ export default function InboxAutomationPage() {
               {flowRuns.length === 0 ? (
                 <div className="rounded-2xl border border-dashed bg-muted/20 p-6 text-sm">
                   <div className="mx-auto max-w-2xl text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
                       <Activity className="h-6 w-6" />
                     </div>
                     <p className="mt-4 text-base font-semibold text-foreground">
@@ -3238,7 +3238,7 @@ export default function InboxAutomationPage() {
                         key={item}
                         className="rounded-xl border bg-background px-3 py-3 text-left"
                       >
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
                           {index + 1}
                         </span>
                         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">

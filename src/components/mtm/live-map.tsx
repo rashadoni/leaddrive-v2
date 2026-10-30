@@ -67,6 +67,8 @@ interface Props {
   geofenceRadius?: number
   plannedRoute?: RouteStop[]
   focusAgentId?: string | null
+  /** Bumped by «Все сотрудники» to frame the whole team again. */
+  everyoneTurn?: number
   etaSeconds?: number | null
   timeZone?: string
   showWorkdayStatus?: boolean
@@ -361,16 +363,25 @@ function InvalidateSize() {
   return null
 }
 
-function FitBounds({ agents, plannedRoute, focusAgentId, hold }: {
+function FitBounds({ agents, plannedRoute, focusAgentId, hold, everyoneTurn }: {
   agents: LiveMapAgent[]
   plannedRoute: RouteStop[]
   focusAgentId: string | null
   /** A tool is in use on the map — a ruler, a picked point: the view is the dispatcher's, not ours. */
   hold: boolean
+  /** Bumped by «Все сотрудники»: frame the whole team now, whatever was framed before. */
+  everyoneTurn: number
 }) {
   const map = useMap()
   const lastFitRef = useRef("")
+  const lastFocusRef = useRef<string | null>(null), lastTurnRef = useRef(everyoneTurn)
   useEffect(() => {
+    // Leaving an employee, or asking for everyone, frames the team again: the
+    // map used to stay on the one employee, and the frame of «all» had not
+    // changed, so nothing brought the others back (owner, 2026-10-30).
+    const asked = lastTurnRef.current !== everyoneTurn
+    if ((lastFocusRef.current && !focusAgentId) || asked) lastFitRef.current = ""
+    lastFocusRef.current = focusAgentId; lastTurnRef.current = everyoneTurn
     // Nothing is recorded while held, so what changed meanwhile is framed once
     // the tool is put down. Held is the framing of the whole team only: an
     // employee selected meanwhile still gets his day's stops in view — that
@@ -409,12 +420,17 @@ function FitBounds({ agents, plannedRoute, focusAgentId, hold }: {
       map.setView(points[0], 15)
       return
     }
+    if (!focusMode && points.length === 1 && lastFitRef.current === "") {
+      lastFitRef.current = sig
+      map.setView(points[0], 15)
+      return
+    }
     if (points.length < 2) return
     // Avoid re-fitting on every render when the frame did not change
     if (sig === lastFitRef.current) return
     lastFitRef.current = sig
     map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 })
-  }, [map, agents, plannedRoute, focusAgentId, hold])
+  }, [map, agents, plannedRoute, focusAgentId, hold, everyoneTurn])
   return null
 }
 
@@ -829,6 +845,7 @@ export default function MtmLiveMap({
   geofenceRadius = 100,
   plannedRoute = [],
   focusAgentId = null,
+  everyoneTurn = 0,
   etaSeconds = null,
   timeZone,
   showWorkdayStatus = true,
@@ -1049,7 +1066,7 @@ export default function MtmLiveMap({
           scrollWheelZoom
         >
           <InvalidateSize />
-          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} hold={pressMode != null || rulerPoints.length > 0 || referencePoint != null} />
+          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} hold={pressMode != null || rulerPoints.length > 0 || referencePoint != null} everyoneTurn={everyoneTurn} />
           <FocusAgent agents={agents} focusAgentId={focusAgentId} />
           <FocusStop stops={plannedRoute} focusStopOrder={focusStopOrder} markers={stopMarkersRef} />
           <FollowAgent agents={agents} focusAgentId={focusAgentId} enabled={followAgent} />

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -55,17 +57,18 @@ export function normalizeCallSource(value: unknown): string | null {
   return SPEAKABLE_SOURCES[key] ?? null
 }
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID
-  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
-
   const callId = request.nextUrl.searchParams.get("callId")?.trim()
   // The id is the UUID the CRM minted before originating, so an unparseable one
   // is a caller error rather than something to look up.
   if (!callId || !/^[0-9a-fA-F-]{36}$/.test(callId)) {
     return NextResponse.json({ error: "callId is required" }, { status: 400 })
   }
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId }))?.organizationId
+  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
 
   const source = await runWithTenant(organizationId, async () => {
     const call = await prisma.callLog.findFirst({
@@ -88,3 +91,5 @@ export async function GET(request: NextRequest) {
     { headers: { "Cache-Control": "no-store" } },
   )
 }
+
+export const GET = withStationTiming("call-source", handleGet)

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z, ZodError } from "zod"
 import { prisma } from "@/lib/prisma"
 import { normalizeFundRow } from "@/lib/prisma-decimal"
+import { kafkaFundBalances, readFundBalanceSource, withBalanceOrigin } from "@/lib/finance/fund-balance-source"
 import { appendDomainEvent, eventProducerVersion } from "@/lib/event-platform"
 import { withRlsAuth } from "@/lib/with-rls"
 
@@ -59,7 +60,9 @@ export const GET = withRlsAuth<RouteContext>(
       include: { rules: true },
     })
     if (!fund) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ data: normalizeFundRow(fund) })
+    const { source } = await readFundBalanceSource(auth.orgId)
+    const kafka = source === "kafka" ? await kafkaFundBalances(auth.orgId) : new Map()
+    return NextResponse.json({ data: withBalanceOrigin(normalizeFundRow(fund), source, kafka) })
   },
 )
 

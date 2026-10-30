@@ -94,7 +94,9 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20"
+  # Production runs Node 24 since 2026-10-28 (scripts/ops/switch-prod-node.sh),
+  # so the artifact is built and tested on the runtime that will execute it.
+  NODE_VERSION: "24"
   EXPECTED_PRODUCTION_HOST: "13.140.132.245"
   DEPLOY_TARGET_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume' && inputs.bootstrap_resume_sha || github.sha }}
   # This is deliberately non-production material. Historical source is
@@ -395,7 +397,7 @@ jobs:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
 
       - name: Event-platform SDK PostgreSQL concurrency gate
-        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts
+        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts src/__tests__/mtm-visit-events-postgres.test.ts src/__tests__/deal-events-postgres.test.ts
         env:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
 
@@ -407,6 +409,19 @@ jobs:
         env:
           FUND_SHADOW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FUND_SHADOW_DB_GATE: required
+
+      - name: Fund shadow pilot runner PostgreSQL gate
+        run: |
+          npm ci --prefix ops/event-platform/fund-shadow --ignore-scripts --no-audit --no-fund
+          NODE_PATH=ops/event-platform/fund-shadow/node_modules ops/event-platform/fund-shadow/node_modules/.bin/esbuild \
+            scripts/event-platform/fund-shadow/pilot.integration.ts --bundle --platform=node --target=node18 --format=cjs \
+            --external:@prisma/client --external:pg-native --log-level=error --outfile="$RUNNER_TEMP/pilot.integration.cjs"
+          NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$RUNNER_TEMP/pilot.integration.cjs"
+        env:
+          PILOT_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          PILOT_PSQL: psql -h 127.0.0.1 -p 5432
+          PILOT_SQL_DIR: scripts/event-platform/fund-shadow
+          PGPASSWORD: postgres
 
       - name: Workforce shared-lock PostgreSQL race gate
         run: >-
@@ -471,6 +486,89 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Ad conversions database gate
+        # Same gate as in pr-checks: conversions to Meta only with consent,
+        # once each (see the test's header).
+        run: npx vitest run src/__tests__/ad-conversions-postgres.test.ts
+        env:
+          AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          AD_CONVERSIONS_DB_GATE: required
+
+      - name: Voice line numbers database gate
+        # Same gate as in pr-checks: number -> organization (see the test's header).
+        run: npx vitest run src/__tests__/voice-line-numbers-postgres.test.ts
+        env:
+          VOICE_LINE_NUMBERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          VOICE_LINE_NUMBERS_DB_GATE: required
+
+      - name: Pharmacy phone orders database gate
+        # Same gate as in pr-checks: a call's order list, its numbering and the
+        # manager's card under FORCE row-level security (see the test's header).
+        run: npx vitest run src/__tests__/pharmacy-phone-orders-postgres.test.ts
+        env:
+          PHARMACY_PHONE_ORDERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          PHARMACY_PHONE_ORDERS_DB_GATE: required
+
+      - name: Booking release admission and recovery contract gate
+        run: node --test scripts/booking/release-contract.test.mjs
+        env:
+          BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Finance open items database gate
+        # Same gate as in pr-checks: the overview and the A/R and A/P tabs count
+        # the same debt (see the test's header).
+        run: npx vitest run src/__tests__/finance-open-items-postgres.test.ts
+        env:
+          FINANCE_OPEN_ITEMS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          FINANCE_OPEN_ITEMS_DB_GATE: required
+
+      - name: Deal line items database gate
+        # Same gate as in pr-checks: a deal's product lines (see the test's header).
+        run: npx vitest run src/__tests__/deal-line-items-postgres.test.ts
+        env:
+          DEAL_LINES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEAL_LINES_DB_GATE: required
+
+      - name: Telegram staff bot database gate
+        # Same gate as in pr-checks: the employee Telegram bot (see the test's header).
+        run: npx vitest run src/__tests__/telegram-staff-postgres.test.ts
+        env:
+          TELEGRAM_STAFF_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TELEGRAM_STAFF_DB_GATE: required
+
+      - name: Company VÖEN database gate
+        # Same gate as in pr-checks: a company's VÖEN, its duplicate warning and
+        # the tax registry's card (see the test's header).
+        run: npx vitest run src/__tests__/company-voen-postgres.test.ts
+        env:
+          COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          COMPANY_VOEN_DB_GATE: required
+
+      - name: E-qaimə database gate
+        # Same gate as in pr-checks: e-qaimə invoices under row-level security,
+        # their totals, their sealed PDFs (see the test's header).
+        run: npx vitest run src/__tests__/e-qaime-postgres.test.ts
+        env:
+          E_QAIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          E_QAIME_DB_GATE: required
+
+      - name: Online booking database gate
+        # Same gate as in pr-checks: one meeting per host per time, by the real
+        # booking transaction (see the test's header).
+        run: npx vitest run src/__tests__/online-booking-postgres.test.ts
+        env:
+          ONLINE_BOOKING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          ONLINE_BOOKING_DB_GATE: required
+
+      - name: Invoice card payment database gate
+        # Same gate as in pr-checks: an invoice paid by card through Kapital
+        # Bank is recorded once, and only on the bank's own word (see the
+        # test's header).
+        run: npx vitest run src/__tests__/invoice-card-payment-postgres.test.ts
+        env:
+          INVOICE_CARD_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          INVOICE_CARD_PAYMENT_DB_GATE: required
+
       - name: Demo WhatsApp ticket database gate
         # The demo's real Service Desk ticket (opened on the prospect's own
         # press) is read back for the demo page only through the sales
@@ -508,8 +606,8 @@ jobs:
       - name: Demo assistant voice budget database gate
         # Same gate as in pr-checks: the guide's voice minutes are claimed
         # atomically before Google is asked, so requests arriving together
-        # cannot overspend a demo's ten minutes or the day's 300 (see the
-        # test's header).
+        # cannot overspend a person's twenty minutes (across all their demos)
+        # or the day's 300 (see the test's header).
         run: npx vitest run src/__tests__/demo-assistant-voice-postgres.test.ts
         env:
           DEMO_ASSISTANT_VOICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
@@ -621,6 +719,14 @@ jobs:
         env:
           MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_PRODUCT_VIEWERS_DB_GATE: required
+
+      - name: Tenant data keys database gate
+        # Same gate as in pr-checks: one data key per organization, FORCE RLS
+        # on the key table, and the v1 → v2 sweep (see the test's header).
+        run: npx vitest run src/__tests__/tenant-data-keys-postgres.test.ts
+        env:
+          TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TENANT_DATA_KEYS_DB_GATE: required
 
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
@@ -850,6 +956,22 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout the build-worker trace patch of this workflow's commit
+        # A recovery-bootstrap-resume build checks out an older main commit,
+        # which may predate scripts/ci/patch-next-build-worker-trace.mjs. The
+        # patch belongs to the workflow running the build (github.sha, the
+        # main head this dispatch was admitted from), not to the commit being
+        # built; every main commit since the 2026-09-09 baseline pins next
+        # 16.2.11, so it applies to any admitted resume target. Taken before
+        # any repository code runs, and without a persisted credential.
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .workflow-build-patch
+          persist-credentials: false
+          sparse-checkout: scripts/ci/patch-next-build-worker-trace.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -880,6 +1002,24 @@ jobs:
           printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' \
             "$DEPLOY_TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
           cat src/generated/build-sha.ts
+
+      - name: Make Prisma fluent field-map construction linear
+        # This changes runtime behavior, so it belongs to the target artifact's
+        # commit. Historical recovery targets that predate it stay unchanged.
+        if: ${{ hashFiles('scripts/ci/patch-prisma-fluent-field-map.mjs') != '' }}
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs
+
+      - name: Keep Next build-worker trace events out of IPC
+        # The build worker returns each compiler's result as one JSON string;
+        # the server's debug trace events alone reached 349M of V8's 536.9M
+        # character limit and the build hung (2026-10-21). See the script.
+        # Patches ./node_modules (the commit being built) with the copy above.
+        run: node .workflow-build-patch/scripts/ci/patch-next-build-worker-trace.mjs
+
+      - name: Remove the trace patch checkout before the build
+        # The artifact is built from the target commit's tree alone (Tailwind,
+        # for one, scans every file that git does not ignore).
+        run: rm -rf .workflow-build-patch
 
       - name: Build Next.js standalone
         # @serwist requires webpack for sw.js. Next compiles server, edge and
@@ -947,9 +1087,12 @@ jobs:
             MANIFEST_COPIED=$((MANIFEST_COPIED + 1))
           done < <(find .next/server/app -name '*_client-reference-manifest.js')
           echo "::notice::Copied $MANIFEST_COPIED client-reference-manifest file(s)"
-          mkdir -p .next/standalone/node_modules
-          cp -r node_modules/.prisma .next/standalone/node_modules/.prisma
-          cp -r node_modules/@prisma .next/standalone/node_modules/@prisma
+          # Next may already have traced part of these directories. Copy their
+          # contents into place, rather than nesting another @prisma/.prisma
+          # under the existing destination and leaving traced files untouched.
+          mkdir -p .next/standalone/node_modules/.prisma .next/standalone/node_modules/@prisma
+          cp -r node_modules/.prisma/. .next/standalone/node_modules/.prisma/
+          cp -r node_modules/@prisma/. .next/standalone/node_modules/@prisma/
 
           mkdir -p .next/standalone/public
           cp -r public/. .next/standalone/public/
@@ -987,6 +1130,14 @@ jobs:
           cp -r scripts/*.ts  .next/standalone/scripts/ 2>/dev/null || true
           cp -r scripts/*.sh  .next/standalone/scripts/ 2>/dev/null || true
           cp scripts/event-platform-postconditions.sql .next/standalone/scripts/
+          mkdir -p .next/standalone/scripts/booking .next/standalone/scripts/event-platform
+          cp -r scripts/booking/. .next/standalone/scripts/booking/
+          cp scripts/event-platform/inspect-production.sh .next/standalone/scripts/event-platform/
+          node scripts/booking/release-contract.mjs --write-manifest .next/standalone "$DEPLOY_TARGET_SHA"
+          mkdir -p .next/standalone/scripts/identity
+          cp scripts/identity/release-contract.mjs scripts/identity/release-state.sql .next/standalone/scripts/identity/
+          node scripts/identity/release-contract.mjs --write-manifest .next/standalone "$DEPLOY_TARGET_SHA"
+
           test -s .next/standalone/scripts/event-platform-postconditions.sql || {
             echo "::error::event-platform production postcondition missing from standalone artifact"
             exit 1
@@ -1135,6 +1286,10 @@ jobs:
             echo "::error::final artifact must not claim the one-release Fund atomic prerequisite contract"
             exit 1
           }
+
+      - name: Verify Prisma fluent optimization in the assembled artifact
+        if: ${{ hashFiles('scripts/ci/patch-prisma-fluent-field-map.mjs') != '' }}
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs --check .next/standalone
 
       - name: Create deployment tarball
         run: |
@@ -1617,6 +1772,27 @@ jobs:
             exit 1
           }
 
+      - name: Admit booking backend from current main before staging
+        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          artifact="/tmp/leaddrive-deploy-artifact/leaddrive-prod-${DEPLOY_TARGET_SHA}.tar.gz"
+          marker="$RUNNER_TEMP/booking-candidate-contract.json"
+          tar -xOzf "$artifact" ./.booking-backend-contract.json > "$marker"
+          node scripts/booking/release-contract.mjs --emit-admission "$DEPLOY_TARGET_SHA" < "$marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+          identity_marker="$RUNNER_TEMP/identity-candidate-contract.json"
+          tar -xOzf "$artifact" ./.identity-backend-contract.json > "$identity_marker"
+          node scripts/identity/release-contract.mjs --emit-admission "$DEPLOY_TARGET_SHA" < "$identity_marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
+
       - name: Stage immutable artifact on production disk
         # This copies bytes only; it does not stop PM2, run migrations, unpack
         # into the live tree, or consume production build memory. The SHA in
@@ -1943,6 +2119,23 @@ jobs:
                fi
              fi'
 
+      # Zeytun's phone line answers from a catalog parsed into the process that
+      # answers the station (pm2 leaddrive-v2-line-a/-b; the web process when that
+      # one is down — cron-trigger.sh picks). A fresh release has none: the first call parsed 14 MB inside the
+      # station's 5 s for the session request and the agent stayed silent
+      # (2026-10-26). Parse it now; "not_configured" is a host without the line.
+      - name: Warm Zeytun's phone line
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             WARM_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh /api/cron/zeytun-line-warm || true)"
+             printf "%s\n" "$WARM_OUTPUT"
+             if printf "%s\n" "$WARM_OUTPUT" | grep -Eq '\''"outcome":"(warm|not_configured)"'\''; then exit 0; fi
+             echo "FATAL: Zeytun line catalog did not load (see output above)"
+             exit 1'
+
       # The voice assistant is pinned to a provider model, and Google retires
       # models on its own calendar: a retired id fails every session and no test
       # of ours can see it, because every test stops at the request we send.
@@ -2065,6 +2258,18 @@ jobs:
                echo "FATAL: MTM cleanup lease is missing or lacks a fresh completed heartbeat"
                exit 1
              fi'
+
+      - name: Verify booking release with read-only production evidence
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node scripts/booking/release-contract.mjs --emit-proof "$DEPLOY_TARGET_SHA" \
+            < "$RUNNER_TEMP/booking-candidate-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
 
       - name: Cleanup SSH key
         if: always()
@@ -2227,6 +2432,23 @@ jobs:
             exit 1
           }
 
+      - name: Checkout current-main recovery admission
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Preserve current-main booking admission outside historical checkout
+        run: |
+          set -euo pipefail
+          umask 077
+          admission="$RUNNER_TEMP/booking-current-main-admission"
+          mkdir -p "$admission/scripts/booking" "$admission/scripts/event-platform"
+          cp scripts/booking/release-contract.mjs scripts/booking/release-state.sql "$admission/scripts/booking/"
+          mkdir -p "$admission/scripts/identity"
+          cp scripts/identity/release-contract.mjs scripts/identity/release-state.sql "$admission/scripts/identity/"
+          cp scripts/event-platform/inspect-production.sh "$admission/scripts/event-platform/"
+
       - name: Checkout deployment script from the recovered revision
         uses: actions/checkout@v6
         with:
@@ -2330,6 +2552,30 @@ jobs:
           SSHCFG
           chmod 600 ~/.ssh/config
 
+      - name: Admit retained booking backend with current-main code
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          artifact="/tmp/leaddrive-recovery-artifact/leaddrive-prod-${RECOVERY_SHA}.tar.gz"
+          marker="$RUNNER_TEMP/booking-recovery-contract.json"
+          # Empty is a genuine pre-A artifact; the current-main remote gate
+          # rejects it as soon as production has the expanded booking schema.
+          tar -xOzf "$artifact" ./.booking-backend-contract.json > "$marker" 2>/dev/null || true
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/booking/release-contract.mjs" \
+            --emit-admission "$RECOVERY_SHA" < "$marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+          identity_marker="$RUNNER_TEMP/identity-recovery-contract.json"
+          tar -xOzf "$artifact" ./.identity-backend-contract.json > "$identity_marker" 2>/dev/null || true
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/identity/release-contract.mjs" \
+            --emit-admission "$RECOVERY_SHA" < "$identity_marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
+
       - name: Stage exact retained recovery artifact on production disk
         run: |
           artifact="/tmp/leaddrive-recovery-artifact/leaddrive-prod-${RECOVERY_SHA}.tar.gz"
@@ -2376,6 +2622,17 @@ jobs:
             | sed -n 's/.*"artifactSha":"\([0-9a-f]\{40\}\)".*/\1/p')
           [ "$LIVE_SHA" = "$EXPECTED_SHA" ]
           REMOTE
+
+      - name: Verify restored booking contract with current-main evidence
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/booking/release-contract.mjs" \
+            --emit-proof "$RECOVERY_SHA" < "$RUNNER_TEMP/booking-recovery-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
 
       - name: Cleanup SSH key
         if: always()

@@ -1,0 +1,282 @@
+# Page loading and capacity investigation — 2026-10-26
+
+## 1. Request and routing
+
+- User reports very slow page loading and clarified that **all pages** are affected.
+- User also asks what happens with 1,000 users. Distinguish registered accounts from simultaneous active users; no capacity guarantee without representative load evidence.
+- Scope: diagnose source and live read-only behavior, document evidence and recommended next steps. No push, merge, deployment, load generation, or production mutation authorized in this task.
+- Recorded starting checkout: `/home/codex-alt/projects/leaddrive-v2`, branch `fix/reply-matrix-ai-agent-label`, with existing unrelated modifications and merge conflicts. Preserved untouched.
+- Isolated investigation worktree: `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-page-load-diagnostic-20261026`, branch `codex/page-load-diagnostic-20261026`, based on freshly fetched `origin/main` `17dc0b81714fea99026eb69686e76abfd4d4cdf8`.
+- Origin: `https://github.com/rashadoni/leaddrive-v2.git`. Current `origin/main` AGENTS, registry and deployment docs agree on production `13.140.132.245:/opt/leaddrive-v2`; releases use reviewed main and SHA-bound GitHub Actions artifacts. Older checkout's Hetzner statement is superseded.
+- Public build-info reports deployed artifact `1b98cb8060dc88d8b47dc7ded65ddaca507b99fe`, built `2026-10-26T08:37:16Z`; source findings must be checked against that revision.
+- First unauthenticated public `/api/v1/ping` sample: HTTP 200, total 0.220 s from development host. This is not a measurement of authenticated page loading.
+- Development host preflight: ~12.5 GiB available RAM, 110 GiB disk free, memory pressure avg10=0.00. Heavy verification stays off this host.
+- Applying optimize skill: measure first, separate evidence from hypotheses. A parallel read-only source review covers common loading and scalability.
+- Next: bounded production resource/log inspection, several sequential public timing samples, then correlate with deployed source. Native authenticated browser capability has not yet been established.
+
+
+## 2. Bounded live measurements and access limits
+
+- Read-only SSH attempt through the verified `leaddrive-prod` alias failed: `Permission denied (publickey)`. No alternative target/key was used. Production CPU, memory, process count, DB pool/locks and query latency remain unmeasured.
+- Sequential public samples from development Contabo, not a load test:
+  - `/api/v1/ping`: initial 0.220 s; subsequent samples 2.813 / 0.644 / 1.186 s; later 0.670 s. HTTP 200. Contrary to the stale load-test README, the current handler calls `prisma.organization.count()`, so this is a DB-path readiness request.
+  - `/api/auth/session` without cookies: 0.658 / 1.020 / 0.554 s, HTTP 200. These are NOT authenticated session timings.
+  - `/login`: 1.166 / 1.227 / 1.749 s, HTTP 200; HTML compressed response ~7.2 KB, decoded ~24.7 KB. Responses pass through Cloudflare; origin-vs-edge latency is not isolated.
+  - Anonymous `/dashboard`: HTTP 307 to login, 0.274–0.401 s; not a dashboard loading measurement.
+- Production `/sw.js` lists 2,627 precache entries (2,613 JS and 5 CSS). This is a candidate first-install/update amplification factor, NOT proof those requests occurred during the observed warm-cache navigation. No cold-install test was run.
+
+## 3. Native authenticated browser evidence (14:09 Baku)
+
+- Initial uncertainty about native browser availability is superseded: discovered existing Chrome 151 on loopback CDP 9222. Its existing `/companies` page returned HTTP 200 with an actual authenticated session. No cookies, passwords, tokens, session payloads or business records were copied/exported.
+- Existing tab was preserved. One temporary background tab in that same real browser/session opened `/companies`, was measured sequentially, and was closed afterwards. No form submission or intentional business-data change was performed. This is a single warm-cache sample in a hidden tab, not a broad benchmark or proof of every route's performance.
+- Sanitized timing receipt: `docs/evidence/page-load-20261026-native.json`. It contains timing, generic route paths, response status and byte counts, no response bodies or credentials.
+- Fresh navigation: first HTML byte at 2.293 s; HTML response finished at 3.467 s; DOMContentLoaded at 3.535 s; load event at 3.883 s.
+- First `/api/auth/session`: started at 3.971 s, completed at 6.009 s (2.037 s duration).
+- First companies request: started at 6.072 s, completed at 9.194 s (3.122 s duration). Thus the first data response arrived ~9.2 seconds after navigation. This is a response timing, not a directly observed paint/interactive timestamp.
+- A second session request started at 6.079 s and completed at 9.148 s. A second companies request then started at 9.173 s and completed at 14.023 s (4.849 s duration). This matches the companies page's `useEffect(..., [session])` dependency (line 120), which repeats its fetch when the session object changes.
+- Shared API requests for preferences, notifications, org settings, voice capabilities, webchat and calls took roughly 1.9–3.4 seconds in this sample; their responses were HTTP 200.
+- Navigation decoded body was 2,414,185 bytes; decoded JS resources ~2,019,821 bytes, already cached. The service worker controlled this page, so Resource Timing transfer/encoded sizes must NOT be represented as reliable on-wire byte counts. Response headers show Brotli compression. No assertion that 2.4 MB crossed the wire uncompressed.
+- `tableRows=0` is not a no-data claim: this route uses cards. `busyElements=0` is not a proven LCP/INP or complete UI rendering metric.
+
+## 4. Source findings and 1,000-user model
+
+Independent source review confirms these paths match deployed artifact `1b98cb8060dc88d8b47dc7ded65ddaca507b99fe`:
+
+1. `src/components/providers.tsx:33` has no preloaded session; `src/app/(dashboard)/layout.tsx:147` gates child pages on client authentication, with a six-second watchdog. This creates a document/JS -> session -> page data sequence on first opening. Native timing confirms the sequence on companies. Client-side route transitions can behave differently and were not separately benchmarked.
+2. Companies `src/app/(dashboard)/companies/page.tsx:105–120` fetches up to 500 records and depends on the whole session object; two actual requests were observed. A stable identity/scoped query dependency can prevent repeats without weakening authentication.
+3. Persistent polling in each authenticated visible tab: calls 5 s (`voip-call-provider.tsx:38,75`); bell 10 s (`notification-bell.tsx:184–193`); inbox badge 20 s (`sidebar.tsx:194–201`). At 1,000 such tabs, arithmetic gives 200 + 100 + 50 = **350 requests/second**, before page actions. Tickets at 12 s and enabled webchat at 30 s can add ~83 + ~33 = **~467 requests/second** total. This assumes one visible active tab per user and applicable modules/roles; it is not measured server capacity. Browser throttling, multiple tabs and module mix change actual load.
+4. Calls polling has no visibility/module/in-flight gate. Sidebar's inbox badge only consumes `unreadCount`, but its API loads notification records and two counts plus settings (`src/app/api/v1/notifications/route.ts:145–158`).
+5. Auth reads fresh user/organization (`src/lib/auth.ts:436`) and identity authority (`:482`). Legacy eligibility uses a RepeatableRead snapshot plus three model reads (`src/lib/identity/legacy-crm-boundary.ts:16–20`); snapshot setup and guard queries are in `mobile-session-resolver.ts:19–29`. API auth repeats a fresh org lookup (`api-auth.ts:269/558`); Prisma RLS adds per-query context transactions (`prisma.ts:168`). These are code-confirmed work amplification; their share of live latency is NOT profiled. Preserve revocation, tenant isolation and policy freshness in any optimization.
+6. Authenticated root layout passes all translation namespaces to the client (`src/app/layout.tsx:78,88,111`). Deployed compact UTF-8 catalog sizes: RU 2,262,421 bytes, AZ 1,629,992, EN 1,455,262. These logical sizes precede serialization/HTTP compression. HEAD catalogs are slightly larger; those later sizes are not production evidence.
+7. `ecosystem.config.cjs:16–17` configures one PM2 fork. Actual runtime instance count and resources remain unverified because SSH failed.
+8. Existing load scripts model 351 mobile users. No verified result demonstrating 1,000 simultaneous CRM users was found. 1,000 registered users by itself is not equivalent to 1,000 active users.
+
+## 5. Recommended next slice and stopping point
+
+- Diagnosis result: a representative authenticated page is slow; sequential session/data loading, repeat page fetches and shared background request fanout are directly evidenced. Runtime root cause behind multi-second server responses (CPU/event loop, DB latency/pool/locks, network/edge) remains unresolved.
+- Priority: eliminate repeated data fetches on session refresh; reduce unnecessary/global polling with permissions and visibility preserved; profile and deduplicate auth reads within a single request without changing security semantics; reduce route-irrelevant translation data and cold precache footprint. Measure before/after using the same browser flow.
+- Before claiming readiness for 1,000 simultaneous users, use representative isolated staging with real role/module mix, dataset and think times; ramp load and measure p95/p99, error rate, CPU/event-loop delay, DB pool/locks, query latency and background queues. Heavy checks belong on hosted CI/designated ephemeral worker, never this development host or unapproved production load.
+- No application code changed; no push, merge, deploy, restart, DB mutation or load test performed.
+- NOT RUN: 1,000-user load test (no authorized isolated target, prohibited heavy work on this host); full build/typecheck/full E2E (diagnostics/docs only, host limits); production CPU/DB profiling (SSH public-key refusal); cold-browser/service-worker installation benchmark (would introduce much larger request load).
+- Current stopping point: bounded live/browser/source diagnosis completed; task-owned journal and sanitized evidence prepared for checkpoint. Next action: targeted performance implementation plus renewed runtime profiling access, followed by before/after and staged capacity testing.
+
+
+## 6. Evidence review and checkpoint
+
+- Independent review found one wording error in section 3: **"already cached" and "warm-cache sample" are superseded** by "existing browser profile; actual per-resource cache provenance unverified." Zero JS transfer bytes under a service worker do not prove a cache hit. The receipt preserves its initial label as metadata and carries the corrected kind/caveat. No cold profile was created.
+- Earlier "no DB mutation" means no intentional database command, business form submission or settings edit. Ordinary application/session/background behavior during a normal page opening was not suppressed or audited for every server-side effect.
+- Source equality for companies, root layout, identity boundary/snapshot, auth, API auth and Prisma was rechecked against the deployed SHA: no diff.
+- Checks PASS: staged `git diff --cached --check`; sanitized evidence JSON parse; native temporary tab closed and original `/companies` tab retained. Only the journal and sanitized timing JSON are staged.
+- Final state: diagnosis completed, application source unchanged, checkpoint prepared on `codex/page-load-diagnostic-20261026`; no push/deployment. Next action is the targeted performance slice described above, with before/after measurements and a separately provisioned capacity gate.
+
+
+## 7. Implementation authorized; diagnosis-first correction (2026-10-26)
+
+- User challenged whether the proposed changes are the right solution. Clarified that repeated fetching does not by itself explain the first 9.2 seconds; background request arithmetic is not a capacity test. Revised order: localize server latency first, fix the evidenced bottleneck, repeat matching browser measurements, then isolated capacity verification.
+- User then instructed: «займись». Continuing investigation and targeted implementation in the original worktree/branch. Prior diagnosis-only scope is superseded for source fixes; no new push/merge/deployment authorization has been inferred.
+- Resumed from checkpoint `ebf0be1d9`; refreshed current origin/main and incorporated it without rewriting prior history. Production public artifact changed independently to `67a7920b482d3b9d180cb9c9d00b959436eb2ff5`, built 2026-10-26T10:04:45Z. Remeasure before comparing any change.
+- `leaddrive-prod` again rejected its configured dedicated key. Exploring documented existing inspection routes without copying credentials or changing authentication. App has no general admin resource-metrics endpoint in inspected source.
+- Parallel read-only review is tracing duplicate auth work across proxy and API handlers, with immediate revocation/tenant/RLS semantics preserved. No auth removal or cross-request caching is approved as an optimization shortcut.
+- Preflight: ~12.6 GiB available RAM, 110 GiB disk free, memory pressure avg10=0.00. Checks remain sequential and bounded.
+
+
+## 8. Access checks and invalidated measurement (14:41 Baku)
+
+- Verified configured dedicated production key is offered to the registered host but rejected. Local administrative root has no separate `leaddrive-prod` SSH configuration; did not try default root keys or another production destination.
+- User asked «как восстановить». Supplied additive authorized_keys command for the exact configured public key, to execute in the registered production host console/existing authorized SSH. Private key was never read into output, copied or requested. Awaiting user's completion.
+- Paired lightweight browser probes were run sequentially against health/ping/session with credentials included vs omitted. However **all session responses reported authenticated=false**, so the old Chrome session is no longer valid. The attempted auth comparison is INVALID and cannot attribute latency to auth or claim an improvement. Sanitized samples and explicit caveat saved in `docs/evidence/page-load-20261026-anonymous-pairs.json`. Current anonymous responses were 34–159 ms; different time/build/session conditions from earlier timings prevent before/after claims.
+- Source confirms proxy and route each resolve full DB-backed auth. This remains a candidate amplified cost, not a measured dominant bottleneck. No permission/auth freshness shortcut will be introduced.
+- While waiting for metrics access, preparing the separately evidenced duplicate companies-fetch correction only. It does not claim to fix the unexplained server delay. Parallel agent owns that narrow source edit; root owns diagnostics and journal.
+
+
+## 9. Narrow fix prepared; user requests Claude access-restoration prompt
+
+- User said they cannot operate the server console and requested that Codex either restore access itself or provide a ready prompt for Claude. No working alternate production administrator connection is available here; preparing an inline prompt for Claude to restore ONLY the configured public key on registered production, verify from the Codex host, and report read-only runtime metrics. No claim that a message was sent to Claude.
+- Prepared source fix in `src/app/(dashboard)/companies/page.tsx`: fetch callback depends on stable organization; effect depends on callback, user ID and role instead of the entire rotating session object. Effect-owned fetch is aborted on identity change/unmount and late aborted responses are ignored. Explicit refresh after successful edits remains intact. Auth, proxy, RLS, schema, polling and deployment are unchanged.
+- Updated the existing session-dependency regression ratchet by removing only companies from grandfathered exceptions. This fixes an observed duplicate-fetch mechanism, NOT the as-yet unexplained server latency.
+- Host preflight before verification: ~12.6 GiB available RAM, no memory pressure. Shared dependency tree package-lock SHA256 exactly matches this worktree; a temporary task-owned node_modules symlink was used, without install or dependency edits.
+- PASS: targeted `no-session-object-in-effect-deps.test.ts`, 3 tests, one worker, 2.05 seconds. This is a source regression guard; it is not a browser timing proof.
+- NOT RUN: full build/typecheck/full browser E2E (host workload rules; hosted gate needed before release); authenticated before/after browser comparison (native session is now unauthenticated and fix is not deployed); production metrics (key rejected); capacity test (no isolated authorized target).
+- Stopping point: checkpoint the narrow fix and diagnostic evidence, give user the requested Claude prompt for restoring the existing production SSH access. Next: verify restored access, measure CPU/event loop/database/pool and current authenticated request timings before selecting any deeper optimization. No push/merge/deployment performed.
+
+- Targeted ESLint returned FAILED: 4 pre-existing no-explicit-any errors and 8 existing unused-variable warnings. Running ESLint on the unchanged HEAD version reproduced the same 4 errors/8 warnings; the fix adds no new lint findings. Unrelated cleanup was not included. `git diff --check` PASS.
+- Temporary task-owned node_modules symlink removed after sequential verification; shared dependency directory preserved.
+
+- Correction after inspecting the complete baseline lint output: unchanged HEAD has **4 errors / 9 warnings**, current fix has **4 errors / 8 warnings**. The previous "same 4 errors/8 warnings" statement is superseded: the effect-dependency warning is removed; the existing any errors remain.
+- Narrow fix and anonymous diagnostic evidence checkpoint: `2332fb947`. Application build/typecheck and authenticated before/after remain NOT RUN for the reasons above. Working branch retained; nothing published or deployed.
+
+
+## 10. Production access restored; runtime diagnosis resumed (14:57 Baku)
+
+- User supplied screenshot of Claude reporting that the configured key was added and a new connection from Codex succeeded. Independently verified with ControlMaster=no / ControlPath=none: registered `leaddrive-prod` host responds as `vmi3554743`. Earlier SSH blocker is resolved.
+- Resumed existing worktree/branch and saved checkpoint; production is still only `13.140.132.245:/opt/leaddrive-v2`, release only through reviewed main/GitHub Actions. Current public artifact changed independently to `17dc0b81714fea99026eb69686e76abfd4d4cdf8`, built 2026-10-26T10:28:43Z.
+- Initial current production snapshot: ~9.7 GiB available out of ~12 GiB RAM, no swap, 163 GiB disk free, load ~0.94, memory pressure zero. `ps` shows Next server lifetime average ~47% of one CPU; this is not a current CPU sample. No inference that an idle whole host proves an idle Node event loop.
+- Continuing read-only PM2/event-loop, process CPU and PostgreSQL aggregate checks. No database logging/extension/settings changes, no restarts and no deployment authorized or performed as part of this diagnosis.
+
+
+## 11. Bounded production CPU profile and pre-query Prisma cost
+
+- SSH access independently verified with a fresh non-multiplexed connection. Production stays at registered `13.140.132.245:/opt/leaddrive-v2`; branch/worktree unchanged. This supersedes the access blocker in sections 5–9.
+- PM2: one Next fork (PID 140149, no restarts in this snapshot); heap ~453/545 MiB, event-loop p95 ~70.75 ms, HTTP p95 ~1,977 ms. Five-second pidstat averaged ~150% of one CPU (V8 threads included); this is a brief burst, not proof of sustained whole-host saturation.
+- PostgreSQL: ~28 app connections, including 5 idle-in-transaction; no blocked sessions or deadlocks in the snapshot. No pg_stat_statements preload/extension or slow-query logging. These facts do NOT rule out intermittent DB/pool latency. No DB settings were changed. Nginx last-five-minute sample: 267 requests (~0.89/s), mostly background calls/notifications/ticket/webchat polling; not an active-page benchmark.
+- Existing error-log sample includes Prisma P2028 interactive-transaction expiration at 5–6.8 seconds, with MTM agent/location model names. Cannot attribute these entries to the observed companies-page load or auth just from adjacent bundled stack frames.
+- Collected a 10-second auto-stopping CPU profile using PM2's existing inspector action, without restart or code/config/DB mutation. Root-only server artifact `/tmp/leaddrive-page-load-20261026.cpuprofile`; no heap dump or secret values collected. 6,171 samples over ~10.702 s: idle ~63.1%, GC ~6.1%; initial profiler dispatch ~0.70 s is measurement overhead. The hottest application self frame repeatedly lands in Prisma 6.19.2 `applyFluent` metadata reduction (~1.18 s across its stacks), including identity/org permission paths.
+- Runtime `applyFluent` constructs a model field map on each fluent method access with `fields.reduce((map, field) => ({ ...map, [field.name]: field }), {})`. Re-copying all preceding fields is quadratic. Official matching source: https://raw.githubusercontent.com/prisma/prisma/6.19.2/packages/client/src/runtime/core/model/applyFluent.ts .
+- Bounded isolated production Node benchmark (dummy datasource, no DB connections/queries, three getter accesses/model): Organization has 536 runtime fields; `organization.findFirst` costs 55.073 ms first / 26.919 / 25.382 ms warm. User 143 fields ~0.8 ms warm; Company 47 ~0.06–0.20 ms; IdentityAccount 17 ~0.01 ms. This proves avoidable synchronous pre-query CPU work. It does NOT alone explain a 9.2-second page or certify capacity.
+- Next implementation plan (safety lane): reproduce on isolated copies; replace only quadratic field-map construction with a semantically equivalent linear construction, guarded against unexpected Prisma versions/source; preserve auth, tenant/RLS, transaction and query semantics; test actual runtime/fluent relation behavior and fail-closed patching. Independent agent reviewing the approach. No direct production patching or shared dependency mutation.
+- Additional regression coverage for companies page now prepared: actual React component test covers stable session refresh, user/org/role switch abort/late-response handling, and manual refresh after save. Sequential Vitest run PASS: 2 files / 8 tests (~4 s). Full build/typecheck and authenticated live before/after remain NOT RUN, respectively host limits and no deployed fix/current browser session expired.
+- Shared generated Prisma client is not a reliable schema fixture: its index currently says 6.19.3/from another worktree, while installed runtime/package lock is 6.19.2. No shared files modified; runtime remediation tests must construct/copy their own isolated fixture.
+
+
+## 12. Prisma remediation prepared on the feature branch
+
+- Official 6.19.3 source still uses the same quadratic field-map construction; a 6.x patch upgrade alone does not remove this measured cost. Source: https://raw.githubusercontent.com/prisma/prisma/6.19.3/packages/client/src/runtime/core/model/applyFluent.ts . No dependency upgrade or schema migration included.
+- Added `scripts/ci/patch-prisma-fluent-field-map.mjs`: exact Prisma 6.19.2/source guard; linear `Object.fromEntries` map preserving field references/own properties; CommonJS + ESM library runtime coverage; all validation before writes; isolated-install/CI guard; read-only `--check` for assembled artifacts. No app auth, query, transaction or policy code changed.
+- CI PR production build and deployment build now apply the patch after install/generate and before compilation. Deployment checks both runtime files after artifact assembly. Historical recovery source commits without this script keep their original runtime behavior; the patch is not borrowed from a newer workflow commit.
+- Bounded benchmark on development host, isolated copies of the actual runtime, synthetic 536-field Organization, 3 warmups and 25 getter samples each: original median 17.562522 ms, patched median 0.208366 ms (~84x for this method-construction operation). No query called and zero DB connections. Shared runtime hashes unchanged. Receipt: `docs/evidence/page-load-20261026-prisma-getter-benchmark.json`. This is NOT a page-level speedup or a 1,000-user capacity result.
+- PASS: runner policy (87 workflows), event-platform asset/build contract checks (27 domains, 86 topics, 5 schemas); companies runtime regression test ESLint; scoped diff whitespace check. New Prisma behavior/safeguard tests being finalized on copies only. Full build/typecheck remain NOT RUN on this development host by workload rules.
+- Companies runtime test and diagnostic checkpoint: `aeb89762e`; earlier implementation checkpoint remains `2332fb947`.
+- Public artifact independently advanced to `c7d39d2b32b64ec09d30b6b4f8e6811f2fdf173d`, built 2026-10-26T10:46:07Z. None of this task's fixes is deployed. A new native-browser session probe returned authenticated=false (HTTP200, ~41 ms); do not use it as authenticated before/after evidence.
+- Next: complete bounded behavioral/parity tests and source review, checkpoint the Prisma patch, then obtain the active-task publication/release authorization required by the user's host contract before PR/CI/release. Authenticated page comparison additionally needs a renewed real native-browser session.
+
+
+## 13. Verification and release boundary
+
+- PASS: isolated Prisma patch suite, 1 file / 20 tests / 3.33 s, one worker. Both original and patched CommonJS/ESM runtimes satisfy the same lazy-query, nested-relation, query/result-extension, batch/interactive-transaction, rollback/error and field-map property contracts. Network is explicitly forbidden and DB/transaction transport mocked; this is runtime/serialization compatibility evidence, not a live-DB integration test.
+- PASS: strict version/source safeguards; validate both files before any write; local/CI guard; escaping symlink and multiply-linked inode refusal; idempotence; read-only artifact check; current workflow ordering. Shared installed runtime hashes preserved.
+- PASS: scoped ESLint for the new patch and both new test files; Node syntax check; git diff whitespace check. Earlier existing companies-page lint errors remain baseline-only (4 any errors, 8 warnings after the fix).
+- Total targeted Vitest coverage for this slice: 28 passing tests across 3 files (companies runtime/source guards + Prisma patch runtime/safeguards), run sequentially in bounded invocations. No full suite/build/typecheck run on Contabo.
+- NOT RUN: full TypeScript check and production build (must use hosted CI/ephemeral worker); live DB integration with patched client (no production patch/deploy); authenticated page before/after (fix not deployed and actual browser session expired); 1,000-user load (no isolated authorized target). The PR will require the `production-build` label as well as normal required checks.
+- Current result: two source fixes prepared—avoid repeated companies loads on stable session refresh, and remove the CPU-profiled quadratic Prisma field-map work. These are not yet production improvements. No push, PR, merge, deploy, restart, DB configuration change or production load test performed.
+- Precise stopping boundary: checkpoint and final review of the prepared feature branch; publication/release needs active-task authorization under the user's host contract ("Push, merge and production deploy require authorization for the active task"). Next: authorized PR + hosted CI/build, release through reviewed main, then actual production measurements with a renewed authenticated browser session.
+
+
+## 14. Final artifact-packaging review correction
+
+- Prisma optimization checkpoint: `4432a4e1f`. Independent final review found existing `cp -r source destination` behavior nests another `@prisma` / `.prisma` directory if Next already traced those destinations. Current production read-only existence check confirms both direct and nested copies exist; direct library.mjs also exists today, so this was not observed as today's missing-file failure.
+- Correcting the two assembly commands to copy directory contents (`source/.` into explicitly created destination directories). This ensures patched runtime and generated-client files occupy the actual import paths regardless of tracing coverage. New artifact verification remains fail-closed. No production file changed.
+- Adding an executable packaging regression using the actual workflow commands with pre-existing traced destination directories, then rerunning only affected focused checks before the final checkpoint.
+
+- Final packaging regression PASS with original/patched runtime suite: 21 tests / 3.20 s, one worker. Together with the 8 companies tests, current targeted coverage is **29 passing tests**; the earlier 28-test count is superseded by the added packaging case. Rechecked affected-file ESLint, runner policy, event-platform assets and parsed both workflow YAMLs: PASS.
+- Independent final review found no remaining correctness blocker. Known maintenance limit: the private runtime patch is exactly version/source-bound; minified runtime source maps are not rewritten, so mapped columns after the changed expression can be imprecise. No schema/data/auth behavior is intentionally altered.
+- Task-owned temporary node_modules symlink will be removed after verification; the shared installation and all unrelated worktrees stay untouched. Fixes remain unpublished, pending active-task authorization for GitHub/CI/release.
+
+
+## 15. Checkpoint and explicit publication question
+
+- Final implementation checkpoint `a75f64409` includes the verified direct-path Prisma assembly fix; Prisma optimization checkpoint `4432a4e1f`; companies fix `2332fb947` and lifecycle coverage `aeb89762e`. Working tree clean after committing task-owned paths. Temporary task-owned node_modules symlink removed, shared dependencies preserved.
+- Asked user through the in-chat question whether to publish the prepared branch, run complete hosted CI and release through normal GitHub Actions only after successful checks, or allow GitHub/CI without release. Explained the exact user-provided active-task authorization rule. Awaiting answer; elapsed time is not authorization.
+- Status: prepared and locally verified targeted fixes, not deployed. Last completed action: checkpoint/cleanup after 29 passing targeted tests and narrow build-contract checks. Stopping point: before push/PR/hosted CI/release. Next action: follow user's publication scope; for release, require green normal gates plus production-build, then remeasure the live application. Actual authenticated page timing still requires renewed native-browser login. Read-only production SSH access is restored; no further access-restoration prompt is needed.
+
+
+## 16. User authorizes publication, CI and production release
+
+- User explicitly answered: «Да, проверить и выпустить» to publishing prepared fixes, full hosted CI and production release after successful checks. The earlier publication boundary is resolved; do not ask for the same approval again. Scope remains the two prepared performance fixes and necessary artifact packaging.
+- Resumed recorded worktree/branch, clean at checkpoint `23afd286b`. Routing rechecked with codex-project-context and current repository deployment docs: origin `rashadoni/leaddrive-v2`; production `13.140.132.245:/opt/leaddrive-v2`; release only PR → reviewed main → GitHub Actions.
+- Refreshed origin/main to `e3e8a0e61` and merged normally, preserving task history. Upstream adds settings-channel changes and Zeytun phone-line warmup; no dependency-version changes or overlapping performance-code edits.
+- Latest public artifact at resumption: `5a5d6cbb3355ad91651d44e2f2bd943ce7c7f88c`, built 2026-10-26T11:01:45Z. Concurrent releases continue independently; bind post-release evidence to the exact running artifact.
+- Next: publish feature branch, open draft PR, enable production-build coverage, mark ready when review complete, require green five mandatory checks plus production build, merge with expected head SHA, follow the automatic deployment and measure the actual runtime.
+
+
+## 17. PR and hosted verification started
+
+- Published task branch and opened https://github.com/rashadoni/leaddrive-v2/pull/1103 as draft, attached it to this chat, then added `production-build` and marked ready after final source review. No further release permission is needed for the accepted scope.
+- Main advanced during PR creation to `27b593a765e783855f026c4fa2dc203960702dd6` (E-qaimə). Merged normally before starting the final gate; candidate head is `60890362bb5ada721f44b58d881cc6f582962e53`. Dependency lock and relevant source unchanged; workflow additions merged cleanly. Exact-head independent review reported no blocker. Runner policy and artifact/build contracts passed again after these merges.
+- Current authoritative PR-check run: https://github.com/rashadoni/leaddrive-v2/actions/runs/40319480463 . Earlier opened/labeled draft runs were automatically cancelled by ready_for_review concurrency; they are not validation evidence. Production build is explicitly requested and must succeed in addition to mandatory checks.
+- Verified current main protection via authenticated gh (connector returned 403 for administration reads): required GitHub Actions app 15368 contexts are pr-scope/static-checks/typecheck/runner-policy/scan; enforce_admins=true; force pushes/deletion disabled; PR route required, zero human approvals by design. No protection setting modified.
+- CI jobs currently queued awaiting hosted runners. In parallel, collecting one sanitized pre-release production snapshot; no new profiler or production mutation. Journal/evidence updates during the run are kept locally so documentation pushes do not cancel the active verified-head gate.
+
+- Asked about a normal authenticated browser/test-account route for post-release page timings. User replied «не понимаю тебя». Clarified in plain Russian that only the browser login expired, no password or immediate action is required from them, and release plus server verification continue. This does not establish an authenticated session; live signed-in page timing must remain explicitly unverified until a real login is available.
+
+- Sanitized pre-release runtime receipt saved at `docs/evidence/page-load-20261026-prerelease-runtime.json`. It caught another session's deployment startup: public/loopback SHA `e3e8a0e61896625900ecb179b0ecd5b096ae7694`, PID183017 started12:08:00Z, sample uptime~42s. CPU5s average2.19%,13 idle DB connections/0blocked,155 nginx requests/5min. This is explicitly startup-confounded and cannot establish steady-state latency or be used as a controlled before/after baseline. No recovery action on another session's release.
+- A single temporary native Chrome login tab confirmed no autofilled email/password and remained at /login; original tabs preserved and temporary tab closed. Only empty/filled booleans were read, no credentials. A normal authenticated browser session is still unavailable.
+- Hosted CI initially waited ~15 minutes for runners. Current successful checks: pr-scope, runner-policy, scan. static-checks/typecheck and GitHub-hosted Linux production build are now registered but queued; identity snapshot postgres-contract also queued. No failing gate bypassed or unrelated job cancelled.
+
+
+## 18. Hosted verification and warmed pre-release observation
+
+- Resumed saved CI boundary after context compaction. Routing remains the recorded task worktree/branch, rashadoni origin, registered Contabo production and GitHub Actions release. User approval remains valid; no repeated permission request.
+- Hosted production build has successfully applied the guarded Prisma runtime patch and is compiling the standalone application. Typecheck has reached its compiler step; static database gates continue. No release yet, and no gate bypass.
+- Captured a new bounded read-only runtime receipt at `docs/evidence/page-load-20261026-prerelease-warmed-runtime.json`, 12:29:59–12:30:10 UTC. Same public and loopback artifact e3e8a0e61896625900ecb179b0ecd5b096ae7694, stable PID183017, uptime~22min. Existing PM2 rolling HTTP p95~2447ms, event-loop p95~43.83ms. Five-second CPU average~67% of one logical core; nginx preceding five minutes~0.407 requests/s. PostgreSQL27 connections,26idle/1idle-in-transaction,0blocked/0lockwaits. Uncontrolled traffic and different measurement windows mean this is observational evidence, not a controlled page/capacity benchmark.
+- No production settings, code or database data changed. Pending: green exact-head mandatory gates and production build, then authorized merge/deploy and actual deployed-runtime checks.
+
+- Hosted typecheck and separate identity PostgreSQL contract checks now SUCCESS. Static checks have reached the blocking unit-suite baseline gate; production bundle still compiling.
+- Repeated the bounded getter measurement using the actual currently deployed client in a separate Node process on the same production host, with explicit dummy loopback port-1 datasource and no query invocation. Public-process loopback identity before/after stayed e3e8a0e61896625900ecb179b0ecd5b096ae7694. Organization536 fields median24.844ms/p95~110.721ms over25getter reads after3warmups; User143 median0.740ms; Company47 median0.048ms. Direct runtime files remain unpatched. Saved `docs/evidence/page-load-20261026-prerelease-deployed-getter.json`; rerun identical collector after deployment for narrow same-host cost evidence, not a page/capacity claim.
+
+- Typecheck log audit: both blocking gates SUCCESS. Compiler completed with1353 historical diagnostics (exit2);64 gated file/code pairs match the64-pair baseline, and no new syntax/module/name errors. No diagnostic line names the new tests, companies page or session dependency guard. This is PASS of repository baseline gates, not a claim of a zero-error TypeScript codebase.
+
+- PR production-build job121560435216 SUCCESS at12:38:42UTC. Logs confirm both runtime files patched, Next compiled,1090static pages generated, standalone checks passed; next-build elapsed11m38s, peakRSS~10.1GiB. This validates the required heavy build on hosted Linux; nothing equivalent was run on Contabo. Static unit-suite gate is the last unfinished PR check.
+
+
+## 19. Verified PR merged; normal release started
+
+- Final exact candidate60890362bb5ada721f44b58d881cc6f582962e53 has all seven observed checks SUCCESS from GitHub Actions app15368: five mandatory checks plus production-build and identity postgres-contract. Authoritative PR-check run40319480463 completed successfully.
+- Rechecked PR head, unchanged base27b593a765e783855f026c4fa2dc203960702dd6, ready status and mergeability. Merged PR1103 through the connected GitHub tool with expected-head guard and normal merge method under the user's explicit release authorization. No protection bypass or main push outside PR.
+- Merge SHA / intended production artifact: `9d9382589399a7f6738a7ad0fb003b6526923c60`. PR: https://github.com/rashadoni/leaddrive-v2/pull/1103 . Normal GitHub Actions deployment should now start from main. Do not call this deployed until run, public build identity and smoke are verified.
+- Last completed action: verified merge. Current boundary: waiting for normal deploy workflow checks/build/artifact/deploy. Next: follow that run, verify running SHA and patched runtime/getter behavior; authenticated page and1000-user capacity evidence still unavailable.
+
+- Normal push-triggered release run registered: https://github.com/rashadoni/leaddrive-v2/actions/runs/40324714151 for exact main merge9d9382589399a7f6738a7ad0fb003b6526923c60. Currently queued/pending. Baseline/merge evidence checkpointed locally as1d5f7cb75; not pushed during active release.
+- Final static-check log audit:18 existing failing test files exactly match18 baseline entries, no new failures or baseline drift. New task tests are not grandfathered. Hosted wrapper suppresses passing-test detail, so the explicit29focused-test count remains local targeted-run evidence; hosted result is the full-suite baseline gate PASS.
+
+- Base-identity correction after reading the actual merge parents: get_pr_info continued reporting stored base27b593a76, but current main had advanced to076738ceddab7038b57995c6558a87f8d1bb8e9f (PR1102) before our merge. The actual merge parents are076738ced and60890362. Fetched and reviewed the complete tree difference between the checked candidate and merge: only Telegram tile title text plus its two existing test expectations (2files,8insertions/8deletions); no dependency/workflow/companies/Prisma overlap. The exact merged tree is now subject to normal main/deploy checks and a fresh immutable build. Earlier wording “unchanged base” refers only to the stale PR metadata and is superseded by this verified Git parent fact.
+- Release is queued behind preceding main builds/deploys by repository concurrency policy. No unrelated run is cancelled or manual production route used.
+
+
+## 20. Newer main release supersedes the pending task build
+
+- At13:03:47UTC another session merged PR1099 (fund balance source) into main97e8e959de7c0213b9b378cdb6e2e0e6f16ba217. GitHub concurrency automatically cancelled only our still-pending build job121578344295; no person/agent cancellation performed. Checks for9d938258 continue independently. This is supersession, not a failed build.
+- Fetched current main and verified9d938258 is its ancestor. Reviewed changed-path scope: finance fund balance UI/API/tests, translations and event-platform timer/docs; our companies, Prisma patch and release-workflow changes remain included and unchanged.
+- Follow the normal newer descendant release https://github.com/rashadoni/leaddrive-v2/actions/runs/40327393810 and bind final production evidence to its actual SHA (or a later verified descendant if superseded again). Do not manually deploy/rerun stale9d938258; normal workflow expects current main. The prior release076738ced is still compiling ahead of this queue.
+- Current status: performance fixes merged and PR gates/build verified; not yet observed on production. Next: await current descendant gates/build/deploy, then exact artifact and bounded runtime checks.
+
+- Exact merge9d938258 quality/security job121578343797 completed SUCCESS: full-unit gate again18known failing files/18baseline entries, no new failures/drift. Build remains correctly superseded, so this run itself will not deploy.
+- Current descendant97e8e959 release40327393810 quality job121587528879 is through later database gates; build job121587528061 is queued for a hosted runner after the preceding076738ced build finished. No new main source edit or release mutation by this task.
+
+- By13:30UTC descendant release97e8e959 build job121587528061 is IN_PROGRESS (dependency install); hosted-runner waiting is resolved. Its quality/security job is at the final full-unit baseline gate, no failing step observed. Continue this exact run40327393810 through artifact verification and production smoke.
+
+- Current descendant97e8e959 quality/security job121587528879 SUCCESS at13:33:12UTC; all executed steps passed. Final unit-suite baseline remains18known failing files/18entries, no new failures or drift. Immutable build is in progress; no production completion claimed.
+
+- Main advanced again todee9017ace9553465bfc1b32d51f5623434754e0 at13:19:41UTC (PR1104, five Zeytun substitution files; no performance/workflow overlap). The already admitted97e8e959 build continues normally, while dee has its later release run40329614303.
+- Separate main PR-check typecheck for97 (job121590123469/run40327394293) was cancelled by main concurrency during dependency installation; Prisma generation/compiler/both type gates were NOT RUN in that repeat. It is not a code failure. PR1099 successful typecheck checked tree9763912e958bb3bd281a70d7bbdba01db3fa557a (mergeaf9cd28d… of076738c+6cf9516); actual97 tree545b76374c301ec8d62f8e7dedb5d46b2b05897f additionally contains exactly our12task paths. Therefore do not call that PR run an exact combined-tree typecheck.
+- Our performance PR60890362 typecheck/build and both9d/97 full release-quality gates remain verified PASS. Follow latest dee main typecheck job121605322768/run40329614416 for additional combined-code coverage; do not rerun the older cancelled main job and disrupt the newer run.
+
+
+## 21. Immutable optimized artifact built and verified
+
+- Descendant97e8e959 build job121587528061 SUCCESS. Logs show guarded patches applied to library.js and library.mjs at13:41:55UTC; Next compiled successfully, build exit0 at13:55:55 (14min wall, peakRSS~10.5GiB).
+- Artifact assembly and read-only verification of both direct runtime import paths SUCCESS at13:56:07. Uploaded `leaddrive-prod-97e8e959de7c0213b9b378cdb6e2e0e6f16ba217`, GitHub artifact12657280617 (~450MB), at13:56:46. This is the actual immutable artifact that contains our guarded optimization and corrected Prisma copying.
+- Production deployment/smoke job121614382534 is queued in run40327393810. Prior releases27b593a76 and076738ced completed their deploy/smoke successfully; the deployment lock is free, hosted-runner scheduling still applies. No manual server deployment performed.
+- Next: observe install and smoke completion, match public artifact identity, then run the prepared read-only deployed-getter and warmed-runtime collectors.
+
+
+## 22. Dashboard recurrence reported; continuation of authorized performance work
+
+- User reports that Zeytun /dashboard opens very slowly and shows the full loading skeleton again when scrolling upward. Both supplied screenshots show signed-in shell/wallpaper with dashboard skeletons. They do not alone prove scroll triggers network requests.
+- Applied optimize skill. Read-only audit confirms org object derives from session.user identity; dashboard load effect depends on org, calls setLoading(true), and waits for executive, config and optional loyalty together (each timeout12s). Equivalent session object replacement therefore starts another batch and replaces loaded content with skeleton. No dashboard scroll fetch handler found; layout identity key is already stable.
+- Next: reproduce with real-component lifecycle test, use stable semantic scope dependencies, abort superseded requests, and ensure user/org/role changes cannot retain prior scope data/config. Preserve all existing UI sections and access policies.
+- Native browser exposes only app.leaddrivecrm.org/companies, with previously expired session; supplied Mac Chrome Zeytun login is not an authenticated session available to this task. No credentials/cookies copied or authentication bypassed. Browser post-release page measurement remains NOT RUN for this reason.
+- Release97e8e959 job121614382534 is IN_PROGRESS (artifact upload/install preparation); prior queue statement is superseded. Continue its production smoke and read-only runtime checks independently.
+- Latest main dee9017a hosted typecheck completed: both blocking gates PASS,64baseline pairs unchanged;1353 existing compiler diagnostics remain. This covers97 plus five later Zeytun files; exact97 separate typecheck was cancelled.
+
+
+## 23. Server optimization released and independently verified
+
+- Normal deployment job121614382534/run40327393810 completed SUCCESS at14:25UTC for97e8e959de7c0213b9b378cdb6e2e0e6f16ba217. Workflow DB ping, artifact identity, login and referenced CSS/JS smoke passed. No manual production mutation was used.
+- Independent public checks on both app.leaddrivecrm.org and zeytun.leaddrivecrm.org returned200: DB ping ok=true; full artifact SHA97e8e959 matched. Receipt: docs/evidence/page-load-20261026-postrelease-public-smoke.json. Public checks during the atomic swap briefly observed502/timeout; recovered checks are recorded separately rather than called continuous uptime.
+- Deployed getter receipt confirms both CJS/ESM files contain exactly one patch marker and zero old quadratic expressions; loaded CJS path is within the standalone artifact. Separate-process Organization method-getter median0.489ms/p951.685ms (537fields), versus prerelease24.844ms/p95110.721ms (536fields). Small schema change and uncontrolled host load limit strict comparison; this demonstrates the isolated pre-query hotspot is removed, NOT a page-load or capacity benchmark. User143fields median0.052ms, Company48fields0.016ms. No real DB query was issued by the getter probe.
+- Initial runtime snapshot at14:29UTC has process uptime250seconds and is correctly marked startup-confounded; do not use its PM2 latency as warmed improvement evidence. Capture a separate warmed snapshot without overwriting it.
+- The screenshot-specific dashboard fix is separate and still in development. Before-change runtime harness10tests all failed: equivalent session clone doubled3requests to6 and replaced loaded page with skeleton; scope switches lacked abort and could render old tenant data once. Initial fix made all10pass; expanded suite18runtime cases and7files/101tests passed. ESLint then identified a new direct synchronous effect reset; adjusted load state during render and explicit response defaults remove that issue without suppressing the rule. Recheck pending.
+- Related shell issue: childrenReady ignored retained user during transient status=loading, and the6second watchdog usually never fires once user exists. Native shell lifecycle harness is being built to reproduce lost mounted page state and verify the narrow gate correction.
+- Full new dashboard production build/typecheck: NOT RUN locally (host workload policy); run in hosted CI before release. Authenticated native browser measurement and1000-user load test remain NOT RUN.
+
+- Warmed post-release receipt at14:31UTC: same97e8e959/PID244333, uptime388seconds, no restarts. DB22connections/allidle,0blocked,0deadlocks. Five-second CPU sample0.2%onecore and nginx0.467rps; PM2 recent HTTPp95~2363ms and event-loop p9544ms. Traffic/windows differ from pre-release, so these do not establish an end-to-end speedup or1000-user capacity.
+- Shell harness reproduced page state loss during retained-user status=loading. Updated childrenReady to retain existing user in that transient status, preserving identity key and real module/role checks. Initial role-revocation test mistakenly used viewer, which can read settings under existing policy; corrected to manager after inspecting real navigation permissions. No production role policy changed.
+
+
+## 24. Dashboard and shell regression fix ready for hosted CI
+
+- Dashboard loading now keys on primitive identity/org/role/loyalty capability. Equivalent session object/token refresh and retained-user transient loading do not refetch or replace loaded content. Scope invalidation occurs before child render, including A-to-B-to-A while requests are pending. Each new response overwrites widget/quick-action defaults; old scope config cannot leak after a failed config response. Superseded/unmounted requests abort and cannot publish late results. Existing12second timeout and complete widget layout remain.
+- Shell preserves mounted children during loading when session still holds user; identity key, unauthenticated behavior,6second initial-hydration fallback and module/role guards remain in force. This fixes an additional remount cause found by the real-shell regression harness.
+- Final focused verification:8testfiles/111tests PASS, including19actual-dashboard runtime cases and9actual-shell runtime cases. ESLint4changedsource/testfiles PASS. A test-only createElement children-as-prop lint issue was corrected; shell9tests rerun PASS after that change. git diff --check PASS. Subagent independently reviewed all4files; no blocker.
+- Full build and typecheck NOT RUN on Contabo per host workload contract; require hosted PR checks plus production-build. Native authenticated browser verification NOT RUN because no signed-in Zeytun session is available in the controlled browser. No1000-user load test was run; capacity is still unproven.
+- Current main remains dee9017a (already merged into task branch e60db86cf). Scope of new PR: dashboard/shell lifecycle correction and regression tests, plus append-only prior release evidence. User authorization to verify/publish/release remains active; use normal PR/main/Actions flow and verify final artifact/smoke.

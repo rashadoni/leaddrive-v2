@@ -3,6 +3,8 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
+import { readLegacyCrmCredentialBoundary } from "./identity/legacy-crm-boundary"
+import { authenticateIdentityCrmPassword, resolveIdentityCrmSession, type IdentityCrmClaims } from "./identity/crm-session"
 import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
   loginSchema,
@@ -22,8 +24,37 @@ import { readTenantLandingPath } from "./tenant-landing"
 import { applyVerifiedTwoFactorSessionUpdate } from "./two-factor-nonce"
 import { requiresTwoFactorSetup, resolveTwoFactorMethod } from "./two-factor-policy"
 import { checkRateLimit, hashForRateLimit, RATE_LIMIT_CONFIG } from "./rate-limit"
+import { REVIEWER_ROLE, reviewerAccessOpen } from "./reviewer-grant"
 
 const AUTH_SECRET = requireAuthSecret()
+
+/**
+ * `undefined` for everyone but a reviewer. For a reviewer: the end of their
+ * grant as an ISO string while it is open (the proxy reads it without a DB
+ * round-trip), or `false` when the grant is missing, revoked or past its end
+ * date — the caller then refuses the token. Read fresh, under bypass, because
+ * this runs before any tenant context exists.
+ */
+async function reviewerAccessUntilFor(user: { id: string; role: string }): Promise<string | false | undefined> {
+  if (user.role !== REVIEWER_ROLE) return undefined
+  const grant = await runWithRlsBypass(() => prisma.reviewerAccessGrant.findUnique({
+    where: { userId: user.id },
+    select: { expiresAt: true, revokedAt: true },
+  }))
+  return reviewerAccessOpen(grant) ? new Date(grant!.expiresAt).toISOString() : false
+}
+
+/** Fresh mode selection; a missing private hint never upgrades a legacy cookie. */
+async function crmCredentialBoundary(user: { id: string; organizationId: string }) {
+  if (!user.organizationId || !user.id) return "UNAVAILABLE" as const
+  return await runWithTenant(user.organizationId, () =>
+    readLegacyCrmCredentialBoundary(prisma, user.organizationId, user.id))
+}
+async function crmSessionAuthority(user: { id: string; organizationId: string; role: string }, hint: unknown) {
+  if (hint !== undefined) return await runWithTenant(user.organizationId, () =>
+    resolveIdentityCrmSession(prisma, user.organizationId, user.id, hint))
+  return await crmCredentialBoundary(user) === "LEGACY" ? { role: user.role, claims: undefined } : null
+}
 
 /**
  * RLS: NextAuth's PrismaAdapter queries users/accounts/sessions during OAuth
@@ -124,7 +155,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null
           }
 
-          const user = await pickCandidateByPassword<typeof candidates[number]>(candidates, parsed.data.password)
+          let user: typeof candidates[number] | null = null
+          let identityCrm: IdentityCrmClaims | undefined
+          for (const candidate of candidates) {
+            const mode = await crmCredentialBoundary(candidate)
+            if (mode === "LEGACY") {
+              user = await pickCandidateByPassword<typeof candidates[number]>([candidate], parsed.data.password)
+            } else if (mode === "MIGRATED" && parsed.data.organizationSlug) {
+              const proof = await runWithTenant(candidate.organizationId, () =>
+                authenticateIdentityCrmPassword(prisma, candidate.organizationId, candidate.id, parsed.data.password))
+              if (proof) {
+                identityCrm = proof.claims
+                user = { ...candidate, role: proof.role }
+              }
+            }
+            if (user) break
+          }
           if (!user) {
             console.warn(`[Auth] credentials_rejected reason=password_mismatch candidates=${candidates.length}`)
             return null
@@ -175,6 +221,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: user.email,
             name: user.name,
             role: user.role,
+            identityCrm,
             // Bind the successful bcrypt comparison to the exact DB credential
             // state it verified. The JWT callback re-fetches the row and rejects
             // if a concurrent password change landed between authorize() and
@@ -276,7 +323,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // RLS: jwt callback runs on session resolution, before any guard —
         // bypass-wrapped or every authed request fails closed once `users`
         // gets policies.
-        const dbUser = await runWithRlsBypass(() => prisma.user.findUnique({
+        let dbUser = await runWithRlsBypass(() => prisma.user.findUnique({
           where: { id: user.id as string },
           include: { organization: true },
         }))
@@ -295,6 +342,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (dbUser.role !== "superadmin" && dbUser.organization?.isActive !== true) {
           return null
         }
+        const hint = (user as { identityCrm?: unknown }).identityCrm
+        // Only this provider can issue canonical password authority. Adapter
+        // profiles and browser session updates cannot bootstrap a private hint.
+        if (hint !== undefined && account?.provider !== "credentials") return null
+        const authority = await crmSessionAuthority(dbUser, hint)
+        if (!authority) return null
+        dbUser = { ...dbUser, role: authority.role }
+        if (authority.claims) token.identityCrm = authority.claims
+        else delete token.identityCrm
+        // An outside reviewer signs in only while their grant is open.
+        const reviewerAccessUntil = await reviewerAccessUntilFor(dbUser)
+        if (reviewerAccessUntil === false) return null
+        token.reviewerAccessUntil = reviewerAccessUntil ?? undefined
         // Exact, opaque credential epoch. This is intentionally derived from
         // the DB password state instead of JWT `iat` (seconds precision), so
         // a password change and a token issue in the same second cannot race.
@@ -373,7 +433,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!refreshWhere) {
             return null
           }
-          const freshUser = await runWithRlsBypass(() => prisma.user.findUnique({
+          let freshUser = await runWithRlsBypass(() => prisma.user.findUnique({
             where: refreshWhere,
             select: {
               id: true,
@@ -419,6 +479,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (freshUser.role !== "superadmin" && freshUser.organization?.isActive !== true) {
             return null
           }
+          const authority = await crmSessionAuthority(freshUser, token.identityCrm)
+          if (!authority) return null
+          freshUser = { ...freshUser, role: authority.role }
+          if (authority.claims) token.identityCrm = authority.claims
+          else delete token.identityCrm
+          // A reviewer's session ends with their grant: at the end date, or the
+          // moment an admin closes it, whichever comes first.
+          const freshReviewerAccessUntil = await reviewerAccessUntilFor(freshUser)
+          if (freshReviewerAccessUntil === false) return null
+          token.reviewerAccessUntil = freshReviewerAccessUntil ?? undefined
           const currentSessionFingerprint = createSessionFingerprint({
             principalId: freshUser.id,
             passwordHash: freshUser.passwordHash,
@@ -503,6 +573,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       delete publicSession.passwordHash
       delete publicUser.sessionFingerprint
       delete publicUser.passwordHash
+      delete publicSession.identityCrm
+      delete publicUser.identityCrm
 
       return {
         ...publicSession,
@@ -522,6 +594,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           modules: (token.modules as Record<string, boolean>) || undefined,
           hiddenModules: (token.hiddenModules as string[] | undefined) || [],
           landingPath: (token.landingPath as string | undefined) || undefined,
+          reviewerAccessUntil: (token.reviewerAccessUntil as string | undefined) || undefined,
           needs2fa: token.needs2fa as boolean | undefined,
           twoFactorMethod: token.twoFactorMethod as "totp" | "sms" | undefined,
           needsSetup2fa: token.needsSetup2fa as boolean | undefined,

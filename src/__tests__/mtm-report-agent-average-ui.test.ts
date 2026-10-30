@@ -138,6 +138,7 @@ async function report(query: string) {
 
 let container: HTMLDivElement
 let root: Root
+let reportRequests: Promise<Response>[]
 
 async function settle() {
   for (let turn = 0; turn < 10; turn += 1) await act(async () => { await vi.advanceTimersByTimeAsync(0) })
@@ -149,6 +150,10 @@ async function countUpLands() {
 async function mount(element: ReactElement) {
   const intl: ComponentProps<typeof NextIntlClientProvider> = { locale: "az", timeZone: "Asia/Baku", messages: az, onError: () => {}, children: null }
   await act(async () => root.render(createElement(NextIntlClientProvider, intl, createElement(TooltipProvider, null, element))))
+  await settle()
+  // The first real route call may still be loading its server dependencies.
+  // Advancing fake animation timers alone does not wait for that I/O.
+  await act(async () => { await Promise.all(reportRequests) })
   await settle()
 }
 
@@ -176,9 +181,14 @@ beforeEach(() => {
     toFake: ["Date", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "requestAnimationFrame", "cancelAnimationFrame", "performance"],
   })
   try { window.localStorage.setItem("leaddrive:mtm:reports:type", "agent") } catch { /* first report is the agent one anyway */ }
+  reportRequests = []
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input), "http://localhost:3000")
-    if (url.pathname === "/api/v1/mtm/reports") return GET(new NextRequest(url))
+    if (url.pathname === "/api/v1/mtm/reports") {
+      const request = GET(new NextRequest(url))
+      reportRequests.push(request)
+      return request
+    }
     return new Response(JSON.stringify({ success: true, data: { counts: {} } }), { status: 200 })
   }))
   container = document.createElement("div")

@@ -281,7 +281,7 @@ export default function NewComplaintPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label={t("fieldSource")}>
               <select
-                className="h-11 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700 sm:h-9"
+                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm sm:h-9"
                 value={form.source}
                 onChange={(e) => setField("source", e.target.value)}
               >
@@ -294,7 +294,7 @@ export default function NewComplaintPage() {
             </Field>
             <Field label={t("fieldType")}>
               <select
-                className="h-11 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700 sm:h-9"
+                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm sm:h-9"
                 value={form.complaintType}
                 onChange={(e) => setField("complaintType", e.target.value)}
               >
@@ -406,7 +406,7 @@ export default function NewComplaintPage() {
             </Field>
             <Field label={t("fieldRiskLevel")}>
               <select
-                className="h-11 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700 sm:h-9"
+                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm sm:h-9"
                 value={form.riskLevel}
                 onChange={(e) => setField("riskLevel", e.target.value)}
               >
@@ -450,7 +450,7 @@ export default function NewComplaintPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-3 rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
       <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide">{title}</h2>
       <div className="space-y-3">{children}</div>
     </section>

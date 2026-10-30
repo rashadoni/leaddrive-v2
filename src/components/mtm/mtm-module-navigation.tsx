@@ -24,7 +24,8 @@ export function MtmModuleNavigation() {
   const t = useTranslations("mtmModuleNavigation")
   const tNav = useTranslations("nav")
   const { data: session } = useSession()
-  const toolGroups = visibleMtmToolGroups(useMtmOrgSettings(session?.user), session?.user?.role)
+  const toolGroups = visibleMtmToolGroups(useMtmOrgSettings(session?.user), session?.user?.role,
+    (session?.user as { modules?: Record<string, boolean> } | undefined)?.modules)
   const activeTool = toolGroups.flatMap((group) => group.items)
     .find((item) => isMtmNavigationItemActive(item.href, pathname))
 
@@ -35,7 +36,7 @@ export function MtmModuleNavigation() {
     // One menu, at the top, as tabs with an underline: the active one is dark
     // text over an orange line, not an orange pill — the screen keeps its one
     // orange fill for the main button (owner-approved colours, 2026-10-18).
-    <div className="mb-6 border-b border-zinc-200/80 dark:border-zinc-700/80">
+    <div className="mb-6 border-b border-border">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
         <nav
           aria-label={t("primaryNavigationLabel")}
@@ -71,7 +72,7 @@ export function MtmModuleNavigation() {
               type="button"
               className={cn(
                 "mb-2 flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border bg-card px-4 text-sm font-semibold text-foreground outline-none transition-[background-color,border-color,color,transform] duration-150 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.98] sm:w-auto",
-                activeTool ? "border-primary" : "border-zinc-200 dark:border-zinc-700",
+                activeTool ? "border-primary" : "border-border",
               )}
             >
               <Grid2X2 className="h-4 w-4" aria-hidden="true" />
@@ -85,7 +86,7 @@ export function MtmModuleNavigation() {
             sideOffset={8}
             className="max-h-[min(72vh,40rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto p-0"
           >
-            <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+            <div className="border-b border-border px-4 py-3">
               <p className="text-sm font-semibold text-foreground">{t("allTools")}</p>
               <p className="mt-1 max-w-[65ch] text-xs leading-5 text-muted-foreground">
                 {t("allToolsHint")}

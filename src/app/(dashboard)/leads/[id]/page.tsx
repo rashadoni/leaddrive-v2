@@ -848,7 +848,7 @@ export default function LeadDetailPage() {
               const isLost = lead.status === "lost"
 
               return (
-                <button
+                <button data-crm-color-role="status"
                   key={status}
                   onClick={() => handleStatusChange(status)}
                   disabled={updatingStatus}
@@ -1023,7 +1023,7 @@ export default function LeadDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-x-1 border-b">
+      <div data-crm-tabs="" className="flex flex-wrap gap-x-1 border-b">
         {[
           { id: "details", label: t("modalDetails") || "Details" },
           { id: "activities", label: t("modalActivities") },
@@ -1033,7 +1033,7 @@ export default function LeadDetailPage() {
           { id: "aitext", label: t("modalAiText") || "Da Vinci Text" },
           { id: "ai", label: t("modalAiScoring") || "Da Vinci Scoring" },
         ].map(tab => (
-          <button
+          <button data-crm-tab="" data-state={activeTab === tab.id ? "active" : "inactive"}
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${
@@ -1321,10 +1321,10 @@ export default function LeadDetailPage() {
               <div className="relative space-y-4 pl-6 before:absolute before:left-[11px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-border">
                 {activities.map((activity: any) => (
                   <div key={activity.id} className="relative">
-                    <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-zinc-200 dark:border-zinc-700 text-xs">
+                    <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-border text-xs">
                       {ACTIVITY_TYPE_ICONS[activity.type] || "📌"}
                     </div>
-                    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+                    <div className="rounded-lg border border-border p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">
                           {String(activity.id).startsWith("call_callback_")
@@ -1490,7 +1490,7 @@ export default function LeadDetailPage() {
               // goes through sendWhatsAppText from the messaging lib but is
               // forbidden by the Graph API if no recent inbound — so we don't
               // even offer a free-text UI here.
-              <div className="space-y-3 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-emerald-50/30 dark:bg-emerald-950/10">
+              <div className="space-y-3 border border-border rounded-lg p-4 bg-emerald-50/30 dark:bg-emerald-950/10">
                 <div className="flex items-start gap-2">
                   <div className="text-xs text-emerald-800 dark:text-emerald-200 flex-1">
                     <p className="font-medium mb-0.5">{t("waApiTitle")}</p>
@@ -1503,7 +1503,7 @@ export default function LeadDetailPage() {
                 {waTemplatesLoading ? (
                   <p className="text-sm text-muted-foreground py-4 text-center">{tc("loading")}</p>
                 ) : waTemplates.length === 0 ? (
-                  <div className="text-center py-6 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-background">
+                  <div className="text-center py-6 border border-border rounded-lg bg-background">
                     <p className="text-sm text-muted-foreground">{t("waNoTemplates")}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {t.rich("waSyncHint", {
@@ -1565,7 +1565,7 @@ export default function LeadDetailPage() {
                           {tpl.bodyText && (
                             <div>
                               <Label className="text-xs">Preview</Label>
-                              <div className="text-sm whitespace-pre-wrap bg-background border border-zinc-200 dark:border-zinc-700 rounded p-3 mt-1">
+                              <div className="text-sm whitespace-pre-wrap bg-background border border-border rounded p-3 mt-1">
                                 {renderTemplatePreview(tpl.bodyText, waVariables)}
                               </div>
                             </div>
@@ -1625,7 +1625,7 @@ export default function LeadDetailPage() {
                 </Button>
 
                 {generatedText && (
-                  <div className="space-y-3 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-muted/10">
+                  <div className="space-y-3 border border-border rounded-lg p-4 bg-muted/10">
                     {textType === "Email" && (
                       <div>
                         <Label className="text-xs text-primary uppercase">{t("modalSubject") || "Subject"}</Label>

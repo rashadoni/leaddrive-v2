@@ -56,6 +56,7 @@ describe("MTM module navigation", () => {
 
   it("uses progressive groups that explain how secondary tools relate", () => {
     expect(MTM_TOOL_GROUPS.map((group) => [group.key, group.items.map((item) => item.href)])).toEqual([
+      // Phone orders moved to Sales (owner, 2026-10-26).
       ["work", ["/mtm/tasks", "/mtm/promotions"]],
       ["reference", ["/mtm/customers", "/mtm/contacts", "/mtm/agents", "/mtm/products"]],
       ["control", ["/mtm/alerts", "/mtm/photos", "/mtm/operations"]],

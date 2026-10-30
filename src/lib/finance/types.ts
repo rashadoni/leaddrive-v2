@@ -2,10 +2,11 @@
 
 export interface FinanceKPI {
   label: string
-  plan: number
+  /** null where there is no plan: the expense plan has none since 2026-10-07. */
+  plan: number | null
   fact: number
-  variance: number
-  variancePct: number
+  variance: number | null
+  variancePct: number | null
 }
 
 export interface AgingBucket {
@@ -122,6 +123,8 @@ export interface Fund {
   targetAmountExact?: string | null
   currentBalance: number
   currentBalanceExact?: string
+  /** Which number currentBalance is: see src/lib/finance/fund-balance-source.ts. */
+  balanceSource?: "kafka" | "kafka-catching-up" | "crm"
   currency: string
   color?: string | null
   isActive: boolean
@@ -317,4 +320,10 @@ export interface PaymentOrdersStats {
   totalExecuted: number
   totalAmount: number
   executedAmount: number
+}
+
+export interface FundBalanceSourceState {
+  /** The organization has a running Kafka shadow build of its Fund balances. */
+  available: boolean
+  source: "crm" | "kafka"
 }

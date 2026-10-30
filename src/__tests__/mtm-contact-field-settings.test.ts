@@ -73,8 +73,19 @@ let root: Root
 let stored: Array<{ key: string; value: unknown }> = []
 const storedValue = (key: string) => stored.find((row) => row.key === key)?.value
 
+/** Requests the block has sent that the handlers have not answered yet. */
+let inFlight = 0
+
+/**
+ * Until every request the block sent is answered and rendered. A fixed number of ticks was not enough: the
+ * first request in the file loads the tenant-key module (rls-context imports it on demand), which on a busy
+ * runner outlasted six ticks and left the categories tab empty (deploy run 40399662577, 2026-10-26).
+ */
 async function settle() {
-  for (let turn = 0; turn < 6; turn += 1) {
+  const deadline = Date.now() + 10_000
+  // Six quiet ticks after the last answer: the block still reads the body and renders it.
+  for (let quiet = 0; quiet < 6; quiet = inFlight > 0 ? 0 : quiet + 1) {
+    if (Date.now() > deadline) throw new Error(`${inFlight} request(s) still unanswered after 10s`)
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
   }
 }
@@ -145,12 +156,18 @@ beforeEach(() => {
     return args.create
   }) as never)
 
+  inFlight = 0
   vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
     const url = new URL(input, "http://localhost:3000")
     const request = new NextRequest(url, init as never)
-    if (url.pathname === "/api/v1/mtm/settings" && init?.method === "PUT") return PUT_SETTINGS(request)
-    if (url.pathname === "/api/v1/mtm/contact-categories") return GET_CATEGORIES(request)
-    throw new Error(`unexpected request: ${init?.method ?? "GET"} ${url.pathname}`)
+    inFlight += 1
+    try {
+      if (url.pathname === "/api/v1/mtm/settings" && init?.method === "PUT") return await PUT_SETTINGS(request)
+      if (url.pathname === "/api/v1/mtm/contact-categories") return await GET_CATEGORIES(request)
+      throw new Error(`unexpected request: ${init?.method ?? "GET"} ${url.pathname}`)
+    } finally {
+      inFlight -= 1
+    }
   }))
 
   container = document.createElement("div")

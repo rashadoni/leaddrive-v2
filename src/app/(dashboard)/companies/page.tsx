@@ -101,23 +101,36 @@ export default function CompaniesPage() {
   const [totalUsersApi, setTotalUsers] = useState(0)
   const [totalContactsApi, setTotalContacts] = useState(0)
   const orgId = session?.user?.organizationId
+  const userId = session?.user?.id
+  const role = session?.user?.role
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async (signal?: AbortSignal) => {
     try {
       const res = await fetch("/api/v1/companies?category=client&limit=500", {
         headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+        signal,
       })
       const json = await res.json()
-      if (json.success) {
+      if (!signal?.aborted && json.success) {
         setCompanies(json.data.companies)
         setTotal(json.data.total)
         if (json.data.totalUsers !== undefined) setTotalUsers(json.data.totalUsers)
         if (json.data.totalContacts !== undefined) setTotalContacts(json.data.totalContacts)
       }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+      if (!signal?.aborted) console.error(err)
+    } finally {
+      if (!signal?.aborted) setLoading(false)
+    }
+  }, [orgId])
 
-  useEffect(() => { fetchCompanies() }, [session])
+  // Auth.js replaces the session object when it refreshes the token. Only a
+  // different person, organization or role needs a new companies request.
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchCompanies(controller.signal)
+    return () => controller.abort()
+  }, [fetchCompanies, userId, role])
 
   // Drop bulk selection on filter change — selected ids could point at
   // companies no longer in view (Phase D, mirrors deals/leads).
@@ -245,7 +258,7 @@ export default function CompaniesPage() {
         }
       />
       <PageDescription text={t("pageDescription")} />
-      <DidYouKnow page="companies" className="mb-4" />
+      <DidYouKnow page="companies" variant="disclosure" className="mb-4" />
 
       <div data-tour-id="companies-stats" className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
       </div>
@@ -253,7 +266,7 @@ export default function CompaniesPage() {
       {/* Status filter tabs */}
       <div className="flex flex-wrap gap-2">
         <Button
-          variant={activeFilter === "all" ? "default" : "outline"}
+          variant={activeFilter === "all" ? "selected" : "outline"}
           size="sm"
           onClick={() => setActiveFilter("all")}
         >
@@ -262,7 +275,7 @@ export default function CompaniesPage() {
         {Object.entries(statusLabels).map(([key, label]) => (
           <Button
             key={key}
-            variant={activeFilter === key ? "default" : "outline"}
+            variant={activeFilter === key ? "selected" : "outline"}
             size="sm"
             onClick={() => setActiveFilter(key)}
           >
@@ -310,7 +323,7 @@ export default function CompaniesPage() {
               handleBulkAction("update_status", status)
               setStatusMenuKey(k => k + 1)
             }}
-            className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+            className="h-8 px-2 rounded-md border border-input bg-card text-xs"
             aria-label={t("bulkSetStatus")}
           >
             <option value="" disabled>{t("bulkSetStatus")}</option>
@@ -330,7 +343,7 @@ export default function CompaniesPage() {
               handleBulkAction("update_category", category)
               setCategoryMenuKey(k => k + 1)
             }}
-            className="h-8 px-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-card text-xs"
+            className="h-8 px-2 rounded-md border border-input bg-card text-xs"
             aria-label={t("bulkSetCategory")}
           >
             <option value="" disabled>{t("bulkSetCategory")}</option>

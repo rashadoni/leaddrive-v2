@@ -81,7 +81,7 @@ export function ChannelReplyMatrixView({
     m === "agent" ? t("aiModeHuman") : m === "ai_draft" ? t("aiModeDraft") : t("aiModeAuto")
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card p-4 space-y-4">
+    <div className="border border-border rounded-lg bg-card p-4 space-y-4">
       <div className="flex items-start gap-2">
         <Sparkles className="h-5 w-5 text-violet-500 shrink-0 mt-0.5" />
         <div>
@@ -97,7 +97,7 @@ export function ChannelReplyMatrixView({
       ) : rows.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4 text-center">{t("noChannels")}</p>
       ) : (
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <div className="divide-y divide-border">
           {rows.map((row) => {
             const enforced = ENFORCED.has(row.channelType)
             const label = CHANNEL_LABEL[row.channelType] ?? row.channelType
@@ -125,7 +125,7 @@ export function ChannelReplyMatrixView({
                   </div>
 
                   {/* 3-way segmented control: Human / Draft / Auto */}
-                  <div className="inline-flex shrink-0 rounded-md border border-zinc-200 dark:border-zinc-700 p-0.5">
+                  <div className="inline-flex shrink-0 rounded-md border border-border p-0.5">
                     {UI_MODES.map((m) => (
                       <button
                         key={m}
@@ -138,7 +138,7 @@ export function ChannelReplyMatrixView({
                           value === m
                             ? m === "agent"
                               ? "bg-zinc-200 text-foreground dark:bg-zinc-700"
-                              : "bg-violet-500 text-white"
+                              : "crm-choice-selected"
                             : "text-muted-foreground hover:bg-muted",
                         )}
                       >

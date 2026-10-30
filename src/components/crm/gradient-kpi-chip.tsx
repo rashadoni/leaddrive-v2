@@ -2,11 +2,11 @@
 
 import { type ReactNode } from "react"
 import { cn } from "@/lib/utils"
+import { useCrmAppearance } from "@/components/ui/crm-appearance"
 
 /**
- * Creatio-style gradient KPI chip: saturated gradient card with a small
- * label on top and a big value + icon below. Meaning is carried by the
- * label text, not by the color alone (a11y).
+ * KPI chip with the shared neutral workspace surface. Legacy gradients remain
+ * available outside the workspace. Labels carry the meaning in either mode.
  */
 // Hues calibrated against the Creatio 10x reference screenshots
 // (opportunity KPI chips): near-flat gradients, deeper teal/indigo.
@@ -34,15 +34,16 @@ export function GradientKpiChip({
   variant: GradientKpiVariant
   className?: string
 }) {
+  const workspace = useCrmAppearance()
   return (
     <div
       className={cn(
-        "rounded-lg bg-gradient-to-br text-white px-4 py-3 shadow-sm min-w-0",
-        VARIANTS[variant],
+        "rounded-xl px-4 py-3 shadow-sm min-w-0",
+        workspace ? "border border-border bg-card text-card-foreground" : `bg-gradient-to-br text-white ${VARIANTS[variant]}`,
         className,
       )}
     >
-      <p className="text-[11px] font-medium text-white/85 truncate">{label}</p>
+      <p className={cn("text-[11px] font-medium truncate", workspace ? "text-muted-foreground" : "text-white/85")}>{label}</p>
       <div className="mt-1 flex items-center gap-1.5">
         {icon && <span className="opacity-90 shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
         <span className="text-xl font-bold leading-none truncate">{value}</span>

@@ -16,7 +16,7 @@ const COLUMN_MESSAGES: Record<AttendanceViewColumn, string> = { employee: "repor
   leaveDays: "reportLeaveDays", sickDays: "reportSickDays", overtimeHours: "reportOvertimeHours", attendanceRate: "reportAttendanceRate", balance: "reportBalance", kinds: "reportAbsenceKinds", absenceTotal: "reportAbsenceTotal" }
 const MODE_MESSAGES = { DAY: "viewsModeDay", MONTH: "viewsModeMonth", JOURNAL: "viewsModeJournal", BRANCH: "branchReportTitle", OVERTIME: "overtimeTitle",
   SUMMARY: "reportSummaryTitle", BALANCE: "reportBalanceTitle", ABSENCE_KINDS: "reportAbsenceKindsTitle", TEAM: "reportTeamTitle" } as const
-const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
+const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
 function filtersFor(mode: AttendanceViewConfig["mode"], filters: AttendanceViewConfig["filters"]) {
   const result = { ...filters, form: ["BRANCH", "OVERTIME", "SUMMARY", "BALANCE", "ABSENCE_KINDS", "TEAM"].includes(mode) ? "ALL" as const : mode === "JOURNAL" ? "JOURNAL" as const : filters.form === "JOURNAL" ? "ALL" as const : filters.form }
@@ -237,7 +237,7 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
       {loading ? <p role="status" className="text-sm text-muted-foreground">{t("viewsLoading")}</p> : null}
       {loadError ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">{loadError}</p><Button type="button" variant="outline" className="min-h-11" onClick={() => void load(true)}>{t("viewsReload")}</Button></div> : null}
       {!loading && !loadError && !accessUnavailable ? <>
-        {views.length ? <ul className="divide-y divide-zinc-100 dark:divide-zinc-800" aria-label={t("viewsSavedList")}>{views.map((view) => <li key={view.id} className="flex flex-wrap items-center justify-between gap-3 py-3" data-testid="attendance-personal-view">
+        {views.length ? <ul className="divide-y divide-border" aria-label={t("viewsSavedList")}>{views.map((view) => <li key={view.id} className="flex flex-wrap items-center justify-between gap-3 py-3" data-testid="attendance-personal-view">
           <div className="min-w-0"><p className="break-words text-sm font-medium">{view.name}</p><p className="text-xs text-muted-foreground">{t(MODE_MESSAGES[view.config.mode])} · {view.config.filters.from} — {view.config.filters.to}</p></div>
           {removing === view.id ? <div className="space-y-2"><p className="text-sm">{t("viewsDeleteConfirm", { name: view.name })}</p><div className="flex flex-wrap gap-2">
             <Button type="button" variant="destructive" className="min-h-11" disabled={disabled} onClick={() => void mutate(view)}>{t("viewsConfirmDelete")}</Button>
@@ -246,14 +246,14 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
               <Button type="button" variant="ghost" className="min-h-11" disabled={disabled} onClick={() => choose(view, false)} aria-label={t("viewsEditNamed", { name: view.name })}>{t("viewsRename")}</Button>
               <Button type="button" variant="ghost" className="min-h-11 text-destructive" disabled={disabled} onClick={() => setRemoving(view.id)} aria-label={t("viewsDeleteNamed", { name: view.name })}>{t("viewsDelete")}</Button></div>}
         </li>)}</ul> : <p className="rounded-xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground">{t("viewsEmpty")}</p>}
-        {draft ? <form onSubmit={submit} aria-label={t("viewsEditor")} className="space-y-4 border-t border-zinc-200 pt-5 dark:border-zinc-700"><fieldset disabled={disabled} className="space-y-4">
+        {draft ? <form onSubmit={submit} aria-label={t("viewsEditor")} className="space-y-4 border-t border-border pt-5"><fieldset disabled={disabled} className="space-y-4">
           <legend className="mb-3 text-sm font-semibold">{t(editing ? "viewsEditForm" : "viewsNewForm")}</legend>
           <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><label htmlFor="attendance-view-name" className="text-sm font-medium">{t("viewsName")}</label>
             <Input ref={nameInput} id="attendance-view-name" className="min-h-11" required maxLength={80} value={name} onChange={(event) => { setName(event.target.value); setSaved(null); if (!mustReload) setSaveError(null) }} /></div>
             <div className="space-y-2"><label htmlFor="attendance-view-mode" className="text-sm font-medium">{t("viewsRowType")}</label><select id="attendance-view-mode" className={SELECT_CLASS} value={draft.mode} onChange={(event) => chooseMode(event.target.value as AttendanceViewConfig["mode"])}>
               {(["DAY", "MONTH", "JOURNAL", "BRANCH", "OVERTIME", "SUMMARY", "BALANCE", "ABSENCE_KINDS", "TEAM"] as const).map((mode) => <option key={mode} value={mode}>{t(MODE_MESSAGES[mode])}</option>)}</select></div></div>
           <fieldset className="space-y-2"><legend className="text-sm font-medium">{t("viewsColumns")}</legend><p className="text-xs text-muted-foreground">{t("viewsColumnHint")}</p>
-            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{columns.map((column) => { const index = draft.columns.indexOf(column); return <li key={column} className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 dark:border-zinc-700">
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{columns.map((column) => { const index = draft.columns.indexOf(column); return <li key={column} className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-border px-3">
               <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={index >= 0} className="h-4 w-4 accent-primary" data-column={column}
                 onChange={(event) => change({ columns: event.target.checked ? [...draft.columns, column] : draft.columns.filter((item) => item !== column) })} />{t(COLUMN_MESSAGES[column])}</label>
               {index >= 0 ? <div className="flex shrink-0 items-center"><span className="mr-1 text-xs tabular-nums text-muted-foreground">{index + 1}</span>

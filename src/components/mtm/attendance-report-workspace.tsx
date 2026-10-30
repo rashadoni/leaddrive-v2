@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
-import { HintValue } from "@/components/hint"
+import { Hint, HintValue } from "@/components/hint"
 import Link from "next/link"
 import { useFormatter, useLocale, useTranslations } from "next-intl"
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
@@ -38,14 +38,22 @@ const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "OVERTIME", "JO
 const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal", BRANCH: "branchReportTitle", OVERTIME: "overtimeTitle" }
 const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
   EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
-const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
-const CELL = "border-b border-zinc-100 px-3 py-3 align-top dark:border-zinc-800"
+const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+const CELL = "border-b border-border px-3 py-3 align-top"
 const HEADER = "px-3 py-3 text-left text-xs font-medium text-muted-foreground"
 const PAGE_SIZE = 50
 
 function monthRange(month: string): Range {
   const [year, number] = month.split("-").map(Number)
   return { from: `${month}-01`, to: new Date(Date.UTC(year, number, 0, 12)).toISOString().slice(0, 10) }
+}
+/** The month «Close month» opens. The shown one once it is over; a running or a
+ * future month has no press to close it yet, so the month that just ended, the
+ * one there is to close (as the former link to «Closed months» opened). */
+function monthToCloseDate(shownFrom: string, today: string): string {
+  if (shownFrom.slice(0, 7) < today.slice(0, 7)) return `${shownFrom.slice(0, 7)}-01`
+  const [year, number] = today.split("-").map(Number)
+  return new Date(Date.UTC(year, number - 2, 1, 12)).toISOString().slice(0, 10)
 }
 function rowTone(row: MtmAttendanceReportRow): HomeTone {
   if (row.kind === "INVALID_FACTS" || row.kind === "ABSENT") return "red"
@@ -403,7 +411,8 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         <div className="flex flex-wrap items-start gap-2">
           <MtmAttendanceExportButtons config={currentConfig} snapshot={report?.snapshot ?? null}
             onRefresh={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} onAccessLost={clearPrivateReport} />
-          <Button asChild variant="outline" className="min-h-11 rounded-full"><Link href="/mtm/attendance/timesheet?view=months" prefetch={false}><Lock className="mr-2 h-4 w-4" aria-hidden="true" />{p("closeMonth")}</Link></Button>
+          {/* The month closes on its N-1t in one press (owner, 2026-10-20, the «Kadr uçotu» clip): the shown month once it is over, otherwise the one that just ended; history stays under «Daha çox». */}
+          <Hint text={t("monthCloseOpenN1tHint")}><Button asChild variant="outline" className="min-h-11 rounded-full"><Link href={range.from && today ? `/mtm/attendance/reports?report=n1t&date=${monthToCloseDate(range.from, today)}` : "/mtm/attendance/reports?report=n1t"} prefetch={false} data-testid="attendance-timesheet-close-month"><Lock className="mr-2 h-4 w-4" aria-hidden="true" />{p("closeMonth")}</Link></Button></Hint>
           <DropdownMenu><DropdownMenuTrigger asChild><Button type="button" variant="outline" className="min-h-11 rounded-full" data-testid="attendance-timesheet-more">{p("more")}<ChevronDown className="ml-2 h-4 w-4" aria-hidden="true" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               {(["branches", "decisions", "months"] as const).map(view => <DropdownMenuItem key={view} asChild><Link href={`/mtm/attendance/timesheet?view=${view}`} prefetch={false}>{p(`tabs.${view}`)}</Link></DropdownMenuItem>)}
@@ -420,7 +429,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         <span className="flex-1" />
         <label className="relative"><span className="sr-only">{p("searchEmployee")}</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input type="search" className="min-h-10 w-56 pl-9" placeholder={p("searchEmployee")} value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} /></label>
-        <select aria-label={t("reportTeam")} className="min-h-10 min-w-44 rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700" value={teamId} disabled={!report} onChange={event => changeScope(event.target.value, "")}>
+        <select aria-label={t("reportTeam")} className="min-h-10 min-w-44 rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" value={teamId} disabled={!report} onChange={event => changeScope(event.target.value, "")}>
           <option value="">{t("reportAllTeams")}</option>{directory.teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
         {employeeId ? <span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-foreground px-3 text-sm font-semibold text-foreground">{p("onlyEmployee", { name: pinned?.name ?? t("viewsUnavailableEmployee") })}
           <button type="button" className="rounded-full p-0.5 hover:bg-muted" aria-label={p("showEveryone")} onClick={() => changeScope(teamId, "")}><X className="h-3.5 w-3.5" aria-hidden="true" /></button></span> : null}
@@ -439,7 +448,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
             const worked = person.rows.filter(row => row.startedAt !== null).length
             const sick = person.rows.filter(row => row.dayKind?.key === "SICK_LEAVE" || row.dayKind?.key === "UNPAID_SICK").length
             const missed = person.totals.absentCount + person.totals.missingFinishCount
-            return <tr key={person.id} data-testid="attendance-month-person" className="border-t border-zinc-100 dark:border-zinc-800">
+            return <tr key={person.id} data-testid="attendance-month-person" className="border-t border-border">
               <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left"><span className="block truncate text-[13px] font-semibold">{person.name}</span><span className="block text-[11px] font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
               {monthDates.map(date => {
                 const entries = person.dates.get(date) ?? []

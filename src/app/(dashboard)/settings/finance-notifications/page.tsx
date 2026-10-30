@@ -289,7 +289,7 @@ export default function FinanceNotificationsPage() {
               <Label className="text-xs font-medium text-muted-foreground">{t("daysBeforeDeadline")}</Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {DAY_OPTIONS.map(({ value, label }) => (
-                  <Button key={value} size="sm" variant={settings.advance.daysBeforeDeadline === value ? "default" : "outline"} className="h-8" onClick={() => setDays(value)}>
+                  <Button key={value} size="sm" variant={settings.advance.daysBeforeDeadline === value ? "selected" : "outline"} className="h-8" onClick={() => setDays(value)}>
                     {label}
                   </Button>
                 ))}
@@ -369,7 +369,7 @@ function ChannelToggles({ channels, channelList, onToggle, label }: {
               <p className="text-sm font-medium">{label}</p>
               <p className={`text-xs ${warn ? "font-medium text-amber-600" : "text-muted-foreground"}`}>{desc}</p>
             </div>
-            <input type="checkbox" checked={channels.includes(key)} onChange={() => onToggle(key)} className="rounded border-zinc-200 dark:border-zinc-700 w-4 h-4" />
+            <input type="checkbox" checked={channels.includes(key)} onChange={() => onToggle(key)} className="rounded border-input w-4 h-4" />
           </label>
         ))}
       </div>

@@ -22,6 +22,8 @@ const english = JSON.parse(await readFile('messages/en.json', 'utf8'))
 const messages = english.mtmAttendance
 /** Personnel labels (`personnel.*`), for the screens rebuilt on 2026-10-14. */
 const pt = key => { const value = key.split('.').reduce((node, part) => node?.[part], english.personnel); assert.equal(typeof value, 'string', `Missing label personnel.${key}`); return value }
+/** The branch screen's own labels (`attendanceBranchScreen.*`). */
+const st = key => { const value = english.attendanceBranchScreen?.[key]; assert.equal(typeof value, 'string', `Missing label attendanceBranchScreen.${key}`); return value }
 const t = (key, vars = {}) => {
   assert.equal(typeof messages[key], 'string', `Missing label ${key}`)
   return messages[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
@@ -38,8 +40,9 @@ const destinations = {
   'day-kinds': ['settings?tab=day-kinds', 'settings'], 'request-limits': ['settings?tab=requests', 'settings'], 'hr-access': ['settings?tab=access', 'settings'],
 }
 const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/reports', '/mtm/attendance/settings']
-const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
+const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-branch-screen-pair-show-revoke', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
 caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
+caseNames.push('employee-explanations-authentication', 'browser-existing-crm-phone-hire')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -126,7 +129,7 @@ async function readyPage(path) {
   await page.locator('h1').first().waitFor({ timeout: 120000 })
   await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
 }
-// Office staff auto-enrolled at activation; a field agent is not HR attendance.
+// Explicit Personnel staff; a technical CRM card alone is not a directory entry.
 const rosterCard = name => fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId: fixture.organization.id, name } })
 /** Closed months pick a month with arrows (the browser's month input printed English in Azerbaijani). */
 async function chooseMonth(target) {
@@ -258,6 +261,13 @@ try {
     assert.equal(await fixture.admin.mtmAgentWorkdayEvent.count({ where: { workdayId } }), 4)
     await assert.rejects(() => fixture.admin.mtmAgentWorkday.update({ where: { id: workdayId }, data: { completedAt: new Date() } }))
     state.workdayId = workdayId
+    const marks = await mobile('employee', `/marks?workdayId=${encodeURIComponent(workdayId)}`)
+    assert.deepEqual(marks.items.map(item => item.action), ['START', 'PAUSE', 'RESUME', 'FINISH'])
+    assert.ok(marks.items.every(item => item.location.coordinates === null && item.qr === null))
+    assert.ok(!/installationId|requestHash|nonceFingerprint/.test(JSON.stringify(marks)))
+    state.ownMarks = marks
+    await mobile('employee', `/marks?workdayId=${randomUUID()}`, { status: 404 })
+    await mobile('field', `/marks?workdayId=${encodeURIComponent(workdayId)}`, { status: 403 })
     return { transitions: 4, exactOperationRetries: 4, persistedEvents: 4 }
   })
   await run('report-scope-exports', 'authenticated-http', async () => {
@@ -334,8 +344,9 @@ try {
     // attendance — it is not in the directory; office staff are.
     const before = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.manager.id } })
     const directory = await api('admin', '/employees')
-    assert.equal(directory.employees.length, 57)
+    assert.equal(directory.employees.length, 54)
     assert.equal(directory.employees.some(row => row.id === fixture.agents.field.id), false)
+    for (const name of ['admin', 'hr', 'outside']) assert.equal(directory.employees.some(row => row.id === fixture.agents[name].id), false)
     assert.ok(directory.employees.every(row => row.included))
     assert.ok(directory.employees.every(row => row.history.length === 0))
     const row = directory.employees.find(row => row.id === before.id)
@@ -352,6 +363,18 @@ try {
     await request(mobiles.field, '/api/v1/mtm/mobile/bootstrap')
     await api('admin', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), included: true, previousEventId: result.eventId } })
     assert.equal((await api('admin', '/employees')).employees.find(row => row.id === before.id).included, true)
+  })
+  await run('employee-explanations-authentication', 'authenticated-http', async () => {
+    const before = await mobile('employee', '/explanations')
+    assert.equal(before.today, today)
+    assert.ok(Array.isArray(before.items) && Array.isArray(before.candidates))
+    const rejected = await mobile('employee', '/explanations', {
+      method: 'POST', body: { date: date(-1), kind: 'ABSENT', text: '' }, status: 400, raw: true,
+    })
+    assert.equal((await rejected.json()).code, 'MTM_ATTENDANCE_EXPLANATION_INVALID')
+    assert.deepEqual(await mobile('employee', '/explanations'), before)
+    await mobile('field', '/explanations', { status: 403 })
+    return { realOfficeJwt: true, ownRead: true, invalidAnswerRejectedWithoutWrite: true, fieldAgentDenied: true }
   })
   await run('employment-history', 'authenticated-http+database', async () => {
     const base = { agentId: fixture.agents.outside.id, reason: 'Fictional employment history', previousEventId: null }
@@ -410,6 +433,13 @@ try {
     for (const status of ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']) await api('admin', `/requests?status=${status}`)
     state.uiApprove = await submit('ANNUAL_LEAVE', 23)
     state.uiReject = await submit('SICK_LEAVE', 24)
+    const time = instant => new Intl.DateTimeFormat('en-GB', { timeZone: state.ownMarks.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(instant))
+    const end = new Date(Date.parse(state.ownMarks.items.at(-1).claimedAt) + 60000)
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: state.ownMarks.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(end)
+    const part = key => parts.find(item => item.type === key).value
+    const correction = { clientRequestId: randomUUID(), kind: 'TIME_CORRECTION', unit: 'HOURS', startDate: state.ownMarks.workDate, endDate: `${part('year')}-${part('month')}-${part('day')}`,
+      startTime: time(state.ownMarks.items[0].claimedAt), endTime: time(end), reason: 'Fictional browser correction context', attachmentIds: [] }
+    state.uiCorrection = (await mobile('employee', '/requests', { method: 'POST', body: correction, status: 201 })).request
     const own = await mobile('employee', '/requests')
     assert.ok(own.items.some(row => row.id === cancelled.id && row.status === 'CANCELLED'))
     return { submitReplay: true, reviewerScope: true, approveRejectRevokeCancel: true }
@@ -502,7 +532,7 @@ try {
     assert.equal((await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })).status, 'COMPLETED')
     return { detector: 'synthetic seeded case; detector logic NOT_RUN here', reviewPreservesWorkday: true }
   })
-  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
+  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-screens', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
   for (const route of routes) await run(`page:${route || 'report'}`, 'browser-navigation', async () => {
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}${pageEndpoints[route]}` && response.request().method() === 'GET', { timeout: 120000 })
     void loaded.catch(() => {})
@@ -615,6 +645,9 @@ try {
     // Owner, 2026-10-16: the list finds a person, «Edit» opens their page, «back» returns to the same list.
     await readyPage('employees')
     await page.getByTestId('employee-row').first().waitFor()
+    await page.locator('#employee-search').fill('Fixture admin')
+    assert.equal(await page.getByTestId('employee-row').count(), 0)
+    await page.locator('#employee-search').fill('')
     assert.equal(await page.getByTestId('employee-row').count(), 50)
     await button('employeesNext').click(); await button('employeesPrevious').click()
     await page.locator('#employee-search').fill('Fixture roster 00')
@@ -623,6 +656,10 @@ try {
     await poll(async () => new URL(page.url()).searchParams.get('q') === 'Fixture roster 00', 'Search kept in the address')
     await row.getByRole('link', { name: pt('employeeEditNamed').replace('{name}', 'Fixture roster 00'), exact: true }).click()
     await page.getByTestId('attendance-employee-page').waitFor()
+    await page.getByTestId('employee-preparation').waitFor()
+    assert.ok((await page.getByTestId('employee-preparation').innerText()).includes(pt('preparation.noFakeMark')))
+    assert.equal(await page.getByTestId('employee-preparation-phone').count(), 1)
+    await page.getByTestId('employee-preparation').screenshot({ path: `${output}/employee-preparation.png` })
     const toggle = page.getByRole('switch')
     assert.equal(await toggle.getAttribute('aria-checked'), 'true')
     await clickResponse(toggle, `${apiRoot}/employees/participation`)
@@ -636,7 +673,7 @@ try {
     assert.equal(await row.count(), 0)
     await page.locator('#employee-participation').selectOption('ALL')
     assert.equal((await rosterCard('Fixture roster 00')).role, 'EMPLOYEE')
-    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, employeePageAndBack: true }
+    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, employeePageAndBack: true, employeePreparation: true }
   })
   await run('browser-branch-create-edit-archive-cancel', 'browser-action+database-backed-http', async () => {
     await readyPage('branches')
@@ -676,63 +713,128 @@ try {
     const own = await mobile('employee', '/requests')
     assert.equal(own.items.find(item => item.id === state.uiApprove.id).status, 'CANCELLED')
     assert.equal(own.items.find(item => item.id === state.uiReject.id).status, 'REJECTED')
+    row = page.getByTestId(`attendance-request-${state.uiCorrection.id}`)
+    await button('requestsOpen', row).click()
+    const comparison = row.getByTestId('attendance-correction-comparison')
+    await comparison.waitFor()
+    assert.ok((await comparison.innerText()).includes(t('correctionBefore')))
+    assert.ok((await comparison.innerText()).includes(t('correctionProposed')))
+    assert.equal(await comparison.locator('a').getAttribute('href'), `/mtm/attendance/timesheet?date=${state.ownMarks.workDate}&employeeId=${fixture.agents.employee.id}`)
+    await page.getByTestId('attendance-requests-freshness').waitFor()
+    await comparison.screenshot({ path: `${output}/correction-comparison.png` })
+    await row.locator('textarea').fill('Fictional correction rejected with context')
+    await clickResponse(button('requestsReject', row), `${apiRoot}/requests/${state.uiCorrection.id}/decision`)
+    const correctionResult = (await mobile('employee', '/requests')).items.find(item => item.id === state.uiCorrection.id)
+    assert.equal(correctionResult.status, 'REJECTED')
+    assert.equal(correctionResult.decisionNote, 'Fictional correction rejected with context')
+    return { correctionComparison: true, correctionDecisionReturnedToEmployee: true }
   })
-  await run('browser-qr-toggle-refresh-hide', 'browser-action+database-backed-http', async () => {
+  await run('browser-qr-branch-screen-pair-show-revoke', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
     await readyPage('branch-qr')
     const toggle = page.getByRole('switch', { name: t('qrRule') })
     assert.equal(await toggle.getAttribute('aria-checked'), 'false')
-    let visibilitySession, windowId
+    let kioskContext, visibilitySession, windowId
     try {
       // The component aborts the old PUT response while loading its new state.
       // Prove the real status and resulting state without reading a discarded body.
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'true', 'QR enabled')
       assert.equal((await api('admin', '/branch-qr')).enabled, true)
-      const qr = page.getByRole('img', { name: t('qrImageAlt') })
+      // A signed-in browser shows no code and cannot mint one (owner, 2026-10-29).
+      assert.equal(await page.locator('main img').count(), 0)
+      await api('admin', '/branch-qr', { method: 'POST', body: { branchId: state.branch.id }, status: 410 })
+      const row = page.getByTestId('attendance-qr-branch').filter({ hasText: state.branch.name })
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 120000 })
+      const pairing = await clickResponse(button('qrScreenPair', row), `${apiRoot}/branch-screens`)
+      assert.equal(await row.getByTestId('attendance-qr-pairing-code').textContent(), pairing.code)
+      // The tablet at the branch: a browser with no CRM session at all, standing
+      // at the branch's current point (owner, 2026-10-30: a screen elsewhere gets no code).
+      const point = await fixture.admin.mtmAttendanceBranchRevision.findFirst({ where: { branchId: state.branch.id }, orderBy: { version: 'desc' }, select: { latitude: true, longitude: true } })
+      const atBranch = { latitude: point.latitude, longitude: point.longitude, accuracy: 15 }
+      kioskContext = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1024, height: 768 }, locale: 'en-US', permissions: ['geolocation'], geolocation: atBranch })
+      await kioskContext.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort())
+      const kiosk = await kioskContext.newPage()
+      await kiosk.goto('/screen?lang=en', { waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      await kiosk.locator('#branch-screen-code').fill(pairing.code.toLowerCase())
+      const paired = kiosk.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/public/attendance-screen/pair', { timeout: 120000 })
+      void paired.catch(() => {})
+      await kiosk.getByRole('button', { name: st('pairButton'), exact: true }).click()
+      assert.equal((await paired).status(), 200)
+      const qr = kiosk.getByRole('img', { name: st('qrAlt') })
       await qr.waitFor({ timeout: 120000 })
       assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
-      await button('qrRefresh').click()
-      await qr.waitFor({ timeout: 120000 })
+      assert.equal(await kiosk.getByTestId('branch-screen-branch').textContent(), state.branch.name)
+      // The secret is an httpOnly cookie of the screen's own routes: no script reads it.
+      assert.equal(await kiosk.evaluate(() => document.cookie.includes('ld_branch_screen')), false)
+      const [cookie] = (await kioskContext.cookies()).filter(item => item.name === 'ld_branch_screen')
+      assert.equal(cookie?.httpOnly, true); assert.equal(cookie?.path, '/api/v1/public/attendance-screen')
+      await row.getByText(t('qrScreenJustPaired'), { exact: true }).waitFor({ timeout: 30000 })
+      await kiosk.screenshot({ path: `${output}/branch-screen-qr.png`, fullPage: false })
       // Release Playwright's own per-session capture handle before minimizing
       // the native window. A separate CDP session cannot undo that override.
       // Never assign document.visibilityState or dispatch synthetic events.
-      visibilitySession = playwrightFocusSession(page)
+      visibilitySession = playwrightFocusSession(kiosk)
       await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
       ;({ windowId } = await visibilitySession.send('Browser.getWindowForTarget'))
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } })
       await poll(async () => (await visibilitySession.send('Browser.getWindowBounds', { windowId })).bounds.windowState === 'minimized', 'Native Chromium window minimized')
       await poll(async () => {
-        const visibilityState = await page.evaluate(() => document.visibilityState)
-        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session' }
+        const visibilityState = await kiosk.evaluate(() => document.visibilityState)
+        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session', page: 'branch screen' }
         return visibilityState === 'hidden'
       }, 'QR native window background visibility')
       await poll(async () => await qr.count() === 0, 'QR hidden in background')
       manifest.qrLifecycle.qrAbsentWhileHidden = true
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-      await page.bringToFront()
-      await poll(async () => await page.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
+      await kiosk.bringToFront()
+      await poll(async () => await kiosk.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
       await qr.waitFor({ timeout: 120000 })
       manifest.qrLifecycle.qrRestoredInForeground = true
+      // Carried ~3 km away: at its next refresh the screen shows no code and
+      // says why; the administrator's list marks it; back at the branch the code returns.
+      await kioskContext.setGeolocation({ ...atBranch, latitude: atBranch.latitude + 0.03 })
+      await kiosk.getByTestId('branch-screen-away').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      assert.ok((await kiosk.getByTestId('branch-screen-away').textContent()).includes(st('notAtBranchTitle')))
+      const awayPlace = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens[0].place
+      assert.equal(awayPlace.state, 'AWAY'); assert.ok(awayPlace.distanceMeters > 3000)
+      await kiosk.screenshot({ path: `${output}/branch-screen-away.png`, fullPage: false })
+      await kioskContext.setGeolocation(atBranch)
+      await qr.waitFor({ timeout: 120000 })
+      manifest.qrLifecycle.qrWithheldAwayFromBranch = true
+      // Disconnected: the screen's next request is refused and it asks for a code again.
+      const [screen] = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens
+      await button('qrScreenRevoke', row).click()
+      await clickResponse(button('qrScreenRevokeYes', row), `${apiRoot}/branch-screens/${screen.id}/revoke`)
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 30000 })
+      await kiosk.reload({ waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      await page.bringToFront()
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
-      assert.equal(await qr.count(), 0)
     } finally {
       // Failed lifecycle assertions must still leave the disposable policy OFF.
       try {
         await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
       } finally {
-        if (visibilitySession) {
-          try {
-            if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-            await page.bringToFront()
-          } finally {
-            await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+        try {
+          if (visibilitySession) {
+            try {
+              if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
+            } finally {
+              await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+            }
           }
+        } finally {
+          await kioskContext?.close()
+          await page.bringToFront()
         }
       }
     }
-    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
+    return { enabledThenDisabled: true, signedInBrowserGetsNoCode: true, pairedWithoutSignIn: true, secretHttpOnly: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, revokedScreenUnpaired: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
     await readyPage('request-limits')
@@ -841,7 +943,8 @@ try {
     await readyPage('location-settings')
     const editor = page.getByTestId('geo-policy-editor')
     await editor.locator('#geo-text-en').fill('')
-    assert.equal(await editor.getByLabel(t('geoPolicyEnable')).isEnabled(), false)
+    // The double check is chosen above the agreement; it waits for all three texts.
+    assert.equal(await page.getByTestId('geo-policy-status').getByLabel(t('geoPolicyEnable')).isEnabled(), false)
     await clickResponse(button('geoPolicySave', editor), `${apiRoot}/location-policy`)
     assert.equal((await api('admin', '/location-policy')).policy.enabled, false)
     await readyPage('branches/report')
@@ -1226,6 +1329,53 @@ try {
     for await (const chunk of stream) chunks.push(chunk)
     assert.deepEqual(Buffer.concat(chunks), sanitizedBytes)
     return { actualBrowserDocumentDownload: true, draftAndUnselectedHidden: true, deniedRoles: 4, otherEmployeeDenied: true, sameTeamReviewerAllowed: true, exifRemoved: true, invalidFileAndSizeRejected: true, upload: 'Actual mobile multipart HTTP, not APK picker', admissionBackend: 'Application development memory fallback; production Redis gate NOT_RUN' }
+  })
+  await run('browser-existing-crm-phone-hire', 'browser-action+database-backed-http', async () => {
+    const organizationId = fixture.organization.id, name = 'Fixture existing CRM person', phone = '+994550009901'
+    const user = await fixture.admin.user.create({ data: { organizationId, name, phone, email: `existing-${organizationId}@example.invalid`, role: 'sales', passwordHash: fixture.users.employee.passwordHash } })
+    const card = await fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId, userId: user.id } })
+    assert.equal(card.role, 'EMPLOYEE'); assert.equal(card.attendanceParticipant, true)
+    const before = { users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }
+    assert.ok(!(await api('admin', '/employees')).employees.some(row => row.id === card.id))
+    await api('hr', '/employees/phone-match', { method: 'POST', body: { phone }, status: 403 })
+    await api('foreign', '/employees/phone-match', { method: 'POST', body: { phone } }).then(result => assert.deepEqual(result, { kind: 'none' }))
+    await readyPage('employees')
+    await page.getByTestId('attendance-add-employee').click()
+    const form = page.getByTestId('attendance-add-employee-form')
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await form.locator('input[type="date"]').fill(today)
+    // The fixture's actual user quota is full. Existing-person hiring must not
+    // require another seat (owner, 2026-10-29: «пусть добавляется как
+    // сотрудник»): the add form hires that person through their own card.
+    assert.ok(fixture.organization.maxUsers !== -1 && before.users >= fixture.organization.maxUsers)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 201)
+    await form.waitFor({ state: 'detached' })
+    const directory = await api('admin', '/employees')
+    const hired = directory.employees.find(row => row.id === card.id)
+    assert.ok(hired); assert.equal(hired.history[0].kind, 'HIRE'); assert.equal(hired.history[0].date, today)
+    assert.deepEqual({ users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }, before)
+    // Already in the list: a second add is refused and points to their page.
+    await page.getByTestId('attendance-add-employee').click()
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
+    const result = page.getByTestId('attendance-phone-match')
+    await result.waitFor()
+    assert.ok((await result.innerText()).includes(name))
+    assert.ok((await result.innerText()).includes(pt('addEmployeePhoneAlreadyEnrolled')))
+    await page.screenshot({ path: `${output}/existing-crm-phone-match.png`, fullPage: false })
+    await result.getByRole('link', { name: pt('addEmployeePhoneOpenProfile'), exact: true }).click()
+    await page.getByTestId('attendance-employee-back').waitFor()
+    const afterUser = await fixture.admin.user.findUniqueOrThrow({ where: { id: user.id } })
+    const afterCard = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: card.id } })
+    for (const key of ['id', 'phone', 'email', 'role', 'passwordHash', 'hiddenModules']) assert.deepEqual(afterUser[key], user[key])
+    for (const key of ['id', 'userId', 'phone', 'role', 'passwordHash']) assert.equal(afterCard[key], card[key])
+    await page.getByTestId('attendance-employee-back').click()
+    await page.locator('#employee-search').fill(name)
+    await page.getByTestId('employee-row').filter({ hasText: name }).waitFor()
+    await page.screenshot({ path: `${output}/existing-crm-phone-hired.png`, fullPage: false })
+    return { existingIdentityPreserved: true, credentialsUnchanged: true, duplicateAccounts: false, crossTenantHidden: true }
   })
   await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
     for (const locale of ['az', 'ru', 'en']) {

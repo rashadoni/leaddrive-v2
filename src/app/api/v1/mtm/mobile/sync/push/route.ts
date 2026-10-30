@@ -28,6 +28,7 @@ import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot, waitingLocationRequestCovers, type WaitingLocationPlace } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { attachJointManagerToVisit } from "@/lib/mtm/joint-visit"
+import { attachPlannedJointManager } from "@/lib/mtm/joint-visit-plan"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
 import {
@@ -120,6 +121,7 @@ import {
   WORKFORCE_ANDROID_VERSION_CODE_HEADER,
 } from "@/lib/workforce/mobile-release-policy"
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
+import { lockMtmVisitSnapshot, recordMtmVisitChange } from "@/lib/mtm/visit-events"
 
 const mobileHrmRequestReplaySelect = {
   id: true,
@@ -1339,6 +1341,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   },
                   select: { id: true, status: true, checkInAt: true, customerId: true, contactId: true, routeId: true, routePointId: true },
                 })
+                await recordMtmVisitChange(tx, orgId, visit.id, null)
                 await createVisitRequirementSnapshot(tx, {
                   organizationId: orgId,
                   visitId: visit.id,
@@ -1400,20 +1403,31 @@ export const POST = withMobileRls(async (req, auth) => {
                 }
                 // «Этот визит — вместе с руководителем? Да» (joint visit,
                 // owner 2026-10-20). Only a session that manager opened with
-                // this agent makes it so; an unbacked «yes» leaves the visit
-                // as it is and never refuses the check-in.
+                // this agent, or his plan of the day at this stop, makes it
+                // so; an unbacked «yes» leaves the visit as it is and never
+                // refuses the check-in.
                 let joint: { managerId: string; accepted: boolean } | null = null
                 if (typeof data.jointManagerId === "string" && data.jointManagerId) {
                   const settings = await getMtmSettings(orgId)
+                  const jointInput = {
+                    organizationId: orgId,
+                    visitId: visit.id,
+                    agentId,
+                    managerAgentId: data.jointManagerId,
+                    checkInAt: visit.checkInAt,
+                    timezone: isValidTimezone(settings.timezone) ? settings.timezone : "UTC",
+                  }
+                  const sessionAccepted = await attachJointManagerToVisit(tx, jointInput)
+                  // A joint visit the manager planned at this stop backs the
+                  // «yes» too, and learns which visit it became (2026-10-30).
                   joint = {
                     managerId: data.jointManagerId,
-                    accepted: await attachJointManagerToVisit(tx, {
-                      organizationId: orgId,
-                      visitId: visit.id,
-                      agentId,
-                      managerAgentId: data.jointManagerId,
-                      checkInAt: visit.checkInAt,
-                      timezone: isValidTimezone(settings.timezone) ? settings.timezone : "UTC",
+                    accepted: await attachPlannedJointManager(tx, {
+                      ...jointInput,
+                      routePointId: visit.routePointId,
+                      customerId: visit.customerId,
+                      contactId: visit.contactId,
+                      sessionAccepted,
                     }),
                   }
                 }
@@ -1441,6 +1455,7 @@ export const POST = withMobileRls(async (req, auth) => {
               errorMsg = "Cannot revert terminal visit status"
               serverData = existing
             } else if (data.status === "CHECKED_OUT") {
+              const fenceBefore = await lockMtmVisitSnapshot(tx, orgId, existing.id)
               const visitFence = await tx.mtmVisit.updateMany({
                 where: {
                   id: data.id,
@@ -1461,6 +1476,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 opStatus = "conflict"
                 errorMsg = "Visit changed or is no longer owned by agent"
               } else {
+                await recordMtmVisitChange(tx, orgId, existing.id, fenceBefore)
                 const routeBefore = existing.routeId
                   ? await tx.mtmRoute.findFirst({
                       where: { id: existing.routeId, organizationId: orgId },
@@ -1519,6 +1535,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 }
               }
             } else {
+              const changeBefore = await lockMtmVisitSnapshot(tx, orgId, existing.id)
               const changed = await tx.mtmVisit.updateMany({
                 where: {
                   id: data.id,
@@ -1543,6 +1560,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 opStatus = "conflict"
                 errorMsg = "Visit changed or is no longer owned by agent"
               } else {
+                await recordMtmVisitChange(tx, orgId, existing.id, changeBefore)
                 const updated = await tx.mtmVisit.findFirst({
                   where: { id: data.id, organizationId: orgId, agentId, deletedAt: null },
                   select: { id: true, status: true, checkInAt: true, checkOutAt: true },
@@ -1615,10 +1633,12 @@ export const POST = withMobileRls(async (req, auth) => {
               select: { id: true, visitId: true, actionKey: true, status: true, completedAt: true },
             })
             if (visitActionInput.actionKey === "NEXT_ACTION" && nextAction) {
+              const nextActionBefore = await lockMtmVisitSnapshot(tx, orgId, visit.id)
               await tx.mtmVisit.updateMany({
                 where: { id: visit.id, organizationId: orgId, agentId, status: "CHECKED_IN", deletedAt: null },
                 data: { nextActionDueAt: nextAction.dueDate },
               })
+              await recordMtmVisitChange(tx, orgId, visit.id, nextActionBefore)
               const sourceKey = `visit-next-action:${visit.id}`
               const existingTask = await tx.mtmTask.findFirst({
                 where: { organizationId: orgId, sourceKey },
@@ -3086,8 +3106,9 @@ export const POST = withMobileRls(async (req, auth) => {
               if (workdayInput.action === "START" || workdayInput.action === "FINISH") {
                 await enforceAttendanceInstallationApproval(tx, { organizationId: orgId, agentId }, req.headers.get("x-field-device-id"))
               }
-              await recordAttendanceQr(tx, { organizationId: orgId, agentId }, workdayInput, event.id, workdayInput.action === "FINISH" && beforeWorkday?.status === "PAUSED")
+              // The mark's own fix first: the QR is checked against it (AWAY_FROM_BRANCH).
               await recordAttendanceMarkEvidence(tx, { scope: { organizationId: orgId, agentId }, input: workdayInput, workday, event, beforeWorkday }, { organizationId: orgId, agentId, role: auth.role })
+              await recordAttendanceQr(tx, { organizationId: orgId, agentId }, workdayInput, event.id, workdayInput.action === "FINISH" && beforeWorkday?.status === "PAUSED")
               if (!workforceWorkday) return
               const prepared = await prepareWorkforceAttendanceVerification(tx, {
                 organizationId: orgId,

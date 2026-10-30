@@ -11,6 +11,12 @@ const mocks = vi.hoisted(() => ({
   callEventFindFirst: vi.fn(),
 }))
 
+// The number -> organization lookup is its own suite (voice-line-numbers-postgres);
+// here every call belongs to the installation's default organization, as before it.
+vi.mock("@/lib/voip/line-numbers", () => ({
+  voiceOrganizationFor: async () => process.env.VOICE_AGENT_ORGANIZATION_ID
+    ? { organizationId: process.env.VOICE_AGENT_ORGANIZATION_ID, channelConfigId: null } : null,
+}))
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     channelConfig: { findMany: mocks.findMany },

@@ -155,7 +155,7 @@ export function MtmOrganizationPicker({
 
   if (value) {
     return (
-      <div role="group" aria-labelledby={labelId} data-testid="mtm-organization-selected" className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-muted/35 p-3 dark:border-zinc-700">
+      <div role="group" aria-labelledby={labelId} data-testid="mtm-organization-selected" className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/35 p-3">
         <div className="min-w-0">
           <p className="text-sm font-medium [overflow-wrap:anywhere]">{value.name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground [overflow-wrap:anywhere]">{details(value) || t("addressMissing")}</p>
@@ -190,14 +190,14 @@ export function MtmOrganizationPicker({
         {loading ? <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-hidden="true" /> : null}
       </div>
       {open ? (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700">
+        <div className="rounded-xl border border-border">
           {!loading && outcome.failed ? (
             <div role="alert" className="flex items-center justify-between gap-3 p-3 text-sm text-destructive">
               <span>{t("error")}</span>
               <Button type="button" variant="outline" className="min-h-11 flex-none" onClick={() => setRetry((count) => count + 1)}>{t("retry")}</Button>
             </div>
           ) : null}
-          <ul id={listId} role="listbox" aria-labelledby={labelId} className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <ul id={listId} role="listbox" aria-labelledby={labelId} className="divide-y divide-border">
             {results.map((organization) => (
               <li
                 key={organization.id}

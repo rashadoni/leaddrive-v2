@@ -6,6 +6,7 @@ import { isValidTimezone } from "@/lib/timezone"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { jointSessionIsOpen, storedVisitEvaluation, visitEvaluationDeadline } from "@/lib/mtm/joint-visit"
 import type { MtmVisitEvaluationQuestion } from "@/lib/mtm/visit-evaluation-questions"
+import { jointPlanWindow, managerJointPlans } from "@/lib/mtm/joint-visit-plan"
 
 /**
  * What the manager's phone shows of a joint visit — the «Совместный визит»
@@ -109,14 +110,20 @@ export async function jointState(auth: MobileAuthResult) {
     },
   })
 
+  // Where he goes with whom, today and ahead (2026-10-30).
+  const window = jointPlanWindow(now, timezone)
+  const plans = await managerJointPlans(prisma, { organizationId: auth.orgId, managerAgentId: auth.agentId, from: window.today, to: window.last })
+
   return {
     timezone,
     now: now.toISOString(),
+    today: window.today,
     // What the rating sheet asks, in this order: the company's list of today.
     // `criteria` is the same list as bare ids, for the phones that read it.
     questions,
     criteria: questions.map((question) => question.id),
     session: sessionJson(session),
+    plans,
     visits: visits.map((visit) => {
       const joint = visit.participants.length > 0
       const deadline = visitEvaluationDeadline(visit.checkInAt, timezone)

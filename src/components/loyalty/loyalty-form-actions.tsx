@@ -22,7 +22,7 @@ export function LoyaltyFormActions({
   onSubmit,
 }: LoyaltyFormActionsProps) {
   return (
-    <div className="sticky top-0 z-10 -mx-4 mb-4 flex flex-col gap-3 border-y border-zinc-200 bg-background/95 px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700 dark:shadow-[0_8px_20px_rgba(0,0,0,0.24)]">
+    <div className="sticky top-0 z-10 -mx-4 mb-4 flex flex-col gap-3 border-y border-border bg-background/95 px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:justify-between dark:shadow-[0_8px_20px_rgba(0,0,0,0.24)]">
       {helperText ? (
         <p className="max-w-xl text-xs leading-5 text-muted-foreground">{helperText}</p>
       ) : (
@@ -33,7 +33,7 @@ export function LoyaltyFormActions({
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
+          className="px-3 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted disabled:opacity-50"
         >
           {cancelLabel}
         </button>
@@ -42,7 +42,7 @@ export function LoyaltyFormActions({
           onClick={onSubmit}
           disabled={busy || submitDisabled}
           className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
-          aria-busy={busy}
+          aria-busy={busy} data-crm-button="default"
         >
           {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           {submitLabel}

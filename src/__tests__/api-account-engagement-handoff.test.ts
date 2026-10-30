@@ -28,6 +28,9 @@ function makeDb(overrides: Partial<HandoffDb> = {}): HandoffDb {
     deal: {
       create: vi.fn().mockResolvedValue({ id: "deal-1", name: "Acme Corp — SQL Handoff", stage: "QUALIFIED" }),
     },
+    // The deal's event is written through raw SQL (src/lib/deals/deal-events.ts):
+    // no rows come back here, so no event is written.
+    ...({ $queryRawUnsafe: vi.fn().mockResolvedValue([]), $executeRawUnsafe: vi.fn().mockResolvedValue(0) } as object),
     ...overrides,
   }
 }
@@ -150,6 +153,9 @@ describe("performSqlHandoff — null companyId / ownerUserId", () => {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     marketingAccount: {
       findFirst: vi.fn(),
       update: vi.fn(),

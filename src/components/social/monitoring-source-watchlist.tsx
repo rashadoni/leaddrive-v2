@@ -1702,7 +1702,7 @@ export function MonitoringSourceWatchlist({
         : t("targetPage")
 
   return (
-    <section data-tour-id="social-watchlist" data-testid="social-watchlist" className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <section data-tour-id="social-watchlist" data-testid="social-watchlist" className="rounded-lg border border-border bg-card p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1866,7 +1866,7 @@ export function MonitoringSourceWatchlist({
             onChange={(event) => setBulkUrls(event.target.value)}
             rows={3}
             placeholder={t("quickAdd.placeholder")}
-            className="mt-2 w-full resize-y rounded-md border border-zinc-200 bg-background p-2 text-sm dark:border-zinc-700"
+            className="mt-2 w-full resize-y rounded-md border border-input bg-background p-2 text-sm"
           />
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[11px] text-muted-foreground">
@@ -1893,7 +1893,7 @@ export function MonitoringSourceWatchlist({
         <Metric label={t("degraded")} value={stats?.degraded ?? 0} tone="red" />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 bg-background px-3 py-2 text-xs dark:border-zinc-700">
+      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs">
         <Badge variant={monitoringSettings?.searchIndex.enabled ? "success" : "warning"} className="text-[10px]">
           {monitoringSettings?.searchIndex.enabled ? t("settingsSearchIndexOn") : t("settingsSearchIndexOff")}
         </Badge>
@@ -1907,7 +1907,7 @@ export function MonitoringSourceWatchlist({
       </div>
 
       {coverage && (
-        <div data-testid="social-coverage-dashboard" className="mt-4 rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+        <div data-testid="social-coverage-dashboard" className="mt-4 rounded-lg border border-border bg-background p-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("coverageTitle")}</h4>
@@ -1936,7 +1936,7 @@ export function MonitoringSourceWatchlist({
             <Metric label={t("failedRuns")} value={coverage.last24h.failed + coverage.last24h.partial} tone={coverage.last24h.failed > 0 ? "red" : "amber"} />
           </div>
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            <div className="rounded-md border border-zinc-100 px-3 py-2 dark:border-zinc-800">
+            <div className="rounded-md border border-border px-3 py-2">
               <div className="text-[11px] font-medium uppercase text-muted-foreground">{t("trustTiers")}</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {["T1", "T2", "T3", "T4", "T5", "T6"].map((tier) => (
@@ -1946,7 +1946,7 @@ export function MonitoringSourceWatchlist({
                 ))}
               </div>
             </div>
-            <div className="rounded-md border border-zinc-100 px-3 py-2 dark:border-zinc-800">
+            <div className="rounded-md border border-border px-3 py-2">
               <div className="text-[11px] font-medium uppercase text-muted-foreground">{t("rejectionReasons")}</div>
               {latestRunRejectionReasons.length === 0 ? (
                 <p className="mt-2 text-xs text-muted-foreground">{t("noRejectionReasons")}</p>
@@ -1961,7 +1961,7 @@ export function MonitoringSourceWatchlist({
                 </ul>
               )}
             </div>
-            <div className="rounded-md border border-zinc-100 px-3 py-2 dark:border-zinc-800">
+            <div className="rounded-md border border-border px-3 py-2">
               <div className="text-[11px] font-medium uppercase text-muted-foreground">{t("recentAlerts")}</div>
               {coverage.recentAlerts.length === 0 ? (
                 <p className="mt-2 text-xs text-muted-foreground">{t("noCoverageAlerts")}</p>
@@ -2000,7 +2000,7 @@ export function MonitoringSourceWatchlist({
           {[1, 2, 3].map((item) => <div key={item} className="h-16 animate-pulse rounded-md bg-muted" />)}
         </div>
       ) : viewIsEmpty ? (
-        <div className="mt-4 rounded-lg border border-dashed border-zinc-200 px-4 py-8 text-center dark:border-zinc-700">
+        <div className="mt-4 rounded-lg border border-dashed border-border px-4 py-8 text-center">
           <Globe2 className="mx-auto h-8 w-8 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium">{hasSourcesInView ? t("noResults") : t("emptyTitle")}</p>
           <p className="mx-auto mt-1 max-w-xl text-xs text-muted-foreground">{t("emptyHint")}</p>
@@ -2161,14 +2161,14 @@ export function MonitoringSourceWatchlist({
                   </Button>
                 </div>
 
-                <details className="border-t border-zinc-200 pt-2 text-xs md:col-span-4 dark:border-zinc-800">
+                <details className="border-t border-border pt-2 text-xs md:col-span-4">
                   <summary className="cursor-pointer select-none font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     {t("providerEvidence")}
                   </summary>
                   <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(16rem,0.8fr)]">
                     <div className="min-w-0 space-y-2">
                       {routePlans.map((route) => (
-                        <div key={`${route.id}:evidence`} className="grid gap-1 border-b border-zinc-100 pb-2 last:border-0 dark:border-zinc-800 lg:grid-cols-[minmax(9rem,0.7fr)_minmax(0,1.3fr)_auto] lg:items-start">
+                        <div key={`${route.id}:evidence`} className="grid gap-1 border-b border-border pb-2 last:border-0 lg:grid-cols-[minmax(9rem,0.7fr)_minmax(0,1.3fr)_auto] lg:items-start">
                           <div className="font-medium text-foreground">{t(`routeCapabilities.${route.capability}`)}</div>
                           <div className="min-w-0 text-muted-foreground">
                             <div className="break-words">
@@ -2246,9 +2246,9 @@ export function MonitoringSourceWatchlist({
                 <div className="space-y-2">
                   <p className="text-[11px] leading-4 text-muted-foreground">{t("groups.owned.desc")}</p>
                   {ownedSources.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-6 text-center text-xs text-muted-foreground dark:border-zinc-700">{t("groups.owned.empty")}</div>
+                    <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">{t("groups.owned.empty")}</div>
                   ) : (
-                    <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-700">
+                    <div className="divide-y divide-border rounded-lg border border-border">
                       {ownedSources.map((source) => renderSourceCard(source))}
                     </div>
                   )}
@@ -2270,7 +2270,7 @@ export function MonitoringSourceWatchlist({
                     </Badge>
                   </div>
                   {externalDirectSources.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-6 text-center dark:border-zinc-700">
+                    <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center">
                       <Globe2 className="mx-auto h-6 w-6 text-muted-foreground" />
                       <p className="mt-2 text-xs font-medium">{t("directSources.emptyTitle")}</p>
                       <p className="mx-auto mt-1 max-w-xl text-[11px] leading-4 text-muted-foreground">{t("directSources.emptyHint")}</p>
@@ -2282,7 +2282,7 @@ export function MonitoringSourceWatchlist({
                       ) : null}
                     </div>
                   ) : (
-                    <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-700">
+                    <div className="divide-y divide-border rounded-lg border border-border">
                       {externalDirectSources.map((source) => renderSourceCard(source))}
                     </div>
                   )}
@@ -2468,7 +2468,7 @@ export function MonitoringSourceWatchlist({
               </div>
             )}
             {providerMode && (
-              <div data-testid="social-watchlist-provider-setup" className="space-y-4 rounded-md border border-zinc-200 bg-muted/20 px-3 py-3 md:col-span-2 dark:border-zinc-700">
+              <div data-testid="social-watchlist-provider-setup" className="space-y-4 rounded-md border border-border bg-muted/20 px-3 py-3 md:col-span-2">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-xs font-semibold">{t("providerSetupTitle")}</p>
@@ -2505,7 +2505,7 @@ export function MonitoringSourceWatchlist({
                     />
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 bg-background px-3 py-2 dark:border-zinc-700">
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
                   <div className="min-w-0">
                     <Label className="text-xs font-medium">{t("providerReplyToggle")}</Label>
                     <p className="mt-0.5 text-xs text-muted-foreground">{t("providerReplyHelp")}</p>
@@ -2550,7 +2550,7 @@ export function MonitoringSourceWatchlist({
               />
               <p className="text-xs text-muted-foreground">{t("keywordsHelp")}</p>
             </div>
-            <div data-testid="social-watchlist-query-preview" className="rounded-md border border-zinc-200 bg-muted/30 px-3 py-2 md:col-span-2 dark:border-zinc-700">
+            <div data-testid="social-watchlist-query-preview" className="rounded-md border border-border bg-muted/30 px-3 py-2 md:col-span-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium">{t("expandedPreviewTitle")}</p>
                 <Badge variant="outline" className="text-[10px]">{expansionPreview.length}</Badge>
@@ -2560,7 +2560,7 @@ export function MonitoringSourceWatchlist({
               ) : (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {expansionPreview.map((item) => (
-                    <span key={`${item.reason}:${item.displayTerm}`} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-background px-2.5 py-1 text-[11px] dark:border-zinc-700">
+                    <span key={`${item.reason}:${item.displayTerm}`} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[11px]">
                       <span className="font-medium">{item.displayTerm}</span>
                       <span className="text-muted-foreground">{t(`reasons.${item.reason}`)}</span>
                       <span className="tabular-nums text-muted-foreground">{t("priorityShort", { value: item.priority })}</span>
@@ -2591,7 +2591,7 @@ export function MonitoringSourceWatchlist({
         </DialogHeader>
         <DialogContent>
           <div className="space-y-5">
-            <div className="rounded-md border border-zinc-200 bg-muted/20 p-3 dark:border-zinc-700">
+            <div className="rounded-md border border-border bg-muted/20 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <Label className="text-sm font-medium">{t("settingsSearchIndexTitle")}</Label>
@@ -2910,7 +2910,7 @@ export function MonitoringSourceWatchlist({
               </div>
             )}
 
-            <div className="rounded-md border border-zinc-200 bg-muted/20 p-3 dark:border-zinc-700">
+            <div className="rounded-md border border-border bg-muted/20 p-3">
               <Label className="text-sm font-medium">{t("settingsProviderTitle")}</Label>
               <p className="mt-1 text-xs text-muted-foreground">{t("settingsProviderHelp")}</p>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -2954,7 +2954,7 @@ function Metric({ label, value, tone = "zinc" }: { label: string; value: number;
       ? "border-red-200 bg-red-50 text-red-900 dark:border-red-800/70 dark:bg-red-950/25 dark:text-red-200"
       : tone === "green"
         ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/70 dark:bg-emerald-950/25 dark:text-emerald-200"
-        : "border-zinc-200 bg-muted/30 text-foreground dark:border-zinc-700"
+        : "border-border bg-muted/30 text-foreground"
   return (
     <div className={cn("rounded-md border px-3 py-2", toneClass)}>
       <div className="text-[11px] font-medium text-muted-foreground">{label}</div>

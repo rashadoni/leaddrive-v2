@@ -13,6 +13,8 @@ import TenantEditPage from "@/app/admin/tenants/[id]/edit/page"
 const navigation = vi.hoisted(() => ({ id: "tenant-a", push: vi.fn() }))
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: navigation.id }), useRouter: () => ({ push: navigation.push }) }))
 vi.mock("next/link", () => ({ default: ({ children, href }: { children?: ReactNode; href: string }) => createElement("a", { href }, children) }))
+// The phone numbers panel loads its own list; this suite counts the tenant page's own requests.
+vi.mock("@/components/admin/voice-numbers-panel", () => ({ VoiceNumbersPanel: () => null }))
 const IntlProvider = NextIntlClientProvider as FunctionComponent<Omit<ComponentProps<typeof NextIntlClientProvider>, "children"> & { children?: ReactNode }>
 const messages = (locale = "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
 const row = (enabled = false): CapabilityRow => ({

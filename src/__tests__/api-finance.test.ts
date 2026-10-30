@@ -68,6 +68,10 @@ vi.mock("@/lib/constants", () => ({
   getCurrencySymbol: () => "₼",
 }))
 
+// The organisation's currency is read from its settings (org-default-currency.test.ts
+// covers how); here it is simply AZN.
+vi.mock("@/lib/org-default-currency", () => ({ resolveOrgDefaultCurrency: vi.fn(async () => "AZN") }))
+
 import { GET as GET_DASHBOARD } from "@/app/api/finance/dashboard/route"
 import { GET as GET_EXPORT } from "@/app/api/finance/dashboard/export/route"
 import { GET as GET_BANK_ACCOUNTS, POST as POST_BANK_ACCOUNT } from "@/app/api/finance/bank-accounts/route"
@@ -287,6 +291,8 @@ describe("GET /api/finance/funds", () => {
       currentBalance: 0,
       targetAmountExact: null,
       currentBalanceExact: "0.0000",
+      // No Kafka pilot answered here: the CRM balance, as before the switch existed.
+      balanceSource: "crm",
     }])
     expect(prisma.fund.findMany).toHaveBeenCalledWith({
       where: { organizationId: "org-1" },

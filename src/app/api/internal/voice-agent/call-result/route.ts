@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { AI_CONNECTED_PENDING_RESULT } from "@/lib/voice-agent/call-history"
 import {
   analyzeVoiceCall,
@@ -20,6 +21,8 @@ import { isDemoPlacedCall } from "@/lib/demo-center/call-prompt"
 import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
+import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -755,14 +758,16 @@ async function recordInboundAiResult(params: {
   const scope: Prisma.CallLogWhereInput = {
     organizationId,
     provider: "asterisk",
-    callMode: "ai",
     direction: "inbound",
     providerCallId: params.callId,
     callSid: params.callId,
+    // The AI's part of a call it handed to a salesperson (owner, 2026-10-27):
+    // the row may already ring the browsers as a human call when this arrives.
+    OR: [{ callMode: "ai" }, { handoffState: { not: null } }],
   }
   const call = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
     where: scope,
-    select: { id: true, transcription: true, conversationOutcome: true },
+    select: { id: true, transcription: true, conversationOutcome: true, consentAudit: true },
   }))
   if (!call) return null
 
@@ -781,17 +786,20 @@ async function recordInboundAiResult(params: {
   if (written.count === 0) {
     const stored = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
       where: { ...scope, id: call.id },
-      select: { transcription: true, conversationOutcome: true },
+      select: { transcription: true, conversationOutcome: true, handoffState: true },
     }))
-    if (
-      !stored
-      || stored.conversationOutcome !== conversationOutcome
-      || (stored.transcription ?? null) !== transcription
-    ) {
+    const repeated = Boolean(stored
+      && stored.conversationOutcome === conversationOutcome
+      && (stored.transcription ?? null) === transcription)
+    if (!repeated && !(stored?.handoffState === "returned"
+      && await appendReturnedTurns(organizationId, { ...scope, id: call.id }, stored, transcription, customerSpoke))) {
       return conflictingTerminalResult()
     }
   }
 
+  if (isPharmacyInboundPreview(call.consentAudit, params.callId)) {
+    return NextResponse.json({ success: true, analysisStatus: "test_preview" })
+  }
   if (!customerSpoke) {
     return NextResponse.json({ success: true, analysisStatus: "not_applicable" })
   }
@@ -805,12 +813,33 @@ async function recordInboundAiResult(params: {
   })
 }
 
-/** PBX-only terminal call-result endpoint. Tenant and call ownership are server-derived. */
-export async function POST(request: NextRequest) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID
-  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
+/**
+ * The AI's second part of a call it handed off and got back because nobody
+ * answered: its turns follow the first part's. A compare-and-set on the stored
+ * text, so a replay of the same result changes nothing.
+ */
+async function appendReturnedTurns(
+  organizationId: string,
+  where: Prisma.CallLogWhereInput,
+  stored: { transcription: string | null; conversationOutcome: string | null },
+  transcription: string | null,
+  customerSpoke: boolean,
+): Promise<boolean> {
+  const before = stored.transcription ?? ""
+  if (transcription === null || before.endsWith(transcription)) return true
+  const written = await runWithTenant(organizationId, () => prisma.callLog.updateMany({
+    where: { ...where, transcription: stored.transcription, conversationOutcome: stored.conversationOutcome },
+    data: {
+      transcription: before ? `${before}\n\n${transcription}` : transcription,
+      conversationOutcome: customerSpoke || stored.conversationOutcome === "customer_spoke" ? "customer_spoke" : "no_customer_speech",
+    },
+  }))
+  return written.count === 1
+}
 
+/** PBX-only terminal call-result endpoint. Tenant and call ownership are server-derived. */
+async function handlePost(request: NextRequest) {
+  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const bodyText = await request.text()
   if (Buffer.byteLength(bodyText, "utf8") > 250_000) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 })
@@ -823,6 +852,10 @@ export async function POST(request: NextRequest) {
   }
   const parsed = voiceAgentCallResultSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: "Invalid call result" }, { status: 400 })
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId: parsed.data.callId }))?.organizationId
+  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
 
   const session = await runWithTenant(organizationId, () => prisma.voiceCallSession.findFirst({
     where: {
@@ -1141,6 +1174,9 @@ export async function POST(request: NextRequest) {
   // Provider/session terminal state is durable before any optional model call.
   // An unanswered call or an agent-only transcript is not a customer
   // conversation and must not be sent for sales analysis.
+  if (isPharmacyInboundPreview(call.consentAudit, parsed.data.callId)) {
+    return NextResponse.json({ success: true, analysisStatus: "test_preview" })
+  }
   if (!wasAnswered || !customerSpoke) {
     // If the call that just rang out was itself the automatic callback, the
     // machine is done — one dial was the whole budget — and the broken
@@ -1166,3 +1202,5 @@ export async function POST(request: NextRequest) {
     placeCallback: true,
   })
 }
+
+export const POST = withStationTiming("call-result", handlePost)

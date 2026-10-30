@@ -25,6 +25,7 @@ const sql = ["BEGIN; SET LOCAL lock_timeout='3s'; SET LOCAL statement_timeout='6
 await writeFile(directory + "/selected-canonical-guards.sql", sql, { flag: "wx" })
 const paths = [foundationPath, lifecyclePath, "scripts/ci/fixtures/workforce-manager-today-browser.sql",
   "scripts/ci/fixtures/workforce-policy-version-browser.sql", "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
+  "scripts/ci/fixtures/workforce-policy-restore-identity-read.sql",
   "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql", "prisma/schema.prisma",
   "scripts/ci/workforce-policy-restore-fixture.mjs", "scripts/ci/workforce-policy-restore-base-row.mjs",
   "scripts/ci/workforce-policy-restore-pre-anchor.mjs",

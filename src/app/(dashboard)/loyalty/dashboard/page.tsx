@@ -220,7 +220,7 @@ export default function LoyaltyOverviewPage() {
               data-tour-id="loyalty-kpis"
               className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6"
             >
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <User className="w-3 h-3" /> {t("kpiMembers")}
                 </p>
@@ -228,7 +228,7 @@ export default function LoyaltyOverviewPage() {
                   {data.totalAccounts.toLocaleString()}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <TrendingUp className="w-3 h-3 text-green-600" /> {t("kpiEarned30d")}
                 </p>
@@ -236,7 +236,7 @@ export default function LoyaltyOverviewPage() {
                   +{formatPoints(data.thirtyDayTotals.earn)}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <TrendingDown className="w-3 h-3 text-blue-600" /> {t("kpiRedeemed30d")}
                 </p>
@@ -244,7 +244,7 @@ export default function LoyaltyOverviewPage() {
                   −{formatPoints(data.thirtyDayTotals.redeem)}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Activity className="w-3 h-3" /> {t("kpiExpired30d")}
                 </p>
@@ -252,7 +252,7 @@ export default function LoyaltyOverviewPage() {
                   −{formatPoints(data.thirtyDayTotals.expire)}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Activity className="w-3 h-3" /> {t("kpiTransactions")}
                 </p>
@@ -263,7 +263,7 @@ export default function LoyaltyOverviewPage() {
             </div>
 
             {insights && (
-              <MotionCard className="mb-6 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700" data-tour-id="loyalty-next-actions">
+              <MotionCard className="mb-6 rounded-lg border border-border p-4" data-tour-id="loyalty-next-actions">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -314,13 +314,13 @@ export default function LoyaltyOverviewPage() {
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                   <Link
                     href="/loyalty/builder"
-                    className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
                   >
                     {t("emptyBuilderCta")}
                   </Link>
                   <Link
                     href="/loyalty/pos"
-                    className="inline-flex items-center justify-center rounded-md border border-zinc-200 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted dark:border-zinc-700"
+                    className="inline-flex items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                   >
                     {t("emptyPosCta")}
                   </Link>
@@ -342,7 +342,7 @@ export default function LoyaltyOverviewPage() {
                       return (
                         <MotionCard
                           key={tier.tier}
-                          className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg"
+                          className="p-3 border border-border rounded-lg"
                         >
                           <div className="flex items-center justify-between gap-3 mb-1.5">
                             <div className="flex items-center gap-2 min-w-0">
@@ -393,7 +393,7 @@ export default function LoyaltyOverviewPage() {
                           href={`/loyalty/accounts/${a.id}`}
                           className="block"
                         >
-                          <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-primary hover:bg-muted/40 transition-colors">
+                          <MotionCard className="p-3 border border-border rounded-lg hover:border-primary hover:bg-muted/40 transition-colors">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-3 min-w-0">
                                 <span className="text-muted-foreground font-mono text-xs w-6 text-right">
@@ -440,7 +440,7 @@ export default function LoyaltyOverviewPage() {
                   <Activity className="w-5 h-5 text-muted-foreground" />
                   {t("recentTransactions")}
                 </h2>
-                <MotionCard className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y">
+                <MotionCard className="p-2 border border-border rounded-lg divide-y">
                   {data.recentTransactions.map((tx) => (
                     <div
                       key={tx.id}

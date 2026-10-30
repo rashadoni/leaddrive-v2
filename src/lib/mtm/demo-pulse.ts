@@ -19,6 +19,7 @@ import {
   type DemoPulseDay,
 } from "@/lib/mtm/demo-pulse-plan"
 import { roadPath } from "@/lib/mtm/map-matching"
+import { lockMtmVisitSnapshot, recordMtmVisitChange } from "@/lib/mtm/visit-events"
 
 /**
  * The demo pulse: an ordinary working day for demo agents, every day.
@@ -281,22 +282,26 @@ export async function pulseDemoAgent(input: {
     })
     if (!visit) {
       const at = near(customer, `${point.id}:in`)
-      visit = await prisma.mtmVisit.create({
-        data: {
-          organizationId,
-          agentId: agent.id,
-          customerId: customer.id,
-          routeId: route.id,
-          routePointId: point.id,
-          status: "CHECKED_IN",
-          checkInAt: stop.checkInAt,
-          checkInLat: at.latitude,
-          checkInLng: at.longitude,
-          checkInCustomerLat: customer.latitude,
-          checkInCustomerLng: customer.longitude,
-          checkInGeofenceRadius: GEOFENCE_RADIUS_METERS,
-        },
-        select: { id: true, status: true },
+      visit = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const created = await tx.mtmVisit.create({
+          data: {
+            organizationId,
+            agentId: agent.id,
+            customerId: customer.id,
+            routeId: route.id,
+            routePointId: point.id,
+            status: "CHECKED_IN",
+            checkInAt: stop.checkInAt,
+            checkInLat: at.latitude,
+            checkInLng: at.longitude,
+            checkInCustomerLat: customer.latitude,
+            checkInCustomerLng: customer.longitude,
+            checkInGeofenceRadius: GEOFENCE_RADIUS_METERS,
+          },
+          select: { id: true, status: true },
+        })
+        await recordMtmVisitChange(tx, organizationId, created.id, null)
+        return created
       })
       result.checkIns += 1
       await audit(organizationId, agent.id, "CHECK_IN", "visit", visit.id, { customerId: customer.id, customerName: customer.name, routeId: route.id, visitId: visit.id })
@@ -307,16 +312,22 @@ export async function pulseDemoAgent(input: {
     }
     if (visit.status === "CHECKED_IN" && now >= stop.checkOutAt) {
       const at = near(customer, `${point.id}:out`)
-      const closed = await prisma.mtmVisit.updateMany({
-        where: { id: visit.id, status: "CHECKED_IN" },
-        data: {
-          status: "CHECKED_OUT",
-          checkOutAt: stop.checkOutAt,
-          checkOutLat: at.latitude,
-          checkOutLng: at.longitude,
-          duration: stop.durationMinutes,
-          outcome: stop.outcome,
-        },
+      const visitId = visit.id
+      const closed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const before = await lockMtmVisitSnapshot(tx, organizationId, visitId)
+        const changed = await tx.mtmVisit.updateMany({
+          where: { id: visitId, status: "CHECKED_IN" },
+          data: {
+            status: "CHECKED_OUT",
+            checkOutAt: stop.checkOutAt,
+            checkOutLat: at.latitude,
+            checkOutLng: at.longitude,
+            duration: stop.durationMinutes,
+            outcome: stop.outcome,
+          },
+        })
+        if (changed.count === 1) await recordMtmVisitChange(tx, organizationId, visitId, before)
+        return changed
       })
       if (closed.count === 1) {
         result.checkOuts += 1

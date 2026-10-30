@@ -11,15 +11,17 @@ import {
   RAW_LOCATION_CHANGE_EVENT,
   SUPPORT_NAV_SECTION_ORDER,
   accessibleNavItems,
+  navItemMatchesSearch,
   navItemPathname,
   activeNavBase,
   type NavItem,
   type SupportNavSection,
 } from "@/lib/nav-items"
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { Logo } from "@/components/logo"
 import { useTranslations } from "next-intl"
 import { useTicketBadge } from "@/contexts/ticket-badge-context"
+import { useShellRefresh } from "@/components/shell-events-provider"
 
 // Hoisted out of their own group and shown directly under /dashboard. Both are
 // AI surfaces a director opens first thing, and both lived in Analytics — which
@@ -43,6 +45,26 @@ interface SidebarProps {
    * which users repeatedly reported as "все меню пропали".
    */
   sessionLoaded?: boolean
+}
+
+/** The local desktop notice for new visitor messages, when the CRM is on screen but not focused. */
+function notifyWebChat(delta: number) {
+  if (typeof window === "undefined" || !("Notification" in window)) return
+  if (Notification.permission !== "granted") return
+  // Only fire when the CRM is not actively focused.
+  if (document.visibilityState === "visible" && document.hasFocus()) return
+  try {
+    const n = new Notification("New web chat message", {
+      body: delta === 1 ? "A visitor is waiting" : `${delta} new messages from visitors`,
+      icon: "/favicon.ico",
+      tag: "ld-webchat-global",
+    })
+    n.onclick = () => {
+      try { window.focus() } catch {}
+      window.location.href = "/inbox/web-chat"
+      n.close()
+    }
+  } catch {}
 }
 
 export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
@@ -116,9 +138,10 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     return () => media.removeEventListener("change", syncViewport)
   }, [])
 
+  // Once per page load. This used to share the effect below, which re-runs
+  // when the menu learns the organisation's modules, so every load registered
+  // the subscription twice (vapid-key + subscribe, two pairs).
   useEffect(() => {
-    let cancelled = false
-
     // Lazy-ask Notification permission + register Web Push subscription on
     // first user click. Browsers reject both without a user gesture; once
     // granted, push works even when the browser is fully closed (sw.js).
@@ -139,76 +162,64 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
         import("@/lib/push-client").then(m => m.registerPush()).catch(() => {})
       }
     }
+  }, [])
 
-    const notify = (delta: number) => {
-      if (typeof window === "undefined" || !("Notification" in window)) return
-      if (Notification.permission !== "granted") return
-      // Only fire when the CRM is not actively focused.
-      if (document.visibilityState === "visible" && document.hasFocus()) return
-      try {
-        const n = new Notification("New web chat message", {
-          body: delta === 1 ? "A visitor is waiting" : `${delta} new messages from visitors`,
-          icon: "/favicon.ico",
-          tag: "ld-webchat-global",
-        })
-        n.onclick = () => {
-          try { window.focus() } catch {}
-          window.location.href = "/inbox/web-chat"
-          n.close()
+  // Both badges are read when the shell's event stream says they changed — a
+  // visitor wrote, a notification arrived — and only while the tab is on
+  // screen; without the stream, every 30 s and 20 s as before. A visitor
+  // writing while the tab is hidden or closed reaches people through the web
+  // push the message route sends: the assignee and collaborators, or admins,
+  // managers and support while the chat is unassigned. A sales user with only
+  // a hidden tab no longer gets the local Notification below; it covers a tab
+  // on screen in an unfocused window.
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+
+  const readWebChatUnread = useCallback(async () => {
+    try {
+      const since = typeof window !== "undefined" ? localStorage.getItem("webChatLastReadAt") : null
+      const url = since
+        ? `/api/v1/web-chat/sessions/unread-count?since=${encodeURIComponent(since)}`
+        : "/api/v1/web-chat/sessions/unread-count"
+      const res = await fetch(url)
+      if (!res.ok) return
+      const data = await res.json()
+      if (mounted.current && data.success) {
+        const next = data.data.count as number
+        if (next > prevUnread.current && prevUnread.current > 0) {
+          notifyWebChat(next - prevUnread.current)
         }
-      } catch {}
-    }
-
-    const tick = async () => {
-      try {
-        const since = typeof window !== "undefined" ? localStorage.getItem("webChatLastReadAt") : null
-        const url = since
-          ? `/api/v1/web-chat/sessions/unread-count?since=${encodeURIComponent(since)}`
-          : "/api/v1/web-chat/sessions/unread-count"
-        const res = await fetch(url)
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled && data.success) {
-          const next = data.data.count as number
-          if (next > prevUnread.current && prevUnread.current > 0) {
-            notify(next - prevUnread.current)
-          }
-          prevUnread.current = next
-          setWebChatUnread(next)
-        }
-      } catch {}
-    }
-    let webChatId: ReturnType<typeof setInterval> | undefined
-    if (webChatEnabled) {
-      tick()
-      webChatId = setInterval(tick, 30000)
-    } else {
-      setWebChatUnread(0)
-    }
-
-    // Inbox notification badge — unread inbox_message notifications for this user (the assignee + the
-    // collaborators fan-out). 20s poll so the menu badge tracks the bell without much extra load.
-    const pollInboxNotif = async () => {
-      try {
-        const res = await fetch("/api/v1/notifications?entityType=inbox_message")
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled && data?.success) setInboxNotifCount(data.data.unreadCount || 0)
-      } catch {}
-    }
-    pollInboxNotif()
-    const inboxId = setInterval(pollInboxNotif, 20000)
-    // Immediate refresh when the inbox marks its notifications read (don't wait up to 20s for the poll).
-    const onInboxRead = () => pollInboxNotif()
-    window.addEventListener("inbox-notifs-read", onInboxRead)
-
-    return () => {
-      cancelled = true
-      if (webChatId) clearInterval(webChatId)
-      clearInterval(inboxId)
-      window.removeEventListener("inbox-notifs-read", onInboxRead)
-    }
+        prevUnread.current = next
+        setWebChatUnread(next)
+      }
+    } catch {}
+  }, [])
+  useShellRefresh("webchat", () => void readWebChatUnread(), 30000, webChatEnabled)
+  useEffect(() => {
+    if (webChatEnabled) return
+    setWebChatUnread(0)
   }, [webChatEnabled])
+
+  // Inbox notification badge — unread inbox_message notifications for this user (the assignee + the
+  // collaborators fan-out); read with the bell's notifications event, or every 20 s without the stream.
+  const readInboxBadge = useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/notifications?entityType=inbox_message")
+      if (!res.ok) return
+      const data = await res.json()
+      if (mounted.current && data?.success) setInboxNotifCount(data.data.unreadCount || 0)
+    } catch {}
+  }, [])
+  useShellRefresh("notifications", () => void readInboxBadge(), 20000, true, { readOnReturnAfterMs: 30_000 })
+  useEffect(() => {
+    // Immediate refresh when the inbox marks its notifications read (don't wait for the next read).
+    const onInboxRead = () => { void readInboxBadge() }
+    window.addEventListener("inbox-notifs-read", onInboxRead)
+    return () => window.removeEventListener("inbox-notifs-read", onInboxRead)
+  }, [readInboxBadge])
 
   // Filter sidebar items by org modules/features/plan. The gate logic lives in
   // `accessibleNavItems` (@/lib/nav-items) so the sidebar, App Launcher, Cmd+K
@@ -261,17 +272,16 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     }))
   }, [accessibleItems, groups])
 
-  // Search results — flat list of items whose translated label OR group name
-  // includes the query (case-insensitive). Returns null when query is empty
+  // Search results match translated labels/aliases, groups and Support sections
+  // case-insensitively. Returns null when query is empty
   // so the rendering branch can fall back to the normal grouped accordion.
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return null
     return accessibleItems.filter((item) => {
-      const label = t(item.tKey).toLowerCase()
       const groupLabel = t(`groups.${item.group}`).toLowerCase()
       const sectionLabel = item.supportSection ? t(`supportSections.${item.supportSection}`).toLowerCase() : ""
-      return label.includes(q) || groupLabel.includes(q) || sectionLabel.includes(q)
+      return navItemMatchesSearch(item, q, t) || groupLabel.includes(q) || sectionLabel.includes(q)
     })
   }, [searchQuery, accessibleItems, t])
 

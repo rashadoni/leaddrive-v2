@@ -494,12 +494,13 @@ export async function sendWhatsAppCallAction({
  */
 export async function listApprovedTemplates(
   organizationId: string,
-  opts: { language?: string; category?: string } = {},
+  opts: { language?: string; category?: string; channelConfigId?: string } = {},
 ) {
   return prisma.whatsAppTemplate.findMany({
     where: {
       organizationId,
       status: "APPROVED",
+      ...(opts.channelConfigId ? { channelConfigId: opts.channelConfigId } : {}),
       ...(opts.language ? { language: opts.language } : {}),
       ...(opts.category ? { category: opts.category } : {}),
     },
@@ -514,17 +515,21 @@ export async function listApprovedTemplates(
 async function insideSessionWindow(
   organizationId: string,
   toPhone: string,
+  channelConfigId: string,
 ): Promise<boolean> {
-  const clean = toPhone.replace(/[^0-9]/g, "").slice(-10)
+  const clean = toPhone.replace(/[^0-9]/g, "")
+  if (!clean) return false
   const inbound = await prisma.channelMessage
     .findFirst({
       where: {
         organizationId,
+        channelConfigId,
         direction: "inbound",
         channelType: "whatsapp",
         OR: [
-          { from: { contains: clean } },
-          { metadata: { path: ["waPhone"], string_contains: clean } as any },
+          { from: { in: [clean, `+${clean}`] } },
+          { metadata: { path: ["waPhone"], equals: clean } },
+          { metadata: { path: ["waPhone"], equals: `+${clean}` } },
         ],
       },
       orderBy: { createdAt: "desc" },
@@ -534,19 +539,13 @@ async function insideSessionWindow(
 
   if (!inbound) return false
   const hours = (Date.now() - inbound.createdAt.getTime()) / (1000 * 60 * 60)
-  return hours < SESSION_WINDOW_HOURS
+  return hours >= 0 && hours < SESSION_WINDOW_HOURS
 }
 
-/**
- * The number a message goes out from. The conversation's channel names it; without one — or when that
- * row is gone or switched off — the workspace's WhatsApp number answers, as it always did. A workspace
- * with two numbers (routine since Embedded Signup, lib/whatsapp-embedded-signup) otherwise answered a
- * customer from the number they never wrote to: outside that number's 24h window, so Meta refused it.
- */
+/** A named sender is authoritative: a missing/disabled channel must never switch numbers. */
 async function resolveSendingConfig(organizationId: string, channelConfigId?: string | null) {
   if (channelConfigId) {
-    const own = await resolveWhatsAppConfig(organizationId, { channelConfigId })
-    if (own) return own
+    return resolveWhatsAppConfig(organizationId, { channelConfigId })
   }
   return resolveWhatsAppConfig(organizationId)
 }
@@ -581,7 +580,7 @@ export async function sendWhatsAppText({
   }
 
   const cleanPhone = to.replace(/[\s\-\(\)]/g, "").replace(/^\+/, "")
-  const windowOk = await insideSessionWindow(organizationId, cleanPhone)
+  const windowOk = await insideSessionWindow(organizationId, cleanPhone, config.id)
   if (!windowOk) {
     return {
       success: false,
@@ -614,7 +613,7 @@ export async function sendWhatsAppText({
     }
 
     const messageId = data?.messages?.[0]?.id
-    if (!skipLog) await logMessage(organizationId, config, cleanPhone, body, "delivered", contactId, { waMessageId: messageId }, leadId)
+    if (!skipLog) await logMessage(organizationId, config, cleanPhone, body, "sent", contactId, { waMessageId: messageId }, leadId)
     return { success: true, messageId }
   } catch (err: any) {
     const msg = err?.message || "network error"
@@ -663,6 +662,7 @@ export async function sendWhatsAppTemplate({
     where: {
       organizationId,
       name: templateName,
+      channelConfigId: config.id,
       status: "APPROVED",
       ...(languageCode ? { language: languageCode } : {}),
     },
@@ -722,7 +722,7 @@ export async function sendWhatsAppTemplate({
     }
 
     const messageId = data?.messages?.[0]?.id
-    await logMessage(organizationId, config, cleanPhone, `[template:${templateName}]`, "delivered", contactId, {
+    await logMessage(organizationId, config, cleanPhone, `[template:${templateName}]`, "sent", contactId, {
       waMessageId: messageId, template: templateName, language: lang,
     }, leadId)
     return { success: true, messageId }
@@ -752,6 +752,7 @@ export async function sendWhatsAppMessage({
   skipLog,
   extraMetadata,
   channelConfigId,
+  conversationId,
 }: {
   to: string
   message: string
@@ -772,6 +773,8 @@ export async function sendWhatsAppMessage({
   extraMetadata?: Record<string, unknown>
   /** The conversation's channel — the number to answer from (see resolveSendingConfig). */
   channelConfigId?: string | null
+  /** Native AI replies must participate in conversation caps and the inbox thread. */
+  conversationId?: string | null
 }) {
   if (!organizationId) {
     return { success: false, error: "organizationId required" }
@@ -816,15 +819,15 @@ export async function sendWhatsAppMessage({
       const data = await res.json()
       if (!res.ok) {
         const err = data?.error?.message || `HTTP ${res.status}`
-        if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: err, ...(extraMetadata ?? {}) }, leadId)
+        if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: err, ...(extraMetadata ?? {}) }, leadId, conversationId)
         return { success: false, error: err }
       }
       const messageId = data?.messages?.[0]?.id
-      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "delivered", contactId, { waMessageId: messageId, ...(extraMetadata ?? {}) }, leadId)
+      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "sent", contactId, { waMessageId: messageId, ...(extraMetadata ?? {}) }, leadId, conversationId)
       return { success: true, messageId }
     } catch (err: any) {
       const msg = err?.message || "network error"
-      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: msg, ...(extraMetadata ?? {}) }, leadId)
+      if (!skipLog) await logMessage(organizationId, config, cleanPhone, message, "failed", contactId, { error: msg, ...(extraMetadata ?? {}) }, leadId, conversationId)
       return { success: false, error: msg }
     }
   }
@@ -910,12 +913,12 @@ export async function sendWhatsAppMedia({
 //
 // Fetches approved templates from Graph API and upserts them into the
 // whatsapp_templates table. Called from the admin UI "Sync" button.
-export async function syncTemplatesFromMeta(organizationId: string): Promise<{
+export async function syncTemplatesFromMeta(organizationId: string, opts: { channelConfigId?: string } = {}): Promise<{
   success: boolean
   synced: number
   error?: string
 }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveWhatsAppConfig(organizationId, opts)
   if (!config) {
     return { success: false, synced: 0, error: "WhatsApp not configured" }
   }
@@ -941,8 +944,9 @@ export async function syncTemplatesFromMeta(organizationId: string): Promise<{
 
         await prisma.whatsAppTemplate.upsert({
           where: {
-            organizationId_name_language: {
+            organizationId_channelConfigId_name_language: {
               organizationId,
+              channelConfigId: config.id,
               name: t.name,
               language: t.language,
             },
@@ -1004,6 +1008,7 @@ function extractPositionalTemplateVariables(bodyText: string): string[] {
 export async function createWhatsAppTemplateInMeta(
   organizationId: string,
   input: CreateWhatsAppTemplateInput,
+  opts: { channelConfigId?: string } = {},
 ): Promise<{
   success: boolean
   status?: number
@@ -1018,7 +1023,7 @@ export async function createWhatsAppTemplateInMeta(
   error?: string
   data?: Record<string, unknown>
 }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveWhatsAppConfig(organizationId, opts)
   if (!config) {
     return { success: false, error: "WhatsApp not configured" }
   }
@@ -1091,8 +1096,9 @@ export async function createWhatsAppTemplateInMeta(
 
     const template = await prisma.whatsAppTemplate.upsert({
       where: {
-        organizationId_name_language: {
+        organizationId_channelConfigId_name_language: {
           organizationId,
+          channelConfigId: config.id,
           name,
           language,
         },
@@ -1201,8 +1207,9 @@ function extractTemplateParts(components: any[]): {
 // ─── Validate credentials ────────────────────────────────────────────
 export async function validateWhatsAppCredentials(
   organizationId: string,
+  opts: { channelConfigId?: string } = {},
 ): Promise<{ ok: boolean; verifiedName?: string; displayPhoneNumber?: string; error?: string }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveWhatsAppConfig(organizationId, opts)
   if (!config) return { ok: false, error: "WhatsApp not configured" }
 
   try {
@@ -1234,10 +1241,11 @@ async function logMessage(
   config: WhatsAppConfig,
   to: string,
   body: string,
-  status: "delivered" | "failed",
+  status: "sent" | "failed",
   contactId: string | undefined,
   extraMeta: Record<string, any>,
   leadId?: string,
+  conversationId?: string | null,
 ) {
   try {
     await prisma.channelMessage.create({
@@ -1254,6 +1262,7 @@ async function logMessage(
         metadata: { channel: "whatsapp", ...extraMeta },
         contactId,
         leadId,
+        conversationId,
       },
     })
   } catch { /* logging failure must not break the send flow */ }

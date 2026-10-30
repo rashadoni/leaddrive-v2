@@ -90,6 +90,12 @@ const OTHER_COMPANY = "agent-joint-other-company"
 const CUSTOMER = "customer-joint"
 const ABROAD_MANAGER = "agent-joint-abroad-manager"
 const ORIGINAL_IDS = ["PREPARATION", "RAPPORT", "NEEDS", "PRESENTATION", "OBJECTIONS", "CLOSING"]
+// Planned joint visits (2026-10-30): a client of Elvin's he has not put on his
+// route, and one that is not his at all.
+const EXTRA_CLIENT = "customer-joint-extra"
+const NOT_HIS = "customer-joint-not-his"
+const ROUTE = "route-joint-elvin-today"
+const STOP = "point-joint-elvin-central"
 const CUSTOMER_AT = { latitude: 40.4093, longitude: 49.8671 }
 
 function prismaCli(args: string[], env: NodeJS.ProcessEnv, input?: string) {
@@ -129,12 +135,16 @@ function jointVisitConstraints(): string[] {
   if (statements.some((statement) => !statement) || !sql.includes(`CHECK ("managerAgentId" <> "agentId")`) || !sql.includes(`CHECK (jsonb_typeof("scores") = 'object')`)) {
     throw new Error("joint visit constraints not found in their migration")
   }
-  // A rating's own list of questions is a list (20261026090000).
-  const questions = readFileSync(path.join(ROOT, "prisma/migrations/20261026090000_mtm_visit_evaluation_questions/migration.sql"), "utf8")
+  // A rating's own list of questions is a list (20261116090000).
+  const questions = readFileSync(path.join(ROOT, "prisma/migrations/20261116090000_mtm_visit_evaluation_questions/migration.sql"), "utf8")
     .match(/ALTER TABLE "mtm_visit_evaluations"\s+ADD CONSTRAINT "mtm_visit_evaluations_questions_check"[^;]*;/)?.[0]
   if (!questions) throw new Error("the questions constraint was not found in its migration")
   statements.push(questions)
-  return statements as string[]
+  // Planned joint visits (2026-10-30): one live plan per manager and stop.
+  const plans = readFileSync(path.join(ROOT, "prisma/migrations/20261114090000_mtm_joint_visit_plans/migration.sql"), "utf8")
+  const onePerStop = plans.match(/CREATE UNIQUE INDEX "mtm_joint_visit_plans_one_live_per_stop"[^;]*;/)?.[0]
+  if (!onePerStop) throw new Error("joint visit plan constraints not found in their migration")
+  return [...statements as string[], onePerStop]
 }
 
 const pgDescribe = scratch ? describe : describe.skip
@@ -152,6 +162,8 @@ pgDescribe("joint visit on a real Postgres", () => {
   let visitList!: typeof import("@/app/api/v1/mtm/visits/route").GET
   let agentRatings!: typeof import("@/app/api/v1/mtm/agents/[id]/evaluations/route").GET
   let settingsRoute!: typeof import("@/app/api/v1/mtm/settings/route")
+  let plans!: typeof import("@/app/api/v1/mtm/mobile/manager/joint-visit/plans/route")
+  let cancelPlan!: typeof import("@/app/api/v1/mtm/mobile/manager/joint-visit/plans/[id]/route").DELETE
   let sequence = 0
 
   beforeAll(async () => {
@@ -175,6 +187,8 @@ pgDescribe("joint visit on a real Postgres", () => {
     visitList = (await import("@/app/api/v1/mtm/visits/route")).GET
     agentRatings = (await import("@/app/api/v1/mtm/agents/[id]/evaluations/route")).GET
     settingsRoute = await import("@/app/api/v1/mtm/settings/route")
+    plans = await import("@/app/api/v1/mtm/mobile/manager/joint-visit/plans/route")
+    cancelPlan = (await import("@/app/api/v1/mtm/mobile/manager/joint-visit/plans/[id]/route")).DELETE
 
     await bypass(async () => {
       for (const id of [ORG, OTHER_ORG]) {
@@ -204,6 +218,18 @@ pgDescribe("joint visit on a real Postgres", () => {
           data: { organizationId: ORG, customerId: CUSTOMER, agentId, effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
         })
       }
+      await prisma.mtmCustomer.createMany({
+        data: [
+          { id: EXTRA_CLIENT, organizationId: ORG, name: "Extra Pharmacy", ...CUSTOMER_AT, geofenceRadius: 300 },
+          { id: NOT_HIS, organizationId: ORG, name: "Somebody Else's Pharmacy", ...CUSTOMER_AT, geofenceRadius: 300 },
+        ],
+      })
+      await prisma.mtmCustomerAgentAssignment.create({
+        data: { organizationId: ORG, customerId: EXTRA_CLIENT, agentId: ELVIN, effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
+      })
+      await prisma.mtmCustomerAgentAssignment.create({
+        data: { organizationId: ORG, customerId: NOT_HIS, agentId: OTHER_TEAM, effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
+      })
     })
   }, 300_000)
 
@@ -313,7 +339,7 @@ pgDescribe("joint visit on a real Postgres", () => {
       agentId: ELVIN,
       title: "Team Manager bu gün sizinlə birgə vizitdədir",
       body: "Vizitə başlayanda «Bəli, rəhbərlə birgə» seçin — onda rəhbər vizitinizi qiymətləndirə biləcək.",
-      metadata: { domain: "route", jointSessionId: rows[0].id, managerAgentId: MANAGER },
+      metadata: { domain: "route", event: "joint_visit_session", jointSessionId: rows[0].id, managerAgentId: MANAGER },
     }])
   })
 
@@ -482,6 +508,235 @@ pgDescribe("joint visit on a real Postgres", () => {
     // Each new session tells its agent; nobody else is written to.
     const told = await bypass(() => prisma.mtmNotification.findMany({ where: { organizationId: ORG }, select: { agentId: true } }))
     expect(told.map((row: { agentId: string }) => row.agentId).sort()).toEqual([AYSEL, ELVIN, ELVIN].sort())
+  })
+
+  // ── Planned joint visits (owner, 2026-10-30) ───────────────────────────
+
+  /** The organization's today, as the server reckons it. */
+  async function today(): Promise<string> {
+    phoneOf(MANAGER, "SUPERVISOR")
+    const state = await call(joint.GET, `${BASE}/mobile/manager/joint-visit`)
+    return state.body.data.today as string
+  }
+
+  async function routeRow() {
+    return bypass(() => prisma.mtmRoute.findUniqueOrThrow({
+      where: { id: ROUTE },
+      select: { version: true, publishedVersion: true, totalPoints: true, points: { select: { id: true, customerId: true, deletedAt: true }, orderBy: { orderIndex: "asc" } } },
+    }))
+  }
+
+  async function livePlans() {
+    return bypass(() => prisma.mtmJointVisitPlan.findMany({
+      where: { organizationId: ORG, cancelledAt: null },
+      // One save writes its plans in one transaction, with one timestamp.
+      orderBy: [{ createdAt: "asc" }, { source: "asc" }],
+      select: { id: true, managerAgentId: true, agentId: true, routePointId: true, customerId: true, source: true, visitId: true },
+    }))
+  }
+
+  it("plans a stop of the agent's route and an extra client, and tells the agent where", async () => {
+    const day = await today()
+    await bypass(async () => {
+      await prisma.mtmRoute.create({
+        data: {
+          id: ROUTE,
+          organizationId: ORG,
+          agentId: ELVIN,
+          date: new Date(`${day}T00:00:00.000Z`),
+          status: "IN_PROGRESS",
+          startedAt: new Date(),
+          version: 1,
+          publishedVersion: 1,
+          totalPoints: 1,
+          points: { create: { id: STOP, organizationId: ORG, customerId: CUSTOMER, orderIndex: 0 } },
+        },
+      })
+    })
+    await bypass(() => prisma.mtmNotification.deleteMany({ where: { organizationId: ORG } }))
+
+    phoneOf(MANAGER, "SUPERVISOR")
+    const before = await call(plans.GET, `${BASE}/mobile/manager/joint-visit/plans?agentId=${ELVIN}&date=${day}`)
+    expect(before.status).toBe(200)
+    expect(before.body.data.route.stops.map((stop: Record<string, unknown>) => [stop.id, stop.canJoin, stop.myPlanId]))
+      .toEqual([[STOP, true, null]])
+
+    const saved = await call(plans.POST, `${BASE}/mobile/manager/joint-visit/plans`, "POST", {
+      agentId: ELVIN,
+      date: day,
+      routePointIds: [STOP],
+      extras: [{ customerId: EXTRA_CLIENT }],
+    })
+    expect(saved.status).toBe(201)
+    expect(saved.body.data.created).toHaveLength(2)
+
+    // The extra client is on Elvin's route now, and the route moved on so his phone hears of it.
+    const route = await routeRow()
+    expect(route).toMatchObject({ version: 2, publishedVersion: 2, totalPoints: 2 })
+    expect(route.points.map((point: { customerId: string }) => point.customerId)).toEqual([CUSTOMER, EXTRA_CLIENT])
+    const extraStop = route.points[1].id
+
+    expect((await livePlans()).map((plan: Record<string, unknown>) => [plan.managerAgentId, plan.agentId, plan.routePointId, plan.source]))
+      .toEqual([[MANAGER, ELVIN, STOP, "ROUTE"], [MANAGER, ELVIN, extraStop, "EXTRA"]])
+
+    // The manager's screen lists where they go together.
+    expect(saved.body.data.plans.map((plan: Record<string, unknown>) => [plan.date, (plan.customer as { name: string }).name, plan.stopStatus]))
+      .toEqual([[day, "Central Clinic", "PENDING"], [day, "Extra Pharmacy", "PENDING"]])
+
+    // Elvin is told once: the bell names the clients, the day and the manager.
+    const notices = await bypass(() => prisma.mtmNotification.findMany({ where: { organizationId: ORG }, select: { agentId: true, title: true, body: true, metadata: true } }))
+    expect(notices).toHaveLength(1)
+    expect(notices[0]).toMatchObject({ agentId: ELVIN, title: "Team Manager bu gün sizinlə birgə vizitə gedəcək" })
+    expect(notices[0].body).toContain("Central Clinic, Extra Pharmacy")
+    expect(notices[0].metadata).toMatchObject({ event: "joint_visit_planned", date: day, managerAgentId: MANAGER })
+
+    // His phone learns which stops; Aysel's learns nothing.
+    phoneOf(ELVIN, "AGENT")
+    const elvin = await call(agentJoint, `${BASE}/mobile/joint-visit`)
+    expect(elvin.body.data.plans.map((plan: Record<string, unknown>) => [plan.routePointId, (plan.manager as { id: string }).id]))
+      .toEqual([[STOP, MANAGER], [extraStop, MANAGER]])
+    phoneOf(AYSEL, "AGENT")
+    expect((await call(agentJoint, `${BASE}/mobile/joint-visit`)).body.data.plans).toEqual([])
+
+    // Planned again: nothing new, nobody told twice.
+    phoneOf(MANAGER, "SUPERVISOR")
+    const again = await call(plans.POST, `${BASE}/mobile/manager/joint-visit/plans`, "POST", { agentId: ELVIN, date: day, routePointIds: [STOP, extraStop] })
+    expect(again.status).toBe(200)
+    expect(again.body.data.created).toEqual([])
+    expect(await livePlans()).toHaveLength(2)
+    expect(await bypass(() => prisma.mtmNotification.count({ where: { organizationId: ORG } }))).toBe(1)
+  })
+
+  it("refuses an agent outside the team, a client that is not the agent's, and a day out of reach — writing nothing", async () => {
+    const day = await today()
+    const before = await routeRow()
+    const cases: Array<[unknown, number, string]> = [
+      [{ agentId: OTHER_TEAM, date: day, extras: [{ customerId: NOT_HIS }] }, 403, "MTM_JOINT_VISIT_AGENT_FORBIDDEN"],
+      [{ agentId: ELVIN, date: day, extras: [{ customerId: NOT_HIS }] }, 409, "MTM_JOINT_PLAN_CLIENT_UNAVAILABLE"],
+      [{ agentId: ELVIN, date: day, routePointIds: ["no-such-stop"] }, 409, "MTM_JOINT_PLAN_STOP_UNAVAILABLE"],
+      [{ agentId: ELVIN, date: "2020-01-01", routePointIds: [STOP] }, 400, "MTM_JOINT_PLAN_DAY_INVALID"],
+      [{ agentId: ELVIN, date: day }, 400, "MTM_JOINT_PLAN_INVALID"],
+    ]
+    for (const [body, status, code] of cases) {
+      const refused = await call(plans.POST, `${BASE}/mobile/manager/joint-visit/plans`, "POST", body)
+      expect({ body, status: refused.status, code: refused.body.code }).toEqual({ body, status, code })
+    }
+    phoneOf(ELVIN, "AGENT")
+    const byAgent = await call(plans.POST, `${BASE}/mobile/manager/joint-visit/plans`, "POST", { agentId: AYSEL, date: day, extras: [{ customerId: CUSTOMER }] })
+    expect(byAgent.status).toBe(403)
+
+    expect(await routeRow()).toEqual(before)
+    expect(await livePlans()).toHaveLength(2)
+  })
+
+  it("makes the visit at a planned stop joint on the agent's «yes», with no session open", async () => {
+    phoneOf(MANAGER, "SUPERVISOR")
+    await call(endJoint, `${BASE}/mobile/manager/joint-visit/end`, "POST")
+    expect((await sessions()).filter((row) => row.endedAt === null)).toEqual([])
+
+    const visit = await checkIn(ELVIN, { routeId: ROUTE, routePointId: STOP, jointManagerId: MANAGER })
+    expect(visit.op.status).toBe("ok")
+    expect(visit.op.serverData.joint).toEqual({ managerId: MANAGER, accepted: true })
+
+    const participant = await bypass(() => prisma.mtmVisitParticipant.findFirstOrThrow({
+      where: { visitId: visit.id },
+      select: { agentId: true, role: true, jointSession: { select: { managerAgentId: true, agentId: true, endedAt: true } } },
+    }))
+    // Backed by the planned day: a closed session, never the manager's open one.
+    expect(participant).toMatchObject({ agentId: MANAGER, role: "OBSERVER", jointSession: { managerAgentId: MANAGER, agentId: ELVIN } })
+    expect(participant.jointSession!.endedAt).not.toBeNull()
+    expect((await livePlans()).find((plan: { routePointId: string | null }) => plan.routePointId === STOP)!.visitId).toBe(visit.id)
+
+    // The manager sees it as done together, and may rate it.
+    phoneOf(MANAGER, "SUPERVISOR")
+    const state = await call(joint.GET, `${BASE}/mobile/manager/joint-visit`)
+    expect(state.body.data.session).toBeNull()
+    const planned = state.body.data.plans.find((plan: { routePointId: string }) => plan.routePointId === STOP)
+    expect(planned.visit).toMatchObject({ id: visit.id, joint: true })
+    expect(state.body.data.visits.find((row: { id: string }) => row.id === visit.id)).toMatchObject({ joint: true, canEvaluate: true })
+    const rated = await call(evaluate, `${BASE}/mobile/manager/visits/${visit.id}/evaluation`, "PUT", { scores: { NEEDS: 4 } }, params(visit.id))
+    expect(rated.status).toBe(200)
+
+    // Elvin's own view still holds no rating.
+    phoneOf(ELVIN, "AGENT")
+    expect(JSON.stringify((await call(agentJoint, `${BASE}/mobile/joint-visit`)).body)).not.toMatch(/scores|NEEDS|evaluation/)
+  })
+
+  it("takes back a planned visit: the extra client leaves the route, a visit made stays", async () => {
+    const day = await today()
+    await bypass(() => prisma.mtmNotification.deleteMany({ where: { organizationId: ORG } }))
+    const [made, extra] = await livePlans()
+
+    phoneOf(MANAGER, "SUPERVISOR")
+    const tooLate = await call(cancelPlan, `${BASE}/mobile/manager/joint-visit/plans/${made.id}`, "DELETE", undefined, params(made.id))
+    expect([tooLate.status, tooLate.body.code]).toEqual([409, "MTM_JOINT_PLAN_ALREADY_VISITED"])
+
+    phoneOf(ELVIN, "AGENT")
+    const byAgent = await call(cancelPlan, `${BASE}/mobile/manager/joint-visit/plans/${extra.id}`, "DELETE", undefined, params(extra.id))
+    expect(byAgent.status).toBe(403)
+
+    phoneOf(MANAGER, "SUPERVISOR")
+    const before = await routeRow()
+    const cancelled = await call(cancelPlan, `${BASE}/mobile/manager/joint-visit/plans/${extra.id}`, "DELETE", undefined, params(extra.id))
+    expect(cancelled.status).toBe(200)
+    expect((await livePlans()).map((plan: { id: string }) => plan.id)).toEqual([made.id])
+    const route = await routeRow()
+    expect(route).toMatchObject({ version: before.version + 1, publishedVersion: before.version + 1, totalPoints: 1 })
+    expect(route.points.find((point: { id: string }) => point.id === extra.routePointId)!.deletedAt).not.toBeNull()
+
+    const notices = await bypass(() => prisma.mtmNotification.findMany({ where: { organizationId: ORG }, select: { agentId: true, title: true, metadata: true } }))
+    expect(notices).toEqual([{
+      agentId: ELVIN,
+      title: "Team Manager bu gün birgə viziti ləğv etdi",
+      metadata: { domain: "route", event: "joint_visit_cancelled", date: day, jointVisitPlanIds: [extra.id], managerAgentId: MANAGER },
+    }])
+
+    const again = await call(cancelPlan, `${BASE}/mobile/manager/joint-visit/plans/${extra.id}`, "DELETE", undefined, params(extra.id))
+    expect(again.status).toBe(404)
+  })
+
+  it("an extra client on a day the agent has no route starts a published route, and taking it back removes it", async () => {
+    // Live check 2026-10-30: the route this created was a draft, and the agent's
+    // phone said «waiting for approval» — he could not start the joint visit.
+    const base = Date.parse(`${await today()}T00:00:00.000Z`)
+    const shift = (days: number) => new Date(base + days * 86_400_000).toISOString().slice(0, 10)
+    const day = shift(1)
+
+    phoneOf(MANAGER, "SUPERVISOR")
+    const saved = await call(plans.POST, `${BASE}/mobile/manager/joint-visit/plans`, "POST", { agentId: AYSEL, date: day, extras: [{ customerId: CUSTOMER }] })
+    expect(saved.status).toBe(201)
+    const routes = () => bypass(() => prisma.mtmRoute.findMany({
+      where: { organizationId: ORG, agentId: AYSEL },
+      select: { id: true, status: true, version: true, publishedVersion: true, publishedAt: true, deletedAt: true, totalPoints: true,
+        assignments: { select: { agentId: true, role: true } } },
+    }))
+    const [route] = await routes()
+    expect(route).toMatchObject({ status: "PLANNED", totalPoints: 1, deletedAt: null, assignments: [{ agentId: AYSEL, role: "PRIMARY" }] })
+    expect(route.publishedVersion).toBe(route.version)
+    expect(route.publishedAt).not.toBeNull()
+
+    const [plan] = (await livePlans()).filter((row: { agentId: string }) => row.agentId === AYSEL)
+    const cancelled = await call(cancelPlan, `${BASE}/mobile/manager/joint-visit/plans/${plan.id}`, "DELETE", undefined, params(plan.id))
+    expect(cancelled.status).toBe(200)
+    expect((await routes())[0].deletedAt).not.toBeNull()
+
+    // A route Aysel was put on by someone else is hers to plan on too — her app reads it so.
+    const later = shift(2)
+    await bypass(() => prisma.mtmRoute.create({
+      data: {
+        id: "route-joint-elvin-with-aysel",
+        organizationId: ORG,
+        agentId: ELVIN,
+        date: new Date(`${later}T00:00:00.000Z`),
+        status: "PLANNED",
+        publishedVersion: 1,
+        totalPoints: 1,
+        assignments: { create: { organizationId: ORG, agentId: AYSEL, role: "PARTICIPANT" } },
+        points: { create: { id: "point-joint-shared", organizationId: ORG, customerId: CUSTOMER, orderIndex: 0 } },
+      },
+    }))
+    const shared = await call(plans.GET, `${BASE}/mobile/manager/joint-visit/plans?agentId=${AYSEL}&date=${later}`)
+    expect(shared.body.data.route.stops.map((stop: { id: string }) => stop.id)).toEqual(["point-joint-shared"])
   })
 
   type Question = { id: string; labels: { az: string; ru: string; en: string } }

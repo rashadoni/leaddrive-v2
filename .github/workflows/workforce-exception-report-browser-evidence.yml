@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "scripts/ci/verify-github-candidate.mjs"
+      - "src/__tests__/github-candidate-provenance.test.ts"
       - "src/lib/crm-product-availability.ts"
       - ".github/workflows/workforce-exception-report-browser-evidence.yml"
       - "scripts/workforce-exception-report-browser-evidence.mjs"
@@ -783,6 +785,10 @@ jobs:
       - run: bash scripts/ci/prepare-hosted-build-runner.sh
       - run: npm ci
       - run: npx prisma generate
+      - name: Keep Next build-worker trace events out of IPC
+        # Without it the server compiler's result outgrows V8's string limit
+        # over the build worker's IPC and the build hangs. See the script.
+        run: node scripts/ci/patch-next-build-worker-trace.mjs
       - name: Build isolated bundle with inert fixture configuration
         run: |
           ulimit -c 0

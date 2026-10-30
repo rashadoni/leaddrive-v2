@@ -49,6 +49,7 @@ vi.mock("@/lib/prisma", () => {
     aiChatSession: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     aiChatMessage: { create: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     aiInteractionLog: { create: vi.fn() },
+    socialConversation: { findFirst: vi.fn(), updateMany: vi.fn() },
     kbArticle: { findMany: vi.fn() },
     channelConfig: { findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
   }
@@ -113,6 +114,13 @@ vi.mock("@/lib/whatsapp", () => ({
 vi.mock("@/lib/ai/support-feature", () => ({
   isSupportAiEnabled: vi.fn().mockResolvedValue(true),
 }))
+// Budget exhaustion/lease contention are covered by whatsapp-ai-reply-guard.
+// These integration fixtures exercise the ticket and commitment rules with an
+// eligible, unassigned conversation and available budget.
+vi.mock("@/lib/ai/budget", async importOriginal => ({
+  ...await importOriginal<typeof import("@/lib/ai/budget")>(),
+  checkAiBudget: vi.fn().mockResolvedValue({ allowed: true, spent: 0, limit: 5, remaining: 5 }),
+}))
 
 vi.mock("@/lib/auto-assign", () => ({
   autoAssignTicket: vi.fn().mockResolvedValue({ assigned: false }),
@@ -121,6 +129,7 @@ vi.mock("@/lib/auto-assign", () => ({
 vi.mock("@/lib/chatbot-autoreply", () => ({
   maybeAutoReply: vi.fn().mockResolvedValue(null),
   chatbotTookOwnership: vi.fn().mockReturnValue(false),
+  sendChannelReply: vi.fn().mockResolvedValue({ success: true }),
 }))
 
 vi.mock("@/lib/sanitize", () => ({
@@ -238,6 +247,9 @@ beforeEach(() => {
     } as any
   })
   vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([] as any)
+  vi.mocked(prisma.socialConversation.findFirst).mockResolvedValue({ id: "conv1", status: "open", assignedTo: null } as never)
+  vi.mocked(prisma.socialConversation.updateMany).mockResolvedValue({ count: 1 })
+  mockAnthropicCreate.mockReset()
   // Default Anthropic reply — tests that need markers override via
   // `mockAnthropicCreate.mockResolvedValueOnce(...)`.
   mockAnthropicCreate.mockResolvedValue({

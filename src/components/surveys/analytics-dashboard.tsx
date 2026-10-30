@@ -45,7 +45,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
       .finally(() => setLoading(false))
   }, [surveyId, orgId, range])
 
-  if (loading) return <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 animate-pulse h-64" />
+  if (loading) return <div className="rounded-lg border border-border bg-card p-5 animate-pulse h-64" />
   if (!data) return null
 
   const { summary, trend, channels, topWords } = data
@@ -66,7 +66,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
             <button
               key={d}
               onClick={() => setRange(d)}
-              className={`px-2.5 py-1 rounded-md border ${range === d ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+              className={`px-2.5 py-1 rounded-md border ${range === d ? "crm-choice-selected  " : "bg-background hover:bg-muted"}`}
             >
               {d === 365 ? "1y" : `${d}d`}
             </button>
@@ -84,12 +84,12 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
       </div>
 
       {summary.totalResponses === 0 ? (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
           {t("noResponsesInRange", { days: range })}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("responsesOverTime")}</h4>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={trend}>
@@ -104,7 +104,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("npsDistribution")}</h4>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
@@ -117,7 +117,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("npsTrend")}</h4>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={trend.filter(t => t.nps !== null)}>
@@ -130,7 +130,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("channels")}</h4>
             {channels.length === 0 ? (
               <p className="text-xs text-muted-foreground">{t("noChannelData")}</p>
@@ -148,7 +148,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
           </div>
 
           {data.commentSentiment && (data.commentSentiment.positive + data.commentSentiment.neutral + data.commentSentiment.negative + data.commentSentiment.unknown) > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 md:col-span-2">
+            <div className="rounded-lg border border-border bg-card p-4 md:col-span-2">
               <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("commentSentimentAI")}</h4>
               <div className="grid grid-cols-4 gap-3 text-sm">
                 <div className="text-center">
@@ -172,13 +172,13 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
           )}
 
           {topWords.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 md:col-span-2">
+            <div className="rounded-lg border border-border bg-card p-4 md:col-span-2">
               <h4 className="text-xs font-semibold mb-3 text-muted-foreground">{t("topWords")}</h4>
               <div className="flex flex-wrap gap-2">
                 {topWords.map(t => {
                   const size = Math.min(16, 10 + Math.log2(t.count) * 2)
                   return (
-                    <span key={t.word} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-1" style={{ fontSize: `${size}px` }}>
+                    <span key={t.word} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1" style={{ fontSize: `${size}px` }}>
                       <span className="font-medium">{t.word}</span>
                       <span className="text-muted-foreground tabular-nums text-[11px]">· {t.count}</span>
                     </span>
@@ -195,7 +195,7 @@ export function SurveyAnalyticsDashboard({ surveyId, orgId }: Props) {
 
 function Tile({ label, value, className = "" }: { label: string; value: string; className?: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3">
+    <div className="rounded-lg border border-border bg-card p-3">
       <p className={`text-2xl font-bold tabular-nums ${className}`}>{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
     </div>

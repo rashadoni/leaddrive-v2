@@ -50,6 +50,7 @@ import {
   MtmResultLine,
   type MtmQuickChip,
 } from "@/components/mtm/filter-bar"
+import { MtmContactClassTag } from "@/components/mtm/contact-class-tag"
 import { ContactAssignmentDialog } from "@/components/mtm/contact-assignment-dialog"
 import { MtmContactCreateDialog } from "@/components/mtm/contact-create-dialog"
 import {
@@ -252,7 +253,6 @@ const PAGE_FIELD_KEYS: (keyof ContactExplorerFilters)[] = [
 ]
 const ADVANCED_FILTER_KEYS: (keyof ContactExplorerFilters)[] = [
   "search",
-  "category",
   "assignmentState",
   "profile",
   "qualificationCategory",
@@ -714,15 +714,21 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       ? [{ value: "UNASSIGNED", label: t("quick.unassigned"), count: quickCounts?.UNASSIGNED, testId: "mtm-contact-quick-unassigned" }]
       : []),
   ]
-  // Class chips where the tenant grades its clients in more than one class.
-  const categoryChips: MtmQuickChip[] = (quickCounts?.categories.length ?? 0) >= 2 || filters.category
-    ? (quickCounts?.categories ?? []).map((entry) => ({
-        value: entry.category,
-        label: t("categoryShort", { category: entry.category }),
-        count: entry.count,
-        testId: `mtm-contact-quick-category-${entry.category}`,
-      }))
-    : []
+  // The classes (A, B, VIP) on a line of their own, always (owner, 2026-10-21:
+  // «я не заметил категории клиентов… нужно добавить в фильтр»). Every class the
+  // tenant grades with, with how many hold it: «0» says the class is there and
+  // nobody has it yet — on Zeytun all 321 doctors were B, and the chips that
+  // showed only from two classes up never appeared.
+  const classCounts = new Map((quickCounts?.categories ?? []).map((entry) => [entry.category, entry.count]))
+  const classChips: MtmQuickChip[] = [
+    { value: "", label: t("all"), count: quickCounts ? [...classCounts.values()].reduce((sum, count) => sum + count, 0) : undefined, testId: "mtm-contact-quick-category-all" },
+    ...[...new Set<string>([...contactClassOptions(facets?.classes, filters.category), ...classCounts.keys()])].map((category) => ({
+      value: category,
+      label: category,
+      count: quickCounts ? classCounts.get(category) ?? 0 : undefined,
+      testId: `mtm-contact-quick-category-${category}`,
+    })),
+  ]
   // Without signed visit norms every row said «Правило не подписано»: one line
   // says it instead, and the column comes back when a norm is in force.
   const coverageWithoutNorms = showsCoverage && contacts.length > 0
@@ -733,8 +739,6 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
   const showsCommunication = contacts.some((contact) => visiblePhone(contact, shows) || (shows("email") && contact.email))
   // The client category («Həkim») in the row only where the page mixes them.
   const mixedCategories = new Set(contacts.map((contact) => categoryLabel(contact))).size > 1
-  // The class (A, B, VIP) likewise: «Категория B» in all 321 rows said nothing.
-  const mixedClasses = new Set(contacts.map((contact) => contact.category)).size > 1
   const routeHref = (contact: ContactRow): string | null => {
     const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
     if (!workplace) return null
@@ -956,7 +960,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       {/* What this list is, in a sentence, before anything else on the tab —
           and how to change it only for someone who may. */}
       {agentScope ? (
-        <section data-testid="mtm-agent-scope-explainer" className="flex items-start gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4">
+        <section data-testid="mtm-agent-scope-explainer" className="flex items-start gap-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4">
           {agentScope.view === "assigned"
             ? <UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
             : <UserPlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />}
@@ -970,7 +974,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       ) : null}
 
       {isRouteDoctorFlow && routeAssignmentHandoff ? (
-        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{t("routeFlowTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1001,14 +1005,17 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
             <MtmFilterSearch testId="mtm-contact-search" value={filters.search} onChange={(value) => updateFilter("search", value)} placeholder={t("searchPlaceholder")} label={t("filterAnywhere")} clearLabel={tf("clear")} />
             <MtmQuickChips label={t("quick.label")} chips={quickChips} value={filters.quick} onChange={(value) => updateFilter("quick", value)}
               renderChip={(chip, element) => <Hint text={t(QUICK_HINT[chip.value as keyof typeof QUICK_HINT] ?? "hint.quickAll", { month: quickMonth })}>{element}</Hint>} />
-            {categoryChips.length > 0 ? (
-              <MtmQuickChips label={t("category")} chips={categoryChips} value={filters.category} onChange={(value) => updateFilter("category", value === filters.category ? "" : value)}
-                renderChip={(chip, element) => <Hint text={t("hint.quickCategory", { category: chip.value })}>{element}</Hint>} />
-            ) : null}
             <span className="ml-auto flex items-center gap-1">
               <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
               <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
             </span>
+          </div>
+        )}
+        {scoped ? null : (
+          <div data-testid="mtm-contact-class-row" className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">{t("category")}</span>
+            <MtmQuickChips label={t("category")} chips={classChips} value={filters.category} onChange={(value) => updateFilter("category", value === filters.category ? "" : value)}
+              renderChip={(chip, element) => chip.value ? <Hint text={t("hint.quickCategory", { category: chip.value })}>{element}</Hint> : element} />
           </div>
         )}
         {scoped || advancedOpen ? (
@@ -1044,12 +1051,14 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
             options={categoryOptions} />
           <MtmFilterSelectField testId="mtm-contact-status" label={t("status")} value={filters.status} onChange={(value) => updateFilter("status", value)} allLabel={t("all")}
             options={["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].map((status) => ({ value: status, label: t(`statuses.${status}`) }))} />
+          {scoped ? (
+            <Hint wrap text={t("hint.category")}>
+              <MtmFilterSelectField testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
+                options={contactClassOptions(facets?.classes, filters.category).map((category) => ({ value: category, label: category }))} />
+            </Hint>
+          ) : null}
           {advancedOpen ? (
             <>
-              <Hint wrap text={t("hint.category")}>
-                <MtmFilterSelectField testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
-                  options={contactClassOptions(facets?.classes, filters.category).map((category) => ({ value: category, label: category }))} />
-              </Hint>
               {scoped ? null : (
                 <Hint wrap text={t("hint.assignmentState")}>
                   <MtmFilterSelectField testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
@@ -1099,7 +1108,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           </MtmFilterActions>
         ) : null}
         {coverageWithoutNorms ? (
-          <div data-testid="mtm-contact-coverage-unsigned" className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground dark:border-zinc-700">
+          <div data-testid="mtm-contact-coverage-unsigned" className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground">
             <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 flex-1">{t("coverageUnsignedBanner")}</span>
             {payload?.capabilities.actorRole === "ADMIN" ? (
@@ -1207,7 +1216,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       ) : null}
 
       {error ? (
-        <section className="rounded-xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-6 text-center">
+        <section className="rounded-xl border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-6 text-center">
           <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
           <Button type="button" variant="outline" size="sm" className="mt-3" onClick={refresh}>{t("retry")}</Button>
         </section>
@@ -1216,7 +1225,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           {[1, 2, 3, 4].map((item) => <div key={item} className="h-20 animate-pulse rounded-xl bg-muted" />)}
         </div>
       ) : contacts.length === 0 ? (
-        <section className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
+        <section className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-border">
           <UsersRound className="mx-auto h-7 w-7 text-muted-foreground" />
           <h2 className="mt-3 text-sm font-semibold">{agentScope && !hasActiveFilters ? t(`agentScope.${agentScope.view}EmptyTitle`, { name: agentScope.agent.name }) : t("emptyTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{agentScope && !hasActiveFilters ? t(`agentScope.${agentScope.view}EmptyDescription`) : t("emptyDescription")}</p>
@@ -1246,7 +1255,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           {/* One line a client (owner, 2026-10-16, from a picture): who, where,
               when last and by whom, when next, whose — and «В маршрут». The
               table fits the screen: no sideways scrolling, no column of «—». */}
-          <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 lg:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-border bg-card lg:block">
             <table data-testid="mtm-contact-table" className="w-full table-fixed text-sm">
               <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
                 <tr>
@@ -1261,6 +1270,8 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                   {/* Fixed shares of the width: the row never pushes «В маршрут» off the screen. */}
                   <th scope="col" className="px-3 py-2.5 font-medium">{t("contact")}</th>
                   {scoped ? <th scope="col" className="w-[15%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th> : null}
+                  {/* The class in a column of its own, always (owner, 2026-10-21). */}
+                  <th scope="col" className="w-[6.5rem] px-3 py-2.5 font-medium"><HintValue text={t("hint.category")}>{t("category")}</HintValue></th>
                   {showsCoverageColumn ? <th scope="col" className="w-[14%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colCoverage")}>{t("coverage")}</HintValue></th> : null}
                   <th scope="col" className="w-[22%] px-3 py-2.5 font-medium">{t("workplace")}</th>
                   <th scope="col" className="w-[13%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colLastVisit")}>{t("lastVisit")}</HintValue></th>
@@ -1270,7 +1281,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                   <th scope="col" className="w-[9.5rem] px-3 py-2.5"><span className="sr-only">{t("rowActions")}</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tbody className="divide-y divide-border">
                 {contacts.map((contact) => {
                   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
                   const owners = contactEmployees(contact)
@@ -1283,7 +1294,6 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                     specialtyLine(contact, shows),
                     professionDetail(contact, shows),
                     mixedCategories ? categoryLabel(contact) : null,
-                    mixedClasses ? t("categoryShort", { category: contact.category }) : null,
                     contact.externalCode && shows("externalCode") ? contact.externalCode : null,
                   ].filter(Boolean).join(" · ")
                   const ownerCell = (
@@ -1319,6 +1329,9 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                         {detail ? <p className="mt-0.5 truncate text-xs text-muted-foreground" title={detail}>{detail}</p> : null}
                       </td>
                       {scoped ? ownerCell : null}
+                      <td className="px-3 py-2" data-testid={`mtm-contact-class-${contact.id}`}>
+                        <MtmContactClassTag category={contact.category} />
+                      </td>
                       {showsCoverageColumn ? (
                         <td className="px-3 py-2">
                           <ContactCoverageCell coverage={contact.coverage} t={t} />
@@ -1390,7 +1403,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
         </>
       )}
 
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-3 dark:border-zinc-700">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
         <div className="flex items-center gap-2">
           <Label htmlFor="mtm-contact-page-size" className="text-xs text-muted-foreground">{t("rowsPerPage")}</Label>
           <Select
@@ -1493,7 +1506,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
               className="min-h-11"
             />
           </div>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 px-3 dark:border-zinc-700">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3">
             <input
               type="checkbox"
               checked={savedViewDefault}
@@ -1572,7 +1585,7 @@ function ContactCard({
   const lastVisit = contact.visits[0]
   const nextPoint = contact.routePoints[0]
   return (
-    <article className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <article className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-start gap-3">
         <FieldCheckbox
           checked={checked}
@@ -1645,7 +1658,7 @@ function ContactCard({
           </dd>
         </div>
       </dl>
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
         {planHref ? (
           <Button asChild size="sm" className="min-h-11"><Link href={planHref}><CalendarPlus className="mr-1 h-4 w-4" aria-hidden="true" />{t("addToRoute")}</Link></Button>
         ) : null}

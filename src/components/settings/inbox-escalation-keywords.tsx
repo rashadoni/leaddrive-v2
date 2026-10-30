@@ -62,7 +62,7 @@ export function InboxEscalationKeywords() {
   }
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card p-4 space-y-4">
+    <div className="border border-border rounded-lg bg-card p-4 space-y-4">
       <div className="flex items-start gap-2">
         <ShieldAlert className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
         <div className="flex-1">

@@ -7,7 +7,7 @@
  *   tile, cell or square under an icon;
  * - warnings and notices are white with a coloured left edge;
  * - inside a page a chosen tab is dark text over an orange line and a chosen
- *   chip is outlined dark — the orange fill is the page's one main button.
+ *   chip uses the shared neutral selection — primary actions use common CRM tokens.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
@@ -47,7 +47,7 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
     expect(found).toEqual([])
   })
 
-  it("never fills a tab or a chip because it is the chosen one", () => {
+  it("never gives a chosen tab or chip the primary action variant", () => {
     const found = files.flatMap((path) =>
       readFileSync(path, "utf8").split("\n").flatMap((line, index) => (FILLED_WHEN_CHOSEN.test(line) ? [`${path}:${index + 1}`] : [])),
     )
@@ -63,10 +63,10 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
     expect(MTM_TAB_ROW).toContain("border-b")
   })
 
-  it("outlines a chosen chip in dark and keeps a status chip in its own colour", () => {
-    expect(mtmChipClass(true)).toBe("border-foreground font-semibold text-foreground")
+  it("uses the shared neutral selected chip and preserves semantic status text", () => {
+    expect(mtmChipClass(true)).toBe("crm-choice-selected border-foreground font-semibold text-foreground")
     expect(mtmChipClass(false)).toBe("text-muted-foreground")
-    expect(mtmChipClass(true, "text-red-600")).toBe("border-foreground font-semibold text-red-600")
+    expect(mtmChipClass(true, "text-red-600")).toBe("crm-choice-selected border-foreground font-semibold crm-choice-semantic text-red-600")
     expect(mtmChipClass(false, "text-red-600")).toBe("text-red-600")
   })
 
@@ -78,7 +78,7 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
     expect(warning).toContain("Gözləyir")
 
     const outline = renderToStaticMarkup(createElement(Badge, { variant: "outline" }, "A"))
-    expect(outline).toContain("border-zinc-200")
+    expect(outline).toContain("border-border")
     expect(outline).not.toMatch(/\bbg-/)
   })
 

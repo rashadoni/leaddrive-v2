@@ -25,13 +25,35 @@ DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-/run/lock/leaddrive-deploy.lock}"
 MIGRATION_ENV_FILE="${MIGRATION_ENV_FILE:-/etc/leaddrive/migration.env}"
 HEALTH_URL="http://localhost:3001"
 PM2_PROCESS="leaddrive-v2"
+# The scheduler's own server process (ecosystem.config.cjs): the same bundle on
+# loopback :3002, so scheduled jobs never hold the web process's thread.
+JOBS_PM2_PROCESS="leaddrive-v2-jobs"
+JOBS_HEALTH_URL="http://localhost:3002"
+# The phone station's own process (ecosystem.config.cjs). It runs from a copy of
+# its release under $APP_DIR/line-releases, in slot a (:3004) or b (:3005), and
+# a deploy replaces it without a gap (Step 7c). nginx sends the station's routes
+# to the active slot, the web app is its fallback
+# (ops/nginx/leaddrive-station-*.conf). LINE_PM2_PROCESS/LINE_PORT name the
+# first form of it (PR #1160: standalone, :3003), retired by the first Step 7c.
+LINE_PM2_PROCESS="leaddrive-v2-line"
+LINE_SLOT_A_PROCESS="leaddrive-v2-line-a"
+LINE_SLOT_B_PROCESS="leaddrive-v2-line-b"
+LINE_SLOT_A_PORT=3004
+LINE_SLOT_B_PORT=3005
+LINE_RELEASES_DIR="$APP_DIR/line-releases"
+LINE_ACTIVE_PORT_FILE="/var/lib/leaddrive-v2/line-active-port"
+LINE_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-station-upstream.conf"
+# People's pages fall back to the line's live slot while the web restarts.
+WEB_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-web-upstream.conf"
 PM2_HOME="/root/.pm2"
 # Production health and the PM2 fence are bound to one canonical name/port.
 # Never let an ambient CI variable rename the process or move it off the port
 # that the handoff proves. App dotenv files are denied these keys below too.
-unset PM2_NAME
+unset PM2_NAME PM2_JOBS_NAME PM2_LINE_NAME
 APP_PORT=3001
-export PM2_HOME APP_PORT
+JOBS_PORT=3002
+LINE_PORT=3003
+export PM2_HOME APP_PORT JOBS_PORT LINE_PORT
 MAX_BACKUPS=5
 DEFAULT_RUNTIME_DIR="/var/lib/leaddrive-v2"
 DEFAULT_LOG_DIR="/var/lib/leaddrive-v2-logs"
@@ -68,6 +90,12 @@ RUNTIME_STATE_CUTOVER_FINALIZED=false
 HANDOFF_STARTED=false
 HANDOFF_RECOVERY_COMPLETE=false
 EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED=false
+IDENTITY_RELEASE_CONTROLLER=""
+IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=false
+BOOKING_RELEASE_CONTROLLER=""
+BOOKING_RELEASE_CANDIDATE_FILE=""
+BOOKING_RELEASE_FIRST_EXPANSION=false
+BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=false
 OPS_CURRENT_PREVIOUS_TARGET=""
 OPS_CURRENT_NEW_TARGET=""
 OPS_CURRENT_SWITCHED=false
@@ -144,11 +172,11 @@ BACKUP_AWS_BIN="$BACKUP_AWS_ROOT/v2/current/bin/aws"
 BACKUP_AWS_REAL_BIN="$BACKUP_AWS_ROOT/v2/$BACKUP_AWS_VERSION/dist/aws"
 BACKUP_AWS_PROVENANCE="$BACKUP_AWS_ROOT/LEADDRIVE_PROVENANCE"
 BACKUP_CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
-BACKUP_ARCHIVE_VERIFIER_SHA256="c4d1ff55bc61fcac7f8aee171e42d3d73d1a93e426253d32cc9e218e9ac54cb7"
-BACKUP_POSTGRES_SCRIPT_SHA256="06df4beb811e711e8e93b5c28cbf8d2bfbfc95fd29727882ed75631fa6a70f2d"
+BACKUP_ARCHIVE_VERIFIER_SHA256="028d52f8c22c7690a3523ea9db960d5d001ac478bc634063d6065d46c78b4abf"
+BACKUP_POSTGRES_SCRIPT_SHA256="cb1ca4edf130be15ae1d3e76ec431b20fe8ab19d2e1686468d554d027c6802f5"
 BACKUP_SECRETS_SCRIPT_SHA256="c43f3d14fcd68c95b56585ae3844fb8db21db4aefac06b5f210861fd3e2b3907"
 BACKUP_RUNTIME_FILES_SCRIPT_SHA256="e32fa4fdab76e4ad162d7c1463916a3847824c3d438a972051b095da4b4e8330"
-BACKUP_RESTORE_CANARY_SHA256="7862f5a7ab61ff7d8e1bcd2ad38112359f3ccbfcb710bbd2a7d2bc4278817cfa"
+BACKUP_RESTORE_CANARY_SHA256="fc028191f18ee58233ab6fdbaa0a450789d47ca7c9b81567a99fb62161f66355"
 BACKUP_PII_PROOF_SHA256="e83f3fc65c56e0dc8db7eb26e47780c0901917908c05d7aa6552792a37f99e18"
 BACKUP_CANARY_SQL_SHA256="5c3a9bf2b14c84c4deafa31525ac23518ba2290ab32a7cf5f66e2d05d4b249c9"
 EVENT_PLATFORM_CUTOVER_STATE="unknown"
@@ -224,6 +252,10 @@ assert_dotenv_key_allowed() {
     APP_DIR|APP_ENV_FILE|APP_ENV_LOCK_FILE|APP_ENV_SOURCE_FILE|\
     DEPLOY_TAR|DEPLOY_LOCK_FILE|DEPLOY_PREFLIGHT_ONLY|DEPLOY_MODE|EXPECTED_DEPLOY_SHA_ARG|DEPLOY_SHA|DEPLOY_SHA_FILE|\
     ARTIFACT_DEPLOY_SHA|BACKUP_DIR|BACKUP_PATH|MAX_BACKUPS|HEALTH_URL|PM2_PROCESS|PM2_HOME|PM2_NAME|APP_PORT|\
+    JOBS_PM2_PROCESS|JOBS_HEALTH_URL|PM2_JOBS_NAME|JOBS_PORT|\
+    LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|LINE_SLOT|LINE_RELEASE_DIR|\
+    LINE_SLOT_A_PROCESS|LINE_SLOT_B_PROCESS|LINE_SLOT_A_PORT|LINE_SLOT_B_PORT|\
+    LINE_RELEASES_DIR|LINE_ACTIVE_PORT_FILE|LINE_NGINX_UPSTREAM|WEB_NGINX_UPSTREAM|\
     DEFAULT_RUNTIME_DIR|DEFAULT_LOG_DIR|RUNTIME_DIR|RUNTIME_UPLOADS_DIR|\
     RUNTIME_STATE_DIR|RUNTIME_ARCHIVE_DIR|LOG_DIR|HELP_VIDEO_ASSET_DIR_DEFAULT|\
     HELP_VIDEO_RUNTIME_ROOT|VOICE_OPERATOR_STATE_DIR_RESOLVED|OPS_ROOT|\
@@ -238,7 +270,7 @@ assert_dotenv_key_allowed() {
     OPERATIONS_ACTIVATION_STARTED|GENESIS_ACTIVATION_DURABLE|OPERATIONS_CRONTAB_INTENT|OPERATIONS_SYSTEMD_UNITS|OPERATIONS_TIMERS|\
     OPERATIONS_BACKUP_LOCK_FD|OPERATIONS_SECRETS_LOCK_FD|\
     OPERATIONS_RUNTIME_FILES_LOCK_FD|OPERATIONS_LOG_LOCK_FD|\
-    OPERATIONS_LOGROTATE_FILES|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
+    OPERATIONS_LOGROTATE_FILES|BOOKING_RELEASE_*|booking_control_file|IDENTITY_RELEASE_*|identity_control_file|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
     REVIEWED_LOG_CURSOR_AWK_RE|BACKUP_EVIDENCE_ROOT|BACKUP_CUSTODY_MARKER|\
     BACKUP_OFFLINE_RESTORE_MARKER|BACKUP_BOOTSTRAP_RESTORE_MARKER|BACKUP_OFFLINE_ALLOWED_SIGNERS|BACKUP_SIGNED_EVIDENCE_DIR|\
     EXPECTED_SHARED_SERVER_IP|\
@@ -1701,7 +1733,13 @@ persist_event_platform_pm2_stop_fence() {
     rm -f -- "$live_state"
     fatal_after_standalone_replacement "cannot inspect live PM2 state before the Fund fence"
   }
-  protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay \
+  # The phone line's slots (leaddrive-v2-line-a/-b, :3004/:3005) are left
+  # running on purpose: they run from their own release copy, not from the tree
+  # this deploy replaces, write no Fund or booking state, and keep answering
+  # the station until Step 7c hands it to the new release (owner, 2026-10-28:
+  # «обновление без перерыва»; the 2026-10-28 deploy that stopped them here cost
+  # the station 8 s of 502s). Only the first, standalone form of the line is fenced.
+  protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1714,7 +1752,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => String((env.env && env.env.PORT) ?? env.PORT ?? "") === "3001"
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 for (const item of processes) {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   if (protectedNames.has(item.name || env.name)
@@ -1743,9 +1781,19 @@ NODE
   done <<< "$protected_ids"
   pm2 delete "$PM2_PROCESS" 2>/dev/null || true
   pm2 delete softphone-relay 2>/dev/null || true
+  pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
   fuser -k 3001/tcp 2>/dev/null || true
+  fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
   if fuser 3001/tcp >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the protected web port after the Fund fence"
+  fi
+  if fuser "$JOBS_PORT/tcp" >/dev/null 2>&1; then
+    fatal_after_standalone_replacement "a process still owns the jobs port after the Fund fence"
+  fi
+  if fuser "$LINE_PORT/tcp" >/dev/null 2>&1; then
+    fatal_after_standalone_replacement "a process still owns the line port after the Fund fence"
   fi
 
   live_state=$(mktemp /tmp/leaddrive-event-platform-pm2-live.XXXXXX) || \
@@ -1754,7 +1802,7 @@ NODE
     rm -f -- "$live_state"
     fatal_after_standalone_replacement "cannot inspect live PM2 state after the Fund fence"
   }
-  live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay \
+  live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1767,7 +1815,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => String((env.env && env.env.PORT) ?? env.PORT ?? "") === "3001"
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -1789,7 +1837,7 @@ NODE
     fatal_after_standalone_replacement "cannot persist the stopped PM2 state before replacing standalone"
   harden_pm2_reboot_dump || \
     fatal_after_standalone_replacement "cannot harden the stopped PM2 reboot fence"
-  saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay \
+  saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1802,7 +1850,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => String((env.env && env.env.PORT) ?? env.PORT ?? "") === "3001"
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -7961,8 +8009,52 @@ else
   log "No existing standalone directory (first deploy)"
 fi
 
+# Acquire the migration connection only inside a child scope. Admission runs
+# after the preflight unset, and activation/recovery may run after migrations
+# unset it again. Never retain or export this credential to backfills or PM2.
+with_booking_release_database() {
+  (
+    load_dotenv_file "$MIGRATION_ENV_FILE" migration || return
+    require_env MIGRATION_DATABASE_URL || return
+    require_env MIGRATION_EXPECTED_DB_ROLE || return
+    IDENTITY_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" DATABASE_URL="$MIGRATION_DATABASE_URL" "$@"
+  )
+}
+
+# Identity has its own retained cutover floor, independent of booking state.
+ensure_identity_rollback_compatible() {
+  local target="$1"
+  [ -n "$IDENTITY_RELEASE_CONTROLLER" ] || return 0
+  IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=true
+  persist_event_platform_pm2_stop_fence || return 1
+  if ! with_booking_release_database node "$IDENTITY_RELEASE_CONTROLLER" --check-rollback "$target" true; then
+    log "FATAL: identity rollback is incompatible; preserve the candidate and keep the old process stopped"
+    return 1
+  fi
+  IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=false
+}
+
+# Drain before counting so a customer request cannot race rollback admission.
+# This also persists an empty reboot target before any legacy restart.
+ensure_booking_rollback_compatible() {
+  local target="$1" quiesced=false
+  [ -n "$BOOKING_RELEASE_CONTROLLER" ] || return 0
+  BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=true
+  if ! persist_event_platform_pm2_stop_fence; then return 1; fi
+  quiesced=true
+  if ! with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+    --check-rollback "$target" "$BOOKING_RELEASE_CANDIDATE_FILE" "$EXPECTED_DEPLOY_SHA_ARG" \
+    "$BOOKING_RELEASE_FIRST_EXPANSION" "$quiesced"; then
+    log "FATAL: refusing an unproven booking rollback; preserve the candidate and canonical database"
+    return 1
+  fi
+  BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=false
+}
+
 restore_standalone_before_pm2() {
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_identity_rollback_compatible "$rollback_source" || return 1
+  ensure_booking_rollback_compatible "$rollback_source" || return 1
   if [ -d "$rollback_source" ]; then
     safe_remove_tree "$APP_DIR/.next/standalone"
     cp -a -- "$rollback_source" "$APP_DIR/.next/standalone"
@@ -7976,6 +8068,10 @@ restore_standalone_before_pm2() {
 fatal_after_standalone_replacement() {
   local message="$1"
   log "FATAL: $message"
+  if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ] || [ "$IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+    log "Application recovery is fail-closed; the previous artifact will not be restored."
+    exit 1
+  fi
   if [ "$STANDALONE_REPLACED" = "true" ] \
      || [ "$HANDOFF_STARTED" = "true" ] \
      || [ "$EVENT_PLATFORM_CUTOVER_STATE" = "migration_applied" ]; then
@@ -7989,6 +8085,8 @@ fatal_after_standalone_replacement() {
 recover_application_handoff() {
   local rollback_config rollback_code rollback_ping_code
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_identity_rollback_compatible "$rollback_source" || return 1
+  ensure_booking_rollback_compatible "$rollback_source" || return 1
 
   if [ "$RUNTIME_STATE_CUTOVER_FINALIZED" != "true" ]; then
     log "Reverting incomplete runtime state cutover before restarting the previous artifact..."
@@ -8023,6 +8121,15 @@ recover_application_handoff() {
   load_dotenv_file "$APP_ENV_FILE"
   pm2 delete "$PM2_PROCESS" 2>/dev/null || true
   pm2 delete softphone-relay 2>/dev/null || true
+  # The failed release's jobs process would otherwise keep running its code
+  # from a tree that is about to be replaced, and an older artifact has no
+  # entry for it at all. Without it the schedule falls back to the web port.
+  pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  # The same for the line's process; an older artifact without it leaves the
+  # station on the web port, where nginx falls back.
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
   rollback_config="$APP_DIR/.next/standalone/ecosystem.config.cjs"
   if [ ! -f "$rollback_config" ]; then
     log "FATAL: rollback PM2 configuration is missing from standalone backup"
@@ -8080,7 +8187,9 @@ rollback_replaced_standalone_on_exit() {
     status=1
   fi
   if [ "$status" -ne 0 ] && [ "$HANDOFF_STARTED" = "true" ] && [ "$HANDOFF_RECOVERY_COMPLETE" != "true" ]; then
-    if [ "$EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+    if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ] || [ "$IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+      log "FATAL: application rollback is not proven; keep PM2 stopped and preserve the canonical candidate for reviewed recovery"
+    elif [ "$EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED" = "true" ]; then
       log "FATAL: previous PM2 artifact remains stopped because the Fund pilot committed without a proven rollback-client path"
       log "FATAL: preserve the database and recovery-point evidence for reviewed operator recovery: ${EVENT_PLATFORM_PILOT_BACKUP_EVIDENCE:-unavailable}"
     else
@@ -8155,6 +8264,44 @@ for K in ESIGN_SECRET CRON_SECRET BROWSER_SOFTPHONE_TICKET_SECRET SOFTPHONE_RELA
 done
 load_dotenv_file "$APP_ENV_FILE"
 verify_runtime_cutover_preflight
+
+# Stage the reviewed controller outside the live tree, where it survives a
+# failed handoff or refused rollback. Credentials stay in child environment.
+BOOKING_RELEASE_CONTROL_DIR="$BACKUP_PATH/booking-release-controller"
+mkdir -p "$BOOKING_RELEASE_CONTROL_DIR/scripts/booking" "$BOOKING_RELEASE_CONTROL_DIR/scripts/event-platform"
+chmod 700 "$BOOKING_RELEASE_CONTROL_DIR"
+for booking_control_file in scripts/booking/release-contract.mjs scripts/booking/release-state.sql scripts/booking/activate-workspace.sql scripts/event-platform/inspect-production.sh; do
+  tar -xOzf "$DEPLOY_TAR" "./$booking_control_file" > "$BOOKING_RELEASE_CONTROL_DIR/$booking_control_file" \
+    || fatal_after_standalone_replacement "booking controller is missing from the immutable artifact"
+done
+tar -xOzf "$DEPLOY_TAR" ./.booking-backend-contract.json > "$BOOKING_RELEASE_CONTROL_DIR/candidate.json" \
+  || fatal_after_standalone_replacement "immutable artifact has no booking backend contract"
+BOOKING_RELEASE_CONTROLLER="$BOOKING_RELEASE_CONTROL_DIR/scripts/booking/release-contract.mjs"
+BOOKING_RELEASE_CANDIDATE_FILE="$BOOKING_RELEASE_CONTROL_DIR/candidate.json"
+BOOKING_RELEASE_ADMISSION=$(with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+  --check-admission "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" "$APP_DIR/.next/standalone") \
+  || fatal_after_standalone_replacement "booking predecessor is not compatible with this artifact"
+case "$BOOKING_RELEASE_ADMISSION" in
+  first-expansion) BOOKING_RELEASE_FIRST_EXPANSION=true ;;
+  compatible) BOOKING_RELEASE_FIRST_EXPANSION=false ;;
+  *) fatal_after_standalone_replacement "invalid booking artifact admission result" ;;
+esac
+
+# Keep the identity controller outside the live artifact so failure recovery
+# uses the reviewed candidate's guard before replacing or restarting any bytes.
+IDENTITY_RELEASE_CONTROL_DIR="$BACKUP_PATH/identity-release-controller"
+mkdir -p "$IDENTITY_RELEASE_CONTROL_DIR/scripts/identity" "$IDENTITY_RELEASE_CONTROL_DIR/scripts/event-platform"
+chmod 700 "$IDENTITY_RELEASE_CONTROL_DIR"
+for identity_control_file in scripts/identity/release-contract.mjs scripts/identity/release-state.sql scripts/event-platform/inspect-production.sh; do
+  tar -xOzf "$DEPLOY_TAR" "./$identity_control_file" > "$IDENTITY_RELEASE_CONTROL_DIR/$identity_control_file" \
+    || fatal_after_standalone_replacement "identity controller is missing from the immutable artifact"
+done
+tar -xOzf "$DEPLOY_TAR" ./.identity-backend-contract.json > "$IDENTITY_RELEASE_CONTROL_DIR/candidate.json" \
+  || fatal_after_standalone_replacement "immutable artifact has no identity backend contract"
+IDENTITY_RELEASE_CONTROLLER="$IDENTITY_RELEASE_CONTROL_DIR/scripts/identity/release-contract.mjs"
+with_booking_release_database node "$IDENTITY_RELEASE_CONTROLLER" --check-admission \
+  "$IDENTITY_RELEASE_CONTROL_DIR/candidate.json" "$ARTIFACT_DEPLOY_SHA" \
+  || fatal_after_standalone_replacement "identity artifact admission failed"
 
 # Resolve the durable database gate and persist the exact previous client
 # before the generic standalone path is touched. On the first cutover the old
@@ -8948,7 +9095,31 @@ if [ -f "$APP_CATALOG_SCRIPT_STANDALONE" ]; then
   node "$APP_CATALOG_SCRIPT_STANDALONE" --execute 2>&1 || log "WARNING: app catalog seed returned non-zero (non-fatal)"
 fi
 
+# Only B activates the already-proven A contract. The mode cannot be reset
+# by rollback, and no new schema/profile is introduced by this transition.
+node "$BOOKING_RELEASE_CONTROLLER" --activation-sql "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" \
+  > "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
+  || fatal_after_standalone_replacement "cannot prepare artifact-bound booking activation"
+if [ -s "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" ]; then
+  with_booking_release_database npx prisma db execute --schema="$SCHEMA_TO_USE" --stdin \
+    < "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
+    || fatal_after_standalone_replacement "booking workspace activation failed"
+  with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+    --assert-activated "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" \
+    || fatal_after_standalone_replacement "booking workspace activation was not proven"
+fi
+
 # ── Step 4: Stop old process, cut over runtime, restart PM2 ─────────
+# Everything from the web process's stop to the new one listening is 502 for
+# every caller, the phone station's calls for Zeytun's line among them.
+# Measured on the deploy of 2026-10-28 10:30 UTC: 23 s, of which 10.6 s pm2
+# waiting for the old process to exit, 1.3 s stopping the relay and the jobs
+# process after it, 2 s of a fixed sleep and ~5 s of the Fund fence below, most
+# of that its fsync of a disk full of the artifact just unpacked. So: the disk
+# is flushed while the old release still answers, the two processes nobody
+# browses to go first, and the web process last.
+sync || true
+
 log "Stopping old processes..."
 cd "$APP_DIR"
 
@@ -8956,9 +9127,6 @@ cd "$APP_DIR"
 # state. Any implicit failure must restore the previous artifact and restart
 # it; do not leave production without a PM2 process after a failed handoff.
 HANDOFF_STARTED=true
-
-# Delete existing PM2 process (ignore errors if not found)
-pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 
 # The softphone relay is a SECOND app in the same ecosystem file, present only
 # when the server holds its secrets. Two reasons this line exists:
@@ -8970,9 +9138,28 @@ pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 # drops in-flight web requests. Harmless when the app is absent.
 pm2 delete softphone-relay 2>/dev/null || true
 
+# The scheduler's server process is the third app in the same file, and the
+# same `pm2 start` refusal applies to it. While the web process is down for the
+# next seconds, cron-trigger.sh finds 3002 closed and sends the schedule to 3001.
+pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+# The phone line's process is NOT stopped here: it keeps answering the station
+# until Step 7c has its successor warm and checked (owner, 2026-10-28:
+# «обновление без перерыва»).
+
+# Delete the web process last (ignore errors if not found). It now exits about
+# two seconds after SIGINT (src/lib/server-shutdown-deadline.ts) instead of
+# being SIGKILLed at pm2's kill_timeout.
+pm2 delete "$PM2_PROCESS" 2>/dev/null || true
+
 # Kill ANY process holding port 3001 (orphan from previous deploys)
 fuser -k 3001/tcp 2>/dev/null || true
-sleep 2
+fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+# A killed process releases its port within milliseconds; wait for that rather
+# than a fixed two seconds, and no longer than the fixed wait used to be.
+for _ in $(seq 1 20); do
+  ss -tln | grep -qE ":(3001|$JOBS_PORT) " || break
+  sleep 0.1
+done
 
 # Double-check port is free
 if ss -tlnp | grep -q ":3001 "; then
@@ -8980,6 +9167,10 @@ if ss -tlnp | grep -q ":3001 "; then
   fuser -k -9 3001/tcp 2>/dev/null || true
   sleep 2
 fi
+
+# A crash between first canonical process start and pm2 save must not resurrect
+# the legacy writer. Save/verify the stopped state before opening the new app.
+if [ -n "$BOOKING_RELEASE_CONTROLLER" ]; then persist_event_platform_pm2_stop_fence; fi
 
 log "Starting PM2..."
 
@@ -8996,6 +9187,15 @@ fi
 
 PM2_CONFIG="$APP_DIR/.next/standalone/ecosystem.config.cjs"
 [ -f "$PM2_CONFIG" ] || fatal "PM2 configuration is missing from the standalone artifact"
+# The PII master key reaches the app through the root-only env file it already
+# lives in, never through the process environment: PM2 would persist it in its
+# reboot dump and every child process would inherit it. The app reads the file
+# itself (src/lib/crypto/tenant-pii-encryption.ts). Handoff recovery reloads
+# the env file, so an older artifact still receives the variable it expects.
+TENANT_PII_MASTER_KEY_FILE="$(realpath -e -- "$APP_ENV_FILE")" \
+  || fatal "cannot resolve the env file that holds TENANT_PII_MASTER_KEY"
+export TENANT_PII_MASTER_KEY_FILE
+unset TENANT_PII_MASTER_KEY
 pm2 start "$PM2_CONFIG" 2>/dev/null || {
   log "FATAL: PM2 start failed"
   exit 1
@@ -9007,11 +9207,35 @@ harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
 
 # ── Step 6: Health check (5 retries, longer warmup) ──────
 log "Health check (waiting for startup)..."
-sleep 15
-
-# Warm up the app — first requests to Next.js 16 standalone can 500
-curl -s -o /dev/null --max-time 10 "$HEALTH_URL/login" 2>/dev/null || true
-sleep 5
+# nginx sends traffic to the new process the moment it listens, so the first
+# requests after the restart are real calls, not this check. Wait for the port
+# (it opened ~2 s after `pm2 start` on 2026-10-28), then load the modules of the
+# routes the phone station calls in the middle of a call, so the first of those
+# does not pay for loading them. Unauthenticated: each answers 401 before it
+# reads anything. The old fixed 15 + 5 s wait stays as the outer bound.
+for _ in $(seq 1 80); do
+  ss -tln | grep -q ":3001 " && break
+  sleep 0.25
+done
+WARM_PIDS=()
+for warm_route in \
+  "POST /api/internal/asterisk/call-lifecycle" \
+  "POST /api/internal/asterisk/inbound-handoff" \
+  "POST /api/internal/asterisk/inbound-browser-ready" \
+  "POST /api/internal/asterisk/station-heartbeat" \
+  "POST /api/internal/voice-agent/pharmacy-inbound" \
+  "POST /api/internal/voice-agent/call-result" \
+  "GET /api/internal/voice-agent/runtime-config" \
+  "GET /api/internal/voice-agent/call-source" \
+  "GET /api/internal/voice-agent/call-continuation" \
+  "GET /api/v1/ping" \
+  "GET /login"; do
+  curl -s -o /dev/null --max-time 20 -X "${warm_route%% *}" "$HEALTH_URL${warm_route#* }" 2>/dev/null &
+  WARM_PIDS+=("$!")
+done
+# Only these: a Fund cutover keeps its own lock holder in the background.
+wait "${WARM_PIDS[@]}" || true
+log "Warmed the phone station's routes on the new process"
 
 HEALTHY=false
 for i in 1 2 3 4 5; do
@@ -9070,6 +9294,21 @@ for i in 1 2 3 4 5; do
   [ "$i" -lt 5 ] && sleep 8
 done
 
+# The app reads the PII master key from its env file, not from its process
+# environment (Step 5). /login and /api/v1/ping never touch the key, so a
+# process that cannot read it would pass every check above and then fail on
+# every encrypted field. Require the probe to say the key loaded from the file.
+if [ "$HEALTHY" = true ]; then
+  PII_KEY_STATUS="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" \
+    "$HEALTH_URL/api/cron/pii-key-check" 2>/dev/null || true)"
+  if [ "$PII_KEY_STATUS" = '{"ok":true,"source":"file"}' ]; then
+    log "PII master key: loaded from its env file"
+  else
+    log "PII master key probe failed: ${PII_KEY_STATUS:-no response}"
+    HEALTHY=false
+  fi
+fi
+
 # ── Step 7: Rollback if unhealthy ──────────────────────────
 if [ "$HEALTHY" = false ]; then
   log "HEALTH CHECK FAILED — initiating rollback!"
@@ -9087,6 +9326,146 @@ fi
 HANDOFF_STARTED=false
 HANDOFF_RECOVERY_COMPLETE=true
 STANDALONE_REPLACED=false
+
+# ── Step 7b: The scheduler's own process ───────────────────
+# Checked after the web handoff and never as part of it: a jobs process that
+# fails must not roll back a healthy CRM. It is taken out instead, and
+# scripts/cron-trigger.sh then runs the schedule on the web process exactly as
+# before this process existed — slower for people, but no job stops. The key
+# probe matters as much here as on the web: most jobs read encrypted fields.
+JOBS_STATUS="down"
+JOBS_PING_CODE="000"
+JOBS_KEY_STATUS=""
+for i in 1 2 3 4 5 6; do
+  JOBS_PING_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$JOBS_HEALTH_URL/api/v1/ping" 2>/dev/null || echo "000")
+  if [ "$JOBS_PING_CODE" = "200" ]; then
+    JOBS_KEY_STATUS="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" \
+      "$JOBS_HEALTH_URL/api/cron/pii-key-check" 2>/dev/null || true)"
+    if [ "$JOBS_KEY_STATUS" = '{"ok":true,"source":"file"}' ]; then
+      JOBS_STATUS="ok"
+    fi
+    break
+  fi
+  [ "$i" -lt 6 ] && sleep 5
+done
+if [ "$JOBS_STATUS" = "ok" ]; then
+  log "Jobs process: healthy on $JOBS_HEALTH_URL (ping 200, PII master key from its env file)"
+else
+  log "WARNING: jobs process unhealthy (ping=$JOBS_PING_CODE, key=${JOBS_KEY_STATUS:-no response}); removing it so the schedule runs on the web process"
+  pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  pm2 save --force 2>/dev/null || fatal "cannot persist PM2 application state without the jobs process"
+  harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
+  JOBS_STATUS="fallback-to-web"
+fi
+
+# ── Step 7c: The phone line's own process, replaced without a gap ──
+# Owner, 2026-10-28: «обновление без перерыва». The line is never stopped first.
+# The new release gets its own copy (hard links: the next deploy removes
+# .next/standalone, never this), starts in the free slot, is checked like the
+# web app, parses Zeytun's catalog, and only then does nginx send the station
+# there; the old slot answers until that moment and gets a drain period after.
+# Checked after the web handoff and never part of it: whatever fails here keeps
+# the line that was answering, and never rolls the web app back.
+line_port_of() { case "$1" in "$LINE_SLOT_A_PROCESS") echo "$LINE_SLOT_A_PORT" ;; "$LINE_SLOT_B_PROCESS") echo "$LINE_SLOT_B_PORT" ;; *) echo "$LINE_PORT" ;; esac; }
+
+line_ready() {
+  local url="$1" ping key warm
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    ping=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url/api/v1/ping" 2>/dev/null || echo "000")
+    [ "$ping" = "200" ] && break
+    sleep 5
+  done
+  [ "$ping" = "200" ] || { log "WARNING: new line slot at $url never answered ping"; return 1; }
+  key="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/pii-key-check" 2>/dev/null || true)"
+  [ "$key" = '{"ok":true,"source":"file"}' ] || { log "WARNING: new line slot at $url: PII key check said ${key:-nothing}"; return 1; }
+  # The catalog must be in memory before the first call reaches this slot.
+  warm="$(curl -s --max-time 180 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/zeytun-line-warm" 2>/dev/null || true)"
+  printf '%s\n' "$warm" | grep -Eq '"outcome":"(warm|not_configured)"' \
+    || { log "WARNING: new line slot at $url did not load the catalog: ${warm:-no response}"; return 1; }
+  log "Line slot at $url: ping 200, PII key from its env file, catalog $warm"
+}
+
+# Point nginx's station upstream at a port. Only where the station routes are
+# installed (scripts/nginx-install-station-routes.sh); elsewhere the station is
+# answered by the web app and there is nothing to switch.
+line_point_nginx() {
+  local port="$1" backup web_backup=""
+  [ -f "$LINE_NGINX_UPSTREAM" ] || return 0
+  grep -Eq '^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$' "$LINE_NGINX_UPSTREAM" \
+    || { log "WARNING: $LINE_NGINX_UPSTREAM has no primary server line to switch"; return 1; }
+  backup="$(mktemp /tmp/leaddrive-station-upstream.XXXXXX)" || return 1
+  cp -p "$LINE_NGINX_UPSTREAM" "$backup"
+  sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$|    server 127.0.0.1:${port} max_fails=1 fail_timeout=5s;|" "$LINE_NGINX_UPSTREAM"
+  # The web's backup follows the same slot: the old one is deleted below.
+  if [ -n "${WEB_NGINX_UPSTREAM:-}" ] && [ -f "$WEB_NGINX_UPSTREAM" ]; then
+    web_backup="$(mktemp /tmp/leaddrive-web-upstream.XXXXXX)" || { cp -p "$backup" "$LINE_NGINX_UPSTREAM"; rm -f "$backup"; return 1; }
+    cp -p "$WEB_NGINX_UPSTREAM" "$web_backup"
+    sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ backup; # line slot$|    server 127.0.0.1:${port} backup; # line slot|" "$WEB_NGINX_UPSTREAM"
+  fi
+  if ! nginx -t >/dev/null 2>&1; then
+    cp -p "$backup" "$LINE_NGINX_UPSTREAM"; rm -f "$backup"
+    if [ -n "$web_backup" ]; then cp -p "$web_backup" "$WEB_NGINX_UPSTREAM"; rm -f "$web_backup"; fi
+    log "WARNING: nginx -t refused the station upstream on :$port; restored"
+    return 1
+  fi
+  rm -f "$backup" ${web_backup:+"$web_backup"}
+  # A reload is graceful: old workers finish the requests they hold.
+  systemctl reload nginx || { log "WARNING: nginx reload failed"; return 1; }
+}
+
+LINE_STATUS="kept-previous"
+LINE_OLD_PROCESS=""
+for candidate in "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" "$LINE_PM2_PROCESS"; do
+  if pm2 describe "$candidate" 2>/dev/null | grep -q "status.*online"; then
+    active_port="$(cat "$LINE_ACTIVE_PORT_FILE" 2>/dev/null || true)"
+    # Two slots online after an interrupted deploy: the one in the state file.
+    if [ -z "$LINE_OLD_PROCESS" ] || [ "$(line_port_of "$candidate")" = "$active_port" ]; then
+      LINE_OLD_PROCESS="$candidate"
+    fi
+  fi
+done
+if [ "$LINE_OLD_PROCESS" = "$LINE_SLOT_A_PROCESS" ]; then LINE_NEW_SLOT=b; else LINE_NEW_SLOT=a; fi
+LINE_NEW_PROCESS="leaddrive-v2-line-$LINE_NEW_SLOT"
+LINE_NEW_PORT="$(line_port_of "$LINE_NEW_PROCESS")"
+LINE_NEW_DIR="$LINE_RELEASES_DIR/${DEPLOY_SHA:-unknown}-$LINE_NEW_SLOT"
+log "Line: replacing ${LINE_OLD_PROCESS:-nothing} with $LINE_NEW_PROCESS on :$LINE_NEW_PORT"
+
+# A leftover in the free slot (an interrupted deploy) is not answering anyone.
+pm2 delete "$LINE_NEW_PROCESS" 2>/dev/null || true
+fuser -k "$LINE_NEW_PORT/tcp" 2>/dev/null || true
+mkdir -p "$LINE_RELEASES_DIR" && chmod 0750 "$LINE_RELEASES_DIR"
+rm -rf -- "$LINE_NEW_DIR"
+if cp -al -- "$APP_DIR/.next/standalone" "$LINE_NEW_DIR" \
+   && LINE_RELEASE_DIR="$LINE_NEW_DIR" LINE_SLOT="$LINE_NEW_SLOT" \
+      pm2 start "$PM2_CONFIG" --only "$LINE_NEW_PROCESS" >/dev/null 2>&1 \
+   && line_ready "http://127.0.0.1:$LINE_NEW_PORT" \
+   && line_point_nginx "$LINE_NEW_PORT"; then
+  printf '%s\n' "$LINE_NEW_PORT" > "$LINE_ACTIVE_PORT_FILE.tmp" && mv -f "$LINE_ACTIVE_PORT_FILE.tmp" "$LINE_ACTIVE_PORT_FILE"
+  if [ -n "$LINE_OLD_PROCESS" ]; then
+    # Requests the old slot already holds finish there; nginx sends nothing new.
+    sleep 20
+    pm2 delete "$LINE_OLD_PROCESS" 2>/dev/null || true
+  fi
+  # The first form of the line (standalone, :3003) may also be running beside a
+  # slot — an older artifact's rollback starts it — answering nobody.
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+  LINE_STATUS="ok"
+  log "Line process: $LINE_NEW_PROCESS on :$LINE_NEW_PORT answers the station"
+  # Only the new release runs now; earlier copies are links nobody uses.
+  for dir in "$LINE_RELEASES_DIR"/*; do
+    [ -d "$dir" ] && [ "$dir" != "$LINE_NEW_DIR" ] && rm -rf -- "$dir"
+  done
+else
+  log "WARNING: new line release not admitted; ${LINE_OLD_PROCESS:-the web app (nothing else)} keeps answering the station"
+  pm2 delete "$LINE_NEW_PROCESS" 2>/dev/null || true
+  fuser -k "$LINE_NEW_PORT/tcp" 2>/dev/null || true
+  # The answering slot runs from its own, earlier copy: only this one goes.
+  rm -rf -- "$LINE_NEW_DIR"
+  [ -n "$LINE_OLD_PROCESS" ] || LINE_STATUS="fallback-to-web"
+fi
+pm2 save --force 2>/dev/null || fatal "cannot persist PM2 application state after the line handover"
+harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
 
 # ── Step 8: Install external singleton/outbox schedules ─────
 RESILIENCE_CRON_INSTALLER="$APP_DIR/.next/standalone/scripts/install-resilience-crons.sh"
@@ -9164,5 +9543,5 @@ rm -f "$DEPLOY_TAR" /tmp/server-deploy.sh
 # ── Step 11: Deploy summary (greppable single-line audit row) ──
 COMMIT_SHORT="${DEPLOY_SHA:0:7}"
 PRISMA_ENGINE_NAME=$(ls $PRISMA_ENGINE_PATTERN 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "missing")
-log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE"
+log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS line=$LINE_STATUS"
 log "Deploy complete! App running on $HEALTH_URL"

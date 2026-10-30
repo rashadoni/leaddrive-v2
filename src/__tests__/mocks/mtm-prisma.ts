@@ -199,6 +199,7 @@ export interface MtmPrismaMock {
   mtmAttendanceRule: ModelMock
   mtmAttendanceExplanation: ModelMock
   mtmAttendanceBranch: ModelMock
+  mtmAttendanceBranchScreen: ModelMock
   mtmAttendanceBranchRevision: ModelMock
   mtmAttendancePrimaryBranchRevision: ModelMock
   mtmAttendanceLocationPolicy: ModelMock
@@ -275,11 +276,13 @@ export interface MtmPrismaMock {
   // Region/team hierarchy (M4-5)
   mtmRegion: ModelMock
   mtmTeam: ModelMock
+  mtmDepartment: ModelMock
   // Onboarding (M5+)
   mtmOnboarding: ModelMock
   mtmCustomerCreateRequest: ModelMock
   mtmCustomerLocationRequest: ModelMock
   mtmJointFieldSession: ModelMock
+  mtmJointVisitPlan: ModelMock
   mtmVisitEvaluation: ModelMock
   mtmContactCreateRequest: ModelMock
   mtmDeviceToken: ModelMock
@@ -415,6 +418,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendanceRule: makeModel(),
     mtmAttendanceExplanation: makeModel(),
     mtmAttendanceBranch: makeModel(),
+    mtmAttendanceBranchScreen: makeModel(),
     mtmAttendanceBranchRevision: makeModel(),
     mtmAttendancePrimaryBranchRevision: makeModel(),
     mtmAttendanceLocationPolicy: makeModel(),
@@ -490,10 +494,12 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceTimesheetApproval: makeModel(),
     mtmRegion: makeModel(),
     mtmTeam: makeModel(),
+    mtmDepartment: makeModel(),
     mtmOnboarding: makeModel(),
     mtmCustomerCreateRequest: makeModel(),
     mtmCustomerLocationRequest: makeModel(),
     mtmJointFieldSession: makeModel(),
+    mtmJointVisitPlan: makeModel(),
     mtmVisitEvaluation: makeModel(),
     mtmContactCreateRequest: makeModel(),
     mtmDeviceToken: makeModel(),

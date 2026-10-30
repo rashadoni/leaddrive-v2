@@ -18,12 +18,18 @@ describe("dashboard AI launcher placement", () => {
     expect(layout).toContain("showFloatingLauncher={showFloatingVoiceOrb}")
     expect(layout).toContain("inlineLauncherAvailable={contentSearchVisible}")
     expect(layout).toContain("{contentSearchVisible && <ContentSearchBar compact={compactSupportSearch} />}")
-    // The dashboard hides the shared bar only while its hero is showing a Da
-    // Vinci field. Pinned as two facts rather than one literal line: the
-    // leaderboard is unconditional, the dashboard is not.
+    // The shell still guards the retired bar through the central visibility
+    // policy. Existing search entry points remain mounted independently.
+    expect(layout).toContain("<CommandSearch />")
+    expect(source("src/components/dashboard/dashboard-welcome.tsx")).toContain('className="dashboard-welcome-command"')
     expect(layout).toContain('pathname.startsWith("/leaderboard")')
     expect(layout).toContain("isDashboardHome && heroCommandVisible")
     expect(layout).toContain("heroCommandVisible: isDashboardHome && heroCommandVisible")
+    // While the dashboard loads, its skeleton holds the hero field; saying
+    // "no field" then flashed the orange shared bar on every open.
+    const dashboardPage = source("src/app/(dashboard)/dashboard/page.tsx")
+    expect(dashboardPage).toContain("setHeroCommandVisible(loading || showGreeting)")
+    expect(dashboardPage).not.toContain("setHeroCommandVisible(showGreeting && !loading)")
     expect(panel).toContain("showFloatingLauncher = true")
     expect(panel).toContain("!open && showFloatingLauncher")
     expect(voice).toContain("showFloatingLauncher = true")
@@ -84,8 +90,9 @@ describe("dashboard AI launcher placement", () => {
     expect(status).toContain("createPortal(")
     expect(status).toContain('VOICE_STATUS_LAYER_ID = "dashboard-voice-status-layer"')
     expect(status).toContain("fixed z-50")
-    expect(layout).toContain('<div id="dashboard-voice-status-layer" />')
-    expect(layout.indexOf('<div id="dashboard-voice-status-layer" />')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
+    const statusLayer = layout.match(/<div\b[^>]*\bid="dashboard-voice-status-layer"[^>]*\/>/)?.[0]
+    expect(statusLayer).toContain('data-crm-workspace=""')
+    expect(layout.indexOf('id="dashboard-voice-status-layer"')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
     expect(voiceConsole).toContain("<VoiceInlineStatus")
     expect(voice).toContain("<VoiceInlineStatus")
     expect(voiceConsole).not.toContain("absolute right-0 top-full z-20")
@@ -104,12 +111,8 @@ describe("dashboard AI launcher placement", () => {
     expect(panel).toContain("aria-label={uiText.title}")
   })
 
-  // Таблица переписана после решения владельца убрать оранжевую строку и
-  // плавающую кнопку со всех внутренних страниц. Теперь у строки ровно одно
-  // место — главная с выключенным приветствием, — а плавающей кнопки нет
-  // нигде. Голосовой шар не трогали: другая модальность, закрыт списком
-  // пилота. На MTM он снова плавает, потому что встроенная посадка держалась
-  // на слоте внутри строки поиска, а строки там больше нет.
+  // Дублирующая строка удалена в том числе с главной. Проверяем также
+  // загрузку и выключенное приветствие, сохраняя отдельную voice-политику.
   it.each([
     { name: "MTM root", pathname: "/mtm", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
     { name: "MTM workflow", pathname: "/mtm/routes", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
@@ -118,9 +121,8 @@ describe("dashboard AI launcher placement", () => {
     { name: "leaderboard", pathname: "/leaderboard", childrenReady: true, moduleBlocked: false, hideContentSearch: true, heroCommandVisible: false, visible: false, ai: false, orb: true },
     // Приветствие включено: поле в нём и есть вход, строка не нужна.
     { name: "dashboard with hero", pathname: "/dashboard", childrenReady: true, moduleBlocked: false, hideContentSearch: true, heroCommandVisible: true, visible: false, ai: false, orb: true },
-    // Единственный случай, когда строка появляется: тенант выключил
-    // приветствие, и без строки на главной не осталось бы входа из потока.
-    { name: "dashboard without hero", pathname: "/dashboard", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: true, ai: false, orb: true },
+    { name: "dashboard without hero", pathname: "/dashboard", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
+    { name: "hydrating dashboard", pathname: "/dashboard", childrenReady: false, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
     { name: "blocked dashboard", pathname: "/dashboard", childrenReady: true, moduleBlocked: true, hideContentSearch: true, heroCommandVisible: true, visible: false, ai: false, orb: true },
     // Обычная внутренняя страница — то, на что жаловался владелец: ни строки,
     // ни кнопки.
@@ -147,11 +149,15 @@ describe("dashboard AI launcher placement", () => {
     }
   })
 
-  it("keeps the shared search bar off every page except the dashboard", () => {
-    for (const pathname of ["/customers", "/deals", "/mtm", "/leaderboard", "/invoices", "/tickets"]) {
-      expect(
-        dashboardAssistantVisibility({ pathname, childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false }).contentSearchVisible,
-      ).toBe(false)
+  it("keeps the retired search bar absent throughout loading and hero changes", () => {
+    for (const pathname of ["/dashboard", "/customers", "/deals", "/mtm", "/leaderboard", "/invoices", "/tickets"]) {
+      for (const childrenReady of [false, true]) {
+        for (const heroCommandVisible of [false, true]) {
+          expect(
+            dashboardAssistantVisibility({ pathname, childrenReady, moduleBlocked: false, hideContentSearch: heroCommandVisible, heroCommandVisible }).contentSearchVisible,
+          ).toBe(false)
+        }
+      }
     }
   })
 })

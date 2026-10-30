@@ -60,7 +60,7 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs() })
 
 describe("shared disposable Fund fixture boundary", () => {
-  it("keeps the unscoped test fixture reachable only by its tests and admitted combined/full-CDC drills", () => {
+  it("keeps the unscoped test fixture reachable only by its tests and admitted combined/full-CDC/cluster drills", () => {
     const roots = ["src", "scripts", "apps", "services", "workers", "telegram-bridge", "ops", "deploy", "tests", ".github"]
     const files = [...roots.flatMap(sourceFiles), ...readdirSync(".", { withFileTypes: true })
       .filter(entry => entry.isFile() && /\.[cm]?[jt]sx?$/.test(entry.name)).map(entry => resolve(entry.name))]
@@ -70,6 +70,12 @@ describe("shared disposable Fund fixture boundary", () => {
       return source.includes("fund-shadow-postgres") ? fixtureImports(file, source) : []
     }).map(file => relative(process.cwd(), file))
     expect([...new Set(importers)].sort()).toEqual([
+      // Operator-only drill on the real cluster; opt-in LD_KAFKA_FUND_DRILL=1,
+      // its database is the disposable ld-drill-pg created by fund-drill.sh.
+      "scripts/event-platform/cluster/fund-drill.ts",
+      // CI gate of the pilot runner's node-postgres adapter and provision-role.sql,
+      // on the same disposable loopback service as the other Postgres gates.
+      "scripts/event-platform/fund-shadow/pilot.integration.ts",
       "scripts/event-platform/test-broker-postgres.ts",
       "scripts/event-platform/test-cdc-fund-postgres.ts",
       "src/__tests__/event-platform-fund-shadow-fixture.test.ts",

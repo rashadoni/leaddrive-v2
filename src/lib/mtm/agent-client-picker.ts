@@ -22,6 +22,8 @@
  * next to each other: the rows run by institution, then by name.
  */
 
+import { MTM_CONTACT_CLASS_VALUES } from "@/lib/mtm/contact-classes"
+
 export const PICKER_NONE = "__none__"
 
 export type PickerInstitution = {
@@ -46,7 +48,8 @@ export type PickerContactRow = {
   agents: Array<{ agentId: string; role: string; name: string }>
 }
 
-export type PickerSelection = { specialties: string[]; cities: string[]; districts: string[] }
+/** `classes`: the class letters (A, B, VIP) — the fourth step, after the place. */
+export type PickerSelection = { specialties: string[]; cities: string[]; districts: string[]; classes?: string[] }
 
 export type PickerOption = { value: string; label: string | null; count: number }
 
@@ -68,6 +71,8 @@ export type AgentClientPicker = {
   specialties: PickerOption[]
   cities: PickerOption[]
   districts: PickerOption[]
+  /** Every class the tenant grades with, in reading order, with how many hold it here. */
+  classes: PickerOption[]
   contacts: PickerContact[]
   /** How many institutions the listed doctors work at. */
   institutions: number
@@ -107,7 +112,27 @@ function facet(values: Array<string | null>): PickerOption[] {
 
 const chosen = (selected: string[], value: string | null) => selected.length === 0 || selected.includes(keyOf(value))
 
-export function buildAgentClientPicker(rows: readonly PickerContactRow[], selection: PickerSelection, agentId: string | null): AgentClientPicker {
+/**
+ * The class step offers every class the tenant grades with, «0» included (owner,
+ * 2026-10-21: «я не заметил категории клиентов»), in the order the tenant reads
+ * them, and any other class a listed doctor still holds after them.
+ */
+function classFacet(values: Array<string | null>, enabled: readonly string[]): PickerOption[] {
+  const counts = new Map<string, number>()
+  for (const value of values) {
+    const key = value ?? PICKER_NONE
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const reading = (key: string) => {
+    const index = (MTM_CONTACT_CLASS_VALUES as readonly string[]).indexOf(key)
+    return index === -1 ? MTM_CONTACT_CLASS_VALUES.length : index
+  }
+  const others = [...counts.keys()].filter(key => !enabled.includes(key)).sort((a, b) => reading(a) - reading(b) || a.localeCompare(b))
+  const keys = [...enabled, ...others]
+  return keys.map(key => ({ value: key, label: key === PICKER_NONE ? null : key, count: counts.get(key) ?? 0 }))
+}
+
+export function buildAgentClientPicker(rows: readonly PickerContactRow[], selection: PickerSelection, agentId: string | null, enabledClasses: readonly string[] = []): AgentClientPicker {
   const select = {
     specialties: selection.specialties.map(value => value === PICKER_NONE ? value : keyOf(clean(value))),
     cities: selection.cities.map(value => value === PICKER_NONE ? value : keyOf(clean(value))),
@@ -116,7 +141,9 @@ export function buildAgentClientPicker(rows: readonly PickerContactRow[], select
   const placed = rows.map(row => ({ row, specialty: clean(row.specialtyName), ...placeOf(row.institution) }))
   const bySpecialty = placed.filter(item => chosen(select.specialties, item.specialty))
   const byCity = bySpecialty.filter(item => chosen(select.cities, item.city))
-  const matching = byCity.filter(item => chosen(select.districts, item.district))
+  const byDistrict = byCity.filter(item => chosen(select.districts, item.district))
+  const classes = (selection.classes ?? []).map(value => clean(value) ?? PICKER_NONE)
+  const matching = byDistrict.filter(item => classes.length === 0 || classes.includes(clean(item.row.category) ?? PICKER_NONE))
 
   const contacts: PickerContact[] = matching
     .map(item => {
@@ -141,6 +168,7 @@ export function buildAgentClientPicker(rows: readonly PickerContactRow[], select
     specialties: facet(placed.map(item => item.specialty)),
     cities: facet(bySpecialty.map(item => item.city)),
     districts: facet(byCity.map(item => item.district)),
+    classes: classFacet(byDistrict.map(item => clean(item.row.category)), enabledClasses),
     contacts,
     institutions: new Set(contacts.flatMap(contact => (contact.place.institution ? [contact.place.institution.id] : []))).size,
     matching: contacts.length,

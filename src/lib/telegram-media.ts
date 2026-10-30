@@ -2,6 +2,7 @@ import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 import crypto from "crypto"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 /**
  * Telegram inbound media ingestion (Slice 2).
@@ -72,7 +73,7 @@ export async function fetchAndStoreTelegramMedia(
     // from channel configuration, not request path input.
     const rootDir = path.join(runtimePublicUploadDirectory("telegram"), organizationId)
     await mkdir(rootDir, { recursive: true })
-    await writeFile(path.join(rootDir, storedName), buf)
+    await writeFile(path.join(rootDir, storedName), sealTenantFile(organizationId, buf))
 
     return { url: `/${path.posix.join(baseDir, storedName)}`, mime }
   } catch {

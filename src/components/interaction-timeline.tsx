@@ -117,10 +117,10 @@ export function InteractionTimeline({ entity, id, orgId }: { entity: "contact" |
         const subtitle = subtitleFor(e)
         return (
           <div key={e.id} className="relative">
-            <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-zinc-200 dark:border-zinc-700">
+            <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-border">
               <Icon className="h-3 w-3 text-muted-foreground" />
             </div>
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium flex items-center gap-1.5 min-w-0">
                   {DirIcon && <DirIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />}

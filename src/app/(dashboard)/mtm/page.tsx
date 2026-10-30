@@ -153,7 +153,7 @@ export default function MtmDashboardPage() {
         // the cards on every open promised a block that then never came.
         <span className="sr-only" role="status">{td("announcementLoading")}</span>
       ) : operationalError ? (
-        <section className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+        <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{td("announcementLoadFailed")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{td("announcementLoadFailedHint")}</p>
@@ -163,7 +163,7 @@ export default function MtmDashboardPage() {
           </Button>
         </section>
       ) : (operational?.announcement || operational?.support.email || operational?.support.phone) ? (
-        <section className="grid overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="grid overflow-hidden rounded-2xl border border-border bg-card lg:grid-cols-[minmax(0,1fr)_320px]">
           {operational.announcement ? (
             <div className="p-4 lg:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -181,7 +181,7 @@ export default function MtmDashboardPage() {
                   </p>
                 </div>
                 {operational.announcement.acknowledgedAt ? (
-                  <span className="inline-flex min-h-10 border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 shrink-0 items-center gap-2 px-3 text-xs font-medium">
+                  <span className="inline-flex min-h-10 border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 shrink-0 items-center gap-2 px-3 text-xs font-medium">
                     <Check className="h-4 w-4" />{td("announcementAcknowledged")}
                   </span>
                 ) : (
@@ -193,7 +193,7 @@ export default function MtmDashboardPage() {
             </div>
           ) : <div className="hidden lg:block" />}
           {(operational.support.email || operational.support.phone) ? (
-            <aside className="border-t border-zinc-200 p-4 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:p-5">
+            <aside className="border-t border-border p-4 lg:border-l lg:border-t-0 lg:p-5">
               <div className="flex items-center gap-2 text-sm font-semibold"><LifeBuoy className="h-4 w-4 text-primary" />{td("supportTitle")}</div>
               <p className="mt-1 text-xs text-muted-foreground">{td("supportHint")}</p>
               <div className="mt-3 space-y-2 text-sm">

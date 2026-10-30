@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { missingVoipFields, normalizeVoipSettings } from "@/lib/voip/configs"
 import {
   composeVoiceAgentInstruction,
@@ -16,6 +17,7 @@ import {
   PROMPT_SERVED_HASH,
 } from "@/lib/demo-center/call-prompt"
 import { claimConnectingDemoCall } from "@/lib/demo-center/call-prompt-match"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -55,16 +57,18 @@ function authorized(request: NextRequest): boolean {
  * calls. Each per-call answer is recorded on the call as a call event, which
  * is also how the demo knows the PBX has started asking per call at all.
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID
-  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
   const callId = request.nextUrl.searchParams.get("callId")?.trim() || null
   // The id is the UUID the CRM minted before originating; anything else is a
   // caller error, not a call to look up.
   if (callId !== null && !/^[0-9a-fA-F-]{36}$/.test(callId)) {
     return NextResponse.json({ error: "callId must be the call's UUID" }, { status: 400 })
   }
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId }))?.organizationId
+  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
 
   const configs = await runWithTenant(organizationId, () => prisma.channelConfig.findMany({
     where: { organizationId, channelType: "voip", isActive: true },
@@ -193,3 +197,5 @@ export async function GET(request: NextRequest) {
     { headers: { "Cache-Control": "no-store" } },
   )
 }
+
+export const GET = withStationTiming("runtime-config", handleGet)

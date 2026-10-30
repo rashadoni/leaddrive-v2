@@ -17,6 +17,8 @@ import { createRoot, type Root } from "react-dom/client"
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
 const db = vi.hoisted(() => ({ settings: {} as Record<string, unknown> }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -74,6 +76,7 @@ const SETTINGS_PATH = "/api/finance/payment-orders/notification-settings"
 
 let container: HTMLDivElement
 let root: Root
+let initialSettingsRequest: Promise<Response> | undefined
 let telegram: { bot: string; chat: string }[] = []
 let telegramAnswer: (() => Response) | null = null
 
@@ -116,6 +119,7 @@ beforeEach(async () => {
   db.settings = {}
   telegram = []
   telegramAnswer = null
+  initialSettingsRequest = undefined
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     const sendMessage = url.match(/^https:\/\/api\.telegram\.org\/bot([^/]+)\/sendMessage$/)
@@ -128,7 +132,11 @@ beforeEach(async () => {
       headers: init?.headers as HeadersInit,
       ...(typeof init?.body === "string" ? { body: init.body } : {}),
     })
-    if (url === SETTINGS_PATH) return request.method === "PUT" ? PUT(request) : GET(request)
+    if (url === SETTINGS_PATH) {
+      if (request.method === "PUT") return PUT(request)
+      initialSettingsRequest = GET(request)
+      return initialSettingsRequest
+    }
     if (url === `${SETTINGS_PATH}/test`) return SEND_TEST(request)
     throw new Error(`unexpected request to ${url}`)
   })
@@ -136,6 +144,11 @@ beforeEach(async () => {
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => { root.render(createElement(FinanceNotificationsPage)) })
+  await settle()
+  // A fixed number of event-loop turns does not await the cold handler's
+  // lazy server dependencies. Read the loaded page, never its loading state.
+  expect(initialSettingsRequest).toBeDefined()
+  await act(async () => { await initialSettingsRequest })
   await settle()
 })
 

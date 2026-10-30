@@ -298,7 +298,7 @@ function DetailStatusBadge({ status, label, hint }: { status: string; label: str
 }
 
 function Metric({ label, value, note, accent, hint }: { label: string; value: string; note?: string; accent?: boolean; hint?: string }) {
-  return <div className={cn("min-w-0 border p-3 sm:p-4", accent ? "border-l-4 border-zinc-200/70 border-l-primary bg-card dark:border-zinc-800" : "border-zinc-200/70 bg-card dark:border-zinc-800")}><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p><p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>{note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}</div>
+  return <div className={cn("min-w-0 border p-3 sm:p-4", accent ? "border-l-4 border-border border-l-primary bg-card" : "border-border bg-card")}><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p><p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>{note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}</div>
 }
 
 export function PharmacyPromotionDetail({ executionId }: { executionId: string }) {
@@ -630,13 +630,13 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
         </div>
       </header>
 
-      {error ? <div className="flex flex-col gap-3 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{t("detailLoadFailed")}: {error}</span><Button className="min-h-11 shrink-0" variant="outline" onClick={() => setRefresh((value) => value + 1)}>{t("retry")}</Button></div> : null}
+      {error ? <div className="flex flex-col gap-3 border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{t("detailLoadFailed")}: {error}</span><Button className="min-h-11 shrink-0" variant="outline" onClick={() => setRefresh((value) => value + 1)}>{t("retry")}</Button></div> : null}
 
       <section
         className={cn(
           "border p-4 sm:p-5",
           guidance.canSubmit && !guidance.ready
-            ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
+            ? "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
             : "border-primary/25 bg-primary/[0.035]",
         )}
         aria-labelledby="mtm-pharmacy-promotion-next-step-title"
@@ -720,7 +720,7 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,.75fr)]">
         <div className="space-y-5">
-          <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
+          <section className="border border-border bg-card">
             <header className="flex items-center gap-2 border-b px-4 py-3"><Building2 className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("pharmacyAndExecution")}</h2></header>
             <dl className="grid gap-x-6 gap-y-3 p-4 text-sm sm:grid-cols-2">
               <div><dt className="text-xs text-muted-foreground">{t("pharmacy")}</dt><dd className="mt-1 font-medium">{detail.target.customer.name}</dd><dd className="text-xs text-muted-foreground">{detail.target.customer.code ? t("customerCodeValue", { value: detail.target.customer.code }) : t("noRegistration")}</dd></div>
@@ -732,13 +732,13 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
             </dl>
           </section>
 
-          <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
+          <section className="border border-border bg-card">
             <header className="flex items-center justify-between gap-3 border-b px-4 py-3"><span className="flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("evidence")}</h2></span><HintValue text={t("hint.detailEvidenceCount")}><Badge variant="outline">{detail.evidence.length}</Badge></HintValue></header>
             {detail.permissions?.canSubmit && detail.status === "DRAFT" ? <div className="border-b bg-muted/20 p-4"><div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(180px,.6fr)_auto] sm:items-end"><label className="space-y-1 text-sm font-medium"><span>{t("evidenceFile")}</span><input key={evidenceInputKey} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip" disabled={evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} className="block min-h-11 w-full cursor-pointer border bg-background px-3 py-2 text-sm file:mr-3 file:border-0 file:bg-transparent file:font-medium" onChange={(event) => { setEvidenceFile(event.target.files?.[0] ?? null); evidenceIdentityRef.current = null; setEvidenceError(""); setEvidenceMessage("") }} /></label><label className="space-y-1 text-sm font-medium"><span>{t("evidenceTitle")}</span><Input value={evidenceTitle} maxLength={200} disabled={evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} className="min-h-11" onChange={(event) => setEvidenceTitle(event.target.value)} /></label><Hint wrap text={evidenceUploading || loading ? null : outboxEntries.length > 0 || outboxState === "syncing" ? t("hint.detailSubmitQueued") : !evidenceFile ? t("hint.detailEvidenceChooseFile") : t("hint.detailEvidenceUpload")}><Button className="min-h-11" disabled={!evidenceFile || evidenceUploading || loading || Boolean(error) || outboxEntries.length > 0 || outboxState === "syncing" || outboxState === "synced"} onClick={() => void uploadEvidence()}>{evidenceUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <FileCheck2 className="mr-2 h-4 w-4" />}{t("evidenceUpload")}</Button></Hint></div><p className="mt-2 text-xs text-muted-foreground">{t("evidenceFileHint")}</p><div className="mt-2 min-h-5 text-xs" aria-live="polite">{evidenceError ? <p className="text-destructive">{evidenceError}</p> : evidenceMessage ? <p className="text-emerald-700 dark:text-emerald-300">{evidenceMessage}</p> : null}</div></div> : null}
             {detail.evidence.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("noEvidence")}</p> : <div className="divide-y">{detail.evidence.map((item) => <div key={item.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="break-words font-medium">{item.document?.title || item.document?.fileName || (t.has(`evidenceKind.${item.kind}`) ? t(`evidenceKind.${item.kind}`) : t("unknownEvidence"))}</p><p className="mt-1 break-all text-xs text-muted-foreground">{date(item.capturedAt, locale)} · <HintValue text={t("hint.detailEvidenceHash")}>SHA-256 {item.contentHash.slice(0, 12)}…</HintValue> · {item.submittedByAgent?.name || "—"}</p></div>{item.downloadUrl ? <Button className="min-h-11 shrink-0 lg:min-h-8" asChild variant="outline" size="sm"><a href={item.downloadUrl}><Download className="mr-2 h-4 w-4" />{t("downloadEvidence")}</a></Button> : null}</div>)}</div>}
           </section>
 
-          <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
+          <section className="border border-border bg-card">
             <header className="flex items-center gap-2 border-b px-4 py-3"><History className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("auditTimeline")}</h2></header>
             {detail.events.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("noEvents")}</p> : <div className="relative divide-y">
               {detail.events.map((event) => <div key={event.id} className="grid gap-2 px-4 py-3 sm:grid-cols-[150px_1fr_auto]"><span className="text-xs text-muted-foreground">{date(event.occurredAt, locale)}</span><div><p className="text-sm font-medium">{t.has(`event.${event.eventType}`) ? t(`event.${event.eventType}`) : t("unknownEvent")}</p><p className="text-xs text-muted-foreground">{stateLabel(event.fromState)} → {stateLabel(event.toState)}</p></div><Clock3 className="hidden h-4 w-4 text-muted-foreground sm:block" /></div>)}
@@ -747,7 +747,7 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
         </div>
 
         <aside className="space-y-5">
-          <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
+          <section className="border border-border bg-card">
             <header className="flex items-center gap-2 border-b px-4 py-3"><ShieldCheck className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("governance")}</h2></header>
             <dl className="space-y-4 p-4 text-sm">
               <div><dt className="text-xs text-muted-foreground"><HintValue text={t("hint.detailFormula")}>{t("formula")}</HintValue></dt><dd className="mt-1 font-medium">{detail.formula.code} · v{detail.formula.version}</dd><dd className="break-all font-mono text-[10px] text-muted-foreground">{detail.formula.definitionHash}</dd></div>
@@ -755,15 +755,15 @@ export function PharmacyPromotionDetail({ executionId }: { executionId: string }
               <div><dt className="text-xs text-muted-foreground"><HintValue text={t("hint.detailEligibility")}>{t("eligibilityLabel")}</HintValue></dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`eligibilityStatus.${detail.eligibility.status}`) ? t(`eligibilityStatus.${detail.eligibility.status}`) : t("unknownStatus")}</span>{detail.eligibility.overridden ? <HintValue text={detail.eligibility.overrideReason ? t("hint.overrideReason", { reason: detail.eligibility.overrideReason }) : t("hint.override")}><Badge variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}</dd>{detail.eligibility.overrideReason ? <dd className="mt-1 break-words text-xs text-muted-foreground">{t("eligibilityOverrideReason", { reason: detail.eligibility.overrideReason })}</dd> : null}</div>
               <div><dt className="text-xs text-muted-foreground">{t("source")}</dt><dd className="mt-1 flex flex-wrap items-center gap-2 font-medium"><span>{t.has(`sourceSystem.${detail.source.system}`) ? t(`sourceSystem.${detail.source.system}`) : t("unknownSource")}</span>{detail.source.freshness ? <DetailStatusBadge status={detail.source.freshness.state} label={t.has(`freshness.${detail.source.freshness.state}`) ? t(`freshness.${detail.source.freshness.state}`) : t("freshness.UNKNOWN")} hint={freshnessHint(detail.source.freshness.state)} /> : null}</dd><dd className="text-xs text-muted-foreground">{detail.source.reference || "—"}<br />{t("sourceObservedAt", { date: date(detail.source.observedAt, locale) })}<br />{t("sourceReceivedAt", { date: date(detail.source.receivedAt, locale) })}{detail.source.freshness?.ageMinutes !== null && detail.source.freshness?.ageMinutes !== undefined ? <><br /><HintValue text={t("hint.detailFreshnessAge")}>{t("freshnessAge", { minutes: detail.source.freshness.ageMinutes })}</HintValue></> : null}</dd></div>
             </dl>
-            {detail.policy && !detail.policy.ready ? <div className="m-4 mt-0 flex gap-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-xs"><XCircle className="h-4 w-4 shrink-0" /><span>{detail.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
+            {detail.policy && !detail.policy.ready ? <div className="m-4 mt-0 flex gap-2 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-xs"><XCircle className="h-4 w-4 shrink-0" /><span>{detail.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
           </section>
 
-          <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
+          <section className="border border-border bg-card">
             <header className="flex items-center gap-2 border-b px-4 py-3"><UserRound className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("reviews")}</h2></header>
             {detail.reviews.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("noReviews")}</p> : <div className="divide-y">{detail.reviews.map((review) => <div key={review.id} className="p-4"><div className="flex flex-wrap items-center justify-between gap-2"><DetailStatusBadge status={review.decision} label={`${review.level} · ${t.has(`decision.${review.decision}`) ? t(`decision.${review.decision}`) : t("unknownDecision")}`} /><span className="text-xs text-muted-foreground">{date(review.decidedAt, locale)}</span></div><p className="mt-2 text-sm font-medium">{review.reviewerNameSnapshot}</p>{review.reason ? <p className="mt-1 break-words text-sm text-muted-foreground">{review.reason}</p> : null}<p className="mt-2 text-xs tabular-nums text-muted-foreground"><HintValue text={t("hint.detailReviewPoints")}>{t("factShort")} {points(review.factPointsPreview, locale)} · {t("rewardShort")} {points(review.rewardPointsPreview, locale)} · Δ {points(review.differencePointsPreview, locale)}</HintValue></p></div>)}</div>}
           </section>
 
-          <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
+          <section className="border border-border bg-card">
             <header className="flex items-center gap-2 border-b px-4 py-3"><Calculator className="h-4 w-4 text-primary" /><h2 className="font-semibold"><HintValue text={t("hint.detailLedger")}>{t("ledger")}</HintValue></h2></header>
             {detail.ledger.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("ledgerEmpty")}</p> : <div className="divide-y">{detail.ledger.map((entry) => { const sign = decimalSign(entry.delta); return <div key={entry.id} className="flex items-start justify-between gap-3 p-4"><div><p className="text-sm font-medium">{t.has(`ledgerBucket.${entry.bucket}`) ? t(`ledgerBucket.${entry.bucket}`) : t("unknownLedgerBucket")}</p><p className="mt-1 text-xs text-muted-foreground">{t.has(`ledgerEntry.${entry.entryType}`) ? t(`ledgerEntry.${entry.entryType}`) : t("unknownLedgerEntry")} · {date(entry.occurredAt, locale)}</p>{entry.reason ? <p className="mt-1 break-words text-xs text-muted-foreground">{entry.reason}</p> : null}</div><span className={cn("font-semibold tabular-nums", sign < 0 ? "text-red-600" : sign > 0 ? "text-emerald-600" : "text-muted-foreground")}>{sign > 0 ? "+" : ""}{points(entry.delta, locale)}</span></div> })}</div>}
           </section>

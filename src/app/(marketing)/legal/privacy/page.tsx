@@ -2,7 +2,7 @@ import { AnimateIn } from "@/components/marketing/animate-in"
 import { LegalDocumentNav, legalLocale } from "@/components/marketing/legal-document-nav"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME, COMPANY_PRIVACY_EMAIL, COMPANY_REGISTRATION_NUMBER } from "@/lib/constants"
+import { COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME, COMPANY_PRIVACY_EMAIL } from "@/lib/constants"
 import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
@@ -139,12 +139,29 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
               <p className="mt-3">{t("p9_note")}</p>
             </section>
 
+            <section id="e-qaime-extension">
+              {/* The Chrome Web Store asks for a policy that describes the
+                  extension itself: what it reads, where it sends it, and that
+                  the tax portal's pass stays in the user's browser. */}
+              <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("sExt")}</h2>
+              <p>{t("pExt")}</p>
+              <ul className="list-disc pl-5 space-y-1 mt-2">
+                <li>{t("pExt_l1")}</li>
+                <li>{t("pExt_l2")}</li>
+                <li>{t("pExt_l3")}</li>
+                <li>{t("pExt_l4")}</li>
+              </ul>
+              <p className="mt-3">{t("pExt_note")}</p>
+            </section>
+
             <section>
               <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("s10")}</h2>
               <p>{t("p10")}</p>
+              {/* Owner, 2026-10-26: no VÖEN here («убери VÖEN…», then «адрес тоже
+                  оставь») — the operator's name and address stay, from the constants. */}
               <p className="mt-2">
                 <a href={`mailto:${COMPANY_PRIVACY_EMAIL}`} className="underline hover:opacity-70">{COMPANY_PRIVACY_EMAIL}</a><br />
-                {COMPANY_LEGAL_NAME}, {COMPANY_REGISTRATION_NUMBER}<br />
+                {COMPANY_LEGAL_NAME}<br />
                 {COMPANY_LEGAL_ADDRESS}
               </p>
             </section>

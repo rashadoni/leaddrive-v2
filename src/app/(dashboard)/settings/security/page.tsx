@@ -326,7 +326,7 @@ export default function SecuritySettingsPage() {
             </p>
 
             <div className="flex justify-center">
-              <div className="bg-card p-4 rounded-xl shadow-inner border border-zinc-200 dark:border-zinc-700">
+              <div className="bg-card p-4 rounded-xl shadow-inner border border-border">
                 {qrCode && <Image src={qrCode} alt={c.qrAlt} width={192} height={192} unoptimized />}
               </div>
             </div>
@@ -350,7 +350,7 @@ export default function SecuritySettingsPage() {
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="000000"
-                className="w-full text-center text-2xl font-mono tracking-[0.5em] border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full text-center text-2xl font-mono tracking-[0.5em] border border-input rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
                 maxLength={6}
                 autoFocus
               />
@@ -429,7 +429,7 @@ export default function SecuritySettingsPage() {
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="000000"
-              className="w-full text-center text-2xl font-mono tracking-[0.5em] border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full text-center text-2xl font-mono tracking-[0.5em] border border-input rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-red-500"
               maxLength={6}
               autoFocus
             />
@@ -485,7 +485,7 @@ export default function SecuritySettingsPage() {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-sm font-semibold text-green-800 mb-1">{c.keyCreated}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      <code className="text-xs font-mono bg-card rounded px-2 py-1.5 flex-1 overflow-hidden text-ellipsis border border-zinc-200 dark:border-zinc-700">
+                      <code className="text-xs font-mono bg-card rounded px-2 py-1.5 flex-1 overflow-hidden text-ellipsis border border-border">
                         {generatedKey}
                       </code>
                       <Button variant="outline" size="sm" onClick={() => {
@@ -545,14 +545,14 @@ export default function SecuritySettingsPage() {
                               <button
                                 type="button"
                                 onClick={() => toggle(readScope)}
-                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${readOn ? "bg-primary text-primary-foreground border-primary" : "bg-muted/50 hover:bg-muted"}`}
+                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${readOn ? "crm-choice-selected  " : "bg-muted/50 hover:bg-muted"}`}
                               >
                                 {c.read}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => toggle(writeScope)}
-                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${writeOn ? "bg-primary text-primary-foreground border-primary" : "bg-muted/50 hover:bg-muted"}`}
+                                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${writeOn ? "crm-choice-selected  " : "bg-muted/50 hover:bg-muted"}`}
                               >
                                 {c.write}
                               </button>
@@ -564,7 +564,7 @@ export default function SecuritySettingsPage() {
                   </div>
                   <div>
                     <Label className="text-xs">{ta("expiresLabel")}</Label>
-                    <select value={newKeyExpiry} onChange={(e) => setNewKeyExpiry(e.target.value)} className="mt-1 w-full border border-zinc-200 dark:border-zinc-700 rounded-md p-2 text-sm">
+                    <select value={newKeyExpiry} onChange={(e) => setNewKeyExpiry(e.target.value)} className="mt-1 w-full border border-input rounded-md p-2 text-sm">
                       <option value="30">{ta("thirtyDays")}</option>
                       <option value="90">{ta("ninetyDays")}</option>
                       <option value="365">{ta("oneYear")}</option>

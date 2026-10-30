@@ -10,6 +10,7 @@ import { CrmCommandError } from "@/lib/crm-commands/errors"
 import { clearDeletedMentionRefs } from "@/lib/social/mention-refs"
 import { resolveRelated } from "@/lib/resolve-related"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
+import { bookingTaskConflict } from "@/lib/booking/task-reference"
 
 export const GET = withRls(async (_req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
   const role = session?.role || "admin"
@@ -104,6 +105,8 @@ export const PATCH = withRlsAuth("tasks", "write", async (req: NextRequest, auth
       }
       return NextResponse.json({ error: error.message }, { status: error.status })
     }
+    const conflict = await bookingTaskConflict(orgId, id).catch(() => null)
+    if (conflict) return conflict
     console.error(error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
@@ -119,6 +122,8 @@ export const DELETE = withRlsAuth("tasks", "delete", async (_req, authResult, { 
       select: { title: true, projectId: true },
     })
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const conflict = await bookingTaskConflict(orgId, id)
+    if (conflict) return conflict
     // Soft delete (spec): set deletedAt — the prisma client extension then hides
     // it from every subsequent task read. taskKey stays reserved (the
     // (org,taskKey) unique + the generator's soft-delete-inclusive MAX prevent
@@ -141,6 +146,8 @@ export const DELETE = withRlsAuth("tasks", "delete", async (_req, authResult, { 
     }
     return NextResponse.json({ success: true })
   } catch (e) {
+    const conflict = await bookingTaskConflict(orgId, id).catch(() => null)
+    if (conflict) return conflict
     console.error(e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

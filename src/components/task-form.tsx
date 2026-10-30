@@ -13,6 +13,7 @@ import { substituteTemplateVars } from "@/lib/task-templates/substitute"
 import { getRelatedSearchEndpoint, parseRelatedResults } from "@/lib/tasks/related-entity-search"
 import { useSession } from "next-auth/react"
 import { useTaskTypes, useEventTypes } from "@/components/tasks/use-task-types"
+import { TaskMeetingNotice } from "@/components/tasks/task-meeting-notice"
 
 const ENTITY_TYPES = [
   { value: "company", icon: Building2 },
@@ -60,6 +61,7 @@ interface TaskTemplate {
 export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: TaskFormProps) {
   const t = useTranslations("forms")
   const tc = useTranslations("common")
+  const tb = useTranslations("booking")
   const ttl = useTranslations("taskTemplates")
   const tTasks = useTranslations("tasks") // Type / Event-type labels (opGb* keys)
   const { data: session } = useSession()
@@ -96,6 +98,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [blockedTaskId, setBlockedTaskId] = useState<string | null>(null)
   const [users, setUsers] = useState<{ id: string; name: string }[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDef[]>([])
@@ -371,7 +374,14 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
         headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": orgId } : {} as Record<string, string>) },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed")
+      if (!res.ok) {
+        const failure = await res.json().catch(() => ({}))
+        if (failure.code === "BOOKING_MANAGED_TASK") {
+          setBlockedTaskId(initialData?.id ?? null)
+          throw new Error(tb("taskManagedError"))
+        }
+        throw new Error(failure.error || "Failed")
+      }
       // Roadmap #21 — apply template's checklist to the newly created task.
       // The task API doesn't accept inline checklist; we POST each item to
       // /tasks/[id]/checklist after the task lands.
@@ -443,6 +453,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
       <DialogHeader><DialogTitle>{isEdit ? t("editTask") : t("newTask")}</DialogTitle></DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
+          {isEdit && initialData?.id ? <TaskMeetingNotice taskId={initialData.id} orgId={orgId} blocked={blockedTaskId === initialData.id} onNavigate={() => onOpenChange(false)} /> : null}
           {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
           <div className="grid gap-2.5">
             {/* Roadmap #21 — template picker. Only shown when creating
@@ -459,13 +470,13 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
                   <ChevronDown className="h-3 w-3 opacity-60" />
                 </button>
                 {templatePickerOpen && (
-                  <div className="absolute z-50 mt-1 left-0 min-w-[260px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md max-h-64 overflow-auto">
+                  <div className="absolute z-50 mt-1 left-0 min-w-[260px] rounded-lg border border-border bg-popover shadow-md max-h-64 overflow-auto">
                     {templates.map((tpl) => (
                       <button
                         key={tpl.id}
                         type="button"
                         onClick={() => applyTemplate(tpl)}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-muted border-b border-zinc-100 dark:border-zinc-800 last:border-0"
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-muted border-b border-border last:border-0"
                       >
                         <div className="font-medium">{tpl.name}</div>
                         {tpl.description && (
@@ -620,10 +631,10 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
                     key={value}
                     type="button"
                     onClick={() => handleEntityTypeChange(relatedType === value ? "" : value)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border transition-colors ${
                       relatedType === value
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted/50 text-muted-foreground border-zinc-200 dark:border-zinc-700 hover:bg-muted"
+                        ? "crm-choice-selected  "
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -635,7 +646,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
               {relatedType && (
                 <div className="relative" ref={dropdownRef}>
                   {relatedId ? (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-muted/30">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30">
                       {(() => { const E = ENTITY_TYPES.find(e => e.value === relatedType)?.icon; return E ? <E className="h-4 w-4 text-muted-foreground" /> : null })()}
                       <span className="text-sm font-medium flex-1">{relatedName}</span>
                       <button type="button" onClick={clearEntity} className="p-0.5 rounded hover:bg-muted transition-colors">
@@ -654,7 +665,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
                         {entityLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                       </div>
                       {showDropdown && entityResults.length > 0 && (
-                        <div className="absolute z-50 w-full mt-1 max-h-48 overflow-auto rounded-md border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md">
+                        <div className="absolute z-50 w-full mt-1 max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-md">
                           {entityResults.map(entity => (
                             <button
                               key={entity.id}
@@ -668,7 +679,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
                         </div>
                       )}
                       {showDropdown && entityResults.length === 0 && !entityLoading && entitySearch.length >= 1 && (
-                        <div className="absolute z-50 w-full mt-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-popover shadow-md px-3 py-2 text-sm text-muted-foreground">
+                        <div className="absolute z-50 w-full mt-1 rounded-md border border-border bg-popover shadow-md px-3 py-2 text-sm text-muted-foreground">
                           {tc("noResults")}
                         </div>
                       )}

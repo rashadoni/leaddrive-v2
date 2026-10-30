@@ -41,8 +41,11 @@ describe("durable job cursor", () => {
       "v1:first",
     )
     const strings = first.query.mock.calls[0][0] as TemplateStringsArray
-    expect(strings.join("?")).toContain("WHERE ?::text IS NULL")
-    expect(strings.join("?")).toContain("IS NOT DISTINCT FROM ?")
+    expect(strings.join("?")).toContain("ON CONFLICT")
+    expect(strings.join("?")).toContain(`WHERE "system_job_cursors"."cursor" IS NULL`)
+    // Swapping a non-null cursor is covered against real PostgreSQL in
+    // mtm-attendance-reminders-postgres.test.ts: a mock cannot tell an
+    // INSERT that never conflicts from an UPDATE that matches.
 
     const store = prismaJobCursorStore(db([]).client as never)
     await expect(store.read("")).rejects.toThrow("JOB_CURSOR_NAME_INVALID")

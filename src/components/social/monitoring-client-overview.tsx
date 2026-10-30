@@ -112,8 +112,8 @@ export function MonitoringClientOverview({ onOpenProfile }: MonitoringClientOver
     )
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-      <div className="flex flex-col gap-1 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700">
+    <div className="rounded-xl border border-border bg-card">
+      <div className="flex flex-col gap-1 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold">
             <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -151,7 +151,7 @@ export function MonitoringClientOverview({ onOpenProfile }: MonitoringClientOver
                 <th className="px-4 py-2 font-medium">{t("clientOverview.lastCollectedColumn")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+            <tbody className="divide-y divide-border">
               {visible.map(profile => {
                 const { positive, neutral, negative } = profile.findings
                 const sentimentTotal = positive + neutral + negative

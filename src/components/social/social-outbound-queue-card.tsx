@@ -85,7 +85,7 @@ export function SocialOutboundQueueCard() {
   ] : []
 
   return (
-    <Card className="rounded-xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-700">
+    <Card className="rounded-xl border border-border bg-card shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">

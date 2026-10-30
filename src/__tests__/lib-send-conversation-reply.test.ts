@@ -501,3 +501,32 @@ describe("native TikTok transport boundary", () => {
     expect(mocks.sendNative).not.toHaveBeenCalled()
   })
 })
+
+describe("WhatsApp provider acceptance and receipts", () => {
+  it.each([false, true])("blocks stale A after a B message without sending or logging (media=%s)", async media => {
+    const { sendWhatsAppMessage, sendWhatsAppMedia } = await import("@/lib/whatsapp")
+    mocks.findAttempt.mockResolvedValue({ channelConfigId: "cfg-B" })
+    const result = await send({ channel: "whatsapp", to: "994501234567", channelConfigId: "cfg-A",
+      ...(media ? { attachment: { buffer: Buffer.from("x"), mime: "image/png", filename: "a.png", url: "/uploads/a.png" } } : {}) })
+    expect(result).toEqual({ success: false, statusCode: 409, error: "whatsapp_reply_channel_mismatch" })
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled()
+    expect(sendWhatsAppMedia).not.toHaveBeenCalled()
+    expect(mocks.createMessage).not.toHaveBeenCalled()
+    expect(mocks.updateConversation).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])("stores only sent and the provider receipt id (media=%s)", async media => {
+    const { sendWhatsAppMessage, sendWhatsAppMedia } = await import("@/lib/whatsapp")
+    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true, messageId: "wamid.receipt" })
+    vi.mocked(sendWhatsAppMedia).mockResolvedValue({ success: true, messageId: "wamid.receipt" })
+    mocks.findAttempt.mockResolvedValue({ channelConfigId: "cfg-1" })
+    mocks.createMessage.mockImplementation(async ({ data }) => ({ id: "msg-1", ...data }))
+    const result = await send({ channel: "whatsapp", to: "994501234567", deliveryIdempotency: undefined,
+      ...(media ? { attachment: { buffer: Buffer.from("x"), mime: "image/png", filename: "a.png", url: "/uploads/a.png" } } : {}) })
+    expect(result.success).toBe(true)
+    expect(mocks.createMessage).toHaveBeenCalledWith({ data: expect.objectContaining({
+      status: "sent", externalId: "wamid.receipt", conversationId: "conv-1", channelConfigId: "cfg-1",
+    }) })
+    expect(mocks.updateConversation).toHaveBeenCalled()
+  })
+})

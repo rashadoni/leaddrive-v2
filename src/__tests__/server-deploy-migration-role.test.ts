@@ -36,14 +36,21 @@ describe("production migration role boundary", () => {
     expect(deployScript).toContain("wait_for_migration_window")
     expect(deployScript).toContain("active transactions or live job leases")
 
+    // Booking commands acquire the credential in a subshell, independently of
+    // these three top-level boundaries. Behavioral shell coverage verifies
+    // both their post-unset execution and absence from app children.
+    const topLevelScript = deployScript.replace(
+      /with_booking_release_database\(\) \{[\s\S]*?\n\}/,
+      "",
+    )
     const loadIndexes = [
-      ...deployScript.matchAll(/load_dotenv_file "\$MIGRATION_ENV_FILE" migration/g),
+      ...topLevelScript.matchAll(/load_dotenv_file "\$MIGRATION_ENV_FILE" migration/g),
     ].map((marker) => marker.index ?? -1)
     const unsetIndexes = [
-      ...deployScript.matchAll(/unset MIGRATION_DATABASE_URL MIGRATION_EXPECTED_DB_ROLE/g),
+      ...topLevelScript.matchAll(/unset MIGRATION_DATABASE_URL MIGRATION_EXPECTED_DB_ROLE/g),
     ].map((marker) => marker.index ?? -1)
-    const applicationBackfillsAt = deployScript.indexOf("# ── Step 3b:")
-    const pm2StartAt = deployScript.indexOf('pm2 start "$PM2_CONFIG"')
+    const applicationBackfillsAt = topLevelScript.indexOf("# ── Step 3b:")
+    const pm2StartAt = topLevelScript.indexOf('pm2 start "$PM2_CONFIG"')
 
     // Preflight, Fund cutover preparation and post-migration verification each
     // acquire the privileged URL independently and must drop it at the end of

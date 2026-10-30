@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Building2, Check, ChevronDown, ChevronRight, Info, Loader2 } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Info, Loader2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Hint } from "@/components/hint"
+import { MtmContactClassTag } from "@/components/mtm/contact-class-tag"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { AgentDoctorResult } from "@/lib/mtm/assign-agent-doctors"
@@ -32,7 +33,7 @@ import type { AgentClientPicker, PickerOption } from "@/lib/mtm/agent-client-pic
  * `everySpecialty`: «Hamısı» chosen in the first step on purpose. An empty
  * `specialties` alone means nothing is chosen yet, which lists nobody.
  */
-type Selection = { specialties: string[]; everySpecialty: boolean; cities: string[]; districts: string[] }
+type Selection = { specialties: string[]; everySpecialty: boolean; cities: string[]; districts: string[]; classes: string[] }
 type PickerData = AgentClientPicker & { asOf: string }
 
 /**
@@ -41,6 +42,9 @@ type PickerData = AgentClientPicker & { asOf: string }
  * doctors are on the screen.
  */
 export type AgentClientChoice = { contactIds: string[]; removeIds?: string[]; asOf: string | null; listed?: boolean }
+
+/** One grid for the head and the rows: tick, doctor, class, workplace, agents. */
+const ROW_GRID = "grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 gap-y-1 px-3 sm:grid-cols-[1.25rem_minmax(0,1.2fr)_5.5rem_minmax(0,1.8fr)_minmax(0,1fr)]"
 
 /** Rows drawn at once; the rest one press away. All of them are ticked either way. */
 const DOCTORS_PAGE = 100
@@ -117,7 +121,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
               data-testid={testId}
               className={cn(
                 "flex h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                selected.length > 0 || every?.chosen ? "border-foreground font-semibold" : "border-input bg-background",
+                selected.length > 0 || every?.chosen ? "crm-choice-selected" : "border-input bg-background",
               )}
             >
               <span className={cn("truncate", selected.length === 0 && !everyChosen && "text-muted-foreground")}>{summary}</span>
@@ -159,7 +163,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   onForbidden?: () => void
 }) {
   const t = useTranslations("mtmForms")
-  const [selection, setSelection] = useState<Selection>({ specialties: [], everySpecialty: false, cities: [], districts: [] })
+  const [selection, setSelection] = useState<Selection>({ specialties: [], everySpecialty: false, cities: [], districts: [], classes: [] })
   const [data, setData] = useState<PickerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [problem, setProblem] = useState<string | null>(null)
@@ -174,6 +178,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
     for (const value of selection.specialties) params.append("specialty", value)
     for (const value of selection.cities) params.append("city", value)
     for (const value of selection.districts) params.append("district", value)
+    for (const value of selection.classes) params.append("class", value)
     setLoading(true)
     setProblem(null)
     fetch(`/api/v1/mtm/contacts/agent-picker?${params.toString()}`, {
@@ -221,13 +226,15 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
 
   const setStep = (step: keyof Selection, values: string[]) => {
     setShownCount(DOCTORS_PAGE)
+    // The class is not a place: it stays when the specialty or the place changes.
     setSelection(current => step === "specialties"
-      ? { specialties: values, everySpecialty: false, cities: [], districts: [] }
-      : step === "cities" ? { ...current, cities: values, districts: [] } : { ...current, districts: values })
+      ? { ...current, specialties: values, everySpecialty: false, cities: [], districts: [] }
+      : step === "cities" ? { ...current, cities: values, districts: [] }
+        : step === "districts" ? { ...current, districts: values } : { ...current, classes: values })
   }
   const chooseEverySpecialty = () => {
     setShownCount(DOCTORS_PAGE)
-    setSelection({ specialties: [], everySpecialty: true, cities: [], districts: [] })
+    setSelection(current => ({ ...current, specialties: [], everySpecialty: true, cities: [], districts: [] }))
   }
   const toggle = (ids: string[], include: boolean) => setUnticked(current => {
     const next = new Set(current)
@@ -252,6 +259,9 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
         <ChevronRight className="hidden h-5 w-5 shrink-0 self-center text-zinc-300 sm:mb-2.5 sm:block sm:self-end" aria-hidden="true" />
         <StepSelect step={3} label={t("clientsStepDistrict")} options={chosenFirstStep ? data?.districts ?? [] : []} selected={selection.districts}
           disabled={!chosenFirstStep} disabledHint={t("clientsPickSpecialtyFirst")} onChange={values => setStep("districts", values)} testId="agent-clients-district" />
+        <ChevronRight className="hidden h-5 w-5 shrink-0 self-center text-zinc-300 sm:mb-2.5 sm:block sm:self-end" aria-hidden="true" />
+        <StepSelect step={4} label={t("clientsStepClass")} options={chosenFirstStep ? data?.classes ?? [] : []} selected={selection.classes}
+          disabled={!chosenFirstStep} disabledHint={t("clientsPickSpecialtyFirst")} onChange={values => setStep("classes", values)} testId="agent-clients-class" />
       </div>
 
       {problem ? (
@@ -299,56 +309,63 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             </span>
           </div>
 
-          <div className="divide-y overflow-hidden rounded-xl border" data-testid="agent-clients-list">
+          {/* Columns, as on «Müştərilər» (owner, 2026-10-21: the class «как
+              дополнительный столбец… в разделе, где добавляем к агентам»):
+              the doctor, his class, where he works, whose he already is. */}
+          <div className="overflow-hidden rounded-xl border" data-testid="agent-clients-list">
+            <div className={cn(ROW_GRID, "hidden bg-muted/60 py-2 text-xs font-medium text-muted-foreground sm:grid")} data-testid="agent-clients-head">
+              <span />
+              <span>{t("clientsColDoctor")}</span>
+              <span>{t("clientsStepClass")}</span>
+              <span>{t("clientsColWorkplace")}</span>
+              <span>{t("clientsColAgents")}</span>
+            </div>
+            <div className="divide-y">
             {shown.map(contact => {
               const off = unticked.has(contact.id)
               const where = [contact.place.district ?? contact.place.city, contact.place.address].filter(Boolean).join(" · ")
               return (
-                <div key={contact.id} className="flex items-center gap-3 px-3 py-2.5" data-testid="agent-clients-doctor">
+                <div key={contact.id} className={cn(ROW_GRID, "items-center py-2.5")} data-testid="agent-clients-doctor">
                   <button
                     type="button"
                     role="checkbox"
                     aria-checked={!off}
                     aria-label={contact.name}
                     onClick={() => toggle([contact.id], off)}
-                    className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="self-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     data-testid="agent-clients-doctor-tick"
                   >
                     <TickBox state={off ? "off" : "on"} />
                   </button>
                   {/* The words tick too: a bigger target than the box. */}
-                  <div className={cn("min-w-0 flex-1 cursor-pointer", off && "text-muted-foreground")} onClick={() => toggle([contact.id], off)}>
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className={cn("truncate text-sm font-semibold", off && "line-through")}>{contact.name}</span>
-                      {contact.category ? (
-                        <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-px text-[11px] font-semibold dark:border-zinc-700" data-testid="agent-clients-doctor-class">
-                          {t("clientsClass", { category: contact.category })}
-                        </span>
-                      ) : null}
-                      {contact.specialty ? <span className="shrink-0 text-xs text-muted-foreground">{contact.specialty}</span> : null}
-                    </div>
-                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" data-testid="agent-clients-doctor-place">
-                      <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">
-                        <span className="font-medium text-zinc-700 dark:text-zinc-300">{contact.place.institution?.name ?? t("clientsNoInstitution")}</span>
-                        {where ? ` · ${where}` : null}
-                      </span>
-                    </div>
+                  <div className={cn("min-w-0 cursor-pointer", off && "text-muted-foreground")} onClick={() => toggle([contact.id], off)}>
+                    <span className={cn("block truncate text-sm font-semibold", off && "line-through")}>{contact.name}</span>
+                    {contact.specialty ? <span className="block truncate text-xs text-muted-foreground">{contact.specialty}</span> : null}
                   </div>
+                  <div className="col-start-2 sm:col-start-auto">
+                    <MtmContactClassTag category={contact.category} testId="agent-clients-doctor-class" />
+                  </div>
+                  <div className="col-start-2 min-w-0 text-xs sm:col-start-auto" data-testid="agent-clients-doctor-place">
+                    <span className="block truncate text-sm font-medium">{contact.place.institution?.name ?? t("clientsNoInstitution")}</span>
+                    {where ? <span className="block truncate text-muted-foreground" title={where}>{where}</span> : null}
+                  </div>
+                  <div className="col-start-2 min-w-0 sm:col-start-auto">
                   {contact.assignedHere && off ? (
-                    <span className="shrink-0 text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
+                    <span className="text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
                   ) : contact.assignedHere ? (
-                    <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
                   ) : contact.agents.length > 0 ? (
                     <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
-                      <span tabIndex={0} className="shrink-0 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                      <span tabIndex={0} className="block truncate text-[11px] font-semibold text-violet-700 dark:text-violet-300">
                         {t("clientsAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
                       </span>
                     </Hint>
                   ) : null}
+                  </div>
                 </div>
               )
             })}
+            </div>
           </div>
           {hidden > 0 ? (
             <button
@@ -361,7 +378,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             </button>
           ) : null}
 
-          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
+          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               {t("clientsNote", { count: chosen.length })}

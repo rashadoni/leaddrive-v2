@@ -62,7 +62,7 @@ beforeEach(async () => {
   fetchMock.mockReset()
   fetchMock.mockImplementation(async (url: string) => {
     const params = new URL(url, "http://x").searchParams
-    const data = buildAgentClientPicker(rows, { specialties: params.getAll("specialty"), cities: params.getAll("city"), districts: params.getAll("district") }, params.get("agentId"))
+    const data = buildAgentClientPicker(rows, { specialties: params.getAll("specialty"), cities: params.getAll("city"), districts: params.getAll("district"), classes: params.getAll("class") }, params.get("agentId"), ["A", "B", "C", "VIP"])
     return { ok: true, status: 200, json: async () => ({ success: true, data: { ...data, asOf: "2026-10-20" } }) }
   })
   vi.stubGlobal("fetch", fetchMock)
@@ -95,13 +95,15 @@ describe("the agent's «attach» list, one row a doctor", () => {
     await render()
     await chooseTerapevt()
 
-    const text = all("agent-clients-doctor").map(row => row.textContent)
+    // Column by column: the doctor and his specialty, his class, where he works, whose he is.
+    const text = all("agent-clients-doctor").map(row => [...row.children].slice(1).map(cell => cell.textContent).join(" | "))
     expect(text).toEqual([
       // «2 saylı» before «19 saylı»; the doctor without an institution last.
-      "Fictional AbbasovaKateqoriya ATerapevt2 saylı Fictional Poliklinika · Bakı · Fictional pr. 1",
-      "Fictional ZeynalovaKateqoriya VIPTerapevt19 saylı Fictional Poliklinika · Yasamal · Fictional küç. 25artıq: Fictional Colleague",
-      "Fictional MəmmədliKateqoriya BTerapevtMüəssisəsiz",
+      "Fictional AbbasovaTerapevt | A | 2 saylı Fictional PoliklinikaBakı · Fictional pr. 1 | ",
+      "Fictional ZeynalovaTerapevt | VIP | 19 saylı Fictional PoliklinikaYasamal · Fictional küç. 25 | artıq: Fictional Colleague",
+      "Fictional MəmmədliTerapevt | B | Müəssisəsiz | ",
     ])
+    expect(byTestId("agent-clients-head")?.textContent).toBe("HəkimKateqoriyaİş yeriAgentlər")
     expect(byTestId("agent-clients-summary")?.textContent).toContain("3 həkim tapıldı, 2 müəssisədə")
     // Every doctor is ticked and seen: no institution to open first.
     expect(all("agent-clients-doctor-tick").every(tick => tick.getAttribute("aria-checked") === "true")).toBe(true)
@@ -193,5 +195,32 @@ describe("the first step, before anything is chosen", () => {
     await click([...document.body.querySelectorAll('[data-testid="agent-clients-specialty-options"] button')].find(button => button.textContent?.startsWith("Hamısı")))
     expect(all("agent-clients-doctor")).toHaveLength(4)
     expect(byTestId("agent-clients-specialty")?.textContent).toBe("Hamısı")
+  })
+})
+
+describe("the fourth step, the class", () => {
+  // Owner, 2026-10-21: the class «как дополнительный столбец… в разделе, где добавляем к агентам» and in the filter.
+  it("narrows the ticked doctors to the class chosen, and shows each doctor's class in its column", async () => {
+    const clinic = place("c1", "Fictional Clinic")
+    rows = [
+      doctor("d1", "Fictional Aliyeva", clinic, "VIP"),
+      doctor("d2", "Fictional Babayev", clinic, "B"),
+      doctor("d3", "Fictional Cavadova", clinic, "B"),
+    ]
+    await render()
+    // Nothing to choose before the specialty: the step waits like the place.
+    expect(byTestId("agent-clients-class")?.hasAttribute("disabled")).toBe(true)
+    await chooseTerapevt()
+    expect(all("agent-clients-doctor-class").map(cell => cell.textContent)).toEqual(["VIP", "B", "B"])
+
+    await click(byTestId("agent-clients-class"))
+    const options = () => [...document.body.querySelectorAll('[data-testid="agent-clients-class-options"] label')]
+    // The company's classes in its order, «0» included.
+    expect(options().map(option => option.textContent)).toEqual(["A0", "B2", "C0", "VIP1"])
+    await click(options().find(option => option.textContent?.startsWith("VIP"))?.querySelector("button,input"))
+
+    expect(all("agent-clients-doctor").map(row => row.querySelector('[role="checkbox"]')?.getAttribute("aria-label"))).toEqual(["Fictional Aliyeva"])
+    expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (1)")
+    expect(new URL(String(fetchMock.mock.calls.at(-1)?.[0]), "http://x").searchParams.getAll("class")).toEqual(["VIP"])
   })
 })

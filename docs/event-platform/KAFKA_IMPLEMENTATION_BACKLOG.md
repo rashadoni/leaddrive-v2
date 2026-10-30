@@ -949,8 +949,8 @@ workflow → фактический artifact SHA, ping и проверка по�
 
 | Этап | Работы по порядку | Условие завершения | Текущий статус |
 |---|---|---|---|
-| A1. Проверяемый отдельный обработчик | A1.1 Проверка плана запуска, tenant/build/role/group/version и secret references; A1.2 SHA-привязанный пакет, проверка его файлов и ограниченный прямой запуск JVM; A1.3 Сборка и реальные stop/restart испытания | Проверенный пакет и конфигурация запуска; настоящий управляемый JVM вместе с Kafka и restricted SQL; корректная остановка до/после COMMIT, отсутствие двойного применения | В РАБОТЕ; lifecycle prerequisite PR889 уже доставлен, A1 целиком ещё не завершён |
-| A2. Полная цепочка событий | A2.1 Реальный Debezium из разрешённого outbox; A2.2 Kafka → Fund shadow SQL; A2.3 Полная история, повреждённый расчёт, дубли, остановка и повторный запуск для двух synthetic tenants | Один сквозной результат на реальных CDC/Kafka/SQL, точные суммы и watermarks; source/другой tenant/внешние эффекты не изменены | ОЖИДАЕТ; отдельные transport и consumer proofs не засчитываются как A2 |
+| A1. Проверяемый отдельный обработчик | A1.1 Проверка плана запуска, tenant/build/role/group/version и secret references; A1.2 SHA-привязанный пакет, проверка его файлов и ограниченный прямой запуск JVM; A1.3 Сборка и реальные stop/restart испытания | Проверенный пакет и конфигурация запуска; настоящий управляемый JVM вместе с Kafka и restricted SQL; корректная остановка до/после COMMIT, отсутствие двойного применения | ПРОГРАММНО ДОКАЗАН в CI (19.10, повторно 25.10, run 40196201738); на проде не включён — см. запись 2026-10-25 ниже |
+| A2. Полная цепочка событий | A2.1 Реальный Debezium из разрешённого outbox; A2.2 Kafka → Fund shadow SQL; A2.3 Полная история, повреждённый расчёт, дубли, остановка и повторный запуск для двух synthetic tenants | Один сквозной результат на реальных CDC/Kafka/SQL, точные суммы и watermarks; source/другой tenant/внешние эффекты не изменены | ПРОГРАММНО ДОКАЗАН в CI (19.10, повторно 25.10, run 40206047111); TLS/ACL стенда не доказаны, на проде не включён — см. запись 2026-10-25 ниже |
 | A3. Резервирование и доказанное восстановление | A3.1 Сверка существующего recovery-контракта и пригодности scratch; A3.2 Проверенные зашифрованные копии БД, секретов и runtime; A3.3 Восстановление в изолированную среду и независимое подтверждение; A3.4 Включение расписаний после выполнения их условий | Свежая восстанавливаемая копия, измеренные RPO/RTO, подписи/receipts, доставленные alerts; исходная база не заменена | ОЖИДАЕТ; четыре scoped timers неактивны по inventory39158980732 |
 | A4. Production-инфраструктура | A4.1 Инвентарь уже доступных независимых ресурсов и бюджет; A4.2 Broker/Connect/Registry deployment; A4.3 TLS, ACL, private routes, RF/minISR; A4.4 Retention/archive/WAL budgets и согласованное CDC-обслуживание | Подтверждённая topology и отказоустойчивость по действующему контракту; отсутствие неподтверждённых расходов; ограниченная нагрузка и сохранность истории | ОЖИДАЕТ; source logical CDC не commissioned |
 | A5. Управление и аварийные действия | A5.1 Authenticated operator admission и жизненный цикл build/lease; A5.2 Мониторинг и фактически доставленные тревоги; A5.3 Promotion/catch-up/rollback и выполнение runbook | Воспроизводимые drills, сохранённые evidence, рабочие alerts и возврат версии без потери новых данных | ОЖИДАЕТ |
@@ -1212,3 +1212,104 @@ required static job39218257966 отменена по30min cap; это не по�
 exact-source CI обязателен. Delivery остаётся у исходной Kafka-сессии по
 повторному решению владельца11:56; её hold не снят. Сводка evidence:
 [A3_RECOVERY_READINESS.md](A3_RECOVERY_READINESS.md), append-only журнал A3.
+
+### A1/A2: повторная проверка на текущем main — 2026-10-25
+
+Владелец 2026-10-25 поручил вести A1–A2 сессии «Kafka-серверы на Contabo»
+(«Делай этапы A1–A2 здесь, в этой сессии»). Сверка показала, что программные
+условия завершения обоих этапов выполнены ещё 19.10 (PR891, run39164817267,
+run39169379400/39170670645), а таблица этапов выше оставалась со старыми
+статусами. Сегодняшние прогоны на текущем коде подтверждают то же:
+
+- A1, [run40196201738](https://github.com/rashadoni/leaddrive-v2/actions/runs/40196201738)
+  (job `broker-driver`, source f7a6f14df): `worker_jvm_ordered_restart_exact_parity`,
+  `worker_jvm_stop_during_commit_restart`, `worker_jvm_stop_after_commit_restart`
+  = PASS; `worker_jvm_integration=PASS; child=direct-java;
+  artifact=verified-client-only; sql=restricted-real-commit;
+  production_activation=not-performed`.
+- A2, [run40206047111](https://github.com/rashadoni/leaddrive-v2/actions/runs/40206047111)
+  (jobs `cdc-smoke`, `full-cdc-fund`, source 482e17014): snapshot, холодный
+  рестарт Connect по WAL, точная сверка двух synthetic tenants на restricted SQL,
+  потеря ACK после COMMIT и повтор, перезапуск worker, неизменность source/active/
+  effects/третьего tenant, внешние отправки NONE, пересборка исправленным build в
+  новой group = PASS; `fixture_tls_acl=NOT_PROVEN; production_activation=NOT_RUN`.
+
+Чем это не является: стенды одноразовые (GitHub-hosted, Docker), без TLS/ACL и
+без основного кластера Kafka на Contabo/OVH; production worker не установлен,
+consumer groups/offsets/replay на проде не создавались. Включение обработчика
+Fund на проде — этап A6 и требует условий A3–A5. Диагностическое сравнение
+`cdc_legacy_expanded_comparison` в cdc-smoke (`diagnosticOnly`,
+`payloadParityPassed=false`) не входит в условия A2 и не исправлялось.
+
+### A2 на основном кластере: synthetic Fund drill — 2026-10-25
+
+Владелец: «Да, прогони полную цепочку на настоящем кластере Kafka с TLS и
+тестовыми организациями, согласуй с сессией Kafka»; затем «даю согласие».
+Тот же сценарий, что CI `full-cdc-fund`, но на основном кластере
+`K3TZRGsp2DK1UJYj_Sxrwg` (3 брокера EU/UK/GRA), инструменты
+[`fund-drill.sh`](../../scripts/event-platform/cluster/fund-drill.sh) (up/status/down)
+и [`fund-drill.ts`](../../scripts/event-platform/cluster/fund-drill.ts).
+
+- Транспорт: обработчик (KafkaPartitionBridge, production-профиль, не
+  `test.profile`) ходит к брокерам по SASL_SSL/SCRAM-SHA-512, TLS 1.3, проверка
+  имени хоста; отдельная учётка `ld-drill-worker` с ACL deny-by-default на
+  префикс `ld.testbroker.` и группы `ld-testbroker-`.
+- Источник: одноразовый PostgreSQL 16 на kafka-p-connect-eu (10.88.0.16:55432,
+  только overlay, временное nft-правило для 10.88.0.17); коннектор
+  `leaddrive-event-outbox-test-fund` на рабочем Connect-кластере. Перезапуск —
+  stop/resume только этого коннектора; воркеры Connect не останавливались.
+- Итог: `fund_drill_source_role`, `snapshot`, `connector_stop_resume_wal`,
+  `raw_kafka_bytes_hash`, `restricted_sql_exact_two_tenant_parity`,
+  `committed_ack_loss_duplicate`, `worker_restart`,
+  `source_active_effects_other_tenant_unchanged`, `shadow_only_fault_injection`,
+  `corrected_new_build_recovery`, `old_bad_builds_and_group_preserved` = PASS;
+  `replay_sends=NONE`; `leaddrive-event-outbox-prod` = RUNNING/RUNNING на каждой
+  проверке; `production_activation=NOT_RUN`.
+- Уборка `fund-drill.sh down`: тема, учётка, ACL, группы, офсеты и сам
+  коннектор, контейнеры, nft-правило, /opt/ld-drill и образ postgres удалены;
+  `status` показывает только продовый коннектор.
+
+Находка: обработчик при старте вызывает `describeConfigs` (проверка
+`cleanup.policy=delete`), а план ACL давал `ld-fund-worker` только Read/Describe.
+На кластере с ACL обработчик Fund не дошёл бы до READY. CI этого не видел (стенд
+без ACL). Исправлено в `services.mjs` (+ DescribeConfigs на finance events) и
+закреплено тестом, который сверяет ACL с admin-вызовами обработчика. На самом
+кластере ACL `ld-fund-worker` этим изменением НЕ применены: это
+`provision.sh apply-catalog primary prod`, решение сессии эксплуатации Kafka.
+
+Не доказано этим прогоном: TLS на участке источник → Connect (одноразовая база
+без TLS, участок идёт по WireGuard), отказ площадки во время потока, прод.
+
+
+### Решение владельца по A3 для теневого пилота Fund — 2026-10-25
+
+Владелец 2026-10-25 (Asia/Baku), дословно: «Да: для теневого пилота Fund
+засчитываю восстановление базы, которое я сам сделал на Маке, вместо проверки
+вторым человеком. Записывай это моим решением и готовь теневой пилот.»
+
+Что засчитано и в каких границах:
+
+- Восстановление 2026-10-25 на Маке владельца, в одноразовый PostgreSQL 17:
+  ночной дамп прода (age, ключ владельца) из B2 `devbox-mirror/`, расшифровка
+  ключом с Мака, 638 таблиц, 416 528 строк, 587 миграций, 0 ошибок. Вариант
+  owner-operated: второго человека и двух офлайн-носителей нет, подписанного
+  receipt по `docs/operations/owner-operated-recovery.md` нет.
+- Засчитано **только для теневого пилота Fund (A6 в режиме shadow)**: обработчик
+  пишет лишь свои теневые таблицы, CRM и пользователей не меняет, внешних
+  действий нет. Promotion, переход CRM на данные из Kafka и остальные домены
+  (A7) это решение не открывает; для них условия A3 прежние.
+- RPO — до суток (ночная копия), PITR нет, восстановление ролей/ACL целиком и
+  потеря хоста не испытаны.
+
+Состояние остальных условий на этот день (проверено на живой системе):
+
+- A4: основной кластер 8/8, TLS/SCRAM/mTLS и ACL, RF=3/minISR=2; живой отказ
+  брокера OVH на 5 минут под нагрузкой — 10 200 событий, потерь и дублей 0;
+  ACL `DescribeConfigs` для `ld-fund-worker` применён на кластере; защита
+  коннектора от чужих logical messages (PR #1060) применена к прод-коннектору;
+  ежечасные `drop_caches`/`fstrim` образа Contabo сняты (PR #1062).
+- A5.2: тревоги доходят до владельца в Telegram — основной сторож на dev-боксе,
+  запасной на kafka-p-broker-gra (PR #1061, проверен паузой основного), сверка
+  outbox ↔ Kafka на каждом проходе (PR #1066).
+- A5.1/A5.3 для обработчика на проде (запуск, учётные записи, остановка, откат)
+  — не реализованы, это и есть подготовка пилота.

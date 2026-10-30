@@ -320,7 +320,7 @@ export default function MtmTasksPage() {
 
   return (
     <div className="space-y-6 pb-20 lg:pb-6">
-      <header className="flex flex-col gap-4 border-b border-zinc-200 pb-5 dark:border-zinc-700 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-2">
           <PageDescription icon={ClipboardList} title={t("title")} />
           <HelpButton slug="mtm-tasks" variant="label" />
@@ -393,7 +393,7 @@ export default function MtmTasksPage() {
                   type="button"
                   aria-pressed={pressed}
                   onClick={() => { setStatus(chip.value); setPage(1) }}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "border-foreground font-semibold text-foreground" : "border-zinc-200 hover:bg-muted dark:border-zinc-700"}`}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "crm-choice-selected text-foreground" : "border-border hover:bg-muted"}`}
                 >
                   <span className={pressed ? "" : chip.tone}>{chip.label}</span>
                   {!data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}
@@ -470,7 +470,7 @@ export default function MtmTasksPage() {
           </div>
 
           {data && data.total > data.limit ? (
-            <nav className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700" aria-label={t("pagination")}>
+            <nav className="flex items-center justify-between gap-3 border-t border-border pt-4" aria-label={t("pagination")}>
               <Button type="button" variant="outline" className="min-h-11" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft className="h-4 w-4" />{t("previous")}</Button>
               <span className="text-sm tabular-nums text-muted-foreground">{t("pageOf", { page, total: totalPages })}</span>
               <Button type="button" variant="outline" className="min-h-11" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>{t("next")}<ChevronRight className="h-4 w-4" /></Button>
@@ -485,7 +485,7 @@ export default function MtmTasksPage() {
 
 function StatePanel({ icon: Icon, title, hint, action }: { icon: typeof AlertCircle; title: string; hint: string; action?: ReactNode }) {
   return (
-    <section className="flex min-h-60 flex-col items-center justify-center gap-3 border-y border-zinc-200 px-4 py-10 text-center dark:border-zinc-700" role="status">
+    <section className="flex min-h-60 flex-col items-center justify-center gap-3 border-y border-border px-4 py-10 text-center" role="status">
       <Icon className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
       <p className="max-w-lg text-sm text-muted-foreground">{hint}</p>
@@ -507,7 +507,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
   const router = useRouter()
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 lg:block">
+      <div className="hidden overflow-x-auto rounded-xl border border-border lg:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/35 text-left text-xs text-muted-foreground">
             <tr>
@@ -521,7 +521,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
               <th className="px-4 py-3 font-medium">{t("colDueDate")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <tbody className="divide-y divide-border">
             {tasks.map((task) => (
               <tr key={task.id} className="cursor-pointer transition-colors hover:bg-muted/25" onClick={() => router.push(href(task.id))}>
                 {/* A finished task cannot be reassigned: no box at all rather than a grey one. */}
@@ -538,7 +538,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
         </table>
       </div>
 
-      <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 lg:hidden">
+      <div className="divide-y divide-border border-y border-border lg:hidden">
         {tasks.map((task) => (
           <article key={task.id} className="py-5">
             <div className="flex items-start gap-3">

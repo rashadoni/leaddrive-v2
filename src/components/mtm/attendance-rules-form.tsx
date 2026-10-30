@@ -247,7 +247,7 @@ export function MtmAttendanceRulesForm() {
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium">{t("rulesWeekends")}</legend>
               <div className="flex flex-wrap gap-2">
-                {WEEKDAYS.map((day) => <label key={day} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 px-3 text-sm has-[:checked]:border-foreground has-[:checked]:font-semibold has-[:disabled]:cursor-default dark:border-zinc-700">
+                {WEEKDAYS.map((day) => <label key={day} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 text-sm has-[:checked]:border-foreground has-[:checked]:font-semibold has-[:disabled]:cursor-default">
                   <input type="checkbox" value={day} checked={draft.weekendDays.includes(day)} className="h-4 w-4 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     onChange={(event) => change({ weekendDays: event.target.checked ? [...draft.weekendDays, day].sort((a, b) => a - b) : draft.weekendDays.filter((value) => value !== day) })} />
                   {t(DAY_KEYS[day])}
@@ -269,9 +269,9 @@ export function MtmAttendanceRulesForm() {
           {savedDate ? <p role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{t("rulesSaved", { date: dateLabel(savedDate) })}</p> : null}
           {data.canManageRules ? <Button type="submit" disabled={saving || mustReload} className="min-h-11 w-full sm:w-auto">{t(saving ? "rulesSaving" : "rulesSave")}</Button> : null}
         </form>
-        <section aria-labelledby="attendance-rules-history-title" className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+        <section aria-labelledby="attendance-rules-history-title" className="border-t border-border pt-5">
           <h4 id="attendance-rules-history-title" className="mb-3 flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("rulesHistory")}</h4>
-          <ol className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <ol className="divide-y divide-border">
             {versions.map((rule) => <li key={rule.id} className="grid gap-2 py-3 sm:grid-cols-[minmax(12rem,1fr)_2fr]" data-testid="attendance-rule-version">
               <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                 <span>{rule.createdAt === null ? t("rulesDefaultVersion") : t("rulesVersionFrom", { date: dateLabel(rule.effectiveFrom) })}</span>

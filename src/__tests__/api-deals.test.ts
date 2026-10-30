@@ -3,8 +3,13 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     deal: { groupBy: vi.fn().mockResolvedValue([]), findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn(), create: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     pipeline: { findFirst: vi.fn() },
+    // No product lines: the deal's amount stays the typed one (src/lib/deals/line-items.ts).
+    dealLineItem: { count: vi.fn().mockResolvedValue(0) },
     pipelineStage: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn() },
     user: { findMany: vi.fn(), findFirst: vi.fn() },
     contact: { findMany: vi.fn(), findFirst: vi.fn() },

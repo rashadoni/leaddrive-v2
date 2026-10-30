@@ -1,3 +1,4 @@
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 /**
  * Single source of truth for the CRM's main navigation.
  *
@@ -12,15 +13,18 @@ import type { ElementType } from "react"
 import { type ModuleId, type AddonFlagId, hasModule } from "@/lib/modules"
 import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "@/lib/tenant-capabilities"
 import { checkPermission, type Role } from "@/lib/permissions"
+import { REVIEWER_ROLE, reviewerPageClosed } from "@/lib/reviewer-access"
 import { isMtmNavigationItemActive } from "@/lib/mtm/navigation"
 import {
+  Megaphone,
+  CalendarCheck,
   LayoutDashboard, Building2, Users, Handshake, UserPlus,
   CheckSquare, FileText, FileSpreadsheet, Calculator, Brain,
   Ticket, BookOpen, BarChart3, Mail, MessageSquare, MessageCircle, Zap,
   Settings, DollarSign, Target, Send, Clock,
   TrendingUp, Filter, Workflow, Server, Bell, CalendarDays, Headphones, Package, RefreshCw,
   FolderKanban, Wallet, MapPin, Route, Camera, AlertTriangle,
-  ClipboardList, UserCog, GitBranch, Plug, Keyboard, Shield, Phone,
+  ClipboardList, UserCog, GitBranch, Plug, Keyboard, Shield, Phone, PhoneIncoming,
   Trophy, Activity, FileBarChart, Bot, Sparkles, Inbox, MessageSquareWarning, Key, Gauge, ChartPie, Award,
   Tag, Wrench, ScanLine, LayoutTemplate, Columns3, Library,
   Globe, Globe2, Hash, LayoutGrid, SearchCheck, Reply, Scale,
@@ -41,6 +45,8 @@ export interface NavItem {
   href: string
   icon: ElementType
   tKey: string
+  /** Additional translated navigation labels accepted by menu search. */
+  searchKeys?: readonly string[]
   group: string
   /** Task-oriented subgroup used only inside the Support module navigation. */
   supportSection?: SupportNavSection
@@ -120,6 +126,12 @@ export type SupportNavSection = "work" | "team" | "rules"
 
 export const SUPPORT_NAV_SECTION_ORDER: readonly SupportNavSection[] = ["work", "team", "rules"]
 
+/** Search stays inside the caller's accessible items; aliases never grant access. */
+export function navItemMatchesSearch(item: NavItem, query: string, label: (key: string) => string): boolean {
+  const term = query.trim().toLowerCase()
+  return [item.tKey, ...(item.searchKeys ?? [])].some((key) => label(key).toLowerCase().includes(term))
+}
+
 /**
  * Shape of the `org` context the navigation gate needs. Matches the object the
  * dashboard layout builds from the session (see `(dashboard)/layout.tsx`).
@@ -184,6 +196,9 @@ export const navItems: NavItem[] = [
   // sidebar, right after CRM.
   { module: "sales", href: "/leads", icon: UserPlus, tKey: "leads", group: "Sales" },
   { module: "sales", href: "/deals", icon: Handshake, tKey: "deals", group: "Sales" },
+  // Owner, 2026-10-26: phone orders are sales («продажи»), not field work; rights as deals.
+  { module: "sales", feature: "pharmacy_phone_orders", href: "/pharmacy-orders", icon: PhoneIncoming, tKey: "pharmacyPhoneOrders", group: "Sales", permissionScope: "deals" },
+  ...(BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", searchKeys: ["onlineBooking"], group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
   { module: "sales", href: "/quotes", icon: FileBadge, tKey: "quotes", group: "Sales" },
   { module: "sales", href: "/sequences", icon: Zap, tKey: "sequences", group: "Sales" },
   { module: "sales", href: "/forecast", icon: TrendingUp, tKey: "forecast", group: "Sales" },
@@ -208,6 +223,7 @@ export const navItems: NavItem[] = [
   { module: "sales", href: "/settings/territories", icon: MapPin, tKey: "territories", group: "Sales" },
   { module: "sales", href: "/settings/lead-rules", icon: Filter, tKey: "leadRules", group: "Sales" },
   { module: "sales", href: "/settings/web-to-lead", icon: Globe, tKey: "webToLead", group: "Sales" },
+  ...(!BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/settings/booking", icon: CalendarCheck, tKey: "onlineBooking", searchKeys: ["bookingWorkspace"], group: "Sales", permissionScope: "bookings", allowedRoles: ADMIN_ROLES } satisfies NavItem] : []),
   { module: "contracts", href: "/contracts", icon: FileText, tKey: "contracts", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/lifecycle", icon: RefreshCw, tKey: "contractLifecycle", group: "Contracts Control" },
   { module: "contracts", href: "/contracts/templates", icon: Library, tKey: "contractTemplatesNav", group: "Contracts Control" },
@@ -252,6 +268,7 @@ export const navItems: NavItem[] = [
   // Attribution model is the ENGINE that computes Campaign ROI's attributed
   // revenue — keep the two adjacent so they read as configure-model → see-result.
   { module: "marketing", href: "/attribution/models", icon: ChartPie, tKey: "attributionModels", group: "Marketing" },
+  { module: "marketing", href: "/settings/ad-conversions", icon: Megaphone, tKey: "adConversions", group: "Marketing" },
   { module: "marketing", href: "/campaign-roi", icon: TrendingUp, tKey: "campaignRoi", group: "Marketing" },
   { module: "marketing", href: "/ai-scoring", icon: Target, tKey: "aiScoring", group: "Marketing" },
   { module: "marketing", href: "/journeys", icon: Workflow, tKey: "journeys", group: "Marketing" },
@@ -264,7 +281,6 @@ export const navItems: NavItem[] = [
   { module: "omnichannel", href: "/inbox/chatbot-rules", icon: Bot, tKey: "chatbotRulesNav", group: "Communication" },
   { module: "omnichannel", href: "/inbox/automation", icon: Workflow, tKey: "inboxAutomationNav", group: "Communication" },
   { module: "omnichannel", href: "/inbox/business-hours", icon: Clock, tKey: "businessHoursNav", group: "Communication" },
-  { module: "omnichannel", href: "/settings/channels", icon: Radio, tKey: "channelsNav", group: "Communication", pageUngated: true },
   { module: "omnichannel", href: "/inbox/voip", icon: Phone, tKey: "voipCalls", group: "Communication", addon: "voip" },
   // ── Social Monitoring («Sosial monitorinq») ────────────────────────────────
   // Отдельная сайдбар-группа (по просьбе владельца, 2026-07-31): все виды
@@ -466,6 +482,11 @@ export const navItems: NavItem[] = [
   { module: "settings", href: "/settings/users", icon: Users, tKey: "users", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/smtp-settings", icon: Server, tKey: "smtp", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/integrations", icon: Plug, tKey: "integrations", group: "Settings", permissionScope: "settings" },
+  // The organization's own Telegram bot for its employees (task 8).
+  // Channels serve every module — the inbox, MTM notifications, sales, support — so they live in Settings for every
+  // tenant, not inside Omni-channel (owner, 2026-10-26: «каналы могут использоваться в разных модулях»). The
+  // employees' Telegram bot is a card in the same catalog (/settings/channels/telegram-staff); its own menu entry went.
+  { module: "settings", href: "/settings/channels", icon: Radio, tKey: "channelsNav", group: "Settings", allowedRoles: ADMIN_ROLES },
   // Telephony provider setup. Lives under Settings (not Support) because that is
   // where owners look for it — the page configures a provider connection, not a
   // support workflow. Still addon-gated: the VoIP add-on covers this page plus
@@ -579,6 +600,10 @@ export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): b
  */
 export function isNavItemRoleAllowed(org: OrgNavContext, item: NavItem): boolean {
   const role = (org.role as Role) || "viewer"
+  // An outside reviewer (src/lib/reviewer-access.ts) is refused every settings
+  // page by the proxy, so the menu does not offer one: no Settings group, and no
+  // section's own /settings/… entry either.
+  if (role === REVIEWER_ROLE && (item.group === "Settings" || reviewerPageClosed(navItemPathname(item.href)))) return false
   if (item.permissionScope && !checkPermission(role, item.permissionScope, "read")) return false
   if (item.allowedRoles && !item.allowedRoles.includes(role)) return false
   if (item.orgWide && (org.hiddenModules?.length ?? 0) > 0) return false

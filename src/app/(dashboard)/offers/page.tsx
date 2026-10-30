@@ -271,7 +271,7 @@ export default function OffersPage() {
         {statusTabs.map((tab) => (
           <Button
             key={tab.key}
-            variant={statusFilter === tab.key ? "default" : "outline"}
+            variant={statusFilter === tab.key ? "selected" : "outline"}
             size="sm"
             onClick={() => setStatusFilter(tab.key)}
             className="gap-1.5"

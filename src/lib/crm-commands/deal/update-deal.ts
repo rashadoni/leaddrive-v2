@@ -12,6 +12,7 @@ import { decimalToNumber } from "@/lib/prisma-decimal"
 import { applyAutoEarn } from "@/lib/loyalty"
 import { parseMeddpicc } from "@/lib/meddpicc"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
+import { dealHasLines } from "@/lib/deals/line-items"
 import type { CrmCommandActorContext } from "../actor-context"
 import {
   dispatchOrDeferCommandEffects,
@@ -20,6 +21,7 @@ import {
 import { CrmCommandError, notFoundError, staleWriteError, validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { updateDealCommandSchema, type UpdateDealCommandInput } from "../schemas/deal"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 /**
  * Update one deal — the single implementation behind PUT/PATCH
@@ -275,7 +277,17 @@ export async function updateDealCommand(
     },
   })
 
-  const deal = await db.deal.updateMany({
+  // A deal with product lines takes its amount from them (src/lib/deals/
+  // line-items.ts): a typed amount is ignored, and the currency the lines are
+  // priced in cannot change under them.
+  if ((parsed.data.valueAmount !== undefined || parsed.data.currency) && existing && await dealHasLines(orgId, id, db)) {
+    if (parsed.data.currency && parsed.data.currency !== existing.currency) {
+      throw validationError("This deal's amount comes from its product lines; change their prices instead of the currency")
+    }
+    delete parsed.data.valueAmount
+  }
+
+  const deal = await withDealEvents(db, orgId, [id], async (tx) => ({ value: await tx.deal.updateMany({
     // The version check and the write are one statement when a reviewed
     // version was supplied: an edit in between is refused, not overwritten.
     where: expectedDate
@@ -310,7 +322,7 @@ export async function updateDealCommand(
           : (parseMeddpicc(parsed.data.meddpicc) as unknown as Prisma.InputJsonValue),
       }),
     } as Prisma.DealUpdateManyMutationInput,
-  })
+  }) }))
 
   if (deal.count === 0) {
     if (expectedDate) throw staleWriteError()

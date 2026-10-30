@@ -140,7 +140,7 @@ const TOOL_COLORS: Record<string, string> = {
 
 function getToolColor(tool: string): string {
   const key = Object.keys(TOOL_COLORS).find(k => tool.toLowerCase().includes(k))
-  return key ? TOOL_COLORS[key] : "bg-muted text-foreground/70 border-zinc-200 dark:border-zinc-700"
+  return key ? TOOL_COLORS[key] : "bg-muted text-foreground/70 border-border"
 }
 
 const AGENT_TYPE_KEYS = new Set(["general", "sales", "support", "marketing", "analyst", "contract"])
@@ -390,8 +390,8 @@ export default function AICommandCenterPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] flex items-center justify-center shadow-lg ai-glow">
-            <BrainCircuit className="h-7 w-7 text-white" />
+          <div className="h-14 w-14 rounded-2xl border border-border bg-card flex items-center justify-center">
+            <BrainCircuit className="h-7 w-7 text-muted-foreground" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")}<HelpButton slug="ai-command-center" variant="label" /></h1>
@@ -409,26 +409,26 @@ export default function AICommandCenterPage() {
 
       <PageDescription text={t("pageDescription")} />
 
-      {/* Tabs — large, v1-style */}
-      <div className="grid grid-cols-2 gap-0 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-        <button
+      {/* Section navigation */}
+      <div data-crm-tabs="" className="grid grid-cols-2 gap-0 border-b border-border">
+        <button data-crm-tab="" data-state={activeTab === "dashboard" ? "active" : "inactive"}
           onClick={() => setActiveTab("dashboard")}
           className={cn(
-            "py-3.5 text-sm font-semibold transition-all flex items-center justify-center gap-2",
+            "-mb-px border-b-2 bg-transparent py-3.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2",
             activeTab === "dashboard"
-              ? "bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] text-white shadow-inner"
-              : "bg-card hover:bg-muted text-muted-foreground"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           )}
         >
           <Activity className="h-4 w-4" /> {t("tabDashboard")} <InfoHint text={t("hintTabDashboard")} size={12} />
         </button>
-        <button
+        <button data-crm-tab="" data-state={activeTab === "constructor" ? "active" : "inactive"}
           onClick={() => setActiveTab("constructor")}
           className={cn(
-            "py-3.5 text-sm font-semibold transition-all flex items-center justify-center gap-2",
+            "-mb-px border-b-2 bg-transparent py-3.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2",
             activeTab === "constructor"
-              ? "bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] text-white shadow-inner"
-              : "bg-card hover:bg-muted text-muted-foreground"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           )}
         >
           <Settings2 className="h-4 w-4" /> {t("tabConstructor")} <InfoHint text={t("hintTabAgentConstructor")} size={12} />
@@ -447,24 +447,24 @@ export default function AICommandCenterPage() {
             avgLatencyMs={stats?.avgLatency ? stats.avgLatency * 1000 : null}
           />
 
-          {/* KPI Row 1 — 4 cards with colorful icons */}
+          {/* KPI Row 1 — 4 cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Sessions */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">{t("totalSessions")} <InfoHint text={t("hintTotalSessions")} size={12} /></p>
                   <p className="text-3xl font-bold mt-1">{stats?.totalSessions || 0}</p>
                   <p className="text-xs text-primary mt-1 flex items-center gap-1">{tc("today")}: {stats?.activeSessions || 0} <InfoHint text={t("hintActiveSessions")} size={12} /></p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-6 w-6 text-primary" />
+                <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+                  <MessageSquare className="h-6 w-6 text-muted-foreground" />
                 </div>
               </div>
             </div>
 
             {/* Deflection */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">{t("deflectionRate")} <InfoHint text={t("hintDeflectionRate")} size={12} /></p>
@@ -478,14 +478,14 @@ export default function AICommandCenterPage() {
                     />
                   </div>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center ml-3">
-                  <ShieldCheck className="h-6 w-6 text-emerald-500" />
+                <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center ml-3">
+                  <ShieldCheck className="h-6 w-6 text-muted-foreground" />
                 </div>
               </div>
             </div>
 
             {/* CSAT */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">CSAT <InfoHint text={t("hintCsat")} size={12} /></p>
@@ -494,14 +494,14 @@ export default function AICommandCenterPage() {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">{t("avgSatisfaction")}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-yellow-50 flex items-center justify-center">
-                  <Star className="h-6 w-6 text-yellow-500" />
+                <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+                  <Star className="h-6 w-6 text-muted-foreground" />
                 </div>
               </div>
             </div>
 
             {/* FCR */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">{t("fcrRate")} <InfoHint text={t("hintFcr")} size={12} /></p>
@@ -510,8 +510,8 @@ export default function AICommandCenterPage() {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">{t("resolvedFirstTime")}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-pink-50 flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-pink-500" />
+                <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-muted-foreground" />
                 </div>
               </div>
             </div>
@@ -520,9 +520,9 @@ export default function AICommandCenterPage() {
           {/* KPI Row 2 — 3x2 with round icons */}
           <div className="grid gap-4 md:grid-cols-3">
             {/* Avg resolution time */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Timer className="h-5 w-5 text-primary" />
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <Timer className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">{t("avgResolutionTime")} <InfoHint text={t("hintAvgResolution")} size={12} /></p>
@@ -531,9 +531,9 @@ export default function AICommandCenterPage() {
             </div>
 
             {/* Total messages */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm flex items-center gap-4 ai-gradient-border">
-              <div className="h-12 w-12 rounded-full bg-[hsl(var(--ai-from))]/10 flex items-center justify-center flex-shrink-0">
-                <Activity className="h-5 w-5 text-[hsl(var(--ai-from))]" />
+            <div className="rounded-xl border border-border bg-card text-card-foreground p-5 shadow-sm flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <Activity className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("totalMessages")}</p>
@@ -542,7 +542,7 @@ export default function AICommandCenterPage() {
             </div>
 
             {/* Escalations */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm flex items-center gap-4 ai-gradient-border">
+            <div className="rounded-xl border border-border bg-card text-card-foreground p-5 shadow-sm flex items-center gap-4">
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="h-5 w-5 text-red-500" />
               </div>
@@ -553,9 +553,9 @@ export default function AICommandCenterPage() {
             </div>
 
             {/* Avg latency */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm flex items-center gap-4 ai-gradient-border">
-              <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <Clock className="h-5 w-5 text-amber-600" />
+            <div className="rounded-xl border border-border bg-card text-card-foreground p-5 shadow-sm flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <Clock className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("avgLatency")}</p>
@@ -564,20 +564,20 @@ export default function AICommandCenterPage() {
             </div>
 
             {/* Total cost */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm flex items-center gap-4 ai-gradient-border">
-              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <DollarSign className="h-5 w-5 text-green-600" />
+            <div className="rounded-xl border border-border bg-card text-card-foreground p-5 shadow-sm flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <DollarSign className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("totalCost")}</p>
-                <p className="text-2xl font-bold text-green-600">${stats?.totalCost?.toFixed(3) || "0.000"}</p>
+                <p className="text-2xl font-bold text-foreground">${stats?.totalCost?.toFixed(3) || "0.000"}</p>
               </div>
             </div>
 
             {/* Quality */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm flex items-center gap-4 ai-gradient-border">
-              <div className="h-12 w-12 rounded-full bg-[hsl(var(--ai-to))]/10 flex items-center justify-center flex-shrink-0">
-                <Gauge className="h-5 w-5 text-[hsl(var(--ai-to))]" />
+            <div className="rounded-xl border border-border bg-card text-card-foreground p-5 shadow-sm flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <Gauge className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("qualityScore")}</p>
@@ -587,7 +587,7 @@ export default function AICommandCenterPage() {
           </div>
 
           {/* Alerts Section */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card shadow-sm">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between p-5 border-b">
               <div className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-red-500" />
@@ -633,7 +633,7 @@ export default function AICommandCenterPage() {
           </div>
 
           {/* Sessions Table */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card shadow-sm">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="p-5 border-b">
               <h3 className="font-semibold flex items-center gap-2">
                 <ScrollText className="h-5 w-5 text-primary" /> {t("sessionsLast7Days")} <InfoHint text={t("hintTabSessions")} size={12} />
@@ -647,7 +647,7 @@ export default function AICommandCenterPage() {
           </div>
 
           {/* Logs Section — v1 style with trace details */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-background shadow-sm">
+          <div className="rounded-xl border border-border bg-background shadow-sm">
             <div className="p-5 border-b flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2">
                 <ScrollText className="h-5 w-5 text-[hsl(var(--ai-from))]" /> {t("interactionLogs")} <InfoHint text={t("hintTabLogs")} size={12} />
@@ -710,7 +710,7 @@ export default function AICommandCenterPage() {
 
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
-                <div className="bg-background rounded-xl shadow-2xl border border-zinc-200 dark:border-zinc-700 max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+                <div className="bg-background rounded-xl shadow-2xl border border-border max-w-3xl w-full max-h-[85vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
                   {/* Header */}
                   <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-background z-10 rounded-t-xl">
                     <div>
@@ -724,22 +724,22 @@ export default function AICommandCenterPage() {
                   <div className="p-5 space-y-5">
                     {/* KPI Cards */}
                     <div className="grid grid-cols-4 gap-3">
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("latencyLabel")}</div>
                         <div className={cn("text-xl font-bold font-mono", selectedLog.latencyMs! > 10000 ? "text-red-500" : "text-emerald-600 dark:text-emerald-400")}>{latencySec}s</div>
                         <div className="text-[10px] text-muted-foreground">{selectedLog.latencyMs} ms</div>
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("tokensLabel")}</div>
                         <div className="text-xl font-bold font-mono text-primary">{totalTokens}</div>
                         <div className="text-[10px] text-muted-foreground">{t("tokensInput", { input: selectedLog.promptTokens ?? 0, output: selectedLog.completionTokens ?? 0 })}</div>
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("costLabel")}</div>
                         <div className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">${(selectedLog.costUsd ?? 0).toFixed(4)}</div>
                         <div className="text-[10px] text-muted-foreground">{selectedLog.model || "—"}</div>
                       </div>
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3 text-center">
+                      <div className="rounded-lg border border-border bg-background p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("qualityLabel")}</div>
                         <div className="text-xl font-bold font-mono">{selectedLog.qualityScore != null ? `${selectedLog.qualityScore}/10` : "—"}</div>
                         <div className="text-[10px] text-muted-foreground">{selectedLog.qualityScore != null ? t("qualityRated") : t("qualityNotRated")}</div>
@@ -783,7 +783,7 @@ export default function AICommandCenterPage() {
                     {/* Steps */}
                     <div className="space-y-2">
                       {/* KB Search step */}
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3">
+                      <div className="rounded-lg border border-border bg-background p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="h-7 w-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><ScrollText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></div>
@@ -805,7 +805,7 @@ export default function AICommandCenterPage() {
                       </div>
 
                       {/* LLM Call step */}
-                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3">
+                      <div className="rounded-lg border border-border bg-background p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="h-7 w-7 rounded-lg bg-[hsl(var(--ai-from))]/10 flex items-center justify-center"><BrainCircuit className="h-4 w-4 text-[hsl(var(--ai-from))]" /></div>
@@ -829,7 +829,7 @@ export default function AICommandCenterPage() {
 
                       {/* Tools step (if any) */}
                       {toolsCount > 0 && (
-                        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-background p-3">
+                        <div className="rounded-lg border border-border bg-background p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="h-7 w-7 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center"><Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" /></div>
@@ -844,7 +844,7 @@ export default function AICommandCenterPage() {
                     </div>
 
                     {/* Da Vinci Response */}
-                    <div className="rounded-lg bg-muted border border-zinc-200 dark:border-zinc-700 p-3">
+                    <div className="rounded-lg bg-muted border border-border p-3">
                       <div className="flex items-center gap-2 mb-1">
                         <Bot className="h-4 w-4 text-[hsl(var(--ai-from))]" />
                         <span className="text-xs font-semibold text-[hsl(var(--ai-from))] uppercase">{t("daVinciResponse")}</span>
@@ -868,7 +868,7 @@ export default function AICommandCenterPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Settings2 className="h-5 w-5 text-[hsl(var(--ai-from))]" /> {t("agentConfigurations")}
+                  <Settings2 className="h-5 w-5 text-muted-foreground" /> {t("agentConfigurations")}
                 </h3>
                 <p className="text-sm text-muted-foreground">{t("configureAgentDesc2")}</p>
               </div>
@@ -877,7 +877,7 @@ export default function AICommandCenterPage() {
                 <Button variant="outline" disabled={importing} onClick={() => importInputRef.current?.click()}>
                   <Upload className="h-4 w-4 mr-2" /> {importing ? t("import.importing") : t("import.button")}
                 </Button>
-                <Button onClick={() => { setEditData(undefined); setShowForm(true) }} className="bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] hover:opacity-90 shadow-md">
+                <Button onClick={() => { setEditData(undefined); setShowForm(true) }}>
                   <Sparkles className="h-4 w-4 mr-2" /> {t("newConfiguration")}
                 </Button>
               </div>
@@ -895,16 +895,13 @@ export default function AICommandCenterPage() {
                 const ml = getModelLabel(agent.model)
                 const tools = agent.toolsEnabled || []
                 return (
-                  <div key={agent.id} className="rounded-xl p-6 shadow-sm space-y-4 ai-card">
+                  <div key={agent.id} className="rounded-xl border border-border bg-card text-card-foreground p-6 shadow-sm space-y-4">
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "h-12 w-12 rounded-xl flex items-center justify-center",
-                          agent.isActive ? "bg-gradient-to-br from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))]" : "bg-muted"
-                        )}>
+                        <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
                           {agent.isActive
-                            ? <BrainCircuit className="h-6 w-6 text-white" />
+                            ? <BrainCircuit className="h-6 w-6 text-muted-foreground" />
                             : <Zap className="h-6 w-6 text-muted-foreground" />
                           }
                         </div>
@@ -958,8 +955,8 @@ export default function AICommandCenterPage() {
                         <Settings2 className="h-3.5 w-3.5 text-primary" />
                         <span className="text-foreground/70">{t("toolsCount", { count: tools.length })}</span>
                       </div>
-                      <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 text-sm",
-                        agent.escalationEnabled !== false ? "bg-red-50 border-red-200" : "bg-muted border-zinc-200 dark:border-zinc-700"
+                      <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-sm",
+                        agent.escalationEnabled !== false ? "bg-red-50 border-red-200" : "bg-muted border-border"
                       )}>
                         <span>{agent.escalationEnabled !== false ? "🔴" : "⚪"}</span>
                         <span className="text-foreground/70">{agent.escalationEnabled !== false ? t("escalationOn") : t("escalationOff")}</span>
@@ -978,7 +975,7 @@ export default function AICommandCenterPage() {
                     {tools.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {tools.map(tool => (
-                          <span key={tool} className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-medium", getToolColor(tool))}>
+                          <span key={tool} className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border text-xs font-medium", getToolColor(tool))}>
                             📄 {tool.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
                           </span>
                         ))}
@@ -1008,7 +1005,6 @@ export default function AICommandCenterPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-amber-600 border-amber-200 hover:bg-amber-50"
                         onClick={() => { setEditData(agent); setShowForm(true) }}
                       >
                         <Pencil className="h-3.5 w-3.5 mr-1.5" /> {t("editAgent")}
@@ -1016,7 +1012,6 @@ export default function AICommandCenterPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-violet-600 border-violet-200 hover:bg-violet-50"
                         onClick={() => setSandboxAgent(agent)}
                         title={t("sandbox.hint")}
                       >
@@ -1025,7 +1020,6 @@ export default function AICommandCenterPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-sky-600 border-sky-200 hover:bg-sky-50"
                         onClick={() => handleExport(agent)}
                         title={t("export.hint")}
                       >
@@ -1054,7 +1048,7 @@ export default function AICommandCenterPage() {
                 )
               })}
               {agents.length === 0 && (
-                <div className="col-span-2 text-center py-12 text-muted-foreground rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+                <div className="col-span-2 text-center py-12 text-muted-foreground rounded-xl border border-border bg-card">
                   <BrainCircuit className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">{t("noAgents")}</p>
                   <p className="text-sm mt-1">{t("createFirstAgent")}</p>
@@ -1126,7 +1120,7 @@ export default function AICommandCenterPage() {
           </Card>
 
           {/* Guardrails — Rules & Restrictions */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card shadow-sm">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between p-5 border-b">
               <div>
                 <h3 className="font-semibold flex items-center gap-2">
@@ -1134,7 +1128,7 @@ export default function AICommandCenterPage() {
                 </h3>
                 <p className="text-sm text-muted-foreground">{t("whatAgentCantDo")}</p>
               </div>
-              <Button size="sm" className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-sm" onClick={() => document.getElementById("guardrail-form")?.scrollIntoView({ behavior: "smooth" })}>
+              <Button size="sm" onClick={() => document.getElementById("guardrail-form")?.scrollIntoView({ behavior: "smooth" })}>
                 <Plus className="h-4 w-4 mr-1" /> {t("newRule")}
               </Button>
             </div>
@@ -1164,20 +1158,20 @@ export default function AICommandCenterPage() {
                 <Input placeholder={t("ruleDescPlaceholder")} value={newGuardrailDesc} onChange={e => setNewGuardrailDesc(e.target.value)} className="bg-card" />
               </div>
               <Input placeholder={t("rulePromptPlaceholder")} value={newGuardrailPrompt} onChange={e => setNewGuardrailPrompt(e.target.value)} className="bg-card" />
-              <Button size="sm" onClick={handleAddGuardrail} disabled={!newGuardrailName.trim()} className="bg-gradient-to-r from-primary to-primary/80">
+              <Button size="sm" onClick={handleAddGuardrail} disabled={!newGuardrailName.trim()}>
                 <PlusCircle className="h-4 w-4 mr-1" /> {t("addBtn")}
               </Button>
             </div>
           </div>
 
           {/* Da Vinci Config Generator */}
-          <div className="rounded-xl bg-gradient-to-br from-[hsl(var(--ai-from))]/5 to-[hsl(var(--ai-to))]/5 border border-[hsl(var(--ai-to))]/20 p-8 text-center space-y-4 ai-glow">
-            <Sparkles className="h-8 w-8 mx-auto text-[hsl(var(--ai-to))]" />
+          <div className="rounded-xl border border-border bg-card text-card-foreground p-8 text-center space-y-4">
+            <Sparkles className="h-8 w-8 mx-auto text-muted-foreground" />
             <h3 className="font-bold text-lg">{t("createByDescription")}</h3>
             <p className="text-sm text-muted-foreground">{t("createByDescriptionHint")}</p>
             <div className="flex gap-3 max-w-xl mx-auto">
               <Input placeholder={t("createByDescriptionPlaceholder")} className="bg-card" />
-              <Button className="bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] hover:opacity-90 shadow-md flex-shrink-0">
+              <Button className="flex-shrink-0">
                 <Sparkles className="h-4 w-4 mr-1" /> {t("createBtn")}
               </Button>
             </div>

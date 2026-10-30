@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { contentDispositionAttachment } from "@/lib/export/tabular"
-import { mobileDocumentSha256, resolveMobileDocumentStoragePath } from "@/lib/mtm/mobile-document"
+import { mobileDocumentSha256, resolveMobileDocumentStoragePath, storedMobileDocumentBytes } from "@/lib/mtm/mobile-document"
 import { mtmMediaObjectReadFailureResponse } from "@/lib/mtm/media-object-http"
 import { readCommittedMtmMediaObject, toMtmReservedMediaObject } from "@/lib/mtm/media-object-lifecycle"
 import { mtmMediaObjectStorageSelect } from "@/lib/mtm/media-object-select"
@@ -65,11 +65,14 @@ export const GET = withMtmRlsAuth<RouteContext>("mtm", "read", async (_req, auth
       }
     } else {
       const filePath = resolveMobileDocumentStoragePath(document.storageKey)
-      const [fileStat, legacyBytes] = await Promise.all([stat(filePath), readFile(filePath)])
-      if (!fileStat.isFile() || fileStat.size !== document.sizeBytes) {
+      const [fileStat, storedBytes] = await Promise.all([stat(filePath), readFile(filePath)])
+      // An encrypted file is larger on disk than the recorded plain size, so the
+      // plain size is compared after decoding.
+      const plainBytes = await storedMobileDocumentBytes(auth.orgId, { isFile: fileStat.isFile(), size: fileStat.size }, storedBytes)
+      if (!plainBytes || plainBytes.byteLength !== document.sizeBytes) {
         return NextResponse.json({ error: "Evidence file is unavailable" }, { status: 410 })
       }
-      bytes = legacyBytes
+      bytes = plainBytes
     }
     if (bytes.byteLength !== document.sizeBytes) {
       return NextResponse.json({ error: "Evidence file is unavailable" }, { status: 410 })

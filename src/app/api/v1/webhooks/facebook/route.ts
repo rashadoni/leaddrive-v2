@@ -1,3 +1,4 @@
+import { getSharedMessengerApp } from "@/lib/social/shared-messenger-app"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { upsertSocialConversation } from "@/lib/facebook"
@@ -131,8 +132,12 @@ export async function GET(req: NextRequest) {
   // env fallback (else LeadDrive's env token could verify another tenant's subscription by slug). Only
   // the no-?t path (LeadDrive's own shared app) uses env VERIFY_TOKEN.
   const slug = searchParams.get("t")
+  const provider = searchParams.get("provider")
+  if (provider !== null && (provider !== "messenger" || searchParams.has("t"))) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const messenger = provider === "messenger" ? getSharedMessengerApp() : null
+  if (provider && !messenger?.ready) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   const tenant = await resolveTenantFacebookConfig(slug)
-  const expectedVerify = slug ? (tenant?.verifyToken || null) : VERIFY_TOKEN
+  const expectedVerify = messenger ? messenger.verifyToken : slug ? (tenant?.verifyToken || null) : VERIFY_TOKEN
   if (!expectedVerify) {
     // slug set but tenant has no verifyToken → 403 (don't env-fallback); no slug + no env → 500
     return NextResponse.json(
@@ -156,12 +161,16 @@ export async function POST(req: NextRequest) {
     // (LeadDrive's own shared app) uses the env appSecret. Mirrors WhatsApp's tenant-declared guard.
     const { searchParams } = req.nextUrl
     const slug = searchParams.get("t")
+    const provider = searchParams.get("provider")
+    if (provider !== null && (provider !== "messenger" || searchParams.has("t"))) return NextResponse.json({ error: "Invalid signature" }, { status: 403 })
+    const messenger = provider === "messenger" ? getSharedMessengerApp() : null
+    if (provider && !messenger?.ready) return NextResponse.json({ error: "Invalid signature" }, { status: 403 })
     const tenant = await resolveTenantFacebookConfig(slug)
     if (slug && !tenant?.appSecret) {
       console.error(`[FB Webhook] POST: ?t=${slug} addressed but tenant has no appSecret — refusing env fallback`)
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 })
     }
-    if (!verifyFacebookSignature(rawBody, req.headers.get("x-hub-signature-256"), tenant?.appSecret ?? null)) {
+    if (!verifyFacebookSignature(rawBody, req.headers.get("x-hub-signature-256"), messenger?.appSecret || tenant?.appSecret || null)) {
       console.error("[FB Webhook] POST: invalid signature")
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 })
     }
@@ -220,6 +229,10 @@ export async function POST(req: NextRequest) {
 
       for (const event of entry.messaging || []) {
         if (event.message?.is_echo) continue // skip echoes
+        // Seen receipts, reactions, edits and postbacks arrive in the same `messaging` array but carry
+        // no `message`. Recording them wrote a phantom "[media]" inbound (no mid, no attachment) a few
+        // seconds after the customer's real text, and counted it as unread.
+        if (!event.message) continue
         const senderId = event.sender?.id
         const text = event.message?.text || "[media]"
         const { mediaUrl, messageType } = parseInstagramAttachment(event.message?.attachments)
@@ -244,7 +257,7 @@ export async function POST(req: NextRequest) {
 
         const senderName = await resolveMetaSenderName({
           organizationId: channel.organizationId, platform, senderId,
-          token: channel.apiKey, igLogin: isIgLogin(channel.settings),
+          token: channel.apiKey, igLogin: isIgLogin(channel.settings), accountId: channel.pageId,
         })
         const conv = await upsertSocialConversation(
           channel.organizationId, platform, senderId,

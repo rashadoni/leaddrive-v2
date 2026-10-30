@@ -206,9 +206,9 @@ export default function LoyaltyBuilderPage() {
 
         {/* Section tabs — Overview (preview + quick-start) or one of the CRUD
             sections (the same components the standalone pages render). */}
-        <div className="mb-5 inline-flex flex-wrap gap-0.5 rounded-lg bg-muted p-0.5" data-tour-id="lb-tabs">
+        <div data-crm-tabs="" className="mb-5 inline-flex flex-wrap gap-0.5 rounded-lg bg-muted p-0.5" data-tour-id="lb-tabs">
           {TABS.map((x) => (
-            <button
+            <button data-crm-tab="" data-state={tab === x ? "active" : "inactive"}
               key={x}
               onClick={() => setTab(x)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
@@ -259,7 +259,7 @@ export default function LoyaltyBuilderPage() {
                   <button
                     type="button"
                     onClick={() => setTab("tiers")}
-                    className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
                   >
                     <Sparkles className="h-4 w-4" />
                     {t("emptyCta")}
@@ -331,7 +331,7 @@ export default function LoyaltyBuilderPage() {
                     {readiness.nextStep === "pos" ? (
                       <Link
                         href="/loyalty/pos"
-                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
                       >
                         <ArrowRight className="h-4 w-4" />
                         {t("continueSetup")}
@@ -341,7 +341,7 @@ export default function LoyaltyBuilderPage() {
                         type="button"
                         onClick={() => goToStep(readiness.nextStep)}
                         disabled={!readiness.nextStep}
-                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50" data-crm-button="default"
                       >
                         <ArrowRight className="h-4 w-4" />
                         {t("continueSetup")}
@@ -350,7 +350,7 @@ export default function LoyaltyBuilderPage() {
                     {readiness.canRunPosTest && (
                       <Link
                         href="/loyalty/pos"
-                        className="inline-flex items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted dark:border-zinc-700"
+                        className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                       >
                         <PlayCircle className="h-4 w-4" />
                         {t("runPosTest")}
@@ -389,7 +389,7 @@ export default function LoyaltyBuilderPage() {
                     <h2 className="text-sm font-semibold">{t("memberPortalTitle")}</h2>
                     <p className="text-xs text-muted-foreground">{t("memberPortalHint")}</p>
                   </div>
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     role="switch"
                     aria-checked={!!memberPortal}
@@ -427,7 +427,7 @@ export default function LoyaltyBuilderPage() {
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{t("autoEarnSkippedHint")}</p>
                     )}
                   </div>
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     role="switch"
                     aria-checked={!!autoEarn}
@@ -451,7 +451,7 @@ export default function LoyaltyBuilderPage() {
                       type="button"
                       onClick={() => setAutoEarnSkip(!autoEarnSkipped)}
                       disabled={autoEarn === null}
-                      className="rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 dark:border-zinc-700"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
                     >
                       {autoEarnSkipped ? t("autoEarnClearSkip") : t("autoEarnSkipAction")}
                     </button>

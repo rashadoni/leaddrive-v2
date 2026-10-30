@@ -367,8 +367,8 @@ export function MtmRoutePlanner() {
   if (capabilities && !capabilities.canCreateRoute) {
     return (
       <div className="space-y-3">
-        <Link href="/mtm/routes" className="inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-card px-3 text-sm font-medium dark:border-zinc-700"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("back")}</Link>
-        <p role="alert" className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm">{t("cannotPlan")}</p>
+        <Link href="/mtm/routes" className="inline-flex h-9 items-center gap-1 rounded-full border border-border bg-card px-3 text-sm font-medium"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("back")}</Link>
+        <p role="alert" className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm">{t("cannotPlan")}</p>
       </div>
     )
   }
@@ -377,12 +377,12 @@ export function MtmRoutePlanner() {
     <div className="space-y-3" data-testid="mtm-route-planner">
       <header className="flex flex-wrap items-center gap-2">
         <Hint text={t("hint.back")}>
-          <Link href="/mtm/routes" className="inline-flex h-9 items-center gap-1 rounded-full border border-zinc-200 bg-card px-3 text-sm font-medium hover:bg-muted/60 dark:border-zinc-700"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("back")}</Link>
+          <Link href="/mtm/routes" className="inline-flex h-9 items-center gap-1 rounded-full border border-border bg-card px-3 text-sm font-medium hover:bg-muted/60"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("back")}</Link>
         </Hint>
         <h1 className="text-lg font-semibold">{t("title")}</h1>
         <HomePill tone="amber">{t("draftBadge")}</HomePill>
         <Hint text={t("hint.agent")}>
-          <label className="inline-flex h-9 items-center rounded-full border border-zinc-200 bg-card pl-3 pr-1 text-sm dark:border-zinc-700">
+          <label className="inline-flex h-9 items-center rounded-full border border-border bg-card pl-3 pr-1 text-sm">
             <span className="sr-only">{t("agent")}</span>
             <select data-testid="mtm-route-planner-agent" value={agentId} disabled={!capabilities?.canReview} onChange={(event) => setAgentId(event.target.value)} className="h-8 max-w-[220px] bg-transparent pr-1 font-semibold outline-none">
               {agents.length === 0 ? <option value="">{t("noAgents")}</option> : null}
@@ -390,7 +390,7 @@ export function MtmRoutePlanner() {
             </select>
           </label>
         </Hint>
-        <div className="inline-flex h-9 items-center gap-0.5 rounded-full border border-zinc-200 bg-card px-1 text-sm dark:border-zinc-700">
+        <div className="inline-flex h-9 items-center gap-0.5 rounded-full border border-border bg-card px-1 text-sm">
           <Hint text={t("hint.prevDay")}><button type="button" aria-label={t("prevDay")} data-testid="mtm-route-planner-prev-day" onClick={() => shiftDate(-1)} className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted"><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button></Hint>
           <Hint text={t("hint.date")}>
             <label className="relative inline-flex items-center px-1">
@@ -417,14 +417,14 @@ export function MtmRoutePlanner() {
       </header>
 
       {error ? (
-        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
           {error}
           {duplicate ? <Link className="font-semibold underline" href={`/mtm/routes?routeId=${encodeURIComponent(duplicate.id)}`}>{t("openDuplicate")}</Link> : null}
         </div>
       ) : null}
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="relative h-[560px] overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
+        <div className="relative h-[560px] overflow-hidden rounded-2xl border border-border bg-card">
           {date && agentId ? (
             <RoutePlannerMap
               places={places}
@@ -451,13 +451,13 @@ export function MtmRoutePlanner() {
           ) : null}
           <div className="pointer-events-none absolute inset-x-3 top-3 z-[500] flex flex-wrap items-start gap-2">
             <div className="pointer-events-auto relative">
-              <label className="flex h-10 w-[300px] max-w-full items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+              <label className="flex h-10 w-[300px] max-w-full items-center gap-2 rounded-full border border-border bg-white px-4 text-sm shadow-sm dark:bg-zinc-900">
                 <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <span className="sr-only">{t("search")}</span>
                 <input data-testid="mtm-route-planner-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("search")} className="min-w-0 flex-1 bg-transparent outline-none" />
               </label>
               {searchResults.length > 0 ? (
-                <ul className="absolute left-0 right-0 top-11 max-h-none rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" data-testid="mtm-route-planner-search-results">
+                <ul className="absolute left-0 right-0 top-11 max-h-none rounded-xl border border-border bg-white p-1 shadow-lg dark:bg-zinc-900" data-testid="mtm-route-planner-search-results">
                   {searchResults.map((place) => (
                     <li key={place.customerId}>
                       <button type="button" className="block w-full rounded-lg px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => { setFocusPlaceId(place.customerId); setSelectedPlaceId(place.customerId); setQuery("") }}>
@@ -470,15 +470,15 @@ export function MtmRoutePlanner() {
               ) : null}
             </div>
             <Hint text={t("hint.onlyDue", { month: monthLabel })}>
-              <button type="button" data-testid="mtm-route-planner-only-due" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+              <button type="button" data-testid="mtm-route-planner-only-due" aria-pressed={onlyDue} onClick={() => setOnlyDue(true)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", onlyDue ? "border crm-choice-selected" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
                 {t("onlyDue", { month: monthLabel, count: duePlaces })}
               </button>
             </Hint>
-            <button type="button" data-testid="mtm-route-planner-all" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+            <button type="button" data-testid="mtm-route-planner-all" aria-pressed={!onlyDue} onClick={() => setOnlyDue(false)} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-semibold shadow-sm", !onlyDue ? "border crm-choice-selected" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
               {t("all", { count: allPlaces.length })}
             </button>
             {categories.map((value) => (
-              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "border border-foreground bg-white text-foreground ring-1 ring-inset ring-foreground dark:bg-zinc-900" : "border border-zinc-200 bg-white text-foreground dark:border-zinc-700 dark:bg-zinc-900")}>
+              <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory((current) => (current === value ? "" : value))} className={cn("pointer-events-auto h-9 rounded-full px-3 text-sm font-medium shadow-sm", category === value ? "border crm-choice-selected" : "border border-border bg-white text-foreground dark:bg-zinc-900")}>
                 {t("category", { category: value })}
               </button>
             ))}
@@ -491,14 +491,14 @@ export function MtmRoutePlanner() {
           {candidatesLoading ? (
             <div className="absolute inset-0 z-[400] flex items-center justify-center bg-white/40"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" aria-label={t("loading")} /></div>
           ) : candidatesFailed ? (
-            <p role="alert" className="border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 absolute inset-x-3 bottom-14 z-[500] rounded-xl p-3 text-sm">{t("candidatesFailed")}</p>
+            <p role="alert" className="border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 absolute inset-x-3 bottom-14 z-[500] rounded-xl p-3 text-sm">{t("candidatesFailed")}</p>
           ) : allPlaces.length === 0 && agentId && date ? (
             <p className="absolute inset-x-3 bottom-14 z-[500] rounded-xl bg-white/95 p-3 text-sm text-muted-foreground shadow-sm">{t("noClients")}</p>
           ) : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700" data-testid="mtm-route-planner-route">
-          <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+        <aside className="flex min-w-0 flex-col rounded-2xl border border-border bg-card" data-testid="mtm-route-planner-route">
+          <div className="border-b border-border px-4 py-3">
             <h2 className="text-[15px] font-semibold first-letter:uppercase">{t("routeOf", { day: routeDayLabel })}</h2>
             <div className="mt-1 flex flex-wrap gap-1.5" data-testid="mtm-route-planner-summary">
               <HomePill tone={stops.length > 0 ? "green" : "zinc"}>{t("stops", { count: stops.length })}</HomePill>
@@ -509,7 +509,7 @@ export function MtmRoutePlanner() {
             </div>
           </div>
           {prefillMissing ? (
-            <p role="status" data-testid="mtm-route-planner-prefill-missing" className="mx-3 mt-3 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
+            <p role="status" data-testid="mtm-route-planner-prefill-missing" className="mx-3 mt-3 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
               {t("prefillMissing")}
             </p>
           ) : null}
@@ -528,7 +528,7 @@ export function MtmRoutePlanner() {
                   onDrop={onDrop(index)}
                   onKeyDown={onStopKey(index)}
                   aria-label={t("stopAria", { position: index + 1, name: stop.name })}
-                  className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-card px-2 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-2 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 >
                   <Hint text={t("hint.drag")}><span className="cursor-grab text-muted-foreground"><GripVertical className="h-4 w-4" aria-hidden="true" /></span></Hint>
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[12px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">{index + 1}</span>
@@ -546,7 +546,7 @@ export function MtmRoutePlanner() {
               ))}
             </ol>
           )}
-          <div className="space-y-2 border-t border-zinc-100 p-3 dark:border-zinc-800">
+          <div className="space-y-2 border-t border-border p-3">
             <Hint text={t("hint.suggest", { month: monthLabel })}>
               <Button variant="outline" className="w-full border-primary/50 font-semibold text-primary" onClick={suggest} disabled={candidatesLoading || candidates.length === 0} data-testid="mtm-route-planner-suggest">
                 <Sparkles aria-hidden="true" />{t("suggest")}

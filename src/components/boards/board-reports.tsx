@@ -92,7 +92,7 @@ function Empty({ text }: { text: string }) {
 
 function ReportCard({ title, sub, icon, children }: { title: string; sub?: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center gap-2">
         <span className="text-muted-foreground">{icon}</span>
         <div>
@@ -149,7 +149,7 @@ export function BoardReports({ divisionId, assignees, onOpenTask, reloadKey, can
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`px-3 py-1.5 text-xs font-medium ${range === r ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              className={`px-3 py-1.5 text-xs font-medium ${range === r ? "crm-choice-selected " : "bg-background text-muted-foreground hover:bg-muted"}`}
             >
               {t(`range_${r}`)}
             </button>
@@ -394,7 +394,7 @@ function DueList({ title, tasks, accent, unassigned, onOpenTask }: {
 }) {
   if (!tasks.length) return null
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <div className="rounded-xl border border-border bg-card p-4">
       <h3 className={`mb-2 text-sm font-semibold ${accent}`}>{title} · {tasks.length}</h3>
       <div className="max-h-48 space-y-1 overflow-y-auto">
         {tasks.map((t) => (
@@ -625,7 +625,7 @@ function SlaView({ sla, divisionId, canEdit, onSaved }: { sla: SlaData; division
             type="button"
             onClick={() => save(n)}
             disabled={saving || invalid || n === sla.targetDays}
-            className="rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+            className="rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-50" data-crm-button="default"
           >
             {t("slaSave")}
           </button>

@@ -42,6 +42,7 @@ import { WhatsAppCallControls } from "@/components/inbox/whatsapp-call-controls"
 import { WhatsAppOutboundCallControl } from "@/components/inbox/whatsapp-outbound-call-control"
 import { AiDraftPanel } from "@/components/inbox/ai-draft-panel"
 import { AiDebugDrawer } from "@/components/inbox/ai-debug-drawer"
+import { MessageDeliveryStatus } from "@/components/inbox/message-delivery-status"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -449,6 +450,7 @@ export default function InboxV2Page() {
     const c = conversations.find((x) => x.socialConversationId === id)
     if (c) {
       setSelected(c.webChatSessionId || c.socialConversationId || c.contactId || c.messages[0]?.id || "")
+      setReplyChannel(c.lastChannel || "email")
       if (new URLSearchParams(window.location.search).get("tab") === "calls") setThreadTab("calls")
     }
   }, [loading, conversations])
@@ -1514,6 +1516,10 @@ export default function InboxV2Page() {
   const handleSend = async () => {
     if (sendDeliveryUnknown || (!replyText.trim() && !attachment) || !selectedConvo || composerTab !== "reply") return
     const convo = selectedConvo
+    if (replyChannel === "whatsapp" && convo.whatsappReplyBlocked) {
+      setSendError(t("whatsappChannelMismatch"))
+      return
+    }
     let tgChatId = convo.telegramChatId
     if (!tgChatId && replyChannel === "telegram") {
       for (const m of convo.messages) {
@@ -1580,7 +1586,8 @@ export default function InboxV2Page() {
         // Don't silently clear — surface WHY nothing sent. WhatsApp's 24h-window rule
         // returns "outside_window_no_template"; tokens/config errors come through too.
         const code = json.error || `HTTP ${res.status}`
-        setSendError(code === "outside_window_no_template" ? t("sendWindowClosed") : t("sendFailed", { error: code }))
+        setSendError(code === "whatsapp_reply_channel_mismatch" ? t("whatsappChannelMismatch")
+          : code === "outside_window_no_template" ? t("sendWindowClosed") : t("sendFailed", { error: code }))
         if (json.deliveryUnknown === false && nativeTikTokReplyTarget(convo.messages)) {
           sendOperationRef.current = null
         }
@@ -2041,7 +2048,7 @@ export default function InboxV2Page() {
                   </div>
                   {/* Whelp-style bulk select: the avatar turns into a check circle on hover /
                       while a selection is active. stopPropagation keeps the row from opening. */}
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     aria-label={t("bulkSelectAria")}
                     aria-pressed={isChecked}
@@ -2668,12 +2675,18 @@ export default function InboxV2Page() {
                         <span>·</span>
                         <span>{new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
                         {out && (
-                          <span
-                            title={deliveryUnknown ? t("statusDeliveryUnknown") : m.status === "delivered" ? t("statusDelivered") : m.status === "failed" ? t("statusFailed") : m.status === "sent" ? (locale === "ru" ? "Отправлено" : locale === "az" ? "Göndərilib" : "Sent") : t("statusSending")}
-                            className={cn(deliveryUnknown ? "text-amber-500" : m.status === "delivered" ? "text-emerald-500" : m.status === "failed" ? "text-red-500" : "")}
-                          >
-                            {deliveryUnknown ? "⚠" : m.status === "delivered" ? "✓✓" : m.status === "failed" ? "✕" : m.status === "sent" ? "✓" : "⏳"}
-                          </span>
+                          <MessageDeliveryStatus
+                            status={m.status}
+                            deliveryUnknown={deliveryUnknown}
+                            labels={{
+                              unknown: t("statusDeliveryUnknown"),
+                              read: t("statusRead"),
+                              delivered: t("statusDelivered"),
+                              failed: t("statusFailed"),
+                              sent: locale === "ru" ? "Отправлено" : locale === "az" ? "Göndərilib" : "Sent",
+                              sending: t("statusSending"),
+                            }}
+                          />
                         )}
                       </div>
                     </div>
@@ -2720,6 +2733,11 @@ export default function InboxV2Page() {
                 ))}
               </div>
               <div className="p-3 pt-2">
+                {composerTab === "reply" && replyChannel === "whatsapp" && selectedConvo.whatsappReplyBlocked && (
+                  <div role="alert" className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                    {t("whatsappChannelMismatch")}
+                  </div>
+                )}
                 {sendError && (
                   <div className={cn(
                     "mb-2 flex items-start gap-2 rounded-md border px-3 py-2 text-xs",
@@ -2932,9 +2950,9 @@ export default function InboxV2Page() {
                     <div className="flex-1" />
                     <Button
                       size="icon"
-                      className={cn("h-9 w-9 shrink-0", composerTab === "note" && "bg-amber-500 hover:bg-amber-600 text-white")}
+                      className="h-9 w-9 shrink-0"
                       onClick={() => (composerTab === "note" ? addNote(replyText) : handleSend())}
-                      disabled={composerTab === "note" ? (noteSaving || !replyText.trim()) : (sending || sendDeliveryUnknown || (!replyText.trim() && !attachment))}
+                      disabled={composerTab === "note" ? (noteSaving || !replyText.trim()) : (sending || sendDeliveryUnknown || (replyChannel === "whatsapp" && selectedConvo.whatsappReplyBlocked) || (!replyText.trim() && !attachment))}
                     >
                       {(composerTab === "note" ? noteSaving : sending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>

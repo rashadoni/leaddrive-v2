@@ -18,6 +18,7 @@ import {
   type ConvertLeadToDealCommandInput,
 } from "../schemas/lead"
 import { dispatchDealCreatedEffects } from "../deal/effects"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 const OMNICHANNEL_LEAD_SOURCES = new Set([
   "facebook",
@@ -275,19 +276,25 @@ export async function convertLeadToDealCommand(
       })
     }
 
-    const deal = await tx.deal.create({
-      data: {
-        organizationId: orgId,
-        name: parsed.data.dealTitle,
-        stage: conversionStage?.name || parsed.data.dealStage || "QUALIFIED",
-        valueAmount: parsed.data.dealValue ?? lead.estimatedValue ?? 0,
-        contactId: contact.id,
-        companyId,
-        pipelineId: pipeline?.id ?? null,
-        probability: conversionStage?.probability ?? 25,
-        customerNeed: lead.interest || lead.notes || null,
-        assignedTo: lead.assignedTo || userId,
-      },
+    const deal = await withDealEvents(tx, orgId, [], async (t) => {
+      const created = await t.deal.create({
+        data: {
+          organizationId: orgId,
+          name: parsed.data.dealTitle,
+          stage: conversionStage?.name || parsed.data.dealStage || "QUALIFIED",
+          valueAmount: parsed.data.dealValue ?? lead.estimatedValue ?? 0,
+          contactId: contact.id,
+          companyId,
+          pipelineId: pipeline?.id ?? null,
+          probability: conversionStage?.probability ?? 25,
+          customerNeed: lead.interest || lead.notes || null,
+          assignedTo: lead.assignedTo || userId,
+          // The ad click travels with the sale: a won deal is reported to the
+          // organization's ad platform with it (src/lib/ad-conversions/worker.ts).
+          ...(lead.adAttribution ? { metadata: { adAttribution: lead.adAttribution, sourceLeadId: lead.id } as Prisma.InputJsonValue } : {}),
+        },
+      })
+      return { value: created, createdIds: [created.id] }
     })
     const convertedLead = await tx.lead.findFirst({
       where: { id: leadId, organizationId: orgId },

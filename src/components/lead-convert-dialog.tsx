@@ -172,7 +172,7 @@ export function LeadConvertDialog({ open, onOpenChange, onConverted, lead, orgId
           <div className="grid gap-4">
             <div className="text-sm font-medium text-muted-foreground">{t("thisWillCreate")}</div>
 
-            <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 space-y-3">
+            <div className="border border-border rounded-lg p-3 space-y-3">
               <p className="text-sm font-medium">1. {t("contactFrom")} {lead.contactName}</p>
               {lead.companyName && (
                 <label className="flex items-center gap-2 cursor-pointer">

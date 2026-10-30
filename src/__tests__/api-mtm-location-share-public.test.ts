@@ -89,6 +89,7 @@ interface OrganizationRow {
   settings: unknown
 }
 interface AgentRow {
+  fieldDeletedAt?: Date | null
   id: string
   organizationId: string
   name: string
@@ -205,10 +206,11 @@ function theTables(): Record<string, Statement> {
       Object.entries(settings[args.where.organizationId] ?? {}).map(([key, value]) => ({ key, value }))) as Statement,
 
     [EMPLOYEE]: ((args: { where: Record<string, unknown>; select: Select }) => {
-      knownOnly(args.where, ["id", "organizationId", "status"], "the employee read")
+      knownOnly(args.where, ["id", "organizationId", "status", "fieldDeletedAt"], "the employee read")
       const row = agents.find((agent) =>
         agent.id === args.where.id && agent.organizationId === args.where.organizationId
-        && (args.where.status === undefined || agent.status === args.where.status))
+        && (args.where.status === undefined || agent.status === args.where.status)
+        && (args.where.fieldDeletedAt !== null || !agent.fieldDeletedAt))
       if (!row) return null
       const { organization: wanted, ...own } = args.select as { organization?: { select: Select } }
       const organization = organizations.find((one) => one.id === row.organizationId)
@@ -721,6 +723,7 @@ describe("GET /api/v1/public/location-share/[token]", () => {
       ["belongs to an organization that is no longer active", () => { theOrganization().isActive = false }, TOKEN],
       ["belongs to an organization that lost the field product", () => { Object.assign(theOrganization(), { features: [], modules: {} }) }, TOKEN],
       ["belongs to an organization whose field product was switched off", () => { theOrganization().modules = { mtm: true, "route-field": false } }, TOKEN],
+      ["shows an employee removed from Field", () => { theEmployee().fieldDeletedAt = new Date() }, TOKEN],
       ["shows an employee who was deactivated", () => { theEmployee().status = "INACTIVE" }, TOKEN],
       ["shows an employee who was suspended", () => { theEmployee().status = "SUSPENDED" }, TOKEN],
       ["is not a link at all", () => undefined, "not-a-token"],

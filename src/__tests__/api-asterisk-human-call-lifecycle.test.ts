@@ -2,6 +2,16 @@ import { Prisma } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+// The number -> organization lookup is its own suite (voice-line-numbers-postgres);
+// here every call belongs to the installation's default organization, as before it.
+vi.mock("@/lib/voip/line-numbers", () => ({
+  voiceOrganizationFor: async () => process.env.VOICE_AGENT_ORGANIZATION_ID
+    ? { organizationId: process.env.VOICE_AGENT_ORGANIZATION_ID, channelConfigId: null } : null,
+}))
+vi.mock("@prisma/client", async () => ({ Prisma: {
+  ...await import("@prisma/client/runtime/library"), TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" },
+} }))
+
 const mocks = vi.hoisted(() => ({
   callLogFindFirst: vi.fn(),
   callLogCreate: vi.fn(),
@@ -280,6 +290,17 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
     expect(mocks.callEventCreate).not.toHaveBeenCalled()
   })
 
+  it("accepts a media answer observation for an AI inbound call before the AGI spool drains", async () => {
+    mocks.callLogFindFirst.mockResolvedValue(baseCall({ callMode: "ai", direction: "inbound", status: "answering" }))
+    const response = await POST(request(answeredPayload()))
+    await expect(response.json()).resolves.toEqual({ success: true, result: "applied" })
+    expect(mocks.callLogUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ providerCallId: callId, providerOutcome: null, endedAt: null }),
+      data: { status: "in-progress", wasAnswered: true },
+    }))
+    expect(mocks.callEventCreate).toHaveBeenCalledTimes(1)
+  })
+
   it("strictly binds an answer observation to one ordinary Asterisk call", async () => {
     const response = await POST(request(answeredPayload()))
 
@@ -308,6 +329,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         conversationOutcome: true,
         startedAt: true,
         endedAt: true,
+        handoffState: true,
       },
     })
     expect(mocks.callLogUpdateMany).toHaveBeenCalledWith({
@@ -320,6 +342,9 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         callSid: callId,
         providerOutcome: null,
         endedAt: null,
+        // A call the AI handed off rings the browsers: the AI leg's late
+        // answer must not take it out of "ringing".
+        AND: [{ OR: [{ handoffState: null }, { handoffState: { in: ["requested", "connected", "returned"] } }] }],
       },
       data: {
         status: "in-progress",

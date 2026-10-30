@@ -1,0 +1,10 @@
+# Installed by scripts/zeytun-line/install-backup-watch.sh.
+[Unit]
+Description=Tell the owner the backup Zeytun line watch itself failed
+
+[Service]
+Type=oneshot
+Environment=LD_LINE_WATCH_ROLE=backup
+Environment=LD_LINE_WATCH_STATE=/var/lib/ld-line-watch
+Environment=LD_LINE_WATCH_NOTIFY=/usr/local/sbin/ld-kafka-notify
+ExecStart=/usr/bin/node /opt/ld-line-watch/watch.mjs --notify-failure

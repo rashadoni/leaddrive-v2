@@ -390,7 +390,7 @@ export function ContactDictionarySettings() {
   }
 
   return (
-    <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+    <section className="border-t border-border pt-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -411,7 +411,7 @@ export function ContactDictionarySettings() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+      <div className="mt-4 rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
         <p className="font-medium">{t("governanceTitle")}</p>
         <p className="mt-0.5 text-xs leading-relaxed opacity-80">{t("governanceDescription")}</p>
       </div>
@@ -419,11 +419,11 @@ export function ContactDictionarySettings() {
       {loading && dictionaries.length === 0 ? (
         <div className="mt-5 grid gap-3 lg:grid-cols-2">{[1, 2].map((item) => <div key={item} className="h-44 animate-pulse rounded-lg bg-muted" />)}</div>
       ) : loadError && dictionaries.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm">
+        <div className="mt-5 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-4 text-sm">
           <p>{loadError}</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>{t("retry")}</Button>
         </div>
       ) : ordered.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-700">
+        <div className="mt-5 rounded-lg border border-dashed border-zinc-300 p-6 text-center dark:border-border">
           <FileClock className="mx-auto h-6 w-6 text-muted-foreground" />
           <p className="mt-2 text-sm font-medium">{t("emptyTitle")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("emptyDescription")}</p>
@@ -431,7 +431,7 @@ export function ContactDictionarySettings() {
       ) : (
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {ordered.map((dictionary) => (
-            <article key={dictionary.id} className={`rounded-lg border p-4 ${dictionary.status === "ACTIVE" ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500" : "border-zinc-200 bg-card dark:border-zinc-700"}`}>
+            <article key={dictionary.id} className={`rounded-lg border p-4 ${dictionary.status === "ACTIVE" ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500" : "border-border bg-card"}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -452,10 +452,10 @@ export function ContactDictionarySettings() {
                 <div><dt className="text-muted-foreground">{t("source")}</dt><dd className="mt-0.5 font-medium">{dictionary.sourceSystem}</dd></div>
                 <div><dt className="text-muted-foreground">{t("approval")}</dt><dd className="mt-0.5 break-words font-medium">{dictionary.approvalReference || "—"}</dd></div>
               </dl>
-              <details className="mt-4 rounded-md border border-zinc-200 bg-background/80 dark:border-zinc-700">
+              <details className="mt-4 rounded-md border border-border bg-background/80">
                 <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium">{t("showEntries")}</summary>
-                <pre className="overflow-x-auto border-t border-zinc-200 p-3 text-[11px] leading-relaxed dark:border-zinc-700">{JSON.stringify(dictionary.entries, null, 2)}</pre>
-                <p className="break-all border-t border-zinc-200 px-3 py-2 font-mono text-[10px] text-muted-foreground dark:border-zinc-700">SHA-256: {dictionary.entriesHash}</p>
+                <pre className="overflow-x-auto border-t border-border p-3 text-[11px] leading-relaxed">{JSON.stringify(dictionary.entries, null, 2)}</pre>
+                <p className="break-all border-t border-border px-3 py-2 font-mono text-[10px] text-muted-foreground">SHA-256: {dictionary.entriesHash}</p>
               </details>
             </article>
           ))}
@@ -484,7 +484,7 @@ export function ContactDictionarySettings() {
               <div><Label htmlFor="contact-dictionary-observed">{t("sourceObservedAt")}</Label><Input id="contact-dictionary-observed" type="datetime-local" value={form.sourceObservedAt} onChange={(event) => setForm((current) => ({ ...current, sourceObservedAt: event.target.value }))} className="mt-1.5 min-h-11" required /></div>
               <div><Label htmlFor="contact-dictionary-effective">{t("effectiveFrom")}</Label><Input id="contact-dictionary-effective" type="date" value={form.effectiveFrom} onChange={(event) => setForm((current) => ({ ...current, effectiveFrom: event.target.value }))} className="mt-1.5 min-h-11" required /></div>
             </div>
-            {formError ? <p role="alert" className="rounded-md border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">{formError}</p> : null}
+            {formError ? <p role="alert" className="rounded-md border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">{formError}</p> : null}
           </DialogContent>
           <DialogFooter><Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>{t("cancel")}</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}{saving ? t("creating") : t("createDraft")}</Button></DialogFooter>
         </form>
@@ -493,7 +493,7 @@ export function ContactDictionarySettings() {
       <Dialog open={Boolean(activateTarget)} onOpenChange={(open) => !open && !saving && setActivateTarget(null)}>
         <DialogHeader><DialogTitle>{t("activateTitle")}</DialogTitle><DialogDescription>{activateTarget ? t("activateDescription", { name: nameFor(activateTarget), version: activateTarget.version }) : ""}</DialogDescription></DialogHeader>
         <DialogContent className="space-y-4">
-          <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm"><p className="font-medium">{t("activationEffectTitle")}</p><p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p></div>
+          <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm"><p className="font-medium">{t("activationEffectTitle")}</p><p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p></div>
           <div><Label htmlFor="contact-dictionary-approval">{t("approvalReference")}</Label><Input id="contact-dictionary-approval" value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} className="mt-1.5 min-h-11" maxLength={500} required /></div>
         </DialogContent>
         <DialogFooter><Button type="button" variant="outline" onClick={() => setActivateTarget(null)} disabled={saving}>{t("cancel")}</Button><Hint wrap text={!saving && approvalReference.trim().length < 3 ? t("hint.dictionaryApprovalNeeded") : null}><Button type="button" onClick={() => void activateDictionary()} disabled={saving || approvalReference.trim().length < 3}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}{saving ? t("activating") : t("confirmActivation")}</Button></Hint></DialogFooter>

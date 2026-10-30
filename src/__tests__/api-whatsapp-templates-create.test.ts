@@ -14,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     channelConfig: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       update: vi.fn(),
     },
     whatsAppTemplate: {
@@ -33,6 +34,7 @@ function req(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{ id: "cfg_wa" }] as never)
   vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({
     id: "cfg_wa",
     organizationId: "org_1",

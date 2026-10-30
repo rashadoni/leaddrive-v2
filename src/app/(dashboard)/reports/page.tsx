@@ -1203,10 +1203,10 @@ export default function ReportsPage() {
             ) : drillDownLeads.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">{t("noLeadsFound")}</p>
             ) : (
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+              <div className="rounded-lg border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-muted/50 border-b border-zinc-200 dark:border-zinc-700">
+                    <tr className="bg-muted/50 border-b border-border">
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("colName")}</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("colCompany")}</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t("colScore")}</th>

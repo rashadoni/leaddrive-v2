@@ -1,0 +1,438 @@
+{
+  "observedAt": "2026-10-26T10:09:15.870Z",
+  "kind": "single-native-authenticated-tab-existing-browser-profile",
+  "timing": {
+    "path": "/companies",
+    "readyState": "complete",
+    "visibility": "hidden",
+    "navigation": {
+      "ttfbMs": 2292.899999976158,
+      "responseEndMs": 3467.2999999523163,
+      "domContentLoadedMs": 3535.2000000476837,
+      "loadMs": 3883.2999999523163,
+      "transferBytes": 2414485,
+      "encodedBytes": 2414185,
+      "decodedBytes": 2414185
+    },
+    "resourcesCount": 74,
+    "resources": [
+      {
+        "path": "/api/v1/public/csp-report",
+        "startMs": 3765.399999976158,
+        "endMs": 4176.700000047684,
+        "durationMs": 411.3000000715256,
+        "transferBytes": 300,
+        "decodedBytes": 0
+      },
+      {
+        "path": "/api/v1/notifications",
+        "startMs": 3958.5,
+        "endMs": 6002.700000047684,
+        "durationMs": 2044.2000000476837,
+        "transferBytes": 0,
+        "decodedBytes": 106
+      },
+      {
+        "path": "/api/v1/users/me/notification-preferences",
+        "startMs": 3959.600000023842,
+        "endMs": 5995.200000047684,
+        "durationMs": 2035.6000000238419,
+        "transferBytes": 0,
+        "decodedBytes": 2773
+      },
+      {
+        "path": "/api/v1/users/me",
+        "startMs": 3961.5,
+        "endMs": 5859.399999976158,
+        "durationMs": 1897.8999999761581,
+        "transferBytes": 0,
+        "decodedBytes": 329
+      },
+      {
+        "path": "/api/v1/users/me/preferences",
+        "startMs": 3962.5,
+        "endMs": 6114.5,
+        "durationMs": 2152,
+        "transferBytes": 0,
+        "decodedBytes": 599
+      },
+      {
+        "path": "/api/auth/session",
+        "startMs": 3971.399999976158,
+        "endMs": 6008.600000023842,
+        "durationMs": 2037.2000000476837,
+        "transferBytes": 0,
+        "decodedBytes": 728
+      },
+      {
+        "path": "/api/v1/notifications",
+        "startMs": 3985.7000000476837,
+        "endMs": 6215.5,
+        "durationMs": 2229.7999999523163,
+        "transferBytes": 0,
+        "decodedBytes": 2420
+      },
+      {
+        "path": "/api/v1/web-chat/sessions/unread-count",
+        "startMs": 6070.200000047684,
+        "endMs": 8649.700000047684,
+        "durationMs": 2579.5,
+        "transferBytes": 0,
+        "decodedBytes": 35
+      },
+      {
+        "path": "/api/v1/notifications",
+        "startMs": 6071.399999976158,
+        "endMs": 9086,
+        "durationMs": 3014.600000023842,
+        "transferBytes": 0,
+        "decodedBytes": 106
+      },
+      {
+        "path": "/api/v1/users/me/notification-preferences",
+        "startMs": 6071.5,
+        "endMs": 9195.299999952316,
+        "durationMs": 3123.7999999523163,
+        "transferBytes": 0,
+        "decodedBytes": 2773
+      },
+      {
+        "path": "/api/v1/companies",
+        "startMs": 6071.899999976158,
+        "endMs": 9194.200000047684,
+        "durationMs": 3122.3000000715256,
+        "transferBytes": 0,
+        "decodedBytes": 1439
+      },
+      {
+        "path": "/api/v1/mtm/settings",
+        "startMs": 6072.700000047684,
+        "endMs": 8906.700000047684,
+        "durationMs": 2834,
+        "transferBytes": 0,
+        "decodedBytes": 3129
+      },
+      {
+        "path": "/api/v1/ai/voice/access",
+        "startMs": 6072.799999952316,
+        "endMs": 9086,
+        "durationMs": 3013.2000000476837,
+        "transferBytes": 0,
+        "decodedBytes": 17
+      },
+      {
+        "path": "/api/v1/mtm/pharmacy-promotion-executions/sync-context",
+        "startMs": 6073.200000047684,
+        "endMs": 9176.399999976158,
+        "durationMs": 3103.1999999284744,
+        "transferBytes": 300,
+        "decodedBytes": 0
+      },
+      {
+        "path": "/api/v1/voip/capabilities",
+        "startMs": 6073.399999976158,
+        "endMs": 9362.299999952316,
+        "durationMs": 3288.899999976158,
+        "transferBytes": 0,
+        "decodedBytes": 22
+      },
+      {
+        "path": "/api/auth/session",
+        "startMs": 6078.799999952316,
+        "endMs": 9148.299999952316,
+        "durationMs": 3069.5,
+        "transferBytes": 0,
+        "decodedBytes": 728
+      },
+      {
+        "path": "/api/v1/notifications",
+        "startMs": 6079.299999952316,
+        "endMs": 9483.299999952316,
+        "durationMs": 3404,
+        "transferBytes": 0,
+        "decodedBytes": 2420
+      },
+      {
+        "path": "/api/v1/calls/active",
+        "startMs": 6079.600000023842,
+        "endMs": 9399.200000047684,
+        "durationMs": 3319.600000023842,
+        "transferBytes": 0,
+        "decodedBytes": 26
+      },
+      {
+        "path": "/api/v1/users/me/preferences",
+        "startMs": 8540.899999976158,
+        "endMs": 11678.100000023842,
+        "durationMs": 3137.2000000476837,
+        "transferBytes": 538,
+        "decodedBytes": 599
+      },
+      {
+        "path": "/api/v1/users/me/notification-preferences",
+        "startMs": 9173.100000023842,
+        "endMs": 11770.299999952316,
+        "durationMs": 2597.1999999284744,
+        "transferBytes": 0,
+        "decodedBytes": 2773
+      },
+      {
+        "path": "/api/v1/companies",
+        "startMs": 9173.399999976158,
+        "endMs": 14022.700000047684,
+        "durationMs": 4849.300000071526,
+        "transferBytes": 0,
+        "decodedBytes": 1439
+      },
+      {
+        "path": "/api/v1/mtm/pharmacy-promotion-executions/sync-context",
+        "startMs": 9173.600000023842,
+        "endMs": 11754.399999976158,
+        "durationMs": 2580.7999999523163,
+        "transferBytes": 0,
+        "decodedBytes": 127
+      },
+      {
+        "path": "/api/v1/notifications",
+        "startMs": 9176.799999952316,
+        "endMs": 11774,
+        "durationMs": 2597.2000000476837,
+        "transferBytes": 0,
+        "decodedBytes": 2420
+      },
+      {
+        "path": "/api/v1/saved-views",
+        "startMs": 9210.5,
+        "endMs": 11723.299999952316,
+        "durationMs": 2512.7999999523163,
+        "transferBytes": 0,
+        "decodedBytes": 26
+      },
+      {
+        "path": "/api/v1/calls/active",
+        "startMs": 11541.5,
+        "endMs": 13703.700000047684,
+        "durationMs": 2162.2000000476837,
+        "transferBytes": 0,
+        "decodedBytes": 26
+      }
+    ],
+    "jsDecodedBytes": 2019821,
+    "jsTransferBytes": 0,
+    "tableRows": 0,
+    "busyElements": 0,
+    "serviceWorkerControlled": true
+  },
+  "responses": [
+    {
+      "path": "/companies",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2283.283
+    },
+    {
+      "path": "/api/v1/public/csp-report",
+      "status": 204,
+      "protocol": "h2",
+      "fromServiceWorker": false,
+      "contentEncoding": null,
+      "ttfbMs": 395.448
+    },
+    {
+      "path": "/api/v1/users/me",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 1896.945
+    },
+    {
+      "path": "/api/v1/users/me/notification-preferences",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2032.339
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2043.318
+    },
+    {
+      "path": "/api/auth/session",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2036.661
+    },
+    {
+      "path": "/api/v1/users/me/preferences",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2148.446
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2225.84
+    },
+    {
+      "path": "/api/v1/web-chat/sessions/unread-count",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2577.003
+    },
+    {
+      "path": "/api/v1/mtm/settings",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2832.986
+    },
+    {
+      "path": "/api/v1/ai/voice/access",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3009.382
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3012.296
+    },
+    {
+      "path": "/api/auth/session",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3066.676
+    },
+    {
+      "path": "/api/v1/mtm/pharmacy-promotion-executions/sync-context",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3094.964
+    },
+    {
+      "path": "/api/v1/companies",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3116.923
+    },
+    {
+      "path": "/api/v1/users/me/notification-preferences",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3121.411
+    },
+    {
+      "path": "/api/v1/voip/capabilities",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3287.792
+    },
+    {
+      "path": "/api/v1/calls/active",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3318.532
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 3403.64
+    },
+    {
+      "path": "/api/v1/users/me/preferences",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": false,
+      "contentEncoding": "br",
+      "ttfbMs": 3131.047
+    },
+    {
+      "path": "/api/v1/saved-views",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2511.587
+    },
+    {
+      "path": "/api/v1/mtm/pharmacy-promotion-executions/sync-context",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2577.914
+    },
+    {
+      "path": "/api/v1/users/me/notification-preferences",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2596.283
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2596.744
+    },
+    {
+      "path": "/api/v1/calls/active",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 2159.535
+    },
+    {
+      "path": "/api/v1/companies",
+      "status": 200,
+      "protocol": "h2",
+      "fromServiceWorker": true,
+      "contentEncoding": "br",
+      "ttfbMs": 4848.745
+    }
+  ],
+  "initialMeasurementLabel": "single-native-authenticated-tab-warm-cache",
+  "cacheProvenance": "Unverified. Service-worker-controlled Resource Timing with zero JS transfer bytes does not establish a cache hit."
+}

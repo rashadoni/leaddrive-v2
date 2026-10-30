@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CircleDashed, Loader2, MapPin, Maximize, Minimize, MousePointerClick, Ruler, Search, X } from "lucide-react"
+import { CircleDashed, Loader2, MapPin, Maximize, Minimize, MousePointerClick, Ruler, Search, Users, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LiveMapReferencePoint } from "@/components/mtm/live-map"
 import { LiveMapZoneForm, type LiveMapZoneFormValues } from "@/components/mtm/live-map-zone-form"
@@ -18,7 +18,7 @@ interface SearchHit {
 const MAX_HITS_SHOWN = 3
 
 const TOOL = "pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium shadow-md transition-colors"
-const TOOL_IDLE = "border-zinc-300 bg-card hover:bg-muted dark:border-zinc-600"
+const TOOL_IDLE = "border-border bg-card hover:bg-muted"
 // A tool that is on is outlined dark, not filled: the orange fill is the page's one main button (owner-approved colours, 2026-10-18).
 const TOOL_ON = "border-foreground bg-card font-semibold text-foreground ring-1 ring-inset ring-foreground"
 
@@ -38,7 +38,7 @@ const TOOL_ON = "border-foreground bg-card font-semibold text-foreground ring-1 
 export function LiveMapTools({
   near, referencePoint, onReferencePointChange, pickingPoint, onPickingPointChange,
   rulerActive, onRulerToggle, rulerMeters, rulerPointCount, onRulerUndo, formatDistance, rulerArea = null,
-  fullscreen, onFullscreenToggle, fullscreenSupported, zoneDrawing = null, zoneEditor = null,
+  fullscreen, onFullscreenToggle, fullscreenSupported, zoneDrawing = null, zoneEditor = null, onShowEveryone,
 }: {
   /** Roughly where the map is looking, so nearby places come first. */
   near: { latitude: number; longitude: number } | null
@@ -58,6 +58,8 @@ export function LiveMapTools({
   fullscreen: boolean
   onFullscreenToggle: () => void
   fullscreenSupported: boolean
+  /** Leaves the selected employee and frames the whole team again (owner, 2026-10-30: after one press there was no way back). */
+  onShowEveryone?: () => void
   /**
    * «Свои зоны»: what the ruler has outlined, or a circle around the picked
    * point, kept on the map under a name. Null until the server has said that
@@ -145,9 +147,9 @@ export function LiveMapTools({
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 z-[1100] flex max-h-[calc(100%-1.5rem)] max-w-[calc(100%-1.5rem)] flex-col items-start gap-2" data-testid="live-map-tools">
       {open ? (
-        <div id="live-map-point-panel" className="pointer-events-auto flex min-h-0 w-80 max-w-full flex-col rounded-lg border border-zinc-300 bg-card p-2 shadow-lg dark:border-zinc-600" data-testid="live-map-point-panel">
+        <div id="live-map-point-panel" className="pointer-events-auto flex min-h-0 w-80 max-w-full flex-col rounded-lg border border-border bg-card p-2 shadow-lg" data-testid="live-map-point-panel">
           <form onSubmit={search} className="flex shrink-0 items-center gap-1.5">
-            <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-background px-2.5 text-sm focus-within:border-primary/60 dark:border-zinc-700">
+            <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-input bg-card px-2.5 text-sm focus-within:border-primary/60">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <input
                 type="search"
@@ -160,7 +162,7 @@ export function LiveMapTools({
               />
             </label>
             <Hint wrap text={tMap("hint.findAddress")}>
-              <button type="submit" disabled={searching} data-testid="live-map-address-search" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:opacity-70">
+              <button type="submit" disabled={searching} data-testid="live-map-address-search" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:opacity-70" data-crm-button="default">
                 {searching ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                 {tMap(searching ? "tools.searching" : "tools.searchButton")}
               </button>
@@ -168,7 +170,7 @@ export function LiveMapTools({
           </form>
           {notice ? <p role="status" className="mt-1.5 px-1 text-xs text-amber-800 dark:text-amber-300" data-testid="live-map-address-notice">{notice}</p> : null}
           {hits.length > 0 ? (
-            <ul className="mt-1.5 min-h-0 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700" data-testid="live-map-address-hits">
+            <ul className="mt-1.5 min-h-0 divide-y divide-border overflow-y-auto" data-testid="live-map-address-hits">
               {/* The best three, two lines each: on a phone the map is 360 px
                   tall, and five wrapped addresses pushed the search field out of it. */}
               {hits.slice(0, MAX_HITS_SHOWN).map((hit) => (
@@ -188,7 +190,7 @@ export function LiveMapTools({
               type="button"
               onClick={() => { onPickingPointChange(true); setOpen(false) }}
               data-testid="live-map-pick-point"
-              className="mt-1.5 inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-300 text-sm font-medium hover:bg-muted dark:border-zinc-600"
+              className="mt-1.5 inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium hover:bg-muted"
             >
               <MousePointerClick className="h-4 w-4" aria-hidden="true" />{tMap("tools.pickOnMap")}
             </button>
@@ -218,13 +220,13 @@ export function LiveMapTools({
           On a phone it steps aside for the zone's form: the two together are taller than the map —
           which is why the form's own reason carries «Убрать последнюю» with it. */}
       {rulerActive ? (
-        <div role="status" className={cn("pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-zinc-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-zinc-600", zoneFormShown && "max-sm:hidden")} data-testid="live-map-ruler">
+        <div role="status" className={cn("pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs shadow-md", zoneFormShown && "max-sm:hidden")} data-testid="live-map-ruler">
           <span className="font-semibold" data-testid="live-map-ruler-total">{tMap("tools.rulerTotal", { distance: formatDistance(rulerMeters) })}</span>
           {rulerArea ? <span className="font-semibold" data-testid="live-map-ruler-area">{tMap("tools.rulerArea", { area: rulerArea })}</span> : null}
           {/* What has just been outlined can stay on the map as a zone with a name. */}
           {zoneDrawing && !zoneFormShown && outlineProblem === null ? (
             <Hint text={tMap("hint.saveOutline")}>
-              <button type="button" onClick={() => setZoneForm("outline")} data-testid="live-map-ruler-save-zone" className="inline-flex min-h-8 items-center rounded-md bg-primary px-2 font-semibold text-primary-foreground">
+              <button type="button" onClick={() => setZoneForm("outline")} data-testid="live-map-ruler-save-zone" className="inline-flex min-h-8 items-center rounded-md bg-primary px-2 font-semibold text-primary-foreground" data-crm-button="default">
                 {tMap("areas.saveOutline")}
               </button>
             </Hint>
@@ -244,14 +246,14 @@ export function LiveMapTools({
             </Hint>
           ) : null}
           <Hint text={tMap("hint.rulerDone")}>
-            <button type="button" onClick={onRulerToggle} data-testid="live-map-ruler-done" className="inline-flex min-h-8 items-center rounded-md border border-zinc-300 px-2 font-semibold hover:bg-muted dark:border-zinc-600">
+            <button type="button" onClick={onRulerToggle} data-testid="live-map-ruler-done" className="inline-flex min-h-8 items-center rounded-md border border-border px-2 font-semibold hover:bg-muted">
               {tMap("tools.rulerDone")}
             </button>
           </Hint>
         </div>
       ) : null}
       {pickingPoint && !rulerActive ? (
-        <div role="status" className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-zinc-300 bg-card px-2.5 py-1.5 text-xs shadow-md dark:border-zinc-600" data-testid="live-map-picking">
+        <div role="status" className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs shadow-md" data-testid="live-map-picking">
           <span className="font-semibold">{tMap("tools.pickingHint")}</span>
           <Hint text={tMap("hint.cancelPick")}>
             <button type="button" onClick={() => onPickingPointChange(false)} data-testid="live-map-picking-cancel" className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2">
@@ -276,7 +278,7 @@ export function LiveMapTools({
           words, beside the chip that names the point. */}
       {zoneDrawing && referencePoint && !open && !zoneFormShown ? (
         <Hint text={tMap("hint.zoneAroundPoint")}>
-          <button type="button" onClick={() => setZoneForm("circle")} data-testid="live-map-point-zone" className="pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-card px-2.5 text-xs font-semibold shadow-md hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11">
+          <button type="button" onClick={() => setZoneForm("circle")} data-testid="live-map-point-zone" className="pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold shadow-md hover:bg-muted [@media(pointer:coarse)]:min-h-11">
             <CircleDashed className="h-3.5 w-3.5" aria-hidden="true" />{tMap("areas.aroundPoint")}
           </button>
         </Hint>
@@ -285,6 +287,13 @@ export function LiveMapTools({
           out — is all there is: on a phone the three buttons under it would
           take a third of the map. The same while a zone's form is open. */}
       <div className={cn("flex shrink-0 flex-wrap items-center gap-2", (rulerActive || pickingPoint || zoneFormShown || zoneEditor) && "max-sm:hidden")}>
+        {onShowEveryone ? (
+          <Hint side="top" text={tMap("hint.showEveryone")}>
+            <button type="button" onClick={onShowEveryone} data-testid="live-map-tool-everyone" className={cn(TOOL, TOOL_IDLE)}>
+              <Users className="h-4 w-4" aria-hidden="true" />{tMap("tools.showEveryone")}
+            </button>
+          </Hint>
+        ) : null}
         <Hint side="top" text={tMap("hint.point")}>
           <button
             type="button"

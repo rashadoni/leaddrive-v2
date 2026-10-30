@@ -146,7 +146,7 @@ function KpiBox({
   return (
     <div
       data-testid={`campaigns-analytics-${testId}`}
-      className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 flex items-center gap-3 min-w-0"
+      className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 min-w-0"
     >
       <div
         className={cn(
@@ -227,7 +227,7 @@ function Panel({
   return (
     <div
       data-testid={`campaigns-analytics-${testId}`}
-      className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5 space-y-4"
+      className="bg-card rounded-xl border border-border p-5 space-y-4"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export function CampaignsAnalytics({ campaigns, total, orgId }: CampaignsAnalyti
         {/* Monthly sending trend — one scale for all three lines */}
         <div
           data-testid="campaigns-analytics-trend"
-          className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5 space-y-4"
+          className="bg-card rounded-xl border border-border p-5 space-y-4"
         >
           <h3 className="text-sm font-semibold text-foreground">{t("monthlyTrend")}</h3>
           {trendMax === 0 ? (
@@ -419,7 +419,7 @@ export function CampaignsAnalytics({ campaigns, total, orgId }: CampaignsAnalyti
         {/* Delivery funnel */}
         <div
           data-testid="campaigns-analytics-funnel"
-          className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5 space-y-4"
+          className="bg-card rounded-xl border border-border p-5 space-y-4"
         >
           <h3 className="text-sm font-semibold text-foreground">{t("deliveryFunnel")}</h3>
           {summary.sent === 0 ? (
@@ -455,7 +455,7 @@ export function CampaignsAnalytics({ campaigns, total, orgId }: CampaignsAnalyti
         {/* Top campaigns */}
         <div
           data-testid="campaigns-analytics-top"
-          className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5 space-y-4"
+          className="bg-card rounded-xl border border-border p-5 space-y-4"
         >
           <div>
             <h3 className="text-sm font-semibold text-foreground">{t("topCampaigns")}</h3>

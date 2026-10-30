@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { formatDate } from "@/lib/format-date"
-import { useFunds, useCreateFund, useDeleteFund, useFundTransactions, useCreateFundTransaction, useFundRules, useCreateFundRule, useDeleteFundRule, useFinanceDashboard, useFinanceAccess } from "@/lib/finance/hooks"
+import { useFunds, useCreateFund, useDeleteFund, useFundTransactions, useCreateFundTransaction, useFundRules, useCreateFundRule, useDeleteFundRule, useFinanceDashboard, useFinanceAccess, useFundBalanceSource, useSetFundBalanceSource } from "@/lib/finance/hooks"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, History, Settings2, PiggyBank, AlertTriangle } from "lucide-react"
+import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, History, Settings2, PiggyBank, AlertTriangle, Check, Clock, Info } from "lucide-react"
+import { Hint } from "@/components/hint"
 import type { Fund } from "@/lib/finance/types"
-import { getCurrencySymbol } from "@/lib/constants"
+import { useOrgCurrencySymbol } from "@/lib/use-org-default-currency"
 
 function fmt(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
@@ -23,11 +24,17 @@ const FUND_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec
 
 export function FundManager() {
   const t = useTranslations("finance.funds")
+  const cur = useOrgCurrencySymbol()
   const { data: funds, isLoading } = useFunds()
   const { data: dashboard } = useFinanceDashboard(new Date().getFullYear())
   const createFund = useCreateFund()
   const deleteFund = useDeleteFund()
   const { canWrite, canDelete } = useFinanceAccess()
+  const { data: balanceSource } = useFundBalanceSource()
+  const setBalanceSource = useSetFundBalanceSource()
+  // Only an organization with the Kafka pilot has the switch (owner 2026-10-26).
+  const kafkaAvailable = balanceSource?.available === true
+  const fromKafka = kafkaAvailable && balanceSource?.source === "kafka"
   const [showCreate, setShowCreate] = useState(false)
   const [selectedFund, setSelectedFund] = useState<string | null>(null)
   const [showTx, setShowTx] = useState(false)
@@ -46,14 +53,43 @@ export function FundManager() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{t("totalBalance")}</p>
-          <p className="text-2xl font-bold tabular-nums">{fmt(totalBalance)} {getCurrencySymbol()}</p>
+          <p className="text-2xl font-bold tabular-nums">{fmt(totalBalance)} {cur}</p>
         </div>
-        {canWrite && (
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <Plus className="w-4 h-4 mr-1" /> {t("newFund")}
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {kafkaAvailable && canWrite && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{t("balanceFrom")}</span>
+              <div className="inline-flex rounded-md border overflow-hidden" role="group" aria-label={t("balanceFrom")}>
+                {(["crm", "kafka"] as const).map(source => {
+                  const active = (fromKafka ? "kafka" : "crm") === source
+                  return (
+                    <Hint key={source} text={t(source === "kafka" ? "balanceFromKafkaHint" : "balanceFromCrmHint")}>
+                      <button
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => { if (!active && !setBalanceSource.isPending) setBalanceSource.mutate(source) }}
+                        className={`px-3 py-1 text-sm ${active ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"}`}
+                      >
+                        {source === "kafka" ? "Kafka" : "CRM"}
+                      </button>
+                    </Hint>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          {canWrite && (
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="w-4 h-4 mr-1" /> {t("newFund")}
+            </Button>
+          )}
+        </div>
       </div>
+      {fromKafka && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Info className="w-4 h-4 shrink-0" /> {t("balanceFromKafkaNotice")}
+        </p>
+      )}
 
       {/* Fund Coverage Warning */}
       {isFundOverCash && (
@@ -96,6 +132,19 @@ export function FundManager() {
                       </span>
                       <span className="text-xs text-muted-foreground">{fund.currency}</span>
                     </div>
+                    {fromKafka && fund.balanceSource === "kafka" && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
+                        <Check className="w-3 h-3" /> {t("balanceSourceKafka")}
+                      </p>
+                    )}
+                    {fromKafka && fund.balanceSource === "kafka-catching-up" && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+                        <Clock className="w-3 h-3" /> {t("balanceSourceCatchingUp")}
+                      </p>
+                    )}
+                    {fromKafka && fund.balanceSource === "crm" && (
+                      <p className="mt-1 text-xs text-muted-foreground">{t("balanceSourceCrmOnly")}</p>
+                    )}
                     {fund.targetAmount && (
                       <>
                         <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -309,6 +358,7 @@ function TransactionDialog({ fundId, onClose }: { fundId: string; onClose: () =>
 
 function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void }) {
   const t = useTranslations("finance.funds")
+  const cur = useOrgCurrencySymbol()
   const { data: rules, isLoading } = useFundRules(fundId)
   const createRule = useCreateFundRule()
   const deleteRule = useDeleteFundRule()
@@ -351,7 +401,7 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
                 <Input type="number" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="%" className="w-20" />
               )}
               {trigger === "fixed_monthly" && (
-                <Input type="number" value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={getCurrencySymbol()} className="w-24" />
+                <Input type="number" value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={cur} className="w-24" />
               )}
               <Button size="sm" onClick={handleAdd} disabled={createRule.isPending}><Plus className="w-4 h-4" /></Button>
             </div>
@@ -367,7 +417,7 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
                 <p className="text-sm font-medium">{rule.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {rule.triggerType === "revenue_percentage" && `${((rule.percentage || 0) * 100).toFixed(0)}% ${t("ruleRevenue")}`}
-                  {rule.triggerType === "fixed_monthly" && `${fmt(rule.fixedAmount || 0)} ${getCurrencySymbol()}/${t("ruleFixed")}`}
+                  {rule.triggerType === "fixed_monthly" && `${fmt(rule.fixedAmount || 0)} ${cur}/${t("ruleFixed")}`}
                   {rule.triggerType === "invoice_paid" && t("ruleInvoice")}
                 </p>
               </div>

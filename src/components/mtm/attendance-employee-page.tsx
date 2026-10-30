@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { MtmAttendanceEmployeeRemove } from "@/components/mtm/attendance-employee-remove"
-import { MtmAttendanceDepartmentField, departmentPayload, type DepartmentValue } from "@/components/mtm/attendance-department-field"
+import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
+import { MtmAttendanceEmployeePreparation } from "@/components/mtm/attendance-employee-preparation"
 import { createDateFormatter, formatTime } from "@/lib/format-date"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
@@ -19,13 +20,13 @@ const SELECT = "min-h-11 w-full min-w-0 rounded-md border border-input bg-backgr
 const SAVE_ERRORS: Record<string, string> = {
   MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN: "addEmployeeEmailTaken", MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN: "addEmployeePhoneTaken",
   MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID: "addEmployeePhoneInvalid", MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED: "employeeLoginLocked",
-  MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID: "employeeManagerInvalid",
+  MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID: "employeeManagerInvalid", MTM_ATTENDANCE_EMPLOYEE_SECTION_ELSEWHERE: "employeeSectionElsewhere",
 }
 type Employee = AttendanceEmployeeDetail["employee"]
 type Form = { name: string; phone: string; email: string; position: string; department: DepartmentValue; managerId: string; hireDate: string }
 type Change = { kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; reason: string }
 const formOf = (employee: Employee): Form => ({ name: employee.name, phone: employee.phone ?? "", email: employee.email ?? "", position: employee.position ?? "",
-  department: { teamId: employee.teamId ?? "", newTeamName: "" }, managerId: employee.managerId ?? "", hireDate: "" })
+  department: emptyDepartmentValue(employee.departmentId, employee.teamId), managerId: employee.managerId ?? "", hireDate: "" })
 const nextKind = (history: Employee["history"]): Change["kind"] => !history.length ? "HIRE" : history.at(-1)!.kind === "TERMINATION" ? "REHIRE" : "TERMINATION"
 
 function Section({ title, icon, children, testId }: { title: string; icon: ReactNode; children: ReactNode; testId: string }) {
@@ -127,7 +128,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary" aria-hidden="true">{initials}</span>
           <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{p("employeeCardHeading")}</p><h1 className="break-words text-2xl font-semibold tracking-tight">{employee.name}</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{[employee.position, employee.teamName].filter(Boolean).join(" · ") || mtmStatusLabel(statusText, "role", employee.role)}
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{[employee.position, employee.departmentName, employee.teamName].filter(Boolean).join(" · ") || mtmStatusLabel(statusText, "role", employee.role)}
               <HomePill tone={todayTone}>{today}</HomePill></p></div></div>
         <div className="flex flex-wrap items-center gap-3">{saved ? <span role="status" className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{p(saved)}</span> : null}
           <Button type="submit" className="min-h-11 rounded-full px-6" disabled={busy}>{p(busy ? "employeeCardSaving" : "employeeSave")}</Button></div>
@@ -144,7 +145,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
         <Section title={p("sectionWork")} icon={<BriefcaseBusiness className="h-4 w-4" />} testId="employee-section-work">
           <Field id="employee-position" label={p("employeeCardPosition")} missing={!form.position.trim()}>
             <Input id="employee-position" maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></Field>
-          <MtmAttendanceDepartmentField id="employee-department" teams={detail.teams} value={form.department} onChange={set("department")} />
+          <MtmAttendanceDepartmentField id="employee-department" teams={detail.teams} departments={detail.departments ?? []} value={form.department} onChange={set("department")} />
           <Field id="employee-manager" label={p("employeeCardManager")} hint={p("employeeCardManagerHint")}>
             <select id="employee-manager" className={SELECT} value={form.managerId} onChange={event => set("managerId")(event.target.value)}>
               <option value="">{p("employeeCardNoManager")}</option>
@@ -158,6 +159,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
         </Section>
       </div>
     </form>
+    <MtmAttendanceEmployeePreparation detail={detail} />
     <div className="grid items-stretch gap-5 lg:grid-cols-2">
       <Section title={p("sectionMonth")} icon={<CalendarDays className="h-4 w-4" />} testId="employee-section-month">
         {month ? <>
@@ -165,7 +167,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
           <dl className="grid grid-cols-2 gap-3">{tiles.map(([label, value]) => <div key={label} className="rounded-xl bg-muted/50 p-3"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd></div>)}</dl>
           <Link href={`/mtm/attendance/timesheet?date=${month.to}&employeeId=${encodeURIComponent(agentId)}`} prefetch={false} className="text-sm font-semibold text-primary hover:underline">{p("monthOpenTimesheet")} →</Link>
         </> : <p className="text-sm text-muted-foreground">{p("monthUnavailable")}</p>}
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <div id="employee-participation" className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <span className="text-sm"><span className="block font-medium">{t("employeesParticipation")}</span><span className="text-xs text-muted-foreground">{p("employeeParticipationHint")}</span></span>
           <Button type="button" variant="ghost" role="switch" aria-checked={employee.included} aria-label={t("employeesParticipationNamed", { name: employee.name })} disabled={busy} className="min-h-11 gap-2 px-0 hover:bg-transparent" onClick={toggleParticipation}>
             <span aria-hidden="true" className={`flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 ${employee.included ? "justify-end bg-primary" : "justify-start bg-zinc-400 dark:bg-zinc-600"}`}><span className="h-5 w-5 rounded-full bg-white" /></span>{t(employee.included ? "employeesIncluded" : "employeesExcluded")}

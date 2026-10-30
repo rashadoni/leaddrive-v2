@@ -60,7 +60,7 @@ export function ChurnRiskWidget() {
   }
 
   return (
-    <div className="dashboard-bento-card rounded-lg bg-card border border-zinc-200 dark:border-zinc-700 shadow-sm p-3">
+    <div className="dashboard-bento-card rounded-lg bg-card border border-border shadow-sm p-3">
       <div className="flex items-center gap-1.5 mb-2">
         <AlertTriangle className="h-4 w-4 text-amber-500" />
         <span className="text-sm font-semibold">{t("churnRisk")}</span>

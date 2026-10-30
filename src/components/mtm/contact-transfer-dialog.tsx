@@ -253,7 +253,7 @@ export function ContactTransferDialog({
         <div data-testid="mtm-contact-transfer-dialog" className="space-y-4">
           {step === "PARAMETERS" ? (
           <>
-            <div className="rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+            <div className="rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <div className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
@@ -265,7 +265,7 @@ export function ContactTransferDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label>{tt("transfer.sourceAgent")}</Label>
-                <div className="mt-1.5 flex min-h-10 items-center rounded-md border border-zinc-200 bg-muted/40 px-3 text-sm dark:border-zinc-700">
+                <div className="mt-1.5 flex min-h-10 items-center rounded-md border border-border bg-muted/40 px-3 text-sm">
                   {sourceAgent?.name || tt("transfer.sourceMissing")}
                 </div>
               </div>
@@ -289,7 +289,7 @@ export function ContactTransferDialog({
                   value={effectiveFrom}
                   min={asOf || undefined}
                   onChange={(event) => setEffectiveFrom(event.target.value)}
-                  className="mt-1.5 min-h-11 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
               </div>
             </div>
@@ -305,19 +305,19 @@ export function ContactTransferDialog({
               <Summary label={tt("transfer.excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} hint={tt("hint.transferExcluded")} />
               <Summary label={tt("transfer.openTasks")} value={preview.summary.openTasks} tone={preview.summary.openTasks ? "warning" : "neutral"} hint={tt("hint.transferOpenTasks")} />
             </div>
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
               <span className="font-medium">{preview.sourceAgent?.name || "—"}</span>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{preview.targetAgent?.name || "—"}</span>
               <HintValue className="ml-auto text-xs text-muted-foreground" text={tt("hint.transferEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
             </div>
             {preview.warnings.length > 0 ? (
-              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
+              <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
                 {preview.warnings.map((warning) => <p key={warning}>{tt(`transfer.warnings.${warning}`)}</p>)}
               </div>
             ) : null}
             {preview.summary.openTasks > 0 ? (
-              <div className="rounded-lg border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+              <div className="rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
                 <p className="font-medium">{tt("transfer.openTaskImpactTitle")}</p>
                 <p className="mt-1 text-xs opacity-80">{tt("transfer.openTaskImpactDescription", {
                   tasks: preview.summary.openTasks,
@@ -335,7 +335,7 @@ export function ContactTransferDialog({
             {preview.summary.excluded > 0 ? (
               <div>
                 <h3 className="text-sm font-semibold">{tt("transfer.excludedContacts")}</h3>
-                <div className="mt-2 max-h-56 divide-y divide-zinc-200 overflow-y-auto rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                <div className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
                   {preview.rows.filter((row) => !row.transferable).map((row) => (
                     <div key={row.contactId} className="p-3 text-sm">
                       <p className="font-medium">{row.displayName || row.contactId}</p>
@@ -354,7 +354,7 @@ export function ContactTransferDialog({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
+              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm">
                 <CheckCircle2 className="h-4 w-4" />
                 {tt("transfer.noConflicts")}
               </div>
@@ -377,7 +377,7 @@ export function ContactTransferDialog({
 
         {step === "RESULT" && result ? (
           <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4">
+            <div className="flex items-start gap-3 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-4">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="font-semibold">{tt("transfer.completedTitle")}</p>
@@ -392,8 +392,8 @@ export function ContactTransferDialog({
             ) : null}
             <div className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${
               receiptStored
-                ? "border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500"
-                : "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
+                ? "border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500"
+                : "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
             }`}>
               {receiptStored
                 ? <HardDriveDownload className="mt-0.5 h-4 w-4 shrink-0" />
@@ -411,7 +411,7 @@ export function ContactTransferDialog({
         ) : null}
 
           {error ? (
-            <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -464,10 +464,10 @@ function Summary({
   return (
     <div className={`rounded-lg border p-3 ${
       tone === "positive"
-        ? "border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500"
+        ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500"
         : tone === "warning"
-          ? "border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500"
-          : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
+          ? "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
+          : "border-border bg-muted/30"
     }`}>
       <p className="text-[11px] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>

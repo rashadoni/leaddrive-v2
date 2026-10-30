@@ -19,6 +19,7 @@ model Organization {
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
+  attendanceBranchScreens MtmAttendanceBranchScreen[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
   attendanceInstallationRevocations MtmAttendanceInstallationRevocation[]
@@ -68,6 +69,24 @@ model Organization {
   // complianceAuditLogs — intentionally absent. See ComplianceAuditLog:
   // the compliance trail is not owned by the organization and survives it.
   tenantMasterKeys      TenantMasterKey[]
+  tenantDataKeys        TenantDataKey[]
+  bookingChangeNotes BookingChangeNote[]
+  bookingSecrets BookingSecret[]
+  bookingBindings BookingIntegrationBinding[]
+  bookingCoordinatorGrants BookingCoordinatorGrant[]
+  bookingPages          BookingPage[]
+  adConversionDestinations AdConversionDestination[]
+  adConversionEvents       AdConversionEvent[]
+  telegramStaffBot         TelegramStaffBot?
+  telegramStaffLinks       TelegramStaffLink[]
+  telegramStaffLinkTokens  TelegramStaffLinkToken[]
+  telegramStaffActions     TelegramStaffAction[]
+  dealLineItems            DealLineItem[]
+  bookings              Booking[]
+  pharmacyPhoneOrders   PharmacyPhoneOrder[]
+  voiceLineNumbers      VoiceLineNumber[]
+  pharmacyPhoneOrderLines PharmacyPhoneOrderLine[]
+  reviewerAccessGrants  ReviewerAccessGrant[]
   accountGradeConfig    AccountGradeConfig?
   intentSignalConfig    IntentSignalConfig?
   leaderboardConfig     LeaderboardConfig?
@@ -99,6 +118,7 @@ model Organization {
   cashFlowEntries            CashFlowEntry[]
   cashFlowAlerts             CashFlowAlert[]
   bills                      Bill[]
+  eQaimeInvoices             EQaimeInvoice[]
   billPayments               BillPayment[]
   funds                      Fund[]
   fundTransactions           FundTransaction[]
@@ -126,6 +146,7 @@ model Organization {
   // MTM (Mobile Team Management) relations
   mtmRegions                          MtmRegion[]
   mtmTeams                            MtmTeam[]
+  mtmDepartments                      MtmDepartment[]
   mtmAgents                           MtmAgent[]
   mtmCustomers                        MtmCustomer[]
   mtmRoutes                           MtmRoute[]
@@ -184,6 +205,7 @@ model Organization {
   mtmLocationShareLinks                  MtmLocationShareLink[]
   mtmCustomerLocationRequests            MtmCustomerLocationRequest[]
   mtmJointFieldSessions                  MtmJointFieldSession[]
+  mtmJointVisitPlans                     MtmJointVisitPlan[]
   mtmVisitEvaluations                    MtmVisitEvaluation[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
@@ -637,6 +659,14 @@ model PlanRequest {
 }
 
 model User {
+  identityAccount IdentityAccount?
+  identityActions IdentityEvent[] @relation("IdentityEventActor")
+  identityProofsIssued IdentityPhoneProof[] @relation("IdentityProofIssuer")
+  identityActorReviews IdentityActorBinding[] @relation("IdentityActorReviewer")
+  coordinatedBookingHosts BookingCoordinatorGrant[] @relation("BookingCoordinator")
+  bookingCoordinators BookingCoordinatorGrant[] @relation("BookingCoordinatedHost")
+  hostedBookings Booking[] @relation("BookingHost")
+  managedCompanies Company[] @relation("CompanyManager")
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
@@ -793,6 +823,7 @@ model User {
 
   // Phase 7 P0 #3 Compliance audit log
   complianceAuditLogs ComplianceAuditLog[] @relation("ComplianceAuditUser")
+  reviewerAccessGrant ReviewerAccessGrant? @relation("ReviewerAccessGrantUser")
 
   // A12 Revenue Intelligence — actor on stage transitions + captured snapshots
   pipelineStageTransitions PipelineStageTransition[]
@@ -823,6 +854,10 @@ model User {
   aiActionIntents AiActionIntent[] @relation("AiActionIntentUser")
   aiActionIntentEvents AiActionIntentEvent[] @relation("AiActionIntentEventUser")
 
+  // Telegram bot for employees (task 8): the user's linked Telegram account.
+  telegramStaffLink       TelegramStaffLink?
+  telegramStaffLinkTokens TelegramStaffLinkToken[]
+
   @@unique([organizationId, email])
   @@unique([organizationId, id])
   @@map("users")
@@ -832,6 +867,258 @@ model User {
 /// recently-used modules); `data` is a forward-compat bucket so future
 /// per-user UI state lands here instead of spawning more tables. Org-scoped
 /// via `organizationId` for tenant-bound cleanup, keyed 1-1 on `userId`.
+/// Additive, inactive identity registry. No legacy login reads these tables.
+/// A reviewed cutover and verified phone/credential migration are separate steps.
+model IdentityAccount {
+  organizationId  String
+  userId          String
+  user            User @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  version         Int @default(1)
+  credentialEpoch Int @default(1)
+  /// Monotonic even when a contact changes away and back before OTP expiry.
+  contactRevision Int @default(1)
+  passwordHash    String?
+  cutoverAt       DateTime? @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  phoneClaim      IdentityPhoneClaim?
+  reservations    IdentityPhoneReservation[]
+  phoneProofs     IdentityPhoneProof[]
+  onboardingIntents IdentityOnboardingIntent[]
+  grants          IdentityApplicationGrant[]
+  actorBindings   IdentityActorBinding[]
+  events          IdentityEvent[]
+
+  @@id([organizationId, userId])
+  @@map("identity_accounts")
+}
+
+/// One person may hold CRM, TIME and ROUTE_FIELD independently.
+/// The SQL CHECKs restrict applications/status and require an explicit active role.
+model IdentityApplicationGrant {
+  membership IdentityApplicationMembership?
+  organizationId String
+  userId         String
+  application    String @db.VarChar(16)
+  status         String @default("REVOKED") @db.VarChar(16)
+  role           String? @db.VarChar(50)
+  version        Int @default(1)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  account        IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizationId, userId, application])
+  @@map("identity_application_grants")
+}
+
+/// Explicit reviewed historical ownership, never inferred from phone/email.
+/// SQL forbids mutation/deletion; a new person must get a new actor.
+model IdentityActorBinding {
+  organizationId String
+  userId String
+  actorId String
+  reviewedByUserId String
+  reviewReference String @db.VarChar(128)
+  accountVersion Int
+  reviewedAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  account IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  actor MtmAgent @relation(fields: [organizationId, actorId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  reviewer User @relation("IdentityActorReviewer", fields: [organizationId, reviewedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  memberships IdentityApplicationMembership[]
+
+  @@id([organizationId, actorId])
+  @@unique([organizationId, userId, actorId], map: "identity_actor_bindings_subject_key")
+  @@map("identity_actor_bindings")
+}
+
+/// Inactive plan. Cutover, license and per-app workflow separation are separate gates.
+model IdentityApplicationMembership {
+  organizationId String
+  userId String
+  application String @db.VarChar(16)
+  actorId String
+  status String @default("REVOKED") @db.VarChar(16)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  grant IdentityApplicationGrant @relation(fields: [organizationId, userId, application], references: [organizationId, userId, application], onDelete: Restrict, onUpdate: Restrict)
+  binding IdentityActorBinding @relation(fields: [organizationId, userId, actorId], references: [organizationId, userId, actorId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizationId, userId, application])
+  @@unique([organizationId, application, actorId], map: "identity_application_memberships_actor_key")
+  @@map("identity_application_memberships")
+}
+
+/// Only confirmed current assignments live here. Reservations never grant login.
+/// A replacement gets a new claim ID; history remains in immutable IdentityEvent.
+model IdentityPhoneClaim {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  normalizedPhone String @db.VarChar(16)
+  accountVersion  Int
+  verifiedAt      DateTime @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, normalizedPhone])
+  @@unique([organizationId, userId])
+  @@map("identity_phone_claims")
+}
+
+model IdentityPhoneReservation {
+  id                     String @id @default(uuid())
+  organizationId         String
+  userId                 String
+  normalizedPhone        String @db.VarChar(16)
+  expectedAccountVersion Int
+  expectedCredentialEpoch Int
+  requestId              String @db.VarChar(128)
+  expiresAt              DateTime @db.Timestamptz(3)
+  createdAt              DateTime @default(now()) @db.Timestamptz(3)
+  account                IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, normalizedPhone])
+  @@unique([organizationId, userId])
+  @@unique([organizationId, requestId])
+  @@index([expiresAt])
+  @@map("identity_phone_reservations")
+}
+
+/// Frozen proof context survives removal of its consumed/expired reservation.
+/// A reservationId is a historical pointer; the service requires the live owned
+/// reservation before first consumption. No proof is a login/application grant.
+model IdentityPhoneProof {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  issuedByUserId  String?
+  reservationId   String
+  normalizedPhone String @db.VarChar(16)
+  accountVersion  Int
+  credentialEpoch Int
+  onboardingIntentId String?
+  onboardingIntent IdentityOnboardingIntent? @relation(fields: [organizationId, userId, onboardingIntentId], references: [organizationId, userId, id], onDelete: Restrict, onUpdate: Restrict)
+  contextVersion  Int @default(1)
+  contactRevision Int?
+  issuerAuthority Json?
+  keyId           String @db.VarChar(40)
+  codeHash        String @db.VarChar(64)
+  deliveryCiphertext String? @db.VarChar(128)
+  status          String @default("PENDING") @db.VarChar(16)
+  attempts        Int @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime @db.Timestamptz(3)
+  usedAt          DateTime? @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  issuer          User? @relation("IdentityProofIssuer", fields: [organizationId, issuedByUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  delivery        IdentityPhoneProofOutbox?
+
+  @@unique([organizationId, userId, id], map: "identity_phone_proofs_subject_key")
+  @@index([organizationId, reservationId, createdAt], map: "identity_phone_proofs_reservation_created_idx")
+  @@index([organizationId, expiresAt], map: "identity_phone_proofs_expiry_idx")
+  @@map("identity_phone_proofs")
+}
+
+/// Administrator-reviewed first-login intent. It is not a phone claim or session.
+/// Immutable review/issuer/application plan; cancellation and completion retained.
+model IdentityOnboardingIntent {
+  id String @id @default(uuid())
+  organizationId String
+  userId String
+  issuedByUserId String
+  issuerAuthority Json
+  normalizedPhone String @db.VarChar(16)
+  application String @db.VarChar(16)
+  applications Json
+  timeEnrollment Json?
+  accountVersion Int
+  credentialEpoch Int
+  contactRevision Int
+  requestId String @db.VarChar(128)
+  requestHash String @db.VarChar(64)
+  reviewReference String @db.VarChar(128)
+  status String @default("ACTIVE") @db.VarChar(16)
+  currentProofId String?
+  issuedAccountVersion Int
+  issuedCredentialEpoch Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+  account IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  proofs IdentityPhoneProof[]
+
+  @@unique([organizationId, userId, id], map: "identity_onboarding_intents_subject_key")
+  @@unique([organizationId, requestId], map: "identity_onboarding_request_key")
+  @@index([organizationId, normalizedPhone, status], map: "identity_onboarding_phone_status_idx")
+  @@map("identity_onboarding_intents")
+}
+
+/// One external-send attempt per proof. An expired/uncertain lease is never
+/// automatically resent. SENT means provider acknowledgement, not possession.
+model IdentityPhoneProofOutbox {
+  organizationId String
+  userId         String
+  proofId        String
+  proof          IdentityPhoneProof @relation(fields: [organizationId, userId, proofId], references: [organizationId, userId, id], onDelete: Cascade, onUpdate: Restrict)
+  status         String @default("PENDING") @db.VarChar(16)
+  attempts       Int @default(0)
+  availableAt    DateTime @default(now()) @db.Timestamptz(3)
+  leaseToken     String? @db.Uuid
+  leaseUntil     DateTime? @db.Timestamptz(3)
+  providerMessageId String? @db.VarChar(300)
+  outcome        String? @db.VarChar(32)
+  settledAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([organizationId, proofId])
+  @@unique([organizationId, userId, proofId], map: "identity_phone_proof_outbox_subject_key")
+  @@index([organizationId, status, availableAt], map: "identity_phone_proof_outbox_due_idx")
+  @@map("identity_phone_proof_outbox")
+}
+
+/// Append-only security receipts. Raw credentials, OTP and session data are absent.
+/// Phone assignment history is private tenant data, never an operational log payload.
+model IdentityEvent {
+  id              String @id @default(uuid())
+  organizationId  String
+  userId          String
+  actorUserId     String?
+  requestId       String @db.VarChar(128)
+  requestHash     String @db.VarChar(64)
+  action          String @db.VarChar(40)
+  accountVersion  Int
+  application     String? @db.VarChar(16)
+  grantStatus     String? @db.VarChar(16)
+  grantRole       String? @db.VarChar(50)
+  grantVersion    Int?
+  actorId         String?
+  membershipStatus String? @db.VarChar(16)
+  membershipVersion Int?
+  reviewReference String? @db.VarChar(128)
+  normalizedPhone String? @db.VarChar(16)
+  reservationId   String?
+  reservationExpiresAt DateTime? @db.Timestamptz(3)
+  proofId         String?
+  proofExpiresAt  DateTime? @db.Timestamptz(3)
+  proofAttempt    Int?
+  proofOutcome    String? @db.VarChar(32)
+  credentialEpoch Int?
+  contactRevision Int?
+  activationArtifactSha String? @db.VarChar(40)
+  previousClaimId String?
+  claimId         String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  account         IdentityAccount @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict, onUpdate: Restrict)
+  actor           User? @relation("IdentityEventActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, requestId])
+  @@index([organizationId, userId, createdAt, id])
+  @@map("identity_events")
+}
+
 model UserPreference {
   id             String       @id @default(cuid())
   userId         String       @unique
@@ -1016,6 +1303,53 @@ model TenantMasterKey {
   @@map("tenant_master_keys")
 }
 
+// Stage 2b of PII encryption (owner 2026-10-22, "вариант 3"): each
+// organization's own RANDOM data key, wrapped by the master key
+// (`src/lib/crypto/tenant-data-keys.ts`). Not `tenant_master_keys`: that
+// table's trigger forbids DELETE, and deleting an organization's rows here is
+// how its data is destroyed (crypto-shredding, owner-operated, later).
+// FORCE RLS, `tenant_isolation` policy (migration 20261030100000).
+model TenantDataKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// 1, 2, … — a v2 column value and a "d<version>" file envelope name it.
+  version        Int
+  /// base64( IV(12) | AES-256-GCM(data key) | tag(16) ), AAD orgId|version|masterKeyId.
+  wrappedKey     String
+  /// Which master key wrapped it (`tenantMasterKeyId()`), so a rewrap can find old rows.
+  masterKeyId    String
+  createdAt      DateTime     @default(now())
+  /// Set when a newer version takes over writes; the key keeps reading.
+  retiredAt      DateTime?
+
+  @@unique([organizationId, version])
+  @@map("tenant_data_keys")
+}
+
+// Temporary read-only access for an outside reviewer under NDA
+// (src/lib/reviewer-access.ts). One row per reviewer login (role `reviewer`):
+// what was granted, why, by whom and until when. Expired or revoked rows stay
+// as the record of the grant; the reads themselves are in compliance_audit_log.
+model ReviewerAccessGrant {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId          String       @unique
+  user            User         @relation("ReviewerAccessGrantUser", fields: [userId], references: [id], onDelete: Cascade)
+  /// Group-modules the reviewer may read (UserHideableId values).
+  modules         String[]
+  reason          String
+  expiresAt       DateTime
+  grantedByUserId String?
+  createdAt       DateTime     @default(now())
+  revokedAt       DateTime?
+  revokedByUserId String?
+
+  @@index([organizationId, expiresAt])
+  @@map("reviewer_access_grants")
+}
+
 // C5 Account Engagement slice-2 — per-tenant grade-component weights.
 // Slice-1 helper `account-grade-calculator.ts` ships hardcoded
 // defaults. Slice-2 loader merges this row's overrides on top.
@@ -1174,9 +1508,21 @@ model Company {
   leadTemperature String? // cold, warm, hot
   userCount       Int          @default(0)
   costCode        String?
-  voen            String?
+  voen            String? // 10 digits; not unique — the form warns about a duplicate instead
+  director        String? // legal representative («Qanuni təmsilçi») from the tax registry or typed in
   creditLimit     Float? // AR credit limit; null = no limit enforced
   creditCurrency  String? // ISO currency code for creditLimit (else fall back to org default)
+  /// The person in the organization who looks after this company.
+  managerId       String?
+  manager         User?        @relation("CompanyManager", fields: [managerId], references: [id], onDelete: SetNull)
+  /// A company that comes from an outside register (Zeytun's 1C pharmacy
+  /// list: "zeytun_1c" + the counterparty GUID). Its name, address, city,
+  /// phone and email are that register's and are not edited in the CRM.
+  externalSource    String?
+  externalId        String?
+  externalSyncedAt  DateTime?
+  /// Set when the company left the register's list; cleared when it returns.
+  externalRemovedAt DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -1192,12 +1538,16 @@ model Company {
   projects        Project[]
   tickets         Ticket[]
   vendorBills     Bill[]           @relation("VendorBills")
+  eQaimeInvoices  EQaimeInvoice[]  @relation("EQaimeCounterparty")
 
   // B10 Entitlement Process
   entitlements Entitlement[]
   monitoringSubjects MonitoringSubject[]
+  pharmacyPhoneOrders PharmacyPhoneOrder[]
 
+  @@unique([organizationId, externalSource, externalId])
   @@index([organizationId])
+  @@index([organizationId, voen])
   @@map("companies")
 }
 
@@ -1339,6 +1689,10 @@ model Deal {
   // may exist without quotes, quotes may exist standalone (no deal).
   quotes Quote[]
 
+  // Product lines of the deal; when there are any, valueAmount is their sum
+  // (src/lib/deals/line-items.ts).
+  lineItems DealLineItem[]
+
   @@index([organizationId])
   @@index([organizationId, stage])
   @@index([campaignId])
@@ -1437,6 +1791,11 @@ model Lead {
   pipelineId             String?
   pipeline               Pipeline?        @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
   convertedAt            DateTime?
+  /// Where the person came from when the lead was captured: ad click ids
+  /// (fbclid/fbc, fbp, gclid), GA client id, UTM tags, landing page and the
+  /// browser's user agent. Read by src/lib/ad-conversions/*; copied to the
+  /// deal's metadata when the lead is converted.
+  adAttribution          Json?
   lastScoredAt           DateTime?
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
@@ -2724,6 +3083,7 @@ model Campaign {
   updatedAt         DateTime          @updatedAt
   deals             Deal[]
   variants          CampaignVariant[]
+  whatsappDeliveries WhatsAppCampaignDelivery[]
 
   // C9 Marketing Attribution
   campaignTouchpoints CampaignTouchpoint[]
@@ -2735,8 +3095,37 @@ model Campaign {
   orchestrationRuns      CampaignOrchestrationRun[]
   orchestratedDeliveries OrchestratedDelivery[]
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("campaigns")
+}
+
+// Durable recipient-level WhatsApp dispatch. Ambiguous delivery is never auto-retried.
+model WhatsAppCampaignDelivery {
+  id              String   @id @default(cuid())
+  organizationId  String
+  campaignId      String
+  campaign        Campaign @relation(fields: [campaignId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "whatsapp_campaign_delivery_campaign_fkey")
+  channelConfigId String
+  recipientPhone  String
+  contactId       String?
+  leadId          String?
+  payload         Json
+  status          String   @default("pending")
+  attempts        Int      @default(0)
+  nextAttemptAt   DateTime @default(now())
+  claimedAt       DateTime?
+  acceptedAt      DateTime?
+  externalId      String?
+  errorCode       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([campaignId, recipientPhone], map: "wa_delivery_campaign_recipient_key")
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, campaignId, status], map: "wa_delivery_org_campaign_status_idx")
+  @@index([organizationId, externalId])
+  @@map("whatsapp_campaign_deliveries")
 }
 
 model CampaignVariant {
@@ -2893,6 +3282,7 @@ model Notification {
   createdAt      DateTime @default(now())
 
   @@index([organizationId, userId])
+  @@index([organizationId, createdAt])
   @@map("notifications")
 }
 
@@ -3385,7 +3775,7 @@ model WhatsAppTemplate {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  @@unique([organizationId, name, language])
+  @@unique([organizationId, channelConfigId, name, language], map: "whatsapp_templates_org_channel_name_language_key")
   @@index([organizationId, status])
   @@index([channelConfigId])
   @@map("whatsapp_templates")
@@ -3952,6 +4342,8 @@ model Product {
   // ON DELETE SET NULL. Snapshot of productName at line-item write
   // time preserves quote integrity if the product gets renamed.
   quoteLineItems QuoteLineItem[]
+
+  dealLineItems DealLineItem[]
 
   @@index([organizationId])
   @@map("products")
@@ -4860,6 +5252,70 @@ model BillPayment {
   @@map("bill_payments")
 }
 
+/// An electronic invoice (e-qaimə) read from the tax portal new.e-taxes.gov.az
+/// by the LeadDrive Chrome extension, in the browser of an accountant signed in
+/// there (the portal answers Azerbaijani addresses only, and its pass never
+/// reaches this server). One row per invoice per company it was read for: the
+/// same invoice is outgoing for its seller and incoming for its buyer, and an
+/// organization may keep the books of both.
+model EQaimeInvoice {
+  id                    String       @id @default(cuid())
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The company signed in to the portal when the invoice was read.
+  ownVoen               String
+  ownName               String
+  /// "inbox" (we are the buyer) or "outbox" (we are the seller).
+  direction             String
+  /// The portal's own id of the invoice, and whether it lives in the section
+  /// for invoices issued before 2020 (another API, other ids).
+  portalId              String
+  priorSystem           Boolean      @default(false)
+  sourceSystem          String?
+  /// "MT" and twelve digits.
+  serialNumber          String
+  /// defaultInvoice, advanceInvoice, returnInvoice, resale, exportNoteInvoice.
+  kind                  String?
+  /// current or corrected.
+  docType               String?
+  /// The portal's status word: approved, onApproval, cancelled, …
+  status                String
+  issuedAt              DateTime
+  counterpartyVoen      String?
+  counterpartyName      String
+  /// The CRM company with the counterparty's VÖEN, when there is one.
+  counterpartyCompanyId String?
+  counterpartyCompany   Company?     @relation("EQaimeCounterparty", fields: [counterpartyCompanyId], references: [id], onDelete: SetNull)
+  /// Sums of the lines, computed here from them. The portal writes prices and
+  /// amounts with up to six decimals, hence the scale.
+  netAmount             Decimal      @db.Decimal(20, 6)
+  vatAmount             Decimal      @db.Decimal(20, 6)
+  exciseAmount          Decimal      @default(0) @db.Decimal(20, 6)
+  roadTaxAmount         Decimal      @default(0) @db.Decimal(20, 6)
+  totalAmount           Decimal      @db.Decimal(20, 6)
+  comment               String?
+  comment2              String?
+  /// The lines as read: name, tax classifier code, unit, quantity, price, the
+  /// base amount and the four VAT bases (vat18 is the base taxed at 18 %, not
+  /// the tax), excise and road tax.
+  items                 Json
+  /// For a return or a correction: the invoices it refers to.
+  sourceSerials         String[]     @default([])
+  /// The portal's PDF, sealed for the organization (tenant-file-encryption).
+  pdfFile               String?
+  pdfSize               Int?
+  importedByUserId      String?
+  portalSyncedAt        DateTime     @default(now())
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@unique([organizationId, ownVoen, direction, portalId, priorSystem])
+  @@index([organizationId, direction, issuedAt])
+  @@index([organizationId, serialNumber])
+  @@index([organizationId, counterpartyVoen])
+  @@map("e_qaime_invoices")
+}
+
 model Fund {
   id             String       @id @default(cuid())
   organizationId String
@@ -5756,6 +6212,10 @@ model MtmTeam {
   name           String
   code           String?
   isActive       Boolean      @default(true)
+  /// Personnel: the department this section (şöbə) belongs to. NULL = a section
+  /// outside any department, as every team was before 2026-10-22.
+  departmentId   String?
+  department     MtmDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -5775,11 +6235,32 @@ model MtmTeam {
   @@index([organizationId])
   @@index([organizationId, regionId])
   @@index([regionId])
+  @@index([departmentId])
   @@map("mtm_teams")
+}
+
+/// Personnel: a department (departament) — the level above a section (şöbə, an
+/// MtmTeam). Owner, 2026-10-22: «тут есть отдел, но нет департамента». A person
+/// may belong to a department without a section (its head, for one).
+model MtmDepartment {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  teams  MtmTeam[]
+  agents MtmAgent[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId])
+  @@map("mtm_departments")
 }
 
 // MTM Agent — field agents linked to CRM users
 model MtmAgent {
+  identityActorBinding IdentityActorBinding?
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceMonthMemberships MtmAttendanceMonthMember[]
   attendanceReminderSubjects MtmAttendanceReminderNotice[] @relation("AttendanceReminderSubject")
@@ -5807,6 +6288,8 @@ model MtmAgent {
   passwordHash   String? // for mobile app login
   role           MtmAgentRole   @default(AGENT)
   status         MtmAgentStatus @default(ACTIVE)
+  /// Removed from Route & Field; retained for historical references and independent Time/CRM access.
+  fieldDeletedAt DateTime? @db.Timestamp(3)
   /// Whether this field agent may create and edit their own route drafts.
   /// Managers and administrators always plan within their normal scope.
   canPlanOwnRoutes Boolean       @default(true)
@@ -5832,6 +6315,10 @@ model MtmAgent {
   mapColor       String?
   teamId         String?
   team           MtmTeam?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  /// Personnel: the person's department. With a section it is the section's
+  /// department; without one it is where the person sits (a department head).
+  departmentId   String?
+  department     MtmDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   managerId      String?
   manager        MtmAgent?      @relation("AgentManager", fields: [managerId], references: [id])
   subordinates   MtmAgent[]     @relation("AgentManager")
@@ -5874,6 +6361,8 @@ model MtmAgent {
   customerLocationRequests             MtmCustomerLocationRequest[]
   jointSessionsLed                     MtmJointFieldSession[]       @relation("MtmJointFieldSessionManager")
   jointSessionsJoined                  MtmJointFieldSession[]       @relation("MtmJointFieldSessionAgent")
+  jointVisitPlansLed                   MtmJointVisitPlan[]          @relation("MtmJointVisitPlanManager")
+  jointVisitPlansJoined                MtmJointVisitPlan[]          @relation("MtmJointVisitPlanAgent")
   visitEvaluationsReceived             MtmVisitEvaluation[]         @relation("MtmVisitEvaluationAgent")
   visitEvaluationsGiven                MtmVisitEvaluation[]         @relation("MtmVisitEvaluationEvaluator")
   enteredDoctorAssessments  MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentEnteredBy")
@@ -5934,9 +6423,11 @@ model MtmAgent {
   @@unique([organizationId, externalCode])
   @@unique([organizationId, id])
   @@index([organizationId])
+  @@index([organizationId, fieldDeletedAt])
   @@index([userId])
   @@index([managerId])
   @@index([teamId])
+  @@index([departmentId])
   @@map("mtm_agents")
 }
 
@@ -6077,6 +6568,7 @@ model MtmCustomer {
   deletedAt              DateTime?
 
   routePoints            MtmRoutePoint[]
+  jointVisitPlans        MtmJointVisitPlan[]
   visits                 MtmVisit[]
   tasks                  MtmTask[]
   approvedRequests       MtmCustomerCreateRequest[]
@@ -6277,6 +6769,7 @@ model MtmContact {
   agentAssignments  MtmContactAgentAssignment[]
   fieldPotentials   MtmFieldPotential[]
   routePoints       MtmRoutePoint[]
+  jointVisitPlans   MtmJointVisitPlan[]
   visits            MtmVisit[]
   commitments       MtmCommitment[]
   changeRequests    MtmContactChangeRequest[]
@@ -7176,6 +7669,7 @@ model MtmRoutePoint {
 
   visits         MtmVisit[]
   changeRequests MtmRouteChangeRequest[]
+  jointVisitPlans MtmJointVisitPlan[]
 
   @@index([organizationId])
   @@index([routeId])
@@ -7235,6 +7729,7 @@ model MtmVisit {
   tasks                  MtmTask[]
   participants           MtmVisitParticipant[]
   evaluations            MtmVisitEvaluation[]
+  jointVisitPlans        MtmJointVisitPlan[]
   requirementSnapshot    MtmVisitRequirementSnapshot?
   actionResults          MtmVisitActionResult[]
   commitments            MtmCommitment[]
@@ -7335,6 +7830,52 @@ model MtmJointFieldSession {
   @@index([organizationId, agentId, startedAt])
   @@map("mtm_joint_field_sessions")
 }
+
+/// A joint visit the manager planned ahead (owner, 2026-10-30): «менеджер
+/// должен иметь право выбирать, к какому клиенту сделает визит вместе с
+/// агентом… или экстра-клиента — тогда он попадает в маршрут агента». One row
+/// per stop of the agent's route on that day; an extra client is first added
+/// to the agent's route, so both kinds point at a route stop. The plan says
+/// where they go together; the visit becomes joint, as before, by the agent's
+/// own «yes, together» at check-in (src/lib/mtm/joint-visit-plan.ts).
+model MtmJointVisitPlan {
+  id             String                  @id @default(cuid())
+  organizationId String
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  managerAgentId String
+  manager        MtmAgent                @relation("MtmJointVisitPlanManager", fields: [organizationId, managerAgentId], references: [organizationId, id], onDelete: Cascade)
+  agentId        String
+  agent          MtmAgent                @relation("MtmJointVisitPlanAgent", fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  /// The route's day.
+  date           DateTime                @db.Date
+  routePointId   String?
+  routePoint     MtmRoutePoint?          @relation(fields: [routePointId], references: [id], onDelete: SetNull)
+  customerId     String
+  customer       MtmCustomer             @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Cascade)
+  contactId      String?
+  contact        MtmContact?             @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  source         MtmJointVisitPlanSource
+  /// The visit the agent marked as joint at this stop, once he has.
+  visitId        String?
+  visit          MtmVisit?               @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  cancelledAt    DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([organizationId, agentId, date])
+  @@index([organizationId, managerAgentId, date])
+  @@index([routePointId])
+  @@index([visitId])
+  @@map("mtm_joint_visit_plans")
+}
+
+enum MtmJointVisitPlanSource {
+  /// A stop the agent had planned himself.
+  ROUTE
+  /// A client the manager added to the agent's route for the joint visit.
+  EXTRA
+}
+
 
 /// A manager's rating of the agent's work on one joint visit (owner,
 /// 2026-10-20). Allowed only on a visit the agent himself marked as joint
@@ -8380,6 +8921,11 @@ model MtmHrmRequest {
   attendanceDetails   Json?
   decisionNote        String?
   decidedByUserId     String?
+  // Two-step approval (Personnel → Settings → Requests): the manager's half.
+  // The request stays PENDING until HR — an administrator — decides it.
+  managerApprovedByUserId String?
+  managerApprovedAt   DateTime?
+  managerApprovalNote String?
   submittedAt         DateTime
   decidedAt           DateTime?
   cancelledAt         DateTime?
@@ -8426,8 +8972,36 @@ model MtmAttendanceBranch {
   createdAt DateTime @default(now())
   revisions MtmAttendanceBranchRevision[]
   assignments MtmAttendancePrimaryBranchRevision[]
+  screens MtmAttendanceBranchScreen[]
   @@unique([organizationId, id])
   @@map("mtm_attendance_branches")
+}
+
+/// A screen at the branch's entrance (a tablet) that alone shows the branch
+/// QR. Created with a one-time pairing code; paired, it holds a secret whose
+/// SHA-256 is kept here. Revoked screens stay for the audit trail.
+model MtmAttendanceBranchScreen {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branchId String
+  branch MtmAttendanceBranch @relation(fields: [organizationId, branchId], references: [organizationId, id], onDelete: Restrict)
+  codeHash String? @unique @db.VarChar(64)
+  codeExpiresAt DateTime?
+  secretHash String? @unique @db.VarChar(64)
+  pairedAt DateTime?
+  lastSeenAt DateTime?
+  /// AT_BRANCH | AWAY | NO_FIX — the screen's last verdict, never its coordinates.
+  placeState String? @db.VarChar(16)
+  placeDistanceMeters Int?
+  placeCheckedAt DateTime?
+  revokedAt DateTime?
+  revokedBy String?
+  createdBy String
+  createdAt DateTime @default(now())
+  @@unique([organizationId, id])
+  @@index([organizationId, branchId, createdAt])
+  @@map("mtm_attendance_branch_screens")
 }
 
 /// Never updated, including name/address/active. Evidence freezes revisionId.
@@ -9082,7 +9656,8 @@ model WorkforceWorkdayScheduleSnapshot {
   policySnapshot   WorkforcePolicySnapshot  @relation("WorkforceSchedulePolicySnapshot", fields: [organizationId, policySnapshotId], references: [organizationId, id], onDelete: Restrict)
   shiftSnapshotId  String
   shiftSnapshot    WorkforceShiftSnapshot   @relation("WorkforceScheduleShiftSnapshot", fields: [organizationId, shiftSnapshotId], references: [organizationId, id], onDelete: Restrict)
-  schemaVersion    Int                      @default(1)
+  /// 2 since 20260830130000 (team membership in calendarSnapshot); 1 is legacy.
+  schemaVersion    Int                      @default(2)
   calendarState    String                   @db.VarChar(48)
   calendarSnapshot Json
   segments         Json
@@ -12772,7 +13347,9 @@ model PaymentProvider {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /**
-   * "stripe" | "paypal" | "yookassa" | "robokassa" (CHECK-enforced).
+   * "stripe" | "paypal" | "yookassa" | "robokassa" | "kapitalbank"
+   * (CHECK-enforced). A kapitalbank row keeps its password encrypted
+   * (src/lib/payments/kapitalbank/config.ts).
    */
   type           String
   name           String
@@ -13316,15 +13893,19 @@ model LoyaltyTransaction {
    * When expiresAt < now() AND expiredAt IS NULL, the daily cron
    * emits an `expire` LoyaltyTransaction and stamps expiredAt.
    * Migration: 20260525220000_d8_loyalty_expiry_cron
+   * TIMESTAMPTZ in the database (that migration), unlike the other DateTime
+   * columns. Declared here so a generated migration never converts it: the
+   * conversion runs in the session time zone (Europe/Berlin on production)
+   * and would shift every stored instant by the offset.
    */
-  expiresAt        DateTime?
+  expiresAt        DateTime?           @db.Timestamptz(6)
   /**
    * Stamped by the loyalty-expiry cron after it emits the corresponding
    * `expire` transaction for this earn row. Prevents double-expiry on
    * repeated cron runs. Set in the same $transaction as the expire row.
    * Migration: 20260525220000_d8_loyalty_expiry_cron
    */
-  expiredAt        DateTime?
+  expiredAt        DateTime?           @db.Timestamptz(6)
   /// Reverse side of LoyaltyRedemption.transaction (a 'redeem' txn ↔ its fulfilment record).
   redemptions      LoyaltyRedemption[]
 
@@ -15929,8 +16510,11 @@ model MeterReading {
   /// Quality flag (DB CHECK): raw | validated | flagged
   quality             String         @default("raw")
   /// Self-referential FK — corrected source ⇒ supersedesReadingId set.
+  /// RESTRICT, as 20260518130000_energy_utilities created it: readings are an
+  /// append-only audit trail, so a corrected reading cannot be deleted from
+  /// under its correction.
   supersedesReadingId String?
-  supersedes          MeterReading?  @relation("MeterReadingCorrection", fields: [supersedesReadingId], references: [id])
+  supersedes          MeterReading?  @relation("MeterReadingCorrection", fields: [supersedesReadingId], references: [id], onDelete: Restrict)
   correctedBy         MeterReading[] @relation("MeterReadingCorrection")
   metadata            Json           @default("{}")
   createdAt           DateTime       @default(now())
@@ -16903,6 +17487,11 @@ model CallLog {
   provider        String              @default("twilio")
   providerCallId  String?
   callMode        String              @default("human") // human | ai
+  /// The AI voice agent handing an inbound call to a salesperson's browser
+  /// (owner, 2026-10-27, Zeytun): requested -> ringing -> connected, or
+  /// returned to the AI when nobody answered. Once per call.
+  handoffState       String?
+  handoffRequestedAt DateTime?
   wasAnswered     Boolean             @default(false)
   providerOutcome String? // connected | no_answer | busy | failed | cancelled
   // Technical PBX/provider finality and evidence, not the business outcome.
@@ -19502,6 +20091,7 @@ model DomainEvent {
 
   outbox  EventOutbox?
   effects EffectOutbox[]
+  bookingChangeNote BookingChangeNote?
 
   @@unique([organizationId, id], map: "domain_events_org_id_key")
   @@unique([organizationId, aggregateType, aggregateId, aggregateVersion], map: "domain_events_stream_version_key")
@@ -22632,6 +23222,8 @@ model MtmAttendanceQrEvidence {
   branchRevisionId String?
   branchRevision MtmAttendanceBranchRevision? @relation(fields: [organizationId, branchRevisionId], references: [organizationId, id], onDelete: Restrict)
   nonceFingerprint String? @db.VarChar(64)
+  /// AWAY_FROM_BRANCH only: metres between the phone's own fix and the QR branch's point.
+  awayDistanceMeters Int?
   createdAt DateTime @default(now())
   @@unique([organizationId, eventId])
   @@unique([organizationId, agentId, nonceFingerprint, action])
@@ -22803,4 +23395,465 @@ model MtmAttendanceReminderNotice {
   @@index([organizationId, recipientUserId, workDate], map: "mtm_reminder_user_date")
   @@index([organizationId, recipientAgentId, workDate], map: "mtm_reminder_agent_date")
   @@map("mtm_attendance_reminder_notices")
+}
+
+/// A link where a customer picks a free time with someone from the
+/// organization (/book/<slug>). Free time is computed by
+/// src/lib/booking/availability.ts from `weekly` minus the hosts' bookings
+/// and, when connected, their Google Calendar.
+model BookingPage {
+  version Int @default(0)
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Public path segment; unique across organizations because the URL carries no tenant.
+  slug             String       @unique
+  title            String
+  description      String?
+  durationMinutes  Int          @default(30)
+  bufferMinutes    Int          @default(0)
+  minNoticeMinutes Int          @default(120)
+  maxDaysAhead     Int          @default(14)
+  /// office | phone | online
+  locationType     String       @default("office")
+  locationText     String?
+  /// Users who take these meetings; a booking goes to one of them.
+  hostIds          String[]
+  /// { "0".."6": [{ start: "HH:mm", end: "HH:mm" }] } on the organization's clock, 0 = Sunday.
+  weekly           Json
+  isActive         Boolean      @default(true)
+  createdBy        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  bookings Booking[]
+
+  @@unique([organizationId, id], map: "booking_pages_org_id_key")
+  @@index([organizationId])
+  @@map("booking_pages")
+}
+
+/// One meeting a customer booked. Two confirmed bookings of one host never
+/// start at the same moment (partial unique index in the migration), and the
+/// booking transaction holds a per-host lock while it checks for overlap.
+model Booking {
+  version Int @default(0)
+  snapshot Json?
+  source String @default("public_link")
+  secretId String?
+  adAttribution Json?
+  createdBy String?
+  outcomeNote String?
+  cancellationReason String?
+  bufferBefore Int @default(0)
+  bufferAfter Int @default(0)
+  bindings BookingIntegrationBinding[]
+  changeNotes BookingChangeNote[]
+  id              String      @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingPageId   String
+  bookingPage     BookingPage @relation(fields: [organizationId, bookingPageId], references: [organizationId, id], onDelete: NoAction)
+  hostUserId      String
+  hostUser User @relation("BookingHost", fields: [organizationId, hostUserId], references: [organizationId, id], onDelete: NoAction)
+  startsAt        DateTime
+  endsAt          DateTime
+  name            String
+  phone           String
+  email           String?
+  note            String?
+  /// confirmed | cancelled
+  status          String      @default("confirmed")
+  /// sha256 of the token in the customer's cancel link.
+  cancelTokenHash String      @unique
+  leadId          String?
+  taskId          String?
+  googleEventId   String?
+  cancelledAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([organizationId, hostUserId, startsAt])
+  @@index([bookingPageId, startsAt])
+  @@index([organizationId, startsAt, id], map: "bookings_org_start_id_idx")
+  @@index([organizationId, hostUserId, startsAt, id], map: "bookings_org_host_start_id_idx")
+  @@unique([organizationId, id], map: "bookings_org_id_key")
+  @@map("bookings")
+}
+
+/// An ad platform the organization sends conversions to (today: Meta
+/// Conversions API). The access token is stored only as tenant-bound
+/// ciphertext. Nothing is sent until `consentConfirmedAt` is set — the
+/// organization's statement that its forms collect consent to share data
+/// with advertising platforms.
+model AdConversionDestination {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// meta
+  platform           String
+  /// Meta pixel (dataset) id.
+  publicId           String
+  secretCiphertext   String
+  testEventCode      String?
+  sendLeads          Boolean      @default(true)
+  sendWins           Boolean      @default(true)
+  isActive           Boolean      @default(false)
+  consentConfirmedAt DateTime?
+  consentConfirmedBy String?
+  /// Events are sent only for leads and wins after this moment — turning a
+  /// destination on never floods it with history.
+  activatedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  events AdConversionEvent[]
+
+  @@unique([organizationId, platform])
+  @@map("ad_conversion_destinations")
+}
+
+/// One conversion to send, sent or not sent — the outbox and its history.
+/// (destination, event, record) is unique, so a lead or a win is sent once.
+model AdConversionEvent {
+  id             String                  @id @default(cuid())
+  organizationId String
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  destinationId  String
+  destination    AdConversionDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  /// lead | purchase
+  eventName      String
+  /// lead | deal
+  entityType     String
+  entityId       String
+  /// When it happened (lead captured, deal won).
+  eventTime      DateTime
+  /// pending | sent | failed | skipped
+  status         String                  @default("pending")
+  attempts       Int                     @default(0)
+  /// Why it was skipped (skip_*) or the platform's last error.
+  reason         String?
+  /// What the settings page shows in its list: a name, or a deal and its amount.
+  recordLabel    String
+  sentAt         DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@unique([destinationId, eventName, entityId])
+  @@index([organizationId, status])
+  @@index([destinationId, createdAt])
+  @@map("ad_conversion_events")
+}
+
+/// An order list a pharmacy dictated to the AI operator on the phone. It is a
+/// preliminary request for a manager to check: nothing here reaches 1C by
+/// itself, and the manager's "confirm" records that they entered it there.
+/// One order per call (`providerCallId`); a second save during the same call
+/// replaces the lines while the order still waits for review.
+model PharmacyPhoneOrder {
+  id                     String       @id @default(cuid())
+  organizationId         String
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Shown to people as TS-<number>; counts per organization.
+  number                 Int
+  /// pending_review | confirmed | rejected
+  status                 String       @default("pending_review")
+  /// The PBX call id (AudioSocket UUID) the list was taken on.
+  providerCallId         String
+  callStartedAt          DateTime
+  /// Tenant-bound ciphertext of the caller's number.
+  callerPhone            String
+  /// test_call | phone_unique | phone_shared | named_on_call | unidentified | manager_selected
+  pharmacyIdentification String
+  /// The pharmacy's company card, once it is known (from 1C by the call, or picked by a manager).
+  companyId              String?
+  company                Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  /// 1C counterparty GUID, name and address when the pharmacy is known.
+  pharmacyGuid           String?
+  pharmacyName           String?
+  pharmacyAddress        String?
+  /// The catalog snapshot the lines were resolved and priced against: the
+  /// snapshot store's namespace, its scope key and the version.
+  catalogSource          String
+  catalogScopeKey        String
+  catalogVersion         String
+  catalogObservedAt      DateTime
+  currency               String       @default("AZN")
+  /// Sum of the priced lines only; a line not found in the catalog has no price.
+  totalAmount            Decimal      @db.Decimal(14, 2)
+  /// Bumped by every save from the call and every manager edit.
+  revision               Int          @default(1)
+  /// The newest station save of the call this order holds (its seq); an older one is ignored.
+  stationSeq             Int?
+  /// The revision the station's last save left; another revision means a manager changed the order.
+  stationRevision        Int?
+  confirmedById          String?
+  confirmedAt            DateTime?
+  rejectedById           String?
+  rejectedAt             DateTime?
+  rejectReason           String?
+  /// Delivery state of the manager's WhatsApp notice: { status, at, messageId?, error? }.
+  managerNotice          Json?
+  /// Delivery state of the pharmacy's WhatsApp message about the manager's decision: { status, kind, at, messageId?, error? }.
+  pharmacyNotice         Json?
+  /// Delivery state of the pharmacy's WhatsApp list sent when the call ends: { status, at, messageId?, error? }.
+  pharmacyReceipt        Json?
+  /// The order in Zeytun's 1C: sending | created | refused | unknown (no clear answer: 1C is asked before anything is sent again).
+  erpState               String?
+  /// When the current or last send to 1C began; a send older than two minutes is treated as unknown.
+  erpAttemptAt           DateTime?
+  /// The 1C document: { guid, number, date, total, existing }.
+  erpDocument            Json?
+  /// What 1C answered besides the document: { errors?, differences?, error? }.
+  erpResult              Json?
+  /// Every change a manager made after the call: [{ action, at, by, position?, from?, to? }].
+  managerEdits           Json?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  lines PharmacyPhoneOrderLine[]
+
+  @@index([organizationId, companyId, createdAt])
+  @@unique([organizationId, number])
+  @@unique([organizationId, providerCallId])
+  @@index([organizationId, status, createdAt])
+  @@map("pharmacy_phone_orders")
+}
+
+/// One line of a phone order: the caller's own words next to the catalog item
+/// they were resolved to. A line the catalog did not resolve keeps the words
+/// and quantity and has no product or price until a manager picks one.
+model PharmacyPhoneOrderLine {
+  id             String             @id @default(cuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          PharmacyPhoneOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  position       Int
+  /// resolved | not_found
+  status         String
+  /// 1C product GUID, item code and label from the catalog snapshot.
+  externalId     String?
+  itemCode       String?
+  productName    String?
+  /// The name exactly as 1C has it (Наименование), for the pharmacy's order document.
+  sourceName     String?
+  /// What the caller said for this line, as the model heard it.
+  spokenText     String
+  quantity       Int
+  /// The unit the caller used: qutu, ədəd, flakon, ...
+  unit           String
+  unitPrice      Decimal?           @db.Decimal(12, 4)
+  lineTotal      Decimal?           @db.Decimal(14, 2)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([orderId, position])
+  @@index([organizationId])
+  @@map("pharmacy_phone_order_lines")
+}
+
+/// Explicit own/team expansion for the meetings workspace; board membership is unrelated.
+model BookingCoordinatorGrant {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  coordinatorUserId String
+  coordinator User @relation("BookingCoordinator", fields: [organizationId, coordinatorUserId], references: [organizationId, id], onDelete: Cascade)
+  hostUserId String
+  host User @relation("BookingCoordinatedHost", fields: [organizationId, hostUserId], references: [organizationId, id], onDelete: Cascade)
+  canManage Boolean @default(true)
+  createdBy String
+  createdAt DateTime @default(now())
+  @@unique([organizationId, coordinatorUserId, hostUserId], map: "booking_coordinator_grants_identity_key")
+  @@index([organizationId, hostUserId], map: "booking_coordinator_grants_host_idx")
+  @@map("booking_coordinator_grants")
+}
+
+
+/// Encrypted response and delivery capability. The immutable receipt stores only a reference.
+model BookingSecret {
+  id String @id
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recoveryHash String
+  responseCipher String?
+  responseExpiresAt DateTime
+  deliveryCipher String?
+  createdAt DateTime @default(now())
+  @@index([organizationId, responseExpiresAt])
+  @@map("booking_secrets")
+}
+
+/// Preserve every old calendar resource until deletion is acknowledged.
+model BookingIntegrationBinding {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId String
+  booking Booking @relation(fields: [organizationId, bookingId], references: [organizationId, id], onDelete: Cascade)
+  hostUserId String
+  accountId String
+  calendarId String @default("primary")
+  generation String
+  providerEventId String?
+  desiredVersion Int
+  appliedVersion Int @default(0)
+  desiredState String @default("present")
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([organizationId, bookingId, generation], map: "booking_bindings_generation_key")
+  @@index([organizationId, bookingId])
+  @@map("booking_integration_bindings")
+}
+
+
+/// Sensitive explanations are kept outside the immutable structural event stream.
+model BookingChangeNote {
+  eventId String @id @db.Uuid
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId String
+  booking Booking @relation(fields: [organizationId, bookingId], references: [organizationId, id], onDelete: Cascade)
+  event DomainEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Cascade)
+  data Json
+  createdAt DateTime @default(now())
+  @@index([organizationId, bookingId])
+  @@unique([organizationId, eventId])
+  @@map("booking_change_notes")
+}
+
+/// An organization's own Telegram bot through which its employees work with
+/// the CRM (task 8; owner 2026-10-25: «свой бот у каждой организации»). One per
+/// organization; a bot serves one organization only. The token is encrypted
+/// with the organization's key; Telegram proves a webhook call with the secret
+/// whose hash is kept here.
+model TelegramStaffBot {
+  id                String              @id @default(cuid())
+  organizationId    String              @unique
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  telegramBotId     String              @unique
+  botUsername       String
+  tokenCiphertext   String
+  webhookSecretHash String
+  isActive          Boolean             @default(true)
+  /// Highest Telegram update_id handled: a retried update is answered once.
+  lastUpdateId      BigInt              @default(0)
+  connectedById     String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  links             TelegramStaffLink[]
+
+  @@map("telegram_staff_bots")
+}
+
+/// An employee's Telegram account linked to the organization's bot. The bot
+/// answers only in this private chat, and only with this user's rights.
+model TelegramStaffLink {
+  id               String                @id @default(cuid())
+  organizationId   String
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  botId            String
+  bot              TelegramStaffBot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId           String                @unique
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramUserId   String
+  telegramUsername String?
+  chatId           String
+  /// The last few turns of the conversation, so «and the phone is …» follows on.
+  recentTurns      Json?
+  linkedAt         DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  actions          TelegramStaffAction[]
+
+  @@unique([botId, telegramUserId])
+  @@index([organizationId])
+  @@map("telegram_staff_links")
+}
+
+/// One-time «link your Telegram» token, t.me/<bot>?start=<token>. Only its hash is kept.
+model TelegramStaffLinkToken {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash      String       @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, userId])
+  @@map("telegram_staff_link_tokens")
+}
+
+/// A write the bot proposed and waits for «Təsdiqlə» on. Nothing is written
+/// before the employee presses it; a second press finds it no longer pending.
+model TelegramStaffAction {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  linkId         String
+  link           TelegramStaffLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  kind           String
+  payload        Json
+  status         String            @default("pending")
+  expiresAt      DateTime
+  resultId       String?
+  error          String?
+  createdAt      DateTime          @default(now())
+  decidedAt      DateTime?
+
+  @@index([organizationId, status])
+  @@index([linkId])
+  @@map("telegram_staff_actions")
+}
+
+/// A phone number a client's calls arrive on. LeadDrive's operator (a
+/// superadmin) assigns it, never the tenant itself: whoever holds a number
+/// receives its calls. A call on a number without a row stays with the
+/// installation's default organization (VOICE_AGENT_ORGANIZATION_ID).
+model VoiceLineNumber {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The organization's VoIP channel the calls belong to; null: its newest Asterisk channel.
+  channelConfigId String?
+  /// E.164, unique across the installation.
+  e164            String       @unique
+  label           String?
+  createdById     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("voice_line_numbers")
+}
+
+/// A product line of a deal (owner 2026-10-26: «товары в сделке: строки с
+/// товарами, сумма сделки из них»). Prices are in the deal's currency; a
+/// catalog product priced in another currency comes in with no price, since
+/// there are no exchange rates to convert it. Name and SKU are copied, so a
+/// later change in the catalog does not rewrite what was agreed.
+model DealLineItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dealId         String
+  deal           Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name           String
+  sku            String?
+  quantity       Decimal      @default(1) @db.Decimal(18, 4)
+  /// Null until someone enters a price in the deal's currency.
+  unitPrice      Decimal?     @db.Decimal(18, 4)
+  discountPct    Decimal      @default(0) @db.Decimal(5, 2)
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, dealId])
+  @@map("deal_line_items")
 }

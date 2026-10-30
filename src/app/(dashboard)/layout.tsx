@@ -25,12 +25,15 @@ import { TicketBadgeProvider } from "@/contexts/ticket-badge-context"
 import { DashboardWallpaper } from "@/components/dashboard-wallpaper"
 import { TicketNotifier } from "@/components/ticket-notifier"
 import { VoipCallProvider } from "@/components/voip-call-provider"
+import { ShellEventsProvider } from "@/components/shell-events-provider"
 import { TourProvider } from "@/components/tour/tour-provider"
 import { TourRenderer } from "@/components/tour/tour-renderer"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { HelpVideoLauncher } from "@/components/help/help-video-launcher"
 import { PharmacyPromotionOutboxSync } from "@/components/mtm/pharmacy-promotion-outbox-sync"
 import { dashboardAssistantVisibility } from "@/lib/dashboard-assistant-visibility"
+import { ReviewerWatermark } from "@/components/reviewer-watermark"
+import { CrmAppearanceProvider } from "@/components/ui/crm-appearance"
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -142,7 +145,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   // a ready session. The 6s watchdog is the backstop: a hung/failing session still
   // renders the page eventually (its fetch may 401, but at least it's not a blank
   // shell forever). status === "unauthenticated" is left to middleware (redirect).
-  const childrenReady = status === "authenticated" || hydrationTimedOut
+  // SessionProvider.update() briefly reports loading while retaining the user.
+  // Keep mounted page state through that refresh; identity and access gates below
+  // still reset or block the page when the user, organization or rights change.
+  const childrenReady = status === "authenticated" || (status === "loading" && !!user) || hydrationTimedOut
   const {
     contentSearchVisible,
     showFloatingAiLauncher,
@@ -157,33 +163,36 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
+      <CrmAppearanceProvider enabled>
       <WallpaperProvider>
         <QueryClientProvider client={queryClient}>
           <TicketBadgeProvider>
           <TourProvider>
+          <ShellEventsProvider>
           <VoipCallProvider>
           <TooltipProvider delayDuration={200}>
           <LauncherPrefsProvider>
           <DashboardWallpaper />
+          <ReviewerWatermark />
           <div className="relative z-[2] flex h-screen min-w-0">
             {/* Portal target for the voice control's status line: inside this
                 stacking context so in-place dialogs (z-[60]) still cover it.
                 See VoiceInlineStatus. Empty and zero-size; its child is fixed. */}
-            <div id="dashboard-voice-status-layer" />
+            <div id="dashboard-voice-status-layer" data-crm-workspace="" />
             {/* sessionLoaded: while useSession() is still hydrating, the
                 sidebar shows a skeleton and the header shows shimmer
                 placeholders — rendering the menu from a default org context
                 here silently hid module groups (MTM/Finance) and showed a
                 fake "User" identity (recurring bug report 2026-06-11). */}
             <Sidebar org={org} sessionLoaded={sessionLoaded} />
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <div data-crm-workspace="" className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <Header
                 orgName={user?.organizationName}
                 userName={user?.name ?? undefined}
                 sessionLoaded={sessionLoaded}
                 onOpenLauncher={() => setLauncherOpen(true)}
               />
-              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} ref={mainRef}>
+              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} data-crm-workspace="" ref={mainRef}>
                 {!childrenReady ? (
                   <div className="flex h-full items-center justify-center" aria-busy="true">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -237,10 +246,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </LauncherPrefsProvider>
           </TooltipProvider>
           </VoipCallProvider>
+          </ShellEventsProvider>
           </TourProvider>
           </TicketBadgeProvider>
         </QueryClientProvider>
       </WallpaperProvider>
+      </CrmAppearanceProvider>
     </ThemeProvider>
   )
 }
