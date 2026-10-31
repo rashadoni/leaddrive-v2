@@ -402,7 +402,15 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
     key: "presentation",
     state: presentationStep.state === "done" ? "done" : "missing",
     title: t("review.steps.presentation"),
-    aside: presentationStep.state === "done" ? t("review.presentationsCount", { count: visit.presentationSessions.length }) : t("review.stepMissing"),
+    // What was shown and for how long, as in the approved mockup («2 препарата · 6 мин»).
+    aside: presentationStep.state === "done"
+      ? visit.presentationSessions.length
+        ? t("review.presentationShown", {
+          products: new Set(visit.presentationSessions.map((session) => session.product.name)).size,
+          minutes: Math.max(1, Math.ceil(visit.presentationSessions.reduce((sum, session) => sum + session.activeDurationSeconds, 0) / 60)),
+        })
+        : null
+      : t("review.stepMissing"),
   })
   const photoStep = stepOf("photo")
   if (photoStep && photoStep.state !== "skipped") steps.push({

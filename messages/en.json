@@ -15322,6 +15322,7 @@
       "stepStillThere": "still with the client",
       "stepMissing": "not done — required",
       "stepActionCount": "{count} of {min}",
+      "presentationShown": "{products, plural, one {# product} other {# products}} · {minutes} min",
       "chipOpen": "In progress · {duration}",
       "chipDone": "Took {duration} · {from} — {to}",
       "checkedInFar": "Checked in {distance} from the client — allowed up to {radius}",

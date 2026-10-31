@@ -15322,6 +15322,7 @@
       "stepStillThere": "ещё у клиента",
       "stepMissing": "не сделано — обязательно",
       "stepActionCount": "{count} из {min}",
+      "presentationShown": "{products, plural, one {# препарат} few {# препарата} many {# препаратов} other {# препарата}} · {minutes} мин",
       "chipOpen": "Идёт · {duration}",
       "chipDone": "Длился {duration} · {from} — {to}",
       "checkedInFar": "Отметился в {distance} от клиента — можно не дальше {radius}",
