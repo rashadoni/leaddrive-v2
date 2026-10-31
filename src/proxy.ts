@@ -170,6 +170,8 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
   "/api/internal/voice-agent/line-health",
   // The station's once-a-minute report; same bearer token as its other routes.
   "/api/internal/asterisk/station-heartbeat",
+  // A finished line call's recording (owner, 2026-10-31); same bearer token.
+  "/api/internal/asterisk/call-recording",
   VOICE_AGENT_RUNTIME_CONFIG_PATH,
   VOICE_AGENT_CALL_RESULT_PATH,
   VOICE_AGENT_CALL_SOURCE_PATH,

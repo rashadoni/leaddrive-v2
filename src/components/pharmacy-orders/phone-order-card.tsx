@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { Hint } from "@/components/hint"
+import { CallRecordingPlayer } from "@/components/voip/call-recording-player"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -32,6 +33,7 @@ type Order = {
   pharmacyNotice: { status?: string; kind?: "confirmed" | "rejected"; at?: string; error?: string; format?: string; pdfSkipped?: string } | null
   erp: Erp
   edits: number
+  call: { id: string; duration: number | null; recordingPlaybackUrl: string | null } | null
   lines: Line[]
 }
 type Erp = {
@@ -252,6 +254,11 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
         </section>
         <section className={cn(CARD, "px-4 py-3")}>
           <h2 className="text-sm font-semibold">{t("historyTitle")}</h2>
+          {order.call ? (
+            <div className="mt-2">
+              <CallRecordingPlayer url={order.call.recordingPlaybackUrl} callDurationSeconds={order.call.duration} callLabel={order.label} />
+            </div>
+          ) : null}
           <ol className="mt-2 space-y-1 text-sm">
             <HistoryRow at={order.callStartedAt} locale={locale}>{t("historyCalled")}</HistoryRow>
             <HistoryRow at={order.createdAt} locale={locale}>{t("historySaved")}</HistoryRow>

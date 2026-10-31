@@ -1122,6 +1122,15 @@ describe("middleware", async () => {
     expect(res.headers.get("location")).toBeNull()
   })
 
+  it("lets the station's call recording reach its bearer check without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/internal/asterisk/call-recording", method: "POST", auth: null, headers: { "x-real-ip": "7.7.7.9" },
+    }))
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+  })
+
   it("keeps paths adjacent to the pharmacy pilot route behind a session", async () => {
     const req = makeReq({
       pathname: "/api/internal/voice-agent/pharmacy-inbound/debug",
