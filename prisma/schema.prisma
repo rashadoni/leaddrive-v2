@@ -6324,6 +6324,10 @@ model MtmAgent {
   subordinates   MtmAgent[]     @relation("AgentManager")
   isOnline       Boolean        @default(false)
   lastSeenAt     DateTime?
+  /// The language the agent's phone app shows (az/ru/en), reported by the app
+  /// (PUT /api/v1/mtm/mobile/language). Text written for the agent takes it
+  /// before the CRM login's preferredLanguage: `src/lib/mtm/agent-language.ts`.
+  appLanguage    String?
   /// Expo push token — registered via POST /api/v1/mtm/agents/push-token on app startup.
   /// Used by sendShelfAnalysisPush to send analysis-complete notifications to mobile agents.
   expoPushToken  String?

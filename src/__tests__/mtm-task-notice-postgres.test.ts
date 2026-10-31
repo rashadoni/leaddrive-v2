@@ -115,6 +115,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
   let createTask!: typeof import("@/app/api/v1/mtm/tasks/route").POST
   let updateTask!: typeof import("@/app/api/v1/mtm/tasks/[id]/route").PUT
   let giveTask!: typeof import("@/app/api/v1/mtm/mobile/manager/tasks/route").POST
+  let reportLanguage!: typeof import("@/app/api/v1/mtm/mobile/language/route").PUT
   let phoneBell!: typeof import("@/app/api/v1/mtm/mobile/notifications/route").GET
   let taskId = ""
   let taskVersion = 0
@@ -131,6 +132,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
     createTask = (await import("@/app/api/v1/mtm/tasks/route")).POST
     updateTask = (await import("@/app/api/v1/mtm/tasks/[id]/route")).PUT
     giveTask = (await import("@/app/api/v1/mtm/mobile/manager/tasks/route")).POST
+    reportLanguage = (await import("@/app/api/v1/mtm/mobile/language/route")).PUT
     phoneBell = (await import("@/app/api/v1/mtm/mobile/notifications/route")).GET
 
     await bypass(async () => {
@@ -322,5 +324,31 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
     phoneOf(AYSEL, "AGENT", "Aysel", { routeField: false, workforceHrm: true })
     const hrmOnly = await call(phoneBell, `${BASE}/mobile/notifications`, "GET", undefined)
     expect(hrmOnly.body.data.items).toEqual([])
+  })
+
+  it("writes the task line in the language the agent's app shows, even with no CRM login (owner, 2026-10-31)", async () => {
+    // Aysel has no CRM login: until her app speaks, her lines are Azerbaijani.
+    phoneOf(AYSEL, "AGENT", "Aysel")
+    const refused = await call(reportLanguage, `${BASE}/mobile/language`, "PUT", { language: "de" })
+    expect(refused.status).toBe(400)
+    const reported = await call(reportLanguage, `${BASE}/mobile/language`, "PUT", { language: "ru-RU" })
+    expect(reported).toEqual({ status: 200, body: { success: true, data: { language: "ru" } } })
+    expect(await bypass(() => prisma.mtmAgent.findUnique({ where: { id: AYSEL }, select: { appLanguage: true } }))).toEqual({ appLanguage: "ru" })
+
+    phoneOf(MANAGER, "SUPERVISOR", "Team Manager")
+    const given = await call(giveTask, `${BASE}/mobile/manager/tasks`, "POST", { agentId: AYSEL, title: "Call the pharmacy", due: "tomorrow" })
+    expect(given.status).toBe(201)
+    expect((await notices()).at(-1)).toEqual(expect.objectContaining({
+      agentId: AYSEL,
+      title: "Новая задача от Team Manager",
+      body: "Call the pharmacy · срок завтра до 18:00",
+    }))
+
+    // The app comes first: Elvin's CRM login says Russian, his app says English.
+    phoneOf(ELVIN, "AGENT", "Elvin")
+    expect((await call(reportLanguage, `${BASE}/mobile/language`, "PUT", { language: "en" })).status).toBe(200)
+    phoneOf(MANAGER, "SUPERVISOR", "Team Manager")
+    expect((await call(giveTask, `${BASE}/mobile/manager/tasks`, "POST", { agentId: ELVIN, title: "Bring the leaflets", due: "none" })).status).toBe(201)
+    expect((await notices()).at(-1)).toEqual(expect.objectContaining({ agentId: ELVIN, title: "New task from Team Manager" }))
   })
 })

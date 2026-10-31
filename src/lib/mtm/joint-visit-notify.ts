@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 /**
  * The agent learns that his manager is going on visits with him (owner,
@@ -54,11 +55,11 @@ export async function notifyAgentOfJointVisit(input: {
     prisma.mtmAgent.findFirst({ where: { id: input.managerAgentId, organizationId: input.organizationId }, select: { name: true } }),
     prisma.mtmAgent.findFirst({
       where: { id: input.agentId, organizationId: input.organizationId },
-      select: { user: { select: { preferredLanguage: true } } },
+      select: AGENT_LANGUAGE_SELECT,
     }),
   ])
   if (!manager || !agent) return
-  const notice = jointVisitNotice(jointVisitLocale(agent.user?.preferredLanguage), manager.name)
+  const notice = jointVisitNotice(jointVisitLocale(agentLanguage(agent)), manager.name)
   await prisma.mtmNotification.create({
     data: {
       organizationId: input.organizationId,
@@ -167,11 +168,11 @@ export async function notifyAgentOfJointVisitPlan(input: {
     prisma.mtmAgent.findFirst({ where: { id: input.managerAgentId, organizationId: input.organizationId }, select: { name: true } }),
     prisma.mtmAgent.findFirst({
       where: { id: input.agentId, organizationId: input.organizationId },
-      select: { user: { select: { preferredLanguage: true } } },
+      select: AGENT_LANGUAGE_SELECT,
     }),
   ])
   if (!manager || !agent) return
-  const notice = jointPlanNotice(jointVisitLocale(agent.user?.preferredLanguage), { ...input, managerName: manager.name })
+  const notice = jointPlanNotice(jointVisitLocale(agentLanguage(agent)), { ...input, managerName: manager.name })
   const event = input.kind === "planned" ? "joint_visit_planned" : "joint_visit_cancelled"
   await prisma.mtmNotification.create({
     data: {

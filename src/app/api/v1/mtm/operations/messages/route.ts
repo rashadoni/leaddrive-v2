@@ -8,6 +8,7 @@ import { createFieldMessage } from "@/lib/mtm/field-message-send"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { withMtmRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { operationalLocale, sanitizeOperationalText } from "@/lib/mtm/operational-announcement"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 const MessageCommandSchema = z.object({
   type: z.enum(["DIRECT", "BROADCAST"]),
@@ -84,7 +85,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
 
   const recipientRows = await prisma.mtmAgent.findMany({
     where: { organizationId: auth.orgId, id: { in: uniqueAgentIds }, status: "ACTIVE" },
-    select: { id: true, name: true, user: { select: { preferredLanguage: true } } },
+    select: { id: true, name: true, ...AGENT_LANGUAGE_SELECT },
   })
   if (recipientRows.length !== uniqueAgentIds.length) {
     return NextResponse.json({ error: "One or more recipients are unavailable" }, { status: 400 })
@@ -94,7 +95,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
   // agent», visit-left-open.ts) reaches the agent in his own, as the task
   // notices do. Owner's phone, 2026-10-31: a Russian-speaking agent got it in
   // the sender's Azerbaijani. No language on record — the sender's words.
-  const recipientLanguage = input.type === "DIRECT" ? recipientRows[0]?.user?.preferredLanguage : null
+  const recipientLanguage = input.type === "DIRECT" ? agentLanguage(recipientRows[0]) : null
   const messageBody = (recipientLanguage && sanitizedLocalizations[operationalLocale(recipientLanguage)]) || sanitizedBody
 
   const sentAt = new Date()
