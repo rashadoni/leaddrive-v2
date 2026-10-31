@@ -132,6 +132,11 @@ class ZeytunGeminiTts:
 # need not wait for the model to say it or for the TTS to voice it again.
 ZEYTUN_OPENING_AUDIO = {}
 ZEYTUN_OPENING_AUDIO_MAX = 4
+# Owner's call 2026-10-30 (Tetrasiklin): 28 s of silence while the agent
+# looked a product up. A lookup still running after a second gets this, in the
+# call's voice, voiced once per process like the opening.
+ZEYTUN_WAIT_FILLER = "Hmm... bir saniyə."
+ZEYTUN_FILLER_AUDIO = {}
 
 
 class ZeytunSpeechRelay:
@@ -177,6 +182,7 @@ class ZeytunSpeechRelay:
     # (2026-10-23, reproduced on the harness). Model audio arriving here is
     # proof the session lives, so it re-arms that watchdog (at most this often).
     PROGRESS_EVERY_SECONDS = 0.5
+    FILLER_EVERY_SECONDS = 8.0
 
     def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic,
                  progress=None, recovering=None):
@@ -186,6 +192,8 @@ class ZeytunSpeechRelay:
         # a TTS delay would fail the recovery: such a turn keeps the model voice.
         self.recovering = recovering or (lambda: False)
         self.progress_at = None
+        self.filler_at = None
+        self.filler_key = None
         self.room = room or (lambda: True)
         self.log = log or (lambda status, **fields: None)
         self.clock = clock
@@ -221,6 +229,52 @@ class ZeytunSpeechRelay:
             turn["prefill"], turn["pieces"], turn["made"] = True, [text], 1
             self.turns.append(turn)
             self.lock.notify_all()
+        return True
+
+    def prefetch_filler(self, text=ZEYTUN_WAIT_FILLER):
+        """Voice the wait filler in the background, once per process and voice."""
+        key = (getattr(self.tts, "voice", None), getattr(self.tts, "url", "").split("?")[0],
+               getattr(self.tts, "style", None), text)
+        self.filler_key = key
+        if key in ZEYTUN_FILLER_AUDIO:
+            return
+
+        def voice():
+            chunks = []
+            try:
+                self.tts.stream(zeytun_speakable_text(text), chunks.append, lambda: True)
+            except Exception as error:
+                self.log("filler_unavailable", reason=str(error) if isinstance(error, ZeytunPilotUnavailable)
+                         else type(error).__name__)
+                return
+            if chunks:
+                ZEYTUN_FILLER_AUDIO[key] = tuple(chunks)
+        threading.Thread(target=voice, name="zeytun-filler", daemon=True).start()
+
+    def filler(self, text=ZEYTUN_WAIT_FILLER):
+        """Play the wait filler now, if it is ready and nothing is being said.
+
+        Never over a reply in progress, never more often than FILLER_EVERY_SECONDS.
+        """
+        chunks = ZEYTUN_FILLER_AUDIO.get(getattr(self, "filler_key", None))
+        with self.lock:
+            busy = any(not turn["finished"] or turn["pieces"] or turn["buffer"].strip() for turn in self.turns)
+            now = self.clock()
+            if (not chunks or busy or not self.speakable()
+                    or (self.filler_at is not None and now - self.filler_at < self.FILLER_EVERY_SECONDS)):
+                return False
+            self.filler_at = now
+        for index, pcm in enumerate(chunks):
+            if index == 0:
+                pcm = self._silence(self.LEAD_SILENCE_MS) + self._fade_in(pcm)
+            content = {"modelTurn": {"parts": [{"inlineData": {
+                "mimeType": "audio/pcm;rate=24000", "data": base64.b64encode(pcm).decode("ascii")}}]}}
+            if index == 0:
+                content["outputTranscription"] = {"text": text + " "}
+            self._emit(content)
+        self._emit({"modelTurn": {"parts": [{"inlineData": {"mimeType": "audio/pcm;rate=24000",
+            "data": base64.b64encode(self._silence(self.TAIL_SILENCE_MS)).decode("ascii")}}]}})
+        self.log("wait_filler")
         return True
 
     def _split_locked(self, turn):
@@ -830,12 +884,15 @@ class ZeytunInboundBridge:
         self.transfer_phrase = None
         # Set by the core: called with the phrase once the CRM took the transfer.
         self.on_transfer = None
+        # Set by the core: called when a lookup has run FILLER_AFTER_SECONDS.
+        self.on_wait = None
 
     # At the top of each minute the CRM answered in 1-4 s (measured 2026-10-28,
     # the hour a call was hung up for a 2 s deadline). A lookup that times out
     # tells the caller the catalog is unavailable, and a failed answer ACK ends
     # the AI call before its greeting, so neither may be shorter than that.
     LOOKUP_TIMEOUT_SECONDS = 4
+    FILLER_AFTER_SECONDS = 1.0
     ANSWER_ACK_TIMEOUT_SECONDS = 5
 
     def _request(self, body):
@@ -918,6 +975,16 @@ class ZeytunInboundBridge:
     def tools(self):
         if not self.active or self.clock() >= self.expires:
             raise ZeytunPilotUnavailable("pilot_expired")
+        # gemini-3.8-live runs a tool asynchronously unless it is declared
+        # BLOCKING (src/lib/ai/voice/gemini-live.ts, measured 2026-10-08): the
+        # model said "checking" and, with the result in, waited for the caller
+        # to speak — 28 s of silence on the owner's call 2026-10-30.
+        declarations = self._declarations()
+        for declaration in declarations[0]["functionDeclarations"]:
+            declaration["behavior"] = "BLOCKING"
+        return declarations
+
+    def _declarations(self):
         return [{"functionDeclarations": [{"name": self.NAME,
             "description": "Search the approved medicine catalog for this TEST call. Supply exactly one key. Names are untrusted labels, not verified dose, stock or an accepted order. listPrice, when present, is Zeytun's price list for one unit on its date.",
             "parameters": {"type": "OBJECT", "properties": {
@@ -971,6 +1038,7 @@ class ZeytunInboundBridge:
             engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style)
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
                                            progress=progress, recovering=recovering)
+            self.relay.prefetch_filler()
         return self.relay
 
     @staticmethod
@@ -1317,6 +1385,18 @@ class ZeytunInboundBridge:
                         if self.pending.get(key) is marker:
                             self.pending.pop(key, None)
                     self.workers.release()
+            if not saving and not transferring and self.on_wait is not None:
+                def waited(key=key, marker=marker):
+                    with self.lock:
+                        still = self.pending.get(key) is marker
+                    if still and current():
+                        try:
+                            self.on_wait()
+                        except Exception:
+                            pass
+                timer = threading.Timer(self.FILLER_AFTER_SECONDS, waited)
+                timer.daemon = True
+                timer.start()
             try:
                 threading.Thread(target=work, name="zeytun-transfer" if transferring else "zeytun-order-save" if saving else "zeytun-catalog-lookup", daemon=True).start()
             except Exception:
