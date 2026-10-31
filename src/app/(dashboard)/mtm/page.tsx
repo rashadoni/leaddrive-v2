@@ -137,7 +137,7 @@ export default function MtmDashboardPage() {
                   title={t("mtmDashboard")}
                   description={td("subtitle")}
                 />
-                <HelpButton slug="mtm-overview" variant="label" />
+                <HelpButton slug="mtm-overview" variant="quiet" />
               </div>
             </div>
             <DashboardClock

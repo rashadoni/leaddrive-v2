@@ -6,9 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
 import { Hint, HintValue } from "@/components/hint"
 import dynamic from "next/dynamic"
@@ -1611,16 +1610,11 @@ export default function MtmMapPage() {
         </div>
       )}
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <PageDescription
-            icon={mapMode === "live" ? MapPin : History}
-            title={t("mtmMap")}
-            description={mapMode === "live" ? tMap("subtitle") : tMap("history.subtitle")}
-          />
-          <HelpButton slug="mtm-map" variant="label" />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <MtmPageHeader
+        title={t("mtmMap")}
+        description={mapMode === "live" ? tMap("subtitle") : tMap("history.subtitle")}
+        help="mtm-map"
+        actions={<>
           {returnHref ? (
             <Hint text={tMap("hint.back")}>
               <Button asChild variant="outline" size="sm" className="min-h-11">
@@ -1671,8 +1665,8 @@ export default function MtmMapPage() {
               <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> {tc("refresh")}
             </Button>
           </Hint>}
-        </div>
-      </div>
+        </>}
+      />
 
       {mapMode === "history" ? <LocationHistoryPanel key={historyPanelKey} /> : (
       <>

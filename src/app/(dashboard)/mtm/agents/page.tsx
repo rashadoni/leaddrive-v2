@@ -14,14 +14,13 @@ import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { useMtmFeature } from "@/hooks/use-mtm-org-settings"
 import { MTM_AGENT_APP_ACTIVE_WINDOW_MS } from "@/lib/mtm/agent-card-activity"
 import { buildMtmAgentHierarchy, flattenMtmAgentTeam, isMtmLeaderRole, mtmAgentMatchesSearch, type MtmAgentTeam } from "@/lib/mtm/agent-hierarchy"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { HelpButton } from "@/components/help/help-button"
 import { MtmAgentForm } from "@/components/mtm/agent-form"
 import { ConfirmDialog, DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
+import { Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
 import { mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 
 const roleColors: Record<string, string> = {
@@ -251,7 +250,7 @@ export default function MtmAgentsPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={UserCog} title={t("title")} description={t("subtitle")} />
+      <MtmPageHeader title={t("title")} description={t("subtitle")} help="mtm-agents" />
       <div className="animate-pulse space-y-4">
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-muted rounded-lg" />)}</div>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-32 bg-muted rounded-lg" />)}</div>
@@ -529,20 +528,19 @@ export default function MtmAgentsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={UserCog} title={`${t("title")} (${filtered.length})`} description={t("subtitle")} />
-          <HelpButton slug="mtm-agents" variant="label" />
-        </div>
-        <div className="flex gap-2">
+      <MtmPageHeader
+        title={`${t("title")} (${filtered.length})`}
+        description={t("subtitle")}
+        help="mtm-agents"
+        actions={<>
           <Hint text={t("hint.export")}><Button variant="outline" size="sm" onClick={() => {
             const csv = ["Name,Email,Phone,Role,Status,LastSeen", ...filtered.map(a => `${a.name || ""},${a.email || ""},${a.phone || ""},${a.role || ""},${a.status || ""},${a.lastSeenAt || ""}`)].join("\n")
             const blob = new Blob([csv], { type: "text/csv" })
             const el = document.createElement("a"); el.href = URL.createObjectURL(blob); el.download = "field-agents.csv"; el.click()
           }}><Download className="h-4 w-4 mr-1" /> {t("export")}</Button></Hint>
           <Hint text={t("hint.add")}><Button onClick={() => { setEditData(undefined); setFormOpen(true) }}><Plus className="h-4 w-4 mr-1" /> {t("add")}</Button></Hint>
-        </div>
-      </div>
+        </>}
+      />
 
       {loadError ? (
         <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">

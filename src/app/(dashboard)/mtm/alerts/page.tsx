@@ -7,8 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { ConfirmDialog, DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MtmFilterBar, MtmFilterDate, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
@@ -327,12 +326,7 @@ export default function MtmAlertsPage() {
   )
 
   const header = (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <PageDescription icon={AlertTriangle} title={t("title")} description={t("subtitle")} />
-        <HelpButton slug="mtm-alerts" variant="label" />
-      </div>
-    </div>
+    <MtmPageHeader title={t("title")} description={t("subtitle")} help="mtm-alerts" />
   )
 
   if (errorKey) {

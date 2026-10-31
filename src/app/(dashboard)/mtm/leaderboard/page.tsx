@@ -4,8 +4,7 @@ import { Hint } from "@/components/hint"
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { Button } from "@/components/ui/button"
 import { Trophy, Zap, Camera, Target, Heart, Star, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -147,19 +146,20 @@ export default function MtmLeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={Trophy} title={t("title")} description={t("description")} />
-          <HelpButton slug="mtm-leaderboard" variant="label" />
-        </div>
-        <div className="flex gap-1 flex-wrap">
-          {(["weekly", "monthly", "all"] as const).map(p => (
-            <Hint key={p} text={t("hint.period")}><Button variant="outline" size="sm" onClick={() => setPeriod(p)} className={mtmChipClass(period === p)}>
-              {p === "weekly" ? t("weekly") : p === "monthly" ? t("monthly") : t("allTime")}
-            </Button></Hint>
-          ))}
-        </div>
-      </div>
+      <MtmPageHeader
+        title={t("title")}
+        description={t("description")}
+        help="mtm-leaderboard"
+        actions={(
+          <div className="flex gap-1 flex-wrap">
+            {(["weekly", "monthly", "all"] as const).map(p => (
+              <Hint key={p} text={t("hint.period")}><Button variant="outline" size="sm" onClick={() => setPeriod(p)} className={mtmChipClass(period === p)}>
+                {p === "weekly" ? t("weekly") : p === "monthly" ? t("monthly") : t("allTime")}
+              </Button></Hint>
+            ))}
+          </div>
+        )}
+      />
 
       {loading ? (
         <div className="animate-pulse space-y-4"><div className="h-48 bg-muted rounded-lg" /><div className="h-64 bg-muted rounded-lg" /></div>

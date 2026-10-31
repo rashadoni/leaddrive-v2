@@ -7,11 +7,10 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
 import { mtmActivityEntityText } from "@/lib/mtm/activity-entity"
-import { Activity, ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
-import { PageDescription } from "@/components/page-description"
+import { ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { MtmFilterBar, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
-import { HelpButton } from "@/components/help/help-button"
 import {
   actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref, kindKey,
   relativeTime, dayKeyOf, dayLabel, activityActorName, activityDataSummary, type ActivitySubject,
@@ -134,17 +133,18 @@ export default function MtmActivityPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={Activity} title={t("title")} description={t("description")} />
-          <HelpButton slug="mtm-activity" variant="label" />
-        </div>
-        <Hint text={t("hint.export")}>
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download className="h-4 w-4 mr-1" /> {t("export")}
-          </Button>
-        </Hint>
-      </div>
+      <MtmPageHeader
+        title={t("title")}
+        description={t("description")}
+        help="mtm-activity"
+        actions={(
+          <Hint text={t("hint.export")}>
+            <Button variant="outline" size="sm" onClick={exportCsv}>
+              <Download className="h-4 w-4 mr-1" /> {t("export")}
+            </Button>
+          </Hint>
+        )}
+      />
 
       {/* Owner 2026-09-27: filters in one row. Five stat cards stood above a
           card of period buttons and two selects; the «Violations» card was a

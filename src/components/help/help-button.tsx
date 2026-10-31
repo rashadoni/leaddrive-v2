@@ -9,6 +9,8 @@
  * Variants:
  *   icon  → 32×32 round ghost button with just the ? glyph (default)
  *   label → outlined button with "Help" text (use in main toolbars)
+ *   quiet → the same word on a plain outlined button, for page headers that
+ *           already have one filled action (MTM, owner 2026-10-31)
  */
 import { useState } from "react"
 import { HelpCircle } from "lucide-react"
@@ -24,7 +26,7 @@ import type { HelpSlug } from "@/content/help/registry"
 
 interface HelpButtonProps {
   slug: HelpSlug
-  variant?: "icon" | "label"
+  variant?: "icon" | "label" | "quiet"
   className?: string
   onOpenChange?: (open: boolean) => void
 }
@@ -43,7 +45,17 @@ export function HelpButton({ slug, variant = "icon", className, onOpenChange }: 
   }
 
   const trigger =
-    variant === "label" ? (
+    variant === "quiet" ? (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleOpenChange(true)}
+        className={`min-h-9 ${className ?? ""}`}
+      >
+        <HelpCircle className="h-4 w-4 mr-1.5" />
+        {label}
+      </Button>
+    ) : variant === "label" ? (
       <Button
         variant="outline"
         size="sm"

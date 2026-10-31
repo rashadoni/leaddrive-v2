@@ -7,10 +7,9 @@ import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
 import { FileText, Download } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { Button } from "@/components/ui/button"
-import { HelpButton } from "@/components/help/help-button"
 import {
   MANAGEMENT_REPORT_TYPES, REPORT_TYPES, REPORTS, statusClass, statusLabelKey, roleLabelKey, type ReportType,
 } from "@/lib/mtm/report-config"
@@ -144,12 +143,11 @@ export default function MtmReportsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={FileText} title={t("title")} description={t("description")} />
-          <HelpButton slug="mtm-reports" variant="label" />
-        </div>
-        <div className="flex gap-2 flex-wrap">
+      <MtmPageHeader
+        title={t("title")}
+        description={t("description")}
+        help="mtm-reports"
+        actions={<>
           {PERIODS.map(p => (
             <Hint key={p} text={t("hint.period")}><Button variant="outline" size="sm" onClick={() => setPeriod(p)} className={mtmChipClass(period === p)}>
               {t(PERIOD_KEY[p])}
@@ -162,8 +160,8 @@ export default function MtmReportsPage() {
               </Button>
             </Hint>
           )}
-        </div>
-      </div>
+        </>}
+      />
 
       {/* Every report in one row with how many records it holds; the chosen
           one is open right below. A report with nothing for the period is

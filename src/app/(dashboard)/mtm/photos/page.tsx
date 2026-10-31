@@ -14,8 +14,7 @@ import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { mtmPhotoThumbnailUrl, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 import { PhotoThumbnailImg } from "@/components/mtm/photo-thumbnail-img"
 import { MtmFilterBar, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { Button } from "@/components/ui/button"
@@ -255,19 +254,17 @@ export default function MtmPhotosPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={Camera} title={t("title")} />
+      <MtmPageHeader title={t("title")} help="mtm-photos" />
       <div className="animate-pulse space-y-4"><div className="grid gap-3 grid-cols-2 sm:grid-cols-4">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted rounded-lg" />)}</div><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="aspect-square bg-muted rounded-lg" />)}</div></div>
     </div>
   )
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={Camera} title={t("title")} />
-          <HelpButton slug="mtm-photos" variant="label" />
-        </div>
-        <div className="flex gap-2">
+      <MtmPageHeader
+        title={t("title")}
+        help="mtm-photos"
+        actions={<>
           {/* Audit 2026-09-26: three bare icons nobody could read, and an
               «Export» button with no handler at all. */}
           <div data-testid="mtm-photos-modes" className={MTM_TAB_ROW} role="group" aria-label={t("viewModes")}>
@@ -275,8 +272,8 @@ export default function MtmPhotosPage() {
             <Hint text={t("hint.modeCompare")}><Button aria-pressed={viewMode === "compare"} variant="ghost" size="sm" className={mtmTabClass(viewMode === "compare")} onClick={() => setViewMode("compare")}><Columns className="mr-1.5 h-4 w-4" />{t("modeCompare")}</Button></Hint>
             <Hint text={t("hint.modeBatch")}><Button aria-pressed={viewMode === "batch"} variant="ghost" size="sm" className={mtmTabClass(viewMode === "batch")} onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="mr-1.5 h-4 w-4" />{t("modeBatch")}</Button></Hint>
           </div>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* Owner 2026-09-27: filters in one row. Four stat cards repeated the
           counts the status chips already carry; period, employee and order

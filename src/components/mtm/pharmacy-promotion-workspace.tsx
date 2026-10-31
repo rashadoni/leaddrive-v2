@@ -1120,7 +1120,7 @@ export function PharmacyPromotionWorkspace() {
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><FileBadge className="h-3.5 w-3.5" />{t("eyebrow")}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("title")}</h1>
-            <HelpButton slug="mtm-promotions" variant="label" className="h-11" />
+            <HelpButton slug="mtm-promotions" variant="quiet" className="h-11" />
           </div>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("description")}</p>
         </div>
