@@ -16315,6 +16315,7 @@
     "viewMyQueue": "Növbəmi aç"
   },
   "mtmActivity": {
+    "widenedNotice": "«{from}» üçün aktivlik yoxdur — «{to}» göstərilir.",
     "hint": {
       "export": "Səhifədə artıq yüklənmiş jurnal sətirlərini CSV-yə yüklə.",
       "violations": "Yalnız pozuntular: rəhbərin müştəri zonasından kənarda başlatdığı vizitlər və tətbiqə uğursuz girişlər."

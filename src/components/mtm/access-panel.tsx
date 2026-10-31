@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { KeyRound } from "lucide-react"
 import { Select } from "@/components/ui/select"
 import {
   ACCESS_NONE,
@@ -20,6 +19,8 @@ import {
 } from "@/lib/mtm/access-roster"
 import { ASSIGNABLE_FIELD_CARD_ROLES } from "@/lib/user-access-summary"
 import { MtmAgentPermissionMatrix } from "@/components/mtm/agent-permission-matrix"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 
 /**
  * Route & Field → "Access & permissions": the one place inside the module
@@ -38,6 +39,7 @@ export function MtmAccessPanel() {
   const ts = useTranslations("settings")
   const role = session?.user?.role
   const isAdmin = role === "admin" || role === "superadmin"
+  const [tab, setTab] = useState<"people" | "agent">("people")
   const [users, setUsers] = useState<AccessUser[] | null>(null)
   const [cards, setCards] = useState<AccessCard[]>([])
   const [loadFailed, setLoadFailed] = useState(false)
@@ -99,15 +101,31 @@ export function MtmAccessPanel() {
 
   return (
     <div className="space-y-5" data-testid="mtm-access-panel">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <KeyRound className="h-5 w-5 text-primary" aria-hidden="true" />
-          {t("title")}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
+      <MtmPageHeader title={t("title")} description={t("description")} />
+
+      {/* Two tabs instead of one 6.6-screen page (owner 2026-10-31, from a
+          before/after picture): who works in the section, and what an agent
+          may do. */}
+      <div role="tablist" aria-label={t("title")} className={MTM_TAB_ROW} data-testid="mtm-access-tabs">
+        {(["people", "agent"] as const).map((name) => (
+          <button
+            key={name}
+            type="button"
+            role="tab"
+            id={`mtm-access-tab-${name}`}
+            aria-selected={tab === name}
+            aria-controls={`mtm-access-panel-${name}`}
+            data-testid={`mtm-access-tab-${name}`}
+            onClick={() => setTab(name)}
+            className={`text-sm font-medium transition-colors ${mtmTabClass(tab === name)}`}
+          >
+            {t(name === "people" ? "rosterTitle" : "matrixTitle")}
+          </button>
+        ))}
       </div>
 
-      <h2 className="text-lg font-semibold">{t("rosterTitle")}</h2>
+      {tab === "people" ? (
+      <div role="tabpanel" id="mtm-access-panel-people" aria-labelledby="mtm-access-tab-people" className="space-y-5">
       {loadFailed ? (
         <p className="text-sm text-red-500">{t("loadFailed")}</p>
       ) : !roster ? (
@@ -148,9 +166,13 @@ export function MtmAccessPanel() {
           <Link href="/mtm/agents" className="underline">{t("openAgents")}</Link>
         </p>
       )}
-
-      {/* What every agent may do — the organization's switches and the system's rules. */}
-      <MtmAgentPermissionMatrix cards={cards} onCardsChanged={loadCards} />
+      </div>
+      ) : (
+        <div role="tabpanel" id="mtm-access-panel-agent" aria-labelledby="mtm-access-tab-agent">
+          {/* What every agent may do — the organization's switches and the system's rules. */}
+          <MtmAgentPermissionMatrix cards={cards} onCardsChanged={loadCards} />
+        </div>
+      )}
     </div>
   )
 }
