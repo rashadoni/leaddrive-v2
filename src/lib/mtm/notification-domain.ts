@@ -31,8 +31,11 @@ export function notificationDomainPredicate(
     (${explicitDomain} = 'workforce' AND NOT ${isHistoricalMixedProjection})
     OR (${explicitDomain} IS NULL AND ${metadata} ? 'hrmRequestId')
   )`
+  // A task given to the agent (`task-assigned-notify.ts`) is Route & Field
+  // work. Without it here, a tenant with Route & Field and no HRM (Zeytun)
+  // got the push and never the bell line (owner's phone, 2026-10-31).
   const isRoute = Prisma.sql`(
-    ${explicitDomain} = 'route'
+    ${explicitDomain} IN ('route', 'task')
     OR (${explicitDomain} IS NULL AND NOT (${metadata} ? 'hrmRequestId'))
   )`
   if (workforce) return isWorkforce

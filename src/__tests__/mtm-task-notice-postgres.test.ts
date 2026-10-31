@@ -115,6 +115,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
   let createTask!: typeof import("@/app/api/v1/mtm/tasks/route").POST
   let updateTask!: typeof import("@/app/api/v1/mtm/tasks/[id]/route").PUT
   let giveTask!: typeof import("@/app/api/v1/mtm/mobile/manager/tasks/route").POST
+  let phoneBell!: typeof import("@/app/api/v1/mtm/mobile/notifications/route").GET
   let taskId = ""
   let taskVersion = 0
 
@@ -130,6 +131,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
     createTask = (await import("@/app/api/v1/mtm/tasks/route")).POST
     updateTask = (await import("@/app/api/v1/mtm/tasks/[id]/route")).PUT
     giveTask = (await import("@/app/api/v1/mtm/mobile/manager/tasks/route")).POST
+    phoneBell = (await import("@/app/api/v1/mtm/mobile/notifications/route")).GET
 
     await bypass(async () => {
       await prisma.organization.create({ data: { id: ORG, name: ORG, slug: ORG, modules: { mtm: true, "route-field": true } } })
@@ -163,7 +165,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
     const response = await (handler as (req: NextRequest, ctx?: unknown) => Promise<Response>)(new NextRequest(url, {
       method,
       headers: caller.current ? { Authorization: "Bearer mobile", "content-type": "application/json" } : { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: method === "GET" ? undefined : JSON.stringify(body),
     }), ctx)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the handler's JSON, read field by field below
     return { status: response.status, body: await response.json() as Record<string, any> }
@@ -226,7 +228,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
     expect(await notices()).toHaveLength(2)
   })
 
-  function phoneOf(agentId: string, role: string, name: string) {
+  function phoneOf(agentId: string, role: string, name: string, tenantCapabilities = { routeField: true, workforceHrm: true }) {
     browser.current = null
     caller.current = {
       orgId: ORG,
@@ -235,7 +237,7 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
       role,
       email: `${agentId}@example.test`,
       name,
-      tenantCapabilities: { routeField: true, workforceHrm: true },
+      tenantCapabilities,
     }
   }
 
@@ -298,5 +300,27 @@ pgDescribe("a task given in the panel, on a real Postgres", () => {
 
     expect(await bypass(() => prisma.mtmTask.count({ where: { organizationId: ORG } }))).toBe(before)
     expect((await notices()).length).toBe(noticesBefore)
+  })
+
+  it("shows the task line in the bell of a tenant with Route & Field and no HRM, as on Zeytun's phones", async () => {
+    // Owner's phone, 2026-10-31: the push «Togrul sizə yeni tapşırıq verdi»
+    // came, the bell stayed empty — the line was cut by its `domain: "task"`.
+    for (const tenantCapabilities of [{ routeField: true, workforceHrm: false }, { routeField: true, workforceHrm: true }]) {
+      phoneOf(AYSEL, "AGENT", "Aysel", tenantCapabilities)
+      const bell = await call(phoneBell, `${BASE}/mobile/notifications`, "GET", undefined)
+      expect(bell.status).toBe(200)
+      const lines = (bell.body.data.items as Array<{ body: string | null; metadata: { event?: string } }>)
+        .filter((row) => row.metadata.event === "task_assigned")
+        .map((row) => row.body)
+      expect({ tenantCapabilities, lines }).toEqual({
+        tenantCapabilities,
+        lines: ["Bring the samples · son müddət: sabah 18:00", "Take the signed contract · son müddət: sabah 18:00"],
+      })
+      expect(bell.body.data.unread).toBeGreaterThanOrEqual(2)
+    }
+    // An HRM-only tenant has no Route & Field tasks to show.
+    phoneOf(AYSEL, "AGENT", "Aysel", { routeField: false, workforceHrm: true })
+    const hrmOnly = await call(phoneBell, `${BASE}/mobile/notifications`, "GET", undefined)
+    expect(hrmOnly.body.data.items).toEqual([])
   })
 })
