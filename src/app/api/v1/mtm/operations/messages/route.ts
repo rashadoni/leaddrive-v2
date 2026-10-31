@@ -7,7 +7,7 @@ import { writeMtmAudit } from "@/lib/mtm-audit"
 import { createFieldMessage } from "@/lib/mtm/field-message-send"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { withMtmRlsAuth } from "@/lib/with-mtm-rls-auth"
-import { sanitizeOperationalText } from "@/lib/mtm/operational-announcement"
+import { operationalLocale, sanitizeOperationalText } from "@/lib/mtm/operational-announcement"
 
 const MessageCommandSchema = z.object({
   type: z.enum(["DIRECT", "BROADCAST"]),
@@ -82,13 +82,20 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
     return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 })
   }
 
-  const recipients = await prisma.mtmAgent.findMany({
+  const recipientRows = await prisma.mtmAgent.findMany({
     where: { organizationId: auth.orgId, id: { in: uniqueAgentIds }, status: "ACTIVE" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, user: { select: { preferredLanguage: true } } },
   })
-  if (recipients.length !== uniqueAgentIds.length) {
+  if (recipientRows.length !== uniqueAgentIds.length) {
     return NextResponse.json({ error: "One or more recipients are unavailable" }, { status: 400 })
   }
+  const recipients = recipientRows.map(({ id, name }) => ({ id, name }))
+  // A direct message written in three languages (the office's «remind the
+  // agent», visit-left-open.ts) reaches the agent in his own, as the task
+  // notices do. Owner's phone, 2026-10-31: a Russian-speaking agent got it in
+  // the sender's Azerbaijani. No language on record — the sender's words.
+  const recipientLanguage = input.type === "DIRECT" ? recipientRows[0]?.user?.preferredLanguage : null
+  const messageBody = (recipientLanguage && sanitizedLocalizations[operationalLocale(recipientLanguage)]) || sanitizedBody
 
   const sentAt = new Date()
   try {
@@ -96,7 +103,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
       organizationId: auth.orgId,
       type: input.type,
       subject: input.type === "BROADCAST" ? sanitizedSubject : null,
-      body: sanitizedBody,
+      body: messageBody,
       recipients,
       sender: { agentId: actor.agentId, userId: auth.userId, name: auth.name || auth.email },
       acknowledgementRequired: input.type === "BROADCAST" && Boolean(input.acknowledgementRequired || input.keyMessage),
@@ -119,7 +126,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
       organizationId: auth.orgId,
       agentIds: uniqueAgentIds,
       title: input.type === "BROADCAST" ? sanitizedSubject! : `${auth.name || auth.email}`,
-      body: sanitizedBody,
+      body: messageBody,
       data: { target: "Messages", threadId: result.threadId },
       channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,
     }).catch((error) => console.warn("[MTM/operations/messages POST] push failed", error))

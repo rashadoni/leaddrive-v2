@@ -231,6 +231,35 @@ describe("POST /api/v1/mtm/operations/messages", () => {
     })
   })
 
+  it("sends the office's three-language reminder in the agent's own language, else in the sender's words", async () => {
+    // Owner's phone, 2026-10-31: a Russian-speaking agent got «Agentə
+    // xatırlat» in the sender's Azerbaijani; the Russian text came and was dropped.
+    const localizations = {
+      ru: "Визит в «QA» открыт с 30 октября в 22:42 и всё ещё не закрыт.",
+      az: "«QA» vizitiniz 30 oktyabr, 22:42 tarixindən açıqdır.",
+      en: "Your visit to «QA» has been open since 30 October at 22:42.",
+    }
+    const sent: string[] = []
+    for (const preferredLanguage of ["ru", null]) {
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1", name: "Seymur", user: preferredLanguage ? { preferredLanguage } : null }] as never)
+      vi.mocked(prisma.mtmMessageThread.upsert).mockResolvedValue({ id: "thread-direct" } as never)
+      vi.mocked(prisma.mtmMessage.create).mockReset()
+      vi.mocked(prisma.mtmMessage.create).mockResolvedValue({ id: "message-direct", threadId: "thread-direct", body: "x", sentAt: new Date(), acknowledgementRequired: false } as never)
+      vi.mocked(prisma.mtmMessageThread.update).mockResolvedValue({ id: "thread-direct" } as never)
+      vi.mocked(prisma.mtmNotification.createMany).mockResolvedValue({ count: 1 } as never)
+
+      const response = await sendMessage(jsonRequest("/api/v1/mtm/operations/messages", {
+        type: "DIRECT",
+        body: localizations.az,
+        agentIds: ["agent-1"],
+        localizations,
+      }))
+      expect(response.status).toBe(201)
+      sent.push((vi.mocked(prisma.mtmMessage.create).mock.calls[0]?.[0] as { data: { body: string } }).data.body)
+    }
+    expect(sent).toEqual([localizations.ru, localizations.az])
+  })
+
   it("rejects unavailable recipients before creating a thread", async () => {
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1", name: "Aysel" }] as never)
     const response = await sendMessage(jsonRequest("/api/v1/mtm/operations/messages", {
