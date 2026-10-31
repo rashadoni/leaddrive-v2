@@ -14,18 +14,9 @@ import { useLocale, useTranslations } from "next-intl"
 import {
   AlertCircle,
   ArrowLeft,
-  Building2,
-  CalendarClock,
-  CheckCircle2,
-  ChevronRight,
-  ClipboardCheck,
-  FileText,
-  History,
-  MapPin,
   Pencil,
   Printer,
   RefreshCw,
-  Repeat2,
   Trash2,
 } from "lucide-react"
 
@@ -163,23 +154,6 @@ type MtmTaskRecurrencePreviewItem = {
 type LoadPhase = "loading" | "ready" | "notFound" | "permission" | "error"
 type DeletePhase = "idle" | "saving" | "conflict" | "error"
 
-const KNOWN_TASK_EVENT_TYPES = new Set([
-  "CREATED",
-  "ACCEPTED",
-  "STARTED",
-  "COMPLETED",
-  "RESCHEDULED",
-  "COMMENTED",
-  "EVIDENCE_ADDED",
-  "COPIED",
-  "CANCELLED",
-  "EDITED",
-  "RETURNED",
-  "REVIEW_ACCEPTED",
-  "PROGRESS_UPDATED",
-  "REASSIGNED",
-])
-
 const KNOWN_VISIT_STATUSES = new Set(["CHECKED_IN", "CHECKED_OUT", "CANCELLED"])
 
 const STATUS_VARIANT: Record<string, "outline" | "info" | "success" | "warning" | "destructive"> = {
@@ -252,40 +226,11 @@ function validDate(value?: string | null): boolean {
   return Boolean(value && !Number.isNaN(new Date(value).getTime()))
 }
 
-function formatBytes(value?: number | null): string {
-  if (!value || value < 1) return "—"
-  if (value < 1024) return `${value} B`
-  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function SectionHeading({
-  icon: Icon,
-  title,
-  detail,
-}: {
-  icon: typeof CalendarClock
-  title: string
-  detail?: string
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted/35 text-muted-foreground">
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-        {detail ? <p className="mt-0.5 text-sm text-muted-foreground">{detail}</p> : null}
-      </div>
-    </div>
-  )
-}
-
 function Definition({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium text-foreground">{children || "—"}</dd>
+      <dd className="mt-0.5 break-words text-sm font-medium text-foreground">{children || "—"}</dd>
     </div>
   )
 }
@@ -416,13 +361,6 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
     : task.visit?.status
       ? t("visitStatuses.OTHER")
       : null
-  const eventLabel = (event: MtmTaskTimelineEvent) => {
-    const type = event.semanticType || event.type
-    return KNOWN_TASK_EVENT_TYPES.has(type)
-      ? t(`eventTypes.${type}` as never)
-      : t("eventTypes.OTHER")
-  }
-
   const openDeleteDialog = () => {
     setDeletePhase("idle")
     setDeleteMessage("")
@@ -496,11 +434,11 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
   }
 
   return (
-    <div data-testid="mtm-task-workspace" className="space-y-6 pb-24 print:pb-0 print:[&_a]:hidden print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden lg:pb-6">
-      <header className="border-b border-border pb-5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1 space-y-3">
-            <Button asChild variant="ghost" className="-ml-4 min-h-11 w-fit print:hidden">
+    <div data-testid="mtm-task-workspace" className="space-y-4 pb-24 print:pb-0 print:[&_a]:hidden print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden lg:pb-6">
+      <header className="border-b border-border pb-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Button asChild variant="ghost" className="-ml-4 min-h-10 w-fit print:hidden">
               <Link href={returnHref}><ArrowLeft className="h-4 w-4" />{t("backToTasks")}</Link>
             </Button>
             <div className="space-y-2">
@@ -509,7 +447,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                 <HintValue text={t("hint.wsPriority")}><Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></HintValue>
                 <HintValue text={t("hint.wsVersion")} className="text-xs text-muted-foreground">{t("version", { version: task.version })}</HintValue>
               </div>
-              <h1 className="max-w-[34ch] break-words text-2xl font-semibold tracking-tight sm:text-3xl">{task.title}</h1>
+              <h1 className="max-w-[34ch] break-words text-2xl font-semibold tracking-tight">{task.title}</h1>
               <p className="text-sm text-muted-foreground">
                 {task.agent?.name || t("unassigned")} · {t("updatedAt", { date: formatDateTime(task.updatedAt) })}
               </p>
@@ -537,101 +475,98 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
           17rem minimum and its forms, date-time inputs and nowrap buttons
           were laid out against the right edge of <main>, which clips instead
           of scrolling. Below xl the actions come first, as on a phone. */}
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] xl:items-start">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] xl:items-start">
         <main className="order-2 min-w-0 divide-y divide-border print:order-1 print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden xl:order-1">
-          <section className="space-y-5 pb-8">
-            <SectionHeading icon={ClipboardCheck} title={t("overview")} detail={t("overviewHint")} />
-            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          {/* One block of facts, not four sections of two rows each: the
+              owner (2026-10-31) scrolled a whole screen past headings,
+              hints and dashes to reach the timeline. Empty optional facts
+              are left out instead of printed as "—". */}
+          <section className="space-y-4 pb-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 className="text-base font-semibold tracking-tight">{t("overview")}</h2>
+              <p className="text-xs text-muted-foreground">{t("timezone", { timezone })}</p>
+            </div>
+            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 2xl:grid-cols-3">
               <Definition label={t("assignee")}>{task.agent?.name}</Definition>
-              <Definition label={t("team")}>{task.agent?.team?.name}</Definition>
-              <Definition label={<HintValue text={t("hint.formGroup")}>{t("taskGroup")}</HintValue>}>
-                {task.taskGroup
-                  ? locale.toLowerCase().startsWith("az")
+              <Definition label={t("dueAt")}>{formatDateTime(task.dueDate)}</Definition>
+              {task.scheduledStartAt ? <Definition label={t("scheduledStart")}>{formatDateTime(task.scheduledStartAt)}</Definition> : null}
+              {task.startedAt ? <Definition label={t("actualStart")}>{formatDateTime(task.startedAt)}</Definition> : null}
+              {task.completedAt ? <Definition label={t("completedAt")}>{formatDateTime(task.completedAt)}</Definition> : null}
+              {task.agent?.team?.name ? <Definition label={t("team")}>{task.agent.team.name}</Definition> : null}
+              {task.taskGroup ? (
+                <Definition label={<HintValue text={t("hint.formGroup")}>{t("taskGroup")}</HintValue>}>
+                  {locale.toLowerCase().startsWith("az")
                     ? task.taskGroup.labels.az
                     : locale.toLowerCase().startsWith("ru")
                       ? task.taskGroup.labels.ru
-                      : task.taskGroup.labels.en
-                  : null}
-              </Definition>
-              <Definition label={t("organization")}>{task.customer?.name}</Definition>
-              <Definition label={<HintValue text={t("hint.formEvent")}>{t("event")}</HintValue>}>
-                {task.visit ? (
-                  <span className="block space-y-1">
+                      : task.taskGroup.labels.en}
+                </Definition>
+              ) : null}
+              {task.customer ? <Definition label={t("organization")}>{task.customer.name}</Definition> : null}
+              {place ? <Definition label={t("place")}>{place}</Definition> : null}
+              {task.visit ? (
+                <Definition label={<HintValue text={t("hint.formEvent")}>{t("event")}</HintValue>}>
+                  <span className="block space-y-0.5">
                     <span className="block">{task.visit.contact?.displayName || t("visitEvent", { id: task.visit.id })}</span>
                     <span className="block text-xs font-normal text-muted-foreground">{t("visitIdentifier", { id: task.visit.id })}</span>
                     {visitStatus ? <span className="block text-xs font-normal text-muted-foreground">{t("visitStatus", { status: visitStatus })}</span> : null}
                     {task.visit.checkInAt ? <span className="block text-xs font-normal text-muted-foreground">{t("visitCheckIn", { date: formatDateTime(task.visit.checkInAt) })}</span> : null}
                     {task.visit.checkOutAt ? <span className="block text-xs font-normal text-muted-foreground">{t("visitCheckOut", { date: formatDateTime(task.visit.checkOutAt) })}</span> : null}
                   </span>
-                ) : "—"}
-              </Definition>
+                </Definition>
+              ) : null}
+              {!task.recurrenceRule ? (
+                <div data-testid="mtm-task-recurrence" className="min-w-0">
+                  <dt className="text-xs font-medium text-muted-foreground">{t("recurrence")}</dt>
+                  <dd className="mt-0.5 text-sm font-medium text-foreground">{t("recurrenceOneOff")}</dd>
+                </div>
+              ) : null}
             </dl>
-            <div className="space-y-1">
-              <h3 className="text-xs font-medium text-muted-foreground">{t("description")}</h3>
-              <p className="max-w-[72ch] whitespace-pre-wrap text-sm leading-6">{task.description || t("noDescription")}</p>
-            </div>
-          </section>
-
-          <section className="space-y-5 py-8">
-            <SectionHeading icon={CalendarClock} title={t("schedule")} detail={t("timezone", { timezone })} />
-            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
-              <Definition label={t("scheduledStart")}>{formatDateTime(task.scheduledStartAt)}</Definition>
-              <Definition label={t("dueAt")}>{formatDateTime(task.dueDate)}</Definition>
-              <Definition label={t("actualStart")}>{formatDateTime(task.startedAt)}</Definition>
-              <Definition label={t("completedAt")}>{formatDateTime(task.completedAt)}</Definition>
-            </dl>
-          </section>
-
-          <section className="space-y-5 py-8">
-            <SectionHeading icon={MapPin} title={t("place")} detail={t("placeHint")} />
-            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
-              <Definition label={t("locality")}>{task.customer?.locality || task.customer?.city}</Definition>
-              <Definition label={t("address")}>{task.customer?.address}</Definition>
-            </dl>
-            {task.customer ? (
-              <div className="flex items-start gap-3 border-t border-border pt-4 text-sm">
-                <Building2 className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                <span className="min-w-0 break-words">{task.customer.name}{place ? ` · ${place}` : ""}</span>
+            {task.description ? (
+              <div className="space-y-0.5">
+                <h3 className="text-xs font-medium text-muted-foreground">{t("description")}</h3>
+                <p className="max-w-[72ch] whitespace-pre-wrap text-sm leading-6">{task.description}</p>
               </div>
             ) : null}
           </section>
 
-          <section data-testid="mtm-task-recurrence" className="space-y-5 py-8">
-            <SectionHeading icon={Repeat2} title={t("recurrence")} detail={task.recurrenceRule ? t("recurrenceTimezonePinned", { timezone: recurrenceTimezone }) : t("recurrenceOneOff")} />
-            {task.recurrenceRule ? (
-              <>
-                <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-3">
-                  <Definition label={<HintValue text={t("hint.formRule")}>{t("rule")}</HintValue>}>{t(`recurrenceRules.${task.recurrenceRule}` as never)}</Definition>
-                  <Definition label={<HintValue text={t("hint.formInterval")}>{t("interval")}</HintValue>}>{task.recurrenceInterval || 1}</Definition>
-                  <Definition label={<HintValue text={t("hint.formRecurrenceEnd")}>{t("recurrenceEnd")}</HintValue>}>{formatRecurrenceDateTime(task.recurrenceUntil)}</Definition>
-                </dl>
-                <div className="space-y-3">
-                  <h3 className="text-xs font-medium text-muted-foreground">{t("nextOccurrences")}</h3>
-                  {recurrencePreview.length ? (
-                    <ol className="grid gap-2 sm:grid-cols-2">
-                      {recurrencePreview.map((occurrence, index) => (
-                        <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3 py-1.5 text-sm">
-                          <span className="tabular-nums text-muted-foreground">{index + 1}</span>
-                          <span>{formatRecurrenceDateTime(occurrence.dueDate || occurrence.scheduledStartAt)}</span>
-                          {occurrence.dstAdjusted ? (
-                            <HintValue
-                              text={occurrence.dstKind?.startsWith("AMBIGUOUS")
-                                ? t("dstAmbiguousHint", { kind: occurrence.dstKind })
-                                : t("dstShiftHint", { minutes: occurrence.dstShiftedMinutes ?? 0 })}
-                            >
-                              <Badge variant="warning">
-                                {occurrence.dstKind?.startsWith("AMBIGUOUS") ? t("dstAmbiguous") : t("dstShift")}
-                              </Badge>
-                            </HintValue>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ol>
-                  ) : <p className="text-sm text-muted-foreground">{t("previewUnavailable")}</p>}
-                </div>
-              </>
-            ) : <p className="text-sm text-muted-foreground">{t("recurrenceOneOffHint")}</p>}
-          </section>
+          {task.recurrenceRule ? (
+            <section data-testid="mtm-task-recurrence" className="space-y-3 py-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h2 className="text-base font-semibold tracking-tight">{t("recurrence")}</h2>
+                <p className="text-xs text-muted-foreground">{t("recurrenceTimezonePinned", { timezone: recurrenceTimezone })}</p>
+              </div>
+              <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
+                <Definition label={<HintValue text={t("hint.formRule")}>{t("rule")}</HintValue>}>{t(`recurrenceRules.${task.recurrenceRule}` as never)}</Definition>
+                <Definition label={<HintValue text={t("hint.formInterval")}>{t("interval")}</HintValue>}>{task.recurrenceInterval || 1}</Definition>
+                <Definition label={<HintValue text={t("hint.formRecurrenceEnd")}>{t("recurrenceEnd")}</HintValue>}>{formatRecurrenceDateTime(task.recurrenceUntil)}</Definition>
+              </dl>
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium text-muted-foreground">{t("nextOccurrences")}</h3>
+                {recurrencePreview.length ? (
+                  <ol className="grid gap-2 sm:grid-cols-2">
+                    {recurrencePreview.map((occurrence, index) => (
+                      <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3 py-1.5 text-sm">
+                        <span className="tabular-nums text-muted-foreground">{index + 1}</span>
+                        <span>{formatRecurrenceDateTime(occurrence.dueDate || occurrence.scheduledStartAt)}</span>
+                        {occurrence.dstAdjusted ? (
+                          <HintValue
+                            text={occurrence.dstKind?.startsWith("AMBIGUOUS")
+                              ? t("dstAmbiguousHint", { kind: occurrence.dstKind })
+                              : t("dstShiftHint", { minutes: occurrence.dstShiftedMinutes ?? 0 })}
+                          >
+                            <Badge variant="warning">
+                              {occurrence.dstKind?.startsWith("AMBIGUOUS") ? t("dstAmbiguous") : t("dstShift")}
+                            </Badge>
+                          </HintValue>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                ) : <p className="text-sm text-muted-foreground">{t("previewUnavailable")}</p>}
+              </div>
+            </section>
+          ) : null}
 
           <MtmTaskTimelinePanel
             taskId={task.id}
@@ -650,7 +585,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
           />
         </main>
 
-        <aside className="order-1 min-w-0 space-y-6 print:hidden xl:order-2">
+        <aside className="order-1 min-w-0 space-y-4 print:hidden xl:order-2">
           <div id="task-primary-actions" className="scroll-mt-24 print:hidden">
             <MtmTaskActionsPanel
               task={task}
@@ -663,89 +598,38 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             />
           </div>
 
-          {canDelete ? (
-            <section className="space-y-2 border-b border-border pb-6 print:hidden">
-              <Hint text={t("hint.wsDelete")}>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="min-h-11 w-full"
-                  onClick={openDeleteDialog}
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />{t("deleteTask")}
-                </Button>
-              </Hint>
-              <p className="text-xs leading-5 text-muted-foreground">{t("deleteTaskHint")}</p>
-            </section>
-          ) : null}
-
-          <section className="space-y-5 border-y border-border py-5">
-            <SectionHeading icon={ClipboardCheck} title={t("execution")} />
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <HintValue text={t("hint.progress")} className="text-muted-foreground">{t("progress")}</HintValue>
-                <span className="font-semibold tabular-nums">{task.progress ?? 0}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={task.progress ?? 0}>
-                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, task.progress ?? 0))}%` }} />
-              </div>
+          <section className="space-y-3 border-b border-border pb-4">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <HintValue text={t("hint.progress")} className="font-semibold">{t("progress")}</HintValue>
+              <span className="font-semibold tabular-nums">{task.progress ?? 0}%</span>
             </div>
-            <Definition label={t("result")}>{task.result || t("noResult")}</Definition>
+            <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={task.progress ?? 0}>
+              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, task.progress ?? 0))}%` }} />
+            </div>
+            {task.result ? <Definition label={t("result")}>{task.result}</Definition> : null}
             {task.returnReason ? (
-              <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm">
+              <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
                 <p className="font-semibold">{t("returnedForRework")}</p>
                 <p className="mt-1 leading-5">{task.returnReason}</p>
               </div>
             ) : null}
           </section>
 
-          <section className="space-y-4 border-b border-border pb-6">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4 text-muted-foreground" />{t("timeline")}</h2>
-              <HintValue text={t("hint.wsTimelineCount")}><Badge variant="outline">{timeline.length}</Badge></HintValue>
-            </div>
-            {timeline.length ? (
-              <ol className="space-y-4">
-                {timeline.slice(0, 5).map((event) => (
-                  <li key={event.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 text-sm">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <p className="font-medium">{eventLabel(event)}</p>
-                      {event.comment ? <p className="mt-1 break-words text-muted-foreground">{event.comment}</p> : null}
-                      <p className="mt-1 text-xs text-muted-foreground">{t("timelineActor", { name: event.actor?.role === "SYSTEM" ? t("systemActor") : event.actor?.name || t("systemActor") })}</p>
-                      {event.agent?.name ? <p className="mt-0.5 text-xs text-muted-foreground">{t("timelineAssignee", { name: event.agent.name })}</p> : null}
-                      <p className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(event.occurredAt)}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            ) : <p className="text-sm text-muted-foreground">{t("timelineEmpty")}</p>}
-            {timeline.length > 5 ? (
-              <a href="#timeline" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">
-                {t("openTimeline")}<ChevronRight className="h-4 w-4" />
-              </a>
-            ) : null}
-          </section>
-
-          <section className="space-y-4 border-b border-border pb-6">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-muted-foreground" />{t("files")}</h2>
-              <HintValue text={t("hint.wsFilesCount")}><Badge variant="outline">{documents.length}</Badge></HintValue>
-            </div>
-            {documents.length ? (
-              <ul className="space-y-3">
-                {documents.slice(0, 3).map((document) => (
-                  <li key={document.id} className="min-w-0">
-                    <p className="truncate text-sm font-medium">{document.title || document.fileName}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{formatBytes(document.sizeBytes)} · {formatDateTime(document.createdAt)}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="text-sm text-muted-foreground">{t("filesEmpty")}</p>}
-            <a href="#files" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">
-              {t("openFiles")}<ChevronRight className="h-4 w-4" />
-            </a>
-          </section>
+          {/* The timeline and the files are listed once, in the main column:
+              a five-event copy here doubled the page's length. Delete is a
+              quiet outlined button — the page keeps one filled action. */}
+          {canDelete ? (
+            <Hint text={t("hint.wsDelete")}>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 w-full border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 print:hidden dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
+                onClick={openDeleteDialog}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />{t("deleteTask")}
+              </Button>
+            </Hint>
+          ) : null}
         </aside>
       </div>
 
