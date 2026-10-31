@@ -200,14 +200,14 @@ export function MtmTaskFilesPanel({
   const formatDate = (value: string) => formatInTimezone(value, timezone, { dateStyle: "medium", timeStyle: "short" }, locale)
 
   return (
-    <section id="files" className="scroll-mt-24 space-y-5 border-t border-border pt-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div><h2 className="flex items-center gap-2 text-base font-semibold tracking-tight"><FileText className="h-4 w-4 text-muted-foreground" />{t("files")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("filesHint")}</p></div>
+    <section id="files" className="scroll-mt-24 space-y-3 border-t border-border py-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight"><FileText className="h-4 w-4 text-muted-foreground" />{t("files")}</h2>
         {canUpload ? (
           <>
             <input ref={inputRef} type="file" className="sr-only" tabIndex={-1} aria-label={t("addFiles")} multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip" onChange={(event) => void chooseFiles(event.target.files)} />
             <Hint text={t("hint.filesAdd")}>
-              <Button type="button" className="min-h-11 print:hidden" onClick={() => inputRef.current?.click()}><Upload className="h-4 w-4" />{t("addFiles")}</Button>
+              <Button type="button" variant="outline" className="min-h-10 print:hidden" onClick={() => inputRef.current?.click()}><Upload className="h-4 w-4" />{t("addFiles")}</Button>
             </Hint>
           </>
         ) : null}
@@ -221,7 +221,7 @@ export function MtmTaskFilesPanel({
           <h3 className="text-sm font-semibold">{t("pendingUploads", { count: queued.length })}</h3>
           <ul className="divide-y divide-border border-y border-border">
             {queued.map((entry) => (
-              <li key={entry.clientDocumentId} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
+              <li key={entry.clientDocumentId} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center">
                 <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{entry.fileName}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(entry.sizeBytes)} · <HintValue text={t(UPLOAD_STATUS_HINT[entry.status])}>{t(`uploadStatuses.${entry.status}` as never)}</HintValue>{entry.status === "failed" ? ` · ${t("uploadFailed")}` : ""}</p></div>
                 <div className="flex gap-2">
@@ -243,14 +243,14 @@ export function MtmTaskFilesPanel({
       {documents.length ? (
         <ul className="divide-y divide-border border-y border-border">
           {documents.map((document) => (
-            <li key={document.id} className="flex items-center gap-3 py-4">
+            <li key={document.id} className="flex items-center gap-3 py-2">
               <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{document.title || document.fileName}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(document.sizeBytes)} · {formatDate(document.createdAt)}</p></div>
               {document.downloadUrl ? <Hint text={t("hint.filesDownload")}><Button asChild variant="outline" size="icon" className="min-h-11 min-w-11" aria-label={t("downloadFile", { name: document.fileName })}><a href={document.downloadUrl}><Download className="h-4 w-4" /></a></Button></Hint> : <Badge variant="outline">{t("downloadUnavailable")}</Badge>}
             </li>
           ))}
         </ul>
-      ) : <div className="flex min-h-32 flex-col items-center justify-center gap-2 border-y border-border px-4 text-center"><FileText className="h-6 w-6 text-muted-foreground" /><p className="text-sm font-medium">{t("filesEmpty")}</p><p className="text-xs text-muted-foreground">{t("filesEmptyHint")}</p></div>}
+      ) : <p className="text-sm text-muted-foreground">{t("filesEmpty")}</p>}
     </section>
   )
 }
