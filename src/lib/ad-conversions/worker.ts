@@ -170,8 +170,8 @@ async function send(destination: Destination, now: Date): Promise<{ sent: number
   }
   if (ready.length === 0) return totals
 
-  // A name of its own: scripts/rls/find-context-gaps.py keys helpers by name,
-  // and a prisma-writing «fail» taints the 249 calls of the 18 other «fail»s.
+  // A name of its own: until 2026-10-31 scripts/rls/find-context-gaps.py keyed
+  // helpers by bare name, and a prisma-writing «fail» tainted the 18 other «fail»s.
   const recordSendFailure = async (item: { id: string; attempts: number }, error: unknown) => {
     const reason = (error instanceof Error ? error.message : "Send failed").slice(0, 300)
     const attempts = item.attempts + 1
