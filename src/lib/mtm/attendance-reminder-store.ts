@@ -18,6 +18,7 @@ import { attendanceReminderKinds, ATTENDANCE_REMINDER_ENTITY, ATTENDANCE_REMINDE
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 export async function attendanceReminderTenantEnabled(tx: Prisma.TransactionClient, organizationId: string) {
   const org = await tx.organization.findFirst({ where: { id: organizationId, isActive: true }, select: { plan: true, addons: true, features: true, modules: true, settings: true } })
@@ -61,7 +62,7 @@ export async function createAttendanceRemindersInTransaction(tx: Prisma.Transact
   await tx.$queryRaw`SELECT id FROM organizations WHERE id=${organizationId} FOR SHARE`
   const policy = await readAttendanceReminderPolicy(tx, organizationId)
   if (!policy.enabled || (!policy.employee && !policy.manager) || !await attendanceReminderTenantEnabled(tx, organizationId)) return 0
-  const agent = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, status: "ACTIVE", attendanceExcluded: false, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true, userId: true, user: { select: { isActive: true, anonymizedAt: true, preferredLanguage: true } } } })
+  const agent = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, status: "ACTIVE", attendanceExcluded: false, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true, userId: true, appLanguage: true, user: { select: { isActive: true, anonymizedAt: true, preferredLanguage: true } } } })
   if (!agent || (agent.userId && (!agent.user?.isActive || agent.user.anonymizedAt))) return 0
   // Today can be yesterday in UTC-negative zones; an overnight source date
   // can therefore be UTC minus two days. The classifier allows only local
@@ -77,7 +78,7 @@ export async function createAttendanceRemindersInTransaction(tx: Prisma.Transact
     for (const kind of kinds.filter(kind => kind.startsWith("EMPLOYEE") && policy.employee)) {
       const notice = await insertNotice(tx, { organizationId, agentId, date: row.date, kind, ruleId, now })
       if (!notice) continue
-      const t = messages[localeKey(agent.user?.preferredLanguage)]
+      const t = messages[localeKey(agentLanguage(agent))]
       await tx.mtmNotification.create({ data: { organizationId, agentId, type: "info", title: t[copyKey[kind]], body: t.reminderEmployeeBody,
         metadata: { domain: "route", attendanceReminderId: notice, attendanceReminderKind: kind } } })
       created++

@@ -12,6 +12,7 @@ import { AttendanceHrRecordingInputSchema, canRecordAttendanceDayKind, type Atte
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 async function recordingTimezone(tx: Prisma.TransactionClient, organizationId: string) {
   const row = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "timezone" } }, select: { value: true } })
@@ -48,7 +49,7 @@ export async function recordAttendanceDaysInTransaction(tx: Prisma.TransactionCl
   const actor = await resolveAttendanceReviewerScope(tx, reviewer)
   // Read after all locks; a deactivation before its lock must invalidate the batch.
   const targets = await tx.mtmAgent.findMany({ where: { organizationId, id: { in: input.agentIds }, status: "ACTIVE", ...ATTENDANCE_TRACKED_CARD_WHERE },
-    select: { id: true, userId: true, user: { select: { preferredLanguage: true } } } })
+    select: { id: true, userId: true, ...AGENT_LANGUAGE_SELECT } })
   if (targets.length !== input.agentIds.length || targets.some(target => target.userId === userId || !canReviewMtmRouteRequest(actor, target.id))) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   }
@@ -92,7 +93,8 @@ export async function recordAttendanceDaysInTransaction(tx: Prisma.TransactionCl
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: userId, agentId: target.id,
       action: "MTM_ATTENDANCE_HR_RECORDED", entity: "hrm_request", entityId: created.id, metadataKind: "mtm_attendance_request",
       newData: { status: "APPROVED", dayKindKey: dayKind.key, operationId: input.clientRequestId, startDate: input.startDate, endDate: input.endDate } } })
-    const locale = target.user?.preferredLanguage === "ru" || target.user?.preferredLanguage === "en" ? target.user.preferredLanguage : "az"
+    const language = agentLanguage(target)
+    const locale = language === "ru" || language === "en" ? language : "az"
     await tx.mtmNotification.create({ data: { organizationId, agentId: target.id, title: ({ az, ru, en })[locale].mtmAttendance.hrRecordingNotification,
       type: "info", metadata: { domain: "route", attendanceRequestId: created.id, status: "APPROVED" } } })
     items.push(attendanceRequestDto(created))

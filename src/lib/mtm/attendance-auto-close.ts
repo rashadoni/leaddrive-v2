@@ -5,6 +5,7 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 /**
  * «Закрыть день» approved without waiting for the manager — when the company
@@ -74,8 +75,8 @@ export async function autoApproveForgottenDayClose(
   const by = rows.find((row) => row.key === ATTENDANCE_AUTO_CLOSE_BY_KEY)?.value
   if (!enabled || typeof by !== "string" || !by) return null
 
-  const employee = await db.mtmAgent.findFirst({ where: { organizationId, id: agentId }, select: { user: { select: { preferredLanguage: true } } } }) as { user: { preferredLanguage: string | null } | null } | null
-  const language = employee?.user?.preferredLanguage
+  const employee = await db.mtmAgent.findFirst({ where: { organizationId, id: agentId }, select: AGENT_LANGUAGE_SELECT }) as { appLanguage: string | null; user: { preferredLanguage: string | null } | null } | null
+  const language = agentLanguage(employee)
   const note = notes[language === "ru" || language === "en" ? language : "az"]
 
   // The manager's path, imported late: it imports the request store, which calls this.
