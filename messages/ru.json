@@ -30552,6 +30552,7 @@
     "openTimesheet": "Табель за {month}",
     "kpiArrived": "Пришли",
     "kpiOf": "из {total}",
+    "kpiDayOff": "выходной",
     "kpiArrivedLink": "Показать список",
     "kpiLate": "Опоздали",
     "kpiLateLink": "Кто и на сколько",

@@ -75,6 +75,9 @@ async function readJson(response: Response) { return response.json().catch(() =>
 export function MtmAttendanceToday() {
   const t = useTranslations("personnel")
   const a = useTranslations("mtmAttendance")
+  // A day nobody was due (weekend, holiday): «0 nəfərdən» under someone who
+  // came anyway read as "1 of 0" (owner's Sunday check, 2026-11-01).
+  const ofExpected = (total: number) => total === 0 ? t("kpiDayOff") : t("kpiOf", { total })
   const format = useFormatter()
   const locale = useLocale()
   const [data, setData] = useState<Loaded | null>(null)
@@ -240,7 +243,7 @@ export function MtmAttendanceToday() {
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {([
-        { id: "arrived", label: t("kpiArrived"), icon: <LogIn className="h-4 w-4" />, tone: "green", value: summary?.arrived, unit: summary ? t("kpiOf", { total: summary.expected }) : null,
+        { id: "arrived", label: t("kpiArrived"), icon: <LogIn className="h-4 w-4" />, tone: "green", value: summary?.arrived, unit: summary ? ofExpected(summary.expected) : null,
           progress: summary?.expected ? summary.arrived / summary.expected * 100 : 0, href: "/mtm/attendance/reports?report=day", link: t("kpiArrivedLink") },
         { id: "late", label: t("kpiLate"), icon: <Clock3 className="h-4 w-4" />, tone: "amber", value: summary?.late, unit: null,
           progress: summary?.expected ? summary.late / summary.expected * 100 : 0, href: `/mtm/attendance/reports?report=late${data ? `&date=${data.today}` : ""}`, link: t("kpiLateLink") },
@@ -345,7 +348,7 @@ export function MtmAttendanceToday() {
           return <Link key={day.date} prefetch={false} href={`/mtm/attendance/timesheet?date=${day.date}`} data-testid="attendance-today-day"
             className={`rounded-xl p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${isToday ? "border border-primary" : day.future ? "border border-dashed" : "border hover:bg-muted/50"}`}>
             <p className={`text-xs font-semibold first-letter:uppercase ${isToday ? "text-primary" : "text-muted-foreground"}`}>{dateLabel(day.date, { weekday: "short", day: "numeric" })}{isToday ? ` · ${t("weekToday")}` : ""}</p>
-            <p className="mt-1 text-sm"><span className="text-base font-bold tabular-nums">{day.future ? "—" : day.present}</span> <span className="text-xs text-muted-foreground">{day.future ? t("weekPlan", { total: day.expected }) : t("kpiOf", { total: day.expected })}</span></p>
+            <p className="mt-1 text-sm"><span className="text-base font-bold tabular-nums">{day.future ? "—" : day.present}</span> <span className="text-xs text-muted-foreground">{day.future ? t("weekPlan", { total: day.expected }) : ofExpected(day.expected)}</span></p>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {day.late ? <HomePill tone="amber">{t("chipLate", { count: day.late })}</HomePill> : null}
               {day.away ? <HomePill tone="blue">{t("chipAway", { count: day.away })}</HomePill> : null}
