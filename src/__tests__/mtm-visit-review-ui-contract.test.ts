@@ -183,10 +183,11 @@ describe("the agent's own execution view", () => {
  * or two lines, and three of them saying that nothing was recorded.
  */
 describe("the visit card reads in one screen", () => {
-  it("puts time, place, presentations, photos and signature on one strip", () => {
-    expect(panel).toContain('data-testid="mtm-visit-review-facts"')
-    expect(panel).toContain('t("review.factSignature")')
-    expect(panel).toContain('t("review.factNoSignature")')
+  it("puts the steps beside the manager's rating, with no strip repeating them (owner, 2026-10-31)", () => {
+    // Time, place, presentations, photos and signature are lines of the steps.
+    expect(panel).not.toContain('data-testid="mtm-visit-review-facts"')
+    expect(panel).toContain('visit.jointVisit ? "grid lg:grid-cols-2" : ""')
+    expect(panel).toContain("<JointVisitReviewBlock jointVisit={visit.jointVisit}")
   })
 
   it("splits what happened from the outcome instead of stacking everything", () => {

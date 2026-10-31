@@ -15,6 +15,12 @@ interface AdvisorRecordWidgetProps {
   entityId: string
   orgId?: string
   title?: string
+  /**
+   * One line until opened, and nothing while there is nothing to say: the
+   * visit card already says what the usual note says (owner, 2026-10-31: the
+   * page ran three screens and repeated «not closed» six times).
+   */
+  collapsed?: boolean
 }
 
 const COPY = {
@@ -24,6 +30,8 @@ const COPY = {
     queueFailed: "Could not queue advisor action",
     checkFailed: "Advisor could not check this record right now.",
     noRisk: "No active Advisor risk for this record.",
+    show: "Show",
+    hide: "Hide",
     queuedForApproval: "Queued for approval",
     openAdvisorCenter: "Open Advisor center",
     whyFlagged: "Why Advisor flagged it",
@@ -159,6 +167,8 @@ const COPY = {
     queueFailed: "Не удалось добавить действие Advisor",
     checkFailed: "Advisor не смог проверить эту запись сейчас.",
     noRisk: "Активных рисков Advisor по этой записи нет.",
+    show: "Показать",
+    hide: "Скрыть",
     queuedForApproval: "В очереди согласования",
     openAdvisorCenter: "Открыть центр Advisor",
     whyFlagged: "Почему Advisor отметил риск",
@@ -294,6 +304,8 @@ const COPY = {
     queueFailed: "Advisor əməliyyatını növbəyə əlavə etmək olmadı",
     checkFailed: "Advisor bu qeydi indi yoxlaya bilmədi.",
     noRisk: "Bu qeyd üzrə aktiv Advisor riski yoxdur.",
+    show: "Göstər",
+    hide: "Gizlət",
     queuedForApproval: "Təsdiq növbəsində",
     openAdvisorCenter: "Advisor mərkəzini aç",
     whyFlagged: "Advisor niyə risk kimi göstərdi",
@@ -526,7 +538,8 @@ function previewValueFor(copy: (typeof COPY)["en"], label: string, value: string
   return `${entityType}: ${match[2]}`
 }
 
-export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da Vinci Advisor" }: AdvisorRecordWidgetProps) {
+export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da Vinci Advisor", collapsed = false }: AdvisorRecordWidgetProps) {
+  const [expanded, setExpanded] = useState(false)
   const locale = useLocale()
   const copy = COPY[(locale as keyof typeof COPY) in COPY ? (locale as keyof typeof COPY) : "en"]
   const [payload, setPayload] = useState<AdvisorPayload | null>(null)
@@ -584,6 +597,22 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
 
   const displayTitle = title === "Advisor risk" || title === "Da Vinci Advisor" ? copy.title : title
 
+  if (collapsed && (loading || failed || signals.length === 0)) return null
+  if (collapsed && !expanded) {
+    return (
+      <section className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5" data-testid="advisor-record-collapsed">
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <h3 className="truncate font-semibold">{displayTitle}</h3>
+          <span className="text-muted-foreground">· {signals.length}</span>
+        </div>
+        <Button variant="ghost" size="sm" className="min-h-9 shrink-0 font-semibold text-primary" aria-expanded={false} onClick={() => setExpanded(true)}>
+          {copy.show}
+        </Button>
+      </section>
+    )
+  }
+
   return (
     <section className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -591,11 +620,18 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="truncate text-sm font-semibold">{displayTitle}</h3>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 px-2" title={copy.openAdvisorCenter} aria-label={copy.openAdvisorCenter} asChild>
-          <Link href={advisorHref}>
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          {collapsed ? (
+            <Button variant="ghost" size="sm" className="h-7 px-2 font-semibold text-primary" aria-expanded onClick={() => setExpanded(false)}>
+              {copy.hide}
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="sm" className="h-7 px-2" title={copy.openAdvisorCenter} aria-label={copy.openAdvisorCenter} asChild>
+            <Link href={advisorHref}>
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {loading ? (
