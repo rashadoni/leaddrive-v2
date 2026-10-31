@@ -55,8 +55,9 @@ const REMINDER: Record<"ru" | "az" | "en", (customer: string, since: string) => 
 
 /**
  * The reminder sent to the agent's app (a direct message of «Связь с
- * командой»): in all three languages, the app shows the agent's; the body is
- * the sender's language. The date and time are the tenant's.
+ * командой»): in all three languages; the server sends the agent's own
+ * (operations/messages), the body is the sender's for an agent with none on
+ * record. The date and time are the tenant's.
  */
 export function mtmVisitReminderMessage(input: {
   customerName: string
