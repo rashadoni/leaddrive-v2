@@ -15318,6 +15318,7 @@
       "stepStillThere": "hələ müştəridədir",
       "stepMissing": "edilməyib — məcburidir",
       "stepActionCount": "{count} / {min}",
+      "presentationShown": "{products} preparat · {minutes} dəq",
       "chipOpen": "Davam edir · {duration}",
       "chipDone": "{duration} çəkdi · {from} — {to}",
       "checkedInFar": "Müştəridən {distance} aralıda qeyd olunub — icazə {radius}-dək",

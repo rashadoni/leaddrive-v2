@@ -187,6 +187,22 @@ describe("«Как прошёл визит» as a list", () => {
     expect(pair.querySelector('[data-testid="mtm-visit-joint-block"]')).not.toBeNull()
   })
 
+  it("the presentation step says how many products and for how long, as in the mockup («2 препарата · 6 мин»)", () => {
+    const session = (id: string, name: string, seconds: number) => ({
+      id, product: { id: `p-${name}`, name, group: { name: "Gastro" } }, document: null, presentationVersion: null,
+      openedAt: "2026-10-30T18:45:00.000Z", closedAt: "2026-10-30T18:48:00.000Z", lastViewedAt: null,
+      activeDurationSeconds: seconds, pageCount: 7, pagesViewed: [1, 2], openLat: null, openLng: null, closeLat: null, closeLng: null,
+    })
+    const { block } = render(visit({
+      requirementSnapshot: { requirements: [{ id: "r1", actionKey: "PRESENTATION", mode: "REQUIRED", minCount: 1 }] },
+      presentationSessions: [session("s1", "Forlaks", 180), session("s2", "Adefa", 120), session("s3", "Forlaks", 50)],
+    } as unknown as Partial<VisitReviewData["visit"]>))
+
+    // Two products (Forlaks twice), 350 s shown → 6 min. The mock reads the plural as its count.
+    expect(block.querySelector('[data-testid="mtm-visit-step-presentation"]')?.textContent).toContain("2 · 6 мин")
+    expect(review.review.presentationShown).toContain("few {# препарата}")
+  })
+
   it("names the client's open tasks with a way to them", () => {
     const data = visit()
     data.openTasks = { count: 2, items: [{ id: "t1", title: "Привезти образцы", priority: "HIGH", dueDate: null }] }
