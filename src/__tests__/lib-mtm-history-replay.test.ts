@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 import {
   historyReplayCuts,
   historyReplayFrame,
+  historyPointMovement,
   historyReplayIndex,
   historyReplaySkipStill,
   modeRuns,
@@ -110,5 +111,16 @@ describe("the line up to the moment", () => {
     // Indices never go back, even where the walk passes the parking place again.
     const indices = timed.map((vertex) => vertex.fixIndex)
     expect([...indices].sort((a, b) => a - b)).toEqual(indices)
+  })
+})
+
+describe("the day as the field app receives it", () => {
+  it("gives each fix its way of moving and course, read across the whole day but never across the break", () => {
+    const { points, gaps } = day()
+    const rows = points.map((point, index) => ({ ...point, id: `p${index}`, recordedAt: new Date(point.recordedAt), speed: point.speed ?? null, heading: null }))
+    const movement = historyPointMovement(rows, gaps.map((gap) => ({ startedAt: new Date(gap.startedAt), endedAt: new Date(gap.endedAt), reason: gap.reason })))
+    expect(movement.get("p3")).toEqual({ mode: "DRIVE", course: 90 })
+    expect(movement.get("p15")).toEqual({ mode: "STAY", course: null })
+    expect(movement.get(`p${rows.length - 2}`)?.mode).toBe("WALK")
   })
 })

@@ -236,3 +236,22 @@ export function modeRuns(
   }
   return runs.filter((run) => run.path.length >= 2)
 }
+
+/**
+ * Each fix of the day with how he was moving at it and which way — for a
+ * reader that draws the day without reading it again: the field app's
+ * manager card (owner 2026-11-01, step 3 of the mockup). Read on the whole
+ * accepted day, then handed out for the fixes that are returned.
+ */
+export function historyPointMovement(
+  points: ReadonlyArray<{ id: string; latitude: number; longitude: number; recordedAt: Date; speed: number | null; heading: number | null }>,
+  gaps: ReadonlyArray<{ startedAt: Date; endedAt: Date; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED" }>,
+): Map<string, { mode: MtmMovementMode; course: number | null }> {
+  const fixes = points.map((point) => ({ ...point, recordedAt: point.recordedAt.toISOString() }))
+  const cuts = historyReplayCuts(fixes, gaps.map((gap) => ({ startedAt: gap.startedAt.toISOString(), endedAt: gap.endedAt.toISOString(), reason: gap.reason })))
+  const reading = readHistoryMovement(fixes, cuts)
+  return new Map(points.map((point, index) => [point.id, {
+    mode: reading.modes[index] ?? "STAY",
+    course: reading.headings[index] == null ? null : Math.round(reading.headings[index]!),
+  }]))
+}

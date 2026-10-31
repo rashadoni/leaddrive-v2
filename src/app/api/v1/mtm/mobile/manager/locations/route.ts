@@ -6,6 +6,13 @@ import { classifyGpsFreshness, GPS_FRESHNESS, mapWorkdayState } from "@/lib/mtm/
 import { resolveAgentScope } from "@/lib/mtm/territory-scope"
 import { readMtmLastBreakEnds, type MtmBreakEndsWorkday } from "@/lib/mtm/live-break-ends"
 import { isMtmPositionHeldByBreak, mtmFreshnessAcrossBreak } from "@/lib/mtm-types"
+import { liveMtmMovement } from "@/lib/mtm/movement-mode"
+
+/**
+ * How many of his newest fixes are read to tell a car in a jam from a walk
+ * (movement-mode.ts): the phone uploads one every ~30 s, so about six minutes.
+ */
+const MOVEMENT_FIXES = 12
 
 /** A coordinate as it is read here, from the projection or the raw table. */
 interface LocationEvidence {
@@ -72,7 +79,7 @@ export const GET = withMobileRls(async (req, auth) => {
         },
       },
       locations: {
-        take: 1,
+        take: MOVEMENT_FIXES,
         orderBy: { recordedAt: "desc" },
         select: {
           latitude: true,
@@ -126,11 +133,30 @@ export const GET = withMobileRls(async (req, auth) => {
     // as explicitly timestamped last-known evidence and must not move a live
     // map marker.
     const liveLocation = freshness === "ONLINE" ? lastKnownLocation : null
+    // Car, on foot or standing, and which way (owner 2026-11-01, the mockup's
+    // step 3) — only for a live position, and read only from the fixes after
+    // his last break: what he did before it is not his trip now.
+    const breakEndedAt = shift ? lastBreakEndByWorkday.get(shift.id) ?? null : null
+    const movement = liveLocation
+      ? liveMtmMovement({
+          freshness,
+          latitude: liveLocation.latitude,
+          longitude: liveLocation.longitude,
+          recordedAt: liveLocation.recordedAt.toISOString(),
+          speed: liveLocation.speed,
+          heading: liveLocation.heading,
+          trail: agentLocations
+            .filter((fix) => fix.recordedAt < liveLocation.recordedAt && (!breakEndedAt || fix.recordedAt > breakEndedAt))
+            .reverse()
+            .map((fix) => ({ latitude: fix.latitude, longitude: fix.longitude, recordedAt: fix.recordedAt.toISOString() })),
+        })
+      : null
 
     return {
       ...agent,
       freshness,
       hasLiveLocation: liveLocation !== null,
+      movement: movement ? { mode: movement.mode, course: movement.heading == null ? null : Math.round(movement.heading) } : null,
       location: liveLocation,
       liveLocation,
       lastKnownLocation,

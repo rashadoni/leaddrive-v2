@@ -283,3 +283,38 @@ describe("GET /api/v1/mtm/mobile/manager/locations", () => {
     expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
   })
 })
+
+describe("GET /api/v1/mtm/mobile/manager/locations — how he is moving", () => {
+  // Owner 2026-11-01, step 3 of the mockup: the manager's phone shows car / on
+  // foot / standing and which way, read on the server by movement-mode.ts.
+  const fix = (minutesAgo: number, metresNorth: number, speed: number | null, heading: number | null) => ({
+    latitude: 40.4 + metresNorth / 111_320,
+    longitude: 49.8,
+    accuracy: 8,
+    speed,
+    heading,
+    battery: 80,
+    isMoving: (speed ?? 0) >= 3,
+    recordedAt: new Date(Date.parse("2026-08-21T10:00:00.000Z") - minutesAgo * 60_000),
+  })
+  const agent = (id: string, locations: ReturnType<typeof fix>[], workdays: unknown[] = []) => ({
+    id, name: id, role: "AGENT", isOnline: true, lastSeenAt: new Date("2026-08-21T09:59:00.000Z"), locations, workdays,
+  })
+
+  it("says car and due north for a live drive, standing for a still phone, and nothing for an old point", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-21T10:00:00.000Z"))
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      // Newest first, as the query orders them: 36 km/h north, course 0°.
+      agent("driving", [fix(0.5, 1500, 36, 0), fix(1, 1200, 36, 0), fix(1.5, 900, 36, 0), fix(2, 600, 36, 0)]),
+      agent("standing", [fix(0.5, 0, 0, null), fix(1, 2, 0, null)]),
+      agent("old", [fix(30, 0, 40, 90)]),
+    ] as never)
+
+    const body = await (await ManagerLocations(request("/api/v1/mtm/mobile/manager/locations"))).json()
+    const byId = Object.fromEntries(body.data.locations.map((row: { id: string }) => [row.id, row]))
+    expect(byId.driving.movement).toEqual({ mode: "DRIVE", course: 0 })
+    expect(byId.standing.movement).toEqual({ mode: "STAY", course: null })
+    expect(byId.old.movement).toBeNull()
+  })
+})
