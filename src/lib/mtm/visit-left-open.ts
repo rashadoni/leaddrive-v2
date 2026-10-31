@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/lib/format-date"
+
 /**
  * A visit the agent opened and did not close is not a visit going on now.
  *
@@ -62,13 +64,16 @@ export function mtmVisitReminderMessage(input: {
   timezone: string
   senderLocale: string
 }): { body: string; localizations: { ru: string; az: string; en: string } } {
+  // Through the shared formatter: the reminder is written in the sender's
+  // browser, and Chrome has no Azerbaijani month names — bare Intl wrote
+  // «M10 30 22:42» into the agent's chat (2026-10-31).
   const since = (locale: string) => {
     const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }
     try {
-      return new Intl.DateTimeFormat(locale, { ...options, timeZone: input.timezone }).format(new Date(at(input.checkInAt)))
+      return formatDateTime(at(input.checkInAt), locale, { ...options, timeZone: input.timezone })
     } catch {
       // A zone the runtime does not know: UTC rather than no reminder.
-      return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(new Date(at(input.checkInAt)))
+      return formatDateTime(at(input.checkInAt), locale, { ...options, timeZone: "UTC" })
     }
   }
   const localizations = {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { isMtmVisitLeftOpen, mtmVisitOpenFor, mtmVisitOpenMinutes, mtmVisitReminderMessage } from "@/lib/mtm/visit-left-open"
 
 /** The visit of 12 October 2026, 21:21 in Baku, seen on 15 October at 20:00. */
@@ -32,5 +32,28 @@ describe("a visit left open", () => {
     expect(message.localizations.az).toContain("21:21")
     expect(message.body).toBe(message.localizations.ru)
     expect(mtmVisitReminderMessage({ customerName: "X", checkInAt: CHECK_IN, timezone: "Asia/Baku", senderLocale: "de" }).body).toContain("Your visit")
+  })
+
+  it("names the month in Azerbaijani even where the browser has no Azerbaijani dates, as Chrome", () => {
+    // Chrome's Intl knows no Azerbaijani month names: its «az» wrote
+    // «M10 30 22:42» into the agent's chat (2026-10-31). Make Intl do the same.
+    const Real = Intl.DateTimeFormat
+    // A plain function: callers construct it with `new`.
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation((function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+      const first = Array.isArray(locales) ? locales[0] : locales
+      if (first?.startsWith("az")) {
+        const real = new Real("en-GB", options)
+        return Object.assign(Object.create(real), { format: (date?: Date | number) => `M${real.formatToParts(date).find((part) => part.type === "month")?.value} ?` })
+      }
+      return new Real(locales, options)
+    }) as unknown as typeof Intl.DateTimeFormat)
+
+    const message = mtmVisitReminderMessage({ customerName: "QA", checkInAt: CHECK_IN, timezone: "Asia/Baku", senderLocale: "az" })
+    expect(message.body).toBe("«QA» vizitiniz 12 oktyabr, 21:21 tarixindən açıqdır və hələ bağlanmayıb. Zəhmət olmasa tətbiqdə bağlayın.")
+    expect(message.localizations.ru).toContain("12 октября в 21:21")
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 })
