@@ -31550,6 +31550,7 @@
     "noticeInvalid": "Write numbers like +994 50 123 45 67, separated by commas.",
     "historyConfirmed": "{name} confirmed",
     "historyRejected": "{name} rejected: {reason}",
+    "historyCallerCancelled": "The pharmacy cancelled the order on the call",
     "someone": "A user",
     "pickerTitle": "Pick product",
     "pickerAddTitle": "Add line",

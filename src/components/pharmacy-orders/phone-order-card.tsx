@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { PHONE_ORDER_CALLER_CANCELLED } from "@/lib/pharmacy-orders/caller-cancelled"
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { cn } from "@/lib/utils"
 
@@ -267,7 +268,9 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
                 {t("historyErpDifference", { position: diff.position, sentQuantity: diff.sentQuantity, quantity: diff.quantity,
                   sentPrice: formatMoney(diff.sentPrice, locale), price: diff.price === null ? "—" : formatMoney(diff.price, locale) })}</span>)}
             </HistoryRow> : null}
-            {order.rejectedAt ? <HistoryRow at={order.rejectedAt} locale={locale}>{t("historyRejected", { name: order.rejectedBy ?? t("someone"), reason: order.rejectReason ?? "" })}</HistoryRow> : null}
+            {order.rejectedAt ? <HistoryRow at={order.rejectedAt} locale={locale}>{order.rejectReason === PHONE_ORDER_CALLER_CANCELLED && !order.rejectedBy
+              ? t("historyCallerCancelled")
+              : t("historyRejected", { name: order.rejectedBy ?? t("someone"), reason: order.rejectReason ?? "" })}</HistoryRow> : null}
             <PharmacyNoticeRow notice={order.pharmacyNotice} locale={locale} />
           </ol>
         </section>

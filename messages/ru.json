@@ -31550,6 +31550,7 @@
     "noticeInvalid": "Пишите номера как +994 50 123 45 67, через запятую.",
     "historyConfirmed": "{name} подтвердил(а)",
     "historyRejected": "{name} отклонил(а): {reason}",
+    "historyCallerCancelled": "Аптека отменила заказ во время звонка",
     "someone": "Пользователь",
     "pickerTitle": "Выбрать товар",
     "pickerAddTitle": "Добавить строку",

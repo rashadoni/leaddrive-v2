@@ -8,7 +8,7 @@ import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies,
   type InboundPilotOrderCall } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
-import { savePhoneOrderFromCall } from "./phone-orders"
+import { cancelPhoneOrderFromCall, savePhoneOrderFromCall } from "./phone-orders"
 import { requestAiHandoff } from "../../voip/inbound-handoff"
 import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
@@ -207,7 +207,14 @@ export function createInboundPilotHost(options: {
         }
         return saved
       },
-    } satisfies Pick<InboundPilotDependencies, "saveOrder"> : {}),
+      // Owner's call 2026-10-31: the pharmacy cancels its own order on the line.
+      cancelOrder: async (config, call, seq) => {
+        if (!isLineGrant(config) || !(await allowedOrganization(config))) return "already_reviewed"
+        const result = await cancelPhoneOrderFromCall(options.orders!, { organizationId: config.orderOrganizationId,
+          providerCallId: call.providerCallId, seq })
+        return result.status
+      },
+    } satisfies Pick<InboundPilotDependencies, "saveOrder" | "cancelOrder"> : {}),
     ...(options.orders && options.transferAvailable ? {
       // Owner, 2026-10-27: the caller asks for a person, the managers' browsers
       // ring. Only where someone can take a browser call; once per call.
