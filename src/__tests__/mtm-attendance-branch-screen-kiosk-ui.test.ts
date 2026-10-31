@@ -10,7 +10,9 @@ import { evaluateBranchScreenPlace, parseBranchScreenFix } from "@/lib/mtm/atten
 const messages = Object.fromEntries(["ru", "az", "en"].map(lang => [lang, JSON.parse(readFileSync(`messages/${lang}.json`, "utf8"))]))
 const az = messages.az.attendanceBranchScreen
 const dataUrl = "data:image/png;base64,iVBORw0KGgo="
-const showing = () => ({ state: "SHOWING", organizationName: "Demo company", branch: { id: "b", name: "Demo branch" }, dataUrl, serverNow: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() })
+// One reading of the clock: two could straddle a millisecond, giving a code 60 001 ms
+// of life, which the screen rightly refuses as more than a minute (CI, 2026-10-31).
+const showing = (now = Date.now()) => ({ state: "SHOWING", organizationName: "Demo company", branch: { id: "b", name: "Demo branch" }, dataUrl, serverNow: new Date(now).toISOString(), expiresAt: new Date(now + 60_000).toISOString() })
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 let root: Root, host: HTMLDivElement, qrAnswer: unknown
 const fetchMock = vi.fn<typeof fetch>()
