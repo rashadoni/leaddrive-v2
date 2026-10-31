@@ -1,0 +1,12 @@
+[Unit]
+Description=Send finished call recordings to the CRM every minute
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=60s
+AccuracySec=5s
+Persistent=false
+Unit=fanum-call-recordings.service
+
+[Install]
+WantedBy=timers.target

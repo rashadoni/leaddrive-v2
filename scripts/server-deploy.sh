@@ -9223,6 +9223,7 @@ for warm_route in \
   "POST /api/internal/asterisk/inbound-handoff" \
   "POST /api/internal/asterisk/inbound-browser-ready" \
   "POST /api/internal/asterisk/station-heartbeat" \
+  "POST /api/internal/asterisk/call-recording" \
   "POST /api/internal/voice-agent/pharmacy-inbound" \
   "POST /api/internal/voice-agent/call-result" \
   "GET /api/internal/voice-agent/runtime-config" \

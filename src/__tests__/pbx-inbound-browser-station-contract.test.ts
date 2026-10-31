@@ -43,6 +43,8 @@ describe("inbound browser station bundle", () => {
     expect(dialplan).toContain("AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9093)")
     expect(dialplan).toContain("hangup_handler_push")
     expect(dialplan).toContain("fanum-inbound-browser-agi.py,terminal")
+    // Owner, 2026-10-31: the AI line's conversation is recorded, the file named by the call id only.
+    expect(dialplan).toContain("MixMonitor(/var/spool/asterisk/fanum-recordings/${FANUM_SAFE_CALL_ID}.wav)")
   })
 
   it("creates the AudioSocket UUID in the AGI without func_uuid.so", () => {

@@ -71,6 +71,12 @@ export async function getPhoneOrder(orgId: string, id: string) {
   const positionOf = (externalId: string | null) =>
     externalId ? order.lines.find(line => line.externalId?.toLowerCase() === externalId)?.position ?? null : null
   const result = (order.erpResult ?? {}) as { errors?: ErpError[]; differences?: unknown[]; error?: string }
+  // The call the order was taken on and its recording (owner, 2026-10-31):
+  // the playback route checks who may listen, this only says whether there is one.
+  const call = await prisma.callLog.findFirst({
+    where: { organizationId: orgId, provider: "asterisk", providerCallId: order.providerCallId },
+    select: { id: true, recordingUrl: true, duration: true },
+  })
   return {
     id: order.id, label: phoneOrderLabel(order.number), status: order.status, revision: order.revision,
     createdAt: order.createdAt.toISOString(), updatedAt: order.updatedAt.toISOString(),
@@ -89,6 +95,8 @@ export async function getPhoneOrder(orgId: string, id: string) {
       errors: (result.errors ?? []).map(error => ({ ...error, position: positionOf(error.externalId) })),
       differences: result.differences ?? [], error: result.error ?? null },
     edits: Array.isArray(order.managerEdits) ? order.managerEdits.length : 0,
+    call: call ? { id: call.id, duration: call.duration,
+      recordingPlaybackUrl: call.recordingUrl ? `/api/v1/calls/${encodeURIComponent(call.id)}/recording` : null } : null,
     lines: order.lines.map(line => ({
       id: line.id, position: line.position, status: line.status, externalId: line.externalId, itemCode: line.itemCode,
       productName: line.productName, spokenText: line.spokenText, quantity: line.quantity, unit: line.unit,
