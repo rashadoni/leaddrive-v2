@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client"
 import { getOrgModuleContext } from "@/lib/api-auth"
 import { announceCallOrder } from "@/lib/pharmacy-orders/manager-notice"
 import { prisma } from "@/lib/prisma"
+import { runWithRlsBypass } from "@/lib/rls-context"
 import { shellPresentUserIds } from "@/lib/shell-events/presence"
 import { processRole } from "@/lib/station-timing"
 import { browserSoftphoneAllowed } from "@/lib/voip/browser-softphone"
@@ -27,6 +28,8 @@ export function zeytunLineHost(): Host {
     holdsLine: organizationHoldsLine,
     transferAvailable: async (organizationId) => managerCanAnswer(organizationId),
     announceOrder: (organizationId, providerCallId) => announceCallOrder(prisma as unknown as PrismaClient, organizationId, providerCallId),
+    organizationSettings: async (organizationId) => (await runWithRlsBypass(() =>
+      prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: true } })))?.settings ?? null,
   })
 }
 
