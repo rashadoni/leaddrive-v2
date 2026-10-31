@@ -1700,38 +1700,38 @@ export default function MtmMapPage() {
         </Hint>
         <Hint text={tMap("hint.chipCheckedIn")}>
           <Button variant="outline" size="sm" aria-pressed={statusChipOn("CHECKED_IN")} data-testid="mtm-map-status-chip-CHECKED_IN" onClick={() => pickStatus("CHECKED_IN")}
-            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("CHECKED_IN"), "text-green-700 dark:text-green-400")}`}>
-            <MapPin className="h-3 w-3 mr-1" /> {tMap("fieldStatus.checkedIn")} ({statusCounts.checkedIn})
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("CHECKED_IN"))}`}>
+            <MapPin className="h-3 w-3 mr-1 text-green-700 dark:text-green-400" /> {tMap("fieldStatus.checkedIn")} ({statusCounts.checkedIn})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipOnRoad")}>
           <Button variant="outline" size="sm" aria-pressed={statusChipOn("ON_ROAD")} data-testid="mtm-map-status-chip-ON_ROAD" onClick={() => pickStatus("ON_ROAD")}
-            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("ON_ROAD"), "text-blue-700 dark:text-blue-400")}`}>
-            <Navigation className="h-3 w-3 mr-1" /> {tMap("fieldStatus.onRoad")} ({statusCounts.onRoad})
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("ON_ROAD"))}`}>
+            <Navigation className="h-3 w-3 mr-1 text-blue-700 dark:text-blue-400" /> {tMap("fieldStatus.onRoad")} ({statusCounts.onRoad})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipStopped")}>
           <Button variant="outline" size="sm" aria-pressed={statusChipOn("STOPPED")} data-testid="mtm-map-status-chip-STOPPED" onClick={() => pickStatus("STOPPED")}
-            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("STOPPED"), "text-amber-700 dark:text-amber-300")}`}>
-            <PauseCircle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.stopped")} ({statusCounts.stopped})
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("STOPPED"))}`}>
+            <PauseCircle className="h-3 w-3 mr-1 text-amber-700 dark:text-amber-300" /> {tMap("fieldStatus.stopped")} ({statusCounts.stopped})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipRouteFinished")}>
           <Button variant="outline" size="sm" aria-pressed={statusChipOn("ROUTE_FINISHED")} data-testid="mtm-map-status-chip-ROUTE_FINISHED" onClick={() => pickStatus("ROUTE_FINISHED")}
-            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("ROUTE_FINISHED"), "text-emerald-700 dark:text-emerald-300")}`}>
-            <Flag className="h-3 w-3 mr-1" /> {tMap("fieldStatus.routeFinished")} ({statusCounts.routeFinished})
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("ROUTE_FINISHED"))}`}>
+            <Flag className="h-3 w-3 mr-1 text-emerald-700 dark:text-emerald-300" /> {tMap("fieldStatus.routeFinished")} ({statusCounts.routeFinished})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipLate")}>
           <Button variant="outline" size="sm" aria-pressed={statusChipOn("LATE")} data-testid="mtm-map-status-chip-LATE" onClick={() => pickStatus("LATE")}
-            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("LATE"), "text-red-600 dark:text-red-400")}`}>
-            <AlertTriangle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.late")} ({statusCounts.late})
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("LATE"))}`}>
+            <AlertTriangle className="h-3 w-3 mr-1 text-red-600 dark:text-red-400" /> {tMap("fieldStatus.late")} ({statusCounts.late})
           </Button>
         </Hint>
         <Hint text={tMap("hint.chipOffline", { minutes: delayedMinutes })}>
           <Button variant="outline" size="sm" aria-pressed={statusChipOn("OFFLINE")} data-testid="mtm-map-status-chip-OFFLINE" onClick={() => pickStatus("OFFLINE")}
-            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("OFFLINE"), "text-muted-foreground")}`}>
-            <WifiOff className="h-3 w-3 mr-1" /> {tMap("fieldStatus.offline")} ({statusCounts.offline})
+            className={`min-h-11 shrink-0 ${mtmChipClass(statusChipOn("OFFLINE"))}`}>
+            <WifiOff className="h-3 w-3 mr-1 text-muted-foreground" /> {tMap("fieldStatus.offline")} ({statusCounts.offline})
           </Button>
         </Hint>
       </div>

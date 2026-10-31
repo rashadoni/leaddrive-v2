@@ -20,17 +20,19 @@ export type Tone =
 
 /** Badge classes per tone — light + explicit dark variants (the journal card is
  *  themeable, so `bg-*-100` alone reads wrong on dark). */
+// The colour of the words only — no pale pill under them (owner 2026-10-18:
+// a status is the colour of its words or a dot; shown again 2026-10-31).
 export const TONE_CLASSES: Record<Tone, string> = {
-  slate:   "bg-slate-100 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
-  red:     "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-  green:   "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
-  blue:    "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-  sky:     "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
-  purple:  "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
-  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  teal:    "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
-  amber:   "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  violet:  "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  slate:   "text-slate-700 dark:text-slate-300",
+  red:     "text-red-700 dark:text-red-300",
+  green:   "text-green-700 dark:text-green-300",
+  blue:    "text-blue-700 dark:text-blue-300",
+  sky:     "text-sky-700 dark:text-sky-300",
+  purple:  "text-purple-700 dark:text-purple-300",
+  emerald: "text-emerald-700 dark:text-emerald-300",
+  teal:    "text-teal-700 dark:text-teal-300",
+  amber:   "text-amber-700 dark:text-amber-300",
+  violet:  "text-violet-700 dark:text-violet-300",
 }
 
 export interface ActionMeta { icon: LucideIcon; tone: Tone }

@@ -1611,7 +1611,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                                   <span className="font-medium">{visitDay(lastVisit.checkInAt)}</span>
                                   <span className="text-muted-foreground"> · {shortPersonName(lastVisit.agent.name)}</span>
                                 </Link>
-                              ) : <span className="font-semibold text-orange-600 dark:text-orange-400">{tx("explorer.noVisitYet")}</span>
+                              ) : <span className="text-muted-foreground">{tx("explorer.noVisitYet")}</span>
                             ) : column === "nextVisit" ? (
                               nextVisit ? (
                                 <Link href={`/mtm/routes?routeId=${encodeURIComponent(nextVisit.routeId)}&returnTo=${encodeURIComponent(listReturnPath)}`} className="block whitespace-nowrap font-medium tabular-nums hover:text-primary hover:underline">

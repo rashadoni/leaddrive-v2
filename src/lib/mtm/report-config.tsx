@@ -30,7 +30,7 @@ export interface ReportDef { icon: LucideIcon; iconClass: string; columns: Repor
 export const REPORTS: Record<ReportType, ReportDef> = {
   agent: {
     icon: Users,
-    iconClass: "text-blue-500 bg-blue-50 dark:bg-blue-950/30",
+    iconClass: "text-blue-500",
     columns: [
       { key: "name", labelKey: "colAgent", kind: "text" },
       { key: "role", labelKey: "colRole", kind: "role" },
@@ -41,7 +41,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   visit: {
     icon: MapPin,
-    iconClass: "text-red-500 bg-red-50 dark:bg-red-950/30",
+    iconClass: "text-red-500",
     columns: [
       { key: "date", labelKey: "colDate", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -52,7 +52,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   route: {
     icon: Route,
-    iconClass: "text-purple-500 bg-purple-50 dark:bg-purple-950/30",
+    iconClass: "text-purple-500",
     columns: [
       { key: "date", labelKey: "colDate", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -63,7 +63,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   photo: {
     icon: Camera,
-    iconClass: "text-green-500 bg-green-50 dark:bg-green-950/30",
+    iconClass: "text-green-500",
     columns: [
       { key: "date", labelKey: "colUploaded", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -73,7 +73,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   route_execution: {
     icon: ChartNoAxesCombined,
-    iconClass: "text-cyan-700 bg-cyan-50 dark:bg-cyan-950/30",
+    iconClass: "text-cyan-700",
     columns: [
       { key: "date", labelKey: "colDate", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -87,7 +87,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   action_compliance: {
     icon: ClipboardCheck,
-    iconClass: "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30",
+    iconClass: "text-emerald-700",
     columns: [
       { key: "team", labelKey: "colTeam", kind: "text" },
       { key: "action", labelKey: "colAction", kind: "text" },
@@ -98,7 +98,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   promises: {
     icon: CalendarClock,
-    iconClass: "text-amber-700 bg-amber-50 dark:bg-amber-950/30",
+    iconClass: "text-amber-700",
     columns: [
       { key: "dueAt", labelKey: "colDueAt", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -110,7 +110,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   sales: {
     icon: ChartNoAxesCombined,
-    iconClass: "text-indigo-700 bg-indigo-50 dark:bg-indigo-950/30",
+    iconClass: "text-indigo-700",
     columns: [
       { key: "customer", labelKey: "colCustomer", kind: "text" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
