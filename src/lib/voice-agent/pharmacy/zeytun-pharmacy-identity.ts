@@ -45,15 +45,17 @@ export function pharmacyNameMatches(spoken: string, name: string) {
 }
 
 /** The line's greeting for the candidates the caller's number has in 1C. */
-export function openingForCandidates(base: string, candidates: PharmacyCandidate[]) {
+/** `desk` is the greeting's first sentence: the organization's own, or the sales desk. */
+export function openingForCandidates(base: string, candidates: PharmacyCandidate[], desk = ZEYTUN_SALES_DESK) {
   if (candidates.length === 1) {
     // Owner, 2026-10-30 («долго принимает заказ»): the pharmacy confirms and
     // starts its order in one answer instead of a yes and a second turn.
-    return `${ZEYTUN_SALES_DESK} Nömrəniz «${spokenPharmacyName(candidates[0].name)}» kimi qeydə alınıb. Düzdürsə, sifarişinizi deyin.`
+    const text = `${desk} Nömrəniz «${spokenPharmacyName(candidates[0].name)}» kimi qeydə alınıb. Düzdürsə, sifarişinizi deyin.`
+    if (text.length <= 500) return text
   }
   if (candidates.length >= 2 && candidates.length <= MAX_SPOKEN_CANDIDATES) {
     const names = candidates.map((candidate) => `«${spokenPharmacyName(candidate.name)}»`)
-    const text = `${ZEYTUN_SALES_DESK} Bu nömrə bir neçə aptekdə qeydə alınıb: ${names.slice(0, -1).join(", ")} və ${names.at(-1)}. Hansından zəng edirsiniz?`
+    const text = `${desk} Bu nömrə bir neçə aptekdə qeydə alınıb: ${names.slice(0, -1).join(", ")} və ${names.at(-1)}. Hansından zəng edirsiniz?`
     if (text.length <= 500) return text
   }
   return base

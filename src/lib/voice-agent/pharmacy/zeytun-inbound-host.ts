@@ -12,6 +12,7 @@ import { cancelPhoneOrderFromCall, savePhoneOrderFromCall } from "./phone-orders
 import { requestAiHandoff } from "../../voip/inbound-handoff"
 import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
+import { readLineSpeech } from "./zeytun-line-speech"
 import type { PrismaClient } from "@prisma/client"
 
 // 2026-10-25 live call: the session request got 503 and the station ended the
@@ -42,6 +43,8 @@ export function createInboundPilotHost(options: {
   /** Tell the managers and the pharmacy about an order the station delivered
    * after the call ended (call-lifecycle did it at the end, without it). */
   announceOrder?: (organizationId: string, providerCallId: string) => Promise<unknown>
+  /** An organization's settings (Organization.settings); the line reads its own speech there. */
+  organizationSettings?: (organizationId: string) => Promise<unknown>
 }): InboundPilotDependencies {
   // The rehearsal belongs to the installation's default organization. The
   // line runs where its number is: owner, 2026-10-26 («переноси линию Зейтуна
@@ -194,6 +197,11 @@ export function createInboundPilotHost(options: {
     },
     isClaimed,
     findPharmacies,
+    ...(options.organizationSettings ? {
+      // Owner, 2026-10-31: the organization edits its line's greeting, goodbye and notes itself.
+      loadLineSpeech: async (config) => config.orderOrganizationId && await allowedOrganization(config)
+        ? readLineSpeech(await options.organizationSettings!(config.orderOrganizationId)) : readLineSpeech(null),
+    } satisfies Pick<InboundPilotDependencies, "loadLineSpeech"> : {}),
     ...(options.orders ? {
       saveOrder: async (config, call, catalog, lines, pharmacy, delivery) => {
         const base = { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
