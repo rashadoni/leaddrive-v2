@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest"
 import { MTM_TAB_ROW, mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 import { Badge } from "@/components/mtm/mtm-badge"
 
-const ROOTS = ["src/components/mtm", "src/app/(dashboard)/mtm"]
+const ROOTS = ["src/components/mtm", "src/app/(dashboard)/mtm", "src/lib/mtm"]
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
