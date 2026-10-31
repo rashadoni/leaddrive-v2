@@ -3076,7 +3076,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           teamLoading={teamPhase === "loading" || teamPhase === "idle"}
           teamFailed={teamPhase === "error"}
           refreshToken={refreshToken}
-          controls={<><HelpButton slug="mtm-overview" variant="label" />{renderScopeControls("team")}</>}
+          controls={<><HelpButton slug="mtm-overview" variant="quiet" />{renderScopeControls("team")}</>}
           onRetry={() => setRefreshToken((value) => value + 1)}
           onOpenAgent={(agentId, day) => {
             if (!query) return

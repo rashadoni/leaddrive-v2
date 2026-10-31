@@ -29,7 +29,7 @@ import {
   Users,
   X,
 } from "lucide-react"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -406,7 +406,7 @@ export default function MtmOperationsPage() {
   if (loading) {
     return (
       <div className="space-y-5">
-        <PageDescription icon={Radio} title={t("title")} description={t("subtitle")} />
+        <MtmPageHeader title={t("title")} description={t("subtitle")} />
         <div className="h-96 animate-pulse rounded-xl bg-muted" />
       </div>
     )
@@ -414,9 +414,10 @@ export default function MtmOperationsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <PageDescription icon={Radio} title={t("title")} description={t("subtitle")} />
-        <div className="flex flex-wrap gap-2">
+      <MtmPageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        actions={<>
           <Hint wrap text={t("hint.refresh")}>
             <Button variant="outline" onClick={() => load(true)} disabled={refreshing}>
               {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}
@@ -429,8 +430,8 @@ export default function MtmOperationsPage() {
               {t("newMessage")}
             </Button>
           </Hint>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* Three tiles said «0» on most days (owner, 2026-10-16, from a picture):
           what waits for someone is one line, and only when something does. */}

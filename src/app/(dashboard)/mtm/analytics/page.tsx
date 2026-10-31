@@ -4,9 +4,7 @@ import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { BarChart3 } from "lucide-react"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { ExplainableKpiDashboard } from "@/components/mtm/explainable-kpi-dashboard"
 import { MtmTeamResults, teamResultsPreset } from "@/components/mtm/team-results"
 
@@ -30,10 +28,7 @@ export default function MtmAnalyticsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <PageDescription icon={BarChart3} title={ta("title")} />
-        <HelpButton slug="mtm-analytics" variant="label" />
-      </div>
+      <MtmPageHeader title={ta("title")} help="mtm-analytics" />
 
       <MtmTeamResults orgId={orgId} initialPreset={initialPreset} />
 

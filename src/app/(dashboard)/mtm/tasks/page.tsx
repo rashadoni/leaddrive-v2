@@ -19,9 +19,8 @@ import {
   X,
 } from "lucide-react"
 
-import { HelpButton } from "@/components/help/help-button"
 import { MtmFilterBar, MtmFilterReset, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { mtmTaskDueFormat } from "@/lib/mtm/task-due"
 import { type TaskAgentOption, type TaskGroupOption } from "@/components/mtm/task-form"
 import { MtmTaskQuickAdd, type TaskRecipient } from "@/components/mtm/task-quick-add"
@@ -320,12 +319,7 @@ export default function MtmTasksPage() {
 
   return (
     <div className="space-y-6 pb-20 lg:pb-6">
-      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <PageDescription icon={ClipboardList} title={t("title")} />
-          <HelpButton slug="mtm-tasks" variant="label" />
-        </div>
-      </header>
+      <MtmPageHeader title={t("title")} help="mtm-tasks" />
       {/* Owner 2026-10-20: «добавить задачу слишком длинный процесс… максимально
           облегчи». One line — whom, what, which day — instead of the dialog. */}
       {canCreate ? (

@@ -34,7 +34,7 @@ import {
   UserRoundCheck,
   UsersRound,
 } from "lucide-react"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageTitle } from "@/components/mtm/page-header"
 import {
   MtmFilterGrid,
   MtmFilterMore,
@@ -1065,13 +1065,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
       className="space-y-4"
     >
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <PageDescription
-            icon={Building2}
-            title={tx("explorer.title")}
-          />
-          <HelpButton slug="mtm-customers" variant="label" />
-        </div>
+        <MtmPageTitle title={tx("explorer.title")} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1">
             <MtmFilterSelect testId="organization-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={tx("explorer.savedViewsPlaceholder")} clearable={false}
@@ -1144,6 +1138,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               </Button>
             </Hint>
           ) : null}
+          <HelpButton slug="mtm-customers" variant="quiet" />
         </div>
       </div>
 

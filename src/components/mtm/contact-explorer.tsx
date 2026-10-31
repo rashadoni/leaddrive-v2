@@ -28,7 +28,7 @@ import {
   UsersRound,
 } from "lucide-react"
 import { toast } from "sonner"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageTitle } from "@/components/mtm/page-header"
 import { HelpButton } from "@/components/help/help-button"
 import {
   ContactTransferDialog,
@@ -910,10 +910,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     <div data-testid="mtm-contact-explorer" aria-busy={loading} className="space-y-4">
       {scoped ? null : (
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={UsersRound} title={t("title")} />
-          <HelpButton slug="mtm-contacts" variant="label" />
-        </div>
+        <MtmPageTitle title={t("title")} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1">
             <MtmFilterSelect testId="mtm-contact-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={t("savedViewsPlaceholder")} clearable={false}
@@ -953,6 +950,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
               {t("refresh")}
             </Button>
           </Hint>
+          <HelpButton slug="mtm-contacts" variant="quiet" />
         </div>
       </div>
       )}

@@ -7,8 +7,7 @@ import { useSession } from "next-auth/react"
 import { notifyMtmSettingsChanged, type MtmNavOrgSettings } from "@/hooks/use-mtm-org-settings"
 import { NAV_ORG_SETTING_KEYS } from "@/lib/nav-items"
 import { toast } from "sonner"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import {
   Settings, Save, Satellite, Lock, Wrench, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
   AlertTriangle, RotateCcw, ChevronDown,
@@ -697,17 +696,14 @@ export default function MtmSettingsPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={Settings} title={t("mtmSettings")} description={ts("subtitle")} />
+      <MtmPageHeader title={t("mtmSettings")} description={ts("subtitle")} help="mtm-settings" />
       <div className="animate-pulse grid gap-3 md:grid-cols-2">{[1, 2, 3, 4].map(i => <div key={i} className="h-56 bg-muted rounded-lg" />)}</div>
     </div>
   )
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <PageDescription icon={Settings} title={t("mtmSettings")} description={ts("subtitle")} />
-        <HelpButton slug="mtm-settings" variant="label" />
-      </div>
+      <MtmPageHeader title={t("mtmSettings")} description={ts("subtitle")} help="mtm-settings" />
 
       {/* Six tabs instead of one ten-screen page (owner, 2026-10-08: «сделай
           компактнее… сама структура какая-то непонятная»). Every panel stays

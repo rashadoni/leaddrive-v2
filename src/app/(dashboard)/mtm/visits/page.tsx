@@ -30,10 +30,9 @@ import {
 } from "lucide-react"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
-import { HelpButton } from "@/components/help/help-button"
 import { MtmVisitForm } from "@/components/mtm/visit-form"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -703,7 +702,7 @@ export default function MtmVisitsPage() {
   if (loading && visits.length === 0 && activeVisits.length === 0) {
     return (
       <div className="space-y-6">
-        <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
+        <MtmPageHeader title={t("title")} description={subtitle} help="mtm-visits" />
         <div className="animate-pulse space-y-4 motion-reduce:animate-none">
           <div className="h-24 rounded-2xl bg-muted" />
           <div className="h-80 rounded-2xl bg-muted" />
@@ -714,12 +713,11 @@ export default function MtmVisitsPage() {
 
   return (
     <div className="space-y-6 pb-8" data-testid="mtm-visits-guided-history">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-2">
-          <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
-          <HelpButton slug="mtm-visits" variant="label" />
-        </div>
-        <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+      <MtmPageHeader
+        title={t("title")}
+        description={subtitle}
+        help="mtm-visits"
+        actions={<>
           {returnHref ? (
             <Button asChild variant="outline" className="min-h-11">
               <Link href={returnHref}>
@@ -734,8 +732,8 @@ export default function MtmVisitsPage() {
               {t("add")}
             </Button>
           </Hint>
-        </div>
-      </div>
+        </>}
+      />
 
       {focusedVisitUnavailable && focusedVisitId ? (
         <div role="status" className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
