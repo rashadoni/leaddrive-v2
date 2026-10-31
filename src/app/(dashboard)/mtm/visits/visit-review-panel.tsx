@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, MapPin, UserRound, X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, FileText, MapPin, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
@@ -351,78 +351,18 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
   }
 
   const blockTitle = (text: string) => <h3 className="text-sm font-semibold text-foreground">{text}</h3>
-  /**
-   * "787 мин" is a number a reviewer has to convert before it means anything;
-   * "13 ч 7 мин" is the thing they were looking for — a visit that stayed open
-   * all day.
-   */
-  const durationText = duration == null
-    ? null
-    : duration >= 60
-      ? t("review.durationHm", { hours: Math.floor(duration / 60), minutes: duration % 60 })
-      : t("review.duration", { minutes: duration })
-
   const mapHref = (latitude?: number | null, longitude?: number | null) => (
     latitude != null && longitude != null ? `https://www.google.com/maps?q=${latitude},${longitude}` : null
   )
-
-  const placeTone = (check: PlaceCheck | null) => {
-    if (!check) return "text-muted-foreground"
-    if (check.state === "at_point") return "text-emerald-700 dark:text-emerald-300"
-    if (check.state === "outside" || check.state === "no_gps") return "text-amber-700 dark:text-amber-300"
-    return "text-muted-foreground"
-  }
-
-  // One line of facts instead of four blocks of one line each.
-  const facts: Array<{ key: string; icon: ReactNode; text: string; tone?: string; href?: string | null }> = []
-  facts.push(leftOpen ? {
-    key: "time",
-    icon: <Clock className="h-4 w-4 text-amber-600" aria-hidden="true" />,
-    text: t("leftOpenFact", { since: leftOpenSince(visit.checkInAt), openFor: openForText(visit.checkInAt, now) }),
-    tone: "font-medium text-amber-800 dark:text-amber-300",
-  } : {
-    key: "time",
-    icon: <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
-    text: `${formatTime(visit.checkInAt)} → ${visit.checkOutAt ? formatTime(visit.checkOutAt) : t("notFinished")}${durationText ? ` · ${durationText}` : ""}`,
-  })
-  facts.push({
-    key: "place",
-    icon: <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
-    text: place.checkIn?.state === "at_point"
-      ? tPlace("atPoint")
-      : place.checkIn?.state === "outside"
-        ? tPlace("outside", { distance: distanceText(place.checkIn.distanceMeters ?? 0) })
-        : place.checkIn?.state === "no_gps"
-          ? tPlace("noGps")
-          : tPlace("noPin"),
-    tone: placeTone(place.checkIn),
-    href: mapHref(visit.checkInLat, visit.checkInLng),
-  })
-  facts.push({
-    key: "presentations",
-    icon: <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
-    text: t("review.presentationsCount", { count: visit.presentationSessions.length }),
-  })
-  facts.push({
-    key: "photos",
-    icon: <Circle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
-    text: t("review.photosCount", { count: photoCount }),
-  })
-  facts.push({
-    key: "signature",
-    icon: signature
-      ? <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-      : <Circle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
-    text: signature ? t("review.factSignature") : t("review.factNoSignature"),
-  })
 
   const minutesText = (minutes: number) => minutes >= 60
     ? t("review.durationHm", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
     : t("review.duration", { minutes })
   const open = visit.status === "CHECKED_IN" && !visit.checkOutAt
   const openMinutes = Math.max(0, Math.round((now.getTime() - new Date(visit.checkInAt).getTime()) / 60_000))
+  // Left open: the warning under the header says so, once.
   const stepsChip = leftOpen
-    ? { tone: "border border-border text-amber-700 dark:text-amber-300", text: t("statusLeftOpen"), live: false }
+    ? null
     : open
       ? { tone: "border border-border text-emerald-700 dark:text-emerald-300", text: t("review.chipOpen", { duration: minutesText(openMinutes) }), live: true }
       : { tone: "bg-muted text-foreground", text: duration != null && visit.checkOutAt
@@ -524,11 +464,7 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
       <header className="flex items-start justify-between gap-3 border-b border-border p-4 sm:px-5 sm:py-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            {leftOpen ? (
-              <span data-testid="mtm-visit-left-open-status" className="inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                {t("statusLeftOpen")}
-              </span>
-            ) : (
+            {leftOpen ? null : (
               <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${visitStatusClasses(visit.status)}`}>
                 {t(visitStatusKey(visit.status))}
               </span>
@@ -549,17 +485,24 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
               {t("review.openCustomer")}
             </Link>
           </p>
-          {leftOpen && visit.agent?.id && !data.viewer.canExecute ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-sm" data-testid="mtm-visit-left-open-note">
-              <span className="min-w-0 flex-1">{t("leftOpenHint")}</span>
-              <RemindAgentButton
-                agentId={visit.agent.id}
-                customerName={visit.customer.name || t("unknownCustomer")}
-                checkInAt={visit.checkInAt}
-                timezone={data.timezone}
-                orgId={orgId}
-                testId="mtm-visit-review-remind"
-              />
+          {leftOpen ? (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card px-3 py-2 text-sm text-foreground dark:border-l-amber-500" data-testid="mtm-visit-left-open-note">
+              <span className="min-w-0 flex-1">
+                <span data-testid="mtm-visit-left-open-status" className="font-semibold text-amber-700 dark:text-amber-300">
+                  {t("review.leftOpenLine", { openFor: openForText(visit.checkInAt, now) })}
+                </span>
+                {" — "}{t("review.leftOpenSinceOnlyAgent", { since: leftOpenSince(visit.checkInAt) })}
+              </span>
+              {visit.agent?.id && !data.viewer.canExecute ? (
+                <RemindAgentButton
+                  agentId={visit.agent.id}
+                  customerName={visit.customer.name || t("unknownCustomer")}
+                  checkInAt={visit.checkInAt}
+                  timezone={data.timezone}
+                  orgId={orgId}
+                  testId="mtm-visit-review-remind"
+                />
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -568,30 +511,18 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
         </Button>
       </header>
 
-      <div className="border-b border-border bg-muted/30 px-4 py-2.5 sm:px-5">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" data-testid="mtm-visit-review-facts">
-          {facts.map((item) => (
-            <span key={item.key} className={`inline-flex items-center gap-1.5 ${item.tone || "text-foreground"}`}>
-              {item.icon}
-              {item.href
-                ? <a className="font-medium hover:underline" href={item.href} target="_blank" rel="noreferrer">{item.text}</a>
-                : <span className="tabular-nums">{item.text}</span>}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Right under the time (owner-approved mockup, 2026-10-20): what the
-          manager who was there made of the agent's work. */}
-      {visit.jointVisit ? <JointVisitReviewBlock jointVisit={visit.jointVisit} timezone={data.timezone} /> : null}
-
-      <section className="border-b border-border px-4 py-3 sm:px-5" data-testid="mtm-visit-roadmap">
+      {/* What the agent did beside what the manager who was there made of it
+          (owner, 2026-10-31: the card and its page ran three screens). */}
+      <div className={`border-b border-border [&>section:last-child]:border-b-0 ${visit.jointVisit ? "grid lg:grid-cols-2" : ""}`}>
+      <section className={`px-4 py-3 sm:px-5 ${visit.jointVisit ? "border-b border-border lg:border-b-0 lg:border-r" : ""}`} data-testid="mtm-visit-roadmap">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-base font-semibold text-foreground">{t("review.roadmapTitle")}</h3>
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${stepsChip.tone}`}>
-            {stepsChip.live ? <span className="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400" aria-hidden="true" /> : null}
-            {stepsChip.text}
-          </span>
+          {stepsChip ? (
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${stepsChip.tone}`}>
+              {stepsChip.live ? <span className="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400" aria-hidden="true" /> : null}
+              {stepsChip.text}
+            </span>
+          ) : null}
         </div>
         <VisitSteps
           rows={steps}
@@ -623,6 +554,8 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
           )}
         />
       </section>
+      {visit.jointVisit ? <JointVisitReviewBlock jointVisit={visit.jointVisit} timezone={data.timezone} /> : null}
+      </div>
 
       {/* The evidence itself — presentations, photos, outcome, signature — only when there is some. */}
       {visit.presentationSessions.length || visit.photos.length || visit.notes?.trim() || hasResult || signature ? (

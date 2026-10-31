@@ -568,6 +568,7 @@ export default function MtmVisitsPage() {
   // Until the viewer is known, an agent's own ?visitId must not flash the office review.
   const focusPending = Boolean(focusedVisitId && !activeResolved && !focusedVisitUnavailable)
   const showReview = Boolean(focusedVisitId && activeResolved && !focusedOwnExecution && !focusedVisitUnavailable)
+  const otherLeftOpenVisits = showReview && focusedVisitId ? leftOpenVisits.filter((visit) => visit.id !== focusedVisitId) : leftOpenVisits
   // The three-step guide teaches how to execute a visit; office users review.
   const subtitle = !activeResolved ? t("subtitleNeutral") : viewer?.role === "AGENT" ? t("subtitleAgent") : t("subtitle")
 
@@ -747,7 +748,7 @@ export default function MtmVisitsPage() {
       ) : null}
 
       {showReview && focusedVisitId ? (
-        <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-3">
           <VisitReviewPanel
             key={focusedVisitId}
             visitId={focusedVisitId}
@@ -757,7 +758,7 @@ export default function MtmVisitsPage() {
             longOpenMinutes={longOpenMinutes}
             orgId={orgId ? String(orgId) : undefined}
           />
-          <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} />
+          <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} collapsed />
         </div>
       ) : null}
 
@@ -843,9 +844,10 @@ export default function MtmVisitsPage() {
         </section>
       ) : null}
 
-      {leftOpenVisits.length > 0 ? (
+      {/* The visit open in the card above already says it was left open. */}
+      {otherLeftOpenVisits.length > 0 ? (
         <LeftOpenVisits
-          visits={leftOpenVisits}
+          visits={otherLeftOpenVisits}
           now={now}
           timezone={meta.timezone}
           orgId={orgId ? String(orgId) : undefined}

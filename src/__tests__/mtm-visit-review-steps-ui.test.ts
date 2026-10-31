@@ -161,6 +161,32 @@ describe("«Как прошёл визит» as a list", () => {
     expect(text).not.toContain("Отметился в")
   })
 
+  it("a visit left open says so once, above the steps, with since when (owner, 2026-10-31: «тут чёрт голову сломает»)", () => {
+    const { block } = render(visit(), new Date("2026-10-31T05:42:00.000Z"))
+    const card = container.querySelector('[data-testid="mtm-visit-review"]') as HTMLElement
+
+    expect(card.querySelector('[data-testid="mtm-visit-left-open-status"]')?.textContent).toMatch(/^Не закрыт агентом · 11/)
+    expect(card.querySelector('[data-testid="mtm-visit-left-open-note"]')?.textContent).toContain("Закрыть визит может только сам агент.")
+    expect(card.textContent!.split("Не закрыт агентом")).toHaveLength(2)
+    // The steps carry no chip of their own then, and there is no strip of facts.
+    expect(block.querySelector("h3 + span")).toBeNull()
+    expect(card.querySelector('[data-testid="mtm-visit-review-facts"]')).toBeNull()
+  })
+
+  it("puts the manager's rating beside the steps on a joint visit", () => {
+    const data = visit({
+      jointVisit: {
+        manager: { id: "m1", name: "Саида" },
+        evaluations: [{ evaluator: { id: "m1", name: "Саида" }, average: 4.5, scores: { a: 4, b: 5 }, questions: [{ id: "a", labels: { az: "Hazırlıq", ru: "Подготовка", en: "Preparation" } }, { id: "b", labels: { az: "Ünsiyyət", ru: "Общение", en: "Talk" } }], comment: null, updatedAt: "2026-10-30T18:46:00.000Z" }],
+      },
+    } as unknown as Partial<VisitReviewData["visit"]>)
+    const { block } = render(data)
+    const pair = block.parentElement as HTMLElement
+
+    expect(pair.className).toContain("lg:grid-cols-2")
+    expect(pair.querySelector('[data-testid="mtm-visit-joint-block"]')).not.toBeNull()
+  })
+
   it("names the client's open tasks with a way to them", () => {
     const data = visit()
     data.openTasks = { count: 2, items: [{ id: "t1", title: "Привезти образцы", priority: "HIGH", dueDate: null }] }
