@@ -278,7 +278,7 @@ function DefinitionRow({
   hint?: string | null
 }) {
   return (
-    <div className="grid gap-1 border-b border-border py-3 last:border-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
+    <div className="grid gap-0.5 border-b border-border py-2 last:border-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
       <dt className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></dt>
       <dd className="min-w-0 break-words text-sm">{value || "—"}</dd>
     </div>
@@ -323,11 +323,11 @@ function SectionCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <h2 className="text-base font-semibold">{title}</h2>
-          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+          {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
         </div>
         {action}
       </div>
-      <div className="mt-3">{children}</div>
+      <div className="mt-2">{children}</div>
     </section>
   )
 }
@@ -468,7 +468,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
   const changeHint = capabilities.canManage ? t("hint.edit") : t("hint.suggestChange")
 
   return (
-    <div data-testid="mtm-contact-detail" className="space-y-5">
+    <div data-testid="mtm-contact-detail" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm" className="min-h-11 md:min-h-9">
           <Link href={returnHref}>
@@ -482,8 +482,8 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
       </div>
 
       <header className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
-          <div className="grid min-w-0 gap-4">
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-5">
+          <div className="grid min-w-0 gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <StateBadge tone={statusTone} hint={hintFor(STATUS_HINT, contact.status)}>{t(`statuses.${contact.status}`)}</StateBadge>
               <StateBadge>{clientCategoryLabel}</StateBadge>
@@ -491,7 +491,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
               <StateBadge tone={verificationTone} hint={hintFor(VERIFICATION_HINT, contact.verificationStatus)}>{t(`verificationStatuses.${contact.verificationStatus}`)}</StateBadge>
             </div>
             <div className="grid gap-2">
-              <h1 className="max-w-4xl text-2xl font-semibold tracking-tight md:text-3xl">{contact.displayName}</h1>
+              <h1 className="max-w-4xl text-2xl font-semibold tracking-tight">{contact.displayName}</h1>
               {showsProfession ? (
                 <p className="flex items-start gap-2 text-sm text-muted-foreground">
                   <Stethoscope className="mt-0.5 h-4 w-4 flex-none" />
@@ -596,7 +596,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         </div>
 
         <TabsContent value="profile">
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             <SectionCard title={t("identityTitle")} description={t("identityDescription")}>
               <dl>
                 {shows("externalCode") ? <DefinitionRow label={t("externalCode")} value={contact.externalCode} /> : null}
@@ -684,7 +684,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         </TabsContent>
 
         <TabsContent value="workplaces">
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             <SectionCard
               title={t("currentWorkplacesTitle")}
               description={t("currentWorkplacesDescription")}
@@ -734,7 +734,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
         </TabsContent>
 
         <TabsContent value="communication">
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             <SectionCard title={t("channelsTitle")} description={t("channelsDescription")}>
               <dl>
                 {shows("email") ? <DefinitionRow label={t("email")} value={contact.email ? <a className="text-primary hover:underline" href={`mailto:${contact.email}`}>{contact.email}</a> : null} /> : null}

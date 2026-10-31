@@ -249,7 +249,7 @@ function DefinitionRow({
   hint?: string | null
 }) {
   return (
-    <div className={cn("grid gap-1 border-b border-border py-3 last:border-0 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4", className)}>
+    <div className={cn("grid gap-0.5 border-b border-border py-2 last:border-0 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4", className)}>
       <dt className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></dt>
       <dd className="min-w-0 text-sm">{value || "—"}</dd>
     </div>
@@ -486,7 +486,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const planHref = mtmRoutePlanPageHref({ customerId: organizationId, agentId: owners[0]?.agent.id })
 
   return (
-    <div data-testid="mtm-organization-detail" className="space-y-5">
+    <div data-testid="mtm-organization-detail" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm" className="min-h-11 md:min-h-9">
           <Link href={returnHref}>
@@ -502,8 +502,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       </div>
 
       <header className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
-          <div className="grid min-w-0 gap-4">
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-5">
+          <div className="grid min-w-0 gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <StateBadge tone={summary.status === "ACTIVE" ? "positive" : "warning"} hint={hintFor(STATUS_HINT, summary.status)}>
                 {explorer(`statuses.${summary.status}`)}
@@ -513,7 +513,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               {summary.code ? <StateBadge hint={t("detail.hint.code")}>{t("detail.etalonId")}: {summary.code}</StateBadge> : null}
             </div>
             <div className="grid gap-2">
-              <h1 className="max-w-4xl text-2xl font-semibold tracking-tight md:text-3xl">{summary.name}</h1>
+              <h1 className="max-w-4xl text-2xl font-semibold tracking-tight">{summary.name}</h1>
               <p className="flex max-w-3xl items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="mt-0.5 h-4 w-4 flex-none" />
                 <span>{summary.address || locationLine || t("detail.addressMissing")}</span>
@@ -865,9 +865,9 @@ function SectionFrame({
 }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-      <div className="mb-5 grid gap-1">
+      <div className="mb-3 grid gap-0.5">
         <h2 className="text-base font-semibold">{title}</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+        <p className="max-w-3xl text-xs text-muted-foreground">{description}</p>
       </div>
       {children}
     </section>
