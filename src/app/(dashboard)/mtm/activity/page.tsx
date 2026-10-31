@@ -48,7 +48,11 @@ export default function MtmActivityPage() {
   // filter uses on the server — not the browser's.
   const [timezone, setTimezone] = useState<string | null>(null)
 
-  const [period, setPeriod] = useState<Period>("7d")
+  // Opens on today (owner 2026-10-31: seven days were 58 rows, 5.5 screens).
+  // An empty today widens itself to seven days once and says so.
+  const [period, setPeriod] = useState<Period>("today")
+  const [periodChosen, setPeriodChosen] = useState(false)
+  const [widenedFrom, setWidenedFrom] = useState<Period | null>(null)
   const [agentId, setAgentId] = useState("")
   const [type, setType] = useState("")
   const [violations, setViolations] = useState(false)
@@ -94,6 +98,13 @@ export default function MtmActivityPage() {
 
   // Reset to page 1 whenever a filter changes.
   useEffect(() => { if (orgId) load(1, false) }, [orgId, period, agentId, type, violations, load])
+
+  useEffect(() => {
+    if (loading || errorKey || periodChosen || widenedFrom || period !== "today") return
+    if (total !== 0 || agentId || type || violations) return
+    setWidenedFrom("today")
+    setPeriod("7d")
+  }, [loading, errorKey, periodChosen, widenedFrom, period, total, agentId, type, violations])
 
   const toggleViolations = () => { setViolations(v => !v); setType("") }
 
@@ -151,9 +162,9 @@ export default function MtmActivityPage() {
           hidden toggle. Now it is a visible pill, the counts one line. */}
       <div className="space-y-2">
         <MtmFilterBar testId="mtm-activity-filters">
-          <MtmFilterSelect testId="mtm-activity-period" label={tf("period")} value={period} emptyValue="7d" showValue allLabel={t(PERIOD_KEY["7d"])}
+          <MtmFilterSelect testId="mtm-activity-period" label={tf("period")} value={period} emptyValue="today" showValue allLabel={t(PERIOD_KEY.today)}
             options={PERIODS.map((p) => ({ value: p, label: t(PERIOD_KEY[p]) }))}
-            onChange={(value) => setPeriod(value as Period)} />
+            onChange={(value) => { setPeriodChosen(true); setWidenedFrom(null); setPeriod(value as Period) }} />
           <MtmFilterSelect testId="mtm-activity-agent" label={tf("employee")} value={agentId} allLabel={t("allAgents")}
             options={agents.map((a) => ({ value: a.id, label: a.name }))}
             onChange={setAgentId} />
@@ -175,6 +186,11 @@ export default function MtmActivityPage() {
             </button>
           </Hint>
         </MtmFilterBar>
+        {widenedFrom ? (
+          <p role="status" data-testid="mtm-activity-widened" className="text-sm text-muted-foreground">
+            {t("widenedNotice", { from: t(PERIOD_KEY[widenedFrom]), to: t(PERIOD_KEY[period]) })}
+          </p>
+        ) : null}
         <MtmResultLine aside={t("statsPeriodNote")}>
           <span className="font-medium text-foreground">{t("totalActivity")}: {kpi.totalActivities}</span> · {t("checkIn")}: {kpi.totalCheckIns} · {t("checkOut")}: {kpi.totalCheckOuts} · {t("photoUpload")}: {kpi.totalPhotos}
         </MtmResultLine>

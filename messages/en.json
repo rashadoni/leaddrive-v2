@@ -16319,6 +16319,7 @@
     "viewMyQueue": "View my queue"
   },
   "mtmActivity": {
+    "widenedNotice": "No activity for «{from}» — showing «{to}».",
     "hint": {
       "export": "Download as CSV the journal rows already loaded on the page.",
       "violations": "Only violations: visits started by a manager outside the client's zone, and failed sign-ins to the app."
