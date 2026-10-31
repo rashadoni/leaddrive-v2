@@ -30552,6 +30552,7 @@
     "openTimesheet": "Timesheet for {month}",
     "kpiArrived": "Came to work",
     "kpiOf": "of {total}",
+    "kpiDayOff": "day off",
     "kpiArrivedLink": "Show list",
     "kpiLate": "Late",
     "kpiLateLink": "Who and by how much",
