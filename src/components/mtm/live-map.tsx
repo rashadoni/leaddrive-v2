@@ -13,6 +13,9 @@ import { calculateDistance } from "@/lib/geo-utils"
 import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type LiveMapClientNode } from "@/lib/mtm/live-map-clients"
 import { liveMapAgentMarker, liveMapMarkerGlides } from "@/lib/mtm/live-map-agent-marker"
+import { compassPoint, liveMtmMovement, readMtmMovement, type MtmMovementMode } from "@/lib/mtm/movement-mode"
+import { modeRuns, type ModeRun } from "@/lib/mtm/history-replay"
+import { MovementArrows, movementLineStyle } from "./movement-arrows"
 import { liveMapZoneHex, liveMapZonesLargestFirst, zoneAreaSquareMeters, type LiveMapZone, type LiveMapZoneChange } from "@/lib/mtm/live-map-zones"
 import { formatMtmArea } from "@/lib/mtm/visit-place-check"
 import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
@@ -153,8 +156,14 @@ const BASE_MAP_TILE_ERROR_THRESHOLD = 3
 // What the marker looks like — the freshness of the GPS point in its fill and
 // shape, the employee's own colour as a ring around it — is written down, and
 // tested, in src/lib/mtm/live-map-agent-marker.ts.
-function agentIcon(name: string, freshness: LiveMapAgent["freshness"], focused: boolean, mapColor?: string | null) {
-  const { html, size } = liveMapAgentMarker({ name, freshness, focused, mapColor })
+function agentIcon(
+  name: string,
+  freshness: LiveMapAgent["freshness"],
+  focused: boolean,
+  mapColor?: string | null,
+  movement?: { mode: MtmMovementMode; heading: number | null } | null,
+) {
+  const { html, size } = liveMapAgentMarker({ name, freshness, focused, mapColor, movement })
   return L.divIcon({
     className: "mtm-agent-marker",
     html,
@@ -1034,6 +1043,29 @@ export default function MtmLiveMap({
     () => clusterLiveMapViewportAgents(agents, viewport, zoom, focusAgentId),
     [agents, focusAgentId, viewport, zoom],
   )
+  // Car, on foot or standing, and which way, for each employee drawn on his
+  // own — read off his position now and the tail this page saw behind him
+  // (src/lib/mtm/movement-mode.ts). His tail is drawn in pieces by the way he
+  // moved along it: a walk to the car and the drive after it are two lines.
+  const movementByAgent = useMemo(() => {
+    const found = new Map<string, { movement: ReturnType<typeof liveMtmMovement>; tail: ModeRun[] }>()
+    for (const marker of markerSelection.markers) {
+      if (marker.kind !== "AGENT") continue
+      const agent = marker.agent
+      const trail = trails?.get(agent.agentId) ?? []
+      const movement = liveMtmMovement({ ...agent, trail })
+      const tail = trails ? liveMapTrailSegments(trail).flatMap((segment) => {
+        const reading = readMtmMovement(segment)
+        return modeRuns(segment.map((point, fixIndex) => ({ latitude: point.latitude, longitude: point.longitude, fixIndex })), reading.modes)
+      }) : []
+      found.set(agent.agentId, { movement, tail })
+    }
+    return found
+  }, [markerSelection.markers, trails])
+  const trailArrowLines = useMemo(
+    () => [...movementByAgent.values()].flatMap((entry) => entry.tail),
+    [movementByAgent],
+  )
   // Reuse the capped, viewport-aware clustering selection so the density layer
   // never mounts hundreds of extra Leaflet nodes on phones or tablets.
   const heatPoints = useMemo(
@@ -1233,15 +1265,20 @@ export default function MtmLiveMap({
               in a cluster has one — a cluster is a count, not a person. */}
           {trails ? markerSelection.markers.flatMap((marker) => {
             if (marker.kind !== "AGENT") return []
-            return liveMapTrailSegments(trails.get(marker.agent.agentId) ?? []).map((segment, index) => (
+            const tail = movementByAgent.get(marker.agent.agentId)?.tail ?? []
+            const focused = marker.agent.agentId === focusAgentId
+            return tail.map((run, index) => (
               <Polyline
                 key={`trail-${marker.agent.agentId}-${index}`}
-                positions={segment.map((point) => [point.latitude, point.longitude] as L.LatLngTuple)}
+                positions={run.path as L.LatLngTuple[]}
                 interactive={false}
-                pathOptions={{ color: marker.agent.agentId === focusAgentId ? "#1d4ed8" : "#2563eb", weight: marker.agent.agentId === focusAgentId ? 4 : 3, opacity: 0.55, lineCap: "round", lineJoin: "round" }}
+                pathOptions={{ ...movementLineStyle(run.mode, focused ? 1 : 0.8), opacity: focused ? 0.85 : 0.6 }}
               />
             ))
           }) : null}
+          {trails ? (
+            <MovementArrows keyPrefix="trail" lines={trailArrowLines} />
+          ) : null}
 
           {/* The ruler: a line through the points pressed, and the place they add up to. */}
           {/* From three points the ruler also reads an area: the shape it is the
@@ -1300,6 +1337,10 @@ export default function MtmLiveMap({
             // A grey last known point has no speed now: the last fix before a
             // break may have been taken on the move.
             const speedKmh = agent.freshness === "STALE" ? null : mtmSpeedKmh(agent.speed)
+            const moving = movementByAgent.get(agent.agentId)?.movement
+            const movingWords = moving && moving.mode !== "STAY"
+              ? ` · ${tMap(`movement.${moving.mode}`)}${moving.heading != null ? ` ${tMap(`compass.${compassPoint(moving.heading)}`)}` : ""}`
+              : ""
             return (
               <GlidingMarker
                 key={marker.id}
@@ -1307,7 +1348,7 @@ export default function MtmLiveMap({
                 longitude={agent.longitude}
                 glide={glideMarkers}
                 lastKnown={agent.freshness === "STALE"}
-                icon={agentIcon(agent.name, agent.freshness, isFocused, agent.mapColor)}
+                icon={agentIcon(agent.name, agent.freshness, isFocused, agent.mapColor, movementByAgent.get(agent.agentId)?.movement)}
                 zIndexOffset={isFocused ? 1000 : 500}
                 alt={agent.name}
                 // …and so is a press on an employee: the ruler starts from where he is.
@@ -1318,7 +1359,7 @@ export default function MtmLiveMap({
                     reads `permanent` once, so the two are different tooltips. */}
                 <Tooltip direction="top" key={showLabels ? "label" : "hover"} permanent={showLabels} offset={[0, -16]} opacity={showLabels ? 0.92 : 1}>
                   <span style={{ fontWeight: 700 }}>{agent.name}</span>
-                  {showLabels ? null : <>{" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}</>}
+                  {showLabels ? null : <>{" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}{movingWords}</>}
                 </Tooltip>
                 {pressMode ? null : <Popup>
                   <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 170 }}>
@@ -1327,6 +1368,7 @@ export default function MtmLiveMap({
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b", marginBottom: 2 }}>
                       {tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}
+                      {movingWords}
                       {speedKmh ? ` · ${tMap("roster.kmh", { value: speedKmh })}` : ""}
                       {agent.battery != null ? ` · 🔋${agent.battery}%` : ""}
                     </div>

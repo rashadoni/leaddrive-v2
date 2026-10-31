@@ -41,8 +41,10 @@ vi.mock("react-leaflet", async () => {
     Polyline: ({ positions, pathOptions }: { positions: Array<[number, number]>; pathOptions: { color: string; dashArray?: string } }) =>
       h("i", { "data-line": pathOptions.color, "data-dash": pathOptions.dashArray ?? "", "data-positions": JSON.stringify(positions) }),
     CircleMarker: () => null,
+    Marker: () => null,
     Popup: () => null,
-    useMap: () => ({ invalidateSize: () => {}, fitBounds: () => {}, setView: () => {} }),
+    useMap: () => ({ invalidateSize: () => {}, fitBounds: () => {}, setView: () => {}, getZoom: () => 13 }),
+    useMapEvents: () => null,
   }
 })
 vi.mock("@/components/mtm/carto-basemap", () => ({ CartoBasemap: () => null }))

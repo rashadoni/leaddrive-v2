@@ -16,8 +16,14 @@ import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { addDays, clampHistoryEndDate, MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
 import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
+import { historyReplayCuts, historyReplayFrame, historyReplaySkipStill, readHistoryMovement } from "@/lib/mtm/history-replay"
+import { compassPoint } from "@/lib/mtm/movement-mode"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { DayTripLedger, type DayTripData, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
+
+/** At ×1 two minutes of the day go by in a second. */
+const REPLAY_DAY_MS_PER_MS = 120
+const REPLAY_RATES = [1, 4, 10] as const
 
 const LocationHistoryMap = dynamic(() => import("@/components/mtm/location-history-map"), { ssr: false })
 
@@ -298,8 +304,11 @@ export function LocationHistoryPanel() {
   // one explicit request until the roster resolves, then load it once. Manual
   // filter changes still require the user to press "Show".
   const requestedHistoryLoadRef = useRef<{ agentId: string; date: string } | null>(null)
-  const [playbackIndex, setPlaybackIndex] = useState(0)
-  const [playbackRate, setPlaybackRate] = useState(1)
+  // The replay holds a moment of the day, not a fix (owner 2026-11-01, of
+  // the mockup): null — the end of the day.
+  const [playbackAt, setPlaybackAt] = useState<number | null>(null)
+  const [playbackRate, setPlaybackRate] = useState(4)
+  const [skipStill, setSkipStill] = useState(true)
   const [tripFocus, setTripFocus] = useState<DayTripFocus | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [layers, setLayers] = useState({
@@ -438,10 +447,22 @@ export function LocationHistoryPanel() {
 
   const selectedAgent = useMemo(() => agents.find((agent) => agent.id === agentId), [agentId, agents])
   const playbackPointCount = data?.points.length ?? 0
-  const playbackLastIndex = Math.max(0, playbackPointCount - 1)
-  const playbackPoint = data?.points[Math.min(playbackIndex, playbackLastIndex)] ?? null
-  const playbackSpeedKmh = mtmSpeedKmh(playbackPoint?.speed)
-  const playbackAtMillis = playbackPoint ? new Date(playbackPoint.recordedAt).getTime() : Number.POSITIVE_INFINITY
+  const replayPoints = useMemo(() => data?.points ?? [], [data])
+  const replayCuts = useMemo(() => historyReplayCuts(replayPoints, data?.gaps ?? []), [data, replayPoints])
+  const replayReading = useMemo(() => readHistoryMovement(replayPoints, replayCuts), [replayCuts, replayPoints])
+  const dayStartAt = replayPoints.length ? Date.parse(replayPoints[0].recordedAt) : 0
+  const dayEndAt = replayPoints.length ? Date.parse(replayPoints[replayPoints.length - 1].recordedAt) : 0
+  const replayAt = playbackAt == null ? dayEndAt : Math.min(dayEndAt, Math.max(dayStartAt, playbackAt))
+  const replayFrame = useMemo(
+    () => historyReplayFrame(replayPoints, replayReading, replayCuts, replayAt),
+    [replayAt, replayCuts, replayPoints, replayReading],
+  )
+  const playbackIndex = replayFrame?.index ?? 0
+  const playbackAtEnd = replayAt >= dayEndAt
+  const playbackPoint = replayPoints[playbackIndex] ?? null
+  // Between two fixes the speed of the fix behind him; on a break or out of signal none.
+  const playbackSpeedKmh = replayFrame?.mode === "DRIVE" || replayFrame?.mode === "WALK" ? mtmSpeedKmh(playbackPoint?.speed) : null
+  const playbackAtMillis = replayPoints.length ? replayAt : Number.POSITIVE_INFINITY
   const activeTimelineIndex = data?.timeline.reduce(
     (lastIndex, event, index) => new Date(event.at).getTime() <= playbackAtMillis ? index : lastIndex,
     -1,
@@ -471,19 +492,39 @@ export function LocationHistoryPanel() {
 
   useEffect(() => {
     setIsPlaying(false)
-    setPlaybackIndex(playbackLastIndex)
+    setPlaybackAt(null)
     setTripFocus(null)
-  }, [data, playbackLastIndex])
+  }, [data])
 
+  // The day plays by the clock: at ×1 two minutes of the day go by in a
+  // second, so a forty-minute stop lasts twenty seconds and a five-minute
+  // drive two and a half — as long, side by side, as they were.
+  const replayRef = useRef({ replayPoints, replayReading, replayCuts, dayEndAt, playbackRate, skipStill })
+  replayRef.current = { replayPoints, replayReading, replayCuts, dayEndAt, playbackRate, skipStill }
   useEffect(() => {
-    if (!isPlaying || playbackPointCount < 2 || playbackIndex >= playbackLastIndex) return
-    const timer = window.setTimeout(() => {
-      const nextIndex = Math.min(playbackIndex + 1, playbackLastIndex)
-      setPlaybackIndex(nextIndex)
-      if (nextIndex >= playbackLastIndex) setIsPlaying(false)
-    }, Math.max(180, 900 / playbackRate))
-    return () => window.clearTimeout(timer)
-  }, [isPlaying, playbackIndex, playbackLastIndex, playbackPointCount, playbackRate])
+    if (!isPlaying) return
+    let frame = 0
+    let last: number | null = null
+    const step = (now: number) => {
+      const elapsed = last == null ? 0 : Math.min(100, now - last)
+      last = now
+      const replay = replayRef.current
+      let ended = false
+      setPlaybackAt((current) => {
+        let next = (current ?? replay.dayEndAt) + elapsed * replay.playbackRate * REPLAY_DAY_MS_PER_MS
+        if (replay.skipStill) next = historyReplaySkipStill(replay.replayPoints, replay.replayReading, replay.replayCuts, next)
+        if (next >= replay.dayEndAt) {
+          ended = true
+          return replay.dayEndAt
+        }
+        return next
+      })
+      if (ended) setIsPlaying(false)
+      else frame = window.requestAnimationFrame(step)
+    }
+    frame = window.requestAnimationFrame(step)
+    return () => window.cancelAnimationFrame(frame)
+  }, [isPlaying])
 
   const togglePlayback = () => {
     if (playbackPointCount < 2) return
@@ -491,7 +532,7 @@ export function LocationHistoryPanel() {
       setIsPlaying(false)
       return
     }
-    if (playbackIndex >= playbackLastIndex) setPlaybackIndex(0)
+    if (playbackAtEnd) setPlaybackAt(dayStartAt)
     setIsPlaying(true)
   }
 
@@ -669,11 +710,13 @@ export function LocationHistoryPanel() {
               </div>
               <div className="text-right text-xs" aria-live="polite">
                 <div className="font-medium tabular-nums">
-                  {playbackPoint ? formatMoment(playbackPoint.recordedAt) : t("noReplayPoints")}
+                  {replayFrame ? formatMoment(new Date(replayAt).toISOString()) : t("noReplayPoints")}
                 </div>
-                {playbackPoint && (
-                  <div className="text-muted-foreground">
-                    {t("pointProgress", { current: playbackIndex + 1, total: playbackPointCount })}
+                {replayFrame && (
+                  <div data-testid="mtm-location-history-replay-mode" className="text-muted-foreground">
+                    {tMap(`movement.${replayFrame.mode}`)}
+                    {replayFrame.heading != null ? ` · ${tMap(`compass.${compassPoint(replayFrame.heading)}`)}` : ""}
+                    {playbackSpeedKmh ? ` · ${tMap("roster.kmh", { value: playbackSpeedKmh })}` : ""}
                   </div>
                 )}
               </div>
@@ -690,7 +733,7 @@ export function LocationHistoryPanel() {
                   disabled={playbackPointCount < 2}
                 >
                   {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
-                  {isPlaying ? t("pause") : playbackIndex >= playbackLastIndex ? t("replayFromStart") : t("play")}
+                  {isPlaying ? t("pause") : playbackAtEnd ? t("replayFromStart") : t("play")}
                 </Button>
               </Hint>
               <Button
@@ -699,26 +742,27 @@ export function LocationHistoryPanel() {
                 className="min-h-11"
                 onClick={() => {
                   setIsPlaying(false)
-                  setPlaybackIndex(0)
+                  setPlaybackAt(dayStartAt)
                 }}
-                disabled={!playbackPointCount || playbackIndex === 0}
+                disabled={!playbackPointCount || replayAt <= dayStartAt}
               >
                 <RotateCcw className="mr-1.5 h-4 w-4" />{t("restart")}
               </Button>
               <label className="flex min-h-11 items-center gap-3 rounded-md border px-3">
                 <span className="sr-only">{t("replayPosition")}</span>
+                {/* By the minute of the day, not by the fix. */}
                 <input
                   type="range"
                   min={0}
-                  max={playbackLastIndex}
+                  max={Math.max(1, Math.ceil((dayEndAt - dayStartAt) / 60_000))}
                   step={1}
-                  value={Math.min(playbackIndex, playbackLastIndex)}
+                  value={Math.round((replayAt - dayStartAt) / 60_000)}
                   disabled={playbackPointCount < 2}
                   aria-label={t("replayPosition")}
-                  aria-valuetext={playbackPoint ? `${playbackIndex + 1}/${playbackPointCount} · ${formatMoment(playbackPoint.recordedAt)}` : t("noReplayPoints")}
+                  aria-valuetext={replayFrame ? formatMoment(new Date(replayAt).toISOString()) : t("noReplayPoints")}
                   onChange={(event) => {
                     setIsPlaying(false)
-                    setPlaybackIndex(Number(event.target.value))
+                    setPlaybackAt(dayStartAt + Number(event.target.value) * 60_000)
                   }}
                   className="h-2 w-full cursor-pointer accent-primary disabled:cursor-not-allowed"
                 />
@@ -732,18 +776,30 @@ export function LocationHistoryPanel() {
                     aria-label={t("playbackRate")}
                     onChange={(event) => setPlaybackRate(Number(event.target.value))}
                   >
-                    {[0.5, 1, 2, 4].map((rate) => <option key={rate} value={rate}>{t("playbackRateValue", { rate })}</option>)}
+                    {REPLAY_RATES.map((rate) => <option key={rate} value={rate}>{t("playbackRateValue", { rate })}</option>)}
                   </Select>
                 </Hint>
               </label>
             </div>
+            <Hint wrap text={t("skipStillHint")}>
+              <label className="mt-2 inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium">
+                <input
+                  data-testid="mtm-location-history-skip-still"
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={skipStill}
+                  onChange={(event) => setSkipStill(event.target.checked)}
+                />
+                {t("skipStill")}
+              </label>
+            </Hint>
 
             {playbackPoint && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span>{t("accuracy")}: <HintValue text={playbackPoint.accuracy == null ? null : t("hint.historyPointAccuracy")}>{playbackPoint.accuracy == null ? "—" : `${Math.round(playbackPoint.accuracy)} m`}</HintValue></span>
                 <span>{t("battery")}: {playbackPoint.battery == null ? "—" : `${Math.round(playbackPoint.battery)}%`}</span>
                 <span>{t("gpsSpeed")}: <HintValue text={playbackSpeedKmh == null ? null : t("hint.historyPointSpeed")}>{playbackSpeedKmh == null ? "—" : tMap("roster.kmh", { value: playbackSpeedKmh })}</HintValue></span>
-                <HintValue text={t("hint.historyPointMoving")}>{playbackPoint.isMoving ? t("moving") : t("stationary")}</HintValue>
+                <HintValue text={t("hint.historyPointMoving")}>{replayFrame?.mode === "DRIVE" || replayFrame?.mode === "WALK" ? t("moving") : t("stationary")}</HintValue>
               </div>
             )}
           </section>
@@ -762,13 +818,16 @@ export function LocationHistoryPanel() {
                 locale={locale}
                 timezone={timezone}
                 playbackIndex={playbackIndex}
+                playbackAt={replayAt}
                 focus={tripFocus}
                 matchedTrack={data.matchedTrack ?? null}
               />
             </div>
             {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
             <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
-              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{data.matchedTrack && layers.roads ? t("legendRoads") : t("legendTrack")}</li>
+              {/* Owner 2026-11-01: the line itself says car or on foot, with arrows the way he went. */}
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{t("legendDrive")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.walk }} />{t("legendWalk")}</li>
               {data.matchedTrack && layers.roads ? (
                 <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-2 border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.raw }} />{t("legendRaw")}</li>
               ) : null}

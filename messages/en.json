@@ -18024,6 +18024,23 @@
     "distanceDetail": "{distance} from the customer (allowed {radius})"
   },
   "mtmMap": {
+    "movement": {
+      "DRIVE": "by car",
+      "WALK": "on foot",
+      "STAY": "standing",
+      "BREAK": "on a break",
+      "GAP": "no signal"
+    },
+    "compass": {
+      "N": "north",
+      "NE": "north-east",
+      "E": "east",
+      "SE": "south-east",
+      "S": "south",
+      "SW": "south-west",
+      "W": "west",
+      "NW": "north-west"
+    },
     "hint": {
       "showEveryone": "Clear the selection and show every employee on the map",
       "back": "Back to the MTM home page, with the filters you opened the map from.",
@@ -18462,6 +18479,10 @@
         "evidence": "Stops and events in detail"
       },
       "legendTrack": "Path from GPS points",
+      "legendDrive": "By car",
+      "legendWalk": "On foot",
+      "skipStill": "Skip stops",
+      "skipStillHint": "During playback, stops, breaks and signal gaps are passed over: only the moving is played.",
       "legendRoads": "Route along roads — the likely one, from GPS fixes",
       "legendRaw": "GPS fixes joined straight",
       "legendGap": "No points — path unknown, the line only joins the edges of the gap",
@@ -18550,7 +18571,7 @@
       },
       "exportCsv": "Export day CSV",
       "replayTitle": "Day replay",
-      "replayHint": "Play or scrub accepted GPS points in their recorded order. The map keeps the full-day frame stable.",
+      "replayHint": "Plays the day by the clock: a stop lasts as long as it lasted. Drag the slider to any minute.",
       "play": "Play",
       "pause": "Pause",
       "replayFromStart": "Play from start",

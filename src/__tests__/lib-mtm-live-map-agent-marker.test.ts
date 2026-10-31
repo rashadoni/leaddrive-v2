@@ -104,8 +104,8 @@ describe("the map that draws it", () => {
   const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")
 
   it("builds every employee's marker from that description, handing it the key stored on his card", () => {
-    expect(map).toContain("const { html, size } = liveMapAgentMarker({ name, freshness, focused, mapColor })")
-    expect(map).toContain("icon={agentIcon(agent.name, agent.freshness, isFocused, agent.mapColor)}")
+    expect(map).toContain("const { html, size } = liveMapAgentMarker({ name, freshness, focused, mapColor, movement })")
+    expect(map).toContain("icon={agentIcon(agent.name, agent.freshness, isFocused, agent.mapColor, movementByAgent.get(agent.agentId)?.movement)}")
     // The page passes the roster's row on whole, so the colour comes with it.
     expect(page).toContain("return [{ ...agent, freshness, latitude: agent.latitude, longitude: agent.longitude, recordedAt: agent.recordedAt }]")
   })
