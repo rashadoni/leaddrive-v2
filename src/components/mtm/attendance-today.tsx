@@ -14,7 +14,7 @@ import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { attendanceAskableExplanations, attendanceExplanationKey, attendanceNewlyAskable, attendanceNow, attendanceRowExplanation, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodayAttention, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
-import type { AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
+import { ATTENDANCE_EXPLANATION_LOOKBACK_DAYS, type AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { MtmAttendanceSetupChecklist } from "@/components/mtm/attendance-setup-checklist"
@@ -111,7 +111,7 @@ export function MtmAttendanceToday() {
         fetch(`/api/v1/mtm/attendance/report?${new URLSearchParams({ from: range.from, to: range.to, form: "ALL" })}`, { cache: "no-store", signal: controller.signal }),
         fetch("/api/v1/mtm/attendance/requests?status=PENDING", { cache: "no-store", signal: controller.signal }),
         fetch(`/api/v1/mtm/attendance/review?${new URLSearchParams({ from: addDateKeyDays(today, -6), to: today, status: "OPEN" })}`, { cache: "no-store", signal: controller.signal }),
-        fetch(`/api/v1/mtm/attendance/explanations?${new URLSearchParams({ from: today, to: today })}`, { cache: "no-store", signal: controller.signal }),
+        fetch(`/api/v1/mtm/attendance/explanations?${new URLSearchParams({ from: addDateKeyDays(today, -ATTENDANCE_EXPLANATION_LOOKBACK_DAYS), to: today })}`, { cache: "no-store", signal: controller.signal }),
       ])
       const [reportBody, requestsBody, risksBody, explanationsBody] = await Promise.all([readJson(report), readJson(requests), readJson(risks), readJson(explanations)])
       if (controller.signal.aborted) return
@@ -307,7 +307,7 @@ export function MtmAttendanceToday() {
               const explainId = explainKey(item), explanation = explanationOf(item)
               // What the explanation is about, said when the row does not say it: its own row, or a row of the other kind.
               const about = explanation && (item.type === "explanation" || explanation.kind !== (item.type === "late" ? "LATE" : "ABSENT"))
-                ? t(explanation.kind === "LATE" ? "explainForLate" : "explainForAbsent") : null
+                ? `${t(explanation.kind === "LATE" ? "explainForLate" : "explainForAbsent")}${data && item.date !== data.today ? ` · ${dateLabel(item.date)}` : ""}` : null
               return <li key={key} className="py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}><div className="flex flex-wrap items-center gap-3">
               {explainId && data?.explanations ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={!!explanation}
                 checked={!explanation && selected.has(explainId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(explainId); else next.delete(explainId); return next })} /> : null}

@@ -14,6 +14,9 @@ export const DEFAULT_ATTENDANCE_BALANCE_COLUMNS = ["employee", "team", "expected
 export const DEFAULT_ATTENDANCE_ABSENCE_KIND_COLUMNS = ["employee", "team", "kinds", "absenceTotal"] as const
 export const DEFAULT_ATTENDANCE_TEAM_COLUMNS = ["team", "employees", "workedDays", "worked", "lateCount", "absent", "overtimeHours", "attendanceRate"] as const
 /** «Forma N-1t», the timesheet form Azerbaijani accounting uses: number, name, unit, days 1–31, worked days and hours. */
+/** The day reports of Personnel → Reports (day, absences, lateness): position and department
+ * as their own columns in Excel/PDF; the screen folds them under the name (owner, 2026-11-01). */
+export const ATTENDANCE_DAY_REPORT_COLUMNS = ["employee", "position", "department", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "notes"] as const
 export const ATTENDANCE_N1T_COLUMNS = ["index", "employee", "position", "team", "days", "workedDays", "hours", "notes"] as const
 export const DEFAULT_ATTENDANCE_VIEW_COLUMNS = {
   DAY: DEFAULT_ATTENDANCE_DAY_COLUMNS,
@@ -28,7 +31,7 @@ export const DEFAULT_ATTENDANCE_VIEW_COLUMNS = {
 } as const
 export const ATTENDANCE_VIEW_COLUMNS = {
   ...DEFAULT_ATTENDANCE_VIEW_COLUMNS,
-  DAY: [...DEFAULT_ATTENDANCE_DAY_COLUMNS, "position", "arrivalBranch", "departureBranch", "markLocation"],
+  DAY: [...DEFAULT_ATTENDANCE_DAY_COLUMNS, "position", "department", "arrivalBranch", "departureBranch", "markLocation"],
   MONTH: [...DEFAULT_ATTENDANCE_MONTH_COLUMNS, "index", "position", "workedDays", "hours", "notes"],
   SUMMARY: [...DEFAULT_ATTENDANCE_SUMMARY_COLUMNS, "position"],
   BRANCH: [...DEFAULT_ATTENDANCE_BRANCH_COLUMNS, "noLocation", "noConsent"],
@@ -36,8 +39,8 @@ export const ATTENDANCE_VIEW_COLUMNS = {
 export const AttendanceViewConfigSchema = z.object({
   version: z.literal(1),
   mode: z.enum(["DAY", "MONTH", "JOURNAL", "BRANCH", "OVERTIME", "SUMMARY", "BALANCE", "ABSENCE_KINDS", "TEAM"]),
-  columns: z.array(z.enum(["employee", "position", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent", "notes", "arrivalBranch", "departureBranch", "markLocation", "branch", "arrivals", "departures", "employees", "outside", "uncertain", "noLocation", "noConsent", "planned", "excess", "threshold", "approvedOvertime", "overtimeState",
-    "index", "workedDays", "hours", "plannedDays", "expected", "lateCount", "earlyCount", "leaveDays", "sickDays", "overtimeHours", "attendanceRate", "balance", "kinds", "absenceTotal"])).min(1).max(15),
+  columns: z.array(z.enum(["employee", "position", "department", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "event", "phoneAt", "serverAt", "days", "absent", "notes", "arrivalBranch", "departureBranch", "markLocation", "branch", "arrivals", "departures", "employees", "outside", "uncertain", "noLocation", "noConsent", "planned", "excess", "threshold", "approvedOvertime", "overtimeState",
+    "index", "workedDays", "hours", "plannedDays", "expected", "lateCount", "earlyCount", "leaveDays", "sickDays", "overtimeHours", "attendanceRate", "balance", "kinds", "absenceTotal"])).min(1).max(16),
   showTotals: z.boolean(),
   filters: AttendanceReportQuerySchema,
 }).strict().superRefine((config, ctx) => {

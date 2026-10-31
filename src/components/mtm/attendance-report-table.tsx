@@ -1,6 +1,12 @@
 "use client"
 
-import type { AttendanceTable } from "@/lib/mtm/attendance-table"
+import { Fragment, useState } from "react"
+import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
+import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
+import type { AttendanceDayMeta, AttendanceTable } from "@/lib/mtm/attendance-table"
 
 const isDayKey = (key: string) => /^\d{4}-\d{2}-\d{2}$/.test(key)
 /**
@@ -24,6 +30,84 @@ function DayCell({ text }: { text: string }) {
   return <span className="block text-center leading-tight" title={text}><span className={`block pt-0.5 text-[11px] font-medium min-[85rem]:pt-0 min-[85rem]:text-[13px] ${code === "·" || code === "—" ? "text-muted-foreground" : ""}`}>{code}</span>
     <span className="hidden min-h-3 text-[9px] font-normal text-muted-foreground min-[85rem]:block">{rest.join(" · ")}</span></span>
 }
+/**
+ * A day report on screen (owner, 2026-11-01: «нет департамента, нет
+ * должности… строки расширяются… не юзабилити»). Every row keeps to one line:
+ * position, department and team go under the name; status and short tags
+ * stand in for the long note, whose lines open under the row with «Ətraflı»;
+ * times drop their seconds; lateness is a pill. Excel and PDF keep every column.
+ */
+function dayColumns(table: AttendanceTable) {
+  const index = (key: string) => table.columns.findIndex(column => column.key === key)
+  const folded = ["position", "department", "team"].map(index).filter(at => at >= 0)
+  const hidden = [...folded, index("status")]
+  return { employee: index("employee"), folded, shown: table.columns.map((column, at) => ({ column, at })).filter(({ at }) => !hidden.includes(at)) }
+}
+const dayTone = (row: AttendanceTable["rows"][number], meta: AttendanceDayMeta): HomeTone => row.kind === "INVALID_FACTS" || row.kind === "ABSENT" ? "red"
+  : row.kind === "MISSING_FINISH" || meta.late ? "amber" : row.kind === "OPEN" || row.kind === "HOLIDAY" ? "blue" : row.kind === "WORKED" ? "green" : "zinc"
+const withoutSeconds = (text: string) => text.replace(/^(\d{1,2}:\d{2}):\d{2}$/, "$1")
+const noTime = (text: string) => text === "0:00" || text === "—" || text === ""
+
+/** HR asks for an explanation of a day from the report (owner, 2026-11-01); the answer is decided on «Bu gün». */
+export type AttendanceDayExplain = {
+  /** Whether this day may still be asked: in the company's window, and this user may ask. */
+  askable: (meta: AttendanceDayMeta) => boolean
+  sent: ReadonlySet<string>
+  busy: string | null
+  onAsk: (meta: AttendanceDayMeta) => void
+}
+export const attendanceDayExplainKey = (meta: Pick<AttendanceDayMeta, "employeeId" | "date">) => `${meta.employeeId}|${meta.date}`
+
+function ExplainCell({ meta, explain }: { meta: AttendanceDayMeta; explain: AttendanceDayExplain }) {
+  const t = useTranslations("mtmAttendance")
+  const key = attendanceDayExplainKey(meta)
+  if (meta.explanation === "ANSWERED") return <Link prefetch={false} href="/mtm/attendance" className="text-xs font-semibold text-primary hover:underline">{t("reportExplainAnswered")}</Link>
+  if (meta.explanation) return <HomePill tone={meta.explanation === "REQUESTED" ? "amber" : meta.explanation === "ACCEPTED" ? "green" : "red"}>
+    {t(meta.explanation === "REQUESTED" ? "reportExplainWaiting" : meta.explanation === "ACCEPTED" ? "reportExplainAccepted" : "reportExplainRejected")}</HomePill>
+  if (explain.sent.has(key)) return <HomePill tone="amber">{t("reportExplainSent")}</HomePill>
+  if (!meta.explainKind || !explain.askable(meta)) return <span className="text-muted-foreground">—</span>
+  return <Hint text={t("reportExplainAskHint")}><Button type="button" size="sm" variant="outline" className="min-h-9" data-testid="attendance-report-explain-ask"
+    disabled={explain.busy !== null} onClick={() => explain.onAsk(meta)}>{t("reportExplainAsk")}</Button></Hint>
+}
+
+function DayReportTable({ table, testId, explain }: { table: AttendanceTable; testId: string; explain?: AttendanceDayExplain }) {
+  const t = useTranslations("mtmAttendance")
+  const layout = dayColumns(table)
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
+  const toggle = (key: string) => setOpen(current => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next })
+  const width = layout.shown.length + (explain ? 1 : 0) + 1
+  return <div className="overflow-x-auto" role="region" aria-label={table.title} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid={testId}>
+    <thead><tr>{layout.shown.map(({ column }) => <th key={column.key} scope="col" className="whitespace-nowrap border-b px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">{column.label}</th>)}
+      {explain ? <th scope="col" className="whitespace-nowrap border-b px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">{t("reportExplain")}</th> : null}
+      <th scope="col" className="border-b px-3 py-2.5"><span className="sr-only">{t("reportDetails")}</span></th></tr></thead>
+    <tbody>{table.rows.map(row => {
+      const meta = row.day!, expanded = open.has(row.key)
+      return <Fragment key={row.key}><tr className="border-b last:border-0" data-testid="attendance-report-row">{layout.shown.map(({ column, at }) => {
+        const cell = String(row.cells[at] ?? "")
+        if (at === layout.employee) {
+          const under = layout.folded.map(index => String(row.cells[index] ?? "")).filter(text => text && text !== "—")
+          return <th key={column.key} scope="row" className="whitespace-nowrap px-3 py-2.5 text-left align-middle">
+            <span className="block font-semibold">{cell}</span>
+            {under.length ? <span className="block text-xs font-normal text-muted-foreground" data-testid="attendance-report-employee-details">{under.join(" · ")}</span> : null}</th>
+        }
+        const body = column.key === "notes" ? <span className="flex items-center gap-1.5" data-testid="attendance-report-tags">
+            <HomePill tone={dayTone(row, meta)}>{meta.statusColor ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: meta.statusColor }} /> : null}{meta.status}</HomePill>
+            {meta.tags.map(tag => <HomePill key={tag} tone={tag === t("reportTagCorrection") ? "blue" : "zinc"}>{tag}</HomePill>)}</span>
+          : column.key === "startedAt" || column.key === "completedAt" ? withoutSeconds(cell)
+          : column.key === "late" || column.key === "early" ? noTime(cell) ? <span className="text-muted-foreground">—</span> : <HomePill tone="amber">{cell}</HomePill>
+          : cell
+        return <td key={column.key} className="whitespace-nowrap px-3 py-2.5 align-middle tabular-nums">{body}</td>
+      })}
+        {explain ? <td className="whitespace-nowrap px-3 py-2.5 align-middle"><ExplainCell meta={meta} explain={explain} /></td> : null}
+        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle">{meta.lines.length ? <button type="button" aria-expanded={expanded} data-testid="attendance-report-details-toggle"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground" onClick={() => toggle(row.key)}>{t(expanded ? "reportDetailsHide" : "reportDetails")}</button> : null}</td></tr>
+        {expanded ? <tr className="border-b bg-muted/40" data-testid="attendance-report-row-details"><td colSpan={width} className="px-3 py-3">
+          <ul className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">{meta.lines.map((line, index) => <li key={index}>{line}</li>)}</ul></td></tr> : null}
+      </Fragment>
+    })}</tbody>
+  </table></div>
+}
+
 /** Equal day columns: narrower while the hours are hidden (below 85rem). */
 const DAY_WIDTH = "w-5 min-w-5 min-[85rem]:w-6 min-[85rem]:min-w-6"
 const totalColumn = (key: string) => ["workedDays", "hours", "worked", "late", "absent", "days"].includes(key)
@@ -34,7 +118,8 @@ const totalColumn = (key: string) => ["workedDays", "hours", "worked", "late", "
  * picture, so the owner sees one form before and after «Bu tabeli bağla».
  * Cells are printed verbatim: a frozen table is never rebuilt from today's data.
  */
-export function AttendanceReportTable({ table, testId = "attendance-report-table" }: { table: AttendanceTable; testId?: string }) {
+export function AttendanceReportTable({ table, testId = "attendance-report-table", explain }: { table: AttendanceTable; testId?: string; explain?: AttendanceDayExplain }) {
+  if (table.rows.length && table.rows.every(row => row.day)) return <DayReportTable table={table} testId={testId} explain={explain} />
   const layout = screenColumns(table)
   return <div className="overflow-x-auto" role="region" aria-label={table.title} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid={testId}>
     {/* Headers wrap and cells stay tight: a wide report fits the page instead of scrolling inside the card. */}

@@ -171,7 +171,8 @@ describe("Personnel → Today: where an explanation of today is shown", () => {
     for (const status of ["ACCEPTED", "REJECTED"] as const) {
       expect(rowsOf([explanation("on-time", "ABSENT", status)]).attention.map(item => item.type)).toEqual(["absent", "late", "missing-finish"])
     }
-    // Another day's explanation is not today's business.
-    expect(rowsOf([{ ...explanation("on-time", "ABSENT", "ANSWERED"), date: "2026-10-13" }]).attention.map(item => item.type)).toEqual(["absent", "late", "missing-finish"])
+    // An earlier day's explanation, asked from a report (owner, 2026-11-01), is decided here too — until it is.
+    expect(rowsOf([{ ...explanation("on-time", "ABSENT", "ANSWERED"), date: "2026-10-13" }]).attention.map(item => [item.type, item.date])).toEqual([["absent", today], ["late", today], ["explanation", "2026-10-13"], ["missing-finish", "2026-10-13"]])
+    expect(rowsOf([{ ...explanation("on-time", "ABSENT", "ACCEPTED"), date: "2026-10-13" }]).attention.map(item => item.type)).toEqual(["absent", "late", "missing-finish"])
   })
 })
