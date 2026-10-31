@@ -6,7 +6,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
-import { AttendanceReportTable, AttendanceReportTotals } from "@/components/mtm/attendance-report-table"
+import { AttendanceReportTable, AttendanceReportTotals, attendanceDayExplainKey, type AttendanceDayExplain } from "@/components/mtm/attendance-report-table"
+import { ATTENDANCE_EXPLANATION_LOOKBACK_DAYS } from "@/lib/mtm/attendance-explanation-contract"
+import type { AttendanceDayMeta } from "@/lib/mtm/attendance-table"
 import { AttendanceClosedMonth, closedMonthView, n1tFormView } from "@/components/mtm/attendance-closed-month"
 import { Hint } from "@/components/hint"
 import { AttendanceN1tClosePanel, AttendanceN1tMessages, AttendanceN1tNotes, useAttendanceN1tMonth } from "@/components/mtm/attendance-n1t-month"
@@ -46,6 +48,12 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
   const locale = useLocale() as "az" | "ru" | "en"
   const [range, setRange] = useState<Range | null>(null)
   const [teamId, setTeamId] = useState("")
+  const [departmentId, setDepartmentId] = useState("")
+  // Explanations asked from a day report (owner, 2026-11-01): null until known whether this user may ask.
+  const [mayExplain, setMayExplain] = useState<boolean | null>(null)
+  const [explainSent, setExplainSent] = useState<ReadonlySet<string>>(new Set())
+  const [explainBusy, setExplainBusy] = useState<string | null>(null)
+  const [explainError, setExplainError] = useState(false)
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null)
   const [today, setToday] = useState<string | null>(null)
@@ -81,8 +89,8 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
 
   const config = useMemo<AttendanceViewConfig | null>(() => definition.kind !== "table" || !data ? null : {
     version: 1, mode: definition.mode, columns: [...definition.columns], showTotals: true,
-    filters: { from: data.from, to: data.to, form: definition.form, ...(teamId ? { teamId } : {}) },
-  }, [definition, data, teamId])
+    filters: { from: data.from, to: data.to, form: definition.form, ...(teamId ? { teamId } : {}), ...(departmentId ? { departmentId } : {}) },
+  }, [definition, data, teamId, departmentId])
   // A month is closed only once it is over in the company's own calendar.
   const closingMonth = report === "n1t" && range && today && range.to < today ? range.from.slice(0, 7) : null
   const lostAccess = useCallback(() => { setData(null); setError("reportAccessUnavailable") }, [])
@@ -98,7 +106,31 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
   const live = useMemo(() => !data || !frozenIds.size ? data : { ...data, rows: data.rows.filter(row => !frozenIds.has(row.employeeId)),
     ...(data.accountingRows ? { accountingRows: data.accountingRows.filter(row => !frozenIds.has(row.employeeId)) } : {}) }, [data, frozenIds])
   const table = useMemo(() => live && config ? buildAttendanceTable(live, config, locale, t) : null, [live, config, locale, t])
-  const teams = useMemo(() => [...new Map((data?.rows ?? []).flatMap(row => row.teamId ? [[row.teamId, row.teamName ?? t("reportNoTeam")] as const] : [])).entries()], [data, t])
+  const teams = useMemo(() => [...new Map((data?.rows ?? []).flatMap(row => row.teamId && (!departmentId || row.departmentId === departmentId) ? [[row.teamId, row.teamName ?? t("reportNoTeam")] as const] : [])).entries()], [data, t, departmentId])
+  const departments = useMemo(() => [...new Map((data?.rows ?? []).flatMap(row => row.departmentId ? [[row.departmentId, row.departmentName ?? "—"] as const] : [])).entries()], [data])
+  const dayReport = definition.kind === "table" && definition.mode === "DAY"
+  useEffect(() => {
+    if (!dayReport || !today) return
+    const controller = new AbortController()
+    // The same right the «Bu gün» card asks with: a refused list means no button.
+    fetch(`/api/v1/mtm/attendance/explanations?${new URLSearchParams({ from: addDateKeyDays(today, -ATTENDANCE_EXPLANATION_LOOKBACK_DAYS), to: today })}`, { cache: "no-store", signal: controller.signal })
+      .then(response => { if (!controller.signal.aborted) setMayExplain(response.ok) }).catch(() => { if (!controller.signal.aborted) setMayExplain(false) })
+    return () => controller.abort()
+  }, [dayReport, today])
+  const askExplanation = useCallback(async (meta: AttendanceDayMeta) => {
+    if (!meta.explainKind) return
+    const key = attendanceDayExplainKey(meta)
+    setExplainBusy(key); setExplainError(false)
+    try {
+      const response = await fetch("/api/v1/mtm/attendance/explanations", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [{ agentId: meta.employeeId, date: meta.date, kind: meta.explainKind }] }) })
+      if (response.ok) setExplainSent(current => new Set([...current, key])); else setExplainError(true)
+    } catch { setExplainError(true) } finally { setExplainBusy(null) }
+  }, [])
+  const explain = useMemo<AttendanceDayExplain | undefined>(() => !dayReport || !mayExplain || !today ? undefined : {
+    askable: meta => meta.date <= today && meta.date >= addDateKeyDays(today, -ATTENDANCE_EXPLANATION_LOOKBACK_DAYS),
+    sent: explainSent, busy: explainBusy, onAsk: meta => { void askExplanation(meta) },
+  }, [dayReport, mayExplain, today, explainSent, explainBusy, askExplanation])
   if (definition.kind !== "table") return null
   // Until the month's state is known, a past N-1t waits: a closed month must not flash today's figures.
   const waiting = !month.settled
@@ -123,6 +155,8 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
         {definition.period === "range" ? <><span className="text-muted-foreground">—</span>
           <Input aria-label={t("reportTo")} type="date" className="min-h-10 w-40" value={range.to} onChange={event => change({ ...range, to: event.target.value })} /></> : null}
       </> : null}
+      {allClosed || hidden || !departments.length ? null : <select aria-label={t("reportDepartment")} className={SELECT} value={departmentId} disabled={!data} onChange={event => { setDepartmentId(event.target.value); setTeamId("") }}>
+        <option value="">{t("reportAllDepartments")}</option>{departments.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>}
       {allClosed || hidden ? null : <select aria-label={t("reportTeam")} className={SELECT} value={teamId} disabled={!data} onChange={event => setTeamId(event.target.value)}>
         <option value="">{t("reportAllTeams")}</option>{teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>}
       <span className="flex-1" />
@@ -143,7 +177,8 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
     {!error && showLive ? <div className="rounded-2xl border bg-card p-4">
       {loading || waiting ? <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p> : null}
       {table && !waiting ? !table.rows.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p>
-        : <AttendanceReportTable table={table} /> : null}
+        : <AttendanceReportTable table={table} explain={explain} /> : null}
+      {explainError ? <p role="alert" className="mt-3 text-sm text-destructive">{p("explainFailed")}</p> : null}
       {table && range && !waiting ? <AttendanceReportTotals period={t("reportPeriod", { from: label(range.from), to: label(range.to) })} totals={table.totals} /> : null}
       {month.state?.candidates.length && teamId ? <p className="mt-3 text-sm text-muted-foreground">{t("monthCloseN1tTeamSelected", { all: t("reportAllTeams") })}</p> : null}
     </div> : null}

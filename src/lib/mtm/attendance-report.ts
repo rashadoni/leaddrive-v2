@@ -27,6 +27,9 @@ export interface MtmAttendanceEmployee {
   position?: string | null
   teamId: string | null
   teamName: string | null
+  /** The card's department, above its team; absent in older callers. */
+  departmentId?: string | null
+  departmentName?: string | null
   employmentEvents?: readonly AttendanceEmploymentEvent[]
   attendanceIncludedFrom?: string | null
   participationEvents?: readonly AttendanceParticipationChange[]
@@ -104,6 +107,8 @@ export interface MtmAttendanceReportRow {
   employeeId: string
   employeeName: string
   employeePosition?: string | null
+  departmentId?: string | null
+  departmentName?: string | null
   teamId: string | null
   teamName: string | null
   date: string
@@ -245,7 +250,7 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
   const calendarKind = effective.overrideId !== null ? effective.kind : customWeekend ? "WEEKEND" : "WORKING_DAY"
   const expectedWorkSeconds = isWorkingDay ? plan.expectedSeconds : 0
   const row: MtmAttendanceReportRow = {
-    employeeId: employee.id, employeeName: employee.name, employeePosition: employee.position ?? null, teamId: employee.teamId, teamName: employee.teamName,
+    employeeId: employee.id, employeeName: employee.name, employeePosition: employee.position ?? null, departmentId: employee.departmentId ?? null, departmentName: employee.departmentName ?? null, teamId: employee.teamId, teamName: employee.teamName,
     date, workdayId: null, kind: isWorkingDay ? date > today ? "UPCOMING" : "ABSENT"
       : ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(calendarKind) ? "HOLIDAY" : "WEEKEND",
     factsState: "NONE", ruleId: rule.id, timezone: rule.timezone, calendarKind, calendarName: effective.name,
@@ -409,6 +414,7 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
 export interface MtmAttendanceRowFilter {
   employeeId?: string
   teamId?: string
+  departmentId?: string
   from?: string
   to?: string
   form?: "ALL" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
@@ -417,7 +423,7 @@ export interface MtmAttendanceRowFilter {
 /** Every report form selects from these rows rather than re-reading/calculating attendance. */
 export function filterMtmAttendanceRows(rows: readonly MtmAttendanceReportRow[], filter: MtmAttendanceRowFilter = {}) {
   return rows.filter((row) => (!filter.employeeId || row.employeeId === filter.employeeId)
-    && (!filter.teamId || row.teamId === filter.teamId) && (!filter.from || row.date >= filter.from) && (!filter.to || row.date <= filter.to)
+    && (!filter.teamId || row.teamId === filter.teamId) && (!filter.departmentId || row.departmentId === filter.departmentId) && (!filter.from || row.date >= filter.from) && (!filter.to || row.date <= filter.to)
     && (filter.form !== "LATE_EARLY" || (row.lateSeconds ?? 0) > 0 || (row.earlyLeaveSeconds ?? 0) > 0)
     && (filter.form !== "ABSENCES" || row.kind === "ABSENT") && (filter.form !== "JOURNAL" || row.events.length > 0 || Boolean(row.corrections?.length)))
 }
