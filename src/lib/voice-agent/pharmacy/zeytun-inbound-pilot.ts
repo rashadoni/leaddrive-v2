@@ -163,6 +163,9 @@ export type InboundPilotDependencies = {
   /** The agent hands the call to the organization's managers in the CRM
    * browser; "unavailable" when no one there can take calls or it was done once. */
   requestTransfer?: (config: LineGrant, call: InboundPilotCall) => Promise<"transferring" | "unavailable">
+  /** The pharmacy cancels the call's whole order on the line; already_reviewed once a person or 1C has it. */
+  cancelOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotOrderCall, seq?: number)
+    => Promise<"cancelled" | "already_reviewed">
   /** Saves the call's list to config.orderOrganizationId's phone orders. */
   saveOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotOrderCall,
     catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[], pharmacy?: string,
@@ -183,7 +186,10 @@ export const ZEYTUN_INBOUND_CLOSING = "Sağ olun, xoş günlər!"
 // the pin: "голос ужасный, акцент провинциальный" — the choice is by ear.
 // The Live model's own voice is heard only when the TTS below fails before a
 // turn starts; it then speaks with the station's voice, unpinned like AAC.
-export const ZEYTUN_INBOUND_VOICE: { voice: string | null; pinSpeechLanguage: boolean } = { voice: null, pinSpeechLanguage: false }
+// Owner's call 2026-10-31: two replies came in English. What the caller hears
+// is the TTS voice below, so the pin no longer costs the voice the owner
+// disliked; it holds the Live model to Azerbaijani.
+export const ZEYTUN_INBOUND_VOICE: { voice: string | null; pinSpeechLanguage: boolean } = { voice: null, pinSpeechLanguage: true }
 // Owner, 2026-10-23, of the Gemini voices: Iapetus «тоже как робот говорит»;
 // of gemini-3.8-flash-tts with Sulafat: «эту ставь». The station re-voices
 // the Live model's answers with this TTS (ZeytunSpeechRelay); it accepts only
@@ -197,6 +203,9 @@ export const ZEYTUN_INBOUND_SPEECH = { engine: "tts", model: "gemini-3.8-flash-t
 /** Said once the CRM has taken the transfer; the station ends the AI's part
  * after it and rings the managers (closing_keys, as for the goodbye). */
 export const ZEYTUN_TRANSFER_PHRASE = "Sizi menecerə qoşuram, xətdə qalın."
+/** Said once the CRM cancelled the call's order (owner's call 2026-10-31);
+ * the closing sentence follows it and the station hangs up. */
+export const ZEYTUN_CANCEL_PHRASE = "Sifarişiniz ləğv olundu."
 /** The AI has the call back: nobody answered the transfer in time. */
 export const ZEYTUN_LINE_RETURN_OPENING = "Bağışlayın, menecerlər hazırda cavab vermir. Sifarişinizi mən qəbul edim. Hansı preparatları istəyirsiniz?"
 export const ZEYTUN_INBOUND_OPENING = "Salam! Zeytunun süni intellekt köməkçisiyəm. Bu sınaq zəngində sifariş siyahınızı hazırlayaq. Hansı preparatdan başlayaq?"
@@ -249,14 +258,18 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-30: «долго принимает заказ… ускорить… краткими ответами
   // либо уточнениями». A pharmacy dictates many lines; every extra sentence or
   // question is paid once per line.
+  // Owner's call 2026-10-31: two replies in English, right after lookups.
   ["Speak Azerbaijani by default; switch only if the caller explicitly asks. Be brief and natural. Never discuss construction products.",
-    "Speak Azerbaijani unless the caller asks otherwise. Be fast: each reply is one short sentence with at most one question; no fillers or thanks mid-call (a clarifying question may start with \"Hmm,\"); repeat only name and quantity."],
+    "Always speak Azerbaijani, also right after a tool result, whatever language it is in; switch only if the caller asks in words for another language. Be fast: each reply is one short sentence with at most one question; no fillers or thanks mid-call (a clarifying question may start with \"Hmm,\"); repeat only name and quantity."],
   ["Collect a PRELIMINARY list of requested medicines and quantities. Use search_pharmacy_catalog for every product lookup and wait for its result before saying anything about that product; never invent a catalog match, availability or price.",
     "Collect a PRELIMINARY list of medicines and quantities. Look up every product with search_pharmacy_catalog and wait for the result before saying anything about it; never invent a match, availability or price."],
   // Owner, 2026-10-30, the same complaint: confirmation and the next question
   // in one reply, several products in one go, no question for a plain match.
   ["Acknowledge a clear line briefly; do not ask yes/no after every line.",
-    "Confirm a clear line in a few words and invite the next in the same reply (\"Adefa, 5 qutu. Daha?\"), no yes/no. Several products at once: look up two at a time, confirm them in one reply; ask a missing quantity in that reply."],
+    "Confirm a clear line in a few words and invite the next in the same reply (\"Adefa, 5 qutu. Daha?\"), no yes/no. Several products at once: look up two at a time, confirm them in one reply; ask a missing quantity in that reply.\n" +
+    // Owner's call 2026-10-31: three products named, the agent asked No-shpa's
+    // form, took "ampula" for nothing and only Adefa was written.
+    "Every product the caller named stays open until it is saved or the caller drops it. An answer to your question (a form, a quantity) is about the product you asked of; write it, then go on, unasked, with the next open product. Before the closing sentence, if a named product is still unsaved, name it and ask once."],
   // Owner's call 2026-10-29: "Adefa" reached the agent as "Adexa", "Adelfa",
   // "Deva"; the lookup returned Адефа first every time, and the agent, bound
   // to "never the nearest name", said it was not in the catalog.
@@ -280,7 +293,9 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: «переводить на менеджеров Зейтуна в браузере CRM». The
   // tool's own description carries the rest of the rule (prompt length).
   ["No medical advice, substitution or dosage.",
-    "No medical advice or dosage. If the caller asks for a person, call transfer_to_manager."],
+    "No medical advice or dosage. If the caller asks for a person, call transfer_to_manager. " +
+    // Owner's call 2026-10-31: asked to cancel, the agent said goodbye and the order went on.
+    "If the caller wants the whole order cancelled, ask once \"Sifarişi ləğv edək?\" and only after a clear yes call cancel_order."],
   ["Totals: when the caller asks for a line or order total, call calculate_order_total with the resolved lines (externalId and the quantity in that listPrice unit) and read back exactly what it returns, never your own arithmetic.",
     "Totals: when asked, call calculate_order_total with the resolved lines (externalId, quantity in the listPrice unit) and read back exactly what it returns, never your own arithmetic."],
   ["If the lookup returns only one matching item, do not ask about other manufacturers.",
@@ -295,6 +310,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("session"), callId: z.uuid() }),
   z.strictObject({ action: z.literal("search"), callId: z.uuid(), query: zeytunBalanceQuerySchema }),
   z.strictObject({ action: z.literal("transfer"), callId: z.uuid() }),
+  z.strictObject({ action: z.literal("cancel"), callId: z.uuid(), seq: z.number().int().min(1).max(1_000_000).optional() }),
   z.strictObject({ action: z.literal("order"), callId: z.uuid(),
     lines: z.array(phoneOrderLineInputSchema).min(1).max(PHONE_ORDER_MAX_LINES),
     pharmacy: z.string().trim().min(1).max(120).optional(),
@@ -470,6 +486,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         return searchResponse({ enabled: true, variant: "pharmacy_inbound_preview", prompt: line ? ZEYTUN_LINE_PROMPT : ZEYTUN_INBOUND_PROMPT,
           opening, closing: ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
           ...(line && dependencies.requestTransfer ? { transfer: ZEYTUN_TRANSFER_PHRASE } : {}),
+          ...(line && dependencies.cancelOrder && config.orderOrganizationId ? { cancel: ZEYTUN_CANCEL_PHRASE } : {}),
           maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: (catalog.vocabulary ?? []).slice(0, 400) })
       }
       if (input.action === "order") {
@@ -480,6 +497,14 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         if (saved.status === "already_reviewed") return searchResponse({ status: "already_reviewed", orderNumber: phoneOrderLabel(saved.number) })
         return searchResponse({ status: "saved", orderNumber: phoneOrderLabel(saved.number), changed: saved.changed,
           total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced })
+      }
+      if (input.action === "cancel") {
+        // Only while the pharmacy is on the line: a cancel is its own word.
+        const orderOrganizationId = config.orderOrganizationId
+        const status = isLineGrant(config) && orderOrganizationId && dependencies.cancelOrder && finalCall.endedAt === null
+          ? await dependencies.cancelOrder({ ...config, orderOrganizationId }, finalCall, input.seq) : "already_reviewed"
+        console.log("[zeytun-line] cancel", JSON.stringify({ status }))
+        return searchResponse(status === "cancelled" ? { status, say: ZEYTUN_CANCEL_PHRASE } : { status: "not_cancelled" })
       }
       if (input.action === "transfer") {
         const status = isLineGrant(config) && dependencies.requestTransfer && call.endedAt === null

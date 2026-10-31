@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
 import { encryptForTenantBound } from "../../crypto/tenant-pii-encryption"
+import { PHONE_ORDER_CALLER_CANCELLED } from "../../pharmacy-orders/caller-cancelled"
 import { runWithTenant } from "../../rls-context"
 
 export const PHONE_ORDERS_TABLE = "pharmacy_phone_orders"
@@ -178,5 +179,39 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
     })
     return { status: "saved" as const, orderId: created.id, number: created.number, revision: created.revision,
       created: true, changed: true, ...summary }
+  }, { isolationLevel: "ReadCommitted", maxWait: 2000, timeout: 5000 }))
+}
+
+export { PHONE_ORDER_CALLER_CANCELLED }
+
+/**
+ * The pharmacy cancels the call's whole order while still on the line
+ * (owner's call 2026-10-31: asked to cancel, the agent said goodbye and the
+ * order went to the managers). The order becomes rejected with
+ * PHONE_ORDER_CALLER_CANCELLED and no person, so the end of the call sends
+ * no WhatsApp about it and any later save of the call is refused. Only an
+ * order still waiting for review and not yet sent to 1C; a call without an
+ * order has nothing to cancel.
+ */
+export async function cancelPhoneOrderFromCall(db: PrismaClient, input: { organizationId: string; providerCallId: string; seq?: number })
+  : Promise<{ status: "cancelled"; number: number | null } | { status: "already_reviewed"; number: number }> {
+  const orgId = input.organizationId
+  return runWithTenant(orgId, () => db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pharmacy_phone_orders:${orgId}`}, 0))`
+    const existing = await tx.pharmacyPhoneOrder.findUnique({
+      where: { organizationId_providerCallId: { organizationId: orgId, providerCallId: input.providerCallId } },
+      select: { id: true, number: true, status: true, erpState: true, rejectReason: true },
+    })
+    if (!existing) return { status: "cancelled" as const, number: null }
+    if (existing.status === "rejected" && existing.rejectReason === PHONE_ORDER_CALLER_CANCELLED) {
+      return { status: "cancelled" as const, number: existing.number }
+    }
+    if (existing.status !== "pending_review" || existing.erpState !== null) return { status: "already_reviewed" as const, number: existing.number }
+    const done = await tx.pharmacyPhoneOrder.updateMany({
+      where: { id: existing.id, organizationId: orgId, status: "pending_review", erpState: null },
+      data: { status: "rejected", rejectedAt: new Date(), rejectedById: null, rejectReason: PHONE_ORDER_CALLER_CANCELLED,
+        revision: { increment: 1 }, ...(input.seq !== undefined ? { stationSeq: input.seq } : {}) },
+    })
+    return done.count === 1 ? { status: "cancelled" as const, number: existing.number } : { status: "already_reviewed" as const, number: existing.number }
   }, { isolationLevel: "ReadCommitted", maxWait: 2000, timeout: 5000 }))
 }

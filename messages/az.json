@@ -31545,6 +31545,7 @@
     "noticeInvalid": "Nömrələri +994 50 123 45 67 kimi, vergüllə yazın.",
     "historyConfirmed": "{name} təsdiqlədi",
     "historyRejected": "{name} rədd etdi: {reason}",
+    "historyCallerCancelled": "Aptek sifarişi zəng zamanı ləğv etdi",
     "someone": "İstifadəçi",
     "pickerTitle": "Məhsul seç",
     "pickerAddTitle": "Sətir əlavə et",

@@ -461,7 +461,9 @@ class ZeytunSpeechRelay:
             heard = [False]
             asked = time.monotonic()
             if not turn["spoken"]:
-                self.log("tts_request", chars=len(piece))
+                # 2026-10-31 call: the agent spoke English in two turns the
+                # transcript does not hold. Which script, never the words.
+                self.log("tts_request", chars=len(piece), script=zeytun_script(piece))
 
             def on_pcm(pcm, piece=piece):
                 while not self.room() and self.speakable() and not turn["cancelled"]:
@@ -572,6 +574,18 @@ def zeytun_retryable(error):
 
 def zeytun_failure(error):
     return "http_%d" % error.code if isinstance(error, urllib.error.HTTPError) else type(error).__name__
+
+
+def zeytun_script(text):
+    """az when the words carry Azerbaijani letters, cyrillic, latin, or none."""
+    letters = [c for c in text.lower() if c.isalpha()]
+    if not letters:
+        return "none"
+    if any(c in "əğıöüşç" for c in letters):
+        return "az"
+    if sum(1 for c in letters if "\u0400" <= c <= "\u04ff") * 2 > len(letters):
+        return "cyrillic"
+    return "latin"
 
 
 class ZeytunOrderSpool:
@@ -800,12 +814,16 @@ class ZeytunInboundBridge:
     # CRM's phrase, the station ends this AI leg after it (closing_keys) and
     # rings the managers' browsers. Offered only when the CRM names a phrase.
     TRANSFER_NAME = "transfer_to_manager"
+    # Owner's call 2026-10-31: asked to cancel, the agent said goodbye and the
+    # order went to the managers. The CRM marks the call's order cancelled;
+    # offered only when the CRM names the phrase, like the transfer.
+    CANCEL_NAME = "cancel_order"
     # Owner, 2026-10-27: a long order must not be lost. The CRM allows a call
     # up to 15 minutes (the core's own ceiling is 900 s) and the agent saves
     # the list after every line, so the per-call tool budget and the prompt
     # (which now carries that rule) are larger than the 5-minute pilot's.
     MAX_CALL_SECONDS = 900
-    MAX_PROMPT_CHARS = 6000
+    MAX_PROMPT_CHARS = 8000
     MAX_TOOL_CALLS = 256
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
@@ -840,6 +858,8 @@ class ZeytunInboundBridge:
         # in Baku say the form in Russian as often as in Azerbaijani.
         "ампулы", "таблетки", "капсулы", "свечи", "суппозитории", "сироп", "капли",
         "мазь", "гель", "крем", "спрей", "саше", "флакон", "упаковка", "коробка", "штук",
+        # 2026-10-31 live call: "ləğv edin" came back as "Çox sağ olun".
+        "ləğv", "ləğv edin", "sifarişi ləğv edin", "отмените", "отменить заказ",
     )
 
     @staticmethod
@@ -882,6 +902,9 @@ class ZeytunInboundBridge:
         self.relay = None
         self.vocabulary = ()
         self.transfer_phrase = None
+        self.cancel_phrase = None
+        # Once the CRM cancelled the call's order, no list of it is sent again.
+        self.cancelled = False
         # Set by the core: called with the phrase once the CRM took the transfer.
         self.on_transfer = None
         # Set by the core: called when a lookup has run FILLER_AFTER_SECONDS.
@@ -899,7 +922,7 @@ class ZeytunInboundBridge:
         # The first session also builds the pinned catalog once. Keep that
         # cold start separate from the shorter deadline for spoken lookups.
         action = body.get("action")
-        return self._post_json(self.url, body, timeout=5 if action == "session" else 6 if action in ("order", "transfer")
+        return self._post_json(self.url, body, timeout=5 if action == "session" else 6 if action in ("order", "transfer", "cancel")
                                else self.LOOKUP_TIMEOUT_SECONDS)
 
     def _post_json(self, url, body, timeout=2):
@@ -938,14 +961,16 @@ class ZeytunInboundBridge:
             closing = value.get("closing")
             if closing is not None and (not isinstance(closing, str) or not 3 <= len(closing) <= 120):
                 raise ValueError()
-            transfer = value.get("transfer")
-            if transfer is not None and (not isinstance(transfer, str) or not 3 <= len(transfer) <= 120):
-                raise ValueError()
+            transfer, cancel = value.get("transfer"), value.get("cancel")
+            for phrase in (transfer, cancel):
+                if phrase is not None and (not isinstance(phrase, str) or not 3 <= len(phrase) <= 120):
+                    raise ValueError()
             voice, pin = value.get("voice"), value.get("pinSpeechLanguage")
             self.expires = self.clock() + seconds
             self.active = True
             self.closing = closing
             self.transfer_phrase = transfer
+            self.cancel_phrase = cancel
             self.voice = voice if voice in self.VOICES else None
             self.pin_language = pin is not False
             # Owner, 2026-10-23: "эту ставь" - the gemini-3.8-flash-tts voice.
@@ -968,7 +993,8 @@ class ZeytunInboundBridge:
                 if (isinstance(style, str) and 1 <= len(style.strip()) <= 400 and style.isprintable()
                         and not re.search(r"[<>\[\]{}]", style)):
                     self.tts_style = style.strip()
-            return {"prompt": prompt, "opening": opening, "maxSeconds": seconds, "closing": closing, "transfer": transfer}
+            return {"prompt": prompt, "opening": opening, "maxSeconds": seconds, "closing": closing, "transfer": transfer,
+                    "cancel": cancel}
         except Exception:
             raise ZeytunPilotUnavailable("pilot_session_unavailable") from None
 
@@ -1014,7 +1040,10 @@ class ZeytunInboundBridge:
                  "required": ["lines"]}}] + ([
             {"name": self.TRANSFER_NAME,
              "description": "Hand this call to a Zeytun manager in the CRM. Call it only when the caller asks for a person. If it returns transferring, say exactly its say text and nothing after it: the line then rings the managers. If it returns unavailable, say that no manager can answer right now and keep taking the order yourself.",
-             "parameters": {"type": "OBJECT", "properties": {}}}] if self.transfer_phrase else [])}]
+             "parameters": {"type": "OBJECT", "properties": {}}}] if self.transfer_phrase else []) + ([
+            {"name": self.CANCEL_NAME,
+             "description": "Cancel this call's whole order: the manager gets nothing. Call it only after the caller clearly confirmed they want the whole order cancelled. If it returns cancelled, say exactly its say text and then the closing sentence. If it returns not_cancelled, say the order is already with the manager and cannot be cancelled on this call.",
+             "parameters": {"type": "OBJECT", "properties": {}}}] if self.cancel_phrase else [])}]
 
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
@@ -1246,6 +1275,8 @@ class ZeytunInboundBridge:
         not answer. The first save, and any save without a disk, still waits.
         """
         with self.lock:
+            if self.cancelled:
+                return {"status": "cancelled"}
             self.order_seq += 1
             seq = self.order_seq
             number = self.order_number
@@ -1275,6 +1306,26 @@ class ZeytunInboundBridge:
             with self.lock:
                 self.order_number = result["orderNumber"]
         return result
+
+    def cancel_order(self):
+        """The CRM cancels the call's order; the station then keeps and sends no
+        list of it. A CRM that does not answer leaves the order as it is: the
+        agent says so, and the kept list still reaches the manager."""
+        with self.lock:
+            self.order_seq += 1
+            seq = self.order_seq
+        try:
+            value = self.request({"action": "cancel", "callId": self.call_id, "seq": seq})
+        except Exception:
+            return {"status": "not_cancelled"}
+        if not (isinstance(value, dict) and value.get("status") == "cancelled"
+                and self.cancel_phrase and value.get("say") == self.cancel_phrase):
+            return {"status": "not_cancelled"}
+        with self.lock:
+            self.cancelled = True
+        if self.spool is not None:
+            self.spool.settle(self.call_id, seq)
+        return {"status": "cancelled", "say": self.cancel_phrase}
 
     def safe_transfer(self, value):
         """Transferring only with the exact phrase this session was given."""
@@ -1309,8 +1360,9 @@ class ZeytunInboundBridge:
                 raise ZeytunPilotUnavailable("invalid_tool_call")
             key, name = call.get("id"), call.get("name")
             if (not isinstance(key, str) or not 1 <= len(key) <= 128
-                    or name not in (self.NAME, self.TOTAL_NAME, self.SAVE_NAME, self.TRANSFER_NAME)
-                    or (name == self.TRANSFER_NAME and not self.transfer_phrase)):
+                    or name not in (self.NAME, self.TOTAL_NAME, self.SAVE_NAME, self.TRANSFER_NAME, self.CANCEL_NAME)
+                    or (name == self.TRANSFER_NAME and not self.transfer_phrase)
+                    or (name == self.CANCEL_NAME and not self.cancel_phrase)):
                 raise ZeytunPilotUnavailable("invalid_tool_call")
             if name == self.TOTAL_NAME:
                 with self.lock:
@@ -1325,7 +1377,8 @@ class ZeytunInboundBridge:
                 continue
             saving = name == self.SAVE_NAME
             transferring = name == self.TRANSFER_NAME
-            args = (({} if call.get("args") in (None, {}) else None) if transferring
+            cancelling = name == self.CANCEL_NAME
+            args = (({} if call.get("args") in (None, {}) else None) if transferring or cancelling
                     else self.order_request(call.get("args")) if saving else self.query(call.get("args")))
             response = lambda body, key=key, name=name: {"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}}
             error = None
@@ -1347,19 +1400,23 @@ class ZeytunInboundBridge:
                     self.pending[key] = marker
             if error is not None:
                 if current():
-                    send(response({"status": "unavailable"} if transferring
+                    send(response({"status": "unavailable"} if transferring else {"status": "not_cancelled"} if cancelling
                                   else {"status": "not_saved", "reason": error} if saving else self.unavailable(error)))
                 continue
-            def work(key=key, marker=marker, args=args, response=response, saving=saving, transferring=transferring):
+            def work(key=key, marker=marker, args=args, response=response, saving=saving, transferring=transferring,
+                     cancelling=cancelling):
                 try:
                     if transferring:
                         result = self.safe_transfer(self.request({"action": "transfer", "callId": self.call_id}))
+                    elif cancelling:
+                        result = self.cancel_order()
                     elif saving:
                         result = self.save_order(args)
                     else:
                         result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
                 except Exception:
-                    result = {"status": "unavailable"} if transferring else {"status": "not_saved"} if saving else self.unavailable()
+                    result = ({"status": "unavailable"} if transferring else {"status": "not_cancelled"} if cancelling
+                              else {"status": "not_saved"} if saving else self.unavailable())
                 if result.get("status") == "transferring" and self.on_transfer:
                     # Before the model hears it: the phrase it is about to say
                     # must already end this leg.
@@ -1385,7 +1442,7 @@ class ZeytunInboundBridge:
                         if self.pending.get(key) is marker:
                             self.pending.pop(key, None)
                     self.workers.release()
-            if not saving and not transferring and self.on_wait is not None:
+            if not saving and not transferring and not cancelling and self.on_wait is not None:
                 def waited(key=key, marker=marker):
                     with self.lock:
                         still = self.pending.get(key) is marker
@@ -1398,7 +1455,8 @@ class ZeytunInboundBridge:
                 timer.daemon = True
                 timer.start()
             try:
-                threading.Thread(target=work, name="zeytun-transfer" if transferring else "zeytun-order-save" if saving else "zeytun-catalog-lookup", daemon=True).start()
+                threading.Thread(target=work, name="zeytun-transfer" if transferring else "zeytun-order-cancel" if cancelling
+                                 else "zeytun-order-save" if saving else "zeytun-catalog-lookup", daemon=True).start()
             except Exception:
                 with self.lock:
                     self.pending.pop(key, None)

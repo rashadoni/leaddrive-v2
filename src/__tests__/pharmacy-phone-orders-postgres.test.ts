@@ -551,6 +551,46 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.callLog.deleteMany({})
   })
 
+  // Owner's call 2026-10-31: asked to cancel, the agent said goodbye and the order went to the managers.
+  it("cancels the call's order for the pharmacy: no later save, no WhatsApp, and never what a manager decided", async () => {
+    const { cancelPhoneOrderFromCall } = await import("@/lib/voice-agent/pharmacy/phone-orders")
+    const { announceCallOrder } = await import("@/lib/pharmacy-orders/manager-notice")
+    const cancel = (orgId: string, n: number, seq?: number) =>
+      cancelPhoneOrderFromCall(app as unknown as PrismaClient, { organizationId: orgId, providerCallId: callId(n), seq })
+    await saveCall(51, LIST)
+    expect(await cancel(ZEYTUN, 51, 4)).toEqual({ status: "cancelled", number: 1001 })
+    const row = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(51) } })
+    expect([row.status, row.rejectReason, row.rejectedById, row.stationSeq]).toEqual(["rejected", "caller_cancelled", null, 4])
+    expect(row.rejectedAt).not.toBeNull()
+    // A save of the call that arrives later (the station's spool, a reply in flight) changes nothing.
+    expect(await saveCall(51, [LIST[0]])).toEqual({ status: "already_reviewed", number: 1001 })
+    expect(await admin.pharmacyPhoneOrderLine.count({ where: { orderId: row.id } })).toBe(3)
+    // Asked again, it is still the pharmacy's cancel.
+    expect(await cancel(ZEYTUN, 51)).toEqual({ status: "cancelled", number: 1001 })
+    // The end of the call tells nobody.
+    const sent: unknown[] = []
+    const fetchAny = (async (_url: string, init: { body: string }) => {
+      sent.push(init.body)
+      return new Response(JSON.stringify({ messages: [{ id: "wamid.x" }] }), { status: 200 })
+    }) as unknown as typeof fetch
+    const sender = async () => ({ id: "ch", organizationId: ZEYTUN, accessToken: "token", phoneNumberId: "pn1",
+      businessAccountId: null, verifyToken: null, appSecret: null, displayName: null })
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: { pharmacyPhoneOrders: { managerWhatsApp: ["+994501112233"] } } } })
+    expect(await announceCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(51), { fetch: fetchAny, sender })).toBeNull()
+    expect(sent).toEqual([])
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
+    // A call without an order has nothing to cancel, and nothing is created.
+    expect(await cancel(ZEYTUN, 52)).toEqual({ status: "cancelled", number: null })
+    expect(await admin.pharmacyPhoneOrder.count({ where: { providerCallId: callId(52) } })).toBe(0)
+    // What a manager decided stays, and another organization reaches nothing of Zeytun's.
+    await saveCall(53, LIST)
+    await admin.pharmacyPhoneOrder.updateMany({ where: { providerCallId: callId(53) },
+      data: { status: "confirmed", confirmedAt: new Date(), confirmedById: "user-zeytun" } })
+    expect(await cancel(ZEYTUN, 53)).toEqual({ status: "already_reviewed", number: 1002 })
+    expect(await cancel(OTHER, 53)).toEqual({ status: "cancelled", number: null })
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(53) } })).status).toBe("confirmed")
+  })
+
   // TS-1005, 2026-10-29: Meta accepted both messages, then refused them (131042) and the card said "sent".
   it("turns a notice Meta refused after accepting it into failed, with Meta's code", async () => {
     const { recordPhoneOrderMessageFailure } = await import("@/lib/pharmacy-orders/manager-notice")

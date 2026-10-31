@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { createInboundPilotHandler, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, ZEYTUN_LINE_RETURN_OPENING, ZEYTUN_TRANSFER_PHRASE, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { createInboundPilotHandler, ZEYTUN_CANCEL_PHRASE, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, ZEYTUN_LINE_RETURN_OPENING, ZEYTUN_TRANSFER_PHRASE, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -66,7 +66,8 @@ describe("single-call inbound owner rehearsal", () => {
     // The station hangs up on this exact sentence; the prompt must ask for the same one.
     expect(body.closing).toBe(ZEYTUN_INBOUND_CLOSING)
     // The station re-voices the agent with this TTS; it accepts only a model and voice it knows.
-    expect(body).toMatchObject({ voice: null, pinSpeechLanguage: false,
+    // Owner's call 2026-10-31: replies in English. The Live model is held to Azerbaijani.
+    expect(body).toMatchObject({ voice: null, pinSpeechLanguage: true,
       speech: { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat" } })
     // The delivery the owner chose («C»); plain words, never a tag the station would refuse.
     expect(body.speech.style).toMatch(/^[^<>[\]{}]{1,400}$/)
@@ -343,6 +344,11 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("read it back once in Azerbaijani letters, even if written in Cyrillic, and ask if it is the one")
     expect(ZEYTUN_LINE_PROMPT).toContain("take it only after a clear yes")
     expect(ZEYTUN_INBOUND_PROMPT).toContain("never the nearest name")
+    // Owner's call 2026-10-31: English replies, two of three products lost, a cancel taken for goodbye.
+    expect(ZEYTUN_LINE_PROMPT).toContain("Always speak Azerbaijani, also right after a tool result")
+    expect(ZEYTUN_LINE_PROMPT).toContain("Every product the caller named stays open until it is saved or the caller drops it.")
+    expect(ZEYTUN_LINE_PROMPT).toContain("if a named product is still unsaved, name it and ask once")
+    expect(ZEYTUN_LINE_PROMPT).toContain('ask once "Sifarişi ləğv edək?" and only after a clear yes call cancel_order')
     // Owner's call 2026-10-29 (TS-1005): the promotion went unsaid, "numero dos" passed for yes,
     // ampoules were written after "cream", prices came unasked, the pharmacy kept its case ending.
     expect(ZEYTUN_LINE_PROMPT).toContain("say the offer in that same reply")
@@ -586,6 +592,48 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
       const f = withTransfer()
       f.dependencies.loadCall.mockImplementation(async () => structuredClone({ ...pharmacyCall, handoffState: "returned" }))
       expect((await (await f.handle(request())).json()).opening).toBe(ZEYTUN_LINE_RETURN_OPENING)
+    })
+  })
+
+  describe("the pharmacy cancels its order on the call", () => {
+    // Owner's call 2026-10-31: asked to cancel, the agent said goodbye and the order went to the managers.
+    const cancel = (seq?: number) => request({ action: "cancel", callId: call.providerCallId, ...(seq ? { seq } : {}) })
+    function withCancel(answer: "cancelled" | "already_reviewed" = "cancelled") {
+      const f = lineFixture()
+      const cancelOrder = vi.fn(async () => answer)
+      return { ...f, cancelOrder, handle: createInboundPilotHandler(token, { ...f.dependencies, saveOrder: f.saveOrder, cancelOrder }) }
+    }
+
+    it("offers the station the cancel phrase only where an order can be cancelled", async () => {
+      expect((await (await withCancel().handle(request())).json()).cancel).toBe(ZEYTUN_CANCEL_PHRASE)
+      expect((await (await lineFixture().handle(request())).json())).not.toHaveProperty("cancel")
+      expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(BRIDGE.promptChars)
+    })
+
+    it("cancels this claimed live call's order and says the phrase only when it did", async () => {
+      const f = withCancel()
+      expect(await (await f.handle(cancel(5))).json()).toEqual({ status: "cancelled", say: ZEYTUN_CANCEL_PHRASE })
+      expect(f.cancelOrder).toHaveBeenCalledWith(expect.objectContaining({ orderOrganizationId: "org-zeytun" }),
+        expect.objectContaining({ id: call.id }), 5)
+      expect(f.dependencies.isClaimed).toHaveBeenCalled()
+      const reviewed = withCancel("already_reviewed")
+      expect(await (await reviewed.handle(cancel())).json()).toEqual({ status: "not_cancelled" })
+    })
+
+    it("never cancels for a call that is over, unclaimed, or on the owner's rehearsal", async () => {
+      const over = withCancel()
+      over.dependencies.loadCall.mockResolvedValue({ ...pharmacyCall, status: "completed", endedAt: new Date(now - 60_000).toISOString(), duration: 60 })
+      expect((await over.handle(cancel(2))).status).toBe(403)
+      const unclaimed = withCancel()
+      unclaimed.dependencies.isClaimed.mockResolvedValue(false)
+      expect((await unclaimed.handle(cancel())).status).toBe(403)
+      expect(over.cancelOrder).not.toHaveBeenCalled()
+      expect(unclaimed.cancelOrder).not.toHaveBeenCalled()
+      const rehearsal = fixture()
+      const cancelOrder = vi.fn(async () => "cancelled" as const)
+      const handle = createInboundPilotHandler(token, { ...rehearsal.dependencies, cancelOrder })
+      expect(await (await handle(cancel())).json()).toEqual({ status: "not_cancelled" })
+      expect(cancelOrder).not.toHaveBeenCalled()
     })
   })
 })
