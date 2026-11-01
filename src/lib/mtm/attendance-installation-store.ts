@@ -97,10 +97,13 @@ export async function readAttendanceInstallationQueue(reviewer: AttendanceReview
     const [cursor] = query.cursor ? await tx.$queryRaw<{ submittedAt: Date; id: string }[]>`SELECT "submittedAt",id FROM mtm_attendance_installation_requests
       WHERE "organizationId"=${organizationId} AND id=${query.cursor} AND (${scope}::text[] IS NULL OR "agentId"=ANY(${scope}::text[]))` : []
     if (query.cursor && !cursor) return fail("QUERY_INVALID", 400)
+    // Prisma binds a Date as timestamptz; a plain ::timestamp cast would use the
+    // session zone (Europe/Berlin in production) and shift the naive cursor.
+    const cursorAt = cursor ? cursor.submittedAt.toISOString() : null
     const rows = await tx.$queryRaw<InstallationRow[]>(Prisma.sql`${rowsSql} WHERE r."organizationId"=${organizationId}
       AND (${scope}::text[] IS NULL OR r."agentId"=ANY(${scope}::text[]))
       AND (${query.employeeId}='' OR r."agentId"=${query.employeeId}) AND (${query.teamId}='' OR a."teamId"=${query.teamId})
-      AND (${cursor?.submittedAt ?? null}::timestamp IS NULL OR (r."submittedAt",r.id)<(${cursor?.submittedAt ?? null}::timestamp,${cursor?.id ?? null}::text))
+      AND (${cursorAt}::timestamptz IS NULL OR (r."submittedAt",r.id)<((${cursorAt}::timestamptz AT TIME ZONE 'UTC'),${cursor?.id ?? null}::text))
       AND (${query.status}='ALL' OR (${query.status}='PENDING' AND d.id IS NULL)
         OR (${query.status}='APPROVED' AND d.action='APPROVE' AND v.id IS NULL)
         OR (${query.status}='REJECTED' AND d.action='REJECT') OR (${query.status}='REVOKED' AND v.id IS NOT NULL))
