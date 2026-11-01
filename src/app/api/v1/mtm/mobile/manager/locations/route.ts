@@ -139,7 +139,8 @@ export const GET = withMobileRls(async (req, auth) => {
     const breakEndedAt = shift ? lastBreakEndByWorkday.get(shift.id) ?? null : null
     const movement = liveLocation
       ? liveMtmMovement({
-          freshness,
+          // A live position is an ONLINE one (liveLocation above).
+          freshness: "ONLINE",
           latitude: liveLocation.latitude,
           longitude: liveLocation.longitude,
           recordedAt: liveLocation.recordedAt.toISOString(),
