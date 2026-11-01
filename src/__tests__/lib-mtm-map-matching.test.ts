@@ -235,11 +235,15 @@ describe("the history map", () => {
     expect(route).toContain("const matchedTrack = road?.complete && road.segments.length")
   })
 
-  it("draws the roads only once the replay has shown the whole day, with the straight fixes kept thin underneath", () => {
-    expect(map).toContain("layers.roads !== false && matchedTrack && visiblePointCount === points.length")
+  // Owner 2026-11-01: the roads stay while the day plays, cut at the moment
+  // (each place of the road line belongs to a fix: timeRoadTrack).
+  it("keeps the roads while the day plays, cut at the moment, with the straight fixes kept thin underneath", () => {
+    expect(map).toContain("timedRoad.flatMap((segment) => modeRuns(segment, reading.modes, frame))")
+    expect(map).not.toContain("visiblePointCount === points.length")
     expect(map).toContain("{ color: HISTORY_MAP_COLORS.raw, weight: 2, opacity: 0.7, dashArray: \"2 6\" }")
     expect(panel).toContain('.filter((layer) => layer !== "roads" || Boolean(data?.matchedTrack))')
-    expect(panel).toContain('{data.matchedTrack && layers.roads ? t("legendRoads") : t("legendTrack")}')
+    expect(panel).toContain('{t("legendDrive")}')
+    expect(panel).toContain('{t("legendWalk")}')
   })
 })
 

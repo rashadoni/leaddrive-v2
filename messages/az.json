@@ -18021,6 +18021,23 @@
     "distanceDetail": "Müştəridən {distance} (icazə {radius})"
   },
   "mtmMap": {
+    "movement": {
+      "DRIVE": "maşınla",
+      "WALK": "piyada",
+      "STAY": "dayanıb",
+      "BREAK": "fasilə",
+      "GAP": "siqnal yoxdur"
+    },
+    "compass": {
+      "N": "şimala",
+      "NE": "şimal-şərqə",
+      "E": "şərqə",
+      "SE": "cənub-şərqə",
+      "S": "cənuba",
+      "SW": "cənub-qərbə",
+      "W": "qərbə",
+      "NW": "şimal-qərbə"
+    },
     "hint": {
       "showEveryone": "Seçimi götürüb bütün əməkdaşları xəritədə göstərin",
       "back": "MTM-in əsas səhifəsinə qayıt — xəritəni açdığınız filtrlərlə.",
@@ -18459,6 +18476,10 @@
         "evidence": "Dayanacaqlar və hadisələr ətraflı"
       },
       "legendTrack": "GPS nöqtələri üzrə yol",
+      "legendDrive": "Maşınla",
+      "legendWalk": "Piyada",
+      "skipStill": "Dayanacaqları keç",
+      "skipStillHint": "Oynadılarkən dayanacaqlar, fasilələr və siqnal kəsilmələri keçilir: yalnız hərəkət göstərilir.",
       "legendRoads": "Yollar üzrə yol — ehtimal olunan, GPS nöqtələrinə görə",
       "legendRaw": "GPS nöqtələri düz xətlə",
       "legendGap": "Nöqtə gəlməyib — yol məlum deyil, xətt yalnız boşluğun kənarlarını birləşdirir",
@@ -18547,7 +18568,7 @@
       },
       "exportCsv": "Günü CSV ixrac et",
       "replayTitle": "Günün təkrar oynadılması",
-      "replayHint": "Qəbul edilmiş GPS nöqtələrini qeyd sırası ilə başladın və ya şkala ilə keçin. Xəritə bütün gün üçün sabit çərçivəni saxlayır.",
+      "replayHint": "Gün saatla gedir: dayanacaq nə qədər çəkibsə, o qədər göstərilir. Sürgü ilə istənilən dəqiqəyə keçin.",
       "play": "Davam et",
       "pause": "Pauza",
       "replayFromStart": "Əvvəldən başlat",

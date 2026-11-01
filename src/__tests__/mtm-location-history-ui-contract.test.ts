@@ -85,14 +85,17 @@ describe("SWM-10 GPS history presentation contract", () => {
     }
   })
 
-  it("provides deterministic SWM-11 play, pause, restart and scrub controls", () => {
-    expect(panel).toContain("const [playbackIndex, setPlaybackIndex]")
+  // Owner 2026-11-01: the replay holds a moment of the day, not a fix.
+  it("provides deterministic SWM-11 play, pause, restart and scrub controls — by the clock", () => {
+    expect(panel).toContain("const [playbackAt, setPlaybackAt] = useState<number | null>(null)")
     expect(panel).toContain("const [isPlaying, setIsPlaying]")
     expect(panel).toContain('type="range"')
     expect(panel).toContain("playbackIndex={playbackIndex}")
+    expect(panel).toContain("playbackAt={replayAt}")
+    expect(panel).toContain('data-testid="mtm-location-history-skip-still"')
     expect(panel).toContain('aria-current={index === activeTimelineIndex ? "step" : undefined}')
     expect(map).toContain("points.slice(0, visiblePointCount)")
-    expect(map).toContain("point.id === activePoint?.id")
+    expect(map).toContain("historyReplayFrame(points, reading, cuts, playbackAt)")
     expect(map).toContain("...fullActualPath")
   })
 

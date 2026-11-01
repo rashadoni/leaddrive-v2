@@ -52,6 +52,8 @@ export interface LiveMapAgent {
   longitude: number
   accuracy?: number | null
   speed?: number | null
+  /** The phone's course, degrees clockwise from north; 0 is north. */
+  heading?: number | null
   battery?: number | null
   recordedAt: string
   freshness: MtmCoordinateFreshness
