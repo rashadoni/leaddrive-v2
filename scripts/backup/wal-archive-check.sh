@@ -20,6 +20,7 @@ set +a
 : "${WAL_STANZA:?}" "${WAL_PG_PORT:?}" "${WAL_PG_USER:?}" "${WAL_SPOOL_PATH:?}"
 : "${WAL_CHECK_LAG_WARN_SECONDS:=900}" "${WAL_CHECK_LAG_CRIT_SECONDS:=3600}"
 : "${WAL_CHECK_BACKLOG_WARN:=64}"
+: "${WAL_FULL_INTERVAL_DAYS:=7}"
 : "${WAL_CHECK_STATE_FILE:=/var/lib/leaddrive-wal-archive/check-state.json}"
 : "${WAL_CHECK_LOCK_FILE:=/var/lib/leaddrive-recovery-runner-locks/wal-check.lock}"
 : "${WAL_ALERT_COMMAND:=}"
@@ -126,6 +127,13 @@ fi
 
 if [ "${backup_age:--1}" -ge 0 ] && [ "$backup_age" -gt 172800 ]; then
   note warn "newest backup is $((backup_age / 3600))h old"
+fi
+
+# Differentials succeeding while full backups fail keeps the newest backup
+# fresh and silently grows the replay chain, so the full backup gets its own
+# deadline: twice its interval, which a single missed night cannot reach.
+if [ "${full_age:--1}" -ge 0 ] && [ "$full_age" -gt $((WAL_FULL_INTERVAL_DAYS * 172800)) ]; then
+  note warn "newest full backup is $((full_age / 86400))d old (interval ${WAL_FULL_INTERVAL_DAYS}d)"
 fi
 
 # 5. End-to-end: pgbackrest check pushes a real segment and reads it back.

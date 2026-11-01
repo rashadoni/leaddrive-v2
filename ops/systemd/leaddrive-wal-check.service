@@ -29,7 +29,9 @@ ProtectKernelTunables=true
 ProtectControlGroups=true
 ProtectSystem=strict
 ReadOnlyPaths=-/etc/leaddrive -/etc/pgbackrest
-ReadWritePaths=-/var/lib/leaddrive-wal-archive -/var/lib/leaddrive-recovery-runner-locks
+# pgBackRest writes its own log during check, and that line is the only
+# record of a segment that failed to push.
+ReadWritePaths=-/var/lib/leaddrive-wal-archive -/var/lib/leaddrive-recovery-runner-locks -/var/log/pgbackrest
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictNamespaces=true
 RestrictRealtime=true
