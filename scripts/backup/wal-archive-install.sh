@@ -92,7 +92,12 @@ current_archive_mode="$(psql_show archive_mode)"
 current_wal_level="$(psql_show wal_level)"
 expected_archive_command="pgbackrest --stanza=$WAL_STANZA archive-push %p"
 
-log "archive_mode=$current_archive_mode wal_level=$current_wal_level"
+case "$current_wal_level" in
+  replica | logical) ;;
+  *) fatal "wal_level is $current_wal_level; archiving needs at least replica" ;;
+esac
+
+log "archive_mode=$current_archive_mode wal_level=$current_wal_level (left as is)"
 
 render_conf() {
   cat <<PGBACKREST_CONF
@@ -133,7 +138,10 @@ render_pg_conf() {
   cat <<PG_DROPIN
 # Managed by scripts/backup/wal-archive-install.sh. Do not edit by hand.
 # archive_mode needs a restart; archive_command and archive_timeout reload.
-wal_level = replica
+#
+# wal_level is deliberately absent. Production runs `logical` for the Kafka
+# CDC slot, `logical` already contains everything `replica` does, and writing
+# `replica` here would silently disable logical decoding at the next restart.
 archive_mode = on
 archive_command = '$expected_archive_command'
 archive_timeout = $WAL_ARCHIVE_TIMEOUT

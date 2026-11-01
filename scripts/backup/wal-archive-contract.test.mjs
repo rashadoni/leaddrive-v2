@@ -48,7 +48,16 @@ test('the archive_command the installer writes is the command pgBackRest expects
   assert.match(install, /expected_archive_command="pgbackrest --stanza=\$WAL_STANZA archive-push %p"/);
   assert.match(install, /archive_command = '\$expected_archive_command'/);
   assert.match(install, /archive_mode = on/);
-  assert.match(install, /wal_level = replica/);
+});
+
+test('the installer never lowers wal_level', () => {
+  // Production runs wal_level=logical for the Kafka CDC slot. Writing
+  // `replica` into the drop-in would disable logical decoding at the next
+  // restart — the restart this very script asks for.
+  const dropin = install.slice(install.indexOf('render_pg_conf()'), install.indexOf('pg_dropin='));
+  assert.doesNotMatch(dropin, /^wal_level/m);
+  assert.match(install, /replica \| logical\) ;;/);
+  assert.match(install, /archiving needs at least replica/);
 });
 
 test('the installer never logs a secret', () => {
