@@ -19,6 +19,7 @@ import { MtmRouteTravelPanel } from "@/components/mtm/route-travel-panel"
 import { MtmCustomerCreateRequestPanel } from "@/components/mtm/customer-create-request-panel"
 import { MtmCustomerRequestQueue } from "@/components/mtm/customer-request-queue"
 import { MtmCustomerLocationRequestQueue } from "@/components/mtm/customer-location-request-queue"
+import { MtmCustomerHoursRequestQueue } from "@/components/mtm/customer-hours-request-queue"
 import { MtmExcelExchangePanel } from "@/components/mtm/excel-exchange-panel"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
@@ -182,7 +183,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
   // Routes audit 2026-09-26, «Согласования»: with nothing pending the tab
   // showed three blocks each saying «nothing» — the first titled «Требует
   // внимания» — and with something pending the tab itself did not say so.
-  const [approvalCounts, setApprovalCounts] = useState<{ routeChanges: number; customerRequests: number; customerLocationRequests: number } | null>(null)
+  const [approvalCounts, setApprovalCounts] = useState<{ routeChanges: number; customerRequests: number; customerLocationRequests: number; customerHoursRequests: number } | null>(null)
   const [removalPointId, setRemovalPointId] = useState<string | null>(null)
   const [removalReason, setRemovalReason] = useState("")
   const [requestingRemoval, setRequestingRemoval] = useState(false)
@@ -408,6 +409,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
           customerRequests: Number(categories.customerRequests?.count) || 0,
           // «Клиент здесь»: requests to move a customer's pin, sent from the spot.
           customerLocationRequests: Number(categories.customerLocationRequests?.count) || 0,
+          customerHoursRequests: Number(categories.customerHoursRequests?.count) || 0,
         } : null)
       })
       .catch((error: unknown) => {
@@ -629,7 +631,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
   }, [routes, selectedRouteId])
 
   const todayKey = mtmCalendarDayKey(new Date())
-  const approvalTotal = approvalCounts ? approvalCounts.routeChanges + approvalCounts.customerRequests + approvalCounts.customerLocationRequests : 0
+  const approvalTotal = approvalCounts ? approvalCounts.routeChanges + approvalCounts.customerRequests + approvalCounts.customerLocationRequests + approvalCounts.customerHoursRequests : 0
   const filtered = routes.filter(r => {
     if (activeFilter !== "all" && r.status !== activeFilter) return false
     if (search) {
@@ -1325,6 +1327,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
             {!approvalCounts || approvalCounts.routeChanges > 0 ? <MtmRouteApprovalQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} /> : null}
             {!approvalCounts || approvalCounts.customerRequests > 0 ? <MtmCustomerRequestQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} /> : null}
             {!approvalCounts || approvalCounts.customerLocationRequests > 0 ? <MtmCustomerLocationRequestQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} /> : null}
+            {!approvalCounts || approvalCounts.customerHoursRequests > 0 ? <MtmCustomerHoursRequestQueue orgId={orgId ? String(orgId) : undefined} onChanged={refreshApprovalViews} /> : null}
           </div>
         )
       ) : (

@@ -40,6 +40,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmRouteChangeRequest.count).mockResolvedValue(2 as never)
   vi.mocked(prisma.mtmCustomerCreateRequest.count).mockResolvedValue(3 as never)
   vi.mocked(prisma.mtmCustomerLocationRequest.count).mockResolvedValue(4 as never)
+  vi.mocked(prisma.mtmCustomerHoursRequest.count).mockResolvedValue(5 as never)
 })
 
 describe("GET /mtm/routes/needs-attention", () => {
@@ -51,12 +52,14 @@ describe("GET /mtm/routes/needs-attention", () => {
       success: true,
       data: {
         schemaVersion: 1,
-        total: 9,
+        total: 14,
         categories: {
           routeChanges: { count: 2 },
           customerRequests: { count: 3 },
           // «Клиент здесь»: requests to move a customer's pin, sent from the spot.
           customerLocationRequests: { count: 4 },
+          // «Часы не те?»: an agent's proposed «часы приёма» of a place.
+          customerHoursRequests: { count: 5 },
         },
       },
     })
@@ -79,6 +82,13 @@ describe("GET /mtm/routes/needs-attention", () => {
     })
     // Only what still waits, and only from the agents this manager answers for.
     expect(prisma.mtmCustomerLocationRequest.count).toHaveBeenCalledWith({
+      where: {
+        organizationId: ORG,
+        status: "SUBMITTED",
+        requestedByAgentId: { in: ["agent-1", "agent-2"] },
+      },
+    })
+    expect(prisma.mtmCustomerHoursRequest.count).toHaveBeenCalledWith({
       where: {
         organizationId: ORG,
         status: "SUBMITTED",

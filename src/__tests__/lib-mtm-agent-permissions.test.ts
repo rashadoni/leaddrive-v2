@@ -260,6 +260,12 @@ const FACTS: Partial<Record<AgentPermissionId, Fact[]>> = {
     { check: () => !canManageFieldMasterData(agent) },
     { file: "src/app/api/v1/mtm/contact-transfers/route.ts", contains: "if (!actor || !canManageFieldMasterData(actor)) {" },
   ],
+  customerHoursRequest: [
+    // Only the agent himself proposes, about his own place; a manager decides.
+    { file: "src/app/api/v2/mtm/mobile/route-field/organizations/[id]/hours-request/route.ts", contains: 'if (!actor || actor.role !== "AGENT" || !actor.agentId || actor.agentId !== auth.agentId) return null' },
+    { file: "src/app/api/v2/mtm/mobile/route-field/organizations/[id]/hours-request/route.ts", contains: "AND: [customerScopeForActor(actor, asOf)]" },
+    { file: "src/app/api/v1/mtm/customer-hours-requests/[id]/decision/route.ts", contains: "canReviewMtmRouteRequest(actor, request.requestedByAgentId)" },
+  ],
   taskExecute: [{
     file: "src/app/api/v1/mtm/mobile/tasks/[id]/progress/route.ts",
     contains: 'requireMobileCapability(auth, "FIELD_EXECUTE")',

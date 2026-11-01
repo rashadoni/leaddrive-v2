@@ -11584,6 +11584,8 @@
     "domainHint": "Use a subdomain like landing.yourcompany.com or pages.yourcompany.com"
   },
   "mtmAccess": {
+    "perm_customerHoursRequest": "Report from the spot that the visiting hours are different",
+    "perm_customerHoursRequest_hint": "At the place, the agent sends its real opening hours. They change after a manager approves.",
     "matrixNote": "What an agent may do in the phone is on the «What an agent can do» tab.",
     "teamEmpty": "Nobody in the team yet",
     "teamOf": "Team: {names}",
@@ -13849,6 +13851,22 @@
     "openOnMap": "Open the day's route on the map"
   },
   "mtmRoutesPage": {
+    "hoursTitle": "Visiting hours: agents' proposals · {count}",
+    "hoursDescription": "An agent on the spot found other opening hours and sent them. Accept to make them the place's hours, or keep the old ones.",
+    "hoursLoadFailed": "Could not load the proposed hours",
+    "hoursFrom": "{name} · {when}",
+    "hoursChanged": "This place's hours were changed after the agent sent his.",
+    "hoursConfirmChanged": "The place's hours were changed after the agent asked. Replace them with the agent's anyway?",
+    "hoursNow": "Now",
+    "hoursProposed": "Agent proposes",
+    "hoursNone": "not given",
+    "hoursApprove": "Accept hours",
+    "hoursApproveHint": "The place's hours become the ones the agent sent; the agent is notified.",
+    "hoursReject": "Keep as it was",
+    "hoursRejectComment": "Why you keep them (the agent sees it)",
+    "hoursApproved": "The place's hours changed",
+    "hoursRejected": "Hours kept as they were",
+    "hoursDecisionFailed": "Could not save the decision",
     "locationMovedConfirm": "Yes, move it",
     "locationMovedConfirmBody": "Someone already corrected the customer's pin after the agent sent the request. Move it to where the agent stood anyway?",
     "locationMovedConfirmTitle": "The pin was changed after the request",
