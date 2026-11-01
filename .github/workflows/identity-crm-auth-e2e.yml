@@ -125,6 +125,9 @@ jobs:
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103127000_identity_onboarding_intent/migration.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261103128000_identity_onboarding_time/migration.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261106110000_mtm_field_agent_removal/migration.sql
+          # Columns and tables of later, non-identity migrations: added from the
+          # current schema.prisma without dropping the identity SQL guards.
+          node scripts/identity/crm-browser-schema-catch-up.mjs
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -v app_password="$IDENTITY_CRM_DB_PASSWORD" <<'SQL'
           CREATE ROLE identity_crm_browser LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD :'app_password';
           GRANT CONNECT ON DATABASE identity_crm_browser_test TO identity_crm_browser;
