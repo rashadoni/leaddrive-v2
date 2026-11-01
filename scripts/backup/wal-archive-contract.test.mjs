@@ -468,7 +468,9 @@ test('the journal says WHY the watch stayed quiet, and never guesses', () => {
   // The journal is read when something is already wrong. "Waiting for a second
   // check" standing in for "already told you" would send the reader looking
   // for a message that was in fact sent an hour ago.
-  const NOW2 = Date.parse('2026-11-02T00:00:00Z');
+  // The same NOW as the other cases: the fixture's checkedAt must stay inside
+  // the staleness window, or assess() reports silence instead of the problem.
+  const NOW2 = NOW;
   const crit = assess(fresh({ status: 'crit', streak: 2, shouldAlert: true, message: 'сломалось' }), NOW2);
   const warn = assess(fresh({ status: 'warn', streak: 2, shouldAlert: true, message: 'староват' }), NOW2);
   const local = assess({ error: 'unreachable', detail: 'timed out' }, NOW2);
