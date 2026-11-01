@@ -172,7 +172,36 @@ if [ "$should_alert" = 1 ] && [ -n "$WAL_ALERT_COMMAND" ] && [ -x "$WAL_ALERT_CO
   "$WAL_ALERT_COMMAND" "$message" || true
 fi
 
-printf '%s' "{\"status\":\"$status\",\"streak\":$streak,\"checkedAt\":\"$(date -u +%FT%TZ)\"}" >"$WAL_CHECK_STATE_FILE"
+# The watch on the workstation reads this file over ssh and forwards the
+# message verbatim. The verdict, its wording and the two-run streak are decided
+# here, next to the data, so exactly one place decides what is wrong; the watch
+# decides only delivery and adds the one thing this host cannot say about
+# itself — that it went silent. Written through a temporary file: a reader that
+# caught a half-written file would see broken JSON and call it an incident.
+WAL_STATE_STATUS="$status" WAL_STATE_STREAK="$streak" \
+WAL_STATE_MESSAGE="$message" WAL_STATE_ALERT="$should_alert" \
+WAL_STATE_FILE="$WAL_CHECK_STATE_FILE" python3 -I -c '
+import json, os, tempfile, time
+
+target = os.environ["WAL_STATE_FILE"]
+payload = {
+    "status": os.environ["WAL_STATE_STATUS"],
+    "streak": int(os.environ["WAL_STATE_STREAK"]),
+    "message": os.environ["WAL_STATE_MESSAGE"],
+    "shouldAlert": os.environ["WAL_STATE_ALERT"] == "1",
+    "checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+}
+directory = os.path.dirname(target) or "."
+fd, tmp = tempfile.mkstemp(dir=directory)
+try:
+    with os.fdopen(fd, "w") as handle:
+        json.dump(payload, handle, ensure_ascii=False)
+    os.chmod(tmp, 0o640)
+    os.replace(tmp, target)
+except BaseException:
+    os.unlink(tmp)
+    raise
+'
 
 printf 'SUMMARY wal-check status=%s lag=%ss backlog=%s dropped=%s backup_age=%ss full_age=%ss\n' \
   "$status" "${last_archived_age:--1}" "$backlog" "$dropped_total" "${backup_age:--1}" "${full_age:--1}"

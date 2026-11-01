@@ -8,6 +8,7 @@ import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { assess, decide, stripSubject } from './wal-archive-watch.mjs';
 
 const envExample = readFileSync('ops/backup/wal-archive.env.example', 'utf8');
 const install = readFileSync('scripts/backup/wal-archive-install.sh', 'utf8');
@@ -23,7 +24,7 @@ const backupTimer = readFileSync('ops/systemd/leaddrive-wal-backup.timer', 'utf8
 // The scheduler's only real decision is full or differential, and it is a pure
 // function of what the repository already holds. Run it for each case against a
 // stub pgbackrest rather than asserting the shape of the call.
-function decide(infoJson) {
+function decideBackupType(infoJson) {
   const dir = mkdtempSync(join(tmpdir(), 'leaddrive-wal-backup-'));
   try {
     const stub = join(dir, 'pgbackrest');
@@ -175,28 +176,28 @@ test('a failed stanza-create is fatal, not swallowed', () => {
 test('an empty repository gets a full backup, not a differential', () => {
   // A differential against nothing is a pgBackRest error, and the repository
   // would stay without the base every restore replays from.
-  assert.equal(decide('[]'), 'full');
-  assert.equal(decide(JSON.stringify([{ backup: [] }])), 'full');
+  assert.equal(decideBackupType('[]'), 'full');
+  assert.equal(decideBackupType(JSON.stringify([{ backup: [] }])), 'full');
 });
 
 test('a fresh full backup is followed by differentials', () => {
-  assert.equal(decide(stanzaWithFull(3600)), 'diff');
-  assert.equal(decide(stanzaWithFull(6 * 86400)), 'diff');
+  assert.equal(decideBackupType(stanzaWithFull(3600)), 'diff');
+  assert.equal(decideBackupType(stanzaWithFull(6 * 86400)), 'diff');
 });
 
 test('a full backup older than its interval is renewed', () => {
   // At the interval exactly, not a day later: the restore replay window is
   // what this bounds.
-  assert.equal(decide(stanzaWithFull(7 * 86400 + 60)), 'full');
-  assert.equal(decide(stanzaWithFull(30 * 86400)), 'full');
+  assert.equal(decideBackupType(stanzaWithFull(7 * 86400 + 60)), 'full');
+  assert.equal(decideBackupType(stanzaWithFull(30 * 86400)), 'full');
 });
 
 test('an unreadable repository asks for a full backup instead of skipping', () => {
   // Skipping would leave a broken repository broken until somebody looked. A
   // full backup is the one command that repairs a repository with no usable
   // backup set.
-  assert.equal(decide('not json at all'), 'full');
-  assert.equal(decide(''), 'full');
+  assert.equal(decideBackupType('not json at all'), 'full');
+  assert.equal(decideBackupType(''), 'full');
 });
 
 test('the scheduler runs often enough that the watch is a backstop, not the notice', () => {
@@ -244,4 +245,120 @@ test('a backup in flight is never killed by a timeout or a second run', () => {
 test('the full backup interval is configured, not hardcoded', () => {
   assert.match(envExample, /^WAL_FULL_INTERVAL_DAYS=7$/m);
   assert.match(backup, /\$\{WAL_FULL_INTERVAL_DAYS:=7\}/);
+});
+
+// ---------------------------------------------------------------------------
+// The watch on the workstation. It forwards production's verdict and adds the
+// one thing production cannot say about itself, so these cases are about what
+// reaches the owner, not about the shape of the call.
+
+const NOW = Date.parse('2026-11-01T20:00:00Z');
+const fresh = (over = {}) => ({
+  state: { status: 'ok', streak: 0, message: 'WAL-архив: всё в порядке', shouldAlert: false, checkedAt: '2026-11-01T19:58:00Z', ...over },
+});
+
+test('a fresh healthy verdict says nothing', () => {
+  assert.deepEqual(assess(fresh(), NOW), []);
+});
+
+test("production's own two-run streak is respected, not repeated here", () => {
+  // streak 1 on production means one bad run: it stays quiet there and must
+  // stay quiet here, or the hysteresis is halved.
+  const first = assess(fresh({ status: 'crit', streak: 1, shouldAlert: false, message: 'WAL-архив: archive_command is failing' }), NOW);
+  assert.deepEqual(first, []);
+  const second = assess(fresh({ status: 'crit', streak: 2, shouldAlert: true, message: 'WAL-архив: archive_command is failing' }), NOW);
+  assert.equal(second.length, 1);
+  assert.equal(second[0].key, 'archive');
+  assert.equal(second[0].critical, true);
+  // Forwarded verbatim: the wording is decided where the data is.
+  assert.equal(second[0].text, 'WAL-архив: archive_command is failing');
+});
+
+test('a warning is forwarded as a warning, not as an alarm', () => {
+  const [problem] = assess(fresh({ status: 'warn', streak: 2, shouldAlert: true, message: 'WAL-архив: newest backup is 60h old' }), NOW);
+  assert.equal(problem.critical, false);
+});
+
+test('a stale verdict is an incident even while it still says ok', () => {
+  // The dangerous case: a stopped timer leaves the last verdict in place, so a
+  // stale "ok" would read as health for ever.
+  const [problem] = assess(fresh({ checkedAt: '2026-11-01T19:20:00Z' }), NOW);
+  assert.equal(problem.key, 'watch-silent');
+  assert.equal(problem.critical, true);
+  assert.match(problem.text, /молчит 40 мин/);
+});
+
+test('four missed production runs are stale, one is not', () => {
+  assert.deepEqual(assess(fresh({ checkedAt: '2026-11-01T19:53:00Z' }), NOW), []);
+  assert.equal(assess(fresh({ checkedAt: '2026-11-01T19:39:00Z' }), NOW)[0].key, 'watch-silent');
+});
+
+test('an unreadable or timeless state is an incident, never silence', () => {
+  assert.equal(assess({ error: 'state-unreadable', detail: 'x' }, NOW)[0].key, 'state-unreadable');
+  assert.equal(assess({ state: { status: 'ok' } }, NOW)[0].key, 'state-unreadable');
+  assert.equal(assess({ state: { status: 'ok', checkedAt: 'вчера' } }, NOW)[0].key, 'state-unreadable');
+  assert.equal(assess({ error: 'unreachable', detail: 'timed out' }, NOW)[0].key, 'unreachable');
+});
+
+test('a problem seen only from here waits two runs, an archive problem does not', () => {
+  const problem = assess({ error: 'unreachable', detail: 'timed out' }, NOW);
+  const first = decide(problem, {}, NOW);
+  assert.deepEqual(first.sends, [], 'one bad network minute must stay quiet');
+  const second = decide(problem, first, NOW + 600_000);
+  assert.equal(second.sends.length, 1);
+
+  const archive = assess(fresh({ status: 'crit', streak: 2, shouldAlert: true, message: 'сломалось' }), NOW);
+  assert.equal(decide(archive, {}, NOW).sends.length, 1, 'production already waited two runs');
+});
+
+test('an alarm reminds hourly and a warning is said once', () => {
+  const crit = assess(fresh({ status: 'crit', streak: 2, shouldAlert: true, message: 'сломалось' }), NOW);
+  const sent = decide(crit, {}, NOW);
+  assert.equal(decide(crit, sent, NOW + 1800_000).sends.length, 0, 'half an hour is too soon');
+  const again = decide(crit, sent, NOW + 3600_000);
+  assert.equal(again.sends.length, 1);
+  assert.equal(again.sends[0].repeat, true);
+
+  const warn = assess(fresh({ status: 'warn', streak: 2, shouldAlert: true, message: 'староват' }), NOW);
+  const warned = decide(warn, {}, NOW);
+  assert.equal(warned.sends.length, 1);
+  assert.equal(decide(warn, warned, NOW + 24 * 3600_000).sends.length, 0, 'a warning is not repeated');
+});
+
+test('recovery is said only after something was said', () => {
+  const crit = assess(fresh({ status: 'crit', streak: 2, shouldAlert: true, message: 'сломалось' }), NOW);
+  const reported = decide(crit, {}, NOW);
+  const recovered = decide([], reported, NOW + 600_000);
+  assert.equal(recovered.recovered, true);
+  assert.deepEqual(recovered.incidents, {});
+  // Nothing was ever said, so there is nothing to recover from.
+  assert.equal(decide([], {}, NOW).recovered, false);
+  const quiet = decide(assess({ error: 'unreachable', detail: 'x' }, NOW), {}, NOW);
+  assert.equal(decide([], quiet, NOW + 600_000).recovered, false, 'an unreported blip needs no all-clear');
+});
+
+test('the watch reads production and never runs the check itself', () => {
+  // Two drivers would race for the script lock on production, and a run that
+  // loses the lock exits 0 — which this would have read as health.
+  const watch = readFileSync('scripts/backup/wal-archive-watch.mjs', 'utf8');
+  assert.match(watch, /check-state\.json/);
+  assert.doesNotMatch(watch, /wal-archive-check\.sh/);
+  assert.doesNotMatch(watch, /pgbackrest/);
+});
+
+test('the state production leaves carries the wording and the decision', () => {
+  // Without these the watch would have to re-derive both, and the streak lives
+  // on production.
+  assert.match(check, /"message": os\.environ\["WAL_STATE_MESSAGE"\]/);
+  assert.match(check, /"shouldAlert": os\.environ\["WAL_STATE_ALERT"\] == "1"/);
+  // Written through a temporary file: a half-written file read over ssh would
+  // look like a broken archive.
+  assert.match(check, /os\.replace\(tmp, target\)/);
+});
+
+test('the owner reads the subject once, not twice', () => {
+  // The heading already says WAL-архив and production's message starts with
+  // it, so forwarding it raw read "WAL-архив: WAL-архив: ...".
+  assert.equal(stripSubject('WAL-архив: archive_command is failing'), 'archive_command is failing');
+  assert.equal(stripSubject('сторож на проде молчит 40 мин'), 'сторож на проде молчит 40 мин');
 });
