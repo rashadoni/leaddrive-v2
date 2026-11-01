@@ -185,3 +185,56 @@ describe("a break in the day's path", () => {
     }
   })
 })
+
+// Owner, 2026-11-01, of the mockup «MTM: движение на карте»: the day is added
+// up by car, on foot, at the stops and on a break, and each leg says how.
+describe("the day's list by the way he moved", () => {
+  let root: Root
+  let container: HTMLDivElement
+  beforeEach(() => {
+    ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it("adds the legs up by car and on foot, reads each as «Ехал» or «Шёл», and shows no tile the day did not have", async () => {
+    const move = (id: string, from: string, to: string, seconds: number, meters: number, mode: "DRIVE" | "WALK" | null) =>
+      ({ kind: "MOVE" as const, id, startedAt: `${DAY}T${from}:00.000Z`, endedAt: `${DAY}T${to}:00.000Z`, durationSeconds: seconds, distanceMeters: meters, pointCount: 10, mode })
+    const trip: DayTripData = {
+      entries: [
+        { kind: "START", id: "start", at: `${DAY}T09:05:00.000Z`, source: "WORKDAY" },
+        move("m1", "09:05", "09:23", 18 * 60, 6_200, "DRIVE"),
+        move("m2", "09:48", "09:55", 7 * 60, 450, "WALK"),
+        move("m3", "10:12", "10:40", 28 * 60, 8_400, "DRIVE"),
+        { kind: "GAP", id: "g1", startedAt: `${DAY}T11:20:00.000Z`, endedAt: `${DAY}T12:00:00.000Z`, durationSeconds: 40 * 60, reason: "WORKDAY_PAUSED", displacementMeters: 0 },
+      ],
+      summary: { movingSeconds: 53 * 60, movingMeters: 15_050, staySeconds: 0, visitCount: 0, unknownSeconds: 0, pausedSeconds: 40 * 60 },
+    }
+    await act(async () => {
+      root.render(createElement(DayTripLedger, {
+        trip, multiDay: false, focusId: null, onFocus: () => {},
+        formatMoment: (value: string) => value.slice(11, 16),
+        formatDuration: (seconds: number) => `${Math.round(seconds / 60)} мин`,
+      }))
+    })
+    const tile = (id: string) => container.querySelector(`[data-testid="mtm-day-trip-total-${id}"]`)?.textContent ?? null
+    expect([tile("DRIVE"), tile("WALK"), tile("BREAK")]).toEqual([
+      "46 минна машине · 14.6 km",
+      "7 минпешком · 450 m",
+      "40 минперерыв · место не пишется",
+    ])
+    // No stop, no lost signal, no leg that says neither: no tile for them.
+    expect([tile("STAY"), tile("GAP"), tile("MOVE")]).toEqual([null, null, null])
+    const legs = [...container.querySelectorAll("li")].filter((row) => row.querySelector("[data-mode]"))
+    expect(legs.map((row) => [row.querySelector("[data-mode]")?.getAttribute("data-mode"), row.textContent])).toEqual([
+      ["DRIVE", "Ехал18 мин · 6.2 km · ≈21 км/ч09:05–09:23"],
+      ["WALK", "Шёл пешком7 мин · 450 m · ≈4 км/ч09:48–09:55"],
+      ["DRIVE", "Ехал28 мин · 8.4 km · ≈18 км/ч10:12–10:40"],
+    ])
+  })
+})

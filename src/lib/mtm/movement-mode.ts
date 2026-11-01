@@ -73,6 +73,9 @@ export function bearingDegrees(
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
 }
 
+/** How an employee is moving now, and which way — the live map's marker and its list say the same. */
+export type MtmLiveMovement = { mode: MtmMovementMode; heading: number | null }
+
 export type MtmCompassPoint = "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW"
 const COMPASS: readonly MtmCompassPoint[] = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
@@ -225,7 +228,7 @@ export function liveMtmMovement(input: {
   speed?: number | null
   heading?: number | null
   trail?: ReadonlyArray<{ latitude: number; longitude: number; recordedAt: string; breakCut?: true }>
-}): { mode: MtmMovementMode; heading: number | null } | null {
+}): MtmLiveMovement | null {
   // A grey last known point says nothing about now: no icon, no arrow.
   if (input.freshness === "STALE") return null
   const kmh = mtmSpeedKmh(input.speed)

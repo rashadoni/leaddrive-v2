@@ -11,7 +11,7 @@ import { useMemo, useState } from "react"
 import { Marker, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 
-import { MTM_MOVEMENT_COLORS, MTM_MOVEMENT_ICON_SVG } from "@/lib/mtm/live-map-agent-marker"
+import { MTM_MOVEMENT_COLORS, MTM_MOVEMENT_ICON_SVG, MTM_MOVEMENT_MARKER_COLORS, MTM_STILL_COLOR, MTM_STILL_ICON_SVG } from "@/lib/mtm/live-map-agent-marker"
 import { arrowsAlong, metresPerPixel, type MtmMovementMode } from "@/lib/mtm/movement-mode"
 
 const ARROW_EVERY_PX = 90
@@ -84,11 +84,6 @@ export function movementLineStyle(mode: MtmMovementMode, emphasis = 1): L.PathOp
   return { color: MTM_MOVEMENT_COLORS.STAY, weight: 3, opacity: 0.7, lineCap: "round", lineJoin: "round" }
 }
 
-const STILL_ICON_SVG = {
-  BREAK: '<rect x="7" y="6" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="13.5" y="6" width="3.5" height="12" rx="1" fill="currentColor"/>',
-  GAP: '<path d="M4 9a12 12 0 0 1 16 0M7.5 12.5a7 7 0 0 1 9 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17" r="2" fill="currentColor"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
-} as const
-
 /**
  * The employee in the replay: a circle in the colour of the way he is moving
  * with its picture inside, an arrow outside it the way he is heading, and the
@@ -97,9 +92,9 @@ const STILL_ICON_SVG = {
  */
 export function replayMarkerIcon(mode: MtmMovementMode | "BREAK" | "GAP", heading: number | null, haloColor: string): L.DivIcon {
   const still = mode === "BREAK" || mode === "GAP"
-  // Standing is amber, as the mockup and the stops on this map have it.
-  const fill = still ? "#64748b" : mode === "STAY" ? "#b45309" : MTM_MOVEMENT_COLORS[mode]
-  const picture = still ? STILL_ICON_SVG[mode] : MTM_MOVEMENT_ICON_SVG[mode]
+  // Standing is amber, as the mockup and the live map's markers have it.
+  const fill = still ? MTM_STILL_COLOR : MTM_MOVEMENT_MARKER_COLORS[mode]
+  const picture = still ? MTM_STILL_ICON_SVG[mode] : MTM_MOVEMENT_ICON_SVG[mode]
   const size = 30
   const box = size + 38
   const half = box / 2

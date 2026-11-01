@@ -6,10 +6,12 @@ import type { MtmMovementMode } from "@/lib/mtm/movement-mode"
 /**
  * An employee's marker on the live map, as the HTML the map is given.
  *
- * The marker itself says one thing — how fresh the GPS point is — and says it
- * three ways, so that nobody has to tell colours apart: the fill (green,
- * amber, slate), the shape (circle, leaf, square) and, for a position that is
- * no longer live, the opacity. None of the three belongs to the employee.
+ * The marker itself says how fresh the GPS point is, so that nobody has to
+ * tell colours apart, by its shape (circle, leaf, square) and, for a position
+ * that is no longer live, its opacity. Its fill says how he is moving — car
+ * blue, on foot green, standing amber (owner, 2026-11-01, of the mockup
+ * «MTM: движение на карте») — and, where that is not known, the freshness
+ * once more (green, amber, slate). None of it belongs to the employee.
  *
  * The colour a manager gave him (owner, 2026-10-09, of the tracking product
  * shown as the model) is therefore a ring OUTSIDE the marker's white border:
@@ -51,6 +53,24 @@ export const MTM_MOVEMENT_COLORS: Record<MtmMovementMode, string> = {
   STAY: HISTORY_MAP_COLORS.raw,
 }
 
+/** A break and a lost signal, in the replay of the day: a pause, a crossed-out signal. Drawn in slate. */
+export const MTM_STILL_ICON_SVG = {
+  BREAK: '<rect x="7" y="6" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="13.5" y="6" width="3.5" height="12" rx="1" fill="currentColor"/>',
+  GAP: '<path d="M4 9a12 12 0 0 1 16 0M7.5 12.5a7 7 0 0 1 9 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17" r="2" fill="currentColor"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+} as const
+export const MTM_STILL_COLOR = "#64748b"
+
+/**
+ * The fill of a marker that knows how he is moving (owner, 2026-11-01, of the
+ * mockup: «едет» blue, «пешком» green, «стоит» amber). His line standing
+ * still is a thin grey, but a marker in grey would read as a lost signal.
+ */
+export const MTM_MOVEMENT_MARKER_COLORS: Record<MtmMovementMode, string> = {
+  DRIVE: HISTORY_MAP_COLORS.track,
+  WALK: HISTORY_MAP_COLORS.walk,
+  STAY: "#b45309",
+}
+
 export function liveMapAgentMarker(input: {
   name: string
   freshness: MtmCoordinateFreshness
@@ -73,12 +93,17 @@ export function liveMapAgentMarker(input: {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;")
-  const color = freshness === "ONLINE" ? "#15803d" : freshness === "DELAYED" ? "#b45309" : "#64748b"
+  const movement = input.movement ?? null
+  // Knowing how he moves, the fill says that; the shape and the opacity still
+  // say how fresh the point is. Without it — a grey last known point — the
+  // fill is the freshness, as before.
+  const color = movement
+    ? MTM_MOVEMENT_MARKER_COLORS[movement.mode]
+    : freshness === "ONLINE" ? "#15803d" : freshness === "DELAYED" ? "#b45309" : "#64748b"
   const radius = freshness === "ONLINE" ? "50%" : freshness === "DELAYED" ? "30% 70% 30% 70%" : "6px"
   const opacity = freshness === "STALE" ? 0.72 : 1
   const ringHex = mtmAgentMapColorHex(input.mapColor)
   const ring = ringHex ? `0 0 0 3px ${ringHex}, 0 0 0 4px rgba(255,255,255,0.9), ` : ""
-  const movement = input.movement ?? null
   const iconSize = focused ? 22 : 18
   const inside = movement
     ? `<svg viewBox="0 0 24 24" width="${iconSize}" height="${iconSize}" aria-hidden="true">${MTM_MOVEMENT_ICON_SVG[movement.mode]}</svg>`

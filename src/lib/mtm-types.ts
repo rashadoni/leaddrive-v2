@@ -57,6 +57,8 @@ export interface LiveMapAgent {
   battery?: number | null
   recordedAt: string
   freshness: MtmCoordinateFreshness
+  /** Since when he has not moved, outside a visit. Only with STOPPED, and only where tracking was unbroken. */
+  stationarySince?: string | null
   workdayState: "ACTIVE" | "PAUSED" | "CLOSED" | "NOT_STARTED"
   teamId?: string | null
   teamName?: string | null

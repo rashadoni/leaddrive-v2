@@ -26,6 +26,7 @@ vi.mock("next-intl", () => ({
 }))
 
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
+import type { MtmLiveMovement } from "@/lib/mtm/movement-mode"
 import { parseMtmLiveMapContract, presentMtmDashboardAgent } from "@/lib/mtm-types"
 import { MTM_AGENT_MAP_COLOR_KEYS } from "@/lib/mtm/agent-tags"
 import {
@@ -591,6 +592,7 @@ describe("the list on the page", () => {
   let state: { filters: RosterFilters; view: RosterView; hidden: Set<string>; selected: string | null; hiddenList: boolean }
   let agents: MtmDashboardAgent[]
   let workforceEnabled: boolean
+  let movements: Map<string, MtmLiveMovement | null> | undefined
 
   function Harness() {
     const [, rerender] = useState(0)
@@ -622,6 +624,7 @@ describe("the list on the page", () => {
       onSelect: (agentId: string) => update(() => { state.selected = state.selected === agentId ? null : agentId }),
       renderDetail: (agent: MtmDashboardAgent) => createElement("div", { "data-testid": "detail" }, `день: ${agent.name}`),
       nowMs: NOW,
+      movements,
       workforceEnabled,
       formatClock: (value: string | null | undefined) => value ? new Date(value).toISOString().slice(11, 16) : "",
       formatVisitOpened: (value: string) => earlierDay(value) ? `${value.slice(8, 10)}.${value.slice(5, 7)}, ${value.slice(11, 16)}` : new Date(value).toISOString().slice(11, 16),
@@ -667,6 +670,7 @@ describe("the list on the page", () => {
     state = { filters: {}, view: { ...ROSTER_DEFAULT_VIEW, columns: [...ROSTER_DEFAULT_VIEW.columns] }, hidden: new Set(), selected: null, hiddenList: false }
     agents = TEAM
     workforceEnabled = true
+    movements = undefined
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -1036,6 +1040,34 @@ describe("the list on the page", () => {
     expect(visibleText(cell("s2", "status"))).toBe("Стоит")
     // Not carried into «в пути».
     expect(byTestId("live-map-agent-standing-s3")).toBeNull()
+  })
+
+  // Owner, 2026-11-01, of the mockup «MTM: движение на карте»: the row says
+  // car or on foot with the marker's badge, and standing has its badge too.
+  it("says car or on foot for whoever is on the road, with the marker's badge", async () => {
+    agents = [
+      person("car", "Едет машиной", { speed: 34 }),
+      person("foot", "Идёт", { speed: 5 }),
+      person("still", "Стоит", { fieldStatus: "STOPPED", stationarySince: minutesAgo(18) }),
+      person("visit", "У клиента", { fieldStatus: "CHECKED_IN" }),
+      person("old", "Без способа", { speed: 20 }),
+    ]
+    movements = new Map([
+      ["car", { mode: "DRIVE", heading: 90 }],
+      ["foot", { mode: "WALK", heading: null }],
+      ["still", { mode: "STAY", heading: null }],
+      ["visit", { mode: "STAY", heading: null }],
+      ["old", null],
+    ])
+    await draw()
+    expect(visibleText(cell("car", "status"))).toBe("Едет · 34 км/ч")
+    expect(visibleText(cell("foot", "status"))).toBe("Пешком · 5 км/ч")
+    expect(visibleText(cell("still", "status"))).toBe("Стоит")
+    const badge = (agentId: string) => byTestId(`live-map-agent-movement-${agentId}`)?.getAttribute("data-mode") ?? null
+    expect(["car", "foot", "still", "visit", "old"].map(badge)).toEqual(["DRIVE", "WALK", "STAY", null, null])
+    // At a client and without a reading: the status word and its dot, as before.
+    expect(visibleText(cell("visit", "status"))).toBe("На точке")
+    expect(visibleText(cell("old", "status"))).toBe("В пути")
   })
 
   it("does not group by a column this roster does not have, whatever layout was remembered", async () => {

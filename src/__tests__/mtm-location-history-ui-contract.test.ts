@@ -93,6 +93,13 @@ describe("SWM-10 GPS history presentation contract", () => {
     expect(panel).toContain("playbackIndex={playbackIndex}")
     expect(panel).toContain("playbackAt={replayAt}")
     expect(panel).toContain('data-testid="mtm-location-history-skip-still"')
+    // On the map itself, as the mockup «MTM: движение на карте» has it: how he
+    // moves in the corner, the controls along the bottom, the speed as three buttons.
+    expect(panel).toContain('data-testid="mtm-location-history-readout"')
+    expect(panel).toContain("<MovementBadge mode={replayFrame.mode} size={26} />")
+    expect(panel).toContain('data-testid={`mtm-location-history-rate-${rate}`}')
+    expect(panel).toContain("aria-pressed={playbackRate === rate}")
+    expect(panel.indexOf('data-testid="mtm-location-history-replay"')).toBeGreaterThan(panel.indexOf("<LocationHistoryMap"))
     expect(panel).toContain('aria-current={index === activeTimelineIndex ? "step" : undefined}')
     expect(map).toContain("points.slice(0, visiblePointCount)")
     expect(map).toContain("historyReplayFrame(points, reading, cuts, playbackAt)")

@@ -17,6 +17,7 @@ import { LiveMapLayersControl } from "@/components/mtm/live-map-layers-control"
 import { DEFAULT_LIVE_MAP_BASE_MAP, liveMapBaseMaps, parseLiveMapBaseMap, type LiveMapBaseMapId } from "@/lib/mtm/live-map-base-maps"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 import { LiveMapTools } from "@/components/mtm/live-map-tools"
+import { liveMtmMovement, type MtmLiveMovement } from "@/lib/mtm/movement-mode"
 import { extendLiveMapTrails, outlineCrossesItself, pathLengthMeters, polygonAreaSquareMeters, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import {
   applyRosterFilters,
@@ -146,8 +147,15 @@ interface AgentRouteSnapshot {
  * `areasList` rides with `areas`: whether the list of «Свои зоны», in its card
  * on the page, is unfolded.
  */
-const MAP_LOOK_STORAGE_KEY = "leaddrive.mtm.live-map.look.v1"
-const DEFAULT_MAP_LOOK = { labels: false, trails: true, glide: true, clients: false, areas: false, areasList: false, base: DEFAULT_LIVE_MAP_BASE_MAP as LiveMapBaseMapId }
+const MAP_LOOK_STORAGE_KEY = "leaddrive.mtm.live-map.look.v2"
+/**
+ * Before the mockup «MTM: движение на карте» (owner, 2026-11-01) the names
+ * were off unless asked for, and every choice of the map was written with
+ * them. The other choices come over from there; the names start on, as the
+ * mockup draws them — with how fast he goes or how long he has stood.
+ */
+const MAP_LOOK_STORAGE_KEY_V1 = "leaddrive.mtm.live-map.look.v1"
+const DEFAULT_MAP_LOOK = { labels: true, trails: true, glide: true, clients: false, areas: false, areasList: false, base: DEFAULT_LIVE_MAP_BASE_MAP as LiveMapBaseMapId }
 /** The backgrounds this build can offer; the same list for as long as the page lives. */
 const BASE_MAPS = liveMapBaseMaps()
 /** With a point picked the list answers «who is nearest» — until another order is asked for. */
@@ -406,7 +414,8 @@ export default function MtmMapPage() {
         storedSortRef.current = view.sort
         setRosterView(view)
       }
-      setMapLook(parseMapLook(window.localStorage.getItem(MAP_LOOK_STORAGE_KEY)))
+      const look = window.localStorage.getItem(MAP_LOOK_STORAGE_KEY)
+      setMapLook(look != null ? parseMapLook(look) : { ...parseMapLook(window.localStorage.getItem(MAP_LOOK_STORAGE_KEY_V1)), labels: DEFAULT_MAP_LOOK.labels })
       setCardLayout(parseCardLayout(window.localStorage.getItem(CARD_LAYOUT_STORAGE_KEY)))
     } catch { /* storage closed to the page: the defaults */ }
   }, [])
@@ -1247,6 +1256,27 @@ export default function MtmMapPage() {
 
   // Employees without an admissible coordinate remain in the roster, but the
   // map only receives finite, bounded coordinates with an evidence timestamp.
+  // Car, on foot or standing, and which way (owner, 2026-11-01, of the mockup
+  // «MTM: движение на карте»): read once, from his position now and the tail
+  // this page saw behind him, so the marker and his row in the list say the
+  // same — whether or not the tail is drawn.
+  const agentMovements = useMemo(() => {
+    const found = new Map<string, MtmLiveMovement | null>()
+    for (const agent of filteredAgents) {
+      const freshness = agent.freshness
+      if (freshness !== "ONLINE" && freshness !== "DELAYED" && freshness !== "STALE") continue
+      if (typeof agent.latitude !== "number" || typeof agent.longitude !== "number" || typeof agent.recordedAt !== "string") continue
+      found.set(agent.agentId, liveMtmMovement({
+        ...agent,
+        freshness,
+        latitude: agent.latitude,
+        longitude: agent.longitude,
+        recordedAt: agent.recordedAt,
+        trail: trails.get(agent.agentId) ?? [],
+      }))
+    }
+    return found
+  }, [filteredAgents, trails])
   const mapAgents: LiveMapAgent[] = filteredAgents.flatMap((agent) => {
     if (!showAgentMarkers || hiddenAgentIds.has(agent.agentId)) return []
     const freshness = agent.freshness
@@ -1806,6 +1836,7 @@ export default function MtmMapPage() {
               followAgent={followSelected}
               showLabels={mapLook.labels}
               trails={mapLook.trails ? trails : null}
+              movements={agentMovements}
               glideMarkers={mapLook.glide}
               pressMode={rulerActive ? "ruler" : pickingPoint ? "point" : null}
               onMapPress={handleMapPress}
@@ -1951,6 +1982,7 @@ export default function MtmMapPage() {
             selectedDetailRef={selectedDetailRef}
             renderDetail={renderAgentDetail}
             nowMs={presentationNow}
+            movements={agentMovements}
             workforceEnabled={workforceEnabled}
             formatClock={formatTenantTime}
             formatVisitOpened={formatVisitOpened}

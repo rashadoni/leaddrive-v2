@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Car, Coffee, Flag, MapPin, Store, WifiOff } from "lucide-react"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { MovementBadge } from "@/components/mtm/movement-badge"
 
 /** The API's `DayTrip`, as it arrives over JSON. */
 export type DayTripData = {
@@ -20,7 +21,17 @@ export type DayTripData = {
         open: boolean
         visit: { id: string; customerId: string; customerName: string } | null
       }
-    | { kind: "MOVE"; id: string; startedAt: string; endedAt: string; durationSeconds: number; distanceMeters: number; pointCount: number }
+    | {
+        kind: "MOVE"
+        id: string
+        startedAt: string
+        endedAt: string
+        durationSeconds: number
+        distanceMeters: number
+        pointCount: number
+        /** Car or on foot; null — it does not say; absent — a server from before it was read. */
+        mode?: "DRIVE" | "WALK" | null
+      }
     | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number; roadMeters?: number | null }
   >
   summary: {
@@ -76,21 +87,46 @@ export function DayTripLedger({
   const clock = (value: string) => formatMoment(value, { hour: "2-digit", minute: "2-digit" })
   const dayOf = (value: string) => formatMoment(value, { day: "numeric", month: "long" })
   const { summary } = trip
+  // The day added up the way the mockup «MTM: движение на карте» has it
+  // (owner, 2026-11-01): by car, on foot, at the stops, on a break — each a
+  // tile, and only those the day had.
+  const legs = { DRIVE: { seconds: 0, meters: 0 }, WALK: { seconds: 0, meters: 0 }, MOVE: { seconds: 0, meters: 0 } }
+  for (const entry of trip.entries) {
+    if (entry.kind !== "MOVE") continue
+    const sum = legs[entry.mode ?? "MOVE"]
+    sum.seconds += entry.durationSeconds
+    sum.meters += entry.distanceMeters
+  }
+  const totals: Array<{ id: string; badge: "DRIVE" | "WALK" | "STAY" | "BREAK" | "GAP" | null; value: string; label: string }> = [
+    ...(["DRIVE", "WALK", "MOVE"] as const).flatMap((mode) => legs[mode].seconds > 0
+      ? [{ id: mode, badge: mode === "MOVE" ? null : mode, value: formatDuration(legs[mode].seconds), label: t(`total${mode}`, { distance: kilometres(legs[mode].meters) }) }]
+      : []),
+    // «0 мин» on a day without a stop reads as a fault (prod 2026-09-24, of «В пути 0 мин, 0 м»).
+    ...(summary.staySeconds > 0 || summary.visitCount > 0
+      ? [{ id: "STAY", badge: "STAY" as const, value: formatDuration(summary.staySeconds), label: `${t("totalSTAY")} · ${t("summaryVisits", { count: summary.visitCount })}` }]
+      : []),
+    ...(summary.pausedSeconds > 0 ? [{ id: "BREAK", badge: "BREAK" as const, value: formatDuration(summary.pausedSeconds), label: t("totalBREAK") }] : []),
+    ...(summary.unknownSeconds > 0 ? [{ id: "GAP", badge: "GAP" as const, value: formatDuration(summary.unknownSeconds), label: t("totalGAP") }] : []),
+  ]
   const entryDays = trip.entries.map((entry) => dayOf("at" in entry ? entry.at : entry.startedAt))
 
   return (
     <section data-testid="mtm-day-trip" className="rounded-lg border border-border bg-card" aria-labelledby="day-trip-title">
       <div className="border-b px-3 py-2">
         <h3 id="day-trip-title" className="text-sm font-semibold">{t("title")}</h3>
-        <p data-testid="mtm-day-trip-summary" className="mt-0.5 text-xs text-muted-foreground">
-          {[
-            // «On the road 0 min, 0 m» on a day without a single drive reads as a fault.
-            summary.movingSeconds > 0 ? t("summaryMoving", { duration: formatDuration(summary.movingSeconds), distance: kilometres(summary.movingMeters) }) : null,
-            t("summaryVisits", { count: summary.visitCount }),
-            summary.unknownSeconds > 0 ? t("summaryUnknown", { duration: formatDuration(summary.unknownSeconds) }) : null,
-            summary.pausedSeconds > 0 ? t("summaryPaused", { duration: formatDuration(summary.pausedSeconds) }) : null,
-          ].filter(Boolean).join(" · ")}
-        </p>
+        {trip.entries.length ? (
+          <div data-testid="mtm-day-trip-summary" className="mt-2 grid grid-cols-2 gap-1.5">
+            {totals.map((total) => (
+              <div key={total.id} data-testid={`mtm-day-trip-total-${total.id}`} className="flex min-w-0 items-center gap-2 rounded-md bg-muted/60 px-2 py-1.5">
+                {total.badge ? <MovementBadge mode={total.badge} size={22} /> : <Car aria-hidden="true" className="h-4 w-4 shrink-0" style={{ color: HISTORY_MAP_COLORS.track }} />}
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold tabular-nums">{total.value}</span>
+                  <span className="block text-xs leading-snug text-muted-foreground">{total.label}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
       {!trip.entries.length && <p className="p-4 text-xs text-muted-foreground">{t("empty")}</p>}
       <ol className="divide-y">
@@ -128,10 +164,13 @@ export function DayTripLedger({
             case "END":
               title = entry.source === "WORKDAY" ? t("endWorkday") : t("endGps")
               break
-            case "MOVE":
-              title = t("move")
-              detail = `${formatDuration(entry.durationSeconds)} · ${kilometres(entry.distanceMeters)}`
+            case "MOVE": {
+              // «Ехал 18 мин · 6,2 км · ≈21 км/ч», as the mockup reads a leg.
+              title = entry.mode ? t(`move${entry.mode}`) : t("move")
+              const kmh = entry.durationSeconds >= 60 ? Math.round(entry.distanceMeters / entry.durationSeconds * 3.6) : 0
+              detail = `${formatDuration(entry.durationSeconds)} · ${kilometres(entry.distanceMeters)}${entry.mode && kmh > 0 ? ` · ${t("moveSpeed", { kmh })}` : ""}`
               break
+            }
             case "STAY":
               title = entry.visit?.customerName ?? t("stopWithoutVisit")
               detail = entry.open
@@ -155,7 +194,9 @@ export function DayTripLedger({
 
           const body = (
             <>
-              <Icon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" style={{ color: tone }} />
+              {entry.kind === "MOVE" && entry.mode
+                ? <MovementBadge mode={entry.mode} size={18} />
+                : <Icon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" style={{ color: tone }} />}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{title}</span>
                 {detail && <span className="block text-muted-foreground">{detail}</span>}
