@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
-import { mtmActivityEntityText } from "@/lib/mtm/activity-entity"
+import { mtmActivityEntityKey, mtmActivityEntityText } from "@/lib/mtm/activity-entity"
 import { ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
 import { MtmPageHeader } from "@/components/mtm/page-header"
 import { MtmFilterBar, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
@@ -110,11 +110,12 @@ export default function MtmActivityPage() {
 
   const exportCsv = () => {
     if (logs.length === 0) { toast.info(t("exportEmpty")); return }
-    const head = [t("colTime"), t("colAgent"), t("colAction"), t("colDetails")]
+    const head = [t("colTime"), t("colWho"), t("colAction"), t("colSubject"), t("colDetails")]
     const rows = logs.map(l => [
       new Date(l.createdAt).toISOString(),
       activityActorName(l, t),
       t(actionLabelKey(l.action)),
+      subjectOf(l) ?? "",
       detailsOf(l).label,
     ])
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`
@@ -128,19 +129,31 @@ export default function MtmActivityPage() {
   // C12: строка читалась как «mtm_pharmacy_promotion_execution · 4f2a9c» —
   // имя таблицы и шесть символов идентификатора. Ни то, ни другое не язык, а
   // по обрывку id ничего и не найти. Полный id уехал в подсказку.
-  const detailsOf = (l: any): { label: string; title: string | null } => {
-    // 2026-09-14: the row used to read «Əməliyyat · Sistem · Əməkdaş». What a
-    // manager needs is WHERE — the customer's name, resolved by the API.
+  /**
+   * Owner, 2026-11-01: «журнал активности — мало информации». A row reads as a
+   * sentence: who did what, to whom or what, with the facts of the change.
+   * «Kimə / nəyə» is the client the API resolved, or the employee the row is
+   * about when somebody else acted on him.
+   */
+  const subjectOf = (l: any): string | null => {
     const subject = l.subject as ActivitySubject | undefined
-    if (subject?.customerName) return { label: subject.customerName, title: l.entityId ?? null }
-    // Audit 2026-09-21: «Запись» said nothing about a broadcast or a bulk
-    // assignment; the row's own facts do.
-    const summary = activityDataSummary(l, tt)
+    if (subject?.customerName) return subject.customerName
+    const about = typeof l.agent?.name === "string" && l.agent.name.trim() ? l.agent.name.trim() : null
+    return about && about !== activityActorName(l, t) ? about : null
+  }
+  // C12: строка читалась как «mtm_pharmacy_promotion_execution · 4f2a9c» —
+  // имя таблицы и шесть символов идентификатора. Полный id — в подсказке.
+  // 2026-11-01: «Запись» в каждой строке тоже ничего не говорила — нет фактов,
+  // нет и подписи; известный вид записи («Визит», «Маршрут») остаётся.
+  const detailsOf = (l: any): { label: string; title: string | null } => {
+    const summary = activityDataSummary(l, tt, locale)
     if (summary) return { label: summary, title: l.entityId ?? null }
     const k = kindKey(l.metadataKind)
     if (k) return { label: t(k), title: null }
-    return mtmActivityEntityText(l, t)
+    if (mtmActivityEntityKey(l.entity)) return mtmActivityEntityText(l, t)
+    return { label: "", title: null }
   }
+  const timeOf = (iso: string) => formatDate(iso, locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", ...(timezone ? { timeZone: timezone } : {}) })
 
   return (
     <div className="space-y-4">
@@ -249,7 +262,14 @@ export default function MtmActivityPage() {
       }
       out.push(<ActivityRow key={log.id} log={log} />)
     }
-    return <div>{out}</div>
+    return (
+      <div>
+        <div aria-hidden="true" className={`hidden border-b border-border bg-muted/60 px-4 py-2 text-xs text-muted-foreground sm:grid ${ROW_GRID}`}>
+          <span>{t("colTime")}</span><span>{t("colWho")}</span><span>{t("colAction")}</span><span>{t("colSubject")}</span><span>{t("colDetails")}</span>
+        </div>
+        {out}
+      </div>
+    )
   }
 
   function ActivityRow({ log }: { log: any }) {
@@ -257,42 +277,30 @@ export default function MtmActivityPage() {
     const Icon = meta.icon
     const href = activityRowHref(log)
     const clickable = !!href
+    const subject = subjectOf(log)
+    const details = detailsOf(log)
     return (
       <div
         onClick={clickable ? () => router.push(href!) : undefined}
-        className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-0 border-border ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
+        data-testid="mtm-activity-row"
+        className={`grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 border-b border-border px-4 py-2.5 last:border-0 sm:min-h-12 ${ROW_GRID} ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
       >
-        {/* agent avatar / initials */}
-        <Avatar name={log.actor?.name ?? log.agent?.name} avatar={log.actor ? null : log.agent?.avatar} />
-        {/* action icon + label */}
-        {/* min-w-0 + truncate below sm: long localized actions ("Xəbərdarlıq
-            yenidən açıldı") used to push the row past the right edge. */}
-        <span title={t(actionLabelKey(log.action))} className={`inline-flex min-w-0 max-w-[45%] items-center gap-1.5 py-1 text-xs font-medium sm:w-44 sm:max-w-none sm:shrink-0 ${TONE_CLASSES[meta.tone]}`}>
-          <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="row-span-4 self-start text-sm tabular-nums text-muted-foreground sm:row-span-1 sm:self-center" title={relativeTime(log.createdAt, tt)} data-testid="mtm-activity-time">{timeOf(log.createdAt)}</span>
+        <span className="truncate text-sm font-medium" data-testid="mtm-activity-who">{activityActorName(log, t)}</span>
+        {/* The words of the action keep their colour; no pill under them. */}
+        <span title={t(actionLabelKey(log.action))} className={`col-start-2 inline-flex min-w-0 items-center gap-1.5 text-sm sm:col-start-auto ${TONE_CLASSES[meta.tone]}`} data-testid="mtm-activity-action">
+          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="truncate">{t(actionLabelKey(log.action))}</span>
         </span>
-        {/* agent name + details */}
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{activityActorName(log, t)}</div>
-          {(() => {
-            const details = detailsOf(log)
-            return <div className="text-xs text-muted-foreground truncate" title={details.title ?? undefined}>{details.label}</div>
-          })()}
-        </div>
-        {/* time + drill-down chevron */}
-        <span className="text-xs text-muted-foreground whitespace-nowrap">{relativeTime(log.createdAt, tt)}</span>
-        {clickable && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+        <span className={`col-start-2 truncate text-sm sm:col-start-auto ${subject ? "text-foreground" : "hidden text-muted-foreground sm:block"}`} data-testid="mtm-activity-subject">{subject ?? "—"}</span>
+        <span className="col-start-2 flex min-w-0 items-center gap-2 sm:col-start-auto" data-testid="mtm-activity-details">
+          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={details.title ?? undefined}>{details.label}</span>
+          {clickable && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+        </span>
       </div>
     )
   }
 }
 
-function Avatar({ name, avatar }: { name?: string; avatar?: string | null }) {
-  const initials = (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("")
-  if (avatar) return <img src={avatar} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
-  return (
-    <span className="h-8 w-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-semibold text-muted-foreground">
-      {initials}
-    </span>
-  )
-}
+/** The journal's columns: time, who, what, to whom or what, the facts. */
+const ROW_GRID = "sm:grid-cols-[3.5rem_minmax(0,9rem)_minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,1.1fr)]"
