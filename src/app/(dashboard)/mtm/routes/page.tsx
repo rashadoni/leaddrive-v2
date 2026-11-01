@@ -53,6 +53,7 @@ import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-po
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { MtmWord } from "@/components/mtm/button-word"
+import { MtmPageTitle } from "@/components/mtm/page-header"
 
 const MtmRouteMap = dynamic(() => import("@/components/mtm/route-map"), { ssr: false })
 
@@ -917,11 +918,11 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
           heading, the row wrapped and its second line lay over the heading.
           The heading keeps its own line; the tabs and actions take the next. */}
       <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-border pb-3">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <Route className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-          <div className="min-w-0">
-            <h1 className="text-lg font-semibold leading-6 text-foreground">{t(calendarSurface ? "calendarTitle" : "title")}</h1>
-          </div>
+        {/* One header for the module (owner, 2026-10-31): the large title, the
+            quiet «Kömək» with its word on the right — not an orange icon and a
+            round «?». */}
+        <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+          <MtmPageTitle title={t(calendarSurface ? "calendarTitle" : "title")} />
           {/*
             Audit W-05 / task C5. Measured on the owner's screen at 1470x675:
             the first row of data began at y=312, so 46 % of the window was
@@ -932,7 +933,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
             The Definition of Done puts the explanation behind "?", which is
             where it now lives.
           */}
-          <HelpButton slug="mtm-routes" className="shrink-0" />
+          <HelpButton slug="mtm-routes" variant="quiet" className="shrink-0" />
         </div>
         <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center">
           {/* Owner 2026-09-25: «if I as the architect can't make sense of it, an

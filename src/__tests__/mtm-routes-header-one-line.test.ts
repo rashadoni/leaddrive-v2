@@ -22,13 +22,14 @@ describe("C5 tail: the routes heading is one line", () => {
     const page = readFileSync(PAGE, "utf8")
     const header = page.slice(page.indexOf('data-testid="mtm-route-header"'), page.indexOf('data-testid="mtm-route-toolbar"'))
     // Routes audit 2026-09-26: the Calendar section is titled «Calendar», not «Routes».
-    expect(header).toContain('<h1 className="text-lg font-semibold leading-6 text-foreground">{t(calendarSurface ? "calendarTitle" : "title")}</h1>')
+    // Since 2026-11-01 the module's shared title (MtmPageTitle, no description).
+    expect(header).toContain('<MtmPageTitle title={t(calendarSurface ? "calendarTitle" : "title")} />')
     expect(header).not.toContain('{t("subtitle")}')
   })
 
   it("leaves the explanation reachable where the rule puts it", () => {
     const page = readFileSync(PAGE, "utf8")
-    expect(page).toContain('<HelpButton slug="mtm-routes" className="shrink-0" />')
+    expect(page).toContain('<HelpButton slug="mtm-routes" variant="quiet" className="shrink-0" />')
   })
 
   it("does not leave the string behind as a fourth answer", () => {

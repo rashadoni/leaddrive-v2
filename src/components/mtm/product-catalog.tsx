@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNo
 import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import {
-  AlertTriangle, ArrowRight, Check, CheckCircle2, Download, FileText, FolderOpen, FolderPlus, Loader2, PackageOpen,
+  AlertTriangle, ArrowRight, Check, CheckCircle2, Download, FileText, FolderOpen, FolderPlus, Loader2,
   Presentation, Search, Stethoscope, Trash2, UploadCloud, Users, X,
 } from "lucide-react"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Hint, HintValue } from "@/components/hint"
 import { HOME_ICON, HomePill, type HomeTone } from "@/components/mtm/home-parts"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatFileSize } from "@/lib/format-file-size"
@@ -377,13 +378,7 @@ export function MtmProductCatalog() {
 
   return (
     <div className="space-y-4" data-testid="mtm-product-catalog">
-      <header className="flex flex-wrap items-start gap-3">
-        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", HOME_ICON.orange)}><PackageOpen className="h-5 w-5" aria-hidden="true" /></span>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold leading-tight">{t("title")}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-      </header>
+      <MtmPageHeader title={t("title")} description={t("subtitle")} />
 
       {loadError ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
