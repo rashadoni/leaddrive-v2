@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
-import { ArrowLeft, ChevronLeft, ChevronRight, GripVertical, Loader2, Search, Send, Sparkles, X } from "lucide-react"
+import { ArrowLeft, ChevronLeft, ChevronRight, GripVertical, Loader2, Route as RouteIcon, Search, Send, Sparkles, X } from "lucide-react"
 import { Hint, HintValue } from "@/components/hint"
 import { HomePill } from "@/components/mtm/home-parts"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ import {
   type RoutePlannerCandidate,
 } from "@/lib/mtm/route-planner"
 import { coerceMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
+import { routeOrderClock } from "@/lib/mtm/route-order"
 import { MTM_ROUTE_TIME_SLOTS } from "@/lib/mtm/route-time-slots"
 import { cn } from "@/lib/utils"
 
@@ -71,6 +72,20 @@ type ApiCandidate = {
   monthlyVisitCount?: number
   customer?: { name?: string | null; address?: string | null; latitude?: number | null; longitude?: number | null } | null
 }
+
+/** One order of the day read along the roads (/api/v1/mtm/routes/order). */
+type RoadSummary = {
+  order: string[]
+  driveSeconds: number
+  metres: number
+  onTime: number
+  endMinutes: number
+  arrivals: number[]
+  lateMinutes: number[]
+  line: Array<[number, number]> | null
+}
+type RoadReason = { kind: "LATE_FIXED"; stop: string; lateMinutes: number } | { kind: "SHORTER"; metres: number; seconds: number }
+type RoadReading = { signature: string; current: RoadSummary; proposed: RoadSummary | null; reason: RoadReason | null }
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
 
@@ -147,6 +162,11 @@ export function MtmRoutePlanner() {
   const [error, setError] = useState("")
   const [duplicate, setDuplicate] = useState<{ id: string } | null>(null)
   const dragIndex = useRef<number | null>(null)
+  // The day along the roads, and the order that drives less (owner 2026-11-01,
+  // mockup «MTM: порядок объезда лучше»): re-read on every change of the stops.
+  const [roads, setRoads] = useState<RoadReading | null>(null)
+  /** The stops the proposal was put away for: «Изменить вручную» keeps a line in the list, «Оставить как есть» hides it too. */
+  const [proposalHiddenFor, setProposalHiddenFor] = useState<{ signature: string; kept: boolean } | null>(null)
   // «В маршрут» from a list row: that client goes onto the route as soon as
   // the employee's clients are read — or waits, named as missing, until an
   // employee who may visit them is chosen.
@@ -264,6 +284,57 @@ export function MtmRoutePlanner() {
   const lengthKm = routePlannerLengthKm(stops)
   const dayMinutes = routePlannerDayMinutes(stops.map((stop) => stop.plannedTime))
   const canPublish = capabilities?.canPublish === true
+
+  const roadStops = useMemo(() => (stops.length >= 2 && stops.every((stop) => typeof stop.latitude === "number" && typeof stop.longitude === "number")
+    ? stops.map((stop) => ({ key: stop.key, latitude: stop.latitude as number, longitude: stop.longitude as number, plannedTime: stop.plannedTime }))
+    : null), [stops])
+  const roadSignature = roadStops ? JSON.stringify(roadStops.map((stop) => [stop.key, stop.plannedTime])) : ""
+  useEffect(() => {
+    if (!roadStops) return
+    const controller = new AbortController()
+    const signature = JSON.stringify(roadStops.map((stop) => [stop.key, stop.plannedTime]))
+    // A drag or a few clicks in a row ask once, for where they ended.
+    const timer = window.setTimeout(() => {
+      fetch("/api/v1/mtm/routes/order", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...headers },
+        body: JSON.stringify({ stops: roadStops }),
+        signal: controller.signal,
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((body) => {
+          if (controller.signal.aborted) return
+          setRoads(body?.data?.current ? { signature, ...(body.data as Omit<RoadReading, "signature">) } : null)
+        })
+        .catch(() => { /* no roads: the planner keeps the straight line */ })
+    }, 400)
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [headers, roadStops])
+  // An answer for other stops than these says nothing about them.
+  const road = roads && roads.signature === roadSignature ? roads : null
+  const proposal = road?.proposed ?? null
+  const hidden = proposalHiddenFor?.signature === roadSignature ? proposalHiddenFor : null
+  const showProposal = proposal !== null && hidden === null
+  const kmText = (metres: number) => (metres / 1000).toLocaleString(locale, { maximumFractionDigits: 1, minimumFractionDigits: metres < 100_000 ? 1 : 0 })
+  const minutesText = (minutes: number) => {
+    const whole = Math.max(0, Math.round(minutes))
+    if (whole < 60) return t("order.minutes", { minutes: whole })
+    return whole % 60 === 0 ? t("order.hours", { hours: whole / 60 }) : t("order.hoursMinutes", { hours: Math.floor(whole / 60), minutes: whole % 60 })
+  }
+  const lateReason = road?.reason?.kind === "LATE_FIXED" ? road.reason : null
+  const lateStopName = lateReason ? stops.find((stop) => stop.key === lateReason.stop)?.name ?? "" : ""
+  const applyProposal = () => {
+    if (!proposal) return
+    setStops((current) => {
+      const byKey = new Map(current.map((stop) => [stop.key, stop]))
+      const order = proposal.order.map((key) => byKey.get(key)).filter((stop): stop is Stop => Boolean(stop))
+      return order.length === current.length ? retime(order, current.map((stop) => stop.plannedTime)) : current
+    })
+    toast.success(t("order.applied"))
+  }
 
   const removeStop = (key: string) => setStops((current) => retime(current.filter((stop) => stop.key !== key), current.filter((stop) => stop.key !== key).map((stop) => stop.plannedTime)))
   const moveStop = (from: number, to: number) => setStops((current) => {
@@ -424,6 +495,8 @@ export function MtmRoutePlanner() {
       ) : null}
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* The better order stands over the map on a wide screen, under it on a phone. */}
+        <div className="relative min-w-0 space-y-3">
         <div className="relative h-[560px] overflow-hidden rounded-2xl border border-border bg-card">
           {date && agentId ? (
             <RoutePlannerMap
@@ -433,6 +506,8 @@ export function MtmRoutePlanner() {
               focusPlaceId={focusPlaceId}
               onSelectPlace={setSelectedPlaceId}
               onAdd={(candidate) => addCandidates([candidate])}
+              currentLine={road?.current.line ?? null}
+              proposedLine={showProposal ? proposal?.line ?? null : null}
               words={{
                 label: t("mapLabel"),
                 dueThisMonth: t("legendDue", { month: monthLabel }),
@@ -487,6 +562,14 @@ export function MtmRoutePlanner() {
             <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-full bg-orange-500" />{t("legendDue", { month: monthLabel })}</span>
             <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-full bg-zinc-400" />{t("legendVisited")}</span>
             <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="inline-block h-3 w-3 rounded-full bg-zinc-900" />{t("inRoute")}</span>
+            {road && showProposal && proposal ? (
+              <>
+                <span className="inline-flex items-center gap-1" data-testid="mtm-route-planner-legend-now"><i aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dashed border-zinc-500" />{t("order.legendNow", { km: kmText(road.current.metres) })}</span>
+                <span className="inline-flex items-center gap-1 font-semibold" data-testid="mtm-route-planner-legend-proposed"><i aria-hidden="true" className="inline-block h-1 w-6 rounded-full bg-blue-700" />{t("order.legendProposed", { km: kmText(proposal.metres) })}</span>
+              </>
+            ) : road ? (
+              <span className="inline-flex items-center gap-1" data-testid="mtm-route-planner-legend-roads"><i aria-hidden="true" className="inline-block h-1 w-6 rounded-full bg-zinc-900" />{t("order.legendRoads", { km: kmText(road.current.metres) })}</span>
+            ) : null}
           </div>
           {candidatesLoading ? (
             <div className="absolute inset-0 z-[400] flex items-center justify-center bg-white/40"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" aria-label={t("loading")} /></div>
@@ -496,13 +579,76 @@ export function MtmRoutePlanner() {
             <p className="absolute inset-x-3 bottom-14 z-[500] rounded-xl bg-white/95 p-3 text-sm text-muted-foreground shadow-sm">{t("noClients")}</p>
           ) : null}
         </div>
+            {road && proposal && showProposal ? (
+              <section
+                aria-labelledby="mtm-route-order-title"
+                data-testid="mtm-route-planner-better-order"
+                className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-xl lg:absolute lg:right-3 lg:top-16 lg:z-[600] lg:w-[380px] lg:max-w-[calc(100%-1.5rem)]"
+              >
+                <div className="flex items-start gap-2.5">
+                  <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-700 text-white"><RouteIcon className="h-4 w-4" /></span>
+                  <div>
+                    <h2 id="mtm-route-order-title" className="text-[15px] font-semibold">{t("order.title")}</h2>
+                    <p className="text-xs text-muted-foreground">{t("order.source")}</p>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="py-1 text-left font-semibold"><span className="sr-only">{t("order.rowPath")}</span></th>
+                      <th className="py-1 text-right font-semibold">{t("order.colNow")}</th>
+                      <th className="py-1 text-right font-semibold text-blue-700 dark:text-blue-400">{t("order.colProposed")}</th>
+                      <th className="py-1 text-right font-semibold">{t("order.colChange")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { id: "path", label: t("order.rowPath"), now: t("order.km", { km: kmText(road.current.metres) }), next: t("order.km", { km: kmText(proposal.metres) }), change: road.current.metres - proposal.metres >= 50 ? `−${t("order.km", { km: kmText(road.current.metres - proposal.metres) })}` : "—" },
+                      { id: "drive", label: t("order.rowDrive"), now: minutesText(road.current.driveSeconds / 60), next: minutesText(proposal.driveSeconds / 60), change: road.current.driveSeconds - proposal.driveSeconds >= 60 ? `−${minutesText((road.current.driveSeconds - proposal.driveSeconds) / 60)}` : "—" },
+                      { id: "onTime", label: t("order.rowOnTime"), now: t("order.onTime", { count: road.current.onTime, total: stops.length }), next: t("order.onTime", { count: proposal.onTime, total: stops.length }), change: proposal.onTime > road.current.onTime ? `+${proposal.onTime - road.current.onTime}` : "—" },
+                      { id: "end", label: t("order.rowEnd"), now: routeOrderClock(road.current.endMinutes), next: routeOrderClock(proposal.endMinutes), change: road.current.endMinutes - proposal.endMinutes >= 1 ? `−${minutesText(road.current.endMinutes - proposal.endMinutes)}` : "—" },
+                    ].map((row) => (
+                      <tr key={row.id} className="border-t border-border" data-testid={`mtm-route-planner-better-${row.id}`}>
+                        <td className="py-1.5">{row.label}</td>
+                        <td className="py-1.5 text-right tabular-nums text-muted-foreground">{row.now}</td>
+                        <td className="py-1.5 text-right font-semibold tabular-nums">{row.next}</td>
+                        <td className="whitespace-nowrap py-1.5 text-right tabular-nums">{row.change === "—" ? <span className="text-muted-foreground">—</span> : <span className="font-semibold text-green-700 dark:text-green-400">{row.change}</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+                {road.reason ? (
+                  <p className="rounded-xl bg-muted/60 px-3 py-2 text-[13px] leading-snug text-foreground" data-testid="mtm-route-planner-better-reason">
+                    {road.reason.kind === "LATE_FIXED"
+                      ? t("order.reasonLate", { name: lateStopName, minutes: road.reason.lateMinutes })
+                      : t("order.reasonShorter", { km: kmText(road.reason.metres), minutes: Math.round(road.reason.seconds / 60) })}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Hint text={t("order.hint.apply")}>
+                    <Button onClick={applyProposal} data-testid="mtm-route-planner-better-apply">{t("order.apply")}</Button>
+                  </Hint>
+                  <Hint text={t("order.hint.manual")}>
+                    <Button variant="outline" onClick={() => setProposalHiddenFor({ signature: roadSignature, kept: false })} data-testid="mtm-route-planner-better-manual">{t("order.manual")}</Button>
+                  </Hint>
+                  <Hint text={t("order.hint.keep")}>
+                    <Button variant="ghost" onClick={() => setProposalHiddenFor({ signature: roadSignature, kept: true })} data-testid="mtm-route-planner-better-keep">{t("order.keep")}</Button>
+                  </Hint>
+                </div>
+              </section>
+            ) : null}
+        </div>
 
         <aside className="flex min-w-0 flex-col rounded-2xl border border-border bg-card" data-testid="mtm-route-planner-route">
           <div className="border-b border-border px-4 py-3">
             <h2 className="text-[15px] font-semibold first-letter:uppercase">{t("routeOf", { day: routeDayLabel })}</h2>
             <div className="mt-1 flex flex-wrap gap-1.5" data-testid="mtm-route-planner-summary">
               <HomePill tone={stops.length > 0 ? "green" : "zinc"}>{t("stops", { count: stops.length })}</HomePill>
-              {stops.length > 1 ? <HintValue text={t("hint.length")}><HomePill tone="zinc">{t("km", { km: lengthKm.toLocaleString(locale, { maximumFractionDigits: 1 }) })}</HomePill></HintValue> : null}
+              {road ? (
+                <HomePill tone="zinc">{t("order.kmRoads", { km: kmText(road.current.metres) })}</HomePill>
+              ) : stops.length > 1 ? <HintValue text={t("hint.length")}><HomePill tone="zinc">{t("km", { km: lengthKm.toLocaleString(locale, { maximumFractionDigits: 1 }) })}</HomePill></HintValue> : null}
               {dayMinutes !== null ? <HintValue text={t("hint.duration")}><HomePill tone="zinc">{dayMinutes % 60 === 0
                 ? t("durationHours", { hours: dayMinutes / 60 })
                 : t("duration", { hours: Math.floor(dayMinutes / 60), minutes: dayMinutes % 60 })}</HomePill></HintValue> : null}
@@ -511,6 +657,12 @@ export function MtmRoutePlanner() {
           {prefillMissing ? (
             <p role="status" data-testid="mtm-route-planner-prefill-missing" className="mx-3 mt-3 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
               {t("prefillMissing")}
+            </p>
+          ) : null}
+          {road && proposal && hidden && !hidden.kept ? (
+            <p role="status" data-testid="mtm-route-planner-better-collapsed" className="mx-3 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-border px-3 py-2 text-[13px] text-foreground">
+              <span className="min-w-0 flex-1">{t("order.collapsed", { km: kmText(Math.max(0, road.current.metres - proposal.metres)), minutes: Math.max(0, Math.round((road.current.driveSeconds - proposal.driveSeconds) / 60)) })}</span>
+              <button type="button" className="font-semibold underline" onClick={() => setProposalHiddenFor(null)}>{t("order.show")}</button>
             </p>
           ) : null}
           {stops.length === 0 ? (
@@ -535,6 +687,14 @@ export function MtmRoutePlanner() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold">{stop.name}</span>
                     <span className="block truncate text-xs text-muted-foreground">{stop.contactId ? stop.placeName : stop.address}</span>
+                    {road && typeof road.current.arrivals[index] === "number" ? (
+                      <span className="flex flex-wrap items-center gap-1.5 text-xs" data-testid={`mtm-route-planner-eta-${index + 1}`}>
+                        <HintValue text={t("order.hint.eta")}><span className="tabular-nums text-muted-foreground">{t("order.eta", { time: routeOrderClock(road.current.arrivals[index]) })}</span></HintValue>
+                        {road.current.lateMinutes[index] > 0 ? (
+                          <HintValue text={t("order.hint.late")}><span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-300" data-testid={`mtm-route-planner-late-${index + 1}`}><i aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />{t("order.late", { minutes: road.current.lateMinutes[index] })}</span></HintValue>
+                        ) : null}
+                      </span>
+                    ) : null}
                   </span>
                   <Hint text={t("hint.time")}>
                     <select aria-label={t("time")} value={stop.plannedTime} onChange={(event) => setStopTime(stop.key, event.target.value)} className="h-7 rounded-full bg-muted px-2 text-xs font-semibold tabular-nums outline-none" data-testid={`mtm-route-planner-time-${index + 1}`}>

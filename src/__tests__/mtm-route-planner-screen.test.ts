@@ -61,11 +61,18 @@ const DOCTORS = [
 let capabilities: Record<string, unknown>
 let posts: Array<{ url: string; method: string; body: unknown }>
 let createAnswer: { status: number; body: unknown }
+/** What the roads say (/api/v1/mtm/routes/order), and what the planner asked them. */
+let orderAnswer: { status: number; body: unknown }
+let orderAsks: Array<{ stops: Array<{ key: string; plannedTime: string }> }>
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = new URL(String(input), "https://crm.test")
   const method = init?.method ?? "GET"
+  if (url.pathname === "/api/v1/mtm/routes/order") {
+    orderAsks.push(JSON.parse(String(init?.body)))
+    return json(orderAnswer.body, orderAnswer.status)
+  }
   if (method !== "GET") {
     posts.push({ url: url.pathname, method, body: JSON.parse(String(init?.body)) })
     if (url.pathname === "/api/v1/mtm/routes") return json(createAnswer.body, createAnswer.status)
@@ -118,6 +125,8 @@ beforeEach(() => {
   capabilities = { canCreateRoute: true, canPublish: true, canReview: true, actorAgentId: null }
   posts = []
   createAnswer = { status: 201, body: { success: true, data: { id: "route-new", version: 1 } } }
+  orderAnswer = { status: 503, body: { code: "MTM_ROUTE_ORDER_ROADS_UNAVAILABLE" } }
+  orderAsks = []
   vi.stubGlobal("fetch", fetchMock)
   container = document.createElement("div")
   document.body.append(container)
@@ -272,5 +281,84 @@ describe("the route planner", () => {
     expect(byTestId("mtm-route-planner-prefill-missing").textContent).toBe(T.prefillMissing)
     // The client stays asked for: choosing the right employee puts them on.
     expect(nav.replace).not.toHaveBeenCalledWith("/mtm/routes/plan?agentId=agent-1&date=2026-10-16", { scroll: false })
+  })
+
+  // Owner 2026-11-01, mockup «MTM: порядок объезда лучше»: the day read along
+  // the roads, and an order that drives less offered with what it saves.
+  describe("along the roads", () => {
+    const road = (order: string[], over: Record<string, unknown> = {}) => ({
+      order, driveSeconds: 1800, metres: 9_000, onTime: 3, endMinutes: 720,
+      arrivals: [570, 640, 700], lateMinutes: [0, 0, 0], line: [[40.4, 49.83], [40.41, 49.84]], ...over,
+    })
+    const waitForRoads = async () => {
+      // The planner asks once a drag has settled.
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)) })
+      await flush()
+    }
+    const threeStops = async () => {
+      await mount()
+      // c3 has had its visits this month: it is on the map under «Все».
+      await click(byTestId("mtm-route-planner-all"))
+      await click(byTestId("add-c3"))
+      await click(byTestId("add-c1"))
+      await click(byTestId("add-c2"))
+    }
+
+    it("offers the better order with what it saves, and puts the stops in it on «Применить порядок», times staying in place", async () => {
+      orderAnswer = { status: 200, body: { success: true, data: {
+        current: road(["c3", "c1", "c2"], { driveSeconds: 2_700, metres: 12_400, onTime: 2, endMinutes: 760, arrivals: [570, 655, 745], lateMinutes: [0, 0, 25] }),
+        proposed: road(["c1", "c2", "c3"], { driveSeconds: 1_500, metres: 7_200, onTime: 3, endMinutes: 705 }),
+        reason: { kind: "LATE_FIXED", stop: "c2", lateMinutes: 25 },
+      } } }
+      await threeStops()
+      await waitForRoads()
+
+      expect(orderAsks.at(-1)?.stops.map((stop) => [stop.key, stop.plannedTime])).toEqual([["c3", "09:30"], ["c1", "10:30"], ["c2", "11:30"]])
+      const card = byTestId("mtm-route-planner-better-order")
+      expect(card.textContent).toContain(T.order.title)
+      expect(byTestId("mtm-route-planner-better-path").textContent).toBe("Путь12,4 км7,2 км−5,2 км")
+      expect(byTestId("mtm-route-planner-better-drive").textContent).toBe("В дороге45 мин25 мин−20 мин")
+      expect(byTestId("mtm-route-planner-better-onTime").textContent).toBe("Визиты вовремя2 из 33 из 3+1")
+      expect(byTestId("mtm-route-planner-better-end").textContent).toBe("Последний визит до12:4011:45−55 мин")
+      expect(byTestId("mtm-route-planner-better-reason").textContent).toBe("Сейчас «Clinic c2» опаздывает на 25 мин. В новом порядке агент успевает ко времени визита.")
+      // Each stop says when he gets there, and the late one says by how much.
+      expect(byTestId("mtm-route-planner-eta-3").textContent).toBe("приезд 12:25опоздает на 25 мин")
+      expect(byTestId("mtm-route-planner-summary").textContent).toContain("12,4 км по дорогам")
+      // The map draws both: the present way and the proposed one.
+      expect((mapProps.current as unknown as { proposedLine: unknown }).proposedLine).toEqual([[40.4, 49.83], [40.41, 49.84]])
+
+      await click(byTestId("mtm-route-planner-better-apply"))
+      expect(stopNames()).toEqual(["Clinic c1", "Clinic c2", "Clinic c3"])
+      expect(stopTimes()).toEqual(["09:30", "10:30", "11:30"])
+      expect(toasts.success).toHaveBeenCalledWith(T.order.applied)
+    })
+
+    it("«Изменить вручную» leaves a line with the saving; «Оставить как есть» puts it away until the stops change", async () => {
+      orderAnswer = { status: 200, body: { success: true, data: {
+        current: road(["c3", "c1", "c2"], { driveSeconds: 2_700, metres: 12_400 }),
+        proposed: road(["c1", "c2", "c3"], { driveSeconds: 1_500, metres: 7_200 }),
+        reason: { kind: "SHORTER", metres: 5_200, seconds: 1_200 },
+      } } }
+      await threeStops()
+      await waitForRoads()
+      expect(byTestId("mtm-route-planner-better-reason").textContent).toBe("Без лишних возвратов: путь короче на 5,2 км, в дороге на 20 мин меньше.")
+
+      await click(byTestId("mtm-route-planner-better-manual"))
+      expect(container.querySelector('[data-testid="mtm-route-planner-better-order"]')).toBeNull()
+      expect(byTestId("mtm-route-planner-better-collapsed").textContent).toContain("на 5,2 км и 20 мин в дороге меньше")
+      await click(byTestId("mtm-route-planner-better-collapsed").querySelector("button") as HTMLElement)
+      await click(byTestId("mtm-route-planner-better-keep"))
+      expect(container.querySelector('[data-testid="mtm-route-planner-better-order"]')).toBeNull()
+      expect(container.querySelector('[data-testid="mtm-route-planner-better-collapsed"]')).toBeNull()
+    })
+
+    it("without roads keeps the straight line and its distance, and offers nothing", async () => {
+      await threeStops()
+      await waitForRoads()
+      expect(orderAsks.length).toBeGreaterThan(0)
+      expect(container.querySelector('[data-testid="mtm-route-planner-better-order"]')).toBeNull()
+      expect(container.querySelector('[data-testid="mtm-route-planner-eta-1"]')).toBeNull()
+      expect(byTestId("mtm-route-planner-summary").textContent).not.toContain("по дорогам")
+    })
   })
 })

@@ -11,12 +11,16 @@ import type { RoutePlannerCandidate, RoutePlannerPlace } from "@/lib/mtm/route-p
  * The route planner's map (/mtm/routes/plan): every organization the agent
  * may visit — orange where somebody has had no visit this month, grey where
  * everybody has — and the day's route on top of it, numbered, joined by a
- * dashed line. A click on a place opens it with a button per client.
+ * dashed line, or by its way along the streets once the roads are read. When
+ * the route assistant has a better order (owner 2026-11-01), the present way
+ * goes grey and dashed and the proposed one is drawn in blue over it. A click
+ * on a place opens it with a button per client.
  */
 
 const DUE = "#f97316"
 const VISITED = "#a1a1aa"
 const ROUTE = "#18181b"
+const PROPOSED = "#1d4ed8"
 
 const stopIcon = (index: number) => L.divIcon({
   className: "mtm-route-planner-stop",
@@ -62,6 +66,8 @@ export default function RoutePlannerMap({
   focusPlaceId,
   onSelectPlace,
   onAdd,
+  currentLine = null,
+  proposedLine = null,
   words,
 }: {
   places: RoutePlannerPlace[]
@@ -70,6 +76,10 @@ export default function RoutePlannerMap({
   focusPlaceId: string | null
   onSelectPlace: (customerId: string | null) => void
   onAdd: (candidate: RoutePlannerCandidate) => void
+  /** The route in its present order along the streets ([latitude, longitude]); null — straight between the stops. */
+  currentLine?: Array<[number, number]> | null
+  /** The order the assistant proposes, along the streets; null — none shown. */
+  proposedLine?: Array<[number, number]> | null
   words: RoutePlannerMapWords
 }) {
   const inRoute = useMemo(() => new Set(stops.map((stop) => stop.key)), [stops])
@@ -94,7 +104,22 @@ export default function RoutePlannerMap({
             eventHandlers={{ click: () => onSelectPlace(place.customerId) }}
           />
         ))}
-        {routeLine.length > 1 ? <Polyline positions={routeLine} pathOptions={{ color: ROUTE, weight: 4, opacity: 0.8, dashArray: "6 6" }} /> : null}
+        {currentLine && currentLine.length > 1 ? (
+          // Its own key per look: Leaflet does not take a dash pattern back off a line.
+          <Polyline
+            key={proposedLine ? "road-now-dashed" : "road-now"}
+            positions={currentLine}
+            pathOptions={proposedLine
+              ? { color: "#71717a", weight: 3, opacity: 0.85, dashArray: "7 7" }
+              : { color: ROUTE, weight: 4, opacity: 0.8 }}
+          />
+        ) : routeLine.length > 1 ? <Polyline key="straight" positions={routeLine} pathOptions={{ color: ROUTE, weight: 4, opacity: 0.8, dashArray: "6 6" }} /> : null}
+        {proposedLine && proposedLine.length > 1 ? (
+          <>
+            <Polyline positions={proposedLine} pathOptions={{ color: "#ffffff", weight: 8, opacity: 0.9 }} />
+            <Polyline positions={proposedLine} pathOptions={{ color: PROPOSED, weight: 5, opacity: 0.95 }} />
+          </>
+        ) : null}
         {stops.map((stop, index) => (typeof stop.latitude === "number" && typeof stop.longitude === "number"
           ? <Marker key={stop.key} position={[stop.latitude, stop.longitude]} icon={stopIcon(index)} />
           : null))}
