@@ -34,6 +34,12 @@ const PROD_ACTIONS = [
   "CUSTOMER_CREATE", "CUSTOMER_DELETE", "FIELD_ASSIGNMENT_UPSERT", "ORGANIZATION_BULK_UNASSIGN",
   "VISIT_ACTION_COMPLETE", "VISIT_RESULT_UPDATE", "check_out", "complete_task", "create_order", "login",
   "resolve_alert", "AGENT_CREATE", "WORKDAY_REOPEN", "WORKDAY_REOPEN_UNDO", "HRM_REQUEST_DECISION",
+  // 2026-11-01, Zeytun Pharma: read as «Əməliyyat · Qeyd» (owner: «мало информации»).
+  "CONTACT_CREATE", "FIELD_ORGANIZATION_CREATE", "MOBILE_LOGIN_CODE_SENT", "MOBILE_PASSWORD_SET_BY_CODE",
+  "MOBILE_LOGIN_CODE_ACCEPTED", "CONTACT_BULK_ASSIGN", "MTM_ATTENDANCE_CALENDAR_ADDED", "MTM_ATTENDANCE_SCREEN_PAIRING_STARTED",
+  "MTM_ATTENDANCE_PARTICIPATION_CHANGED", "MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYMENT_RECORDED",
+  "WORKFORCE_EMPLOYMENT_EVENT_RECORDED", "CUSTOMER_LOCATION_REQUEST", "MTM_ATTENDANCE_REMINDER_POLICY_CHANGED",
+  "MTM_ATTENDANCE_EXPLANATION_DECIDED", "MTM_ATTENDANCE_EXPLANATION_ANSWERED", "MTM_ATTENDANCE_EXPLANATION_REQUESTED",
 ]
 
 describe("the activity journal in words", () => {
@@ -75,6 +81,43 @@ describe("the activity journal in words", () => {
       expect(messages[locale].detailOrganizations).toContain("{count, plural,")
     }
     expect(messages.ru.detailRecipients).toContain("few {")
+  })
+})
+
+describe("the journal says the facts of a change (owner, 2026-11-01: «мало информации»)", () => {
+  const t = (key: string, values?: Record<string, unknown>) => {
+    let node: unknown = messages.az
+    for (const part of key.split(".")) node = (node as Record<string, unknown> | undefined)?.[part]
+    const raw = typeof node === "string" ? node : key
+    const plural = raw.match(/^\{count, plural,.* other \{# ([^}]*)\}\}$/)
+    if (plural) return `${values?.count} ${plural[1]}`
+    return raw.replace(/\{(\w+)\}/g, (_m, name) => String(values?.[name] ?? ""))
+  }
+
+  it("a calendar day: its date, its name and its kind", () => {
+    expect(activityDataSummary({ action: "MTM_ATTENDANCE_CALENDAR_ADDED", newData: { date: "2026-12-31", kind: "PUBLIC_HOLIDAY", name: "Həmrəylik Günü" } }, t, "az"))
+      .toMatch(/^31 dekabr · Həmrəylik Günü · bayram$/)
+  })
+
+  it("an explanation: the day, lateness or absence, and how it was decided", () => {
+    expect(activityDataSummary({ action: "MTM_ATTENDANCE_EXPLANATION_REQUESTED", newData: { date: "2026-10-30", kind: "LATE" } }, t, "az")).toBe("30 oktyabr · gecikmə")
+    expect(activityDataSummary({ action: "MTM_ATTENDANCE_EXPLANATION_DECIDED", newData: { status: "REJECTED" } }, t, "az")).toBe("rədd edildi")
+  })
+
+  it("a sign-in by code: the phone only as it was masked, and how the password was set", () => {
+    expect(activityDataSummary({ action: "MOBILE_LOGIN_CODE_SENT", newData: { phone: "+99410•••7110", messageId: "wamid.X" } }, t, "az")).toBe("+99410•••7110")
+    expect(activityDataSummary({ action: "MOBILE_LOGIN_CODE_SENT", newData: { phone: "+994105107110" } }, t, "az")).toBeNull()
+    expect(activityDataSummary({ action: "MOBILE_PASSWORD_SET_BY_CODE", newData: { reason: "whatsapp_code" } }, t, "az")).toBe("WhatsApp kodu ilə")
+  })
+
+  it("clients handed over: how many", () => {
+    expect(activityDataSummary({ action: "CONTACT_BULK_ASSIGN", newData: { contactIds: ["a", "b", "c"] } }, t, "az")).toBe("3 müştəri")
+  })
+
+  it("the page shows who, what, to whom and the facts — and no «Qeyd» standing in for nothing", () => {
+    const page = readFileSync("src/app/(dashboard)/mtm/activity/page.tsx", "utf8")
+    for (const id of ["mtm-activity-time", "mtm-activity-who", "mtm-activity-action", "mtm-activity-subject", "mtm-activity-details"]) expect(page).toContain(`data-testid="${id}"`)
+    expect(page).toContain("if (mtmActivityEntityKey(l.entity)) return mtmActivityEntityText(l, t)")
   })
 })
 
