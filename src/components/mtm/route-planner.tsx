@@ -324,6 +324,8 @@ export function MtmRoutePlanner() {
     if (whole < 60) return t("order.minutes", { minutes: whole })
     return whole % 60 === 0 ? t("order.hours", { hours: whole / 60 }) : t("order.hoursMinutes", { hours: Math.floor(whole / 60), minutes: whole % 60 })
   }
+  const lateReason = road?.reason?.kind === "LATE_FIXED" ? road.reason : null
+  const lateStopName = lateReason ? stops.find((stop) => stop.key === lateReason.stop)?.name ?? "" : ""
   const applyProposal = () => {
     if (!proposal) return
     setStops((current) => {
@@ -590,6 +592,7 @@ export function MtmRoutePlanner() {
                     <p className="text-xs text-muted-foreground">{t("order.source")}</p>
                   </div>
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -610,15 +613,16 @@ export function MtmRoutePlanner() {
                         <td className="py-1.5">{row.label}</td>
                         <td className="py-1.5 text-right tabular-nums text-muted-foreground">{row.now}</td>
                         <td className="py-1.5 text-right font-semibold tabular-nums">{row.next}</td>
-                        <td className="whitespace-nowrap py-1.5 text-right tabular-nums">{row.change === "—" ? <span className="text-muted-foreground">—</span> : <span className="rounded-md bg-green-100 px-1.5 py-0.5 font-semibold text-green-800 dark:bg-green-900/40 dark:text-green-300">{row.change}</span>}</td>
+                        <td className="whitespace-nowrap py-1.5 text-right tabular-nums">{row.change === "—" ? <span className="text-muted-foreground">—</span> : <span className="font-semibold text-green-700 dark:text-green-400">{row.change}</span>}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </div>
                 {road.reason ? (
-                  <p className="rounded-xl bg-blue-50 px-3 py-2 text-[13px] leading-snug text-blue-950 dark:bg-blue-950/40 dark:text-blue-100" data-testid="mtm-route-planner-better-reason">
+                  <p className="rounded-xl bg-muted/60 px-3 py-2 text-[13px] leading-snug text-foreground" data-testid="mtm-route-planner-better-reason">
                     {road.reason.kind === "LATE_FIXED"
-                      ? t("order.reasonLate", { name: stops.find((stop) => stop.key === road.reason?.stop && road.reason.kind === "LATE_FIXED")?.name ?? "", minutes: road.reason.lateMinutes })
+                      ? t("order.reasonLate", { name: lateStopName, minutes: road.reason.lateMinutes })
                       : t("order.reasonShorter", { km: kmText(road.reason.metres), minutes: Math.round(road.reason.seconds / 60) })}
                   </p>
                 ) : null}
@@ -656,7 +660,7 @@ export function MtmRoutePlanner() {
             </p>
           ) : null}
           {road && proposal && hidden && !hidden.kept ? (
-            <p role="status" data-testid="mtm-route-planner-better-collapsed" className="mx-3 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-blue-50 px-3 py-2 text-[13px] text-blue-950 dark:bg-blue-950/40 dark:text-blue-100">
+            <p role="status" data-testid="mtm-route-planner-better-collapsed" className="mx-3 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-border px-3 py-2 text-[13px] text-foreground">
               <span className="min-w-0 flex-1">{t("order.collapsed", { km: kmText(Math.max(0, road.current.metres - proposal.metres)), minutes: Math.max(0, Math.round((road.current.driveSeconds - proposal.driveSeconds) / 60)) })}</span>
               <button type="button" className="font-semibold underline" onClick={() => setProposalHiddenFor(null)}>{t("order.show")}</button>
             </p>
@@ -687,7 +691,7 @@ export function MtmRoutePlanner() {
                       <span className="flex flex-wrap items-center gap-1.5 text-xs" data-testid={`mtm-route-planner-eta-${index + 1}`}>
                         <HintValue text={t("order.hint.eta")}><span className="tabular-nums text-muted-foreground">{t("order.eta", { time: routeOrderClock(road.current.arrivals[index]) })}</span></HintValue>
                         {road.current.lateMinutes[index] > 0 ? (
-                          <HintValue text={t("order.hint.late")}><span className="rounded-full bg-amber-100 px-1.5 font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-200" data-testid={`mtm-route-planner-late-${index + 1}`}>{t("order.late", { minutes: road.current.lateMinutes[index] })}</span></HintValue>
+                          <HintValue text={t("order.hint.late")}><span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-300" data-testid={`mtm-route-planner-late-${index + 1}`}><i aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />{t("order.late", { minutes: road.current.lateMinutes[index] })}</span></HintValue>
                         ) : null}
                       </span>
                     ) : null}

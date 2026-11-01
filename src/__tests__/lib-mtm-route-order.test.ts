@@ -33,8 +33,9 @@ describe("reading one order", () => {
 
   it("says nothing when two stops have no road between them", () => {
     const roads = lineRoads([0, 1, 2])
-    roads.seconds[0] = [0, null, 240]
-    expect(readRouteOrder([0, 1, 2], [570, 630, 690], roads)).toBeNull()
+    const seconds = roads.seconds.map((row) => [...row])
+    seconds[0] = [0, null, 240]
+    expect(readRouteOrder([0, 1, 2], [570, 630, 690], { ...roads, seconds })).toBeNull()
   })
 })
 
