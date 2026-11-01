@@ -441,15 +441,15 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         {report && people.length ? <div className="overflow-x-auto" role="region" aria-label={t("reportMonth")} tabIndex={0}><table className="w-full border-collapse text-xs" data-testid="attendance-month-grid">
           <thead><tr><th scope="col" className="sticky left-0 z-10 w-40 min-w-40 bg-card px-2 py-2 text-left text-xs font-medium text-muted-foreground">{t("reportEmployee")}</th>
             {monthDates.map(date => <th key={date} scope="col" className={`px-px py-1.5 text-center font-semibold ${date === today ? "font-bold text-primary" : dateKinds.get(date) === false ? "text-muted-foreground/60" : ""}`}>
-              <time dateTime={date} title={dateLabel(date)} className="block text-[11px]">{Number(date.slice(-2))}</time>
-              <span className="block text-[9.5px] font-medium opacity-70">{formatDate(`${date}T12:00:00.000Z`, locale, { weekday: "short", timeZone: "UTC" })}</span></th>)}
-            {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-[11px] font-semibold text-muted-foreground"><HintValue text={p(`${key}Hint`)}>{p(key)}</HintValue></th>)}</tr></thead>
+              <time dateTime={date} title={dateLabel(date)} className="block text-xs">{Number(date.slice(-2))}</time>
+              <span className="block text-xs font-medium opacity-70">{formatDate(`${date}T12:00:00.000Z`, locale, { weekday: "short", timeZone: "UTC" })}</span></th>)}
+            {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-xs font-semibold text-muted-foreground"><HintValue text={p(`${key}Hint`)}>{p(key)}</HintValue></th>)}</tr></thead>
           <tbody>{people.slice(pageStart, pageStart + PAGE_SIZE).map(person => {
             const worked = person.rows.filter(row => row.startedAt !== null).length
             const sick = person.rows.filter(row => row.dayKind?.key === "SICK_LEAVE" || row.dayKind?.key === "UNPAID_SICK").length
             const missed = person.totals.absentCount + person.totals.missingFinishCount
             return <tr key={person.id} data-testid="attendance-month-person" className="border-t border-border">
-              <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left"><span className="block truncate text-[13px] font-semibold">{person.name}</span><span className="block text-[11px] font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
+              <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left"><span className="block truncate text-[13px] font-semibold">{person.name}</span><span className="block text-xs font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
               {monthDates.map(date => {
                 const entries = person.dates.get(date) ?? []
                 const row = entries[0]
@@ -458,7 +458,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                 const corrected = entries.some(entry => entry.corrections?.length)
                 return <td key={date} className="px-px py-1 text-center">
                   {row ? <Popover open={openCell === cellKey} onOpenChange={open => setOpenCell(open ? cellKey : null)}><PopoverTrigger asChild><button type="button" data-testid="attendance-month-cell" data-dimmed={dimmed || undefined} aria-label={`${person.name} · ${dateLabel(date)} · ${attendanceStatusText(row, locale, t)}${corrected ? ` · ${p("legendCorrected")}` : ""}`}
-                    className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-[11px] font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""} ${row.kind === "NOT_EMPLOYED" && !row.dayKind ? "opacity-40" : ""}`}
+                    className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-xs font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""} ${row.kind === "NOT_EMPLOYED" && !row.dayKind ? "opacity-40" : ""}`}
                     style={row.dayKind && row.kind !== "UPCOMING" ? { color: row.dayKind.color } : { color: "var(--muted-foreground, #8a94a3)" }}>{cellCode(row)}{corrected ? <span aria-hidden="true" data-testid="attendance-corrected-mark" className="ml-px text-[13px] leading-none text-primary">*</span> : null}{entries.length > 1 ? "+" : ""}</button></PopoverTrigger>
                     <PopoverContent align="center" className="w-80 space-y-3 p-4" data-testid="attendance-day-popover">
                       {entries.map(entry => {
@@ -494,7 +494,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
           <span>{t("reportPage", { current: currentPage + 1, total: Math.ceil(people.length / PAGE_SIZE) })}</span><Button type="button" variant="outline" className="min-h-10" disabled={pageStart + PAGE_SIZE >= people.length} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}
       </div>}
       {!customView && (legend.length || anyCorrected || anyPartial) ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")} data-testid="attendance-timesheet-legend">
-        {legend.map(kind => <span key={kind.key} className="inline-flex items-center gap-1.5"><span className="inline-flex h-5 min-w-6 items-center justify-center rounded px-1 text-[10.5px] font-bold" style={{ color: kind.color, backgroundColor: `${kind.color}1a` }}>{kind.code}</span>{attendanceDayKindLabel(kind, locale)}</span>)}
+        {legend.map(kind => <span key={kind.key} className="inline-flex items-center gap-1.5"><span className="inline-flex h-5 min-w-6 items-center justify-center rounded px-1 text-xs font-bold" style={{ color: kind.color, backgroundColor: `${kind.color}1a` }}>{kind.code}</span>{attendanceDayKindLabel(kind, locale)}</span>)}
         {anyCorrected ? <span className="inline-flex items-center gap-1.5" data-testid="attendance-legend-corrected"><span className="inline-flex h-5 min-w-6 items-center justify-center text-[13px] font-bold text-primary">*</span>{p("legendCorrected")}</span> : null}
         {anyPartial ? <span className="inline-flex items-center gap-1.5" data-testid="attendance-legend-partial"><span className="inline-flex h-5 min-w-6 items-center justify-center text-[13px] font-bold text-foreground">≥</span>{p("legendPartialTotal")}</span> : null}
         <span className="ml-auto">{p("cellHint")}</span>

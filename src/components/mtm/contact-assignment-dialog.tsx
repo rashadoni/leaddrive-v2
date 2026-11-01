@@ -355,7 +355,7 @@ export function ContactAssignmentDialog({
                         {row.issues.map((issue) => {
                           const hintKey = issueHintKey(issue)
                           return (
-                            <HintValue key={issue} text={hintKey ? th(hintKey) : null} className="rounded-full px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">
+                            <HintValue key={issue} text={hintKey ? th(hintKey) : null} className="rounded-full px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
                               {t(`issues.${issue}`)}
                             </HintValue>
                           )

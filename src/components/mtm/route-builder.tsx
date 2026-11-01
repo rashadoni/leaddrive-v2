@@ -2092,7 +2092,7 @@ export function MtmRouteBuilder({
                   <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{t("planningTools")}</span>
                   {activeCandidateFilters.length > 0 ? (
-                    <HintValue className="rounded-full border border-zinc-300 px-1.5 py-0.5 text-[11px] font-semibold text-foreground dark:border-zinc-600" text={t("hint.builderActiveFilterCount")}>
+                    <HintValue className="rounded-full border border-zinc-300 px-1.5 py-0.5 text-xs font-semibold text-foreground dark:border-zinc-600" text={t("hint.builderActiveFilterCount")}>
                       {activeCandidateFilters.length}
                     </HintValue>
                   ) : null}
@@ -2695,7 +2695,7 @@ export function MtmRouteBuilder({
       <div data-testid="mtm-route-builder-actions" className="sticky bottom-0 z-20 flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(15,23,42,0.06)] sm:px-4">
         <div id="route-builder-next-action" className="hidden min-w-0 items-start gap-2 text-sm sm:flex sm:flex-1" role="status" aria-live="polite">
           <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center text-muted-foreground">
-            <span className="text-[10px] font-bold">{activeStep}</span>
+            <span className="text-xs font-bold">{activeStep}</span>
           </span>
           <span className="min-w-0">
             <span className="block font-medium">{t(primaryAction === "save" ? "readyToSaveTitle" : "nextActionTitle")}</span>

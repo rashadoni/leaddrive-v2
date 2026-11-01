@@ -520,7 +520,7 @@ export function MtmRoutePlanningMatrix({
                                       <Hint text={candidate.coverage.explanation.summary[coverageLocale]} align="start">
                                         <span
                                           data-testid="mtm-matrix-coverage-preview"
-                                          className="mt-1 block truncate text-[11px] font-medium text-amber-800 dark:text-amber-300"
+                                          className="mt-1 block truncate text-xs font-medium text-amber-800 dark:text-amber-300"
                                         >
                                           {t("candidateCoverageGap", { value: candidate.coverage.uncoveredMoi })}
                                         </span>

@@ -20,12 +20,12 @@ import {
   Bookmark,
   Building2,
   CalendarPlus,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
   Download,
   MapPin,
-  MoreHorizontal,
   Navigation,
   Pencil,
   Plus,
@@ -35,6 +35,7 @@ import {
   UsersRound,
 } from "lucide-react"
 import { MtmPageTitle } from "@/components/mtm/page-header"
+import { openRowOnClick } from "@/lib/client/open-row"
 import {
   MtmFilterGrid,
   MtmFilterMore,
@@ -966,7 +967,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const gridWidth = visibleColumns.reduce((sum, column) => sum + columnWidths[column], selectionColumnWidth + actionColumnWidth)
   const organizationStickyLeft = selectionColumnWidth + (visibleColumns.includes("code") ? columnWidths.code : 0)
   const densityCellClass = density === "COMPACT" ? "px-2 py-1.5" : "px-3 py-2"
-  const densitySubtextClass = density === "COMPACT" ? "text-[11px] leading-4" : "text-xs leading-5"
+  const densitySubtextClass = density === "COMPACT" ? "text-xs leading-4" : "text-xs leading-5"
   const columnStyle = (column: OrganizationColumn): CSSProperties => ({
     width: columnWidths[column],
     minWidth: columnWidths[column],
@@ -1076,19 +1077,21 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               }}
               options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${tx("explorer.sharedView")}` : ""}` }))} />
             <Hint wrap text={tx("explorer.hint.saveView")}>
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
+              <Button type="button" variant="ghost" size="sm" className="min-h-10 gap-1.5 px-3" aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
                 onClick={() => {
                   setSavedViewName("")
                   setSavedViewDefault(false)
                   setSaveViewOpen(true)
                 }}>
-                <Bookmark className="h-4 w-4" />
+                <Bookmark className="h-4 w-4" aria-hidden="true" />
+                {tx("explorer.saveViewShort")}
               </Button>
             </Hint>
             {activeSavedView?.canDelete ? (
               <Hint wrap text={tx("explorer.hint.deleteView")}>
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                  <Trash2 className="h-4 w-4" />
+                <Button type="button" variant="ghost" size="sm" className="min-h-10 gap-1.5 px-3 text-destructive" aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  {tx("explorer.deleteViewShort")}
                 </Button>
               </Hint>
             ) : null}
@@ -1320,12 +1323,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <span>{tx("explorer.asOf", { date: data?.asOf ?? facets?.asOf ?? "—" })}</span>
           <Button
             variant="ghost"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1.5 px-2.5 text-foreground md:min-h-9"
             onClick={() => void Promise.allSettled([loadOrganizations(), loadFacets()])}
             aria-label={tx("explorer.refresh")}
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            {tx("explorer.refreshShort")}
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1344,14 +1348,16 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               ))}
             </Select>
           </label>
+          {/* The word says the order shown now; the label says what a click does. */}
           <Button
             variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1.5 md:min-h-9"
             onClick={() => setFilter("direction", filters.direction === "asc" ? "desc" : "asc")}
             aria-label={filters.direction === "asc" ? tx("explorer.descending") : tx("explorer.ascending")}
           >
-            {filters.direction === "asc" ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowUpAZ className="h-4 w-4" />}
+            {filters.direction === "asc" ? <ArrowDownAZ className="h-4 w-4" aria-hidden="true" /> : <ArrowUpAZ className="h-4 w-4" aria-hidden="true" />}
+            {filters.direction === "asc" ? tx("explorer.ascendingShort") : tx("explorer.descendingShort")}
           </Button>
           <details className="group">
             <summary
@@ -1359,7 +1365,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               data-testid="mtm-organization-grid-settings"
             >
               <span>{tx("explorer.configureGrid")}</span>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 {tx(`explorer.densities.${density}`)}
               </span>
             </summary>
@@ -1409,7 +1415,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                       </div>
                       <div className="flex items-center" aria-label={tx("explorer.columnWidth", { column: columnLabel(column), width: columnWidths[column] })}>
                         <Button type="button" variant="ghost" size="sm" className="min-h-9 min-w-9 px-2" disabled={columnWidths[column] <= MTM_ORGANIZATION_COLUMN_MIN_WIDTH} onClick={() => resizeColumn(column, -24)} aria-label={tx("explorer.narrowColumn", { column: columnLabel(column) })}>−</Button>
-                        <span className="w-12 text-center text-[11px] tabular-nums text-muted-foreground">{columnWidths[column]}</span>
+                        <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">{columnWidths[column]}</span>
                         <Button type="button" variant="ghost" size="sm" className="min-h-9 min-w-9 px-2" disabled={columnWidths[column] >= MTM_ORGANIZATION_COLUMN_MAX_WIDTH} onClick={() => resizeColumn(column, 24)} aria-label={tx("explorer.widenColumn", { column: columnLabel(column) })}>+</Button>
                       </div>
                     </div>
@@ -1493,7 +1499,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                   <tr className="border-b border-border text-left">
                     <th className="sticky left-0 z-20 bg-muted px-1" style={{ width: selectionColumnWidth, minWidth: selectionColumnWidth }}>
                       <div className="flex items-center justify-between gap-1">
-                        <span className="pl-2 text-[10px] font-semibold text-muted-foreground">№</span>
+                        <span className="pl-2 text-xs font-semibold text-muted-foreground">№</span>
                         <FieldCheckbox
                           checked={allPageSelected}
                           indeterminate={selectedOnPage > 0 && !allPageSelected}
@@ -1520,12 +1526,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                     return (
                       <tr
                         key={organization.id}
-                        className="group border-b border-border align-middle transition-colors last:border-0 hover:bg-muted/40"
+                        className="group cursor-pointer border-b border-border align-middle transition-colors last:border-0 hover:bg-muted/40"
+                        onClick={(event) => openRowOnClick(event, organizationHref(organization.id), (href) => router.push(href))}
                         style={{ contentVisibility: "auto", containIntrinsicSize: density === "COMPACT" ? "44px" : "64px" }}
                       >
                         <td className="sticky left-0 z-20 bg-card px-1 group-hover:bg-muted" style={{ width: selectionColumnWidth, minWidth: selectionColumnWidth }}>
                           <div className="flex items-center justify-between gap-1">
-                            <span className="pl-2 text-[10px] tabular-nums text-muted-foreground">{(page - 1) * limit + rowIndex + 1}</span>
+                            <span className="pl-2 text-xs tabular-nums text-muted-foreground">{(page - 1) * limit + rowIndex + 1}</span>
                             <FieldCheckbox
                               checked={selected.has(organization.id)}
                               testId={`mtm-organization-select-${organization.id}`}
@@ -1617,7 +1624,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                                 <Link href={`/mtm/routes?routeId=${encodeURIComponent(nextVisit.routeId)}&returnTo=${encodeURIComponent(listReturnPath)}`} className="block whitespace-nowrap font-medium tabular-nums hover:text-primary hover:underline">
                                   {visitDay(nextVisit.plannedTime ?? nextVisit.route.date)}
                                 </Link>
-                              ) : <HintValue text={tx("explorer.notPlanned")}><span className="text-muted-foreground">—</span></HintValue>
+                              ) : <span className="text-muted-foreground">{tx("explorer.notPlanned")}</span>
                             ) : (
                               <div className={`${densitySubtextClass} grid gap-0.5 tabular-nums text-muted-foreground`}>
                                 <span>{tx("explorer.contactsCount", { count: organization._count.contactWorkplaces })}</span>
@@ -1644,8 +1651,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                               <DropdownMenu>
                                 <Hint text={tx("explorer.hint.rowMore")}>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="min-h-11 min-w-11 md:min-h-9 md:min-w-9" aria-label={tx("explorer.rowMoreFor", { name: organization.name })} data-testid={`mtm-organization-row-more-${organization.id}`}>
-                                      <MoreHorizontal className="h-4 w-4" />
+                                    <Button variant="outline" size="sm" className="min-h-11 gap-1 px-2.5 md:min-h-9" aria-label={tx("explorer.rowMoreFor", { name: organization.name })} data-testid={`mtm-organization-row-more-${organization.id}`}>
+                                      {tx("explorer.rowMoreShort")}
+                                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                 </Hint>
@@ -1727,28 +1735,30 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                       <Button
                         asChild
                         variant="ghost"
-                        size="icon"
-                        className="min-h-11 min-w-11"
+                        size="sm"
+                        className="min-h-11 gap-1.5"
                       >
                         <Link
                           href={organizationHref(organization.id)}
                           aria-label={tx("explorer.openOrganization", { name: organization.name })}
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                          {tx("explorer.rowOpen")}
                         </Link>
                       </Button>
                       {data?.capabilities.canManage ? (
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="min-h-11 min-w-11"
+                          size="sm"
+                          className="min-h-11 gap-1.5"
                           aria-label={tx("explorer.editOrganization", { name: organization.name })}
                           onClick={() => {
                             setEditData(organization)
                             setFormOpen(true)
                           }}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                          {tx("explorer.rowEdit")}
                         </Button>
                       ) : null}
                     </div>
@@ -1883,23 +1893,23 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           </span>
           <Button
             variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1 md:min-h-9"
             disabled={page <= 1}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
-            aria-label={tx("explorer.previousPage")}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            {tx("explorer.previousPage")}
           </Button>
           <Button
             variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1 md:min-h-9"
             disabled={page >= pageCount}
             onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
-            aria-label={tx("explorer.nextPage")}
           >
-            <ChevronRight className="h-4 w-4" />
+            {tx("explorer.nextPage")}
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </nav>

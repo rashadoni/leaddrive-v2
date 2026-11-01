@@ -421,7 +421,7 @@ export function ScoringFormulaSettings() {
                 <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium">
                   {t("showDefinition")}
                 </summary>
-                <pre className="overflow-x-auto border-t border-border p-3 text-[11px] leading-relaxed">
+                <pre className="overflow-x-auto border-t border-border p-3 text-xs leading-relaxed">
                   {JSON.stringify(formula.definition, null, 2)}
                 </pre>
               </details>

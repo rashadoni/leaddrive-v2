@@ -645,8 +645,8 @@ export default function MtmVisitsPage() {
             tabIndex={0}
             data-testid="mtm-visit-location-request"
             className={request.waiting
-              ? "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300"
-              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"}
+              ? "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300"
+              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"}
           >
             {t(request.key)}
           </span></Hint>

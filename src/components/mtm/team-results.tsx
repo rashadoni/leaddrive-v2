@@ -268,7 +268,7 @@ export function MtmTeamResultsView({ preset, onPresetChange, teams, teamId, onTe
                     <div key={day.date} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title={label}>
                       <span className="sr-only">{label}</span>
                       <span className={`w-full max-w-8 rounded-t ${TONE_BAR[tone]}`} style={{ height: day.planned > 0 ? `${Math.max(4, day.planPercentage)}%` : "2px" }} aria-hidden="true" />
-                      <span className="text-[10px] tabular-nums text-muted-foreground" aria-hidden="true">{Number(day.date.slice(8))}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground" aria-hidden="true">{Number(day.date.slice(8))}</span>
                     </div>
                   )
                 })}

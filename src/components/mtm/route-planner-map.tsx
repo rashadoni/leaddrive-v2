@@ -112,7 +112,7 @@ export default function RoutePlannerMap({
                     <li key={candidate.key} className="flex items-center gap-2">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{candidate.contactId ? candidate.name : words.placeVisit}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">{words.candidateLine(candidate)}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{words.candidateLine(candidate)}</span>
                       </span>
                       <button
                         type="button"

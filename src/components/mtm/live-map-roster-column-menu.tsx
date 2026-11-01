@@ -150,7 +150,7 @@ export function RosterColumnMenuPanel({
           )
         })}
       </div>
-      <p className="shrink-0 px-3 pt-2 text-[11px] text-muted-foreground">{tMap("roster.filter.hint")}</p>
+      <p className="shrink-0 px-3 pt-2 text-xs text-muted-foreground">{tMap("roster.filter.hint")}</p>
       <RosterColumnValueList column={column} options={options} filter={filter} onFilterChange={onFilterChange} showCounts={showCounts} />
       {filter ? (
         <div className="shrink-0 border-t border-border p-2">
@@ -209,7 +209,7 @@ export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & {
             data-filtered={filter ? "true" : "false"}
             aria-label={tMap("roster.filter.open", { column: label })}
             className={cn(
-              "flex h-9 w-full min-w-0 items-center gap-1 rounded px-1 text-left text-[11px] font-semibold uppercase tracking-wide transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:h-11",
+              "flex h-9 w-full min-w-0 items-center gap-1 rounded px-1 text-left text-xs font-semibold uppercase tracking-wide transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:h-11",
               filter ? ROSTER_ACTION_TEXT : "text-muted-foreground",
               className,
             )}

@@ -173,7 +173,7 @@ export default function MtmDashboardPage() {
                   </div>
                   <h3 className="mt-2 text-base font-semibold">{operational.announcement.title}</h3>
                   <p className="mt-1 whitespace-pre-line text-sm leading-6 text-muted-foreground">{operational.announcement.body}</p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     {td("announcementValidUntil", {
                       date: createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short" })
                         .format(new Date(operational.announcement.effectiveUntil)),

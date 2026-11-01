@@ -291,7 +291,7 @@ function Avatar({ name, avatar }: { name?: string; avatar?: string | null }) {
   const initials = (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("")
   if (avatar) return <img src={avatar} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
   return (
-    <span className="h-8 w-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-[11px] font-semibold text-muted-foreground">
+    <span className="h-8 w-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-semibold text-muted-foreground">
       {initials}
     </span>
   )

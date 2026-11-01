@@ -166,7 +166,7 @@ export function DayTripLedger({
 
           return (
             <li key={entry.id}>
-              {dayHeader && <div className="bg-muted/40 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{dayHeader}</div>}
+              {dayHeader && <div className="bg-muted/40 px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{dayHeader}</div>}
               {focus ? (
                 <button
                   type="button"
@@ -189,7 +189,7 @@ export function DayTripLedger({
           )
         })}
       </ol>
-      <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">{t(roadsMatched ? "roadsNote" : "straightLineNote")}</p>
+      <p className="border-t px-3 py-2 text-xs text-muted-foreground">{t(roadsMatched ? "roadsNote" : "straightLineNote")}</p>
     </section>
   )
 }

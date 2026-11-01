@@ -84,12 +84,12 @@ export function KpiCard({
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="text-[10px] text-muted-foreground">{progress}% of target</p>
+          <p className="text-xs text-muted-foreground">{progress}% of target</p>
         </div>
       )}
 
       {description && (
-        <p className="text-[10px] text-muted-foreground">{description}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       )}
     </div>
   )

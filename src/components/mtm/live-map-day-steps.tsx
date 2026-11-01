@@ -57,7 +57,7 @@ export function LiveMapDaySteps({ steps, selectedOrder, onSelect, formatTime }: 
                   selected && "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]",
                 )}
               >
-                <span className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold", BADGE[step.state])}>
+                <span className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold", BADGE[step.state])}>
                   {step.sequence}
                 </span>
                 <span className="min-w-0 flex-1">

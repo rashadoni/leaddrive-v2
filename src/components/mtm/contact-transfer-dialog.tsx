@@ -325,7 +325,7 @@ export function ContactTransferDialog({
                 })}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {preview.rows.filter((row) => row.openTaskCount > 0).map((row) => (
-                    <span key={row.contactId} className="rounded-full px-2 py-0.5 text-[11px] text-sky-700 dark:text-sky-300">
+                    <span key={row.contactId} className="rounded-full px-2 py-0.5 text-xs text-sky-700 dark:text-sky-300">
                       {row.displayName || row.contactId}: {row.openTaskCount}
                     </span>
                   ))}
@@ -343,7 +343,7 @@ export function ContactTransferDialog({
                         {row.issues.map((issue) => {
                           const hintKey = issueHintKey(issue)
                           return (
-                            <HintValue key={issue} text={hintKey ? tt(hintKey) : null} className="rounded-full px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">
+                            <HintValue key={issue} text={hintKey ? tt(hintKey) : null} className="rounded-full px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
                               {tt(`transfer.issues.${issue}`)}
                             </HintValue>
                           )
@@ -469,7 +469,7 @@ function Summary({
           ? "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
           : "border-border bg-muted/30"
     }`}>
-      <p className="text-[11px] text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
+      <p className="text-xs text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   )

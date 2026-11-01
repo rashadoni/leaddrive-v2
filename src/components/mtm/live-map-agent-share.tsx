@@ -27,14 +27,14 @@ import {
 } from "@/lib/mtm/live-map-share-links"
 
 // The pill of the card's own «История за день / Только он / Следить» row.
-const PILL = "inline-flex min-h-8 items-center rounded-full border border-border px-2.5 text-[11px] font-medium text-foreground hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-60 aria-disabled:hover:bg-transparent [@media(pointer:coarse)]:min-h-11"
+const PILL = "inline-flex min-h-8 items-center rounded-full border border-border px-2.5 text-xs font-medium text-foreground hover:bg-muted aria-disabled:cursor-default aria-disabled:opacity-60 aria-disabled:hover:bg-transparent [@media(pointer:coarse)]:min-h-11"
 // The worded action of a row, as in the list of zones.
-const ACTION = "inline-flex min-h-8 shrink-0 items-center text-[11px] font-semibold underline underline-offset-2 aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
+const ACTION = "inline-flex min-h-8 shrink-0 items-center text-xs font-semibold underline underline-offset-2 aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
 // The ways a new link leaves the card: «Отправить в WhatsApp» is the first of them, the other two stand under it.
 const SEND = "inline-flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-semibold [@media(pointer:coarse)]:min-h-11"
 const SEND_OTHER = `${SEND} flex-1 border border-border bg-background text-foreground hover:bg-muted`
 // The two answers to «Отозвать ссылку?».
-const ANSWER = "inline-flex min-h-8 items-center rounded-lg px-2.5 text-[11px] font-semibold aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
+const ANSWER = "inline-flex min-h-8 items-center rounded-lg px-2.5 text-xs font-semibold aria-disabled:cursor-default aria-disabled:opacity-60 [@media(pointer:coarse)]:min-h-11"
 /** How long «Скопировано» stands on the button before it reads «Скопировать» again. */
 const COPIED_MS = 2_000
 /** A press on one of the three buttons this soon after a link was made is the same press twice. */
@@ -558,7 +558,7 @@ export function LiveMapAgentShare({ agentId, agentName, canWrite, refreshKey, no
                         onFocus={(event) => selectLink(event.currentTarget)}
                         data-testid={`live-map-share-url-${link.id}`}
                         // 16 px on a touch screen: a smaller field makes iOS zoom the whole page on focus.
-                        className="mt-1 h-8 w-full rounded-lg border border-input bg-background px-2 text-[11px] text-muted-foreground outline-none focus:border-primary/60 focus:text-foreground [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
+                        className="mt-1 h-8 w-full rounded-lg border border-input bg-background px-2 text-xs text-muted-foreground outline-none focus:border-primary/60 focus:text-foreground [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base"
                       />
                       <Hint text={t("hint.shareWhatsApp")}>
                         <a data-crm-color-role="provider"

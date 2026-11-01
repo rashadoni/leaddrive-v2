@@ -313,7 +313,7 @@ export default function MtmAgentsPage() {
   }
   const appBadge = (app: { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined) => app ? (
     <Hint text={app.lastSignalAt ? `${t("appLastSignal", { time: formatDateTime(app.lastSignalAt, locale) })}. ${t("hint.appState")}` : t("hint.appState")}><span
-      className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap ${app.state === "active" ? "text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}
+      className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap ${app.state === "active" ? "text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}
       tabIndex={0}
       data-testid="mtm-agent-app-state"
     >
@@ -348,11 +348,11 @@ export default function MtmAgentsPage() {
               // The segments, not just the state: two twenty-minute breaks and
               // one two-hour break read the same as "on a break" and are very
               // different days (A7 tail).
-              <div className="text-[10px] text-muted-foreground" data-testid="mtm-agent-breaks">
+              <div className="text-xs text-muted-foreground" data-testid="mtm-agent-breaks">
                 <HintValue text={t("hint.breaks")}>{t("breaksSummary", { count: breaks.count, minutes: breaks.minutes })}</HintValue>
               </div>
             ) : null}
-            <div className={`text-[11px] truncate ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</div>
+            <div className={`text-xs truncate ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</div>
           </div>
           {renderActions(agent)}
         </div>
@@ -372,12 +372,12 @@ export default function MtmAgentsPage() {
 
         {/* Badges: role · status · app — one wrapping row with a reserved height */}
         <div className="flex flex-1 flex-wrap content-start items-start gap-1.5 min-h-[2.75rem]">
-          <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${leads ? "font-semibold " : ""}${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
-          {leads && team ? <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap text-muted-foreground" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${leads ? "font-semibold " : ""}${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
+          {leads && team ? <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap text-muted-foreground" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
+          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
           {appBadge(app)}
           {app && !app.notificationsConnected ? (
-            <Hint text={t("hint.notificationsOff")}><span tabIndex={0} className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap bg-muted text-muted-foreground">
+            <Hint text={t("hint.notificationsOff")}><span tabIndex={0} className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap bg-muted text-muted-foreground">
               <BellOff className="h-2.5 w-2.5" />{t("notificationsOff")}
             </span></Hint>
           ) : null}
@@ -395,7 +395,7 @@ export default function MtmAgentsPage() {
 
         {/* Contact + quick actions — a fixed-height footer at the bottom */}
         <div className="mt-auto flex h-8 items-center justify-between gap-2 border-t border-border pt-2">
-          <span className="text-[11px] text-muted-foreground truncate">{agent.phone || agent.email || agent.userEmail || "—"}</span>
+          <span className="text-xs text-muted-foreground truncate">{agent.phone || agent.email || agent.userEmail || "—"}</span>
           {renderContactLinks(agent)}
         </div>
       </div>
@@ -408,8 +408,8 @@ export default function MtmAgentsPage() {
     <div className="flex items-center gap-2 mb-2 min-w-0">
       <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <h3 className={`truncate text-xs font-semibold uppercase tracking-wide ${nested ? "text-muted-foreground" : "text-foreground/80"}`}>{label}</h3>
-      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{count}</span>
-      {hint ? <span className="truncate text-[10px] text-muted-foreground">{hint}</span> : null}
+      <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{count}</span>
+      {hint ? <span className="truncate text-xs text-muted-foreground">{hint}</span> : null}
     </div>
   )
 
@@ -456,8 +456,8 @@ export default function MtmAgentsPage() {
             <div className="min-w-0">
               <Hint text={agentHrefTitle}><Link href={agentHref(agent)} className={`block truncate hover:underline ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link></Hint>
               <div className="flex flex-wrap items-center gap-1">
-                <span className={`text-[10px] px-1.5 rounded-full ${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
-                {leads && team ? <span className="text-[10px] text-muted-foreground">{t("teamSize", { count: team.size - 1 })}</span> : null}
+                <span className={`text-xs px-1.5 rounded-full ${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
+                {leads && team ? <span className="text-xs text-muted-foreground">{t("teamSize", { count: team.size - 1 })}</span> : null}
               </div>
             </div>
           </div>
@@ -474,7 +474,7 @@ export default function MtmAgentsPage() {
         <td className="hidden xl:table-cell py-2 pr-2">{appBadge(app)}</td>
         <td className="hidden sm:table-cell py-2 pr-2">
           <div className="flex items-center gap-1 min-w-0">
-            <span className="hidden xl:inline truncate text-[11px] text-muted-foreground max-w-[12rem]">{agent.phone || agent.email || agent.userEmail || "—"}</span>
+            <span className="hidden xl:inline truncate text-xs text-muted-foreground max-w-[12rem]">{agent.phone || agent.email || agent.userEmail || "—"}</span>
             {renderContactLinks(agent)}
           </div>
         </td>
@@ -485,8 +485,8 @@ export default function MtmAgentsPage() {
   const groupRow = (key: string, label: string, count: number, hint?: string) => (
     <tr key={`group-${key}`} className="border-t border-border bg-muted/40">
       <td colSpan={clientSections ? 9 : 8} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label} <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-normal">{count}</span>
-        {hint ? <span className="ml-2 text-[10px] font-normal normal-case">{hint}</span> : null}
+        {label} <span className="ml-1 rounded-full bg-muted px-1.5 text-xs font-normal">{count}</span>
+        {hint ? <span className="ml-2 text-xs font-normal normal-case">{hint}</span> : null}
       </td>
     </tr>
   )
@@ -497,7 +497,7 @@ export default function MtmAgentsPage() {
       <div className="overflow-x-auto">
       <table className="w-full table-fixed text-sm">
         <thead>
-          <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+          <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
             <th className="px-3 py-2 font-medium w-[45%] md:w-[28%]">{t("colName")}</th>
             <th className="hidden lg:table-cell py-2 pr-2 font-medium">{t("colManager")}</th>
             <th className="py-2 pr-2 font-medium">{t("colToday")}</th>

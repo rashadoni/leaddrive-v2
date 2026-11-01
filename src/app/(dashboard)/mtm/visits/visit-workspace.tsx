@@ -533,7 +533,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
                       <div className="text-sm font-medium">{reminder.title}</div>
                       {reminder.dueDate && <div className="mt-1 text-xs text-muted-foreground">{formatDateTime(new Date(reminder.dueDate), locale)}</div>}
                     </div>
-                    <span className="text-[11px] text-muted-foreground">{t(`priorities.${reminder.priority}`)}</span>
+                    <span className="text-xs text-muted-foreground">{t(`priorities.${reminder.priority}`)}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     <Hint text={t("hint.reminderComplete")}><Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "complete")}><Check className="mr-1 h-3.5 w-3.5" />{t("complete")}</Button></Hint>
@@ -559,8 +559,8 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {online ? t("manualCompletionHint") : t("offlineQueueHint")}
-            {pendingSync > 0 && <HintValue text={t("hint.pendingSync")} className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">{t("pendingSync", { count: pendingSync })}</HintValue>}
-            {pendingPhotos > 0 && <HintValue text={t("hint.pendingPhotos")} className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">{t("pendingPhotos", { count: pendingPhotos })}</HintValue>}
+            {pendingSync > 0 && <HintValue text={t("hint.pendingSync")} className="ml-2 rounded-full px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">{t("pendingSync", { count: pendingSync })}</HintValue>}
+            {pendingPhotos > 0 && <HintValue text={t("hint.pendingPhotos")} className="ml-2 rounded-full px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">{t("pendingPhotos", { count: pendingPhotos })}</HintValue>}
           </p>
           <Hint wrap side="top" text={busy ? null : online ? t("hint.completeVisit") : t("hint.queueCheckout")}><Button size="sm" disabled={busy} onClick={() => void completeVisit()}><CheckCircle2 className="mr-1 h-4 w-4" /> {busy ? t("completing") : online ? t("completeVisit") : t("queueCheckout")}</Button></Hint>
         </div>

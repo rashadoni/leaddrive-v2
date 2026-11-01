@@ -65,7 +65,7 @@ function ValueLine({ icon: Icon, label, value }: { icon: typeof Building2; label
     <div className="flex min-w-0 items-start gap-2.5">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <div className="min-w-0">
-        <dt className="text-[11px] font-medium text-muted-foreground">{label}</dt>
+        <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
         <dd className="truncate text-sm text-foreground">{value}</dd>
       </div>
     </div>
@@ -207,7 +207,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                         <div key={candidate.id} className="rounded-lg bg-card px-3 py-3 shadow-sm">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-[11px] font-medium text-muted-foreground">{t("existingCustomer")}</p>
+                              <p className="text-xs font-medium text-muted-foreground">{t("existingCustomer")}</p>
                               <p className="truncate text-sm font-semibold">{candidate.name}</p>
                             </div>
                             <HintValue text={t("hint.matchScore")}><Badge variant={candidate.exact ? "destructive" : "warning"}>{t("matchScore", { score: candidate.score })}</Badge></HintValue>
@@ -217,8 +217,8 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                             {candidate.phone ? <span className="flex items-center gap-1"><Phone className="h-3 w-3" aria-hidden="true" />{candidate.phone}</span> : null}
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                            <span className="text-[11px] text-muted-foreground">{t("matchesBy")}</span>
-                            {candidate.reasons.map((reason) => <Badge key={reason} variant="outline" className="bg-card text-[11px]">{t(`duplicateReason.${reason}`)}</Badge>)}
+                            <span className="text-xs text-muted-foreground">{t("matchesBy")}</span>
+                            {candidate.reasons.map((reason) => <Badge key={reason} variant="outline" className="bg-card text-xs">{t(`duplicateReason.${reason}`)}</Badge>)}
                           </div>
                         </div>
                       ))}
@@ -243,7 +243,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                   <div className="mt-4">
                     <div className="flex items-center justify-between gap-2">
                       <Label htmlFor={`customer-decision-${request.id}`}>{t("decisionCommentLabel")}</Label>
-                      <span className="text-[11px] text-muted-foreground">{t("decisionCommentRequirement")}</span>
+                      <span className="text-xs text-muted-foreground">{t("decisionCommentRequirement")}</span>
                     </div>
                     <Textarea
                       id={`customer-decision-${request.id}`}

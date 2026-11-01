@@ -27,6 +27,7 @@ import {
   UserRoundPlus,
   UsersRound,
 } from "lucide-react"
+import { openRowOnClick } from "@/lib/client/open-row"
 import { toast } from "sonner"
 import { MtmPageTitle } from "@/components/mtm/page-header"
 import { HelpButton } from "@/components/help/help-button"
@@ -921,19 +922,21 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
               }}
               options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${t("sharedView")}` : ""}` }))} />
             <Hint wrap text={t("hint.saveView")}>
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label={t("saveCurrentView")} disabled={savedViewsBusy}
+              <Button type="button" variant="ghost" size="sm" className="min-h-10 gap-1.5 px-3" aria-label={t("saveCurrentView")} disabled={savedViewsBusy}
                 onClick={() => {
                   setSavedViewName("")
                   setSavedViewDefault(false)
                   setSaveViewOpen(true)
                 }}>
-                <Bookmark className="h-4 w-4" />
+                <Bookmark className="h-4 w-4" aria-hidden="true" />
+                {t("saveViewShort")}
               </Button>
             </Hint>
             {activeSavedView?.canDelete ? (
               <Hint wrap text={t("hint.deleteView")}>
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" aria-label={t("deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                  <Trash2 className="h-4 w-4" />
+                <Button type="button" variant="ghost" size="sm" className="min-h-10 gap-1.5 px-3 text-destructive" aria-label={t("deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  {t("deleteViewShort")}
                 </Button>
               </Hint>
             ) : null}
@@ -1305,7 +1308,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                     </td>
                   )
                   return (
-                    <tr key={contact.id} className="hover:bg-muted/25">
+                    <tr key={contact.id} className="cursor-pointer hover:bg-muted/25" onClick={(event) => openRowOnClick(event, `/mtm/contacts/${contact.id}?returnTo=${encodeURIComponent(returnHref)}`, (href) => router.push(href))}>
                       <td>
                         <FieldCheckbox
                           checked={selected.has(contact.id)}
@@ -1363,7 +1366,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                           <Link href={`/mtm/routes?routeId=${nextPoint.routeId}`} className="font-medium hover:text-primary hover:underline">
                             {visitDay(nextPoint.plannedTime ?? nextPoint.route.date)}
                           </Link>
-                        ) : <HintValue text={t("notPlanned")}><span className="text-muted-foreground">—</span></HintValue>}
+                        ) : <span className="text-muted-foreground">{t("notPlanned")}</span>}
                       </td>
                       {showsCommunication ? (
                         <td className="px-3 py-2">
@@ -1420,11 +1423,13 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
         </div>
         <p className="text-xs text-muted-foreground">{t("pageOf", { page, pages: pageCount })}</p>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1 || loading} aria-label={t("previousPage")}>
-            <ChevronLeft className="h-4 w-4" />
+          <Button type="button" variant="outline" size="sm" className="min-h-10 gap-1" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1 || loading}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            {t("previousPage")}
           </Button>
-          <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page >= pageCount || loading} aria-label={t("nextPage")}>
-            <ChevronRight className="h-4 w-4" />
+          <Button type="button" variant="outline" size="sm" className="min-h-10 gap-1" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page >= pageCount || loading}>
+            {t("nextPage")}
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </section>
@@ -1705,7 +1710,7 @@ function ContactCoverageCell({
           {coverage.groupLabel ? <p className="mt-1 text-xs text-muted-foreground">{coverage.groupLabel}</p> : null}
         </>
       ) : null}
-      {proof ? <p className="mt-1 text-[11px] text-muted-foreground" title={proof}>{proof}</p> : null}
+      {proof ? <p className="mt-1 text-xs text-muted-foreground" title={proof}>{proof}</p> : null}
     </div>
   )
 }

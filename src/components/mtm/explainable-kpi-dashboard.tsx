@@ -483,12 +483,12 @@ function TrendChart({
           return (
             <g key={value}>
               <line x1={chartLeft} x2={chartRight} y1={y} y2={y} className="stroke-border" strokeWidth="1" />
-              <text x={chartLeft - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">{value}%</text>
+              <text x={chartLeft - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-xs tabular-nums">{value}%</text>
             </g>
           )
         })}
-        <text x={chartRight + 8} y={chartTop + 4} className="fill-muted-foreground text-[10px] tabular-nums">{maxCount}</text>
-        <text x={chartRight + 8} y={chartBottom + 4} className="fill-muted-foreground text-[10px] tabular-nums">0</text>
+        <text x={chartRight + 8} y={chartTop + 4} className="fill-muted-foreground text-xs tabular-nums">{maxCount}</text>
+        <text x={chartRight + 8} y={chartBottom + 4} className="fill-muted-foreground text-xs tabular-nums">0</text>
 
         {points.map((point, index) => {
           const x = xFor(index)
@@ -526,7 +526,7 @@ function TrendChart({
                 <title>{t("trendPointGps", { date: point.date, value: point.gpsPercentage, numerator: point.gps, denominator: point.visits })}</title>
               </rect>
               {showLabel ? (
-                <text x={x} y={chartBottom + 23} textAnchor={index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"} className="fill-muted-foreground text-[10px]">
+                <text x={x} y={chartBottom + 23} textAnchor={index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"} className="fill-muted-foreground text-xs">
                   {dateLabel(point.date)}
                 </text>
               ) : null}
@@ -1097,7 +1097,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                   </div>
                   {workforceEnabled && day.workdayId ? (
                     <p className="mt-1 truncate text-xs text-muted-foreground" title={day.workdayId}>
-                      {t("workdayRecord")}: <span className="font-mono text-[11px]">{day.workdayId}</span>
+                      {t("workdayRecord")}: <span className="font-mono text-xs">{day.workdayId}</span>
                     </p>
                   ) : null}
                   {day.sourceAgents?.length ? (
@@ -1408,7 +1408,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                               <time dateTime={adjustment.createdAt} className="ml-auto tabular-nums text-muted-foreground">{dateTimeFormatter.format(new Date(adjustment.createdAt))}</time>
                             </div>
                             <p className="mt-2 leading-5"><span className="font-medium">{t("adjustmentReason")}:</span> {adjustment.reason}</p>
-                            <code className="mt-1 block truncate text-[10px] text-muted-foreground" title={adjustment.factId}>{adjustment.factId}</code>
+                            <code className="mt-1 block truncate text-xs text-muted-foreground" title={adjustment.factId}>{adjustment.factId}</code>
                           </li>
                         ))}
                       </ul>

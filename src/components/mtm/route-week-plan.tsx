@@ -385,10 +385,10 @@ export function MtmRouteWeekPlan({
                         <span className="flex items-center gap-1 text-xs font-medium tabular-nums">
                           <span className="truncate">{summary}</span>
                           {execution.lateCount > 0 ? (
-                            <span className="shrink-0 rounded px-1 text-[10px] font-medium text-red-700 dark:text-red-300">{t("stopFact.weekLate")}</span>
+                            <span className="shrink-0 rounded px-1 text-xs font-medium text-red-700 dark:text-red-300">{t("stopFact.weekLate")}</span>
                           ) : null}
                         </span>
-                        <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{route.name ? `${route.name} · ` : ""}{(route.status === "COMPLETED" || route.status === "INCOMPLETE") && route.visitedPoints < route.totalPoints
                             // «Tamamlanıb» at 3 of 5 stops read as a job done (audit 2026-09-26).
                             ? <span className="text-amber-700 dark:text-amber-300">{t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })}</span>

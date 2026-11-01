@@ -180,7 +180,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
               </Hint>
             </div>
           ) : null}
-          {note ? <p className="mt-1 px-1 text-[11px] text-muted-foreground">{note}</p> : null}
+          {note ? <p className="mt-1 px-1 text-xs text-muted-foreground">{note}</p> : null}
         </div>
       ) : null}
     </div>
