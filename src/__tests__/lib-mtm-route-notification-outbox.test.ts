@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const deps = vi.hoisted(() => ({
   logMtmRouteObservability: vi.fn(),
+  notifyAgents: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", async () => {
@@ -14,6 +15,10 @@ vi.mock("@/lib/tenant-capability-access", () => ({
 }))
 vi.mock("@/lib/mtm/route-observability", () => ({
   logMtmRouteObservability: deps.logMtmRouteObservability,
+}))
+vi.mock("@/lib/mtm/push-notify", () => ({
+  MTM_TEAM_MESSAGES_PUSH_CHANNEL: "team-messages",
+  notifyAgents: deps.notifyAgents,
 }))
 
 import { prisma } from "@/lib/prisma"
@@ -51,6 +56,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmRouteNotificationOutbox.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmRouteNotificationOutbox.updateMany).mockResolvedValue({ count: 1 })
   vi.mocked(prisma.mtmNotification.upsert).mockResolvedValue({ id: "notification-1" })
+  deps.notifyAgents.mockResolvedValue({ sent: 1, failed: 0, retired: 0 })
 })
 
 describe("MTM route notification outbox", () => {
@@ -144,5 +150,58 @@ describe("MTM route notification outbox", () => {
     expect(prisma.mtmNotification.upsert).toHaveBeenCalledTimes(1)
     expect(prisma.mtmNotification.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: {} }))
     expect(prisma.mtmNotification.create).not.toHaveBeenCalled()
+  })
+
+  // Owner 2026-11-01: «Сотрудник получит новый порядок в приложении» — in his
+  // own words, with a push, not an English line in the bell.
+  it("tells the agent his route changed in his own language, with the day and the visits, and pushes it", async () => {
+    vi.mocked(prisma.mtmRouteNotificationOutbox.findMany).mockResolvedValue([{
+      ...OUTBOX_ITEM,
+      dedupeKey: "route:route-1:published:4:agent-1",
+      title: "Route updated",
+      body: "Route for 2026-11-05 was changed.",
+      type: "task",
+      metadata: { routeId: "route-1", publishedVersion: 4, event: "route_updated" },
+    }] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ appLanguage: "ru", user: { preferredLanguage: "az" } } as never)
+    vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({ date: new Date("2026-11-05T00:00:00.000Z"), _count: { points: 8 } } as never)
+
+    const result = await drainMtmRouteNotificationOutbox({ now: NOW })
+
+    expect(result.delivered).toBe(1)
+    expect(prisma.mtmNotification.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ title: "Маршрут на 5 ноября изменён", body: "8 визитов. Откройте маршрут в приложении." }),
+    }))
+    expect(deps.notifyAgents).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: "org-1",
+      agentIds: ["agent-1"],
+      title: "Маршрут на 5 ноября изменён",
+      data: { routeId: "route-1" },
+      channelId: "team-messages",
+    }))
+  })
+
+  it("keeps the words of any other route notice, and pushes nothing for it", async () => {
+    vi.mocked(prisma.mtmRouteNotificationOutbox.findMany).mockResolvedValue([OUTBOX_ITEM] as never)
+    await drainMtmRouteNotificationOutbox({ now: NOW })
+    expect(prisma.mtmNotification.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ title: "Route change approved", body: "Approved" }),
+    }))
+    expect(deps.notifyAgents).not.toHaveBeenCalled()
+  })
+
+  it("delivers the bell line even when the push fails", async () => {
+    vi.mocked(prisma.mtmRouteNotificationOutbox.findMany).mockResolvedValue([{
+      ...OUTBOX_ITEM,
+      metadata: { routeId: "route-1", publishedVersion: 1, event: "route_published" },
+    }] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ appLanguage: null, user: null } as never)
+    vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({ date: new Date("2026-11-05T00:00:00.000Z"), _count: { points: 1 } } as never)
+    deps.notifyAgents.mockRejectedValue(new Error("fcm down"))
+    const result = await drainMtmRouteNotificationOutbox({ now: NOW })
+    expect(result.delivered).toBe(1)
+    expect(prisma.mtmNotification.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ title: "Marşrut hazırdır: 5 noyabr", body: "1 vizit. Tətbiqdə açın." }),
+    }))
   })
 })
