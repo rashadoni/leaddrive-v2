@@ -179,7 +179,7 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
       {table && !waiting ? !table.rows.length ? <p className="rounded-xl bg-muted/50 px-4 py-5 text-sm text-muted-foreground">{t("reportEmpty")}</p>
         : <AttendanceReportTable table={table} explain={explain} /> : null}
       {explainError ? <p role="alert" className="mt-3 text-sm text-destructive">{p("explainFailed")}</p> : null}
-      {table && range && !waiting ? <AttendanceReportTotals period={t("reportPeriod", { from: label(range.from), to: label(range.to) })} totals={table.totals} /> : null}
+      {table && range && !waiting ? <AttendanceReportTotals period={t("reportPeriod", { from: label(range.from), to: label(range.to) })} totals={table.totals} minutes={table.rows.some(row => row.day)} /> : null}
       {month.state?.candidates.length && teamId ? <p className="mt-3 text-sm text-muted-foreground">{t("monthCloseN1tTeamSelected", { all: t("reportAllTeams") })}</p> : null}
     </div> : null}
     {!error ? <AttendanceN1tNotes month={month} /> : null}
