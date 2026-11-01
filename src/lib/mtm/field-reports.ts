@@ -279,6 +279,10 @@ async function fieldDay(input: FieldReportInput): Promise<FieldReport> {
     const key = day.workDate.toISOString().slice(0, 10)
     const own = visits.filter((visit) => visit.agentId === day.agentId && dayOf(visit.checkInAt) === key).sort((a, b) => a.checkInAt.getTime() - b.checkInAt.getTime())
     const worked = day.completedAt ? Math.max(0, (day.completedAt.getTime() - day.startedAt.getTime()) / 1000 - day.totalPausedSeconds) : null
+    // Prod 2026-11-01: days closed the next morning or days later («13:20 → 10:33»,
+    // 95.7 h) read as a short evening shift. Such an end carries its date, and
+    // only a day closed the same day goes into the average hours.
+    const closedLater = !!day.completedAt && dayOf(day.completedAt) !== key
     return {
       id: day.id,
       agentId: day.agentId,
@@ -287,14 +291,15 @@ async function fieldDay(input: FieldReportInput): Promise<FieldReport> {
       start: clockTime(day.startedAt, input.timezone),
       firstVisit: clockTime(own[0]?.checkInAt, input.timezone),
       lastVisit: clockTime(own.at(-1)?.checkInAt, input.timezone),
-      end: clockTime(day.completedAt, input.timezone),
+      end: closedLater ? `${dayOf(day.completedAt as Date).slice(8, 10)}.${dayOf(day.completedAt as Date).slice(5, 7)} ${clockTime(day.completedAt, input.timezone)}` : clockTime(day.completedAt, input.timezone),
+      closedLater,
       hours: worked === null ? null : Math.round((worked / 3600) * 10) / 10,
       visits: own.length,
       atClients: own.reduce((sum, visit) => sum + (visit.duration ?? 0), 0),
       firstDelay: own[0] ? Math.max(0, Math.round((own[0].checkInAt.getTime() - day.startedAt.getTime()) / 60000)) : null,
     }
   })
-  const finished = rows.filter((row) => row.hours !== null)
+  const finished = rows.filter((row) => row.hours !== null && !row.closedLater)
   const delays = rows.filter((row) => row.firstDelay !== null)
   const average = (values: number[]) => (values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0)
   return {
