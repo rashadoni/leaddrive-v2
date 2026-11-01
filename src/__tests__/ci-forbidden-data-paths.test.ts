@@ -23,7 +23,7 @@
  * поедет в прод, а не её пересказ.
  */
 import { spawnSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
@@ -221,19 +221,29 @@ describe("forbidden-data-paths: ветка с посторонним корне�
 })
 
 describe("forbidden-data-paths: pre-push hook", () => {
+  /** Каталог, куда git в этом репозитории реально смотрит за хуками. */
+  function hooksDir(repo: string) {
+    const configured = git(repo, "config", "--get", "core.hooksPath")
+    if (configured.status === 0 && configured.out.trim()) {
+      const value = configured.out.trim()
+      return path.isAbsolute(value) ? value : path.join(repo, value)
+    }
+    return path.join(gitOk(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").trim(), "hooks")
+  }
+
   /** Ремоут и установленные хуки, как после install.sh в свежем клоне. */
-  function withRemote(repo: string) {
+  function withRemote(repo: string, args: string[] = []) {
     const remote = mkdtempSync(path.join(tmpdir(), "forbidden-paths-remote-"))
     dirs.push(remote)
     gitOk(remote, "init", "--bare", "-b", "main")
     gitOk(repo, "remote", "add", "origin", remote)
-    const install = spawnSync("bash", [path.join(repo, INSTALL)], { cwd: repo, encoding: "utf8", env: GIT_ENV })
+    const install = spawnSync("bash", [path.join(repo, INSTALL), ...args], { cwd: repo, encoding: "utf8", env: GIT_ENV })
     if (install.status !== 0) throw new Error(`install.sh failed:\n${install.stdout}${install.stderr}`)
     // Хук ставится копией по абсолютному пути: относительный core.hooksPath
     // исчез бы в чекауте, чья ветка старше хука, — а это и есть опасный случай.
-    const hooksPath = gitOk(repo, "config", "--get", "core.hooksPath").trim()
-    expect(path.isAbsolute(hooksPath)).toBe(true)
-    expect(readFileSync(path.join(hooksPath, "pre-push"), "utf8")).toBe(readFileSync(path.join(repo, HOOK), "utf8"))
+    const installed = path.join(hooksDir(repo), "pre-push")
+    expect(path.isAbsolute(installed)).toBe(true)
+    expect(readFileSync(installed, "utf8")).toBe(readFileSync(path.join(repo, HOOK), "utf8"))
     return remote
   }
 
@@ -315,7 +325,9 @@ describe("forbidden-data-paths: pre-push hook", () => {
     expect(gitOk(remote, "for-each-ref", "--format=%(refname)").trim()).toBe("")
   }, 60_000)
 
-  it("install.sh не затирает чужой core.hooksPath без --force", () => {
+  it("install.sh не перенастраивает core.hooksPath, когда каталога нет, без --force", () => {
+    // Случай dev-бокса: core.hooksPath показывает на путь с Мака владельца,
+    // которого на этой машине нет, поэтому не работает ни один хук.
     const repo = makeRepo()
     gitOk(repo, "config", "core.hooksPath", "/nowhere/hooks")
     const refused = spawnSync("bash", [path.join(repo, INSTALL)], { cwd: repo, encoding: "utf8", env: GIT_ENV })
@@ -326,6 +338,43 @@ describe("forbidden-data-paths: pre-push hook", () => {
     const forced = spawnSync("bash", [path.join(repo, INSTALL), "--force"], { cwd: repo, encoding: "utf8", env: GIT_ENV })
     expect(forced.status).toBe(0)
     expect(gitOk(repo, "config", "--get", "core.hooksPath").trim()).toContain("hooks-leaddrive")
+  })
+
+  it("ставит хук туда, куда git уже смотрит, и не выключает соседний хук", () => {
+    // Случай Мака владельца: core.hooksPath ведёт в каталог, где лежит
+    // РАБОТАЮЩИЙ gitleaks-pre-commit. Увести оттуда hooksPath — молча его
+    // выключить, поэтому ставим рядом и config не трогаем.
+    const repo = makeRepo()
+    const theirHooks = path.join(repo, "their-hooks")
+    mkdirSync(theirHooks, { recursive: true })
+    writeFileSync(path.join(theirHooks, "pre-commit"), "#!/bin/sh\nexit 0\n")
+    gitOk(repo, "config", "core.hooksPath", theirHooks)
+
+    const remote = withRemote(repo)
+    expect(gitOk(repo, "config", "--get", "core.hooksPath").trim()).toBe(theirHooks)
+    expect(readFileSync(path.join(theirHooks, "pre-commit"), "utf8")).toContain("exit 0")
+    expect(readFileSync(path.join(theirHooks, "pre-push"), "utf8")).toBe(readFileSync(path.join(repo, HOOK), "utf8"))
+
+    // И он действительно работает оттуда.
+    write(repo, "migration_data/companies_db.json", '{"company":"ACME"}\n')
+    commit(repo, "oops")
+    expect(git(repo, "push", "origin", "main").status).not.toBe(0)
+    expect(gitOk(remote, "for-each-ref").trim()).toBe("")
+
+    // Снятие не трогает чужую настройку и чужой хук.
+    const removed = spawnSync("bash", [path.join(repo, INSTALL), "--uninstall"], { cwd: repo, encoding: "utf8", env: GIT_ENV })
+    expect(removed.status).toBe(0)
+    expect(gitOk(repo, "config", "--get", "core.hooksPath").trim()).toBe(theirHooks)
+    expect(existsSync(path.join(theirHooks, "pre-commit"))).toBe(true)
+    expect(existsSync(path.join(theirHooks, "pre-push"))).toBe(false)
+  }, 60_000)
+
+  it("в свежем клоне ставит в .git/hooks и не заводит core.hooksPath", () => {
+    const repo = makeRepo()
+    withRemote(repo)
+    expect(git(repo, "config", "--get", "core.hooksPath").status).not.toBe(0)
+    const hooks = path.join(gitOk(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").trim(), "hooks")
+    expect(readFileSync(path.join(hooks, "pre-push"), "utf8")).toBe(readFileSync(path.join(repo, HOOK), "utf8"))
   })
 })
 
