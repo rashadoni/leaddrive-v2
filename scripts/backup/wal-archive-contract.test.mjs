@@ -131,7 +131,7 @@ test('the watch treats an unusable archive as critical, not as a warning', () =>
   assert.match(check, /note crit "pgBackRest dropped WAL/);
   assert.match(check, /note crit "archive_command is failing/);
   assert.match(check, /note crit "nothing has ever been archived/);
-  assert.match(check, /^\s*crit\) exit 2 ;;|\*\) exit 2 ;;/m);
+  assert.match(check, /\*\) exit 20 ;;/);
 });
 
 test('the watch alarms only after two bad runs and says when it recovers', () => {
@@ -140,7 +140,9 @@ test('the watch alarms only after two bad runs and says when it recovers', () =>
 });
 
 test('a warning does not make systemd shout over the script', () => {
-  assert.match(service, /^SuccessExitStatus=0 1 2$/m);
+  // The verdict codes, and only those, count as success — see the exit-code
+  // test below for why they are not 1 and 2.
+  assert.match(service, /^SuccessExitStatus=0 10 20$/m);
   assert.match(service, /^OnFailure=leaddrive-wal-check-failed\.service$/m);
   assert.match(timer, /OnCalendar=\*:0\/5/);
 });
@@ -361,4 +363,103 @@ test('the owner reads the subject once, not twice', () => {
   // it, so forwarding it raw read "WAL-архив: WAL-архив: ...".
   assert.equal(stripSubject('WAL-архив: archive_command is failing'), 'archive_command is failing');
   assert.equal(stripSubject('сторож на проде молчит 40 мин'), 'сторож на проде молчит 40 мин');
+});
+
+// ---------------------------------------------------------------------------
+// The watch, actually executed. Everything above asserts the wiring; none of it
+// ran the script, and that is how it reached production with a pipeline that
+// killed it on the healthy path. On 2026-11-01 `grep -c` found no "queue
+// exceeded" — because there was none — exited 1, and pipefail turned that into
+// a dead watch that systemd reported as success.
+
+function runCheck({ repo, logLine = 'обычный лог без слова про очередь', envFile } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'leaddrive-wal-check-'));
+  try {
+    const bin = join(dir, 'bin');
+    const logs = join(dir, 'logs');
+    const state = join(dir, 'state');
+    for (const d of [bin, logs, state, join(dir, 'spool/archive/test/out')]) {
+      execFileSync('mkdir', ['-p', d]);
+    }
+    writeFileSync(join(logs, 'archive.log'), `${logLine}\n`);
+    const repoFile = join(dir, 'repo.json');
+    const stop = Math.floor(Date.now() / 1000) - 3600;
+    writeFileSync(
+      repoFile,
+      repo ?? JSON.stringify([{ status: { message: 'ok' }, backup: [{ type: 'full', timestamp: { stop } }] }]),
+    );
+    writeFileSync(join(bin, 'psql'), '#!/bin/sh\nprintf \'000000010000000500000059|12|-1|0|42\\n\'\n');
+    writeFileSync(join(bin, 'pgbackrest'), `#!/bin/sh\ncase "$*" in\n  *--output=json*) cat ${repoFile} ;;\n  *check*) exit 0 ;;\nesac\n`);
+    chmodSync(join(bin, 'psql'), 0o755);
+    chmodSync(join(bin, 'pgbackrest'), 0o755);
+    const env = join(dir, 'env');
+    writeFileSync(
+      env,
+      [
+        'WAL_STANZA=test',
+        'WAL_PG_PORT=5432',
+        `WAL_PG_USER=${userInfo().username}`,
+        `WAL_SPOOL_PATH=${join(dir, 'spool')}`,
+        `WAL_LOG_PATH=${logs}`,
+        `WAL_CHECK_STATE_FILE=${join(state, 'check-state.json')}`,
+        `WAL_CHECK_LOCK_FILE=${join(state, 'wal-check.lock')}`,
+        'WAL_ALERT_COMMAND=',
+        '',
+      ].join('\n'),
+    );
+    let status = 0;
+    let stdout = '';
+    try {
+      stdout = execFileSync('bash', ['scripts/backup/wal-archive-check.sh'], {
+        encoding: 'utf8',
+        env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, WAL_ENV_FILE: envFile ?? env },
+      });
+    } catch (error) {
+      status = error.status ?? 1;
+      stdout = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+    }
+    let saved = null;
+    try {
+      saved = JSON.parse(readFileSync(join(state, 'check-state.json'), 'utf8'));
+    } catch {
+      saved = null;
+    }
+    return { status, stdout, saved };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('a healthy archive with nothing to find in the log still reaches its verdict', () => {
+  // The regression itself: no "queue exceeded" anywhere is the GOOD case, and
+  // it used to kill the watch before it printed or saved anything.
+  const run = runCheck();
+  assert.equal(run.status, 0, `the watch died instead of reporting: ${run.stdout}`);
+  assert.match(run.stdout, /SUMMARY wal-check status=ok .*dropped=0/);
+  assert.equal(run.saved?.status, 'ok');
+  assert.equal(run.saved?.shouldAlert, false);
+});
+
+test('dropped WAL in the log is counted, not ignored', () => {
+  const run = runCheck({ logLine: 'ERROR: queue exceeded for 000000010000000500000060' });
+  assert.match(run.stdout, /dropped=1/);
+});
+
+test('a verdict and a crash get different exit codes', () => {
+  // 10 and 20 are verdicts the unit accepts; 1 means the script broke and
+  // systemd must fail the unit so OnFailure fires.
+  assert.equal(runCheck({ repo: JSON.stringify([{ status: { message: 'ok' }, backup: [] }]) }).status, 20);
+  assert.equal(runCheck({ envFile: '/nonexistent/wal-archive.env' }).status, 1);
+  assert.match(service, /^SuccessExitStatus=0 10 20$/m);
+  assert.doesNotMatch(service, /^SuccessExitStatus=0 1 2$/m);
+});
+
+test('no pipeline in the watch can kill it on its own silence', () => {
+  // Every command that legitimately exits non-zero when it finds nothing must
+  // be guarded, because pipefail propagates it and set -e acts on it.
+  const guarded = check.match(/^.*\|\s*(awk|wc)\b.*$/gm) ?? [];
+  assert.ok(guarded.length >= 2, 'expected the counted pipelines to still be here');
+  for (const line of guarded) {
+    assert.match(line, /\|\| true; \}/, `unguarded pipeline would kill the watch: ${line.trim()}`);
+  }
 });

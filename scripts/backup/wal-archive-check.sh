@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Watch the PostgreSQL WAL archive. Read-only: it never repairs anything.
 #
-# Exit 0 healthy, 1 warning, 2 critical. A critical state means the recovery
+# Exit 0 healthy, 10 warning, 20 critical. A critical state means the recovery
 # point has silently moved back to the last nightly logical dump.
+#
+# The verdict codes are deliberately NOT 1 and 2. The unit must accept a
+# verdict as success and a crash as failure, and bash hands out 1 and 2 for its
+# own accidents: on 2026-11-01 this script died with 1 on a HEALTHY production
+# and systemd reported success, because `SuccessExitStatus=0 1 2` cannot tell a
+# warning from a dead script.
 set -Eeuo pipefail
 
 umask 077
@@ -10,7 +16,7 @@ umask 077
 WAL_ENV_FILE="${WAL_ENV_FILE:-/etc/leaddrive/wal-archive.env}"
 [ -f "$WAL_ENV_FILE" ] || {
   printf '[wal-check] FATAL missing %s\n' "$WAL_ENV_FILE" >&2
-  exit 2
+  exit 1
 }
 set -a
 # shellcheck disable=SC1090
@@ -21,6 +27,10 @@ set +a
 : "${WAL_CHECK_LAG_WARN_SECONDS:=900}" "${WAL_CHECK_LAG_CRIT_SECONDS:=3600}"
 : "${WAL_CHECK_BACKLOG_WARN:=64}"
 : "${WAL_FULL_INTERVAL_DAYS:=7}"
+# Where pgBackRest keeps its own log. Configurable so the behaviour test can
+# point it at a log directory with no "queue exceeded" in it — the exact shape
+# that killed this script on production.
+: "${WAL_LOG_PATH:=/var/log/pgbackrest}"
 : "${WAL_CHECK_STATE_FILE:=/var/lib/leaddrive-wal-archive/check-state.json}"
 : "${WAL_CHECK_LOCK_FILE:=/var/lib/leaddrive-recovery-runner-locks/wal-check.lock}"
 : "${WAL_ALERT_COMMAND:=}"
@@ -46,7 +56,18 @@ note() {
   fi
 }
 
-as_pg() { su - "$WAL_PG_USER" -c "$1" 2>&1; }
+# Production runs this as root and switches to the database superuser. When the
+# caller already IS that user — the behaviour test, and an operator checking by
+# hand — su would demand a password for no gain, so run directly. Without this
+# the script could not be executed in a test at all, which is how it shipped
+# with a pipeline that killed it on the healthy path.
+as_pg() {
+  if [ "$(id -un)" = "$WAL_PG_USER" ]; then
+    eval "$1" 2>&1
+  else
+    su - "$WAL_PG_USER" -c "$1" 2>&1
+  fi
+}
 
 # 1. Does PostgreSQL still think archiving works?
 archiver_row="$(as_pg "psql -XtAqF'|' -p $WAL_PG_PORT -d postgres -c \"select coalesce(last_archived_wal,''), coalesce(extract(epoch from now()-last_archived_time)::bigint,-1), coalesce(extract(epoch from now()-last_failed_time)::bigint,-1), failed_count, archived_count from pg_stat_archiver\"" || true)"
@@ -71,14 +92,19 @@ fi
 # 2. Spool backlog: segments waiting to be shipped.
 backlog=0
 if [ -d "$WAL_SPOOL_PATH/archive/$WAL_STANZA/out" ]; then
-  backlog="$(find "$WAL_SPOOL_PATH/archive/$WAL_STANZA/out" -type f -name '*.ok' -prune -o -type f -print 2>/dev/null | wc -l)"
+  # `|| true` guards the pipeline, not the error: with pipefail a find that
+  # trips over one unreadable entry would kill the whole watch.
+  backlog="$( { find "$WAL_SPOOL_PATH/archive/$WAL_STANZA/out" -type f -name '*.ok' -prune -o -type f -print 2>/dev/null || true; } | wc -l)"
 fi
 [ "$backlog" -lt "$WAL_CHECK_BACKLOG_WARN" ] || note warn "$backlog segments waiting in the spool"
 
 # 3. Dropped WAL: the queue-max trade-off fired and PITR continuity is broken.
 dropped_total=0
-if [ -d /var/log/pgbackrest ]; then
-  dropped_total="$(grep -rhc 'queue exceeded' /var/log/pgbackrest 2>/dev/null | awk '{s+=$1} END {print s+0}')"
+if [ -d "$WAL_LOG_PATH" ]; then
+  # grep exits 1 when it finds nothing, and with pipefail that killed the
+  # watch — on a healthy archive, where there is nothing to find. The healthier
+  # production was, the more certainly its watch was dead.
+  dropped_total="$( { grep -rhc 'queue exceeded' "$WAL_LOG_PATH" 2>/dev/null || true; } | awk '{s+=$1} END {print s+0}')"
 fi
 
 # 4. Repository: is there a restorable backup, and how old is it?
@@ -209,6 +235,6 @@ printf 'SUMMARY wal-check status=%s lag=%ss backlog=%s dropped=%s backup_age=%ss
 
 case "$status" in
   ok) exit 0 ;;
-  warn) exit 1 ;;
-  *) exit 2 ;;
+  warn) exit 10 ;;
+  *) exit 20 ;;
 esac
