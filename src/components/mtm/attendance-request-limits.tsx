@@ -6,7 +6,7 @@ import { SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
-import { AttendanceRequestLimitsUpdateSchema, type AttendanceRequestLimits } from "@/lib/mtm/attendance-request-limits"
+import { ATTENDANCE_LEAVE_NOTICE_MAX_DAYS, AttendanceRequestLimitsUpdateSchema, type AttendanceRequestLimits } from "@/lib/mtm/attendance-request-limits"
 
 const ENDPOINT = "/api/v1/mtm/attendance/request-limits"
 type Props = { canManage: boolean; onAccessLost: () => void; accessUnavailable?: boolean
@@ -15,8 +15,8 @@ type Props = { canManage: boolean; onAccessLost: () => void; accessUnavailable?:
 function parseLimits(value: unknown) {
   if (!value || typeof value !== "object") return null
   const data = value as Record<string, unknown>
-  const parsed = AttendanceRequestLimitsUpdateSchema.safeParse({ monthlyMinutes: data.monthlyMinutes, monthlyRequests: data.monthlyRequests, version: data.version })
-  return parsed.success ? parsed.data : null
+  const parsed = AttendanceRequestLimitsUpdateSchema.safeParse({ monthlyMinutes: data.monthlyMinutes, monthlyRequests: data.monthlyRequests, leaveNoticeDays: data.leaveNoticeDays ?? 0, version: data.version })
+  return parsed.success ? { ...parsed.data, leaveNoticeDays: parsed.data.leaveNoticeDays ?? 0 } : null
 }
 
 export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnavailable = false, alwaysOpen = false }: Props) {
@@ -25,6 +25,7 @@ export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnav
   const [limits, setLimits] = useState<AttendanceRequestLimits | null>(null)
   const [hours, setHours] = useState("")
   const [requests, setRequests] = useState("")
+  const [notice, setNotice] = useState("")
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +37,7 @@ export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnav
   const interrupted = useRef(false)
   const accessLost = useRef(onAccessLost)
   accessLost.current = onAccessLost
-  const clearPrivate = useCallback(() => { setLimits(null); setHours(""); setRequests(""); setSaved(false); setSaveError(null) }, [])
+  const clearPrivate = useCallback(() => { setLimits(null); setHours(""); setRequests(""); setNotice(""); setSaved(false); setSaveError(null) }, [])
   const load = useCallback(async (acknowledge = false) => {
     readRequest.current?.abort()
     const controller = new AbortController()
@@ -54,7 +55,7 @@ export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnav
         if (denied) accessLost.current()
         return
       }
-      setLimits(next); setHours(String(next.monthlyMinutes / 60)); setRequests(String(next.monthlyRequests))
+      setLimits(next); setHours(String(next.monthlyMinutes / 60)); setRequests(String(next.monthlyRequests)); setNotice(String(next.leaveNoticeDays ?? 0))
       const unresolved = interrupted.current && !acknowledge
       setMustReload(unresolved)
       if (unresolved) setSaveError(t("limitsUnconfirmed"))
@@ -78,7 +79,7 @@ export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnav
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!limits || canManage !== true || accessUnavailable || loading || saving || mustReload || writeRequest.current) return
-    const parsed = AttendanceRequestLimitsUpdateSchema.safeParse({ version: limits.version, monthlyMinutes: hours.trim() ? Number(hours) * 60 : NaN, monthlyRequests: requests.trim() ? Number(requests) : NaN })
+    const parsed = AttendanceRequestLimitsUpdateSchema.safeParse({ version: limits.version, monthlyMinutes: hours.trim() ? Number(hours) * 60 : NaN, monthlyRequests: requests.trim() ? Number(requests) : NaN, leaveNoticeDays: notice.trim() ? Number(notice) : NaN })
     if (!parsed.success) { setSaveError(t("limitsInvalid")); return }
     const controller = new AbortController()
     writeRequest.current = controller
@@ -94,7 +95,7 @@ export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnav
         else { interrupted.current = true; setMustReload(true); setSaveError(t(body?.code === "MTM_ATTENDANCE_REQUEST_LIMITS_CHANGED" ? "limitsChanged" : "limitsUnconfirmed")) }
         return
       }
-      setLimits(next); setHours(String(next.monthlyMinutes / 60)); setRequests(String(next.monthlyRequests)); setSaved(true)
+      setLimits(next); setHours(String(next.monthlyMinutes / 60)); setRequests(String(next.monthlyRequests)); setNotice(String(next.leaveNoticeDays ?? 0)); setSaved(true)
     } catch {
       if (!controller.signal.aborted) { interrupted.current = true; setMustReload(true); setSaveError(t("limitsUnconfirmed")) }
     } finally {
@@ -121,6 +122,7 @@ export function MtmAttendanceRequestLimits({ canManage, onAccessLost, accessUnav
           <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
             <div className="space-y-2"><label htmlFor="attendance-limits-hours" className="text-sm font-medium">{t("limitsHours")}</label><Input id="attendance-limits-hours" type="number" inputMode="decimal" min={0} max={744} step={0.5} value={hours} required disabled={busy} className="min-h-11" aria-describedby="attendance-limits-hours-hint" onChange={event => { setHours(event.target.value); setSaved(false) }} /><p id="attendance-limits-hours-hint" className="text-xs text-muted-foreground">{t("limitsHoursHint")}</p></div>
             <div className="space-y-2"><label htmlFor="attendance-limits-count" className="text-sm font-medium">{t("limitsRequests")}</label><Input id="attendance-limits-count" type="number" inputMode="numeric" min={0} max={100} step={1} value={requests} required disabled={busy} className="min-h-11" aria-describedby="attendance-limits-count-hint" onChange={event => { setRequests(event.target.value); setSaved(false) }} /><p id="attendance-limits-count-hint" className="text-xs text-muted-foreground">{t("limitsRequestsHint")}</p></div>
+            <div className="space-y-2 sm:col-span-2"><label htmlFor="attendance-limits-notice" className="text-sm font-medium">{t("limitsLeaveNotice")}</label><Input id="attendance-limits-notice" type="number" inputMode="numeric" min={0} max={ATTENDANCE_LEAVE_NOTICE_MAX_DAYS} step={1} value={notice} required disabled={busy} className="min-h-11 sm:max-w-[calc(50%-0.5rem)]" aria-describedby="attendance-limits-notice-hint" onChange={event => { setNotice(event.target.value); setSaved(false) }} /><p id="attendance-limits-notice-hint" className="text-xs text-muted-foreground">{t("limitsLeaveNoticeHint")}</p></div>
           </div>
           {blocked ? <p className="max-w-prose rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">{t("limitsZero")}</p> : null}
           <p className="max-w-prose text-xs text-muted-foreground">{t("limitsForward")}</p>
