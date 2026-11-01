@@ -93,6 +93,15 @@ describe("Personnel → Timesheet month", () => {
     await act(async () => nigar.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-month-cell"]')[12].click())
     const card = document.querySelector<HTMLElement>('[data-testid="attendance-day-popover"]')!
     expect(card.textContent).toContain("Нигяр Бабаева")
+    // Plan / fact (owner, 2026-11-01, HRSS clip): the same figures the month counts — 09:00–18:00
+    // worked, the unpressed lunch taken off, so the norm is met and nothing counts as overtime.
+    const box = (key: string) => card.querySelector(`[data-testid="attendance-plan-fact-${key}"]`)!.textContent
+    expect(box("plan")).toBe(`${p("planFactSchedule")}09:00–18:00`)
+    expect(box("actual")).toBe(`${p("planFactActual")}09:00–18:00`)
+    expect([box("worked"), box("norm")]).toEqual([`${p("planFactWorked")}8:00`, `${p("planFactNorm")}8:00`])
+    expect([box("late"), box("early"), box("overtime")]).toEqual([`${p("planFactLate")}—`, `${p("planFactEarly")}—`, `${p("planFactOvertime")}—`])
+    // The day's own notes already name the automatic lunch; the card does not say it twice.
+    expect(card.querySelector('[data-testid="attendance-plan-fact-lunch"]')).toBeNull()
     const marks = card.querySelector('[data-testid="attendance-day-marks"]')!
     expect(Array.from(marks.querySelectorAll("li")).map(item => item.textContent)).toEqual([`09:00${ru.mtmAttendance.reportEventStart}`, `18:00${ru.mtmAttendance.reportEventFinish}`])
     const links = Array.from(card.querySelectorAll("a"))

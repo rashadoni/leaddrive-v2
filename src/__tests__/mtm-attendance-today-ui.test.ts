@@ -113,14 +113,25 @@ describe("Personnel → Today", () => {
   })
 
   // Owner, 2026-10-16 (approved mockup): who is at work, on a break, gone and not yet in.
-  it("shows who is at work now, and a name opens the employee for an administrator", async () => {
+  it("shows who is at work now, and a name opens that day as plan / fact with the way on to the employee and the timesheet", async () => {
     await render()
     const now = byTestId("attendance-today-now")!
-    const names = (key: string) => [...now.querySelectorAll(`[data-testid="attendance-now-${key}"] li a`)].map(link => link.textContent)
+    const names = (key: string) => [...now.querySelectorAll(`[data-testid="attendance-now-${key}"] li [data-testid="attendance-now-person"]`)].map(item => item.textContent)
     expect(names("working")).toEqual(["Айсель", "Эльвин", "Нигяр"])
     expect(names("notYet")).toEqual(["Рашад"])
     expect(byTestId("attendance-now-working")!.textContent).toContain(p("nowSince").replace("{time}", "08:55"))
-    expect(now.querySelector("li a")!.getAttribute("href")).toBe(`/mtm/attendance/people/${encodeURIComponent("id-Айсель")}`)
+    // Owner, 2026-11-01 (HRSS clip «Kim işdədir?»): the name opens plan / fact, not a page.
+    const nigar = [...now.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-now-person"]')].find(item => item.textContent === "Нигяр")!
+    await act(async () => nigar.click())
+    const card = document.body.querySelector<HTMLElement>('[data-testid="attendance-now-plan-fact"]')!
+    expect(card.querySelector('[data-testid="attendance-plan-fact-plan"]')!.textContent).toBe(`${p("planFactSchedule")}09:00–18:00`)
+    expect(card.querySelector('[data-testid="attendance-plan-fact-actual"]')!.textContent).toBe(`${p("planFactActual")}09:25${p("planFactStillThere")}`)
+    expect(card.querySelector('[data-testid="attendance-plan-fact-norm"]')!.textContent).toContain("8:00")
+    expect(card.querySelector('[data-testid="attendance-plan-fact-late"]')!.textContent).toContain("0:25")
+    expect(card.querySelector('[data-testid="attendance-plan-fact-early"]')!.textContent).toContain("—")
+    const links = [...card.querySelectorAll("a")].map(link => [link.textContent, link.getAttribute("href")])
+    expect(links).toEqual([[p("planFactEmployee"), `/mtm/attendance/people/${encodeURIComponent("id-Нигяр")}`],
+      [p("planFactTimesheet"), `/mtm/attendance/timesheet?${new URLSearchParams({ date: today, employeeId: "id-Нигяр" })}`]])
   })
 
   // Owner, 2026-10-20: the «Kadr uçotu» clip says it under «Now», and so does the product.

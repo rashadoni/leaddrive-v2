@@ -20,6 +20,7 @@ import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { TIMESHEET_ISSUES, type TimesheetIssue } from "@/lib/mtm/attendance-timesheet-filters"
 import { MtmAttendanceHelp } from "@/components/mtm/attendance-help"
+import { MtmAttendanceDayPlanFact } from "@/components/mtm/attendance-day-plan-fact"
 import { MtmAttendancePersonalViews } from "@/components/mtm/attendance-personal-views"
 import { MtmAttendanceExportButtons } from "@/components/mtm/attendance-export-buttons"
 import { MtmAttendanceDeliveries } from "@/components/mtm/attendance-deliveries"
@@ -460,17 +461,12 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                   {row ? <Popover open={openCell === cellKey} onOpenChange={open => setOpenCell(open ? cellKey : null)}><PopoverTrigger asChild><button type="button" data-testid="attendance-month-cell" data-dimmed={dimmed || undefined} aria-label={`${person.name} · ${dateLabel(date)} · ${attendanceStatusText(row, locale, t)}${corrected ? ` · ${p("legendCorrected")}` : ""}`}
                     className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-[11px] font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""} ${row.kind === "NOT_EMPLOYED" && !row.dayKind ? "opacity-40" : ""}`}
                     style={row.dayKind && row.kind !== "UPCOMING" ? { color: row.dayKind.color } : { color: "var(--muted-foreground, #8a94a3)" }}>{cellCode(row)}{corrected ? <span aria-hidden="true" data-testid="attendance-corrected-mark" className="ml-px text-[13px] leading-none text-primary">*</span> : null}{entries.length > 1 ? "+" : ""}</button></PopoverTrigger>
-                    <PopoverContent align="center" className="w-80 space-y-3 p-4" data-testid="attendance-day-popover">
+                    <PopoverContent align="center" className="w-[22rem] max-w-[calc(100vw-2rem)] space-y-3 p-4" data-testid="attendance-day-popover">
                       {entries.map(entry => {
                         const marks = attendanceJournalEntries(entry, locale, t)
                         return <div key={entry.sourceDate ?? entry.date} className="space-y-3">
                           <div><p className="text-sm font-bold">{person.name} · {dateLabel(entry.sourceDate ?? date)}</p><p className="text-xs text-muted-foreground">{attendanceStatusText(entry, locale, t)}</p></div>
-                          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
-                            <dt className="text-muted-foreground">{p("dayStarted")}</dt><dd className="font-semibold tabular-nums">{shortTime(entry.startedAt, entry.timezone)}{(entry.lateSeconds ?? 0) > 0 ? <span className="ml-1 text-amber-700 dark:text-amber-300">(+{formatAttendanceDuration(entry.lateSeconds)})</span> : null}</dd>
-                            <dt className="text-muted-foreground">{p("dayFinished")}</dt><dd className="font-semibold tabular-nums">{shortTime(entry.completedAt, entry.timezone)}</dd>
-                            <dt className="text-muted-foreground">{p("dayWorked")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceDuration(entry.workedSeconds)}</dd>
-                            <dt className="text-muted-foreground">{p("dayPause")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceDuration(entry.pausedSeconds)}</dd>
-                          </dl>
+                          <MtmAttendanceDayPlanFact row={entry} lunchNote={false} />
                           {rowNotes(entry) !== "—" ? <p className="text-xs leading-relaxed text-muted-foreground">{rowNotes(entry)}</p> : null}
                           {marks.length ? <div className="space-y-1" data-testid="attendance-day-marks"><p className="text-xs font-semibold text-muted-foreground">{p("dayMarks")}</p>
                             <ul className="space-y-1 text-xs">{marks.map(mark => <li key={mark.id} className="flex gap-2"><span className="w-11 shrink-0 font-semibold tabular-nums">{shortTime(mark.phoneAt ?? mark.serverAt, entry.timezone)}</span><span className={mark.correction ? "text-primary" : ""}>{mark.description}</span></li>)}</ul></div> : null}

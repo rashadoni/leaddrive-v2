@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Hint } from "@/components/hint"
 import { HomeCard, HomeKpi, HomePill } from "@/components/mtm/home-parts"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
-import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { attendanceStatusText, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { attendanceAskableExplanations, attendanceExplanationKey, attendanceNewlyAskable, attendanceNow, attendanceRowExplanation, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodayAttention, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
@@ -18,11 +18,15 @@ import { ATTENDANCE_EXPLANATION_LOOKBACK_DAYS, type AttendanceExplanationDto } f
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { MtmAttendanceSetupChecklist } from "@/components/mtm/attendance-setup-checklist"
+import { MtmAttendanceDayPlanFact } from "@/components/mtm/attendance-day-plan-fact"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 const ATTENTION_LIMIT = 6
 const REQUESTS_LIMIT = 5
 type Loaded = { today: string; summary: AttendanceTodaySummary; requests: AttendanceReviewItem[] | null; risks: AttendanceRiskItem[] | null
   now: AttendanceNow; timezone: string; loadedAt: string; canManage: boolean
+  /** Today's report row per employee: a name in «Now» opens its plan / fact. */
+  todayRows: Record<string, MtmAttendanceReportRow>
   /** Null when this user may not ask for explanations: the controls are not drawn. */
   explanations: AttendanceExplanationDto[] | null }
 const NOW_LIMIT = 3
@@ -35,15 +39,17 @@ const NOW_COLUMNS = [
 
 /**
  * Personnel → Today → «Now» (owner, 2026-10-16, approved mockup): who is at
- * work, on a break, gone and not yet in. A name opens the employee's page for
- * an administrator, their day in the timesheet for anyone else.
+ * work, on a break, gone and not yet in. A name opens that person's day as
+ * plan / fact (owner, 2026-11-01, as in the HRSS clip), with the way on to the
+ * employee's page for an administrator and to the day in the timesheet.
  */
 function MtmAttendanceNow({ data }: { data: Loaded }) {
-  const t = useTranslations("personnel"), locale = useLocale()
+  const t = useTranslations("personnel"), a = useTranslations("mtmAttendance"), locale = useLocale()
   const [open, setOpen] = useState<string | null>(null)
+  const [card, setCard] = useState<string | null>(null)
   const time = (value: string | null) => value ? formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: data.timezone }) : ""
-  const href = (person: AttendanceNowPerson) => data.canManage ? `/mtm/attendance/people/${encodeURIComponent(person.employeeId)}`
-    : `/mtm/attendance/timesheet?${new URLSearchParams({ date: data.today, employeeId: person.employeeId })}`
+  const timesheet = (person: AttendanceNowPerson) => `/mtm/attendance/timesheet?${new URLSearchParams({ date: data.today, employeeId: person.employeeId })}`
+  const href = (person: AttendanceNowPerson) => data.canManage ? `/mtm/attendance/people/${encodeURIComponent(person.employeeId)}` : timesheet(person)
   return <section className="rounded-2xl border bg-card p-4" aria-labelledby="attendance-today-now-title" data-testid="attendance-today-now">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <h2 id="attendance-today-now-title" className="flex items-center gap-2 text-[15px] font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-700 dark:text-emerald-300" aria-hidden="true"><Users className="h-4 w-4" /></span>{t("nowTitle", { time: time(data.loadedAt) })}</h2>
@@ -54,7 +60,17 @@ function MtmAttendanceNow({ data }: { data: Loaded }) {
       return <div key={column.key} className="rounded-xl border p-3" data-testid={`attendance-now-${column.key}`}>
         <p className={`mb-2 text-sm font-semibold ${column.tone}`}>{t(column.label)} · {people.length}</p>
         {people.length ? <ul className="space-y-1.5 text-sm">{shown.map(person => <li key={person.employeeId} className="flex min-w-0 items-baseline justify-between gap-2">
-          <Link href={href(person)} prefetch={false} className="truncate font-medium hover:underline">{person.name}</Link>
+          {data.todayRows[person.employeeId] ? <Popover open={card === `${column.key}:${person.employeeId}`} onOpenChange={value => setCard(value ? `${column.key}:${person.employeeId}` : null)}>
+            <Hint text={t("planFactOpenHint")}><PopoverTrigger asChild><button type="button" className="truncate text-left font-medium hover:underline" data-testid="attendance-now-person">{person.name}</button></PopoverTrigger></Hint>
+            <PopoverContent align="start" className="w-[22rem] max-w-[calc(100vw-2rem)] space-y-3 p-4" data-testid="attendance-now-plan-fact">
+              <div><p className="text-sm font-bold">{person.name}</p><p className="text-xs text-muted-foreground">{attendanceStatusText(data.todayRows[person.employeeId], locale, a)}</p></div>
+              <MtmAttendanceDayPlanFact row={data.todayRows[person.employeeId]} />
+              <div className="flex flex-wrap gap-2">
+                {data.canManage ? <Button asChild size="sm" variant="outline" className="min-h-9 flex-1"><Link prefetch={false} href={href(person)}>{t("planFactEmployee")}</Link></Button> : null}
+                <Button asChild size="sm" className="min-h-9 flex-1"><Link prefetch={false} href={timesheet(person)}>{t("planFactTimesheet")}</Link></Button>
+              </div>
+            </PopoverContent></Popover>
+            : <Link href={href(person)} prefetch={false} className="truncate font-medium hover:underline">{person.name}</Link>}
           <span className="shrink-0 text-xs text-muted-foreground">{column.time ? t(column.time, { time: time(person.at) }) : person.dayKind ? attendanceDayKindLabel(person.dayKind, locale) : ""}</span></li>)}</ul>
           : <p className="text-sm text-muted-foreground">{t("nowNobody")}</p>}
         {people.length > NOW_LIMIT ? <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : column.key)}>
@@ -130,6 +146,11 @@ export function MtmAttendanceToday() {
         today,
         summary,
         now: attendanceNow(rows, today), timezone: rows.find(row => row.date === today)?.timezone ?? "Asia/Baku",
+        // A night shift can give one person two rows for a date: the one with marks wins.
+        todayRows: rows.filter(row => row.date === today).reduce<Record<string, MtmAttendanceReportRow>>((byEmployee, row) => {
+          if (!byEmployee[row.employeeId] || (!byEmployee[row.employeeId].startedAt && row.startedAt)) byEmployee[row.employeeId] = row
+          return byEmployee
+        }, {}),
         loadedAt: new Date().toISOString(), canManage: rulesBody.data?.canManageRules === true,
         // Viewing attendance and deciding requests are separate rights: a
         // refused queue hides the card instead of failing the screen.
