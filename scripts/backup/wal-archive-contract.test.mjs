@@ -463,3 +463,36 @@ test('no pipeline in the watch can kill it on its own silence', () => {
     assert.match(line, /\|\| true; \}/, `unguarded pipeline would kill the watch: ${line.trim()}`);
   }
 });
+
+test('the journal says WHY the watch stayed quiet, and never guesses', () => {
+  // The journal is read when something is already wrong. "Waiting for a second
+  // check" standing in for "already told you" would send the reader looking
+  // for a message that was in fact sent an hour ago.
+  // The same NOW as the other cases: the fixture's checkedAt must stay inside
+  // the staleness window, or assess() reports silence instead of the problem.
+  const NOW2 = NOW;
+  const crit = assess(fresh({ status: 'crit', streak: 2, shouldAlert: true, message: 'сломалось' }), NOW2);
+  const warn = assess(fresh({ status: 'warn', streak: 2, shouldAlert: true, message: 'староват' }), NOW2);
+  const local = assess({ error: 'unreachable', detail: 'timed out' }, NOW2);
+
+  // First run of a problem only this host can see: genuinely waiting.
+  const first = decide(local, {}, NOW2);
+  assert.deepEqual(first.sends, []);
+  assert.equal(first.held[0].reason, 'streak');
+  assert.match(first.held[0].detail, /прогон 1 из 2/);
+
+  // An alarm already told: the reminder is pending, not the first check.
+  const told = decide(crit, {}, NOW2);
+  assert.equal(told.sends.length, 1);
+  const holding = decide(crit, told, NOW2 + 600_000);
+  assert.equal(holding.sends.length, 0);
+  assert.equal(holding.held[0].reason, 'reminder');
+  assert.match(holding.held[0].detail, /напоминание через 50 мин/);
+
+  // A warning is said once and never promises a reminder it will not send.
+  const warned = decide(warn, {}, NOW2);
+  assert.equal(warned.sends.length, 1);
+  const quiet = decide(warn, warned, NOW2 + 600_000);
+  assert.equal(quiet.held[0].reason, 'said-once');
+  assert.doesNotMatch(quiet.held[0].detail, /напоминание/);
+});

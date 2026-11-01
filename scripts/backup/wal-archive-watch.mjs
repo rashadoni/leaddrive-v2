@@ -96,6 +96,10 @@ export function stripSubject(text) {
 export function decide(problems, state, now) {
   const incidents = { ...(state.incidents ?? {}) }
   const sends = []
+  // Why a problem produced no message. The journal is read when something is
+  // already wrong, so "waiting for a second check" must not stand in for
+  // "already told you, holding the hourly reminder".
+  const held = []
   const seen = new Set()
 
   for (const problem of problems) {
@@ -111,6 +115,22 @@ export function decide(problems, state, now) {
       sends.push({ critical: problem.critical, text: problem.text, repeat: reported })
       reported = true
       lastSent = now
+    } else if (!ripe) {
+      held.push({ key: problem.key, reason: 'streak', detail: `прогон ${streak} из 2` })
+    } else if (problem.critical) {
+      // Only an alarm is repeated, and only once an hour.
+      const wait = Math.max(0, REMIND_MS - (now - lastSent))
+      held.push({
+        key: problem.key,
+        reason: 'reminder',
+        detail: `уже сообщено, напоминание через ${Math.round(wait / 60_000)} мин`,
+      })
+    } else {
+      held.push({
+        key: problem.key,
+        reason: 'said-once',
+        detail: 'уже сообщено; предупреждение не повторяется, пока не станет аварией',
+      })
     }
     incidents[problem.key] = { streak, reported, lastSent, critical: problem.critical }
   }
@@ -119,7 +139,7 @@ export function decide(problems, state, now) {
   for (const [key] of resolved) delete incidents[key]
   for (const key of Object.keys(incidents)) if (!seen.has(key)) delete incidents[key]
 
-  return { incidents, sends, recovered: resolved.length > 0 && problems.length === 0 }
+  return { incidents, sends, held, recovered: resolved.length > 0 && problems.length === 0 }
 }
 
 async function main() {
@@ -157,7 +177,7 @@ async function main() {
 
   const now = Date.now()
   const problems = assess(read, now)
-  const { incidents, sends, recovered } = decide(problems, local, now)
+  const { incidents, sends, held, recovered } = decide(problems, local, now)
 
   for (const send of sends) {
     const head = `${prefix}${send.critical ? '🔴' : '⚠️'} WAL-архив${send.repeat ? ' (всё ещё)' : ''}`
@@ -172,7 +192,11 @@ async function main() {
     if (!dryRun) await run(notify, [`${prefix}✅ WAL-архив снова в порядке`, 'Проверка на проде снова проходит.'], SSH_TIMEOUT_MS)
   }
   if (!sends.length && !recovered) {
-    console.log(problems.length ? `ждём второй проверки: ${problems[0].key}` : 'WAL-архив в порядке')
+    if (!problems.length) {
+      console.log('WAL-архив в порядке')
+    } else {
+      for (const h of held) console.log(`${h.key}: ${h.detail}`)
+    }
   }
 
   if (!dryRun) writeFileSync(stateFile, JSON.stringify({ ...local, incidents }), { mode: 0o600 })
