@@ -11,6 +11,11 @@ export function formatAttendanceDuration(seconds: number | null): string {
   return `${hours}:${minutes}${remainder ? `:${String(remainder).padStart(2, "0")}` : ""}`
 }
 
+/** The same duration to the minute, as screens show it (owner, 2026-11-01: no seconds on screen); files keep the seconds. */
+export function formatAttendanceMinutes(seconds: number | null): string {
+  return formatAttendanceDuration(seconds).replace(/^(\d+:\d{2}):\d{2}$/, "$1")
+}
+
 export const DEFAULT_ATTENDANCE_DAY_COLUMNS = ["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "notes"] as const
 export const DEFAULT_ATTENDANCE_JOURNAL_COLUMNS = ["employee", "team", "date", "status", "event", "phoneAt", "serverAt"] as const
 

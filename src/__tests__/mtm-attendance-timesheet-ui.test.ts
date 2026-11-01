@@ -39,7 +39,7 @@ function rashadDays(): MtmAttendanceWorkday[] {
 }
 let withSigns = false
 const reportFor = (from: string, to: string) => buildMtmAttendanceReport({ from, to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
-  employees: [{ id: "nigar", name: "Нигяр Бабаева", teamId: "centre", teamName: "Офис «Центр»" }, { id: "rashad", name: "Рашад Алиев", teamId: "north", teamName: "Филиал «Север»" }],
+  employees: [{ id: "nigar", name: "Нигяр Бабаева", position: "Кассир", departmentId: "fin", departmentName: "Финансы", teamId: "centre", teamName: "Офис «Центр»" }, { id: "rashad", name: "Рашад Алиев", teamId: null, teamName: null }],
   workdays: [{ id: "n14", agentId: "nigar", workDate: "2026-10-14", status: "STARTED", startedAt: at("2026-10-14", "09:25"), completedAt: null, totalPausedSeconds: 0,
     events: [{ type: "START", occurredAt: at("2026-10-14", "09:25") }] },
   { id: "n13", agentId: "nigar", workDate: "2026-10-13", status: "COMPLETED", startedAt: at("2026-10-13", "09:00"), completedAt: at("2026-10-13", "18:00"), totalPausedSeconds: 0,
@@ -87,6 +87,18 @@ describe("Personnel → Timesheet month", () => {
     }
   })
 
+  // Owner, 2026-11-01: under the name position and department, never «no team»; hours to the minute.
+  it("names position, department and team under a person, skips what is not set, and counts hours without seconds", async () => {
+    await render({ layout: "timesheet", initialForm: "MONTH" })
+    const people = Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]'))
+    const nigar = people.find(row => row.textContent?.includes("Нигяр"))!, rashad = people.find(row => row.textContent?.includes("Рашад"))!
+    expect(nigar.querySelector('[data-testid="attendance-employee-details"]')?.textContent).toBe("Кассир · Финансы · Офис «Центр»")
+    expect(rashad.querySelector('[data-testid="attendance-employee-details"]')).toBeNull()
+    expect(container.textContent).not.toContain(ru.mtmAttendance.reportNoTeam)
+    // 13 Oct 09:00–18:00 less the automatic lunch, plus the open 14th up to 08:00 UTC: never "h:mm:ss".
+    expect(nigar.textContent).not.toMatch(/\d:\d\d:\d\d/)
+  })
+
   it("opens a day card from a cell with the day's marks and one action: fix that day", async () => {
     await render({ layout: "timesheet", initialForm: "MONTH" })
     const nigar = Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]')).find(row => row.textContent?.includes("Нигяр"))!
@@ -109,7 +121,7 @@ describe("Personnel → Timesheet month", () => {
     await act(async () => late.click())
     expect(late.getAttribute("aria-pressed")).toBe("true")
     const people = Array.from(container.querySelectorAll('[data-testid="attendance-month-person"]'))
-    expect(people.map(row => row.querySelector("th")!.textContent)).toEqual(["Нигяр БабаеваОфис «Центр»"])
+    expect(people.map(row => row.querySelector("th")!.textContent)).toEqual(["Нигяр БабаеваКассир · Финансы · Офис «Центр»"])
     const cells = Array.from(people[0].querySelectorAll<HTMLElement>('[data-testid="attendance-month-cell"]'))
     expect(cells[13].dataset.dimmed).toBeUndefined()   // 14 Oct, 25 minutes late
     expect(cells[12].dataset.dimmed).toBe("true")      // 13 Oct, on time
