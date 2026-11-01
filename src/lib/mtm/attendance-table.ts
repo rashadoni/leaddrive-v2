@@ -2,7 +2,7 @@ import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { ATTENDANCE_LOCATION_STATE_MESSAGES, attendanceDayLocationText, attendanceEndpointBranch, summarizeAttendanceBranches } from "@/lib/mtm/attendance-location-report"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow, type MtmAttendanceReportTotals } from "@/lib/mtm/attendance-report"
-import { attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { attendanceStatusText, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceLunchLines, attendanceJournalEntries, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { AttendanceViewConfigSchema, type AttendanceViewConfig, type AttendanceViewColumn } from "@/lib/mtm/attendance-view-contract"
 import { attendanceDayKindLabel, type AttendanceDayKind } from "@/lib/mtm/attendance-day-kinds"
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
@@ -71,7 +71,7 @@ export function buildAttendanceTable(report: MtmAttendanceReport, value: Attenda
     : config.filters.form === "LATE_EARLY" ? "reportLateEarly" : config.filters.form === "ABSENCES" ? "reportAbsences" : "reportDay")
   const baseNotes = (row: MtmAttendanceReportRow) => row.factsState === "INVALID" ? row.invalidReasons.map((reason) => t(REASON[reason] ?? "reportReasonFacts")).join(" · ")
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime") : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
-  const dayLines = (row: MtmAttendanceReportRow) => [baseNotes(row), ...(row.lunchAutoSeconds ? [t("reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })] : []),
+  const dayLines = (row: MtmAttendanceReportRow) => [baseNotes(row), ...attendanceLunchLines(row, t),
     ...(row.explanations ?? []).map(item => t(`reportExplanation${item.status}`, { answer: item.answer ?? "" })), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—")
   const dayNotes = (row: MtmAttendanceReportRow) => dayLines(row).join(" · ") || "—"
   const duration = (row: MtmAttendanceReportRow) => `${formatAttendanceDuration(row.workedSeconds)}${row.kind === "OPEN" ? ` · ${t("reportProvisionalShort")}` : ""}`

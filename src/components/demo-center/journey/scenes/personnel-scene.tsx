@@ -13,7 +13,7 @@ import { HomeCard, HomeKpi, HomePill } from "@/components/mtm/home-parts"
 import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 import { createDateFormatter, formatDate, formatTime } from "@/lib/format-date"
 import { attendanceDayKindLabel, defaultAttendanceDayKinds } from "@/lib/mtm/attendance-day-kinds"
-import { attendanceApprovedLines, attendanceCorrectionLines, attendanceJournalEntries, attendanceMonthCell, attendanceStatusText, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
+import { attendanceApprovedLines, attendanceLunchLines, attendanceCorrectionLines, attendanceJournalEntries, attendanceMonthCell, attendanceStatusText, formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { ATTENDANCE_RISK_KINDS, ATTENDANCE_RISK_MESSAGES } from "@/lib/mtm/attendance-risk-contract"
@@ -513,7 +513,7 @@ function TimesheetScreen({ snapshot, step, reviewMode, dispatch, hint }: DemoSce
     : row.kind === "OPEN" ? t("reportProvisional") : row.kind === "MISSING_FINISH" ? t("reportUnknownTime")
       : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
   // The same note as the exported table: the screen and the file say one thing.
-  const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...(row.lunchAutoSeconds ? [t("reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })] : []),
+  const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...attendanceLunchLines(row, t),
     ...(row.explanations ?? []).map((item) => t(`reportExplanation${item.status}`, { answer: item.answer ?? "" })), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
   const cellCode = (row: MtmAttendanceReportRow) => (row.dayKind ? `${row.dayKind.code}${row.corrections?.length ? "*" : ""}` : attendanceMonthCell(row, t))
 

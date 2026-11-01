@@ -20557,6 +20557,7 @@
     "reportInvalidFacts": "Data needs review",
     "reportAbsenceReasonPending": "Absent; reason not yet known",
     "reportLunchAuto": "Lunch {time} taken off automatically: no break pressed",
+    "reportLunchAutoShortBreaks": "Lunch {time} taken off automatically: breaks were shorter than the lunch hour",
     "reportProvisional": "The workday is still open. Worked time is provisional as of loading.",
     "reportProvisionalShort": "provisional",
     "reportUnknownTime": "No finish recorded; worked time is unknown.",

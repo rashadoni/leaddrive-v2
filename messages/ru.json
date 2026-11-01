@@ -20557,6 +20557,7 @@
     "reportInvalidFacts": "Данные требуют проверки",
     "reportAbsenceReasonPending": "Не пришёл, причина выясняется",
     "reportLunchAuto": "Обед {time} вычтен сам: перерыв не нажат",
+    "reportLunchAutoShortBreaks": "Обед {time} вычтен сам: перерывы короче обеденного часа",
     "reportProvisional": "День ещё идёт. Отработанное время предварительное на момент загрузки.",
     "reportProvisionalShort": "предварительно",
     "reportUnknownTime": "Нет отметки ухода; отработанное время неизвестно.",

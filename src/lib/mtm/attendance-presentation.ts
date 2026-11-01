@@ -57,6 +57,11 @@ export function attendanceCorrectionText(row: MtmAttendanceReportRow, correction
     reviewer: correction.reviewer.name || t("reportCorrectionReviewer"),
     at: createDateFormatter(locale, { timeZone: row.timezone, dateStyle: "short", timeStyle: "medium" }).format(new Date(correction.occurredAt)) })
 }
+/** The automatic lunch, said truly: with no break pressed, or with breaks shorter than the lunch hour (owner, 2026-11-01). */
+export function attendanceLunchLines(row: MtmAttendanceReportRow, t: AttendanceHistoryText): string[] {
+  if (!row.lunchAutoSeconds) return []
+  return [t((row.pausedSeconds ?? 0) > 0 ? "reportLunchAutoShortBreaks" : "reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })]
+}
 /** Approved periods describe permission; they never manufacture a phone event. */
 export function attendanceApprovedLines(row: MtmAttendanceReportRow, locale: string, t: AttendanceHistoryText): string[] {
   const date = (value: string) => createDateFormatter(locale, { timeZone: "UTC", dateStyle: "medium" }).format(new Date(`${value}T12:00:00Z`))

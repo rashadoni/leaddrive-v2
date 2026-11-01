@@ -42,8 +42,11 @@ describe("attendance forms keep their numbers and privacy in actual files", () =
     expect(sheet.getRow(2).getCell(7).value).toBe("7:09")
     expect(sheet.getRow(2).getCell(8).value).toBe("0:30")
     expect(sheet.getRow(3).getCell(7).value).toBe("—")
-    const lunchNote = createTranslator({ locale, messages: JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")), namespace: "mtmAttendance" })("reportLunchAuto", { time: "0:30" })
+    const note = createTranslator({ locale, messages: JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")), namespace: "mtmAttendance" })
+    // A break was pressed (0:30), so the note must not say «no break pressed» (owner, 2026-11-01).
+    const lunchNote = note("reportLunchAutoShortBreaks", { time: "0:30" })
     expect(String(sheet.getRow(2).getCell(11).value)).toContain(lunchNote)
+    expect(String(sheet.getRow(2).getCell(11).value)).not.toContain(note("reportLunchAuto", { time: "0:30" }))
     expect(String(sheet.getRow(3).getCell(11).value)).not.toContain(lunchNote)
     expect(sheet.getRow(2).getCell(1).type).toBe(ExcelJS.ValueType.String)
     const pdf = buildAttendancePdf(projected)
