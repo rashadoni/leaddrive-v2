@@ -406,7 +406,7 @@ describe("«Müştərilər»: the filter as named fields", () => {
   it("drops the fields a tenant switched off: no specialty filter, no specialty in the rows", async () => {
     // Column names; the first cell is the «select page» checkbox.
     const headers = () => [...container.querySelectorAll("thead th")].slice(1).map((cell) => cell.textContent?.trim())
-    expect(headers()).toEqual(["Kontakt", "Kateqoriya", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
+    expect(headers()).toEqual(["Kontakt", "Kateqoriya", "İş yeri", "Ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
     expect(container.querySelector("tbody")?.textContent).toContain("Pediatr")
 
     // A tenant that does not visit doctors, reopening the same screen.
@@ -421,7 +421,7 @@ describe("«Müştərilər»: the filter as named fields", () => {
     await openFields()
     expect(labels().slice(0, 7)).toEqual(["Məsul əməkdaş", "Müştəri adı", "Ünvan", "Şəhər və ya rayon", "Müəssisə", "Kontakt növü", "Status"])
     expect(field("mtm-contact-specialties")).toBeNull()
-    expect(headers()).toEqual(["Kontakt", "Kateqoriya", "İş yeri", "Son ziyarət", "Növbəti ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
+    expect(headers()).toEqual(["Kontakt", "Kateqoriya", "İş yeri", "Ziyarət", "Məsul əməkdaş", "Əməliyyatlar"])
     expect(container.querySelector("tbody")?.textContent).not.toContain("Pediatr")
     expect(field("mtm-contact-coverage-period")).toBeNull()
     // The clients themselves are all still there.

@@ -12115,6 +12115,10 @@
     "plan": "Planla"
   },
   "mtmContactExplorer": {
+    "visitsColumn": "Ziyarət",
+    "nextVisitOn": "növbəti: {date}",
+    "nextVisitNone": "növbəti: plan yoxdur",
+    "ownersMore": "və daha {count}",
     "addToRouteFor": "«{name}» marşruta əlavə et",
     "addToRoute": "Marşruta",
     "rowActions": "Əməliyyatlar",
@@ -12130,8 +12134,7 @@
     "hint": {
       "addToRouteNoWorkplace": "Müştərinin iş yeri göstərilməyib, marşrut isə müəssisəyə aparır. İş yerini müştəri kartında göstərin.",
       "addToRoute": "Məsul əməkdaşın marşrut planlayıcısı açılacaq — bu müştəri artıq marşrutda olacaq. Günü seçib qalanlarını əlavə etmək qalır.",
-      "colNextVisit": "Ən yaxın planlaşdırılmış vizit. «—» — müştəri heç bir marşrutda yoxdur.",
-      "colLastVisit": "Son bağlanmış vizitin tarixi və onu kimin keçirdiyi. Tarixə basın — vizit açılacaq.",
+      "colVisits": "Yuxarıda — son bağlanmış vizit və onu kimin keçirdiyi; aşağıda — növbəti planlaşdırılmış vizit. Tarixə basın — açılacaq.",
       "coverageUnsignedAction": "Vizit normaları quraşdırma zamanı yüklənir: MTM ayarları → «Administrator üçün» → «Quraşdırma alətləri». Adətən bunu LeadDrive mütəxəssisi edir.",
       "quickCategory": "Yalnız {category} kateqoriyalı müştərilər. Ləğv etmək üçün yenidən basın.",
       "quickUnassigned": "Bu gün heç bir əməkdaşa təhkim olunmamış müştərilər.",

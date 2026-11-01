@@ -12119,6 +12119,10 @@
     "plan": "Plan"
   },
   "mtmContactExplorer": {
+    "visitsColumn": "Visit",
+    "nextVisitOn": "next: {date}",
+    "nextVisitNone": "next: not planned",
+    "ownersMore": "and {count} more",
     "addToRouteFor": "Put «{name}» on a route",
     "addToRoute": "To route",
     "rowActions": "Actions",
@@ -12134,8 +12138,7 @@
     "hint": {
       "addToRouteNoWorkplace": "The client has no workplace, and a route goes to an institution. Set the workplace on the client's card.",
       "addToRoute": "Opens the responsible employee's route planner with this client already on the route. Pick the day and add the rest.",
-      "colNextVisit": "The nearest planned visit. «—» means the client is on no route.",
-      "colLastVisit": "The date of the last closed visit and who made it. Click the date to open the visit.",
+      "colVisits": "Top line: the last closed visit and who made it; below: the next planned one. Click a date to open it.",
       "coverageUnsignedAction": "Visit norms are loaded during rollout: MTM settings → «For the administrator» → «Rollout tools». Usually a LeadDrive specialist does it.",
       "quickCategory": "Only clients of category {category}. Click again to clear.",
       "quickUnassigned": "Clients no employee is assigned to today.",
