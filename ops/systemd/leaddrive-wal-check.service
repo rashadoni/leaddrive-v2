@@ -1,0 +1,40 @@
+[Unit]
+Description=LeadDrive WAL archive watch: is the recovery point still minutes old
+Documentation=file:/opt/leaddrive-v2/docs/BACKUP_RUNBOOK.md
+# The script tells the owner itself about warnings (exit 1) and critical
+# states (exit 2). OnFailure is for the watch crashing, which must not look
+# like a healthy archive.
+OnFailure=leaddrive-wal-check-failed.service
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+# Runs as root: it reads the root-only env file and switches to the database
+# superuser for pgbackrest, so NoNewPrivileges would break su.
+ExecStart=/usr/local/lib/leaddrive-v2/ops/current/backup/wal-archive-check.sh
+SuccessExitStatus=0 1 2
+TimeoutStartSec=5min
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+PrivateTmp=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectSystem=strict
+ReadOnlyPaths=-/etc/leaddrive -/etc/pgbackrest
+ReadWritePaths=-/var/lib/leaddrive-wal-archive -/var/lib/leaddrive-recovery-runner-locks
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
