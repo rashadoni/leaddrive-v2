@@ -321,15 +321,16 @@ async function jointEvaluations(input: FieldReportInput): Promise<FieldReport> {
     select: { id: true, name: true },
   }) ?? [] : []
   const nameOf = new Map(names.map((agent) => [agent.id, agent.name]))
-  const groups = new Map<string, { averages: number[]; points: Map<string, { label: string; scores: number[] }>; last: Date }>()
+  type Group = { averages: number[]; points: Map<string, { label: string; scores: number[] }>; last: Date }
+  const groups = new Map<string, Group>()
   for (const item of evaluations) {
     const stored = storedVisitEvaluation(item)
-    const group = groups.get(item.agentId) ?? { averages: [], points: new Map(), last: item.createdAt }
+    const group: Group = groups.get(item.agentId) ?? { averages: [] as number[], points: new Map(), last: item.createdAt }
     if (stored.average !== null) group.averages.push(stored.average)
     for (const question of stored.questions) {
       const score = stored.scores[question.id]
       if (typeof score !== "number") continue
-      const point = group.points.get(question.id) ?? { label: question.labels[input.language], scores: [] }
+      const point = group.points.get(question.id) ?? { label: question.labels[input.language], scores: [] as number[] }
       point.scores.push(score)
       group.points.set(question.id, point)
     }
