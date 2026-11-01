@@ -111,6 +111,19 @@ describe("field_day: when the day began, the first and the last visit, the hours
     expect(report.rows[0]).toMatchObject({ agentId: "a-seymur", start: "09:00", firstVisit: "10:30", lastVisit: "16:10", end: "18:00", hours: 8, visits: 2, atClients: 45, firstDelay: 90 })
     expect(summary(report)).toMatchObject({ "sum.workdays": 1, "sum.avgStart": "09:00", "sum.avgHours": 8, "sum.avgVisitsPerDay": 2, "sum.avgFirstVisitDelay": 90 })
   })
+
+  it("dates an end on a later day and keeps such a day out of the average hours", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { id: "w-1", agentId: "a-seymur", workDate: new Date("2026-11-03T00:00:00Z"), startedAt: new Date("2026-11-03T05:00:00Z"), completedAt: new Date("2026-11-03T13:00:00Z"), totalPausedSeconds: 0, agent: { name: "Seymur" } },
+      // Started 09:20 on the 4th, closed 10:33 on the 5th (Baku).
+      { id: "w-2", agentId: "a-seymur", workDate: new Date("2026-11-04T00:00:00Z"), startedAt: new Date("2026-11-04T05:20:00Z"), completedAt: new Date("2026-11-05T06:33:00Z"), totalPausedSeconds: 0, agent: { name: "Seymur" } },
+    ] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    const report = await computeFieldReport("field_day", input)
+    expect(report.rows.find((row) => row.id === "w-2")).toMatchObject({ end: "05.11 10:33", closedLater: true, hours: 25.2 })
+    expect(report.rows.find((row) => row.id === "w-1")).toMatchObject({ end: "17:00", closedLater: false })
+    expect(summary(report)).toMatchObject({ "sum.avgHours": 8 })
+  })
 })
 
 describe("joint_evaluations: how managers rated their agents", () => {
