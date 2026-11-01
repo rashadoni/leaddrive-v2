@@ -18329,6 +18329,7 @@
         "nothingFound": "Nothing found",
         "reset": "Clear this filter",
         "resetAll": "Clear filters",
+        "moreFilters": "More filters: {names}",
         "remove": "Remove the «{column}» filter",
         "chip": "{column}: {values}",
         "unknownValue": "not in the list",
