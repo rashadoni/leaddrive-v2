@@ -34,6 +34,8 @@ export async function reportExportSheets(
     if (kind === "status") return t(statusLabelKey(String(value ?? "")))
     if (kind === "role") return t(roleLabelKey(String(value ?? "")))
     if (kind === "date" || kind === "day") return value ? new Date(String(value)) : ""
+    if (kind === "lastVisit") return value ? new Date(String(value)) : t("neverVisited")
+    if (kind === "reasons") return String(value ?? "").split(",").filter(Boolean).map((code) => t(`reason.${code}`)).join(", ")
     if (kind === "action") {
       const word = ((messages.mtmVisitPolicies as Messages | undefined)?.actions as Messages | undefined)?.[String(value)]
       return typeof word === "string" ? word : value ?? ""
