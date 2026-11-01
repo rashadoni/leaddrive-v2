@@ -8,7 +8,7 @@ import { buildMtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { AttendanceExportTooLarge, buildAttendancePdf, buildAttendanceXlsx } from "@/lib/mtm/attendance-export"
 import { DEFAULT_ATTENDANCE_DAY_COLUMNS } from "@/lib/mtm/attendance-presentation"
-import { DEFAULT_ATTENDANCE_MONTH_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
+import { ATTENDANCE_DAY_REPORT_COLUMNS, DEFAULT_ATTENDANCE_MONTH_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 
 const at = (time: string) => `2026-10-12T${time}:00+04:00`
 const privateBreak = { type: "PAUSE", occurredAt: at("12:00"), latitude: 40.987654, longitude: 49.123456, note: "PRIVATE_BREAK_MARKER" }
@@ -134,4 +134,24 @@ it("keeps approved-hour exclusions identical in the late form, Excel and PDF", a
   const actual = new ExcelJS.Workbook(); await actual.xlsx.load(await buildAttendanceXlsx(all).xlsx.writeBuffer())
   expect(actual.worksheets[0].getRow(2).getCell(2).value).toBe("6:00")
   expect(pdfText(buildAttendancePdf(all))).toContain("6:00")
+
+})
+
+// Owner, 2026-11-01: the day report's notes went to a second PDF page, and «İnformasiya TExnologiyaları» broke mid-word.
+it("prints a day report on one page width, without cutting a word in the middle", () => {
+  const wide = buildMtmAttendanceReport({
+    employees: [{ id: "a", name: "Fixture Rəşad Rəhimov", position: "Rəhbər", departmentId: "d", departmentName: "İnformasiya TExnologiyaları", teamId: null, teamName: null }],
+    from: "2026-10-12", to: "2026-10-12", now: "2026-10-13T19:00:00+04:00", rules: [], calendar: [],
+    workdays: [{ id: "w", agentId: "a", workDate: "2026-10-12", status: "COMPLETED", startedAt: at("09:21"), completedAt: at("17:30"), totalPausedSeconds: 1800,
+      events: [{ type: "START", occurredAt: at("09:21") }, { type: "PAUSE", occurredAt: at("12:00") }, { type: "RESUME", occurredAt: at("12:30") }, { type: "FINISH", occurredAt: at("17:30") }] }],
+  })
+  const messages = JSON.parse(readFileSync("messages/az.json", "utf8"))
+  const day = buildAttendanceTable(wide, { ...config, columns: [...ATTENDANCE_DAY_REPORT_COLUMNS] }, "az", createTranslator({ locale: "az", messages, namespace: "mtmAttendance" }))
+  expect(day.columns.map(column => column.key)).toContain("notes")
+  const text = pdfText(buildAttendancePdf(day))
+  expect(text).toContain("1 / 1")
+  const lines = text.split("\n")
+  expect(lines.some(line => line.includes("TExnologiyaları"))).toBe(true)
+  expect(lines.some(line => /^TExnolog\S*$|^iyaları/.test(line) && !line.includes("TExnologiyaları"))).toBe(false)
+  expect(text).toContain(messages.mtmAttendance.reportLunchAutoShortBreaks.replace("{time}", "0:30").split(" ")[0])
 })
