@@ -9560,6 +9560,37 @@ else
   log "WARNING: copying the release artifact to object storage failed; the deploy stands, the WAL watch will report the gap"
 fi
 
+# ── Step 9c: Publish the help-video masters to object storage ─
+# Stage one of taking 266 MB out of every artifact and out of git history: the
+# masters go to storage from the copy production is already serving. Serving
+# itself is untouched — the application keeps streaming from disk behind
+# requireAuth, so no file becomes a bearer link (owner's decision 2026-11-01).
+#
+# Deliberately HERE and not where the artifact's videos are copied into the
+# runtime directory: that copy happens with PM2 stopped, and moving 266 MB in
+# that window would add minutes of downtime to every deploy. By this point the
+# release is healthy and nothing is waiting on us.
+#
+# The pull direction is written and tested in the same script but is NOT on the
+# deploy path yet. It belongs before PM2 stops, with a staged directory and a
+# cheap rename at cutover, so a fresh host does not serve 404 while 266 MB
+# arrive. That is stage two.
+HELP_VIDEO_SYNC_SCRIPT="$APP_DIR/.next/standalone/scripts/help-videos/assets-sync.sh"
+HELP_VIDEO_SYNC_VERSION_FILE="$APP_DIR/.next/standalone/help-videos/asset-version"
+if [ ! -f "/etc/leaddrive/wal-archive.env" ]; then
+  log "No object-storage configuration; skipping the help-video master publish"
+elif [ ! -x "$HELP_VIDEO_SYNC_SCRIPT" ]; then
+  log "WARNING: $HELP_VIDEO_SYNC_SCRIPT is missing; help-video masters were NOT published"
+elif [ ! -s "$HELP_VIDEO_SYNC_VERSION_FILE" ]; then
+  log "WARNING: no help-video asset version in the bundle; masters were NOT published"
+elif "$HELP_VIDEO_SYNC_SCRIPT" \
+  --version "$(tr -d '\r\n' < "$HELP_VIDEO_SYNC_VERSION_FILE")" \
+  --dir "$HELP_VIDEO_ASSET_DIR_DEFAULT"; then
+  log "Help-video masters are in object storage"
+else
+  log "WARNING: publishing the help-video masters failed; the deploy stands and serving is unaffected"
+fi
+
 # ── Step 10: Cleanup ──────────────────────────────────────
 log "Cleaning up..."
 cd "$BACKUP_DIR"
