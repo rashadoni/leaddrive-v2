@@ -791,24 +791,6 @@
     "personnelReports": "Reports",
     "personnelSettings": "Settings"
   },
-  "mtmModuleNavigation": {
-    "primaryNavigationLabel": "Primary MTM sections",
-    "today": "Today",
-    "routes": "Routes",
-    "calendar": "Calendar",
-    "map": "Map",
-    "visits": "Visits",
-    "results": "Results",
-    "allTools": "All MTM tools",
-    "allToolsHint": "Extra work, reference data, control and settings are grouped in one place.",
-    "groups": {
-      "work": "Work",
-      "reference": "Reference data",
-      "control": "Control",
-      "analytics": "Analytics",
-      "administration": "Administration"
-    }
-  },
   "auth": {
     "tenantNotFoundTitle": "Workspace not found",
     "tenantNotFoundDesc": "No LeadDrive workspace exists at this address. Check the URL, or contact your administrator for the correct link.",

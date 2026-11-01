@@ -176,7 +176,7 @@
 | Нужно | Где |
 | --- | --- |
 | Выключатель на организацию | `MTM_SETTING_DEFAULTS` в `src/lib/mtm-settings.ts`, `src/app/api/v1/mtm/settings/route.ts`, группы на `/mtm/settings`, `NAV_ORG_SETTING_KEYS` в `src/lib/nav-items.ts` |
-| Пункт меню | `src/lib/mtm/navigation.ts` (`MTM_TOOL_GROUPS`) + `src/lib/nav-items.ts`; тест `mtm-module-navigation.test.ts` держит точные списки |
+| Пункт меню | `src/lib/nav-items.ts` (группа «Route & Field» — единственное меню MTM с 2026-11-01); тест `mtm-one-menu.test.ts` держит точный порядок |
 | Кто чьих сотрудников видит | `resolveMtmRouteActor` (`src/lib/mtm/route-permissions.ts`), `resolveMtmFieldScope` |
 | Excel | `buildXlsxWorkbook` (`src/lib/export/tabular.ts`), `protectMtmExcelText` (`src/lib/mtm/excel-contract.ts`) |
 | Отчёт «строка на день» как образец | `src/lib/mtm/agent-period.ts`, `src/components/mtm/agent-period-view.tsx`, конфигурация `/mtm/reports` |

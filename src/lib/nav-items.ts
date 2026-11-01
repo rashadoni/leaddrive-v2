@@ -35,6 +35,8 @@ import {
   KeyRound,
 } from "lucide-react"
 
+export type MtmNavSection = "daily" | "reference" | "control" | "results" | "administration"
+
 export interface NavItem {
   /**
    * The sidebar GROUP's commercial module — gates visibility when present.
@@ -50,6 +52,9 @@ export interface NavItem {
   group: string
   /** Task-oriented subgroup used only inside the Support module navigation. */
   supportSection?: SupportNavSection
+  /** Part of the working day a Route & Field item belongs to; the sidebar
+   * separates the parts with a thin line instead of nesting them. */
+  mtmSection?: MtmNavSection
   feature?: string
   /**
    * Independently sellable capability layered inside a historical group
@@ -352,29 +357,32 @@ export const navItems: NavItem[] = [
   // Phase 2 (Task→Project rollup) ties these together so the navigation
   // adjacency reflects the data adjacency.
   { module: "crm", href: "/projects", icon: FolderKanban, tKey: "projects", group: "CRM" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm", icon: MapPin, tKey: "mtmDashboard", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/map", icon: MapPin, tKey: "mtmMap", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/routes", icon: Route, tKey: "mtmRoutes", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/calendar", icon: CalendarDays, tKey: "mtmCalendar", group: "Route & Field" },
-  { module: "mtm", href: "/mtm/operations", icon: Radio, tKey: "mtmOperations", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/visits", icon: CheckSquare, tKey: "mtmVisits", group: "Route & Field" },
-  { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field", orgSetting: "pharmacyPromotionsEnabled" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/tasks", icon: ClipboardList, tKey: "mtmTasks", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/customers", icon: Building2, tKey: "mtmCustomers", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field", orgSetting: "fieldContactsEnabled" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/photos", icon: Camera, tKey: "mtmPhotos", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/alerts", icon: AlertTriangle, tKey: "mtmAlerts", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/agents", icon: UserCog, tKey: "mtmAgents", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/products", icon: PackageOpen, tKey: "mtmProducts", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/analytics", icon: BarChart3, tKey: "mtmAnalytics", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/reports", icon: FileBarChart, tKey: "mtmReports", group: "Route & Field" },
+  // Route & Field: this list is the module's only menu (owner, 2026-11-01 —
+  // the tabs above each page and «All MTM tools» repeated it). Ordered as the
+  // working day goes; the sidebar draws a thin line where mtmSection changes.
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm", icon: MapPin, tKey: "mtmDashboard", group: "Route & Field", mtmSection: "daily" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/routes", icon: Route, tKey: "mtmRoutes", group: "Route & Field", mtmSection: "daily" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/calendar", icon: CalendarDays, tKey: "mtmCalendar", group: "Route & Field", mtmSection: "daily" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/map", icon: MapPin, tKey: "mtmMap", group: "Route & Field", mtmSection: "daily" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/visits", icon: CheckSquare, tKey: "mtmVisits", group: "Route & Field", mtmSection: "daily" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/tasks", icon: ClipboardList, tKey: "mtmTasks", group: "Route & Field", mtmSection: "daily" },
+  { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field", mtmSection: "daily", orgSetting: "pharmacyPromotionsEnabled" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/customers", icon: Building2, tKey: "mtmCustomers", group: "Route & Field", mtmSection: "reference" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field", mtmSection: "reference", orgSetting: "fieldContactsEnabled" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/agents", icon: UserCog, tKey: "mtmAgents", group: "Route & Field", mtmSection: "reference" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/products", icon: PackageOpen, tKey: "mtmProducts", group: "Route & Field", mtmSection: "reference" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/alerts", icon: AlertTriangle, tKey: "mtmAlerts", group: "Route & Field", mtmSection: "control" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/photos", icon: Camera, tKey: "mtmPhotos", group: "Route & Field", mtmSection: "control" },
+  { module: "mtm", href: "/mtm/operations", icon: Radio, tKey: "mtmOperations", group: "Route & Field", mtmSection: "control" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/analytics", icon: BarChart3, tKey: "mtmAnalytics", group: "Route & Field", mtmSection: "results" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/reports", icon: FileBarChart, tKey: "mtmReports", group: "Route & Field", mtmSection: "results" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field", mtmSection: "results" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field", mtmSection: "results" },
   // Who works in the module and as what: the employee card behind each login.
   // Admin-only like the endpoints it calls — linking a card to a login is how a
   // person is given (or takes) a field scope.
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/access", icon: KeyRound, tKey: "mtmAccess", group: "Route & Field", allowedRoles: ADMIN_ROLES },
-  { module: "mtm", href: "/mtm/settings", icon: Settings, tKey: "mtmSettings", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/access", icon: KeyRound, tKey: "mtmAccess", group: "Route & Field", mtmSection: "administration", allowedRoles: ADMIN_ROLES },
+  { module: "mtm", href: "/mtm/settings", icon: Settings, tKey: "mtmSettings", group: "Route & Field", mtmSection: "administration" },
   // Personnel: work-time attendance for HR, its own sidebar section and its
   // own sellable capability — no Route & Field needed (owner, 2026-10-14). The
   // former pages live as tabs of these four destinations.

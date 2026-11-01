@@ -17,7 +17,7 @@ import {
   type NavItem,
   type SupportNavSection,
 } from "@/lib/nav-items"
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { Logo } from "@/components/logo"
 import { useTranslations } from "next-intl"
 import { useTicketBadge } from "@/contexts/ticket-badge-context"
@@ -668,7 +668,16 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                         )
                       })}
                     </div>
-                  ) : (sidebarItemsByGroup.get(group) ?? []).map(renderSidebarItem)}
+                  ) : (sidebarItemsByGroup.get(group) ?? []).map((item, index, items) => (
+                    // Route & Field is the module's only menu: a thin line
+                    // between the parts of the working day, not a nested level.
+                    index > 0 && item.mtmSection && item.mtmSection !== items[index - 1].mtmSection ? (
+                      <Fragment key={item.href}>
+                        <hr data-testid="sidebar-section-divider" className="mx-3 my-1.5 border-white/[0.08]" />
+                        {renderSidebarItem(item)}
+                      </Fragment>
+                    ) : renderSidebarItem(item)
+                  ))}
                 </div>
               </div>
             </div>

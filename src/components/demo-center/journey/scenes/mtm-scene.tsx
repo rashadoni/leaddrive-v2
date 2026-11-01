@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent }
 import dynamic from "next/dynamic"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
-import { Activity, AlertTriangle, ArrowLeft, ArrowUpRight, BarChart3, BellRing, Check, CheckCircle2, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Clock3, Download, FileSpreadsheet, Flag, Grid2X2, GripVertical, History, Layers3, List, LocateFixed, MapPin, Navigation, Pause, PauseCircle, PhoneIncoming, Play, Plus, Radio, RefreshCw, RotateCcw, Route as RouteIcon, Satellite, Search, Send, Sparkles, TrendingUp, WifiOff, X } from "lucide-react"
+import { Activity, AlertTriangle, ArrowLeft, ArrowUpRight, BarChart3, BellRing, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Clock3, Download, FileSpreadsheet, Flag, GripVertical, History, Layers3, List, LocateFixed, MapPin, Navigation, Pause, PauseCircle, PhoneIncoming, Play, Plus, Radio, RefreshCw, RotateCcw, Route as RouteIcon, Satellite, Search, Send, Sparkles, TrendingUp, WifiOff, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -49,7 +49,6 @@ import {
   suggestRoutePlannerStops,
   type RoutePlannerCandidate,
 } from "@/lib/mtm/route-planner"
-import { isMtmNavigationItemActive, MTM_PRIMARY_NAVIGATION } from "@/lib/mtm/navigation"
 import { mtmPlanTone } from "@/lib/mtm/team-results"
 import { medianVisitDurationMinutes } from "@/lib/mtm/visit-duration-median"
 import { visitStatusKey } from "@/lib/mtm/visit-review"
@@ -118,22 +117,10 @@ const SCREEN_OF: Record<string, MtmScreen> = {
   "mtm-results": "results",
 }
 
-/** The page each screen is in the product: the module's menu lights up as it does there. */
-const PATH_OF: Record<MtmScreen, string> = {
-  today: "/mtm",
-  plan: "/mtm/routes/plan",
-  live: "/mtm/map",
-  visit: "/mtm/visits",
-  place: "/mtm/routes",
-  history: "/mtm/map",
-  results: "/mtm/analytics",
-}
-
 const PLAN_TONE: Record<ReturnType<typeof mtmPlanTone>, HomeTone> = { good: "green", warn: "amber", bad: "red", none: "zinc" }
 
 export function MtmScene(props: DemoSceneProps) {
   const { section, hint } = props
-  const t = useTranslations("mtmModuleNavigation")
   const screen = SCREEN_OF[section.id] ?? "today"
 
   // The product's own cards link to tenant pages; in the demo a link explains itself instead.
@@ -147,40 +134,6 @@ export function MtmScene(props: DemoSceneProps) {
 
   return (
     <div data-testid="demo-scene-mtm" className="space-y-4" onClickCapture={keepInDemo}>
-      {/* The product's MtmModuleNavigation, drawn from its own list (it reads the
-          session to filter the tools): one menu with an underline, the chosen
-          page dark text over an orange line (owner-approved colours, 2026-10-18). */}
-      <div className="mb-6 border-b border-zinc-200/80 dark:border-zinc-700/80">
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-          <nav aria-label={t("primaryNavigationLabel")} className="-mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 sm:flex-1">
-            {MTM_PRIMARY_NAVIGATION.map((item) => {
-              const active = isMtmNavigationItemActive(item.href, PATH_OF[screen])
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.href}
-                  type="button"
-                  aria-current={active ? "page" : undefined}
-                  onClick={() => (active ? undefined : hint(S.mtmTabHint))}
-                  className={cn(
-                    "-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium outline-none transition-[border-color,color] duration-150 focus-visible:ring-2 focus-visible:ring-primary/35",
-                    active ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                  <span>{t(item.labelKey)}</span>
-                </button>
-              )
-            })}
-          </nav>
-          {/* None of the demo's pages is one of the tools, so the button keeps its grey edge. */}
-          <button type="button" onClick={() => hint(S.mtmTabHint)} className="mb-2 flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-card px-4 text-sm font-semibold text-foreground outline-none transition-[background-color,border-color,color,transform] duration-150 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.98] sm:w-auto dark:border-zinc-700">
-            <Grid2X2 className="h-4 w-4" aria-hidden="true" />
-            <span>{t("allTools")}</span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
       {screen === "today" && <TodayScreen {...props} />}
       {screen === "plan" && <PlanScreen {...props} />}
       {screen === "live" && <LiveScreen {...props} />}

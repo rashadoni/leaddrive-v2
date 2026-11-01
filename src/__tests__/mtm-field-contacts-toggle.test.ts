@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import { accessibleNavItems, isNavItemEnabled, matchNavItem } from "@/lib/nav-items"
-import { visibleMtmToolGroups } from "@/lib/mtm/navigation"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
 import { MTM_ROUTE_TARGET_TYPE_DEFAULTS, routeTargetTypesForPlanning } from "@/lib/mtm/route-target-types"
 import { mtmRouteAssignmentCatalogHref } from "@/lib/mtm/route-links"
@@ -38,18 +37,6 @@ describe("field contacts organization switch", () => {
     expect(isNavItemEnabled({ ...routeFieldOrg, orgSettings: { fieldContactsEnabled: false } }, item)).toBe(true)
   })
 
-  it("hides the contacts tool from All MTM tools only when explicitly off", () => {
-    const toolHrefs = (settings?: { fieldContactsEnabled?: boolean }) =>
-      visibleMtmToolGroups(settings).flatMap((group) => group.items.map((item) => item.href))
-    expect(toolHrefs()).toContain("/mtm/contacts")
-    expect(toolHrefs({ fieldContactsEnabled: true })).toContain("/mtm/contacts")
-    const off = toolHrefs({ fieldContactsEnabled: false })
-    expect(off).not.toContain("/mtm/contacts")
-    expect(off).toContain("/mtm/customers")
-    expect(visibleMtmToolGroups({ fieldContactsEnabled: false }).map((group) => group.key))
-      .toEqual(["work", "reference", "control", "analytics", "administration"])
-  })
-
   it("feeds the switch to every menu surface", () => {
     for (const path of [
       "src/app/(dashboard)/layout.tsx",
@@ -58,9 +45,6 @@ describe("field contacts organization switch", () => {
     ]) {
       expect(source(path), path).toContain("useNavOrgContext(")
     }
-    const moduleNav = source("src/components/mtm/mtm-module-navigation.tsx")
-    expect(moduleNav).toContain("visibleMtmToolGroups(useMtmOrgSettings(")
-    expect(moduleNav).not.toContain("MTM_TOOL_GROUPS.map")
   })
 
   it("shows a localized notice on /mtm/contacts instead of a 404 when off", () => {
