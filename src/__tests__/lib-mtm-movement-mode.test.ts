@@ -44,6 +44,18 @@ function standing(fromSecond: number, count: number, east: number): MtmMovementF
   return Array.from({ length: count }, (_, step) => fix(fromSecond + step * 30, east + (step % 2) * 3, 0, 0, null))
 }
 
+/**
+ * A phone lying on a desk, as the first live day had it (2026-11-01): it
+ * reports 3–5 km/h and its fixes wander 5–20 m around one place.
+ */
+function onADesk(fromSecond: number, count: number): MtmMovementFix[] {
+  const wander = [[0, 0], [8, 5], [-6, 12], [14, -4], [3, -9], [-11, 2]]
+  return Array.from({ length: count }, (_, step) => {
+    const [east, north] = wander[step % wander.length]
+    return fix(fromSecond + step * 30, east, north, 3.5 + (step % 3) * 0.6, null)
+  })
+}
+
 describe("which way", () => {
   it("measures a bearing clockwise from north and names its point of the compass", () => {
     const start = fix(0, 0)
@@ -126,6 +138,35 @@ describe("a day read as trips", () => {
     const day = [...going(0, 4, 40), ...going(90 + 10 * 60, 4, 40, 10_000)]
     const { trips } = readMtmMovement(day)
     expect(trips.map((trip) => [trip.fromIndex, trip.toIndex])).toEqual([[0, 3], [4, 7]])
+  })
+})
+
+describe("a phone that lies still", () => {
+  it("is standing, however fast it says it goes: a trip has to get somewhere", () => {
+    const desk = onADesk(0, 20)
+    const reading = readMtmMovement(desk)
+    expect(reading.trips).toEqual([])
+    expect(new Set(reading.modes)).toEqual(new Set(["STAY"]))
+  })
+
+  it("still walks a real walk next to it", () => {
+    const day = [...onADesk(0, 6), ...going(180, 6, 5, 20), ...standing(360, 4, 220)]
+    expect(readMtmMovement(day).trips.map((trip) => trip.mode)).toEqual(["WALK"])
+  })
+
+  it("is standing on the live map without a roster status, and walks when the tail went somewhere", () => {
+    const desk = onADesk(0, 12)
+    const current = desk.pop()!
+    expect(liveMtmMovement({ ...current, freshness: "ONLINE", trail: desk })).toEqual({ mode: "STAY", heading: null })
+    const walk = going(0, 8, 5, 0, false)
+    const now = { ...walk.pop()!, speed: 5, heading: null }
+    expect(liveMtmMovement({ ...now, freshness: "ONLINE", trail: walk })?.mode).toBe("WALK")
+  })
+
+  it("is still the car a minute after it parks", () => {
+    const tail = [...going(0, 10, 40, 0, false), ...standing(300, 2, 3000)]
+    const current = { ...standing(360, 1, 3000)[0], speed: 0 }
+    expect(liveMtmMovement({ ...current, freshness: "ONLINE", trail: tail })?.mode).toBe("DRIVE")
   })
 })
 

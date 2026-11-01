@@ -16,6 +16,11 @@
  * so one wild GPS fix does not make a walk a drive), or when it covered its
  * distance faster than anybody walks. Everything else that moves is on foot.
  *
+ * A trip must also get somewhere. A phone lying on a desk reports 3–5 km/h
+ * and wanders 5–20 m: on the first live day (2026-11-01, one employee over
+ * three days) that made 94 «walks», none of which got 100 m from where it
+ * began, most not 10 m — while the two real drives went 10 km and 1.2 km.
+ *
  * Pure data and pure functions — no Leaflet, no React.
  */
 import { calculateDistance } from "@/lib/geo-utils"
@@ -37,6 +42,12 @@ export const MTM_TRIP_PAUSE_MAX_MS = 3 * 60_000
 export const MTM_TRIP_GAP_MAX_MS = 5 * 60_000
 /** A step shorter than this says nothing about a direction: GPS wanders a few metres. */
 export const MTM_HEADING_MIN_STEP_METERS = 15
+/**
+ * A trip that never got this far from where it began was GPS wander, not a
+ * trip: about a minute's walk, and well outside the 20–50 m a still phone's
+ * fixes scatter over (accuracy 15–70 m on the first live day).
+ */
+export const MTM_TRIP_MIN_REACH_METERS = 60
 
 export interface MtmMovementFix {
   latitude: number
@@ -164,10 +175,16 @@ export function readMtmMovement(fixes: readonly MtmMovementFix[]): MtmMovementRe
       }
       break
     }
+    index = toIndex + 1
+    // Where he stood before it, when that is still part of the same stretch.
+    const origin = fromIndex > 0 && at(fixes[fromIndex]) - at(fixes[fromIndex - 1]) <= MTM_TRIP_GAP_MAX_MS ? fixes[fromIndex - 1] : fixes[fromIndex]
+    const last = toIndex + 1 < fixes.length && at(fixes[toIndex + 1]) - at(fixes[toIndex]) <= MTM_TRIP_GAP_MAX_MS ? toIndex + 1 : toIndex
+    let reach = 0
+    for (let inside = fromIndex; inside <= last; inside += 1) reach = Math.max(reach, metres(origin, fixes[inside]))
+    if (reach < MTM_TRIP_MIN_REACH_METERS) continue
     const mode = tripMode(fixes, speeds, fromIndex, toIndex)
     for (let inside = fromIndex; inside <= toIndex; inside += 1) modes[inside] = mode
     trips.push({ mode, fromIndex, toIndex })
-    index = toIndex + 1
   }
 
   const headings = fixes.map((fix, position) => {
@@ -194,7 +211,10 @@ export function readMtmMovement(fixes: readonly MtmMovementFix[]): MtmMovementRe
  * (live-map-trails.ts) — positions without a speed. The roster's status
  * already says whether he is moving: it counts any 50 m in five minutes, so
  * a car crawling in a jam is «в пути» with a speed of 4. Then the trail says
- * which: a drive is a drive until he stops.
+ * which: a drive is a drive until he stops. Any other status is standing.
+ * Without a status (the manager's phone asks the server, which has none) he
+ * is moving only when the trail shows a trip that got somewhere and ended at
+ * most a red light ago — the phone's own speed alone is 3–5 km/h on a desk.
  */
 export function liveMtmMovement(input: {
   fieldStatus?: string | null
@@ -210,8 +230,8 @@ export function liveMtmMovement(input: {
   if (input.freshness === "STALE") return null
   const kmh = mtmSpeedKmh(input.speed)
   const status = input.fieldStatus ?? null
-  const moving = status === "CHECKED_IN" ? false : status === "ON_ROAD" || (kmh != null && kmh >= MTM_MOVING_FROM_KMH)
-  if (!moving) return { mode: "STAY", heading: null }
+  // The roster has already decided whether he moves; only «в пути» moves.
+  if (status != null && status !== "ON_ROAD") return { mode: "STAY", heading: null }
 
   const nowMs = Date.parse(input.recordedAt)
   const current: MtmMovementFix = { latitude: input.latitude, longitude: input.longitude, recordedAt: input.recordedAt, speed: input.speed, heading: input.heading }
@@ -226,9 +246,10 @@ export function liveMtmMovement(input: {
   const fixes = [...tail, current]
   const reading = readMtmMovement(fixes)
   const last = fixes.length - 1
-  const drive = (kmh != null && kmh >= MTM_DRIVE_FROM_KMH) || reading.trips.some((trip) =>
-    trip.mode === "DRIVE" && trip.toIndex >= last - 1 &&
-    nowMs - Date.parse(fixes[trip.toIndex].recordedAt) <= MTM_TRIP_PAUSE_MAX_MS)
+  // A red light keeps a trip going: it ended at most a pause ago.
+  const recentTrips = reading.trips.filter((trip) => nowMs - Date.parse(fixes[trip.toIndex].recordedAt) <= MTM_TRIP_PAUSE_MAX_MS)
+  if (status == null && !recentTrips.length) return { mode: "STAY", heading: null }
+  const drive = (kmh != null && kmh >= MTM_DRIVE_FROM_KMH) || recentTrips.some((trip) => trip.mode === "DRIVE")
 
   let heading = kmh != null && kmh >= MTM_MOVING_FROM_KMH ? phoneHeading(input.heading) : null
   if (heading == null) {
