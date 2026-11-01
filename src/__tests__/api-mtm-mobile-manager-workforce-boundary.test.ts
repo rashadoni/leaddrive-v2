@@ -79,6 +79,30 @@ describe("mobile manager mixed workforce boundaries", () => {
     expect(query.select.workdays.select).toEqual({ id: true, status: true, startedAt: true, pausedAt: true, completedAt: true })
   })
 
+  // Owner, 2026-11-02: «Кольцо дня» — where each agent's day went.
+  it("tells the manager where each agent's day of today went", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({
+      ...AUTH,
+      tenantCapabilities: { routeField: true, workforceHrm: false },
+    } as never)
+    // Fake clock at noon: «today» must not cross midnight in the company's zone.
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-11-02T08:00:00.000Z"))
+    const started = new Date("2026-11-02T05:00:00.000Z")
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+      id: "agent-1", name: "Agent", role: "AGENT", status: "ACTIVE", teamId: "team-1", isOnline: true, lastSeenAt: null,
+      workdays: [{ id: "workday-1", status: "STARTED", startedAt: started, pausedAt: null, completedAt: null }],
+    }] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([
+      { agentId: "agent-1", checkInAt: new Date(started.getTime() + 30 * 60_000), checkOutAt: new Date(started.getTime() + 90 * 60_000) },
+    ] as never)
+
+    const body = await (await teamGet(request("team"))).json()
+
+    vi.useRealTimers()
+    expect(body.data.agents[0].dayTime).toMatchObject({ totalMinutes: 180, visitMinutes: 60, breakMinutes: 0, travelMinutes: 120 })
+  })
+
   it("gives a manager with neither module's team permission no workday", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH,
