@@ -11752,7 +11752,12 @@
     "visitCloseByAgentOnly": "Ziyarəti agent özü tətbiqdə bağlayır. Ziyarət açıq qalıbsa, agentə yazın."
   },
   "mtmRoutePlanner": {
+    "hours": {"missing": "saatlar göstərilməyib", "dayOff": "bu gün işləmir", "removeStop": "Marşrutdan çıxar", "closedOnArrival": "çatanda bağlıdır — vizit baş tutmayacaq", "wait": "qapı qarşısında {minutes} dəq gözləmə (nahar və ya hələ açılmayıb)"},
     "order": {
+      "rowInHours": "Qəbul saatlarında",
+      "rowWait": "Bağlı qapı qarşısında gözləmə",
+      "reasonClosed": "{name} — bağlanmadan əvvəl çatır.",
+      "reasonWait": "{name} — qapı qarşısında gözləmədən ({minutes} dəq).",
       "minutes": "{minutes} dəq",
       "hoursMinutes": "{hours} saat {minutes} dəq",
       "hours": "{hours} saat",
@@ -11768,7 +11773,7 @@
       "onTime": "{total}-dən {count}",
       "km": "{km} km",
       "kmRoads": "yollarla {km} km",
-      "reasonLate": "İndi «{name}» {minutes} dəq gecikir. Yeni sırada agent vizitin vaxtına çatır.",
+      "reasonLate": "İndi {name} {minutes} dəq gecikir. Yeni sırada agent vizitin vaxtına çatır.",
       "reasonShorter": "Artıq geri qayıtmadan: yol {km} km qısa, yolda {minutes} dəq az.",
       "apply": "Sıranı tətbiq et",
       "manual": "Əl ilə dəyiş",
@@ -12551,6 +12556,7 @@
     }
   },
   "mtmCustomers": {
+    "hours": {"title": "Qəbul saatları", "subtitle": "Planlayıcı və agentlər bunları marşrutda görür", "edit": "Saatları dəyiş", "set": "Saatları göstər", "notSetBody": "Saatlar göstərilməyib. Marşrut məhdudiyyətsiz qurulur, marşrutda isə yerin yanında «saatlar göstərilməyib» yazılır.", "dayOff": "işləmir", "lunch": "nahar {from}–{to}", "today": "bu gün", "author": "{name} göstərib · {date}", "authorNoName": "Göstərilib {date}", "weekdays": {"1": "Bazar ertəsi", "2": "Çərşənbə axşamı", "3": "Çərşənbə", "4": "Cümə axşamı", "5": "Cümə", "6": "Şənbə", "7": "Bazar"}, "weekdaysShort": {"1": "B.e.", "2": "Ç.a.", "3": "Ç.", "4": "C.a.", "5": "C.", "6": "Ş.", "7": "B."}, "hint": {"edit": "Yer nə vaxt açıqdır, naharı və istirahət günləri. Planlayıcı viziti nahara və ya istirahət gününə qoymayacaq, agent isə yerin açıq olub-olmadığını görəcək."}, "state": {"open": "İndi açıqdır · {time}-dək", "openLunch": "İndi açıqdır · nahar {time}-dan", "lunch": "Nahar · {time}-da açılacaq", "beforeOpen": "Bağlıdır · {time}-da açılacaq", "closed": "İndi bağlıdır", "dayOff": "Bu gün işləmir"}, "dialog": {"title": "Qəbul saatları · {name}", "titleMany": "Qəbul saatları · yer: {count}", "body": "Bura vizitlə nə vaxt gəlmək olar.", "copyFrom": "Saatları başqa yerdən götür", "copyNone": "—", "day": "Gün", "from": "Başlayır", "to": "Bitir", "lunch": "Nahar", "lunchFrom": "nahar başlayır", "lunchTo": "nahar bitir", "works": "{day} — işləyir", "mondayToWeekdays": "Bazar ertəsi → bütün iş günlərinə", "after": "Yadda saxladıqdan sonra planlayıcı viziti nahara və istirahət gününə qoymayacaq, agent isə yerin açıq olub-olmadığını görəcək.", "save": "Saatları yadda saxla", "cancel": "Ləğv et", "clear": "Saatları sil", "saved": "Saatlar yadda saxlanıldı", "savedMany": "Saatlar təyin edildi: {count}", "invalid": "Saatları yoxlayın: bağlanma açılmadan sonra, nahar günün içində, ən azı bir iş günü.", "failed": "Saatları yadda saxlamaq alınmadı. Yenidən cəhd edin."}},
     "title": "Müəssisələr",
     "subtitle": "Mağazalar, apteklər, satış nöqtələri",
     "add": "Müəssisə əlavə et",
@@ -12592,6 +12598,9 @@
     "latitude": "Enlik",
     "longitude": "Uzunluq",
     "explorer": {
+      "setHours": "Saatları təyin et",
+      "hoursMissing": "saatlar göstərilməyib",
+      "hoursDayOff": "bu gün işləmir",
       "rowDelete": "Sil",
       "rowEdit": "Redaktə et",
       "rowOpen": "Kartı aç",
@@ -12599,6 +12608,7 @@
       "toRoute": "Marşruta",
       "noVisitYet": "hələ olmayıb",
       "quick": {
+        "noHours": "Qəbul saatları yoxdur",
         "label": "Tez seçim",
         "all": "Hamısı",
         "notVisited": "{month} ayında gəlinməyənlər",
@@ -12608,6 +12618,9 @@
       },
       "searchBox": "Ad, ünvan və ya kod",
       "hint": {
+        "colHours": "Yer bu gün qəbul saatlarına görə nə vaxt işləyir.",
+        "quickNoHours": "Qəbul saatları göstərilməyən yerlər.",
+        "setHours": "Seçilmiş bütün yerlərə eyni qəbul saatlarını təyin et.",
         "rowMore": "Müəssisəni açmaq, redaktə etmək və ya silmək.",
         "assignOne": "Müəssisəni əməkdaşa təhkim et. Tətbiq etməzdən əvvəl nəyin dəyişəcəyini göstərəcəyik.",
         "colContacts": "Hazırda müəssisədə neçə kontaktın (həkim, əczaçı) işlədiyi.",
@@ -12769,6 +12782,7 @@
       },
       "visibleColumns": "Görünən sütunlar",
       "columns": {
+        "hours": "Bu günün saatları",
         "contacts": "Kontaktlar",
         "code": "Etalon ID",
         "organization": "Müəssisə və ünvan",

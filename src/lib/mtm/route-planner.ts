@@ -33,6 +33,8 @@ export type RoutePlannerCandidate = {
   lastVisitAt: string | null
   /** Visits in the month of the route's day; 0 is «not visited this month». */
   monthlyVisitCount: number
+  /** The place's «часы приёма» as stored (customer-hours.ts); absent = not given. */
+  workingHours?: unknown
 }
 
 /** A point on the map: one organization, with everybody who can be visited there. */

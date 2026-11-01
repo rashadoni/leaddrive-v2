@@ -6567,6 +6567,11 @@ model MtmCustomer {
   contactPerson          String?
   notes                  String?
   geofenceRadius         Int? // F-22: per-customer override; null = use org-level setting
+  /// «Часы приёма» (src/lib/mtm/customer-hours.ts): ISO weekday "1".."7" → { open, close, breakFrom?, breakTo? } or null (does not work). NULL = not given.
+  workingHours           Json?
+  workingHoursUpdatedAt  DateTime?
+  /// CRM user id of whoever last set the hours.
+  workingHoursUpdatedBy  String?
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
   deletedAt              DateTime?

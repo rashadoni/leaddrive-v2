@@ -11756,7 +11756,12 @@
     "visitCloseByAgentOnly": "The agent closes the visit himself in the app. If a visit is stuck open, message the agent."
   },
   "mtmRoutePlanner": {
+    "hours": {"missing": "no hours", "dayOff": "closed that day", "removeStop": "Remove from the route", "closedOnArrival": "closed on arrival — the visit cannot happen", "wait": "wait at the door {minutes} min (lunch or not open yet)"},
     "order": {
+      "rowInHours": "Within hours",
+      "rowWait": "Waiting at a closed door",
+      "reasonClosed": "{name} — reached before it closes.",
+      "reasonWait": "{name} — no waiting at the door ({minutes} min).",
       "minutes": "{minutes} min",
       "hoursMinutes": "{hours} h {minutes} min",
       "hours": "{hours} h",
@@ -11772,7 +11777,7 @@
       "onTime": "{count} of {total}",
       "km": "{km} km",
       "kmRoads": "{km} km by road",
-      "reasonLate": "Now «{name}» is {minutes} min late. In the new order the agent makes it on time.",
+      "reasonLate": "Now {name} is {minutes} min late. In the new order the agent makes it on time.",
       "reasonShorter": "No doubling back: {km} km shorter, {minutes} min less driving.",
       "apply": "Apply order",
       "manual": "Change by hand",
@@ -12555,6 +12560,7 @@
     }
   },
   "mtmCustomers": {
+    "hours": {"title": "Visiting hours", "subtitle": "The planner and the agents see them on the route", "edit": "Change hours", "set": "Set hours", "notSetBody": "No hours given. The route is planned without limits, and the place says «no hours» on the route.", "dayOff": "closed", "lunch": "lunch {from}–{to}", "today": "today", "author": "Set by {name} · {date}", "authorNoName": "Set {date}", "weekdays": {"1": "Monday", "2": "Tuesday", "3": "Wednesday", "4": "Thursday", "5": "Friday", "6": "Saturday", "7": "Sunday"}, "weekdaysShort": {"1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu", "5": "Fri", "6": "Sat", "7": "Sun"}, "hint": {"edit": "When the place is open, its lunch and days off. The planner will not put a visit on the lunch or a day off, and the agent sees whether it is open."}, "state": {"open": "Open now · until {time}", "openLunch": "Open now · lunch from {time}", "lunch": "Lunch · opens at {time}", "beforeOpen": "Closed · opens at {time}", "closed": "Closed now", "dayOff": "Closed today"}, "dialog": {"title": "Visiting hours · {name}", "titleMany": "Visiting hours · places: {count}", "body": "When a visit can come here.", "copyFrom": "Copy hours from another place", "copyNone": "—", "day": "Day", "from": "From", "to": "To", "lunch": "Lunch", "lunchFrom": "lunch from", "lunchTo": "lunch to", "works": "{day} — open", "mondayToWeekdays": "Monday → all weekdays", "after": "Once saved, the planner will not put a visit on the lunch or a day off, and the agent sees whether the place is open.", "save": "Save hours", "cancel": "Cancel", "clear": "Remove hours", "saved": "Hours saved", "savedMany": "Hours set: {count}", "invalid": "Check the hours: closing after opening, lunch inside the day, at least one working day.", "failed": "Could not save the hours. Try again."}},
     "title": "Institutions",
     "subtitle": "Stores, pharmacies, outlets",
     "add": "Add Institution",
@@ -12596,6 +12602,9 @@
     "latitude": "Latitude",
     "longitude": "Longitude",
     "explorer": {
+      "setHours": "Set hours",
+      "hoursMissing": "no hours",
+      "hoursDayOff": "closed today",
       "rowDelete": "Delete",
       "rowEdit": "Edit",
       "rowOpen": "Open the card",
@@ -12603,6 +12612,7 @@
       "toRoute": "To route",
       "noVisitYet": "none yet",
       "quick": {
+        "noHours": "No visiting hours",
         "label": "Quick views",
         "all": "All",
         "notVisited": "Not visited in {month}",
@@ -12612,6 +12622,9 @@
       },
       "searchBox": "Name, address or code",
       "hint": {
+        "colHours": "When the place works today, by its visiting hours.",
+        "quickNoHours": "Places with no visiting hours given.",
+        "setHours": "Give all selected places the same visiting hours.",
         "rowMore": "Open, edit or delete the institution.",
         "assignOne": "Assign the institution to an employee. We show what changes before applying it.",
         "colContacts": "How many contacts (doctors, pharmacists) work at the institution now.",
@@ -12773,6 +12786,7 @@
       },
       "visibleColumns": "Visible columns",
       "columns": {
+        "hours": "Hours today",
         "contacts": "Contacts",
         "code": "Etalon ID",
         "organization": "Institution and address",
