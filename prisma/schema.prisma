@@ -22598,6 +22598,32 @@ model SystemJobCursor {
   @@map("system_job_cursors")
 }
 
+// A country's published non-working days for one year, as the calendar watch
+// last read them from the press (src/lib/mtm/az-calendar-watch.ts). Global like
+// system_job_cursors: public facts, no tenant or person in it. An organization's
+// own calendar changes only when its admin adds these days.
+model PublicCalendarFinding {
+  id                  String    @id @default(cuid())
+  country             String
+  year                Int
+  state               String
+  checkedAt           DateTime
+  foundAt             DateTime?
+  sourceUrl           String?
+  sourceTitle         String?
+  publishedOn         String?
+  decision            String?
+  fingerprint         String?
+  holidays            Json?
+  movedFiveDay        Json?
+  movedSixDay         Json?
+  notifiedFingerprint String?
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([country, year])
+  @@map("public_calendar_findings")
+}
+
 model TikTokPublicationRevisit {
   id                     String         @id @default(cuid())
   organizationId         String

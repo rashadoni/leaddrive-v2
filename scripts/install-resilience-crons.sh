@@ -62,6 +62,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-attendance-reminders/ { next }
   /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
   /cron-trigger\.sh \/api\/cron\/call-recordings-retention/ { next }
+  /cron-trigger\.sh \/api\/cron\/az-calendar-watch/ { next }
   /cron-trigger\.sh \/api\/cron\/demo-social-release/ { next }
   /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
@@ -130,6 +131,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # The Zeytun line's call recordings are kept 90 days (owner, 2026-10-31);
   # daily is plenty, the files are deleted by their own age on disk.
   printf '%s\n' "27 3 * * * $TRIGGER /api/cron/call-recordings-retention >> $LOG 2>&1"
+  # Next year's official holidays, read from report.az for the admin to add
+  # (src/lib/mtm/az-calendar-watch.ts). Hourly, because the article passes
+  # through the feed in a few hours; outside 15 Nov–Dec, and once a year is
+  # read, a tick fetches nothing.
+  printf '%s\n' "41 * * * * $TRIGGER /api/cron/az-calendar-watch >> $LOG 2>&1"
   # A prospect's own Facebook Page is connected to the demo for one day at
   # most. This sweep unbinds every connection that is over — unsubscribes the
   # Page from our app and wipes our copy; the person's own Meta grant stays
