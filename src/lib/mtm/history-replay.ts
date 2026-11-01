@@ -255,3 +255,26 @@ export function historyPointMovement(
     course: reading.headings[index] == null ? null : Math.round(reading.headings[index]!),
   }]))
 }
+
+/**
+ * Car or on foot for a leg of the day's list (owner, 2026-11-01, of the
+ * mockup: «Ехал 18 мин · 6,2 км», «Шёл 7 мин»). A leg with a drive in it was
+ * driven — the walk to the car is part of it, as the trip rule has it. A leg
+ * none of whose fixes moves (GPS wandering around one place) says neither.
+ */
+export function dayTripLegMode(
+  points: ReadonlyArray<{ id: string; recordedAt: Date }>,
+  movement: ReadonlyMap<string, { mode: MtmMovementMode }>,
+  from: Date,
+  to: Date,
+): "DRIVE" | "WALK" | null {
+  let walked = false
+  for (const point of points) {
+    const at = point.recordedAt.getTime()
+    if (at < from.getTime() || at > to.getTime()) continue
+    const mode = movement.get(point.id)?.mode
+    if (mode === "DRIVE") return "DRIVE"
+    if (mode === "WALK") walked = true
+  }
+  return walked ? "WALK" : null
+}

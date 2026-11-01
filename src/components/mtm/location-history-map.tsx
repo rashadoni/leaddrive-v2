@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, useMap } from "react-leaflet"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { MTM_MOVEMENT_COLORS } from "@/lib/mtm/live-map-agent-marker"
 import {
   historyReplayCuts,
   historyReplayFrame,
@@ -348,12 +349,16 @@ export default function LocationHistoryMap({
             ) : null
           )}
           {layers.actual && visiblePoints.map((point, index) => {
+            // Each fix in the colour of the way he was moving there: blue fixes
+            // all along a walk hid its green line at the scale of a whole day.
+            const mode = reading.modes[index] ?? "STAY"
+            const color = mode === "STAY" ? HISTORY_MAP_COLORS.raw : MTM_MOVEMENT_COLORS[mode]
             return (
             <CircleMarker
               key={point.id}
               center={[point.latitude, point.longitude]}
               radius={index === 0 ? 5 : 2}
-              pathOptions={{ color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.75, weight: 1 }}
+              pathOptions={{ color, fillColor: color, fillOpacity: 0.75, weight: 1 }}
             >
               <Popup>
                 <div className="space-y-1 text-xs">

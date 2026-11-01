@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  dayTripLegMode,
   historyReplayCuts,
   historyReplayFrame,
   historyPointMovement,
@@ -122,5 +123,20 @@ describe("the day as the field app receives it", () => {
     expect(movement.get("p3")).toEqual({ mode: "DRIVE", course: 90 })
     expect(movement.get("p15")).toEqual({ mode: "STAY", course: null })
     expect(movement.get(`p${rows.length - 2}`)?.mode).toBe("WALK")
+  })
+})
+
+// The day's list says «Ехал» or «Шёл» (owner, 2026-11-01, of the mockup).
+describe("a leg of the day's list", () => {
+  it("was driven if it has a drive in it, walked if only a walk, and says neither when nothing moved", () => {
+    const { points, gaps } = day()
+    const rows = points.map((point, index) => ({ ...point, id: `p${index}`, recordedAt: new Date(point.recordedAt), speed: point.speed ?? null, heading: null }))
+    const movement = historyPointMovement(rows, gaps.map((gap) => ({ startedAt: new Date(gap.startedAt), endedAt: new Date(gap.endedAt), reason: gap.reason })))
+    const leg = (from: number, to: number) => dayTripLegMode(rows, movement, new Date(iso(from)), new Date(iso(to)))
+    expect(leg(0, 300)).toBe("DRIVE")
+    // The stand after it, and the drive with the stand: a drive is a drive.
+    expect(leg(330, 900)).toBeNull()
+    expect(leg(0, 900)).toBe("DRIVE")
+    expect(leg(46 * 60, 51 * 60)).toBe("WALK")
   })
 })

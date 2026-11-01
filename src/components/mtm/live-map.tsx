@@ -13,12 +13,13 @@ import { calculateDistance } from "@/lib/geo-utils"
 import { liveMapTrailSegments, outlineCrossesItself, type LiveMapTrails } from "@/lib/mtm/live-map-trails"
 import { clusterLiveMapClients, liveMapClientColor, type LiveMapClient, type LiveMapClientNode } from "@/lib/mtm/live-map-clients"
 import { liveMapAgentMarker, liveMapMarkerGlides } from "@/lib/mtm/live-map-agent-marker"
-import { compassPoint, liveMtmMovement, readMtmMovement, type MtmMovementMode } from "@/lib/mtm/movement-mode"
+import { compassPoint, liveMtmMovement, readMtmMovement, type MtmLiveMovement, type MtmMovementMode } from "@/lib/mtm/movement-mode"
 import { modeRuns, type ModeRun } from "@/lib/mtm/history-replay"
 import { MovementArrows, movementLineStyle } from "./movement-arrows"
 import { liveMapZoneHex, liveMapZonesLargestFirst, zoneAreaSquareMeters, type LiveMapZone, type LiveMapZoneChange } from "@/lib/mtm/live-map-zones"
 import { formatMtmArea } from "@/lib/mtm/visit-place-check"
 import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
+import { liveMapDuration } from "@/lib/mtm/live-map-state-since"
 
 // F-24: rewritten on Leaflet. Google Maps + AdvancedMarker had been the
 // source of 5 hotfixes in a month — Vector tiles need a real Map ID, the React
@@ -90,6 +91,11 @@ interface Props {
   showLabels?: boolean
   /** Where each employee has just been: positions this page has itself seen (live-map-trails.ts). */
   trails?: LiveMapTrails | null
+  /**
+   * How each employee is moving now, as the page read it for its list too.
+   * An employee it has no entry for is read here, from his position and tail.
+   */
+  movements?: ReadonlyMap<string, MtmLiveMovement | null>
   /** Markers glide to a new position instead of jumping there. */
   glideMarkers?: boolean
   /**
@@ -864,6 +870,7 @@ export default function MtmLiveMap({
   followAgent = false,
   showLabels = false,
   trails = null,
+  movements,
   glideMarkers = false,
   pressMode = null,
   onMapPress,
@@ -1053,7 +1060,7 @@ export default function MtmLiveMap({
       if (marker.kind !== "AGENT") continue
       const agent = marker.agent
       const trail = trails?.get(agent.agentId) ?? []
-      const movement = liveMtmMovement({ ...agent, trail })
+      const movement = movements?.has(agent.agentId) ? movements.get(agent.agentId) ?? null : liveMtmMovement({ ...agent, trail })
       const tail = trails ? liveMapTrailSegments(trail).flatMap((segment) => {
         const reading = readMtmMovement(segment)
         return modeRuns(segment.map((point, fixIndex) => ({ latitude: point.latitude, longitude: point.longitude, fixIndex })), reading.modes)
@@ -1061,7 +1068,7 @@ export default function MtmLiveMap({
       found.set(agent.agentId, { movement, tail })
     }
     return found
-  }, [markerSelection.markers, trails])
+  }, [markerSelection.markers, movements, trails])
   const trailArrowLines = useMemo(
     () => [...movementByAgent.values()].flatMap((entry) => entry.tail),
     [movementByAgent],
@@ -1341,6 +1348,13 @@ export default function MtmLiveMap({
             const movingWords = moving && moving.mode !== "STAY"
               ? ` · ${tMap(`movement.${moving.mode}`)}${moving.heading != null ? ` ${tMap(`compass.${compassPoint(moving.heading)}`)}` : ""}`
               : ""
+            // The label beside the marker says what the list says first: how
+            // fast he goes, or how long he has stood (the mockup's «34 км/ч»,
+            // «18 мин») — up to his last position, a few seconds old on a live one.
+            const standing = statusKey === "STOPPED" ? liveMapDuration(agent.stationarySince, Date.parse(agent.recordedAt)) : null
+            const labelDetail = moving && moving.mode !== "STAY"
+              ? (speedKmh ? tMap("roster.kmh", { value: speedKmh }) : tMap(`movement.${moving.mode}`))
+              : standing ? tMap(`since.duration.${standing.unit}`, { ...standing }) : ""
             return (
               <GlidingMarker
                 key={marker.id}
@@ -1359,7 +1373,9 @@ export default function MtmLiveMap({
                     reads `permanent` once, so the two are different tooltips. */}
                 <Tooltip direction="top" key={showLabels ? "label" : "hover"} permanent={showLabels} offset={[0, -16]} opacity={showLabels ? 0.92 : 1}>
                   <span style={{ fontWeight: 700 }}>{agent.name}</span>
-                  {showLabels ? null : <>{" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}{movingWords}</>}
+                  {showLabels
+                    ? labelDetail ? <span style={{ color: "#64748b", fontWeight: 500 }}>{` ${labelDetail}`}</span> : null
+                    : <>{" · "}{tMap(`fieldStatus.${statusLabelKeys[statusKey]}`)}{movingWords}</>}
                 </Tooltip>
                 {pressMode ? null : <Popup>
                   <div style={{ fontFamily: "system-ui,sans-serif", minWidth: 170 }}>

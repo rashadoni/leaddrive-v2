@@ -99,6 +99,22 @@ describe("the employee's marker", () => {
   })
 })
 
+// Owner, 2026-11-01, of the mockup «MTM: движение на карте»: car blue, on foot
+// green, standing amber — the fill; the freshness stays in the shape and opacity.
+describe("the marker of somebody whose way of moving is known", () => {
+  it("is filled with the way he moves, and keeps the shape of his freshness", () => {
+    const filled = (["DRIVE", "WALK", "STAY"] as const).map((mode) => declared(marker({ movement: { mode, heading: null } }).html, "background"))
+    expect(filled).toEqual(["#1d4ed8", "#0d8a4a", "#b45309"])
+    const delayed = marker({ freshness: "DELAYED", movement: { mode: "DRIVE", heading: 90 } }).html
+    expect([declared(delayed, "background"), declared(delayed, "border-radius")]).toEqual(["#1d4ed8", "30% 70% 30% 70%"])
+    // His picture instead of the letter, and the arrow the way he goes, in the same colour.
+    expect(delayed).not.toContain(">A<")
+    expect(delayed).toContain('fill="#1d4ed8" stroke="white"')
+    // Not known — the freshness fills it, as before.
+    expect(declared(marker({ movement: null }).html, "background")).toBe("#15803d")
+  })
+})
+
 describe("the map that draws it", () => {
   const map = readFileSync("src/components/mtm/live-map.tsx", "utf8")
   const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")

@@ -5,11 +5,10 @@ import { historyErrorMessage } from "@/lib/mtm/location-history-errors"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { Activity, AlertTriangle, CheckCircle2, Clock3, Download, Layers3, LocateFixed, MapPin, Pause, Play, RefreshCw, RotateCcw, Route, Satellite, WifiOff } from "lucide-react"
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Download, Layers3, LocateFixed, MapPin, Pause, Play, RefreshCw, Route, Satellite, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Hint, HintValue } from "@/components/hint"
 import { MtmFilterBar, MtmFilterDate, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import { formatTime } from "@/lib/format-date"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
@@ -20,6 +19,7 @@ import { historyReplayCuts, historyReplayFrame, historyReplaySkipStill, readHist
 import { compassPoint } from "@/lib/mtm/movement-mode"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { DayTripLedger, type DayTripData, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
+import { MovementBadge } from "@/components/mtm/movement-badge"
 
 /** At ×1 two minutes of the day go by in a second. */
 const REPLAY_DAY_MS_PER_MS = 120
@@ -483,6 +483,13 @@ export function LocationHistoryPanel() {
 
   const formatMoment = (value: string, options?: Intl.DateTimeFormatOptions) =>
     formatInTimezone(value, timezone, options ?? { dateStyle: "short", timeStyle: "short" }, locale)
+  // The corner of the map: «34 км/ч · на восток», and the time of the day (with its date over a range).
+  const replayDetail = replayFrame
+    ? [playbackSpeedKmh ? tMap("roster.kmh", { value: playbackSpeedKmh }) : null, replayFrame.heading != null ? tMap(`compass.${compassPoint(replayFrame.heading)}`) : null].filter(Boolean).join(" · ")
+    : ""
+  const replayClock = replayPoints.length
+    ? formatMoment(new Date(replayAt).toISOString(), (data?.range.days ?? 1) > 1 ? { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" } : { hour: "2-digit", minute: "2-digit" })
+    : ""
   const formatDuration = (seconds: number) => {
     const minutes = Math.round(seconds / 60)
     return minutes < 60
@@ -700,113 +707,14 @@ export function LocationHistoryPanel() {
             </Hint>
           </div>
 
-          <section data-testid="mtm-location-history-replay" className="rounded-lg border border-border bg-card p-3" aria-labelledby="day-replay-title">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h3 id="day-replay-title" className="flex items-center gap-2 text-sm font-semibold">
-                  <Play className="h-4 w-4 text-primary" />{t("replayTitle")}
-                </h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">{t("replayHint")}</p>
-              </div>
-              <div className="text-right text-xs" aria-live="polite">
-                <div className="font-medium tabular-nums">
-                  {replayFrame ? formatMoment(new Date(replayAt).toISOString()) : t("noReplayPoints")}
-                </div>
-                {replayFrame && (
-                  <div data-testid="mtm-location-history-replay-mode" className="text-muted-foreground">
-                    {tMap(`movement.${replayFrame.mode}`)}
-                    {replayFrame.heading != null ? ` · ${tMap(`compass.${compassPoint(replayFrame.heading)}`)}` : ""}
-                    {playbackSpeedKmh ? ` · ${tMap("roster.kmh", { value: playbackSpeedKmh })}` : ""}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-3 grid gap-2 md:grid-cols-[auto_auto_minmax(180px,1fr)_110px] md:items-center">
-              <Hint wrap text={playbackPointCount < 2 ? t("hint.historyPlayNeedsPoints") : null}>
-                <Button
-                  data-testid="mtm-location-history-play"
-                  type="button"
-                  variant={isPlaying ? "secondary" : "default"}
-                  className="min-h-11"
-                  onClick={togglePlayback}
-                  disabled={playbackPointCount < 2}
-                >
-                  {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
-                  {isPlaying ? t("pause") : playbackAtEnd ? t("replayFromStart") : t("play")}
-                </Button>
-              </Hint>
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11"
-                onClick={() => {
-                  setIsPlaying(false)
-                  setPlaybackAt(dayStartAt)
-                }}
-                disabled={!playbackPointCount || replayAt <= dayStartAt}
-              >
-                <RotateCcw className="mr-1.5 h-4 w-4" />{t("restart")}
-              </Button>
-              <label className="flex min-h-11 items-center gap-3 rounded-md border px-3">
-                <span className="sr-only">{t("replayPosition")}</span>
-                {/* By the minute of the day, not by the fix. */}
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.max(1, Math.ceil((dayEndAt - dayStartAt) / 60_000))}
-                  step={1}
-                  value={Math.round((replayAt - dayStartAt) / 60_000)}
-                  disabled={playbackPointCount < 2}
-                  aria-label={t("replayPosition")}
-                  aria-valuetext={replayFrame ? formatMoment(new Date(replayAt).toISOString()) : t("noReplayPoints")}
-                  onChange={(event) => {
-                    setIsPlaying(false)
-                    setPlaybackAt(dayStartAt + Number(event.target.value) * 60_000)
-                  }}
-                  className="h-2 w-full cursor-pointer accent-primary disabled:cursor-not-allowed"
-                />
-              </label>
-              <label className="space-y-1 text-xs font-medium">
-                <span className="sr-only">{t("playbackRate")}</span>
-                <Hint text={t("hint.historyPlaybackRate")}>
-                  <Select
-                    className="min-h-11"
-                    value={String(playbackRate)}
-                    aria-label={t("playbackRate")}
-                    onChange={(event) => setPlaybackRate(Number(event.target.value))}
-                  >
-                    {REPLAY_RATES.map((rate) => <option key={rate} value={rate}>{t("playbackRateValue", { rate })}</option>)}
-                  </Select>
-                </Hint>
-              </label>
-            </div>
-            <Hint wrap text={t("skipStillHint")}>
-              <label className="mt-2 inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium">
-                <input
-                  data-testid="mtm-location-history-skip-still"
-                  type="checkbox"
-                  className="h-4 w-4 accent-primary"
-                  checked={skipStill}
-                  onChange={(event) => setSkipStill(event.target.checked)}
-                />
-                {t("skipStill")}
-              </label>
-            </Hint>
-
-            {playbackPoint && (
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span>{t("accuracy")}: <HintValue text={playbackPoint.accuracy == null ? null : t("hint.historyPointAccuracy")}>{playbackPoint.accuracy == null ? "—" : `${Math.round(playbackPoint.accuracy)} m`}</HintValue></span>
-                <span>{t("battery")}: {playbackPoint.battery == null ? "—" : `${Math.round(playbackPoint.battery)}%`}</span>
-                <span>{t("gpsSpeed")}: <HintValue text={playbackSpeedKmh == null ? null : t("hint.historyPointSpeed")}>{playbackSpeedKmh == null ? "—" : tMap("roster.kmh", { value: playbackSpeedKmh })}</HintValue></span>
-                <HintValue text={t("hint.historyPointMoving")}>{replayFrame?.mode === "DRIVE" || replayFrame?.mode === "WALK" ? t("moving") : t("stationary")}</HintValue>
-              </div>
-            )}
-          </section>
 
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
             <div className="space-y-2 xl:sticky xl:top-3">
-            <div className="h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-border bg-card">
+            {/* The day plays on the map itself, as the mockup «MTM: движение на
+                карте» has it (owner, 2026-11-01): how he moves and when, in the
+                corner; the controls along the bottom edge. `isolate` keeps
+                Leaflet's own layers under them. */}
+            <div className="relative isolate h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-border bg-card">
               <LocationHistoryMap
                 points={data.points}
                 stops={data.stops}
@@ -822,7 +730,98 @@ export function LocationHistoryPanel() {
                 focus={tripFocus}
                 matchedTrack={data.matchedTrack ?? null}
               />
+              {replayFrame && (
+                <div
+                  data-testid="mtm-location-history-readout"
+                  aria-live="polite"
+                  className="pointer-events-none absolute right-2 top-2 z-[1000] flex max-w-[calc(100%-4rem)] items-center gap-2.5 rounded-lg border border-border bg-card/95 px-3 py-2 shadow-md"
+                >
+                  <MovementBadge mode={replayFrame.mode} size={26} />
+                  <div className="min-w-0 text-xs">
+                    <div data-testid="mtm-location-history-replay-mode" className="truncate text-sm font-semibold first-letter:uppercase">{tMap(`movement.${replayFrame.mode}`)}</div>
+                    {replayDetail ? <div className="truncate text-muted-foreground">{replayDetail}</div> : null}
+                  </div>
+                  <time className="shrink-0 font-mono text-base font-medium tabular-nums">{replayClock}</time>
+                </div>
+              )}
+              <section
+                data-testid="mtm-location-history-replay"
+                aria-label={t("replayTitle")}
+                className="absolute inset-x-2 bottom-6 z-[1000] flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-card/95 px-2.5 py-2 shadow-md"
+              >
+                <Hint wrap text={playbackPointCount < 2 ? t("hint.historyPlayNeedsPoints") : null}>
+                  <Button
+                    data-testid="mtm-location-history-play"
+                    type="button"
+                    variant={isPlaying ? "secondary" : "default"}
+                    className="min-h-11"
+                    onClick={togglePlayback}
+                    disabled={playbackPointCount < 2}
+                  >
+                    {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
+                    {isPlaying ? t("pause") : playbackAtEnd ? t("replayFromStart") : t("play")}
+                  </Button>
+                </Hint>
+                <label className="flex min-h-11 min-w-[160px] flex-1 items-center gap-2.5">
+                  <Hint wrap text={t("replayHint")}>
+                    <span className="font-mono text-sm font-medium tabular-nums" aria-hidden="true">{replayFrame ? replayClock : "—"}</span>
+                  </Hint>
+                  <span className="sr-only">{t("replayPosition")}</span>
+                  {/* By the minute of the day, not by the fix. */}
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(1, Math.ceil((dayEndAt - dayStartAt) / 60_000))}
+                    step={1}
+                    value={Math.round((replayAt - dayStartAt) / 60_000)}
+                    disabled={playbackPointCount < 2}
+                    aria-label={t("replayPosition")}
+                    aria-valuetext={replayFrame ? formatMoment(new Date(replayAt).toISOString()) : t("noReplayPoints")}
+                    onChange={(event) => {
+                      setIsPlaying(false)
+                      setPlaybackAt(dayStartAt + Number(event.target.value) * 60_000)
+                    }}
+                    className="h-2 w-full cursor-pointer accent-primary disabled:cursor-not-allowed"
+                  />
+                </label>
+                <Hint text={t("hint.historyPlaybackRate")}>
+                  <div role="group" aria-label={t("playbackRate")} className="flex rounded-md bg-muted p-0.5">
+                    {REPLAY_RATES.map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        data-testid={`mtm-location-history-rate-${rate}`}
+                        aria-pressed={playbackRate === rate}
+                        onClick={() => setPlaybackRate(rate)}
+                        className={`min-h-9 rounded px-2.5 font-mono text-xs font-semibold transition-colors ${playbackRate === rate ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        {t("playbackRateValue", { rate })}
+                      </button>
+                    ))}
+                  </div>
+                </Hint>
+                <Hint wrap text={t("skipStillHint")}>
+                  <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium">
+                    <input
+                      data-testid="mtm-location-history-skip-still"
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={skipStill}
+                      onChange={(event) => setSkipStill(event.target.checked)}
+                    />
+                    {t("skipStill")}
+                  </label>
+                </Hint>
+              </section>
             </div>
+            {playbackPoint && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-muted-foreground">
+                <span>{t("accuracy")}: <HintValue text={playbackPoint.accuracy == null ? null : t("hint.historyPointAccuracy")}>{playbackPoint.accuracy == null ? "—" : `${Math.round(playbackPoint.accuracy)} m`}</HintValue></span>
+                <span>{t("battery")}: {playbackPoint.battery == null ? "—" : `${Math.round(playbackPoint.battery)}%`}</span>
+                <span>{t("gpsSpeed")}: <HintValue text={playbackSpeedKmh == null ? null : t("hint.historyPointSpeed")}>{playbackSpeedKmh == null ? "—" : tMap("roster.kmh", { value: playbackSpeedKmh })}</HintValue></span>
+                <HintValue text={t("hint.historyPointMoving")}>{replayFrame?.mode === "DRIVE" || replayFrame?.mode === "WALK" ? t("moving") : t("stationary")}</HintValue>
+              </div>
+            )}
             {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
             <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               {/* Owner 2026-11-01: the line itself says car or on foot, with arrows the way he went. */}

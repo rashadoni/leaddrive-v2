@@ -12,6 +12,8 @@ import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
 import { printRosterHtml, rosterPrintHtml } from "@/lib/mtm/live-map-roster-print"
 import { liveMapDuration } from "@/lib/mtm/live-map-state-since"
 import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
+import type { MtmLiveMovement } from "@/lib/mtm/movement-mode"
+import { MovementBadge } from "@/components/mtm/movement-badge"
 import {
   activeRosterFilterColumns,
   availableRosterColumns,
@@ -135,6 +137,12 @@ export interface LiveMapRosterProps {
   renderDetail: (agent: MtmDashboardAgent) => ReactNode
   /** The clock the freshness is judged by (anchored to the server's answer). */
   nowMs: number
+  /**
+   * How each employee is moving now, as the map reads it (movement-mode.ts):
+   * a row «в пути» says car or on foot, with its badge, and a row «стоит»
+   * the badge of standing — the mockup «MTM: движение на карте».
+   */
+  movements?: ReadonlyMap<string, MtmLiveMovement | null>
   workforceEnabled: boolean
   formatClock: (value: string | null | undefined) => string
   /** «22:14», or with the date when it was on an earlier day. */
@@ -209,7 +217,7 @@ function bringListBackFromBehindItsHeading(aside: HTMLElement | null, heading: H
 export function LiveMapRoster({
   agents, rows, searchSlot, filters, onFiltersChange, view, onViewChange, onHide, hiddenOnWide = false,
   hiddenAgentIds, onToggleAgentOnMap, onSetAgentsOnMap, selectedAgentId, onSelect, selectedDetailRef,
-  renderDetail, nowMs, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
+  renderDetail, nowMs, movements, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
   formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName, printTitle, printNote,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
@@ -605,7 +613,14 @@ export function LiveMapRoster({
         // A visit left open since an earlier day is the anomaly a dispatcher
         // has to see on the row itself, even where the time does not fit.
         const stale = openedAt != null && isEarlierDay(openedAt)
-        const label = valueLabel("status", status)
+        // «в пути» says how: «Едет · 34 км/ч», «Пешком · 5 км/ч»; «стоит» has its badge.
+        const movement = movements?.get(agent.agentId) ?? null
+        const moving = status === "ON_ROAD" && movement && movement.mode !== "STAY" ? movement.mode : null
+        const badge = moving ?? (status === "STOPPED" && movement ? "STAY" : null)
+        const movingKmh = moving ? mtmSpeedKmh(rosterSpeed(agent)) : null
+        const label = moving
+          ? `${tMap(`roster.moving.${moving}`)}${movingKmh != null ? ` · ${tMap("roster.kmh", { value: movingKmh })}` : ""}`
+          : valueLabel("status", status)
         // «Стоит · 40 мин»: how long, not since when — the question a
         // dispatcher asks of somebody standing («давно он там?»).
         const standing = status === "STOPPED" ? liveMapDuration(agent.stationarySince, nowMs) : null
@@ -617,7 +632,9 @@ export function LiveMapRoster({
             : label
         return (
           <span className="flex min-w-0 items-center gap-1.5" data-testid={`live-map-agent-status-${agent.agentId}`} title={title}>
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", ROSTER_STATUS_DOT_CLASS[status])} aria-hidden="true" />
+            {badge
+              ? <MovementBadge mode={badge} size={18} testId={`live-map-agent-movement-${agent.agentId}`} />
+              : <span className={cn("h-2 w-2 shrink-0 rounded-full", ROSTER_STATUS_DOT_CLASS[status])} aria-hidden="true" />}
             <span className="min-w-0 truncate">{label}{since ? <span className="hidden text-muted-foreground @2xl:inline"> · {since}</span> : null}{standingText ? <span className="hidden text-muted-foreground @2xl:inline" data-testid={`live-map-agent-standing-${agent.agentId}`}> · {standingText}</span> : null}</span>
             {stale ? (
               <span className="shrink-0 @2xl:hidden" data-testid={`live-map-agent-visit-stale-${agent.agentId}`}>
