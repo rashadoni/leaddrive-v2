@@ -1,9 +1,10 @@
 [Unit]
 Description=LeadDrive WAL archive watch: is the recovery point still minutes old
 Documentation=file:/opt/leaddrive-v2/docs/BACKUP_RUNBOOK.md
-# The script tells the owner itself about warnings (exit 1) and critical
-# states (exit 2). OnFailure is for the watch crashing, which must not look
-# like a healthy archive.
+# The script reports a warning as exit 10 and a critical state as exit 20, and
+# the watch on the workstation forwards its wording. OnFailure is for the watch
+# CRASHING, which must not look like a healthy archive — which is exactly what
+# happened while this unit accepted 1 and 2 as verdicts.
 OnFailure=leaddrive-wal-check-failed.service
 Wants=network-online.target
 After=network-online.target postgresql.service
@@ -13,7 +14,10 @@ Type=oneshot
 # Runs as root: it reads the root-only env file and switches to the database
 # superuser for pgbackrest, so NoNewPrivileges would break su.
 ExecStart=/usr/local/lib/leaddrive-v2/ops/current/backup/wal-archive-check.sh
-SuccessExitStatus=0 1 2
+# 10 is a warning and 20 is a critical verdict; anything else — 1, 2, 127 — is
+# the script itself breaking, and systemd must report THAT as a failure so
+# OnFailure fires. The old "0 1 2" called a dead script healthy.
+SuccessExitStatus=0 10 20
 TimeoutStartSec=5min
 UMask=0077
 Nice=10
