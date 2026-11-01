@@ -139,9 +139,10 @@ render_pg_conf() {
 # Managed by scripts/backup/wal-archive-install.sh. Do not edit by hand.
 # archive_mode needs a restart; archive_command and archive_timeout reload.
 #
-# wal_level is deliberately absent. Production runs `logical` for the Kafka
-# CDC slot, `logical` already contains everything `replica` does, and writing
-# `replica` here would silently disable logical decoding at the next restart.
+# wal_level is deliberately absent. Production runs it at logical for the
+# Kafka CDC slot, logical already contains everything replica does, and
+# writing replica here would disable logical decoding at the next restart.
+# No backticks in this heredoc: it is unquoted, so the shell would run them.
 archive_mode = on
 archive_command = '$expected_archive_command'
 archive_timeout = $WAL_ARCHIVE_TIMEOUT
@@ -192,7 +193,15 @@ if [ "$dropin_changed" = 1 ]; then
   log "wrote $pg_dropin"
 fi
 
-su - "$WAL_PG_USER" -c "pgbackrest --stanza=$WAL_STANZA stanza-create" 2>&1 | grep -v 'already exists' || true
+# Never swallow this: a stanza-create that fails on bad credentials would
+# otherwise leave a configured host with no repository behind it.
+if ! stanza_output="$(su - "$WAL_PG_USER" -c "pgbackrest --stanza=$WAL_STANZA --log-level-console=info stanza-create" 2>&1)"; then
+  case "$stanza_output" in
+    *"already exists"*) ;;
+    *) fatal "stanza-create failed: $(printf '%s' "$stanza_output" | tail -3 | tr '\n' ' ')" ;;
+  esac
+fi
+log "stanza $WAL_STANZA is present in the repository"
 
 if [ "$restart_needed" = 1 ]; then
   log "archive_mode is off: PostgreSQL must be restarted before archiving starts"

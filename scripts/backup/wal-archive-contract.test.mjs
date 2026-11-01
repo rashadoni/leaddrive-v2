@@ -112,3 +112,16 @@ test('the drill refuses to run as root and cleans up after itself', () => {
   assert.match(drill, /\[ "\$\(id -u\)" -ne 0 \] \|\| fatal/);
   assert.match(drill, /trap cleanup EXIT/);
 });
+
+test('no backticks inside the unquoted heredocs', () => {
+  // render_pg_conf and render_conf interpolate variables, so their heredocs
+  // are unquoted and the shell runs anything in backticks. A prose comment
+  // with `logical` in it executed on the first production run.
+  const rendered = install.slice(install.indexOf('render_conf()'), install.indexOf('pg_dropin='));
+  assert.ok(!rendered.includes('`'), 'a backtick inside an unquoted heredoc is executed by the shell');
+});
+
+test('a failed stanza-create is fatal, not swallowed', () => {
+  assert.doesNotMatch(install, /stanza-create[^\n]*\|\| true/);
+  assert.match(install, /fatal "stanza-create failed/);
+});
