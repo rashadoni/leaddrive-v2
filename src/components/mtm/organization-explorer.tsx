@@ -15,6 +15,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import {
+  Clock3,
   ArrowDownAZ,
   ArrowUpAZ,
   Bookmark,
@@ -56,6 +57,9 @@ import {
 import { HelpButton } from "@/components/help/help-button"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { cn } from "@/lib/utils"
+import { companyNow, MtmCustomerHoursDialog, useDayHoursText } from "@/components/mtm/customer-hours"
+import { hoursOfDay, readWorkingHours } from "@/lib/mtm/customer-hours"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -133,6 +137,8 @@ type OrganizationAttributeFact = {
 
 type Organization = {
   id: string
+  /** «Часы приёма» (src/lib/mtm/customer-hours.ts); null = not given. */
+  workingHours?: unknown
   code: string | null
   name: string
   objectType: string
@@ -207,6 +213,8 @@ type OrganizationListPayload = {
   effectiveScope: "ALL" | "MINE"
   /** The chip in force, the month «без визита» is about, and how many each chip holds. */
   quick?: { filter: string | null; month: string; counts: MtmClientQuickCounts | null }
+  /** «Без часов приёма»: in force, and how many places have none. */
+  hours?: { missing: boolean; missingCount: number | null }
   capabilities: {
     canManage: boolean
     canRequestChanges: boolean
@@ -310,6 +318,7 @@ function FieldCheckbox({
 const COLUMN_HINT: Partial<Record<OrganizationColumn, string>> = {
   code: "colCode",
   contacts: "colContacts",
+  hours: "colHours",
   type: "colType",
   category: "colCategory",
   medicalCategory: "colMedicalCategory",
@@ -332,6 +341,7 @@ const QUICK_LABEL = {
   NOT_VISITED: "notVisited",
   NOT_PLANNED: "notPlanned",
   UNASSIGNED: "unassigned",
+  NO_HOURS: "noHours",
 } as const
 
 /** What each chip holds, under the cursor. */
@@ -340,6 +350,7 @@ const QUICK_HINT = {
   NOT_VISITED: "explorer.hint.quickNotVisited",
   NOT_PLANNED: "explorer.hint.quickNotPlanned",
   UNASSIGNED: "explorer.hint.quickUnassigned",
+  NO_HOURS: "explorer.hint.quickNoHours",
 } as const
 
 /** «Seymur Məmmədov» → «Seymur M.»: who was there, in a narrow column. */
@@ -374,6 +385,20 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [hoursOpen, setHoursOpen] = useState(false)
+  const dayHoursText = useDayHoursText()
+  /** Today's hours of a place, in the company's time zone: «09:00–20:00 · обед 13:00–14:00». */
+  const todaysHours = (organization: Organization): string => {
+    const week = readWorkingHours(organization.workingHours)
+    if (!week) return tx("explorer.hoursMissing")
+    const day = hoursOfDay(week, companyNow(data?.timezone ?? "Asia/Baku").weekday)
+    return day === null ? tx("explorer.hoursDayOff") : dayHoursText(day) ?? ""
+  }
+  const todaysHoursKind = (organization: Organization): "set" | "off" | "none" => {
+    const week = readWorkingHours(organization.workingHours)
+    if (!week) return "none"
+    return hoursOfDay(week, companyNow(data?.timezone ?? "Asia/Baku").weekday) === null ? "off" : "set"
+  }
   const [selectingAll, setSelectingAll] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editData, setEditData] = useState<Organization | undefined>()
@@ -834,6 +859,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     switch (column) {
       case "code": return organization.code
       case "contacts": return organization._count.contactWorkplaces
+      case "hours": return todaysHours(organization)
       case "organization": return [organization.name, organization.address].filter(Boolean).join(" — ")
       case "type": return organization.organizationKind || tx(`explorer.objectTypes.${organization.objectType}`)
       case "category": return [organization.category, organization.specialization].filter(Boolean).join(" — ")
@@ -1005,6 +1031,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     { value: "NOT_VISITED", label: tx("explorer.quick.notVisited", { month: quickMonth }), count: quickCounts?.NOT_VISITED, testId: "organization-quick-not-visited" },
     { value: "NOT_PLANNED", label: tx("explorer.quick.notPlanned"), count: quickCounts?.NOT_PLANNED, testId: "organization-quick-not-planned" },
     // Only for whoever may assign, and only where somebody is unassigned.
+    ...(typeof data?.hours?.missingCount === "number" && (data.hours.missingCount > 0 || filters.quick === "NO_HOURS")
+      ? [{ value: "NO_HOURS", label: tx("explorer.quick.noHours"), count: data.hours.missingCount, testId: "organization-quick-no-hours" }]
+      : []),
     ...(typeof quickCounts?.UNASSIGNED === "number" && (quickCounts.UNASSIGNED > 0 || filters.quick === "UNASSIGNED")
       ? [{ value: "UNASSIGNED", label: tx("explorer.quick.unassigned"), count: quickCounts.UNASSIGNED, testId: "organization-quick-unassigned" }]
       : []),
@@ -1297,6 +1326,12 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               </Hint>
             ) : data?.capabilities.canManage ? (
               <>
+                <Hint text={tx("explorer.hint.setHours")}>
+                  <Button data-testid="mtm-organization-hours-open" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => setHoursOpen(true)}>
+                    <Clock3 className="mr-2 h-4 w-4" />
+                    {tx("explorer.setHours")}
+                  </Button>
+                </Hint>
                 <Hint text={tx("explorer.hint.unassign")}>
                   <Button variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => openAssignment("UNASSIGN")}>
                     {tx("explorer.unassign")}
@@ -1560,6 +1595,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                               <span className="font-medium tabular-nums">{organization.code || "—"}</span>
                             ) : column === "contacts" ? (
                               <span className="tabular-nums">{formatNumber.format(organization._count.contactWorkplaces)}</span>
+                            ) : column === "hours" ? (
+                              <span
+                                data-testid={`mtm-organization-hours-${organization.id}`}
+                                className={cn("line-clamp-2", todaysHoursKind(organization) === "none" && "text-muted-foreground", todaysHoursKind(organization) === "off" && "font-semibold text-amber-700 dark:text-amber-400")}
+                              >
+                                {todaysHours(organization)}
+                              </span>
                             ) : column === "organization" ? (
                               <div className="grid min-w-0 gap-0.5">
                                 <Link href={organizationHref(organization.id)} className="truncate font-semibold underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -1921,6 +1963,14 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         initialData={editData}
         orgId={orgId}
         apiBasePath="/api/v1/mtm/organizations"
+      />
+      <MtmCustomerHoursDialog
+        open={hoursOpen}
+        onOpenChange={setHoursOpen}
+        organizationIds={[...selected]}
+        name={selected.size === 1 ? (data?.organizations.find((row) => selected.has(row.id))?.name ?? null) : null}
+        initial={selected.size === 1 ? data?.organizations.find((row) => selected.has(row.id))?.workingHours ?? null : null}
+        onSaved={() => { setSelected(new Set()); void loadOrganizations() }}
       />
       <DeleteConfirmDialog
         open={deleteOpen}

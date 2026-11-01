@@ -650,6 +650,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
                   phone: true,
                   latitude: true,
                   longitude: true,
+                  workingHours: true,
                   agentAssignments: {
                     where: { agentId, ...assignmentWindow },
                     orderBy: { effectiveFrom: "desc" },
