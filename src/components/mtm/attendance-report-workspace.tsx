@@ -14,7 +14,7 @@ import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/hom
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
+import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceLunchLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
@@ -231,7 +231,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
       : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
 
   // The same note as the exported table (attendance-table.ts): the screen and the file say one thing.
-  const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...(row.lunchAutoSeconds ? [t("reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })] : []),
+  const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...attendanceLunchLines(row, t),
     ...(row.explanations ?? []).map(item => t(`reportExplanation${item.status}`, { answer: item.answer ?? "" })), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
 
   function chooseForm(next: Form) {
