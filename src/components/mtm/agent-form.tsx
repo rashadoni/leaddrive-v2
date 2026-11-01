@@ -366,10 +366,10 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
               >
                 {key === "profile" ? tf("tabProfile") : tf("tabClients")}
                 {key === "clients" && clientChoice.contactIds.length > 0 ? (
-                  <span className="ml-1.5 text-[11px] font-bold text-primary">+{clientChoice.contactIds.length}</span>
+                  <span className="ml-1.5 text-xs font-bold text-primary">+{clientChoice.contactIds.length}</span>
                 ) : null}
                 {key === "clients" && (clientChoice.removeIds?.length ?? 0) > 0 ? (
-                  <span className="ml-1 rounded-full px-1.5 py-0.5 text-[11px] font-bold text-red-700 dark:text-red-300">−{clientChoice.removeIds?.length}</span>
+                  <span className="ml-1 rounded-full px-1.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-300">−{clientChoice.removeIds?.length}</span>
                 ) : null}
               </button>
             ))}

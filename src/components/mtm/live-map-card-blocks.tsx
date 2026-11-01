@@ -73,7 +73,7 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
             <button
               type="button"
               data-testid="live-map-card-customize"
-              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-foreground hover:bg-muted [@media(pointer:coarse)]:min-h-11"
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border px-2.5 text-xs font-medium text-foreground hover:bg-muted [@media(pointer:coarse)]:min-h-11"
             >
               <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />{tMap("card.customize")}
               {shown.length < offered.length ? <span className="tabular-nums text-muted-foreground">· {tMap("card.hiddenCount", { count: offered.length - shown.length })}</span> : null}
@@ -81,7 +81,7 @@ export function LiveMapCardBlocks({ blocks, layout, onLayoutChange }: {
           </PopoverTrigger>
         </Hint>
         <PopoverContent align="start" collisionPadding={8} aria-label={tMap("card.customize")} className="max-h-[var(--radix-popover-content-available-height)] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto p-2" data-testid="live-map-card-customize-menu">
-          <p className="px-1 pb-1 text-[11px] text-muted-foreground">{tMap("card.customizeHint")}</p>
+          <p className="px-1 pb-1 text-xs text-muted-foreground">{tMap("card.customizeHint")}</p>
           <ul className="space-y-0.5">
             {offered.map((id, index) => {
               const block = byId.get(id)

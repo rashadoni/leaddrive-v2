@@ -27,8 +27,8 @@ function screenColumns(table: AttendanceTable) {
 function DayCell({ text }: { text: string }) {
   const parts = text.includes(" / ") ? [text] : text.split(" · ")
   const [code, ...rest] = parts
-  return <span className="block text-center leading-tight" title={text}><span className={`block pt-0.5 text-[11px] font-medium min-[85rem]:pt-0 min-[85rem]:text-[13px] ${code === "·" || code === "—" ? "text-muted-foreground" : ""}`}>{code}</span>
-    <span className="hidden min-h-3 text-[9px] font-normal text-muted-foreground min-[85rem]:block">{rest.join(" · ")}</span></span>
+  return <span className="block text-center leading-tight" title={text}><span className={`block pt-0.5 text-xs font-medium min-[85rem]:pt-0 min-[85rem]:text-[13px] ${code === "·" || code === "—" ? "text-muted-foreground" : ""}`}>{code}</span>
+    <span className="hidden min-h-3 text-xs font-normal text-muted-foreground min-[85rem]:block">{rest.join(" · ")}</span></span>
 }
 /**
  * A day report on screen (owner, 2026-11-01: «нет департамента, нет
@@ -127,14 +127,14 @@ export function AttendanceReportTable({ table, testId = "attendance-report-table
   const layout = screenColumns(table)
   return <div className="overflow-x-auto" role="region" aria-label={table.title} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid={testId}>
     {/* Headers wrap and cells stay tight: a wide report fits the page instead of scrolling inside the card. */}
-    <thead><tr>{layout.shown.map(({ column }) => <th key={column.key} scope="col" className={`border-b py-2 align-bottom text-[11px] font-medium leading-tight text-muted-foreground ${isDayKey(column.key) ? `${DAY_WIDTH} px-0 text-center` : layout.monthGrid && totalColumn(column.key) ? "w-16 px-1 text-right" : "px-2 text-left"}`}>{isDayKey(column.key) ? Number(column.key.slice(8)) : column.label}</th>)}</tr></thead>
+    <thead><tr>{layout.shown.map(({ column }) => <th key={column.key} scope="col" className={`border-b py-2 align-bottom text-xs font-medium leading-tight text-muted-foreground ${isDayKey(column.key) ? `${DAY_WIDTH} px-0 text-center` : layout.monthGrid && totalColumn(column.key) ? "w-16 px-1 text-right" : "px-2 text-left"}`}>{isDayKey(column.key) ? Number(column.key.slice(8)) : column.label}</th>)}</tr></thead>
     <tbody>{table.rows.map(row => <tr key={row.key} className="border-b last:border-0" data-testid="attendance-report-row">{layout.shown.map(({ column, at }) => {
       const cell = row.cells[at], day = isDayKey(column.key), name = at === layout.employee
       const under = name ? layout.folded.map(index => String(row.cells[index] ?? "")).filter(text => text && text !== "—") : []
       // A month grid reads along the first line: number, name, codes and totals share it.
       return <td key={column.key} className={`py-2 text-[13px] tabular-nums ${layout.monthGrid ? "align-top leading-tight" : ""} ${day ? `${DAY_WIDTH} px-0` : layout.monthGrid && totalColumn(column.key) ? "px-1 text-right" : "px-2"} ${name ? "min-w-28 font-semibold" : ""}`}>
         {day ? <DayCell text={String(cell ?? "")} /> : cell}
-        {under.length ? <span className="block text-[11px] font-normal leading-tight text-muted-foreground" data-testid="attendance-report-employee-details">{under.join(" · ")}</span> : null}</td>
+        {under.length ? <span className="block text-xs font-normal leading-tight text-muted-foreground" data-testid="attendance-report-employee-details">{under.join(" · ")}</span> : null}</td>
     })}</tr>)}</tbody>
   </table></div>
 }

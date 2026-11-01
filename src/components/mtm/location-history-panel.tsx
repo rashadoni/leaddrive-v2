@@ -937,7 +937,7 @@ export function LocationHistoryPanel() {
                       <div>
                         <div className="flex items-center justify-between gap-2">
                           <strong>{t(`timelineKind.${event.kind}`)}</strong>
-                          <span className="text-[10px] text-muted-foreground">{t(`timelineSource.${event.source}`)}</span>
+                          <span className="text-xs text-muted-foreground">{t(`timelineSource.${event.source}`)}</span>
                         </div>
                         <div className="mt-0.5 text-muted-foreground">
                           {event.label === "gps_stop" || event.label === "telemetry_gap" || event.label === "impossible_jump" || event.label === "low_accuracy"

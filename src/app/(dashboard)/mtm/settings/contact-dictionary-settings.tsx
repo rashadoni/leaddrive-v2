@@ -454,8 +454,8 @@ export function ContactDictionarySettings() {
               </dl>
               <details className="mt-4 rounded-md border border-border bg-background/80">
                 <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium">{t("showEntries")}</summary>
-                <pre className="overflow-x-auto border-t border-border p-3 text-[11px] leading-relaxed">{JSON.stringify(dictionary.entries, null, 2)}</pre>
-                <p className="break-all border-t border-border px-3 py-2 font-mono text-[10px] text-muted-foreground">SHA-256: {dictionary.entriesHash}</p>
+                <pre className="overflow-x-auto border-t border-border p-3 text-xs leading-relaxed">{JSON.stringify(dictionary.entries, null, 2)}</pre>
+                <p className="break-all border-t border-border px-3 py-2 font-mono text-xs text-muted-foreground">SHA-256: {dictionary.entriesHash}</p>
               </details>
             </article>
           ))}

@@ -294,7 +294,7 @@ export function CoveragePolicyAdmin() {
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs">
                   <dt className="text-muted-foreground"><HintValue text={t("hint.coverageEffective")}>{t("effective")}</HintValue></dt><dd>{policy.effectiveFrom.slice(0, 10)}{policy.effectiveTo ? ` — ${policy.effectiveTo.slice(0, 10)}` : ""}</dd>
                   <dt className="text-muted-foreground">{t("source")}</dt><dd className="truncate">{policy.sourceSystem}{policy.sourceReference ? ` · ${policy.sourceReference}` : ""}</dd>
-                  <dt className="text-muted-foreground"><HintValue text={t("hint.coverageHash")}>SHA-256</HintValue></dt><dd className="break-all font-mono text-[11px]">{policy.definitionHash}</dd>
+                  <dt className="text-muted-foreground"><HintValue text={t("hint.coverageHash")}>SHA-256</HintValue></dt><dd className="break-all font-mono text-xs">{policy.definitionHash}</dd>
                 </dl>
                 {policy.status === "DRAFT" ? <Hint text={t("hint.coverageReview")}><Button className="mt-3 min-h-11 w-full lg:min-h-9" variant="outline" onClick={() => { setActivationId(policy.id); setApprovalReference("") }}><CheckCircle2 className="mr-2 h-4 w-4" />{t("reviewActivation")}</Button></Hint> : null}
                 {policy.approvalReference ? <p className="mt-2 break-all text-xs text-muted-foreground">{t("approval")}: {policy.approvalReference}</p> : null}

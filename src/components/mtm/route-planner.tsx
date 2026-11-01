@@ -534,10 +534,10 @@ export function MtmRoutePlanner() {
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[12px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">{index + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold">{stop.name}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">{stop.contactId ? stop.placeName : stop.address}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{stop.contactId ? stop.placeName : stop.address}</span>
                   </span>
                   <Hint text={t("hint.time")}>
-                    <select aria-label={t("time")} value={stop.plannedTime} onChange={(event) => setStopTime(stop.key, event.target.value)} className="h-7 rounded-full bg-muted px-2 text-[11px] font-semibold tabular-nums outline-none" data-testid={`mtm-route-planner-time-${index + 1}`}>
+                    <select aria-label={t("time")} value={stop.plannedTime} onChange={(event) => setStopTime(stop.key, event.target.value)} className="h-7 rounded-full bg-muted px-2 text-xs font-semibold tabular-nums outline-none" data-testid={`mtm-route-planner-time-${index + 1}`}>
                       {MTM_ROUTE_TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
                     </select>
                   </Hint>
@@ -552,7 +552,7 @@ export function MtmRoutePlanner() {
                 <Sparkles aria-hidden="true" />{t("suggest")}
               </Button>
             </Hint>
-            <p className="text-center text-[11px] leading-4 text-muted-foreground">{t("suggestNote", { month: monthLabel })}</p>
+            <p className="text-center text-xs leading-4 text-muted-foreground">{t("suggestNote", { month: monthLabel })}</p>
           </div>
         </aside>
       </div>

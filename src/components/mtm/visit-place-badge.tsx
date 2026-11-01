@@ -59,7 +59,7 @@ export function VisitPlaceBadge({
   return (
     <span className={`inline-flex flex-col ${className}`}>
       {/* What the verdict means, under the cursor: «Нет GPS на выходе» says what, not why it matters. */}
-      <HintValue text={t(`hint.${place.verdict}`)} className={`inline-flex items-center gap-1 font-medium ${size === "xs" ? "text-[10px]" : "text-xs"} ${TONE_CLASSES[tone]}`}>
+      <HintValue text={t(`hint.${place.verdict}`)} className={`inline-flex items-center gap-1 font-medium ${size === "xs" ? "text-xs" : "text-xs"} ${TONE_CLASSES[tone]}`}>
         <span data-place-verdict={place.verdict} className="inline-flex items-center gap-1">
           <Icon className={iconClass} aria-hidden="true" />
           {label}

@@ -109,7 +109,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
   const toggle = (value: string) => onChange(selected.includes(value) ? selected.filter(item => item !== value) : [...selected, value])
   return (
     <div className="min-w-0 flex-1">
-      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{step}. {label}</div>
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{step}. {label}</div>
       <Popover>
         {/* The hint sits on a full-width block: a disabled button gets no
             pointer, and Hint's own inline wrapper shrank the field. */}
@@ -351,12 +351,12 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                   </div>
                   <div className="col-start-2 min-w-0 sm:col-start-auto">
                   {contact.assignedHere && off ? (
-                    <span className="text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
+                    <span className="text-xs font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
                   ) : contact.assignedHere ? (
-                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
+                    <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
                   ) : contact.agents.length > 0 ? (
                     <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
-                      <span tabIndex={0} className="block truncate text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                      <span tabIndex={0} className="block truncate text-xs font-semibold text-violet-700 dark:text-violet-300">
                         {t("clientsAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
                       </span>
                     </Hint>

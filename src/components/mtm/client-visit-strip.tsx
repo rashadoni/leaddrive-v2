@@ -47,7 +47,7 @@ function useVisitWords(timezone: string) {
 function Cell({ label, hint, tone, children, testId }: { label: string; hint: string; tone?: "amber"; children: ReactNode; testId: string }) {
   return (
     <div data-testid={testId} className={cn("grid content-start gap-1 px-5 py-4", tone === "amber" && "")}>
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><HintValue text={hint}>{label}</HintValue></span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"><HintValue text={hint}>{label}</HintValue></span>
       {children}
     </div>
   )

@@ -205,7 +205,7 @@ export function MtmRouteCalendar({
       <div data-testid="mtm-mobile-calendar-agenda" className="p-3 xl:hidden">
         <div className="grid grid-cols-7" aria-label={t("calendarTitle")}>
           {weekdayKeys.map((weekday) => (
-            <div key={weekday} className="py-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <div key={weekday} className="py-2 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {t(`weekday.${weekday}`)}
             </div>
           ))}
@@ -302,7 +302,7 @@ export function MtmRouteCalendar({
                 // The reason is visible, not only in `title`: a tooltip does
                 // not exist on a tablet, and this task is about the manager
                 // knowing WHY a day is grey.
-                <div className="mb-1 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground" data-testid="mtm-calendar-closed-reason">
+                <div className="mb-1 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground" data-testid="mtm-calendar-closed-reason">
                   {closedReason}
                 </div>
               ) : null}

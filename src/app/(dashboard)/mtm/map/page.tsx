@@ -1478,7 +1478,7 @@ export default function MtmMapPage() {
       }] : []),
     ]
     return (
-      <div className="space-y-2 text-[11px]" data-testid="live-map-agent-detail">
+      <div className="space-y-2 text-xs" data-testid="live-map-agent-detail">
         {/* On a phone the row has room for about fifteen letters of a name. */}
         <div className="text-xs font-semibold text-foreground sm:hidden">{agent.name}</div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1557,7 +1557,7 @@ export default function MtmMapPage() {
                 href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agent.agentId)}&date=${tenantToday}`}
                 aria-label={tMap("openEmployeeHistory", { name: agent.name })}
                 data-testid="live-map-open-history"
-                className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+                className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-xs font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
               >
                 <History className="h-3 w-3" aria-hidden="true" />{tMap("roster.historyToday")}
               </Link>
@@ -1568,7 +1568,7 @@ export default function MtmMapPage() {
               type="button"
               onClick={() => showOnlyAgentOnMap(agent.agentId)}
               data-testid="live-map-only-this"
-              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-xs font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
             >
               <Eye className="h-3 w-3" aria-hidden="true" />{tMap("layers.onlyThis")}
             </button>
@@ -1579,7 +1579,7 @@ export default function MtmMapPage() {
               aria-pressed={followSelected}
               onClick={() => setFollowSelected((on) => !on)}
               data-testid="live-map-follow"
-              className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${followSelected
+              className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${followSelected
                 ? "crm-choice-selected text-foreground"
                 : "border-zinc-300 text-foreground hover:bg-muted dark:border-zinc-600"}`}
             >
@@ -1971,10 +1971,10 @@ export default function MtmMapPage() {
       <section data-testid="mtm-map-live-feed" className="rounded-lg border bg-card p-3" aria-labelledby="mtm-map-live-feed-title">
         <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           <h4 id="mtm-map-live-feed-title" className="text-xs font-semibold uppercase text-muted-foreground">{tMap("liveFeed")}</h4>
-          <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
             <Radio className="h-2 w-2" /> {tMap("latestEvents")}
           </span>
-          <span className="text-[11px] text-muted-foreground">{tMap("feed.hint")}</span>
+          <span className="text-xs text-muted-foreground">{tMap("feed.hint")}</span>
         </div>
         {liveFeed.length > 0 ? (
           <ul className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -2014,12 +2014,12 @@ export default function MtmMapPage() {
                     <Link
                       href={href}
                       aria-label={isAlert ? tMap("feed.openHistoryAt", { name: event.agent }) : tMap("feed.openVisit", { name: event.agent })}
-                      className="flex min-h-11 items-start gap-1.5 rounded-md bg-muted/30 p-2 text-[11px] transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex min-h-11 items-start gap-1.5 rounded-md bg-muted/30 p-2 text-xs transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {body}
                     </Link>
                   ) : (
-                    <div className="flex min-h-11 items-start gap-1.5 rounded-md bg-muted/30 p-2 text-[11px]">{body}</div>
+                    <div className="flex min-h-11 items-start gap-1.5 rounded-md bg-muted/30 p-2 text-xs">{body}</div>
                   )}
                 </li>
               )

@@ -195,7 +195,7 @@ export function LiveMapTools({
               <MousePointerClick className="h-4 w-4" aria-hidden="true" />{tMap("tools.pickOnMap")}
             </button>
           </Hint>
-          {hits.length === 0 ? <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">{tMap("tools.pointHint")}</p> : null}
+          {hits.length === 0 ? <p className="mt-1.5 px-1 text-xs text-muted-foreground">{tMap("tools.pointHint")}</p> : null}
         </div>
       ) : null}
       {zoneEditor ? <div className="pointer-events-auto w-80 max-w-full shrink-0" data-testid="live-map-zone-editor">{zoneEditor}</div> : null}

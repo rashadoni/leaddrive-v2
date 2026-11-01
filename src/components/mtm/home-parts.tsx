@@ -75,6 +75,7 @@ export function HomeKpi({
   progress,
   sub,
   hint,
+  loading,
 }: {
   testId: string
   label: string
@@ -89,15 +90,19 @@ export function HomeKpi({
   /** 0–100; omitted when the figure has no bar. */
   progress?: number | null
   sub?: string | null
+  /** The number has not arrived yet: a grey bar, because a dash reads as «none»
+   * (owner-approved mockup, 2026-11-01). The dash stays for a real «unknown». */
+  loading?: boolean
 }) {
+  const pending = loading && value === null
   return (
-    <div data-testid={testId} className={cn(CARD, "flex min-w-0 flex-col p-4")}>
+    <div data-testid={testId} aria-busy={pending || undefined} className={cn(CARD, "flex min-w-0 flex-col p-4")}>
       <div className="flex items-center justify-between gap-2">
         <HintValue className="truncate text-[13px] font-medium text-muted-foreground" text={hint}>{label}</HintValue>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground">{icon}</span>
       </div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span data-testid={`${testId}-value`} className={cn("text-[34px] font-bold leading-none tracking-tight tabular-nums", HOME_VALUE[tone])}>{value ?? "—"}</span>
+        <span data-testid={`${testId}-value`} className={cn("text-[34px] font-bold leading-none tracking-tight tabular-nums", HOME_VALUE[tone])}>{value ?? (pending ? <span data-testid={`${testId}-loading`} className="block h-[34px] w-16 animate-pulse rounded-md bg-muted motion-reduce:animate-none" aria-hidden="true" /> : "—")}</span>
         {unit ? <span className="text-sm font-medium text-muted-foreground">{unit}</span> : null}
         {pill ? <HomePill tone={tone} className="ml-auto">{pill}</HomePill> : null}
       </div>

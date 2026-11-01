@@ -198,7 +198,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                 <dl className="grid grid-cols-2 gap-2">
                   {facts.map(([label, value]) => (
                     <div key={label} className="rounded-lg border border-border bg-card px-3 py-2">
-                      <dt className="text-[11px] text-muted-foreground"><HintValue text={t("hint.locationFacts")}>{label}</HintValue></dt>
+                      <dt className="text-xs text-muted-foreground"><HintValue text={t("hint.locationFacts")}>{label}</HintValue></dt>
                       <dd className="text-sm font-semibold text-foreground">{value}</dd>
                     </div>
                   ))}
@@ -206,7 +206,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
 
                 {request.comment ? (
                   <p className="rounded-lg border border-border px-3 py-2 text-sm">
-                    <span className="block text-[11px] text-muted-foreground">{t("locationAgentComment")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("locationAgentComment")}</span>
                     {request.comment}
                   </p>
                 ) : null}

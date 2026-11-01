@@ -251,7 +251,7 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
           <div className="flex overflow-x-auto border-b border-border bg-muted/25 px-4 py-3 sm:px-5" aria-label={t("customerRequestFlowLabel")}>
             {["customerRequestFlowCustomer", "customerRequestFlowLocation", "customerRequestFlowReason"].map((key, index) => (
               <div key={key} className="flex min-w-max items-center text-xs font-medium text-muted-foreground">
-                <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{index + 1}</span>
+                <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-xs text-background">{index + 1}</span>
                 {t(key)}
                 {index < 2 ? <span className="mx-3 h-px w-6 bg-zinc-300 dark:bg-zinc-600" /> : null}
               </div>

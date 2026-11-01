@@ -63,7 +63,7 @@ function PhotoImage({ photo, className, missingLabel, onMissing, missing, thumbn
     return (
       <span data-testid="mtm-photo-missing" className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
         {photo.url ? <ImageOff className="h-7 w-7" aria-hidden="true" /> : <Camera className="h-7 w-7" aria-hidden="true" />}
-        {photo.url ? <span className="px-2 text-center text-[11px]">{missingLabel}</span> : null}
+        {photo.url ? <span className="px-2 text-center text-xs">{missingLabel}</span> : null}
       </span>
     )
   }
@@ -394,8 +394,8 @@ export default function MtmPhotosPage() {
                   </div>
                   <div className="p-2">
                     <div className="text-xs font-medium truncate">{photo.agent?.name}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{photo.visit?.customer?.name || "—"}</div>
-                    <div className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
+                    <div className="text-xs text-muted-foreground truncate">{photo.visit?.customer?.name || "—"}</div>
+                    <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
                       <time dateTime={photo.createdAt} className="truncate tabular-nums">{t("capturedAt", { time: formatDateTime(photo.createdAt, locale, { dateStyle: "short", timeStyle: "short" }) })}</time>
                       {photo.visit?.id ? (
                         <Hint text={t("hint.openVisit")}>
@@ -410,13 +410,13 @@ export default function MtmPhotosPage() {
                       ) : null}
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-1">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
                       <Hint text={t("hint.delete")}><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /></Button></Hint>
                     </div>
                     {photo.status === "PENDING" && (!photo.url || missingFiles.has(photo.id)) ? (
                       // Audit 2026-09-26: «Approve» under «File not found» —
                       // approving a photo nobody can see is not a review.
-                      <p data-testid="mtm-photo-review-unavailable" className="mt-2 text-[11px] text-muted-foreground">{t("reviewUnavailable")}</p>
+                      <p data-testid="mtm-photo-review-unavailable" className="mt-2 text-xs text-muted-foreground">{t("reviewUnavailable")}</p>
                     ) : photo.status === "PENDING" ? (
                       <div className="mt-2 grid grid-cols-2 gap-1">
                         <Hint text={t("hint.approve")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-emerald-700 hover:bg-muted" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "APPROVED") }}><Check className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("approve")}</span></Button></Hint>
@@ -449,7 +449,7 @@ export default function MtmPhotosPage() {
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <time dateTime={lightboxPhoto.createdAt}>{formatDateTime(lightboxPhoto.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time>
-              <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusColors[lightboxPhoto.status] || ""}`}>{mtmStatusLabel(ts, "photo", lightboxPhoto.status)}</span>
+              <span className={`rounded px-1.5 py-0.5 text-xs ${statusColors[lightboxPhoto.status] || ""}`}>{mtmStatusLabel(ts, "photo", lightboxPhoto.status)}</span>
               {lightboxPhoto.visit?.id ? (
                 <Hint text={t("hint.openVisit")}>
                   <Link href={`/mtm/visits?visitId=${encodeURIComponent(lightboxPhoto.visit.id)}`} className="inline-flex items-center gap-1 text-primary hover:underline">

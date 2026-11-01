@@ -457,11 +457,11 @@ export function MtmProductCatalog() {
                           {t("groupSummary", { products: productCount, agents: productGroupViewers(products, group.id).size })}
                         </span>
                         {readiness === "PARTLY" ? (
-                          <HomePill tone="amber" className="mt-1 text-[11px]">{t("readiness.PARTLY", { count: productsNobodySees(products, group.id).length })}</HomePill>
+                          <HomePill tone="amber" className="mt-1 text-xs">{t("readiness.PARTLY", { count: productsNobodySees(products, group.id).length })}</HomePill>
                         ) : null}
                       </span>
                       {readiness !== "PARTLY" ? (
-                        <HomePill tone={READINESS_TONE[readiness]} className="text-[11px]">{t(`readiness.${readiness}`)}</HomePill>
+                        <HomePill tone={READINESS_TONE[readiness]} className="text-xs">{t(`readiness.${readiness}`)}</HomePill>
                       ) : null}
                     </button>
                     </Hint>
@@ -706,7 +706,7 @@ function GroupDetail(props: {
                       </Hint>
                     ) : null}
                     <span className={cn(
-                      "flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold",
+                      "flex h-10 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
                       kind === "PPT" ? "text-orange-700 dark:text-orange-300" : "text-rose-700 dark:text-rose-300",
                     )}>{kind ?? <FileText className="h-4 w-4" aria-hidden="true" />}</span>
                     <span className="min-w-[11rem] flex-1">
@@ -937,7 +937,7 @@ function AgentChoice({ agent, chosen, pending, onChange }: {
           <span className="block truncate font-medium">{agent.name}</span>
           <span className="block truncate text-xs text-muted-foreground">{after ? `${now} → ${after}` : now}</span>
         </span>
-        {after ? <HomePill tone="amber" className="shrink-0 text-[11px]">{t("changed")}</HomePill> : null}
+        {after ? <HomePill tone="amber" className="shrink-0 text-xs">{t("changed")}</HomePill> : null}
       </label>
     </Hint>
   )

@@ -184,7 +184,7 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
                   </Hint>
                 </div>
                 {needsComment ? (
-                  <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><AlertCircle className="h-3 w-3" />{t("decisionComment")}</p>
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground"><AlertCircle className="h-3 w-3" />{t("decisionComment")}</p>
                 ) : null}
               </div>
             </article>

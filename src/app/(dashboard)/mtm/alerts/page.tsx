@@ -379,7 +379,7 @@ export default function MtmAlertsPage() {
             <span className="min-w-0 flex-1">
               <span className="block break-words text-sm font-semibold">{parts.join(" · ")}</span>
               {group.openCount > 0 && group.openCount !== group.count && (
-                <span className="mt-0.5 block text-[11px] opacity-80">{t("statusOpen")}: {group.openCount}</span>
+                <span className="mt-0.5 block text-xs opacity-80">{t("statusOpen")}: {group.openCount}</span>
               )}
             </span>
           </button>
@@ -404,7 +404,7 @@ export default function MtmAlertsPage() {
         {isOpen && (
           <div className="space-y-1.5 px-2.5 pb-2.5">
             {hint && group.openCount > 0 && (
-              <div className="flex items-start gap-1 text-[11px] opacity-90">
+              <div className="flex items-start gap-1 text-xs opacity-90">
                 <Lightbulb className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                 <span><span className="font-medium">{t("actionLabel")}</span> {hint}</span>
               </div>
@@ -434,13 +434,13 @@ export default function MtmAlertsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {item.visitId && (
-              <Link className="text-[11px] font-medium underline-offset-2 hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(item.visitId)}`}>{t("openVisit")}</Link>
+              <Link className="text-xs font-medium underline-offset-2 hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(item.visitId)}`}>{t("openVisit")}</Link>
             )}
             {item.isResolved
-              ? <span className="rounded px-1.5 py-0.5 text-[10px] text-emerald-700">{t("resolved")}</span>
+              ? <span className="rounded px-1.5 py-0.5 text-xs text-emerald-700">{t("resolved")}</span>
               : data?.canResolve && (
                   <Hint wrap text={t("hint.resolve")}>
-                    <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => resolveIds([item.id], item.id)} disabled={busyGroup === item.id}>
+                    <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => resolveIds([item.id], item.id)} disabled={busyGroup === item.id}>
                       <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" /> {t("resolve")}
                     </Button>
                   </Hint>

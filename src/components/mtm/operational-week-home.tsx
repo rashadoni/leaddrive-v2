@@ -2233,7 +2233,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                     <span className="truncate">{point.contactName}</span>
                   </Link>
                 ) : null}
-                {subjectMeta.length ? <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subjectMeta.join(" · ")}</p> : null}
+                {subjectMeta.length ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{subjectMeta.join(" · ")}</p> : null}
               </div>
               <Badge variant={presentation.badge} className="shrink-0 gap-1 whitespace-nowrap">
                 <PointIcon className="h-3 w-3" />{presentation.label}
@@ -2342,13 +2342,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           <div className="mt-2 grid gap-1.5 text-xs">
             {facts.workdayCapability.enabled ? <span className={cn("inline-flex items-center gap-1.5", workday.className)}><WorkdayIcon className="h-3.5 w-3.5" />{workday.label}</span> : null}
           </div>
-          {dayHasCounts ? <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
+          {dayHasCounts ? <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground">
             <span className="inline-flex items-center gap-1" aria-label={t("plannedCount", { count: day.summary.planned })}><Clock3 className="h-3 w-3" />{t("plannedShort")} {day.summary.planned}</span>
             <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300" aria-label={t("actualCount", { count: day.summary.actual })}><CheckCircle2 className="h-3 w-3" />{t("actualShort")} {day.summary.actual}</span>
             <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-300" aria-label={t("cancelledCount", { count: day.summary.cancelled })}><XCircle className="h-3 w-3" />{t("cancelledShort")} {day.summary.cancelled}</span>
           </div> : null}
-          {facts.workdayCapability.enabled && day.workday.startedAt ? <p className="mt-2 text-[11px] text-muted-foreground">{t("dayStarted", { time: formatTenantTimestamp(day.workday.startedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
-          {facts.workdayCapability.enabled && day.workday.finishedAt ? <p className="mt-1 text-[11px] text-muted-foreground">{t("dayFinished", { time: formatTenantTimestamp(day.workday.finishedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
+          {facts.workdayCapability.enabled && day.workday.startedAt ? <p className="mt-2 text-xs text-muted-foreground">{t("dayStarted", { time: formatTenantTimestamp(day.workday.startedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
+          {facts.workdayCapability.enabled && day.workday.finishedAt ? <p className="mt-1 text-xs text-muted-foreground">{t("dayFinished", { time: formatTenantTimestamp(day.workday.finishedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
         </header>
         <div className="px-3">
           {dayAlertGroups.length ? (
@@ -2678,10 +2678,10 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                         <Badge variant="outline">{t("baseCoverageObjects", { count: group.populationCount })}</Badge>
                       </div>
                       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 2xl:grid-cols-4">
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.requiredCoverage)}</dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(group.target)})</span></dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualCoverage)}</dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(group.uncoveredMoi)}</dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.requiredCoverage)}</dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(group.target)})</span></dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualCoverage)}</dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(group.uncoveredMoi)}</dd></div>
                       </dl>
                       <Button
                         type="button"
@@ -2726,11 +2726,11 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="min-w-0">
                                         <p className="truncate text-xs font-semibold">{row.subjectName}</p>
-                                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{[row.customerName, row.specialtyName || row.categoryLabel].filter(Boolean).join(" · ") || "—"}</p>
+                                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{[row.customerName, row.specialtyName || row.categoryLabel].filter(Boolean).join(" · ") || "—"}</p>
                                       </div>
                                       <span className="shrink-0 text-xs font-semibold tabular-nums text-amber-800 dark:text-amber-300">{t("baseCoverageRowUncovered", { value: baseCoverageNumber(row.uncoveredMoi) })}</span>
                                     </div>
-                                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{row.explanation.summary[baseCoverageLabelLocale]}</p>
+                                    <p className="mt-2 text-xs leading-4 text-muted-foreground">{row.explanation.summary[baseCoverageLabelLocale]}</p>
                                     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                                       {detailPath ? <Link className="inline-flex min-h-9 items-center gap-1 font-medium text-primary hover:underline" href={withReturnTo(detailPath, baseCoverageReturnTo)}>{t("baseCoverageOpenObject")}<ArrowUpRight className="h-3 w-3" /></Link> : null}
                                       {planningPath ? <Link className="inline-flex min-h-9 items-center gap-1 font-medium text-primary hover:underline" href={withReturnTo(planningPath, baseCoverageReturnTo)}>{t("baseCoveragePlanVisit")}<ArrowUpRight className="h-3 w-3" /></Link> : null}
@@ -2746,7 +2746,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                               {t("baseCoverageLoadMore", { count: Math.max(0, baseCoverageRows.total - baseCoverageRows.rows.length) })}
                             </Button>
                           ) : null}
-                          {baseCoverageRows && baseCoverageRows.total > 0 ? <p className="mt-2 text-[10px] text-muted-foreground">{t("baseCoverageRowsCount", { shown: baseCoverageRows.rows.length, total: baseCoverageRows.total })}</p> : null}
+                          {baseCoverageRows && baseCoverageRows.total > 0 ? <p className="mt-2 text-xs text-muted-foreground">{t("baseCoverageRowsCount", { shown: baseCoverageRows.rows.length, total: baseCoverageRows.total })}</p> : null}
                         </div>
                       ) : null}
                     </article>
@@ -2755,13 +2755,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 <div className="border-t-2 border-zinc-300 px-3 pt-3 dark:border-zinc-600">
                   <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{t("baseCoverageTotal")}</span><span className="text-xs font-semibold tabular-nums">{t("baseCoverageObjects", { count: baseCoverage.totals.overall.populationCount })}</span></div>
                   <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 2xl:grid-cols-4">
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.requiredCoverage)}</dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(baseCoverage.totals.overall.target)})</span></dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualCoverage)}</dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(baseCoverage.totals.overall.uncoveredMoi)}</dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.requiredCoverage)}</dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(baseCoverage.totals.overall.target)})</span></dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualCoverage)}</dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(baseCoverage.totals.overall.uncoveredMoi)}</dd></div>
                   </dl>
                 </div>
-                <p className="text-[11px] leading-4 text-muted-foreground">
+                <p className="text-xs leading-4 text-muted-foreground">
                   {baseCoverage.snapshot?.frozenAt
                     ? t("baseCoverageFrozenAt", { date: formatTenantTimestamp(baseCoverage.snapshot.frozenAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) })
                     : null}
@@ -2875,7 +2875,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                           </div>
                           {/* Prod 2026-09-14: «ID cmqm7j…p468 · versiya 1» means nothing to a manager. */}
                           {!managerView ? (
-                            <p className="mt-1 text-[11px] text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
+                            <p className="mt-1 text-xs text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
                               {t("taskId", { id: task.id.length > 12 ? `${task.id.slice(0, 6)}…${task.id.slice(-4)}` : task.id })}
                               {task.version === null ? null : <span> · {t("taskVersion", { version: task.version })}</span>}
                             </p>
@@ -3245,7 +3245,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 <div className="flex gap-1 overflow-x-auto border-b border-border px-3 pt-2" role="group" aria-label={t("chooseDay") }>
                   {facts.days.map((day) => (
                     <button key={day.date} type="button" aria-pressed={selectedDay?.date === day.date} onClick={() => chooseDay(day.date)} className={cn("-mb-px min-h-11 min-w-[4.5rem] shrink-0 border-b-2 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", selectedDay?.date === day.date ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-                      <span className="block text-[11px] uppercase">{formatCalendarDay(day.date, locale, { weekday: "short" })}</span>
+                      <span className="block text-xs uppercase">{formatCalendarDay(day.date, locale, { weekday: "short" })}</span>
                       <span className="block tabular-nums">{formatCalendarDay(day.date, locale, { day: "numeric", month: "short" })}</span>
                     </button>
                   ))}

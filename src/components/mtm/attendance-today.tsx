@@ -252,7 +252,7 @@ export function MtmAttendanceToday() {
         { id: "missing-finish", label: t("kpiMissing"), icon: <LogOut className="h-4 w-4" />, tone: "blue", value: summary?.missingFinish, unit: null,
           progress: summary?.people ? summary.missingFinish / summary.people * 100 : 0, href: "/mtm/attendance/timesheet?filter=missing-finish", link: t("kpiMissingLink") },
       ] as const).map(card => <div key={card.id} className="relative">
-        <HomeKpi testId={`attendance-today-${card.id}`} label={card.label} icon={card.icon} tone={card.tone} value={card.value === undefined ? null : format.number(card.value)} unit={card.unit} progress={card.progress} sub={null} />
+        <HomeKpi testId={`attendance-today-${card.id}`} label={card.label} icon={card.icon} tone={card.tone} value={card.value === undefined ? null : format.number(card.value)} unit={card.unit} progress={card.progress} sub={null} loading={!data} />
         <Link href={card.href} prefetch={false} className="absolute bottom-3 left-4 text-xs font-semibold text-primary hover:underline">{card.link} →</Link>
       </div>)}
     </div>
@@ -293,7 +293,7 @@ export function MtmAttendanceToday() {
 
       <HomeCard testId="attendance-today-attention" titleId="attendance-today-attention-title" icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />} tone="amber"
         title={t("attentionTitle")} badge={attentionCount ? String(attentionCount) : null} action={risks.length ? { href: "/mtm/attendance/review", label: t("allRisks", { count: risks.length }) } : undefined}>
-        {!data ? <p role="status" className="py-6 text-sm text-muted-foreground">{a("reportLoading")}</p>
+        {!data ? <div role="status" aria-label={a("reportLoading")} className="space-y-3 py-4">{[0, 1].map((key) => <div key={key} className="h-10 animate-pulse rounded-xl bg-muted/60 motion-reduce:animate-none" aria-hidden="true" />)}</div>
           : attentionCount === 0 ? <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />{t("attentionEmpty")}</p>
           : <>{askable.length ? <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5" data-testid="attendance-explain-bar">
               <label className="inline-flex min-h-9 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={picked.length === askable.length}

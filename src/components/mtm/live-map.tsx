@@ -1432,7 +1432,7 @@ export default function MtmLiveMap({
       ) : null}
       {ready && markerSelection.truncated ? (
         <div
-          className="pointer-events-none absolute bottom-8 right-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm dark:border-zinc-700"
+          className="pointer-events-none absolute bottom-8 right-3 z-[500] max-w-[min(320px,calc(100%-24px))] rounded-md border border-zinc-300 bg-background/95 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm dark:border-zinc-700"
           role="status"
         >
           {tMap("markerWindowLimited", {
