@@ -10,9 +10,9 @@ const asYear = (year: number) => article.replaceAll("2026", String(year)).replac
 const guessed = (year: number) => `https://report.az/sosial-mudafie/${year}-ci-il-ucun-is-vaxti-normasi-ve-istehsalat-teqvimi-tesdiq-edilib`
 
 describe("the calendar watch", () => {
-  it("looks for next year only from 15 November (Baku), and never for a decided or already read year", () => {
-    expect(azCalendarWatchYears(new Date("2026-11-14T19:00:00Z"), [])).toEqual([])
-    expect(azCalendarWatchYears(new Date("2026-11-14T20:00:00Z"), [])).toEqual([2027])
+  it("looks for next year only from 1 November (Baku), and never for a decided or already read year", () => {
+    expect(azCalendarWatchYears(new Date("2026-10-31T19:00:00Z"), [])).toEqual([])
+    expect(azCalendarWatchYears(new Date("2026-10-31T20:00:00Z"), [])).toEqual([2027])
     expect(azCalendarWatchYears(new Date("2026-12-20T08:00:00Z"), [{ year: 2027, state: "PARSED" }])).toEqual([])
     expect(azCalendarWatchYears(new Date("2026-12-20T08:00:00Z"), [{ year: 2027, state: "UNREADABLE" }])).toEqual([2027])
     // In January a year still missing is looked for.

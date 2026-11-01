@@ -133,7 +133,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "27 3 * * * $TRIGGER /api/cron/call-recordings-retention >> $LOG 2>&1"
   # Next year's official holidays, read from report.az for the admin to add
   # (src/lib/mtm/az-calendar-watch.ts). Hourly, because the article passes
-  # through the feed in a few hours; outside 15 Nov–Dec, and once a year is
+  # through the feed in a few hours; outside Nov–Dec, and once a year is
   # read, a tick fetches nothing.
   printf '%s\n' "41 * * * * $TRIGGER /api/cron/az-calendar-watch >> $LOG 2>&1"
   # A prospect's own Facebook Page is connected to the demo for one day at

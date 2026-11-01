@@ -14,7 +14,7 @@ import en from "../../../messages/en.json"
 /**
  * The calendar watch (owner, 2026-11-01: «Давай» to the found / not yet /
  * unreadable mockup). Hourly; it fetches only for a year this code has no
- * Cabinet decision for and nothing has been read yet — next year from 15
+ * Cabinet decision for and nothing has been read yet — next year from 1
  * November, this year whenever it is missing — so most hours it fetches nothing.
  *
  * What it finds is shown to admins in Settings → Holidays; nothing reaches an
@@ -50,7 +50,8 @@ export async function fetchPublicPage(url: string): Promise<string | null> {
 export function azCalendarWatchYears(now: Date, rows: Pick<PublicCalendarRow, "year" | "state">[]) {
   const baku = new Date(now.getTime() + 4 * 3600_000)
   const year = baku.getUTCFullYear()
-  const nextSeason = baku.getUTCMonth() === 11 || (baku.getUTCMonth() === 10 && baku.getUTCDate() >= 15)
+  // From 1 November: Settings → Holidays says next year is "checked every day" from then on.
+  const nextSeason = baku.getUTCMonth() >= 10
   return [year, ...(nextSeason ? [year + 1] : [])].filter(target => !azCalendarDecided(target) && rows.find(row => row.year === target)?.state !== "PARSED")
 }
 
