@@ -52,6 +52,7 @@ import { mtmCalendarDayKey } from "@/lib/mtm/calendar-day-tone"
 import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const MtmRouteMap = dynamic(() => import("@/components/mtm/route-map"), { ssr: false })
 
@@ -1081,7 +1082,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
                     {selectedRoute.status === "DRAFT" && capabilities.canPublish ? <Hint text={t("hint.publish")}><Button data-testid="mtm-route-publish" size="sm" onClick={() => publishRoute(selectedRoute)}><Send className="mr-1 h-4 w-4" />{t("publishRoute")}</Button></Hint> : null}
                   </>
                 ) : null}
-                <Hint text={t("hint.close")}><Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={closeRouteDetails} aria-label={t("closeRouteDetails")}><X className="h-4 w-4" /></Button></Hint>
+                <Hint text={t("hint.close")}><Button variant="ghost" size="sm" className="min-h-11 gap-1.5" onClick={closeRouteDetails} aria-label={t("closeRouteDetails")}><X className="h-4 w-4" /><MtmWord word="close" /></Button></Hint>
               </div>
             </Hint>
           </div>
@@ -1258,9 +1259,9 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
                       {route.changeRequests?.length ? <span className="text-xs text-amber-700 dark:text-amber-300">{t("viewApprovals")}: {route.changeRequests.length}</span> : null}
                       {canEditRoute(route) ? (
                         <span className="flex items-center">
-                          <Hint text={t("hint.edit")}><Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("edit")} onClick={() => openRouteEditor(route)}><Pencil className="h-4 w-4" /></Button></Hint>
+                          <Hint text={t("hint.edit")}><Button variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("edit")} onClick={() => openRouteEditor(route)}><Pencil className="h-4 w-4" /><MtmWord word="edit" /></Button></Hint>
                           {route.status === "DRAFT" ? (
-                            <Hint text={t("hint.delete")}><Button variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("delete")} onClick={() => { setDeleteItem(route); setDeleteOpen(true) }}><Trash2 className="h-4 w-4" /></Button></Hint>
+                            <Hint text={t("hint.delete")}><Button variant="ghost" size="sm" className="min-h-11 text-destructive gap-1.5" aria-label={t("delete")} onClick={() => { setDeleteItem(route); setDeleteOpen(true) }}><Trash2 className="h-4 w-4" /><MtmWord word="delete" /></Button></Hint>
                           ) : null}
                         </span>
                       ) : null}

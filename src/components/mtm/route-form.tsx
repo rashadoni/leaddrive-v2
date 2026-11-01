@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { Plus, X } from "lucide-react"
+import { MtmWord } from "@/components/mtm/button-word"
 
 interface RouteFormProps {
   open: boolean
@@ -134,7 +135,7 @@ export function MtmRouteForm({ open, onOpenChange, onSaved, initialData, orgId }
                       <option value="">{tf("selectCustomer")}</option>
                       {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.code ? `(${c.code})` : ""}</option>)}
                     </Select>
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setPoints(points.filter((_, i) => i !== idx))}><X className="h-3.5 w-3.5" /></Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-destructive gap-1.5" onClick={() => setPoints(points.filter((_, i) => i !== idx))}><X className="h-3.5 w-3.5" /><MtmWord word="delete" /></Button>
                   </div>
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={() => setPoints([...points, { customerId: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> {tf("addPoint")}</Button>

@@ -33,6 +33,7 @@ import {
 } from "@/lib/mtm/route-target-types"
 import type { MtmRoutePlannerContextPatch } from "@/lib/mtm/route-planner-context"
 import { mtmChipClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Direction = MtmRouteTargetDirection
 type Period = "5_DAYS" | "7_DAYS" | "MONTH"
@@ -373,11 +374,11 @@ export function MtmRoutePlanningMatrix({
               <span className="text-muted-foreground">{t("weekPlannerWeekStarts")}</span>
               <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-2">
                 <Hint text={t("hint.previousWeek")}>
-                  <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={() => setWeekStart(addDays(weekStart, -7))} disabled={loading} aria-label={t("weekPlannerPreviousWeek")}><ChevronLeft className="h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" size="sm" className="min-h-11 gap-1.5" onClick={() => setWeekStart(addDays(weekStart, -7))} disabled={loading} aria-label={t("weekPlannerPreviousWeek")}><ChevronLeft className="h-4 w-4" /><MtmWord word="previous" /></Button>
                 </Hint>
                 <Input type="date" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} disabled={loading} aria-label={t("weekPlannerWeekStarts")} />
                 <Hint text={t("hint.nextWeek")}>
-                  <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={() => setWeekStart(addDays(weekStart, 7))} disabled={loading} aria-label={t("weekPlannerNextWeek")}><ChevronRight className="h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" size="sm" className="min-h-11 gap-1.5" onClick={() => setWeekStart(addDays(weekStart, 7))} disabled={loading} aria-label={t("weekPlannerNextWeek")}><MtmWord word="next" /><ChevronRight className="h-4 w-4" /></Button>
                 </Hint>
               </div>
             </div>

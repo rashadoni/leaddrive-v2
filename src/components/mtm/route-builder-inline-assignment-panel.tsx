@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import type { MtmRouteCustomer } from "@/components/mtm/route-types"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Direction = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
 
@@ -181,12 +182,12 @@ export function RouteBuilderInlineAssignmentPanel({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="min-h-10 min-w-10"
+            size="sm"
+            className="min-h-10 gap-1.5"
             onClick={() => onOpenChange(false)}
             aria-label={t("inlineAssignmentClose")}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" /><MtmWord word="close" />
           </Button>
         </Hint>
       </div>

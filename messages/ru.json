@@ -12104,6 +12104,20 @@
     "deleteKeptAction": "Сделать неактивным",
     "deleteKeptClose": "Понятно"
   },
+  "mtmWords": {
+    "edit": "Изменить",
+    "more": "Ещё",
+    "delete": "Удалить",
+    "close": "Закрыть",
+    "up": "Выше",
+    "down": "Ниже",
+    "previous": "Назад",
+    "next": "Вперёд",
+    "save": "Сохранить",
+    "refresh": "Обновить",
+    "download": "Скачать",
+    "plan": "Запланировать"
+  },
   "mtmContactExplorer": {
     "addToRouteFor": "Поставить «{name}» в маршрут",
     "addToRoute": "В маршрут",

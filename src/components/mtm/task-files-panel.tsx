@@ -20,6 +20,7 @@ import {
   updateQueuedTaskDocument,
   type QueuedTaskDocument,
 } from "@/lib/mtm/task-document-outbox"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024
 
@@ -231,7 +232,7 @@ export function MtmTaskFilesPanel({
                     </Hint>
                   ) : null}
                   <Hint text={t("hint.filesRemoveQueued")}>
-                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => void remove(entry)} aria-label={t("removeQueuedFile", { name: entry.fileName })}><Trash2 className="h-4 w-4" /></Button>
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" onClick={() => void remove(entry)} aria-label={t("removeQueuedFile", { name: entry.fileName })}><Trash2 className="h-4 w-4" /><MtmWord word="delete" /></Button>
                   </Hint>
                 </div>
               </li>
@@ -246,7 +247,7 @@ export function MtmTaskFilesPanel({
             <li key={document.id} className="flex items-center gap-3 py-2">
               <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{document.title || document.fileName}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(document.sizeBytes)} · {formatDate(document.createdAt)}</p></div>
-              {document.downloadUrl ? <Hint text={t("hint.filesDownload")}><Button asChild variant="outline" size="icon" className="min-h-11 min-w-11" aria-label={t("downloadFile", { name: document.fileName })}><a href={document.downloadUrl}><Download className="h-4 w-4" /></a></Button></Hint> : <Badge variant="outline">{t("downloadUnavailable")}</Badge>}
+              {document.downloadUrl ? <Hint text={t("hint.filesDownload")}><Button asChild variant="outline" size="sm" className="min-h-11 gap-1.5" aria-label={t("downloadFile", { name: document.fileName })}><a href={document.downloadUrl}><Download className="h-4 w-4" /><MtmWord word="download" /></a></Button></Hint> : <Badge variant="outline">{t("downloadUnavailable")}</Badge>}
             </li>
           ))}
         </ul>

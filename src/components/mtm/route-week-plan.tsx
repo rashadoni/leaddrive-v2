@@ -12,6 +12,7 @@ import { formatDate, formatTime } from "@/lib/format-date"
 import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { visibleWeekPlanAgents } from "@/lib/mtm/week-plan-agents"
+import { MtmWord } from "@/components/mtm/button-word"
 
 interface RouteWeekPlanProps {
   orgId?: string
@@ -307,14 +308,14 @@ export function MtmRouteWeekPlan({
             </select>
           ) : null}
           <Hint text={t("hint.previousWeek")}>
-            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveWeek(-1)} aria-label={t("previousWeek")}>
-              <ChevronLeft className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1.5" onClick={() => moveWeek(-1)} aria-label={t("previousWeek")}>
+              <ChevronLeft className="h-4 w-4" /><MtmWord word="previous" />
             </Button>
           </Hint>
           <div className="min-w-36 text-center text-sm font-semibold">{t("weekOf", { date: formatDate(weekStart, locale) })}</div>
           <Hint text={t("hint.nextWeek")}>
-            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveWeek(1)} aria-label={t("nextWeek")}>
-              <ChevronRight className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1.5" onClick={() => moveWeek(1)} aria-label={t("nextWeek")}>
+              <MtmWord word="next" /><ChevronRight className="h-4 w-4" />
             </Button>
           </Hint>
         </div>

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime } from "@/lib/format-date"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type RequestStatus = "SUBMITTED" | "IN_REVIEW" | "NEEDS_INFO" | "APPROVED" | "REJECTED" | "CANCELLED"
 type RequestRecord = {
@@ -243,7 +244,7 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
           </div>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{routeId ? t("customerRequestRouteLinked") : t("customerRequestFromMobile")}</p>
         </div>
-        <Button type="button" variant="ghost" size="icon" onClick={onClose} title={t("closeCustomerRequest")} aria-label={t("closeCustomerRequest")}><X className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onClose} title={t("closeCustomerRequest")} aria-label={t("closeCustomerRequest")}><X className="h-4 w-4" /><MtmWord word="close" /></Button>
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">

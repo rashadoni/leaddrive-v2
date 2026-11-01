@@ -20,6 +20,7 @@ import {
   visitStatusKey,
   type PlaceCheck,
 } from "@/lib/mtm/visit-review"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Translator = (key: string, values?: Record<string, string | number>) => string
 
@@ -241,8 +242,8 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
             {state === "unavailable" ? t("focusedUnavailable") : t("review.loadFailed")}
           </p>
         </div>
-        <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11">
-          <Link href={closeHref} scroll={false} aria-label={t("review.close")}><X className="h-5 w-5" aria-hidden="true" /></Link>
+        <Button asChild variant="ghost" size="sm" className="min-h-11 gap-1.5">
+          <Link href={closeHref} scroll={false} aria-label={t("review.close")}><X className="h-5 w-5" aria-hidden="true" /><MtmWord word="close" /></Link>
         </Button>
       </div>,
     )
@@ -514,8 +515,8 @@ export function VisitReviewView({ data, closeHref, longOpenMinutes = MTM_VISIT_L
             </div>
           ) : null}
         </div>
-        <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0">
-          <Link href={closeHref} scroll={false} aria-label={t("review.close")}><X className="h-5 w-5" aria-hidden="true" /></Link>
+        <Button asChild variant="ghost" size="sm" className="min-h-11 shrink-0 gap-1.5">
+          <Link href={closeHref} scroll={false} aria-label={t("review.close")}><X className="h-5 w-5" aria-hidden="true" /><MtmWord word="close" /></Link>
         </Button>
       </header>
 

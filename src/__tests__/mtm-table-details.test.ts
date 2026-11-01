@@ -48,10 +48,12 @@ describe("MTM tables: the row opens its card", () => {
 })
 
 describe("MTM: words, sizes and loading", () => {
-  it("leaves no icon-only button on the organisation and client lists", () => {
-    for (const path of ["src/components/mtm/organization-explorer.tsx", "src/components/mtm/contact-explorer.tsx"]) {
-      expect(readFileSync(resolve(path), "utf8"), path).not.toContain('size="icon"')
-    }
+  it("leaves no icon-only button anywhere in the module", () => {
+    // Owner, 2026-11-01: «пофикси мелочи» — the words go on every MTM button,
+    // not only on the two lists of the mockup. MtmWord carries them.
+    const offenders = [...sources(resolve("src/components/mtm")), ...sources(resolve("src/app/(dashboard)/mtm"))]
+      .filter((path) => readFileSync(path, "utf8").includes('size="icon"'))
+    expect(offenders).toEqual([])
   })
 
   it("sets no text below 12 px anywhere in the module", () => {

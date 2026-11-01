@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, RefreshCw, WifiOff, X } from "
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import type { ContactTransferReceipt } from "@/lib/mtm/contact-transfer-receipt"
+import { MtmWord } from "@/components/mtm/button-word"
 
 export function ContactTransferReceiptPanel({
   receipt,
@@ -94,12 +95,12 @@ export function ContactTransferReceiptPanel({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="h-11 w-11 sm:h-9 sm:w-9"
+            size="sm"
+            className="h-11 sm:h-9 gap-1.5"
             onClick={onDismiss}
             aria-label={t("transferReceipt.dismiss")}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" /><MtmWord word="close" />
           </Button>
         </div>
       </div>
