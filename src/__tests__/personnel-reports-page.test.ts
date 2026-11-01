@@ -61,8 +61,8 @@ describe("Report viewer", () => {
   const at = (date: string, time: string) => `${date}T${time}:00+04:00`
   // A late arrival of someone in a department, for the day reports (owner, 2026-11-01).
   let withLate = false
-  const lateDay = { id: "a", agentId: "aysel", workDate: "2026-10-13", status: "COMPLETED", startedAt: at("2026-10-13", "10:47"), completedAt: at("2026-10-13", "18:00"), totalPausedSeconds: 0,
-    events: [{ type: "START", occurredAt: at("2026-10-13", "10:47") }, { type: "FINISH", occurredAt: at("2026-10-13", "18:00") }] }
+  const lateDay = { id: "a", agentId: "aysel", workDate: "2026-10-13", status: "COMPLETED", startedAt: "2026-10-13T10:47:37+04:00", completedAt: at("2026-10-13", "18:00"), totalPausedSeconds: 0,
+    events: [{ type: "START", occurredAt: "2026-10-13T10:47:37+04:00" }, { type: "FINISH", occurredAt: at("2026-10-13", "18:00") }] }
   const report = (from: string, to: string) => ({ ...buildMtmAttendanceReport({ from, to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
     employees: [{ id: "nigar", name: "Нигяр", position: "Бухгалтер", teamId: "centre", teamName: "Центр" }, { id: "rashad", name: "Рашад", teamId: "north", teamName: "Север" },
       ...(withLate ? [{ id: "aysel", name: "Айсель", position: "Кассир", departmentId: "finance", departmentName: "Финансы", teamId: "centre", teamName: "Центр" }] : [])],
@@ -110,9 +110,9 @@ describe("Report viewer", () => {
     const headers = [...container.querySelectorAll("thead th")].map(th => th.textContent)
     for (const key of ["reportPosition", "reportDepartment", "reportTeam", "reportStatus"]) expect(headers).not.toContain(ru.mtmAttendance[key])
     expect(headers).toContain(ru.mtmAttendance.reportExplain)
-    // Times without seconds; lateness as a pill.
+    // Times and durations without seconds (the file keeps them); lateness as a pill.
     expect(rows[0].textContent).toContain("10:47")
-    expect(rows[0].textContent).not.toContain("10:47:00")
+    expect(rows[0].textContent).not.toMatch(/\d:\d\d:\d\d/)
     expect(rows[0].querySelector('[data-testid="attendance-report-tags"]')?.textContent).toContain(ru.mtmAttendance.reportTagLunch.replace("{time}", "1:00"))
     // The note's lines open under the row, not inside it.
     expect(container.querySelector('[data-testid="attendance-report-row-details"]')).toBeNull()
