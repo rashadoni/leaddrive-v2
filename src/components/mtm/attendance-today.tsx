@@ -274,6 +274,7 @@ export function MtmAttendanceToday() {
                   <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground"><HomePill tone="blue">{kind}</HomePill>{period}
                     {item.details.attachmentIds.length ? <a href={`/api/v1/mtm/attendance/attachments/${encodeURIComponent(item.details.attachmentIds[0])}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" aria-hidden="true" />{t("document")}</a> : null}</p>
                   {item.reason ? <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.reason}</p> : null}
+                  {item.lateNotice ? <p className="mt-0.5 text-xs font-medium text-amber-700 dark:text-amber-300" data-testid="attendance-today-late-notice">{a("requestsLateNotice", item.lateNotice)}</p> : null}
                   {item.approval?.manager ? <p className="mt-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400" data-testid="attendance-today-manager-approved">{t("managerApprovedBy", { name: item.approval.manager.name ?? "—" })}</p>
                     : item.approval?.awaiting === "MANAGER" && !item.approval.passesToHr ? <p className="mt-0.5 text-xs text-muted-foreground" data-testid="attendance-today-awaiting-manager">{t("awaitingManager")}</p> : null}</div>
                 {rejecting !== item.id ? <div className="flex shrink-0 gap-2">

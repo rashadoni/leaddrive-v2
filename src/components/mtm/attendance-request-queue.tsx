@@ -143,6 +143,7 @@ export function MtmAttendanceRequestQueue() {
               <p className="text-sm">{item.details.kind === "TIME_CORRECTION" ? t("requestsTimeCorrection") : attendanceDayKindLabel(item.details.dayKind, locale)} · {item.startDate}{item.endDate !== item.startDate ? ` — ${item.endDate}` : ""}{item.details.unit === "HOURS" ? ` · ${item.details.startTime}–${item.details.endTime}` : ""}</p>
               {item.details.kind === "HR_RECORD" && <p className="text-xs font-medium text-muted-foreground">{t("hrRecordingCard")}</p>}
               <p className="text-xs text-muted-foreground">{t("requestsSubmitted", { date: stamp(item.submittedAt, item.details.timezone) })}</p>
+              {item.lateNotice ? <p className="text-xs font-medium text-amber-700 dark:text-amber-300" data-testid="attendance-request-late-notice">{t("requestsLateNotice", item.lateNotice)}</p> : null}
             </div>
             <HomePill tone={item.status === "PENDING" ? "amber" : item.status === "APPROVED" ? "green" : "zinc"}>{item.approval?.awaiting === "HR" ? t("requestsAwaitingHr") : item.approval?.awaiting === "MANAGER" ? t("requestsAwaitingManager") : t(LABELS[item.status])}</HomePill>
             <Button className="min-h-11" variant="outline" disabled={busy} aria-expanded={item.id === selected} aria-controls={`attendance-request-details-${item.id}`} onClick={() => { setSelected(item.id === selected ? null : item.id); setNote(""); setRevoking(false) }}>{t(item.id === selected ? "requestsClose" : "requestsOpen")}</Button>

@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 import { requireAuth, type AuthResult } from "@/lib/api-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { requireTenantCapabilityAccessResponse } from "@/lib/tenant-capability-access"
-import { AttendanceRequestLimitsSchema, DEFAULT_ATTENDANCE_REQUEST_LIMITS, attendanceRequestLimitDecision, isAttendanceRequestLimited } from "@/lib/mtm/attendance-request-limits"
+import { AttendanceRequestLimitsSchema, DEFAULT_ATTENDANCE_REQUEST_LIMITS, attendanceLateLeaveNotice, attendanceRequestLimitDecision, isAttendanceRequestLimited } from "@/lib/mtm/attendance-request-limits"
 import { lockAttendanceRequestLimits, readAttendanceRequestLimits, saveAttendanceRequestLimits } from "@/lib/mtm/attendance-request-limit-store"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { GET, PUT } from "@/app/api/v1/mtm/attendance/request-limits/route"
@@ -34,10 +34,20 @@ beforeEach(() => {
 })
 describe("hourly request limits contract", () => {
   it("defaults to a shared 8 hours and 3 requests only for hourly time off/absence", () => {
-    expect(DEFAULT_ATTENDANCE_REQUEST_LIMITS).toEqual({ monthlyMinutes: 480, monthlyRequests: 3 })
+    expect(DEFAULT_ATTENDANCE_REQUEST_LIMITS).toEqual({ monthlyMinutes: 480, monthlyRequests: 3, leaveNoticeDays: 0 })
     for (const kind of ["TIME_OFF", "HOURLY_ABSENCE"]) expect(isAttendanceRequestLimited({ kind, unit: "HOURS" })).toBe(true)
     for (const kind of ["TIME_CORRECTION", "SICK_LEAVE", "ANNUAL_LEAVE", "OVERTIME", "REMOTE_WORK", "BUSINESS_TRIP"]) expect(isAttendanceRequestLimited({ kind, unit: "HOURS" })).toBe(false)
     expect(isAttendanceRequestLimited({ kind: "TIME_OFF", unit: "DAYS" })).toBe(false)
+  })
+  it("marks an annual leave asked for later than the notice, and nothing else", () => {
+    const leave = (startDate: string, submittedDate = "2026-11-01") => ({ kind: "ANNUAL_LEAVE", startDate, submittedDate })
+    expect(attendanceLateLeaveNotice(leave("2026-11-03"), 5)).toEqual({ days: 2, required: 5 })
+    expect(attendanceLateLeaveNotice(leave("2026-11-01"), 5)).toEqual({ days: 0, required: 5 })
+    expect(attendanceLateLeaveNotice(leave("2026-11-06"), 5)).toBeNull()
+    expect(attendanceLateLeaveNotice(leave("2026-11-03"), 0)).toBeNull()
+    expect(attendanceLateLeaveNotice({ ...leave("2026-11-02"), kind: "SICK_LEAVE" }, 5)).toBeNull()
+    // Across a month and a leap day: calendar days, not 30-day months.
+    expect(attendanceLateLeaveNotice(leave("2028-03-01", "2028-02-27"), 5)).toEqual({ days: 3, required: 5 })
   })
   it("accepts the exact remaining minute/count and refuses either exhaustion, including zero", () => {
     const limits = { ...DEFAULT_ATTENDANCE_REQUEST_LIMITS, version: null }
@@ -72,12 +82,26 @@ describe("versioned org settings and authenticated API", () => {
     expect(result.status).toBe(200)
     const data = (await result.json()).data
     expect(data).toMatchObject({ monthlyMinutes: 510, monthlyRequests: 4, version: expect.any(String) })
-    expect(setting?.value).toEqual({ schemaVersion: 1, monthlyMinutes: 510, monthlyRequests: 4 })
+    expect(setting?.value).toEqual({ schemaVersion: 1, monthlyMinutes: 510, monthlyRequests: 4, leaveNoticeDays: 0 })
     expect((await PUT(request(data))).status).toBe(200)
     expect((await PUT(request({ version: null, monthlyMinutes: 600, monthlyRequests: 5 }))).status).toBe(409)
     expect(prisma.mtmSetting.upsert).toHaveBeenCalledTimes(1); expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ oldData: { ...DEFAULT_ATTENDANCE_REQUEST_LIMITS, version: null }, newData: data }) }))
     expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+  })
+  // Owner, 2026-11-01 (HRSS clip): the leave notice lives with the request rules.
+  it("saves the leave notice, and a tab opened before it existed keeps it instead of clearing it", async () => {
+    const saved = (await (await PUT(request({ version: null, monthlyMinutes: 480, monthlyRequests: 3, leaveNoticeDays: 5 }))).json()).data
+    expect(saved).toMatchObject({ leaveNoticeDays: 5 })
+    expect(setting?.value).toEqual({ schemaVersion: 1, monthlyMinutes: 480, monthlyRequests: 3, leaveNoticeDays: 5 })
+    const old = (await (await PUT(request({ version: saved.version, monthlyMinutes: 540, monthlyRequests: 3 }))).json()).data
+    expect(old).toMatchObject({ monthlyMinutes: 540, leaveNoticeDays: 5 })
+    expect(setting?.value).toEqual({ schemaVersion: 1, monthlyMinutes: 540, monthlyRequests: 3, leaveNoticeDays: 5 })
+    expect((await PUT(request({ version: old.version, monthlyMinutes: 540, monthlyRequests: 3, leaveNoticeDays: 91 }))).status).toBe(400)
+  })
+  it("reads a rule stored before the notice existed as no notice", async () => {
+    setting = { value: { schemaVersion: 1, monthlyMinutes: 480, monthlyRequests: 3 }, updatedAt: new Date("2026-10-13T12:00:00Z") }
+    expect(await readAttendanceRequestLimits(org)).toMatchObject({ leaveNoticeDays: 0 })
   })
   it("advances an existing version even when the host clock is behind it", async () => {
     const future = new Date("2099-01-01T00:00:00Z")

@@ -8,6 +8,9 @@ import { resolveAttendanceReviewerScope, type AttendanceReviewer } from "@/lib/m
 import { AttendanceRequestError, type AttendanceRequestDto } from "@/lib/mtm/attendance-request-contract"
 import { attendanceRequestDto, attendanceRequestSelect } from "@/lib/mtm/attendance-request-store"
 import { readAttendanceTwoStepApproval } from "@/lib/mtm/attendance-approval-chain"
+import { readAttendanceRequestLimits } from "@/lib/mtm/attendance-request-limit-store"
+import { attendanceLateLeaveNotice } from "@/lib/mtm/attendance-request-limits"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
 
 export const AttendanceReviewQuerySchema = z.object({
   status: z.enum(["PENDING", "APPROVED", "REJECTED", "CANCELLED", "ALL"]).default("PENDING"),
@@ -24,7 +27,9 @@ export type AttendanceReviewApproval = { twoStep: boolean; awaiting: "MANAGER" |
   /** This reviewer's approval would only pass the request on to HR. */
   passesToHr: boolean }
 export type AttendanceReviewItem = AttendanceRequestDto & { employeeName: string; teamName: string | null; reviewerName: string | null; cancellation?: AttendanceRevocation
-  approval: AttendanceReviewApproval; canDecide: boolean }
+  approval: AttendanceReviewApproval; canDecide: boolean
+  /** An annual leave asked for later than the company's notice (Personnel → Settings → request rules). */
+  lateNotice: { days: number; required: number } | null }
 
 /** With two steps, a manager has nothing left on a request a manager already approved. */
 export function attendanceAwaitingReviewerWhere(actor: Pick<MtmRouteActor, "role">, twoStep: boolean): Prisma.MtmHrmRequestWhereInput {
@@ -63,15 +68,22 @@ export async function listAttendanceRequestsForReview(reviewer: AttendanceReview
         managerApprovedByUserId: true, managerApprovedAt: true, managerApprovalNote: true },
     })
     const twoStep = await readAttendanceTwoStepApproval(tx, reviewer.organizationId)
+    // Read leniently: a broken stored rule hides the mark, it never hides the queue.
+    const noticeDays = await readAttendanceRequestLimits(reviewer.organizationId, tx).then(limits => limits.leaveNoticeDays, () => 0)
     const reviewerIds = [...new Set(rows.flatMap((row) => [row.decidedByUserId, row.managerApprovedByUserId].filter((id): id is string => Boolean(id))))]
     const users = reviewerIds.length ? await tx.user.findMany({ where: { organizationId: reviewer.organizationId, id: { in: reviewerIds } }, select: { id: true, name: true } }) : []
     const names = new Map(users.map((user) => [user.id, user.name]))
+    const lateNotice = (row: (typeof rows)[number]) => {
+      const dto = attendanceRequestDto(row)
+      return attendanceLateLeaveNotice({ kind: dto.details.kind, startDate: dto.startDate, submittedDate: currentDateKey(row.submittedAt, dto.details.timezone) }, noticeDays)
+    }
     const cancellations = await readAttendanceRevocations(tx, reviewer.organizationId, rows.slice(0, 50).filter(row => row.status === "CANCELLED").map(row => row.id))
     return { items: rows.slice(0, 50).map((row): AttendanceReviewItem => ({ ...attendanceRequestDto(row), employeeName: row.agent.name,
       teamName: row.agent.team?.name ?? null, cancellation: cancellations.get(row.id), reviewerName: row.decidedByUserId ? names.get(row.decidedByUserId) ?? null : null,
       approval: { twoStep, awaiting: twoStep && row.status === "PENDING" ? row.managerApprovedAt ? "HR" : "MANAGER" : null,
         manager: row.managerApprovedAt ? { name: row.managerApprovedByUserId ? names.get(row.managerApprovedByUserId) ?? null : null, at: row.managerApprovedAt.toISOString(), note: row.managerApprovalNote } : null,
         passesToHr: twoStep && row.status === "PENDING" && actor.role !== "ADMIN" && !row.managerApprovedAt },
-      canDecide: row.status === "PENDING" && !(twoStep && actor.role !== "ADMIN" && row.managerApprovedAt) })), nextCursor: rows.length > 50 ? rows[49].id : null }
+      canDecide: row.status === "PENDING" && !(twoStep && actor.role !== "ADMIN" && row.managerApprovedAt),
+      lateNotice: lateNotice(row) })), nextCursor: rows.length > 50 ? rows[49].id : null }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
 }

@@ -36,7 +36,7 @@ const leaveRequest = (id: string, name: string): AttendanceReviewItem => ({
   submittedAt: version, decisionNote: null, decidedAt: null, cancelledAt: null, version,
   details: { version: 1, kind: "ANNUAL_LEAVE", unit: "DAYS", startTime: null, endTime: null, timezone: "Asia/Baku", dayKind: kinds.find(kind => kind.key === "ANNUAL_LEAVE")!, attachmentIds: [] },
   employeeName: name, teamName: null, reviewerName: null,
-  approval: { twoStep: false, awaiting: null, manager: null, passesToHr: false }, canDecide: true,
+  approval: { twoStep: false, awaiting: null, manager: null, passesToHr: false }, canDecide: true, lateNotice: null,
 } as AttendanceReviewItem)
 const risk = { id: "risk-1", employeeId: "id-Рашад", employeeName: "Камран", teamId: null, teamName: null, kind: "SHARED_INSTALLATION", workDate: today, timezone: "Asia/Baku",
   claimedAt: at(today, "09:00"), serverReceivedAt: at(today, "09:00"), action: "START", createdAt: at(today, "09:01"), canDismiss: true, relatedNames: ["Эльвин"], relatedNamesRestricted: false,
@@ -199,6 +199,14 @@ describe("Personnel → Today", () => {
     expect(buttonIn(byTestId("attendance-today-request-r1"), p("passToHr"))).toBeUndefined()
     await act(async () => buttonIn(byTestId("attendance-today-request-r1"), p("approve"))!.click())
     expect(container.textContent).toContain(p("decisionSaved"))
+  })
+
+  it("marks a leave asked for later than the company's notice (owner, 2026-11-01)", async () => {
+    requests = [{ ...leaveRequest("r1", "Айсель Мамедова"), lateNotice: { days: 2, required: 5 } }, leaveRequest("r2", "Мурад Гасанов")]
+    await render()
+    expect(byTestId("attendance-today-request-r1")?.querySelector('[data-testid="attendance-today-late-notice"]')?.textContent)
+      .toBe((ru.mtmAttendance.requestsLateNotice as string).replace("{days}", "2").replace("{required}", "5"))
+    expect(byTestId("attendance-today-request-r2")?.querySelector('[data-testid="attendance-today-late-notice"]')).toBeNull()
   })
 
   it("without the right to decide hides the request card but keeps the rest of the screen", async () => {

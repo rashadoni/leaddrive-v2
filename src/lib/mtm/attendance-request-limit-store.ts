@@ -24,7 +24,7 @@ export async function readAttendanceRequestLimits(organizationId: string, db: Re
   if (!row) return { ...DEFAULT_ATTENDANCE_REQUEST_LIMITS, version: null }
   const parsed = storedSchema.safeParse(row.value)
   if (!parsed.success) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_REQUEST_LIMITS_INVALID_STORED", 409)
-  return { monthlyMinutes: parsed.data.monthlyMinutes, monthlyRequests: parsed.data.monthlyRequests, version: row.updatedAt.toISOString() }
+  return { monthlyMinutes: parsed.data.monthlyMinutes, monthlyRequests: parsed.data.monthlyRequests, leaveNoticeDays: parsed.data.leaveNoticeDays, version: row.updatedAt.toISOString() }
 }
 
 async function requireAdmin(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
@@ -54,12 +54,13 @@ export async function saveAttendanceRequestLimits(organizationId: string, actorU
     const old = await readAttendanceRequestLimits(organizationId, tx)
     if (old.version !== parsed.data.version) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_REQUEST_LIMITS_CHANGED", 409)
     const { monthlyMinutes, monthlyRequests } = parsed.data
-    if (old.monthlyMinutes === monthlyMinutes && old.monthlyRequests === monthlyRequests) return old
+    const leaveNoticeDays = parsed.data.leaveNoticeDays ?? old.leaveNoticeDays
+    if (old.monthlyMinutes === monthlyMinutes && old.monthlyRequests === monthlyRequests && old.leaveNoticeDays === leaveNoticeDays) return old
     const updatedAt = new Date(Math.max(Date.now(), old.version ? Date.parse(old.version) + 1 : 0))
-    const setting = { schemaVersion: 1, monthlyMinutes, monthlyRequests }
+    const setting = { schemaVersion: 1, monthlyMinutes, monthlyRequests, leaveNoticeDays }
     await tx.mtmSetting.upsert({ where: { organizationId_key: { organizationId, key: KEY } },
       create: { organizationId, key: KEY, value: setting, updatedAt }, update: { value: setting, updatedAt } })
-    const next = { monthlyMinutes, monthlyRequests, version: updatedAt.toISOString() }
+    const next = { monthlyMinutes, monthlyRequests, leaveNoticeDays, version: updatedAt.toISOString() }
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId, action: "MTM_ATTENDANCE_REQUEST_LIMITS_UPDATED", entity: "mtm_setting", entityId: KEY,
       metadataKind: "mtm_attendance_request_limits", oldData: old, newData: next } })
     return next

@@ -22,7 +22,7 @@ function request(index = 1, patch: Partial<AttendanceReviewItem> = {}): Attendan
     submittedAt: version, decisionNote: null, decidedAt: null, cancelledAt: null, version,
     details: { version: 1, kind: "HOURLY_ABSENCE", unit: "HOURS", startTime: "10:00", endTime: "12:00", timezone: "Asia/Baku", dayKind: dayKinds.find(kind => kind.key === "HOURLY_ABSENCE")!, attachmentIds: [id(200)] },
     employeeName: "Aylin Demo", teamName: "Demo North", reviewerName: null,
-    approval: { twoStep: false, awaiting: null, manager: null, passesToHr: false }, canDecide: true, ...patch,
+    approval: { twoStep: false, awaiting: null, manager: null, passesToHr: false }, canDecide: true, lateNotice: null, ...patch,
   }
 }
 const fixture = () => [request(), request(2, { employeeName: "Murad Demo", reason: "Демонстрационная заявка: забыта отметка ухода.", startDate: "2026-10-12", endDate: "2026-10-12",
@@ -175,6 +175,13 @@ describe("actual attendance review queue", () => {
     expect(row(2).textContent).toContain(translation("requestsManagerApproved").replace("{name}", "Togrul Demo").split(",")[0])
     expect(button("requestsApprove")).toBeDefined()
     capture("ru", "two-step-hr")
+  })
+
+  it("marks an annual leave asked for later than the company's notice (owner, 2026-11-01)", async () => {
+    fetchMock.mockImplementation(async () => response([request(1, { lateNotice: { days: 2, required: 5 } }), request(2)]))
+    await render()
+    expect(row(1).querySelector('[data-testid="attendance-request-late-notice"]')?.textContent).toBe(translation("requestsLateNotice").replace("{days}", "2").replace("{required}", "5"))
+    expect(row(2).querySelector('[data-testid="attendance-request-late-notice"]')).toBeNull()
   })
 
   it("approves without a note and prevents a second click while the first response is pending", async () => {

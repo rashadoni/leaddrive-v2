@@ -601,4 +601,25 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     })
     await bypass(() => prisma.mtmSetting.delete({ where: { organizationId_key: { organizationId: self.organizationId, key: "attendanceTwoStepApproval" } } }))
   })
+
+  // Owner, 2026-11-01 (HRSS clip: «məzuniyyət ərizəsinin ən azı 5 gün əvvəl verilməsi tövsiyə olunur»):
+  // a recommendation — the leave goes in, HR sees it marked, the phone reads the notice with the limits.
+  it("leave notice: a late annual leave is accepted and reaches HR marked; one in time is not marked", async () => {
+    const admin = { organizationId: self.organizationId, userId: "request-pg-admin", principalType: "session" as const }
+    const current = await tenant(self.organizationId, () => limits.readAttendanceRequestLimits(self.organizationId))
+    await tenant(self.organizationId, () => limits.saveAttendanceRequestLimits(self.organizationId, "request-pg-admin", { ...current, leaveNoticeDays: 5 }))
+    const { currentDateKey, addDateKeyDays } = await import("@/lib/mtm/mobile-week")
+    const today = currentDateKey(new Date(), "Asia/Baku")
+    const leave = (startDate: string) => ({ clientRequestId: randomUUID(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate, endDate: startDate, reason: "Fictional leave notice" })
+    const late = await submit(leave(addDateKeyDays(today, 2)))
+    expect(late.status).toBe(201)
+    const lateId = (await late.json()).data.request.id
+    const timely = (await (await submit(leave(addDateKeyDays(today, 10)))).json()).data.request.id
+    const items = (await tenant(self.organizationId, () => review.listAttendanceRequestsForReview(admin, {}))).items
+    expect(items.find(item => item.id === lateId)?.lateNotice).toEqual({ days: 2, required: 5 })
+    expect(items.find(item => item.id === timely)?.lateNotice).toBeNull()
+    const quota = await quotaApi.GET(new NextRequest(`http://localhost/api/v2/mtm/mobile/route-field/attendance/request-limits?month=${today.slice(0, 7)}`))
+    expect((await quota.json()).data.limits).toMatchObject({ leaveNoticeDays: 5 })
+    await tenant(self.organizationId, async () => limits.saveAttendanceRequestLimits(self.organizationId, "request-pg-admin", { ...await limits.readAttendanceRequestLimits(self.organizationId), leaveNoticeDays: 0 }))
+  })
 })
