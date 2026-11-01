@@ -8,6 +8,7 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { agentsReachableByPush } from "@/lib/mtm/agent-task-glance"
 import { teamRouteDay, type TeamRouteDayPoint, type TeamRouteDayVisit } from "@/lib/mtm/team-route-day"
+import { loadDayTimes, type DayTime } from "@/lib/mtm/day-time"
 
 /** Published routes: a draft is nobody's plan yet, a cancelled one nobody's any more. */
 const ROUTE_TODAY_STATUSES = ["PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE"] as const
@@ -156,6 +157,20 @@ export const GET = withMobileRls(async (req, auth) => {
         }
       }
     }
+    // Where each running or finished day of today went — with clients, on a
+    // break, on the way (owner, 2026-11-02: «Кольцо дня» on the card).
+    const now = new Date()
+    let dayTimes = new Map<string, DayTime>()
+    if (canReadRouteTeam && canReadTeamWorkday) {
+      const days = agents.flatMap((row) => {
+        const day = workdayOfToday(((row as { workdays?: WorkdayRow[] }).workdays) ?? [])
+        // Today's day only: a shift left open since yesterday is not «today» in minutes.
+        return day && currentDateKey(day.startedAt, timezone) === todayKey
+          ? [{ id: day.id, agentId: row.id, startedAt: day.startedAt, completedAt: day.completedAt }]
+          : []
+      })
+      dayTimes = await loadDayTimes(prisma, auth.orgId, days, now)
+    }
     // «Дать задачу» says before sending whether the pop-up reaches the phone.
     const reachable = await agentsReachableByPush(prisma, auth.orgId, agents.map((agent) => agent.id))
     return NextResponse.json({
@@ -174,6 +189,7 @@ export const GET = withMobileRls(async (req, auth) => {
                   routeToday: routeToday.get(agent.id) ?? null,
                   openVisitSince: openVisitSince.get(agent.id) ?? null,
                   routeDay: teamRouteDay(routePoints.get(agent.id) ?? [], openVisitToday.get(agent.id) ?? null),
+                  dayTime: dayTimes.get(agent.id) ?? null,
                 }
               : {}),
           }
