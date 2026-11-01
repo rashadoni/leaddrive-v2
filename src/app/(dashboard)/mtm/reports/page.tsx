@@ -12,7 +12,7 @@ import { MtmPageHeader } from "@/components/mtm/page-header"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { Button } from "@/components/ui/button"
 import {
-  MANAGEMENT_REPORT_TYPES, REPORT_GROUPS, REPORT_TYPES, REPORTS, reportRowHref, statusClass, statusLabelKey, roleLabelKey, type ReportType,
+  REPORT_GROUPS, REPORT_TYPES, REPORTS, reportEndpoint, reportRowHref, statusClass, statusLabelKey, roleLabelKey, type ReportType,
 } from "@/lib/mtm/report-config"
 import { previousRangeKeys } from "@/lib/mtm/report-range-keys"
 import { formatDate, formatDateTime } from "@/lib/format-date"
@@ -108,16 +108,13 @@ export default function MtmReportsPage() {
   // How many records each report holds — the numbers on the report list.
   const loadOverview = useCallback(async () => {
     try {
-      const [baseResponse, managementResponse] = await Promise.all([
-        fetch(`/api/v1/mtm/reports?${query}`, { headers }),
-        fetch(`/api/v1/mtm/management-reports?${query}`, { headers }),
-      ])
-      const [base, management] = await Promise.all([baseResponse.json(), managementResponse.json()])
-      setCounts({ ...(base.success ? base.data.counts : {}), ...(management.success ? management.data.counts : {}) })
+      const answers = await Promise.all(["reports", "management-reports", "field-reports"].map((endpoint) =>
+        fetch(`/api/v1/mtm/${endpoint}?${query}`, { headers }).then((response) => response.json()).catch(() => null)))
+      setCounts(Object.assign({}, ...answers.map((answer) => (answer?.success ? answer.data.counts : {}))))
     } catch { /* ignore */ }
   }, [query, headers])
 
-  const endpointOf = (type: ReportType) => MANAGEMENT_REPORT_TYPES.includes(type) ? "management-reports" : "reports"
+  const endpointOf = reportEndpoint
 
   const loadReport = useCallback(async (type: ReportType, nextPage: number, append: boolean) => {
     if (append) setLoadingMore(true); else setLoading(true)
@@ -161,6 +158,7 @@ export default function MtmReportsPage() {
   const fmt = (item: SummaryItem): string => {
     if (item.kind === "percent") return `${item.value}%`
     if (item.kind === "minutes") return `${item.value} ${t("minShort")}`
+    if (item.kind === "seconds" && typeof item.value === "number") return asMinutesSeconds(item.value)
     return String(item.value)
   }
   /** «+9% keçən dövrə görə»: points for a share, per cent for a count. */
@@ -184,6 +182,11 @@ export default function MtmReportsPage() {
     if (kind === "date") return v ? formatDateTime(new Date(String(v)), locale) : "—"
     if (kind === "day") return v ? formatDate(new Date(String(v)), locale, { timeZone: "UTC" }) : "—"
     if (kind === "minutes") return v != null ? `${v} ${t("minShort")}` : "—"
+    if (kind === "seconds") return typeof v === "number" ? asMinutesSeconds(v) : "—"
+    if (kind === "meters") return typeof v === "number" ? `${v} ${t("metersShort")}` : "—"
+    if (kind === "days") return typeof v === "number" ? String(v) : "—"
+    if (kind === "lastVisit") return v ? formatDate(new Date(String(v)), locale) : t("neverVisited")
+    if (kind === "reasons") return String(v ?? "").split(",").filter(Boolean).map((code) => t(`reason.${code}`)).join(", ")
     if (kind === "percent") return v != null ? `${v}%` : "—"
     if (kind === "number") return String(v ?? 0)
     return v != null && v !== "" ? String(v) : "—"
@@ -383,6 +386,11 @@ export default function MtmReportsPage() {
       </div>
     </div>
   )
+}
+
+/** 95 → «1:35». */
+function asMinutesSeconds(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`
 }
 
 function uniqueBy<T extends { id: string; name: string }>(items: T[]): T[] {
