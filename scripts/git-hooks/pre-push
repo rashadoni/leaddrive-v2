@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Отказывает в пуше, если среди уезжающих коммитов есть файлы с персональными
+# данными клиентов — те, что вычистили из истории 2026-09-11.
+#
+# Зачем локально, когда есть гейт `scan` в CI: гейт смотрит PR, а публикует
+# данные сам `git push`. Ветку можно отправить в публичный репозиторий, не
+# открывая PR вовсе, — и прежняя защита по предку `87ba5ae0` такую ветку
+# пропускала, если её корень был третьим (`feat/chat-voice-parity`, корень
+# `7f9a57e8`, 74 файла с данными в дереве: 70 в трёх вычищенных каталогах и
+# четыре в `public/data/`).
+#
+# Ставится: bash scripts/git-hooks/install.sh — копией в
+# <git-dir>/hooks-leaddrive, по абсолютному пути. Относительный core.hooksPath
+# не годится: чекаут, стоящий на ветке старше этого файла (ровно
+# feat/chat-voice-parity), остался бы без хука — то есть без защиты там, где
+# она нужнее всего. По той же причине саму проверку хук берёт из origin/main,
+# если в рабочем дереве её нет.
+#
+# Обойти можно `git push --no-verify` — тогда остаётся только гейт `scan`.
+set -uo pipefail
+
+remote_name="${1:-origin}"
+
+toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  printf 'pre-push: не удалось определить корень репозитория — пуш остановлен\n' >&2
+  exit 1
+}
+
+tmp=""
+cleanup() { [ -n "$tmp" ] && rm -rf "$tmp"; }
+trap cleanup EXIT
+
+checker="$toplevel/scripts/ci/check-forbidden-data-paths.sh"
+if [ ! -f "$checker" ]; then
+  # В этой ветке проверки ещё нет. Пушим мы в origin, значит и спросить можно
+  # у него: берём оттуда и скрипт, и список.
+  if ! git rev-parse --verify --quiet refs/remotes/"$remote_name"/main >/dev/null; then
+    printf 'pre-push: нет ни %s, ни %s/main — проверка запрещённых путей не выполнена, пуш остановлен\n' \
+      "$checker" "$remote_name" >&2
+    printf '          если это намеренно (чужой репозиторий): git push --no-verify\n' >&2
+    exit 1
+  fi
+  tmp=$(mktemp -d) || exit 1
+  if ! git show "$remote_name/main:scripts/ci/check-forbidden-data-paths.sh" > "$tmp/check-forbidden-data-paths.sh" 2>/dev/null ||
+     ! git show "$remote_name/main:scripts/ci/forbidden-data-paths.txt" > "$tmp/forbidden-data-paths.txt" 2>/dev/null; then
+    printf 'pre-push: в %s/main нет проверки запрещённых путей — пуш остановлен\n' "$remote_name" >&2
+    exit 1
+  fi
+  checker="$tmp/check-forbidden-data-paths.sh"
+  printf 'pre-push: в рабочем дереве проверки нет, взял её из %s/main\n' "$remote_name" >&2
+fi
+
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -n "${local_sha:-}" ] || continue
+  # Удаление ветки на remote — ничего не публикует.
+  case "$local_sha" in
+    *[!0]*) ;;
+    *) continue ;;
+  esac
+
+  # Пустой или нулевой remote_sha — такой ветки на remote ещё нет: проверяем
+  # всё, чего там нет вообще. Непонятный remote (пуш по URL, а не по имени)
+  # даёт пустое `--remotes`, то есть проверку всей ветки целиком, — ошибаться
+  # в эту сторону безопасно.
+  case "$remote_sha" in
+    *[!0]*) range_args=("$remote_sha..$local_sha") ;;
+    *) range_args=("$local_sha" --not --remotes="$remote_name") ;;
+  esac
+
+  printf 'pre-push: проверяю %s на запрещённые пути…\n' "${local_ref:-$local_sha}" >&2
+  bash "$checker" "$local_sha" --history "${range_args[@]}" || status=1
+done
+
+if [ "$status" -ne 0 ]; then
+  printf '\npre-push остановлен: эта ветка опубликовала бы данные клиентов.\n' >&2
+  exit 1
+fi
+
+exit 0

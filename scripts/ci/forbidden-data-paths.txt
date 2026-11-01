@@ -1,0 +1,25 @@
+# Пути с персональными данными клиентов, которых не должно быть ни в одном
+# коммите, доезжающем до публичного rashadoni/leaddrive-v2.
+#
+# 2026-09-11 эти файлы вычистили из истории перезаписью ВСЕХ ветвей и
+# force-push: старый корень 87ba5ae00594b7d0a7556346cb17b25fc7aa8aa9, новый —
+# 76994875a251e0956b56f8d300625b97eb098661. Репозиторий публичный, поэтому
+# один пуш ветки, которая всё ещё несёт эти файлы, вернул бы данные клиентов
+# на GitHub — уже навсегда.
+#
+# Формат: одна строка — один pathspec от корня репозитория для
+# `git ls-tree -r <коммит> -- <путь>`. Каталог пишется без завершающего слэша:
+# ls-tree берёт его вместе со всем содержимым. Строки с `#` и пустые —
+# комментарии.
+#
+# Список читают scripts/ci/check-forbidden-data-paths.sh (гейт `scan` в CI) и
+# scripts/git-hooks/pre-push. Второго списка нет и быть не должно: добавил путь
+# сюда — он закрыт и в CI, и локально. Состав списка сторожит
+# src/__tests__/ci-forbidden-data-paths.test.ts.
+scripts/v1-data
+migration_data
+cost_model_migration_data
+public/data/company_details.json
+public/data/pricing_data.json
+public/data/company_legal_names.json
+public/data/pricing_crm_mapping.json

@@ -28,6 +28,39 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Block client-data paths purged from history
+        # Второй гейт утечки в этой же джобе — намеренно, и вот почему именно
+        # здесь: `scan` уже обязателен в main и уже идёт на КАЖДОМ PR (у этого
+        # workflow нет `paths`-фильтра). Отдельный workflow пришлось бы либо
+        # делать обязательным без фильтра, либо он не гейтил бы ничего, а
+        # path-фильтрованный обязательный чек навсегда вешает PR вне своих
+        # путей на «Expected — waiting for status».
+        #
+        # Шаг стоит ДО установки gitleaks: он ничего не скачивает, а ответ
+        # «в ветке данные клиентов» нужен сразу.
+        #
+        # Смотрим деревья, а не диф: ветка может принести файл коммитом,
+        # которого в дифе к базе не видно (добавлен и тут же убран).
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            # HEAD здесь — merge-коммит PR, то есть ровно то дерево, которое
+            # получит main; диапазон добавляет каждый коммит самой ветки.
+            bash scripts/ci/check-forbidden-data-paths.sh HEAD --history "$BASE_SHA..$HEAD_SHA"
+          elif [[ "$EVENT_NAME" == "push" && ! "$BEFORE_SHA" =~ ^0+$ ]]; then
+            bash scripts/ci/check-forbidden-data-paths.sh HEAD --history "$BEFORE_SHA..$HEAD_SHA"
+          else
+            # Ручной прогон и первый пуш репозитория проверяют всё достижимое,
+            # как и gitleaks ниже.
+            bash scripts/ci/check-forbidden-data-paths.sh HEAD --history --all
+          fi
+
       - name: Install verified Gitleaks binary
         shell: bash
         run: |
