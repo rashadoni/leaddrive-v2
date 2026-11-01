@@ -80,6 +80,53 @@ describe("GET /api/v1/mtm/management-reports", () => {
     })
   })
 
+  it("counts the period from the organization's midnight, not the server's", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-04T21:30:00.000Z") }) // 01:30 on the 5th in Baku
+    try {
+      await GET(request("?period=today"))
+      const where = (vi.mocked(prisma.mtmVisitRequirement.count).mock.calls[0][0] as any).where
+      expect(where.snapshot.visit.checkInAt.gte.toISOString()).toBe("2026-11-04T20:00:00.000Z")
+      expect(where.snapshot.visit.checkInAt.lt.toISOString()).toBe("2026-11-05T20:00:00.000Z")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps a late promise from before the period, and calls one kept when somebody came back", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-04T08:00:00.000Z") })
+    try {
+      vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([
+        { id: "late", customerId: "c-late", checkInAt: new Date("2026-10-20T08:00:00Z"), nextActionDueAt: new Date("2026-10-25T08:00:00Z"), outcome: null, resultNotes: null, notes: null, agent: { name: "Ali" }, customer: { name: "Apteka 1" } },
+        { id: "kept", customerId: "c-kept", checkInAt: new Date("2026-10-28T08:00:00Z"), nextActionDueAt: new Date("2026-11-03T08:00:00Z"), outcome: null, resultNotes: null, notes: null, agent: { name: "Ali" }, customer: { name: "Apteka 2" } },
+        { id: "old-kept", customerId: "c-kept", checkInAt: new Date("2026-09-20T08:00:00Z"), nextActionDueAt: new Date("2026-10-01T08:00:00Z"), outcome: null, resultNotes: null, notes: null, agent: { name: "Ali" }, customer: { name: "Apteka 2" } },
+      ] as never)
+      vi.mocked(prisma.mtmVisit.groupBy).mockResolvedValue([
+        { customerId: "c-late", _max: { checkInAt: new Date("2026-10-20T08:00:00Z") } },
+        { customerId: "c-kept", _max: { checkInAt: new Date("2026-11-02T08:00:00Z") } },
+      ] as never)
+      const body = await (await GET(request("?type=promises&period=week"))).json()
+      expect(body.data.reportData.map((row: { id: string; status: string }) => [row.id, row.status])).toEqual([["late", "OVERDUE"], ["kept", "DONE"]])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("counts the part of a month's sales plan that falls into the week", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-08T08:00:00.000Z") })
+    try {
+      vi.mocked(prisma.mtmExternalSalesDocument.findMany).mockResolvedValue([] as never)
+      vi.mocked(prisma.mtmSalesPlanLine.findMany).mockResolvedValue([
+        { customerId: "c1", agentId: "agent-1", territoryCode: null, periodStart: new Date("2026-11-01T00:00:00Z"), plannedAmount: 3000, plannedQuantity: 30, customer: { name: "Apteka" }, agent: { name: "Ali" } },
+      ] as never)
+      const body = await (await GET(request("?type=sales&period=week"))).json()
+      // Monday 2 – Sunday 8 November: 7 of 30 days.
+      expect(body.data.reportData[0]).toMatchObject({ customer: "Apteka", planAmount: 700 })
+      expect(body.data.reportData[0]).not.toHaveProperty("customerId")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("rejects an unknown management report type", async () => {
     const response = await GET(request("?type=unknown"))
     expect(response.status).toBe(404)

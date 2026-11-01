@@ -101,13 +101,13 @@ describe("GET /api/v1/mtm/reports", () => {
     // 1st findMany = dates/agents for series, 2nd = page rows
     vi.mocked(prisma.mtmVisit.findMany)
       .mockResolvedValueOnce([
-        { createdAt: today, agentId: "agent-1" },
-        { createdAt: today, agentId: "agent-2" },
-        { createdAt: today, agentId: "agent-1" },
+        { checkInAt: today, agentId: "agent-1" },
+        { checkInAt: today, agentId: "agent-2" },
+        { checkInAt: today, agentId: "agent-1" },
       ] as any)
       .mockResolvedValueOnce([
         {
-          id: "visit-1", createdAt: today, status: "CHECKED_OUT", duration: 30,
+          id: "visit-1", checkInAt: today, status: "CHECKED_OUT", duration: 30,
           agent: { name: "Ali" }, customer: { name: "Store A" },
         },
       ] as any)
@@ -123,8 +123,10 @@ describe("GET /api/v1/mtm/reports", () => {
     expect(summary["sum.avgDuration"]).toBe(32)
     expect(summary["sum.uniqueAgents"]).toBe(2)
 
-    // continuous daily series over the 7-day period, today's bucket = 3
-    expect(json.data.series.length).toBeGreaterThanOrEqual(7)
+    // A continuous daily series since Monday (2026-07-06, «Bu həftə» as on
+    // «Analitika»), every day present, today's bucket = 3.
+    expect(json.data.series.map((point: any) => point.date)).toEqual(["2026-07-06", "2026-07-07", "2026-07-08"])
+    expect(json.data.from).toBe("2026-07-06")
     expect(json.data.series[json.data.series.length - 1].count).toBe(3)
 
     expect(json.data.reportData).toEqual([
@@ -188,7 +190,26 @@ describe("GET /api/v1/mtm/reports", () => {
     vi.setSystemTime(new Date("2026-07-08T21:30:00.000Z"))
     await GET(makeReq("?period=today"))
     const visitWhere = (vi.mocked(prisma.mtmVisit.count).mock.calls[0][0] as any).where
-    expect(visitWhere.createdAt.gte.toISOString()).toBe("2026-07-08T20:00:00.000Z")
+    // A visit is the day of its check-in, and the day ends at the next local midnight.
+    expect(visitWhere.checkInAt.gte.toISOString()).toBe("2026-07-08T20:00:00.000Z")
+    expect(visitWhere.checkInAt.lt.toISOString()).toBe("2026-07-09T20:00:00.000Z")
+  })
+
+  it("reads the manager's own «from — to», and refuses one turned around or longer than a year", async () => {
+    await GET(makeReq("?from=2026-06-01&to=2026-06-30"))
+    const where = (vi.mocked(prisma.mtmVisit.count).mock.calls[0][0] as any).where
+    expect(where.checkInAt.gte.toISOString()).toBe("2026-05-31T20:00:00.000Z")
+    expect(where.checkInAt.lt.toISOString()).toBe("2026-06-30T20:00:00.000Z")
+    expect((await GET(makeReq("?from=2026-06-30&to=2026-06-01"))).status).toBe(400)
+    expect((await GET(makeReq("?from=2025-01-01&to=2026-06-01"))).status).toBe(400)
+  })
+
+  it("narrows to the chosen team without leaving the caller's scope", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValueOnce([{ id: "agent-north" }] as never)
+    await GET(makeReq("?period=week&teamId=team-north"))
+    expect(vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0]).toMatchObject({ where: { organizationId: ORG, teamId: "team-north" } })
+    const where = (vi.mocked(prisma.mtmVisit.count).mock.calls[0][0] as any).where
+    expect(where.agentId).toEqual({ in: ["agent-north"] })
   })
 
   it("scopes every report to a manager's agents", async () => {
