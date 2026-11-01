@@ -16,7 +16,7 @@ import {
   relativeTime, dayKeyOf, dayLabel, activityActorName, activityDataSummary, type ActivitySubject,
 } from "@/lib/mtm/activity-actions"
 import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, formatTime } from "@/lib/format-date"
 import { dateInputValueInTimezone } from "@/lib/timezone"
 
 type Period = "today" | "7d" | "30d" | "all"
@@ -153,7 +153,9 @@ export default function MtmActivityPage() {
     if (mtmActivityEntityKey(l.entity)) return mtmActivityEntityText(l, t)
     return { label: "", title: null }
   }
-  const timeOf = (iso: string) => formatDate(iso, locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", ...(timezone ? { timeZone: timezone } : {}) })
+  // formatTime, not formatDate: in Azerbaijani formatDate draws the date
+  // alone and drops the hours — the column stood empty on prod (2026-11-01).
+  const timeOf = (iso: string) => formatTime(iso, locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", ...(timezone ? { timeZone: timezone } : {}) })
 
   return (
     <div className="space-y-4">

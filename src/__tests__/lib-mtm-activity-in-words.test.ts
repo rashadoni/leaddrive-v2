@@ -118,6 +118,13 @@ describe("the journal says the facts of a change (owner, 2026-11-01: «мало 
     const page = readFileSync("src/app/(dashboard)/mtm/activity/page.tsx", "utf8")
     for (const id of ["mtm-activity-time", "mtm-activity-who", "mtm-activity-action", "mtm-activity-subject", "mtm-activity-details"]) expect(page).toContain(`data-testid="${id}"`)
     expect(page).toContain("if (mtmActivityEntityKey(l.entity)) return mtmActivityEntityText(l, t)")
+    // The time column: formatDate in Azerbaijani has no hours, and it stood empty on prod.
+    expect(page).toContain("const timeOf = (iso: string) => formatTime(iso, locale,")
+  })
+
+  it("writes the hour of a row in Azerbaijani too", async () => {
+    const { formatTime } = await import("@/lib/format-date")
+    expect(formatTime("2026-11-01T12:40:59Z", "az", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Baku" })).toBe("16:40")
   })
 })
 
