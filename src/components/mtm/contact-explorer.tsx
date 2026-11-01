@@ -1275,10 +1275,12 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                   <th scope="col" className="w-[6.5rem] px-3 py-2.5 font-medium"><HintValue text={t("hint.category")}>{t("category")}</HintValue></th>
                   {showsCoverageColumn ? <th scope="col" className="w-[14%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colCoverage")}>{t("coverage")}</HintValue></th> : null}
                   <th scope="col" className="w-[22%] px-3 py-2.5 font-medium">{t("workplace")}</th>
-                  <th scope="col" className="w-[13%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colLastVisit")}>{t("lastVisit")}</HintValue></th>
-                  <th scope="col" className="w-[10%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colNextVisit")}>{t("nextVisit")}</HintValue></th>
+                  {/* The last and the next visit share one cell, two lines like every
+                      other cell (owner, 2026-11-01: «всё лезет друг на друга») — a
+                      tenth of the width could not hold «planlaşdırılmayıb». */}
+                  <th scope="col" className="w-[17%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colVisits")}>{t("visitsColumn")}</HintValue></th>
                   {showsCommunication ? <th scope="col" className="w-[13%] px-3 py-2.5 font-medium">{t("communication")}</th> : null}
-                  {scoped ? null : <th scope="col" className="w-[15%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th>}
+                  {scoped ? null : <th scope="col" className="w-[16%] px-3 py-2.5 font-medium"><HintValue text={t("hint.colOwner")}>{ownerLabel}</HintValue></th>}
                   <th scope="col" className="w-[9.5rem] px-3 py-2.5"><span className="sr-only">{t("rowActions")}</span></th>
                 </tr>
               </thead>
@@ -1299,10 +1301,13 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                   ].filter(Boolean).join(" · ")
                   const ownerCell = (
                     <td className="px-3 py-2" data-testid={`mtm-contact-owner-${contact.id}`}>
-                      {owners.length > 0 ? owners.map((owner) => (
-                        <p key={owner.id} className="truncate [&+p]:mt-1" title={owner.name}>
+                      {/* The responsible one on the first line, the next one grey
+                          under it: a row stays two lines whatever the count. */}
+                      {owners.length > 0 ? owners.slice(0, 2).map((owner, index) => (
+                        <p key={owner.id} className={index === 0 ? "truncate" : "mt-0.5 truncate text-xs text-muted-foreground"} title={owners.map((item) => item.name).join(", ")}>
                           {owner.name}
-                          {owner.status !== "ACTIVE" ? <span className="mt-0.5 block text-xs font-normal text-amber-700 dark:text-amber-300">{t("agentInactive")}</span> : null}
+                          {index === 1 && owners.length > 2 ? <span className="ml-1">{t("ownersMore", { count: owners.length - 2 })}</span> : null}
+                          {owner.status !== "ACTIVE" ? <span className="ml-1 text-xs font-normal text-amber-700 dark:text-amber-300">{t("agentInactive")}</span> : null}
                         </p>
                       )) : <span className="text-muted-foreground">{noOwnerLabel}</span>}
                     </td>
@@ -1353,20 +1358,22 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                           </>
                         ) : <span className="text-muted-foreground">{t("noWorkplace")}</span>}
                       </td>
-                      <td className="px-3 py-2" data-testid={`mtm-contact-last-visit-${contact.id}`}>
-                        {lastVisit ? (
-                          <Link href={`/mtm/visits?visitId=${lastVisit.id}`} className="block truncate hover:text-primary hover:underline">
-                            <span className="font-medium">{visitDay(lastVisit.checkInAt)}</span>
-                            {lastVisit.agent ? <span className="text-muted-foreground"> · {shortPersonName(lastVisit.agent.name)}</span> : null}
-                          </Link>
-                        ) : <span className="font-semibold text-orange-600 dark:text-orange-400">{t("noVisitHistory")}</span>}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2" data-testid={`mtm-contact-next-visit-${contact.id}`}>
-                        {nextPoint ? (
-                          <Link href={`/mtm/routes?routeId=${nextPoint.routeId}`} className="font-medium hover:text-primary hover:underline">
-                            {visitDay(nextPoint.plannedTime ?? nextPoint.route.date)}
-                          </Link>
-                        ) : <span className="text-muted-foreground">{t("notPlanned")}</span>}
+                      <td className="px-3 py-2">
+                        <div data-testid={`mtm-contact-last-visit-${contact.id}`} className="truncate">
+                          {lastVisit ? (
+                            <Link href={`/mtm/visits?visitId=${lastVisit.id}`} className="hover:text-primary hover:underline">
+                              <span className="font-medium">{visitDay(lastVisit.checkInAt)}</span>
+                              {lastVisit.agent ? <span className="text-muted-foreground"> · {shortPersonName(lastVisit.agent.name)}</span> : null}
+                            </Link>
+                          ) : <span className="text-muted-foreground">{t("noVisitHistory")}</span>}
+                        </div>
+                        <p data-testid={`mtm-contact-next-visit-${contact.id}`} className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {nextPoint ? (
+                            <Link href={`/mtm/routes?routeId=${nextPoint.routeId}`} className="hover:text-primary hover:underline">
+                              {t("nextVisitOn", { date: visitDay(nextPoint.plannedTime ?? nextPoint.route.date) })}
+                            </Link>
+                          ) : t("nextVisitNone")}
+                        </p>
                       </td>
                       {showsCommunication ? (
                         <td className="px-3 py-2">
