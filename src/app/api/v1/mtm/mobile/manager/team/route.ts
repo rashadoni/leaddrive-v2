@@ -34,6 +34,13 @@ export const GET = withMobileRls(async (req, auth) => {
     const workforceEnabled = auth.tenantCapabilities?.workforceHrm === true
     const canReadRouteTeam = routeFieldEnabled && hasMobilePermission(auth.role, "ROUTE_TEAM_PLAN")
     const canReadWorkforceTeam = workforceEnabled && hasMobilePermission(auth.role, "WORKTIME_TEAM_READ")
+    // Whether the agent's day is on — begun, paused, closed — is the Route &
+    // Field day too: it starts the tracking and the route. A route manager of
+    // a company without the HRM module (Zeytun) read «İş günü başlamayıb» under
+    // every agent and «İşdədir 0 / 2» while two days were running (owner's
+    // phone, 2026-11-01: «Да, делай»). The workday's status and times only;
+    // nothing of HRM (schedules, requests) comes with it.
+    const canReadTeamWorkday = canReadWorkforceTeam || canReadRouteTeam
     if (!canReadRouteTeam && !canReadWorkforceTeam) {
       return NextResponse.json({
         error: "Forbidden",
@@ -65,7 +72,7 @@ export const GET = withMobileRls(async (req, auth) => {
         status: true,
         teamId: true,
         ...(routeFieldEnabled ? { isOnline: true, lastSeenAt: true } : {}),
-        ...(canReadWorkforceTeam
+        ...(canReadTeamWorkday
           ? {
               workdays: {
                 where: { OR: [{ status: { in: ["STARTED", "PAUSED"] } }, { workDate: today }] },
@@ -160,7 +167,7 @@ export const GET = withMobileRls(async (req, auth) => {
           const { workdays = [], ...agent } = row as { workdays?: WorkdayRow[] } & Record<string, unknown> & { id: string }
           return {
             ...agent,
-            workday: canReadWorkforceTeam ? workdayOfToday(workdays) : null,
+            workday: canReadTeamWorkday ? workdayOfToday(workdays) : null,
             pushReady: reachable.has(agent.id),
             ...(canReadRouteTeam
               ? {
