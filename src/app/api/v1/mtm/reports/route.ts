@@ -3,43 +3,27 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
-import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
-import { fieldScopeAgentIdWhere, mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
+import { isValidTimezone } from "@/lib/timezone"
+import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
+import { reportDailySeries, resolveReportRange, type ReportRange } from "@/lib/mtm/report-period"
+import { readReportFilters, reportAgentIds } from "@/lib/mtm/report-filters"
+import { buildXlsxWorkbook, contentDispositionAttachment } from "@/lib/export/tabular"
+import { protectMtmExcelText } from "@/lib/mtm/excel-contract"
+import { reportExportSheets } from "@/lib/mtm/report-export"
 
 type ReportAgentRow = Prisma.MtmAgentGetPayload<{ select: { id: true; name: true; role: true } }>
 
 const PAGE_SIZE = 50
 const MAX_LIMIT = 100
 
-/**
- * First day of the period as an organization-local date key — the same
- * arithmetic the MTM dashboard uses. The previous version took the server's
- * local midnight, so on a UTC server "today" in Baku started four hours late
- * and an early-morning visit fell into yesterday.
- */
-function periodStartKey(period: string, todayKey: string): string {
-  if (period === "today") return todayKey
-  if (period === "month") return `${todayKey.slice(0, 7)}-01`
-  return addDateKeyDays(todayKey, -6) // week = last 7 days incl today
+/** Daily counts over the whole range, organization-local, with the empty days as 0. */
+function dailySeries(dates: Date[], range: ReportRange, timezone: string): { date: string; count: number }[] {
+  return reportDailySeries(dates.map((at) => ({ at })), range, timezone)
 }
 
-/** Bucket timestamps into continuous organization-local daily counts (fills 0s). */
-function dailySeries(dates: Date[], startKey: string, todayKey: string, timezone: string): { date: string; count: number }[] {
-  const counts = new Map<string, number>()
-  for (const d of dates) {
-    const key = dateInputValueInTimezone(d, timezone)
-    counts.set(key, (counts.get(key) || 0) + 1)
-  }
-  const out: { date: string; count: number }[] = []
-  let key = startKey
-  let guard = 0
-  while (key <= todayKey && guard++ < 400) {
-    out.push({ date: key, count: counts.get(key) || 0 })
-    key = addDateKeyDays(key, 1)
-  }
-  return out
-}
+/** One sheet can hold what a manager exports; past this the export is cut and says so in its name. */
+const EXPORT_LIMIT = 5000
 
 const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0)
 
@@ -66,32 +50,40 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
   const { searchParams } = new URL(req.url)
   const type = searchParams.get("type") || "" // agent, route, visit, photo
   const period = searchParams.get("period") || "week"
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
-  const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(searchParams.get("limit") || String(PAGE_SIZE))))
+  const exporting = searchParams.get("format") === "xlsx"
+  const page = exporting ? 1 : Math.max(1, parseInt(searchParams.get("page") || "1"))
+  const limit = exporting ? EXPORT_LIMIT : Math.min(MAX_LIMIT, Math.max(1, parseInt(searchParams.get("limit") || String(PAGE_SIZE))))
 
   try {
     const now = new Date()
     const settings = await getMtmSettings(orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
     const todayKey = currentDateKey(now, timezone)
-    const startKey = periodStartKey(period, todayKey)
-    const startDate = localDateKeyToUtc(startKey, timezone)
-    const agentScope = fieldScopeAgentIdWhere(scope)
-    const where = { organizationId: orgId, createdAt: { gte: startDate }, ...agentScope }
+    const range = resolveReportRange(searchParams, todayKey, timezone)
+    if ("error" in range) return NextResponse.json({ success: false, error: range.error }, { status: 400 })
+    const window = { gte: range.start, lt: range.end }
+    // The field scope, cut by «Komanda / Rayon / Agent».
+    const agentIdsInReport = await reportAgentIds(orgId, scope.kind === "agents" ? scope.agentIds : null, readReportFilters(searchParams))
+    const agentScope = agentIdsInReport === null ? {} : { agentId: { in: agentIdsInReport } }
+    const where = { organizationId: orgId, createdAt: window, ...agentScope }
+    // A visit belongs to the day it happened (check-in), not to the day the
+    // phone managed to send it: an offline visit synced at night is still
+    // the morning's.
+    const visitWhere = { organizationId: orgId, checkInAt: window, ...agentScope }
     // The agent report is about field agents: managers and supervisors have
     // cards too, but they are not the people whose visits are being compared.
     const agentWhere: Prisma.MtmAgentWhereInput = {
       organizationId: orgId,
       status: "ACTIVE",
       role: "AGENT",
-      ...(scope.kind === "agents" ? { id: { in: scope.agentIds } } : {}),
+      ...(agentIdsInReport === null ? {} : { id: { in: agentIdsInReport } }),
     }
 
     // Overview counts for the 4 report-type cards.
     const [agentCount, routeCount, visitCount, photoCount] = await Promise.all([
       prisma.mtmAgent.count({ where: agentWhere }),
       prisma.mtmRoute.count({ where: { ...where, deletedAt: null } }),
-      prisma.mtmVisit.count({ where: { ...where, deletedAt: null } }),
+      prisma.mtmVisit.count({ where: { ...visitWhere, deletedAt: null } }),
       prisma.mtmPhoto.count({ where }),
     ])
     const counts = { agent: agentCount, route: routeCount, visit: visitCount, photo: photoCount }
@@ -123,7 +115,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       const [visitGroups, taskGroups, photoGroups] = await Promise.all([
         prisma.mtmVisit.groupBy({
           by: ["agentId"],
-          where: { ...where, deletedAt: null, agentId: { in: agentIds } },
+          where: { ...visitWhere, deletedAt: null, agentId: { in: agentIds } },
           _count: { _all: true },
         }),
         prisma.mtmTask.groupBy({
@@ -133,13 +125,13 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
             agentId: { in: agentIds },
             status: "COMPLETED",
             deletedAt: null,
-            completedAt: { gte: startDate },
+            completedAt: window,
           },
           _count: { _all: true },
         }),
         prisma.mtmPhoto.groupBy({
           by: ["agentId"],
-          where: { organizationId: orgId, agentId: { in: agentIds }, createdAt: { gte: startDate } },
+          where: { organizationId: orgId, agentId: { in: agentIds }, createdAt: window },
           _count: { _all: true },
         }),
       ])
@@ -165,35 +157,38 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       // The same people as the table: a deactivated agent's visits are not
       // in any row, so they are not in the chart either.
       const vd = await prisma.mtmVisit.findMany({
-        where: { ...where, deletedAt: null, agentId: { in: agentIds } },
-        select: { createdAt: true },
+        where: { ...visitWhere, deletedAt: null, agentId: { in: agentIds } },
+        select: { checkInAt: true },
       })
-      series = dailySeries(vd.map((v: any) => v.createdAt), startKey, todayKey, timezone)
+      series = dailySeries(vd.map((v: any) => v.checkInAt), range, timezone)
 
     } else if (type === "visit") {
       const [byStatus, agg, dates, pageRows] = await Promise.all([
-        prisma.mtmVisit.groupBy({ by: ["status"], where: { ...where, deletedAt: null }, _count: { _all: true } }),
-        prisma.mtmVisit.aggregate({ where: { ...where, deletedAt: null }, _avg: { duration: true } }),
-        prisma.mtmVisit.findMany({ where: { ...where, deletedAt: null }, select: { createdAt: true, agentId: true } }),
+        prisma.mtmVisit.groupBy({ by: ["status"], where: { ...visitWhere, deletedAt: null }, _count: { _all: true } }),
+        prisma.mtmVisit.aggregate({ where: { ...visitWhere, deletedAt: null, status: "CHECKED_OUT" }, _avg: { duration: true } }),
+        prisma.mtmVisit.findMany({ where: { ...visitWhere, deletedAt: null }, select: { checkInAt: true, agentId: true } }),
         prisma.mtmVisit.findMany({
-          where: { ...where, deletedAt: null }, orderBy: { createdAt: "desc" },
+          where: { ...visitWhere, deletedAt: null }, orderBy: { checkInAt: "desc" },
           skip: (page - 1) * limit, take: limit,
           include: { agent: { select: { name: true } }, customer: { select: { name: true } } },
         }),
       ])
       total = byStatus.reduce((s: number, g: any) => s + g._count._all, 0)
       const completed = byStatus.find((g: any) => g.status === "CHECKED_OUT")?._count._all || 0
+      // «Bitib» is of the visits that were not cancelled: a cancelled one was
+      // never going to be finished, and counting it made the share look worse.
+      const cancelled = byStatus.find((g: any) => g.status === "CANCELLED")?._count._all || 0
       const uniqueAgents = new Set(dates.map((d: any) => d.agentId).filter(Boolean)).size
       summary = [
         { labelKey: "sum.total", value: total, kind: "number" },
         { labelKey: "sum.completed", value: completed, kind: "number" },
-        { labelKey: "sum.completionRate", value: pct(completed, total), kind: "percent" },
+        { labelKey: "sum.completionRate", value: pct(completed, total - cancelled), kind: "percent" },
         { labelKey: "sum.avgDuration", value: Math.round(agg._avg.duration || 0), kind: "minutes" },
         { labelKey: "sum.uniqueAgents", value: uniqueAgents, kind: "number" },
       ]
-      series = dailySeries(dates.map((d: any) => d.createdAt), startKey, todayKey, timezone)
+      series = dailySeries(dates.map((d: any) => d.checkInAt), range, timezone)
       rows = pageRows.map((v: any) => ({
-        id: v.id, date: v.createdAt, agent: v.agent?.name || "—", customer: v.customer?.name || "—",
+        id: v.id, date: v.checkInAt, agent: v.agent?.name || "—", customer: v.customer?.name || "—",
         status: v.status, duration: v.duration ?? null,
       }))
 
@@ -228,7 +223,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         { labelKey: "sum.compliance", value: pct(visitedStops, plannedStops), kind: "percent" },
         { labelKey: "sum.avgDuration", value: avgMin, kind: "minutes" },
       ]
-      series = dailySeries(dates.map((d: any) => d.createdAt), startKey, todayKey, timezone)
+      series = dailySeries(dates.map((d: any) => d.createdAt), range, timezone)
       rows = pageRows.map((r: any) => ({
         id: r.id, date: r.createdAt, agent: r.agent?.name || "—", status: r.status,
         // Visited of planned: «5» said nothing about a route closed at 3.
@@ -254,15 +249,25 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         { labelKey: "sum.approvalRate", value: pct(approved, total), kind: "percent" },
         { labelKey: "sum.pending", value: pending, kind: "number" },
       ]
-      series = dailySeries(dates.map((d: any) => d.createdAt), startKey, todayKey, timezone)
+      series = dailySeries(dates.map((d: any) => d.createdAt), range, timezone)
       rows = pageRows.map((p: any) => ({
         id: p.id, date: p.createdAt, agent: p.agent?.name || "—", customer: p.visit?.customer?.name || "—", status: p.status,
       }))
     }
 
+    if (exporting && summary && rows) {
+      const workbook = buildXlsxWorkbook(await reportExportSheets(type, summary, rows, searchParams.get("lang"), protectMtmExcelText))
+      const buffer = Buffer.from(await workbook.xlsx.writeBuffer())
+      return new NextResponse(buffer as unknown as BodyInit, { headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": contentDispositionAttachment(`mtm-${type}-${range.fromKey}-${range.toKey}.xlsx`),
+        "Cache-Control": "no-store",
+      } })
+    }
+
     return NextResponse.json({
       success: true,
-      data: { counts, summary, series, reportData: rows, total, page, limit, period, type },
+      data: { counts, summary, series, reportData: rows, total, page, limit, period: range.preset === "custom" ? period : range.preset, from: range.fromKey, to: range.toKey, type },
     })
   } catch (e: any) {
     console.error("[MTM/reports GET]", e)

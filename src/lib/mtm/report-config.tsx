@@ -23,7 +23,30 @@ export const MANAGEMENT_REPORT_TYPES: ReportType[] = ["route_execution", "action
  */
 export const REPORT_TYPES: ReportType[] = ["agent", "visit", "photo", ...MANAGEMENT_REPORT_TYPES]
 
-export type ColKind = "text" | "status" | "role" | "number" | "percent" | "minutes" | "date"
+/**
+ * The reports by what a manager asks of them (owner-approved mockup,
+ * 2026-11-01): the team, the clients, control, sales. Every type of
+ * REPORT_TYPES is in exactly one group.
+ */
+export const REPORT_GROUPS: ReadonlyArray<{ id: "team" | "clients" | "control" | "sales"; types: ReportType[] }> = [
+  { id: "team", types: ["agent", "route_execution"] },
+  { id: "clients", types: ["visit", "promises"] },
+  { id: "control", types: ["photo", "action_compliance"] },
+  { id: "sales", types: ["sales"] },
+]
+
+/** Where a row of a report leads: the visit, the route, the employee — or nowhere. */
+export function reportRowHref(type: ReportType, row: Record<string, unknown>): string | null {
+  const id = typeof row.id === "string" && row.id ? encodeURIComponent(row.id) : null
+  if (!id) return null
+  if (type === "visit" || type === "promises") return `/mtm/visits?visitId=${id}`
+  if (type === "route" || type === "route_execution") return `/mtm/routes?routeId=${id}`
+  if (type === "agent") return `/mtm/agents/${id}`
+  return null
+}
+
+/** `day` is a calendar day stored as a date; `action` is a visit action's code, said in words. */
+export type ColKind = "text" | "status" | "role" | "number" | "percent" | "minutes" | "date" | "day" | "action"
 export interface ReportColumn { key: string; labelKey: string; kind: ColKind }
 export interface ReportDef { icon: LucideIcon; iconClass: string; columns: ReportColumn[] }
 
@@ -75,7 +98,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
     icon: ChartNoAxesCombined,
     iconClass: "text-cyan-700",
     columns: [
-      { key: "date", labelKey: "colDate", kind: "date" },
+      { key: "date", labelKey: "colDate", kind: "day" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
       { key: "team", labelKey: "colTeam", kind: "text" },
       { key: "region", labelKey: "colRegion", kind: "text" },
@@ -90,7 +113,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
     iconClass: "text-emerald-700",
     columns: [
       { key: "team", labelKey: "colTeam", kind: "text" },
-      { key: "action", labelKey: "colAction", kind: "text" },
+      { key: "action", labelKey: "colAction", kind: "action" },
       { key: "required", labelKey: "colRequired", kind: "number" },
       { key: "compliant", labelKey: "colCompliant", kind: "number" },
       { key: "compliance", labelKey: "colCompliance", kind: "percent" },
@@ -132,6 +155,8 @@ const STATUS_TONE: Record<string, Tone> = {
   // missed on purpose, and part of the plan may well have been done.
   INCOMPLETE: "amber",
   OPEN: "amber",
+  // A promise somebody came back for (management-reports «promises»).
+  DONE: "green",
 }
 
 export function statusClass(status: string): string {

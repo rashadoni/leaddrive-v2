@@ -21002,10 +21002,35 @@
     "correctionOpenTimesheet": "Open day in timesheet"
   },
   "mtmReports": {
+    "group": {
+      "sales": "Sales",
+      "control": "Control",
+      "clients": "Clients",
+      "team": "Team"
+    },
+    "exportValue": "Value",
+    "exportMetric": "Metric",
+    "exportSummarySheet": "Summary",
+    "vsPreviousWas": "was {value} in the previous period",
+    "vsPreviousSame": "same as previous period",
+    "vsPreviousPoints": "{diff} pts vs previous period",
+    "vsPrevious": "{change}% vs previous period",
+    "exportExcel": "Excel",
+    "filterAll": "all",
+    "filterAgent": "Agent",
+    "filterRegion": "Region",
+    "filterTeam": "Team",
+    "loadFailed": "Could not load the report",
+    "rangeTooLong": "A period cannot be longer than a year.",
+    "rangePick": "Pick both dates — the report opens at once.",
+    "rangeTo": "To",
+    "rangeFrom": "From",
+    "thisQuarter": "Quarter",
+    "lastMonth": "Last month",
     "hint": {
-      "period": "Today; this week is the last 7 days including today; this month is since the 1st.",
-      "exportLoaded": "Download as CSV the rows already loaded in the table.",
-      "exportFull": "Download the whole report for the period as Excel.",
+      "promises_keptPromises": "Somebody came back to the client after the promise.",
+      "period": "Today; this week is since Monday; this month is since the 1st; last month is the whole month; quarter is since the quarter began. Pick two dates for your own period.",
+      "exportFull": "Download the whole report for the chosen period and filters as Excel, in the screen's words.",
       "recordsAgent": "How many field employees have the status «Working» now.",
       "recordsOther": "How many records this report has for the chosen period.",
       "agent_activeAgents": "How many field employees have the status «Working» now.",
@@ -21035,7 +21060,7 @@
       "sales_attainment": "Actual sales against the plan, as a percentage."
     },
     "title": "Reports",
-    "description": "Pick a report — it opens right below; export with the button on the right",
+    "description": "Pick a period and filters; the figures are compared with the previous period of the same length.",
     "today": "Today",
     "thisWeek": "This Week",
     "thisMonth": "This Month",
@@ -21101,6 +21126,7 @@
     "colAttainment": "Attainment",
     "reportsIntro": "Field operation reports for the selected period",
     "sum": {
+      "keptPromises": "Kept",
       "total": "Total",
       "completed": "Completed",
       "completionRate": "Completion",
@@ -21125,6 +21151,7 @@
       "attainment": "Attainment"
     },
     "status": {
+      "DONE": "Kept",
       "CHECKED_IN": "Checked in",
       "CHECKED_OUT": "Completed",
       "PENDING": "Pending",

@@ -20998,10 +20998,35 @@
     "correctionOpenTimesheet": "Günü tabeldə aç"
   },
   "mtmReports": {
+    "group": {
+      "sales": "Satış",
+      "control": "Nəzarət",
+      "clients": "Müştərilər",
+      "team": "Komanda"
+    },
+    "exportValue": "Dəyər",
+    "exportMetric": "Göstərici",
+    "exportSummarySheet": "Yekun",
+    "vsPreviousWas": "keçən dövrdə {value} idi",
+    "vsPreviousSame": "keçən dövrdəki kimi",
+    "vsPreviousPoints": "{diff} bənd keçən dövrə görə",
+    "vsPrevious": "{change}% keçən dövrə görə",
+    "exportExcel": "Excel",
+    "filterAll": "hamısı",
+    "filterAgent": "Agent",
+    "filterRegion": "Rayon",
+    "filterTeam": "Komanda",
+    "loadFailed": "Hesabatı yükləmək alınmadı",
+    "rangeTooLong": "Dövr bir ildən uzun ola bilməz.",
+    "rangePick": "Hər iki tarixi seçin — hesabat dərhal açılacaq.",
+    "rangeTo": "Son",
+    "rangeFrom": "Başlanğıc",
+    "thisQuarter": "Rüb",
+    "lastMonth": "Keçən ay",
     "hint": {
-      "period": "Bu gün; bu həftə — bu gün daxil son 7 gün; bu ay — ayın 1-dən.",
-      "exportLoaded": "Cədvəldə artıq yüklənmiş sətirləri CSV-yə yüklə.",
-      "exportFull": "Dövr üzrə bütün hesabatı Excel-ə yüklə.",
+      "promises_keptPromises": "Öhdəlik verildikdən sonra müştəriyə yenidən gəlinib.",
+      "period": "Bu gün; bu həftə — bazar ertəsindən; bu ay — ayın 1-dən; keçən ay — bütöv ay; rüb — rübün əvvəlindən. Öz dövrünüz üçün iki tarixi seçin.",
+      "exportFull": "Seçilmiş dövr və filtrlər üzrə bütün hesabatı Excel-ə yüklə — ekrandakı sözlərlə.",
       "recordsAgent": "İndi neçə sahə əməkdaşı «İşləyir» statusundadır.",
       "recordsOther": "Seçilmiş dövr üzrə bu hesabatın neçə qeydi var.",
       "agent_activeAgents": "İndi neçə sahə əməkdaşı «İşləyir» statusundadır.",
@@ -21031,7 +21056,7 @@
       "sales_attainment": "Satış faktının plana nisbəti, faizlə."
     },
     "title": "Hesabatlar",
-    "description": "Hesabatı seçin — dərhal aşağıda açılacaq; ixrac — sağdakı düymə ilə",
+    "description": "Dövrü və filtrləri seçin; rəqəmlər keçən eyni uzunluqlu dövrlə müqayisə olunur.",
     "today": "Bu gün",
     "thisWeek": "Bu həftə",
     "thisMonth": "Bu ay",
@@ -21097,6 +21122,7 @@
     "colAttainment": "İcra",
     "reportsIntro": "Seçilmiş dövr üçün sahə əməliyyatları hesabatları",
     "sum": {
+      "keptPromises": "Yerinə yetirilib",
       "total": "Cəmi",
       "completed": "Tamamlanıb",
       "completionRate": "Tamamlanma",
@@ -21121,6 +21147,7 @@
       "attainment": "İcra"
     },
     "status": {
+      "DONE": "Yerinə yetirilib",
       "CHECKED_IN": "Nöqtədə",
       "CHECKED_OUT": "Tamamlandı",
       "PENDING": "Gözləyir",
