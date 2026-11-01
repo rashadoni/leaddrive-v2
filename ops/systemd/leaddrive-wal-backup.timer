@@ -1,0 +1,15 @@
+[Unit]
+Description=Take the LeadDrive pgBackRest backup once a day
+
+[Timer]
+# 01:10 UTC is 05:10 in Baku: no pharmacy calls the line, and it clears the
+# nightly logical dump at 02:15 and the snapshots after it.
+OnCalendar=*-*-* 01:10:00 UTC
+RandomizedDelaySec=20m
+# A missed day is taken on the next boot: the watch warns at 48h, so a server
+# that was down overnight must not wait for the next 01:10.
+Persistent=true
+Unit=leaddrive-wal-backup.service
+
+[Install]
+WantedBy=timers.target

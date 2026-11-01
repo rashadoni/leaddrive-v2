@@ -20,6 +20,7 @@ set +a
 : "${WAL_STANZA:?}" "${WAL_PG_PORT:?}" "${WAL_PG_USER:?}" "${WAL_SPOOL_PATH:?}"
 : "${WAL_CHECK_LAG_WARN_SECONDS:=900}" "${WAL_CHECK_LAG_CRIT_SECONDS:=3600}"
 : "${WAL_CHECK_BACKLOG_WARN:=64}"
+: "${WAL_FULL_INTERVAL_DAYS:=7}"
 : "${WAL_CHECK_STATE_FILE:=/var/lib/leaddrive-wal-archive/check-state.json}"
 : "${WAL_CHECK_LOCK_FILE:=/var/lib/leaddrive-recovery-runner-locks/wal-check.lock}"
 : "${WAL_ALERT_COMMAND:=}"
@@ -128,6 +129,13 @@ if [ "${backup_age:--1}" -ge 0 ] && [ "$backup_age" -gt 172800 ]; then
   note warn "newest backup is $((backup_age / 3600))h old"
 fi
 
+# Differentials succeeding while full backups fail keeps the newest backup
+# fresh and silently grows the replay chain, so the full backup gets its own
+# deadline: twice its interval, which a single missed night cannot reach.
+if [ "${full_age:--1}" -ge 0 ] && [ "$full_age" -gt $((WAL_FULL_INTERVAL_DAYS * 172800)) ]; then
+  note warn "newest full backup is $((full_age / 86400))d old (interval ${WAL_FULL_INTERVAL_DAYS}d)"
+fi
+
 # 5. End-to-end: pgbackrest check pushes a real segment and reads it back.
 if ! check_output="$(as_pg "pgbackrest --stanza=$WAL_STANZA check")"; then
   note crit "pgbackrest check failed: $(printf '%s' "$check_output" | tail -2 | tr '\n' ' ')"
@@ -164,7 +172,36 @@ if [ "$should_alert" = 1 ] && [ -n "$WAL_ALERT_COMMAND" ] && [ -x "$WAL_ALERT_CO
   "$WAL_ALERT_COMMAND" "$message" || true
 fi
 
-printf '%s' "{\"status\":\"$status\",\"streak\":$streak,\"checkedAt\":\"$(date -u +%FT%TZ)\"}" >"$WAL_CHECK_STATE_FILE"
+# The watch on the workstation reads this file over ssh and forwards the
+# message verbatim. The verdict, its wording and the two-run streak are decided
+# here, next to the data, so exactly one place decides what is wrong; the watch
+# decides only delivery and adds the one thing this host cannot say about
+# itself — that it went silent. Written through a temporary file: a reader that
+# caught a half-written file would see broken JSON and call it an incident.
+WAL_STATE_STATUS="$status" WAL_STATE_STREAK="$streak" \
+WAL_STATE_MESSAGE="$message" WAL_STATE_ALERT="$should_alert" \
+WAL_STATE_FILE="$WAL_CHECK_STATE_FILE" python3 -I -c '
+import json, os, tempfile, time
+
+target = os.environ["WAL_STATE_FILE"]
+payload = {
+    "status": os.environ["WAL_STATE_STATUS"],
+    "streak": int(os.environ["WAL_STATE_STREAK"]),
+    "message": os.environ["WAL_STATE_MESSAGE"],
+    "shouldAlert": os.environ["WAL_STATE_ALERT"] == "1",
+    "checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+}
+directory = os.path.dirname(target) or "."
+fd, tmp = tempfile.mkstemp(dir=directory)
+try:
+    with os.fdopen(fd, "w") as handle:
+        json.dump(payload, handle, ensure_ascii=False)
+    os.chmod(tmp, 0o640)
+    os.replace(tmp, target)
+except BaseException:
+    os.unlink(tmp)
+    raise
+'
 
 printf 'SUMMARY wal-check status=%s lag=%ss backlog=%s dropped=%s backup_age=%ss full_age=%ss\n' \
   "$status" "${last_archived_age:--1}" "$backlog" "$dropped_total" "${backup_age:--1}" "${full_age:--1}"

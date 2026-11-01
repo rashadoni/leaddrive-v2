@@ -1,0 +1,41 @@
+[Unit]
+Description=LeadDrive scheduled pgBackRest backup: the base every PITR replays from
+Documentation=file:/opt/leaddrive-v2/docs/BACKUP_RUNBOOK.md
+# No OnFailure here on purpose. The watch reads the repository state every five
+# minutes and complains about a missing or stale backup, so a failed run is
+# noticed by its result, not by this job reporting on itself.
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+# Runs as root: it reads the root-only env file and switches to the database
+# superuser for pgbackrest, so NoNewPrivileges would break su.
+ExecStart=/usr/local/lib/leaddrive-v2/ops/current/backup/wal-archive-backup.sh
+# A full backup of a growing database must not be killed halfway: a killed
+# backup leaves the repository without the new base and PITR keeps replaying
+# from the older one.
+TimeoutStartSec=4h
+UMask=0077
+Nice=15
+IOSchedulingClass=idle
+
+PrivateTmp=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectSystem=strict
+ReadOnlyPaths=-/etc/leaddrive -/etc/pgbackrest
+# pgBackRest keeps its own log, and a failed backup is diagnosed from it.
+ReadWritePaths=-/var/log/pgbackrest -/var/lib/leaddrive-recovery-runner-locks
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
