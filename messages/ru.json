@@ -18623,6 +18623,7 @@
         "totalBREAK": "перерыв · место не пишется",
         "totalGAP": "нет данных с телефона",
         "stopWithoutVisit": "Остановка без визита",
+        "stayAfterBreak": "Там же, после перерыва",
         "visitFor": "Визит · на месте {duration}",
         "visitOpen": "Визит не закрыт",
         "noSignal": "Нет данных с телефона",
