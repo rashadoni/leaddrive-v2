@@ -50,7 +50,10 @@ beforeEach(() => {
 })
 
 describe("mobile manager mixed workforce boundaries", () => {
-  it("does not select active workdays for a Routes-only manager", async () => {
+  // Owner's phone, 2026-11-01: Zeytun has Routes and no HRM module, and the
+  // manager read «İş günü başlamayıb» under agents whose day was running.
+  // The day's status is Route & Field data; nothing of HRM comes with it.
+  it("tells a Routes-only manager whether each agent's day is on", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH,
       tenantCapabilities: { routeField: true, workforceHrm: false },
@@ -63,15 +66,28 @@ describe("mobile manager mixed workforce boundaries", () => {
       teamId: "team-1",
       isOnline: true,
       lastSeenAt: null,
+      workdays: [{ id: "workday-1", status: "STARTED", startedAt: new Date("2026-11-01T08:57:00Z"), pausedAt: null, completedAt: null }],
     }] as never)
 
     const response = await teamGet(request("team"))
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.data.agents[0].workday).toBeNull()
+    expect(body.data.agents[0].workday).toMatchObject({ id: "workday-1", status: "STARTED" })
     const query = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any
-    expect(query.select.workdays).toBeUndefined()
+    // The status and times of the day only — no schedule, no HRM request.
+    expect(query.select.workdays.select).toEqual({ id: true, status: true, startedAt: true, pausedAt: true, completedAt: true })
+  })
+
+  it("gives a manager with neither module's team permission no workday", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({
+      ...AUTH,
+      role: "AGENT",
+      tenantCapabilities: { routeField: true, workforceHrm: false },
+    } as never)
+    const response = await teamGet(request("team"))
+    expect(response.status).toBe(403)
+    expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
   })
 
   // Owner, 2026-11-01: the card reads like a parcel in a tracking app —
