@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Eye, Layers, X } from "lucide-react"
+import { Check, Eye, Layers, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Hint } from "@/components/hint"
 
@@ -18,6 +18,8 @@ export interface LiveMapLayer {
    * layer that was simply never turned on is not something «missing».
    */
   shownByDefault?: boolean
+  /** How many things the layer draws, said on its button on the map (see `quick`). */
+  count?: number | null
 }
 
 /**
@@ -42,8 +44,15 @@ export interface LiveMapLayersAlert {
  * be taken off at all, and a single employee could not be hidden. The control
  * is closed until asked for, so the map itself stays clear.
  */
-export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents, note, alert = null, baseMaps = null, closeTurn = 0 }: {
+export function LiveMapLayersControl({ layers, quick = [], hiddenAgentCount, onShowAllAgents, note, alert = null, baseMaps = null, closeTurn = 0 }: {
   layers: LiveMapLayer[]
+  /**
+   * Layers that also stand as buttons on the map itself, beside «Слои».
+   * Owner, 2026-11-01: «не нашёл, как убрать клиентов, чтобы оставить только
+   * агентов» — the switch was one of ten in a closed panel. The few a manager
+   * turns on and off all day are seen without opening anything.
+   */
+  quick?: string[]
   /**
    * Counts the times the map was asked, from outside it, to show a place — a
    * zone's «На карте» in the list on the page. Each new turn closes the panel:
@@ -73,6 +82,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
     setOpen(false)
   }
   const offCount = layers.filter((layer) => layer.shownByDefault && !layer.on).length + (hiddenAgentCount > 0 ? 1 : 0)
+  const quickLayers = quick.map((id) => layers.find((layer) => layer.id === id)).filter((layer): layer is LiveMapLayer => layer != null)
   const alerts = (Array.isArray(alert) ? alert : [alert]).filter((item): item is LiveMapLayersAlert => item != null)
 
   return (
@@ -93,11 +103,37 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
     // The frame spans the map's width only to learn that width (@container) —
     // it takes no presses itself.
     <div className="@container pointer-events-none absolute left-3 bottom-3 right-3 top-3 z-[1200] flex flex-col items-end gap-2" data-testid="live-map-layers">
+      <div className="flex shrink-0 items-center gap-2">
+      {quickLayers.length > 0 ? (
+        // Only where the map is wide enough for them beside «Слои»; on a phone
+        // they are in the panel, as before.
+        <div className="pointer-events-auto hidden items-center gap-1 rounded-lg border border-border bg-card p-1 shadow-md @xl:flex" data-testid="live-map-quick-layers">
+          {quickLayers.map((layer) => (
+            <Hint key={layer.id} text={layer.hint ?? layer.label}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={layer.on}
+                onClick={layer.onToggle}
+                data-testid={`live-map-quick-${layer.id}`}
+                className={cn("inline-flex min-h-9 items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors hover:bg-muted", !layer.on && "text-muted-foreground")}
+              >
+                <span aria-hidden="true" className={cn("inline-flex h-4 w-4 shrink-0 items-center justify-center rounded", layer.on ? "bg-primary text-primary-foreground" : "border-[1.5px] border-muted-foreground/60")}>
+                  {layer.on ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+                </span>
+                {layer.label}
+                {layer.count != null ? <span className="font-normal text-muted-foreground">{layer.count}</span> : null}
+              </button>
+            </Hint>
+          ))}
+        </div>
+      ) : null}
       <Hint side="left" text={offCount > 0 ? `${tMap("hint.layers")} ${tMap("hint.layersOff")}` : tMap("hint.layers")}>
         <button
           type="button"
           aria-expanded={open}
           aria-controls="live-map-layers-panel"
+          data-testid="live-map-layers-button"
           onClick={() => setOpen((value) => !value)}
           className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium shadow-md"
         >
@@ -107,6 +143,7 @@ export function LiveMapLayersControl({ layers, hiddenAgentCount, onShowAllAgents
           {!open && offCount > 0 ? <span className="h-2 w-2 rounded-full bg-amber-500" data-testid="live-map-layers-mark" aria-hidden="true" /> : null}
         </button>
       </Hint>
+      </div>
       {open ? null : alerts.map((item, index) => (
         <div key={item.testId ?? `alert-${index}`} role="status" className="border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 pointer-events-auto flex max-w-[min(18rem,calc(100vw-3rem))] shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-2.5 py-1.5 text-xs shadow-md" data-testid={item.testId ?? "live-map-layers-alert"}>
           <span>{item.text}</span>

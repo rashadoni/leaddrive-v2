@@ -7,6 +7,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { agentsReachableByPush } from "@/lib/mtm/agent-task-glance"
+import { teamRouteDay, type TeamRouteDayPoint, type TeamRouteDayVisit } from "@/lib/mtm/team-route-day"
 
 /** Published routes: a draft is nobody's plan yet, a cancelled one nobody's any more. */
 const ROUTE_TODAY_STATUSES = ["PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE"] as const
@@ -79,6 +80,7 @@ export const GET = withMobileRls(async (req, auth) => {
     // «Визиты 3 из 8» on each card (owner, 2026-10-17): the points of the
     // routes published for today, by what became of them.
     const routeToday = new Map<string, { planned: number; visited: number; skipped: number }>()
+    const routePoints = new Map<string, TeamRouteDayPoint[]>()
     if (canReadRouteTeam && agents.length > 0) {
       const routes = await prisma.mtmRoute.findMany({
         where: {
@@ -88,10 +90,25 @@ export const GET = withMobileRls(async (req, auth) => {
           deletedAt: null,
           status: { in: [...ROUTE_TODAY_STATUSES] },
         },
-        select: { agentId: true, points: { where: { deletedAt: null }, select: { status: true } } },
+        select: {
+          agentId: true,
+          points: {
+            where: { deletedAt: null },
+            select: {
+              id: true,
+              orderIndex: true,
+              status: true,
+              plannedTime: true,
+              visitedAt: true,
+              customer: { select: { name: true } },
+              contact: { select: { displayName: true } },
+            },
+          },
+        },
       })
       for (const route of routes) {
         const counts = routeToday.get(route.agentId) ?? { planned: 0, visited: 0, skipped: 0 }
+        routePoints.set(route.agentId, [...(routePoints.get(route.agentId) ?? []), ...route.points])
         for (const point of route.points) {
           counts.planned += 1
           if (point.status === "VISITED") counts.visited += 1
@@ -104,6 +121,8 @@ export const GET = withMobileRls(async (req, auth) => {
     // 2026-10-17): one stayed open five days and took the next visit's photo.
     // The manager's «Diqqət» counts it; the agent's app asks to close it.
     const openVisitSince = new Map<string, string>()
+    // The visit he is in now, opened today: «на визите 48 мин» on his card.
+    const openVisitToday = new Map<string, TeamRouteDayVisit>()
     if (canReadRouteTeam && agents.length > 0) {
       const openVisits = await prisma.mtmVisit.findMany({
         where: {
@@ -113,11 +132,21 @@ export const GET = withMobileRls(async (req, auth) => {
           deletedAt: null,
         },
         orderBy: { checkInAt: "asc" },
-        select: { agentId: true, checkInAt: true },
+        select: {
+          agentId: true,
+          checkInAt: true,
+          routePointId: true,
+          customer: { select: { name: true } },
+          contact: { select: { displayName: true } },
+        },
       })
       for (const visit of openVisits) {
-        if (openVisitSince.has(visit.agentId)) continue
-        if (currentDateKey(visit.checkInAt, timezone) < todayKey) openVisitSince.set(visit.agentId, visit.checkInAt.toISOString())
+        if (currentDateKey(visit.checkInAt, timezone) < todayKey) {
+          if (!openVisitSince.has(visit.agentId)) openVisitSince.set(visit.agentId, visit.checkInAt.toISOString())
+        } else {
+          // Ascending: a second visit opened later today is the one he is in.
+          openVisitToday.set(visit.agentId, visit)
+        }
       }
     }
     // «Дать задачу» says before sending whether the pop-up reaches the phone.
@@ -134,7 +163,11 @@ export const GET = withMobileRls(async (req, auth) => {
             workday: canReadWorkforceTeam ? workdayOfToday(workdays) : null,
             pushReady: reachable.has(agent.id),
             ...(canReadRouteTeam
-              ? { routeToday: routeToday.get(agent.id) ?? null, openVisitSince: openVisitSince.get(agent.id) ?? null }
+              ? {
+                  routeToday: routeToday.get(agent.id) ?? null,
+                  openVisitSince: openVisitSince.get(agent.id) ?? null,
+                  routeDay: teamRouteDay(routePoints.get(agent.id) ?? [], openVisitToday.get(agent.id) ?? null),
+                }
               : {}),
           }
         }),

@@ -416,6 +416,7 @@ describe("the live map page, end to end", () => {
 
     // A filter on another column: the chips now count inside it.
     await press(byTestId("live-map-roster-filters-button"))
+    await press(byTestId("live-map-roster-filters-more"))
     await press(byTestId("live-map-roster-filters-value-battery-LOW"))
     await press(byTestId("live-map-roster-filters-done"))
     expect(rowIds()).toEqual(["near"])
@@ -650,7 +651,7 @@ describe("the live map page, end to end", () => {
     // Nothing but the roster (and no day's track) was asked of the server.
     expect(requests.filter((request) => !request.startsWith("/api/v1/mtm/locations"))).toEqual([])
 
-    await press(container.querySelector('[data-testid="live-map-layers"] > button'))
+    await press(container.querySelector('[data-testid="live-map-layers-button"]'))
     await press(byTestId("live-map-layer-labels"))
     await press(byTestId("live-map-layer-trails"))
     await press(byTestId("live-map-layer-glide"))
@@ -672,7 +673,7 @@ describe("the live map page, end to end", () => {
     await open()
     // The map everybody knows: the map is handed no other background.
     expect(mapProp("baseMap")).toBeNull()
-    await press(document.querySelector('[data-testid="live-map-layers"] > button'))
+    await press(document.querySelector('[data-testid="live-map-layers-button"]'))
     expect([...document.querySelectorAll('[data-testid="live-map-base-maps"] [role="radio"]')].map((choice) => choice.textContent)).toEqual(["Карта", "Светлая"])
     await press(byTestId("live-map-base-map-light"))
     expect(mapProp<{ id: string; url: string }>("baseMap")).toMatchObject({ id: "light", url: expect.stringContaining("/light_all/") })
@@ -838,7 +839,7 @@ describe("the live map page, end to end", () => {
   })
 
   describe("«Клиенты»: the client base as a layer", () => {
-    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers-button"]')) }
     const clientRequests = () => requests.filter((request) => request.startsWith("/api/v1/mtm/locations/clients")).length
     const hint = () => byTestId("live-map-layer-hint-clients")?.textContent
 
@@ -937,7 +938,7 @@ describe("the live map page, end to end", () => {
 
   describe("«Свои зоны»: areas the organization draws on the map and names", () => {
     type ZoneOnMap = { id: string; name: string; kind: string; color: string | null; center?: { latitude: number; longitude: number }; radiusMeters?: number; outline?: Array<{ latitude: number; longitude: number }> }
-    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers-button"]')) }
     const hint = () => byTestId("live-map-layer-hint-areas")?.textContent
     const zonesOnMap = () => mapProp<ZoneOnMap[]>("zones")
     // The zones' own card on the page: folded until «Показать список» is pressed.
@@ -1171,7 +1172,7 @@ describe("the live map page, end to end", () => {
       expect(asked()).toBeNull()
       expect(byTestId("live-map-zone-show-zone-centre")?.textContent).toBe("На карте")
       // «Слои» is still open — the layer has just been switched on in it — and lies over the middle of the map.
-      const layersButton = () => container.querySelector('[data-testid="live-map-layers"] > button')
+      const layersButton = () => container.querySelector('[data-testid="live-map-layers-button"]')
       const layersOpen = () => [document.getElementById("live-map-layers-panel") != null, layersButton()?.getAttribute("aria-expanded")]
       expect(layersOpen()).toEqual([true, "true"])
       await press(byTestId("live-map-zone-show-zone-centre"))
@@ -2191,7 +2192,7 @@ describe("the live map page, end to end", () => {
       // Never taken off the map: not while the read was out, not when it failed.
       expect(mapProp<unknown[]>("clients")).toHaveLength(2)
       expect([...shown]).not.toContain(0)
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       expect(byTestId("live-map-layer-hint-clients")?.textContent).toMatch(/^на карте 2 .+не удалось обновить$/)
       // A failed read is tried again by itself a minute later, without anybody pressing anything.
       clientBase = { clients: [], total: 0, withoutCoordinates: 0, truncated: false }
@@ -2269,7 +2270,7 @@ describe("the live map page, end to end", () => {
       expect([...shown]).not.toContain(0)
       // The zones are on the map, so nothing shouts over it; the layer's own line says the refresh failed.
       expect(byTestId("live-map-areas-alert")).toBeNull()
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       expect(byTestId("live-map-layer-hint-areas")?.textContent).toBe("на карте зон: 2 · не удалось обновить")
       // Who may change them was said by the last answer that did come: the list, in its card, keeps its rows and their buttons.
       expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 2")
@@ -2287,7 +2288,7 @@ describe("the live map page, end to end", () => {
       zoneBase = { zones: [], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       const line = () => byTestId("live-map-layer-hint-areas")?.textContent
       expect(line()).toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
       zoneBase = 500

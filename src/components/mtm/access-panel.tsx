@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
+import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import {
   ACCESS_NONE,
   accessChoiceOf,
+  accessTeamOf,
   accessWrites,
   buildAccessRoster,
   type AccessCard,
@@ -135,12 +137,23 @@ export function MtmAccessPanel() {
       ) : roster.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
+        <>
+        {/* The three levels in words, before the list that uses them (owner,
+            2026-11-01: «не понятно что, для чего и как работает»). */}
+        <div className="grid gap-3 sm:grid-cols-3" data-testid="mtm-access-levels">
+          {(["All", "Team", "Own"] as const).map((level) => (
+            <div key={level} className="rounded-xl border border-border bg-card px-4 py-3">
+              <p className="text-sm font-semibold">{t(`level${level}Title`)}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t(`level${level}Text`)}</p>
+            </div>
+          ))}
+        </div>
         <div className="rounded-xl border border-border bg-card">
-          <div className="hidden gap-4 border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.6fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div className={`hidden gap-4 border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground md:grid ${ACCESS_GRID}`}>
             <span>{t("colPerson")}</span>
-            <span><HintValue text={t("hint.colCrmRole")}>{t("colCrmRole")}</HintValue></span>
-            <span><HintValue text={t("hint.colAccess")}>{t("colAccess")}</HintValue></span>
-            <span><HintValue text={t("hint.colRoutes")}>{t("colRoutes")}</HintValue></span>
+            <span><HintValue text={t("hint.colWhere")}>{t("colWhere")}</HintValue></span>
+            <span><HintValue text={t("hint.colSees")}>{t("colSees")}</HintValue></span>
+            <span><HintValue text={t("hint.colTeam")}>{t("colTeam")}</HintValue></span>
           </div>
           <ul className="divide-y divide-border">
             {roster.rows.map((row) => (
@@ -148,6 +161,7 @@ export function MtmAccessPanel() {
                 key={row.user.id}
                 row={row}
                 crmRole={roleLabel(row.user.role)}
+                team={row.kind === "card" ? accessTeamOf(row.card.id, cards) : []}
                 busy={busy === row.user.id}
                 error={errors[row.user.id] ?? ""}
                 onAccess={(choice) => apply(row.user.id, accessWrites(row, choice))}
@@ -156,15 +170,22 @@ export function MtmAccessPanel() {
                 ])}
               />
             ))}
+            {roster.mobileCards.map((card) => (
+              <MobileCardRow
+                key={card.id}
+                card={card}
+                team={accessTeamOf(card.id, cards)}
+                busy={busy === card.id}
+                error={errors[card.id] ?? ""}
+                onCardFlag={(flag, value) => apply(card.id, [
+                  { url: `/api/v1/mtm/agents/${card.id}`, method: "PUT", body: { [flag]: value } },
+                ])}
+              />
+            ))}
           </ul>
         </div>
-      )}
-
-      {roster && roster.mobileOnly > 0 && (
-        <p className="text-sm text-muted-foreground">
-          {t("mobileOnly", { count: roster.mobileOnly })}{" "}
-          <Link href="/mtm/agents" className="underline">{t("openAgents")}</Link>
-        </p>
+        <p className="text-sm text-muted-foreground">{t("matrixNote")}</p>
+        </>
       )}
       </div>
       ) : (
@@ -177,11 +198,15 @@ export function MtmAccessPanel() {
   )
 }
 
+/** Person · where · what they see · team and extra rights. */
+const ACCESS_GRID = "md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.45fr)_minmax(0,1.3fr)_minmax(0,1.15fr)]"
+
 function AccessRowView({
-  row, crmRole, busy, error, onAccess, onCardFlag,
+  row, crmRole, team, busy, error, onAccess, onCardFlag,
 }: {
   row: AccessRow
   crmRole: string
+  team: string[]
   busy: boolean
   error: string
   onAccess: (choice: AccessChoice) => void
@@ -192,26 +217,27 @@ function AccessRowView({
   const selectId = `access-${row.user.id}`
 
   return (
-    <li
-      className="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.6fr)_minmax(0,1.5fr)_minmax(0,1fr)] md:items-start md:gap-4"
-      data-testid={`mtm-access-row-${row.user.id}`}
-    >
+    <li className={`grid gap-3 px-4 py-3 md:items-center md:gap-4 ${ACCESS_GRID}`} data-testid={`mtm-access-row-${row.user.id}`}>
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">{row.user.name}</p>
-        <p className="truncate text-xs text-muted-foreground">{row.user.email}</p>
+        <p className="truncate text-xs text-muted-foreground" title={row.user.email}>{t("crmRoleLine", { role: crmRole })} · {row.user.email}</p>
       </div>
-      <p className="text-sm">{crmRole}</p>
+      <p className="text-sm">{t("whereSite")}</p>
       <div className="min-w-0">
         {row.kind === "organization" ? (
           <p className="text-sm">{t("adminRow")}</p>
         ) : row.kind === "hidden" ? (
-          <p className="text-sm text-muted-foreground">
-            {t("hiddenRow")}{" "}
-            <Link href="/settings/users" className="underline">{t("openUsers")}</Link>
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-sm text-muted-foreground">{t("noAccess")}</span>
+            <Hint text={t("hint.giveAccess")}>
+              <Button asChild variant="outline" size="sm" className="min-h-9">
+                <Link href="/settings/users" data-testid={`mtm-access-give-${row.user.id}`}>{t("giveAccess")}</Link>
+              </Button>
+            </Hint>
+          </div>
         ) : (
           <>
-            <label htmlFor={selectId} className="sr-only">{t("colAccess")}</label>
+            <label htmlFor={selectId} className="sr-only">{t("colSees")}</label>
             <Select
               id={selectId}
               value={choice ?? ACCESS_NONE}
@@ -223,50 +249,95 @@ function AccessRowView({
                 <option key={fieldRole} value={fieldRole}>{t(`role_${fieldRole}` as never)}</option>
               ))}
             </Select>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {row.kind === "none" ? t("noAccessHint") : (
-                <>
-                  {t("card", { name: row.card.name })}
-                  {(row.role === "MANAGER" || row.role === "SUPERVISOR") && (
-                    <> · {t("teamHint")} <Link href="/mtm/agents" className="underline">{t("openAgents")}</Link></>
-                  )}
-                </>
-              )}
-            </p>
+            {row.kind === "none" ? <p className="mt-1 text-xs text-muted-foreground">{t("noAccessHint")}</p> : null}
             {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
           </>
         )}
       </div>
-      <div className="grid gap-2 text-sm">
-        {row.kind === "card" && row.role === "AGENT" && (
-          <>
-            <Hint text={t("hint.canPlan")}>
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-input"
-                  checked={row.card.canPlanOwnRoutes !== false}
-                  disabled={busy}
-                  onChange={(event) => onCardFlag(row.card.id, "canPlanOwnRoutes", event.target.checked)}
-                />
-                {t("canPlan")}
-              </label>
-            </Hint>
-            <Hint text={t("hint.canPublish")}>
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-input"
-                  checked={row.card.canSelfPublishRoutes === true}
-                  disabled={busy}
-                  onChange={(event) => onCardFlag(row.card.id, "canSelfPublishRoutes", event.target.checked)}
-                />
-                {t("canPublish")}
-              </label>
-            </Hint>
-          </>
-        )}
+      <div className="min-w-0 text-sm">
+        {row.kind === "card" && row.role === "AGENT" ? (
+          <RouteFlags card={row.card} busy={busy} onFlag={(flag, value) => onCardFlag(row.card.id, flag, value)} />
+        ) : row.kind === "card" && (row.role === "MANAGER" || row.role === "SUPERVISOR") ? (
+          <TeamLine team={team} />
+        ) : <span className="text-muted-foreground">—</span>}
       </div>
     </li>
+  )
+}
+
+/** Someone who works only in the phone app: what their card lets them see, and an agent's route rights. */
+function MobileCardRow({ card, team, busy, error, onCardFlag }: {
+  card: AccessCard
+  team: string[]
+  busy: boolean
+  error: string
+  onCardFlag: (flag: "canPlanOwnRoutes" | "canSelfPublishRoutes", value: boolean) => void
+}) {
+  const t = useTranslations("mtmAccess")
+  const known = (ASSIGNABLE_FIELD_CARD_ROLES as readonly string[]).includes(card.role)
+  return (
+    <li className={`grid gap-3 px-4 py-3 md:items-center md:gap-4 ${ACCESS_GRID}`} data-testid={`mtm-access-card-${card.id}`}>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium">{card.name}</p>
+        <p className="truncate text-xs text-muted-foreground">{t("mobileOnlyLine")}</p>
+      </div>
+      <p className="text-sm">{t("wherePhone")}</p>
+      <div className="min-w-0">
+        <p className="text-sm">{known ? t(`role_${card.role}` as never) : card.role}</p>
+        {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      </div>
+      <div className="min-w-0 text-sm">
+        {card.role === "AGENT" ? <RouteFlags card={card} busy={busy} onFlag={onCardFlag} />
+          : card.role === "MANAGER" || card.role === "SUPERVISOR" ? <TeamLine team={team} />
+          : <span className="text-muted-foreground">—</span>}
+      </div>
+    </li>
+  )
+}
+
+function TeamLine({ team }: { team: string[] }) {
+  const t = useTranslations("mtmAccess")
+  return team.length > 0 ? (
+    <p className="truncate" title={team.join(", ")} data-testid="mtm-access-team">{t("teamOf", { names: team.join(", ") })}</p>
+  ) : (
+    <p className="text-muted-foreground" data-testid="mtm-access-team">
+      {t("teamEmpty")} · <Link href="/mtm/agents" className="underline">{t("openAgents")}</Link>
+    </p>
+  )
+}
+
+function RouteFlags({ card, busy, onFlag }: {
+  card: AccessCard
+  busy: boolean
+  onFlag: (flag: "canPlanOwnRoutes" | "canSelfPublishRoutes", value: boolean) => void
+}) {
+  const t = useTranslations("mtmAccess")
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <Hint text={t("hint.canPlan")}>
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-input"
+            checked={card.canPlanOwnRoutes !== false}
+            disabled={busy}
+            onChange={(event) => onFlag("canPlanOwnRoutes", event.target.checked)}
+          />
+          {t("canPlan")}
+        </label>
+      </Hint>
+      <Hint text={t("hint.canPublish")}>
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-input"
+            checked={card.canSelfPublishRoutes === true}
+            disabled={busy}
+            onChange={(event) => onFlag("canSelfPublishRoutes", event.target.checked)}
+          />
+          {t("canPublish")}
+        </label>
+      </Hint>
+    </div>
   )
 }

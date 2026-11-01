@@ -47,6 +47,28 @@ describe("MTM tables: the row opens its card", () => {
   })
 })
 
+describe("«Müştərilər»: every row two lines, nothing runs into the next column", () => {
+  // Owner, 2026-11-01: «всё лезет друг на друга». «planlaşdırılmayıb» did not
+  // fit a tenth of the table and ran into the employee's name; a second
+  // employee made the row twice as tall.
+  const source = readFileSync(resolve("src/components/mtm/contact-explorer.tsx"), "utf8")
+
+  it("keeps the next visit under the last one, in the same cell", () => {
+    expect(source).not.toContain('t("nextVisit")}</HintValue>')
+    expect(source).toMatch(/data-testid=\{`mtm-contact-last-visit-\$\{contact\.id\}`\}[\s\S]{0,900}data-testid=\{`mtm-contact-next-visit-\$\{contact\.id\}`\}/)
+    expect(source).not.toContain('className="whitespace-nowrap px-3 py-2" data-testid={`mtm-contact-next-visit')
+  })
+
+  it("shows two employees at most, the second one grey", () => {
+    expect(source).toContain("owners.slice(0, 2).map((owner, index)")
+  })
+
+  it("does not paint «none yet» orange in every row", () => {
+    expect(source).not.toMatch(/font-semibold text-orange-600[^"]*">\{t\("noVisitHistory"\)\}<\/span>\}\s*<\/div>/)
+    expect(source).toContain('<span className="text-muted-foreground">{t("noVisitHistory")}</span>')
+  })
+})
+
 describe("MTM: words, sizes and loading", () => {
   it("leaves no icon-only button anywhere in the module", () => {
     // Owner, 2026-11-01: «пофикси мелочи» — the words go on every MTM button,
