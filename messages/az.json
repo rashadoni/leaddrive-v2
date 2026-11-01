@@ -18322,6 +18322,7 @@
         "nothingFound": "Heç nə tapılmadı",
         "reset": "Bu filtri sıfırla",
         "resetAll": "Filtrləri sıfırla",
+        "moreFilters": "Daha çox filtr: {names}",
         "remove": "«{column}» filtrini sil",
         "chip": "{column}: {values}",
         "unknownValue": "siyahıda yoxdur",

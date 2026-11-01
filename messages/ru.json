@@ -18326,6 +18326,7 @@
         "nothingFound": "Ничего не найдено",
         "reset": "Сбросить этот фильтр",
         "resetAll": "Сбросить фильтры",
+        "moreFilters": "Ещё фильтры: {names}",
         "remove": "Убрать фильтр «{column}»",
         "chip": "{column}: {values}",
         "unknownValue": "нет в списке",

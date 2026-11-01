@@ -1086,10 +1086,15 @@ describe("the list on the page", () => {
     expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры")
     await press(byTestId("live-map-roster-filters-button"))
     const panel = byTestId("live-map-roster-filters-menu")!
+    const titles = () => [...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent)
+    // Owner, 2026-11-01 («фильтр хаотично построен»): one group a row, the ones
+    // a manager uses first; the rest under «Ещё фильтры» until asked for.
+    expect(titles()).toEqual(["Статус", "Отдел", "Приложение", "Сигнал"])
+    expect(byTestId("live-map-roster-filters-more")?.textContent).toBe("Ещё фильтры: рабочий день, маршрут, скорость, батарея")
+    await press(byTestId("live-map-roster-filters-more"))
     // Every column of this roster at once, also the ones the narrow list does
     // not draw. Particular people are picked from the search and the name column.
-    expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
-      .toEqual(["Статус", "Сигнал", "Отдел", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+    expect(titles()).toEqual(["Статус", "Отдел", "Приложение", "Сигнал", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
     // The values are on the panel already: one press from «Фильтры» to a filter.
     expect([...byTestId("live-map-roster-filters-group-battery")!.querySelectorAll("button")].map((value) => value.textContent))
       .toEqual(["Ниже 20%1", "20–50%1", "Выше 50%2", "Нет данных2"])
@@ -1204,8 +1209,8 @@ describe("the list on the page", () => {
       await settle()
       expect(floating()).toBe(true)
       expect(placed("live-map-roster-filters-menu")).toEqual(BESIDE_THE_LIST)
-      // A floating panel is closed by Escape or a press outside: it needs no «Готово».
-      expect(byTestId("live-map-roster-filters-done")).toBeNull()
+      // Closed by Escape, a press outside — or «Готово» at its foot, which says what is shown.
+      expect(byTestId("live-map-roster-filters-done")?.textContent).toBe("Готово · показано 6 из 6")
       expect(byTestId("live-map-roster-heading")?.className).toContain("sticky")
       // It is bounded by the room to the left of the list, so it is never cut by the edge of the screen.
       expect(byTestId("live-map-roster-filters-menu")?.className).toContain("var(--radix-popover-content-available-width)")
@@ -1469,9 +1474,10 @@ describe("the list on the page", () => {
       await draw()
       await press(byTestId("live-map-roster-filters-button"))
       const panel = byTestId("live-map-roster-filters-menu")!
-      // Nobody here has a team or a manager; the labels stand where the table has them.
+      await press(byTestId("live-map-roster-filters-more"))
+      // Nobody here has a team or a manager; the labels wait under «Ещё фильтры».
       expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
-        .toEqual(["Статус", "Сигнал", "Метки", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+        .toEqual(["Статус", "Приложение", "Сигнал", "Метки", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
       expect([...byTestId("live-map-roster-filters-group-tags")!.querySelectorAll("button")].map((value) => value.textContent))
         .toEqual(["аптеки1", "наставник1", "ночная смена1", "резерв2", "север1", "стажёр3", "Без меток2"])
 

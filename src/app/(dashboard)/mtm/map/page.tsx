@@ -1860,17 +1860,18 @@ export default function MtmMapPage() {
                 onChange: (id) => changeMapLook({ base: parseLiveMapBaseMap(id, BASE_MAPS) }),
               }}
               layers={[
-                { id: "agents", label: tMap("layers.agents"), hint: tMap("layers.agentsHint"), on: showAgentMarkers, onToggle: () => setShowAgentMarkers((on) => !on), shownByDefault: true },
+                { id: "agents", label: tMap("layers.agents"), hint: tMap("layers.agentsHint"), on: showAgentMarkers, onToggle: () => setShowAgentMarkers((on) => !on), shownByDefault: true, count: mapAgents.length },
                 { id: "route", label: tMap("layers.route"), hint: tMap("layers.routeHint"), on: showDayRoute, onToggle: () => setShowDayRoute((on) => !on), shownByDefault: true },
                 { id: "labels", label: tMap("layers.labels"), hint: tMap("layers.labelsHint"), on: mapLook.labels, onToggle: () => changeMapLook({ labels: !mapLook.labels }) },
                 { id: "trails", label: tMap("layers.trails"), hint: tMap("layers.trailsHint"), on: mapLook.trails, onToggle: () => changeMapLook({ trails: !mapLook.trails }), shownByDefault: true },
                 { id: "glide", label: tMap("layers.glide"), hint: tMap("layers.glideHint"), on: mapLook.glide, onToggle: () => changeMapLook({ glide: !mapLook.glide }) },
-                { id: "clients", label: tMap("layers.clients"), hint: clientsHint, on: mapLook.clients, onToggle: () => changeMapLook({ clients: !mapLook.clients }) },
+                { id: "clients", label: tMap("layers.clients"), hint: clientsHint, on: mapLook.clients, onToggle: () => changeMapLook({ clients: !mapLook.clients }), count: clientsKey && clientsHeld?.data ? clientsHeld.data.clients.length : null },
                 { id: "zones", label: tMap("layers.zones"), hint: tMap("layers.zonesHint"), on: showGeofence, onToggle: () => setShowGeofence((on) => !on) },
                 { id: "heat", label: tMap("layers.heat"), hint: tMap("layers.heatHint"), on: showHeatmap, onToggle: () => setShowHeatmap((current) => !current), testId: "mtm-map-heatmap-toggle" },
                 // The switch and how many there are; the zones themselves are listed on the page, above the employees (LiveMapZonesCard).
                 { id: "areas", label: tMap("layers.areas"), hint: areasHint, on: mapLook.areas, onToggle: () => { changeMapLook({ areas: !mapLook.areas }); setZoneEdit(null); setZoneGone(null) } },
               ]}
+              quick={["agents", "clients", "areas"]}
               hiddenAgentCount={hiddenOnMapCount}
               onShowAllAgents={() => setHiddenAgentIds(new Set())}
               note={tMap("historyOnlyExplicit")}
