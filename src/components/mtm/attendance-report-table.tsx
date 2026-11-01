@@ -46,6 +46,8 @@ function dayColumns(table: AttendanceTable) {
 const dayTone = (row: AttendanceTable["rows"][number], meta: AttendanceDayMeta): HomeTone => row.kind === "INVALID_FACTS" || row.kind === "ABSENT" ? "red"
   : row.kind === "MISSING_FINISH" || meta.late ? "amber" : row.kind === "OPEN" || row.kind === "HOLIDAY" ? "blue" : row.kind === "WORKED" ? "green" : "zinc"
 const withoutSeconds = (text: string) => text.replace(/^(\d{1,2}:\d{2}):\d{2}$/, "$1")
+/** «12:14:37» → «12:14»: seconds are noise on screen; the file keeps them. */
+const durationWithoutSeconds = (text: string) => text.replace(/^(\d+:\d{2}):\d{2}/, "$1")
 const noTime = (text: string) => text === "0:00" || text === "—" || text === ""
 
 /** HR asks for an explanation of a day from the report (owner, 2026-11-01); the answer is decided on «Bu gün». */
@@ -66,7 +68,7 @@ function ExplainCell({ meta, explain }: { meta: AttendanceDayMeta; explain: Atte
     {t(meta.explanation === "REQUESTED" ? "reportExplainWaiting" : meta.explanation === "ACCEPTED" ? "reportExplainAccepted" : "reportExplainRejected")}</HomePill>
   if (explain.sent.has(key)) return <HomePill tone="amber">{t("reportExplainSent")}</HomePill>
   if (!meta.explainKind || !explain.askable(meta)) return <span className="text-muted-foreground">—</span>
-  return <Hint text={t("reportExplainAskHint")}><Button type="button" size="sm" variant="outline" className="min-h-9" data-testid="attendance-report-explain-ask"
+  return <Hint text={t("reportExplainAskHint")}><Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-xs" data-testid="attendance-report-explain-ask"
     disabled={explain.busy !== null} onClick={() => explain.onAsk(meta)}>{t("reportExplainAsk")}</Button></Hint>
 }
 
@@ -77,29 +79,31 @@ function DayReportTable({ table, testId, explain }: { table: AttendanceTable; te
   const toggle = (key: string) => setOpen(current => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next })
   const width = layout.shown.length + (explain ? 1 : 0) + 1
   return <div className="overflow-x-auto" role="region" aria-label={table.title} tabIndex={0}><table className="w-full border-collapse text-sm" data-testid={testId}>
-    <thead><tr>{layout.shown.map(({ column }) => <th key={column.key} scope="col" className="whitespace-nowrap border-b px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">{column.label}</th>)}
-      {explain ? <th scope="col" className="whitespace-nowrap border-b px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">{t("reportExplain")}</th> : null}
+    <thead><tr>{layout.shown.map(({ column }) => <th key={column.key} scope="col" className="whitespace-nowrap border-b px-2 py-2.5 text-left text-xs font-medium text-muted-foreground">{column.label}</th>)}
+      {explain ? <th scope="col" className="whitespace-nowrap border-b px-2 py-2.5 text-left text-xs font-medium text-muted-foreground">{t("reportExplain")}</th> : null}
       <th scope="col" className="border-b px-3 py-2.5"><span className="sr-only">{t("reportDetails")}</span></th></tr></thead>
     <tbody>{table.rows.map(row => {
       const meta = row.day!, expanded = open.has(row.key)
       return <Fragment key={row.key}><tr className="border-b last:border-0" data-testid="attendance-report-row">{layout.shown.map(({ column, at }) => {
         const cell = String(row.cells[at] ?? "")
         if (at === layout.employee) {
-          const under = layout.folded.map(index => String(row.cells[index] ?? "")).filter(text => text && text !== "—")
-          return <th key={column.key} scope="row" className="whitespace-nowrap px-3 py-2.5 text-left align-middle">
+          // «No team» says nothing under a name: only what the card has.
+          const under = layout.folded.map(index => String(row.cells[index] ?? "")).filter(text => text && text !== "—" && text !== t("reportNoTeam"))
+          return <th key={column.key} scope="row" className="whitespace-nowrap px-2 py-2.5 text-left align-middle">
             <span className="block font-semibold">{cell}</span>
-            {under.length ? <span className="block text-xs font-normal text-muted-foreground" data-testid="attendance-report-employee-details">{under.join(" · ")}</span> : null}</th>
+            {under.length ? <span className="block max-w-[16rem] truncate text-xs font-normal text-muted-foreground" title={under.join(" · ")} data-testid="attendance-report-employee-details">{under.join(" · ")}</span> : null}</th>
         }
         const body = column.key === "notes" ? <span className="flex items-center gap-1.5" data-testid="attendance-report-tags">
             <HomePill tone={dayTone(row, meta)}>{meta.statusColor ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: meta.statusColor }} /> : null}{meta.status}</HomePill>
             {meta.tags.map(tag => <HomePill key={tag} tone={tag === t("reportTagCorrection") ? "blue" : "zinc"}>{tag}</HomePill>)}</span>
           : column.key === "startedAt" || column.key === "completedAt" ? withoutSeconds(cell)
-          : column.key === "late" || column.key === "early" ? noTime(cell) ? <span className="text-muted-foreground">—</span> : <HomePill tone="amber">{cell}</HomePill>
+          : column.key === "late" || column.key === "early" ? noTime(cell) ? <span className="text-muted-foreground">—</span> : <HomePill tone="amber">{durationWithoutSeconds(cell)}</HomePill>
+          : column.key === "worked" || column.key === "paused" ? durationWithoutSeconds(cell)
           : cell
-        return <td key={column.key} className="whitespace-nowrap px-3 py-2.5 align-middle tabular-nums">{body}</td>
+        return <td key={column.key} className="whitespace-nowrap px-2 py-2.5 align-middle tabular-nums">{body}</td>
       })}
-        {explain ? <td className="whitespace-nowrap px-3 py-2.5 align-middle"><ExplainCell meta={meta} explain={explain} /></td> : null}
-        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle">{meta.lines.length ? <button type="button" aria-expanded={expanded} data-testid="attendance-report-details-toggle"
+        {explain ? <td className="whitespace-nowrap px-2 py-2.5 align-middle"><ExplainCell meta={meta} explain={explain} /></td> : null}
+        <td className="whitespace-nowrap px-2 py-2.5 text-right align-middle">{meta.lines.length ? <button type="button" aria-expanded={expanded} data-testid="attendance-report-details-toggle"
           className="text-xs font-medium text-muted-foreground hover:text-foreground" onClick={() => toggle(row.key)}>{t(expanded ? "reportDetailsHide" : "reportDetails")}</button> : null}</td></tr>
         {expanded ? <tr className="border-b bg-muted/40" data-testid="attendance-report-row-details"><td colSpan={width} className="px-3 py-3">
           <ul className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">{meta.lines.map((line, index) => <li key={index}>{line}</li>)}</ul></td></tr> : null}
