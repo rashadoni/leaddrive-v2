@@ -10,7 +10,6 @@ vi.mock("next/navigation", async (original) => ({ ...(await original<typeof impo
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: null, status: "unauthenticated" }) }))
 
 import { MtmAttendanceSectionTabs } from "@/components/mtm/attendance-section-tabs"
-import { MtmModuleNavigation } from "@/components/mtm/mtm-module-navigation"
 import { accessibleNavItems, activeNavBase, navItems } from "@/lib/nav-items"
 import { readHint } from "./helpers/hint"
 
@@ -78,10 +77,5 @@ describe("Personnel's own menu at the top of its pages (owner, 2026-10-20: as in
     await render("/mtm/attendance/timesheet", ["/mtm/attendance", "/mtm/attendance/timesheet"])
     expect(tabs().map((tab) => tab.textContent)).toEqual(["Bu gün", "Tabel"])
     expect(current().map((tab) => tab.textContent)).toEqual(["Tabel"])
-  })
-
-  it("is the only menu there: the MTM module menu stays away from Personnel pages", async () => {
-    await render("/mtm/attendance/timesheet", ALL, createElement(MtmModuleNavigation))
-    expect(container.innerHTML).toBe("")
   })
 })

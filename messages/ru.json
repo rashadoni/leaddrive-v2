@@ -791,24 +791,6 @@
     "personnelReports": "Отчёты",
     "personnelSettings": "Настройки"
   },
-  "mtmModuleNavigation": {
-    "primaryNavigationLabel": "Основные разделы MTM",
-    "today": "Сегодня",
-    "routes": "Маршруты",
-    "calendar": "Календарь",
-    "map": "Карта",
-    "visits": "Визиты",
-    "results": "Результаты",
-    "allTools": "Все инструменты MTM",
-    "allToolsHint": "Дополнительная работа, справочники, контроль и настройки — в одном месте.",
-    "groups": {
-      "work": "Работа",
-      "reference": "Справочники",
-      "control": "Контроль",
-      "analytics": "Аналитика",
-      "administration": "Администрирование"
-    }
-  },
   "auth": {
     "tenantNotFoundTitle": "Рабочее пространство не найдено",
     "tenantNotFoundDesc": "По этому адресу нет рабочего пространства LeadDrive. Проверьте URL или запросите правильную ссылку у администратора.",

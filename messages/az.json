@@ -791,24 +791,6 @@
     "personnelReports": "Hesabatlar",
     "personnelSettings": "Parametrlər"
   },
-  "mtmModuleNavigation": {
-    "primaryNavigationLabel": "MTM əsas bölmələri",
-    "today": "Bu gün",
-    "routes": "Marşrutlar",
-    "calendar": "Təqvim",
-    "map": "Xəritə",
-    "visits": "Vizitlər",
-    "results": "Nəticələr",
-    "allTools": "Bütün MTM alətləri",
-    "allToolsHint": "Əlavə işlər, məlumat kitabçaları, nəzarət və parametrlər bir yerdədir.",
-    "groups": {
-      "work": "İş",
-      "reference": "Məlumat kitabçaları",
-      "control": "Nəzarət",
-      "analytics": "Analitika",
-      "administration": "İdarəetmə"
-    }
-  },
   "auth": {
     "tenantNotFoundTitle": "İş sahəsi tapılmadı",
     "tenantNotFoundDesc": "Bu ünvanda heç bir LeadDrive iş sahəsi yoxdur. URL-i yoxlayın və ya düzgün keçid üçün administratorunuzla əlaqə saxlayın.",
