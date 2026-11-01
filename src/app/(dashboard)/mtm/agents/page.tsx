@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
 import { mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const roleColors: Record<string, string> = {
   ADMIN: "text-foreground",
@@ -267,13 +268,13 @@ export default function MtmAgentsPage() {
   // Edit + "⋯" — the same controls on a card and on a list row.
   const renderActions = (agent: any) => (
     <div className="flex gap-1 shrink-0">
-      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t("edit")} onClick={() => { setEditData(agent); setFormOpen(true) }}><Pencil className="h-3.5 w-3.5" /></Button>
+      <Button variant="ghost" size="sm" className="h-7 gap-1.5" aria-label={t("edit")} onClick={() => { setEditData(agent); setFormOpen(true) }}><Pencil className="h-3.5 w-3.5" /><MtmWord word="edit" /></Button>
       {/* C14: удаление уезжает в «⋯». Рядом с «изменить» оно стояло на
           расстоянии промаха от ежедневного действия, а отменить его
           нельзя. Тот же приём уже применён на «Визитах». */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t("moreActions")}><MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" /></Button>
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5" aria-label={t("moreActions")}><MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" /><MtmWord word="more" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setFocusAgent(agent.id)}>

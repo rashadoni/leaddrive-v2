@@ -82,6 +82,7 @@ import {
   WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
   type WorkforceWorkdayManagerActionBlockedReason,
 } from "@/lib/workforce/workday-reopen-contract"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
@@ -2960,13 +2961,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
         <Button
           type="button"
           variant="outline"
-          size="icon"
-          className="h-11 w-11"
+          size="sm"
+          className="h-11 gap-1.5"
           onClick={() => !inFlightRef.current && setRefreshToken((value) => value + 1)}
           disabled={!query || phase === "loading" || phase === "refreshing" || Boolean(mutatingAction)}
           aria-label={t("refresh")}
         >
-          <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} />
+          <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} /><MtmWord word="refresh" />
         </Button>
       </Hint>
     )
@@ -3042,11 +3043,11 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             </Hint>
             <span className="ml-auto flex items-center gap-1">
               <Hint wrap text={t("hint.previousPeriod")}>
-                <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button type="button" variant="outline" size="sm" className="h-10 rounded-full gap-1.5" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /><MtmWord word="previous" /></Button>
               </Hint>
               <span className="min-w-36 text-center text-sm font-medium tabular-nums">{periodLabel}</span>
               <Hint wrap text={t("hint.nextPeriod")}>
-                <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><ChevronRight className="h-4 w-4" /></Button>
+                <Button type="button" variant="outline" size="sm" className="h-10 rounded-full gap-1.5" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><MtmWord word="next" /><ChevronRight className="h-4 w-4" /></Button>
               </Hint>
             </span>
           </MtmFilterBar>

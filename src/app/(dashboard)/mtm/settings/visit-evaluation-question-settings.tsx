@@ -17,6 +17,7 @@ import {
   type MtmVisitEvaluationQuestion,
   type MtmVisitEvaluationQuestionLabels,
 } from "@/lib/mtm/visit-evaluation-questions"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Language = keyof MtmVisitEvaluationQuestionLabels
 const LANGUAGES: readonly Language[] = ["az", "ru", "en"]
@@ -226,13 +227,13 @@ export function VisitEvaluationQuestionSettings({
                 {/* On a narrow screen the two buttons go under the name, to the right. */}
                 <div className="flex flex-wrap items-center gap-1 py-1.5">
                   <Hint wrap text={t("hint.evalQuestionMoveUp")}>
-                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-9" aria-label={t("evalQuestionMoveUp")} onClick={() => move(index, -1)} disabled={index === 0}>
-                      <ArrowUp className="h-4 w-4" />
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("evalQuestionMoveUp")} onClick={() => move(index, -1)} disabled={index === 0}>
+                      <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
                     </Button>
                   </Hint>
                   <Hint wrap text={t("hint.evalQuestionMoveDown")}>
-                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-9" aria-label={t("evalQuestionMoveDown")} onClick={() => move(index, 1)} disabled={index === questions.length - 1}>
-                      <ArrowDown className="h-4 w-4" />
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("evalQuestionMoveDown")} onClick={() => move(index, 1)} disabled={index === questions.length - 1}>
+                      <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
                     </Button>
                   </Hint>
                   <span className="min-w-[8rem] flex-1 px-1">

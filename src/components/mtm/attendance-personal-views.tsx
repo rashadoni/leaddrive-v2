@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard } from "@/components/mtm/home-parts"
 import { ATTENDANCE_VIEW_COLUMNS, DEFAULT_ATTENDANCE_VIEW_COLUMNS, AttendanceViewConfigSchema, type AttendanceView, type AttendanceViewColumn, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const ENDPOINT = "/api/v1/mtm/attendance/views"
 const COLUMN_MESSAGES: Record<AttendanceViewColumn, string> = { employee: "reportEmployee", position: "reportPosition", team: "reportTeam", date: "reportDate", status: "reportStatus",
@@ -257,8 +258,8 @@ export function MtmAttendancePersonalViews({ currentConfig, onApply, onAccessLos
               <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={index >= 0} className="h-4 w-4 accent-primary" data-column={column}
                 onChange={(event) => change({ columns: event.target.checked ? [...draft.columns, column] : draft.columns.filter((item) => item !== column) })} />{t(COLUMN_MESSAGES[column])}</label>
               {index >= 0 ? <div className="flex shrink-0 items-center"><span className="mr-1 text-xs tabular-nums text-muted-foreground">{index + 1}</span>
-                <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" disabled={disabled || index === 0} onClick={() => move(column, -1)} aria-label={t("viewsMoveUp", { column: t(COLUMN_MESSAGES[column]) })}><ArrowUp className="h-4 w-4" aria-hidden="true" /></Button>
-                <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" disabled={disabled || index === draft.columns.length - 1} onClick={() => move(column, 1)} aria-label={t("viewsMoveDown", { column: t(COLUMN_MESSAGES[column]) })}><ArrowDown className="h-4 w-4" aria-hidden="true" /></Button></div> : null}
+                <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" disabled={disabled || index === 0} onClick={() => move(column, -1)} aria-label={t("viewsMoveUp", { column: t(COLUMN_MESSAGES[column]) })}><ArrowUp className="h-4 w-4" aria-hidden="true" /><MtmWord word="up" /></Button>
+                <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" disabled={disabled || index === draft.columns.length - 1} onClick={() => move(column, 1)} aria-label={t("viewsMoveDown", { column: t(COLUMN_MESSAGES[column]) })}><ArrowDown className="h-4 w-4" aria-hidden="true" /><MtmWord word="down" /></Button></div> : null}
             </li> })}</ul>
           </fieldset>
           <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" id="attendance-view-totals" checked={draft.showTotals} className="h-4 w-4 accent-primary" onChange={(event) => change({ showTotals: event.target.checked })} />{t("viewsShowTotals")}</label>

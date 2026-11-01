@@ -19,6 +19,7 @@ import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-erro
 import { formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import type { MtmAlertDayGroup, MtmAlertDayItem } from "@/lib/mtm/alert-day-groups"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
+import { MtmWord } from "@/components/mtm/button-word"
 
 /**
  * Office alert list (prod 2026-09-14).
@@ -450,7 +451,7 @@ export default function MtmAlertsPage() {
               // «решено», которую жмут каждый день.
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={t("moreActions")}><MoreHorizontal className="h-3 w-3" aria-hidden="true" /></Button>
+                  <Button variant="ghost" size="sm" className="h-6 gap-1.5" aria-label={t("moreActions")}><MoreHorizontal className="h-3 w-3" aria-hidden="true" /><MtmWord word="more" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => { setDeleteItem(item); setDeleteOpen(true) }}>

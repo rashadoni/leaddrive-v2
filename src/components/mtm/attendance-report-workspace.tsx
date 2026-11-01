@@ -28,6 +28,7 @@ import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
 import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-limits"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 import { mtmChipClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 export type AttendanceReportForm = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH" | "OVERTIME"
 const ISSUE_LABELS: Record<TimesheetIssue, string> = { late: "kpiLate", absent: "kpiAbsent", "missing-finish": "kpiMissing", overtime: "tabs.overtime" }
@@ -403,9 +404,9 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{p("timesheetTitle")}</h1>
           <div className="inline-flex items-center gap-1 rounded-xl border bg-card p-1" data-testid="attendance-month-switcher">
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("previousMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("previousMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" aria-hidden="true" /><MtmWord word="previous" /></Button>
             <span className="min-w-36 px-2 text-center text-sm font-semibold capitalize">{monthLabel}</span>
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("nextMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(1)}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("nextMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(1)}><MtmWord word="next" /><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
           </div>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -501,7 +502,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
       </div> : null}
       {showExtras ? <section className="space-y-5 rounded-2xl border bg-card p-5" data-testid="attendance-timesheet-extras" aria-label={p("customFormAndDelivery")}>
         <div className="flex items-center justify-between gap-3"><h2 className="text-base font-semibold">{p("customFormAndDelivery")}</h2>
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("close")} onClick={() => setShowExtras(false)}><X className="h-4 w-4" aria-hidden="true" /></Button></div>
+          <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("close")} onClick={() => setShowExtras(false)}><X className="h-4 w-4" aria-hidden="true" /><MtmWord word="close" /></Button></div>
         <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
         <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
       </section> : null}

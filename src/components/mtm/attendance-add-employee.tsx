@@ -11,6 +11,7 @@ import { ATTENDANCE_EMPLOYEE_POSITION_MAX, type AttendanceDepartment, type Atten
 import { AttendancePhoneMatchResult, type AttendancePhoneMatch } from "@/lib/mtm/attendance-phone-match-contract"
 
 import { IdentityTimePersonResult, type IdentityTimePerson } from "@/lib/identity/time-enrollment-contract"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees/new"
 const ERRORS: Record<string, string> = {
@@ -190,7 +191,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
   return <form onSubmit={submit} className="w-full space-y-4 rounded-2xl border bg-card p-5" aria-label={p("addEmployee")} data-testid="attendance-add-employee-form">
     <div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-semibold">{p("addEmployee")}</h2>
       <p className="mt-1 max-w-prose text-sm text-muted-foreground">{p("addEmployeeHint")}</p></div>
-      <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("close")} onClick={close}><X className="h-4 w-4" aria-hidden="true" /></Button></div>
+      <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("close")} onClick={close}><X className="h-4 w-4" aria-hidden="true" /><MtmWord word="close" /></Button></div>
     <div className="grid gap-4 md:grid-cols-2">
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeName")}</span><Input required maxLength={200} className="min-h-11" autoComplete="off" value={form.name} onChange={event => set("name")(event.target.value)} /></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeePhone")}</span><Input required type="tel" inputMode="tel" placeholder="+994501234567" maxLength={24} className="min-h-11" autoComplete="off" value={form.phone} onChange={event => set("phone")(event.target.value)} data-testid="attendance-add-employee-phone" /></label>

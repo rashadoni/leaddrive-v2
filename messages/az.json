@@ -12100,6 +12100,20 @@
     "deleteKeptAction": "Qeyri-aktiv et",
     "deleteKeptClose": "Aydındır"
   },
+  "mtmWords": {
+    "edit": "Düzəlt",
+    "more": "Digər",
+    "delete": "Sil",
+    "close": "Bağla",
+    "up": "Yuxarı",
+    "down": "Aşağı",
+    "previous": "Əvvəlki",
+    "next": "Növbəti",
+    "save": "Saxla",
+    "refresh": "Yenilə",
+    "download": "Yüklə",
+    "plan": "Planla"
+  },
   "mtmContactExplorer": {
     "addToRouteFor": "«{name}» marşruta əlavə et",
     "addToRoute": "Marşruta",

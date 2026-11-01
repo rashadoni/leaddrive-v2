@@ -56,6 +56,7 @@ import { JointVisitMark } from "@/components/mtm/visit-evaluation-views"
 import { VisitWorkspace } from "./visit-workspace"
 import { RemindAgentButton, useLeftOpenSince, useMinuteClock, useOpenForText } from "./visit-left-open"
 import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type MtmVisitRow = {
   id: string
@@ -671,8 +672,8 @@ export default function MtmVisitsPage() {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moreActions")}>
-              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moreActions")}>
+              <MoreHorizontal className="h-5 w-5" aria-hidden="true" /><MtmWord word="more" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

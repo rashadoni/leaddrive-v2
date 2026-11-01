@@ -55,6 +55,7 @@ import type { MtmRoutePlannerContext, MtmRoutePlannerFilters } from "@/lib/mtm/r
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { latestRouteDraft, routeDraftStorageKey, routeDraftStorageKeys } from "@/lib/mtm/route-draft-storage"
 import { mtmChipClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Agent = { id: string; name: string; role?: string }
 type Customer = MtmRouteCustomer
@@ -1579,8 +1580,8 @@ export function MtmRouteBuilder({
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{t("builderSubtitle")}</p>
         </div>
         <Hint text={t("hint.builderClose")} align="end">
-          <Button type="button" variant="ghost" size="icon" data-testid="mtm-route-builder-close" onClick={requestClose} aria-label={t("closeBuilder")}>
-            <X className="h-4 w-4" />
+          <Button type="button" variant="ghost" size="sm" className="gap-1.5" data-testid="mtm-route-builder-close" onClick={requestClose} aria-label={t("closeBuilder")}>
+            <X className="h-4 w-4" /><MtmWord word="close" />
           </Button>
         </Hint>
       </div>
@@ -1937,13 +1938,13 @@ export function MtmRouteBuilder({
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="icon"
-                                className="min-h-11 min-w-11 shrink-0 text-destructive"
+                                size="sm"
+                                className="min-h-11 shrink-0 text-destructive gap-1.5"
                                 disabled={locked}
                                 onClick={() => removeStop(index)}
                                 aria-label={locked ? t("stopLocked") : t("removeStopNamed", { name: stopName })}
                               >
-                                <X className="h-4 w-4" />
+                                <X className="h-4 w-4" /><MtmWord word="delete" />
                               </Button>
                             </Hint>
                           </li>
@@ -2635,18 +2636,18 @@ export function MtmRouteBuilder({
                       </div>
                       </Hint>
                       <Hint wrap text={locked ? t("hint.builderStopLocked") : t("hint.builderMoveUp")}>
-                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveStop(index, -1)} disabled={locked || index === 0} aria-label={t("moveStopUp", { name: stop.contact?.displayName ?? stop.customer.name })}>
-                        <ArrowUp className="h-4 w-4" />
+                      <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" onClick={() => moveStop(index, -1)} disabled={locked || index === 0} aria-label={t("moveStopUp", { name: stop.contact?.displayName ?? stop.customer.name })}>
+                        <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
                       </Button>
                       </Hint>
                       <Hint wrap text={locked ? t("hint.builderStopLocked") : t("hint.builderMoveDown")}>
-                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveStop(index, 1)} disabled={locked || index === stops.length - 1} aria-label={t("moveStopDown", { name: stop.contact?.displayName ?? stop.customer.name })}>
-                        <ArrowDown className="h-4 w-4" />
+                      <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" onClick={() => moveStop(index, 1)} disabled={locked || index === stops.length - 1} aria-label={t("moveStopDown", { name: stop.contact?.displayName ?? stop.customer.name })}>
+                        <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
                       </Button>
                       </Hint>
                       <Hint wrap text={locked ? t("hint.builderStopLocked") : t("hint.builderRemoveStop")} align="end">
-                      <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" disabled={locked} onClick={() => removeStop(index)} aria-label={locked ? t("stopLocked") : t("removeStopNamed", { name: stop.contact?.displayName ?? stop.customer.name })}>
-                        <X className="h-4 w-4" />
+                      <Button type="button" variant="ghost" size="sm" className="min-h-11 text-destructive gap-1.5" disabled={locked} onClick={() => removeStop(index)} aria-label={locked ? t("stopLocked") : t("removeStopNamed", { name: stop.contact?.displayName ?? stop.customer.name })}>
+                        <X className="h-4 w-4" /><MtmWord word="delete" />
                       </Button>
                       </Hint>
                     </div>

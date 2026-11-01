@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
 import { Camera, Check, X, Trash2, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
 import { MTM_TAB_ROW, mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const statusColors: Record<string, string> = { PENDING: "text-amber-700", APPROVED: "text-emerald-700", REJECTED: "text-red-700" }
 
@@ -411,7 +412,7 @@ export default function MtmPhotosPage() {
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-1">
                       <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
-                      <Hint text={t("hint.delete")}><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /></Button></Hint>
+                      <Hint text={t("hint.delete")}><Button variant="ghost" size="sm" className="h-7 text-destructive gap-1.5" aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /><MtmWord word="delete" /></Button></Hint>
                     </div>
                     {photo.status === "PENDING" && (!photo.url || missingFiles.has(photo.id)) ? (
                       // Audit 2026-09-26: «Approve» under «File not found» —

@@ -24,6 +24,7 @@ import {
   type ContactCategoryOption,
 } from "@/lib/mtm/contact-category-editor"
 import { cn } from "@/lib/utils"
+import { MtmWord } from "@/components/mtm/button-word"
 
 /**
  * Editor rows carry a `uid` so React keeps an input mounted while its row is
@@ -333,13 +334,13 @@ export function ContactCategorySettings({
                 </span>
                 <div className="flex items-center gap-1">
                   <Hint text={categoryIndex === 0 ? null : t("hint.categoryMoveUp")}>
-                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={categoryIndex === 0} onClick={() => setCategories((current) => move(current, categoryIndex, -1))}>
-                      <ArrowUp className="h-4 w-4" />
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveUp")} disabled={categoryIndex === 0} onClick={() => setCategories((current) => move(current, categoryIndex, -1))}>
+                      <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
                     </Button>
                   </Hint>
                   <Hint text={categoryIndex === categories.length - 1 ? null : t("hint.categoryMoveDown")}>
-                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={categoryIndex === categories.length - 1} onClick={() => setCategories((current) => move(current, categoryIndex, 1))}>
-                      <ArrowDown className="h-4 w-4" />
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveDown")} disabled={categoryIndex === categories.length - 1} onClick={() => setCategories((current) => move(current, categoryIndex, 1))}>
+                      <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
                     </Button>
                   </Hint>
                   <Hint text={t("hint.categoryRemove")}>
@@ -426,18 +427,18 @@ export function ContactCategorySettings({
                         </Hint>
                         <div className="flex items-center gap-1">
                           <Hint text={fieldIndex === 0 ? null : t("hint.categoryFieldMoveUp")}>
-                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={fieldIndex === 0} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, -1) }))}>
-                              <ArrowUp className="h-4 w-4" />
+                            <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveUp")} disabled={fieldIndex === 0} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, -1) }))}>
+                              <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
                             </Button>
                           </Hint>
                           <Hint text={fieldIndex === category.fields.length - 1 ? null : t("hint.categoryFieldMoveDown")}>
-                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={fieldIndex === category.fields.length - 1} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, 1) }))}>
-                              <ArrowDown className="h-4 w-4" />
+                            <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveDown")} disabled={fieldIndex === category.fields.length - 1} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, 1) }))}>
+                              <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
                             </Button>
                           </Hint>
                           <Hint text={t("hint.categoryFieldRemove")}>
-                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeField")} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: current.fields.filter((candidate) => candidate.uid !== field.uid) }))}>
-                              <Trash2 className="h-4 w-4" />
+                            <Button type="button" variant="ghost" size="sm" className="min-h-11 text-destructive gap-1.5" aria-label={t("removeField")} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: current.fields.filter((candidate) => candidate.uid !== field.uid) }))}>
+                              <Trash2 className="h-4 w-4" /><MtmWord word="delete" />
                             </Button>
                           </Hint>
                         </div>
@@ -464,8 +465,8 @@ export function ContactCategorySettings({
                                   }))}
                                 />
                                 <Hint text={t("hint.categoryOptionRemove")}>
-                                  <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeOption")} onClick={() => updateField(category.uid, field.uid, (current) => ({ ...current, options: (current.options ?? []).filter((candidate) => candidate.uid !== option.uid) }))}>
-                                    <Trash2 className="h-4 w-4" />
+                                  <Button type="button" variant="ghost" size="sm" className="min-h-11 text-destructive gap-1.5" aria-label={t("removeOption")} onClick={() => updateField(category.uid, field.uid, (current) => ({ ...current, options: (current.options ?? []).filter((candidate) => candidate.uid !== option.uid) }))}>
+                                    <Trash2 className="h-4 w-4" /><MtmWord word="delete" />
                                   </Button>
                                 </Hint>
                               </span>

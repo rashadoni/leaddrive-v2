@@ -24,6 +24,7 @@ import {
 import { enqueuePhoto, listPhotos, removePhoto, countPhotos } from "@/lib/mtm/photo-outbox"
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
 import { visitApiErrorKey } from "@/lib/mtm/visit-review"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type ActionKey = "PHOTO" | "PRESENTATION" | "STOCK_CHECK" | "VISIT_NOTE" | "CHECKLIST" | "FEEDBACK" | "NEXT_ACTION" | "SIGNATURE"
 type RequirementMode = "REQUIRED" | "OPTIONAL" | "HIDDEN"
@@ -461,7 +462,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <Input value={presentation.material} onChange={(event) => setPresentation({ ...presentation, material: event.target.value })} placeholder={t("material")} className="h-9" />
             <Input value={presentation.version} onChange={(event) => setPresentation({ ...presentation, version: event.target.value })} placeholder={t("version")} className="h-9" />
-            <div className="flex gap-2"><Input value={presentation.topic} onChange={(event) => setPresentation({ ...presentation, topic: event.target.value })} placeholder={t("topic")} className="h-9" /><Hint wrap text={busy ? null : presentation.material ? t("hint.savePresentation") : t("hint.fillFirst")}><Button size="icon" className="h-9 w-9 shrink-0" disabled={!presentation.material || busy} onClick={() => { const completedAt = new Date().toISOString(); void saveAction("PRESENTATION", { ...presentation, openedAt: completedAt, completedAt }) }} aria-label={t("saveAction")}><Save className="h-4 w-4" /></Button></Hint></div>
+            <div className="flex gap-2"><Input value={presentation.topic} onChange={(event) => setPresentation({ ...presentation, topic: event.target.value })} placeholder={t("topic")} className="h-9" /><Hint wrap text={busy ? null : presentation.material ? t("hint.savePresentation") : t("hint.fillFirst")}><Button size="sm" className="h-9 shrink-0 gap-1.5" disabled={!presentation.material || busy} onClick={() => { const completedAt = new Date().toISOString(); void saveAction("PRESENTATION", { ...presentation, openedAt: completedAt, completedAt }) }} aria-label={t("saveAction")}><Save className="h-4 w-4" /><MtmWord word="save" /></Button></Hint></div>
           </div>
         )}
         {!done && requirement.actionKey === "STOCK_CHECK" && (
@@ -469,11 +470,11 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
             <Input value={stock.product} onChange={(event) => setStock({ ...stock, product: event.target.value })} placeholder={t("product")} className="h-9" />
             <select value={stock.state} onChange={(event) => setStock({ ...stock, state: event.target.value })} className="h-9 rounded-md border border-input bg-background px-2 text-sm"><option value="AVAILABLE">{t("available")}</option><option value="NOT_AVAILABLE">{t("notAvailable")}</option><option value="UNKNOWN">{t("unknown")}</option></select>
             <Input type="number" min={0} value={stock.quantity} onChange={(event) => setStock({ ...stock, quantity: event.target.value })} placeholder={t("quantity")} className="h-9" />
-            <Hint wrap text={busy ? null : stock.product ? t("hint.saveStock") : t("hint.fillFirst")}><Button size="icon" className="h-9 w-9" disabled={!stock.product || busy} onClick={() => void saveAction("STOCK_CHECK", { ...stock, quantity: stock.quantity ? Number(stock.quantity) : null })} aria-label={t("saveAction")}><Save className="h-4 w-4" /></Button></Hint>
+            <Hint wrap text={busy ? null : stock.product ? t("hint.saveStock") : t("hint.fillFirst")}><Button size="sm" className="h-9 gap-1.5" disabled={!stock.product || busy} onClick={() => void saveAction("STOCK_CHECK", { ...stock, quantity: stock.quantity ? Number(stock.quantity) : null })} aria-label={t("saveAction")}><Save className="h-4 w-4" /><MtmWord word="save" /></Button></Hint>
           </div>
         )}
         {!done && requirement.actionKey === "CHECKLIST" && (
-          <div className="mt-3 flex gap-2"><Input value={checklist} onChange={(event) => setChecklist(event.target.value)} placeholder={t("checklistResult")} className="h-9" /><Hint wrap text={busy ? null : checklist ? t("hint.saveChecklist") : t("hint.fillFirst")}><Button size="icon" className="h-9 w-9" disabled={!checklist || busy} onClick={() => void saveAction("CHECKLIST", { result: checklist })} aria-label={t("saveAction")}><Save className="h-4 w-4" /></Button></Hint></div>
+          <div className="mt-3 flex gap-2"><Input value={checklist} onChange={(event) => setChecklist(event.target.value)} placeholder={t("checklistResult")} className="h-9" /><Hint wrap text={busy ? null : checklist ? t("hint.saveChecklist") : t("hint.fillFirst")}><Button size="sm" className="h-9 gap-1.5" disabled={!checklist || busy} onClick={() => void saveAction("CHECKLIST", { result: checklist })} aria-label={t("saveAction")}><Save className="h-4 w-4" /><MtmWord word="save" /></Button></Hint></div>
         )}
         {!done && ["VISIT_NOTE", "FEEDBACK", "NEXT_ACTION"].includes(requirement.actionKey) && <p className="mt-2 text-xs text-muted-foreground">{t("completeInResult")}</p>}
         {requirement.actionKey === "SIGNATURE" && (done ? <SignaturePreview evidence={data.visit.actionResults.filter((item) => item.actionKey === "SIGNATURE" && item.status === "COMPLETED").at(-1)?.evidence} label={t("actions.SIGNATURE")} /> : <p className="mt-2 text-xs text-muted-foreground">{t("signatureOnTablet")}</p>)}

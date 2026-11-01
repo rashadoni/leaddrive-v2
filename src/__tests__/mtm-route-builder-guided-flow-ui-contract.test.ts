@@ -154,7 +154,9 @@ describe("MTM guided route builder UI contract", () => {
   it("uses touch-safe responsive controls and a mobile-safe persistent action area", () => {
     const actionAreaClasses = builder.match(/data-testid="mtm-route-builder-actions" className="([^"]+)"/)?.[1] ?? ""
     expect(builder).toContain("sm:grid-cols-[auto_minmax(0,1fr)_auto]")
-    expect(builder).toContain('className="min-h-11 min-w-11"')
+    // 44 px high; with its word (owner: buttons say what they do) a stop's
+    // button is wider than the old 44 px square, never narrower.
+    expect(builder).toContain('className="min-h-11 gap-1.5"')
     expect(builder).toContain("env(safe-area-inset-bottom)")
     expect(builder).toContain('data-testid="mtm-route-builder-actions"')
     expect(actionAreaClasses).toContain("sticky")

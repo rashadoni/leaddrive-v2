@@ -19,6 +19,7 @@ import { ATTENDANCE_REPORTS, type AttendanceReportKey } from "@/lib/mtm/attendan
 import type { MtmAttendanceReport } from "@/lib/mtm/attendance-report"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 import type { AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Range = { from: string; to: string }
 type Data = MtmAttendanceReport & { snapshot?: AttendanceReportSnapshot }
@@ -146,9 +147,9 @@ export function MtmAttendanceReportViewer({ report, initialDate }: { report: Att
   return <section className="space-y-4" data-testid="attendance-report-viewer">
     <div className="flex flex-wrap items-center gap-2">
       {range && definition.period === "month" ? <div className="inline-flex items-center gap-1 rounded-xl border bg-card p-1">
-        <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("previousMonth")} disabled={loading} onClick={() => void load(shiftMonth(range, -1))}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></Button>
+        <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("previousMonth")} disabled={loading} onClick={() => void load(shiftMonth(range, -1))}><ChevronLeft className="h-4 w-4" aria-hidden="true" /><MtmWord word="previous" /></Button>
         <span className="min-w-36 px-2 text-center text-sm font-semibold capitalize">{formatDate(`${range.from.slice(0, 7)}-15T12:00:00.000Z`, locale, { month: "long", year: "numeric", timeZone: "UTC" })}</span>
-        <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("nextMonth")} disabled={loading} onClick={() => void load(shiftMonth(range, 1))}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
+        <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("nextMonth")} disabled={loading} onClick={() => void load(shiftMonth(range, 1))}><MtmWord word="next" /><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
       </div> : range ? <>
         <Input aria-label={t(definition.period === "day" ? "reportDate" : "reportFrom")} type="date" className="min-h-10 w-40" value={range.from}
           onChange={event => change(definition.period === "day" ? { from: event.target.value, to: event.target.value } : { ...range, from: event.target.value })} />

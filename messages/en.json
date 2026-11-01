@@ -12104,6 +12104,20 @@
     "deleteKeptAction": "Make inactive",
     "deleteKeptClose": "Got it"
   },
+  "mtmWords": {
+    "edit": "Edit",
+    "more": "More",
+    "delete": "Delete",
+    "close": "Close",
+    "up": "Up",
+    "down": "Down",
+    "previous": "Previous",
+    "next": "Next",
+    "save": "Save",
+    "refresh": "Refresh",
+    "download": "Download",
+    "plan": "Plan"
+  },
   "mtmContactExplorer": {
     "addToRouteFor": "Put «{name}» on a route",
     "addToRoute": "To route",

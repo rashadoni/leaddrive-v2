@@ -19,6 +19,7 @@ import {
   type MtmRouteTargetAudience,
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Language = keyof MtmRouteTargetType["labels"]
 const LANGUAGES: readonly Language[] = ["az", "ru", "en"]
@@ -141,26 +142,26 @@ export function RouteTargetTypeSettings({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
-                          className="min-h-11 min-w-9"
+                          size="sm"
+                          className="min-h-11 gap-1.5"
                           aria-label={t("routeTargetMoveUp")}
                           onClick={() => moveRow(index, -1)}
                           disabled={index <= 1}
                         >
-                          <ArrowUp className="h-4 w-4" />
+                          <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
                         </Button>
                       </Hint>
                       <Hint wrap text={t("hint.routeTargetMoveDown")}>
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
-                          className="min-h-11 min-w-9"
+                          size="sm"
+                          className="min-h-11 gap-1.5"
                           aria-label={t("routeTargetMoveDown")}
                           onClick={() => moveRow(index, 1)}
                           disabled={index === rows.length - 1}
                         >
-                          <ArrowDown className="h-4 w-4" />
+                          <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
                         </Button>
                       </Hint>
                     </>
