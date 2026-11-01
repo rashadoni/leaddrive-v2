@@ -24,6 +24,14 @@ describe("MTM page header", () => {
     expect(offenders).toEqual([])
   })
 
+  it("never leaves «Kömək» as a round «?» without its word", () => {
+    // «Marşrutlar», «Marşrut təqvimi» kept the orange icon and round «?» after
+    // the header pass; the owner asked to finish the small things (2026-11-01).
+    const offenders = MTM_FILES.filter((file) => [...readFileSync(file, "utf8").matchAll(/<HelpButton\b[^>]*>/g)]
+      .some(([tag]) => !tag.includes('variant="quiet"')))
+    expect(offenders).toEqual([])
+  })
+
   it("puts the title in an h1", () => {
     const header = readFileSync("src/components/mtm/page-header.tsx", "utf8")
     expect(header).toMatch(/<h1 className="text-2xl font-semibold tracking-tight">/)
