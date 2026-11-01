@@ -139,10 +139,11 @@ export function AttendanceReportTable({ table, testId = "attendance-report-table
   </table></div>
 }
 
-/** The lines under a table: its period, then its totals without their heading line (as the live report prints them). */
-export function AttendanceReportTotals({ period, totals }: { period: string | null; totals: readonly string[] }) {
+/** The lines under a table: its period, then its totals without their heading line (as the live report prints them).
+ * `minutes` drops the seconds the way a day report's rows do; the file keeps them. */
+export function AttendanceReportTotals({ period, totals, minutes = false }: { period: string | null; totals: readonly string[]; minutes?: boolean }) {
   return <div className="mt-4 space-y-1 text-xs text-muted-foreground">
     {period ? <p>{period}</p> : null}
-    {totals.slice(1).map((line, index) => <p key={index} className="font-medium text-foreground">{line}</p>)}
+    {totals.slice(1).map((line, index) => <p key={index} className="font-medium text-foreground">{minutes ? line.replace(/\b(\d+:\d{2}):\d{2}\b/g, "$1") : line}</p>)}
   </div>
 }

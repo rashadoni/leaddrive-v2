@@ -113,6 +113,7 @@ describe("Report viewer", () => {
     // Times and durations without seconds (the file keeps them); lateness as a pill.
     expect(rows[0].textContent).toContain("10:47")
     expect(rows[0].textContent).not.toMatch(/\d:\d\d:\d\d/)
+    expect(container.textContent).not.toMatch(/\d:\d\d:\d\d/)
     expect(rows[0].querySelector('[data-testid="attendance-report-tags"]')?.textContent).toContain(ru.mtmAttendance.reportTagLunch.replace("{time}", "1:00"))
     // The note's lines open under the row, not inside it.
     expect(container.querySelector('[data-testid="attendance-report-row-details"]')).toBeNull()
