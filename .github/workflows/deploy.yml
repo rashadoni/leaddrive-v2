@@ -45,6 +45,10 @@ name: Deploy to Production
 # (cancel-in-progress: false) so a started deploy is never interrupted; the
 # post-deploy smoke runs INSIDE the job so the lock is held until prod is
 # verified. A newer push supersedes a still-pending (not yet started) deploy.
+# The lock orders runs by when they become ready, not by commit age, so an
+# older run with slow checks can still reach it after a newer one; the deploy
+# job's first server-facing step ("Skip a commit production has already moved
+# past") then skips it green instead of rolling production back (2026-11-02).
 #
 # WHY a newer push no longer cancels the checks or build in flight
 # (2026-09-22): the build takes ~18 minutes and parallel agent sessions merge
@@ -1495,7 +1499,33 @@ jobs:
             *) echo "::error::unsupported recovery bootstrap mode"; exit 1 ;;
           esac
 
+      - name: Skip a commit production has already moved past
+        id: ancestry_guard
+        # The production-deploy lock orders runs by when their checks and
+        # build finish, not by commit age: on 2026-11-02 the older 20b932824
+        # (slow checks) got the slot after its descendant 6934a7a9b and rolled
+        # production back for 15 minutes. This job holds the lock now, so what
+        # production serves cannot change under it. A target that is a strict
+        # ancestor of the live revision skips every step that touches the
+        # server, and the job ends green. Same revision, forward, diverged, or
+        # no answer from production: deploy as before. Recovery bootstraps
+        # (this `if`) and recovery_sha promotions (the `recovery` job) deploy
+        # older artifacts on purpose and do not run it.
+        # src/__tests__/deploy-ancestry-guard.test.ts pins both the script and
+        # the steps it gates.
+        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BASE_URL: ${{ secrets.NEXTAUTH_URL }}
+        run: |
+          set -euo pipefail
+          BASE_URL="${BASE_URL%/}"
+          [ -n "$BASE_URL" ] || { echo "::error::NEXTAUTH_URL secret is empty"; exit 1; }
+          bash scripts/ci/deploy-ancestry-guard.sh "$DEPLOY_TARGET_SHA" \
+            "$BASE_URL/api/v1/public/build-info?guard=$DEPLOY_TARGET_SHA" \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+
       - name: Setup SSH
+        if: ${{ steps.ancestry_guard.outputs.skip != 'true' }}
         env:
           DEPLOY_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
@@ -1560,7 +1590,7 @@ jobs:
         # This must run BEFORE the new artifact, migration and cron are
         # installed. A post-deploy assertion is too late: an accidentally
         # enabled queue could otherwise dispatch during that window.
-        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        if: ${{ env.DEPLOYMENT_MODE == 'normal' && steps.ancestry_guard.outputs.skip != 'true' }}
         run: |
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' <<'REMOTE'
@@ -1778,12 +1808,14 @@ jobs:
           REMOTE
 
       - name: Download SHA-bound deploy artifact
+        if: ${{ steps.ancestry_guard.outputs.skip != 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: leaddrive-prod-${{ env.DEPLOY_TARGET_SHA }}
           path: /tmp/leaddrive-deploy-artifact
 
       - name: Verify downloaded SHA-bound artifact
+        if: ${{ steps.ancestry_guard.outputs.skip != 'true' }}
         run: |
           artifact="/tmp/leaddrive-deploy-artifact/leaddrive-prod-${DEPLOY_TARGET_SHA}.tar.gz"
           [ -s "$artifact" ] || {
@@ -1796,7 +1828,7 @@ jobs:
           }
 
       - name: Admit booking backend from current main before staging
-        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        if: ${{ env.DEPLOYMENT_MODE == 'normal' && steps.ancestry_guard.outputs.skip != 'true' }}
         env:
           BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
           BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
@@ -1817,6 +1849,7 @@ jobs:
 
 
       - name: Stage immutable artifact on production disk
+        if: ${{ steps.ancestry_guard.outputs.skip != 'true' }}
         # This copies bytes only; it does not stop PM2, run migrations, unpack
         # into the live tree, or consume production build memory. The SHA in
         # both the filename and tarball is revalidated by the remote ceremony.
@@ -1839,6 +1872,7 @@ jobs:
           fi
 
       - name: Upload deploy script
+        if: ${{ steps.ancestry_guard.outputs.skip != 'true' }}
         run: |
           scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
             scripts/server-deploy.sh \
@@ -1846,6 +1880,7 @@ jobs:
 
       - name: Deploy atomically on production
         id: deploy_atomic
+        if: ${{ steps.ancestry_guard.outputs.skip != 'true' }}
         # Promote only the artifact named for this workflow SHA. Validate its
         # embedded marker before moving it to the fixed path consumed by
         # server-deploy.sh, which validates the same marker again.
