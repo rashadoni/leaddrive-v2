@@ -18,6 +18,9 @@ export const AttendanceParticipationInputSchema = z.object({ clientRequestId: z.
   included: z.boolean(), previousEventId: id.nullable() }).strict()
 /** Personnel → Employees → card: job title, department (an MTM team) and manager. */
 export const ATTENDANCE_EMPLOYEE_POSITION_MAX = 120
+/** Personnel number (tabel nömrəsi) on the timesheet and «Forma N-1t»; empty = none, absent = keep (a tab opened before the field). */
+export const ATTENDANCE_PERSONNEL_NUMBER_MAX = 32
+const personnelNumber = z.string().trim().max(ATTENDANCE_PERSONNEL_NUMBER_MAX).transform(value => value || null).nullable().optional()
 export const AttendanceEmployeeCardSchema = z.object({ agentId: id,
   position: z.string().trim().max(ATTENDANCE_EMPLOYEE_POSITION_MAX).transform(value => value || null).nullable(),
   ...unitFields, managerId: id.nullable() }).strict()
@@ -37,6 +40,7 @@ export const AttendanceEmployeeProfileSchema = z.object({
   phone: z.string().transform(value => value.replace(/[\s\-()]/g, "")).pipe(z.string().regex(ATTENDANCE_PHONE_PATTERN)).optional(),
   email: z.union([z.literal("").transform(() => null), z.string().trim().toLowerCase().max(320).email(), z.null()]).optional(),
   position: z.string().trim().max(ATTENDANCE_EMPLOYEE_POSITION_MAX).transform(value => value || null).nullable(),
+  personnelNumber,
   ...unitFields, managerId: id.nullable(),
   /** Only while the employment history is empty: becomes its first HIRE. */
   hireDate: date.nullable().optional(),
@@ -52,7 +56,7 @@ export type AttendanceEmployeeDetail = {
   employee: { id: string; name: string; phone: string | null; email: string | null; role: string; status: string; loginEditable: boolean
     /** The CRM role behind the card; Personnel removes only its own office employees. */
     crmRole?: string | null
-    position: string | null; teamId: string | null; teamName: string | null; departmentId: string | null; departmentName: string | null; managerId: string | null
+    position: string | null; personnelNumber: string | null; teamId: string | null; teamName: string | null; departmentId: string | null; departmentName: string | null; managerId: string | null
     included: boolean; participationVersion: string | null; history: AttendanceEmploymentHistoryItem[]; todayMark: AttendanceEmployeeToday | null }
   teams: AttendanceSection[]; departments: AttendanceDepartment[]; managers: Array<{ id: string; name: string; position: string | null }>
   month: { from: string; to: string; workedDays: number; workedSeconds: number; lateCount: number; absentCount: number; leaveDays: number; sickDays: number; isComplete: boolean } | null
@@ -73,7 +77,7 @@ export type AttendanceEmployeeDirectory = {
   teams: AttendanceSection[]; departments: AttendanceDepartment[]
   managers: Array<{ id: string; name: string; position: string | null }>
   employees: Array<{ id: string; name: string; role: string; teamName: string | null; departmentId: string | null; departmentName: string | null; status: string;
-    position: string | null; teamId: string | null; managerId: string | null; phone?: string | null; todayMark?: AttendanceEmployeeToday | null;
+    position: string | null; personnelNumber?: string | null; teamId: string | null; managerId: string | null; phone?: string | null; todayMark?: AttendanceEmployeeToday | null;
     included: boolean; participationVersion: string | null; includedFrom: string | null;
     history: Array<{ id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }> }>
   timezone: string
