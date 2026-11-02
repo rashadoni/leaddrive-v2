@@ -1322,6 +1322,8 @@ pgDescribe("client categories on a real Postgres", () => {
     beforeAll(async () => {
       run(`DROP TABLE "${TABLE}";`)
       run(readFileSync(path.join(ROOT, "prisma/migrations/20261010150000_mtm_location_share_links/migration.sql"), "utf8"))
+      // …and the columns «агент едет к вам» added to it (2026-11-02), as the deploy applies them after.
+      run(readFileSync(path.join(ROOT, "prisma/migrations/20261120090000_mtm_customer_eta_links/migration.sql"), "utf8"))
       run(settingsTableGuard())
       // Cluster-wide, unlike the scratch database: made once, removed below.
       run(`DO $$ BEGIN

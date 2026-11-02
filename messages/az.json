@@ -19053,6 +19053,12 @@
     }
   },
   "mtmLocationShareLink": {
+    "onTheWayTitle": "Nümayəndəniz sizə tərəf yoldadır",
+    "arrivesAt": "Təxminən {time} çatacaq · {minutes} dəq sonra",
+    "arrived": {
+      "title": "Nümayəndə gəlib",
+      "hint": "{name} artıq sizin yanınızdadır. Link daha yeri göstərmir."
+    },
     "pageTitle": "Əməkdaşın olduğu yer",
     "organization": "{organization}",
     "loading": "Olduğu yer yüklənir…",
@@ -19264,6 +19270,13 @@
     "hintHistoryStopMinimum": "Dayanacağın göstərilməsi üçün əməkdaşın radiusda qalmalı olduğu müddət",
     "hintLateAfterHour": "Bu saata qədər marşruta başlamayan agent xəritədə «Gecikir» kimi görünür. Xəbərdarlıq yaranmır. Yalnız əlaqədə olan agentlərə aiddir.",
     "hintLocationShareLinks": "Taksi kimi: rəhbər xəritədə agentin kartından link göndərir, açan şəxs sistemə daxil olmadan agentin indi harada olduğunu görür. Yalnız iş günü ərzində, tarixçə və marşrut olmadan. Agentə bildiriş getmir. Söndürsəniz, verilmiş bütün linklər həmişəlik işləməyəcək.",
+    "lblCustomerEtaLinks": "Müştəriyə — «agent sizə tərəf yoldadır»",
+    "hintCustomerEtaLinks": "Agent günün marşrutu üzrə növbəti müştəriyə yola düşəndə bot həmin müştəriyə link göndərir: agent indi haradadır və təxminən nə vaxt çatacaq. Agent müştəridə qeydiyyatdan keçəndən sonra link yeri göstərmir. Vizitin kontaktının telefonuna, yoxdursa müştərinin telefonuna gedir; bir vizitə bir mesaj. Söndürsəniz, göndərilmiş bütün linklər işləməyəcək.",
+    "lblCustomerEtaLinkChannel": "Kanal",
+    "optChannelSms": "SMS",
+    "optChannelWhatsapp": "WhatsApp",
+    "hintCustomerEtaLinkChannelSms": "«Ayarlar → Kanallar» bölməsində qoşulmuş SMS provayderi ilə. Provayder yoxdursa, mesaj getmir.",
+    "hintCustomerEtaLinkChannelWhatsapp": "Şirkətin WhatsApp nömrəsindən, Meta tərəfindən təsdiqlənmiş «mtm_agent_on_the_way» şablonu ilə (dörd dəyişən: şirkət, agent, vaxt, link). Şablon təsdiqlənənə qədər mesajlar çatmır.",
     "hintDeviationThreshold": "Plan marşrutdan bu məsafədə sapma xəbərdarlıq yaradır",
     "hintDeviationThrottle": "Bir agent üzrə təkrar sapma xəbərdarlıqları arasında minimum fasilə",
     "hintMaxPhotos": "Bundan artıq fotonu tətbiq qəbul etmir.",

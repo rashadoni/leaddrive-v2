@@ -60,6 +60,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-route-day-close/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-attendance-reports/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-attendance-reminders/ { next }
+  /cron-trigger\.sh \/api\/cron\/mtm-customer-eta/ { next }
   /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
   /cron-trigger\.sh \/api\/cron\/call-recordings-retention/ { next }
   /cron-trigger\.sh \/api\/cron\/az-calendar-watch/ { next }
@@ -153,6 +154,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "20 * * * * $TRIGGER /api/cron/mtm-route-day-close >> $LOG 2>&1"
   # Attendance inbox reminders are optional, bounded and deduplicated.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/mtm-attendance-reminders >> $LOG 2>&1"
+  # «Агент едет к вам»: the link to a customer an agent has set off to. Off
+  # for every organization until it switches it on; one message per stop at
+  # most (unique row before the send), so overlapping ticks send nothing twice.
+  printf '%s\n' "* * * * * $TRIGGER /api/cron/mtm-customer-eta >> $LOG 2>&1"
   # Private attendance schedules are opt-in; worker rechecks access per letter.
   printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/mtm-attendance-reports >> $LOG 2>&1"
   # A campaign with status «scheduled» goes out when its scheduledAt comes.

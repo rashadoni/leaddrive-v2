@@ -62,6 +62,8 @@ interface ShareLinkRow {
   expiresAt: Date
   revokedAt: Date | null
   revokedBy: string | null
+  /** MANAGER — a manager's link; CUSTOMER_ETA — the bot's «агент едет к вам». */
+  purpose: "MANAGER" | "CUSTOMER_ETA"
 }
 let shareLinks: ShareLinkRow[]
 
@@ -75,14 +77,15 @@ beforeEach(() => {
   // The statement's own filters are applied to the rows: one that forgot the
   // organization, «not revoked» or «not out of time» changes rows it must not.
   vi.mocked(prisma.mtmLocationShareLink.updateMany).mockImplementation((async (args: {
-    where: { organizationId?: string; revokedAt?: null; expiresAt?: { gt: Date } }
+    where: { organizationId?: string; purpose?: string; revokedAt?: null; expiresAt?: { gt: Date } }
     data: Partial<ShareLinkRow>
   }) => {
     for (const key of Object.keys(args.where)) {
-      if (!["organizationId", "revokedAt", "expiresAt"].includes(key)) throw new Error(`the links were asked by an unknown filter: ${key}`)
+      if (!["organizationId", "purpose", "revokedAt", "expiresAt"].includes(key)) throw new Error(`the links were asked by an unknown filter: ${key}`)
     }
     const rows = shareLinks.filter((row) =>
       (args.where.organizationId === undefined || row.organizationId === args.where.organizationId)
+      && (args.where.purpose === undefined || row.purpose === args.where.purpose)
       && (args.where.revokedAt !== null || row.revokedAt === null)
       && (args.where.expiresAt === undefined || row.expiresAt.getTime() > args.where.expiresAt.gt.getTime()))
     for (const row of rows) Object.assign(row, args.data)
@@ -335,7 +338,7 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
     const LATER = new Date("2026-10-10T20:00:00.000Z")
     const switchedOn = () => vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "locationShareLinksEnabled", value: true }] as never)
     const row = (id: string, over: Partial<ShareLinkRow> = {}): ShareLinkRow => {
-      const made = { id, organizationId: ORG, expiresAt: LATER, revokedAt: null, revokedBy: null, ...over }
+      const made: ShareLinkRow = { id, organizationId: ORG, expiresAt: LATER, revokedAt: null, revokedBy: null, purpose: "MANAGER", ...over }
       shareLinks.push(made)
       return made
     }
@@ -401,6 +404,29 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
       // Pressed again, with the switch still read as on (the database undid the first attempt): done.
       expect((await UpdateSettings(put({ locationShareLinksEnabled: false, geofenceRadius: 150 }))).status).toBe(200)
       expect(shareLinks.filter((link) => link.revokedAt?.getTime() === NOW.getTime()).map((link) => link.id)).toEqual(["working-1", "working-2"])
+    })
+
+    // «Агент едет к вам» (2026-11-02) has its own switch: each one ends its own links only.
+    it("ends the managers' links with the managers' switch and the bot's links with the bot's, never the other's", async () => {
+      row("manager-link")
+      row("bot-link", { purpose: "CUSTOMER_ETA" })
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+        { key: "locationShareLinksEnabled", value: true },
+        { key: "customerEtaLinksEnabled", value: true },
+      ] as never)
+      expect((await UpdateSettings(put({ locationShareLinksEnabled: false }))).status).toBe(200)
+      const ended = () => shareLinks.filter((link) => link.id.endsWith("-link")).map((link) => [link.id, link.revokedAt !== null])
+      expect(ended()).toEqual([["manager-link", true], ["bot-link", false]])
+      expect((await UpdateSettings(put({ customerEtaLinksEnabled: false }))).status).toBe(200)
+      expect(ended()).toEqual([["manager-link", true], ["bot-link", true]])
+      expect(upsertedKeys()).toEqual(["locationShareLinksEnabled", "customerEtaLinksEnabled"])
+    })
+
+    it("takes the bot's channel only as SMS or WhatsApp", async () => {
+      expect((await UpdateSettings(put({ customerEtaLinkChannel: "whatsapp" }))).status).toBe(200)
+      const refused = await UpdateSettings(put({ customerEtaLinkChannel: "telegram" }))
+      expect(refused.status).toBe(400)
+      expect((await refused.json()).key).toBe("customerEtaLinkChannel")
     })
 
     it("says on the journal's one row how many links the save ended — and writes no row per link", async () => {

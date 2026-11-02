@@ -76,6 +76,13 @@ interface Shown {
   generatedAtMs: number
   /** Where the employee is — only when the answer had a position to show. */
   position: { latitude: number; longitude: number; recordedAtMs: number } | null
+  /**
+   * A link the bot sent a customer («агент едет к вам»): the customer's own
+   * pin and about when he arrives — or that he has arrived. Null on a link a
+   * manager made.
+   */
+  trip: { destination: { latitude: number; longitude: number } | null; arrivesAtMs: number | null } | null
+  arrived: boolean
 }
 
 interface Snapshot extends Shown {
@@ -101,7 +108,7 @@ const within = (value: unknown, limit: number): value is number =>
 function readAnswer(body: unknown): Shown | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null
   const { success, state, data } = body as Record<string, unknown>
-  if (success !== true || (state !== "AVAILABLE" && state !== "UNAVAILABLE")) return null
+  if (success !== true || (state !== "AVAILABLE" && state !== "UNAVAILABLE" && state !== "ARRIVED")) return null
   if (!data || typeof data !== "object" || Array.isArray(data)) return null
   const row = data as Record<string, unknown>
   const expiresAtMs = moment(row.expiresAt)
@@ -113,11 +120,25 @@ function readAnswer(body: unknown): Shown | null {
     expiresAtMs,
     timezone: locationShareLinkTimezone(row.timezone),
     generatedAtMs,
+    trip: null,
+    arrived: false,
   }
+  if (state === "ARRIVED") return { ...shown, position: null, arrived: true }
   if (state === "UNAVAILABLE") return { ...shown, position: null }
   const recordedAtMs = moment(row.recordedAt)
   if (!within(row.latitude, 90) || !within(row.longitude, 180) || recordedAtMs == null) return null
-  return { ...shown, position: { latitude: row.latitude, longitude: row.longitude, recordedAtMs } }
+  return { ...shown, position: { latitude: row.latitude, longitude: row.longitude, recordedAtMs }, trip: readTrip(row.trip) }
+}
+
+/** The trip of a customer's link, each field read by name; a pin that cannot be drawn is no pin. */
+function readTrip(value: unknown): Shown["trip"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const { destination, arrivesAt } = value as Record<string, unknown>
+  const pin = destination && typeof destination === "object" && !Array.isArray(destination) ? destination as Record<string, unknown> : null
+  return {
+    destination: pin && within(pin.latitude, 90) && within(pin.longitude, 180) ? { latitude: pin.latitude, longitude: pin.longitude } : null,
+    arrivesAtMs: moment(arrivesAt),
+  }
 }
 
 /** How long to stay silent after a 429: what the answer asks for, held between a minute and ten. */
@@ -290,6 +311,8 @@ export function LocationShareLinkView({ token }: { token: string }) {
         return
       }
       const next = { ...shown, receivedAt: stamp() }
+      // Arrived: said, and nothing is asked from here on — there is nothing more to show.
+      if (shown.arrived) goneRef.current = true
       snapshotRef.current = next
       // The link works: whatever «больше не работает» came before was not the end of it.
       doubtRef.current = null
@@ -352,7 +375,11 @@ export function LocationShareLinkView({ token }: { token: string }) {
   // The zone is named only to somebody whose own clock reads differently.
   const anotherClock = snapshot != null && now != null
     && getOffsetMinutes(snapshot.timezone, new Date(now)) !== -new Date(now).getTimezoneOffset()
-  const state = gone ? "gone" : !snapshot ? "loading" : position ? "available" : "unavailable"
+  const state = gone ? "gone" : !snapshot ? "loading" : snapshot.arrived ? "arrived" : position ? "available" : "unavailable"
+  // «Будет примерно в 11:40» — only while the time is still ahead.
+  const arrivesAtMs = position && snapshot?.trip?.arrivesAtMs != null && now != null && snapshot.trip.arrivesAtMs > now
+    ? snapshot.trip.arrivesAtMs
+    : null
   const said = notice === "rateLimited" ? t("rateLimited") : notice === "connectionLost" ? t("connectionLost") : null
   const refresh = (
     <button
@@ -390,14 +417,24 @@ export function LocationShareLinkView({ token }: { token: string }) {
             <p role="status" className="mt-2 text-sm text-muted-foreground">{t("loading")}</p>
           )}
         </section>
+      ) : snapshot.arrived ? (
+        <section className="m-auto w-full max-w-md px-4 py-10 text-center" data-testid="location-share-link-arrived">
+          <h1 className="text-xl font-semibold">{t("arrived.title")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t("arrived.hint", { name: snapshot.name })}</p>
+        </section>
       ) : (
         <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col sm:px-4 sm:py-4">
           <header className="px-4 pb-3 pt-4 sm:px-0 sm:pt-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pageTitle")}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{snapshot.trip ? t("onTheWayTitle") : t("pageTitle")}</p>
             <h1 className="mt-1 break-words text-xl font-semibold" data-testid="location-share-link-name">{snapshot.name}</h1>
             {snapshot.organizationName ? (
               <p className="mt-0.5 break-words text-sm text-muted-foreground" data-testid="location-share-link-organization">
                 {t("organization", { organization: snapshot.organizationName })}
+              </p>
+            ) : null}
+            {arrivesAtMs != null && now != null ? (
+              <p className="mt-2 text-lg font-semibold" data-testid="location-share-link-eta">
+                {t("arrivesAt", { time: clock(arrivesAtMs), minutes: Math.max(1, Math.round((arrivesAtMs - now) / 60_000)) })}
               </p>
             ) : null}
             {position && age ? (
@@ -416,7 +453,13 @@ export function LocationShareLinkView({ token }: { token: string }) {
               data-testid="location-share-link-map"
               className="relative isolate min-h-[280px] flex-1 overflow-hidden border-y border-zinc-200 bg-muted sm:rounded-lg sm:border"
             >
-              <LocationShareLinkMap latitude={position.latitude} longitude={position.longitude} name={snapshot.name} recentreKey={pressed} />
+              <LocationShareLinkMap
+                latitude={position.latitude}
+                longitude={position.longitude}
+                name={snapshot.name}
+                recentreKey={pressed}
+                {...(snapshot.trip ? { destination: snapshot.trip.destination } : {})}
+              />
             </section>
           ) : (
             <section className="mx-4 rounded-lg border border-zinc-200 bg-muted/40 p-4 sm:mx-0" data-testid="location-share-link-unavailable">

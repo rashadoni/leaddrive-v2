@@ -54,6 +54,9 @@ type SettingItem = {
   thresholds?: Threshold[]
   // Plain explanatory sub-blocks rendered in the switch's row.
   notes?: { titleKey: string; hintKey: string; thresholds?: Threshold[] }[]
+  // One of a few words that only means something while this switch is on,
+  // rendered in its row like the thresholds; each option has its own hint.
+  choice?: { key: string; labelKey: string; options: { value: string; labelKey: string; hintKey: string }[] }
 }
 /**
  * The page is six tabs, not one ten-screen scroll. What a manager changes in
@@ -460,6 +463,20 @@ export default function MtmSettingsPage() {
         // administrator alone: the account that runs the field module for a
         // client is a CRM manager (see agentCheckInOutsideZone above).
         { key: "locationShareLinksEnabled", labelKey: "lblLocationShareLinks", hintKey: "hintLocationShareLinks", type: "boolean" },
+        // «Агент едет к вам» (src/lib/mtm/customer-eta-link.ts): the bot sends
+        // the customer the agent has set off to. Off by default; the channel
+        // is the company's choice (owner, 2026-11-02).
+        {
+          key: "customerEtaLinksEnabled", labelKey: "lblCustomerEtaLinks", hintKey: "hintCustomerEtaLinks", type: "boolean",
+          choice: {
+            key: "customerEtaLinkChannel",
+            labelKey: "lblCustomerEtaLinkChannel",
+            options: [
+              { value: "sms", labelKey: "optChannelSms", hintKey: "hintCustomerEtaLinkChannelSms" },
+              { value: "whatsapp", labelKey: "optChannelWhatsapp", hintKey: "hintCustomerEtaLinkChannelWhatsapp" },
+            ],
+          },
+        },
       ],
     },
     {
@@ -651,6 +668,27 @@ export default function MtmSettingsPage() {
         {showThresholds(item.thresholds, switchOn) ? (
           <div className="border-l-2 border-muted pl-3">{renderThresholds(item.thresholds, disabled)}</div>
         ) : null}
+        {item.choice && switchOn ? (() => {
+          const choice = item.choice
+          const chosen = choice.options.find((option) => option.value === settings[choice.key]) ?? choice.options[0]
+          return (
+            <div className="space-y-1 border-l-2 border-muted pl-3" data-setting-row={choice.key}>
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-xs font-semibold">{ts(choice.labelKey)}</div>
+                <Select
+                  value={chosen.value}
+                  onChange={(event) => updateSetting(choice.key, event.target.value)}
+                  aria-label={ts(choice.labelKey)}
+                  disabled={disabled}
+                  className="w-40 shrink-0"
+                >
+                  {choice.options.map((option) => <option key={option.value} value={option.value}>{ts(option.labelKey)}</option>)}
+                </Select>
+              </div>
+              <div className="text-xs text-muted-foreground">{ts(chosen.hintKey)}</div>
+            </div>
+          )
+        })() : null}
         {item.notes ? (
           <div className="space-y-3 border-l-2 border-muted pl-3">
             {item.notes.map((note) => (

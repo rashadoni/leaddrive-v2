@@ -1075,6 +1075,46 @@ describe("the public page of a location link", () => {
     })
   })
 
+  // «Агент едет к вам» (owner, 2026-11-02): the link the bot sent a customer.
+  describe("on a link the bot sent the customer the agent is driving to", () => {
+    /** Twenty-five minutes after the server's moment: 14:30 in Baku. */
+    const ARRIVES = iso(SERVER_NOW + 24.5 * 60_000)
+    const DESTINATION = { latitude: 40.4201, longitude: 49.8812 }
+
+    it("says he is on his way and about when he arrives, and puts the customer's own pin on the map beside him", async () => {
+      server = () => available({ trip: { destination: DESTINATION, arrivesAt: ARRIVES } })
+      await open()
+      expect(state()).toBe("available")
+      expect(container.textContent).toContain("Ваш представитель едет к вам")
+      expect(text("location-share-link-eta")).toBe("Будет примерно в 14:30 · через 25 мин")
+      expect(lastMap()).toEqual({ latitude: 40.4093, longitude: 49.8671, name: "Нигяр Примерова", recentreKey: 0, destination: DESTINATION })
+    })
+
+    it("leaves the time out when the server has none, or once it has passed", async () => {
+      server = () => available({ trip: { destination: DESTINATION, arrivesAt: null } })
+      await open()
+      expect(byTestId("location-share-link-eta")).toBeNull()
+      expect(lastMap()?.destination).toEqual(DESTINATION)
+
+      act(() => root.unmount())
+      root = createRoot(container)
+      server = () => available({ trip: { destination: DESTINATION, arrivesAt: iso(SERVER_NOW - 60_000) } })
+      await open()
+      expect(byTestId("location-share-link-eta")).toBeNull()
+    })
+
+    it("once he has arrived says so, shows no map, and asks the server nothing more", async () => {
+      server = () => Response.json({ success: true, state: "ARRIVED", data: { ...data, generatedAt: iso(SERVER_NOW + elapsed()) } })
+      await open()
+      expect(state()).toBe("arrived")
+      expect(text("location-share-link-arrived")).toBe("Представитель на местеНигяр Примерова уже у вас. Ссылка больше не показывает местоположение.")
+      expect(hoisted.maps).toEqual([])
+      const asked = requests.length
+      await forward(5 * 60_000, 30_000)
+      expect(requests).toHaveLength(asked)
+    })
+  })
+
   describe("while the map's own code is on its way", () => {
     it("the page says «Загружаем местоположение…» in the map's place — in the link's language — and loads the map in the browser only", async () => {
       await open()

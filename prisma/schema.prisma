@@ -6601,6 +6601,7 @@ model MtmCustomer {
 
   locationRequests       MtmCustomerLocationRequest[]
   hoursRequests          MtmCustomerHoursRequest[]
+  customerEtaLinks       MtmLocationShareLink[]
   @@unique([organizationId, code])
   @@unique([organizationId, id])
   @@index([organizationId])
@@ -7165,8 +7166,26 @@ model MtmLocationShareLink {
   /// `updatedAt` on purpose: it would move with every view.
   viewCount      Int          @default(0)
   lastViewedAt   DateTime?
+  /// MANAGER — made by a manager on the live map; CUSTOMER_ETA — sent by the
+  /// bot to the customer the agent is on his way to («агент едет к вам»,
+  /// src/lib/mtm/customer-eta-link.ts). Pinned by a CHECK in the migration.
+  purpose        String        @default("MANAGER")
+  /// CUSTOMER_ETA only: the stop of today's route the agent is driving to —
+  /// one link per stop, ever (unique), and the customer whose pin the page
+  /// shows. Gone with the stop.
+  routePointId   String?
+  routePoint     MtmRoutePoint? @relation(fields: [routePointId], references: [id], onDelete: Cascade)
+  customerId     String?
+  customer       MtmCustomer?   @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Cascade)
+  /// CUSTOMER_ETA only: how the message went out — channel (sms/whatsapp),
+  /// PENDING → SENT | FAILED, and on failure the provider's reason in a few
+  /// words, never the recipient's number.
+  deliveryChannel String?
+  deliveryStatus  String?
+  deliveryError   String?
 
   @@unique([organizationId, id])
+  @@unique([routePointId])
   @@index([organizationId, agentId, expiresAt])
   @@map("mtm_location_share_links")
 }
@@ -7714,6 +7733,7 @@ model MtmRoutePoint {
   visits         MtmVisit[]
   changeRequests MtmRouteChangeRequest[]
   jointVisitPlans MtmJointVisitPlan[]
+  customerEtaLinks MtmLocationShareLink[]
 
   @@index([organizationId])
   @@index([routeId])
