@@ -374,7 +374,12 @@ pgDescribe("ad conversions to Meta on a real Postgres", () => {
 
     const leadPost = collected().find((body) => (body.events as { name: string }[])[0].name === "generate_lead")
     expect(leadPost).toMatchObject({ client_id: "111.222", events: [{ name: "generate_lead", params: { source: "google" } }] })
-    expect(JSON.stringify(leadPost)).not.toMatch(/leyla|994/i)
+    // The clock is not data about the person, and its digits are arbitrary:
+    // this assertion read `994` out of timestamp_micros=1793637994063000 and
+    // failed a healthy run on 2026-11-02. Every other value is still checked.
+    const { timestamp_micros: clock, ...withoutClock } = leadPost as Record<string, unknown>
+    expect(typeof clock).toBe("number")
+    expect(JSON.stringify(withoutClock)).not.toMatch(/leyla|994/i)
     expect((await ga4Events(lead.id))[0]).toMatchObject({ status: "sent" })
 
     const converted = await convert(json("POST", `/api/v1/leads/${lead.id}/convert`, { dealTitle: "Leyla — illik", dealValue: 1200 }), { params: Promise.resolve({ id: lead.id }) })
