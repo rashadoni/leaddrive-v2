@@ -316,6 +316,23 @@ test('the installer refuses to pretend, and never touches the fenced units', () 
   assert.match(timer, /Persistent=true/, 'a night the host was down must still be caught up');
 });
 
+test('the box-side wrapper takes the owner\'s key, never the dev box\'s', () => {
+  // Production holds two age recipients. The owner's is the one the host's
+  // nightly backup script encrypts to — his private half is on his Mac alone.
+  // BACKUP_AGE_RECIPIENT in /etc/leaddrive/backup.env is the dev box's, and its
+  // private half sits on the dev box beside the copies of the backups, so a
+  // copy encrypted to it protects nothing. Measured on 2026-11-02: those two
+  // files hold exactly those two different keys.
+  const wrapper = readFileSync('scripts/ops/uploads-offsite-remote.sh', 'utf8');
+  assert.match(wrapper, /OWNER_KEY_SOURCE=\/usr\/local\/sbin\/leaddrive-backup\.sh/);
+  // The recipient used for --install comes from that one file, and nowhere else.
+  const chooser = wrapper.slice(wrapper.indexOf('find_recipient()'), wrapper.indexOf('show_keys()'));
+  assert.match(chooser, /\$OWNER_KEY_SOURCE/);
+  assert.doesNotMatch(chooser, /backup\.env|\/etc\/leaddrive\//, 'the chooser must not look at the dev box key');
+  // Ambiguity is a refusal, not a guess.
+  assert.match(wrapper, /Не могу выбрать ключ сам/);
+});
+
 test('the mirror never deletes anything in the bucket', () => {
   for (const forbidden of [/s3 rm/, /delete-object/, /--delete\b/]) {
     assert.doesNotMatch(source, forbidden, `the mirror must not contain ${forbidden}`);
