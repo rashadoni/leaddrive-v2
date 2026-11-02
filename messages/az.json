@@ -11754,7 +11754,7 @@
     "visitCloseByAgentOnly": "Ziyarəti agent özü tətbiqdə bağlayır. Ziyarət açıq qalıbsa, agentə yazın."
   },
   "mtmRoutePlanner": {
-    "hours": {"missing": "saatlar göstərilməyib", "dayOff": "bu gün işləmir", "removeStop": "Marşrutdan çıxar", "closedOnArrival": "çatanda bağlıdır — vizit baş tutmayacaq", "wait": "qapı qarşısında {minutes} dəq gözləmə (nahar və ya hələ açılmayıb)"},
+    "hours": {"missing": "saatlar göstərilməyib", "dayOff": "bu gün işləmir", "removeStop": "Marşrutdan çıxar", "closedOnArrival": "çatanda bağlıdır — vizit baş tutmayacaq", "wait": "qapı qarşısında {minutes} dəq gözləmə (nahar və ya hələ açılmayıb)", "moveHint": "Yeri bu gündən çıxarıb, işlədiyi ən yaxın günün marşrutunu yeni vərəqdə bu yerlə birlikdə açır. Bu marşrut olduğu kimi qalır.", "moveTo": {"1": "Bazar ertəsinə", "2": "Çərşənbə axşamına", "3": "Çərşənbəyə", "4": "Cümə axşamına", "5": "Cüməyə", "6": "Şənbəyə", "7": "Bazar gününə"}},
     "order": {
       "rowInHours": "Qəbul saatlarında",
       "rowWait": "Bağlı qapı qarşısında gözləmə",

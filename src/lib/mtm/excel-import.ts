@@ -7,6 +7,8 @@ import { rankMtmCustomerDuplicates } from "@/lib/mtm/customer-request"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
 import type { MtmExcelRowError, MtmExcelImportType, ParsedMtmWorkbook } from "@/lib/mtm/excel-contract"
 import { localDateTimeToUtc } from "@/lib/timezone"
+import { readExcelWorkingHours } from "@/lib/mtm/excel-customer-hours"
+import { readWorkingHours } from "@/lib/mtm/customer-hours"
 
 type AppPrisma = typeof appPrisma
 type DbClient = AppPrisma | Prisma.TransactionClient
@@ -47,6 +49,7 @@ interface ExistingCustomerRow {
   longitude: number | null
   contactPerson: string | null
   phone: string | null
+  workingHours: unknown
 }
 
 interface ExistingRouteRow {
@@ -187,7 +190,7 @@ async function validateCustomers(
   const errors = [...parsed.errors]
   const existing = await db.mtmCustomer.findMany({
     where: { organizationId, deletedAt: null },
-    select: { id: true, code: true, objectType: true, name: true, status: true, category: true, address: true, city: true, district: true, territoryCode: true, latitude: true, longitude: true, contactPerson: true, phone: true },
+    select: { id: true, code: true, objectType: true, name: true, status: true, category: true, address: true, city: true, district: true, territoryCode: true, latitude: true, longitude: true, contactPerson: true, phone: true, workingHours: true },
   })
   const territories = await db.mtmRegion.findMany({ where: { organizationId, code: { not: null } }, select: { code: true } })
   const territoryCodes = new Set(territories.map((territory: { code: string | null }) => territory.code).filter(Boolean))
@@ -219,6 +222,9 @@ async function validateCustomers(
     const coordinates = normalizeMtmCoordinates({ latitude, longitude })
     const territoryCode = optionalText(row.values.territory_code, 128)
     if (territoryCode && !territoryCodes.has(territoryCode)) pushInvalid(parsed, row.rowNumber, "territory_code", errors, territoryCode, "Territory code does not exist")
+    // «Часы приёма»: only a row that fills an hours column says anything about them.
+    const hours = readExcelWorkingHours(row.values)
+    if (hours.kind === "invalid") pushInvalid(parsed, row.rowNumber, hours.column, errors, hours.rawValue, hours.message)
     if (code) {
       const duplicateRow = seen.get(code)
       if (duplicateRow) errors.push({ sheetName: parsed.sheetName, rowNumber: row.rowNumber, columnName: "external_code", errorCode: "DUPLICATE_IN_FILE", message: `External code also appears on row ${duplicateRow}`, rawValue: code })
@@ -240,6 +246,7 @@ async function validateCustomers(
       contactPerson: optionalText(row.values.contact_person),
       phone: optionalText(row.values.phone, 128),
       territoryCode,
+      ...(hours.kind === "hours" ? { workingHours: hours.hours } : {}),
     }
     const match = byCode.get(code)
     const comparable = match ? {
@@ -256,6 +263,7 @@ async function validateCustomers(
       contactPerson: match.contactPerson,
       phone: match.phone,
       territoryCode: match.territoryCode,
+      ...(hours.kind === "hours" ? { workingHours: readWorkingHours(match.workingHours) } : {}),
     } : null
     const duplicateCandidates = match ? [] : rankMtmCustomerDuplicates({ externalCode: code, name, phone: data.phone, latitude: coordinates.latitude, longitude: coordinates.longitude }, customerRows)
     rows.push({
@@ -586,12 +594,19 @@ function asObjectArray(value: unknown): Array<Record<string, unknown>> {
 async function applyCustomerRows(
   tx: Prisma.TransactionClient,
   organizationId: string,
+  requestedBy: string,
   rows: SnapshotRow[],
 ): Promise<void> {
+  const now = new Date()
   for (const row of rows) {
     if (row.operation === "UNCHANGED") continue
     const data = row.data
     const code = asString(data.code)
+    // A row without hours columns leaves the place's «часы приёма» as they are.
+    const hours = readWorkingHours(data.workingHours)
+    const hoursData = hours
+      ? { workingHours: hours as unknown as Prisma.InputJsonValue, workingHoursUpdatedAt: now, workingHoursUpdatedBy: requestedBy }
+      : {}
     await tx.mtmCustomer.upsert({
       where: { organizationId_code: { organizationId, code } },
       create: {
@@ -608,6 +623,7 @@ async function applyCustomerRows(
         ...normalizeMtmCoordinates({ latitude: asNullableNumber(data.latitude), longitude: asNullableNumber(data.longitude) }),
         contactPerson: asNullableString(data.contactPerson),
         phone: asNullableString(data.phone),
+        ...hoursData,
       },
       update: {
         objectType: asString(data.objectType) as MtmCustomerObjectType,
@@ -621,6 +637,7 @@ async function applyCustomerRows(
         ...normalizeMtmCoordinates({ latitude: asNullableNumber(data.latitude), longitude: asNullableNumber(data.longitude) }),
         contactPerson: asNullableString(data.contactPerson),
         phone: asNullableString(data.phone),
+        ...hoursData,
       },
     })
   }
@@ -851,7 +868,7 @@ export async function applyMtmExcelImportJob(params: {
     })
     if (claim.count !== 1) throw new Error("Import job was already claimed")
 
-    if (snapshot.type === "CUSTOMERS") await applyCustomerRows(tx, params.organizationId, snapshot.rows)
+    if (snapshot.type === "CUSTOMERS") await applyCustomerRows(tx, params.organizationId, params.requestedBy, snapshot.rows)
     else if (snapshot.type === "ROUTES") await applyRouteRows(tx, params.organizationId, params.requestedBy, snapshot.rows)
     else if (snapshot.type === "SALES_FACTS") await applySalesRows(tx, params.organizationId, job.id, snapshot.rows)
     else await applyPlanRows(tx, params.organizationId, job.id, snapshot.rows)
