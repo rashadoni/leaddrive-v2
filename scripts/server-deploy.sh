@@ -72,7 +72,7 @@ OPS_ACTIVATION_JOURNAL="$OPS_ROOT/activation.journal"
 SYSTEMD_UNIT_DIR="/etc/systemd/system"
 LOGROTATE_DIR="/etc/logrotate.d"
 HELP_VIDEO_PUBLIC_BASE_URL_DEFAULT="https://app.leaddrivecrm.org/api/help-videos"
-HELP_VIDEO_ASSETS_COPIED=false
+HELP_VIDEO_PULL_ACTION="unknown"
 LEGACY_HELP_VIDEO_PATH_RECOGNIZED=false
 STANDALONE_REPLACED=false
 RUNTIME_CUTOVER_APPLIED=false
@@ -5428,6 +5428,21 @@ validate_release_owned_operations_artifact() {
     && [ ! -L "$artifact_root/ops/backup/recovery-program-set.files" ] || \
     fatal "release artifact is missing the recovery-program contract"
 
+  # The help-video masters are not in the artifact any more (2026-11-02): the
+  # release pulls them from object storage, so the puller, the version it pulls
+  # and the exact set it must match are part of the release — like the backup
+  # scripts above. Stage one shipped the puller nowhere and reported it in a
+  # WARNING at the very end of the deploy, which is why it went unnoticed for a
+  # day while every deploy quietly published nothing.
+  [ -x "$artifact_root/scripts/help-videos/assets-sync.sh" ] \
+    && [ ! -L "$artifact_root/scripts/help-videos/assets-sync.sh" ] || \
+    fatal "release artifact is missing executable help-video sync script"
+  [ -s "$artifact_root/help-videos/masters.sha256" ] \
+    && [ ! -L "$artifact_root/help-videos/masters.sha256" ] || \
+    fatal "release artifact is missing the help-video master manifest"
+  [ -s "$artifact_root/help-videos/asset-version" ] || \
+    fatal "release artifact is missing the help-video asset version"
+
   manifest="$artifact_root/scripts/release-cron-script-manifest.txt"
   [ -s "$manifest" ] || fatal "release artifact is missing its cron-script manifest"
   LC_ALL=C sort -cu "$manifest" || \
@@ -8415,7 +8430,10 @@ log "Prisma engine verified: $(ls $PRISMA_ENGINE_PATTERN | head -1 | xargs basen
 # Source code now reads the external runtime root directly. The final move is
 # deliberately later, during the existing process handoff: copying while the
 # old artifact is still dual-writing would create a last-write-loss race.
-BUNDLED_HELP_VIDEO_DIR="$APP_DIR/.next/standalone/help-videos/player"
+#
+# The help-video masters are no longer part of that move: they are not in the
+# artifact at all since 2026-11-02 and arrive from object storage before the
+# handoff starts.
 
 # ── Step 3: Prisma migrate deploy ──────────────────────────
 log "Running Prisma migrations..."
@@ -9120,6 +9138,63 @@ fi
 # browses to go first, and the web process last.
 sync || true
 
+# ── Pull the help-video masters while the old release still answers ─
+# The videos left the artifact on 2026-11-02: 265 MB in every tarball, twice on
+# the production disk, and copied once more on every deploy with PM2 already
+# stopped. Object storage holds them now, and this is where they arrive — the
+# old process is still serving, so the transfer costs no downtime at all.
+#
+# No staging directory, deliberately: the puller installs each file under its
+# final name only after its sha256 matches the manifest, and that install is an
+# atomic rename inside the one directory. A reader that already opened the old
+# file keeps reading it. A staging copy would mean a second 265 MB on the same
+# disk to buy nothing.
+#
+# --expect pins the set: the manifest in the bucket must equal the one this
+# release was built against, or nothing is fetched. The per-file sha256 check
+# cannot see that — it only proves the bytes match the manifest it was handed.
+#
+# Skipped while the checkout still owns $APP_DIR/help-videos as a real
+# directory: the runtime cutover further down refuses an implicit merge when
+# both the source and the target exist, and creating the target here would be
+# exactly that. Such a host gets its masters from the publish after the health
+# checks instead.
+#
+# A failure here is a WARNING, not a fatal: the release is healthy without it
+# and the help library keeps serving whatever is already on disk. It is not
+# silent either — it lands in the SUMMARY line as help-videos=failed.
+HELP_VIDEO_SYNC_SCRIPT="$APP_DIR/.next/standalone/scripts/help-videos/assets-sync.sh"
+HELP_VIDEO_MASTERS_MANIFEST="$APP_DIR/.next/standalone/help-videos/masters.sha256"
+HELP_VIDEO_VERSION_FILE="$APP_DIR/.next/standalone/help-videos/asset-version"
+HELP_VIDEO_ASSET_VERSION="$(tr -d '\r\n' < "$HELP_VIDEO_VERSION_FILE")"
+if [ ! -f "/etc/leaddrive/wal-archive.env" ]; then
+  HELP_VIDEO_PULL_ACTION="no-storage-config"
+  log "No object-storage configuration; the help-video masters were not pulled"
+elif [ -e "$APP_DIR/help-videos" ] && [ ! -L "$APP_DIR/help-videos" ]; then
+  HELP_VIDEO_PULL_ACTION="deferred-pre-cutover"
+  log "Help-video runtime cutover has not happened yet; deferring to the post-health publish"
+else
+  HELP_VIDEO_SYNC_RC=0
+  HELP_VIDEO_SYNC_OUTPUT="$(
+    "$HELP_VIDEO_SYNC_SCRIPT" --pull-only \
+      --version "$HELP_VIDEO_ASSET_VERSION" \
+      --dir "$HELP_VIDEO_ASSET_DIR_DEFAULT" \
+      --expect "$HELP_VIDEO_MASTERS_MANIFEST" 2>&1
+  )" || HELP_VIDEO_SYNC_RC=$?
+  while IFS= read -r help_video_line; do
+    [ -n "$help_video_line" ] && log "$help_video_line"
+  done <<<"$HELP_VIDEO_SYNC_OUTPUT"
+  if [ "$HELP_VIDEO_SYNC_RC" -ne 0 ]; then
+    HELP_VIDEO_PULL_ACTION="failed"
+    log "WARNING: pulling the help-video masters failed; the release goes on and the help library serves what is already on disk"
+  else
+    HELP_VIDEO_PULL_ACTION="$(
+      sed -nE 's/^SUMMARY help-video-sync .*action=([a-z-]+).*/\1/p' <<<"$HELP_VIDEO_SYNC_OUTPUT" | tail -1
+    )"
+    [ -n "$HELP_VIDEO_PULL_ACTION" ] || HELP_VIDEO_PULL_ACTION="unreported"
+  fi
+fi
+
 log "Stopping old processes..."
 cd "$APP_DIR"
 
@@ -9178,12 +9253,10 @@ log "Starting PM2..."
 # bytes without a dual-write/fallback race. Old artifacts remain compatible
 # through source-path symlinks if health rollback becomes necessary.
 finalize_runtime_data_cutover
+# The directory is created, never filled, here: the masters arrived from object
+# storage before the handoff, and the 265 MB copy that used to happen on this
+# line — with PM2 stopped — is gone.
 mkdir -p "$HELP_VIDEO_ASSET_DIR_DEFAULT"
-if [ -d "$BUNDLED_HELP_VIDEO_DIR" ]; then
-  cp -a "$BUNDLED_HELP_VIDEO_DIR/." "$HELP_VIDEO_ASSET_DIR_DEFAULT/"
-  HELP_VIDEO_ASSETS_COPIED=true
-  log "Bundled help video assets copied → $HELP_VIDEO_ASSET_DIR_DEFAULT"
-fi
 
 PM2_CONFIG="$APP_DIR/.next/standalone/ecosystem.config.cjs"
 [ -f "$PM2_CONFIG" ] || fatal "PM2 configuration is missing from the standalone artifact"
@@ -9503,18 +9576,20 @@ fi
 finalize_operations_activation_after_genesis
 
 # ── Step 9: Purge replaced help-video assets at Cloudflare ─
-if [ "$HELP_VIDEO_ASSETS_COPIED" = true ]; then
+# Only when the pull actually replaced bytes. That is the one case Cloudflare
+# cannot see for itself: the URL carries ?v=<version>, so new bytes under a new
+# version are a new URL, but a re-published master under the SAME version keeps
+# the URL and changes the body. Until 2026-11-02 this ran on every deploy,
+# because the artifact copied the same 132 files into place every time.
+if [ "$HELP_VIDEO_PULL_ACTION" = "pull" ]; then
   HELP_VIDEO_PURGE_SCRIPT="$APP_DIR/.next/standalone/scripts/cf-purge-help-videos.mjs"
-  HELP_VIDEO_VERSION_FILE="$APP_DIR/.next/standalone/help-videos/asset-version"
 
   [ -f "$HELP_VIDEO_PURGE_SCRIPT" ] || fatal "Help-video purge helper is missing from the standalone bundle"
-  [ -s "$HELP_VIDEO_VERSION_FILE" ] || fatal "Help-video asset version is missing from the standalone bundle"
   require_env CLOUDFLARE_ZONE_ID
   require_env CLOUDFLARE_API_TOKEN
 
-  HELP_VIDEO_ASSET_VERSION="$(tr -d '\r\n' < "$HELP_VIDEO_VERSION_FILE")"
   mapfile -d '' -t HELP_VIDEO_FILES < <(
-    find "$BUNDLED_HELP_VIDEO_DIR" -maxdepth 1 -type f \
+    find "$HELP_VIDEO_ASSET_DIR_DEFAULT" -maxdepth 1 -type f \
       \( -name '*.VOICE.mp4' -o -name '*.poster.jpg' \) \
       -printf '%f\0' | sort -z
   )
@@ -9531,7 +9606,7 @@ if [ "$HELP_VIDEO_ASSETS_COPIED" = true ]; then
       log "WARNING: Cloudflare help-video purge failed after the app became healthy; continuing the deploy because the application and database health checks passed"
     fi
   else
-    log "No bundled help-video assets matched the purge patterns"
+    log "No help-video assets matched the purge patterns"
   fi
 fi
 
@@ -9575,17 +9650,12 @@ fi
 # deploy path yet. It belongs before PM2 stops, with a staged directory and a
 # cheap rename at cutover, so a fresh host does not serve 404 while 266 MB
 # arrive. That is stage two.
-HELP_VIDEO_SYNC_SCRIPT="$APP_DIR/.next/standalone/scripts/help-videos/assets-sync.sh"
-HELP_VIDEO_SYNC_VERSION_FILE="$APP_DIR/.next/standalone/help-videos/asset-version"
 if [ ! -f "/etc/leaddrive/wal-archive.env" ]; then
   log "No object-storage configuration; skipping the help-video master publish"
-elif [ ! -x "$HELP_VIDEO_SYNC_SCRIPT" ]; then
-  log "WARNING: $HELP_VIDEO_SYNC_SCRIPT is missing; help-video masters were NOT published"
-elif [ ! -s "$HELP_VIDEO_SYNC_VERSION_FILE" ]; then
-  log "WARNING: no help-video asset version in the bundle; masters were NOT published"
 elif "$HELP_VIDEO_SYNC_SCRIPT" \
-  --version "$(tr -d '\r\n' < "$HELP_VIDEO_SYNC_VERSION_FILE")" \
-  --dir "$HELP_VIDEO_ASSET_DIR_DEFAULT"; then
+  --version "$HELP_VIDEO_ASSET_VERSION" \
+  --dir "$HELP_VIDEO_ASSET_DIR_DEFAULT" \
+  --expect "$HELP_VIDEO_MASTERS_MANIFEST"; then
   log "Help-video masters are in object storage"
 else
   log "WARNING: publishing the help-video masters failed; the deploy stands and serving is unaffected"
@@ -9600,5 +9670,5 @@ rm -f "$DEPLOY_TAR" /tmp/server-deploy.sh
 # ── Step 11: Deploy summary (greppable single-line audit row) ──
 COMMIT_SHORT="${DEPLOY_SHA:0:7}"
 PRISMA_ENGINE_NAME=$(ls $PRISMA_ENGINE_PATTERN 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "missing")
-log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS line=$LINE_STATUS"
+log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS line=$LINE_STATUS help-videos=$HELP_VIDEO_PULL_ACTION"
 log "Deploy complete! App running on $HEALTH_URL"
