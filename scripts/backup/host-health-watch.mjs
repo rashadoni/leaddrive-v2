@@ -61,6 +61,15 @@ export const WATCHED_JOBS = [
 // age-encrypted. Its scheduler is not ours to name, so it is watched by what it
 // produces: the age of the newest file of each shape.
 export const BACKUP_DIR = process.env.LD_HOST_WATCH_BACKUP_DIR ?? '/var/backups/leaddrive'
+
+// The offsite copy of client files (scripts/backup/uploads-offsite-mirror.sh)
+// leaves its state here, flat key=value so this watch reads it with the same
+// parser as everything else. While the file is absent nothing is said: the copy
+// is not installed on every host, and the open gap is recorded in
+// docs/BACKUP_RUNBOOK.md rather than shouted at the owner every five minutes.
+export const UPLOADS_OFFSITE_STATE = process.env.LD_HOST_WATCH_OFFSITE_STATE ?? '/var/lib/leaddrive-uploads-offsite/state'
+export const OFFSITE_WARN_HOURS = 30
+export const OFFSITE_CRIT_HOURS = 50
 export const WATCHED_BACKUP_FILES = [
   { key: 'dump', glob: '*.dump.age', what: 'ночной дамп базы', warnHours: 30, critHours: 50 },
   { key: 'secrets', glob: 'etc-leaddrive-*.tgz.age', what: 'снимок секретов хоста', warnHours: 30, critHours: 50 },
@@ -95,6 +104,7 @@ export function probeProgram(jobs = WATCHED_JOBS, mounts = WATCHED_MOUNTS, backu
     // when a shape finds nothing, the message can name what IS there instead
     // of leaving the owner with "no dump" and no idea whether the watch is
     // simply looking for the wrong name.
+    `if [ -f ${UPLOADS_OFFSITE_STATE} ]; then cat ${UPLOADS_OFFSITE_STATE}; fi`,
     `if [ -d ${backupDir} ]; then`,
     "  printf 'backupdir=present\\n'",
     `  printf 'newest=%s\\n' "$(find ${backupDir} -maxdepth 1 -type f -printf '%T@ %f\\n' 2>/dev/null | sort -nr | head -1 | tr ' ' '|')"`,
@@ -130,7 +140,7 @@ function splitFound(value) {
 }
 
 export function parseProbe(text) {
-  const out = { now: NaN, jobs: new Map(), disks: [], files: new Map(), backupDir: '', newest: null }
+  const out = { now: NaN, jobs: new Map(), disks: [], files: new Map(), backupDir: '', newest: null, offsite: {} }
   for (const line of text.split('\n')) {
     if (!line.trim()) continue
     const fields = Object.fromEntries(
@@ -145,6 +155,9 @@ export function parseProbe(text) {
     if (fields.now !== undefined) out.now = Number(fields.now) * 1000
     else if (fields.unit !== undefined) out.jobs.set(fields.unit, fields)
     else if (fields.disk !== undefined) out.disks.push(fields)
+    // The offsite state is a file of its own, so each of its keys arrives on
+    // its own line — not one line with every field, like the others here.
+    else if (Object.keys(fields).some((key) => key.startsWith('offsite'))) Object.assign(out.offsite, fields)
     else if (fields.backupdir !== undefined) out.backupDir = fields.backupdir
     else if (fields.newest !== undefined) out.newest = splitFound(fields.newest)
     else if (fields.file !== undefined) out.files.set(fields.file, splitFound(fields.found))
@@ -227,6 +240,38 @@ export function assessBackupFiles(probe, files = WATCHED_BACKUP_FILES, dir = BAC
     }
   }
   return problems
+}
+
+/**
+ * Verdicts about the offsite copy of client files. Silent until the copy is
+ * installed; after that, a copy that stopped is an alarm — the whole reason it
+ * exists is that the database comes back from object storage and the files it
+ * points at did not.
+ */
+export function assessUploadsOffsite(probe) {
+  const state = probe.offsite ?? {}
+  if (state.offsite !== 'present') return []
+  const now = Number.isFinite(probe.now) ? probe.now : Date.now()
+  const ranAt = Number(state.offsite_ran_at) * 1000
+  const pending = Number(state.offsite_pending)
+  const backlog = Number.isFinite(pending) && pending > 0 ? `, в очереди ${pending} файл(ов)` : ''
+  if (!Number.isFinite(ranAt) || ranAt <= 0) {
+    return [{ key: 'offsite', critical: true, text: 'копия файлов клиентов оставила состояние без времени прогона' }]
+  }
+  const age = now - ranAt
+  if (age > OFFSITE_CRIT_HOURS * 3600_000) {
+    return [{ key: 'offsite', critical: true, text: `копия файлов клиентов не делалась ${hours(age)} ч (порог ${OFFSITE_CRIT_HOURS} ч)${backlog}` }]
+  }
+  if (age > OFFSITE_WARN_HOURS * 3600_000) {
+    return [{ key: 'offsite', critical: false, text: `копия файлов клиентов не делалась ${hours(age)} ч (порог ${OFFSITE_WARN_HOURS} ч)${backlog}` }]
+  }
+  if (state.offsite_status === 'crit') {
+    return [{ key: 'offsite', critical: true, text: `копия файлов клиентов не отправила ни одного файла (отказов ${state.offsite_failures ?? '?'})${backlog}` }]
+  }
+  if (state.offsite_status === 'warn') {
+    return [{ key: 'offsite', critical: false, text: `копия файлов клиентов прошла с отказами (${state.offsite_failures ?? '?'})${backlog}` }]
+  }
+  return []
 }
 
 /** Verdicts about free space, one per filesystem however many paths share it. */
@@ -348,7 +393,7 @@ async function main() {
     ...assessPage(page),
     ...(read.error
       ? [{ key: 'unreachable', critical: true, text: `не удалось прочитать состояние прода по ssh: ${read.error}` }]
-      : [...assessJobs(read.probe), ...assessBackupFiles(read.probe), ...assessDisks(read.probe)]),
+      : [...assessJobs(read.probe), ...assessBackupFiles(read.probe), ...assessUploadsOffsite(read.probe), ...assessDisks(read.probe)]),
   ]
 
   const now = Date.now()
@@ -366,7 +411,10 @@ async function main() {
   }
   if (!sends.length && !recovered) {
     if (!problems.length) {
-      console.log(`страница ${(page.ms / 1000).toFixed(2)} с, бэкапы и диск в порядке`)
+      const offsite = read.probe?.offsite?.offsite === 'present'
+        ? `, копия файлов клиентов свежая${Number(read.probe.offsite.offsite_pending) > 0 ? ` (в очереди ${read.probe.offsite.offsite_pending})` : ''}`
+        : ''
+      console.log(`страница ${(page.ms / 1000).toFixed(2)} с, бэкапы и диск в порядке${offsite}`)
     } else {
       for (const h of held) console.log(`${h.key}: ${h.detail} — ${h.text}`)
     }

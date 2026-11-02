@@ -725,7 +725,8 @@ logical backup; Kafka, особенно пока transport пассивен, н�
 |---|---|---|
 | PostgreSQL data | encrypted logical dump + authority catalog | exact Object Lock version; PITR ещё open |
 | `/etc/leaddrive/{app,backup,migration}.env` | encrypted snapshot | exact Object Lock version |
-| `/var/lib/leaddrive-v2/uploads`, `help-videos` | **на этом хосте offsite-копии НЕТ** (job не запускался ни разу, см. «Почему четыре таймера стоят»); в commissioned-режиме — encrypted content inventory | когда job работает: host-loss copy, не application-consistent generation. Пока не работает: база вернётся из B2, а файлы, на которые она ссылается, — нет. `help-videos` с 2026-11-02 лежат в объектном хранилище отдельно |
+| `/var/lib/leaddrive-v2/uploads` | offsite-копия есть, когда поставлен `leaddrive-uploads-offsite` (см. «Копия файлов клиентов»); сама церемония по-прежнему не commissioned | каждый файл отдельным объектом, зашифрован age на ключ владельца. Восстановление — его ключом, независимо от базы. Не application-consistent generation. **`uploads/call-recordings` в копию не входит** по решению о 90 днях |
+| `/var/lib/leaddrive-v2/help-videos` | мастера в объектном хранилище с 2026-11-02 | `scripts/help-videos/assets-sync.sh`, манифест `video/player/masters.sha256` |
 | `/etc/leaddrive/{backup.pgpass,restore-verifier.pgpass,managed-postgres-ca.crt,restore-postgres-ca.crt}` | намеренно не архивируются | reissue/rotate из managed DB control plane, PKI и независимого secret authority; пока такой authority не оформлен — enterprise NO-GO |
 | `/var/lib/leaddrive-v2/state` | operational backfill/provider sentinels, не архивируются этим job | перед GA либо отдельный encrypted operational-state snapshot, либо reviewed deterministic reconstruction с доказательством безопасного повторного запуска |
 | `/var/lib/leaddrive-v2/recovery/event-platform-fund-v1` | временная критичная rollback evidence первого Fund cutover | cutover запрещён без отдельной immutable копии; удалить/retire только после approved burn-in |
@@ -1095,6 +1096,75 @@ age-зашифрованного снимка секретов. **Значит, 
 упирается в закрытую часть age-ключа владельца:** без неё WAL-архив так же
 нечитаем, как дампы. Вторая офлайн-копия этого ключа — отдельная задача, и она
 важнее всего остального в этом разделе.
+
+## Копия файлов клиентов (2026-11-02)
+
+База возвращается из объектного хранилища, а файлы, на которые она ссылается,
+до этого не возвращались никуда: договоры, вложения задач и тикетов, фото и
+документы MTM, медиа чатов лежали только на одном диске прода плюс
+пред-деплойная копия на том же диске. Закрывает это
+`scripts/backup/uploads-offsite-mirror.sh` — таймер
+`leaddrive-uploads-offsite` раз в сутки, 05:20 UTC.
+
+**Почему не `snapshot-runtime-files.sh`, написанный ровно для этого.** Он часть
+церемонии: ему нужен commissioned `/etc/leaddrive/backup.env`
+(`BACKUP_AGE_RECIPIENT`, `BACKUP_S3_*`, healthcheck), он складывает **полный**
+tar дерева в tmpfs и требует там 110 % свободного места, а его юнит — один из
+четырёх, которые деплой намеренно держит остановленными. Растущее дерево файлов
+клиентов нельзя каждую ночь архивировать в память.
+
+**Как сделано вместо этого:**
+
+- **по файлу, а не по дереву**: уходит то, что появилось с прошлого прогона,
+  поэтому первый догон можно размазать по ночам, а обычная ночь дешёвая;
+- **потоком через age прямо в bucket**: ни открытого, ни зашифрованного
+  временного файла на диске прода не появляется, поэтому упавший прогон не
+  оставляет за собой копию чужого договора;
+- **на ключ владельца**, так что восстановление требует только его ключа, а не
+  базы, к которой файлы относятся;
+- **на ключах, которые на хосте уже есть** — `/etc/leaddrive/wal-archive.env`,
+  тот же файл, которым пользуются pgBackRest, копия артефакта релиза и мастера
+  справочных видео. Ни церемонии, ни второго bucket, ни нового ключа;
+- **прогон ограничен** (`--max-bytes`, по умолчанию 2 ГиБ, и `--max-seconds`,
+  30 минут). Порог проверяется ПЕРЕД файлом, иначе файл больше ночного бюджета
+  не уехал бы никогда;
+- **из bucket ничего не удаляется**: файл, удалённый на проде, в копии
+  остаётся — это и есть бэкап.
+
+**Чего в копии нет намеренно: `uploads/call-recordings`.** У записей звонков
+свой срок — 90 дней, и его держит крон; копия, живущая вечно, молча отменила бы
+это решение, а lifecycle на один префикс — настройка, которую этот скрипт
+сделать не может. Отдельный вопрос владельцу, а не решение по умолчанию.
+
+**Порядок включения.** Программа приезжает с каждым деплоем в
+`/usr/local/lib/leaddrive-v2/ops/current/backup/`, как остальные скрипты
+бэкапа. На проде, под root, один раз:
+
+```
+bash /usr/local/lib/leaddrive-v2/ops/current/backup/uploads-offsite-mirror.sh --plan
+bash <ops>/backup/uploads-offsite-install.sh --recipient age1…
+systemctl start leaddrive-uploads-offsite.service   # первый догон, можно повторять
+bash <ops>/backup/uploads-offsite-install.sh --check
+```
+
+`--plan` ничего не отправляет и говорит, сколько там файлов и байтов и сколько
+из них ещё не запечатано приложением (конверт `LDFE`,
+`src/lib/crypto/tenant-file-encryption.ts`). Получатель — публичный age-ключ
+владельца, тот же, которым шифруется ночной дамп; он пишется в
+`/etc/leaddrive/uploads-offsite.env` (root, 0600).
+
+**Сторож видит эту копию**: `host-health-watch.mjs` читает
+`/var/lib/leaddrive-uploads-offsite/state` (плоский `key=value`, чтобы не
+разбирать JSON по ssh) и тревожит, если копия не делалась 30 ч (предупреждение)
+или 50 ч (авария), а также если прогон сам сказал `crit`. Пока файла состояния
+нет, сторож молчит: копия стоит не на каждом хосте, и открытая дырка записана
+здесь, а не кричит каждые пять минут.
+
+Поведение закреплено `scripts/backup/uploads-offsite-contract.test.mjs`
+(гейт в `static-checks`): заглушка `age` там обратимая (base64), поэтому тест
+сверяет **байты, которые уехали, с байтами на диске**, а не только факт
+вызова; круговой проход настоящим age проверяется под
+`LEADDRIVE_OWNER_AGE_INTEGRATION=1` и прогнан руками 2026-11-02.
 
 ## Почему четыре таймера стоят, и что из этого следует (2026-11-02)
 
