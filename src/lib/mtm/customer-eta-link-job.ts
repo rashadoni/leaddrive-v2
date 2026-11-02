@@ -182,7 +182,10 @@ export async function prepareCustomerEtaLink(
         ? await senders.sendWhatsAppTemplate({
             to,
             templateName: CUSTOMER_ETA_WHATSAPP_TEMPLATE,
-            variables: customerEtaWhatsAppVariables(words),
+            // The template's language, named: without it a template that is
+            // not in the synced table would go as en_US, which it is not.
+            languageCode: locale,
+            variables: customerEtaWhatsAppVariables(locale, words),
             organizationId,
           })
         : await senders.sendSms({ to, message: customerEtaSmsText(locale, words), organizationId })

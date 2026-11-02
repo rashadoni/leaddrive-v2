@@ -81,7 +81,7 @@ const CUSTOMER_AT = { latitude: 40.4093, longitude: 49.8671 }
 const AGENT_AT = { latitude: 40.3920, longitude: 49.8500 }
 
 type SmsCall = { to: string; message: string; organizationId?: string }
-type WaCall = { to: string; templateName: string; variables?: unknown; organizationId: string }
+type WaCall = { to: string; templateName: string; languageCode?: string; variables?: unknown; organizationId: string }
 
 const pgDescribe = scratch ? describe : describe.skip
 
@@ -350,7 +350,7 @@ pgDescribe("«агент едет к вам» on a real Postgres", () => {
     await tick()
     expect(sms).toEqual([])
     expect(whatsapp).toHaveLength(1)
-    expect(whatsapp[0]).toMatchObject({ to: "+994559998877", templateName: "mtm_agent_on_the_way", organizationId: ORG })
+    expect(whatsapp[0]).toMatchObject({ to: "+994559998877", templateName: "mtm_agent_on_the_way", languageCode: "az", organizationId: ORG })
     const variables = whatsapp[0].variables as string[]
     expect(variables.slice(0, 2)).toEqual(["NovaMed", expect.stringMatching(/^Elçin Məmmədov \d+$/)])
     expect(variables[2]).toMatch(/^\d{2}:\d{2}$/)

@@ -37,10 +37,27 @@ export function customerEtaChannel(value: unknown): CustomerEtaChannel {
  * The WhatsApp template the company has to have approved on its own number.
  * A first message to a customer who has not written goes only as a template
  * (Meta's rule), and a template is the company's to create in WhatsApp
- * Manager. Four body variables, in this order: company, agent, time, link.
+ * Manager — category Utility, in the languages az / ru / en (Meta's codes
+ * are the same), four body variables in this order: company, agent, time,
+ * link. Meta refuses a body that begins or ends with a variable, so the
+ * approved texts open with a greeting and close with a sentence:
+ *
+ *   az: Salam! {{1}} nümayəndəsi {{2}} sizə tərəf yoldadır. Təxmini gəliş
+ *       vaxtı: {{3}}. Harada olduğunu buradan izləyin: {{4}} Link nümayəndə
+ *       gələnə qədər işləyir.
+ *   ru: Здравствуйте! Представитель {{1}} {{2}} едет к вам. Примерное время
+ *       прибытия: {{3}}. Где он сейчас: {{4}} Ссылка работает, пока
+ *       представитель не приедет.
+ *   en: Hello! Your {{1}} representative {{2}} is on the way. Estimated
+ *       arrival: {{3}}. See where they are now: {{4}} The link works until
+ *       they arrive.
+ *
  * Without it Meta refuses, and the link is marked FAILED with Meta's words.
  */
 export const CUSTOMER_ETA_WHATSAPP_TEMPLATE = "mtm_agent_on_the_way"
+
+/** What {{3}} says when the roads gave no time. Meta refuses an empty variable. */
+const UNKNOWN_TIME: Record<Locale, string> = { az: "dəqiqləşdirilir", ru: "уточняется", en: "to be confirmed" }
 
 // ─── When a link is sent ────────────────────────────────────────────────────
 
@@ -211,9 +228,9 @@ export function customerEtaSmsText(locale: Locale, input: { organization: string
     .replace("{url}", input.url)
 }
 
-/** The template's four variables, in its order. Meta refuses an empty one: no time is «—». */
-export function customerEtaWhatsAppVariables(input: { organization: string; agent: string; time: string | null; url: string }): string[] {
-  return [input.organization.trim(), input.agent.trim(), input.time ?? "—", input.url]
+/** The template's four variables, in its order; no time is said in words. */
+export function customerEtaWhatsAppVariables(locale: Locale, input: { organization: string; agent: string; time: string | null; url: string }): string[] {
+  return [input.organization.trim(), input.agent.trim(), input.time ?? UNKNOWN_TIME[locale] ?? UNKNOWN_TIME.az, input.url]
 }
 
 /**

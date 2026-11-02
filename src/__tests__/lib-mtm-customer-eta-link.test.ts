@@ -79,7 +79,8 @@ describe("in what words", () => {
     expect(customerEtaLanguage(null)).toBe("az")
     expect(customerEtaSmsText("az", words)).toBe("NovaMed: nümayəndəniz Elçin Məmmədov sizə tərəf yoldadır, təxminən 11:40 çatacaq. Harada olduğunu buradan görün: https://app.example.test/share/location/x?lang=az")
     expect(customerEtaSmsText("ru", { ...words, time: null })).toBe("NovaMed: ваш представитель Elçin Məmmədov едет к вам. Где он сейчас: https://app.example.test/share/location/x?lang=az")
-    expect(customerEtaWhatsAppVariables({ ...words, time: null })).toEqual(["NovaMed", "Elçin Məmmədov", "—", words.url])
+    expect(customerEtaWhatsAppVariables("az", { ...words, time: null })).toEqual(["NovaMed", "Elçin Məmmədov", "dəqiqləşdirilir", words.url])
+    expect(customerEtaWhatsAppVariables("ru", words)).toEqual(["NovaMed", "Elçin Məmmədov", "11:40", words.url])
   })
 
   it("keeps a provider's failure short and without the number it was sent to", () => {
