@@ -5389,7 +5389,7 @@ backup_runtime_directory() {
 validate_release_owned_operations_artifact() {
   local artifact_root="$1"
   local script helper unit rotate manifest name
-  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
+  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh release-artifact-restore.sh release-artifact-upload.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
   local -a backup_helpers=(
     bootstrap-backup-role.sql canary.sql migration-ledger.sql prove-restored-pii.mjs
     recovery-db-contract.tsv
@@ -5511,7 +5511,7 @@ validate_installed_release_operations() {
   local artifact_root="$2"
   local script helper unit rotate manifest name expected_program_set_sha installed_program_set_sha
   local expected_db_contract_sha installed_db_contract_sha
-  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
+  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh release-artifact-restore.sh release-artifact-upload.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
   local -a backup_helpers=(
     bootstrap-backup-role.sql canary.sql migration-ledger.sql prove-restored-pii.mjs
     recovery-db-contract.tsv
@@ -9533,6 +9533,31 @@ if [ "$HELP_VIDEO_ASSETS_COPIED" = true ]; then
   else
     log "No bundled help-video assets matched the purge patterns"
   fi
+fi
+
+# ── Step 9b: Keep a runnable artifact outside GitHub ──────
+# The build artifact lives only in GitHub Actions for 30 days. Thirty-one days
+# after the last deploy a full restore had nothing runnable, because production
+# cannot build itself by design. This copies the tarball production just
+# accepted into the WAL archive bucket — after every health, database and
+# PII-key check passed, so the backup holds the artifact that actually served
+# traffic. It must stay before Step 10, which deletes $DEPLOY_TAR.
+#
+# A failed upload does NOT fail the deploy: the release is healthy and this is
+# a backup copy. It is not allowed to pass silently either — the WAL watch
+# checks that the bucket holds an artifact for the live deploy SHA, so the
+# outcome is judged by state, not by this step reporting on itself.
+ARTIFACT_UPLOAD_SCRIPT="$OPS_CURRENT_LINK/backup/release-artifact-upload.sh"
+if [ ! -f "/etc/leaddrive/wal-archive.env" ]; then
+  log "No WAL archive configuration; skipping the release-artifact backup copy"
+elif [ ! -x "$ARTIFACT_UPLOAD_SCRIPT" ]; then
+  log "WARNING: $ARTIFACT_UPLOAD_SCRIPT is missing; the release artifact was NOT copied to object storage"
+elif [ ! -f "$DEPLOY_TAR" ]; then
+  log "WARNING: $DEPLOY_TAR is gone; the release artifact was NOT copied to object storage"
+elif "$ARTIFACT_UPLOAD_SCRIPT" --tarball "$DEPLOY_TAR" --sha "$DEPLOY_SHA"; then
+  log "Release artifact copied to object storage"
+else
+  log "WARNING: copying the release artifact to object storage failed; the deploy stands, the WAL watch will report the gap"
 fi
 
 # ── Step 10: Cleanup ──────────────────────────────────────
