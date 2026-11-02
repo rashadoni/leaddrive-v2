@@ -101,7 +101,8 @@ describe("single-call inbound owner rehearsal", () => {
     const asOf = f.catalog.observedAt
     expect(body.candidates.map((item: { listPrice?: unknown }) => item.listPrice ?? null)).toEqual([
       { amount: "1.33", currency: "AZN", per: "qutu", asOf },
-      { amount: "4.54", currency: "AZN", per: "ədəd", asOf },
+      // Zeytun's 1C counts «шт» by the pack (2026-11-02: Бисакодил №30 «шт» at 0.92).
+      { amount: "4.54", currency: "AZN", per: "qutu", asOf },
       null, null, null,
     ])
     expect(JSON.stringify(body)).not.toMatch(/quantityAsReported|"100"|"6"/)
