@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Inputs become part of a remote command line — reject anything outside the
       # strict shape before it gets near a shell. Verbatim from

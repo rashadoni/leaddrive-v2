@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout reviewed guide source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Validate locked target, QA principals and confirmation
         shell: bash

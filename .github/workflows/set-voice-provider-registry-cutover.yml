@@ -73,7 +73,7 @@ jobs:
             || { echo "::error::commit SHA has an unexpected shape"; exit 1; }
 
       - name: Checkout operator code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Validate explicit operator confirmation
         env:
