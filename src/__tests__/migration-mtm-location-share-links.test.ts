@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest"
 
 const FOLDER = "prisma/migrations/20261010150000_mtm_location_share_links"
 const TABLE = "mtm_location_share_links"
+const LATER = "prisma/migrations/20261120090000_mtm_customer_eta_links/migration.sql"
 const migration = readFileSync(`${FOLDER}/migration.sql`, "utf8")
 /** What is executed: the file without its `--` comments. */
 const sql = migration.replace(/--[^\n]*/g, "")
@@ -115,6 +116,8 @@ describe("MTM location share links migration", () => {
     // first query, a column without a field is never written.
     const fields = Array.from(model.matchAll(/^\s+(\w+)\s+(?:String|Int|DateTime)\??\s/gm), (match) => match[1])
     expect(columns.size).toBe(11)
-    expect([...fields].sort()).toEqual([...columns.keys()].sort())
+    // And the columns «агент едет к вам» added later (migration-mtm-customer-eta-links.test.ts).
+    const added = Array.from(readFileSync(LATER, "utf8").matchAll(/ADD COLUMN "(\w+)"/g), (match) => match[1])
+    expect([...fields].sort()).toEqual([...columns.keys(), ...added].sort())
   })
 })

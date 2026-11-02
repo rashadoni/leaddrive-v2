@@ -607,6 +607,18 @@ jobs:
           MTM_LOCATION_BREAK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_LOCATION_BREAK_DB_GATE: required
 
+      - name: MTM customer ETA links database gate
+        # «Агент едет к вам»: the minute job sends the customer an agent has
+        # set off to one link, never two, only when the company switched it
+        # on, and the public answer stops showing the agent once he checked in
+        # there — read off the table and the public route on a real Postgres.
+        # The one-row-per-stop rule the «never twice» promise rests on is a
+        # unique index a mocked Prisma does not have.
+        run: npx vitest run src/__tests__/mtm-customer-eta-links-postgres.test.ts
+        env:
+          MTM_CUSTOMER_ETA_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_CUSTOMER_ETA_DB_GATE: required
+
       - name: MTM Excel route conflicts database gate
         # Which existing routes an Excel route import calls a schedule
         # conflict, asked of the real upload/apply/export handlers on a real

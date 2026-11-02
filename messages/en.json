@@ -19058,6 +19058,12 @@
     }
   },
   "mtmLocationShareLink": {
+    "onTheWayTitle": "Your representative is on the way",
+    "arrivesAt": "Arrives around {time} · in about {minutes} min",
+    "arrived": {
+      "title": "Your representative has arrived",
+      "hint": "{name} is with you now. The link no longer shows a location."
+    },
     "pageTitle": "Employee location",
     "organization": "{organization}",
     "loading": "Loading the location…",
@@ -19269,6 +19275,13 @@
     "hintHistoryStopMinimum": "How long an agent must remain within the radius before a stop is reported",
     "hintLateAfterHour": "An agent who has not started the route by this hour is marked “Late” on the map. No alert is created. Online agents only.",
     "hintLocationShareLinks": "Like a taxi app: a manager sends a link from the agent's card on the map, and the person sees where the agent is now, without signing in. Only during the workday, with no history and no route. The agent is not notified. If you switch it off, every link handed out stops working for good.",
+    "lblCustomerEtaLinks": "Customer gets “Agent is on the way”",
+    "hintCustomerEtaLinks": "When an agent sets off to the next customer on today's route, the bot sends that customer a link: where the agent is now and about when they arrive. Once the agent checks in at the customer, the link stops showing a location. Sent to the phone of the visit's contact, otherwise the customer's phone; one message per visit. If you switch it off, every link sent stops working.",
+    "lblCustomerEtaLinkChannel": "Send by",
+    "optChannelSms": "SMS",
+    "optChannelWhatsapp": "WhatsApp",
+    "hintCustomerEtaLinkChannelSms": "Through the SMS provider connected in Settings → Channels. Without one, nothing is sent.",
+    "hintCustomerEtaLinkChannelWhatsapp": "From your company's WhatsApp number, with the template “mtm_agent_on_the_way” approved by Meta (four variables: company, agent, time, link). Until it is approved, messages are not delivered.",
     "hintDeviationThreshold": "Distance from the planned route that triggers an out-of-zone alert",
     "hintDeviationThrottle": "Minimum minutes between repeated deviation alerts for one agent",
     "hintMaxPhotos": "The app accepts no more than this.",

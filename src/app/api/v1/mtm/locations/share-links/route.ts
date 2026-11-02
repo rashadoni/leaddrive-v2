@@ -123,7 +123,10 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const enabled = settings.locationShareLinksEnabled === true
     const now = new Date()
     const working = await prisma.mtmLocationShareLink.findMany({
-      where: { organizationId: orgId, agentId, ...locationShareLinkAliveWhere(now) },
+      // The managers' own links: what the bot sent a customer («агент едет к
+      // вам») is not a link anybody here made, and does not count against
+      // the five.
+      where: { organizationId: orgId, agentId, purpose: "MANAGER", ...locationShareLinkAliveWhere(now) },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       // The limit holds this to a handful; the margin costs nothing and
       // keeps a row beyond it — should one ever exist — revocable.
@@ -134,6 +137,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       where: {
         organizationId: orgId,
         agentId,
+        purpose: "MANAGER",
         createdAt: { gte: locationShareLinkTodayStartedAt(now, locationShareLinkTimezone(settings.timezone)) },
         OR: [{ revokedAt: { not: null } }, { expiresAt: { lte: now } }],
       },
@@ -227,7 +231,7 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
       `
       if (coerceMtmBooleanSetting(kept[0]?.value, MTM_SETTING_DEFAULTS.locationShareLinksEnabled) !== true) return "off"
       const working = await tx.mtmLocationShareLink.count({
-        where: { organizationId: orgId, agentId, ...locationShareLinkAliveWhere(now) },
+        where: { organizationId: orgId, agentId, purpose: "MANAGER", ...locationShareLinkAliveWhere(now) },
       })
       if (working >= LOCATION_SHARE_LINK_ALIVE_LIMIT) return "limit"
       const made: KeptLocationShareLink = await tx.mtmLocationShareLink.create({

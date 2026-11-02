@@ -39,10 +39,20 @@ function InvalidateSize() {
  * employee who is standing still, and the same coordinate coming back would
  * otherwise leave him without the marker and without a way to it.
  */
-function FollowPoint({ latitude, longitude, recentreKey }: { latitude: number; longitude: number; recentreKey: number }) {
+function FollowPoint({ latitude, longitude, recentreKey, destination }: {
+  latitude: number
+  longitude: number
+  recentreKey: number
+  destination: { latitude: number; longitude: number } | null
+}) {
   const map = useMap()
   const signature = `${latitude.toFixed(5)},${longitude.toFixed(5)}`
   useEffect(() => {
+    // On a customer's link both are kept in view: where he is and where he is coming to.
+    if (destination) {
+      map.fitBounds(L.latLngBounds([[latitude, longitude], [destination.latitude, destination.longitude]]), { padding: [48, 48], maxZoom: ZOOM })
+      return
+    }
     map.setView([latitude, longitude], map.getZoom())
     // `signature` stands for the pair: the same point again must not re-centre.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,13 +76,23 @@ function FollowPoint({ latitude, longitude, recentreKey }: { latitude: number; l
  *
  * Loaded only in the browser (Leaflet needs a window).
  */
-export default function LocationShareLinkMap({ latitude, longitude, name, recentreKey }: {
+/** The customer's own pin on a link the bot sent him: a plain dot, not an agent's marker. */
+const DESTINATION_ICON = L.divIcon({
+  className: "mtm-share-destination",
+  html: '<span style="display:block;width:18px;height:18px;border-radius:50%;background:#111827;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></span>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
+export default function LocationShareLinkMap({ latitude, longitude, name, recentreKey, destination = null }: {
   latitude: number
   longitude: number
   /** The employee's name: its first letter is on the marker. */
   name: string
   /** Changes when the visitor asks for the marker back: the map returns to it even if the point has not moved. */
   recentreKey: number
+  /** On a link the bot sent a customer: the customer's own place. */
+  destination?: { latitude: number; longitude: number } | null
 }) {
   const icon = useMemo(() => {
     // The marker of the managers' own map, as it draws a fresh position.
@@ -84,10 +104,11 @@ export default function LocationShareLinkMap({ latitude, longitude, name, recent
     <MapContainer center={[latitude, longitude]} zoom={ZOOM} attributionControl={false} style={{ position: "absolute", inset: 0 }}>
       <AttributionControl prefix={false} />
       <InvalidateSize />
-      <FollowPoint latitude={latitude} longitude={longitude} recentreKey={recentreKey} />
+      <FollowPoint latitude={latitude} longitude={longitude} recentreKey={recentreKey} destination={destination} />
       <CartoBasemap />
       {/* Not a button: pressing it would open nothing. */}
       <Marker position={[latitude, longitude]} icon={icon} interactive={false} keyboard={false} />
+      {destination ? <Marker position={[destination.latitude, destination.longitude]} icon={DESTINATION_ICON} interactive={false} keyboard={false} /> : null}
     </MapContainer>
   )
 }

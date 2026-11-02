@@ -267,15 +267,33 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
       const [, ended] = await prisma.$transaction([
         storeSetting("locationShareLinksEnabled", false),
         prisma.mtmLocationShareLink.updateMany({
-          where: { organizationId: orgId, ...locationShareLinkAliveWhere(endedAt) },
+          where: { organizationId: orgId, purpose: "MANAGER", ...locationShareLinkAliveWhere(endedAt) },
           data: { revokedAt: endedAt, revokedBy: auth.userId },
         }),
       ])
       locationShareLinksEnded = ended.count
     }
+    // «Агент едет к вам» the same way, for the links the bot sent customers:
+    // the switch and the end of every such link in one transaction. The
+    // job reads the switch FOR SHARE before it makes a link
+    // (customer-eta-link-job.ts), so a link being made right now waits for
+    // this save or is ended by it.
+    const endsCustomerEtaLinks = previous.customerEtaLinksEnabled === true && body.customerEtaLinksEnabled === false
+    let customerEtaLinksEnded = 0
+    if (endsCustomerEtaLinks) {
+      const endedAt = new Date()
+      const [, ended] = await prisma.$transaction([
+        storeSetting("customerEtaLinksEnabled", false),
+        prisma.mtmLocationShareLink.updateMany({
+          where: { organizationId: orgId, purpose: "CUSTOMER_ETA", ...locationShareLinkAliveWhere(endedAt) },
+          data: { revokedAt: endedAt, revokedBy: auth.userId },
+        }),
+      ])
+      customerEtaLinksEnded = ended.count
+    }
     await Promise.all(
       Object.entries(body)
-        .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && !ATTENDANCE_REMINDER_KEYS.includes(key as typeof ATTENDANCE_REMINDER_KEYS[number]) && key !== ATTENDANCE_QR_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && !(endsLocationShareLinks && key === "locationShareLinksEnabled"))
+        .filter(([key]) => key !== ATTENDANCE_OUTSIDE_RULE_KEY && key !== ATTENDANCE_INSTALLATION_RULE_KEY && !ATTENDANCE_REMINDER_KEYS.includes(key as typeof ATTENDANCE_REMINDER_KEYS[number]) && key !== ATTENDANCE_QR_RULE_KEY && !(ATTENDANCE_RISK_SETTING_KEYS as readonly string[]).includes(key) && !(endsLocationShareLinks && key === "locationShareLinksEnabled") && !(endsCustomerEtaLinks && key === "customerEtaLinksEnabled"))
         .map(([key, value]) => storeSetting(key, value)),
     )
 
@@ -302,6 +320,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
         // How many links this save ended — the row that says who switched
         // them off is this one; no row is written per link.
         ...(endsLocationShareLinks ? { locationShareLinksEnded } : {}),
+        ...(endsCustomerEtaLinks ? { customerEtaLinksEnded } : {}),
       },
       req,
     }).catch((e) => console.warn("[MTM/settings PUT] audit failed", e))

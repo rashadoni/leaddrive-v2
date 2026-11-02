@@ -36,6 +36,12 @@ export const MTM_SETTING_NUMBER_RANGES = {
 
 export type MtmNumericSettingKey = keyof typeof MTM_SETTING_NUMBER_RANGES
 
+/** Settings that are one of a few words; anything else is refused. */
+export const MTM_SETTING_CHOICES = {
+  // How the bot sends «агент едет к вам» (customer-eta-link.ts).
+  customerEtaLinkChannel: ["sms", "whatsapp"],
+} as const satisfies Record<string, readonly string[]>
+
 export const MTM_SETTING_ERROR_CODES = {
   outOfRange: "MTM_SETTING_OUT_OF_RANGE",
   notInteger: "MTM_SETTING_NOT_INTEGER",
@@ -71,8 +77,8 @@ export function validateMtmNumericSetting(key: MtmNumericSettingKey, value: unkn
 }
 
 /**
- * Validates the numeric and boolean keys of an incoming change set against
- * the defaults' types. Other shapes (timezone, e-mail, arrays) keep their
+ * Validates the numeric, choice and boolean keys of an incoming change set
+ * against the defaults' types. Other shapes (timezone, e-mail, arrays) keep their
  * dedicated checks in the route.
  */
 export function validateMtmSettingChanges(
@@ -84,6 +90,9 @@ export function validateMtmSettingChanges(
     if (isMtmNumericSettingKey(key)) {
       const error = validateMtmNumericSetting(key, value)
       if (error) errors.push(error)
+    } else if (Object.prototype.hasOwnProperty.call(MTM_SETTING_CHOICES, key)) {
+      const allowed: readonly string[] = MTM_SETTING_CHOICES[key as keyof typeof MTM_SETTING_CHOICES]
+      if (typeof value !== "string" || !allowed.includes(value)) errors.push({ key, code: MTM_SETTING_ERROR_CODES.invalidType })
     } else if (typeof defaults[key] === "boolean" && typeof value !== "boolean") {
       errors.push({ key, code: MTM_SETTING_ERROR_CODES.invalidType })
     }

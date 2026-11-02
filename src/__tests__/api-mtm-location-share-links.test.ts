@@ -85,6 +85,7 @@ type LinkWhere = {
   id?: string
   organizationId?: string
   agentId?: string
+  purpose?: string
   createdAt?: { gte?: Date }
   revokedAt?: null | { not: null }
   expiresAt?: { gt?: Date; lte?: Date }
@@ -109,7 +110,7 @@ let switchedOn: Record<string, unknown>
 let journal: Array<Record<string, unknown>>
 let serial: number
 
-const KNOWN_FILTERS = new Set(["id", "organizationId", "agentId", "createdAt", "revokedAt", "expiresAt", "lastViewedAt", "tokenHash", "OR"])
+const KNOWN_FILTERS = new Set(["id", "organizationId", "agentId", "purpose", "createdAt", "revokedAt", "expiresAt", "lastViewedAt", "tokenHash", "OR"])
 /** The organization's switch, read again inside a creation with its row held: the one raw read the routes make. */
 const SWITCH_ROW_HELD = `SELECT "value" FROM "mtm_settings" WHERE "organizationId" = ? AND "key" = 'locationShareLinksEnabled' FOR SHARE`
 /** A raw statement as it was written, its values left out and its line breaks closed up. */
@@ -122,6 +123,8 @@ function fits(row: LinkRow, where: LinkWhere = {}): boolean {
   if (where.id !== undefined && row.id !== where.id) return false
   if (where.organizationId !== undefined && row.organizationId !== where.organizationId) return false
   if (where.agentId !== undefined && row.agentId !== where.agentId) return false
+  // A row made without it is a manager's — the column's default.
+  if (where.purpose !== undefined && ((row as LinkRow & { purpose?: string }).purpose ?? "MANAGER") !== where.purpose) return false
   if (where.createdAt?.gte !== undefined && !(row.createdAt.getTime() >= where.createdAt.gte.getTime())) return false
   if (where.revokedAt === null && row.revokedAt !== null) return false
   if (where.revokedAt !== undefined && where.revokedAt !== null && row.revokedAt === null) return false

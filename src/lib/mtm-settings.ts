@@ -88,6 +88,17 @@ export const MTM_SETTING_DEFAULTS = {
   // /api/v1/mtm/settings), so switching back on brings none of them back.
   // Not an agent permission, not a menu switch, and not sent to the phone.
   locationShareLinksEnabled: false,
+  // «Агент едет к вам» (src/lib/mtm/customer-eta-link.ts): when an agent sets
+  // off to the next customer of today's route, the bot sends that customer a
+  // link to where the agent is and when he arrives. OFF by default (owner,
+  // 2026-10-12: a company switches it on if it wants it — Zeytun, whose
+  // customers are doctors, hardly will). Its own switch, apart from the
+  // managers' links above; switching it off ends every link the bot sent.
+  // The channel is the company's choice (owner, 2026-11-02): «sms» through
+  // the SMS provider of its channels, «whatsapp» through its WhatsApp number
+  // with the approved template CUSTOMER_ETA_WHATSAPP_TEMPLATE.
+  customerEtaLinksEnabled: false,
+  customerEtaLinkChannel: "sms",
 
   // Route-deviation (POST /mobile/location)
   deviationThresholdMeters: 500,             // distance from polyline that triggers alert

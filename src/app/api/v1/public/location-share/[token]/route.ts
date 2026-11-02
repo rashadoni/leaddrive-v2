@@ -8,6 +8,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { isLocationShareLinkAlive, isLocationShareLinkToken, locationShareLinkAliveWhere } from "@/lib/mtm/location-share-link"
 import { readLocationShareLinkPosition } from "@/lib/mtm/location-share-link-position"
+import { readCustomerEtaTrip } from "@/lib/mtm/customer-eta-trip"
 
 // The answer is a person's position at this moment: never a stored one.
 export const dynamic = "force-dynamic"
@@ -145,7 +146,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     const now = new Date()
     const link = await runWithRlsBypass(() => prisma.mtmLocationShareLink.findUnique({
       where: { tokenHash },
-      select: { id: true, organizationId: true, agentId: true, expiresAt: true, revokedAt: true, lastViewedAt: true },
+      select: {
+        id: true, organizationId: true, agentId: true, expiresAt: true, revokedAt: true, lastViewedAt: true,
+        createdAt: true, purpose: true, routePointId: true, customerId: true,
+      },
     }))
     if (!link || !isLocationShareLinkAlive(link, now)) return gone()
 
@@ -156,8 +160,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       // them all (PUT /api/v1/mtm/settings), so switching it back on revives
       // none — and still the question is asked here every time: whether a
       // link opens must not lean on rows having been written.
+      //
+      // A link the bot sent a customer («агент едет к вам») answers to its own
+      // switch, not to the managers' one.
       const settings = await getMtmSettings(organizationId)
-      if (settings.locationShareLinksEnabled !== true) return gone()
+      const forCustomer = link.purpose === "CUSTOMER_ETA"
+      if ((forCustomer ? settings.customerEtaLinksEnabled : settings.locationShareLinksEnabled) !== true) return gone()
 
       // The employee together with the organization he belongs to: a link
       // does not outlive an employee who was deactivated, an organization
@@ -178,9 +186,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       // link shows nothing right now (location-share-link-position.ts).
       const { position, timezone } = await readLocationShareLinkPosition({ organizationId, agentId: link.agentId, settings, now })
 
+      // «Агент едет к вам»: has he arrived, and if not, when he will. Arrived,
+      // the page says so and no position is given from then on; in a visit
+      // somewhere else, no position either (customer-eta-trip.ts).
+      const trip = forCustomer
+        ? await readCustomerEtaTrip({ link, organizationId, position, now })
+        : null
+      if (forCustomer && !trip) return gone()
+
       await stampLocationShareLinkView(link, now)
 
-      if (position.state !== "AVAILABLE") {
+      if (trip?.state === "ARRIVED") {
+        return NextResponse.json(
+          {
+            success: true,
+            state: "ARRIVED",
+            data: {
+              name: agent.name,
+              organizationName: agent.organization.name,
+              expiresAt: link.expiresAt,
+              generatedAt: now,
+              timezone,
+            },
+          },
+          { headers: ANSWER_HEADERS },
+        )
+      }
+
+      if (position.state !== "AVAILABLE" || trip?.state === "ELSEWHERE") {
         return NextResponse.json(
           {
             success: true,
@@ -211,6 +244,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
             // clock of the phone it is opened on.
             generatedAt: now,
             timezone,
+            // Only on a link the bot sent a customer: where he is coming to
+            // (the customer's own pin) and about when.
+            ...(trip?.state === "ON_THE_WAY" ? { trip: { destination: trip.destination, arrivesAt: trip.arrivesAt } } : {}),
           },
         },
         { headers: ANSWER_HEADERS },

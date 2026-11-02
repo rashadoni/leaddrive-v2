@@ -396,7 +396,7 @@ describe("showing an employee's position by a link, in the live map card", () =>
     expect(tabOf(settingRow(KEY))).toBe("alerts")
     const card = container.querySelector('[data-settings-group="groupLiveMap"]') as HTMLElement
     expect([...card.querySelectorAll("[data-setting-row]")].map((row) => row.getAttribute("data-setting-row")))
-      .toEqual(["lateAfterHour", "offlineThresholdSeconds", KEY])
+      .toEqual(["lateAfterHour", "offlineThresholdSeconds", KEY, "customerEtaLinksEnabled"])
     expect(control().getAttribute("aria-checked")).toBe("false")
     // The row says what the switch opens, in the words of the catalogue.
     expect(settingRow(KEY).textContent).toContain(page.lblLocationShareLinks)
@@ -428,6 +428,42 @@ describe("showing an employee's position by a link, in the live map card", () =>
     await flip(KEY)
     await pressSave()
     expect(writes).toEqual([{ [KEY]: false }])
+  })
+})
+
+/**
+ * «Агент едет к вам» (owner, 2026-11-02, on the mock-up): the bot sends the
+ * customer an agent sets off to a link to where the agent is. Off until the
+ * company turns it on; the channel — SMS or WhatsApp — shows only once it is
+ * on, and says what each one needs.
+ */
+describe("the bot's «агент едет к вам» link, in the live map card", () => {
+  const KEY = "customerEtaLinksEnabled"
+  const channel = () => settingRow("customerEtaLinkChannel")?.querySelector("select") as HTMLSelectElement | undefined
+
+  it("is off for a company that never touched it, with no channel to choose", async () => {
+    await open()
+    expect(tabOf(settingRow(KEY))).toBe("alerts")
+    expect((settingRow(KEY).querySelector('[role="switch"]') as HTMLButtonElement).getAttribute("aria-checked")).toBe("false")
+    expect(settingRow(KEY).textContent).toContain(page.lblCustomerEtaLinks)
+    expect(settingRow(KEY).textContent).toContain(page.hintCustomerEtaLinks)
+    expect(channel()).toBeUndefined()
+  })
+
+  it("switched on, offers SMS first, says what WhatsApp needs when picked, and saves both", async () => {
+    await open()
+    await openTab("alerts")
+    await flip(KEY)
+    expect(channel()?.value).toBe("sms")
+    expect(settingRow("customerEtaLinkChannel").textContent).toContain(page.hintCustomerEtaLinkChannelSms)
+    await act(async () => {
+      const select = channel() as HTMLSelectElement
+      select.value = "whatsapp"
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    expect(settingRow("customerEtaLinkChannel").textContent).toContain(page.hintCustomerEtaLinkChannelWhatsapp)
+    await pressSave()
+    expect(writes).toEqual([{ [KEY]: true, customerEtaLinkChannel: "whatsapp" }])
   })
 })
 
