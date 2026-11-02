@@ -9213,9 +9213,15 @@ else
     HELP_VIDEO_PULL_ACTION="failed"
     log "WARNING: pulling the help-video masters failed; the release goes on and the help library serves what is already on disk"
   else
-    HELP_VIDEO_PULL_ACTION="$(
-      sed -nE 's/^SUMMARY help-video-sync .*action=([a-z-]+).*/\1/p' <<<"$HELP_VIDEO_SYNC_OUTPUT" | tail -1
-    )"
+    HELP_VIDEO_SYNC_SUMMARY="$(grep -E '^SUMMARY help-video-sync ' <<<"$HELP_VIDEO_SYNC_OUTPUT" | tail -1)"
+    # The reason, where the script gives one, IS the state worth reporting.
+    # Otherwise "none" means "storage and disk agree", and an empty bucket is
+    # not agreement: on 2026-11-02 the first deploy of this change reported
+    # help-videos=none while storage held nothing at all. One line is how a
+    # deploy gets read, so those two states must not share a word.
+    HELP_VIDEO_PULL_ACTION="$(sed -nE 's/.* reason=([a-z-]+).*/\1/p' <<<"$HELP_VIDEO_SYNC_SUMMARY")"
+    [ -n "$HELP_VIDEO_PULL_ACTION" ] || \
+      HELP_VIDEO_PULL_ACTION="$(sed -nE 's/.* action=([a-z-]+).*/\1/p' <<<"$HELP_VIDEO_SYNC_SUMMARY")"
     [ -n "$HELP_VIDEO_PULL_ACTION" ] || HELP_VIDEO_PULL_ACTION="unreported"
   fi
 fi
