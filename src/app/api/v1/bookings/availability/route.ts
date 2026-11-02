@@ -39,7 +39,16 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
     }
     const days = computeSlots({ rules: bookingRules(page, org.timezone), hostIds: hosts.map((host) => host.id), busyByHost: busy, now: new Date() }).filter((item) => item.date === f.day)
     if (!days.length && "unavailableHostIds" in busy && (busy.unavailableHostIds as Set<string>).size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
-    return NextResponse.json({ success: true, data: { page: { orgName: org.name, title: page.title, description: page.description, durationMinutes: page.durationMinutes, locationType: page.locationType, locationText: page.locationText, hostNames: hosts.map((host) => host.name), timezone: org.timezone }, hosts: hosts.map(({ id, name }) => ({ id, name })), days } }, { headers: { "Cache-Control": "private, no-store" } })
+    // The staff day view draws the hours a host is taken but has no meeting
+    // of this section in — a CRM task with a time, their calendar. Only the
+    // bare interval goes out: no title, no source. It tells the reader nothing
+    // the free slots above do not already imply, and without it an hour the
+    // form will refuse looks free on the rail.
+    const busyByHost = hosts.map((host) => ({
+      hostId: host.id,
+      intervals: (busy.get(host.id) ?? []).map((item) => ({ start: item.start.toISOString(), end: item.end.toISOString() })),
+    }))
+    return NextResponse.json({ success: true, data: { page: { orgName: org.name, title: page.title, description: page.description, durationMinutes: page.durationMinutes, locationType: page.locationType, locationText: page.locationText, hostNames: hosts.map((host) => host.name), timezone: org.timezone }, hosts: hosts.map(({ id, name }) => ({ id, name })), days, busy: busyByHost } }, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {
     if (error instanceof BookingCommandError) return NextResponse.json({ code: error.code }, { status: error.status })
     throw error
