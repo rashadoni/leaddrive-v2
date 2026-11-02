@@ -11,6 +11,8 @@ import {
   mtmTaskScopeWhere,
 } from "@/lib/mtm/task-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { notifyAgentOfAssignedTask } from "@/lib/mtm/task-assigned-notify"
+import { agentTaskGlance } from "@/lib/mtm/agent-task-glance"
 import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { MTM_OPEN_TASK_STATUSES, mtmOverdueTaskWhere, mtmTaskOverdueDays } from "@/lib/mtm/task-overdue"
 import { mtmAwaitingReviewTaskWhere } from "@/lib/mtm/task-review-queue"
@@ -216,6 +218,15 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       })).map((row) => row.id))
       : new Set<string>()
 
+    // «Кому» in the panel's one-line task (owner-approved mockup, 2026-10-20):
+    // on shift or not, today's route, and whether the pop-up reaches the phone.
+    const glance = await agentTaskGlance(prisma, {
+      organizationId: auth.orgId,
+      agentIds: agents.map((agent) => agent.id),
+      timezone: settings.timezone,
+      now,
+    })
+
     const byStatus: Record<string, number> = Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all]))
     // The contact chip read «Контекст контакта: cmf8x…» — the database id
     // (tasks audit 2026-09-24). The name, from this organization only.
@@ -245,7 +256,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         limit,
         sort,
         filters: {
-          agents,
+          agents: agents.map((agent) => ({ ...agent, ...glance.get(agent.id) })),
           teams,
           taskGroups: taskGroupCatalog?.entries ?? [],
           taskGroupCatalogAvailable: Boolean(taskGroupCatalog),
@@ -417,6 +428,18 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       },
       req,
     }).catch((error) => console.warn("[MTM/tasks POST] audit failed", error))
+
+    // The agent hears of it at once: a bell line and a pop-up on his phone.
+    await notifyAgentOfAssignedTask({
+      organizationId: auth.orgId,
+      taskId: task.id,
+      agentId: task.agentId,
+      taskTitle: task.title,
+      dueDate: task.dueDate,
+      timezone: settings.timezone,
+      giverAgentId: actor.agentId,
+      giverName: auth.name,
+    }).catch((error) => console.warn("[MTM/tasks POST] agent notice failed", error))
 
     return NextResponse.json({ success: true, data: task }, { status: 201 })
   } catch (error) {

@@ -63,8 +63,13 @@ describe("skill routing UX contract", () => {
     expect(agents).toContain('className="peer absolute inset-0 h-11 w-11 cursor-pointer opacity-0"')
     expect(queues).toContain("routingSwitchClass")
     expect(queues).toContain("relative h-11 w-11")
-    expect(queues).toContain("text-white")
-    expect(agents).toContain("text-white")
+    // Ordinary actions inherit the shared readable pair instead of fixing
+    // white text locally (which breaks the existing inverse theme).
+    for (const component of [queues, agents]) {
+      expect(component).toContain('from "@/components/ui/button"')
+    }
+    expect(source("src/components/ui/button.tsx")).toContain("bg-primary text-primary-foreground")
+    expect(source("src/app/crm-workspace.css")).toContain("--primary-foreground: var(--crm-action-foreground)")
     expect(queues).not.toContain("text-zinc-950")
   })
 

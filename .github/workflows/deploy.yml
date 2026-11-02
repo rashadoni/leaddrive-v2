@@ -94,7 +94,9 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20"
+  # Production runs Node 24 since 2026-10-28 (scripts/ops/switch-prod-node.sh),
+  # so the artifact is built and tested on the runtime that will execute it.
+  NODE_VERSION: "24"
   EXPECTED_PRODUCTION_HOST: "13.140.132.245"
   DEPLOY_TARGET_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume' && inputs.bootstrap_resume_sha || github.sha }}
   # This is deliberately non-production material. Historical source is
@@ -180,16 +182,22 @@ jobs:
     # went over while the suite was still running: GitHub cancelled the job,
     # the deploy was skipped, and a merge that was green everywhere did not
     # reach production. A cap is there to stop a hung job, not a healthy one
-    # two minutes from its end.
-    timeout-minutes: 30
+    # two minutes from its end. 2026-10-18/19: 25 runs, median 24.6 min,
+    # slowest 28.6 against the former 30 — every new database gate ate the
+    # rest, so the cap follows static-checks to 45.
+    timeout-minutes: 45
     services:
       event-platform-postgres:
-        # The official `postgres:16`, from Docker's own mirror on Amazon ECR
-        # Public. Pulled from Docker Hub without an account, the runner hit
-        # «toomanyrequests» on 2026-10-09: this gate failed at «Initialize
+        # The official `postgres:16`, from Google's mirror of Docker Hub — the
+        # mirror pr-checks already pulls pgvector from. Docker Hub without an
+        # account answered «toomanyrequests» on 2026-10-09 (three reruns in a
+        # row); Amazon ECR Public, which replaced it, answered «toomanyrequests:
+        # Data limit exceeded» on 2026-10-11 and twice more on 2026-10-15, the
+        # second time on a rerun. Each time this gate failed at «Initialize
         # containers», the deploy was skipped, and a merge that was green
-        # everywhere did not reach production — three reruns in a row.
-        image: public.ecr.aws/docker/library/postgres:16
+        # everywhere did not reach production. Same manifest on all three
+        # registries on 2026-10-15: sha256:ca0bd484cb98…
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_DB: event_platform_test
           POSTGRES_USER: postgres
@@ -335,9 +343,21 @@ jobs:
         run: npm ci
 
       - name: Support UX read-only readiness diagnostic tests
-        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
+        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs .github/scripts/test-inspect-backup-run-failure.mjs
+
+      - name: Cache generated Prisma client
+        # ~4 min saved per run with an unchanged schema. Saved here from main,
+        # so pull requests (static-checks, same key) restore it too. Only these
+        # gates use it: the `build` job below generates its own client, and
+        # nothing from this cache reaches the production artifact.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
 
       - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
         run: npx prisma generate
 
       - name: Resolve the per-job Postgres port
@@ -368,6 +388,8 @@ jobs:
         run: |
           python3 .github/scripts/test_remediate_postgres_source_tls.py
           python3 .github/scripts/test_provision_postgres_restore_scratch.py
+          node --test scripts/backup/object-lock-diagnostic.test.mjs
+          node --test scripts/backup/owner-recovery.test.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs
@@ -375,9 +397,31 @@ jobs:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
 
       - name: Event-platform SDK PostgreSQL concurrency gate
-        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts
+        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts src/__tests__/mtm-visit-events-postgres.test.ts src/__tests__/deal-events-postgres.test.ts
         env:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+
+      - name: Fund exact reducer and shadow control-flow unit gate
+        run: npx vitest run src/__tests__/event-platform-fund-balance-reducer.test.ts src/__tests__/event-platform-fund-shadow-consumer.test.ts src/__tests__/event-platform-partition-processor.test.ts src/__tests__/event-platform-fund-shadow-worker.test.ts src/__tests__/event-platform-kafka-bridge.test.ts src/__tests__/event-platform-worker-process.test.ts src/__tests__/event-platform-worker-session.test.ts src/__tests__/event-platform-worker-admission.test.ts src/__tests__/event-platform-worker-artifact.test.ts
+
+      - name: Fund shadow restricted-login PostgreSQL transaction gate
+        run: npx vitest run src/__tests__/event-platform-fund-shadow-postgres.test.ts
+        env:
+          FUND_SHADOW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          FUND_SHADOW_DB_GATE: required
+
+      - name: Fund shadow pilot runner PostgreSQL gate
+        run: |
+          npm ci --prefix ops/event-platform/fund-shadow --ignore-scripts --no-audit --no-fund
+          NODE_PATH=ops/event-platform/fund-shadow/node_modules ops/event-platform/fund-shadow/node_modules/.bin/esbuild \
+            scripts/event-platform/fund-shadow/pilot.integration.ts --bundle --platform=node --target=node18 --format=cjs \
+            --external:@prisma/client --external:pg-native --log-level=error --outfile="$RUNNER_TEMP/pilot.integration.cjs"
+          NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$RUNNER_TEMP/pilot.integration.cjs"
+        env:
+          PILOT_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          PILOT_PSQL: psql -h 127.0.0.1 -p 5432
+          PILOT_SQL_DIR: scripts/event-platform/fund-shadow
+          PGPASSWORD: postgres
 
       - name: Workforce shared-lock PostgreSQL race gate
         run: >-
@@ -420,7 +464,7 @@ jobs:
           MTM_WORKDAY_RETURN_DB_GATE: required
 
       - name: MTM attendance database gate
-        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts src/__tests__/mtm-attendance-month-postgres.test.ts src/__tests__/mtm-attendance-reminders-postgres.test.ts
+        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts src/__tests__/mtm-attendance-month-postgres.test.ts src/__tests__/mtm-attendance-reminders-postgres.test.ts src/__tests__/mtm-attendance-explanations-postgres.test.ts
         env:
           MTM_ATTENDANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_ATTENDANCE_DB_GATE: required
@@ -442,6 +486,133 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Ad conversions database gate
+        # Same gate as in pr-checks: conversions to Meta only with consent,
+        # once each (see the test's header).
+        run: npx vitest run src/__tests__/ad-conversions-postgres.test.ts
+        env:
+          AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          AD_CONVERSIONS_DB_GATE: required
+
+      - name: Voice line numbers database gate
+        # Same gate as in pr-checks: number -> organization (see the test's header).
+        run: npx vitest run src/__tests__/voice-line-numbers-postgres.test.ts
+        env:
+          VOICE_LINE_NUMBERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          VOICE_LINE_NUMBERS_DB_GATE: required
+
+      - name: Pharmacy phone orders database gate
+        # Same gate as in pr-checks: a call's order list, its numbering and the
+        # manager's card under FORCE row-level security (see the test's header).
+        run: npx vitest run src/__tests__/pharmacy-phone-orders-postgres.test.ts
+        env:
+          PHARMACY_PHONE_ORDERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          PHARMACY_PHONE_ORDERS_DB_GATE: required
+
+      - name: Booking release admission and recovery contract gate
+        run: node --test scripts/booking/release-contract.test.mjs
+        env:
+          BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Finance open items database gate
+        # Same gate as in pr-checks: the overview and the A/R and A/P tabs count
+        # the same debt (see the test's header).
+        run: npx vitest run src/__tests__/finance-open-items-postgres.test.ts
+        env:
+          FINANCE_OPEN_ITEMS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          FINANCE_OPEN_ITEMS_DB_GATE: required
+
+      - name: Deal line items database gate
+        # Same gate as in pr-checks: a deal's product lines (see the test's header).
+        run: npx vitest run src/__tests__/deal-line-items-postgres.test.ts
+        env:
+          DEAL_LINES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEAL_LINES_DB_GATE: required
+
+      - name: Telegram staff bot database gate
+        # Same gate as in pr-checks: the employee Telegram bot (see the test's header).
+        run: npx vitest run src/__tests__/telegram-staff-postgres.test.ts
+        env:
+          TELEGRAM_STAFF_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TELEGRAM_STAFF_DB_GATE: required
+
+      - name: Company VÖEN database gate
+        # Same gate as in pr-checks: a company's VÖEN, its duplicate warning and
+        # the tax registry's card (see the test's header).
+        run: npx vitest run src/__tests__/company-voen-postgres.test.ts
+        env:
+          COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          COMPANY_VOEN_DB_GATE: required
+
+      - name: E-qaimə database gate
+        # Same gate as in pr-checks: e-qaimə invoices under row-level security,
+        # their totals, their sealed PDFs (see the test's header).
+        run: npx vitest run src/__tests__/e-qaime-postgres.test.ts
+        env:
+          E_QAIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          E_QAIME_DB_GATE: required
+
+      - name: Online booking database gate
+        # Same gate as in pr-checks: one meeting per host per time, by the real
+        # booking transaction (see the test's header).
+        run: npx vitest run src/__tests__/online-booking-postgres.test.ts
+        env:
+          ONLINE_BOOKING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          ONLINE_BOOKING_DB_GATE: required
+
+      - name: Invoice card payment database gate
+        # Same gate as in pr-checks: an invoice paid by card through Kapital
+        # Bank is recorded once, and only on the bank's own word (see the
+        # test's header).
+        run: npx vitest run src/__tests__/invoice-card-payment-postgres.test.ts
+        env:
+          INVOICE_CARD_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          INVOICE_CARD_PAYMENT_DB_GATE: required
+
+      - name: Demo WhatsApp ticket database gate
+        # The demo's real Service Desk ticket (opened on the prospect's own
+        # press) is read back for the demo page only through the sales
+        # organisation's door, by the id the demo keeps, under the product's
+        # FORCE RLS on tickets with a role that cannot bypass it (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-whatsapp-ticket-postgres.test.ts
+        env:
+          DEMO_WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_WHATSAPP_TICKET_DB_GATE: required
+
+      - name: Demo social release database gate
+        # Same gate as in pr-checks: a prospect's Facebook Page connected to the
+        # demo is unsubscribed at Meta and wiped, never where an organisation
+        # still relies on the Page or its Instagram account, the person's grant
+        # never touched, each Meta call sent once, with only
+        # graph.facebook.com stubbed and a role that cannot bypass RLS (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-social-release-postgres.test.ts
+        env:
+          DEMO_SOCIAL_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_SOCIAL_RELEASE_DB_GATE: required
+
+      - name: Demo social connect database gate
+        # Same gate as in pr-checks: a prospect's own Facebook Page connected
+        # and written to through the real routes — only the proven sender is
+        # ever stored or answered, a Page an organisation relies on is
+        # refused, the tenant path is unchanged — with only graph.facebook.com
+        # and the model stubbed and a role that cannot bypass RLS (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-social-connect-postgres.test.ts
+        env:
+          DEMO_SOCIAL_CONNECT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_SOCIAL_CONNECT_DB_GATE: required
+      - name: Demo assistant voice budget database gate
+        # Same gate as in pr-checks: the guide's voice minutes are claimed
+        # atomically before Google is asked, so requests arriving together
+        # cannot overspend a person's twenty minutes (across all their demos)
+        # or the day's 300 (see the test's header).
+        run: npx vitest run src/__tests__/demo-assistant-voice-postgres.test.ts
+        env:
+          DEMO_ASSISTANT_VOICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEMO_ASSISTANT_VOICE_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Same gate as in pr-checks: each organization's finance notices go to
         # its own Telegram chat through its own bot, and never to a chat named
@@ -451,6 +622,42 @@ jobs:
           FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           FINANCE_TELEGRAM_DB_GATE: required
 
+      - name: WhatsApp ticket path database gate
+        # Same gate as in pr-checks: each WhatsApp message lands on exactly one
+        # right ticket of its sender's, and an old closure link does not close a
+        # reopened ticket (see the test's header).
+        run: npx vitest run src/__tests__/whatsapp-ticket-path-postgres.test.ts
+        env:
+          WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          WHATSAPP_TICKET_DB_GATE: required
+
+      - name: TikTok lead ad lock database gate
+        # Same gate as in pr-checks: a burst of TikTok Lead Ads deliveries creates
+        # each lead once without running the connection pool dry (see the test's
+        # header).
+        run: npx vitest run src/__tests__/tiktok-lead-ad-lock-postgres.test.ts
+        env:
+          TIKTOK_LEAD_AD_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TIKTOK_LEAD_AD_DB_GATE: required
+
+      - name: Social webhook fence pool database gate
+        # Same gate as in pr-checks: bursts of Facebook/Instagram and TikTok
+        # comments are each stored once without running the connection pool
+        # dry (see the test's header).
+        run: npx vitest run src/__tests__/social-webhook-fence-pool-postgres.test.ts
+        env:
+          SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          SOCIAL_WEBHOOK_FENCE_DB_GATE: required
+
+      - name: Social monitoring fence openers pool database gate
+        # Same gate as in pr-checks: every opener of the monitoring fence (Apify
+        # results, Google Alerts e-mail, the ingest API, crons) gets through a
+        # burst without running the connection pool dry (see the test's header).
+        run: npx vitest run src/__tests__/social-fence-openers-pool-postgres.test.ts
+        env:
+          SOCIAL_FENCE_OPENERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          SOCIAL_FENCE_OPENERS_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Same gate as in pr-checks: no GPS entry — the phone's two routes, the
         # web/API-key one — stores a point taken during the employee's break
@@ -459,6 +666,67 @@ jobs:
         env:
           MTM_LOCATION_BREAK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_LOCATION_BREAK_DB_GATE: required
+
+      - name: MTM Excel route conflicts database gate
+        # Same gate as in pr-checks: an Excel route conflicts only with the
+        # employee's published or started routes of the same day, compared by
+        # real meeting slots in the organization's timezone (see the test's header).
+        run: npx vitest run src/__tests__/mtm-excel-route-conflicts-postgres.test.ts
+        env:
+          MTM_EXCEL_ROUTES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_EXCEL_ROUTES_DB_GATE: required
+
+      - name: MTM sign-in by WhatsApp code database gate
+        # Same gate as in pr-checks: a code from LeadDrive's WhatsApp finds the
+        # one card with the number, is kept hashed under the company, works
+        # once, and lets the person set their own password (see the test's header).
+        run: npx vitest run src/__tests__/mtm-mobile-login-code-postgres.test.ts
+        env:
+          MTM_LOGIN_CODE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_LOGIN_CODE_DB_GATE: required
+
+      - name: MTM manager writes to the team database gate
+        # Same gate as in pr-checks: a manager's phone writes only to the team
+        # «Komanda» shows — another team's or company's card, a former employee
+        # and the manager themselves get nothing (see the test's header).
+        run: npx vitest run src/__tests__/mtm-mobile-manager-messages-postgres.test.ts
+        env:
+          MTM_MANAGER_MESSAGES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_MANAGER_MESSAGES_DB_GATE: required
+
+      - name: MTM joint visit database gate
+        # Same gate as in pr-checks: a joint visit is the manager's session plus
+        # the agent's own «yes»; only such a visit is rated, and the rated agent
+        # never reads the rating (see the test's header).
+        run: npx vitest run src/__tests__/mtm-joint-visit-postgres.test.ts
+        env:
+          MTM_JOINT_VISIT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_JOINT_VISIT_DB_GATE: required
+
+      - name: MTM task notice database gate
+        # Same gate as in pr-checks: a task given to an agent reaches his bell,
+        # a self-made or refused one tells nobody (see the test's header).
+        run: npx vitest run src/__tests__/mtm-task-notice-postgres.test.ts
+        env:
+          MTM_TASK_NOTICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_TASK_NOTICE_DB_GATE: required
+
+      - name: MTM presentation viewers database gate
+        # Same gate as in pr-checks: a phone gets only the presentations its
+        # agent is listed on, and a deleted one leaves every phone while its
+        # showings stay (see the test's header).
+        run: npx vitest run src/__tests__/mtm-product-viewers-postgres.test.ts
+        env:
+          MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_PRODUCT_VIEWERS_DB_GATE: required
+
+      - name: Tenant data keys database gate
+        # Same gate as in pr-checks: one data key per organization, FORCE RLS
+        # on the key table, and the v1 → v2 sweep (see the test's header).
+        run: npx vitest run src/__tests__/tenant-data-keys-postgres.test.ts
+        env:
+          TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          TENANT_DATA_KEYS_DB_GATE: required
 
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
@@ -688,6 +956,22 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout the build-worker trace patch of this workflow's commit
+        # A recovery-bootstrap-resume build checks out an older main commit,
+        # which may predate scripts/ci/patch-next-build-worker-trace.mjs. The
+        # patch belongs to the workflow running the build (github.sha, the
+        # main head this dispatch was admitted from), not to the commit being
+        # built; every main commit since the 2026-09-09 baseline pins next
+        # 16.2.11, so it applies to any admitted resume target. Taken before
+        # any repository code runs, and without a persisted credential.
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .workflow-build-patch
+          persist-credentials: false
+          sparse-checkout: scripts/ci/patch-next-build-worker-trace.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -718,6 +1002,24 @@ jobs:
           printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' \
             "$DEPLOY_TARGET_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
           cat src/generated/build-sha.ts
+
+      - name: Make Prisma fluent field-map construction linear
+        # This changes runtime behavior, so it belongs to the target artifact's
+        # commit. Historical recovery targets that predate it stay unchanged.
+        if: ${{ hashFiles('scripts/ci/patch-prisma-fluent-field-map.mjs') != '' }}
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs
+
+      - name: Keep Next build-worker trace events out of IPC
+        # The build worker returns each compiler's result as one JSON string;
+        # the server's debug trace events alone reached 349M of V8's 536.9M
+        # character limit and the build hung (2026-10-21). See the script.
+        # Patches ./node_modules (the commit being built) with the copy above.
+        run: node .workflow-build-patch/scripts/ci/patch-next-build-worker-trace.mjs
+
+      - name: Remove the trace patch checkout before the build
+        # The artifact is built from the target commit's tree alone (Tailwind,
+        # for one, scans every file that git does not ignore).
+        run: rm -rf .workflow-build-patch
 
       - name: Build Next.js standalone
         # @serwist requires webpack for sw.js. Next compiles server, edge and
@@ -785,9 +1087,12 @@ jobs:
             MANIFEST_COPIED=$((MANIFEST_COPIED + 1))
           done < <(find .next/server/app -name '*_client-reference-manifest.js')
           echo "::notice::Copied $MANIFEST_COPIED client-reference-manifest file(s)"
-          mkdir -p .next/standalone/node_modules
-          cp -r node_modules/.prisma .next/standalone/node_modules/.prisma
-          cp -r node_modules/@prisma .next/standalone/node_modules/@prisma
+          # Next may already have traced part of these directories. Copy their
+          # contents into place, rather than nesting another @prisma/.prisma
+          # under the existing destination and leaving traced files untouched.
+          mkdir -p .next/standalone/node_modules/.prisma .next/standalone/node_modules/@prisma
+          cp -r node_modules/.prisma/. .next/standalone/node_modules/.prisma/
+          cp -r node_modules/@prisma/. .next/standalone/node_modules/@prisma/
 
           mkdir -p .next/standalone/public
           cp -r public/. .next/standalone/public/
@@ -804,19 +1109,42 @@ jobs:
           fi
           echo "::notice::Service worker staged ($(wc -c < .next/standalone/public/sw.js) bytes)"
 
-          if [ -d video/player ]; then
-            mkdir -p .next/standalone/help-videos/player
-            cp -r video/player/. .next/standalone/help-videos/player/
-            HELP_VIDEO_ASSET_VERSION="$(
-              sed -nE 's/^const HELP_VIDEO_ASSET_VERSION = "([^"]+)"$/\1/p' \
-                src/content/help/video-assets.ts
-            )"
-            [ -n "$HELP_VIDEO_ASSET_VERSION" ] || {
-              echo "::error::Could not read HELP_VIDEO_ASSET_VERSION"
-              exit 1
-            }
-            printf '%s\n' "$HELP_VIDEO_ASSET_VERSION" > .next/standalone/help-videos/asset-version
+          # The help-video masters do NOT ride in the artifact (2026-11-02):
+          # 265 MB in every tarball, twice on the production disk, and copied
+          # once more on every deploy with PM2 already stopped. Production pulls
+          # them from object storage before the handoff instead. What ships is
+          # the version the code asks for, the manifest of the exact master set
+          # this release was built against — so the pull can refuse a different
+          # one — and the puller itself. Stage one shipped the puller nowhere
+          # and the host reported it in a WARNING at the very last step of the
+          # deploy, which is exactly why nobody saw it for a day. Hence the
+          # assertions: here, where they are free, and again on the host.
+          mkdir -p .next/standalone/help-videos .next/standalone/scripts/help-videos
+          HELP_VIDEO_ASSET_VERSION="$(
+            sed -nE 's/^const HELP_VIDEO_ASSET_VERSION = "([^"]+)"$/\1/p' \
+              src/content/help/video-assets.ts
+          )"
+          [ -n "$HELP_VIDEO_ASSET_VERSION" ] || {
+            echo "::error::Could not read HELP_VIDEO_ASSET_VERSION"
+            exit 1
+          }
+          printf '%s\n' "$HELP_VIDEO_ASSET_VERSION" > .next/standalone/help-videos/asset-version
+          cp video/player/masters.sha256 .next/standalone/help-videos/masters.sha256
+          cp scripts/help-videos/assets-sync.sh .next/standalone/scripts/help-videos/assets-sync.sh
+          chmod +x .next/standalone/scripts/help-videos/assets-sync.sh
+          if [ ! -x .next/standalone/scripts/help-videos/assets-sync.sh ]; then
+            echo "::error::the help-video puller is not executable in the artifact"
+            exit 1
           fi
+          if [ ! -s .next/standalone/help-videos/masters.sha256 ]; then
+            echo "::error::the help-video master manifest is missing from the artifact"
+            exit 1
+          fi
+          if [ -e .next/standalone/help-videos/player ]; then
+            echo "::error::the artifact must not carry help-video bytes any more"
+            exit 1
+          fi
+          echo "::notice::Help-video masters stay in object storage; the artifact carries the manifest ($(grep -c . < .next/standalone/help-videos/masters.sha256) files, version $HELP_VIDEO_ASSET_VERSION)"
 
           cp -r prisma .next/standalone/prisma
 
@@ -825,6 +1153,14 @@ jobs:
           cp -r scripts/*.ts  .next/standalone/scripts/ 2>/dev/null || true
           cp -r scripts/*.sh  .next/standalone/scripts/ 2>/dev/null || true
           cp scripts/event-platform-postconditions.sql .next/standalone/scripts/
+          mkdir -p .next/standalone/scripts/booking .next/standalone/scripts/event-platform
+          cp -r scripts/booking/. .next/standalone/scripts/booking/
+          cp scripts/event-platform/inspect-production.sh .next/standalone/scripts/event-platform/
+          node scripts/booking/release-contract.mjs --write-manifest .next/standalone "$DEPLOY_TARGET_SHA"
+          mkdir -p .next/standalone/scripts/identity
+          cp scripts/identity/release-contract.mjs scripts/identity/release-state.sql .next/standalone/scripts/identity/
+          node scripts/identity/release-contract.mjs --write-manifest .next/standalone "$DEPLOY_TARGET_SHA"
+
           test -s .next/standalone/scripts/event-platform-postconditions.sql || {
             echo "::error::event-platform production postcondition missing from standalone artifact"
             exit 1
@@ -973,6 +1309,10 @@ jobs:
             echo "::error::final artifact must not claim the one-release Fund atomic prerequisite contract"
             exit 1
           }
+
+      - name: Verify Prisma fluent optimization in the assembled artifact
+        if: ${{ hashFiles('scripts/ci/patch-prisma-fluent-field-map.mjs') != '' }}
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs --check .next/standalone
 
       - name: Create deployment tarball
         run: |
@@ -1455,6 +1795,27 @@ jobs:
             exit 1
           }
 
+      - name: Admit booking backend from current main before staging
+        if: ${{ env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          artifact="/tmp/leaddrive-deploy-artifact/leaddrive-prod-${DEPLOY_TARGET_SHA}.tar.gz"
+          marker="$RUNNER_TEMP/booking-candidate-contract.json"
+          tar -xOzf "$artifact" ./.booking-backend-contract.json > "$marker"
+          node scripts/booking/release-contract.mjs --emit-admission "$DEPLOY_TARGET_SHA" < "$marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+          identity_marker="$RUNNER_TEMP/identity-candidate-contract.json"
+          tar -xOzf "$artifact" ./.identity-backend-contract.json > "$identity_marker"
+          node scripts/identity/release-contract.mjs --emit-admission "$DEPLOY_TARGET_SHA" < "$identity_marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
+
       - name: Stage immutable artifact on production disk
         # This copies bytes only; it does not stop PM2, run migrations, unpack
         # into the live tree, or consume production build memory. The SHA in
@@ -1652,6 +2013,70 @@ jobs:
                exit 1
              fi'
 
+      # Contract reminders were installed by a hand-run script that did not
+      # move with production in September 2026; for a month none fired. The
+      # deploy now installs them with the other schedules, and this proves
+      # each is scheduled exactly once and answers (owner, 2026-10-17).
+      - name: Verify the contract reminder schedulers
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             CRONTAB="$(crontab -l 2>/dev/null)"
+             for ENDPOINT in renewal-alerts contract-approval-escalations contract-milestone-reminders esign-reminders; do
+               ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk -v target="cron-trigger.sh /api/cron/$ENDPOINT " '\''
+                 $0 !~ /^[[:space:]]*#/ && index($0, target) { count++ }
+                 END { print count + 0 }
+               '\'')"
+               if [ "$ACTIVE_COUNT" -ne 1 ]; then
+                 echo "FATAL: expected exactly one active $ENDPOINT cron; found $ACTIVE_COUNT"
+                 exit 1
+               fi
+               SMOKE_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh "/api/cron/$ENDPOINT?smoke=1")"
+               printf "%s\n" "$SMOKE_OUTPUT"
+               if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq '\''"smoke":true'\''; then
+                 echo "FATAL: $ENDPOINT cron smoke was not side-effect-free and successful"
+                 exit 1
+               fi
+             done'
+
+      # A prospect's Facebook Page connected to the demo is unbound by this
+      # schedule. The demo's live check already stops all use when it does not
+      # run; this proves it is scheduled once and answers, and fails the deploy
+      # if any connection is more than 30 minutes past its end without a single
+      # release attempt — the sign of a cron that is not running.
+      - name: Verify the demo social release scheduler
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             CRONTAB="$(crontab -l 2>/dev/null)"
+             ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
+               $0 !~ /^[[:space:]]*#/ &&
+               $0 ~ /cron-trigger\.sh \/api\/cron\/demo-social-release/ { count++ }
+               END { print count + 0 }
+             '\'')"
+             if [ "$ACTIVE_COUNT" -ne 1 ]; then
+               echo "FATAL: expected exactly one active demo social release cron; found $ACTIVE_COUNT"
+               exit 1
+             fi
+             if ! systemctl is-active --quiet cron.service; then
+               echo "FATAL: cron.service is not active"
+               exit 1
+             fi
+             SMOKE_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh "/api/cron/demo-social-release?smoke=1")"
+             printf "%s\n" "$SMOKE_OUTPUT"
+             if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq '\''"smoke":true'\''; then
+               echo "FATAL: demo social release cron smoke was not side-effect-free and successful"
+               exit 1
+             fi
+             if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Eq '\''"stranded":0[,}]'\''; then
+               echo "FATAL: a demo social connection is past its end and was never released"
+               exit 1
+             fi'
+
       - name: Verify missed inbound reconciliation scheduler
         if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
         run: |
@@ -1716,6 +2141,23 @@ jobs:
                  exit 1
                fi
              fi'
+
+      # Zeytun's phone line answers from a catalog parsed into the process that
+      # answers the station (pm2 leaddrive-v2-line-a/-b; the web process when that
+      # one is down — cron-trigger.sh picks). A fresh release has none: the first call parsed 14 MB inside the
+      # station's 5 s for the session request and the agent stayed silent
+      # (2026-10-26). Parse it now; "not_configured" is a host without the line.
+      - name: Warm Zeytun's phone line
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             WARM_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh /api/cron/zeytun-line-warm || true)"
+             printf "%s\n" "$WARM_OUTPUT"
+             if printf "%s\n" "$WARM_OUTPUT" | grep -Eq '\''"outcome":"(warm|not_configured)"'\''; then exit 0; fi
+             echo "FATAL: Zeytun line catalog did not load (see output above)"
+             exit 1'
 
       # The voice assistant is pinned to a provider model, and Google retires
       # models on its own calendar: a retired id fails every session and no test
@@ -1839,6 +2281,18 @@ jobs:
                echo "FATAL: MTM cleanup lease is missing or lacks a fresh completed heartbeat"
                exit 1
              fi'
+
+      - name: Verify booking release with read-only production evidence
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node scripts/booking/release-contract.mjs --emit-proof "$DEPLOY_TARGET_SHA" \
+            < "$RUNNER_TEMP/booking-candidate-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
 
       - name: Cleanup SSH key
         if: always()
@@ -2001,6 +2455,23 @@ jobs:
             exit 1
           }
 
+      - name: Checkout current-main recovery admission
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Preserve current-main booking admission outside historical checkout
+        run: |
+          set -euo pipefail
+          umask 077
+          admission="$RUNNER_TEMP/booking-current-main-admission"
+          mkdir -p "$admission/scripts/booking" "$admission/scripts/event-platform"
+          cp scripts/booking/release-contract.mjs scripts/booking/release-state.sql "$admission/scripts/booking/"
+          mkdir -p "$admission/scripts/identity"
+          cp scripts/identity/release-contract.mjs scripts/identity/release-state.sql "$admission/scripts/identity/"
+          cp scripts/event-platform/inspect-production.sh "$admission/scripts/event-platform/"
+
       - name: Checkout deployment script from the recovered revision
         uses: actions/checkout@v6
         with:
@@ -2104,6 +2575,30 @@ jobs:
           SSHCFG
           chmod 600 ~/.ssh/config
 
+      - name: Admit retained booking backend with current-main code
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          artifact="/tmp/leaddrive-recovery-artifact/leaddrive-prod-${RECOVERY_SHA}.tar.gz"
+          marker="$RUNNER_TEMP/booking-recovery-contract.json"
+          # Empty is a genuine pre-A artifact; the current-main remote gate
+          # rejects it as soon as production has the expanded booking schema.
+          tar -xOzf "$artifact" ./.booking-backend-contract.json > "$marker" 2>/dev/null || true
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/booking/release-contract.mjs" \
+            --emit-admission "$RECOVERY_SHA" < "$marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+          identity_marker="$RUNNER_TEMP/identity-recovery-contract.json"
+          tar -xOzf "$artifact" ./.identity-backend-contract.json > "$identity_marker" 2>/dev/null || true
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/identity/release-contract.mjs" \
+            --emit-admission "$RECOVERY_SHA" < "$identity_marker" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
+
+
       - name: Stage exact retained recovery artifact on production disk
         run: |
           artifact="/tmp/leaddrive-recovery-artifact/leaddrive-prod-${RECOVERY_SHA}.tar.gz"
@@ -2150,6 +2645,17 @@ jobs:
             | sed -n 's/.*"artifactSha":"\([0-9a-f]\{40\}\)".*/\1/p')
           [ "$LIVE_SHA" = "$EXPECTED_SHA" ]
           REMOTE
+
+      - name: Verify restored booking contract with current-main evidence
+        env:
+          BOOKING_ADMISSION_HOST: ${{ secrets.SERVER_HOST }}
+          BOOKING_ADMISSION_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/booking-current-main-admission/scripts/booking/release-contract.mjs" \
+            --emit-proof "$RECOVERY_SHA" < "$RUNNER_TEMP/booking-recovery-contract.json" \
+            | timeout 75s ssh -T -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                "$BOOKING_ADMISSION_USER@$BOOKING_ADMISSION_HOST" bash -s
 
       - name: Cleanup SSH key
         if: always()

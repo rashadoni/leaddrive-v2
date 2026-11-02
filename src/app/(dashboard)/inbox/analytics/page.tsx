@@ -354,7 +354,7 @@ export default function InboxAnalyticsPage() {
                 onClick={() => setRange(r.key)}
                 className={cn(
                   "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                  range === r.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                  range === r.key ? "crm-choice-selected " : "text-muted-foreground hover:bg-muted",
                 )}
               >
                 {t(`range_${r.key}`)}
@@ -364,7 +364,7 @@ export default function InboxAnalyticsPage() {
               onClick={() => setRange("custom")}
               className={cn(
                 "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                range === "custom" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                range === "custom" ? "crm-choice-selected " : "text-muted-foreground hover:bg-muted",
               )}
             >
               {t("range_custom")}

@@ -111,7 +111,7 @@ export const PUT = withRlsAuth("journeys", "write", async (req, { orgId }, { par
       const replaced = await prisma.$transaction(async (tx) => {
         const result = await tx.journey.updateMany({
           where: { id, organizationId: orgId },
-          data: journeyData,
+          data: { ...journeyData, updatedAt: new Date() },
         })
         if (result.count === 0) return false
 

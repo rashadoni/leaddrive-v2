@@ -4,6 +4,7 @@ import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { ATTENDANCE_REMINDER_KEYS, AttendanceReminderPolicySchema, type AttendanceReminderPolicy } from "@/lib/mtm/attendance-reminder-contract"
+import { ATTENDANCE_FEATURE_SETTING_KEY } from "@/lib/mtm/attendance-feature"
 
 export async function lockAttendanceReminderPolicy(tx: Prisma.TransactionClient, organizationId: string, exclusive = false) {
   await tx.$executeRaw`SELECT set_config('lock_timeout','3s',true)`
@@ -12,9 +13,9 @@ export async function lockAttendanceReminderPolicy(tx: Prisma.TransactionClient,
   else await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${key},0))`
 }
 export async function readAttendanceReminderPolicy(tx: Prisma.TransactionClient, organizationId: string): Promise<AttendanceReminderPolicy> {
-  const rows = await tx.mtmSetting.findMany({ where: { organizationId, key: { in: ["attendanceEnabled", ...ATTENDANCE_REMINDER_KEYS] } }, select: { key: true, value: true } })
+  const rows = await tx.mtmSetting.findMany({ where: { organizationId, key: { in: [ATTENDANCE_FEATURE_SETTING_KEY, ...ATTENDANCE_REMINDER_KEYS] } }, select: { key: true, value: true } })
   const enabled = (key: string) => rows.find(row => row.key === key)?.value === true
-  return { enabled: enabled("attendanceEnabled"), employee: enabled(ATTENDANCE_REMINDER_KEYS[0]), manager: enabled(ATTENDANCE_REMINDER_KEYS[1]) }
+  return { enabled: enabled(ATTENDANCE_FEATURE_SETTING_KEY), employee: enabled(ATTENDANCE_REMINDER_KEYS[0]), manager: enabled(ATTENDANCE_REMINDER_KEYS[1]) }
 }
 export async function saveAttendanceReminderPolicy(reviewer: AttendanceReviewer, raw: unknown) {
   const parsed = AttendanceReminderPolicySchema.safeParse(raw)

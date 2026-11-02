@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useTranslations } from "next-intl"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -49,7 +50,7 @@ export function LiveMapZonesCard({ zones, canWrite, unfolded, onUnfoldedChange, 
       aria-labelledby="live-map-zones-card-title"
       data-testid="live-map-zones-card"
       data-unfolded={listed ? "true" : "false"}
-      className={cn("@container min-w-0 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-[13px] dark:border-zinc-700", className)}
+      className={cn("@container min-w-0 rounded-lg border border-border bg-card px-3 py-2 text-[13px]", className)}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <h4 id="live-map-zones-card-title" className="text-xs font-semibold uppercase text-muted-foreground" data-testid="live-map-zones-card-title">
@@ -57,17 +58,19 @@ export function LiveMapZonesCard({ zones, canWrite, unfolded, onUnfoldedChange, 
         </h4>
         {zones.length > 0 ? (
           // In words, not an arrow alone: an arrow by itself does not say what it opens.
-          <button
-            type="button"
-            aria-expanded={unfolded}
-            aria-controls="live-map-zones-card-list"
-            onClick={() => onUnfoldedChange(!unfolded)}
-            data-testid="live-map-zones-card-fold"
-            className="ml-auto inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-zinc-200 px-2 text-xs font-medium hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11"
-          >
-            <Chevron className="h-3.5 w-3.5" aria-hidden="true" />
-            {tMap(unfolded ? "areas.hideList" : "areas.showList")}
-          </button>
+          <Hint text={tMap("hint.areasList")}>
+            <button
+              type="button"
+              aria-expanded={unfolded}
+              aria-controls="live-map-zones-card-list"
+              onClick={() => onUnfoldedChange(!unfolded)}
+              data-testid="live-map-zones-card-fold"
+              className="ml-auto inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-border px-2 text-xs font-medium hover:bg-muted [@media(pointer:coarse)]:min-h-11"
+            >
+              <Chevron className="h-3.5 w-3.5" aria-hidden="true" />
+              {tMap(unfolded ? "areas.hideList" : "areas.showList")}
+            </button>
+          </Hint>
         ) : null}
       </div>
       {gone ? <LiveMapZoneGone className="mt-2" onClose={onGoneClose} /> : null}

@@ -184,7 +184,7 @@ export default function SubscriptionsOverviewPage() {
         {!loading && data && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-green-600" /> {t("kpiActive")}
                 </p>
@@ -192,7 +192,7 @@ export default function SubscriptionsOverviewPage() {
                   {data.statusCounts.active ?? 0}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock className="w-3 h-3 text-blue-600" /> {t("kpiTrial")}
                 </p>
@@ -200,7 +200,7 @@ export default function SubscriptionsOverviewPage() {
                   {data.statusCounts.trial ?? 0}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3 text-red-600" /> {t("kpiPastDue")}
                 </p>
@@ -212,7 +212,7 @@ export default function SubscriptionsOverviewPage() {
                   {data.statusCounts.past_due ?? 0}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Pause className="w-3 h-3 text-slate-500" /> {t("kpiPaused")}
                 </p>
@@ -220,7 +220,7 @@ export default function SubscriptionsOverviewPage() {
                   {data.statusCounts.paused ?? 0}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <XCircle className="w-3 h-3 text-muted-foreground" />{" "}
                   {t("kpiCancelled")}
@@ -229,7 +229,7 @@ export default function SubscriptionsOverviewPage() {
                   {data.statusCounts.cancelled ?? 0}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <CreditCard className="w-3 h-3" /> {t("kpiMrr")}
                 </p>
@@ -361,7 +361,7 @@ export default function SubscriptionsOverviewPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {data.planList.map((p) => (
-                    <MotionCard key={p.planId} className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                    <MotionCard key={p.planId} className="p-4 border border-border rounded-lg">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <h3 className="font-semibold truncate">{p.planName}</h3>
                         <span

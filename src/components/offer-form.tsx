@@ -359,10 +359,10 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
                 <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center justify-between">
                   {t("clientInfo")}
                   <div className="flex gap-1">
-                    <Button type="button" variant={clientMode === "crm" ? "default" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("crm")}>
+                    <Button type="button" variant={clientMode === "crm" ? "selected" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("crm")}>
                       {t("fromCrm")}
                     </Button>
-                    <Button type="button" variant={clientMode === "manual" ? "default" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("manual")}>
+                    <Button type="button" variant={clientMode === "manual" ? "selected" : "outline"} size="sm" className="h-6 text-xs" onClick={() => setClientMode("manual")}>
                       {t("manualEntry")}
                     </Button>
                   </div>
@@ -426,7 +426,7 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
                           <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
                         {showProductDropdown && (
-                          <div className="absolute right-0 mt-1 w-72 bg-popover border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                          <div className="absolute right-0 mt-1 w-72 bg-popover border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
                             {products.map((product) => (
                               <button
                                 type="button"
@@ -449,7 +449,7 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-3">
-                <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-x-auto">
+                <div className="border border-border rounded-lg overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-primary text-primary-foreground text-xs font-semibold uppercase tracking-wider">
@@ -548,7 +548,7 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={includeVat} onChange={(e) => setIncludeVat(e.target.checked)} className="rounded border-zinc-200 dark:border-zinc-700" />
+                    <input type="checkbox" checked={includeVat} onChange={(e) => setIncludeVat(e.target.checked)} className="rounded border-input" />
                     <span className="text-sm">{t("vat18")}</span>
                   </label>
                   <div className="flex items-center gap-2">

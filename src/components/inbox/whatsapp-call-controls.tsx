@@ -240,7 +240,7 @@ export function WhatsAppCallControls({ call, headers, locale, onChanged }: Whats
           {statusText}
         </span>
         {canAnswer && (
-          <Button
+          <Button data-crm-color-role="call"
             type="button"
             onClick={answer}
             disabled={!!busy}

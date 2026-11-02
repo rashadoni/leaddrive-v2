@@ -99,7 +99,9 @@ export function effectiveHiddenModules(role: string | null | undefined, value: u
 
 /** The hideable entry that owns a field capability. */
 export function hideableIdForFieldCapability(capability: FieldTenantCapabilityId): UserHideableId {
-  return capability === "route-field" ? "mtm" : WORKFORCE_HIDEABLE_ID
+  // Personnel is hidden from a person together with MTM until it has its own
+  // tick on the user card (roadmap, stage 2).
+  return capability === "workforce-hrm" ? WORKFORCE_HIDEABLE_ID : "mtm"
 }
 
 /**
@@ -157,7 +159,7 @@ export function applyUserModuleMask(
 ): Record<string, boolean> | undefined {
   if (hidden.length === 0) return org.modules
   const hiddenSet = new Set(hidden)
-  const capabilities = (["route-field", "workforce-hrm"] as const).map((capability) => ({
+  const capabilities = (["route-field", "workforce-hrm", "personnel"] as const).map((capability) => ({
     capability,
     enabled: isTenantCapabilityEnabled(capability, org),
     hidden: hiddenSet.has(hideableIdForFieldCapability(capability)),

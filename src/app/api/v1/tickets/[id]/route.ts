@@ -1,3 +1,4 @@
+import { selectWhatsAppAutomationChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma, logAudit } from "@/lib/prisma"
@@ -28,10 +29,19 @@ import {
   milestoneTypesForStatusChange,
 } from "@/lib/entitlement-process/ticket-milestones"
 import type { MilestoneType } from "@/lib/entitlement-process/types"
+import { loadCustomerLanguage, type CustomerLanguageContext } from "@/lib/ticketing/customer-locale"
+import {
+  closureRequestEmail,
+  closureRequestWhatsAppText,
+  ticketStatusWhatsAppText,
+} from "@/lib/ticketing/customer-ticket-text"
+import { systemCommentText } from "@/lib/ticketing/chat-transcript"
 
 type WhatsAppStatusNotificationResult = { surveyHandled: boolean } | undefined
 type WhatsAppTicketStatusSettings = {
   whatsappTicketStatusTemplates?: Record<string, string>
+  whatsappTicketStatusTemplateLanguages?: Record<string, string>
+  whatsappSurveyTemplate?: string
 }
 type ChannelMessageMetadata = {
   waPhone?: unknown
@@ -39,7 +49,7 @@ type ChannelMessageMetadata = {
 type SurveyTriggerSettings = {
   afterTicketResolve?: boolean
 }
-type TicketCommentRow = { userId: string | null; [key: string]: unknown }
+type TicketCommentRow = { userId: string | null; comment: string; [key: string]: unknown }
 type UserNameRow = { id: string; name: string | null; email: string | null }
 type TicketEntitlementMilestoneRow = {
   id: string
@@ -241,7 +251,9 @@ export const GET = withRls(async (_req: NextRequest, { orgId, session }, { param
 
     const enrichedComments = comments.map((c: TicketCommentRow) => ({
       ...c,
-      userName: c.userId ? userMap[c.userId] || "Support" : contactName,
+      // No userId is the customer — unless the product wrote it itself (the AI
+      // auto-actions cron): that has no author name, and the page labels it «System».
+      userName: c.userId ? userMap[c.userId] || "Support" : systemCommentText(c.comment) !== null ? null : contactName,
     }))
 
     const fieldPerms = await getFieldPermissions(orgId, role, "ticket")
@@ -408,24 +420,33 @@ export const PUT = withRlsAuth("tickets", "write", async (req: NextRequest, auth
       // Wait for the WhatsApp status-notification to finish so we can tell
       // the survey trigger whether it already embedded the survey link.
       if (oldStatus !== "resolved" && updated.status === "resolved") {
+        const customer = await loadCustomerLanguage({ organizationId: orgId, contactId: updated.contactId })
         closureRequest = await createTicketClosureRequestForTicket({
           orgId,
           ticket: updated,
           requestedBy: authResult.userId,
+          locale: customer.locale,
         })
         if (closureRequest.channel === "whatsapp" && closureRequest.recipient) {
-          sendWhatsAppMessage({
-            to: closureRequest.recipient,
+          const closureRecipient = closureRequest.recipient
+          const confirmationUrl = closureRequest.confirmationUrl
+          selectWhatsAppAutomationChannel(orgId, closureRecipient).then(selection => selection.id ? sendWhatsAppMessage({
+            to: closureRecipient,
             organizationId: orgId,
+            channelConfigId: selection.id,
             contactId: updated.contactId || undefined,
-            message: `Ваш тикет ${updated.ticketNumber} отмечен как решён. Подтвердите закрытие или верните в работу: ${closureRequest.confirmationUrl}`,
+            message: closureRequestWhatsAppText(customer.locale, {
+              ticketNumber: updated.ticketNumber,
+              confirmationUrl,
+            }),
             forceText: true,
-          }).catch(err => console.error("[ticket-closure] whatsapp request failed:", err))
+          }) : undefined).catch(err => console.error("[ticket-closure] whatsapp request failed:", err))
         } else if (closureRequest.recipient && closureRequest.recipient.includes("@")) {
           sendTicketClosureEmail({
             to: closureRequest.recipient,
             orgId,
             contactId: updated.contactId,
+            customer,
             ticketNumber: updated.ticketNumber,
             subject: updated.subject,
             dueAt: closureRequest.dueAt,
@@ -520,54 +541,25 @@ async function sendTicketClosureEmail(params: {
   to: string
   orgId: string
   contactId: string | null
+  customer: CustomerLanguageContext
   ticketNumber: string | null
   subject: string
   dueAt: Date
   confirmationUrl: string
 }) {
-  const ticketNumber = params.ticketNumber || "ticket"
-  const safeTicketNumber = escapeHtml(ticketNumber)
-  const safeSubject = escapeHtml(params.subject)
-  const safeUrl = escapeHtml(params.confirmationUrl)
-  const dueAt = params.dueAt.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  const email = closureRequestEmail(params.customer.locale, {
+    ticketNumber: params.ticketNumber,
+    subject: params.subject,
+    dueAt: params.dueAt,
+    timezone: params.customer.timezone,
+    confirmationUrl: params.confirmationUrl,
   })
-
-  const html = `
-<!doctype html><html><body style="font-family:system-ui,Segoe UI,Arial;margin:0;padding:24px;background:#f6f7f9;color:#111827">
-  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:28px">
-    <h1 style="margin:0 0 12px;font-size:20px;line-height:1.3">Подтвердите закрытие тикета ${safeTicketNumber}</h1>
-    <p style="margin:0 0 16px;color:#4b5563;line-height:1.5">Мы отметили обращение как решенное:</p>
-    <p style="margin:0 0 20px;font-weight:600">${safeSubject}</p>
-    <p style="margin:0 0 20px;color:#4b5563;line-height:1.5">Если вопрос решен, подтвердите закрытие. Если проблема осталась, верните тикет в работу по той же ссылке.</p>
-    <p style="margin:24px 0">
-      <a href="${safeUrl}" style="background:#2563eb;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600">Открыть подтверждение</a>
-    </p>
-    <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.5">Если ответа не будет, тикет закроется автоматически: ${escapeHtml(dueAt)}.</p>
-    <p style="margin:18px 0 0;color:#9ca3af;font-size:12px;line-height:1.5">Ссылка: <a href="${safeUrl}" style="color:#6b7280">${safeUrl}</a></p>
-  </div>
-</body></html>`
-
-  const text = [
-    `Подтвердите закрытие тикета ${ticketNumber}`,
-    "",
-    `Тема: ${params.subject}`,
-    "",
-    "Если вопрос решен, подтвердите закрытие. Если проблема осталась, верните тикет в работу по ссылке:",
-    params.confirmationUrl,
-    "",
-    `Если ответа не будет, тикет закроется автоматически: ${dueAt}.`,
-  ].join("\n")
 
   const result = await sendEmail({
     to: params.to,
-    subject: `Подтвердите закрытие тикета ${ticketNumber}`,
-    html,
-    text,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
     organizationId: params.orgId,
     contactId: params.contactId || undefined,
     transactional: true,
@@ -576,15 +568,6 @@ async function sendTicketClosureEmail(params: {
   if (!result?.success) {
     console.error(`[ticket-closure] email not sent to ${params.to}:`, result?.error || "unknown error")
   }
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
 }
 
 // ─── WhatsApp status notification ────────────────────────────────────────
@@ -611,31 +594,7 @@ async function sendWhatsAppStatusNotification(
   ticket: { id: string; ticketNumber: string | null; description: string | null; contactId: string | null; tags: string[] },
   newStatus: string,
 ): Promise<WhatsAppStatusNotificationResult> {
-  // Resolve tenant's configured template mapping from ChannelConfig.settings.
-  const waConfig = await prisma.channelConfig.findFirst({
-    where: { organizationId: orgId, channelType: "whatsapp", isActive: true },
-    select: { settings: true },
-  })
-  const settings = waConfig?.settings as WhatsAppTicketStatusSettings | null | undefined
-  const tmplMap = settings?.whatsappTicketStatusTemplates || {}
-  const templateName: string | undefined = tmplMap[newStatus]
-
   const ticketNumber = ticket.ticketNumber || ticket.id.slice(0, 8)
-
-  // Plain-text fallback messages. Used only when no template is configured
-  // AND the customer messaged us within the 23h session window (the
-  // whatsapp library blocks text outside the window). This keeps ticket
-  // notifications useful out-of-the-box for tenants who haven't set up
-  // Meta templates yet. Keep the wording generic and neutral so the fact
-  // that it's not a Meta-approved template isn't a policy issue.
-  const fallbackTextByStatus: Record<string, string> = {
-    in_progress: `Your ticket #${ticketNumber} is now being processed.`,
-    waiting:     `We need more info on your ticket #${ticketNumber}. Please reply with details.`,
-    resolved:    `Your ticket #${ticketNumber} has been resolved. Thank you for contacting us.`,
-    closed:      `Your ticket #${ticketNumber} has been closed.`,
-    escalated:   `Your ticket #${ticketNumber} has been escalated to a specialist.`,
-    reopened:    `Your ticket #${ticketNumber} has been reopened.`,
-  }
 
   // Extract phone — same heuristics as before.
   let waPhone: string | undefined
@@ -665,6 +624,21 @@ async function sendWhatsAppStatusNotification(
     return
   }
 
+  const selection = await selectWhatsAppAutomationChannel(orgId, waPhone)
+  if (!selection.id) return
+  // Resolve tenant's configured template mapping from ChannelConfig.settings.
+  const waConfig = await prisma.channelConfig.findFirst({
+    where: { id: selection.id, organizationId: orgId, channelType: "whatsapp", isActive: true },
+    select: { settings: true },
+  })
+  const settings = waConfig?.settings as WhatsAppTicketStatusSettings | null | undefined
+  const tmplMap = settings?.whatsappTicketStatusTemplates || {}
+  const templateName: string | undefined = tmplMap[newStatus]
+
+  // Saving an empty dropdown explicitly disables this notification. Older
+  // tenants with no settings key retain their existing session-text fallback.
+  if (settings && Object.hasOwn(settings, "whatsappTicketStatusTemplates") && !templateName) return
+
   // When the ticket transitions into "resolved" and the tenant has an
   // active survey wired to afterTicketResolve, merge the survey invite
   // into this same WhatsApp message. Customer gets ONE message with
@@ -674,7 +648,10 @@ async function sendWhatsAppStatusNotification(
   // for this ticket to avoid duplicates.
   let surveyAppendix = ""
   let surveyHandled = false
-  if (newStatus === "resolved") {
+  // Only legacy session-text notifications can embed a survey. A status
+  // template has no survey link; configured survey templates (or explicit
+  // off) belong to the standalone survey sender and must not be bypassed.
+  if (newStatus === "resolved" && !templateName && !Object.hasOwn(settings || {}, "whatsappSurveyTemplate")) {
     const activeSurvey = await prisma.survey.findFirst({
       where: { organizationId: orgId, status: "active" },
       select: { id: true, name: true, publicSlug: true, triggers: true },
@@ -692,7 +669,17 @@ async function sendWhatsAppStatusNotification(
     }
   }
 
-  const fallbackText = fallbackTextByStatus[newStatus]
+  // Plain-text fallback message. Used only when no template is configured
+  // AND the customer messaged us within the 23h session window (the
+  // whatsapp library blocks text outside the window). This keeps ticket
+  // notifications useful out-of-the-box for tenants who haven't set up
+  // Meta templates yet. Keep the wording generic and neutral so the fact
+  // that it's not a Meta-approved template isn't a policy issue. In the
+  // customer's language — until 2026-10-17 it was English for everyone.
+  const fallbackLocale = templateName
+    ? null
+    : (await loadCustomerLanguage({ organizationId: orgId, contactId: ticket.contactId })).locale
+  const fallbackText = fallbackLocale ? ticketStatusWhatsAppText(fallbackLocale, newStatus, ticketNumber) : null
   const fallbackWithSurvey = fallbackText ? fallbackText + surveyAppendix : fallbackText
 
   const result = templateName
@@ -700,8 +687,10 @@ async function sendWhatsAppStatusNotification(
         to: waPhone,
         message: `[template:${templateName}]`,
         templateName,
+        templateLanguage: settings?.whatsappTicketStatusTemplateLanguages?.[newStatus] || undefined,
         templateVariables: { "1": ticketNumber, ticketNumber },
         organizationId: orgId,
+        channelConfigId: selection.id,
         contactId: ticket.contactId || undefined,
       })
     : fallbackWithSurvey
@@ -709,6 +698,7 @@ async function sendWhatsAppStatusNotification(
         to: waPhone,
         message: fallbackWithSurvey,
         organizationId: orgId,
+        channelConfigId: selection.id,
         contactId: ticket.contactId || undefined,
       })
     : { success: false, error: "no-template-no-fallback" }

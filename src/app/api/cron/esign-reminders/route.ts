@@ -27,6 +27,8 @@ import { requireCronAuth } from "@/lib/cron-auth"
 import { issueToken } from "@/lib/esign/token-issuer"
 import { sendEmail } from "@/lib/email"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { signingEmail } from "@/lib/contract-lifecycle/notification-text"
+import { organizationLocale } from "@/lib/ticketing/customer-locale"
 
 export const dynamic = "force-dynamic"
 
@@ -41,7 +43,8 @@ const ENVELOPE_TERMINAL = ["completed", "declined", "voided", "expired"]
 const SIGNER_REMINDABLE = ["sent", "viewed"]
 
 export async function POST(req: NextRequest) {
-  return runWithRlsBypass(async () => {
+  // Authenticate before entering the bypass: an unauthenticated request must
+  // never reach a context that can see every tenant.
   const cronError = requireCronAuth(req)
   if (cronError) return cronError
 
@@ -49,6 +52,12 @@ export async function POST(req: NextRequest) {
   if (!esignSecret) {
     return NextResponse.json({ error: "ESIGN_SECRET not configured" }, { status: 503 })
   }
+  // The deploy proves the schedule answers, and can sign links, without sending.
+  if (new URL(req.url).searchParams.get("smoke") === "1") {
+    return NextResponse.json({ success: true, data: { smoke: true } })
+  }
+
+  return runWithRlsBypass(async () => {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://app.leaddrivecrm.org"
 
@@ -57,6 +66,16 @@ export async function POST(req: NextRequest) {
   const intervalCutoff = new Date(now.getTime() - intervalMs)
 
   const results = { remindersSent: 0, skipped: 0, errors: 0 }
+  // A signer is outside the CRM: the reminder speaks the organization's language.
+  const localeByOrg = new Map<string, ReturnType<typeof organizationLocale>>()
+  const localeOf = async (organizationId: string) => {
+    const known = localeByOrg.get(organizationId)
+    if (known) return known
+    const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: true } })
+    const locale = organizationLocale(organization?.settings)
+    localeByOrg.set(organizationId, locale)
+    return locale
+  }
 
   try {
     // Fetch candidates: pending signers with a non-terminal envelope.
@@ -187,16 +206,16 @@ export async function POST(req: NextRequest) {
       // Best-effort email the new signing link
       const signingUrl = `${baseUrl}/sign/${rawToken}`
       try {
+        const email = signingEmail(await localeOf(signer.organizationId), {
+          kind: "reminder",
+          fullName: signer.fullName,
+          subject: envelope.subject,
+          signingLink: signingUrl,
+        })
         await sendEmail({
           to: signer.email,
-          subject: `Reminder: Please sign — ${envelope.subject}`,
-          html: [
-            `<p>Hi ${signer.fullName},</p>`,
-            `<p>This is a friendly reminder that your signature is requested on: <strong>${envelope.subject}</strong></p>`,
-            `<p><a href="${signingUrl}" style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Sign Document</a></p>`,
-            `<p style="color:#888;font-size:12px;">If the button doesn't work, copy this link: ${signingUrl}</p>`,
-            `<p style="color:#888;font-size:12px;">Note: this link replaces any previous signing link you received. Only this new link is valid.</p>`,
-          ].join("\n"),
+          subject: email.subject,
+          html: email.html,
           organizationId: signer.organizationId,
           transactional: true,
         })

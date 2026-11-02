@@ -206,7 +206,7 @@ export function OperationalReport({ lockedDivisionId }: { lockedDivisionId?: str
               key={p.labelKey}
               type="button"
               onClick={() => { setMode(p.mode); setGroupBy(p.groupBy); setActivePreset(p.labelKey) }}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${activePreset === p.labelKey ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${activePreset === p.labelKey ? " crm-choice-selected " : "bg-background hover:bg-muted"}`}
             >
               {t(p.labelKey)}
             </button>
@@ -219,7 +219,7 @@ export function OperationalReport({ lockedDivisionId }: { lockedDivisionId?: str
                 key={m}
                 type="button"
                 onClick={() => { setMode(m); setActivePreset(null) }}
-                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${mode === m ? "crm-choice-selected " : "hover:bg-muted"}`}
               >
                 {m === "summary" ? t("opSummary") : t("opOverTime")}
               </button>
@@ -232,7 +232,7 @@ export function OperationalReport({ lockedDivisionId }: { lockedDivisionId?: str
                 key={gb}
                 type="button"
                 onClick={() => { setGroupBy(gb); setActivePreset(null) }}
-                className={`rounded-lg border px-2.5 py-1 text-sm transition-colors ${groupBy === gb ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+                className={`rounded-lg border px-2.5 py-1 text-sm transition-colors ${groupBy === gb ? " crm-choice-selected " : "bg-background hover:bg-muted"}`}
               >
                 {gbLabel[gb]}
               </button>

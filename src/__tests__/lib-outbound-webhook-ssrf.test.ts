@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   connectionCandidatesForOutboundRequest,
   downloadOutboundResource,
+  postOutboundResource,
   requestOutboundWebhook,
   validateOutboundWebhookUrl,
   type OutboundWebhookResolver,
@@ -110,6 +111,39 @@ describe("validateOutboundWebhookUrl", () => {
 })
 
 describe("requestOutboundWebhook redirects", () => {
+  it("allows five minutes only for an explicitly slow POST resource query", async () => {
+    const transport = vi.fn<OutboundWebhookTransport>().mockResolvedValue({ status: 200, bodyBytes: new Uint8Array() })
+    await postOutboundResource("https://8.8.8.8/query", { body: "{}", timeoutMs: 999_999, transport })
+    expect(transport.mock.calls[0][1].timeoutMs).toBeGreaterThan(299_000)
+    expect(transport.mock.calls[0][1].timeoutMs).toBeLessThanOrEqual(300_000)
+    for (const run of [requestOutboundWebhook, downloadOutboundResource]) {
+      await run("https://8.8.8.8/query", { timeoutMs: 999_999, transport })
+      expect(transport.mock.lastCall![1].timeoutMs).toBeLessThanOrEqual(60_000)
+    }
+    await postOutboundResource("https://8.8.8.8/query", { body: "{}", transport })
+    expect(transport.mock.lastCall![1].timeoutMs).toBeLessThanOrEqual(60_000)
+  })
+
+  it("allows a bounded large POST response without changing the webhook or GET defaults", async () => {
+    const bodyBytes = new Uint8Array(1024 * 1024 + 1)
+    const transport = vi.fn<OutboundWebhookTransport>().mockResolvedValue({ status: 200, bodyBytes })
+    expect((await postOutboundResource("https://8.8.8.8/query", {
+      body: "{}", maxResponseBytes: bodyBytes.length, transport,
+    })).bodyBytes).toHaveLength(bodyBytes.length)
+    expect(transport.mock.calls[0][1]).toMatchObject({
+      method: "POST", body: "{}", responseBodyMode: "bytes", maxResponseBytes: bodyBytes.length,
+      headers: { "Content-Length": "2" },
+    })
+  })
+
+  it("bounds POST query bodies and forbids redirects even if the caller requests them", async () => {
+    const transport = vi.fn<OutboundWebhookTransport>().mockResolvedValue({ status: 307, location: "https://8.8.4.4/query" })
+    await expect(postOutboundResource("https://8.8.8.8/query", { body: "x".repeat(4097), transport })).rejects.toThrow(/body exceeds/i)
+    expect(transport).not.toHaveBeenCalled()
+    await expect(postOutboundResource("https://8.8.8.8/query", { body: "{}", maxRedirects: 10, transport })).rejects.toThrow(/redirect/i)
+    expect(transport).toHaveBeenCalledTimes(1)
+  })
+
   it("returns bounded binary resource bytes through the pinned transport", async () => {
     const transport = vi.fn<OutboundWebhookTransport>().mockResolvedValue({
       status: 200,

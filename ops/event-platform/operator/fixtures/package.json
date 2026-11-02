@@ -1,0 +1,9 @@
+{
+  "name": "leaddrive-operator-readonly-proof",
+  "private": true,
+  "version": "0.0.0",
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "zod": "4.4.3"
+  }
+}

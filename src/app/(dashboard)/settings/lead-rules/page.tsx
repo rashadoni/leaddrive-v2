@@ -237,7 +237,7 @@ export default function LeadRulesPage() {
                   </div>
                   <div>
                     <label className="text-xs font-medium mb-1 block">{t("method")}</label>
-                    <select className="border border-zinc-200 dark:border-zinc-700 rounded-md px-3 py-2 text-sm bg-background w-full"
+                    <select className="border border-input rounded-md px-3 py-2 text-sm bg-background w-full"
                       value={editForm.method || "condition"}
                       onChange={e => setEditForm(f => ({ ...f, method: e.target.value as AssignmentMethod }))}>
                       <option value="condition">{t("conditionBased")}</option>
@@ -252,7 +252,7 @@ export default function LeadRulesPage() {
                       <div className="space-y-2">
                         {(editForm.conditions || []).map((cond, i) => (
                           <div key={i} className="flex gap-2 items-center">
-                            <select className="border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1.5 text-sm bg-background"
+                            <select className="border border-input rounded-md px-2 py-1.5 text-sm bg-background"
                               value={cond.field} onChange={e => {
                                 const next = [...(editForm.conditions || [])]
                                 next[i] = { ...next[i], field: e.target.value }
@@ -260,7 +260,7 @@ export default function LeadRulesPage() {
                               }}>
                               {FIELD_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
                             </select>
-                            <select className="border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1.5 text-sm bg-background"
+                            <select className="border border-input rounded-md px-2 py-1.5 text-sm bg-background"
                               value={cond.operator} onChange={e => {
                                 const next = [...(editForm.conditions || [])]
                                 next[i] = { ...next[i], operator: e.target.value }

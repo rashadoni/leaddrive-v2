@@ -938,3 +938,20 @@ describe("orgHasModule", () => {
     expect(await orgHasModule("org-ohm-dberror", "crm")).toBe(true)
   })
 })
+
+
+describe("fresh server phone privacy policy", () => {
+  it.each(["getSession", "requireSessionAuth", "requireAuth"])("%s ignores client flags and observes immediate setting changes", async method => {
+    vi.mocked(auth).mockResolvedValue({ user: { ...validSession.user, role: "support", hideCustomerPhoneForOperators: true } } as never)
+    const resolve = () => method === "getSession" ? getSession(makeRequest("/api/v1/inbox")) : method === "requireSessionAuth" ? requireSessionAuth(makeRequest("/api/v1/inbox")) : requireAuth(makeRequest("/api/v1/inbox"))
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ isActive: true, settings: {} } as never)
+    expect(await resolve()).not.toHaveProperty("hideCustomerPhoneForOperators", true)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ isActive: true, settings: { hideCustomerPhoneForOperators: true } } as never)
+    expect(await resolve()).toHaveProperty("hideCustomerPhoneForOperators", true)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ isActive: true, settings: {} } as never)
+    expect(await resolve()).not.toHaveProperty("hideCustomerPhoneForOperators", true)
+    vi.mocked(prisma.organization.findUnique).mockRejectedValue(new Error("DB unavailable"))
+    const denied = await resolve()
+    expect(denied === null || denied instanceof Response).toBe(true)
+  })
+})

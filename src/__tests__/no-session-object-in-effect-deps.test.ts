@@ -21,7 +21,7 @@ import { join } from "path"
  * `session?.user?.id`, or `status === "authenticated"` — all of which are
  * strings or booleans and do not change when the token rotates.
  *
- * The 55 files below predate this guard. They are grandfathered so the guard
+ * The files below predate this guard. They are grandfathered so the guard
  * can exist at all; the list must only ever get shorter. A file that is not on
  * it fails this test, which is the whole point: the class stops spreading today
  * and is paid down file by file.
@@ -33,10 +33,8 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/ai-command-center/page.tsx",
   "src/app/(dashboard)/ai-scoring/page.tsx",
   "src/app/(dashboard)/campaign-roi/page.tsx",
-  "src/app/(dashboard)/campaigns/[id]/page.tsx",
   "src/app/(dashboard)/campaigns/page.tsx",
   "src/app/(dashboard)/companies/[id]/page.tsx",
-  "src/app/(dashboard)/companies/page.tsx",
   "src/app/(dashboard)/contacts/[id]/page.tsx",
   "src/app/(dashboard)/contacts/page.tsx",
   "src/app/(dashboard)/contracts/[id]/page.tsx",
@@ -57,7 +55,6 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/notifications/page.tsx",
   "src/app/(dashboard)/offers/[id]/page.tsx",
   "src/app/(dashboard)/offers/page.tsx",
-  "src/app/(dashboard)/page.tsx",
   "src/app/(dashboard)/pricing/page.tsx",
   "src/app/(dashboard)/products/[id]/page.tsx",
   "src/app/(dashboard)/products/page.tsx",
@@ -69,8 +66,6 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/settings/workflows/page.tsx",
   "src/app/(dashboard)/tasks/page.tsx",
   "src/components/ai/voice-console.tsx",
-  "src/components/notification-bell.tsx",
-  "src/components/ticket-notifier.tsx",
   "src/hooks/use-field-permissions.ts",
 ])
 

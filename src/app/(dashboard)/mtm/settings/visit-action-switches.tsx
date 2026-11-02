@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertCircle, Camera, Check, ChevronDown, ListChecks, Lock, MessageCircle, Package, PenLine, Presentation, StickyNote } from "lucide-react"
@@ -34,7 +35,7 @@ const CLIENT_KINDS = ["PHARMACY", "CLINIC", "DOCTOR", "STORE", "OTHER"] as const
 
 type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "failed"; message: string }
 
-const fieldClass = "h-9 w-full rounded-md border border-zinc-200 bg-background px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700"
+const fieldClass = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
 
 function Switch({ on, tone, disabled, label, onToggle }: {
   on: boolean
@@ -176,7 +177,7 @@ export function VisitActionSwitches({
 
   return (
     <div
-      className={cn("h-full", embedded ? "" : "rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700")}
+      className={cn("h-full", embedded ? "" : "rounded-lg border border-border bg-card p-4")}
       data-testid={testId}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -193,7 +194,7 @@ export function VisitActionSwitches({
       {scope ? <p className="mt-0.5 text-sm text-muted-foreground">{scope}</p> : null}
 
       {status.kind === "failed" ? (
-        <p role="alert" className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        <p role="alert" className="mt-2 flex items-start gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{status.message}</span>
         </p>
       ) : null}
@@ -218,7 +219,7 @@ export function VisitActionSwitches({
           const name = t(`actions.${actionKey}`)
           const narrowed = refinedText(actionKey, detail, state.required)
           return (
-            <div key={actionKey} className="col-span-4 grid grid-cols-subgrid items-center border-t border-zinc-200 py-1 dark:border-zinc-800" data-testid={`${testId}-row-${actionKey}`}>
+            <div key={actionKey} className="col-span-4 grid grid-cols-subgrid items-center border-t border-border py-1" data-testid={`${testId}-row-${actionKey}`}>
               <div className={cn("min-w-0 py-1.5", !state.shown && "opacity-60")}>
                 <p className="flex items-center gap-2 text-sm font-medium">
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{name}
@@ -247,17 +248,18 @@ export function VisitActionSwitches({
                   onToggle={() => move(actionKey, { required: !state.required })}
                 />
               </span>
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-label={t("refineToggle", { action: name })}
-                title={t("refineToggle", { action: name })}
-                onClick={() => { setMinDraft(null); setOpenKey(open ? null : actionKey) }}
-                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60"
-              >
-                <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
-                {refined && !open ? <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" /> : null}
-              </button>
+              <Hint text={t("hint.refine")}>
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-label={t("refineToggle", { action: name })}
+                  onClick={() => { setMinDraft(null); setOpenKey(open ? null : actionKey) }}
+                  className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60"
+                >
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
+                  {refined && !open ? <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" /> : null}
+                </button>
+              </Hint>
 
               {open ? (
                 <div className="col-span-4 mb-2 rounded-md bg-muted/50 p-3" data-testid={`${testId}-refine-${actionKey}`}>
@@ -315,7 +317,7 @@ export function VisitActionSwitches({
         })}
 
         {companyWide ? (
-          <div className="col-span-4 grid grid-cols-subgrid items-center border-t border-zinc-200 py-1 dark:border-zinc-800">
+          <div className="col-span-4 grid grid-cols-subgrid items-center border-t border-border py-1">
             <div className="min-w-0 py-1.5">
               <p className="flex items-center gap-2 text-sm font-medium">
                 <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("simpleTasks")}
@@ -330,7 +332,7 @@ export function VisitActionSwitches({
       </div>
 
       {companyWide ? (
-        <p className="mt-2 border-t border-zinc-200 pt-2 text-xs text-muted-foreground dark:border-zinc-800">{t("simpleRequiredHint")}</p>
+        <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">{t("simpleRequiredHint")}</p>
       ) : null}
     </div>
   )

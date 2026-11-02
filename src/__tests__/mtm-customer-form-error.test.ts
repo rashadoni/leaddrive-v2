@@ -37,3 +37,16 @@ describe("organization form — what a refused save says", () => {
     expect(saveErrorMessage(null, labels)).toBe("Ошибка сохранения")
   })
 })
+
+// Owner's E2E test, 2026-10-17: the agent form printed the API's English «Validation failed».
+describe("agent form — what a refused save says", async () => {
+  const { agentSaveErrorMessage } = await import("@/components/mtm/agent-form")
+  const agentLabels = { tc: (key: string) => ({ name: "Имя", failedToSave: "Ошибка сохранения" } as Record<string, string>)[key] ?? key,
+    tf: (key: string) => ({ invalidFields: "Проверьте поля", externalCode: "Внешний код", emailOptional: "Email" } as Record<string, string>)[key] ?? key }
+  it("names the refused fields in the page's language", () => {
+    expect(agentSaveErrorMessage({ error: "Validation failed", details: [{ path: "externalCode" }, { path: "email" }] }, agentLabels)).toBe("Проверьте поля: Внешний код, Email")
+  })
+  it("never shows the English marker", () => {
+    expect(agentSaveErrorMessage({ error: "Validation failed" }, agentLabels)).toBe("Ошибка сохранения")
+  })
+})

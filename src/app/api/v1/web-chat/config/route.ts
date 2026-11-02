@@ -4,6 +4,7 @@ import { randomBytes } from "crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
+import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 
 export const GET = withRlsAuth("inbox", "read", async (_req, auth) => {
   const orgId = auth.orgId
@@ -18,7 +19,8 @@ export const GET = withRlsAuth("inbox", "read", async (_req, auth) => {
     })
   }
 
-  return NextResponse.json({ success: true, data: widget })
+  // The language the widget speaks on a page that sets no data-lang (embed/chat/[key]/page.tsx).
+  return NextResponse.json({ success: true, data: widget, language: await loadOrganizationLocale(orgId) })
 })
 
 const updateSchema = z.object({

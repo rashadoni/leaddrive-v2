@@ -4,6 +4,11 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
+import { customerReplyForStorage } from "@/lib/ticketing/chat-transcript"
+import { portalCommentView, portalDescriptionView, portalTicketSubject } from "@/lib/ticketing/portal-ticket-view"
+
+/** The portal itself calls its assistant Da Vinci in every language (messages/*.json `portal.chatTitle`). */
+const ASSISTANT_AUTHOR_NAME = "Da Vinci"
 
 const commentSchema = z.object({
   comment: z.string().trim().min(1).max(5000),
@@ -72,22 +77,40 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     : []
   const userMap = Object.fromEntries(users.map((user) => [user.id, user.name || "Support"]))
 
-  const comments = commentRows.map((comment) => ({
-    id: comment.id,
-    comment: comment.comment,
-    isAgent: Boolean(comment.userId),
-    authorName: comment.userId ? (userMap[comment.userId] || "Support") : user.fullName,
-    createdAt: comment.createdAt,
-    attachments: comment.attachments || [],
-  }))
+  // The customer's view of the thread (portal-ticket-view.ts): the sync's sender prefixes off,
+  // and Da Vinci's replies on the support side under its own name, not the customer's.
+  const comments = commentRows.map((comment) => {
+    const view = portalCommentView(comment)
+    return {
+      id: comment.id,
+      comment: view.text,
+      isAgent: view.author !== "customer",
+      author: view.author,
+      channel: view.channel,
+      authorName: view.author === "customer"
+        ? user.fullName
+        : view.author === "assistant"
+          ? ASSISTANT_AUTHOR_NAME
+          : (comment.userId && userMap[comment.userId]) || "Support",
+      createdAt: comment.createdAt,
+      attachments: comment.attachments || [],
+    }
+  })
+  const description = portalDescriptionView(ticket.description)
 
   return NextResponse.json({
     success: true,
     data: {
       id: ticket.id,
       ticketNumber: ticket.ticketNumber,
-      subject: ticket.subject,
-      description: ticket.description,
+      subject: portalTicketSubject(ticket.subject),
+      description: description.description,
+      descriptionOrigin: description.origin,
+      // A ticket the website chat opened: that chat, which nothing copied into the comments.
+      chatTranscript: description.chatTranscript.map((entry) => ({
+        ...entry,
+        authorName: entry.author === "customer" ? user.fullName : null,
+      })),
       status: ticket.status,
       category: ticket.category,
       categoryRef: ticket.categoryRef,
@@ -122,6 +145,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
 
+  // A reply that would read as the team's («[Оператор] …», «[Система] …») is stored
+  // under the customer's own label (chat-transcript.ts); any other as typed.
+  const stored = customerReplyForStorage(parsed.data.comment)
+
   const createComment = async () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     if (parsed.data.clientRequestId) {
       const existing = await tx.ticketComment.findUnique({
@@ -129,7 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         include: { attachments: true },
       })
       if (existing) {
-        if (existing.userId !== null || existing.comment !== parsed.data.comment || existing.isInternal) {
+        if (existing.userId !== null || existing.comment !== stored || existing.isInternal) {
           throw new PortalAttachmentConflictError("Request key was already used for different content")
         }
         return { comment: existing, replayed: true }
@@ -154,7 +181,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const created = await tx.ticketComment.create({
       data: {
         ticketId: id,
-        comment: parsed.data.comment,
+        comment: stored,
         isInternal: false,
         userId: null,
         clientRequestId: parsed.data.clientRequestId,
@@ -207,7 +234,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         where: { ticketId_clientRequestId: { ticketId: id, clientRequestId: parsed.data.clientRequestId } },
         include: { attachments: true },
       })
-      if (existing && existing.userId === null && existing.comment === parsed.data.comment && !existing.isInternal) {
+      if (existing && existing.userId === null && existing.comment === stored && !existing.isInternal) {
         result = { comment: existing, replayed: true }
       } else {
         return NextResponse.json({ error: "Duplicate request conflict", errorKey: "duplicateRequestConflict" }, { status: 409 })
@@ -224,7 +251,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     success: true,
     data: {
       id: created.id,
-      comment: created.comment,
+      comment: portalCommentView(created).text,
       isAgent: false,
       authorName: user.fullName,
       createdAt: created.createdAt,

@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { ContactCategorySettings } from "./contact-category-settings"
 import { ContactFieldSettings } from "./contact-required-field-settings"
 import { ContactSpecialtySettings } from "./contact-specialty-settings"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 
 type Tab = "categories" | "classes" | "fields" | "specialties"
 
@@ -120,7 +121,7 @@ export function ContactCardSettings({
   ]
 
   return (
-    <section data-testid="mtm-contact-card-settings" className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5" aria-labelledby="mtm-contact-card-title">
+    <section data-testid="mtm-contact-card-settings" className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="mtm-contact-card-title">
       <div className="grid max-w-3xl gap-1">
         <h2 id="mtm-contact-card-title" className="flex items-center gap-2 text-base font-semibold">
           <IdCard className="h-4 w-4 text-primary" aria-hidden="true" />
@@ -129,9 +130,9 @@ export function ContactCardSettings({
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </div>
 
-      <div role="tablist" aria-labelledby="mtm-contact-card-title" className="mt-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+      <div data-crm-tabs="" role="tablist" aria-labelledby="mtm-contact-card-title" className={`mt-4 ${MTM_TAB_ROW}`}>
         {tabs.map((item) => (
-          <button
+          <button data-crm-tab="" data-state={tab === item.id ? "active" : "inactive"}
             key={item.id}
             type="button"
             role="tab"
@@ -141,10 +142,8 @@ export function ContactCardSettings({
             data-testid={`mtm-contact-card-tab-${item.id}`}
             onClick={() => setTab(item.id)}
             className={cn(
-              "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors",
-              tab === item.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-200 bg-background text-foreground hover:border-zinc-300 dark:border-zinc-700",
+              "inline-flex items-center gap-2 text-sm font-medium transition-colors",
+              mtmTabClass(tab === item.id),
             )}
           >
             {item.label}
@@ -161,7 +160,7 @@ export function ContactCardSettings({
             // Doctors pick a specialty; say so where their fields are listed,
             // with the way to the list.
             legacyContactTypeForCategory(category.code) === "DOCTOR" && showsSpecialty ? (
-              <p data-testid="mtm-contact-category-specialty-note" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-primary/5 px-3 py-2 text-sm">
+              <p data-testid="mtm-contact-category-specialty-note" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-l-4 border-border border-l-primary bg-card px-3 py-2 text-sm">
                 <span>{t("specialtyNote", { count: specialtiesDraft.length })}</span>
                 <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => setTab("specialties")}>
                   {t("openSpecialties")}
@@ -183,7 +182,7 @@ export function ContactCardSettings({
                 <label
                   key={value}
                   className={cn(
-                    "flex min-h-11 items-center gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700",
+                    "flex min-h-11 items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm",
                     last ? "cursor-not-allowed" : "cursor-pointer",
                   )}
                 >
@@ -265,7 +264,7 @@ function SaveBar({
   t: ReturnType<typeof useTranslations>
 }) {
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
       <span role="status" aria-live="polite" className={cn("text-sm", dirty ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground")}>
         {dirty ? t("dirty") : t("noChanges")}
       </span>

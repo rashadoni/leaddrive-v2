@@ -1,10 +1,73 @@
+import { lockTurns } from "@/lib/lock-turns"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { isScheduledWork } from "@/lib/scheduled-work"
 import type { Prisma } from "@prisma/client"
 import { AsyncLocalStorage } from "node:async_hooks"
 
 const CLEAN_SLATE_LOCK_PREFIX = "social-monitoring-clean-slate:"
 const IMPORT_FENCE_TRANSACTION_TIMEOUT_MS = 30 * 60_000
+const FENCE_TRANSACTION_OPTIONS = {
+  maxWait: 30_000,
+  timeout: IMPORT_FENCE_TRANSACTION_TIMEOUT_MS,
+}
+
+/**
+ * A fence is a transaction that takes its organization's advisory lock and
+ * keeps its pooled connection for the whole callback, while the callback works
+ * on the global client and needs another connection. Until 2026-10-19 every
+ * opener waiting for the lock kept a connection too: as many openers for one
+ * organization at once as the pool has connections (a burst of webhook
+ * deliveries, several crons in the same minute, a client posting in parallel)
+ * left the holder none for its work, and the whole pool timed out.
+ *
+ * So every opener first takes its organization's turn in this process, where
+ * waiting costs no connection. Production runs two — the web app and the
+ * scheduler's `leaddrive-v2-jobs` — and the advisory lock keeps them, the
+ * clean-slate reset script and any other process apart. Then
+ * the opener takes one of two fence slots: at most two fence transactions per
+ * process, whoever opens them, so at most two connections whatever the pool
+ * (13 on production, 5 on a 2-core CI runner, 3 in the database tests).
+ *
+ * Scheduled work (requests with the cron secret, `scheduled-work.ts`) holds at
+ * most one of the two, so a slow cron never takes the last slot from a user, a
+ * webhook delivery or an inbound e-mail of another organization. It waits for
+ * that one slot before its organization's turn, so while it waits it holds up
+ * no one of its own organization either.
+ *
+ * A fence opened inside a fence already held (the ALS context below) opens no
+ * transaction and takes no turn.
+ */
+const fenceTurns = lockTurns("social-monitoring-fence", 2)
+const scheduledFenceTurns = lockTurns("social-monitoring-fence-scheduled", 1)
+
+function inFenceTurn<T>(organizationId: string, open: () => Promise<T>): Promise<T> {
+  let transaction!: Promise<T>
+  const turn = () => fenceTurns.run(organizationId, () => {
+    transaction = open()
+    return untilSettledOrExpired(transaction)
+  })
+  const waited = isScheduledWork() ? scheduledFenceTurns.run("scheduled", turn) : turn()
+  return waited.then(() => transaction)
+}
+
+/**
+ * The turn lasts as long as the lock can. Prisma rolls a transaction back once
+ * its timeout has passed, which releases the advisory lock even while the
+ * callback is still running; a turn held on until such a callback ended could
+ * keep the organization's fence shut for as long as the process lives.
+ */
+function untilSettledOrExpired(transaction: Promise<unknown>): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const expiry = setTimeout(resolve, FENCE_TRANSACTION_OPTIONS.maxWait + FENCE_TRANSACTION_OPTIONS.timeout)
+    expiry.unref?.()
+    const settled = () => {
+      clearTimeout(expiry)
+      resolve()
+    }
+    transaction.then(settled, settled)
+  })
+}
 
 type ImportFenceRow = {
   settings: unknown
@@ -225,7 +288,7 @@ export async function withSocialMonitoringImportFence<T>(
       }
     })
   }
-  return prisma.$transaction(async tx => {
+  return inFenceTurn(input.organizationId, () => prisma.$transaction(async tx => {
     await tx.$executeRawUnsafe(
       "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
       `${CLEAN_SLATE_LOCK_PREFIX}${input.organizationId}`,
@@ -242,16 +305,24 @@ export async function withSocialMonitoringImportFence<T>(
         ),
       ),
     }
-  }, {
-    maxWait: 30_000,
-    timeout: IMPORT_FENCE_TRANSACTION_TIMEOUT_MS,
-  })
+  }, FENCE_TRANSACTION_OPTIONS))
 }
 
 export async function withSocialMonitoringTenantCollectionFence<T>(
   organizationId: string,
   collect: () => Promise<T>,
+  options: {
+    /**
+     * Advisory locks the caller needs while it collects, taken on the fence's
+     * own transaction once the fence has let it in. A lock transaction of the
+     * caller's own inside the fence would keep a second connection for as long
+     * as the fence lasts (the TikTok Lead Ads webhook did, until 2026-10-19).
+     * A fence already held has no transaction of its own to take them on.
+     */
+    lockKeys?: readonly string[]
+  } = {},
 ): Promise<SocialMonitoringTenantFenceResult<T>> {
+  const lockKeys = [...new Set(options.lockKeys ?? [])].sort()
   // Provider import callbacks already hold this tenant's advisory lock. Media
   // scheduling inside those callbacks must reuse the held fence instead of
   // opening another connection and deadlocking on the same session-level key.
@@ -263,11 +334,17 @@ export async function withSocialMonitoringTenantCollectionFence<T>(
         reason: "social_monitoring_collection_blocked",
       }
     }
+    if (lockKeys.length > 0) {
+      throw new Error("lockKeys need a fence of their own: this one is already held, with no transaction to take them on")
+    }
     return { allowed: true, value: await collect() }
   }
-  return prisma.$transaction(async tx => {
+  return inFenceTurn(organizationId, () => prisma.$transaction(async tx => {
     const gate = await checkSocialMonitoringTenantCollectionFence(tx, organizationId)
     if (!gate.allowed) return gate
+    for (const key of lockKeys) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
+    }
     return {
       allowed: true as const,
       value: await runWithTenant(
@@ -278,8 +355,5 @@ export async function withSocialMonitoringTenantCollectionFence<T>(
         ),
       ),
     }
-  }, {
-    maxWait: 30_000,
-    timeout: IMPORT_FENCE_TRANSACTION_TIMEOUT_MS,
-  })
+  }, FENCE_TRANSACTION_OPTIONS))
 }

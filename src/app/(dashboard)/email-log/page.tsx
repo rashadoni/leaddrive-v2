@@ -151,7 +151,7 @@ export default function EmailLogPage() {
           size="sm"
           onClick={runAiAnalysis}
           disabled={aiLoading || stats.total === 0}
-          className="relative overflow-hidden bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] hover:opacity-90 text-white border-0 shadow-md shadow-[hsl(var(--ai-from))]/25 hover:shadow-lg hover:shadow-[hsl(var(--ai-from))]/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
+          className="gap-1.5"
         >
           {aiLoading ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -166,11 +166,11 @@ export default function EmailLogPage() {
 
       {/* Da Vinci AI Analysis Card */}
       {aiOpen && (
-        <div className="rounded-xl border border-[hsl(var(--ai-from))]/20 bg-card p-5">
+        <div className="crm-panel p-5">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))]">
-                <Sparkles className="h-4 w-4 text-white" />
+              <div className="p-1.5 rounded-lg bg-muted">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
               </div>
               <h3 className="text-sm font-semibold">Da Vinci — {t("title")}</h3>
             </div>
@@ -222,7 +222,7 @@ export default function EmailLogPage() {
           <select
             value={filterDirection}
             onChange={e => { setFilterDirection(e.target.value); setPage(1) }}
-            className="text-sm border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1.5 bg-background"
+            className="text-sm border border-input rounded-md px-2 py-1.5 bg-background"
           >
             <option value="">{t("allDirections")}</option>
             <option value="outbound">{t("filterOutbound")}</option>
@@ -232,7 +232,7 @@ export default function EmailLogPage() {
           <select
             value={filterStatus}
             onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-            className="text-sm border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1.5 bg-background"
+            className="text-sm border border-input rounded-md px-2 py-1.5 bg-background"
           >
             <option value="">{t("allStatuses")}</option>
             <option value="sent">{statusLabels.sent}</option>
@@ -267,7 +267,7 @@ export default function EmailLogPage() {
               <div
                 key={log.id}
                 className={cn(
-                  "border border-zinc-200 dark:border-zinc-700 rounded-lg transition-all",
+                  "border border-border rounded-lg transition-all",
                   log.status === "failed" ? "bg-red-50/50 dark:bg-red-900/10 border-red-200" :
                   log.status === "bounced" ? "bg-orange-50/50 dark:bg-orange-900/10 border-orange-200" :
                   isOutbound ? "bg-green-50/30 dark:bg-green-900/5" : "bg-blue-50/30 dark:bg-blue-900/5"
@@ -327,7 +327,7 @@ export default function EmailLogPage() {
                     {log.body ? (
                       <div className="mt-3">
                         <div className="text-xs text-muted-foreground mb-2 font-medium">{t("messagePreview")}:</div>
-                        <div className="border border-zinc-200 dark:border-zinc-700 rounded-md bg-card p-4 max-h-72 overflow-y-auto">
+                        <div className="border border-border rounded-md bg-card p-4 max-h-72 overflow-y-auto">
                           <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(log.body || "") }} className="text-sm prose prose-sm max-w-none" />
                         </div>
                       </div>

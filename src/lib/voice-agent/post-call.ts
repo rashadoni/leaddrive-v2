@@ -27,6 +27,10 @@ const voiceAgentConversationCallResultSchema = z.object({
   // transcript with it.
   agentMidUtterance: z.boolean().optional(),
   recoveryAttempts: z.number().int().min(0).max(100).optional(),
+  // The station ran this call on the demo's own script (sent by the core from
+  // voice-core-demo-max-seconds.patch, and only as `true`). Same deploy-order
+  // rule: accepted here before any core sends it.
+  demoPromptApplied: z.literal(true).optional(),
   // Raw dial evidence behind a failed outcome, exactly as the PBX coordinator
   // validated it: an uppercase Asterisk DIALSTATUS token and a Q.850 cause in
   // digits. Same deploy-order rule as above — these must parse here before any

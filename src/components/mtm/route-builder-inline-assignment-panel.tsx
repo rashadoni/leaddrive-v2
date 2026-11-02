@@ -5,8 +5,10 @@ import { useTranslations } from "next-intl"
 import { AlertTriangle, Check, Loader2, Search, UserPlus, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import type { MtmRouteCustomer } from "@/components/mtm/route-types"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Direction = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
 
@@ -176,17 +178,18 @@ export function RouteBuilderInlineAssignmentPanel({
             {t("inlineAssignmentDescription", { agent: targetAgentName || t("selectedEmployee") })}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="min-h-10 min-w-10"
-          onClick={() => onOpenChange(false)}
-          title={t("inlineAssignmentClose")}
-          aria-label={t("inlineAssignmentClose")}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <Hint text={t("hint.inlineClose")}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-10 gap-1.5"
+            onClick={() => onOpenChange(false)}
+            aria-label={t("inlineAssignmentClose")}
+          >
+            <X className="h-4 w-4" /><MtmWord word="close" />
+          </Button>
+        </Hint>
       </div>
 
       <div className="relative mt-2">
@@ -207,7 +210,7 @@ export function RouteBuilderInlineAssignmentPanel({
       </div>
 
       {confirming ? (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+        <div className="mt-3 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3">
           <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
             {t("inlineAssignmentTransferTitle", { name: confirming.name })}
           </p>
@@ -246,7 +249,7 @@ export function RouteBuilderInlineAssignmentPanel({
       ) : null}
 
       {items.length > 0 ? (
-        <div className="mt-2 divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-card dark:divide-zinc-700 dark:border-zinc-700">
+        <div className="mt-2 divide-y divide-border rounded-lg border border-border bg-card">
           {items.map((candidate) => {
             const identity = candidateIdentity(candidate)
             const transferring = takesOver(candidate)
@@ -268,17 +271,19 @@ export function RouteBuilderInlineAssignmentPanel({
                       : t("inlineAssignmentUnassigned")}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  data-testid="mtm-route-inline-assignment-add"
-                  variant={transferring ? "outline" : "default"}
-                  className="min-h-10 shrink-0"
-                  onClick={() => requestAssignment(candidate)}
-                  disabled={Boolean(assigningId)}
-                >
-                  {assigningId === identity ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : transferring ? <UserPlus className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                  {transferring ? t("inlineAssignmentTransferAction") : shared ? t("inlineAssignmentShareAction") : t("inlineAssignmentAddAction")}
-                </Button>
+                <Hint wrap text={assigningId ? null : t(transferring ? "hint.inlineTransfer" : shared ? "hint.inlineShare" : "hint.inlineAdd")}>
+                  <Button
+                    type="button"
+                    data-testid="mtm-route-inline-assignment-add"
+                    variant={transferring ? "outline" : "default"}
+                    className="min-h-10 shrink-0"
+                    onClick={() => requestAssignment(candidate)}
+                    disabled={Boolean(assigningId)}
+                  >
+                    {assigningId === identity ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : transferring ? <UserPlus className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                    {transferring ? t("inlineAssignmentTransferAction") : shared ? t("inlineAssignmentShareAction") : t("inlineAssignmentAddAction")}
+                  </Button>
+                </Hint>
               </div>
             )
           })}

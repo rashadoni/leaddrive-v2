@@ -6,6 +6,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 import { demoCallAgentReady } from "@/lib/demo-center/demo-call"
 import { normalizeDemoPhone } from "@/lib/demo-center/phone-verification"
+import { demoSocialMetaApp } from "@/lib/demo-center/demo-social-oauth"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const actor = await requireSuperAdmin(request)
@@ -32,6 +33,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (parsed.data.liveCallEnabled && !(await demoCallAgentReady())) {
     return NextResponse.json(
       { success: false, error: "Live calls are paused: the last answered demo call did not get the demo script" },
+      { status: 409 },
+    )
+  }
+
+  // The prospect's own Facebook Page needs the demo's Meta app on this server
+  // (DEMO_SOCIAL_META_APP_CONFIG_ID). Refused here too, so a crafted request
+  // cannot switch on a feature this server does not have.
+  if (parsed.data.liveSocialEnabled && !(await demoSocialMetaApp())) {
+    return NextResponse.json(
+      { success: false, error: "Facebook Page connections are not configured on this server" },
       { status: 409 },
     )
   }
@@ -67,6 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       inactivityMinutes: parsed.data.inactivityMinutes,
       locale: parsed.data.locale,
       liveCallEnabled: parsed.data.liveCallEnabled,
+      liveSocialEnabled: parsed.data.liveSocialEnabled,
     },
   }).catch((error: unknown) => {
     console.error("[demo-issue] issuing failed", { requestId }, error)

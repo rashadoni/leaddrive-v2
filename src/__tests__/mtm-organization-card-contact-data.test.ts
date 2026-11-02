@@ -135,6 +135,15 @@ function rowValue(label: string): string | null {
   return term?.nextElementSibling?.textContent ?? null
 }
 
+/** The card opens on its visits (2026-10-16); these tests read «Сведения». */
+async function openDetails() {
+  const trigger = [...container.querySelectorAll<HTMLElement>('[role="tab"]')].find((node) => node.textContent === "detail.tabs.details")
+  if (!trigger) throw new Error("no details tab")
+  await act(async () => {
+    trigger.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }))
+  })
+}
+
 function tabs(): string[] {
   return [...container.querySelectorAll('[role="tab"]')].map((node) => node.textContent ?? "")
 }
@@ -154,7 +163,9 @@ afterEach(async () => {
 
 describe("organization card, Details tab", () => {
   it("shows a hand-typed organization as contact data and nothing else", async () => {
-    const text = await renderCard({ organization: handTyped })
+    await renderCard({ organization: handTyped })
+    await openDetails()
+    const text = container.textContent ?? ""
 
     expect(text).toContain("detail.contactDetails")
     expect([...container.querySelectorAll("dt")].map((node) => node.textContent)).toEqual([
@@ -163,6 +174,7 @@ describe("organization card, Details tab", () => {
       "detail.address",
       "detail.locality",
       "detail.cityDistrict",
+      "detail.gps",
     ])
     expect(rowValue("detail.address")).toBe("Nizami küçəsi 1")
     expect(rowValue("detail.locality")).toBe("Bakı")
@@ -181,17 +193,18 @@ describe("organization card, Details tab", () => {
     await renderCard({
       organization: { ...handTyped, code: "A-17", phone: "+994501112233", contactPerson: "Leyla Əliyeva", notes: "Giriş həyətdən" },
     })
+    await openDetails()
 
     expect(rowValue("detail.contactPerson")).toBe("Leyla Əliyeva")
     expect(rowValue("detail.phone")).toBe("+994501112233")
     expect(container.querySelector('dd a[href="tel:+994501112233"]')).not.toBeNull()
     expect(rowValue("detail.notes")).toBe("Giriş həyətdən")
-    // The code a tenant did enter stays in the header strip.
+    // The code a tenant did enter stays in the header, as a badge.
     expect(container.textContent).toContain("A-17")
   })
 
   it("keeps master data, the coordinate receipt and shipments where an organization has them", async () => {
-    const text = await renderCard({
+    await renderCard({
       organization: {
         ...handTyped,
         code: "3799",
@@ -221,6 +234,8 @@ describe("organization card, Details tab", () => {
         decisionReason: null, verifiedAt: "2026-09-20T10:00:00.000Z",
       },
     })
+    await openDetails()
+    const text = container.textContent ?? ""
 
     expect(text).toContain("detail.additionalDetails")
     expect(rowValue("detail.specialization")).toBe("Kardiologiya")
@@ -239,15 +254,16 @@ describe("organization card, Details tab", () => {
 })
 
 describe("organization card, tab bar", () => {
-  it("offers details, contacts, visits and staff — and nothing else", async () => {
+  // Visits first, the card opens on them (owner, 2026-10-16, from a picture).
+  it("offers visits, contacts, details and staff — and nothing else", async () => {
     await renderCard({ organization: handTyped })
-    expect(tabs()).toEqual(["detail.tabs.details", "detail.tabs.contacts", "detail.tabs.visits", "detail.tabs.staff"])
+    expect(tabs()).toEqual(["detail.tabs.visits", "detail.tabs.contacts", "detail.tabs.details", "detail.tabs.staff"])
   })
 
   it("still drops contacts for a tenant that switched field contacts off", async () => {
     orgSwitches.fieldContacts = false
     const text = await renderCard({ organization: handTyped })
-    expect(tabs()).toEqual(["detail.tabs.details", "detail.tabs.visits", "detail.tabs.staff"])
+    expect(tabs()).toEqual(["detail.tabs.visits", "detail.tabs.details", "detail.tabs.staff"])
     expect(text).not.toContain("detail.contacts")
   })
 })

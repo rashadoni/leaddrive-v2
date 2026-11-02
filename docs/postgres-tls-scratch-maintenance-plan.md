@@ -193,6 +193,35 @@ that the source endpoint and all disabled recovery timers were unchanged.
 
 ## Explicit exclusions
 
+### Commissioning lifecycle (reviewed source, not activation evidence)
+
+The commissioning controller now contains a lifecycle for the existing fixed
+`16/leaddriverestore` cluster. It does not reprovision it or rewrite client
+configuration, credentials, certificates, or the canonical PostgreSQL service.
+Before any dump it holds the existing scratch-maintenance lock, admits only a
+cleanly stopped manually-started cluster with distinct source identity and
+canonical private storage, and refuses listeners, process/recovery markers,
+external tablespaces/storage aliases, auto-configuration, authentication drift,
+or a previous lifecycle unit.
+
+The per-run transient server runs as `postgres`, with only its own data/runtime
+directories writable, IPv4 loopback port55432, the separate scratch TLS chain,
+768MiB memory-high/1GiB memory-max, no swap, and a 14520-second server-side
+expiry. Client configuration is not inherited from the source. `verify-full`,
+the limited login attributes, no role memberships, distinct system identity,
+and absence of orphan verification databases must be proved before the dump.
+The database worker has its own runtime deadline too. The original restore
+canary and upload checks remain mandatory; starting a server is not a restore.
+
+After the database worker, and on a controller error, only the nonce/invocation-
+owned scratch unit is stopped. Clean same-cluster control state, no listener,
+and no postmaster PID are required before a completed candidate is admitted.
+Unproved shutdown retains the runner fence for inspection; no old database or
+cluster is automatically deleted. Actual controller loss is bounded by the
+server's own expiry. No timer is enabled. Native proof uses only fresh,
+synthetic, isolated hosted Ubuntu24/PostgreSQL16 clusters; it is not customer
+restore evidence or production activation.
+
 Merging the implementation does not itself provision the cluster. The `apply`
 dispatch remains a production/database change and requires the exact typed
 maintenance confirmation. Provisioning does not authorize backup commissioning,

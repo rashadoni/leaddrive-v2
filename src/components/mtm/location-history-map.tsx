@@ -2,8 +2,18 @@
 
 import "leaflet/dist/leaflet.css"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { CircleMarker, MapContainer, Polyline, Popup, useMap } from "react-leaflet"
-import { HISTORY_MAP_COLORS, splitHistoryPathAtGaps } from "@/lib/mtm/history-path"
+import { CircleMarker, MapContainer, Marker, Polyline, Popup, useMap } from "react-leaflet"
+import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { MTM_MOVEMENT_COLORS } from "@/lib/mtm/live-map-agent-marker"
+import {
+  historyReplayCuts,
+  historyReplayFrame,
+  modeRuns,
+  readHistoryMovement,
+  timeRoadTrack,
+  type TimedVertex,
+} from "@/lib/mtm/history-replay"
+import { MovementArrows, movementLineStyle, replayMarkerIcon } from "./movement-arrows"
 import L from "leaflet"
 import { useTranslations } from "next-intl"
 import { formatInTimezone } from "@/lib/timezone"
@@ -16,6 +26,9 @@ type Point = {
   accuracy: number | null
   battery: number | null
   recordedAt: string
+  /** km/h as stored, and the phone's course: how he was moving is read from them. */
+  speed?: number | null
+  heading?: number | null
 }
 
 type Stop = {
@@ -72,6 +85,8 @@ type Gap = {
   id: string
   startedAt: string
   endedAt: string
+  /** Why the phone was silent: only a lost signal is drawn — a break is the employee's own time. */
+  reason?: "TELEMETRY_GAP" | "WORKDAY_PAUSED"
   startLatitude: number
   startLongitude: number
   endLatitude: number
@@ -109,6 +124,7 @@ export default function LocationHistoryMap({
   locale,
   timezone,
   playbackIndex,
+  playbackAt: playbackAtInput = null,
   focus = null,
   matchedTrack = null,
 }: {
@@ -129,6 +145,12 @@ export default function LocationHistoryMap({
   locale: string
   timezone: string
   playbackIndex: number
+  /**
+   * The moment of the day the replay holds, in ms. Given, the employee is
+   * drawn where he was then — between two fixes too — and the line ends at
+   * him; absent, the moment is the fix at `playbackIndex`.
+   */
+  playbackAt?: number | null
   /** A leg picked in the day's trip: its stretch of track is drawn on top and framed. */
   focus?: Focus
   /** The track along the streets from the self-hosted OSRM, when it answered. */
@@ -137,9 +159,17 @@ export default function LocationHistoryMap({
   const t = useTranslations("mtmMap.history")
   const containerRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
-  const boundedPlaybackIndex = points.length ? Math.min(points.length - 1, Math.max(0, playbackIndex)) : 0
-  const visiblePointCount = points.length ? boundedPlaybackIndex + 1 : 0
-  const playbackPoint = points[boundedPlaybackIndex] ?? null
+  // How he was moving at each fix — car, on foot, standing — and which way,
+  // never joined across a break or a lost signal (src/lib/mtm/history-replay.ts).
+  const cuts = useMemo(() => historyReplayCuts(points, gaps), [gaps, points])
+  const reading = useMemo(() => readHistoryMovement(points, cuts), [cuts, points])
+  const fallbackIndex = points.length ? Math.min(points.length - 1, Math.max(0, playbackIndex)) : 0
+  const playbackAt = playbackAtInput ?? (points[fallbackIndex] ? Date.parse(points[fallbackIndex].recordedAt) : Number.POSITIVE_INFINITY)
+  const frame = useMemo(
+    () => historyReplayFrame(points, reading, cuts, playbackAt),
+    [cuts, playbackAt, points, reading],
+  )
+  const visiblePointCount = frame ? frame.index + 1 : 0
   const visiblePoints = useMemo(
     () => layers.actual ? points.slice(0, visiblePointCount) : [],
     [layers.actual, points, visiblePointCount],
@@ -148,21 +178,38 @@ export default function LocationHistoryMap({
     () => layers.actual ? points.map((point) => [point.latitude, point.longitude] as L.LatLngTuple) : [],
     [layers.actual, points],
   )
+  // The fixes as runs of the track, broken at every gap and break.
+  const fixRuns = useMemo(() => {
+    const runs: TimedVertex[][] = []
+    let run: TimedVertex[] = []
+    points.forEach((point, fixIndex) => {
+      run.push({ latitude: point.latitude, longitude: point.longitude, fixIndex })
+      if (cuts[fixIndex] || fixIndex === points.length - 1) {
+        if (run.length > 1) runs.push(run)
+        run = []
+      }
+    })
+    return runs
+  }, [cuts, points])
+  // Up to the moment the replay holds, in pieces of one way of moving each.
   const actualRuns = useMemo(
-    () => splitHistoryPathAtGaps(visiblePoints, gaps) as L.LatLngTuple[][],
-    [gaps, visiblePoints],
+    () => layers.actual ? fixRuns.flatMap((run) => modeRuns(run, reading.modes, frame)) : [],
+    [fixRuns, frame, layers.actual, reading.modes],
   )
-  // Owner 2026-09-27: the day along the streets. Only once the replay has
-  // shown the whole day — a road line cannot be cut at a moment of it —
-  // and with the straight fixes kept underneath, thin, for honesty.
+  // Owner 2026-09-27: the day along the streets, with the straight fixes kept
+  // underneath, thin, for honesty. Owner 2026-11-01: it stays while the day
+  // plays — each place of it belongs to a fix, so it is cut at the moment.
+  const timedRoad = useMemo(
+    () => matchedTrack ? timeRoadTrack(matchedTrack.segments, points) : [],
+    [matchedTrack, points],
+  )
   const roadRuns = useMemo(
-    () => layers.actual && layers.roads !== false && matchedTrack && visiblePointCount === points.length
-      ? matchedTrack.segments as L.LatLngTuple[][]
+    () => layers.actual && layers.roads !== false && matchedTrack
+      ? timedRoad.flatMap((segment) => modeRuns(segment, reading.modes, frame))
       : [],
-    [layers.actual, layers.roads, matchedTrack, points.length, visiblePointCount],
+    [frame, layers.actual, layers.roads, matchedTrack, reading.modes, timedRoad],
   )
-  const activePoint = visiblePoints.at(-1) ?? null
-  const playbackAt = playbackPoint ? new Date(playbackPoint.recordedAt).getTime() : Number.POSITIVE_INFINITY
+  const drawnRuns = roadRuns.length ? roadRuns : actualRuns
   const plannedPaths = useMemo(() => layers.planned
     ? plannedRoutes.map((route) => ({
         ...route,
@@ -189,14 +236,19 @@ export default function LocationHistoryMap({
         : null,
     ].filter(Boolean) as Array<{ key: string; label: string; latitude: number; longitude: number; at: string }>
   }, [t, workday])
-  const gapSegments = useMemo(() => layers.gaps ? gaps.map((gap) => ({
+  // The red dotted «no points — path unknown» line joins the two ends of a
+  // lost signal. A break is not one: drawn from where he paused to where he
+  // resumed it would mislabel his own time as a signal loss and still say
+  // which way he went. The track itself stays broken there (historyReplayCuts).
+  const signalGaps = useMemo(() => gaps.filter((gap) => gap.reason !== "WORKDAY_PAUSED"), [gaps])
+  const gapSegments = useMemo(() => layers.gaps ? signalGaps.map((gap) => ({
       id: gap.id,
       startedAt: gap.startedAt,
       coordinates: [
         [gap.startLatitude, gap.startLongitude],
         [gap.endLatitude, gap.endLongitude],
       ] as L.LatLngTuple[],
-    })).filter((gap) => new Date(gap.startedAt).getTime() <= playbackAt) : [], [gaps, layers.gaps, playbackAt])
+    })).filter((gap) => new Date(gap.startedAt).getTime() <= playbackAt) : [], [layers.gaps, playbackAt, signalGaps])
   const visibleStops = useMemo(
     () => layers.stops ? stops.filter((stop) => new Date(stop.startedAt).getTime() <= playbackAt) : [],
     [layers.stops, playbackAt, stops],
@@ -231,10 +283,10 @@ export default function LocationHistoryMap({
   const coordinates = useMemo(() => [
     ...fullActualPath,
     ...plannedPaths.flatMap((route) => route.coordinates),
-    ...(layers.gaps ? gaps.flatMap((gap) => [[gap.startLatitude, gap.startLongitude] as L.LatLngTuple, [gap.endLatitude, gap.endLongitude] as L.LatLngTuple]) : []),
+    ...(layers.gaps ? signalGaps.flatMap((gap) => [[gap.startLatitude, gap.startLongitude] as L.LatLngTuple, [gap.endLatitude, gap.endLongitude] as L.LatLngTuple]) : []),
     ...(layers.stops ? stops.map((stop) => [stop.latitude, stop.longitude] as L.LatLngTuple) : []),
     ...(layers.visits ? visitMarkers.map((visit) => [visit.latitude, visit.longitude] as L.LatLngTuple) : []),
-  ], [fullActualPath, gaps, layers.gaps, layers.stops, layers.visits, plannedPaths, stops, visitMarkers])
+  ], [fullActualPath, layers.gaps, layers.stops, layers.visits, plannedPaths, signalGaps, stops, visitMarkers])
 
   useEffect(() => {
     const element = containerRef.current
@@ -264,13 +316,14 @@ export default function LocationHistoryMap({
           <ResizeAndFit coordinates={focusFrame ?? coordinates} maxZoom={focusFrame ? 16 : undefined} />
           <CartoBasemap />
           {actualRuns.map((run, index) => (
-            <Polyline key={`actual-${index}`} positions={run} pathOptions={roadRuns.length
+            <Polyline key={`actual-${index}`} positions={run.path} pathOptions={roadRuns.length
               ? { color: HISTORY_MAP_COLORS.raw, weight: 2, opacity: 0.7, dashArray: "2 6" }
-              : { color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.78 }} />
+              : movementLineStyle(run.mode, 0.9)} />
           ))}
           {roadRuns.map((run, index) => (
-            <Polyline key={`road-${index}`} positions={run} pathOptions={{ color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.85 }} />
+            <Polyline key={`road-${index}`} positions={run.path} pathOptions={movementLineStyle(run.mode, 0.9)} />
           ))}
+          <MovementArrows keyPrefix="history" lines={drawnRuns} />
           {focusPath.length > 1 && (
             <Polyline positions={focusPath} pathOptions={{ color: HISTORY_MAP_COLORS.current, weight: 7, opacity: 0.95 }} />
           )}
@@ -296,15 +349,16 @@ export default function LocationHistoryMap({
             ) : null
           )}
           {layers.actual && visiblePoints.map((point, index) => {
-            const isActive = point.id === activePoint?.id
+            // Each fix in the colour of the way he was moving there: blue fixes
+            // all along a walk hid its green line at the scale of a whole day.
+            const mode = reading.modes[index] ?? "STAY"
+            const color = mode === "STAY" ? HISTORY_MAP_COLORS.raw : MTM_MOVEMENT_COLORS[mode]
             return (
             <CircleMarker
               key={point.id}
               center={[point.latitude, point.longitude]}
-              radius={isActive ? 8 : index === 0 ? 5 : 2}
-              pathOptions={isActive
-                ? { color: "#9a3412", fillColor: HISTORY_MAP_COLORS.current, fillOpacity: 0.95, weight: 3 }
-                : { color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.75, weight: 1 }}
+              radius={index === 0 ? 5 : 2}
+              pathOptions={{ color, fillColor: color, fillOpacity: 0.75, weight: 1 }}
             >
               <Popup>
                 <div className="space-y-1 text-xs">
@@ -362,6 +416,16 @@ export default function LocationHistoryMap({
               <Popup><strong>{marker.label}</strong><div>{formatMoment(marker.at)}</div></Popup>
             </CircleMarker>
           ))}
+          {/* The employee at the moment the replay holds: how he is moving, and which way. */}
+          {layers.actual && frame ? (
+            <Marker
+              position={[frame.latitude, frame.longitude]}
+              icon={replayMarkerIcon(frame.mode, frame.heading, HISTORY_MAP_COLORS.current)}
+              interactive={false}
+              keyboard={false}
+              zIndexOffset={1000}
+            />
+          ) : null}
         </MapContainer>
       )}
     </div>

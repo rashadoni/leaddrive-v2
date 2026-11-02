@@ -126,7 +126,7 @@
   decision/revocation `createdAt` from `clock_timestamp()` into naive
   `TIMESTAMP(3)`. The four-guard migration above left it out, so on production
   (session `TimeZone=Europe/Berlin`) these were Berlin wall clock, 1–2 h ahead.
-- Additive migration `20261014030000_mtm_attendance_installation_utc_guard_clock`
+- Additive migration `20261120090000_mtm_attendance_installation_utc_guard_clock`
   sets `timezone = 'UTC'` on that function only, same shape as
   `20261014010000`. Body unchanged; no retained row rewritten, so an old future
   request predecessor keeps its chain ahead until real UTC catches up.

@@ -39,6 +39,7 @@ import { navItems, NAV_GROUP_ORDER } from "@/lib/nav-items"
 // the group catalog narrowed ModuleId, but this map deliberately keeps the
 // legacy vocabulary; see the moduleToSection comment below).
 export const ENTITY_TO_MODULE: Record<string, string> = {
+  booking: "bookings",
   task:           "tasks",
   deal:           "deals",       // → sales group (LEGACY_MODULE_MAP deals→sales)
   lead:           "leads",       // → sales group (LEGACY_MODULE_MAP leads→sales)
@@ -61,10 +62,13 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   // «Клиент здесь»: an agent asks for a customer's pin to be moved — for whoever may decide it.
   // The literal is MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY (src/lib/mtm/customer-location-request-notification.ts).
   mtm_location_request: "mtm",
+  // «Yeni həkim»: an agent asks for a new doctor (MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY).
+  mtm_contact_create_request: "mtm",
   mtm_attendance_request: "mtm",
   mtm_attendance_risk: "mtm",
   mtm_attendance_reminder: "mtm",
   mtm_attendance_installation: "mtm",
+  mtm_attendance_public_calendar: "mtm",
   survey:         "campaigns",   // Survey response — gated by campaigns module (Marketing group)
   loyalty:        "loyalty",     // Loyalty tier/redeem — gated by loyalty module (Loyalty Program group)
   // Phase 2d — Industry Cloud emitters (one notable gated kind per vertical)
@@ -150,6 +154,8 @@ export interface NotificationKind {
  */
 export const NOTIFICATION_KINDS: NotificationKind[] = (
   [
+    { kind: "booking.created", entityType: "booking" },
+    { kind: "booking.cancelled", entityType: "booking" },
     { kind: "task.created",     entityType: "task" },
     { kind: "task.completed",   entityType: "task" },
     { kind: "deal.created",     entityType: "deal" },
@@ -189,10 +195,13 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     // «Клиент здесь»: an agent asks, from the spot, for a customer's pin to be moved.
     // On unless switched off — see KINDS_ON_UNLESS_SWITCHED_OFF in prefs.ts.
     { kind: "mtm.locationRequest.submitted", entityType: "mtm_location_request" },
+    // «Yeni həkim»: an agent asks for a new doctor; on unless switched off, like the pin request.
+    { kind: "mtm.contactCreateRequest.submitted", entityType: "mtm_contact_create_request" },
     { kind: "mtm.attendanceRequest.submitted", entityType: "mtm_attendance_request" },
     { kind: "mtm.attendanceInstallation.requested", entityType: "mtm_attendance_installation" },
     { kind: "mtm.attendanceRisk.detected", entityType: "mtm_attendance_risk" },
     { kind: "mtm.attendanceReminder.detected", entityType: "mtm_attendance_reminder" },
+    { kind: "mtm.attendancePublicCalendar.found", entityType: "mtm_attendance_public_calendar" },
     // Phase 2c — Marketing: survey response (gated by campaigns module)
     { kind: "survey.response",     entityType: "survey" },
     // Phase 2c — Loyalty Program: notable low-volume loyalty events only (NOT per-earn spam)

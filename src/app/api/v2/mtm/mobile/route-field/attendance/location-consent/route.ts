@@ -6,11 +6,11 @@ import { readOwnAttendanceLocation, recordOwnAttendanceLocationConsent } from "@
 export const GET = withMobileRls(async (_req,auth) => {
   try { return attendanceRequestResponse(await readOwnAttendanceLocation({organizationId:auth.orgId,agentId:auth.agentId,role:auth.role})) }
   catch (error) { return attendanceRequestFailure(error) }
-},{requiredCapability:"route-field"})
+},{requiredCapability:"personnel"})
 export const POST = withMobileRls(async (req,auth) => {
   try {
     const body = await readJsonRequestWithinLimit(req,4096)
     if (!body.ok) throw new AttendanceRequestError("MTM_ATTENDANCE_LOCATION_CONSENT_INVALID",body.reason==="too_large"?413:400)
     return attendanceRequestResponse(await recordOwnAttendanceLocationConsent({organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},body.value))
   } catch (error) { return attendanceRequestFailure(error) }
-},{requiredCapability:"route-field"})
+},{requiredCapability:"personnel"})

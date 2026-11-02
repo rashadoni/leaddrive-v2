@@ -1,0 +1,1086 @@
+# Kafka recovery readiness — append-only session log
+
+## 2026-10-19 (Asia/Baku): scope and baseline
+
+- User requests bounded A3 backup/recovery preparation; coordinator is chat
+  «Проверить защиту Kafka-консюмера». No merge/deploy, production restore,
+  PostgreSQL/timer/Kafka/offset/replay changes, purchases or private key requests.
+- Read AGENTS.md, ran codex-project-context, fetched origin/main. Canonical dirty
+  checkout preserved. Dedicated clean worktree and codex/kafka-recovery-readiness
+  start at 226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+- Origin: https://github.com/rashadoni/leaddrive-v2.git. Registry and deployment
+  docs agree on 13.140.132.245:/opt/leaddrive-v2; delivery GitHub Actions only.
+  AGENTS.md's Hetzner sentence is superseded by this current routing contract.
+- Reviewed backup, restore canary, offline verifier, readiness reporter, runbook,
+  ISMS-04 and Kafka backlog. Files/configuration are not execution receipts.
+- Existing read-only backup-readiness workflow dispatched on exact main:
+  https://github.com/rashadoni/leaddrive-v2/actions/runs/39163236284
+  Initial state waiting; no fresh verdict inferred.
+- Resource preflight: available RAM 15186 MiB, swap used 0, disk available 205G,
+  memory pressure avg10/60/300 zero. Only small sequential checks permitted.
+
+## 2026-10-19: bounded preparation and verification
+
+- Added A3_RECOVERY_READINESS.md: evidence levels, controls, independent Farah
+  acceptance packet, explicit PENDING and DR limitations. Linked fresh status
+  in Kafka backlog. No changes to operational helpers or pinned digests needed.
+- Read-only workflow completed failure at 2026-10-18T20:26Z (00:26 Baku):
+  machine_ready=no, enterprise_ga_ready=no, issues=24, enterprise_gaps=9.
+  Encryption explicitly off; live unit drift, missing runtime timer, other
+  timers disabled/inactive; stale/uncompleted runs, swap fences absent;
+  missing/unsafe evidence/genesis; Object Lock unknown_failure, not a proven
+  policy/credential cause. Pinned tools/passfile checks passed. Restore NOT RUN.
+- PASS sequentially: pgpass-contract 29 tests; object-lock-diagnostic 12 tests;
+  event-platform assets (27 domains/86 topics/5 schemas); bash -n on backup,
+  restore canary, offline verifier and readiness reporter; git diff --check.
+- NOT RUN: actual libpq integration (test skipped by its CI-only disposable DB
+  opt-in); full build/typecheck/browser suites (docs-only scope; heavy checks
+  prohibited on Contabo); backup/decrypt/restore/PITR/full-authority/host-loss
+  drills (outside authorized operations; keys/operator evidence unavailable).
+- Identified historical docs conflicts: ISMS-04 three-timer/certification
+  activation and runbook GitHub reviewer stop condition. Current deployment
+  contract and four-timer activation ceremony apply; no reviewer gate restored.
+- Remaining blocker: recovery commissioning prerequisites and successful
+  independent exact-version restore + Farah decision. Next coordinator action:
+  review this packet, scope prerequisite remediation and authorize isolated drill.
+
+## 2026-10-19: review checkpoint
+
+- Preparation checkpoint 4d176604d published on codex/kafka-recovery-readiness.
+- Draft PR: https://github.com/rashadoni/leaddrive-v2/pull/892 (attached to chat).
+- Current result: bounded preparation complete; A3 recovery remains NO-GO.
+  Last action: created draft PR; no merge/deploy. Stopping at reviewable docs
+  and fresh read-only diagnostic. Next: originating coordinator reviews gaps
+  and arranges separately authorized isolated recovery with Farah acceptance.
+
+## 2026-10-19: autonomous completion audit
+
+- User requests autonomous progression through all remaining steps. Existing
+  explicit no-merge/no-deploy/no-production-mutation/no-restore limits remain.
+- Resumed recorded worktree and branch; codex-project-context confirms origin,
+  production target and GitHub Actions route unchanged. Clean worktree.
+- Fetched origin/main; reviewed PR892 at head8f30f041b: OPEN/DRAFT, no reviews
+  or comments requiring action. pr-scope, runner-policy and scan SUCCESS.
+  static-checks, typecheck and hosted production build SKIPPED by CI; do not
+  report them as passed. PR checks run39163393178, runner39163393125,
+  scan39163393216. This records that exact checked head, not later journal SHA.
+- Bounded preparation and all accessible verification are complete. No further
+  production action is authorized. Remaining commissioning prerequisites and
+  actual independent restore/Farah confirmation are external operational gates,
+  not tasks Codex can close by editing a status field. No messages sent on
+  Farah's behalf and no approval requested or manufactured.
+- Stopping point: draft PR ready for originating coordinator; next action is
+  coordinator review and separately scoped prerequisite remediation/drill.
+
+## 2026-10-19: autonomous follow-through and executable documentation repair
+
+- User reiterates autonomous completion. Previous stopping point omitted direct
+  remediation of documented instruction conflicts; resumed that bounded work.
+- Confirmed root/branch/origin/production route using codex-project-context.
+  Final prior checkpoint56abd74 CI: pr-scope/runner-policy/scan PASS;
+  static/typecheck/build SKIPPED, no review comments.
+- Corrected BACKUP_RUNBOOK required-reviewer setup/stop instructions to current
+  main-only environment policy without weakening independent signed recovery.
+  Removed unverified provider attribution in its failure-domain summary.
+- Replaced obsolete ISMS-04 current action sequence with v2 bootstrap -> v3
+  full/log-genesis drill -> certification -> separately authorized normal-deploy
+  four-timer activation -> fresh-run readiness. Historical evidence retained;
+  old bootstrap drill explicitly scoped as historical rather than full proof.
+- Resource preflight: available14931MiB, swap0, disk204G, memory pressure0.
+  Repeated affected event-platform assets check PASS and diff whitespace PASS.
+- Reviewed backup-pgpass-contract CI: no manual dispatch, paths exclude docs,
+  job excludes draft PR. Do not change workflow/PR readiness just to force an
+  unrelated integration run; real libpq remains explicitly NOT RUN here.
+- Actual production prerequisites and independent Farah acceptance remain open;
+  no production mutation, restore, merge or deploy performed.
+
+- Follow-through checkpoint421c603bc published; A3 checklist updated to mark
+  the identified runbook contradictions as corrected in this PR. Remaining
+  stopping boundary is operational authorization/independent human evidence,
+  not another unimplemented documentation step.
+
+## 2026-10-19: final autonomous validation
+
+- Exact head44ede6ba4c28c7057d99e1883d0ca96ab49eb5e1 CI complete:
+  pr-scope PASS (39163993978), runner-policy PASS (39163993983), scan PASS
+  (39163993986); static-checks/typecheck/production build SKIPPED by docs policy.
+- Updated draft PR892 description with final documentation repair scope via
+  REST after gh pr edit encountered a deprecated Projects Classic API error.
+- All authorized bounded preparation finished. Current result: corrected
+  operational instructions + acceptance packet + fresh read-only NO-GO.
+  Last action: verify final content checkpoint CI and update PR.
+  Stop: no remaining software/doc prerequisite identified in this scope;
+  operational commissioning/real restore and Farah decision still blocked by
+  original explicit limits and independent evidence requirement.
+  Next: originating coordinator scopes/authorizes operational prerequisites;
+  no production mutation, restore, merge/deploy or messages to Farah occurred.
+
+## 2026-10-19: expanded commissioning authorization and prerequisite audit
+
+- User explicitly supersedes earlier no-commissioning/no-merge/no-deploy limits:
+  permits reviewed GitHub Actions commissioning, age encryption, units/timers,
+  encrypted copies and restore ONLY into isolated scratch. Still forbids
+  production restore/data deletion, Kafka/offset/replay changes, new spending,
+  private-key transfer and substituting Farah confirmation. Coordinate overall
+  delivery with originating chat «Проверить защиту Kafka-консюмера».
+- Resumed b7d397f4a in dedicated worktree; root/origin/branch resolved correctly;
+  fetched main226dde0e77c0c36a4de991bb703ba8f8416c5a64. Production target remains
+  registry13.140.132.245:/opt/leaddrive-v2; Actions-only delivery.
+- Read current AGENTS.md, DELIVERY-ARCHITECTURE, commissioning workflow and
+  activation/fencing implementation. Existing durable timer rollback journal
+  fences all runners; activation verifies signed custody and Object Lock before
+  atomically changing encryption, commits with all timers disabled. Timers
+  activate only after certificates and normal reviewed deploy. Do not bypass.
+- Exact external blocker verified by GitHub secret NAMES ONLY:
+  BACKUP_OFFLINE_ALLOWED_SIGNERS absent from both repository and production
+  environment secret lists. Four monitoring URL secret names exist; their
+  values were neither read nor printed. No signed custody bundle supplied.
+- activate-backup-encryption requires TWO_READABLE_OFFLINE_COPIES_AND_INDEPENDENT_
+  DECRYPT_CONFIRMED plus existing verifier-generated signed bundle/operator/time,
+  exact recipient digest and trusted public signer allowlist. Codex cannot
+  truthfully assert these inputs or retrieve private keys. Consequently bootstrap
+  creation/certification/full backup/offline drill/activation depend on missing
+  external evidence, regardless of expanded operational authorization.
+- Tools already passed exact pinned age/AWS validation in latest diagnostic;
+  no gratuitous reinstall or retention extension performed. Unit replacement
+  and timer activation cannot be detached from certificate-backed deployment.
+  Object Lock unknown_failure remains unresolved, not relabelled as success.
+- Coordinator chat located/read (01a05e9c-4a3e-7f22-aeb7-53735f885366), active on
+  PR891 with code gates under repair. No send_message_to_thread tool available.
+  Use explicit PR892 coordination comment; leave main merge/deploy to common
+  release sequence rather than racing coordinator. Every main push triggers
+  deploy.yml, even docs-only, so uncoordinated docs merge is not harmless.
+- All independent technical preparation complete; ready PR is reviewable.
+  Production mutations and real backup/restore NOT RUN because signed custody
+  prerequisite cannot be met. Actual private key custody/decrypt must remain
+  with independent operator; request only public allowlist and PII-free signed
+  evidence, never private material.
+
+## 2026-10-19: user-authorized new age key candidate
+
+- User explicitly requests creation of a new key because prior custody is not
+  remembered. Created one NEW candidate on administrative development host,
+  outside repository/production/Actions; existing recipient not replaced.
+- Used age/age-keygen1.3.2 from release archive with pinned SHA256 verified.
+  Candidate directory0700/private identity0600; private bytes never printed,
+  committed, sent to GitHub or production. Local random encrypt/decrypt PASS.
+- Public recipient SHA256(no newline):
+  b6a074dd5a7a7ea0c0b71e7c120fe07e85603444d2e598cd0949dd8ae5926241.
+- Existing old archives NOT TESTED; new candidate cannot decrypt ciphertext
+  for a different old key. Forgetting custody does not prove old key lost.
+- This is a single online administrative candidate, NOT two offline copies,
+  independent custody/signature or Farah evidence. No synthetic evidence made.
+  Signing key for another person not generated; production encryption/timers
+  unchanged. Precise private recovery paths intentionally omitted from Git.
+- Next: owner/independent custodian securely places candidate on two physically
+  separate offline media, proves their readability with existing verifier and
+  supplies only public signer allowlist + signed PII-free evidence. Production
+  rotation requires reviewed Actions route and retained old-recipient history.
+
+## 2026-10-19: owner keeps administrative copy, no second USB available
+
+- User screenshots show successful SCP to Mac and `cmp` output “Копии
+  совпадают” comparing Mac file with first external LeadDrive Recovery volume.
+  This is screenshot evidence of byte equality, not independent decrypt drill,
+  physical-media custody signature, filesystem permissions or Farah acceptance.
+- User has no second external medium and explicitly requests keeping second
+  copy here and continuing. Existing candidate retained on administrative
+  Contabo host, outside repository. lstat verifies regular identity0600 and
+  directory0700 owned by current account. No secret bytes output/transmitted.
+- Do not generate another unrelated key or duplicate same-host file merely
+  to count copies. Mac, first external medium and administrative host copies
+  exist by creation/screenshot evidence; TWO_PHYSICALLY_SEPARATE_OFFLINE_MEDIA
+  requirement remains unmet. User request to retain online copy is recorded
+  accurately, not converted to a false signed offline attestation.
+- Safe existing production SSH alias attempted for public-recipient comparison
+  and marker existence only; authentication rejected (publickey). No remote
+  script executed and no host state changed. Actions inspection route remains
+  the verified fallback; do not infer that all production access is unavailable.
+- Main unchanged226dde0e7, own PR892 OPEN. Existing production public recipient
+  has NOT been compared to new candidate; key rotation must not be guessed.
+- External signer/custody bundle absent; no second-person identity invented,
+  no gate weakening, no unreviewed production recipient edit. Offline storage
+  gap does not prevent retaining candidate or continuing documentation/checks,
+  but currently prevents encrypted commissioning through existing workflow.
+
+## 2026-10-19: continued independent checks and coordinator synchronization
+
+- Resumed recorded branch/ac94f9228; clean worktree; origin/main unchanged
+  226dde0e77c0c36a4de991bb703ba8f8416c5a64. Route remains GitHub Actions only.
+- Exact published ac94f9228 PR892 checks finished: pr-scope35s PASS
+  (39166735144), runner-policy20s PASS (39166735182), scan23s PASS
+  (39166735154). static-checks/typecheck/build SKIPPED by docs-only policy.
+- Current public /api/v1/ping returned {ok:true}; build-info artifactSha equals
+  exact main226dde0e77c0c36a4de991bb703ba8f8416c5a64. No new release inferred.
+- Read originating chat progress: coordinator actively executes full CDC proof
+  and repairs own code gates; common merge/deploy sequence remains theirs.
+  Public PR coordination update records new candidate/Mac/USB evidence so
+  owner is not used as message bus. No messages to Farah.
+- No arbitrary code/test/workflow changes introduced to simulate progress.
+  Independent preparation/verification exhausted; actual custody certification
+  cannot use online server copy as a false offline attestation. A3 OPEN.
+- Journal-only checkpoint kept local per coordinator's request to avoid CI
+  reruns solely for journal entries. PR content unchanged; ready for their
+  common release. Next operational step requires truthful independent custody
+  evidence or an explicitly reviewed change to recovery policy; current user
+  request to retain online copy is not itself such a policy change.
+
+## 2026-10-19: alternative requested, Farah participation declined
+
+- User explicitly declines involving Farah and requests alternative. Do not
+  keep asking to recruit her; original Farah-participation plan superseded.
+- Inspected existing independent operator checks and private/plaintext boundary.
+  No permitted owner-mode admission currently exists; different owner account
+  or Codex-generated signer is not independent evidence.
+- Prepared inactive A3_OWNER_OPERATED_RECOVERY_PROPOSAL.md: one-owner technical
+  encrypted/scratch drill on Mac, honest separate evidence/status, no assertion
+  of two offline copies, and no false independent readiness. Requires a reviewed
+  policy/schema/verifier/admission implementation before production use. Existing
+  independent and Kafka/enterprise gates stay unchanged. No services purchased.
+- Scope here is a concrete alternative proposal, not authorization to silently
+  weaken existing live gates. Production remains unchanged. Proposed outcome
+  distinguishes actual technical restoration from independent certification.
+- Local checkpoint only, avoiding CI churn pending common coordinator delivery.
+
+## 2026-10-19: owner-mode implementation authorized
+
+- User says “начинай” in response to concrete owner-operated proposal; treat
+  separate owner-mode policy/implementation as approved. Farah participation
+  no longer required for this separate technical mode; independent readiness
+  and Kafka/enterprise admission are NOT granted by owner mode.
+- Plan: distinct signed key-readability receipt; explicit one-shot owner backup
+  candidate with unchanged canonical production recipient/env and no schedules;
+  shared data/scratch verifier with separate receipt scope/signature namespace;
+  exact-main Actions route and negative cross-mode tests. Existing independent
+  commissioning remains intact; owner receipts cannot activate its timers.
+- Do not enable canonical age policy before owner evidence/candidate readiness;
+  use explicit per-invocation recipient only for owner candidate, always age
+  encryption/Object Lock. No plaintext upload, no old-key overwrite, no log
+  cursor bootstrap/reseed. Actual owner technical recovery remains unproved
+  until real encrypted snapshots are restored and receipts checked.
+
+## 2026-10-19: owner technical route implementation checkpoint
+
+- Added explicit owner-key-readability proof with real fresh age canary,
+  separate owner SSH namespace/trust allowlist, exact actor/main/helper/recipient
+  bindings, strict bounded schema/freshness and no-clobber output. It makes
+  no offline/independence claims. Private keys remain outside repo/production.
+- Added dispatch-only exact-main owner Actions route for one-shot encrypted
+  DB/secrets/runtime candidate and owner restore receipt. Separate scope/root,
+  same-actor owner admission, preserved signer/key proof, immutable remote
+  version/COMPLIANCE checks; source env/recipient/schedules never changed.
+  Existing commissioned hosts or enabled/active timers are refused. No log
+  genesis, cursor, independent marker or enterprise/Kafka admission.
+- Shared backup helpers accept explicit owner-recipient argument only after CLI
+  validation; readonly selector cannot be inherited from env. Monthly retention
+  forced for DB/media; helpers still encrypt and verify uploads/canary normally.
+- Shared offline verifier adds explicit owner data-only invocation and distinct
+  signed receipt. All decrypt/checksum/scratch/tenant/migration/RLS/PII/runtime
+  proofs preserved. Standard/full invocation cannot accept owner candidates.
+- Updated actual helper hash pins in commission/readiness/server-deploy/TLS
+  helper; existing event-platform assets confirms consistency. Independent
+  verification remains default and retains separate signature/receipt rules.
+- Added bounded Linux CI owner crypto checks and included boundary tests in
+  protected PR/deploy tests. PR892 made draft while scope changes from docs to
+  code. No heavy checks run on Contabo.
+- Resource preflight14654MiB available/swap0/disk203G/pressure0. Sequential PASS:
+  9 owner tests including REAL age1.3.2/SSH crypto plus real archive-signature
+  admission/cross-mode failures; 29 pgpass contract tests; 28 TLS helper unit
+  tests; event-platform assets; runner-policy73 workflows; all changed helper
+  and embedded workflow Bash syntax; YAML parse and git diff --check.
+- NOT RUN locally: full typecheck/build/DB integration (Contabo workload rule);
+  actual production owner backup/decrypt/restore (new route not yet reviewed on
+  main, current Object Lock unknown_failure remains an unresolved live gate).
+- Runbook documents source operation, Linux scratch requirements, proof
+  packaging/certification, rollback/no-schedule boundary and honest statuses.
+  Public GitHub actor resolved as rashadoni; no impersonation needed.
+
+## 2026-10-19: CI findings and boundary hardening
+
+- Exact52fc1cd79 GitHub owner-proof39168045137 PASS including real pinned age;
+  pgpass-contract39168045102 PASS including real libpq fixture; tenant cascade
+  PostgreSQL integration39168016701 PASS. Full static/typecheck still running.
+- scan39168016708 found4 generic-api-key matches, all verified public helper
+  checksums: new secrets snapshot digest at3 existing pin sites and owner-key
+  verifier digest at1 pin site. No private key material in tracked files.
+- Used exact pinned gitleaks8.30.1, SHA verified, redacted report (only rule/path/
+  line/commit inspected). Added exact checksum+path/line allowlists, retaining
+  historical checksum for commit-history scan. No rule, path family or check
+  disabled. Full branch-history scan PASS with corrected config. Synthetic
+  randomized non-allowlisted high-entropy value in the same protected file is
+  still rejected (negative control PASS). First plain-word canary was ignored
+  by default detector, so it was NOT treated as a passing negative control.
+- Hardened common archive verifier against mixed owner claims in independent
+  receipt. Actual SSH/tar admission test now verifies unchanged independent
+  certificate positive path as well as owner/cross-mode negatives. All9 owner
+  tests rerun with real age: PASS, no skip. Assets/diff check PASS.
+- Owner restore evidence now records start time and elapsed seconds for the
+  actual verifier invocation; this is restore duration, not full incident RTO
+  or measured source RPO. Updated exact archive-verifier pins accordingly.
+
+## 2026-10-19: owner public trust preparation (private material excluded)
+
+- Created/retained a separate owner Ed25519 signing key in private administrative
+  storage outside repo, mode0600, parent0700. It is explicitly owner-operated,
+  NOT Farah/independent identity. No private signing/age key transferred to
+  GitHub or production and no private content printed.
+- Confirmed authenticated GitHub actor rashadoni. Registered only the strict
+  public owner signer line in new production environment setting
+  BACKUP_OWNER_ALLOWED_SIGNERS; checked it did not already exist before writing.
+  BACKUP_OFFLINE_ALLOWED_SIGNERS unchanged. Public signer fingerprint SHA256:
+  e643a16551a89c6457787acd65d3e369c85ea45a60696b0b9ce26c36eaca2807.
+- No actual commissioning key receipt signed with a feature SHA masquerading as
+  reviewed main. Generate fresh actual proof only once owner route is reviewed
+  on exact main. The real production recipient is still unchanged.
+- No configured Mac/restore-worker SSH route exists in this host's alias list.
+  Private real-data restore cannot run on Actions/production and heavy restore
+  is forbidden on editing Contabo. Isolated owner workstation remains an actual
+  execution prerequisite, not a certificate obtained by changing a field.
+- Fresh existing Actions backup-readiness inspection dispatched on current main
+  before production operation planning; await actual result, do not assume old
+  Object Lock unknown_failure has resolved. No new diagnostic code/secret dump.
+
+## 2026-10-19: continue interrupted-run safety and isolated workstation preparation
+
+- Resumed exact dedicated worktree/branch; codex-project-context and fetched
+  origin/main still resolve reviewed main 226dde0e77c0c36a4de991bb703ba8f8416c5a64,
+  rashadoni/leaddrive-v2, registered 13.140.132.245:/opt/leaddrive-v2,
+  GitHub Actions release only. Dirty canonical checkout untouched.
+- Fresh read-only Actions run39168344222 completed: machine_ready=no,
+  enterprise_ga_ready=no,24issues/9gaps. Object Lock remains unconfirmed with
+  service_error_format_unrecognized. This is not evidence of unlocked storage,
+  invalid credentials or provider outage; production backup remains NOT RUN.
+- User screenshots show Mac owner signing public key created, age1.3.1,
+  PostgreSQL16.13, Docker installed but Colima daemon unavailable. Mac/USB age
+  key equality was previously observed; second external medium unavailable and
+  not required for the separately limited owner route. No independence claim.
+- Fixed interrupted owner producer fence journal operation admission. Added
+  executable synthetic recovery test covering accepted owner/original operation
+  and refusal of unknown operation. Existing asset assertion updated to match.
+- Found actual offline verifier staging omitted required migration-ledger.sql.
+  Added reviewed SQL digest validation, private copy/sync and staged byte check;
+  updated archive-verifier pins. This prevents a guaranteed missing-file failure
+  during an actual restore; it does not certify one has occurred.
+- Added disposable Linux owner workbench for Mac ARM64/amd64: pinned PG16.13
+  multi-platform image and age1.3.2 archives, networkless admission, tmpfs scratch
+  and PGDATA, NOSUPERUSER CREATEDB scratch role, local private-key staging and
+  evidence-only export. No application or production DB connection. CI builds
+  and runs synthetic isolation self-test on hosted Linux only.
+- Resources checked before narrow sequential tests: available RAM ~14GB,
+  swap0used, disk202GB, memory pressure negligible.11owner tests with real
+  synthetic age/SSH crypto PASS/no skips; assets27domains86topics5schemas PASS;
+  shell syntax, workflow YAML parse and runner policy73workflows PASS.
+- Container build/self-test NOT RUN on Contabo by workload policy; awaits CI.
+  Real production backup and scratch restore NOT RUN; Object Lock diagnostic,
+  reviewed main delivery, Mac VM capacity/custody and fresh signed local key
+  receipt remain prerequisites. Farah confirmation NOT PROVIDED.
+
+## 2026-10-19: final-head workstation CI evidence
+
+- Published code checkpoint6bec17958a3ec703e9d371545f079478fd25d5fa to dedicated
+  branch; no main merge/deploy. Coordinator update recorded on PR892 comment
+  6255606119; original source session remains active with PR891 in draft.
+- Exact-head hosted Linux owner run39169761572 PASS:11synthetic owner tests,
+  pinned image build and actual networkless tmpfs PostgreSQL/role+age self-test.
+  Secret scan39169761552 PASS; runner-policy39169761600 PASS;
+  pgpass-contract39169761603 PASS; tenant integration39169761588 PASS.
+- Main required pr-scope/static-checks/typecheck run39169761577 still pending
+  at observation; no skipped heavy job is claimed as passed. ARM64 runtime
+  NOT RUN (hosted test amd64); real restore NOT RUN (no successful production
+  candidate, Object Lock blocker and unavailable Mac VM execution route).
+- Asked only for non-secret Mac RAM/disk/Colima-version results while independent
+  CI continues. No request for private keys/passwords, no direct production
+  mutation, no weakening Object Lock or independent Farah gates.
+
+## 2026-10-19: Mac resource response
+
+- Owner supplied non-secret physical Mac resources:17179869184bytes RAM(16GiB),
+  data volume42GiB free. Colima version was not included. These support bounded
+  VM preparation, not yet proof of sufficient actual archive/PGDATA capacity.
+- Requested owner execute only separate leaddrive-recovery Colima profile
+  preparation(2CPU/4GiB/20GiB) and Docker OS/architecture observation, because
+  no callable Mac execution route exists. Existing default profile untouched.
+  No real keys, archives, production data or signing receipt involved yet.
+
+## 2026-10-19: noexec scratch compatibility correction before delivery
+
+- Continued review found offline verifier directly executed its private staged
+  canary script although new workbench deliberately mounts plaintext scratch
+  noexec. Changed the reviewed invocation to Bash interpretation, retaining
+  noexec isolation and exact staged helper hashes; refreshed archive pins.
+- Added executable regression using actual dispatch expression and a mode0600
+  staged helper; added container self-test probe on its actual noexec mount.
+ 12owner tests with real synthetic crypto PASS, assets PASS, shell syntax PASS.
+- Owner first VM invocation failed on pasted trailing comma in disk value20;
+  no VM success claimed. Supplied standalone corrected command blocks.
+- Coordinator explicitly requests no main/merge/deploy while PR891 final
+  source2936f4c2f checks run. Acknowledged in PR892 comment6255711594. This
+  correctness fix supersedes frozen A3 source6bec17958 before reconciliation;
+  repeat exact-head gates required, old green results cannot certify new SHA.
+
+## 2026-10-19: actual Mac isolated VM started
+
+- Owner screenshot confirms separate leaddrive-recovery Colima profile reached
+  done and explicit Docker context reports linux/aarch64. This supersedes VM
+  unavailable state; production restore and workbench ARM64 test still NOT RUN.
+- Prepared minimal exact430c7b9f9 source archive outside Git from explicit public
+  code paths only; supplied SCP+SHA256 verification+bounded image build/self-test
+  block for owner Mac. No keys, backups or production settings in bundle.
+- New exact-head hosted run39170797003 PASS, including12synthetic owner tests,
+  rebuilt workbench and actual noexec scratch interpretation probe. Exact-head
+  scan39170797015, runner39170796972, pgpass39170797011 and tenant integration
+  39170796990 PASS. Protected main checks39170796977 remain in progress.
+
+## 2026-10-19: actual Mac ARM64 workbench self-test passed
+
+- Owner screenshot of exact supplied430c7b9f9 bundle shows native ARM64 image
+  built successfully and final networkless ephemeral PostgreSQL, interpreted
+  scratch helper and pinned age:passed. ARM64 workbench self-test now PASS,
+  superseding earlier NOT RUN; this remains synthetic, not production restore.
+- Supplied bounded networkless 128MiB local Mac canary command for actual copied
+  age identity, matching previously recorded public recipient digest, with
+  random64byte round trip and private diagnostics confined to tmpfs. No signed
+  commissioning receipt is generated before reviewed main, no real data used.
+- Requested transfer only Mac owner-evidence.pub to administrative temporary
+  path so unused developer signer can be replaced with exact Mac public trust;
+  no private signing/age key transfer requested.
+
+## 2026-10-19: actual Mac identity canary and owner public trust
+
+- Owner screenshot confirms Mac key canary:passed for actual copied age identity
+  after matching recipient digest and random64byte encrypt/decrypt/compare in
+  networkless tmpfs container. This is real key-readability, not archive restore.
+- Received only owner-evidence.pub(121bytes), validated owned regular non-symlink
+  bounded file, SSH Ed25519 binary structure and ssh-keygen fingerprint:
+  SHA256:A6gGAR9C4HX/2BlJ9JnX6NBwO+Imaby5ASBEhdi9zRk.
+- Confirmed GitHub actor rashadoni and replaced unused public owner trust setting
+  BACKUP_OWNER_ALLOWED_SIGNERS with exact Mac public signer. Metadata update
+  confirmed2026-10-18T22:12:41Z. This supersedes earlier developer public signer;
+  old developer key remains retained/unused outside Git for continuity/rollback.
+  No independent signer setting changed and no private key moved/printed.
+- No fresh commissioning proof signed against unreviewed feature SHA. Actual
+  source operation still waits reviewed main and verified Object Lock; final
+  protected checks39170796977 still executing. Coordinator release hold intact.
+
+## 2026-10-19: final available independent preparation acceptance and stopping point
+
+- Exact published code430c7b9f92ca2776316238c3f09db41920e49c6b now passes all
+  required contexts:pr-scope/static-checks/typecheck run39170796977,
+  runner-policy39170796972, scan39170797015. Static18m7s and type13m45s
+  completed SUCCESS; old/cancelled/skipped results not substituted. Production
+  application build was scope-skipped, NOT RUN, no app build claim.
+- Additional exact-head PASS:owner-proof39170797003(12real synthetic age/SSH
+  admission/fence/staging tests and actual pinned networkless scratch PG self-test),
+  pgpass39170797011, tenant PostgreSQL39170796990. Actual owner Mac ARM64
+  workbench self-test and actual copied age-key random canary PASS as observed.
+- Fetched main still226dde0e77c0c36a4de991bb703ba8f8416c5a64. PR892 is clean
+  and ready; final actual acceptance sent to coordinator in comment6255932181.
+  Coordinator explicitly holds main during PR891 acceptance and will reconcile
+  A3 after A1/A2 delivery. No parallel merge, deploy or production mutation.
+- Remaining blocker:latest existing read-only storage inspection cannot confirm
+  Object Lock(service_error_format_unrecognized). Do not infer an underlying
+  provider/credential cause or bypass immutable-storage admission. No successful
+  real production candidate exists for this ceremony.
+- NOT RUN:production encrypted backup, real-data scratch restore, signed actual
+  commissioning/restore receipt, timer activation, PITR and independent Farah
+  acceptance. Local key canary/file presence/code tests do not substitute.
+- Status:available independent technical preparation and exact-source checks
+  complete; A3 remains OPEN/NO-GO. Last completed action:all final code gates
+  verified and exact source passed to common coordinator. Precise stopping
+  point:before reviewed-main commissioning/storage admission and any real
+  backup/restore operation. Next action:after coordinator releases/reconciles
+  A3, re-resolve exact main and safely diagnose Object Lock through approved
+  read-only Actions; only after verified storage produce fresh main-bound Mac
+  key proof, create encrypted candidate and perform real isolated Mac restore.
+- All private material retained outside Git; only Mac public signer registered.
+  Local journal-only checkpoints intentionally not pushed to churn completed CI.
+  Dirty canonical checkout and unrelated worktrees remain untouched.
+
+## 2026-10-19 (Asia/Baku): autonomous continuation and bounded storage diagnostic fix
+
+- Resumed saved stopping point in same worktree/branch. Re-ran project context,
+  read current instructions, fetched main:still226dde0e77c0c36a4de991bb703ba8f8416c5a64.
+  PR891 remains open awaiting final full CDC; coordinator main/release hold intact.
+- Dispatched existing exact-main read-only backup-readiness run39172424961;
+  completed FAILURE. No producer, restore, timer, DB or Kafka action dispatched.
+- Independent investigation found a real format incompatibility: official
+  botocore ClientError.MSG_TEMPLATE/_get_retry_info accepts an optional
+  '(reached max retries: N)' suffix before the error colon. Current strict
+  diagnostic parser rejected that valid format. Primary reference:
+  https://github.com/boto/botocore/blob/develop/botocore/exceptions.py
+- Added bounded optional decimal0..999 retry suffix for exact
+  GetObjectLockConfiguration error prefix only. This maps service failures to
+  existing sanitized enums; it never turns a failed CLI response into verified,
+  outputs raw error contents, or bypasses Object Lock readiness. Whether this
+  explains actual production format is still unproven until reviewed main probe.
+- Resources before targeted sequential check:13.5GB RAM available,198GB disk,
+  memory pressure some0.16/full0.10; swap1GB used. No heavy check on Contabo.
+ 13diagnostic tests PASS, including bounded suffix, bad/multiline/oversized
+  variants, failed-success-looking output, actual timeouts and quiet fail-closed
+  report handler. Existing assets PASS; Bash syntax/diff check PASS.
+- This follow-up supersedes earlier frozen A3 code acceptance for final delivery;
+  exact-head gates must rerun. Earlier430c acceptance remains historical evidence.
+
+- Follow-up published source0cc5e87ba1462af9fffaaf8315ae68fa938fc3c7:
+  owner39172571943,tenant39172571894,runner39172571994,scan39172572053,
+  pgpass39172571929 all SUCCESS. Protected static/type39172572032 pending.
+  PR description updated so prior430c acceptance is not mistaken for current.
+  Coordinator PR891 now awaits only active final full-cdc-fund; no merge yet.
+
+## 2026-10-19 (Asia/Baku): reconcile A3 with delivered common source
+
+- Common PR891 merged4212600260f5ed28b9c2b73e28c363a0fc7d39f3; its deploy
+ 39173487040 is in progress. A3 does not start a parallel merge/deploy.
+- Fetched current main and used merge-tree preview:only conflict is concurrent
+  append-only additions to KAFKA_IMPLEMENTATION_BACKLOG.md. Merged main into
+  this dedicated feature branch, retained BOTH A3 and common A1/A2/A5 entries,
+  removed only Git conflict markers. No discarded history or replaced sections.
+- Workflow auto-merges preserve both backup diagnostic/owner checks and current
+  common delivery guards. This is source reconciliation, not production action.
+- Resources before sequential targeted integration checks:14.3GB RAM available,
+  memory pressure0.00 current; swap2.5GB used. No heavy local checks.
+ 13diagnostic tests PASS; assets27domains/86topics/5schemas PASS; runner
+  policy74workflows PASS;12owner tests with real synthetic crypto PASS;
+  shell/diff checks PASS. Full exact merged-source verification goes to GitHub.
+- Prior follow-up checks0cc5e87ba are superseded for final acceptance because
+  the source now includes current main. No stale source acceptance substituted.
+
+- Merged-source e7f6e44ae6da8c3cac7b18188596a8c1b30644db narrow CI PASS:
+  owner39173688242,pgpass39173688265,tenant39173688241,scan39173688257,
+  runner39173688250. Protected static/type39173688248 remain in progress.
+  Mac-tested workbench/owner key verifier files are byte-identical to430c,
+  verified with path-scoped git diff; no key/VM re-creation needed.
+
+## 2026-10-19 (Asia/Baku): integrated A3 exact-source acceptance
+
+- Integrated sourcee7f6e44ae6da8c3cac7b18188596a8c1b30644db now passes all five
+  required contexts:pr-scope/static-checks/typecheck39173688248,
+  runner39173688250,scan39173688257. Additional owner39173688242,
+  pgpass39173688265,tenant39173688241 PASS. No stale/cancelled/skipped result
+  substituted. Application build skipped by PR scope; no A3 release build yet.
+- Common main421260026 deployment39173487040 quality and artifact build PASS;
+  actual atomic deployment/post-smoke still in progress. Pending-deployments
+  API returned[]; earlier queue had no runner assigned, then deployment started.
+  No approval bypass, concurrency change or direct production operation.
+- Reserved/requested next A3 slot via coordinator comment6256216834 and sent
+  final exact-source readiness in PR892. Holding A3 merge while root production
+  change is active. Owner route does not replace independent Farah acceptance.
+- Reconfirmed source backup helpers enforce real tmpfs/private capacity before
+  plaintext staging; no unsafe workspace fallback introduced by owner selector.
+
+## 2026-10-19 (Asia/Baku): common release verified, A3 slot pending
+
+- Common deploy39173487040 completed SUCCESS for main421260026.
+- Initial separate public urllib GET returned HTTP403 before either semantic
+  smoke assertion. A subsequent shell line incorrectly posted a premature
+  independent-smoke claim to PR comment6256412114 despite that failure.
+  Corrected that comment immediately and visibly acknowledged the mistake.
+  No failed check was retained as PASS and no underlying403cause was guessed.
+- Retried existing public curl route:HTTP200 for both ping and build-info.
+  Parsed bodies in a separate successful check:ok=true and artifactSha exactly
+  4212600260f5ed28b9c2b73e28c363a0fc7d39f3. These actual observations supersede
+  the premature claim; failed urllib attempt remains historical evidence here.
+- A3 sourcee7f6e44ae all required contexts PASS. Requested coordinator release
+  of reserved next slot after confirmed common delivery; no parallel main merge
+  or deploy, production backup/restore still NOT RUN. Await ownership/slot
+  coordination before code delivery. No further user authorization requested.
+
+## 2026-10-19 (Asia/Baku): concurrent main updates and concrete B2 dependency
+
+- Current main advanced independently via Support PR895(99ce1ae3c) and
+  PR896(4f00c46216a2b02d669fcf1b36545ea70772ee3d). Their releases
+ 39174243373/39174654109 are active/queued. A3 did not race any main mutation.
+- Root clarified status:DEPLOY JOB117816465335 SUCCESS with independent public
+ 421smoke, but WHOLE workflow39173487040 remains queued for retained-artifact
+  housekeeping117818371043. Supersedes earlier journal wording that whole run
+  completed SUCCESS. Corrected PR6256412114; actual curl421 smoke still valid.
+- Read-only discovered related B2 PR899, branch
+  claude/leaddrive-backblaze-b2-backups-426412. PR903 merged only into that
+  feature branch, not main. Its three endpoint guards overlap A3 commission,
+  readiness/server-deploy; existing main still has old-provider predicate.
+- B2 source docs report no actual B2 backup, Object Lock disabled and production
+  backup.env/commissioning NOT RUN. Prior synthetic restore-write denial had
+  empty code and was NOT proof; PR903 requires explicit AccessDenied and a live
+  retest remains pending. These are branch/document evidence, not live bucket
+  assertions by this session. No private credentials read/requested and no
+  storage/billing/lock mutation by A3. No new expense authorized.
+- Coordinated dependencies/one commissioning owner in PR899 comment6256444960
+  and PR892 comments6256445099/6256454515. Root acknowledges approved separate
+  owner route and holds main/runtime while current release/readiness slot clears;
+  no duplicate root readiness dispatch, no Mac key/VM recreation.
+- Reconciled current4f00c4621 into feature branch without conflicts; workflow
+  auto-merge retains both delivery and A3 checks. This follows root instruction
+  to reconcile new main, not permission to mutate production.
+- Resources before sequential targeted checks:15.2GB available RAM, pressure
+ 0.00, swap3.7GB used.13diagnostic tests,12real synthetic owner tests, assets,
+ 74-workflow runner policy, shell syntax and diff checks PASS in merged tree.
+  Updated exact-source heavy gates belong only to GitHub; older e7 checks are
+  historical and cannot substitute for this newly integrated source acceptance.
+
+- Read-only git merge-tree preview of current A3 with B2 feature headb86e26dd:
+  the three shared backup executable scripts auto-merge. Only pr-checks.yml and
+  BACKUP_RUNBOOK.md conflict. Future authorized integration must retain both
+  owner/diagnostic and B2 endpoint/explicit-denial tests and both runbook entries.
+  No working-tree/branch mutation, no actual B2 merge, no tests claimed on the
+  preview tree. Reported bounded reconciliation plan to coordinator in PR892.
+
+## 2026-10-19 (Asia/Baku): prove actual CI integration instead of main-chasing
+
+- Main advanced again via unrelated Support PR902 to6912a0ac30570c7ec458f0af1b5b3127078855d0.
+  Its diff after4f touches only Support transcript/tests/handlers, no backup or
+  workflow files. Did not blindly merge/push/restart a third integration cycle.
+- Existing PR checks use default actions/checkout merge ref. Retrieved actual
+  completed pr-scope job117819957555 logs:checked-out HEAD is
+  2a5e07fe1c49b92057b06d6626440b681a17e928, merging A3cb8 into CURRENT6912.
+  Fetched refs/pull/892/merge and independently verified both parent hashes.
+- Run39176431730 API still reports historical base4f in pull_requests metadata;
+  that field is not proof of actual checkout. Actual logs/tree parents provide
+  the useful integration evidence. Static/type use same workflow SHA/default
+  checkout; their exact log/acceptance will be verified when completed.
+- No new source change, unnecessary CI duplicate or main mutation. Current
+  cb8 source remains frozen; root release/readiness hold and B2 dependency apply.
+
+## 2026-10-19 (Asia/Baku): close tmpfs swap gap before any real restore
+
+- Independent scratch review found Docker tmpfs may be written to swap. Existing
+  memory-only self-test/key canary does NOT prove swap prevention. Official refs:
+  https://docs.docker.com/engine/storage/tmpfs/
+  https://docs.docker.com/engine/containers/resource_constraints/#--memory-swap-details
+- Workbench now refuses all private-key/plaintext operations unless actual
+  cgroup-v2 memory.swap.max is exactly0, checked before private input. Requires
+  --memory-swap equal to positive --memory; flag0 means unset and is not accepted
+  as a substitute. Missing/symlink/nonzero/unlimited metadata fails closed.
+- Updated bounded CI/workstation examples to equal memory/swap limits and added
+  real Docker negative check with explicit swap allowance. Container build,
+  positive/no-swap and negative/swap-enabled checks run only on hosted Linux,
+  NOT on editing Contabo. This is necessary new isolation verification, not
+  repetitive retesting of unchanged code.
+-13owner tests including actual guard fixtures PASS with real synthetic crypto;
+  assets,74workflow runner policy,shell/diff PASS. Resources checked first:
+ 14.7GB available RAM, pressure0.00,swap3.6GBused. No host swap/service change.
+- Container/guest swap guard does not certify Mac hypervisor/host disk custody.
+  Requested only non-secret fdesetup status before future real-data processing;
+  no private key/password requested. FileVault and new ARM64 guard validation
+  NOT RUN/pending; prior Mac canary remains readability proof only.
+- This security correction supersedes prior frozen cb8 code acceptance; exact
+  source CI must rerun. Main/production/B2 branch unchanged; root hold applies.
+
+## 2026-10-19 (Asia/Baku): actual no-swap workbench CI evidence
+
+- Published security follow-up9cfccedaf48ac238ff8be24edc2a1ef20def6602.
+  Hosted owner39177466420 SUCCESS:13owner crypto/boundary/guard tests,
+  rebuilt image, actual no-swap PostgreSQL self-test and explicit swap-enabled
+  Docker refusal. Current scan39177466417,runner39177466464,
+  tenant39177466407,pgpass39177466448 PASS. Static/type39177466404 pending.
+- New minimal public code bundle prepared outside Git for eventual owner Mac
+  replay; no keys/backups/settings included. Mac guard/FileVault still pending;
+  no actual data or signed commissioning proof produced.
+- Main advanced via unrelated demo PR905 to9cd84838dc83a5349f06d3bb86fa480b459029fe.
+  Actual pr-scope checkout117823251967 logs prove this run tests merge
+  10b3e6c0cd69875753ffc7fe275f7cf4ca8bf00e. Fetched pull merge and verified
+  parents=current9cd84838d + source9cfccedaf. No needless source main-chasing.
+  Static/type exact checkout/results will be checked on completion.
+- B2 PR899 remains OPEN/unmerged. No storage credentials, billing, Object Lock,
+  production config, timers, source PostgreSQL or Kafka mutation by A3.
+
+- Current9cf typecheck117823353416 completed SUCCESS. Retrieved its actual
+  checkout log, confirming same10b3e6c0 tested merge (current9cd + source9cf),
+  not only trusting stale API base metadata. Final static gate remains running;
+  no all-required acceptance claimed yet. No code changes after swap guard.
+
+- Coordinator explicit update23:56:32Z acknowledges current9cf/no-swap proof
+  and holds A3 main/runtime commissioning until shared audit slot is resolved.
+  New root PR909 addresses read-only main/live admission with independently
+  successful live-release receipt, exact unchanged inspector and same production
+  lock. A3 does not duplicate root audit, mutate that PR or request owner relay.
+  Prior421 and99 whole release workflows are now reported full SUCCESS by root;
+  earlier housekeeping-pending observations remain time-specific history.
+- Acknowledged hold and current typecheckout proof in PR892. Pending FileVault/
+  new ARM64 guard result, B2 live permissions/Object Lock/configuration and
+  reviewed-main delivery remain actual prerequisites before customer-data work.
+
+## 2026-10-19 (Asia/Baku): final current-source acceptance and explicit external hold
+
+- Source9cfccedaf48ac238ff8be24edc2a1ef20def6602 now passes ALL five required
+  gates:pr-scope/static/type39177466404,runner39177466464,scan39177466417.
+  Static completed28m31s; type13m38s. Actual completed static117823353336 and
+  type117823353416 checkout logs both show10b3e6c0cd69875753ffc7fe275f7cf4ca8bf00e,
+  whose verified parents are main9cd84838d and source9cf. No old/skipped source
+  acceptance substituted. PR application build scope-SKIPPED, NOT RUN.
+- Additional PASS:owner39177466420 with13real synthetic crypto/boundary/swap
+  tests, pinned image build, actual no-swap PG self-test and explicit swap-enabled
+  Docker refusal; pgpass39177466448;tenant39177466407.13diagnostic tests PASS.
+- Final exact-source readiness sent to coordinator PR892 comment6256920527.
+  Source frozen; no further implementation change is planned while held.
+- Prepared public /tmp/leaddrive-a3-mac-preflight-9cf.sh, syntax PASS only. It
+  refuses non-ARM64-Mac/foreign Docker endpoint, reports FileVault, verifies the
+  public bundle SHA, builds reviewed test image and runs synthetic no-swap
+  positive/explicit-swap negative. Reads no owner keys or real archives, creates
+  no production connection. Supplied safe one-command SCP+local Bash route.
+  Actual Mac run/FileVault/new ARM64 swap proof remain PENDING/NOT RUN here.
+- Remaining external conditions are concrete:coordinator explicitly HOLDS A3
+  main/runtime commissioning until PR909 shared audit slot clears; separate B2
+  PR899/live permission/Object Lock/production configuration needs one owner and
+  accepted evidence; physical Mac new preflight/main-bound signing/real scratch
+  execution is not remotely callable from this session. No private key transfer
+  requested as a workaround, no extra authorization/owner-relay request.
+- NOT RUN by A3:main merge/deploy, real production encrypted backup, actual
+  customer-data scratch restore, signed actual source/restore receipt, PITR,
+  timer activation, source PostgreSQL/Kafka/offset/replay changes. Independent
+  Farah/two-offline-media/enterprise readiness remain unmet, never substituted.
+- Status:all available independent code preparation/current-source checks
+  complete; A3 overall OPEN/NO-GO. Last completed action:verified final static
+  checkout/required gates and delivered exact-source readiness to coordinator.
+  Precise stopping point:before coordinated reviewed-main code delivery and live
+  storage admission, before any real backup or restore. Next action:after root
+  audit/B2 slot clearance, reconcile approved main, verify live storage and Mac
+  preflight, generate fresh main-bound owner key proof, then one encrypted
+  candidate and isolated Mac restore. No generic permission needed to resume.
+- Dirty canonical checkout and unrelated branches/worktrees preserved. Journal
+  remains append-only in local checkpoint commits; journal-only pushes avoided
+  so completed acceptance is not churned. User can continue from this exact cwd.
+
+## 2026-10-19T06:48Z — resume, B2 main reconciliation and Mac guidance
+
+- Resumed recorded worktree/branch; codex-project-context confirms Contabo dev,
+  rashadoni/leaddrive-v2 and GitHub Actions main route. Canonical dirty checkout
+  preserved. Production remains13.140.132.245:/opt/leaddrive-v2.
+- User did not know how to run the requested read-only FileVault status command.
+  Explained opening the same Mac Terminal, pasting `fdesetup status`, pressing
+  Enter and returning only the status text. No password/private key requested.
+  FileVault and current ARM64 no-swap replay remain NOT RUN/pending.
+- Supersedes earlier unmerged-B2 dependency: PR899 merged2026-10-19T06:42:26Z;
+  current fetched main2a410941dfe6acbb4513d275c2a44bab117d7831. This is source
+  delivery, not successful runtime commissioning, key ACL acceptance or restore.
+  Its normal deployment39211464440 was still in progress when inspected.
+- Merged current main into A3 source without rewriting checkpoints. Resolved
+  exactly two conflicts: keep both owner and B2/explicit AccessDenied tests in
+  pr-checks.yml; retain B2 runbook introduction and all owner recovery sections.
+  Main application/demo/schema changes are inherited unchanged from main.
+  B2 endpoint predicates in commission/readiness/server-deploy auto-merge with
+  A3 verifier pins and owner boundary. No B2 secret/config/provider action.
+- Before narrow checks: RAM available11GiB, disk194GiB free, memory pressure
+  avg10/60/300=0; swap3.3GiB occupied. No install/build/container restore on dev.
+  PASS in reconciled tree:23 Object Lock/endpoint/explicit-denial tests;
+  13 owner tests including real pinned-age crypto and actual boundary fixtures;
+  Bash syntax of shared scripts/B2 verifier; event-platform assets; runner
+  policy74 workflows; git diff --check. Full required gates will run on GitHub;
+  previous9cf acceptance is historical, not acceptance of this reconciliation.
+- Read existing shared inspection39211544570 (not dispatched by A3): exact
+  main2a410941d, created06:43:19Z, FAILED; machine_ready=no,
+  enterprise_ga_ready=no,issues25,enterprise_gaps9. Object Lock diagnostic still
+  service_error_format_unrecognized; no inference of underlying failure cause.
+  Timers/readiness incomplete, successful backup/restore not evidenced.
+- Coordinator PR909 remains OPEN; last explicit coordinator hold still applies:
+  no A3 main merge/delivery or runtime commissioning until shared audit slot
+  release. Read latest original-chat updates; it is verifying its own gates.
+  A3 continues authorized source reconciliation/CI without duplicate live probe.
+- NOT RUN: production encrypted candidate, real Mac archive restore, signed
+  main-bound key/restore receipts, A3 main merge/deploy, activation of timers,
+  source PostgreSQL or Kafka/offset/replay mutation. No costs, private-key
+  transfer or substitution for Farah; owner-operated proof stays limited.
+- Full merge-index diff-check against the old A3 parent reports six trailing
+  blank lines in inherited main demo tests; these files equal origin/main and
+  are outside A3 scope. They are preserved, not silently cleaned. Task-owned
+  comparison against current origin/main is the relevant whitespace check.
+
+### 2026-10-19T06:57Z — published reconciliation; external gates remain pending
+
+- Checkpoint b80d14dc13ffb0d58e1b6d691abaeb5b5b8d7534 pushed to existing PR892,
+  now mergeable. Ready status restored after finished reconciliation. Published
+  coordinator update625? superseded by exact comment6261434559 (URL below):
+  https://github.com/rashadoni/leaddrive-v2/pull/892#issuecomment-6261434559
+  No A3 main merge/deploy/runtime action.
+- Current-source PR checks39212058570: pr-scope PASS, static/type still RUNNING
+  (Generate Prisma client at last snapshot), application build scope-SKIPPED.
+  Actual pr-scope checkout117927435565 proves merge79ac2493 of main2a410941d
+  and sourceb80d14dc1. Runner39212058600/scan39212058649/tenant39212058670 PASS.
+  Additional owner39212058548 and pgpass39212058617 are draft-event SKIPPED;
+  do not call them current-source passes. Current-tree13 owner tests including
+  pinned-age integration PASS locally; earlier9cf hosted Docker proof remains
+  historical. No heavy local retry or unnecessary workflow/source edit.
+- Read original coordinator chat status: idle; its latest turn failed with
+  "Selected model is at capacity. Please try a different model." Last explicit
+  audit-slot hold has not been released. PR909 remains OPEN. Posted coordination
+  on PR892 rather than asking owner to relay technical messages. Available
+  tools have no send/resume-thread capability. No conflicting delivery assumed.
+- Mac FileVault status is still unknown; user was given one simple read-only
+  Terminal command and no further prerequisite questionnaire. Actual new ARM64
+  no-swap replay and main-bound signing cannot be executed remotely here.
+- Precise stop: source reconciled/published; waiting for current GitHub gates,
+  shared delivery-slot release and real storage/Mac admission evidence. Next:
+  inspect completed gates, use the FileVault result when supplied, coordinate
+  one storage owner, then reviewed-main delivery and fresh owner proof before
+  any encrypted candidate or isolated real-data restore. NOT RUN: those runtime
+  operations, timers, source DB/Kafka changes; Farah/enterprise gates stay NO-GO.
+- Clarification: the exact coordination comment id is6261434559; the
+  incidental partial label in the preceding entry is not another comment.
+
+## 2026-10-19T07:25Z — current A3 source acceptance complete
+
+- User requested autonomous continuation. Resumed exact recorded worktree,
+  preserved dirty canonical checkout and unrelated work. Context/root/branch/
+  origin/registered production/GitHub Actions route reconciled again.
+- Current mainfbfae39618a0b29c24c8255fe6d7538003f5f50a advances only demo files
+  after B2 main2a410941d. No overlap with A3; no unnecessary source/main chase.
+  AGENTS/deployment/registry/delivery contract unchanged across that advance.
+- Sourceb80d14dc13ffb0d58e1b6d691abaeb5b5b8d7534 ALL FIVE required gates PASS:
+  PR checks39212058570 completed07:18:16Z (scope/static/type), runner39212058600,
+  scan39212058649. Actual completed static117927592638/type117927592984 logs
+  show tested merge79ac2493 of main2a410941d plus sourceb80. No prior SHA or
+  skipped status substituted for the required current-code checks.
+- Current-source additional tenant39212058670 PASS. Owner39212058548 and
+  pgpass39212058617 remain draft-event SKIPPED; app build scope-SKIPPED/NOT RUN
+  for A3. Earlier narrow current-tree23 diagnostic/B2/ACL and13 owner tests
+  including actual pinned-age crypto PASS, as recorded above.
+- Verified no byte difference between9cf and current source for the workbench
+  Dockerfile/entrypoint, offline verifier, owner key helper and owner tests.
+  Earlier hosted Docker39177466420 remains historical component proof, not a
+  newly executed Docker or physical ARM64 test. No expensive retry on Contabo.
+- B2 release39211464440 on2a is now whole-workflow SUCCESS. Independently fetched
+  public ping and build-info with curl, parsed only after successful HTTP:
+  ping ok=true,artifactSha exact2a410941dfe6acbb4513d275c2a44bab117d7831.
+  Latest unrelated mainfb deployment39212226626 was still in atomic deployment
+  at07:24Z; shared read-only39214985498 remained pending. No A3 probe duplicated.
+- Re-read existing39211544570: endpoint does NOT match B2 region; canonical
+  encryption explicitly OFF; Object Lock service_error_format_unrecognized.
+  Thus B2 source merge/release is not runtime configuration or storage proof.
+  Existing independent custody, actual restore and fresh-success timers absent.
+- Rewrote PR892 body around final current implementation/evidence/dependencies,
+  removing stale descriptions of unmerged B2/conflicts or queued2a release.
+  Coordinator acceptance update:
+  https://github.com/rashadoni/leaddrive-v2/pull/892#issuecomment-6261905263
+- Original coordinator remains idle following model-capacity failure, PR909
+  OPEN. No release of its explicit shared-audit/main/runtime hold found. A3
+  readiness delivered through PR; no request for user technical-message relay.
+- FileVault/current physical ARM64 no-swap proof remains unknown/NOT RUN;
+  earlier simple Terminal guidance stands. No Mac execution route exists here.
+  No new key/VM created, private key read/transferred, provider/cost policy
+  changed, canonical encryption enabled, timer activated, or PostgreSQL/Kafka/
+  offset/replay mutation performed. Farah has not confirmed anything.
+- All currently available independent A3 technical preparation/checks complete.
+  Overall A3 remains OPEN/NO-GO: real encrypted candidate, exact-version private
+  restore and signed technical receipt NOT RUN. Stop is before main delivery
+  and storage/Mac admission, not at an arbitrary implementation step. Next:
+  consume shared fresh report after current release, resolve one coordinated
+  commissioning slot/configuration owner, obtain physical Mac guard evidence,
+  then reviewed-main-bound owner proof and one encrypted candidate/scratch drill.
+
+## 2026-10-19T07:33Z — actual Mac guard evidence and fresh released-host report
+
+- User answered "готово" and supplied actual Mac Terminal screenshot. Observed:
+  FileVault is Off; public source.tar.gz checksum OK; native recovery-context
+  pinned workbench build completed; networkless ephemeral PostgreSQL,
+  interpreted helper and pinned age PASS; "Mac swap guard positive+negative:
+  passed"; "No real backup, restore or key operation performed". These close
+  pending synthetic ARM64/no-swap checks, not a real archive restore receipt.
+  No extra Mac keys/VMs or signed evidence were manufactured from a screenshot.
+- FileVault OFF is recorded as a custody limitation. Assessed official Apple
+  documentation rather than inferring plaintext storage from that status:
+  Apple-silicon internal volumes remain hardware encrypted without FileVault,
+  but lack its user-password-bound volume-key protection; APFS VM volume stores
+  encrypted swap files. This is platform documentation, not a live host forensic
+  audit or a claim that FileVault is on. The actual container's tmpfs/network/
+  cgroup no-swap checks passed; real plaintext must remain within bounded
+  ephemeral mounts, with no host plaintext export/suspend/snapshot claim.
+  No new blanket FileVault-enablement approval requirement is invented.
+  Sources checked:
+  https://support.apple.com/guide/security/volume-encryption-with-filevault-sec4c6dc1b6e/web
+  https://support.apple.com/guide/security/role-of-apple-file-system-seca6147599e/web
+- Supersedes earlier pending release/report snapshots: mainfbfae3961 normal
+  release39212226626 whole-workflow SUCCESS at07:25:10Z. Existing shared safe
+  inspection39214985498 completed FAILURE at07:25:46Z on exactfbfae3961.
+  Independently curl fetched HTTP-success ping/build-info and asserted
+  ping ok=true/artifactSha exactfbfae39618a0b29c24c8255fe6d7538003f5f50a.
+- Fresh report remains machine_ready=no,enterprise_ga_ready=no,issues25,gaps9:
+  canonical S3 endpoint does not match B2 region; encryption explicitly off;
+  live units mismatch, disabled/inactive timers, runtime unit/tmpfs absent;
+  Object Lock service_error_format_unrecognized. Source/production release
+  success is not backup commissioning or a successful backup/restore.
+  Underlying service error still unknown; A3 classifier fix not deployed.
+- PR892 description refreshed with actual Mac/safe-inspection evidence.
+  Coordinator update:
+  https://github.com/rashadoni/leaddrive-v2/pull/892#issuecomment-6262053326
+  No new hold release or storage commissioning owner found; original coordinator
+  idle/model-capacity failure and PR909 OPEN are unchanged.
+- Current published code b80d14dc1 all five required gates PASS;36 narrow current
+  tests PASS as above. No duplicate production probe, merge, deployment or
+  producer attempted by A3. Local journal-only checkpoint retained without CI
+  churn. Canonical dirty checkout and other tasks preserved.
+- Remaining concrete external blockers: shared audit/delivery slot must clear;
+  live B2 writer/config/COMPLIANCE/explicit ACL evidence must be commissioned by
+  one owner (actual B2 credentials are only on owner Mac, not available here).
+  Physical Mac synthetic isolation prerequisite now has evidence. No key
+  contents requested as a workaround. Farah/independent/two-offline/GA unmet.
+- NOT RUN: A3 main merge/deploy, real encrypted production backup, exact-version
+  real-data scratch restore, fresh main-bound key/restore signed receipt,
+  timer activation, PITR, production PostgreSQL/Kafka/offset/replay changes.
+  Status: independent preparation verified; overall A3 OPEN/NO-GO. Last completed:
+  accepted Mac synthetic proof, inspected fresh shared report and sent coordinator
+  actual evidence. Precise stop: before reviewed-main A3 delivery/storage
+  admission and any real producer/restore. Next: coordinated slot/config/Lock
+  admission, then fresh reviewed-main owner proof, encrypted candidate and
+  isolated actual restore with measured result; no new generic permission.
+
+## 2026-10-19 — owner FileVault/B2 live evidence and bounded failure diagnosis
+
+- New owner Terminal screenshot supersedes prior FileVault OFF observation:
+  latest fdesetup status reports FileVault ON. Owner changed host setting;
+  this agent did not enable FileVault or request its recovery key.
+- Owner ran exact main2a410941d repaired b2-verify-backup-keys.sh with local
+  writer/restore.env. Actual output: multipart upload PASS, HEAD metadata/size/
+  version PASS, restore download byte-identical PASS; writer delete/list and
+  restore delete explicitly AccessDenied PASS; restore upload unknown FAIL;
+  result1 failure. ObjectLockConfigurationNotFoundError establishes bucket
+  Object Lock not configured at that observation. No successful ACL/Lock/
+  production archive/restore acceptance is inferred.
+- Resumed context: same dedicated branch/worktree, GitHub rashadoni, production
+  registered13.140.132.245 and Actions-only. Before small sequential checks:
+  RAM available13GiB,disk193GiB free,pressure0,swap3.3GiB used. No heavy checks.
+  Fresh mainb7253fbba adds only personnel demo files, no A3/B2 overlap.
+- Existing Bash error_code accepts letters-only parenthesized codes. Numeric403
+  or checksum codes with digits would be hidden as unknown; neither is proven
+  to be the actual cause. No relax-to-green fix or permission inference made.
+- Prepared scoped Mac-only b2-restore-write-probe.py and6 meaningful safety
+  tests. Reads only owned0600/0400 no-symlink/no-hardlink restore.env, static
+  B2 target/bucket, isolated child environment. Exactly2 new UUID synthetic
+  PutObjects of32bytes compare when_supported/when_required. No S3 deletion,
+  writer credential, bucket/config/retention change, production archive or
+  receipt. Unexpected allowed writes remain failures and are not deleted.
+  Each child group45s maximum/private stderr16KiB actual OS file-size cap.
+  Output is fixed allowlisted category; only exact PutObject AccessDenied with
+  exit254 proves that response. Numeric403/unknown/checksum/network stay failed.
+- PASS:6 tests including actual fake-CLI execution, secret/stdout suppression,
+  credential file authority/literal endpoint, real child output cap and real
+  process-group timeout; assets; runner74workflows; task diff-check.
+  Added tests to existing required static step and narrow owner technical CI.
+  One initial oversized-output fixture exited0 after a short write and correctly
+  classified unexpected_write_allowed; fixed fixture to exit254 for its intended
+  failed-CLI limit case, then full6/6 PASS. No weakened runtime classifier.
+- PR892 returned to draft while diagnosing the real inconclusive live result.
+  Oldb80 five-green remains historical code acceptance. Current narrow probe is
+  NOT RUN on real Mac/keys; full current-source hosted gates will run after this
+  bounded iteration. No A3 main/production delivery under coordinator hold.
+- Public copy /tmp/leaddrive-b2-restore-write-probe.py SHA256
+  95917ead5a87494715cc30445ce94406c36bc13fef8a71d7bdf2a4c9cfc83ef0;
+  public launcher /tmp/leaddrive-b2-restore-probe-launch.sh verifies this hash.
+  Launcher syntax PASS; not executed on Contabo. Owner Mac is the only existing
+  credential route; no key contents asked for. Next: receive its fixed-category
+  result, diagnose rather than treat unknown as ACL, complete source checks.
+
+### 2026-10-19 — actual transport result; consolidate duplicate diagnostic ownership
+
+- Owner supplied both diagnostic outputs: existing PR913 source85f14c684
+  reports CLI255/connection_closed in when_supported and when_required.
+  A3 public6bb diagnostic ran with correct checksum and returned
+  unrecognized_failure for both. Neither proves AccessDenied/permission failure;
+  no successful write or excessive privilege inferred. Hypothesis that switching
+  only checksum mode resolves the problem is unsupported by this observation.
+- Discovered existing in-flight PR913,codex/b2-put-diagnostic, current1e3ccaf70.
+  Fetched only this authorized repository/branch and inspected its public code/
+  description. Earlier copied screenshot SHA transcription was wrong; direct
+  fetch of that string failed, then canonical PR913 branch resolved actual85f14.
+  Its classifier explicitly recognizes the observed connection-closed string;
+  newer source prepares curl SigV4 positive authenticated controls and explicit
+  HTTP403/S3 AccessDenied denial. Real curl control still NOT RUN by A3.
+- A3's newly added6bb diagnostic duplicated a separate session's work discovered
+  after owner screenshot. Remove only task-owned duplicate probe/test/gate
+  additions from final source and replace its docs with factual peer reference.
+  Preserve6bb checkpoint and all append-only observations; no revert/reset or
+  journal/history deletion. No peer branch/PR modified or merged.
+- Source6bb's6 tests genuinely passed but are historical experiment proof, not
+  retained A3 acceptance. Public /tmp copies and owner Mac copies are retained;
+  no additional rerun requested. Actual current synthetic owner workbench/age/
+  swap component source remains as previously reviewed.
+- Coordinate one diagnostic owner through PR913/892 rather than another pair of
+  live requests. No raw stderr/private keys requested; no provider/production/
+  billing/permissions/retention/timer changes. Current A3 source will complete
+  required hosted gates after this bounded consolidation. Root delivery hold
+  and real backup/restore NOT RUN remain unchanged.
+
+### 2026-10-19T07:55Z — consume peer ACL control; final-source hosted checks
+
+- PR913 now documents owner Mac curl control on exact1e3ccaf70a7e4c5d4e770d653faf3558be459fb2:
+  writer PUT curl0/HTTP200, restore GET curl0/HTTP200 byte-identical, restore PUT
+  curl0/HTTP403/S3AccessDenied, all passed=true. Receipt committed00024b9c4.
+  A3 read that peer-published documentation/body and relevant public control code;
+  direct curl screenshot was in peer chat, not separately viewed here. Treat
+  this as peer-reported diagnostic evidence, not Farah/independent/signed
+  commissioning or real-data recovery acceptance.
+- This closes the specific restore-write ACL uncertainty by a separate successful
+  authenticated control. It does NOT make original AWS CLI255/connection_closed
+  a policy denial or prove its root cause. No more duplicate network retries
+  from A3. Object Lock remains unconfigured at last real observation; peer owns
+  existing owner-side storage/transport preparation, no parallel panel commands.
+- Coordination posted directly, not via owner relay:
+  PR913 comment6262315385 / PR8926262315740 (diagnostic ownership);
+  PR8926262370106 / PR9136262370443 (consume actual control receipt).
+  Peer branch not modified/merged. PR892 description reconciled with evidence.
+- Final published sourceff9cc418826720f1840063c83e0f1d9ede299913 is ready again;
+  only docs/B2_OFFSITE_BACKUP.md and append-only journal differ from oldb80.
+  No duplicate6bb executable/test/CI step remains in final source; checkpoints
+  preserved, no force push/reset/history truncation.
+- Current hosted extras PASS, not draft-event skips this time:
+  owner39218257895/job117947413237 (13 real synthetic owner tests, pinned image,
+  actual networkless PostgreSQL self-test, positive no-swap and explicit unsafe
+  swap refusal); pgpass39218257949; tenant39218258028; runner39218258290;
+  scan39218257872. PR39218257966 pr-scope PASS, static/type RUNNING.
+  Application build scope-SKIPPED, NOT RUN for A3. No all-required claim yet.
+- Actual scope/owner checkout logs prove tested merge
+  8ba6b7acb4bf7012c3832705a565cdb902e44a6a. Fetched exact object and verified
+  parents mainb639238aeecd335773f96c53acdccd880477b2aa + sourceff9cc4188.
+  Current main laterabdc13018 adds unrelated web-chat copy after TikTok PR912;
+  shared pr-checks adds that main's gate but no backup source/routing contract
+  changes. Do not chase every unrelated main edit or attribute main merges to A3.
+- Original coordinator hold not released; real source candidate, private archive
+  restore, actual signed receipt, A3 main delivery/timers/PITR/Kafka changes still
+  NOT RUN. Source prep/current gates continue while peer storage work progresses.
+
+### Explicit owner coordination decision — 2026-10-19 11:56 Asia/Baku
+
+- Asked one narrow routing clarification because original coordinator is idle
+  after model-capacity failure and its explicit A3 hold remains. This was not
+  a repeated merge/deploy authorization request: user already authorized task
+  PRs/Actions commissioning, but assigned common delivery to original chat.
+- Owner chose exactly: "Оставить исходному координатору". Therefore this chat
+  does not take over A3/common delivery or override that hold. No re-ask or
+  implicit override from generic continue instructions. Existing original
+  authorization/restrictions, one storage owner, mandatory gates and Actions
+  remain in force. Continue independent source checks/evidence only; hand
+  coordinator exact ready source when checks complete.
+- Current sourceff9 extra owner/pgpass/tenant/runner/scan PASS; required static/
+  type still running. Real production candidate/restore/receipts, A3 main
+  delivery and timer changes remain NOT RUN; no private keys/costs requested.
+
+## 2026-10-19 12:25 Asia/Baku — diagnose required-job timeout, bounded correction
+
+- Currentff9 scope/type/runner/scan and hosted owner/pgpass/tenant PASS. Required
+  static117947533542/run39218257966 CANCELLED at08:18:34UTC after starting
+ 07:48:31UTC. Exact GitHub check annotation: "The job has exceeded the maximum
+  execution time of 30m0s". No replacement run/new source existed; not random
+  concurrency cancellation. Last unit-baseline log says gate passed at08:18:31,
+  but required job remains CANCELLED; never report all-required PASS.
+- Diagnosed existing30min static budget plus cold setup/database gates leaving
+  about11min for final baseline. Prepare finite45min cap for this job only;
+  no assertion/test/baseline/required-context/runner/production policy changed.
+  No retry on Contabo or unbounded retry. All source gates must run anew.
+- Before narrow correction checks: available RAM17GiB,disk211GiB,pressure0,
+  swap2.1GiB used. Draft while making bounded change; ready only on completion.
+- Added current factual A3/readiness/backlog/B2 documentation, preserving old
+  dated statements and all journal history. Owner limited route authorization
+  supersedes original read-only-only task scope, but independent gates remain.
+- Consumed peer2082ac6e4: owner independently selected original delivery there
+  too. Object Lock Enabled/default14Days is UI evidence only, COMPLIANCE/API
+  still NOT RUN. A3 direct owner11:56 decision remains binding. Posted peer
+  routing confirmationPR913#6262545405; no more permission/routing request.
+- Verified real main protection: five contexts bound to GitHub Actions app15368,
+  strict=false, no bypass. Production environment custom branch policy exactly
+  main, no added agent-review/reviewer loop. Read-only metadata only.
+- Read-only integration preview A3ff9 + peer2082 producedbb08d6c0, conflict only
+  docs/B2_OFFSITE_BACKUP.md. Neither branch merged/mutated by preview.
+- Static producer review confirms systemd-run transient owner invocations enforce
+  MemorySwapMax=0/private state/sandbox and signed-key/Object Lock preflights;
+  no assumption that old inactive scheduled units are safe. No live invocation.
+- Next: narrow source checks, checkpoint/publish finished timeout/doc correction,
+  run all required exact-source hosted gates, report accepted evidence to
+  original coordinator. A3 main/runtime/real backup/restore/timers remain held.

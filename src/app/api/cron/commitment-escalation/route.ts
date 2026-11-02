@@ -6,7 +6,7 @@ import { withJobLease } from "@/lib/cron/job-lease"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { createNotification, deliverNotificationPush } from "@/lib/notifications"
 import { COMMITMENT_CALL_FIELD } from "@/lib/commitments/record-call-commitment"
-import { nextEscalationStep } from "@/lib/commitments/escalation"
+import { COMMITMENT_ALERT_TITLES, nextEscalationStep } from "@/lib/commitments/escalation"
 
 /**
  * Missed-promise escalation.
@@ -114,7 +114,7 @@ async function runEscalationTick(now: Date) {
           organizationId: task.organizationId,
           userId: task.assignedTo,
           type: "warning",
-          title: "Müştəriyə verilən söz gecikir",
+          title: COMMITMENT_ALERT_TITLES.assignee,
           message: task.title,
           entityType: "task",
           entityId: task.id,
@@ -148,7 +148,7 @@ async function runEscalationTick(now: Date) {
       organizationId: task.organizationId,
       userId: manager.id,
       type: "error",
-      title: "Öhdəlik icra olunmayıb",
+      title: COMMITMENT_ALERT_TITLES.manager,
       message: task.title,
       entityType: "task",
       entityId: task.id,

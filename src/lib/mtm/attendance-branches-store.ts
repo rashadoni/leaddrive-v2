@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { checkPermission, type Role } from "@/lib/permissions"
@@ -8,6 +9,7 @@ import { resolveAttendanceReviewerScope, requireAttendanceReviewer, type Attenda
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { AttendanceBranchInputSchema, AttendanceBranchAssignmentInputSchema,
   type AttendanceBranch, type AttendancePrimaryBranch, type AttendanceBranchDirectory, type AttendanceBranchAssignments } from "@/lib/mtm/attendance-branches-contract"
+import { lockAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 type Tx = Prisma.TransactionClient
 export class AttendanceBranchError extends AttendanceRequestError {}
@@ -32,7 +34,7 @@ async function currentUser(tx: Tx, reviewer: AttendanceReviewer) {
 async function lockRegistry(tx: Tx, organizationId: string) {
   await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-branches:${organizationId}`},0))`
-  await tx.$queryRaw`SELECT id FROM mtm_settings WHERE "organizationId"=${organizationId} AND key='attendanceEnabled' FOR SHARE`
+  await lockAttendanceFeature(tx, organizationId)
 }
 async function currentBranch(tx: Tx, organizationId: string, branchId: string) {
   const [row] = await tx.$queryRaw<BranchRow[]>`SELECT * FROM mtm_attendance_branch_revisions
@@ -61,7 +63,7 @@ export async function readAttendanceBranchAssignments(reviewer: AttendanceReview
     let writer: MtmRouteActor | null = null
     try { writer = await resolveAttendanceReviewerScope(tx, reviewer) }
     catch (error) { if (!(error instanceof AttendanceRequestError) || error.status !== 403) throw error }
-    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, status: "ACTIVE",
+    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, status: "ACTIVE", ...ATTENDANCE_TRACKED_CARD_WHERE,
       ...(readActor.scopedAgentIds === null ? {} : { id: { in: [...readActor.scopedAgentIds] } }),
       ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
     }, select: { id: true, name: true, userId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 51 })

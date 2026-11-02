@@ -1,5 +1,6 @@
 "use client"
 
+import { nativeTikTokReplyTarget } from "@/lib/tiktok-messaging/identity"
 import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations, useLocale } from "next-intl"
@@ -235,8 +236,8 @@ export default function InboxPage() {
       }
     }
 
-    let cwConversationId = ""
-    if (replyChannel === "tiktok") {
+    let cwConversationId = nativeTikTokReplyTarget(convo.messages) || ""
+    if (replyChannel === "tiktok" && !cwConversationId) {
       for (const msg of convo.messages) {
         const value = msg.metadata?.chatwootConversationId
         if (typeof value === "string" && value) { cwConversationId = value; break }
@@ -288,6 +289,9 @@ export default function InboxPage() {
       const json = await res.json().catch(() => ({} as { success?: boolean; error?: string; deliveryUnknown?: boolean; attemptId?: string }))
       if (!res.ok || json.success === false) {
         setSendError(json.error || `HTTP ${res.status}`)
+        if (json.deliveryUnknown === false && nativeTikTokReplyTarget(convo.messages)) {
+          sendOperationRef.current = null
+        }
         if (json.deliveryUnknown === true) {
           setSendDeliveryUnknown(true)
           setSendUnknownAttemptId(typeof json.attemptId === "string" ? json.attemptId : null)
@@ -309,11 +313,12 @@ export default function InboxPage() {
     if (selected === null || !sendUnknownAttemptId || sending) return
     const conversationId = filtered[selected]?.socialConversationId
     if (!conversationId) return
+    const provider = nativeTikTokReplyTarget(filtered[selected]?.messages ?? []) ? "TikTok" : "Chatwoot"
     const prompt = locale === "ru"
-      ? `Подтвердите: вы открыли диалог в Chatwoot и проверили, что сообщение ${outcome === "delivered" ? "отправлено" : "НЕ отправлено"}.`
+      ? `Подтвердите: вы открыли диалог в ${provider} и проверили, что сообщение ${outcome === "delivered" ? "отправлено" : "НЕ отправлено"}.`
       : locale === "az"
-        ? `Təsdiqləyin: Chatwoot dialoqunu açıb mesajın ${outcome === "delivered" ? "göndərildiyini" : "göndərilmədiyini"} yoxladınız.`
-        : `Confirm that you opened the Chatwoot conversation and verified the message was ${outcome === "delivered" ? "delivered" : "NOT delivered"}.`
+        ? `Təsdiqləyin: ${provider} dialoqunu açıb mesajın ${outcome === "delivered" ? "göndərildiyini" : "göndərilmədiyini"} yoxladınız.`
+        : `Confirm that you opened the ${provider} conversation and verified the message was ${outcome === "delivered" ? "delivered" : "NOT delivered"}.`
     if (!window.confirm(prompt)) return
 
     setSending(true)
@@ -327,7 +332,7 @@ export default function InboxPage() {
         body: JSON.stringify({
           attemptId: sendUnknownAttemptId,
           outcome,
-          confirmation: "verified_in_chatwoot",
+          confirmation: provider === "TikTok" ? "verified_in_tiktok" : "verified_in_chatwoot",
         }),
       })
       const json = await res.json().catch(() => ({} as { error?: string }))
@@ -506,7 +511,7 @@ export default function InboxPage() {
             className={cn(
               "px-3 py-1.5 text-sm rounded-md transition-colors",
               channelFilter === ch
-                ? "bg-primary text-primary-foreground"
+                ? "crm-choice-selected "
                 : "text-muted-foreground hover:bg-muted"
             )}
           >
@@ -529,7 +534,7 @@ export default function InboxPage() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1 border border-zinc-200 dark:border-zinc-700 rounded-lg p-1.5">
+          <div className="flex-1 overflow-y-auto space-y-1 border border-border rounded-lg p-1.5">
             {filtered.length > 0 ? (
               filtered.map((convo, idx) => (
                 <div
@@ -622,7 +627,7 @@ export default function InboxPage() {
         </div>
 
         {/* -- Right: message thread -- */}
-        <div data-tour-id="inbox-thread" className="flex-1 flex flex-col border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden bg-card">
+        <div data-tour-id="inbox-thread" className="flex-1 flex flex-col border border-border rounded-lg overflow-hidden bg-card">
           {selectedConvo ? (
             <>
               {/* Thread header */}

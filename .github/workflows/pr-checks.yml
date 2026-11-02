@@ -31,7 +31,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
+  # Node 24, the same as production and deploy.yml (since 2026-10-28). 24 runs
+  # AsyncLocalStorage on AsyncContextFrame instead of a hook on every promise —
+  # the reason for the move; lib-rls-context.test.ts pins both behaviours.
+  NODE_VERSION: "24"
 
 jobs:
   pr-scope:
@@ -169,10 +172,13 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    # Run 34198177856 spent ~15 min in cold setup on Sep 8, then hit the old
-    # 20 min cap while running tests. Tests themselves take ~9 min. Preserve a
-    # finite bound with room for one cold start; warm setup should be shorter.
-    timeout-minutes: 30
+    # Run39218257966 reached the 30 min cap during the final unit-baseline
+    # gate after setup/database checks. Allow bounded cold-start/teardown
+    # headroom; every blocking test and baseline assertion still runs.
+    # Measured 2026-10-18/19 on the slower hosted runners (most runs): 28.5–
+    # 29.4 min, of which `npm ci` 4.7 and `prisma generate` 4.0 — both now
+    # restored from cache below when the lockfile and schema are unchanged.
+    timeout-minutes: 45
     env:
       # Hosted runners had 4 vCPU; the shared box has 8 and up to three general
       # jobs at once. Left to its default (one worker per core) each vitest
@@ -188,13 +194,41 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Cache node_modules
+        # The same key as deploy.yml's `checks`, so a pull request restores the
+        # node_modules that main's deploy already saved for this lockfile (a
+        # pull request can read main's caches; main never reads a pull
+        # request's). Restore took 9 s there against 4.7 min of `npm ci`.
+        # A package.json edited without its lockfile is still caught: the
+        # `typecheck` job and the production build always run a fresh `npm ci`.
+        uses: actions/cache@v5
+        id: cache-deps
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
+
       - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: npm ci --include=dev
 
       - name: Support UX read-only readiness diagnostic tests
-        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
+        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs .github/scripts/test-inspect-backup-run-failure.mjs
+
+      - name: Cache generated Prisma client
+        # Generating the client for this schema takes ~4 min. The output is
+        # fully determined by the schema and the Prisma version pinned in the
+        # lockfile, so both are the key; any change to either regenerates.
+        # deploy.yml's `checks` saves the same key from main.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
 
       - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
         run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Resolve the per-job Postgres port
@@ -228,6 +262,24 @@ jobs:
         run: |
           python3 .github/scripts/test_remediate_postgres_source_tls.py
           python3 .github/scripts/test_provision_postgres_restore_scratch.py
+          node --test scripts/backup/object-lock-diagnostic.test.mjs
+          node --test scripts/backup/owner-recovery.test.mjs
+          node --test scripts/backup/object-storage-endpoint.test.mjs scripts/backup/b2-key-denial.test.mjs
+          node --test scripts/backup/b2-writer-configuration.test.mjs
+          node --test --test-concurrency=1 scripts/backup/commission-code-staging.test.mjs scripts/backup/transient-workspace.test.mjs
+          node --test scripts/backup/scratch-authentication.test.mjs
+          node --test scripts/backup/scratch-service.test.mjs
+          node --test scripts/backup/native-scratch-template.test.mjs
+          node --test scripts/backup/native-scratch-preflight.test.mjs
+          node --test scripts/backup/owner-template.test.mjs
+          node --test scripts/backup/migration-ledger-exceptions.test.mjs
+          node --test scripts/backup/evidence-main-window.test.mjs
+          node --test scripts/backup/wal-archive-contract.test.mjs
+          node --test scripts/backup/release-artifact-contract.test.mjs
+          node --test scripts/help-videos/assets-sync.test.mjs
+          node --test scripts/event-platform/topology.test.mjs scripts/event-platform/cluster/render.test.mjs scripts/event-platform/cluster/network.test.mjs scripts/event-platform/cluster/provision.test.mjs scripts/event-platform/cluster/services.test.mjs scripts/event-platform/cluster/health.test.mjs scripts/event-platform/cluster/health-probe.test.mjs
+          node --test scripts/event-platform/retire-cdc-source.test.mjs
+          node --test .github/scripts/test-inspect-backup-compatibility.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs
@@ -235,9 +287,31 @@ jobs:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
 
       - name: Event-platform SDK PostgreSQL concurrency gate
-        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts
+        run: npx vitest run src/__tests__/lib-event-platform-postgres.test.ts src/__tests__/mtm-visit-events-postgres.test.ts src/__tests__/deal-events-postgres.test.ts
         env:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Fund exact reducer and shadow control-flow unit gate
+        run: npx vitest run src/__tests__/event-platform-fund-balance-reducer.test.ts src/__tests__/event-platform-fund-shadow-consumer.test.ts src/__tests__/event-platform-partition-processor.test.ts src/__tests__/event-platform-fund-shadow-worker.test.ts src/__tests__/event-platform-kafka-bridge.test.ts src/__tests__/event-platform-worker-process.test.ts src/__tests__/event-platform-worker-session.test.ts src/__tests__/event-platform-worker-admission.test.ts src/__tests__/event-platform-worker-artifact.test.ts
+
+      - name: Fund shadow restricted-login PostgreSQL transaction gate
+        run: npx vitest run src/__tests__/event-platform-fund-shadow-postgres.test.ts
+        env:
+          FUND_SHADOW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          FUND_SHADOW_DB_GATE: required
+
+      - name: Fund shadow pilot runner PostgreSQL gate
+        run: |
+          npm ci --prefix ops/event-platform/fund-shadow --ignore-scripts --no-audit --no-fund
+          NODE_PATH=ops/event-platform/fund-shadow/node_modules ops/event-platform/fund-shadow/node_modules/.bin/esbuild \
+            scripts/event-platform/fund-shadow/pilot.integration.ts --bundle --platform=node --target=node18 --format=cjs \
+            --external:@prisma/client --external:pg-native --log-level=error --outfile="$RUNNER_TEMP/pilot.integration.cjs"
+          NODE_PATH="$GITHUB_WORKSPACE/node_modules" node "$RUNNER_TEMP/pilot.integration.cjs"
+        env:
+          PILOT_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          PILOT_PSQL: psql -h 127.0.0.1 -p ${{ env.EVENT_PLATFORM_PG_PORT }}
+          PILOT_SQL_DIR: scripts/event-platform/fund-shadow
+          PGPASSWORD: postgres
 
       - name: Workforce shared-lock PostgreSQL race gate
         run: >-
@@ -283,7 +357,7 @@ jobs:
           MTM_WORKDAY_RETURN_DB_GATE: required
 
       - name: MTM attendance database gate
-        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts src/__tests__/mtm-attendance-month-postgres.test.ts src/__tests__/mtm-attendance-reminders-postgres.test.ts
+        run: npx vitest run src/__tests__/mtm-attendance-postgres.test.ts src/__tests__/mtm-attendance-report-postgres.test.ts src/__tests__/mtm-attendance-requests-postgres.test.ts src/__tests__/mtm-attendance-corrections-postgres.test.ts src/__tests__/mtm-attendance-branches-postgres.test.ts src/__tests__/mtm-attendance-employees-postgres.test.ts src/__tests__/mtm-attendance-location-postgres.test.ts src/__tests__/mtm-attendance-month-postgres.test.ts src/__tests__/mtm-attendance-reminders-postgres.test.ts src/__tests__/mtm-attendance-explanations-postgres.test.ts
         env:
           MTM_ATTENDANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_ATTENDANCE_DB_GATE: required
@@ -308,6 +382,156 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Ad conversions database gate
+        # Ad conversions to Meta on a real Postgres: nothing is sent without
+        # the consent statement (the database refuses it too), a lead and a won
+        # deal go once each, and an event older than Meta's 7 days is skipped
+        # instead of failing the whole batch.
+        run: npx vitest run src/__tests__/ad-conversions-postgres.test.ts
+        env:
+          AD_CONVERSIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          AD_CONVERSIONS_DB_GATE: required
+
+      - name: Voice line numbers database gate
+        # Number -> organization on a real Postgres: a call finds its client by
+        # the number dialled and then by the call, a number nobody holds stays
+        # with the default organization, and no number is held twice.
+        run: npx vitest run src/__tests__/voice-line-numbers-postgres.test.ts
+        env:
+          VOICE_LINE_NUMBERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          VOICE_LINE_NUMBERS_DB_GATE: required
+
+      - name: Pharmacy phone orders database gate
+        # Phone orders on a real Postgres under the application's role: the
+        # list a call saves, a second save from the same call, eight calls
+        # numbered at once, the manager's card, and one organization never
+        # seeing another's orders.
+        run: npx vitest run src/__tests__/pharmacy-phone-orders-postgres.test.ts
+        env:
+          PHARMACY_PHONE_ORDERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          PHARMACY_PHONE_ORDERS_DB_GATE: required
+
+      - name: Booking release admission and recovery contract gate
+        run: node --test scripts/booking/release-contract.test.mjs
+        env:
+          BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+
+      - name: Finance open items database gate
+        # «İcmal» and «Debitor»/«Kreditor» on a real Postgres name the same debt:
+        # open statuses only (an invoice marked «paid» is not owed, whatever its
+        # balance), any issue year, and a «paid» one counts as collected revenue.
+        run: npx vitest run src/__tests__/finance-open-items-postgres.test.ts
+        env:
+          FINANCE_OPEN_ITEMS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          FINANCE_OPEN_ITEMS_DB_GATE: required
+
+      - name: Deal line items database gate
+        # A deal's product lines on a real Postgres: the amount is their sum, an
+        # ordinary deal edit cannot overwrite it or change the currency under
+        # it, and a price in another currency is not copied.
+        run: npx vitest run src/__tests__/deal-line-items-postgres.test.ts
+        env:
+          DEAL_LINES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEAL_LINES_DB_GATE: required
+
+      - name: Telegram staff bot database gate
+        # The organization's employee Telegram bot on a real Postgres: a forged
+        # secret or a replayed update does nothing, a stranger sees no data, a
+        # linked employee reads only their organization, and a lead is written
+        # only on the confirm button — once, by the employee who was asked.
+        run: npx vitest run src/__tests__/telegram-staff-postgres.test.ts
+        env:
+          TELEGRAM_STAFF_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          TELEGRAM_STAFF_DB_GATE: required
+
+      - name: Company VÖEN database gate
+        # A company's VÖEN on a real Postgres: ten digits or refused, the
+        # duplicate warning sees this organization only, and the tax registry's
+        # card (through the Fanum station relay, stood in) is read, not written.
+        run: npx vitest run src/__tests__/company-voen-postgres.test.ts
+        env:
+          COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          COMPANY_VOEN_DB_GATE: required
+
+      - name: E-qaimə database gate
+        # Finance → «E-qaimə» on a real Postgres under row-level security, the
+        # app connected as a role that cannot bypass it: an invoice is filed
+        # under the signed-in company only, totals are summed from the lines
+        # (VAT = 18 % of the 18 % base), a second reading keeps the sealed PDF,
+        # another organization sees nothing, the Excel file has a row a product.
+        run: npx vitest run src/__tests__/e-qaime-postgres.test.ts
+        env:
+          E_QAIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          E_QAIME_DB_GATE: required
+
+      - name: Online booking database gate
+        # Online booking (/book/<slug>) on a real Postgres: eight customers on
+        # one time get one meeting, and two overlapping meetings of one host
+        # that start apart — which the unique index cannot see — get one too.
+        run: npx vitest run src/__tests__/online-booking-postgres.test.ts
+        env:
+          ONLINE_BOOKING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          ONLINE_BOOKING_DB_GATE: required
+
+      - name: Invoice card payment database gate
+        # Paying a customer invoice by card through Kapital Bank (the bank is a
+        # stand-in, everything on our side is real). What a mocked Prisma
+        # cannot show: the return page, a second tab and the reconcile cron at
+        # once must record the payment once, and the STATUS in the bank's
+        # return link must never record money by itself.
+        run: npx vitest run src/__tests__/invoice-card-payment-postgres.test.ts
+        env:
+          INVOICE_CARD_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          INVOICE_CARD_PAYMENT_DB_GATE: required
+
+      - name: Demo WhatsApp ticket database gate
+        # The demo's real Service Desk ticket (opened on the prospect's own
+        # press) is read back for the demo page only through the sales
+        # organisation's door, by the id the demo keeps, under the product's
+        # FORCE RLS on tickets with a role that cannot bypass it (see the
+        # test's header).
+        run: npx vitest run src/__tests__/demo-whatsapp-ticket-postgres.test.ts
+        env:
+          DEMO_WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_WHATSAPP_TICKET_DB_GATE: required
+
+      - name: Demo social release database gate
+        # A prospect's Facebook Page connected to the demo is unbound at Meta
+        # and wiped by the real release engine on a real Postgres, with only
+        # graph.facebook.com stubbed and a role that cannot bypass RLS. What a
+        # mocked Prisma cannot show: that the check «does an organisation rely
+        # on this Page» really sees other tenants' rows under FORCE RLS, that
+        # the CHECKs refuse a plaintext token, and that two runs at once send
+        # each Meta call once.
+        run: npx vitest run src/__tests__/demo-social-release-postgres.test.ts
+        env:
+          DEMO_SOCIAL_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_SOCIAL_RELEASE_DB_GATE: required
+
+      - name: Demo social connect database gate
+        # A prospect connects his own Facebook Page to the demo and writes to
+        # it, through the real routes on a real Postgres with a role that
+        # cannot bypass RLS; only graph.facebook.com and the model are stubbed.
+        # What a mocked Prisma cannot show: that a message from anyone but the
+        # one proven sender adds nothing to any table of the schema, that a
+        # Page another tenant relies on is refused under FORCE RLS, and that a
+        # Page LeadDrive Inc. serves still takes the tenant path.
+        run: npx vitest run src/__tests__/demo-social-connect-postgres.test.ts
+        env:
+          DEMO_SOCIAL_CONNECT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_SOCIAL_CONNECT_DB_GATE: required
+      - name: Demo assistant voice budget database gate
+        # The guide's voice minutes (twenty per person who requested a demo,
+        # across all their grants; 300 a day) are claimed in
+        # demo_access_events before Google is asked, under one advisory lock.
+        # The real voice and transcribe routes run on a real Postgres under
+        # FORCE RLS with a role that cannot bypass it, only Google stubbed:
+        # eight requests at once against room for three send exactly three.
+        run: npx vitest run src/__tests__/demo-assistant-voice-postgres.test.ts
+        env:
+          DEMO_ASSISTANT_VOICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_ASSISTANT_VOICE_DB_GATE: required
+
       - name: Finance Telegram recipient database gate
         # Who receives a tenant's payment notices, read off the requests that
         # leave for api.telegram.org. Until 2026-10-07 every tenant's
@@ -319,6 +543,55 @@ jobs:
         env:
           FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_TELEGRAM_DB_GATE: required
+
+      - name: WhatsApp ticket path database gate
+        # Which ticket a customer's WhatsApp message lands on, read off the
+        # tables after the real intake ran on a real Postgres under the
+        # production RLS policies, as a role they apply to. Until 2026-10-18 a
+        # reply to a ticket waiting for the customer opened a second ticket, an
+        # old resolved ticket was reopened over an open one, two simultaneous
+        # deliveries opened two tickets, and the customer's old closure link
+        # closed a ticket their reply had just reopened.
+        run: npx vitest run src/__tests__/whatsapp-ticket-path-postgres.test.ts
+        env:
+          WHATSAPP_TICKET_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          WHATSAPP_TICKET_DB_GATE: required
+
+      - name: TikTok lead ad lock database gate
+        # Simultaneous TikTok Lead Ads deliveries, read off the tables after the
+        # real webhook ran on a real Postgres under the production RLS policies,
+        # with a three-connection pool. Until 2026-10-19 each delivery waited for
+        # its organization's monitoring fence, and for its lead's lock, holding a
+        # pooled connection: a burst as large as the pool left the delivery
+        # inside no connection for its work, and the whole pool timed out.
+        run: npx vitest run src/__tests__/tiktok-lead-ad-lock-postgres.test.ts
+        env:
+          TIKTOK_LEAD_AD_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          TIKTOK_LEAD_AD_DB_GATE: required
+
+      - name: Social webhook fence pool database gate
+        # Bursts of Facebook/Instagram and TikTok comments, read off the table
+        # after the real webhooks ran on a real Postgres under the production
+        # RLS policies, with a three-connection pool. Until 2026-10-19 each
+        # delivery waited for its organization's monitoring fence holding a
+        # pooled connection: a burst as large as the pool left the delivery
+        # inside no connection for its work, and comments were lost.
+        run: npx vitest run src/__tests__/social-webhook-fence-pool-postgres.test.ts
+        env:
+          SOCIAL_WEBHOOK_FENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_WEBHOOK_FENCE_DB_GATE: required
+
+      - name: Social monitoring fence openers pool database gate
+        # Bursts of Apify result webhooks, Google Alerts e-mails and ingest-API
+        # posts, for one organization and for three at once, and deliveries
+        # while crons hold fences, read off the tables after the real routes ran
+        # on a real Postgres under the production RLS policies, with a
+        # three-connection pool. Until 2026-10-19 every opener of the monitoring
+        # fence waited for it holding a pooled connection, and the pool timed out.
+        run: npx vitest run src/__tests__/social-fence-openers-pool-postgres.test.ts
+        env:
+          SOCIAL_FENCE_OPENERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_FENCE_OPENERS_DB_GATE: required
 
       - name: MTM break coordinates database gate
         # Where an employee spent a break is not stored, read off the table
@@ -332,6 +605,82 @@ jobs:
         env:
           MTM_LOCATION_BREAK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_LOCATION_BREAK_DB_GATE: required
+
+      - name: MTM Excel route conflicts database gate
+        # Which existing routes an Excel route import calls a schedule
+        # conflict, asked of the real upload/apply/export handlers on a real
+        # Postgres. Until 2026-10-15 the import compared with the employee's
+        # routes on every date and read them without meeting times, so every
+        # imported route "conflicted" and the manager's override meant nothing.
+        run: npx vitest run src/__tests__/mtm-excel-route-conflicts-postgres.test.ts
+        env:
+          MTM_EXCEL_ROUTES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_EXCEL_ROUTES_DB_GATE: required
+
+      - name: MTM sign-in by WhatsApp code database gate
+        # Personnel adds an employee with a WhatsApp number and no password; the
+        # person gets a code from LeadDrive's WhatsApp and sets their own
+        # (owner, 2026-10-15). The real request/verify/password handlers on a
+        # real Postgres: which card a number finds, the code kept hashed under
+        # the company and spent once, and the password landing on the card.
+        run: npx vitest run src/__tests__/mtm-mobile-login-code-postgres.test.ts
+        env:
+          MTM_LOGIN_CODE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_LOGIN_CODE_DB_GATE: required
+
+      - name: MTM manager writes to the team database gate
+        # «Komandaya yaz» on the manager's phone (2026-10-17). The real send and
+        # read handlers on a real Postgres: the team is the manager's scope,
+        # and a card of another team or company, a former employee or the
+        # manager themselves gets nothing written — a mocked Prisma answers the
+        # scope queries with whatever the test hands it.
+        run: npx vitest run src/__tests__/mtm-mobile-manager-messages-postgres.test.ts
+        env:
+          MTM_MANAGER_MESSAGES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_MANAGER_MESSAGES_DB_GATE: required
+
+      - name: MTM joint visit database gate
+        # Joint visit (2026-10-20): a manager in the field with one agent of his
+        # team, the agent's «yes, together» at check-in, the manager's rating.
+        # The real handlers on a real Postgres: no session with an agent outside
+        # the team, no joint visit without the manager's session, no rating on
+        # a visit the agent did not mark — and the rated agent never reads it.
+        run: npx vitest run src/__tests__/mtm-joint-visit-postgres.test.ts
+        env:
+          MTM_JOINT_VISIT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_JOINT_VISIT_DB_GATE: required
+
+      - name: MTM task notice database gate
+        # A task given in the panel (2026-10-20): the agent gets a bell line in
+        # his language, and nobody is told of a task he wrote for himself or of
+        # one the server refused — read off the tables after the real handlers.
+        run: npx vitest run src/__tests__/mtm-task-notice-postgres.test.ts
+        env:
+          MTM_TASK_NOTICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_TASK_NOTICE_DB_GATE: required
+
+      - name: MTM presentation viewers database gate
+        # «Products and presentations» (2026-10-21): who sees each presentation
+        # and deleting one. The real handlers and the migration's own backfill
+        # on a real Postgres: the backfill copies yesterday's visibility exactly,
+        # a phone gets only what its agent is listed on, a refused save writes
+        # nothing, and a deleted presentation leaves every phone while its
+        # showings and the visit naming it stay.
+        run: npx vitest run src/__tests__/mtm-product-viewers-postgres.test.ts
+        env:
+          MTM_PRODUCT_VIEWERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_PRODUCT_VIEWERS_DB_GATE: required
+
+      - name: Tenant data keys database gate
+        # PII encryption stage 2b (2026-10-22): each organization's own random
+        # data key, wrapped by the master key, as an application role without
+        # BYPASSRLS sees it: one key per organization even under a race, FORCE
+        # RLS on the key table, the sweep moving v1 values and t1 files to the
+        # data key unchanged, and deleted key rows leaving v2 data unreadable.
+        run: npx vitest run src/__tests__/tenant-data-keys-postgres.test.ts
+        env:
+          TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          TENANT_DATA_KEYS_DB_GATE: required
 
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
@@ -514,6 +863,14 @@ jobs:
         run: |
           printf 'export const DEPLOY_SHA = "%s"\nexport const BUILT_AT = "%s"\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/generated/build-sha.ts
+
+      - name: Make Prisma fluent field-map construction linear
+        run: node scripts/ci/patch-prisma-fluent-field-map.mjs
+
+      - name: Keep Next build-worker trace events out of IPC
+        # Same patch as deploy.yml: without it the server compiler's result
+        # outgrows V8's string limit and the build hangs. See the script.
+        run: node scripts/ci/patch-next-build-worker-trace.mjs
 
       - name: Build the production standalone bundle
         run: |

@@ -22,7 +22,8 @@ describe("approved hours suppress only the corresponding late/early violations",
     const result = buildMtmAttendanceReport({ ...input(), approvedRequests: [allowance("09:00", "10:00"), allowance("17:00", "18:00")] })
     expect(original.rows[0]).toMatchObject({ lateSeconds: 3600, earlyLeaveSeconds: 3600 })
     expect(result.rows[0]).toMatchObject({ startedAt: original.rows[0].startedAt, completedAt: original.rows[0].completedAt,
-      workedSeconds: 25200, pausedSeconds: 0, lateSeconds: 0, earlyLeaveSeconds: 0, flags: [], events: original.rows[0].events })
+      // 10:00–17:00 present − the 13:00–14:00 lunch taken off automatically (owner, 2026-10-16: «вычитать обед самому»).
+      workedSeconds: 21600, pausedSeconds: 0, lateSeconds: 0, earlyLeaveSeconds: 0, flags: [], events: original.rows[0].events })
     expect(result.totals).toMatchObject({ lateCount: 0, earlyLeaveCount: 0, lateSeconds: 0, earlyLeaveSeconds: 0 })
     expect(filterMtmAttendanceRows(result.rows, { form: "LATE_EARLY" })).toEqual([])
   })
@@ -74,7 +75,7 @@ describe("approved hours suppress only the corresponding late/early violations",
   })
   it("keeps work on a whole approved absence visible as a conflict without lateness", () => {
     const period = allowance("09:00", "18:00", "ANNUAL_LEAVE"); period.details.unit = "DAYS"; period.details.startTime = null; period.details.endTime = null
-    expect(buildMtmAttendanceReport({ ...input(), approvedRequests: [period] }).rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 25200, lateSeconds: 0, earlyLeaveSeconds: 0, flags: ["WORKED_ON_APPROVED_ABSENCE"] })
+    expect(buildMtmAttendanceReport({ ...input(), approvedRequests: [period] }).rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 21600, lateSeconds: 0, earlyLeaveSeconds: 0, flags: ["WORKED_ON_APPROVED_ABSENCE"] })
   })
   it("does not let another employee's or another date's approval hide violations", () => {
     const wrongEmployee = allowance("09:00", "18:00"); wrongEmployee.agentId = "other"

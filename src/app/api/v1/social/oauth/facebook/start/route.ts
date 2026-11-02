@@ -3,6 +3,7 @@ import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { withSocialConnectAuth } from "@/lib/social/oauth-access"
 import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
+import { getSharedMessengerApp } from "@/lib/social/shared-messenger-app"
 import { normalizeOAuthReturnKey } from "@/lib/social/oauth-return"
 import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
 
@@ -53,7 +54,12 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   // the shared LeadDrive callback — each tenant registers it in their own Meta app's OAuth settings,
   // and the callback resolves the org from the signed `state` (so one URI serves every tenant).
   const tenantApp = pinnedApp ? null : await getTenantMetaApp(orgId)
-  const appId = pinnedApp?.appId || tenantApp?.appId || process.env.FACEBOOK_APP_ID
+  const messenger = !pinnedApp && !tenantApp && returnKey === "channels-facebook"
+    ? getSharedMessengerApp() : null
+  if (messenger && !messenger.ready) {
+    return NextResponse.json({ error: "Shared Messenger connection is not configured completely." }, { status: 503 })
+  }
+  const appId = pinnedApp?.appId || tenantApp?.appId || messenger?.appId || process.env.FACEBOOK_APP_ID
   const redirectUri = process.env.FACEBOOK_REDIRECT_URI
   if (!appId || !redirectUri) {
     return NextResponse.json(
@@ -73,6 +79,8 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   const payloadFields: Record<string, unknown> = { orgId, state, ts: Date.now() }
   if (returnKey) payloadFields.ret = returnKey
   if (pinnedApp) payloadFields.app = pinnedApp.configId
+  // Bind the shared provider and exact app identity to the callback; never re-resolve a new tenant app.
+  if (messenger) payloadFields.messengerAppId = messenger.appId
   // Signed like everything else here, and still re-checked against the org on the way back.
   if (originChannelId) payloadFields.channelId = originChannelId
   const payload = JSON.stringify(payloadFields)
@@ -149,8 +157,9 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   //
   // So when the tenant has entered a configuration id we send THAT and omit `scope` entirely. When
   // they have not, we keep the historical scope request, which is what every existing tenant uses.
-  if (pinnedApp?.loginConfigId) {
-    url.searchParams.set("config_id", pinnedApp.loginConfigId)
+  const loginConfigId = pinnedApp?.loginConfigId || messenger?.loginConfigId
+  if (loginConfigId) {
+    url.searchParams.set("config_id", loginConfigId)
   } else {
     url.searchParams.set("scope", scopes)
   }
@@ -165,4 +174,4 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
     path: "/",
   })
   return res
-})
+}, { channel: true })

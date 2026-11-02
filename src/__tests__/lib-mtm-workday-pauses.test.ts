@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   isDuringMtmWorkdayPause,
   MTM_WORKDAY_PAUSE_EVENT_TYPES,
+  mtmLastBreakEndedAt,
   mtmWorkdayPauses,
   serializeMtmWorkdayPauses,
 } from "@/lib/mtm/workday-pauses"
@@ -203,5 +204,30 @@ describe("workday pauses (field UX audit A7)", () => {
       { from: "2026-09-08T13:05:00.000Z", to: "2026-09-08T13:40:00.000Z" },
       { from: "2026-09-08T17:00:00.000Z", to: null },
     ])
+  })
+})
+
+// From when a point is again a position at work: the live roster calls the
+// point he left before a break the last known one until a fix after it.
+describe("when the latest break ended", () => {
+  it("is the latest end among the breaks that are over, a reopened finish included", () => {
+    expect(mtmLastBreakEndedAt(mtmWorkdayPauses([
+      { type: "PAUSE", occurredAt: at("13:05") },
+      { type: "RESUME", occurredAt: at("13:40") },
+      { type: "FINISH", occurredAt: at("17:00"), appliedAt: at("17:00") },
+      { type: "REOPEN", occurredAt: at("17:00"), appliedAt: at("17:10") },
+      { type: "RESUME", occurredAt: at("17:20") },
+    ]))).toEqual(at("17:20"))
+  })
+
+  it("is none while the only break is still running, or when there was none", () => {
+    expect(mtmLastBreakEndedAt(mtmWorkdayPauses([{ type: "PAUSE", occurredAt: at("13:05") }]))).toBeNull()
+    expect(mtmLastBreakEndedAt(mtmWorkdayPauses([{ type: "START", occurredAt: at("08:00") }]))).toBeNull()
+    // A running break after one that is over: the one that is over.
+    expect(mtmLastBreakEndedAt(mtmWorkdayPauses([
+      { type: "PAUSE", occurredAt: at("12:00") },
+      { type: "RESUME", occurredAt: at("12:30") },
+      { type: "PAUSE", occurredAt: at("15:00") },
+    ]))).toEqual(at("12:30"))
   })
 })

@@ -1,122 +1,13 @@
 "use client"
 
-import { Bot, User, MessageCircle, Globe, Sparkles, Tag, AlertCircle, Zap, Hash } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { Bot, User, MessageCircle, Globe, Sparkles, Tag, AlertCircle, Zap, Hash, Mail, Phone, Link as LinkIcon } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDateTime } from "@/lib/format-date"
+import { isOperatorSenderName, parseChatDescription, parseCommentSender, type ParsedChat } from "@/lib/ticketing/chat-transcript"
 
-/**
- * Pretty-render the auto-generated "chat history" ticket description that the WhatsApp webhook and
- * the portal Da Vinci escalation build as a plain-text blob:
- *
- *   Создан из WhatsApp чата.
- *   Клиент: rrr (+994773201000)
- *   Категория: general · Срочность: normal
- *   Триггеры: AI marker [CREATE_TICKET]
- *
- *   --- ИСТОРИЯ ЧАТА ---
- *   [Клиент] ...
- *   [Da Vinci] ...
- *
- * parseChatDescription returns null for anything WITHOUT the transcript marker, so a normal,
- * hand-typed description falls straight through to the plain renderer (no behaviour change).
- */
-
-const MARKER = "--- ИСТОРИЯ ЧАТА ---"
-
-type ChatMsg = { sender: "customer" | "bot"; label: string; text: string }
-export type ParsedChat = {
-  platform: string | null
-  client: string | null
-  phone: string | null
-  category: string | null
-  urgency: string | null
-  triggers: string | null
-  session: string | null
-  messages: ChatMsg[]
-}
-
-// CONTRACT: these must cover every `[label]` the chat producers emit — the description transcript
-// ("[Клиент]" / "[Da Vinci]", whatsapp/route.ts + public/portal-chat/route.ts) AND the synced ticket
-// comments ("[Клиент (WhatsApp)]" / "[Da Vinci Bot]", ticket-sync.ts + the whatsapp/portal comment
-// writers). A new channel that adds a third label MUST extend SENDER_RE or its lines stay unstyled.
-const CUSTOMER_RE = /^(клиент|client|customer|user|пользователь)/i
-const SENDER_RE = /^(клиент|client|customer|user|пользователь|da ?vinci|bot|бот|ассистент|assistant|оператор|operator|agent|агент|менеджер)/i
-
-export function parseChatDescription(raw?: string | null): ParsedChat | null {
-  if (!raw || !raw.includes(MARKER)) return null
-  const idx = raw.indexOf(MARKER)
-  const head = raw.slice(0, idx)
-  const body = raw.slice(idx + MARKER.length)
-
-  let platform: string | null = null
-  let client: string | null = null
-  let phone: string | null = null
-  let category: string | null = null
-  let urgency: string | null = null
-  let triggers: string | null = null
-  let session: string | null = null
-
-  for (const line of head.split("\n").map((l) => l.trim()).filter(Boolean)) {
-    let m: RegExpMatchArray | null
-    if ((m = line.match(/^Создан из (.+?) чата/i))) { platform = m[1].trim(); continue }
-    if (/^Автоматически создан/i.test(line)) { if (!platform) platform = "Da Vinci"; continue }
-    if ((m = line.match(/^Клиент:\s*(.+)$/i))) {
-      const full = m[1].trim()
-      const p = full.match(/\(\+?([0-9][0-9\s-]+)\)\s*$/)
-      if (p) phone = p[1].replace(/[\s-]/g, "")
-      client = full.replace(/\s*\(\+?[0-9][0-9\s-]+\)\s*$/, "").trim() || null
-      continue
-    }
-    if ((m = line.match(/^Категория:\s*(.+)$/i))) {
-      const rest = m[1]
-      const u = rest.match(/·\s*Срочность:\s*(.+)$/i)
-      if (u) urgency = u[1].trim()
-      category = rest.replace(/·\s*Срочность:.*$/i, "").trim() || null
-      continue
-    }
-    if ((m = line.match(/^Триггеры:\s*(.+)$/i))) { triggers = m[1].trim(); continue }
-    if ((m = line.match(/^Сессия:\s*(.+)$/i))) { session = m[1].trim(); continue }
-  }
-
-  // A message begins ONLY at a line whose `[label]` is a RECOGNISED sender (SENDER_RE, module scope),
-  // and runs (multi-line, blank lines included) until the next such line. Anchoring on known senders
-  // means a customer body that starts with e.g. "[Error 0x80] ..." stays text, not a phantom bubble.
-  const messages: ChatMsg[] = []
-  let cur: ChatMsg | null = null
-  for (const line of body.split("\n")) {
-    const m = line.match(/^\[([^\]]+)\]\s?(.*)$/)
-    const label = m ? m[1].trim() : ""
-    if (m && SENDER_RE.test(label)) {
-      if (cur) messages.push(cur)
-      const sender: ChatMsg["sender"] = CUSTOMER_RE.test(label) ? "customer" : "bot"
-      cur = { sender, label, text: m[2] }
-    } else if (cur) {
-      cur.text += "\n" + line
-    }
-  }
-  if (cur) messages.push(cur)
-  for (const msg of messages) msg.text = msg.text.trim()
-
-  if (messages.length === 0 && !platform && !client) return null
-  return { platform, client, phone, category, urgency, triggers, session, messages }
-}
-
-/**
- * Parse a single ticket COMMENT that the WhatsApp/portal sync writes with a sender prefix
- * ("[Клиент (WhatsApp)] ..." / "[Da Vinci Bot] ..."). Returns null for a normal agent/internal
- * comment (no recognised sender prefix) so it keeps its default avatar layout.
- */
-export function parseCommentSender(text?: string | null): { sender: "customer" | "bot"; name: string; channel: string | null; body: string } | null {
-  if (!text) return null
-  const m = text.match(/^\[([^\]]+)\]\s?([\s\S]*)$/)
-  if (!m) return null
-  const rawLabel = m[1].trim()
-  if (!SENDER_RE.test(rawLabel)) return null
-  const sender: "customer" | "bot" = CUSTOMER_RE.test(rawLabel) ? "customer" : "bot"
-  const paren = rawLabel.match(/^(.*?)\s*\(([^)]+)\)\s*$/) // "Клиент (WhatsApp)" → name + channel
-  let name = (paren ? paren[1] : rawLabel).replace(/\s+Bot$/i, "").trim() // "Da Vinci Bot" → "Da Vinci"
-  if (!name) name = sender === "bot" ? "Da Vinci" : "Клиент"
-  return { sender, name, channel: paren ? paren[2].trim() : null, body: m[2].trim() }
-}
+// The parsers live in a plain module: the customer portal's API reads the same format on the server.
+export { parseChatDescription, parseCommentSender }
+export type { ParsedChat }
 
 /**
  * One messenger bubble — customer on the left (neutral), bot/AI on the right (branded). Reused by the
@@ -162,17 +53,28 @@ function platformStyle(platform: string | null, webChatLabel: string, genericCha
   return { icon: MessageCircle, label: genericChatLabel }
 }
 
-function Chip({ icon: Icon, children, className = "" }: { icon: React.ElementType; children: React.ReactNode; className?: string }) {
+function Chip({ icon: Icon, children, className = "", title }: { icon: React.ElementType; children: React.ReactNode; className?: string; title?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span title={title} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
       <Icon className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
       <span className="truncate max-w-[180px]">{children}</span>
     </span>
   )
 }
 
+/** "example.az/pricing" — the page a website chat was started on, short enough for a chip. */
+function pageLabel(url: string): string {
+  try {
+    const parsed = new URL(url)
+    return `${parsed.host}${parsed.pathname === "/" ? "" : parsed.pathname}`
+  } catch {
+    return url
+  }
+}
+
 export function ChatHistoryView({ parsed }: { parsed: ParsedChat }) {
   const t = useTranslations("tickets")
+  const locale = useLocale()
   const ps = platformStyle(parsed.platform, t("chatHistoryWebChat"), t("chatHistoryChat"))
   const PlatformIcon = ps.icon
   const categoryLabel = parsed.category ? ({
@@ -199,6 +101,9 @@ export function ChatHistoryView({ parsed }: { parsed: ParsedChat }) {
           {ps.label}
         </span>
         {parsed.client && <Chip icon={User} className="bg-muted text-foreground/80">{parsed.client}{parsed.phone ? ` · +${parsed.phone}` : ""}</Chip>}
+        {parsed.email && <Chip icon={Mail} className="bg-muted text-foreground/80">{parsed.email}</Chip>}
+        {parsed.contactPhone && <Chip icon={Phone} className="bg-muted text-foreground/80">{parsed.contactPhone}</Chip>}
+        {parsed.pageUrl && <Chip icon={LinkIcon} className="bg-muted text-muted-foreground" title={parsed.pageUrl}>{pageLabel(parsed.pageUrl)}</Chip>}
         {categoryLabel && <Chip icon={Tag} className="bg-muted text-foreground/80">{categoryLabel}</Chip>}
         {urgencyLabel && <Chip icon={AlertCircle} className="bg-amber-500/10 text-amber-700 dark:text-amber-400">{urgencyLabel}</Chip>}
         {parsed.triggers && <Chip icon={Zap} className="bg-muted text-muted-foreground">{t("chatHistoryEscalationReason")}</Chip>}
@@ -208,7 +113,15 @@ export function ChatHistoryView({ parsed }: { parsed: ParsedChat }) {
       {/* Transcript: customer on the left, the AI engine (Da Vinci) on the right — messenger style */}
       <div className="space-y-3 bg-muted/15 px-3 py-4">
         {parsed.messages.map((m, i) => (
-          <ChatBubble key={i} sender={m.sender} text={m.text} label={m.sender === "bot" ? t("chatHistoryAssistant") : t("chatHistoryCustomer")} />
+          <ChatBubble
+            key={i}
+            sender={m.sender}
+            text={m.text}
+            label={m.sender === "customer"
+              ? t("chatHistoryCustomer")
+              : isOperatorSenderName(m.label) ? t("chatHistoryOperator") : t("chatHistoryAssistant")}
+            footer={m.at ? <time dateTime={m.at} className="text-xs text-muted-foreground">{formatDateTime(m.at, locale)}</time> : undefined}
+          />
         ))}
         {parsed.messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">{t("chatHistoryEmpty")}</p>

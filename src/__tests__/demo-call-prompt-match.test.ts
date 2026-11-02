@@ -18,7 +18,9 @@ import {
   DEMO_CALL_CONNECTING_EVENT,
   claimConnectingDemoCall,
   noteDemoCallConnecting,
+  recordDemoPromptApplied,
 } from "@/lib/demo-center/call-prompt-match"
+import { PROMPT_SERVED_EVENT } from "@/lib/demo-center/call-prompt"
 
 const ORG = "org-leaddrive-inc"
 const CALL_ID = "0b7c1c52-6c1e-4b3a-9d55-7c7e6a2f1a10"
@@ -65,6 +67,14 @@ describe("claimConnectingDemoCall", () => {
     await expect(claimConnectingDemoCall(ORG, clock)).resolves.toBeNull()
     expect(clock.wait).not.toHaveBeenCalled()
     expect(prisma.callEvent.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("records the station's word as the prompt-served evidence, once", async () => {
+    await recordDemoPromptApplied(ORG, "log-demo", CALL_ID)
+    expect(vi.mocked(prisma.callEvent.createMany).mock.calls[0][0]).toMatchObject({
+      data: [{ eventType: PROMPT_SERVED_EVENT, callLogId: "log-demo", payload: { variant: "demo", matchedBy: "station" } }],
+      skipDuplicates: true,
+    })
   })
 
   it("returns at once when the demo call in flight already has its prompt", async () => {

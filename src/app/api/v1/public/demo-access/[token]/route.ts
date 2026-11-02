@@ -4,9 +4,11 @@ import { getDemoModules } from "@/lib/demo-center/catalog"
 import {
   demoSourceChannelOf,
   getDemoJourneyScenario,
+  isDemoJourneyModuleId,
   type DemoProspectIdentity,
 } from "@/lib/demo-center/journey"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
+import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
 import { demoCallStatus } from "@/lib/demo-center/demo-call"
 import { demoLiveCallState } from "@/lib/demo-center/phone-verification"
 import {
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       where: { tokenHash: hashOneTimeToken(token) },
       include: {
         request: {
-          select: { company: true, email: true, name: true, jobTitle: true, phone: true, source: true },
+          select: { company: true, email: true, name: true, jobTitle: true, phone: true, source: true, requestedModules: true },
         },
       },
     })
@@ -81,6 +83,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           emailMasked: maskEmail(grant.request.email),
           phoneMasked: grant.request.phone ? maskPhone(grant.request.phone) : null,
           sourceChannel: demoSourceChannelOf(grant.request.source),
+          // What they ticked on the form comes first in the demo.
+          interests: grant.request.requestedModules.filter(isDemoJourneyModuleId),
         }
       : null
     if (state !== "active") {
@@ -140,7 +144,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       company: grant.request.company,
       recipient: maskEmail(grant.request.email),
       watermark: grant.watermark,
-      ...(scenario ? { scenario: scenarioPayload, identity, liveCall } : { modules: selectedModules }),
+      // Whether the guide speaks Da Vinci's answers and offers «Səslə soruşun»
+      // (assistant-voice-switch.ts): the page shows no button without it.
+      ...(scenario ? { scenario: scenarioPayload, identity, liveCall, assistantVoice: demoAssistantVoiceEnabled() } : { modules: selectedModules }),
       sessionStartedAt: grant.sessionStartedAt,
       sessionExpiresAt: grant.sessionExpiresAt,
       idleExpiresAt: idleExpiry(responseLastSeenAt, grant.inactivityMinutes),

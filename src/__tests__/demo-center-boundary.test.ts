@@ -90,6 +90,57 @@ describe("Demo Center trust boundary", () => {
     }
   })
 
+  it("shows product screens only through their pure views: nothing a scene draws reaches a session or a tenant API", () => {
+    // The demo's AI agent screen is the product's own (src/components/settings
+    // *-view.tsx); the containers beside them load and save for a tenant.
+    for (const file of sourceFiles("src/components/demo-center")) {
+      for (const specifier of importSpecifiers(readFileSync(file, "utf8"))) {
+        if (!specifier.startsWith("@/components/settings/")) continue
+        const target = path.join(ROOT, "src", `${specifier.slice(2)}.tsx`)
+        const viewSource = readFileSync(target, "utf8")
+        for (const forbidden of ["next-auth", "useSession", "fetch(", "/api/v1/", "organization-features", "chatbot-engine"]) {
+          expect(viewSource.includes(forbidden), `${path.relative(ROOT, file)} draws ${specifier}, which uses ${forbidden}`).toBe(false)
+        }
+      }
+    }
+  })
+
+  it("client demo code takes only types from the server's WhatsApp module — its code and Prisma stay on the server", () => {
+    for (const dir of CLIENT_DIRS) {
+      for (const file of sourceFiles(dir)) {
+        const source = readFileSync(file, "utf8")
+        for (const line of source.split("\n")) {
+          if (!/from\s+["']@\/lib\/demo-center\/demo-whatsapp["']/.test(line)) continue
+          expect(line.trimStart().startsWith("import type "), `${path.relative(ROOT, file)}: ${line.trim()}`).toBe(true)
+        }
+      }
+    }
+  })
+
+  it("client demo code takes only types from the server's Facebook Page modules — tokens, Meta and Prisma stay on the server", () => {
+    // demo-social.ts, demo-social-oauth.ts, demo-social-inbound.ts and their
+    // siblings hold the Page tokens, the Graph calls and the database. The one
+    // module the page may take values from is the consent text, which must
+    // itself import nothing.
+    let importsSeen = 0
+    for (const dir of CLIENT_DIRS) {
+      for (const file of sourceFiles(dir)) {
+        const source = readFileSync(file, "utf8")
+        for (const line of source.split("\n")) {
+          const match = line.match(/from\s+["']@\/lib\/demo-center\/(demo-social(?:-[a-z]+)?)["']/)
+          if (!match) continue
+          importsSeen += 1
+          if (match[1] === "demo-social-consent") continue
+          expect(line.trimStart().startsWith("import type "), `${path.relative(ROOT, file)}: ${line.trim()}`).toBe(true)
+        }
+      }
+    }
+    // The panel, the hook and the scene props do import from them: a rule nothing exercises proves nothing.
+    expect(importsSeen).toBeGreaterThanOrEqual(3)
+    const consent = readFileSync(path.join(ROOT, "src/lib/demo-center/demo-social-consent.ts"), "utf8")
+    expect(importSpecifiers(consent)).toEqual([])
+  })
+
   it("client demo code only talks to the public demo routes", () => {
     for (const dir of CLIENT_DIRS) {
       for (const file of sourceFiles(dir)) {

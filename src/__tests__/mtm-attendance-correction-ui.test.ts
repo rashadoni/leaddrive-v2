@@ -53,7 +53,8 @@ it.each(["ru", "az", "en"])("renders correction history in all real report forms
   expect(container.querySelectorAll('[data-testid="attendance-day-row"]')).toHaveLength(2)
   expect(container.textContent).toContain(t.reportCorrectionMissing)
   expect(container.textContent).toContain("Проверяющий В")
-  expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain("18:00")
+  // Two 09:00–18:00 days without a break, each less the automatic 1:00 lunch (owner, 2026-10-16: «вычитать обед самому»).
+  expect(container.querySelector('[data-testid="attendance-report-totals"]')?.textContent).toContain("16:00")
   capture(locale, "day")
   await click(t.reportJournal)
   const rows = container.querySelectorAll('[data-testid="attendance-journal-event"]')
@@ -66,7 +67,7 @@ it.each(["ru", "az", "en"])("renders correction history in all real report forms
   await click(t.reportMonth)
   expect(container.querySelector('[data-testid="attendance-correction-history"]')?.textContent).toContain(t.reportCorrectionMissing)
   expect(container.querySelector('[data-testid="attendance-correction-history"]')?.textContent).toContain("Проверяющий В")
-  expect(container.textContent).toContain("9:00 *")
+  expect(container.textContent).toContain("8:00 *")
   expect(container.textContent).not.toMatch(/mtmAttendance\.|PRIVATE_|latitude|longitude/)
   capture(locale, "month")
 })

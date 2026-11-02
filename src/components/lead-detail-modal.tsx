@@ -226,9 +226,9 @@ export function LeadDetailModal({ open, onOpenChange, company, orgId, onSaved }:
       </DialogHeader>
       <DialogContent className="max-h-[70vh] overflow-y-auto">
         {/* Tabs */}
-        <div className="flex gap-1 border-b mb-4 overflow-x-auto">
+        <div data-crm-tabs="" className="flex gap-1 border-b mb-4 overflow-x-auto">
           {tabs.map(tab => (
-            <button
+            <button data-crm-tab="" data-state={activeTab === tab.id ? "active" : "inactive"}
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); if (tab.id === "activity" && !activities.length) loadActivities(); if (tab.id === "tickets" && !tickets.length) loadTickets() }}
               className={`px-3 py-2 text-sm whitespace-nowrap border-b-2 transition-colors ${
@@ -253,10 +253,10 @@ export function LeadDetailModal({ open, onOpenChange, company, orgId, onSaved }:
                   <button
                     key={s}
                     onClick={() => changeStatus(s)}
-                    className={`text-[10px] py-1 px-2.5 rounded-full border border-zinc-200 dark:border-zinc-700 transition-all ${
+                    className={`text-[10px] py-1 px-2.5 rounded-full border border-border transition-all ${
                       (fullData?.leadStatus || company.leadStatus) === s
                         ? `${statusColors[s]} text-white border-transparent font-medium`
-                        : "bg-background hover:bg-muted border-zinc-200 dark:border-zinc-700 text-muted-foreground"
+                        : "bg-background hover:bg-muted border-border text-muted-foreground"
                     }`}
                   >
                     {statusLabels[s]}

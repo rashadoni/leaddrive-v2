@@ -138,7 +138,7 @@ export default function QuotaSettingsPage() {
               key={y}
               onClick={() => setYear(y)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                year === y ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                year === y ? "crm-choice-selected " : "bg-muted hover:bg-muted/80"
               }`}
             >
               {y}
@@ -148,7 +148,7 @@ export default function QuotaSettingsPage() {
       </div>
 
       {/* Add New Quota */}
-      <MotionCard className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card" data-tour-id="quotas-form">
+      <MotionCard className="p-4 rounded-xl border border-border bg-card" data-tour-id="quotas-form">
         <h3 className="text-sm font-semibold mb-3">{t("addQuota")}</h3>
         <p className="mb-4 text-xs text-muted-foreground">{t("formHint")}</p>
         <div className="flex gap-3 items-end flex-wrap">
@@ -157,7 +157,7 @@ export default function QuotaSettingsPage() {
             <select
               value={newUserId}
               onChange={e => setNewUserId(e.target.value)}
-              className="h-9 rounded-md border border-zinc-200 dark:border-zinc-700 px-2 text-sm bg-background min-w-[160px]"
+              className="h-9 rounded-md border border-input px-2 text-sm bg-background min-w-[160px]"
             >
               <option value="">{t("selectManager")}</option>
               {users.map(u => (
@@ -171,7 +171,7 @@ export default function QuotaSettingsPage() {
             <select
               value={newQuarter}
               onChange={e => setNewQuarter(parseInt(e.target.value))}
-              className="h-9 rounded-md border border-zinc-200 dark:border-zinc-700 px-2 text-sm bg-background w-20"
+              className="h-9 rounded-md border border-input px-2 text-sm bg-background w-20"
             >
               {[1, 2, 3, 4].map(q => (
                 <option key={q} value={q}>Q{q}</option>
@@ -185,7 +185,7 @@ export default function QuotaSettingsPage() {
               value={newAmount}
               onChange={e => setNewAmount(e.target.value)}
               placeholder="150000"
-              className="h-9 rounded-md border border-zinc-200 dark:border-zinc-700 px-2 text-sm bg-background w-32"
+              className="h-9 rounded-md border border-input px-2 text-sm bg-background w-32"
             />
             <p className="mt-1 max-w-[180px] text-[11px] text-muted-foreground">{t("amountHint")}</p>
           </div>
@@ -200,12 +200,12 @@ export default function QuotaSettingsPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">{t("loading")}</div>
       ) : quotas.length === 0 ? (
-        <div className="flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-card px-6 py-10 text-center text-muted-foreground dark:border-zinc-700" data-tour-id="quotas-list">
+        <div className="flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center text-muted-foreground" data-tour-id="quotas-list">
           <p className="text-sm font-medium text-foreground">{t("noQuotas", { year })}</p>
           <p className="mt-2 max-w-md text-sm leading-6">{t("noQuotasHint")}</p>
         </div>
       ) : (
-        <MotionCard className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden" data-tour-id="quotas-list">
+        <MotionCard className="rounded-xl border border-border bg-card overflow-hidden" data-tour-id="quotas-list">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
@@ -234,7 +234,7 @@ export default function QuotaSettingsPage() {
                           if (e.key === "Escape") setEditingId(null)
                         }}
                         onBlur={() => handleInlineSave(q.id)}
-                        className="h-6 w-24 text-right border border-zinc-200 dark:border-zinc-700 rounded px-1 text-xs bg-background"
+                        className="h-6 w-24 text-right border border-input rounded px-1 text-xs bg-background"
                       />
                     ) : (
                       <span

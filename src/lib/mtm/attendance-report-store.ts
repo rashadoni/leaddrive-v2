@@ -1,4 +1,5 @@
 import { readAttendanceParticipationHistory } from "@/lib/mtm/attendance-participation-store"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { attendanceAccountingRows } from "@/lib/mtm/attendance-shift-plan"
 import { readAttendanceShiftAssignments } from "@/lib/mtm/attendance-shift-store"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
@@ -13,7 +14,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { readAttendanceRules } from "@/lib/mtm/attendance-rule-store"
 import { projectAttendanceCorrectionFacts } from "@/lib/mtm/attendance-correction-facts"
-import { buildMtmAttendanceReport, filterMtmAttendanceRows, summarizeMtmAttendanceRows, MTM_ATTENDANCE_REPORT_MAX_ROWS } from "@/lib/mtm/attendance-report"
+import { buildMtmAttendanceReport, filterMtmAttendanceRows, summarizeMtmAttendanceRows, MTM_ATTENDANCE_REPORT_MAX_ROWS, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
 
 export { AttendanceReportQuerySchema } from "@/lib/mtm/attendance-query"
@@ -55,12 +56,13 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
   const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
     const employees = await tx.mtmAgent.findMany({
       where: {
-        organizationId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }],
+        organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE,
         ...(authorizedEmployeeIds === null ? {} : { id: { in: [...authorizedEmployeeIds] } }),
         ...(query.employeeId ? { AND: { id: query.employeeId } } : {}),
         ...(query.teamId ? { teamId: query.teamId } : {}),
+        ...(query.departmentId ? { departmentId: query.departmentId } : {}),
       },
-      select: { id: true, name: true, teamId: true, attendanceIncludedFrom: true },
+      select: { id: true, name: true, position: true, teamId: true, departmentId: true, attendanceIncludedFrom: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: Math.floor(MTM_ATTENDANCE_REPORT_MAX_ROWS / days) + 1,
     })
@@ -69,6 +71,10 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
     if (employees.length * days > MTM_ATTENDANCE_REPORT_MAX_ROWS) throw new Error("MTM_ATTENDANCE_REPORT_TOO_LARGE")
     const agentIds = employees.map((employee) => employee.id)
     const teamIds = [...new Set(employees.flatMap((employee) => employee.teamId ? [employee.teamId] : []))]
+    const departmentIds = [...new Set(employees.flatMap((employee) => employee.departmentId ? [employee.departmentId] : []))]
+    // Department above the team (2026-10-22), shown under the name in reports (owner, 2026-11-01).
+    const departmentNames = new Map((departmentIds.length ? await tx.mtmDepartment.findMany({ where: { organizationId, id: { in: departmentIds } }, select: { id: true, name: true } }) : [])
+      .map((department) => [department.id, department.name]))
     const [teams, workdays, calendar, rules, catalogue] = await Promise.all([
       tx.mtmTeam.findMany({ where: { organizationId, id: { in: teamIds } }, select: { id: true, name: true } }),
       tx.mtmAgentWorkday.findMany({
@@ -117,16 +123,25 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
     const shiftAssignments = await readAttendanceShiftAssignments(tx, organizationId, agentIds, precedingDate, query.to)
     const participation = await readAttendanceParticipationHistory(tx, organizationId, agentIds)
     const calculationInput = {
-      employees: employees.map((employee) => ({ ...employee, attendanceIncludedFrom: employee.attendanceIncludedFrom?.toISOString() ?? null, participationEvents: participation.filter(event => event.agentId === employee.id), employmentEvents: employmentByEmployee.get(employee.id), teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
+      employees: employees.map((employee) => ({ ...employee, attendanceIncludedFrom: employee.attendanceIncludedFrom?.toISOString() ?? null, participationEvents: participation.filter(event => event.agentId === employee.id), employmentEvents: employmentByEmployee.get(employee.id), teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null, departmentName: employee.departmentId ? departmentNames.get(employee.departmentId) ?? null : null })),
       approvedRequests, dayKinds: catalogue.items, workdays: workdays.map((day) => ({ ...day, correctionProjection: projectAttendanceCorrectionFacts(day, correctionsByWorkday.get(day.id) ?? [], now) })),
       calendar, rules, shiftAssignments, from: query.from, to: query.to, now,
     }
     const report = buildMtmAttendanceReport(calculationInput)
     const locationEvidence = await readAttendanceLocationReportEvidence(tx, organizationId, workdays.map(day => day.id))
-    const rows = filterMtmAttendanceRows(report.rows, { form: query.form }).map(row => ({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) }))
+    // Explanations sit beside the day as a note; they never change its hours.
+    const explanationRows = agentIds.length ? await tx.mtmAttendanceExplanation.findMany({ where: { organizationId, agentId: { in: agentIds }, workDate: { gte: readFrom, lte: to } },
+      select: { agentId: true, workDate: true, kind: true, status: true, answer: true }, orderBy: [{ kind: "asc" }] }) : []
+    const explanations = new Map<string, NonNullable<MtmAttendanceReportRow["explanations"]>>()
+    for (const item of explanationRows) {
+      const dayKey = `${item.agentId}|${item.workDate.toISOString().slice(0, 10)}`
+      explanations.set(dayKey, [...(explanations.get(dayKey) ?? []), { kind: item.kind as "LATE" | "ABSENT", status: item.status as "REQUESTED" | "ANSWERED" | "ACCEPTED" | "REJECTED", answer: item.answer }])
+    }
+    const explained = <T extends MtmAttendanceReportRow>(row: T): T => { const found = explanations.get(`${row.employeeId}|${row.date}`); return found ? { ...row, explanations: found } : row }
+    const rows = filterMtmAttendanceRows(report.rows, { form: query.form }).map(row => explained({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) }))
     const supplemental = shiftAssignments.length ? buildMtmAttendanceReport({ ...calculationInput, from: precedingDate, to: precedingDate }).rows : []
     const accountingRows = shiftAssignments.length ? attendanceAccountingRows([...supplemental, ...report.rows], query.from, query.to)
-      .map(row => ({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) })) : undefined
+      .map(row => explained({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) })) : undefined
     if (accountingRows && accountingRows.length > MTM_ATTENDANCE_REPORT_MAX_ROWS) throw new Error("MTM_ATTENDANCE_REPORT_TOO_LARGE")
     const result = { ...report, rows, ...(accountingRows ? { accountingRows: filterMtmAttendanceRows(accountingRows, { form: query.form }) } : {}), totals: summarizeMtmAttendanceRows(rows), form: query.form }
     const id = createHash("sha256").update(JSON.stringify({ query, report: result })).digest("hex")

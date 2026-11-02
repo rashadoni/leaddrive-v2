@@ -68,7 +68,7 @@ function BulkCloseDialogBody({ selectedCount, busy, allowNoResult, onOpenChange,
                         : option === "lost"
                           ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
                           : "border-zinc-400 bg-muted"
-                      : "border-zinc-200 text-muted-foreground hover:border-zinc-300 dark:border-zinc-700"
+                      : "border-border text-muted-foreground hover:border-zinc-300"
                   }`}
                 >
                   {t(`closeOutcome.${option}`)}

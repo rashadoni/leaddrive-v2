@@ -20,7 +20,7 @@ export function SalesPipeline({ pipeline }: { pipeline: any }) {
   const stages = pipeline?.stages || []
 
   return (
-    <div className="dashboard-bento-card rounded-lg bg-card border border-zinc-200 dark:border-zinc-700 shadow-sm p-3">
+    <div className="dashboard-bento-card rounded-lg bg-card border border-border shadow-sm p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Target className="h-4 w-4 text-blue-500" />
@@ -50,7 +50,7 @@ export function SalesPipeline({ pipeline }: { pipeline: any }) {
           )
         })}
       </div>
-      <div className="grid grid-cols-3 gap-1 pt-2 mt-2 border-t border-zinc-200 dark:border-zinc-700 text-center">
+      <div className="grid grid-cols-3 gap-1 pt-2 mt-2 border-t border-border text-center">
         <div>
           <div className="text-sm font-bold text-emerald-600">{pipeline?.wonThisMonth || 0}</div>
           <div className="text-[8px] text-muted-foreground">{t("won")}</div>

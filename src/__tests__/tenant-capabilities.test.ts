@@ -25,6 +25,48 @@ const byId = (id: string) => {
 // Stored licensing contracts remain reusable after extraction. Runtime withdrawal
 // is verified without mocks in crm-workforce-withdrawal.test.ts.
 describe("stored tenant capability entitlement resolver", () => {
+  it("offers brand monitoring independently of omnichannel and AI", () => {
+    const state = resolveTenantCapabilities({
+      plan: "starter", role: "superadmin", modules: { crm: true },
+    }).find((item) => item.definition.id === "brand-monitoring")!
+
+    expect(state).toMatchObject({ enabled: false, status: "requires_plan" })
+    expect(entitlementKeysForCapability(state.definition)).toEqual(["social"])
+    const granted = applyCapabilityEntitlement(state.definition, { features: ["crm"] })
+    expect(granted).toEqual({ features: ["crm", "social"], modules: { crm: true, social: true } })
+    expect(resolveTenantCapability(state.definition, {
+      plan: "starter", role: "superadmin", modules: granted.modules,
+    })).toMatchObject({ enabled: true, status: "enabled", actions: expect.arrayContaining(["disable"]) })
+  })
+
+  it.each([
+    { features: ["social", "social_brand_protection_only"] },
+    { modules: { social: true } },
+    { addons: ["social"] },
+  ])("recognizes existing social access without a new entitlement: %j", (fields) => {
+    expect(hasTenantCapabilityEntitlement("brand-monitoring", { plan: "starter", ...fields })).toBe(true)
+  })
+
+  it("keeps a revoked social module disabled even with its billing addon", () => {
+    const definition = byId("brand-monitoring")
+    const revoked = removeCapabilityEntitlement(definition, {
+      features: ["social", "omnichannel", "social_brand_protection_only"],
+    })
+    expect(revoked.features).toEqual(["omnichannel", "social_brand_protection_only"])
+    expect(resolveTenantCapability(definition, {
+      plan: "enterprise", role: "superadmin", addons: ["social"], modules: revoked.modules,
+    })).toMatchObject({ enabled: false, status: "disabled", actions: ["enable"] })
+  })
+
+  it.each(["admin", "member"])("keeps brand module entitlement controls out of the %s tenant role", (role) => {
+    const moduleStates: Record<string, boolean>[] = [{}, { social: true }, { social: false }]
+    for (const modules of moduleStates) {
+      const state = resolveTenantCapability(byId("brand-monitoring"), { plan: "enterprise", role, modules })
+      expect(state.actions).not.toContain("enable")
+      expect(state.actions).not.toContain("disable")
+    }
+  })
+
   it("materializes Organization.features from json array or serialized json", () => {
     expect(featuresToModuleRecord(["crm", "sales"])).toEqual({ crm: true, sales: true })
     expect(featuresToModuleRecord("[\"mtm\",\"ai_security_monitoring\"]")).toEqual({ mtm: true, ai_security_monitoring: true })

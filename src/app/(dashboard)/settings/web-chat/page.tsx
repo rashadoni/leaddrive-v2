@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -71,6 +72,12 @@ const COPY: Record<Loc, Record<string, string>> = {
     rolloutLabel: "AI audience share",
     rolloutHint: "Share of chat sessions the AI answers; the rest go straight to agents. Deterministic per session — a dialog never flips between AI and human.",
     rolloutAll: "Everyone",
+    langHint: 'The chat speaks to visitors in your organization’s language — currently {lang}: the window’s text, the default title and greeting, and the AI’s replies. For a page of your site in another language, add data-lang="az", "ru" or "en" to the code.',
+    lang_az: "Azerbaijani",
+    lang_ru: "Russian",
+    lang_en: "English",
+    langChangeAt: "Change it:",
+    langChangeLink: "Settings → Organization → Customer language",
   },
   ru: {
     regenerateHint: "Генерируйте новый ключ только если старый утек или нужно отозвать все текущие embeds. Все сайты со старым snippet надо будет обновить.",
@@ -94,6 +101,12 @@ const COPY: Record<Loc, Record<string, string>> = {
     rolloutLabel: "Доля диалогов для AI",
     rolloutHint: "Какую долю сессий чата обрабатывает AI; остальные сразу к операторам. Детерминировано на сессию — диалог не «мигает» между AI и человеком.",
     rolloutAll: "Все",
+    langHint: 'Чат говорит с посетителем на языке организации — сейчас {lang}: надписи окна, стандартные заголовок и приветствие, ответы AI. Для страницы сайта на другом языке добавьте в код data-lang="az", "ru" или "en".',
+    lang_az: "азербайджанский",
+    lang_ru: "русский",
+    lang_en: "английский",
+    langChangeAt: "Сменить язык:",
+    langChangeLink: "Настройки → Организация → Язык общения с клиентами",
   },
   az: {
     regenerateHint: "Yeni açarı yalnız köhnə açar sızıbsa və ya bütün mövcud embed-ləri ləğv etmək istəyirsinizsə yaradın. Köhnə snippet olan bütün saytlar yenilənməlidir.",
@@ -117,6 +130,12 @@ const COPY: Record<Loc, Record<string, string>> = {
     rolloutLabel: "AI üçün dialoq payı",
     rolloutHint: "Çat sessiyalarının hansı hissəsinə AI cavab verir; qalanları birbaşa operatorlara gedir. Sessiya üzrə deterministikdir — dialoq AI ilə insan arasında «yanıb-sönmür».",
     rolloutAll: "Hamı",
+    langHint: 'Çat ziyarətçi ilə təşkilatın dilində danışır — hazırda {lang}: pəncərənin yazıları, standart başlıq və salamlama, AI cavabları. Saytın başqa dildəki səhifəsi üçün koda data-lang="az", "ru" və ya "en" əlavə edin.',
+    lang_az: "Azərbaycan dili",
+    lang_ru: "rus dili",
+    lang_en: "ingilis dili",
+    langChangeAt: "Dili dəyişmək:",
+    langChangeLink: "Parametrlər → Təşkilat → Müştərilərlə ünsiyyət dili",
   },
 }
 
@@ -128,6 +147,8 @@ export default function WebChatSettingsPage() {
   const { data: session } = useSession()
   const orgId = session?.user?.organizationId
   const [cfg, setCfg] = useState<WidgetConfig | null>(null)
+  // What the widget speaks on a page without data-lang: the organization's language.
+  const [widgetLang, setWidgetLang] = useState<Loc | null>(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [originsText, setOriginsText] = useState("")
@@ -143,6 +164,7 @@ export default function WebChatSettingsPage() {
       .then(res => {
         if (res.success) {
           setCfg(res.data)
+          if (res.language === "en" || res.language === "ru" || res.language === "az") setWidgetLang(res.language)
           setOriginsText((res.data.allowedOrigins || []).join("\n"))
           if (res.data.workingHours && typeof res.data.workingHours === "object") {
             setWorkingHours(res.data.workingHours)
@@ -264,13 +286,13 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">{t("widgetEnabled")}</p>
             <p className="text-xs text-muted-foreground">{t("widgetEnabledDesc")}</p>
           </div>
-          <button
+          <button data-crm-color-role="toggle"
             onClick={() => update({ enabled: !cfg.enabled })}
             className={`h-6 w-11 rounded-full transition-colors ${cfg.enabled ? "bg-green-500" : "bg-muted"}`}
           >
@@ -279,7 +301,7 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div data-tour-id="webchat-embed" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+      <div data-tour-id="webchat-embed" className="rounded-lg border border-border bg-card p-5 space-y-4">
         <h2 className="text-sm font-semibold flex items-center gap-2"><Globe className="h-4 w-4" /> {t("embedSnippet")}</h2>
         <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">{embedSnippet}</div>
         <div className="flex items-center gap-2">
@@ -292,10 +314,17 @@ export default function WebChatSettingsPage() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{t("embedHint")}</p>
+        {widgetLang && (
+          <p className="text-xs text-muted-foreground">
+            {c.langHint.replace("{lang}", c[`lang_${widgetLang}`])}{" "}
+            {c.langChangeAt}{" "}
+            <Link href="/settings/organization" className="font-medium text-primary underline underline-offset-2">{c.langChangeLink}</Link>.
+          </p>
+        )}
         <p className="text-xs text-amber-700 dark:text-amber-300">{c.regenerateHint}</p>
       </div>
 
-      <div data-tour-id="webchat-behavior" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-4">
+      <div data-tour-id="webchat-behavior" className="rounded-lg border border-border bg-card p-5 space-y-4">
         <h2 className="text-sm font-semibold">{t("appearance")}</h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
@@ -328,7 +357,7 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5">
+      <div className="rounded-lg border border-border bg-card p-5">
         <h2 className="text-sm font-semibold">{t("behavior")}</h2>
         <div className="divide-y divide-border/60">
           <ToggleRow title={t("aiReply")} hint={c.aiHint} checked={cfg.aiEnabled} onChange={(v) => update({ aiEnabled: v })}>
@@ -353,7 +382,7 @@ export default function WebChatSettingsPage() {
                     <select
                       value={cfg.aiThreshold === null ? "" : String(cfg.aiThreshold)}
                       onChange={(e) => update({ aiThreshold: e.target.value === "" ? null : Number(e.target.value) })}
-                      className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 py-1 text-sm"
+                      className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                     >
                       <option value="">{c.thresholdOff}</option>
                       <option value="0.85">{c.thresholdCautious}</option>
@@ -371,7 +400,7 @@ export default function WebChatSettingsPage() {
                   <select
                     value={cfg.aiRolloutPercent === null ? "" : String(cfg.aiRolloutPercent)}
                     onChange={(e) => update({ aiRolloutPercent: e.target.value === "" ? null : Number(e.target.value) })}
-                    className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 py-1 text-sm"
+                    className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                   >
                     <option value="">{c.rolloutAll}</option>
                     <option value="75">75%</option>
@@ -393,7 +422,7 @@ export default function WebChatSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         {/* Master onboarding toggle (Whelp-style): off = one-click anonymous start — the
             per-field builder + custom questions only matter while it's on. */}
         <div className="flex items-start justify-between gap-4">
@@ -418,7 +447,7 @@ export default function WebChatSettingsPage() {
                   update({ preChatForm: next })
                 }
                 return (
-                  <div key={field} className="flex flex-wrap items-center gap-4 rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                  <div key={field} className="flex flex-wrap items-center gap-4 rounded-md border border-border px-3 py-2">
                     <span className="w-24 text-sm font-medium">{t(`field${field.charAt(0).toUpperCase()}${field.slice(1)}`)}</span>
                     <label className="flex items-center gap-2 text-xs">
                       <input type="checkbox" checked={item.enabled} onChange={e => setField({ enabled: e.target.checked })} />
@@ -467,7 +496,7 @@ export default function WebChatSettingsPage() {
         )}
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">{t("workingHours")}</h2>
           <label className="flex items-center gap-2 text-sm">
@@ -538,7 +567,7 @@ export default function WebChatSettingsPage() {
         )}
       </div>
 
-      <div data-tour-id="webchat-origins" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-5 space-y-2">
+      <div data-tour-id="webchat-origins" className="rounded-lg border border-border bg-card p-5 space-y-2">
         <h2 className="text-sm font-semibold">{t("allowedOrigins")}</h2>
         <p className="text-xs text-muted-foreground">{t("allowedOriginsHint")}</p>
         <Textarea

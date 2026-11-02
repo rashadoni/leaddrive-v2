@@ -195,3 +195,26 @@ describe("POST Chatwoot delivery reconciliation", () => {
     expect(mocks.updateAttempt).not.toHaveBeenCalled()
   })
 })
+
+
+describe("native TikTok reconciliation", () => {
+  it("requires a native-bound conversation and keeps the provider check separate", async () => {
+    const res = await POST(request({ attemptId: "attempt-1", outcome: "delivered", confirmation: "verified_in_tiktok" }), ctx as never)
+    expect(res.status).toBe(404)
+    expect(mocks.updateAttempt).not.toHaveBeenCalled()
+  })
+  it("records explicit TikTok verification with the actor and the shared native lock", async () => {
+    mocks.findConversation.mockResolvedValue({ id: "conv-1", metadata: { provider: "tiktok_messaging" } })
+    mocks.findAttempt.mockResolvedValue({ id: "attempt-1", status: "failed", body: "Hello", createdAt: new Date(Date.now() - 180_000), metadata: { provider: "tiktok_messaging", deliveryUnknown: true } })
+    const res = await POST(request({ attemptId: "attempt-1", outcome: "delivered", confirmation: "verified_in_tiktok" }), ctx as never)
+    expect(res.status).toBe(200)
+    expect(mocks.executeRaw.mock.calls[0][1]).toBe("tiktok-messaging-connection:org-1")
+    expect(mocks.updateAttempt).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "sent", metadata: expect.objectContaining({ deliveryUnknown: false, deliveryReconciliation: expect.objectContaining({ method: "operator_tiktok_check", verifiedBy: "user-1" }) }) }) }))
+  })
+  it("does not let Chatwoot confirmation reconcile a native attempt", async () => {
+    mocks.findAttempt.mockResolvedValue({ id: "attempt-1", status: "failed", body: "Hello", createdAt: new Date(Date.now() - 180_000), metadata: { provider: "tiktok_messaging", deliveryUnknown: true } })
+    const res = await POST(request({ attemptId: "attempt-1", outcome: "not_delivered", confirmation: "verified_in_chatwoot" }), ctx as never)
+    expect(res.status).toBe(409)
+    expect(mocks.updateAttempt).not.toHaveBeenCalled()
+  })
+})

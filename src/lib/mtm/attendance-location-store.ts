@@ -4,12 +4,13 @@ import { enforceAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
-import { isAttendanceEmployeeExcluded, lockAttendanceRequests, requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-self-access"
+import { isAttendanceMarkExempt, lockAttendanceRequests, requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-self-access"
 import { resolveAttendanceReviewerScope, type AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { AttendanceLocationPolicyInputSchema, AttendanceLocationConsentInputSchema, evaluateAttendanceLocation,
   type AttendanceLocationPolicy, type OwnAttendanceLocation, type AttendanceBranchFix } from "@/lib/mtm/attendance-location-contract"
 import { mtmWorkdayRequestHash, type MtmWorkdayEventInput, type MtmWorkdayPostEventContext } from "@/lib/mtm/workday"
 import { MTM_WORKDAY_PAUSE_EVENT_TYPES, mtmWorkdayPauses, isDuringMtmWorkdayPause } from "@/lib/mtm/workday-pauses"
+import { lockAttendanceFeature, readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 type Tx = Prisma.TransactionClient
 type PolicyRow = Omit<AttendanceLocationPolicy,"createdAt"> & { createdAt: Date; requestHash: string; createdBy: string }
@@ -36,8 +37,7 @@ async function lockLocationPolicy(tx: Tx, organizationId: string, exclusive = fa
  * does not become dependent on opting into this additional attendance signal. */
 export async function currentAttendanceStreamConsent(tx: Tx, self: Pick<AttendanceSelf,"organizationId"|"agentId">) {
   await lockAttendanceRequests(tx,self)
-  const setting = await tx.mtmSetting.findFirst({where:{organizationId:self.organizationId,key:"attendanceEnabled"},select:{value:true}})
-  if (setting?.value!==true || await isAttendanceEmployeeExcluded(tx,self)) return null
+  if (!await readAttendanceFeature(tx,self.organizationId) || await isAttendanceMarkExempt(tx,self)) return null
   await lockLocationPolicy(tx,self.organizationId)
   const policy=await currentPolicy(tx,self.organizationId), consent=await currentConsent(tx,self)
   if (!policy?.enabled || !policy.legalReviewConfirmed || !consent?.accepted || consent.policyRevisionId!==policy.id) return null
@@ -52,7 +52,9 @@ export async function readAttendanceLocationPolicy(reviewer: AttendanceReviewer)
   return prisma.$transaction(async tx => {
     await requireAdministrator(tx,reviewer)
     const row = await currentPolicy(tx,reviewer.organizationId)
-    return { policy:row ? policyDto(row):null }
+    // The name fills the draft agreement of an organization that has none yet.
+    const organization = await tx.organization.findUnique({ where:{ id:reviewer.organizationId },select:{ name:true } })
+    return { policy:row ? policyDto(row):null,organizationName:organization?.name ?? null }
   },{ isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead })
 }
 export async function publishAttendanceLocationPolicy(reviewer: AttendanceReviewer, raw: unknown) {
@@ -61,7 +63,7 @@ export async function publishAttendanceLocationPolicy(reviewer: AttendanceReview
   const input = parsed.data, hash = digest(reviewer.userId,input)
   return prisma.$transaction(async tx => {
     await lockLocationPolicy(tx,reviewer.organizationId,true)
-    await tx.$queryRaw`SELECT id FROM mtm_settings WHERE "organizationId"=${reviewer.organizationId} AND key='attendanceEnabled' FOR SHARE`
+    await lockAttendanceFeature(tx,reviewer.organizationId)
     await requireAdministrator(tx,reviewer)
     const [replay] = await tx.$queryRaw<PolicyRow[]>`SELECT * FROM mtm_attendance_location_policies WHERE "organizationId"=${reviewer.organizationId} AND "requestId"=${input.requestId}`
     if (replay) {
@@ -79,7 +81,7 @@ export async function publishAttendanceLocationPolicy(reviewer: AttendanceReview
 }
 export async function readOwnAttendanceLocation(self: AttendanceSelf): Promise<OwnAttendanceLocation> {
   return prisma.$transaction(async tx => {
-    await requireAttendanceSelf(tx,self,"attendanceLocation")
+    await requireAttendanceSelf(tx,self)
     const policy = await currentPolicy(tx,self.organizationId), consent = await currentConsent(tx,self)
     return {policy:policy ? policyDto(policy):null,consent:consent ? {id:consent.id,policyRevisionId:consent.policyRevisionId,accepted:consent.accepted,createdAt:consent.createdAt.toISOString()}:null,
       maySendLocation:policy?.enabled===true && consent?.accepted===true && consent.policyRevisionId===policy.id}
@@ -91,7 +93,7 @@ export async function recordOwnAttendanceLocationConsent(self: AttendanceSelf, r
   const input = parsed.data, hash = digest(self.agentId,input)
   return prisma.$transaction(async tx => {
     await lockAttendanceRequests(tx,self)
-    await requireAttendanceSelf(tx,self,"attendanceLocation")
+    await requireAttendanceSelf(tx,self)
     await lockLocationPolicy(tx,self.organizationId)
     const [replay] = await tx.$queryRaw<ConsentRow[]>`SELECT * FROM mtm_attendance_location_consents WHERE "organizationId"=${self.organizationId} AND "agentId"=${self.agentId} AND "requestId"=${input.requestId}`
     if (replay) {
@@ -134,7 +136,7 @@ export async function isAttendanceMarkRedactedReplay(tx: Pick<Tx,"$queryRaw">, s
  * or a closed day. A failure rolls back the event and its receipt together. */
 export async function recordAttendanceMarkEvidence(tx: Tx, context: MtmWorkdayPostEventContext, self: AttendanceSelf) {
   const mark = context.input.attendanceMark
-  if (!mark || await isAttendanceEmployeeExcluded(tx,self)) return
+  if (!mark || await isAttendanceMarkExempt(tx,self)) return
   if (!["START","FINISH"].includes(context.input.action)) return reject("BREAK_PRIVACY",400)
   await lockLocationPolicy(tx,self.organizationId)
   let onBreak = context.input.action==="FINISH" && context.beforeWorkday?.status==="PAUSED"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ColorStatCard } from "@/components/color-stat-card"
+import { WhatsAppCampaignDeliveries } from "@/components/whatsapp-campaign-deliveries"
 import { CampaignForm } from "@/components/campaign-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import dynamic from "next/dynamic"
@@ -22,6 +23,7 @@ import { HelpButton } from "@/components/help/help-button"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { InfoHint } from "@/components/info-hint"
 import { rateOf, recordedCount, type CampaignAnalyticsRecord } from "@/lib/campaigns/analytics"
+import { campaignCost } from "@/lib/campaigns/roi"
 import type { Edge, Node } from "@xyflow/react"
 
 type CampaignFlowData = { nodes: Node[]; edges: Edge[] }
@@ -64,6 +66,7 @@ interface CampaignDetail {
   testPercentage?: number | null
   testDurationHours?: number | null
   winnerCriteria?: string | null
+  whatsappDelivery?: Record<string, number>
   winnerSelectedAt?: string | null
 }
 
@@ -90,6 +93,7 @@ const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
   paused: "bg-orange-100 text-orange-700",
   cancelled: "bg-red-100 text-red-700",
+  failed: "bg-red-100 text-red-700",
   ab_testing: "bg-purple-100 text-purple-700",
 }
 
@@ -111,7 +115,7 @@ export default function CampaignDetailPage() {
   const [composeSchedule, setComposeSchedule] = useState("")
   const orgId = session?.user?.organizationId
 
-  const fetchCampaign = async () => {
+  const fetchCampaign = useCallback(async () => {
     try {
       const res = await fetch(`/api/v1/campaigns/${params.id}`, {
         headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
@@ -129,10 +133,14 @@ export default function CampaignDetailPage() {
         }
       }
     } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+  }, [params.id, orgId])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (params.id) fetchCampaign() }, [params.id, session])
+  useEffect(() => { if (params.id) void fetchCampaign() }, [params.id, fetchCampaign])
+  useEffect(() => {
+    if (campaign?.type !== "whatsapp" || !["sending", "sent", "failed"].includes(campaign.status)) return
+    const timer = setInterval(() => { if (document.visibilityState === "visible") void fetchCampaign() }, 15_000)
+    return () => clearInterval(timer)
+  }, [campaign?.type, campaign?.status, fetchCampaign])
 
   const handleDelete = async () => {
     const res = await fetch(`/api/v1/campaigns/${params.id}`, {
@@ -193,6 +201,19 @@ export default function CampaignDetailPage() {
   const countText = (n: number | null) => (n === null ? "—" : n.toLocaleString())
   const percentText = (n: number | null) => (n === null ? "—" : `${n}%`)
   const engagementNotRecorded = totalSent > 0 && campaign.type !== "email"
+  // What the campaign cost: its budget once it has gone out — the ROI
+  // screen's rule (campaignCost, src/lib/campaigns/roi.ts). This block used to
+  // read Campaign.actualCost, which nothing in the product writes, so every
+  // live campaign showed a cost of 0 ₼ under three rows all labelled «Cost».
+  const cost = campaignCost(campaign)
+  const money = (n: number) => `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })} ₼`
+  const moneyRows = [
+    { key: "budget", label: t("budget"), value: money(campaign.budget || 0) },
+    { key: "cost", label: tc("cost"), value: cost > 0 ? money(cost) : "—", hint: t("detailCostHint") },
+    { key: "per-send", label: t("detailCostPerSend"), value: cost > 0 && totalSent > 0 ? money(Math.round((cost / totalSent) * 100) / 100) : "—" },
+    // Clicks are recorded on e-mail alone; elsewhere there is nothing to divide by.
+    { key: "per-click", label: t("detailCostPerClick"), value: cost > 0 && clicked ? money(Math.round((cost / clicked) * 100) / 100) : "—" },
+  ]
   const typeLabels: Record<string, string> = {
     email: t("typeEmail"),
     sms: t("typeSms"),
@@ -203,7 +224,8 @@ export default function CampaignDetailPage() {
   const sendConfirmText = `${t("confirmSend")}\n\n${tc("type")}: ${typeLabel}\n${t("recipients")}: ${campaign.totalRecipients ?? 0}${
     campaign.type === "whatsapp" || campaign.type === "telegram" ? `\n\n${t("liveSendProviderHint")}` : ""
   }`
-  const formatSendResult = (data: { sent?: number; total?: number; skipped?: number; errors?: unknown[] } | undefined) => {
+  const formatSendResult = (data: { queued?: number; sent?: number; total?: number; skipped?: number; errors?: unknown[] } | undefined) => {
+    if (typeof data?.queued === "number") return t("queuedRecipients", { count: data.queued })
     const sent = Number(data?.sent || 0)
     const total = Number(data?.total || 0)
     const skipped = Number(data?.skipped || 0)
@@ -265,14 +287,39 @@ export default function CampaignDetailPage() {
               <Mail className="h-3.5 w-3.5 mr-1" /> {t("sendCampaign")}
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          <Button variant="outline" size="sm" disabled={campaign.type === "whatsapp" && !["draft", "scheduled"].includes(campaign.status)} onClick={() => setEditOpen(true)}>
             <Pencil className="h-3.5 w-3.5 mr-1" /> {tc("edit")}
           </Button>
-          <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" onClick={() => setDeleteOpen(true)}>
+          <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" disabled={campaign.type === "whatsapp" && !["draft", "scheduled"].includes(campaign.status)} onClick={() => setDeleteOpen(true)}>
             <Trash2 className="h-3.5 w-3.5 mr-1" /> {tc("delete")}
           </Button>
         </div>
       </div>
+
+      {campaign.type === "whatsapp" && campaign.whatsappDelivery && Object.keys(campaign.whatsappDelivery).length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">{t("whatsappDeliveryTitle")}</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" aria-live="polite">
+              {(["pending", "sending", "accepted", "delivered", "read", "failed", "unknown", "skipped"] as const).map(status => (
+                <div key={status}><div className="text-xs text-muted-foreground">{t(`delivery_${status}`)}</div><div className="text-xl font-semibold tabular-nums">{campaign.whatsappDelivery?.[status] || 0}</div></div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("whatsappDeliveryHint")}</p>
+            {(campaign.whatsappDelivery.unknown || 0) > 0 && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{t("whatsappUnknownHint")}</p>}
+            {campaign.status === "sending" && <Button variant="outline" disabled={composeSending} onClick={async () => {
+              if (!confirm(t("cancelDispatchConfirm"))) return
+              setComposeSending(true)
+              try {
+                const res = await fetch(`/api/v1/campaigns/${campaign.id}`, { method: "PUT", headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {}) }, body: JSON.stringify({ status: "cancelled" }) })
+                if (!res.ok) throw new Error(tc("failedToSave"))
+                await fetchCampaign()
+              } catch { alert(tc("errorGeneric")) } finally { setComposeSending(false) }
+            }}>{t("cancelPendingMessages")}</Button>}
+            <WhatsAppCampaignDeliveries campaignId={campaign.id} orgId={orgId ? String(orgId) : undefined} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Creatio-style KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -285,21 +332,21 @@ export default function CampaignDetailPage() {
         </div>
         <div className="bg-amber-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Bounces <InfoHint text={t("hintBounces")} size={12} className="[&_svg]:!text-white/80" /></span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">{t("detailBounces")} <InfoHint text={t("hintBounces")} size={12} className="[&_svg]:!text-white/80" /></span>
             <XCircle className="h-4 w-4 opacity-80" />
           </div>
           <span className="text-2xl font-bold" data-testid="campaign-kpi-bounces">{countText(bounced)}</span>
         </div>
         <div className="bg-orange-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Unsubscribes <InfoHint text={t("hintUnsubscribes")} size={12} className="[&_svg]:!text-white/80" /></span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">{t("detailUnsubscribes")} <InfoHint text={t("hintUnsubscribes")} size={12} className="[&_svg]:!text-white/80" /></span>
             <Users className="h-4 w-4 opacity-80" />
           </div>
           <span className="text-2xl font-bold" data-testid="campaign-kpi-unsubscribes">{countText(unsubscribed)}</span>
         </div>
         <div className="bg-red-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Spam <InfoHint text={t("hintSpam")} size={12} className="[&_svg]:!text-white/80" /></span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">{t("detailSpam")} <InfoHint text={t("hintSpam")} size={12} className="[&_svg]:!text-white/80" /></span>
             <AlertTriangle className="h-4 w-4 opacity-80" />
           </div>
           <span className="text-2xl font-bold" data-testid="campaign-kpi-spam">{countText(spam)}</span>
@@ -324,7 +371,7 @@ export default function CampaignDetailPage() {
         <TabsList className="bg-muted/60 p-1 h-auto">
           {campaign.status === "draft" && <TabsTrigger value="compose" className="rounded-md text-sm"><Send className="h-3.5 w-3.5 mr-1" />{t("compose") || "Compose"}</TabsTrigger>}
           <TabsTrigger value="results" className="rounded-md text-sm">{tc("results", { count: totalSent })}</TabsTrigger>
-          <TabsTrigger value="flow" className="rounded-md text-sm">Flow</TabsTrigger>
+          <TabsTrigger value="flow" className="rounded-md text-sm">{t("detailFlowTab")}</TabsTrigger>
           <TabsTrigger value="details" className="rounded-md text-sm">{tc("details")}</TabsTrigger>
           {campaign.isAbTest && <TabsTrigger value="ab-test" className="rounded-md text-sm">{tab("results")}</TabsTrigger>}
         </TabsList>
@@ -451,7 +498,7 @@ export default function CampaignDetailPage() {
           <div className="grid md:grid-cols-2 gap-4">
             <Card className="border-none shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Delivery Rates</CardTitle>
+                <CardTitle data-testid="campaign-delivery-rates" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("detailDeliveryRates")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {[
@@ -476,18 +523,13 @@ export default function CampaignDetailPage() {
 
             <Card className="border-none shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Financial</CardTitle>
+                <CardTitle data-testid="campaign-money" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("detailMoney")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {[
-                  { label: t("budget"), value: `${(campaign.budget || 0).toLocaleString()} ₼` },
-                  { label: tc("cost"), value: `${(campaign.actualCost || 0).toLocaleString()} ₼` },
-                  { label: tc("cost"), value: totalSent > 0 ? `${((campaign.actualCost || 0) / totalSent).toFixed(2)} ₼` : "—" },
-                  { label: tc("cost"), value: totalClicked > 0 ? `${((campaign.actualCost || 0) / totalClicked).toFixed(2)} ₼` : "—" },
-                ].map(f => (
-                  <div key={f.label} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{f.label}</span>
-                    <span className="font-medium">{f.value}</span>
+                {moneyRows.map(f => (
+                  <div key={f.key} className="flex justify-between text-sm" data-testid={`campaign-money-${f.key}`}>
+                    <span className="text-muted-foreground flex items-center gap-1">{f.label}{f.hint && <InfoHint text={f.hint} size={12} />}</span>
+                    <span className="font-medium tabular-nums">{f.value}</span>
                   </div>
                 ))}
               </CardContent>
@@ -645,7 +687,8 @@ export default function CampaignDetailPage() {
           id: campaign.id, name: campaign.name || "", type: campaign.type || "email",
           status: campaign.status || "draft", subject: campaign.subject || "",
           totalRecipients: String(campaign.totalRecipients ?? 0), budget: String(campaign.budget ?? 0),
-          scheduledAt: campaign.scheduledAt ? new Date(campaign.scheduledAt).toISOString().split("T")[0] : "",
+          // The whole instant: the date alone moved an edited campaign to midnight.
+          scheduledAt: campaign.scheduledAt ?? "",
           recipientMode: campaign.recipientMode ?? undefined, segmentId: campaign.segmentId ?? undefined,
           recipientIds: campaign.recipientIds, recipientSource: campaign.recipientSource ?? undefined,
           flowData: campaign.flowData,

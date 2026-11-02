@@ -112,10 +112,11 @@ export async function fetchGrantedPage(
   graphBase: string,
   pageId: string,
   userAccessToken: string,
+  includeInstagram = true,
 ): Promise<GrantedPage | null> {
   try {
     const res = await fetch(
-      `${graphBase}/${encodeURIComponent(pageId)}?fields=id,name,access_token,instagram_business_account{id,username}`,
+      `${graphBase}/${encodeURIComponent(pageId)}?fields=${includeInstagram ? "id,name,access_token,instagram_business_account{id,username}" : "id,name,access_token"}`,
       {
         headers: { Authorization: `Bearer ${userAccessToken}` },
         signal: AbortSignal.timeout(10_000),
@@ -146,12 +147,13 @@ export async function enumerateGrantedPages(
   appId: string,
   appSecret: string,
   userAccessToken: string,
+  includeInstagram = true,
 ): Promise<{ pages: GrantedPage[]; grantedScopes: string[]; error?: string }> {
   const { pageIds, grantedScopes, error } = await grantedPageIds(graphBase, appId, appSecret, userAccessToken)
   if (error) return { pages: [], grantedScopes, error }
   const pages: GrantedPage[] = []
   for (const id of pageIds) {
-    const page = await fetchGrantedPage(graphBase, id, userAccessToken)
+    const page = await fetchGrantedPage(graphBase, id, userAccessToken, includeInstagram)
     if (page) pages.push(page)
   }
   return { pages, grantedScopes }

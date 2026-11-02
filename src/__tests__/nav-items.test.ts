@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import {
-  accessibleNavItems, navItems, matchNavItem, activeNavBase, groupLauncherStyle, GROUP_LAUNCHER_STYLE, NAV_GROUP_ORDER,
+  accessibleNavItems, navItemMatchesSearch, navItems, matchNavItem, activeNavBase, groupLauncherStyle, GROUP_LAUNCHER_STYLE, NAV_GROUP_ORDER,
 } from "@/lib/nav-items"
 import { SIDEBAR_SECTIONS, TOGGLEABLE_MODULES, countEnabledModules, enableAllModules, clearAllModules } from "@/lib/admin-sidebar-catalog"
 import { MODULE_REGISTRY, type ModuleId } from "@/lib/modules"
 import { canAccessModule } from "@/lib/plan-config"
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 
 // Pure permission-gate logic shared by the sidebar, App Launcher, Cmd+K
 // palette, and dashboard Quick Access strip. No mocks — exercises the real
@@ -209,72 +210,58 @@ describe("accessibleNavItems", () => {
   })
 })
 
-describe("MTM attendance sidebar", () => {
-  const attendanceHrefs = [
-    "/mtm/attendance",
-    "/mtm/attendance/employees",
-    "/mtm/attendance/requests",
-    "/mtm/attendance/shifts",
-    "/mtm/attendance/leave-balances",
-    "/mtm/attendance/months",
-    "/mtm/attendance/branches/report",
-    "/mtm/attendance/decisions",
-    "/mtm/attendance/branches",
-    "/mtm/attendance/review",
-    "/mtm/attendance/installations",
-    "/mtm/attendance/branch-qr",
-    "/mtm/attendance/location-settings",
-  ]
-  const adminHrefs = ["/mtm/attendance/employees", "/mtm/attendance/location-settings"]
+describe("Personnel sidebar", () => {
+  const personnelHrefs = ["/mtm/attendance", "/mtm/attendance/timesheet", "/mtm/attendance/people", "/mtm/attendance/reports", "/mtm/attendance/settings"]
   const context = (role: string, attendanceEnabled?: boolean) => ({
-    plan: "enterprise", role, modules: { "route-field": true },
+    plan: "enterprise", role, modules: { "route-field": true, personnel: true },
     orgSettings: attendanceEnabled === undefined ? {} : { attendanceEnabled },
   })
-  const attendanceItems = (org: Parameters<typeof accessibleNavItems>[0]) =>
+  const personnelItems = (org: Parameters<typeof accessibleNavItems>[0]) =>
     accessibleNavItems(org).filter(item => item.href === "/mtm/attendance" || item.href.startsWith("/mtm/attendance/"))
 
-  it.each(["admin", "superadmin"])("keeps all 13 existing destinations discoverable for %s", role => {
-    const items = attendanceItems(context(role, true))
-    expect(items.map(item => item.href)).toEqual(attendanceHrefs)
-    expect(new Set(items.map(item => item.href)).size).toBe(13)
-    expect(items.every(item => item.group === "Route & Field" && item.module === "mtm"
-      && item.tenantCapability === "route-field" && item.orgSetting === "attendanceEnabled"
-      && ["work", "reports", "settings"].includes(item.attendanceSection ?? ""))).toBe(true)
+  it.each(["admin", "superadmin", "manager", "sales", "support", "viewer"])("shows exactly five destinations in its own section for %s", role => {
+    const items = personnelItems(context(role, true))
+    expect(items.map(item => item.href)).toEqual(personnelHrefs)
+    expect(items.every(item => item.group === "Personnel" && item.module === undefined
+      && item.tenantCapability === "personnel" && item.orgSetting === "attendanceEnabled")).toBe(true)
+    // HR work no longer sits inside the field-sales menu.
+    expect(accessibleNavItems(context(role, true)).some(item => item.group === "Route & Field" && item.href.startsWith("/mtm/attendance"))).toBe(false)
   })
 
-  it.each(["admin", "superadmin", "manager", "support"])("hides the entire HR section until opt-in is known for %s", role => {
+  it.each(["manager", "support"])("hides the entire section until opt-in is known for %s", role => {
     for (const enabled of [undefined, false]) {
       const org = context(role, enabled)
-      expect(attendanceItems(org)).toEqual([])
-      expect(accessibleNavItems(org).some(item => item.attendanceSection)).toBe(false)
-      expect(activeNavBase(accessibleNavItems(org), "/mtm/attendance/branches/report")).toBe("")
+      expect(personnelItems(org)).toEqual([])
+      expect(accessibleNavItems(org).some(item => item.group === "Personnel")).toBe(false)
+      expect(activeNavBase(accessibleNavItems(org), "/mtm/attendance/timesheet")).toBe("")
       // The attendance toggle must not remove the tenant's ordinary field work.
       expect(accessibleNavItems(org).some(item => item.href === "/mtm/routes")).toBe(true)
     }
   })
 
-  it.each(["manager", "sales", "support", "viewer"])("preserves the two administrator-only destinations for %s", role => {
-    const hrefs = attendanceItems(context(role, true)).map(item => item.href)
-    expect(hrefs).toEqual(attendanceHrefs.filter(href => !adminHrefs.includes(href)))
-  })
-
-  it.each(["admin", "superadmin"])("requires the Route & Field capability even with attendance enabled for %s", role => {
-    const org = { ...context(role, true), modules: { "route-field": false, "workforce-hrm": true } }
-    expect(attendanceItems(org)).toEqual([])
-  })
-
-  it("selects only the branch summary on its nested route and retains every other active destination", () => {
-    const items = accessibleNavItems(context("admin", true))
-    for (const href of attendanceHrefs) {
-      const selected = activeNavBase(items, href)
-      expect(selected).toBe(href)
-      expect(items.filter(item => item.href === selected).map(item => item.href)).toEqual([href])
+  it.each(["admin", "superadmin"])("leaves %s only Settings while attendance is off: the switch lives there", role => {
+    for (const enabled of [undefined, false]) {
+      const org = context(role, enabled)
+      expect(personnelItems(org).map(item => item.href)).toEqual(["/mtm/attendance/settings"])
+      expect(accessibleNavItems(org).some(item => item.href === "/mtm/routes")).toBe(true)
     }
-    const selected = activeNavBase(items, "/mtm/attendance/branches/report")
-    expect(selected).not.toBe("/mtm/attendance/branches")
-    expect(selected).not.toBe("/mtm/attendance")
-    // The contextual recording action remains part of the HR workspace.
-    expect(activeNavBase(items, "/mtm/attendance/recordings")).toBe("/mtm/attendance")
+    // Without the Personnel capability there is no switch to reach.
+    expect(personnelItems({ ...context(role, false), modules: { "route-field": true, personnel: false } })).toEqual([])
+  })
+
+  it.each(["admin", "superadmin"])("needs its own Personnel capability, not Route & Field, for %s", role => {
+    // Sold on its own: a tenant with Personnel and no routes sees all five.
+    expect(personnelItems({ ...context(role, true), modules: { personnel: true } }).map(item => item.href)).toEqual(personnelHrefs)
+    expect(personnelItems({ ...context(role, true), modules: { "route-field": true, personnel: false } })).toEqual([])
+    // Tenants that had attendance through the MTM bundle keep it.
+    expect(personnelItems({ ...context(role, true), modules: { mtm: true } }).map(item => item.href)).toEqual(personnelHrefs)
+  })
+
+  it("selects one destination per page and keeps contextual pages under Today", () => {
+    const items = accessibleNavItems(context("admin", true))
+    for (const href of personnelHrefs) expect(activeNavBase(items, href)).toBe(href)
+    // Former pages that remain reachable from buttons and notifications.
+    for (const href of ["/mtm/attendance/recordings", "/mtm/attendance/requests"]) expect(activeNavBase(items, href)).toBe("/mtm/attendance")
   })
 })
 
@@ -629,10 +616,38 @@ describe("navDesc coverage (every launcher tile has a hint)", () => {
     expect(missing).toEqual([])
   })
 
-  it("has no orphan descriptions (every navDesc key maps to a nav item)", () => {
+  it("reserves exactly the inactive booking phase description and has no other orphans", () => {
+    // The same translation bundle ships with both immutable release phases.
+    // Exactly one booking destination is live, while both need their copy.
+    const active = BOOKING_WORKSPACE_ENABLED ? "bookingWorkspace" : "onlineBooking"
+    const inactive = BOOKING_WORKSPACE_ENABLED ? "onlineBooking" : "bookingWorkspace"
+    expect(navItems.filter((item) => [active, inactive].includes(item.tKey)).map((item) => item.tKey)).toEqual([active])
     const tKeys = new Set(navItems.map((i) => i.tKey))
     const orphans = Object.keys(en.navDesc ?? {}).filter((k) => !tKeys.has(k))
-    expect(orphans).toEqual([])
+    expect(orphans).toEqual([inactive])
+  })
+})
+
+describe("booking menu discovery across the staged release", () => {
+  const expected = BOOKING_WORKSPACE_ENABLED ? "/meetings" : "/settings/booking"
+  for (const locale of ["az", "ru", "en"]) {
+    it(`${locale}: finds one authorized destination by both the old and new name`, () => {
+      const labels = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav as Record<string, string>
+      const visible = accessibleNavItems({ plan: "enterprise", role: "admin" })
+      for (const name of [labels.onlineBooking, labels.bookingWorkspace]) {
+        const found = visible.filter((item) => navItemMatchesSearch(item, ` ${name} `, (key) => labels[key]))
+        expect(found.filter((item) => item.permissionScope === "bookings").map((item) => item.href)).toEqual([expected])
+      }
+    })
+  }
+  it("search aliases cannot expose meetings to a role without booking access", () => {
+    const labels = JSON.parse(readFileSync("messages/ru.json", "utf8")).nav as Record<string, string>
+    for (const role of ["viewer", "reviewer"]) {
+      const visible = accessibleNavItems({ plan: "enterprise", role })
+      for (const name of ["ОНЛАЙН-ЗАПИСЬ", "ВСТРЕЧИ И ЗАПИСЬ"]) {
+        expect(visible.filter((item) => item.permissionScope === "bookings" && navItemMatchesSearch(item, name, (key) => labels[key]))).toEqual([])
+      }
+    }
   })
 })
 

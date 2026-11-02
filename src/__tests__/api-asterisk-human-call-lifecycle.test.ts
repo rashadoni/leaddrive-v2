@@ -2,6 +2,16 @@ import { Prisma } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+// The number -> organization lookup is its own suite (voice-line-numbers-postgres);
+// here every call belongs to the installation's default organization, as before it.
+vi.mock("@/lib/voip/line-numbers", () => ({
+  voiceOrganizationFor: async () => process.env.VOICE_AGENT_ORGANIZATION_ID
+    ? { organizationId: process.env.VOICE_AGENT_ORGANIZATION_ID, channelConfigId: null } : null,
+}))
+vi.mock("@prisma/client", async () => ({ Prisma: {
+  ...await import("@prisma/client/runtime/library"), TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" },
+} }))
+
 const mocks = vi.hoisted(() => ({
   callLogFindFirst: vi.fn(),
   callLogCreate: vi.fn(),
@@ -56,6 +66,7 @@ function request(body: unknown, token = "pbx-runtime-token") {
 function baseCall(overrides: Record<string, unknown> = {}) {
   return {
     id: "human-call-log-1",
+    callMode: "human",
     leadId: null,
     leadCallClaimToken: null,
     direction: "outbound",
@@ -279,6 +290,17 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
     expect(mocks.callEventCreate).not.toHaveBeenCalled()
   })
 
+  it("accepts a media answer observation for an AI inbound call before the AGI spool drains", async () => {
+    mocks.callLogFindFirst.mockResolvedValue(baseCall({ callMode: "ai", direction: "inbound", status: "answering" }))
+    const response = await POST(request(answeredPayload()))
+    await expect(response.json()).resolves.toEqual({ success: true, result: "applied" })
+    expect(mocks.callLogUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ providerCallId: callId, providerOutcome: null, endedAt: null }),
+      data: { status: "in-progress", wasAnswered: true },
+    }))
+    expect(mocks.callEventCreate).toHaveBeenCalledTimes(1)
+  })
+
   it("strictly binds an answer observation to one ordinary Asterisk call", async () => {
     const response = await POST(request(answeredPayload()))
 
@@ -288,12 +310,13 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
       where: {
         organizationId: "org-test",
         provider: "asterisk",
-        callMode: "human",
+        OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
         providerCallId: callId,
         callSid: callId,
       },
       select: {
         id: true,
+        callMode: true,
         leadId: true,
         leadCallClaimToken: true,
         direction: true,
@@ -306,6 +329,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         conversationOutcome: true,
         startedAt: true,
         endedAt: true,
+        handoffState: true,
       },
     })
     expect(mocks.callLogUpdateMany).toHaveBeenCalledWith({
@@ -313,11 +337,14 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         id: "human-call-log-1",
         organizationId: "org-test",
         provider: "asterisk",
-        callMode: "human",
+        OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
         providerCallId: callId,
         callSid: callId,
         providerOutcome: null,
         endedAt: null,
+        // A call the AI handed off rings the browsers: the AI leg's late
+        // answer must not take it out of "ringing".
+        AND: [{ OR: [{ handoffState: null }, { handoffState: { in: ["requested", "connected", "returned"] } }] }],
       },
       data: {
         status: "in-progress",
@@ -360,7 +387,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
           id: "human-call-log-1",
           organizationId: "org-test",
           provider: "asterisk",
-          callMode: "human",
+          OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
           providerCallId: callId,
           callSid: callId,
           providerOutcome: null,
@@ -406,7 +433,7 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
         id: "human-call-log-1",
         organizationId: "org-test",
         provider: "asterisk",
-        callMode: "human",
+        OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
         providerCallId: callId,
         callSid: callId,
         providerOutcome: null,
@@ -468,6 +495,32 @@ describe("POST /api/internal/asterisk/call-lifecycle", () => {
     expect(response.status).toBe(404)
     expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
     expect(mocks.callEventCreate).not.toHaveBeenCalled()
+  })
+
+  it("closes an inbound call the AI answered without erasing the AI's conversation result", async () => {
+    mocks.callLogFindFirst.mockResolvedValue(baseCall({
+      callMode: "ai",
+      direction: "inbound",
+      status: "in-progress",
+      wasAnswered: true,
+      conversationOutcome: "customer_spoke",
+    }))
+
+    const response = await POST(request(terminalPayload("connected")))
+
+    expect(response.status).toBe(200)
+    const update = mocks.callLogUpdateMany.mock.calls[0]?.[0]
+    expect(update.where).toMatchObject({
+      OR: [{ callMode: "human" }, { callMode: "ai", direction: "inbound" }],
+      providerOutcome: null,
+    })
+    expect(update.data).toMatchObject({
+      status: "completed",
+      wasAnswered: true,
+      providerOutcome: "connected",
+      duration: 27,
+    })
+    expect(update.data).not.toHaveProperty("conversationOutcome")
   })
 
   it("returns an exact event replay as an idempotent no-op", async () => {

@@ -1,0 +1,12 @@
+[Unit]
+Description=Report this PBX station to the CRM every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=5s
+Persistent=false
+Unit=fanum-station-heartbeat.service
+
+[Install]
+WantedBy=timers.target

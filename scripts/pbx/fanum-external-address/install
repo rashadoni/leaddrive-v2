@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Set the public address the Fanum station advertises in SIP and SDP.
+#
+#   sudo bash install 185.161.225.189
+#
+# The station sits behind the hoster's FortiGate, and on 2026-10-25 its
+# outgoing address changed twice: .131 → .130 (~07:59 UTC), then .130 → .189
+# (~17:45 UTC, when the hoster moved it out of a policy it had been put into by
+# mistake). pjsip.conf has to name the address the station really leaves
+# through, or SIP replies and audio go somewhere else. Only the two external_*
+# lines of transport-udp change; to go back, run it again with the old address.
+#
+# PJSIP applies transport settings only at start (no allow_reload), so this
+# restarts Asterisk — and refuses while any channel is up, or when the station
+# does not actually go out through the requested address. If Asterisk does not
+# come back fully booted with the new address, the file is restored and
+# Asterisk restarted again. Registration with the operator is reported, not
+# required: the operator has to allow the address on its side.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+readonly CONF="/etc/asterisk/pjsip.conf"
+readonly REGISTRATION="fanum-provider-registration"
+
+fail() { printf 'fanum-external-address: %s\n' "$1" >&2; exit 1; }
+say() { printf 'fanum-external-address: %s\n' "$1"; }
+[[ $EUID -eq 0 ]] || fail "run with sudo"
+to="${1:-}"
+[[ $to =~ ^185\.161\.225\.([0-9]{1,3})$ ]] && (( BASH_REMATCH[1] <= 255 )) \
+  || fail "usage: install 185.161.225.<n> (the address the station goes out through)"
+[[ -f $CONF && ! -L $CONF ]] || fail "missing: $CONF"
+
+lines_with() {
+  grep -cxE "external_(signaling|media)_address=${1//./\\.}" "$CONF" || true
+}
+[[ "$(grep -c '^external_' "$CONF")" == 2 ]] || fail "expected exactly two external_* lines; nothing written"
+from="$(sed -n 's/^external_signaling_address=//p' "$CONF")"
+[[ "$(lines_with "$from")" == 2 ]] || fail "external_* lines disagree; nothing written"
+if [[ $from == "$to" ]]; then
+  say "already $to; nothing changed"
+  exit 0
+fi
+
+# The station must really leave through the address we are about to advertise.
+seen="$(curl -fsS -m 10 https://ifconfig.me 2>/dev/null || true)"
+[[ $seen == "$to" ]] || fail "station goes out through '${seen:-unknown}', not $to; nothing written"
+
+channels="$(asterisk -rx 'core show channels count' 2>/dev/null | awk '/active channel/ {print $1; exit}' || true)"
+[[ $channels =~ ^[0-9]+$ ]] || fail "could not read active channels from Asterisk; nothing written"
+(( channels == 0 )) || fail "$channels active channel(s); try again when no call is up"
+
+readonly BACKUP="$(mktemp -d "/var/backups/fanum-external-address-$(date +%Y%m%d%H%M%S)-XXXX")"
+cp -a "$CONF" "$BACKUP/"
+
+wait_booted() {
+  local i
+  for i in $(seq 1 60); do
+    if asterisk -rx 'core waitfullybooted' 2>/dev/null | grep -q 'fully booted'; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+restart_with() {
+  systemctl restart asterisk || return 1
+  wait_booted || return 1
+  asterisk -rx 'pjsip show transport transport-udp' | grep -qE "external_signaling_address +: +${1//./\\.}[[:space:]]*\$"
+}
+restore() {
+  cp -a "$BACKUP/$(basename "$CONF")" "$CONF"
+  restart_with "$from" || fail "$1; file restored from $BACKUP but Asterisk did not come back — check: systemctl status asterisk"
+  fail "$1 — restored from $BACKUP, Asterisk is back on $from"
+}
+
+sed -i -E "s/^(external_(signaling|media)_address=)${from//./\\.}\$/\\1$to/" "$CONF"
+chown --reference="$BACKUP/$(basename "$CONF")" "$CONF"
+chmod --reference="$BACKUP/$(basename "$CONF")" "$CONF"
+[[ "$(lines_with "$to")" == 2 ]] || restore "address lines were not rewritten"
+diff_lines="$(diff "$BACKUP/$(basename "$CONF")" "$CONF" | grep -c '^[<>]' || true)"
+[[ $diff_lines == 4 ]] || restore "more than the two address lines changed"
+
+say "restarting Asterisk"
+restart_with "$to" || restore "Asterisk did not come back with $to"
+say "Asterisk is up with $to; backup in $BACKUP"
+
+for i in $(seq 1 20); do
+  # Asterisk 20 prints e.g. "Registered        (exp. 107s)": take the word, not the last field.
+  state="$(asterisk -rx 'pjsip show registrations' | grep -F " $REGISTRATION/" | grep -oE 'Registered|Unregistered|Rejected|Stopped|Unknown' | head -1 || true)"
+  [[ $state == Registered* ]] && break
+  sleep 3
+done
+say "operator registration: ${state:-unknown}"
+[[ $state == Registered* ]] || say "not registered yet — the operator has to allow $to; Asterisk keeps retrying"

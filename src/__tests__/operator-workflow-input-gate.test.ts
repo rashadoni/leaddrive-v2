@@ -57,8 +57,14 @@ function freeTextDispatchInputs(source: string): string[] {
   const dispatch = /workflow_dispatch:\s*\n([\s\S]*?)\n\s{0,4}(jobs|permissions|concurrency|env):/.exec(source)
   if (!dispatch) return []
   const names: string[] = []
-  const block = dispatch[1]
-  for (const m of block.matchAll(/\n {6}(\w+):\n((?: {8}.*\n)+)/g)) {
+  // Every body line ends in a newline, the block's last line included; without
+  // it the last input loses its last line, which may be the line saying
+  // `type: choice`.
+  const block = dispatch[1] + "\n"
+  // Anchored with `^`, not a leading `\n`: the body consumes the newline that
+  // ends it, so a `\n`-led pattern skipped every input that directly followed
+  // another one.
+  for (const m of block.matchAll(/^ {6}(\w+):\n((?: {8}.*\n)+)/gm)) {
     const [, name, body] = m
     // A choice input cannot carry a payload: GitHub restricts it to the options.
     if (/type:\s*choice/.test(body)) continue
@@ -113,6 +119,31 @@ describe("operator input never reaches a production shell as text", () => {
   it("finds the workflows at all", () => {
     // Guards against the gate passing because the directory moved.
     expect(readdirSync(DIR).filter(f => f.endsWith(".yml")).length).toBeGreaterThan(5)
+  })
+
+  it("reads every dispatch input, including one that directly follows another", () => {
+    // The first parser skipped every second input, so a workflow taking slug
+    // and email was checked for slug alone. `execute` ends on its `type:` line,
+    // the last line of the block.
+    const source = [
+      "on:",
+      "  workflow_dispatch:",
+      "    inputs:",
+      "      slug:",
+      '        description: "Organization slug"',
+      "        required: true",
+      "      email:",
+      '        description: "User email"',
+      "        required: true",
+      "      execute:",
+      '        description: "Apply"',
+      "        type: boolean",
+      "",
+      "permissions:",
+      "  contents: read",
+      "",
+    ].join("\n")
+    expect(freeTextDispatchInputs(source)).toEqual(["slug", "email"])
   })
 
   it("still identifies workflows that interpolate into the remote command", () => {

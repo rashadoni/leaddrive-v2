@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, BarChart3, Columns3, MoreHorizontal, RefreshCw, Search, Settings, UserCheck } from "lucide-react"
+import { ArrowLeft, BarChart3, CheckSquare, Columns3, MoreHorizontal, RefreshCw, Search, Settings, Sparkles, UserCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate, formatDateTime } from "@/lib/format-date"
@@ -13,7 +13,10 @@ import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
- * CRM → Boards: where the follow-up task the system created lands.
+ * CRM → Boards: where the task the product's AI opened from the
+ * conversation lands (src/lib/inbox/lead-qualification.ts) — numbered, due in
+ * 24 hours, with the AI's summary and a checklist. The demo used to say a
+ * status change created it, which no product path does.
  *
  * `/tasks` is deliberately unlinked from the product's sidebar — boards are
  * the task surface — so the demo shows boards too. Mirrors
@@ -183,13 +186,17 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                         data-tour-id="board-card"
                         className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700"
                       >
+                        {/* What the product's card carries: number, client, due date, checklist progress, assignee. */}
                         <button type="button" onClick={openTask} className="block w-full text-left" {...demoTarget("task-open")}>
-                          <span className="block text-xs font-medium leading-snug text-foreground">{card.title}</span>
-                          <span className="mt-2 block text-[11px] text-muted-foreground">
-                            {tc("assignee")}: {card.assigneeName}
+                          <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground">{card.taskKey}</span>
+                          <span className="mt-0.5 block text-xs font-medium leading-snug text-foreground">{card.title}</span>
+                          <span className="mt-1 block truncate text-[11px] text-muted-foreground">{snapshot.records.lead?.companyName}</span>
+                          <span className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                            <span>{t("dueDate")}: {formatDate(card.dueAt, locale)}</span>
+                            <span className="flex items-center gap-1"><CheckSquare className="h-3 w-3" /> 0/{card.checklist.length}</span>
                           </span>
                           <span className="mt-1 block text-[11px] text-muted-foreground">
-                            {tTask("createdAt")}: {formatDate(card.createdAt, locale)}
+                            {tc("assignee")}: {card.assigneeName}
                           </span>
                         </button>
                         <div className="mt-2 flex items-center justify-between border-t border-zinc-200 pt-2 dark:border-zinc-700">
@@ -247,6 +254,9 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
             <Button variant="ghost" size="sm" onClick={() => setTaskOpen(false)}>{tc("close")}</Button>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-[hsl(var(--ai-from))]">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> {S.taskFromChat}
+            </p>
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <Row label={tc("assignee")} value={task.assigneeName} />
               <Row label={tTask("createdAt")} value={formatDateTime(task.createdAt, locale)} />
@@ -272,16 +282,39 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               ))}
             </div>
 
-            <div data-tour-id="task-comments">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tTask("comments")}</p>
-              <ul className="mt-2 space-y-2">
-                {task.comments.map((comment) => (
-                  <li key={comment.id} className="rounded-lg border border-zinc-200 p-2.5 text-xs dark:border-zinc-700">
-                    <span className="font-medium">{comment.author}</span>
-                    <p className="mt-0.5 text-muted-foreground">{comment.text}</p>
+            <div data-tour-id="task-description">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tTask("description")}</p>
+              <div className="mt-2 space-y-1 rounded-lg border border-zinc-200 bg-muted/30 p-3 text-xs leading-relaxed dark:border-zinc-700">
+                {task.description.map((line) => <p key={line}>{line}</p>)}
+              </div>
+            </div>
+
+            <div data-tour-id="task-checklist">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tTask("checklist")} · 0/{task.checklist.length}</p>
+              <ul className="mt-2 space-y-1.5">
+                {task.checklist.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-xs">
+                    <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-zinc-300 dark:border-zinc-600" aria-hidden="true" />
+                    <span>{item}</span>
                   </li>
                 ))}
               </ul>
+            </div>
+
+            <div data-tour-id="task-comments">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tTask("comments")}</p>
+              {task.comments.length === 0 ? (
+                <p className="mt-2 text-xs text-muted-foreground">{tTask("noComments")}</p>
+              ) : (
+                <ul className="mt-2 space-y-2">
+                  {task.comments.map((comment) => (
+                    <li key={comment.id} className="rounded-lg border border-zinc-200 p-2.5 text-xs dark:border-zinc-700">
+                      <span className="font-medium">{comment.author}</span>
+                      <p className="mt-0.5 text-muted-foreground">{comment.text}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </CardContent>
         </Card>

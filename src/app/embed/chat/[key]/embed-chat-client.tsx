@@ -25,6 +25,8 @@ interface Props {
   online?: boolean
   offlineMessage?: string | null
   lang?: WidgetLang
+  /** Whether the site set `lang` (data-lang) — then it is the visitor's language, not a fallback. */
+  langChosen?: boolean
   preChatForm?: PreChatForm
   // Whelp-style widget options; undefined/null = defaults (onboarding + history both on).
   uiOptions?: {
@@ -36,7 +38,7 @@ interface Props {
 
 const STORAGE_KEY_PREFIX = "ld_webchat_session_"
 
-export function EmbedChatClient({ publicKey, title, greeting, primaryColor, organizationName, online = true, offlineMessage, lang = "en", preChatForm = DEFAULT_PRECHAT_FORM, uiOptions }: Props) {
+export function EmbedChatClient({ publicKey, title, greeting, primaryColor, organizationName, online = true, offlineMessage, lang = "en", langChosen = false, preChatForm = DEFAULT_PRECHAT_FORM, uiOptions }: Props) {
   const L = (key: string) => tr(lang, key)
   const storageKey = STORAGE_KEY_PREFIX + publicKey
   const onboardingEnabled = uiOptions?.onboardingEnabled !== false
@@ -137,6 +139,8 @@ export function EmbedChatClient({ publicKey, title, greeting, primaryColor, orga
           visitorEmail: onboardingEnabled && form.email.enabled ? emailV || undefined : undefined,
           visitorPhone: onboardingEnabled && form.phone.enabled ? phoneV || undefined : undefined,
           pageUrl: typeof window !== "undefined" ? document.referrer : undefined,
+          lang,
+          langChosen,
         }),
       })
       const data = await res.json().catch(() => null)
@@ -178,6 +182,7 @@ export function EmbedChatClient({ publicKey, title, greeting, primaryColor, orga
                 sessionId: data.data.sessionId,
                 text: answered.map((x) => `${x.q}: ${x.a}`).join("\n"),
                 lang,
+                langChosen,
               }),
             }).catch(() => {})
           }
@@ -277,7 +282,7 @@ export function EmbedChatClient({ publicKey, title, greeting, primaryColor, orga
       const res = await fetch("/api/v1/public/web-chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, text, lang }),
+        body: JSON.stringify({ sessionId, text, lang, langChosen }),
       })
       if (res.status === 410) {
         // Session closed by agent — drop saved session so user can start fresh

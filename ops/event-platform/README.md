@@ -172,6 +172,41 @@ Schema Registry, and Kafka brokers do not perform that record validation;
 silently registering a generic database-row schema in place of the event-type
 schema without pretending the transport is an enforcement layer.
 
+## A4 readiness and bounded WAL admission
+
+Current evidence and remaining no-cost gaps are recorded in
+[A4 infrastructure readiness](../../docs/event-platform/INFRASTRUCTURE_READINESS.md).
+The JSON preflight checks consistency of reviewed claims; it cannot authenticate
+receipts, discover hosts or prove that three endpoints occupy independent hosts.
+Do not fill its fields from this template or synthetic test fixtures.
+
+The additional evidence fields require measured capacity/placement, effective
+RF/minISR, negative ACL tests and Connect placement outside the web host.
+`infrastructureEvidenceId` must locate the reviewed broker/controller/host/disk
+map, private routing and TLS/ACL receipts. Archive policy remains >=400 days
+with an immutable off-provider copy; a paid provider is not implicitly required,
+but equivalent verified guarantees cannot be waived to meet a zero-cost target.
+
+The PostgreSQL budget uses positive safe integer bytes/seconds:
+`peakWalBytesPerSecond * maxOutageSeconds <= walStopBytes`, and
+`walWarningBytes < walStopBytes < maxSlotWalKeepSizeBytes`.
+`maxSlotWalKeepSizeBytes + checkpointOvershootBytes <= walDiskBudgetBytes`.
+The disk budget must be an allocated residual after baseline WAL, other slots,
+application/backup use and the primary free-space reserve. Overshoot is a
+measured conservative allowance, not a fixed PostgreSQL guarantee. Record all
+slot positions and shared WAL overlap in `walBudgetEvidenceId`; do not multiply
+slot caps blindly or infer a peak from cumulative cluster means.
+
+`cdcStopDrillVerified` means a non-production drill of the reviewed emergency
+procedure with alert delivery, operator acknowledgement, detection/response time,
+continued writes, slot invalidation and recovery-range reconciliation. At the
+stop threshold, stop new CDC activation/restarts and escalate to the DBA; pausing
+an existing connector alone does **not** release retained WAL and may increase
+it. Keep observing slot bytes and free space. Any slot sacrifice or source
+write intervention requires a separately authorized incident procedure; never
+automate a slot drop, offset reset or replay from this validator. If response
+headroom or a tested procedure is absent, activation stays blocked.
+
 ## Stop and recovery rules
 
 - To stop delivery, pause/stop the connector first. The application continues
@@ -199,3 +234,216 @@ space, outbox-to-Kafka watermark age, consumer lag, offline/under-replicated
 partitions, min-ISR violations, rejected schemas, quarantine rate, archive
 watermark lag, and per-tenant projection parity. Logs and metric labels must not
 contain event payloads or customer PII.
+
+### What the watch covers today (2026-10-23)
+
+`scripts/event-platform/cluster/watch.mjs` runs every 5 minutes on the operator
+workstation (`provision.sh install-watch prod`, user timer `ld-kafka-watch`)
+and sends to the owner's Telegram through `~/bin/notify-telegram`. Each host
+answers through `health-probe.py`, the forced command of the watch key
+(`restrict`, no shell, no forwarding, read-only); one broker answers for the
+cluster with its own certificate. A problem is told after two passes in a row,
+once, with a reminder a day later and a note when it is over; a crash of the
+watch itself is told at most every six hours; a Monday note says it is alive.
+
+Covered: replication-slot retained bytes (256 MB warning, 2 GB critical, cap
+16 GB; heartbeats keep a healthy slot at a few MB), slot inactive / unreserved / lost / missing, connector and task state,
+each Connect worker and registry, controller quorum and each voter, each
+broker's last fetch, offline / below-min-ISR / under-replicated partitions,
+disk use on every host, WireGuard peers, node certificate expiry.
+
+Outbox parity (2026-10-25): every pass, the production probe lists the
+`event_outbox` rows of the last 3 hours except the newest 5 minutes, and the
+broker that answered for the cluster lists the `id` header of every record in
+`ld.prod.*.events.v1` from 3 hours 10 minutes back (its own consumer group,
+reset by time, read until each partition's noted end). An outbox `eventId`
+missing from Kafka is critical («События из базы не дошли до Kafka»); a read
+that did not reach the end, or a side that did not answer, is a warning, never
+a false loss. Extra or repeated records in Kafka are not a problem. Rows older
+than the window are checked by the passes that saw them; a watch that was down
+longer than 3 hours leaves that stretch unchecked.
+
+MTM visit events (2026-10-26, PR #1114): a visit writes its events in its own
+transaction but fails open, so a failed append keeps the visit and drops only
+its events — a gap the outbox never sees. Every pass the production probe takes
+the visits changed in the last 3 hours and counts those created in that window
+with no event at all («Визиты MTM без событий в Kafka»),
+and those whose last status event or deletion disagrees with the row («События
+визитов MTM расходятся с CRM»). Both are warnings, with one visit id as an
+example; no grace period, since a visit and its events commit together. A seed
+script that writes visits around the application trips the first one too.
+
+Deals (2026-10-26, PR #1123): every deal write goes through `withDealEvents`
+(`src/lib/deals/deal-events.ts`), events on `leaddrive.domain.sales.v1` →
+`ld.prod.sales.events.v1`, failing open the same way
+(`src/lib/event-platform/record-changes.ts`). The probe checks them alike
+(«Сделки без событий в Kafka», «События сделок расходятся с CRM»); since deals
+are deleted outright, a deal stream whose row is gone without
+`sales.deal-deleted.v1` counts as disagreement. Contact merges that only move
+`contactId` write no event: the events do not carry it as a change.
+
+Writes without a tenant (2026-10-27): the event tables' policies admit only
+rows of `app.org_id` and have no `rls_bypass` arm, so a visit or deal written
+under `runWithRlsBypass` — a cron in the jobs process — had every event
+refused. The first live morning showed 61 «[MTM visit events] not recorded»
+in `jobs-error.log` and not one visit event in Kafka, while the watch stayed
+quiet: «without events» then counted only rows created after the first
+started event, and there was none. Now `recordStreamChanges` enters the
+write's own organization for the events when the transaction has no tenant,
+and leaves it again; a different tenant already in place stays and refuses the
+rows. The check counts rows created in its window, whatever came before. The
+PostgreSQL tests run these cases as `event_app`, a role without BYPASSRLS: the
+superuser the suite connects as passes every policy, which is how the failure
+stayed green. The log line now carries Prisma's code and the SQLSTATE.
+
+Not covered yet: consumer lag (no consumer runs), schemas, quarantine,
+archive, projections.
+
+### The backup watch (2026-10-25)
+
+The workstation shares a provider with production and two of the three Kafka
+sites (Contabo). A copy of the same `watch.mjs` therefore runs on
+`BACKUP_WATCH_HOST` (`kafka-p-broker-gra`, OVH Gravelines) as root under the
+system timer `ld-kafka-backup-watch` (`provision.sh install-backup-watch`, after
+`install-watch`). Every finished pass of the main watch leaves a heartbeat
+there (`ssh … heartbeat`, the one write the probe allows, and only on that
+host). While the heartbeat is younger than 12 minutes the backup only stands
+by. When it is older, the backup tells the owner «Главный сторож Kafka молчит»
+and runs the full watch itself, every message marked «[запасной сторож]»,
+until the heartbeat returns; then it tells that the silence is over and leaves
+the Kafka problems to the main watch. The main watch in turn reports a backup
+that has not passed for 20 minutes. Its copy of the watch key keeps the forced,
+read-only commands; the Telegram settings live in
+`/etc/leaddrive-kafka/watch-notify.env` (root, 0600).
+
+Both watches gone together (the workstation and OVH Gravelines at once) is
+still silent.
+
+## Evidence identifiers and credential-reference shape
+
+Evidence/change/operator IDs and endpoints must be canonical nonempty strings:
+no surrounding whitespace, control characters or unresolved `__TOKEN__` /
+`<placeholder>` markers. A requester padded with spaces is still the same
+requester and must not satisfy the distinct-approver guard. The validator rejects
+that formatting rather than guessing identity aliases or authenticating humans.
+The real independent-operator check remains a reviewed operational requirement.
+
+`secretReferences` must be an object with the four explicit service-role keys
+`kafkaConsumer`, `connectProducer`, `schemaRegistry` and `postgresCdc`.
+Four arbitrary keys or an array do not establish service separation. Each value
+must be a distinct nonempty secret-manager location; a bare `vault://` or other
+provider prefix is not a location. Invalid reference formatting is reported by
+field label, without echoing the supplied reference. Additional references do
+not replace a missing required role. Shape validation does not verify secret
+existence, permissions, ownership, rotation or any external provider API.
+
+## Inactive worker admission and client-only candidate
+
+`src/lib/event-platform/worker-admission.ts` validates a strict, copied and
+deeply frozen `FundShadowWorkerPlan`. Release SHA, manifest digest, environment,
+cluster/topic identity, partition count, stable versioned group and distinct
+tenant/build/worker-role routes must agree. Secret values and arbitrary local
+credential-file paths are not accepted: the plan contains only opaque,
+governed secret references. Parsing those references does not resolve them,
+authenticate an operator, inspect live metadata, grant a role or approve
+activation. The actual activation/recovery gates above remain mandatory.
+
+`worker-artifact.ts` compares every actual file against an independently
+supplied manifest digest and release pin. It rejects unlisted payloads, links,
+special files, group/world-writable paths, oversized or changing files and
+classpath delimiters in the root. The explicit classpath contains only listed
+members; there is no classpath wildcard. Manifest digest equality is byte
+verification, not proof that an arbitrary caller-provided digest is trusted.
+Production must keep the artifact tree read-only to the worker principal
+throughout its lifetime, and verify release provenance separately.
+
+The disposable broker workflow compiles the driver from its exact checked-out
+commit and takes client, compression and logging dependencies from the pinned
+Kafka image. Broker/Connect/Streams/admin fixture classes are excluded from the
+candidate. It exercises the actual supervised Java child (not a Docker CLI
+proxy) with the admitted plan and real restricted PostgreSQL transactions:
+two-tenant exact parity across restart, stop during COMMIT, stop after COMMIT
+before acknowledgement, and durable-inbox redelivery. Existing membership
+takeover/fencing tests still run unchanged. The private test broker is resolved
+only inside that Java process using JDK21's documented
+[`jdk.net.hosts.file` test facility](https://docs.oracle.com/en/java/javase/21/core/java-networking.html);
+no system hosts/DNS change or broker host-port publication is performed.
+
+Only after all combined scenarios succeed does the workflow export and
+reverify `fund-shadow-worker-candidate-<checkout SHA>`. Its `manifest.json`
+contains exact member lengths/hashes and the checkout SHA. The safe job output
+records the manifest digest. A PR merge-test candidate is not the later main
+release artifact. This is a short-retention CI candidate, not an installed
+worker, production service unit, resolved secret configuration, authenticated
+operator approval or Kafka activation. The separate full CDC drill, recovery
+proof, production HA/TLS/ACL and operational gates must not be inferred from
+these direct-child test markers.
+
+## Fund shadow pilot (A6, shadow only) — 2026-10-25
+
+Owner decision 2026-10-25: a shadow pilot of the Fund projection for
+LeadDrive Inc., with the owner's own Mac restore accepted for A3 in this scope
+only (`docs/event-platform/KAFKA_IMPLEMENTATION_BACKLOG.md`). The shadow worker
+folds Fund events from Kafka into its own build of `fund_balance_projections`;
+the CRM never reads it, nothing is promoted and nothing leaves the system.
+
+- **Runner**: `scripts/event-platform/fund-shadow/runner.ts`, bundled with the
+  pinned `ops/event-platform/fund-shadow` packages, on `kafka-p-connect-uk`
+  under the `ld-fund-shadow` timer (every 5 minutes). One finite session per
+  tick: `validateKafkaWorkerPlan`, `verifyKafkaWorkerArtifact` (bridge classes
+  + the Connect image's client jars, built on the host from this checkout),
+  `KafkaPartitionBridge` as `nobody` in the Connect image, the restricted
+  PostgreSQL login over the overlay with TLS verified against the production
+  certificate. It stops at two IDLE frames after assignment: caught up.
+- **Organizations**: every organization with events on the finance topic is in
+  the plan. The worker stops at an event of any other one: it never skips an
+  event. Owner 2026-10-26, after pilot-1 stopped at another tenant's event:
+  «Да, добавь в теневой пилот Fund и две другие организации с событиями Fund:
+  обработчик остаётся строгим, пропусков нет.»
+- **Database**: `provision-role.sql`, run as postgres on production once per
+  organization, creates its login `ld_fund_shadow_<org>` (NOINHERIT, no
+  BYPASSRLS, two connections, marked by a role comment)
+  with the grants and RESTRICTIVE policies the consumer is tested against,
+  and the build row (`mode=shadow`, `status=running`, effects fenced). It
+  refuses to run if any table lacks forced row security. Only a SCRAM verifier
+  reaches the server. `pg_hba` admits the logins from the runner host only.
+  `retire-builds.sql` then abandons the builds of earlier pilots and switches
+  off their marked logins; nothing is deleted.
+- **Kafka**: identity `ld-fund-worker` (Read/Describe/DescribeConfigs on the
+  finance topic; Read on groups `ld.prod.finance.fund-shadow.`), group
+  `ld.prod.finance.fund-shadow.v2.pilot-<n>` started at the earliest offsets.
+- **Watch**: the production probe compares every running shadow build with
+  `funds` (counts only): `fund-shadow-wrong` when the same event version gives
+  a different balance or currency, `fund-shadow-stale` when a fund is behind an
+  event older than 30 minutes. Both are warnings: users never see the shadow.
+- **Order**: `provision.sh fund-shadow-prod <org>,<org>,…` (production: the
+  owner runs it) → `fund-shadow-install` → `fund-shadow-run` → `fund-shadow-enable`.
+  A new release is a new build (`pilot-<n+1>`, its own group), never an edited
+  one. **Stop**: `fund-shadow-disable`; there is nothing to roll back.
+- Tested by `pilot.integration.ts` in `static-checks` on the real event
+  platform migrations: provisioning twice, node-postgres fold equal to the
+  Prisma fold and to the source balance, duplicates, the watch's parity query,
+  tenant isolation, refused writes to the source, timeout rollback.
+
+### Fund screen: balance from CRM or Kafka (2026-10-26)
+
+Owner: «Да, начинай перевод Fund на Kafka с LeadDrive Inc.: показывать балансы
+её фондов из Kafka, с возвратом одной кнопкой»; mockup approved («Давай, делай
+по этому макету»). `src/lib/finance/fund-balance-source.ts`:
+
+- The switch «Баланс из CRM / Kafka» on «Финансы → Фонды» exists only for an
+  organization with a running shadow build of `finance.fund-balance`, for those
+  who may run the funds (finance write). It is one key,
+  `organizations.settings.fundBalanceSource`, set in place with `jsonb_set`;
+  every change is in the audit log (`finance_fund_balance_source_changed`).
+- With «Kafka» the Fund list and card take a fund's balance from the newest
+  running shadow build only when it has folded the fund's latest event
+  (`aggregateVersion` = event head) in the fund's currency; otherwise the CRM
+  balance with «Kafka ещё догоняет». A fund without event history keeps its
+  CRM balance. So the screen never shows a number the CRM has moved past.
+- Display only: deposits and withdrawals still check `funds.currentBalance`,
+  nothing is promoted, «CRM» switches back at once.
+- The pilot timer runs every minute so a card waits for Kafka briefly.
+- Tested on real PostgreSQL in `pilot.integration.ts` (`screen_kafka_read`),
+  routes and switch in `api-finance-fund-balance-source.test.ts`, the screen
+  in `finance-fund-manager-balance-source.test.ts`.

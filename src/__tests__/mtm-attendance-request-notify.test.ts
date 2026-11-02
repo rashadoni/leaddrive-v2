@@ -12,7 +12,7 @@ const scope = { organizationId: "notification-fixture-org", agentId: "notificati
 beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ userId: "reviewer" }] as never)
-  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: "employee-user" } as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: "employee-user", name: "Fixture Employee" } as never)
   vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "reviewer", role: "manager", hiddenModules: [], preferredLanguage: "ru" }] as never)
   vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "MANAGER", agentId: null, scopedAgentIds: [scope.agentId] })
   vi.mocked(prisma.notification.createMany).mockResolvedValue({ count: 1 })
@@ -26,6 +26,9 @@ describe("attendance request durable reviewer notification", () => {
     expect(first).toEqual(vi.mocked(prisma.notification.createMany).mock.calls[1][0])
     expect(first).toMatchObject({ skipDuplicates: true, data: { entityType: entity, entityId: scope.requestId, userId: "reviewer", organizationId: scope.organizationId } })
     expect(JSON.stringify(first)).not.toMatch(/reason|attachment|latitude|employee-user|notification-fixture-employee/)
+    // Whose request (owner, 2026-11-01), never what kind: the push may land on a locked screen.
+    expect((first as { data: { message: string } }).data.message).toBe("Заявка по учёту рабочего дня от: Fixture Employee. Откройте очередь и примите решение.")
+    expect(JSON.stringify(first)).not.toMatch(/LEAVE|SICK|ABSENCE|TIME_CORRECTION/)
     const section = deriveSection(entity)!
     expect(shouldPush({}, section, kind)).toBe(true)
     expect(shouldPush({ [section]: { push: true, types: { [kind]: false } } }, section, kind)).toBe(false)
@@ -38,6 +41,11 @@ describe("attendance request durable reviewer notification", () => {
     if (mode === "no-actor") vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)
     await run()
     expect(prisma.notification.createMany).not.toHaveBeenCalled()
+  })
+  it("falls back to the plain text when the card has no name", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ userId: "employee-user", name: null } as never)
+    await run()
+    expect((vi.mocked(prisma.notification.createMany).mock.calls[0][0] as { data: { message: string } }).data.message).not.toContain("{name}")
   })
   it("fails the caller's transaction if a durable bell row cannot be persisted", async () => {
     vi.mocked(prisma.notification.createMany).mockRejectedValue(new Error("fixture persistence failure"))

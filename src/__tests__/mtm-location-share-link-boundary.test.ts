@@ -32,6 +32,7 @@ vi.mock("next/headers", () => ({
 vi.mock("next-intl/server", () => ({
   getLocale: vi.fn(async () => request.locale),
   getMessages: vi.fn(async () => JSON.parse(readFileSync(`messages/${request.locale}.json`, "utf8"))),
+  getTimeZone: vi.fn(async () => "Asia/Baku"),
   // On the server a page reads the whole catalog of the request's language.
   getTranslations: vi.fn(async (namespace: string) => {
     const { createTranslator: create } = await vi.importActual<typeof import("next-intl")>("next-intl")
@@ -47,6 +48,7 @@ vi.mock("@/components/providers", () => ({ Providers: () => null }))
 vi.mock("sonner", () => ({ Toaster: () => null }))
 
 import RootLayout from "@/app/layout"
+import { IntlCatalogProvider } from "@/components/intl-catalog-provider"
 import LocationShareLinkPage, * as pageModule from "@/app/share/location/[token]/page"
 import { LocationShareLinkView } from "@/components/mtm/location-share-link-view"
 import { LOCATION_SHARE_LINK_PAGE_PATH, buildLocationShareLinkUrl } from "@/lib/mtm/location-share-link"
@@ -60,18 +62,24 @@ const catalog = (locale: Locale) => JSON.parse(readFileSync(`messages/${locale}.
 const translator = (locale: Locale) => createTranslator({ locale, messages: catalog(locale) as never, namespace: NAMESPACE as never }) as unknown as
   (key: string, values?: Record<string, string | number>) => string
 
-/** The messages the root layout hands to the browser for a page at `pathname`. */
-async function handedTo(pathname: string | null, locale: Locale = "ru"): Promise<Record<string, unknown>> {
+/**
+ * The messages the root layout writes into the page at `pathname` — `null`
+ * when it writes none and the browser loads the whole catalog as its own file.
+ */
+async function handedTo(pathname: string | null, locale: Locale = "ru"): Promise<Record<string, unknown> | null> {
   request.pathname = pathname
   request.locale = locale
-  const found: Array<Record<string, unknown>> = []
+  const found: Array<Record<string, unknown> | null> = []
   const look = (node: unknown) => {
     if (Array.isArray(node)) return node.forEach(look)
     if (!node || typeof node !== "object") return
-    const props = (node as ReactElement<{ messages?: Record<string, unknown>; children?: unknown }>).props
-    if (!props) return
-    if (props.messages) found.push(props.messages)
-    look(props.children)
+    const element = node as ReactElement<{ messages?: Record<string, unknown> | null; locale?: string; children?: unknown }>
+    if (!element.props) return
+    if (element.type === IntlCatalogProvider) {
+      expect(element.props.locale, "the provider speaks the request's language").toBe(locale)
+      found.push(element.props.messages ?? null)
+    }
+    look(element.props.children)
   }
   look(await RootLayout({ children: null }))
   expect(found, "one provider carries the messages").toHaveLength(1)
@@ -93,6 +101,7 @@ describe("what the root layout hands the public page of a location link", () => 
   it("hands it its own few sentences and nothing else of the catalog — in each language", async () => {
     for (const locale of LOCALES) {
       const handed = await handedTo(`${LOCATION_SHARE_LINK_PAGE_PATH}${TOKEN}`, locale)
+      if (!handed) throw new Error(`${locale}: the page was handed the whole catalog`)
       expect(Object.keys(handed), locale).toEqual([NAMESPACE])
       expect(handed[NAMESPACE], locale).toEqual(catalog(locale)[NAMESPACE])
       // A few sentences, not a megabyte: the whole of what a stranger's browser is sent.
@@ -105,24 +114,22 @@ describe("what the root layout hands the public page of a location link", () => 
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.test")
     try {
       const pathname = new URL(buildLocationShareLinkUrl(TOKEN, "az")).pathname
-      expect(Object.keys(await handedTo(pathname))).toEqual([NAMESPACE])
-      expect(Object.keys(await handedTo(`${pathname}/`))).toEqual([NAMESPACE])
+      expect(Object.keys(await handedTo(pathname) ?? {})).toEqual([NAMESPACE])
+      expect(Object.keys(await handedTo(`${pathname}/`) ?? {})).toEqual([NAMESPACE])
     } finally {
       vi.unstubAllEnvs()
     }
   })
 
-  it("hands a page that merely sounds alike the catalog it always had", async () => {
+  it("hands a page that merely sounds alike what every CRM page gets: no sentences in the page, the whole catalog as its own file", async () => {
     for (const pathname of ["/share/locations", `/share/locations/${TOKEN}`, `/shared/location/${TOKEN}`, `/mtm/share/location/${TOKEN}`, "/mtm/map", null]) {
-      const handed = await handedTo(pathname)
-      expect(Object.keys(handed).length, String(pathname)).toBeGreaterThan(100)
-      expect(handed, String(pathname)).toHaveProperty("mtmMap")
+      expect(await handedTo(pathname), String(pathname)).toBeNull()
     }
   })
 
   it("leaves its neighbours as they were: a sign-in page still gets the sign-in sentences alone", async () => {
-    expect(Object.keys(await handedTo("/login"))).toEqual(["auth"])
-    expect(Object.keys(await handedTo("/portal/login"))).toEqual(["portal"])
+    expect(Object.keys(await handedTo("/login") ?? {})).toEqual(["auth"])
+    expect(Object.keys(await handedTo("/portal/login") ?? {})).toEqual(["portal"])
   })
 
   it("holds nothing in those sentences that belongs behind a login", () => {

@@ -6,14 +6,28 @@ umask 077
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MODE="upload"
 FORCE_RETENTION_TIER=""
+OWNER_RECIPIENT=""
+SCRATCH_TEMPLATE_ARG=""
+if [ "${1:-}" = --scratch-template ]; then
+  [[ "${2:-}" =~ ^leaddrive_restore_template_[1-9][0-9]{0,19}_[0-9a-f]{12}$ ]] || exit 2
+  SCRATCH_TEMPLATE_ARG="$2"
+  shift 2
+fi
+readonly SCRATCH_TEMPLATE_ARG
 if [ "${1:-}" = "--local-canary" ] && [ "$#" -eq 1 ]; then
   MODE="local-canary"
 elif [ "${1:-}" = "--commission-monthly" ] && [ "$#" -eq 1 ]; then
   FORCE_RETENTION_TIER="monthly"
+elif [ "${1:-}" = "--owner-operated" ] && [ "$#" -eq 2 ]; then
+  [[ "$2" =~ ^age1[0-9a-z]{58}$ ]] || exit 2
+  OWNER_RECIPIENT="$2"
+  FORCE_RETENTION_TIER="monthly"
 elif [ "$#" -gt 0 ]; then
-  printf 'Usage: %s [--local-canary|--commission-monthly]\n' "$0" >&2
+  printf 'Usage: %s [--local-canary|--commission-monthly|--owner-operated PUBLIC_RECIPIENT]\n' "$0" >&2
   exit 2
 fi
+
+readonly OWNER_RECIPIENT
 
 BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/leaddrive/backup.env}"
 if [ -f "$BACKUP_ENV_FILE" ]; then
@@ -23,6 +37,21 @@ if [ -f "$BACKUP_ENV_FILE" ]; then
   set -a
   source "$BACKUP_ENV_FILE"
   set +a
+fi
+
+# Only the admitted controller's argument may select a native template. Never
+# accept a stale/environment-file override; offline owner workbenches use their
+# independently bootstrapped default template1.
+unset VERIFY_PGTEMPLATE
+if [ -n "$SCRATCH_TEMPLATE_ARG" ]; then
+  export VERIFY_PGTEMPLATE="$SCRATCH_TEMPLATE_ARG"
+fi
+
+# Explicit owner invocation only: encrypted candidate under a separate public
+# recipient, with no change to canonical policy, private keys, or schedules.
+if [ -n "$OWNER_RECIPIENT" ]; then
+  BACKUP_ENCRYPTION=age
+  BACKUP_AGE_RECIPIENT="$OWNER_RECIPIENT"
 fi
 
 WORK_ROOT="${BACKUP_WORK_ROOT:-/run/leaddrive-postgres-backup}"
@@ -39,6 +68,19 @@ log() {
 fatal() {
   printf '[postgres-backup] ERROR: %s\n' "$*" >&2
   exit 1
+}
+
+assert_native_source_contract() {
+  [ -n "$SCRATCH_TEMPLATE_ARG" ] || return 0
+  local sql proof
+  [ -f "$SCRIPT_DIR/native-scratch-template.mjs" ] && [ ! -L "$SCRIPT_DIR/native-scratch-template.mjs" ] \
+    || fatal "native source compatibility helper is unavailable"
+  sql="$(node "$SCRIPT_DIR/native-scratch-template.mjs" --source-contract-sql)" \
+    || fatal "native source compatibility plan refused"
+  proof="$(PGOPTIONS='-c search_path=pg_catalog,pg_temp -c default_transaction_read_only=on -c statement_timeout=10000' \
+    psql -X -w -qAt -v ON_ERROR_STOP=1 -c "$sql")" \
+    || fatal "native source compatibility query failed"
+  [ "$proof" = 1 ] || fatal "source extension/locale contract changed across recovery capture"
 }
 
 require_env() {
@@ -77,23 +119,26 @@ assert_tmpfs_work_root() {
     || fatal "backup tmpfs has insufficient free capacity"
 }
 
-assert_root_connection_file() {
+assert_connection_file() {
   local label="$1"
   local file="$2"
   local kind="$3"
-  local mode group_id
+  local mode owner
   [[ "$file" = /* ]] || fatal "$label must use an absolute path"
   [ -f "$file" ] && [ ! -L "$file" ] && [ -r "$file" ] \
     || fatal "$label must be a readable regular non-symlink file"
-  [ "$(stat -c '%u' "$file")" = "0" ] || fatal "$label must be root-owned"
+  owner="$(stat -c '%u' "$file")"
   mode="$(stat -c '%a' "$file")"
+  if [ "$kind" = password ]; then
+    # libpq ignores password files accessible by any group/other user.
+    # The restricted runner must own the file; sharing it via a group fails.
+    [ "$owner" = "$(id -u)" ] || fatal "$label must belong to the backup account"
+    case "$mode" in 400|600) ;; *) fatal "$label must use private mode 0400 or 0600" ;; esac
+    return 0
+  fi
+  [ "$owner" = 0 ] || fatal "$label must be root-owned"
   case "$kind:$mode" in
     ca:400|ca:440|ca:444|ca:600|ca:640|ca:644) ;;
-    password:400|password:600) [ "$(id -u)" = "0" ] || fatal "$label mode $mode is not readable by the backup account" ;;
-    password:440|password:640)
-      group_id="$(stat -c '%g' "$file")"
-      [ "$group_id" = "$(id -g)" ] || fatal "$label group does not match the backup account"
-      ;;
     *) fatal "$label has an unsafe mode for $kind material" ;;
   esac
 }
@@ -178,8 +223,8 @@ PGSSLMODE="${PGSSLMODE:-verify-full}"
   || fatal "PGCONNECT_TIMEOUT must be between 1 and 30 seconds"
 export PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGPASSFILE PGCONNECT_TIMEOUT PGSSLMODE PGSSLROOTCERT
 
-assert_root_connection_file "PGPASSFILE" "$PGPASSFILE" password
-assert_root_connection_file "PGSSLROOTCERT" "$PGSSLROOTCERT" ca
+assert_connection_file "PGPASSFILE" "$PGPASSFILE" password
+assert_connection_file "PGSSLROOTCERT" "$PGSSLROOTCERT" ca
 [ -r "$SCRIPT_DIR/canary.sql" ] || fatal "canary.sql is missing"
 [ -r "$SCRIPT_DIR/migration-ledger.sql" ] && [ ! -L "$SCRIPT_DIR/migration-ledger.sql" ] \
   || fatal "migration-ledger.sql is missing or symlinked"
@@ -312,6 +357,7 @@ DUMP_LIST="$WORK_DIR/database.list"
 MANIFEST_FILE="$WORK_DIR/manifest.env"
 
 SNAPSHOT_SESSION_OUTPUT="$WORK_DIR/source-snapshot-session.tsv"
+assert_native_source_contract
 log "exporting one read-only MVCC snapshot for both source canary and pg_dump"
 {
   printf '%s\n' \
@@ -372,9 +418,19 @@ install -m 0600 -- "$SCRIPT_DIR/recovery-db-contract.tsv" "$RECOVERY_DB_CONTRACT
 awk -F '\t' '
   NR == 1 { if ($1 != "SCHEMA" || $2 != "prisma/schema.prisma" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
   NR == 2 { if ($1 != "MIGRATION_LOCK" || $2 != "prisma/migrations/migration_lock.toml" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
+  $1 == "LEDGER_EXCEPTION" {
+    if (NF != 4 || !migrations || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ \
+        || $3 !~ /^([0-9a-f]{64}|manual-[0-9]{8,14})$/ \
+        || (previous_exception != "" && previous_exception >= $2)) bad=1
+    else if ($4 == "applied-not-in-code") { if ($2 in contract) bad=1 }
+    else if ($4 == "checksum-differs") { if (!($2 in contract) || contract[$2] == $3) bad=1 }
+    else bad=1
+    previous_exception=$2; next
+  }
+  previous_exception != "" { bad=1; next }
   $1 != "MIGRATION" || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ || $3 !~ /^[0-9a-f]{64}$/ { bad=1; next }
   seen[$2]++ { bad=1 }
-  { if (previous != "" && previous >= $2) bad=1; previous=$2; migrations++ }
+  { if (previous != "" && previous >= $2) bad=1; previous=$2; contract[$2]=$3; migrations++ }
   END { if (NR < 3 || migrations < 1 || bad) exit 1 }
 ' "$RECOVERY_DB_CONTRACT_FILE" || fatal "recovery DB contract manifest is malformed"
 awk -F '\t' '$1 == "MIGRATION" { print $2 "\t" $3 }' \
@@ -399,6 +455,33 @@ SQL
 tail -n +2 "$APPLIED_MIGRATIONS_FILE" >"$APPLIED_MIGRATIONS_FILE.rows"
 mv -- "$APPLIED_MIGRATIONS_FILE.rows" "$APPLIED_MIGRATIONS_FILE"
 LC_ALL=C sort -o "$APPLIED_MIGRATIONS_FILE" "$APPLIED_MIGRATIONS_FILE"
+# BEGIN reviewed migration ledger exceptions
+# Byte-identical in postgres-backup.sh and postgres-restore-canary.sh
+# (migration-ledger-exceptions.test.mjs). A ledger row equal in name AND
+# checksum to a LEDGER_EXCEPTION of the recovery DB contract is accounted for:
+# applied-not-in-code drops out, checksum-differs takes the repository
+# checksum. Anything else passes through unchanged to the exact prefix check.
+apply_reviewed_ledger_exceptions() {
+  awk -F '\t' -v OFS='\t' '
+    FNR == NR {
+      if ($1 == "MIGRATION") contract[$2] = $3
+      else if ($1 == "LEDGER_EXCEPTION") exception[$2 "\t" $3] = $4
+      next
+    }
+    ($1 "\t" $2) in exception {
+      if (exception[$1 "\t" $2] == "applied-not-in-code") next
+      if (exception[$1 "\t" $2] == "checksum-differs") { print $1, contract[$1]; next }
+    }
+    { print }
+  ' "$1" "$2"
+}
+# END reviewed migration ledger exceptions
+apply_reviewed_ledger_exceptions "$RECOVERY_DB_CONTRACT_FILE" "$APPLIED_MIGRATIONS_FILE" \
+  >"$APPLIED_MIGRATIONS_FILE.reviewed" || fatal "cannot apply reviewed migration ledger exceptions"
+if ! cmp -s -- "$APPLIED_MIGRATIONS_FILE" "$APPLIED_MIGRATIONS_FILE.reviewed"; then
+  log "source ledger matched reviewed exceptions of the recovery DB contract"
+fi
+mv -- "$APPLIED_MIGRATIONS_FILE.reviewed" "$APPLIED_MIGRATIONS_FILE"
 awk -F '\t' '
   NF != 2 || $1 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ || $2 !~ /^[0-9a-f]{64}$/ { bad=1 }
   seen[$1]++ { bad=1 }
@@ -575,6 +658,7 @@ capture_migration_ledger "$MIGRATION_LEDGER_AFTER_FILE"
 cmp -s -- "$MIGRATION_LEDGER_FILE" "$MIGRATION_LEDGER_AFTER_FILE" \
   || fatal "Prisma migration ledger changed while the recovery point was being captured"
 rm -f -- "$MIGRATION_LEDGER_AFTER_FILE"
+assert_native_source_contract
 
 kill "$SNAPSHOT_HOLDER_PID" >/dev/null 2>&1 || true
 wait "$SNAPSHOT_HOLDER_PID" >/dev/null 2>&1 || true
@@ -582,7 +666,7 @@ SNAPSHOT_HOLDER_PID=""
 
 log "restoring into scratch database and comparing canary"
 SOURCE_SYSTEM_IDENTIFIER="${source_database_identity%%|*}"
-"$SCRIPT_DIR/postgres-restore-canary.sh" \
+TMPDIR="$WORK_DIR" "$SCRIPT_DIR/postgres-restore-canary.sh" \
   "$DUMP_FILE" "$SOURCE_CANARY" "$SOURCE_SYSTEM_IDENTIFIER" "$AUTHORITY_FILE" \
   "$MIGRATION_LEDGER_FILE" "$RECOVERY_DB_CONTRACT_FILE"
 

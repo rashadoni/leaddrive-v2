@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { Plus, X } from "lucide-react"
+import { MtmWord } from "@/components/mtm/button-word"
 
 interface RouteFormProps {
   open: boolean
@@ -100,7 +101,7 @@ export function MtmRouteForm({ open, onOpenChange, onSaved, initialData, orgId }
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
+          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-border border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-l-red-500">{error}</div>}
           <div className="grid gap-4">
             <div><Label htmlFor="name">{tf("routeName")}</Label><Input id="name" value={form.name} onChange={e => update("name", e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -134,7 +135,7 @@ export function MtmRouteForm({ open, onOpenChange, onSaved, initialData, orgId }
                       <option value="">{tf("selectCustomer")}</option>
                       {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.code ? `(${c.code})` : ""}</option>)}
                     </Select>
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setPoints(points.filter((_, i) => i !== idx))}><X className="h-3.5 w-3.5" /></Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-destructive gap-1.5" onClick={() => setPoints(points.filter((_, i) => i !== idx))}><X className="h-3.5 w-3.5" /><MtmWord word="delete" /></Button>
                   </div>
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={() => setPoints([...points, { customerId: "" }])}><Plus className="h-3.5 w-3.5 mr-1" /> {tf("addPoint")}</Button>

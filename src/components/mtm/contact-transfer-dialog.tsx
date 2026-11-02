@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, ArrowRight, CheckCircle2, HardDriveDownload, Loader2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -78,6 +79,19 @@ type TransferResult = {
 }
 
 type Step = "PARAMETERS" | "PREVIEW" | "RESULT"
+
+/** Why a contact stays where it is, for the reasons the label alone does not explain. Keys written out so a test finds every one. */
+const ISSUE_HINT = {
+  OWNER_CHANGED: "hint.transferIssueOwnerChanged",
+  MULTIPLE_PRIMARY_OWNERS: "hint.transferIssueMultiplePrimary",
+  FUTURE_ASSIGNMENT_CONFLICT: "hint.transferIssueFuture",
+  OPEN_VISIT_CONFLICT: "hint.transferIssueOpenVisit",
+  ROUTE_PLAN_CONFLICT: "hint.transferIssueRoutePlan",
+} as const satisfies Partial<Record<TransferIssue, string>>
+
+function issueHintKey(issue: TransferIssue) {
+  return Object.prototype.hasOwnProperty.call(ISSUE_HINT, issue) ? ISSUE_HINT[issue as keyof typeof ISSUE_HINT] : null
+}
 
 function localDateKey(): string {
   const now = new Date()
@@ -239,7 +253,7 @@ export function ContactTransferDialog({
         <div data-testid="mtm-contact-transfer-dialog" className="space-y-4">
           {step === "PARAMETERS" ? (
           <>
-            <div className="rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100">
+            <div className="rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <div className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
@@ -251,7 +265,7 @@ export function ContactTransferDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label>{tt("transfer.sourceAgent")}</Label>
-                <div className="mt-1.5 flex min-h-10 items-center rounded-md border border-zinc-200 bg-muted/40 px-3 text-sm dark:border-zinc-700">
+                <div className="mt-1.5 flex min-h-10 items-center rounded-md border border-border bg-muted/40 px-3 text-sm">
                   {sourceAgent?.name || tt("transfer.sourceMissing")}
                 </div>
               </div>
@@ -275,7 +289,7 @@ export function ContactTransferDialog({
                   value={effectiveFrom}
                   min={asOf || undefined}
                   onChange={(event) => setEffectiveFrom(event.target.value)}
-                  className="mt-1.5 min-h-11 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
               </div>
             </div>
@@ -287,23 +301,23 @@ export function ContactTransferDialog({
           <>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Summary label={tt("transfer.selected")} value={preview.summary.selected} />
-              <Summary label={tt("transfer.transferable")} value={preview.summary.transferable} tone="positive" />
-              <Summary label={tt("transfer.excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} />
-              <Summary label={tt("transfer.openTasks")} value={preview.summary.openTasks} tone={preview.summary.openTasks ? "warning" : "neutral"} />
+              <Summary label={tt("transfer.transferable")} value={preview.summary.transferable} tone="positive" hint={tt("hint.transferTransferable")} />
+              <Summary label={tt("transfer.excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} hint={tt("hint.transferExcluded")} />
+              <Summary label={tt("transfer.openTasks")} value={preview.summary.openTasks} tone={preview.summary.openTasks ? "warning" : "neutral"} hint={tt("hint.transferOpenTasks")} />
             </div>
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
               <span className="font-medium">{preview.sourceAgent?.name || "—"}</span>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{preview.targetAgent?.name || "—"}</span>
-              <span className="ml-auto text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+              <HintValue className="ml-auto text-xs text-muted-foreground" text={tt("hint.transferEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
             </div>
             {preview.warnings.length > 0 ? (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100">
+              <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
                 {preview.warnings.map((warning) => <p key={warning}>{tt(`transfer.warnings.${warning}`)}</p>)}
               </div>
             ) : null}
             {preview.summary.openTasks > 0 ? (
-              <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100">
+              <div className="rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
                 <p className="font-medium">{tt("transfer.openTaskImpactTitle")}</p>
                 <p className="mt-1 text-xs opacity-80">{tt("transfer.openTaskImpactDescription", {
                   tasks: preview.summary.openTasks,
@@ -311,7 +325,7 @@ export function ContactTransferDialog({
                 })}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {preview.rows.filter((row) => row.openTaskCount > 0).map((row) => (
-                    <span key={row.contactId} className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] text-sky-900 dark:bg-sky-900/30 dark:text-sky-100">
+                    <span key={row.contactId} className="rounded-full px-2 py-0.5 text-xs text-sky-700 dark:text-sky-300">
                       {row.displayName || row.contactId}: {row.openTaskCount}
                     </span>
                   ))}
@@ -321,23 +335,26 @@ export function ContactTransferDialog({
             {preview.summary.excluded > 0 ? (
               <div>
                 <h3 className="text-sm font-semibold">{tt("transfer.excludedContacts")}</h3>
-                <div className="mt-2 max-h-56 divide-y divide-zinc-200 overflow-y-auto rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                <div className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
                   {preview.rows.filter((row) => !row.transferable).map((row) => (
                     <div key={row.contactId} className="p-3 text-sm">
                       <p className="font-medium">{row.displayName || row.contactId}</p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {row.issues.map((issue) => (
-                          <span key={issue} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
-                            {tt(`transfer.issues.${issue}`)}
-                          </span>
-                        ))}
+                        {row.issues.map((issue) => {
+                          const hintKey = issueHintKey(issue)
+                          return (
+                            <HintValue key={issue} text={hintKey ? tt(hintKey) : null} className="rounded-full px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+                              {tt(`transfer.issues.${issue}`)}
+                            </HintValue>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm">
                 <CheckCircle2 className="h-4 w-4" />
                 {tt("transfer.noConflicts")}
               </div>
@@ -360,7 +377,7 @@ export function ContactTransferDialog({
 
         {step === "RESULT" && result ? (
           <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+            <div className="flex items-start gap-3 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-4">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="font-semibold">{tt("transfer.completedTitle")}</p>
@@ -375,8 +392,8 @@ export function ContactTransferDialog({
             ) : null}
             <div className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${
               receiptStored
-                ? "border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100"
-                : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100"
+                ? "border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500"
+                : "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
             }`}>
               {receiptStored
                 ? <HardDriveDownload className="mt-0.5 h-4 w-4 shrink-0" />
@@ -394,7 +411,7 @@ export function ContactTransferDialog({
         ) : null}
 
           {error ? (
-            <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -406,20 +423,24 @@ export function ContactTransferDialog({
         {step === "PARAMETERS" ? (
           <>
             <Button type="button" variant="outline" onClick={close} disabled={busy}>{tt("transfer.cancel")}</Button>
-            <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
-              {busy ? tt("transfer.buildingPreview") : tt("transfer.review")}
-            </Button>
+            <Hint wrap text={busy || contactIds.length === 0 ? null : tt("hint.transferReview")}>
+              <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
+                {busy ? tt("transfer.buildingPreview") : tt("transfer.review")}
+              </Button>
+            </Hint>
           </>
         ) : step === "PREVIEW" ? (
           <>
             <Button type="button" variant="outline" onClick={() => { setStep("PARAMETERS"); setError("") }} disabled={busy}>
               {tt("transfer.changeParameters")}
             </Button>
-            <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.transferable === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-1 h-4 w-4" />}
-              {busy ? tt("transfer.applying") : tt("transfer.apply", { count: preview?.summary.transferable ?? 0 })}
-            </Button>
+            <Hint wrap text={busy || !preview ? null : preview.summary.transferable === 0 ? tt("hint.transferNothing") : tt("hint.transferApply")}>
+              <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.transferable === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-1 h-4 w-4" />}
+                {busy ? tt("transfer.applying") : tt("transfer.apply", { count: preview?.summary.transferable ?? 0 })}
+              </Button>
+            </Hint>
           </>
         ) : (
           <Button type="button" onClick={close}>{tt("transfer.close")}</Button>
@@ -433,20 +454,22 @@ function Summary({
   label,
   value,
   tone = "neutral",
+  hint,
 }: {
   label: string
   value: number
   tone?: "positive" | "warning" | "neutral"
+  hint?: string
 }) {
   return (
     <div className={`rounded-lg border p-3 ${
       tone === "positive"
-        ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+        ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500"
         : tone === "warning"
-          ? "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
-          : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
+          ? "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
+          : "border-border bg-muted/30"
     }`}>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   )

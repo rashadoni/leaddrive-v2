@@ -20,6 +20,7 @@ import { isValidTimezone } from "@/lib/timezone"
 import { requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { mtmMobileLocationPayloadSha256 } from "@/lib/mtm/mobile-location-idempotency"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
+import { mtmSpeedMoving } from "@/lib/mtm/gps-speed"
 import {
   isDuringMtmWorkdayPause,
   MTM_WORKDAY_PAUSE_EVENT_TYPES,
@@ -230,7 +231,7 @@ export const POST = withMobileRls(async (req, auth) => {
       }
     }
     const selectedWorkday = resolvedWorkday
-    const isMoving = (speed ?? 0) > 1
+    const isMoving = mtmSpeedMoving(speed)
     const payloadSha256 = mtmMobileLocationPayloadSha256({
       workdayId: selectedWorkday?.id ?? null,
       latitude,

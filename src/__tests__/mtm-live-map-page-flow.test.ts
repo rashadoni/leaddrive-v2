@@ -81,12 +81,14 @@ import { ROSTER_VIEW_STORAGE_KEY } from "@/lib/mtm/live-map-roster"
 import { resetLiveMapPlaceCacheForTests } from "@/components/mtm/live-map-agent-place"
 import { resetLiveMapShareLinkCacheForTests } from "@/components/mtm/live-map-agent-share"
 import { locationShareLinkExpiresAt } from "@/lib/mtm/location-share-link"
+import { liveMapTrailSegments, type LiveMapTrailPoint } from "@/lib/mtm/live-map-trails"
+import { readHint } from "./helpers/hint"
 
 const METERS_PER_DEGREE = (Math.PI * 6_371_000) / 180
 const CENTRE = { latitude: 40.4093, longitude: 49.8671 }
 const northOf = (meters: number) => ({ latitude: CENTRE.latitude + meters / METERS_PER_DEGREE, longitude: CENTRE.longitude })
 
-interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[] }
+interface Row { agentId: string; name: string; fieldStatus: string; meters: number | null; minutesAgo: number; battery?: number; workdayState?: string; managerId?: string; managerName?: string; tags?: string[]; pausedSeconds?: number; lastSeenAt?: string }
 let rosterRows: Row[]
 let requests: string[]
 /** What the journal and the road server answer for the selected employee's card. */
@@ -175,18 +177,22 @@ function answerZoneWrite(method: string, path: string, body: Record<string, unkn
   return Response.json({ success: true, data: kept[index] })
 }
 
+/** The organization's own limits of a fresh coordinate; a test may give it others. */
+let freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+
 function answer(now: number) {
   const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
   return {
     success: true,
     data: {
       agentLocations: rosterRows.map((row) => ({
-        agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: iso(0), teamId: null, teamName: null,
+        agentId: row.agentId, name: row.name, isOnline: true, lastSeenAt: row.lastSeenAt ?? iso(0), teamId: null, teamName: null,
         managerId: row.managerId ?? null, managerName: row.managerName ?? null,
         tags: row.tags ?? [], mapColor: null,
         fieldStatus: row.fieldStatus, freshness: row.meters == null ? "NO_LOCATION" : "ONLINE",
         workdayState: row.workdayState ?? "ACTIVE", workdayDate: "2026-10-09", workdayStartedAt: iso(120), workdayCarryover: false,
         workdayPausedAt: workforceEnabled && row.workdayState === "PAUSED" ? iso(35) : null, workdayCompletedAt: null,
+        workdayPausedSeconds: workforceEnabled ? row.pausedSeconds ?? 0 : null,
         locationState: row.meters == null ? "NO_LOCATION_REPORTED" : "AVAILABLE",
         routeCompletion: 0, routeVisited: 0, routeTotal: 0, openVisitSince: null,
         ...(row.meters == null ? {} : { ...northOf(row.meters), accuracy: 10, speed: 20, battery: row.battery ?? 70, recordedAt: iso(row.minutesAgo) }),
@@ -197,7 +203,7 @@ function answer(now: number) {
         scope: "ORGANIZATION", today: "2026-10-09", timezone: "Asia/Baku", maxRosterSize: 500, returnedAgents: rosterRows.length,
         rosterTruncated: false, markerCount: rosterRows.filter((row) => row.meters != null).length, workforceEnabled,
         generatedAt: new Date(now).toISOString(), polling: { minimumIntervalSeconds: 15 },
-        freshnessThresholds: { onlineSeconds: 300, delayedSeconds: 600 }, maxAccuracyMeters: 100, geofenceRadiusMeters: 150,
+        freshnessThresholds, maxAccuracyMeters: 100, geofenceRadiusMeters: 150,
         ...(shareLinks ? { shareLinks } : {}),
       },
     },
@@ -356,6 +362,36 @@ describe("the live map page, end to end", () => {
     vi.unstubAllGlobals()
   })
 
+  // Owner, 2026-10-15: «тут нет подсказок при наведении, и вообще подсказок в
+  // модуле очень мало». The minutes in them are the organization's own, read
+  // from the same answer the counts are made from — not the defaults.
+  it("says under the cursor what each status, the summary and the card's buttons mean, with the organization's own minutes", async () => {
+    freshnessThresholds = { onlineSeconds: 420, delayedSeconds: 900 }
+    try {
+      await open()
+      const hint = (key: string) => ((ru.mtmMap as Messages).hint as Messages)[key] as string
+      expect(await readHint(byTestId("mtm-map-status-chip-OFFLINE"))).toBe("Только те, от кого нет живого сигнала: координата старше 15 мин, не приходила вовсе или приложение не на связи.")
+      expect(await readHint(byTestId("mtm-map-status-chip-STOPPED"))).toBe(hint("chipStopped"))
+      expect(await readHint(byTestId("mtm-map-refresh"))).toContain("15 с")
+      const summaryLabel = (text: string) => [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === text)
+      expect(await readHint(summaryLabel("Свежесть GPS:"))).toBe(
+        "Как давно пришла последняя координата: «Свежая» — не старше 7 мин, «С задержкой» — до 15 мин, «Устарела» — старше. Пороги задаются в настройках MTM.")
+      expect(await readHint(summaryLabel("Приложение:"))).toBe("«В сети» — приложение связывалось с сервером за последние 7 мин. Это про само приложение, не про GPS.")
+
+      await press(byTestId("live-map-agent-card-mid"))
+      expect(await readHint(byTestId("live-map-open-history"))).toBe(hint("historyToday"))
+      expect(await readHint(byTestId("live-map-only-this"))).toBe("Скрыть с карты всех остальных. Вернуть их — «Все» над списком или «Показать всех» в «Слои».")
+      expect(await readHint(byTestId("live-map-follow"))).toBe((ru.mtmMap as Messages).followHint)
+      // «±10 m» says how far off he may be, in the phone's own words.
+      const accuracy = [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === "±10 m")
+      expect(await readHint(accuracy)).toBe("Точность GPS: сотрудник может быть до 10 м от этой точки — так оценил сам телефон.")
+      // The browser's own slow grey hint is gone from what was converted.
+      expect(byTestId("live-map-follow")?.hasAttribute("title")).toBe(false)
+    } finally {
+      freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+    }
+  })
+
   it("opens with everybody in the list by name and only the people with a live position on the map", async () => {
     await open()
     expect(requests).toEqual(["/api/v1/mtm/locations"])
@@ -380,6 +416,7 @@ describe("the live map page, end to end", () => {
 
     // A filter on another column: the chips now count inside it.
     await press(byTestId("live-map-roster-filters-button"))
+    await press(byTestId("live-map-roster-filters-more"))
     await press(byTestId("live-map-roster-filters-value-battery-LOW"))
     await press(byTestId("live-map-roster-filters-done"))
     expect(rowIds()).toEqual(["near"])
@@ -456,7 +493,7 @@ describe("the live map page, end to end", () => {
 
   it("comes back as it was left in this browser: the order of the list and the look of the map", async () => {
     window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify({ width: "wide", sort: { column: "name", direction: "desc" }, groupBy: "none", columns: ["name", "status", "battery"] }))
-    window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: true, trails: false, glide: false }))
+    window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: true, trails: false, glide: false }))
     await open()
     expect(rowIds()).toEqual(["near", "mid", "far", "none"])
     expect(byTestId("roster-column-name")?.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("descending")
@@ -609,29 +646,39 @@ describe("the live map page, end to end", () => {
     // One answer so far: one position each, and nobody without a coordinate.
     expect([...(trails()?.keys() ?? [])].sort()).toEqual(["far", "mid", "near"])
     expect(trails()?.get("far")).toHaveLength(1)
-    expect([mapProp("showLabels"), mapProp("glideMarkers")]).toEqual([false, true])
+    // Names beside the markers from the start (the mockup «MTM: движение на карте»).
+    expect([mapProp("showLabels"), mapProp("glideMarkers")]).toEqual([true, true])
     // Nothing but the roster (and no day's track) was asked of the server.
     expect(requests.filter((request) => !request.startsWith("/api/v1/mtm/locations"))).toEqual([])
 
-    await press(container.querySelector('[data-testid="live-map-layers"] > button'))
+    await press(container.querySelector('[data-testid="live-map-layers-button"]'))
     await press(byTestId("live-map-layer-labels"))
     await press(byTestId("live-map-layer-trails"))
     await press(byTestId("live-map-layer-glide"))
-    expect([mapProp("showLabels"), trails(), mapProp("glideMarkers")]).toEqual([true, null, false])
+    expect([mapProp("showLabels"), trails(), mapProp("glideMarkers")]).toEqual([false, null, false])
     // The look of the map is remembered in the browser.
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false, clients: false, areas: false, areasList: false, base: "voyager" })
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toEqual({ labels: false, trails: false, glide: false, clients: false, areas: false, areasList: false, base: "voyager" })
+  })
+
+  // Before the mockup the names were off and written with every other choice:
+  // those choices come over, the names start on.
+  it("brings the look of the map over from before the names were on, and turns the names on", async () => {
+    window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: false, glide: false, base: "light" }))
+    await open()
+    expect([mapProp("showLabels"), mapProp("trails"), mapProp("glideMarkers")]).toEqual([true, null, false])
+    expect(mapProp<{ id: string }>("baseMap")).toMatchObject({ id: "light" })
   })
 
   it("switches the map's background from «Слои», remembers it, and comes back with it", async () => {
     await open()
     // The map everybody knows: the map is handed no other background.
     expect(mapProp("baseMap")).toBeNull()
-    await press(document.querySelector('[data-testid="live-map-layers"] > button'))
+    await press(document.querySelector('[data-testid="live-map-layers-button"]'))
     expect([...document.querySelectorAll('[data-testid="live-map-base-maps"] [role="radio"]')].map((choice) => choice.textContent)).toEqual(["Карта", "Светлая"])
     await press(byTestId("live-map-base-map-light"))
     expect(mapProp<{ id: string; url: string }>("baseMap")).toMatchObject({ id: "light", url: expect.stringContaining("/light_all/") })
     expect(byTestId("live-map-base-map-light")?.getAttribute("aria-checked")).toBe("true")
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ base: "light" })
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toMatchObject({ base: "light" })
 
     // The page is opened again in this browser.
     await act(async () => { root.unmount() })
@@ -643,7 +690,7 @@ describe("the live map page, end to end", () => {
     for (const gone of ["satellite", "dark"]) {
       await act(async () => { root.unmount() })
       root = createRoot(container)
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ base: gone }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ base: gone }))
       await open()
       expect(mapProp("baseMap"), gone).toBeNull()
     }
@@ -678,22 +725,22 @@ describe("the live map page, end to end", () => {
     // then for as long as the answers are on their way — a loaded runner is slow.
     await settle(800)
     for (let turn = 0; turn < 150; turn += 1) {
-      const waiting = byTestId("live-map-agent-place-text")?.textContent === "определяю улицу…"
-        || document.querySelectorAll('[data-testid="live-map-agent-event"]').length === 0
-      if (!waiting) break
+      if (document.querySelectorAll('[data-testid="live-map-agent-event"]').length > 0) break
       await settle(20)
     }
     const detail = byTestId("live-map-agent-detail")!
-    expect(detail.querySelector('[data-testid="live-map-agent-place-text"]')?.textContent).toBe("Nizami küçəsi")
+    // She is on a break: where she is is her own (owner's rule). The card says
+    // since when, and names no street — nor asks anybody for one.
     // (Run in the first half-hour after the organization's midnight, the break began «вчера» and carries its date.)
     expect(detail.querySelector('[data-testid="live-map-since-BREAK"]')?.textContent).toMatch(/^Перерыв с .*\d{2}:\d{2} · 35 мин$/)
+    expect(byTestId("live-map-agent-place")).toBeNull()
     const events = [...detail.querySelectorAll('[data-testid="live-map-agent-event"]')].map((row) => row.textContent?.replace(/^\d{2}:\d{2}/, ""))
     expect(events).toEqual(["Перерыв", "Завершил визит · Аптека на углу", "Рабочий день начат"])
     // Asked for him, for today — his own journal, not the team's feed under the map.
     const card = requests.filter((request) => !request.startsWith("/api/v1/mtm/locations") && !request.startsWith("/api/v1/mtm/routes"))
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/activity"))).toEqual(["/api/v1/mtm/activity?agentId=near&period=today&type=FIELD_DAY&limit=100"])
     expect(card.filter((request) => request.startsWith("/api/v1/mtm/alerts"))).toEqual(["/api/v1/mtm/alerts?view=groups&agentId=near&status=all"])
-    expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
+    expect(card.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(0)
     // Whom she reports to is said in the card, whether or not the list draws that column.
     expect(detail.querySelector('[data-testid="live-map-agent-manager"]')?.textContent).toBe("Руководитель: Старший Первый")
     // And the labels a manager put on her.
@@ -701,6 +748,17 @@ describe("the live map page, end to end", () => {
     expect(byTestId("roster-column-manager")).toBeNull()
     // The list above it can be taken away as a file.
     expect(byTestId("live-map-roster-export")?.textContent).toBe("Excel")
+
+    // Somebody at work is placed on his street.
+    await press(byTestId("live-map-agent-card-mid"))
+    await settle(800)
+    for (let turn = 0; turn < 150; turn += 1) {
+      const text = byTestId("live-map-agent-place-text")?.textContent
+      if (text && text !== "определяю улицу…") break
+      await settle(20)
+    }
+    expect(byTestId("live-map-agent-place-text")?.textContent).toBe("Nizami küçəsi")
+    expect(requests.filter((request) => request.startsWith("/api/v1/mtm/geocode/street"))).toHaveLength(1)
   })
 
   it("the card also carries the day in numbers, the phone, and worded links to the other screens already narrowed to him", async () => {
@@ -781,7 +839,7 @@ describe("the live map page, end to end", () => {
   })
 
   describe("«Клиенты»: the client base as a layer", () => {
-    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers-button"]')) }
     const clientRequests = () => requests.filter((request) => request.startsWith("/api/v1/mtm/locations/clients")).length
     const hint = () => byTestId("live-map-layer-hint-clients")?.textContent
 
@@ -809,7 +867,7 @@ describe("the live map page, end to end", () => {
       // The employees on the map are who they were: clients take no marker from anybody.
       expect(onMap().sort()).toEqual(["far", "mid", "near"])
       // Remembered in this browser like the other looks of the map.
-      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ clients: true })
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toMatchObject({ clients: true })
       // Off again: the map is given none, and nothing is read.
       await press(byTestId("live-map-layer-clients"))
       expect(mapProp<unknown[]>("clients")).toEqual([])
@@ -880,7 +938,7 @@ describe("the live map page, end to end", () => {
 
   describe("«Свои зоны»: areas the organization draws on the map and names", () => {
     type ZoneOnMap = { id: string; name: string; kind: string; color: string | null; center?: { latitude: number; longitude: number }; radiusMeters?: number; outline?: Array<{ latitude: number; longitude: number }> }
-    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers-button"]')) }
     const hint = () => byTestId("live-map-layer-hint-areas")?.textContent
     const zonesOnMap = () => mapProp<ZoneOnMap[]>("zones")
     // The zones' own card on the page: folded until «Показать список» is pressed.
@@ -889,7 +947,7 @@ describe("the live map page, end to end", () => {
     const fold = () => byTestId("live-map-zones-card-fold")
     const unfoldCard = async () => { await press(fold()) }
     const zoneRows = () => [...document.querySelectorAll<HTMLElement>('[data-testid^="live-map-zone-row-zone-"]')]
-    const look = () => JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}") as Record<string, unknown>
+    const look = () => JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}") as Record<string, unknown>
     const pressMap = async (latitude: number, longitude: number) => {
       await act(async () => { mapProp<(lat: number, lng: number) => void>("onMapPress")(latitude, longitude) })
       await settle()
@@ -993,7 +1051,7 @@ describe("the live map page, end to end", () => {
 
     it("the card waits for the employees too: while the map itself is still loading there is no «На карте» to press", async () => {
       // A return visit: the layer and its list were left on. The zones answer first, the employees have not yet.
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ areas: true, areasList: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       const employees = gate()
       rosterGate = employees.held
@@ -1084,7 +1142,7 @@ describe("the live map page, end to end", () => {
       vi.spyOn(Storage.prototype, "getItem").mockImplementation(closed)
       vi.spyOn(Storage.prototype, "setItem").mockImplementation(closed)
       try {
-        expect(() => window.localStorage.getItem("leaddrive.mtm.live-map.look.v1")).toThrow()
+        expect(() => window.localStorage.getItem("leaddrive.mtm.live-map.look.v2")).toThrow()
         await open()
         // Nothing remembered: the layer is off, as on a first visit — and the page is all there.
         expect([card(), rowIds().length]).toEqual([null, 4])
@@ -1114,7 +1172,7 @@ describe("the live map page, end to end", () => {
       expect(asked()).toBeNull()
       expect(byTestId("live-map-zone-show-zone-centre")?.textContent).toBe("На карте")
       // «Слои» is still open — the layer has just been switched on in it — and lies over the middle of the map.
-      const layersButton = () => container.querySelector('[data-testid="live-map-layers"] > button')
+      const layersButton = () => container.querySelector('[data-testid="live-map-layers-button"]')
       const layersOpen = () => [document.getElementById("live-map-layers-panel") != null, layersButton()?.getAttribute("aria-expanded")]
       expect(layersOpen()).toEqual([true, "true"])
       await press(byTestId("live-map-zone-show-zone-centre"))
@@ -1324,7 +1382,7 @@ describe("the live map page, end to end", () => {
       }])
       expect([mapProp("pressMode"), mapProp<unknown[]>("rulerPoints").length]).toEqual([null, 0])
       expect(byTestId("live-map-zone-form")).toBeNull()
-      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ areas: true })
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toMatchObject({ areas: true })
       // What the server answered was drawn: the list was not read a second time for it.
       expect(zoneReads).toBe(1)
       await openLayers()
@@ -1341,7 +1399,7 @@ describe("the live map page, end to end", () => {
       expect(notice()).toBe("В организации уже 500 зон — больше сохранить нельзя. Удалите ненужную.")
       // Nothing changed on the map: no zone, the layer still off, the outline still in hand.
       expect(zonesOnMap()).toEqual([])
-      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}").areas ?? false).toBe(false)
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}").areas ?? false).toBe(false)
       expect([mapProp("pressMode"), mapProp<unknown[]>("rulerPoints").length]).toEqual(["ruler", 3])
       // A supervisor's session, a minute of too many changes, a server that fell over: each in its own words.
       for (const [refusal, words] of [
@@ -1847,6 +1905,200 @@ describe("the live map page, end to end", () => {
     })
   })
 
+  // The demo clip «Marşrut & Sahə» (owner, 2026-10-20: production must look
+  // and behave like it): somebody on a break is the grey point he left before
+  // it from the first second, «GPS неактивен», and nobody's nearest. Until then
+  // a break counted as a live position for as long as that point was fresh.
+  describe("an employee on a break", () => {
+    const onBreak = (over: Partial<Row> = {}): Row => ({ agentId: "near", name: "Nigar", fieldStatus: "STOPPED", meters: 450, minutesAgo: 1, workdayState: "PAUSED", ...over })
+    const marker = (agentId: string) => (mapProp<Array<{ agentId: string; freshness: string }>>("agents") ?? []).find((agent) => agent.agentId === agentId)
+    const cell = (agentId: string, column: string) => container.querySelector(`[data-testid="live-map-agent-card-${agentId}"] [data-column="${column}"]`)?.textContent
+
+    it("is his last point before the break, grey, from its first minute — counted with the breaks and the old signals", async () => {
+      rosterRows[1] = onBreak()
+      await open()
+      // On the map, but as the phone's last signal, not as where he is.
+      expect(marker("near")?.freshness).toBe("STALE")
+      expect(cell("near", "status")).toContain("GPS неактивен")
+      expect(container.textContent).toContain("Последние известные позиции показаны серым: 1.")
+      expect(container.textContent).toContain("Рабочий день приостановлен 1")
+      expect(container.textContent).toContain("Устарела 1")
+      // The others are where they are.
+      expect(["far", "mid"].map((agentId) => marker(agentId)?.freshness)).toEqual(["ONLINE", "ONLINE"])
+      // «Скрыть» takes the grey point away; nothing of him is left on the map.
+      await press([...container.querySelectorAll("button")].find((button) => button.textContent === "Скрыть их"))
+      expect(marker("near")).toBeUndefined()
+    })
+
+    it("is not measured by «who is nearest», however close his last point is", async () => {
+      rosterRows[1] = onBreak({ meters: 50 })
+      await open()
+      await press(byTestId("live-map-tool-point"))
+      await press(byTestId("live-map-pick-point"))
+      await act(async () => { mapProp<(latitude: number, longitude: number) => void>("onMapPress")(CENTRE.latitude, CENTRE.longitude) })
+      await settle()
+      expect(rowIds().slice(0, 2)).toEqual(["mid", "far"])
+      expect(rowIds().indexOf("near")).toBeGreaterThan(1)
+      expect(cell("near", "distance")).toBe("—")
+    })
+
+    // Verification of 2026-10-20: on a break the app is held «В сети» for at
+    // least three minutes — the bell asks every two — but the hint said only
+    // the organization's limit, which may be set down to half a minute.
+    it("says in the app's hint how long it counts as connected on a break, where that is not the organization's limit", async () => {
+      const summaryLabel = (text: string) => [...document.body.querySelectorAll("[data-hint-value]")].find((node) => node.textContent === text)
+      rosterRows[1] = onBreak()
+      freshnessThresholds = { onlineSeconds: 60, delayedSeconds: 600 }
+      try {
+        await open()
+        expect(await readHint(summaryLabel("Приложение:"))).toBe(
+          "«В сети» — приложение связывалось с сервером за последние 1 мин, а у сотрудника на перерыве — за последние 3 мин: на перерыве GPS не пишется, и приложение выходит на связь реже. Это про само приложение, не про GPS.")
+        // The same words in his card.
+        await press(byTestId("live-map-agent-card-near"))
+        const inCard = [...(byTestId("live-map-agent-detail")?.querySelectorAll("[data-hint-value]") ?? [])].find((node) => node.textContent?.startsWith("Приложение:"))
+        expect(await readHint(inCard)).toContain("на перерыве — за последние 3 мин")
+
+        // A tenant without Workforce has no breaks: the organization's limit alone.
+        await act(async () => { root.unmount() })
+        root = createRoot(container)
+        workforceEnabled = false
+        await open()
+        expect(await readHint(summaryLabel("Приложение:"))).toBe("«В сети» — приложение связывалось с сервером за последние 1 мин. Это про само приложение, не про GPS.")
+      } finally {
+        freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+      }
+    })
+
+    // Verification of 2026-10-20: the card still said how long to the next
+    // stop, measured from the grey point he left before the break, and at
+    // what speed — the speed of his last fix before it.
+    it("gives no time to the next stop and no speed, from the point he left before the break", async () => {
+      routes = [{
+        id: "route-1", status: "IN_PROGRESS", date: "2026-10-09",
+        points: [
+          { id: "p1", orderIndex: 0, status: "PENDING", plannedTime: null, visitedAt: null, visits: [],
+            customer: { id: "c1", name: "Клиника", address: null, ...northOf(5_000), geofenceRadius: null } },
+        ],
+      }]
+      const card = async () => {
+        await open()
+        await press(byTestId("live-map-agent-card-near"))
+        for (let turn = 0; turn < 150 && !byTestId("mtm-map-selected-route")?.textContent?.includes("Клиника"); turn += 1) await settle(20)
+        return byTestId("live-map-agent-detail")?.textContent ?? ""
+      }
+      // At work, the same row: both are said.
+      rosterRows[1] = onBreak({ workdayState: "ACTIVE", fieldStatus: "ON_ROAD" })
+      const working = await card()
+      expect(working).toContain("До точки")
+      expect(working).toMatch(/\d+ км\/ч/)
+
+      await act(async () => { root.unmount() })
+      root = createRoot(container)
+      rosterRows[1] = onBreak()
+      const resting = await card()
+      expect(byTestId("mtm-map-selected-route")?.textContent).toContain("Клиника")
+      expect(resting).not.toContain("До точки")
+      expect(resting).not.toMatch(/\d+ км\/ч/)
+    })
+
+    describe("as the map refreshes", () => {
+      const forward = async (ms: number, step = 1_000) => {
+        for (let passed = 0; passed < ms; passed += step) {
+          await act(async () => { await vi.advanceTimersByTimeAsync(Math.min(step, ms - passed)) })
+        }
+      }
+      const metres = (point: { latitude: number }) => Math.round((point.latitude - CENTRE.latitude) * METERS_PER_DEGREE)
+      const tail = (agentId: string) => (mapProp<Map<string, LiveMapTrailPoint[]> | null>("trails")?.get(agentId) ?? []).map(metres)
+      /** The lines the map draws of his tail, in metres north of the centre. */
+      const drawn = (agentId: string) => liveMapTrailSegments(mapProp<Map<string, LiveMapTrailPoint[]> | null>("trails")?.get(agentId) ?? [])
+        .map((segment) => segment.map(metres))
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date", "performance"] })
+        vi.setSystemTime(new Date("2026-10-09T10:00:10.000Z"))
+      })
+      afterEach(() => { vi.useRealTimers() })
+
+      it("loses his tail at a break and starts a new one after it — also after a break no refresh fell inside", async () => {
+        rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "ON_ROAD", meters: 450, minutesAgo: 0, pausedSeconds: 0 }
+        await act(async () => { root.render(createElement(MtmMapPage)) })
+        await forward(1_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 700 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([450, 700])
+
+        // The next answer finds him on a break, the point from before it with him.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "STOPPED", workdayState: "PAUSED", minutesAgo: 0.5 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        expect(marker("near")?.freshness).toBe("STALE")
+
+        // Back at work a kilometre and a half on: a new tail, not a line across the break.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "ON_ROAD", workdayState: "ACTIVE", meters: 2_200, minutesAgo: 0, pausedSeconds: 120 }
+        await forward(30_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 2_400 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([2_200, 2_400])
+
+        // Two minutes of break between two refreshes: the page saw none of it, the day's total did.
+        rosterRows[1] = { ...rosterRows[1], meters: 3_300, pausedSeconds: 240 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([3_300])
+        // Somebody who took no break keeps his whole tail.
+        expect(tail("far").length).toBeGreaterThan(0)
+      })
+
+      // Verification of 2026-10-20: the page looked again only when the
+      // organization's limit ran out, so somebody on a break went on reading
+      // «В сети» after his three minutes until the next refresh.
+      it("stops counting him «В сети» the moment his break's three minutes run out, between two refreshes", async () => {
+        const online = () => [...container.querySelectorAll('[role="status"] span')]
+          .map((node) => node.textContent ?? "").find((text) => /^В сети \d+$/.test(text))
+        freshnessThresholds = { onlineSeconds: 60, delayedSeconds: 600 }
+        try {
+          // The bell last asked 2 min 45 s ago; his last point is from before the break.
+          rosterRows[1] = onBreak({ minutesAgo: 30, lastSeenAt: new Date(Date.now() - 165_000).toISOString() })
+          await act(async () => { root.render(createElement(MtmMapPage)) })
+          await forward(1_000)
+          expect(online()).toBe("В сети 4")
+          // Fifteen seconds on his three minutes are over; the next refresh is half a minute away.
+          await forward(15_000)
+          expect(online()).toBe("В сети 3")
+        } finally {
+          freshnessThresholds = { onlineSeconds: 300, delayedSeconds: 600 }
+        }
+      })
+
+      // Verification of 2026-10-20: after a short break the first answer can
+      // still carry the point from before it — fresh by the clock — and the
+      // page started a new tail with it, which the first fix after the break
+      // then joined: a line from where he paused to where he came back.
+      it("starts no tail with the point he left before the break, when the first answer after it still carries that point", async () => {
+        rosterRows[1] = { agentId: "near", name: "Nigar", fieldStatus: "ON_ROAD", meters: 450, minutesAgo: 0, pausedSeconds: 0 }
+        await act(async () => { root.render(createElement(MtmMapPage)) })
+        await forward(1_000)
+        rosterRows[1] = { ...rosterRows[1], meters: 700 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([[450, 700]])
+
+        // On a break: the point he left (700 m, half a minute old) comes with him.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "STOPPED", workdayState: "PAUSED", minutesAgo: 0.5 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        // Back at work, before his first fix: the same point, a minute old, called live.
+        rosterRows[1] = { ...rosterRows[1], fieldStatus: "ON_ROAD", workdayState: "ACTIVE", minutesAgo: 1, pausedSeconds: 60 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([])
+        // The first fix after the break, a kilometre and a half on.
+        rosterRows[1] = { ...rosterRows[1], meters: 2_200, minutesAgo: 0 }
+        await forward(30_000)
+        expect(tail("near")).toEqual([2_200])
+        rosterRows[1] = { ...rosterRows[1], meters: 2_400 }
+        await forward(30_000)
+        expect(drawn("near")).toEqual([[2_200, 2_400]])
+      })
+    })
+  })
+
   describe("while the map refreshes itself", () => {
     // Half a minute between refreshes: the clock is driven by hand, a second at
     // a time (React applies what a timer set when the `act` it fired in ends).
@@ -1917,7 +2169,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("«Обновить» reads the base again; while it is on its way, and if it fails, the points already on the map stay", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
       expect(count("/api/v1/mtm/locations/clients")).toBe(1)
@@ -1940,7 +2192,7 @@ describe("the live map page, end to end", () => {
       // Never taken off the map: not while the read was out, not when it failed.
       expect(mapProp<unknown[]>("clients")).toHaveLength(2)
       expect([...shown]).not.toContain(0)
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       expect(byTestId("live-map-layer-hint-clients")?.textContent).toMatch(/^на карте 2 .+не удалось обновить$/)
       // A failed read is tried again by itself a minute later, without anybody pressing anything.
       clientBase = { clients: [], total: 0, withoutCoordinates: 0, truncated: false }
@@ -1951,7 +2203,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a remembered layer that fails when the page opens is tried again by itself, a bounded number of times", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
       clientBase = 500
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
@@ -1963,7 +2215,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("the client base is read when its layer is switched on, not on the map's timer", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
       expect(count("/api/v1/mtm/locations/clients")).toBe(1)
@@ -1976,7 +2228,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("the zones are read when their layer is switched on and on «Обновить» — never on the map's timer", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
       zoneBase = { zones: [CENTRE_CIRCLE], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
@@ -2000,7 +2252,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a refresh of the zones that fails takes nothing off the map, says so in «Слои», and is tried again by itself", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)
@@ -2018,7 +2270,7 @@ describe("the live map page, end to end", () => {
       expect([...shown]).not.toContain(0)
       // The zones are on the map, so nothing shouts over it; the layer's own line says the refresh failed.
       expect(byTestId("live-map-areas-alert")).toBeNull()
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       expect(byTestId("live-map-layer-hint-areas")?.textContent).toBe("на карте зон: 2 · не удалось обновить")
       // Who may change them was said by the last answer that did come: the list, in its card, keeps its rows and their buttons.
       expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 2")
@@ -2032,11 +2284,11 @@ describe("the live map page, end to end", () => {
     })
 
     it("no zones yet and a refresh that failed: the layer's line goes back to the count and says the refresh failed", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ areas: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ areas: true }))
       zoneBase = { zones: [], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       const line = () => byTestId("live-map-layer-hint-areas")?.textContent
       expect(line()).toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
       zoneBase = 500
@@ -2100,7 +2352,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a refresh that was on its way while a zone was removed does not bring the zone back", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)

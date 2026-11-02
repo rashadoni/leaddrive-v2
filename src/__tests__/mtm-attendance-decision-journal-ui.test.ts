@@ -96,6 +96,16 @@ describe("actual read-only attendance decision journal", () => {
     await click("journalPrevious"); expect(rows()[0].textContent).toContain("Leyla Demo 51")
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+  // Owner, 2026-10-16: the old screens' own «Show» button; filters now apply themselves.
+  it("loads the new period and status by itself shortly after a change, with no button to press", async () => {
+    await render(); expect(button("journalApply")).toBeUndefined()
+    const next = { from: "2026-10-01", to: "2026-10-31", status: "CANCELLED" as const }
+    fetchMock.mockResolvedValueOnce(response(fixture(0, next)))
+    await edit("status", "CANCELLED")
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 500)) })
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toContain("status=CANCELLED")
+    expect(container.textContent).toContain(t("journalEmpty"))
+  })
   it("disables exports for draft filters and submits the full explicit new period/status", async () => {
     await render(); await edit("from", "2026-11-01"); await edit("to", "2026-11-30"); await edit("status", "CANCELLED")
     expect(button("exportExcel").disabled).toBe(true); await click("exportExcel"); expect(exportCalls()).toHaveLength(0)
@@ -153,7 +163,7 @@ describe("actual read-only attendance decision journal", () => {
   })
   it("shows loading and aborts an unfinished read on unmount", async () => {
     fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {})); await render()
-    expect(container.textContent).toContain(t("journalLoading")); expect(button("journalApply").disabled).toBe(true)
+    expect(container.textContent).toContain(t("journalLoading")); expect(button("journalApply")).toBeUndefined(); expect(container.querySelector<HTMLInputElement>("#attendance-journal-from")!.disabled).toBe(false)
     const signal = fetchMock.mock.calls[0][1]?.signal
     await act(async () => root.render(null)); expect(signal?.aborted).toBe(true)
   })

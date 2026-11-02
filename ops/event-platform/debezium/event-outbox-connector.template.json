@@ -50,11 +50,9 @@
     "transforms.outbox.route.topic.replacement": "ld.__ENV__.$1.events.v1",
     "transforms.outbox.table.fields.additional.placement": "eventType:header:eventtype,organizationId:header:organizationid,payloadHash:header:payloadhash",
     "transforms.outbox.table.field.additional.missing": "error",
-    "transforms.outbox.table.expand.json.payload": "true",
-    "transforms.outbox.table.json.payload.null.behavior": "optional_bytes",
+    "transforms.outbox.table.expand.json.payload": "false",
     "transforms.outbox.route.tombstone.on.empty.payload": "false",
     "key.converter": "org.apache.kafka.connect.storage.StringConverter",
-    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-    "value.converter.schemas.enable": "false"
+    "value.converter": "org.apache.kafka.connect.storage.StringConverter"
   }
 }

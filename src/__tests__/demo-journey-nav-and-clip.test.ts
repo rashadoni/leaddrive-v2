@@ -125,3 +125,37 @@ describe("the clip past the chapter's first step", () => {
     expect(container.querySelector("video")).not.toBeNull()
   })
 })
+
+/**
+ * The clip carries its own voiceover. Moving on to the next step while it
+ * played left it talking over the guide's next sentence — and prospects
+ * switched the guide off for every later chapter (2026-10-18, MTM and
+ * Personnel, whose first steps have the longest clips).
+ */
+describe("the clip and the guide's voice", () => {
+  it("pauses when the step changes, so it never talks over the next sentence", async () => {
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {})
+    const render = (stepKey: string) => act(async () => {
+      root.render(createElement(IntroClip, { slug: "demo-leads", caption: "Lid necə yaranır", status: "available", token: "", variant: "open", stepKey, onClipEvent: vi.fn() }))
+    })
+    await render("step-1")
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="demo-intro-clip-play"]')!.click())
+    expect(pause).not.toHaveBeenCalled()
+    await render("step-1")
+    expect(pause).not.toHaveBeenCalled()
+    await render("step-2")
+    expect(pause).toHaveBeenCalledTimes(1)
+    pause.mockRestore()
+  })
+
+  it("hands the step back to the guide when the clip will not play", async () => {
+    const onClipEvent = vi.fn()
+    await act(async () => {
+      root.render(createElement(IntroClip, { slug: "demo-leads", caption: "Lid necə yaranır", status: "available", token: "", variant: "open", onClipEvent }))
+    })
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="demo-intro-clip-play"]')!.click())
+    await act(async () => { container.querySelector("video")!.dispatchEvent(new Event("error")) })
+    expect(onClipEvent).toHaveBeenLastCalledWith("video.error")
+  })
+})
+

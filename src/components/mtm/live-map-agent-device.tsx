@@ -1,5 +1,6 @@
 "use client"
 
+import { HintValue } from "@/components/hint"
 import { useEffect, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { ShieldAlert } from "lucide-react"
@@ -38,10 +39,10 @@ function deviceAnswer(data: unknown): DeviceAnswer | null {
   }
 }
 
-function Line({ id, label, tone, children }: { id: string; label: string; tone?: string; children: ReactNode }) {
+function Line({ id, label, hint, tone, children }: { id: string; label: string; hint?: string; tone?: string; children: ReactNode }) {
   return (
     <div data-testid={`live-map-device-${id}`}>
-      <span className="text-muted-foreground">{label}: </span>
+      <span className="text-muted-foreground"><HintValue text={hint}>{label}</HintValue>: </span>
       <span className={cn("font-medium", tone ?? "text-foreground")}>{children}</span>
     </div>
   )
@@ -66,12 +67,14 @@ function Line({ id, label, tone, children }: { id: string; label: string; tone?:
  * Not here, because no phone reports them to us: the location permission, GPS
  * switched off, battery saver, a mocked location, the OS version, the model.
  */
-export function LiveMapAgentDevice({ agent, refreshKey, formatTime }: {
+export function LiveMapAgentDevice({ agent, refreshKey, formatTime, hints }: {
   agent: Pick<MtmDashboardAgent, "agentId" | "isOnline" | "lastSeenAt" | "recordedAt" | "freshness" | "accuracy" | "battery" | "locationState">
   /** Changes when the phone's own facts are to be read again; not on every refresh of the map. */
   refreshKey: string
   /** How a moment is written. The contact may be days old: give one that adds the date when it is not today. */
   formatTime: (iso: string) => string
+  /** The page's sentences for the lines whose limits are the organization's own (the minutes of «в сети» and of a fresh coordinate). */
+  hints?: { app?: string; freshness?: string }
 }) {
   const tMap = useTranslations("mtmMap")
   const agentId = agent.agentId
@@ -113,34 +116,35 @@ export function LiveMapAgentDevice({ agent, refreshKey, formatTime }: {
           {tMap(`locationState.${agent.locationState.toLowerCase()}`)}
         </div>
       ) : null}
-      <Line id="app" label={tMap("appPresence")} tone={agent.isOnline ? "text-green-600" : "text-muted-foreground"}>
+      <Line id="app" label={tMap("appPresence")} hint={hints?.app ?? tMap("hint.colApp")} tone={agent.isOnline ? "text-green-600" : "text-muted-foreground"}>
         {tMap(`presence.${agent.isOnline ? "online" : "offline"}`)}
       </Line>
-      {lastContact ? <Line id="last-contact" label={tMap("device.lastContact")}>{lastContact}</Line> : null}
-      {recorded ? <Line id="recorded" label={tMap("recordedAt")}>{recorded}</Line> : null}
+      {lastContact ? <Line id="last-contact" label={tMap("device.lastContact")} hint={tMap("hint.lastContact")}>{lastContact}</Line> : null}
+      {recorded ? <Line id="recorded" label={tMap("recordedAt")} hint={tMap("hint.recordedAt")}>{recorded}</Line> : null}
       <Line
         id="freshness"
         label={tMap("gpsFreshness")}
+        hint={hints?.freshness}
         tone={agent.freshness === "ONLINE" ? "text-blue-600" : agent.freshness === "DELAYED" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}
       >
         {tMap(`freshness.${agent.freshness.toLowerCase()}`)}
       </Line>
       {accuracy !== null ? (
-        <Line id="accuracy" label={tMap("device.accuracy")}>±{tMap("distanceUnits.m", { value: accuracy })}</Line>
+        <Line id="accuracy" label={tMap("device.accuracy")} hint={tMap("hint.accuracy", { meters: accuracy })}>±{tMap("distanceUnits.m", { value: accuracy })}</Line>
       ) : null}
       {battery !== null ? (
-        <Line id="battery" label={tMap("battery")} tone={battery < LOW_BATTERY_PERCENT ? "text-red-600 dark:text-red-400" : undefined}>
+        <Line id="battery" label={tMap("battery")} hint={tMap("hint.batteryList")} tone={battery < LOW_BATTERY_PERCENT ? "text-red-600 dark:text-red-400" : undefined}>
           {battery}%{recorded ? ` · ${tMap("device.asOf", { time: recorded })}` : null}
         </Line>
       ) : null}
       {reported?.appVersion ? (
         // The version is the one the phone named when it last registered; it may have been updated since.
-        <Line id="app-version" label={tMap("device.appVersion")}>
+        <Line id="app-version" label={tMap("device.appVersion")} hint={tMap("hint.appVersion")}>
           {reported.appVersion}{registered ? ` · ${tMap("device.asOf", { time: registered })}` : null}
         </Line>
       ) : null}
       {reported ? (
-        <Line id="notifications" label={tMap("device.notifications")} tone={reported.notificationsConnected ? undefined : "text-amber-700 dark:text-amber-300"}>
+        <Line id="notifications" label={tMap("device.notifications")} hint={tMap("hint.notifications", { on: tMap("device.notificationsOn") })} tone={reported.notificationsConnected ? undefined : "text-amber-700 dark:text-amber-300"}>
           {reported.notificationsConnected ? tMap("device.notificationsOn") : tMap("device.notificationsOff")}
         </Line>
       ) : null}

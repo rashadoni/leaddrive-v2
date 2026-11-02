@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
-import { computeMtmRankings } from "@/lib/leaderboard/mtm"
+import { computeMtmRankings, readMtmLeaderboardNotRanked } from "@/lib/leaderboard/mtm"
 
 // F-13: was N+1 (1 + 9×N queries — ~451 for 50 agents). Now O(1):
 // 1 findMany agents + 6 groupBy aggregations regardless of N agents.
@@ -31,8 +31,11 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId, princip
       startDate = new Date(now.getFullYear(), now.getMonth(), 1)
     }
 
-    const ranked = await computeMtmRankings(orgId, startDate, now)
-    return NextResponse.json({ success: true, data: { rankings: ranked, period } })
+    const [ranked, notRanked] = await Promise.all([
+      computeMtmRankings(orgId, startDate, now),
+      readMtmLeaderboardNotRanked(orgId),
+    ])
+    return NextResponse.json({ success: true, data: { rankings: ranked, period, notRanked } })
   } catch (e) {
     console.error("[MTM/leaderboard GET]", e)
     return NextResponse.json({ error: "Failed to fetch leaderboard" }, { status: 500 })

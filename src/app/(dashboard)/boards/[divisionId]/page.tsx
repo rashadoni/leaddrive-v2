@@ -4,7 +4,7 @@
  * Jira-style Kanban board — /boards/[divisionId]. Feature #12.
  *
  * Pinned one-to-one to the user's screenshot: 6 columns with coloured top
- * accents, Atlassian palette, KHS-NN keys, lucide issue-type + priority glyphs,
+ * accents, shared CRM surfaces, KHS-NN keys, lucide issue-type + priority glyphs,
  * a sticky toolbar (assigned-to-me / created-by-me pills + search + Tip /
  * Prioritet / Təyin olunan selects), Q-category featured cards, and a DONE
  * column collapsed to "+N daha çox tamamlanmış".
@@ -47,15 +47,16 @@ import { useTaskTypes, useEventTypes, type TaskTypeInfo, type TaskTypeDTO } from
 import { BoardActionsCtx, CardQuickMenu, type BoardActions } from "@/components/boards/card-quick-menu"
 import { HelpButton } from "@/components/help/help-button"
 
-// ── Atlassian palette (one-to-one with the screenshot) ──────────────────────
+// Shared CRM surfaces; stage and priority colors retain their meaning.
 const C = {
-  primary: "#EA580C",
-  text: "#172B4D",
-  sub: "#6B778C",
-  border: "#DFE1E6",
-  page: "#F4F5F7",
-  colBg: "#F1F2F4",
-  card: "#FFFFFF",
+  primary: "hsl(var(--crm-action))",
+  text: "hsl(var(--foreground))",
+  sub: "hsl(var(--muted-foreground))",
+  border: "hsl(var(--border))",
+  input: "hsl(var(--input))",
+  page: "hsl(var(--background))",
+  colBg: "color-mix(in srgb, hsl(var(--background)) 70%, hsl(var(--card)) 30%)",
+  card: "hsl(var(--card))",
   green: "#00875A",
   red: "#DE350B",
   amber: "#FF8B00",
@@ -541,9 +542,9 @@ function BoardInner() {
   }
 
   const pill = (active: boolean) => ({
-    borderColor: active ? C.primary : C.border,
-    background: active ? "#E9F2FF" : C.card,
-    color: active ? C.primary : C.text,
+    borderColor: active ? C.text : C.border,
+    background: C.card,
+    color: active ? C.text : C.sub,
   })
 
   // Access gate: once loaded, if this board isn't in the user's accessible set
@@ -570,10 +571,7 @@ function BoardInner() {
     <TaskTypeCtx.Provider value={taskTypeMap}>
     <EventTypeCtx.Provider value={eventTypeMap}>
     <BoardActionsCtx.Provider value={boardActions}>
-    {/* force-light: the board chrome is light-locked (C palette), so embedded
-        theme-aware components (list table, operational report, task modal)
-        must not flip dark inside it — see globals.css .force-light. */}
-    <div style={{ background: C.page, minHeight: "100%", color: C.text }} className="force-light flex flex-col">
+    <div style={{ background: C.page, minHeight: "100%", color: C.text }} className="flex flex-col">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-5 pt-4 pb-2">
         <div className="flex items-center gap-3">
@@ -598,7 +596,7 @@ function BoardInner() {
               value={divisionId}
               onChange={(e) => router.push(`/boards/${e.target.value}`)}
               className="rounded border px-2 py-1 text-xs"
-              style={{ borderColor: C.border, background: C.card, color: C.text }}
+              style={{ borderColor: C.input, background: C.card, color: C.text }}
             >
               {divisions.map((d) => <option key={d.id} value={d.id}>{d.key} — {d.name}</option>)}
             </select>
@@ -638,16 +636,13 @@ function BoardInner() {
       </div>
 
       {/* Board / Reports tab switch */}
-      <div className="flex items-center gap-1 px-5 pt-1">
+      <div data-crm-tabs="" className="flex items-center gap-1 px-5 pt-1">
         {(["board", "list", "reports"] as const).map((v) => (
-          <button
+          <button data-crm-tab="" data-state={view === v ? "active" : "inactive"}
             key={v}
             type="button"
             onClick={() => setView(v)}
             className="rounded-t px-3 py-1.5 text-sm font-medium"
-            style={view === v
-              ? { color: C.primary, borderBottom: `2px solid ${C.primary}` }
-              : { color: C.sub, borderBottom: "2px solid transparent" }}
           >
             {v === "board" ? t("boardView") : v === "list" ? tc("list") : t("reportsTab")}
           </button>
@@ -676,19 +671,19 @@ function BoardInner() {
             className="bg-transparent px-2 py-1.5 text-xs outline-none"
           />
         </div>
-        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.border, background: C.card, color: C.text }}>
+        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.input, background: C.card, color: C.text }}>
           <option value="">{t("type")}</option>
           {taskTypes.map((tt) => <option key={tt.id} value={tt.name}>{tt.displayName}</option>)}
         </select>
-        <select value={eventType} onChange={(e) => setEventType(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.border, background: C.card, color: C.text }}>
+        <select value={eventType} onChange={(e) => setEventType(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.input, background: C.card, color: C.text }}>
           <option value="">{t("event")}</option>
           {eventTypes.map((et) => <option key={et.id} value={et.name}>{et.displayName}</option>)}
         </select>
-        <select value={priority} onChange={(e) => setPriority(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.border, background: C.card, color: C.text }}>
+        <select value={priority} onChange={(e) => setPriority(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.input, background: C.card, color: C.text }}>
           <option value="">{t("priority")}</option>
           {PRIORITIES.map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
         </select>
-        <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.border, background: C.card, color: C.text }}>
+        <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.input, background: C.card, color: C.text }}>
           <option value="">{t("assignee")}</option>
           {assigneeOptions.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
@@ -777,7 +772,7 @@ function BoardInner() {
       )}
 
       {toast && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 rounded px-4 py-2 text-sm text-white shadow-lg" style={{ background: C.text }}>
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 rounded px-4 py-2 text-sm text-background shadow-lg" style={{ background: C.text }}>
           {toast}
         </div>
       )}
@@ -800,7 +795,7 @@ function BoardInner() {
           onClick={() => { setOpenTaskId(null); loadTasks().catch(() => {}); setReportsReloadKey((k) => k + 1) }}
         >
           <div
-            className="relative my-4 w-full max-w-5xl rounded-lg shadow-xl"
+            data-crm-dialog="" className="relative my-4 w-full max-w-5xl rounded-lg border border-border shadow-xl"
             style={{ background: C.card }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -839,7 +834,7 @@ function DroppableColumn({ col, count, children }: { col: BoardCol; count: numbe
     <div
       ref={setNodeRef}
       className="flex w-72 shrink-0 flex-col rounded-lg transition-colors"
-      style={{ background: isOver ? "#E9EBEE" : C.colBg, borderTop: `3px solid ${col.accent}`, outline: isOver ? `2px dashed ${col.accent}` : "none" }}
+      style={{ background: isOver ? "hsl(var(--secondary))" : C.colBg, borderTop: `3px solid ${col.accent}`, outline: isOver ? `2px dashed ${col.accent}` : "none" }}
     >
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
@@ -908,7 +903,7 @@ function Card({ task, locale, overlay }: { task: Task; locale: string; overlay?:
   return (
     <div
       className={`relative rounded-md p-3 shadow-sm transition-shadow${overlay ? " rotate-2 cursor-grabbing shadow-xl" : ""}`}
-      style={{ background: C.card, border: `1px solid ${C.border}`, ...(featured ? { borderColor: C.amber, background: "#FFFBF5" } : {}) }}
+      style={{ background: C.card, border: `1px solid ${C.border}`, ...(featured ? { borderColor: C.amber, background: "color-mix(in srgb, hsl(var(--card)) 92%, #FF8B00 8%)" } : {}) }}
     >
       {!overlay && (
         <div className="absolute right-1 top-1 z-10">
@@ -1049,7 +1044,7 @@ function CreateTaskDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="mx-4 w-full max-w-md rounded-lg p-6 shadow-xl" style={{ background: C.card, color: C.text }} onClick={(e) => e.stopPropagation()}>
+      <div data-crm-dialog="" className="mx-4 w-full max-w-md rounded-lg border border-border p-6 shadow-xl" style={{ background: C.card, color: C.text }} onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">{t("newTask")}</h2>
           <button onClick={onClose} style={{ color: C.sub }}><X className="h-5 w-5" /></button>
@@ -1063,19 +1058,19 @@ function CreateTaskDialog({
           maxLength={200}
           placeholder={t("titlePlaceholder")}
           className="mb-3 w-full rounded-md border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: C.border }}
+          style={{ borderColor: C.input }}
         />
 
         <div className="mb-3 grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium">{t("type")}</label>
-            <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.border, background: C.card }}>
+            <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
               {taskTypes.map((tt) => <option key={tt.id} value={tt.name}>{tt.displayName}</option>)}
             </select>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">{t("priority")}</label>
-            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.border, background: C.card }}>
+            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
               {PRIORITIES.map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
             </select>
           </div>
@@ -1084,14 +1079,14 @@ function CreateTaskDialog({
         <div className="mb-3 grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium">{t("assignee")}</label>
-            <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.border, background: C.card }}>
+            <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
               <option value="">—</option>
               {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">{t("category")}</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.border, background: C.card }}>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
               <option value="">—</option>
               {CATEGORIES.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
@@ -1104,7 +1099,7 @@ function CreateTaskDialog({
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
           className="mb-4 w-full rounded-md border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: C.border }}
+          style={{ borderColor: C.input }}
         />
 
         {error && <p className="mb-3 text-sm" style={{ color: C.red }}>{error}</p>}

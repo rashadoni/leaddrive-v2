@@ -19,6 +19,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
 import { decimalToNumberNullable } from "@/lib/prisma-decimal"
+import { buildLifecycleView } from "@/lib/contract-lifecycle/lifecycle-view"
 
 interface AlertRow {
   id: string
@@ -141,114 +142,21 @@ export const GET = withRls(async (_req, { orgId }) => {
     const approvalsTruncated = pendingApprovals.length > FETCH_CAP
     if (approvalsTruncated) pendingApprovals.length = FETCH_CAP
 
-    // For each contract in approvals, keep only the lowest-order pending
-    // stage — that's the current bottleneck. If a contract has stages
-    // 1=approved, 2=pending, 3=pending, the current bottleneck is stage 2.
-    // (Sequential CLM: stage N is gated by stage N-1.)
-    const currentByContract = new Map<string, ApprovalStageRow>()
-    for (const s of pendingApprovals) {
-      const existing = currentByContract.get(s.contractId)
-      if (!existing || s.order < existing.order) {
-        currentByContract.set(s.contractId, s)
-      }
-    }
-    const currentApprovals = Array.from(currentByContract.values())
-
-    const renewalsOut = renewalAlerts.map((a) => {
-      const daysUntilDue = Math.floor(
-        (a.dueAt.getTime() - now.getTime()) / 86_400_000,
-      )
-      return {
-        id: a.id,
-        contractId: a.contractId,
-        contractNumber: a.contract?.contractNumber ?? "—",
-        contractTitle: a.contract?.title ?? "—",
-        companyName: a.contract?.company?.name ?? null,
-        contractStatus: a.contract?.status ?? "unknown",
-        endDate: a.contract?.endDate ?? null,
-        valueAmount: decimalToNumberNullable(a.contract?.valueAmount),
-        currency: a.contract?.currency ?? "USD",
-        dueAt: a.dueAt,
-        daysUntilDue,
-        daysBeforeExpiry: a.daysBeforeExpiry,
-        isOverdue: daysUntilDue < 0,
-      }
-    })
-
-    // Dedup to ONE row per contract: a contract has a renewal alert PER threshold
-    // (90/60/30/14d), so without this a single expiring contract floods the list
-    // with redundant rows (same endDate, different alert window). The query is
-    // ordered dueAt-asc, so the first occurrence per contract is its most urgent
-    // (soonest) alert — keep that one. The KPI counts below run on the deduped
-    // set so "renewals due (90d)" reflects CONTRACTS, not alert records.
-    const seenContract = new Set<string>()
-    const renewalsDeduped = renewalsOut.filter((r) => {
-      if (seenContract.has(r.contractId)) return false
-      seenContract.add(r.contractId)
-      return true
-    })
-
-    const approvalsOut = currentApprovals.map((s) => ({
-      contractId: s.contractId,
-      contractNumber: s.contract?.contractNumber ?? "—",
-      contractTitle: s.contract?.title ?? "—",
-      companyName: s.contract?.company?.name ?? null,
-      valueAmount: decimalToNumberNullable(s.contract?.valueAmount),
-      currency: s.contract?.currency ?? "USD",
-      currentStageLabel: s.label,
-      currentStageOrder: s.order,
-      currentStageId: s.id,
-      assigneeUserId: s.assigneeUserId,
-      assigneeRole: s.assigneeRole,
-      ageMs: now.getTime() - s.createdAt.getTime(),
-    }))
-
-    // Approvals grouped by stage label for the page's "bottleneck" view.
-    const groupedApprovals: Record<string, typeof approvalsOut> = {}
-    for (const a of approvalsOut) {
-      const k = a.currentStageLabel
-      if (!groupedApprovals[k]) groupedApprovals[k] = []
-      groupedApprovals[k].push(a)
-    }
-    // Within a stage bucket, oldest-stalled contract first so the most
-    // overdue case is at the top of each group.
-    for (const contracts of Object.values(groupedApprovals)) {
-      contracts.sort((a, b) => b.ageMs - a.ageMs)
-    }
-    // Across groups: larger queue first; label localeCompare as
-    // deterministic tiebreaker so equal-count groups stay stable across
-    // reloads (was non-deterministic before the architect raised it).
-    const approvalGroups = Object.entries(groupedApprovals)
-      .map(([label, contracts]) => ({ label, contracts }))
-      .sort((a, b) => {
-        if (b.contracts.length !== a.contracts.length) {
-          return b.contracts.length - a.contracts.length
-        }
-        return a.label.localeCompare(b.label)
-      })
+    const view = buildLifecycleView(
+      renewalAlerts.map((a) => ({
+        ...a,
+        contract: a.contract ? { ...a.contract, valueAmount: decimalToNumberNullable(a.contract.valueAmount) } : null,
+      })),
+      pendingApprovals.map((s) => ({
+        ...s,
+        contract: s.contract ? { ...s.contract, valueAmount: decimalToNumberNullable(s.contract.valueAmount) } : null,
+      })),
+      now,
+    )
 
     return NextResponse.json({
-      renewals: {
-        items: renewalsDeduped,
-        total: renewalsDeduped.length,
-        overdueCount: renewalsDeduped.filter((r) => r.isOverdue).length,
-        next30dCount: renewalsDeduped.filter(
-          (r) => !r.isOverdue && r.daysUntilDue <= 30,
-        ).length,
-        truncated: renewalsTruncated,
-      },
-      approvals: {
-        items: approvalsOut,
-        groups: approvalGroups,
-        total: approvalsOut.length,
-        bottleneckStage:
-          approvalGroups.length > 0 ? approvalGroups[0].label : null,
-        // How many contracts are stuck at the bottleneck stage — turns the KPI
-        // from a bare label into "{stage} — N stuck" + a jump target.
-        bottleneckCount:
-          approvalGroups.length > 0 ? approvalGroups[0].contracts.length : 0,
-        truncated: approvalsTruncated,
-      },
+      renewals: { ...view.renewals, truncated: renewalsTruncated },
+      approvals: { ...view.approvals, truncated: approvalsTruncated },
       fetchCap: FETCH_CAP,
     })
   } catch (err) {

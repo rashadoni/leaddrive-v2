@@ -1,0 +1,34 @@
+{
+  "sourceSha": "17dc0b81714fea99026eb69686e76abfd4d4cdf8",
+  "workflowRun": 40303988258,
+  "productionJob": 121525714118,
+  "productionJobConclusion": "success",
+  "artifactId": 12644250742,
+  "artifactDigest": "sha256:3f58f7c4ecb5524cf6fdedd13692910cda186d4fdcdee5841a7e92f497a19b7c",
+  "sites": [
+    {
+      "host": "app.leaddrivecrm.org",
+      "ping": 200,
+      "build": {
+        "sha": "17dc0b81714f",
+        "artifactSha": "17dc0b81714fea99026eb69686e76abfd4d4cdf8",
+        "builtAt": "2026-10-26T10:28:43Z"
+      }
+    },
+    {
+      "host": "zeytun.leaddrivecrm.org",
+      "ping": 200,
+      "build": {
+        "sha": "17dc0b81714f",
+        "artifactSha": "17dc0b81714fea99026eb69686e76abfd4d4cdf8",
+        "builtAt": "2026-10-26T10:28:43Z"
+      }
+    }
+  ],
+  "anonymousReview": {
+    "status": 307,
+    "redirectPath": "/login",
+    "conflictsDisclosed": false
+  },
+  "authenticatedOwnerReview": "NOT RUN: no native browser executor; requires owner review"
+}

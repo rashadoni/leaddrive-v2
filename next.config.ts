@@ -32,7 +32,22 @@ const nextConfig: NextConfig = {
   // compilation in disposable sequential workers so one compiler graph cannot
   // retain the previous graph within the hosted runner's memory budget. The lower-risk
   // webpack memory optimizations stay enabled for the same reason.
+  // Each worker returns its compiler's result to the parent as ONE JSON string
+  // over IPC, and V8 caps a string at 536,870,888 characters. On 2026-10-21 the
+  // server compiler's result reached ≈537M (349M of it debug trace events, ~300K
+  // more per route) and the build hung until the step timeout. Every CI build
+  // with this flag therefore runs scripts/ci/patch-next-build-worker-trace.mjs
+  // first, which stops the worker from sending those trace events back.
   experimental: {
+    // Next.js 16 by default loads every route's module in the background the
+    // moment the server starts (`unstable_preloadEntries`): here 1 765 of them,
+    // 175 MB of code, on the one thread that also answers requests. After the
+    // deploy of 2026-10-28 10:30 UTC the process printed "Ready in 0ms" and
+    // then answered the phone station's 401 in 7–11 s for about a minute,
+    // with almost no other traffic. Off, a route loads on its first request;
+    // the deploy warms the ones a live call depends on (scripts/server-deploy.sh,
+    // Step 6), and every other route costs its own first visitor that much.
+    preloadEntriesOnStart: false,
     cpus: nextBuildCpus,
     webpackBuildWorker: process.env.LEADDRIVE_COLD_PRODUCTION_BUILD === "1" ? true : undefined,
     webpackMemoryOptimizations: process.env.PROD_BUILD_FAST !== "1",

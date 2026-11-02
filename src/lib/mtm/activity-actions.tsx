@@ -10,7 +10,8 @@
 import {
   Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
   Building2, FileUp, Hexagon, Link2Off, ListMinus, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
-  Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
+  Star, Trash2, UserCog, UserMinus, UserPlus, UsersRound, type LucideIcon,
+  Bell, CalendarDays, FileText, KeyRound, MapPin, MessageCircleQuestion, MonitorSmartphone, QrCode, Smartphone,
 } from "lucide-react"
 
 import { formatDate } from "@/lib/format-date"
@@ -20,17 +21,19 @@ export type Tone =
 
 /** Badge classes per tone — light + explicit dark variants (the journal card is
  *  themeable, so `bg-*-100` alone reads wrong on dark). */
+// The colour of the words only — no pale pill under them (owner 2026-10-18:
+// a status is the colour of its words or a dot; shown again 2026-10-31).
 export const TONE_CLASSES: Record<Tone, string> = {
-  slate:   "bg-slate-100 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
-  red:     "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-  green:   "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
-  blue:    "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-  sky:     "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
-  purple:  "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
-  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  teal:    "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
-  amber:   "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  violet:  "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  slate:   "text-slate-700 dark:text-slate-300",
+  red:     "text-red-700 dark:text-red-300",
+  green:   "text-green-700 dark:text-green-300",
+  blue:    "text-blue-700 dark:text-blue-300",
+  sky:     "text-sky-700 dark:text-sky-300",
+  purple:  "text-purple-700 dark:text-purple-300",
+  emerald: "text-emerald-700 dark:text-emerald-300",
+  teal:    "text-teal-700 dark:text-teal-300",
+  amber:   "text-amber-700 dark:text-amber-300",
+  violet:  "text-violet-700 dark:text-violet-300",
 }
 
 export interface ActionMeta { icon: LucideIcon; tone: Tone }
@@ -96,6 +99,9 @@ const META: Record<string, ActionMeta> = {
   ORGANIZATION_BULK_UNASSIGN: { icon: UserMinus, tone: "amber" },
   FIELD_ASSIGNMENT_UPSERT: { icon: UserCog,   tone: "sky" },
   FIELD_PRODUCT_PRESENTATION_UPLOAD: { icon: FileUp, tone: "purple" },
+  // 2026-10-21: «Sil» on a presentation, and «Yadda saxla» on who sees the chosen ones.
+  FIELD_PRODUCT_DELETE: { icon: Trash2, tone: "red" },
+  FIELD_PRODUCT_VIEWERS_UPDATE: { icon: UserCog, tone: "sky" },
   ORDER_CREATE:        { icon: ShoppingCart,  tone: "emerald" },
   // 2026-10-10: zones a manager draws by hand on the live map («Свои зоны»).
   // Named from their first day, so the journal never reads «Действие» for them.
@@ -107,6 +113,90 @@ const META: Record<string, ActionMeta> = {
   // about the employee (agentId), so his managers see it in the journal.
   LOCATION_SHARE_LINK_CREATE: { icon: Link2,  tone: "violet" },
   LOCATION_SHARE_LINK_REVOKE: { icon: Link2Off, tone: "amber" },
+  // 2026-10-20: joint visit — a manager in the field with one agent, and his
+  // rating of the agent's work on a visit (the rating itself is not journalled).
+  JOINT_VISIT_START:   { icon: UsersRound,    tone: "teal" },
+  JOINT_VISIT_END:     { icon: Flag,          tone: "slate" },
+  // 2026-10-30: the manager planned (or took back) a joint visit at a client of the agent's route.
+  JOINT_VISIT_PLAN:    { icon: UsersRound,    tone: "teal" },
+  JOINT_VISIT_PLAN_CANCEL: { icon: Flag,      tone: "slate" },
+  VISIT_EVALUATION_SAVE: { icon: Star,        tone: "violet" },
+  // 2026-11-01: written on prod and read as a bare «Əməliyyat · Qeyd» (owner:
+  // «журнал активности — мало информации»): sign-in by code, client
+  // assignments, norms, promotions and all of «Kadr uçotu».
+  MOBILE_LOGIN_CODE_SENT:                    { icon: KeyRound,         tone: "slate" },
+  MOBILE_LOGIN_CODE_ACCEPTED:                { icon: LogIn,            tone: "slate" },
+  MOBILE_PASSWORD_SET_BY_CODE:               { icon: KeyRound,         tone: "slate" },
+  WORKDAY_RETURN:                            { icon: RotateCcw,        tone: "amber" },
+  CONTACT_BULK_ASSIGN:                       { icon: UserPlus,         tone: "emerald" },
+  CONTACT_BULK_UNASSIGN:                     { icon: UserMinus,        tone: "amber" },
+  CONTACT_BULK_TRANSFER:                     { icon: UsersRound,       tone: "sky" },
+  CONTACT_CHANGE_REQUEST_SUBMIT:             { icon: Send,             tone: "sky" },
+  CONTACT_CHANGE_REQUEST_DECISION:           { icon: ShieldCheck,      tone: "teal" },
+  CONTACT_WORKPLACE_CREATE:                  { icon: Building2,        tone: "emerald" },
+  CONTACT_WORKPLACE_UPDATE:                  { icon: Building2,        tone: "sky" },
+  CONTACT_WORKPLACE_END:                     { icon: Building2,        tone: "amber" },
+  CONTACT_CATEGORIES_SAVED:                  { icon: Settings,         tone: "slate" },
+  FIELD_ORGANIZATION_CREATE:                 { icon: Building2,        tone: "emerald" },
+  FIELD_ORGANIZATION_DELETE:                 { icon: Trash2,           tone: "red" },
+  FIELD_ASSIGNMENT_END:                      { icon: UserMinus,        tone: "amber" },
+  CUSTOMER_LOCATION_REQUEST:                 { icon: MapPin,           tone: "amber" },
+  IMPORT_APPLY:                              { icon: FileUp,           tone: "purple" },
+  DOCUMENT_ASSIGN:                           { icon: FileText,         tone: "sky" },
+  VISIT_POLICY_CREATE:                       { icon: Settings,         tone: "emerald" },
+  VISIT_POLICY_UPDATE:                       { icon: Settings,         tone: "sky" },
+  VISIT_POLICY_DEACTIVATE:                   { icon: Settings,         tone: "amber" },
+  COVERAGE_POLICY_DRAFT_CREATED:             { icon: Settings,         tone: "slate" },
+  COVERAGE_POLICY_ACTIVATED:                 { icon: Settings,         tone: "teal" },
+  KPI_POLICY_DRAFT_CREATED:                  { icon: Settings,         tone: "slate" },
+  KPI_POLICY_ACTIVATED:                      { icon: Settings,         tone: "teal" },
+  PHARMACY_PROMOTION_CREATE:                 { icon: Megaphone,        tone: "emerald" },
+  PHARMACY_PROMOTION_VERSION_PUBLISH:        { icon: Send,             tone: "teal" },
+  PHARMACY_PROMOTION_VERSION_RETIRE:         { icon: Flag,             tone: "slate" },
+  PHARMACY_PROMOTION_EXECUTION_SUBMITTED:    { icon: CheckCircle2,     tone: "teal" },
+  PHARMACY_PROMOTION_EVIDENCE_ADDED:         { icon: Camera,           tone: "purple" },
+  WORK_CALENDAR_DELETE:                      { icon: Trash2,           tone: "red" },
+  WORKFORCE_EMPLOYMENT_EVENT_RECORDED:       { icon: FileText,         tone: "slate" },
+  MTM_ATTENDANCE_APPROVAL_REVOKED:           { icon: RotateCcw,        tone: "amber" },
+  MTM_ATTENDANCE_BRANCH_PUBLISHED:           { icon: Building2,        tone: "sky" },
+  MTM_ATTENDANCE_PRIMARY_BRANCH_PUBLISHED:   { icon: Building2,        tone: "sky" },
+  MTM_ATTENDANCE_CALENDAR_ADDED:             { icon: CalendarDays,     tone: "violet" },
+  MTM_ATTENDANCE_CALENDAR_CHANGED:           { icon: CalendarDays,     tone: "violet" },
+  MTM_ATTENDANCE_CALENDAR_REMOVED:           { icon: CalendarDays,     tone: "red" },
+  MTM_ATTENDANCE_DAY_KINDS_UPDATED:          { icon: CalendarDays,     tone: "slate" },
+  MTM_ATTENDANCE_EMPLOYEE_CREATED:           { icon: UserPlus,         tone: "emerald" },
+  MTM_ATTENDANCE_EMPLOYEE_ENROLLED:          { icon: UserPlus,         tone: "emerald" },
+  MTM_ATTENDANCE_EMPLOYEE_UPDATED:           { icon: UserCog,          tone: "sky" },
+  MTM_ATTENDANCE_EMPLOYEE_CARD_CHANGED:      { icon: UserCog,          tone: "sky" },
+  MTM_ATTENDANCE_EMPLOYEE_DISMISSED:         { icon: UserMinus,        tone: "amber" },
+  MTM_ATTENDANCE_EMPLOYEE_DELETED:           { icon: Trash2,           tone: "red" },
+  MTM_ATTENDANCE_EMPLOYMENT_RECORDED:        { icon: FileText,         tone: "slate" },
+  MTM_ATTENDANCE_EXPLANATION_REQUESTED:      { icon: MessageCircleQuestion, tone: "amber" },
+  MTM_ATTENDANCE_EXPLANATION_ANSWERED:       { icon: MessageSquare,    tone: "sky" },
+  MTM_ATTENDANCE_EXPLANATION_DECIDED:        { icon: ShieldCheck,      tone: "teal" },
+  MTM_ATTENDANCE_HR_RECORDED:                { icon: FileText,         tone: "slate" },
+  MTM_ATTENDANCE_HR_GRANTED:                 { icon: ShieldCheck,      tone: "teal" },
+  MTM_ATTENDANCE_HR_REVOKED:                 { icon: ShieldAlert,      tone: "amber" },
+  MTM_ATTENDANCE_INSTALLATION_REQUESTED:     { icon: Smartphone,       tone: "amber" },
+  MTM_ATTENDANCE_INSTALLATION_RULE_CHANGED:  { icon: Settings,         tone: "slate" },
+  MTM_ATTENDANCE_OUTSIDE_RULE_CHANGED:       { icon: Settings,         tone: "slate" },
+  MTM_ATTENDANCE_QR_RULE_CHANGED:            { icon: QrCode,           tone: "slate" },
+  MTM_ATTENDANCE_REMINDER_POLICY_CHANGED:    { icon: Bell,             tone: "slate" },
+  MTM_ATTENDANCE_RISK_POLICY_CHANGED:        { icon: Settings,         tone: "slate" },
+  MTM_ATTENDANCE_RISK_DISMISSED:             { icon: ShieldCheck,      tone: "teal" },
+  MTM_ATTENDANCE_PARTICIPATION_CHANGED:      { icon: UserCog,          tone: "sky" },
+  MTM_ATTENDANCE_REQUEST_SUBMITTED:          { icon: Send,             tone: "sky" },
+  MTM_ATTENDANCE_REQUEST_CANCELLED:          { icon: RotateCcw,        tone: "slate" },
+  MTM_ATTENDANCE_REQUEST_MANAGER_APPROVED:   { icon: CheckCircle2,     tone: "teal" },
+  MTM_ATTENDANCE_REQUEST_DECIDED:            { icon: ShieldCheck,      tone: "teal" },
+  MTM_ATTENDANCE_REQUEST_LIMITS_UPDATED:     { icon: Settings,         tone: "slate" },
+  MTM_ATTENDANCE_SCREEN_PAIRING_STARTED:     { icon: MonitorSmartphone, tone: "violet" },
+  MTM_ATTENDANCE_SCREEN_PAIRED:              { icon: MonitorSmartphone, tone: "teal" },
+  MTM_ATTENDANCE_SCREEN_REVOKED:             { icon: MonitorSmartphone, tone: "amber" },
+  MTM_ATTENDANCE_SHIFT_PUBLISHED:            { icon: CalendarDays,     tone: "sky" },
+  MTM_ATTENDANCE_LEAVE_POLICY_PUBLISHED:     { icon: Settings,         tone: "slate" },
+  MTM_ATTENDANCE_LEAVE_PROFILE_PUBLISHED:    { icon: Settings,         tone: "slate" },
+  MTM_ATTENDANCE_LOCATION_POLICY_PUBLISHED:  { icon: MapPin,           tone: "slate" },
 }
 
 /**
@@ -191,6 +281,7 @@ function numberOrLength(value: unknown): number | null {
 export function activityDataSummary(
   log: { action: string; newData?: unknown },
   t: (key: string, values?: Record<string, unknown>) => string,
+  locale = "az",
 ): string | null {
   const data = log.newData && typeof log.newData === "object" && !Array.isArray(log.newData)
     ? log.newData as Record<string, unknown>
@@ -208,14 +299,51 @@ export function activityDataSummary(
     }
     case "FIELD_PRODUCT_PRESENTATION_UPLOAD":
       return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null
+    case "FIELD_PRODUCT_DELETE":
+      return typeof data.name === "string" && data.name.trim() ? data.name.trim() : null
+    case "FIELD_PRODUCT_VIEWERS_UPDATE": {
+      const names = Array.isArray(data.productNames)
+        ? data.productNames.filter((name): name is string => typeof name === "string" && name.trim() !== "")
+        : []
+      return names.length ? names.join(", ") : null
+    }
     // Which zone: its name as the change left it (a removal keeps the name).
     case "MAP_ZONE_CREATE":
     case "MAP_ZONE_UPDATE":
     case "MAP_ZONE_DELETE":
       return typeof data.name === "string" && data.name.trim() ? data.name.trim() : null
     default:
-      return null
+      return activityFacts(data, t, locale)
   }
+}
+
+const KNOWN_KINDS = new Set(["LATE", "ABSENT", "PUBLIC_HOLIDAY", "COMPANY_HOLIDAY", "EXCEPTION_WORKDAY", "WEEKEND"])
+const KNOWN_STATUSES = new Set(["ACCEPTED", "APPROVED", "REJECTED"])
+
+/**
+ * What the row's own payload says, in words: the day it is about, the name it
+ * carries, what kind of day or absence, how a decision went, how many clients
+ * changed hands. Owner, 2026-11-01: «журнал активности — мало информации» —
+ * «İzahatı rədd etdi» needs «30 oktyabr · gecikmə» next to it to mean anything.
+ * A phone is shown only as the writer already masked it.
+ */
+function activityFacts(data: Record<string, unknown>, t: (key: string, values?: Record<string, unknown>) => string, locale: string): string | null {
+  const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null)
+  const parts: string[] = []
+  const day = text(data.date)
+  if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) parts.push(formatDate(`${day}T12:00:00Z`, locale, { day: "numeric", month: "long", timeZone: "UTC" }))
+  const name = text(data.name) ?? text(data.title)
+  if (name) parts.push(name)
+  const kind = text(data.kind)
+  if (kind && KNOWN_KINDS.has(kind)) parts.push(t(`detailKind.${kind}`))
+  const status = text(data.status)
+  if (status && KNOWN_STATUSES.has(status)) parts.push(t(`detailStatus.${status}`))
+  const phone = text(data.phone)
+  if (phone && phone.includes("•")) parts.push(phone)
+  if (data.reason === "whatsapp_code") parts.push(t("detailByWhatsappCode"))
+  const clients = numberOrLength(data.contactIds)
+  if (clients != null) parts.push(t("detailClients", { count: clients }))
+  return parts.length ? parts.join(" · ") : null
 }
 
 /** What the activity API resolved a row to be about (see activity/route.ts). */

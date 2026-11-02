@@ -25,7 +25,7 @@ export function WorkforceExceptionRecordedOutcomesSummary({ outcomes }: { outcom
   const share = (value: number | null) => value === null ? t("noClassifiedSamples") : percent.format(value)
   const duration = (value: number | null) => formatRecordedResolutionDuration(value, locale) ?? t("unavailable")
 
-  return <section data-testid="workforce-exception-recorded-outcomes" aria-labelledby="workforce-exception-recorded-outcomes-title" className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+  return <section data-testid="workforce-exception-recorded-outcomes" aria-labelledby="workforce-exception-recorded-outcomes-title" className="rounded-lg border border-border p-4">
     <h2 id="workforce-exception-recorded-outcomes-title" className="font-semibold">{t("title")}</h2>
     <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("cohortHint")}</p>
     <dl className="mt-4 grid gap-6 lg:grid-cols-2">
@@ -42,7 +42,7 @@ export function WorkforceExceptionRecordedOutcomesSummary({ outcomes }: { outcom
         <dd className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{t("resolutionHint")}</dd>
       </div>
     </dl>
-    <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
+    <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-4 text-sm">
       <Count label={t("samples")} value={resolution.sampleCount} number={number} />
       <Count label={t("unresolved")} value={resolution.unresolvedCases} number={number} />
       <Count label={t("integrityExcluded")} value={resolution.integrityExcludedCases} number={number} />

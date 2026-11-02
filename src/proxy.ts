@@ -15,6 +15,8 @@ import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-co
 import { SESSION_EXPIRED_CODE } from "@/lib/session-expired"
 import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 import { redactOpaquePathSegments } from "@/lib/opaque-path-redaction"
+import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
+import { REVIEWER_ROLE, reviewerRequestDenial, reviewerUploadScope } from "@/lib/reviewer-access"
 
 type SessionModuleGateUser = {
   role?: string
@@ -62,23 +64,30 @@ const MODULE_GATED_API_PREFIXES = ["/api/v1/", "/api/finance/", "/api/cost-model
  * before loading data; unclassified compatibility endpoints keep their legacy
  * gate until their domain ownership is decided.
  */
-function sessionMtmApiBlocked(authUser: SessionModuleGateUser): boolean {
+function sessionMtmApiBlocked(authUser: SessionModuleGateUser, pathname: string): boolean {
   if (!authUser || authUser.role === "superadmin") return false
   const context = {
     plan: authUser.plan || "enterprise",
     addons: authUser.addons || [],
     modules: authUser.modules,
   }
-  return !FIELD_TENANT_CAPABILITY_IDS.some((capabilityId) =>
-    isTenantCapabilityEnabled(capabilityId, context),
-  )
+  // Personnel lives only under /api/v1/mtm/attendance/*: it must not open the
+  // field endpoints (routes, visits, clients) for a tenant without them.
+  const admitting = isPersonnelApiPath(pathname)
+    ? FIELD_TENANT_CAPABILITY_IDS
+    : FIELD_TENANT_CAPABILITY_IDS.filter((capabilityId) => capabilityId !== "personnel")
+  return !admitting.some((capabilityId) => isTenantCapabilityEnabled(capabilityId, context))
+}
+
+function isPersonnelApiPath(pathname: string): boolean {
+  return pathname === "/api/v1/mtm/attendance" || pathname.startsWith("/api/v1/mtm/attendance/")
 }
 
 // NOTE: /api/v1/tracking/ is PUBLIC by design — email open-pixels and SMS/link
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/", "/share/location/", "/field", "/time", "/screen", "/book/", "/connect/whatsapp"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -98,6 +107,21 @@ function matchesPublicPath(pathname: string, configuredPath: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`)
 }
 const BRIGHT_DATA_WEBHOOK_PATH = "/api/v1/social/providers/bright-data/webhook"
+/**
+ * The Facebook OAuth callback stays behind a session — except for a demo state
+ * (`ldd.…`): a prospect connecting his own Page to the demo has no CRM session.
+ * The route hands such a state to the demo before it reads anything else
+ * (src/lib/demo-center/demo-social-callback.ts), which needs the state's
+ * signature, the nonce cookie of the browser that started and a live connection
+ * row. The product's own state is base64url and never starts with `ldd.`, so
+ * this opens nothing of the product's path.
+ */
+const FACEBOOK_OAUTH_CALLBACK_PATH = "/api/v1/social/oauth/facebook/callback"
+function isDemoSocialOAuthCallback(req: { method: string; nextUrl: URL }, pathname: string): boolean {
+  return pathname === FACEBOOK_OAUTH_CALLBACK_PATH
+    && req.method === "GET"
+    && (req.nextUrl.searchParams.get("state") ?? "").startsWith("ldd.")
+}
 const FACEBOOK_NATIVE_WORKER_PATHS = new Set([
   "/api/v1/social/providers/facebook-native-search/jobs",
   "/api/v1/social/providers/facebook-native-search/results",
@@ -124,6 +148,9 @@ const VOICE_AGENT_CALL_RESULT_PATH = "/api/internal/voice-agent/call-result"
 const VOICE_AGENT_CALL_SOURCE_PATH = "/api/internal/voice-agent/call-source"
 const ASTERISK_HUMAN_CALL_LIFECYCLE_PATH = "/api/internal/asterisk/call-lifecycle"
 const ASTERISK_INBOUND_BROWSER_READY_PATH = "/api/internal/asterisk/inbound-browser-ready"
+// After the AI leg of an inbound call ends, the station asks here whether the
+// agent handed the call to a person (owner, 2026-10-27). Same bearer token.
+const ASTERISK_INBOUND_HANDOFF_PATH = "/api/internal/asterisk/inbound-handoff"
 // The relay asks this one whether a browser's parking ticket is genuine; it
 // authenticates with a shared secret header and never sees a session cookie.
 // Omitted when the softphone shipped, and the omission is invisible from the
@@ -138,20 +165,29 @@ const VOICE_AGENT_CALL_CONTINUATION_PATH = "/api/internal/voice-agent/call-conti
 const VOICE_AGENT_INTERNAL_PATHS = new Set([
   "/api/internal/voice-agent/control-plane-test",
   "/api/internal/voice-agent/maintenance-attestation",
+  "/api/internal/voice-agent/pharmacy-inbound",
+  // The line watch: no token, only yes/no answers (route comment).
+  "/api/internal/voice-agent/line-health",
+  // The station's once-a-minute report; same bearer token as its other routes.
+  "/api/internal/asterisk/station-heartbeat",
+  // A finished line call's recording (owner, 2026-10-31); same bearer token.
+  "/api/internal/asterisk/call-recording",
   VOICE_AGENT_RUNTIME_CONFIG_PATH,
   VOICE_AGENT_CALL_RESULT_PATH,
   VOICE_AGENT_CALL_SOURCE_PATH,
   ASTERISK_HUMAN_CALL_LIFECYCLE_PATH,
   ASTERISK_INBOUND_BROWSER_READY_PATH,
+  ASTERISK_INBOUND_HANDOFF_PATH,
   SOFTPHONE_VERIFY_TICKET_PATH,
   VOICE_AGENT_CALL_CONTINUATION_PATH,
 ])
 
-// `/demo-open` is public and deliberately NOT a marketing path: the open demo
-// is a full-screen product surface, so it must not inherit the marketing
-// layout (navbar, footer, floating buttons, live-chat widget) the way
-// anything under `/demo/` does. It sits beside `/demo-access` and
-// `/demo-preview` at the app root for that reason.
+// `/demo-open` skips the login redirect and is deliberately NOT a marketing
+// path: it is a full-screen product surface, so it must not inherit the
+// marketing layout (navbar, footer, floating buttons, live-chat widget) the
+// way anything under `/demo/` does. It sits beside `/demo-access` and
+// `/demo-preview` at the app root for that reason. Since 2026-10-18 the page
+// itself admits only the signed-in superadmin and sends anyone else to /demo.
 
 // Marketing-only paths served on leaddrivecrm.org
 const marketingPaths = ["/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing"]
@@ -301,7 +337,15 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
   // Default deny. Only the signed-in app response opts in, so every other
   // branch — marketing, public, login, redirects — stays microphone=().
   const signedInApp = micAllowed && !!pathname && isMicAllowedInApp(pathname)
-  const micPolicy = signedInApp ? "microphone=(self)" : "microphone=()"
+  // «Səslə soruşun» (owner, 2026-10-20): the private demo page — a capability
+  // link bound to one browser's session — may ask for the microphone while the
+  // demo's voice switch is on, and only then. Its button is pressed for each
+  // clip, and the routes behind it refuse anything but that granted session.
+  // The open demo (/demo-open), the marketing pages and every API answer stay
+  // denied; the admin preview (/demo-preview) is a signed-in page and keeps
+  // the signed-in app's policy, but no voice button is drawn there.
+  const privateDemoMicrophone = isPrivateDemo && demoAssistantVoiceEnabled()
+  const micPolicy = signedInApp || privateDemoMicrophone ? "microphone=(self)" : "microphone=()"
   // Location («Моё местоположение» in the organization's map picker, owner
   // 2026-10-06). The grant follows the microphone's, for the same reason: the
   // document that was loaded first decides for every later in-app navigation,
@@ -309,7 +353,10 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
   // address or pressed reload there. It is a widening, stated plainly: any
   // signed-in page may now ASK; the browser still shows its own prompt, and
   // marketing, public, login, /embed, /portal and API responses stay denied.
-  const geoPolicy = signedInApp ? "geolocation=(self)" : "geolocation=()"
+  // The branch screen (/screen, no account) must say where it stands before it
+  // is given a code (owner, 2026-10-30): it may ask too, and only it.
+  const branchScreen = !!pathname && matchesPublicPath(pathname, "/screen")
+  const geoPolicy = signedInApp || branchScreen ? "geolocation=(self)" : "geolocation=()"
   response.headers.set("Permissions-Policy", `${cameraPolicy}, ${micPolicy}, ${geoPolicy}`)
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
   return response
@@ -459,21 +506,26 @@ const authMiddleware = auth(async (req) => {
     const xtSession = req.auth as any
     const xtSessionSlug = xtSession?.user?.organizationSlug as string | undefined
     if (xtSessionSlug !== tenantSlug) {
-      const proto = req.headers.get("x-forwarded-proto") || "https"
-      const loginUrl = new URL("/login", `${proto}://${host}`)
-      loginUrl.searchParams.set("error", "cross-tenant")
-      const response = NextResponse.redirect(loginUrl)
-      const cookieName = process.env.NODE_ENV === "production"
-        ? "__Secure-authjs.session-token"
-        : "authjs.session-token"
-      response.cookies.set(cookieName, "", {
-        expires: new Date(0),
-        path: "/",
-        domain: process.env.COOKIE_DOMAIN || undefined,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        httpOnly: true,
-      })
+      // Refuse, but leave the cookie alone. It is shared across
+      // *.leaddrivecrm.org and holds the session of the tenant the person
+      // signed into LAST. Clearing it here signed them out of that tenant
+      // whenever a tab of the previous one was still open: its background
+      // polls (/api/v1/notifications, every few seconds) arrived here and
+      // wiped the new session. Production, 2026-10-25 15:32–15:42 UTC: four
+      // successful Zeytun sign-ins, each undone within seconds by
+      // `session-slug=zeytun host-slug=leaddrive path=/api/v1/notifications`;
+      // the owner saw it as "the password changed". The refusal alone keeps
+      // tenant X's session out of tenant Y's data; signing in on Y replaces
+      // the cookie anyway.
+      let response: NextResponse
+      if (pathname.startsWith("/api/")) {
+        response = NextResponse.json({ error: "Unauthorized", code: SESSION_EXPIRED_CODE }, { status: 401 })
+      } else {
+        const proto = req.headers.get("x-forwarded-proto") || "https"
+        const loginUrl = new URL("/login", `${proto}://${host}`)
+        loginUrl.searchParams.set("error", "cross-tenant")
+        response = NextResponse.redirect(loginUrl)
+      }
       // The path without anybody's link in it: a page opened by a token in
       // its address (/share/location/<token>) must not leave that token here.
       console.warn(
@@ -625,7 +677,22 @@ const authMiddleware = auth(async (req) => {
     // A «ссылка на местоположение» carries `?lang=` for the same reason: it is
     // the language of the manager who made it. Whoever opens it has no account
     // and usually no language cookie, and would otherwise always read Russian.
-    const linkLocaleQuery = pathname.startsWith("/legal/") || pathname.startsWith("/share/location/")
+    // So does the ticket-closure link a customer gets by WhatsApp or e-mail: it
+    // is the language that customer is written to in. An invoice link carries
+    // the invoice's document language.
+    // The app download pages are public links with an AZ · RU · EN switch.
+    const appDownloadPage = matchesPublicPath(pathname, "/field") || matchesPublicPath(pathname, "/time")
+    // The branch screen (a tablet at the entrance, no account) has the same switch.
+    const branchScreenPage = matchesPublicPath(pathname, "/screen")
+    const linkLocaleQuery = pathname.startsWith("/legal/")
+      || pathname.startsWith("/share/location/")
+      || pathname.startsWith("/ticket-closure/")
+      || pathname.startsWith("/portal/invoice/")
+      || pathname.startsWith("/book/")
+      // The WhatsApp signup window on the app host speaks the language of the tenant tab that opened it.
+      || matchesPublicPath(pathname, "/connect/whatsapp")
+      || appDownloadPage
+      || branchScreenPage
       ? req.nextUrl.searchParams.get("lang")
       : null
     // The guided demo exists in exactly one language — the scenario's — so it
@@ -643,7 +710,9 @@ const authMiddleware = auth(async (req) => {
     const publicLocale = demoLocale
       ?? (linkLocaleQuery === "en" || linkLocaleQuery === "ru" || linkLocaleQuery === "az"
         ? linkLocaleQuery
-        : localeCookie)
+        // An agent opening the link for the first time has no language cookie;
+        // these apps are used in Azerbaijan, so their pages start in Azerbaijani.
+        : localeCookie ?? (appDownloadPage || branchScreenPage ? "az" : undefined))
     if (publicLocale) {
       requestHeaders.set("x-locale", publicLocale)
     }
@@ -755,10 +824,11 @@ const authMiddleware = auth(async (req) => {
             )
             const payloadJson = atob(b64)
             const payload = JSON.parse(payloadJson)
-            // Only block if this is clearly a mobile JWT (carries agentId).
+            // Both legacy actor tokens and canonical app tokens are mobile.
+            // This unverified hint can only deny; route handlers verify crypto.
             // Web/session tokens, API keys (already excluded via ld_ prefix),
             // and other Bearer tokens do NOT have agentId → fall through normally.
-            if (payload?.agentId) {
+            if (payload?.agentId || payload?.iss === "leaddrive:identity:mobile:v1") {
               console.warn(
                 `[mobile-auth][middleware-reject] mobile JWT rejected on non-MTM path — agentId=${payload.agentId} path=${pathname}`
               )
@@ -785,7 +855,7 @@ const authMiddleware = auth(async (req) => {
   // handler's capability wrapper remains the exact Route & Field / Workforce
   // boundary.
   if (isMtmApiPath(pathname)) {
-    if (sessionMtmApiBlocked((req as any).auth?.user)) {
+    if (sessionMtmApiBlocked((req as any).auth?.user, pathname)) {
       return withCspHeaders(
         NextResponse.json(
           { error: "Forbidden", message: "No field capability is enabled for your organization." },
@@ -856,7 +926,7 @@ const authMiddleware = auth(async (req) => {
   // Bright Data uses its route-level context-bound bearer secret; middleware
   // must let the exact callback path reach that verifier without opening the
   // surrounding social provider namespace.
-  if (pathname.startsWith("/api/v1/public/") || pathname.startsWith("/api/v1/calendar/feed/") || pathname.startsWith("/api/v1/webhooks/") || pathname === "/api/v1/journeys/process" || pathname.startsWith("/api/v1/calls/webhook") || pathname === THREECX_LOOKUP_PATH || VOICE_AGENT_INTERNAL_PATHS.has(pathname) || pathname.startsWith("/api/v1/calls/twiml") || pathname.startsWith("/api/cron/") || pathname.startsWith("/api/v1/social/cron/") || pathname.startsWith("/api/v1/payment-webhooks/") || pathname === BRIGHT_DATA_WEBHOOK_PATH || FACEBOOK_NATIVE_WORKER_PATHS.has(pathname)) {
+  if (pathname.startsWith("/api/v1/public/") || pathname.startsWith("/api/v1/calendar/feed/") || pathname.startsWith("/api/v1/webhooks/") || pathname === "/api/v1/journeys/process" || pathname.startsWith("/api/v1/calls/webhook") || pathname === THREECX_LOOKUP_PATH || VOICE_AGENT_INTERNAL_PATHS.has(pathname) || pathname.startsWith("/api/v1/calls/twiml") || pathname.startsWith("/api/cron/") || pathname.startsWith("/api/v1/social/cron/") || pathname.startsWith("/api/v1/payment-webhooks/") || pathname === BRIGHT_DATA_WEBHOOK_PATH || FACEBOOK_NATIVE_WORKER_PATHS.has(pathname) || isDemoSocialOAuthCallback(req, pathname)) {
     return withCspHeaders(nextWithTrustedTenant(req, tenantSlug), nonce)
   }
 
@@ -967,6 +1037,37 @@ const authMiddleware = auth(async (req) => {
   const ADMIN_ONLY_SETTINGS = ["/settings/roles", "/settings/security", "/settings/billing"]
   if (ADMIN_ONLY_SETTINGS.some((p) => pathname === p || pathname.startsWith(p + "/")) && role !== "admin" && role !== "superadmin") {
     return withCspHeaders(NextResponse.redirect(new URL("/", req.url)), nonce)
+  }
+
+  // An outside reviewer under NDA (src/lib/reviewer-access.ts): read-only, no
+  // settings, no users, no journal, no export, and nothing after the end date —
+  // decided here from the token, before any route runs. The module gates below
+  // still apply on top: the sections the admin did not tick arrive hidden.
+  if (role === REVIEWER_ROLE) {
+    const denial = reviewerRequestDenial({
+      pathname,
+      method: req.method,
+      accessUntil: session?.user?.reviewerAccessUntil,
+    })
+    const uploadScope = denial ? null : reviewerUploadScope(pathname)
+    const uploadModule = uploadScope ? (PERMISSION_MODULE_TO_MODULE_ID[uploadScope] ?? uploadScope) as ModuleId : null
+    const uploadBlocked = Boolean(uploadModule && uploadModule in MODULE_REGISTRY && sessionModuleBlocked(session?.user, uploadModule))
+    if (denial === "expired") {
+      return withCspHeaders(
+        pathname.startsWith("/api/")
+          ? NextResponse.json({ error: "Unauthorized", code: SESSION_EXPIRED_CODE }, { status: 401 })
+          : NextResponse.redirect(new URL("/login", req.url)),
+        nonce,
+      )
+    }
+    if (denial === "forbidden" || uploadBlocked) {
+      return withCspHeaders(
+        pathname.startsWith("/api/") || pathname.startsWith("/uploads/")
+          ? NextResponse.json({ error: "Forbidden", message: "Not available to a reviewer" }, { status: 403 })
+          : NextResponse.redirect(new URL("/", req.url)),
+        nonce,
+      )
+    }
   }
 
   // Module gating for API routes: block requests to a module the tenant hasn't

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { dealIdsWhere, withDealEvents } from "@/lib/deals/deal-events"
 
 /**
  * Передача незакрытой работы при обезличивании пользователя.
@@ -75,18 +76,25 @@ export async function handOverOpenWork(
 
   // Сделки и лиды: у них `assignedTo` — обычная строка БЕЗ внешнего ключа,
   // поэтому база их никогда не сторожила. Отсюда и накопившиеся висяки.
-  const deals = await tx.deal.updateMany({
-    where: {
-      ...scope,
-      assignedTo: fromUserId,
-      // Пустой словарь значит «ни одна стадия этой организации не помечена
-      // закрытой» — тогда исключать нечего. Это НЕ то же самое, что
-      // «исключить всё»: `in: []` не совпадает ни с чем, и `NOT` от него
-      // пропустил бы вообще все сделки.
-      ...(closedStages.length > 0 ? { NOT: { stage: { in: closedStages } } } : {}),
-    },
-    data: { assignedTo: toUserId },
-  })
+  const dealWhere = {
+    ...scope,
+    assignedTo: fromUserId,
+    // Пустой словарь значит «ни одна стадия этой организации не помечена
+    // закрытой» — тогда исключать нечего. Это НЕ то же самое, что
+    // «исключить всё»: `in: []` не совпадает ни с чем, и `NOT` от него
+    // пропустил бы вообще все сделки.
+    ...(closedStages.length > 0 ? { NOT: { stage: { in: closedStages } } } : {}),
+  }
+  // События сделок (Kafka): строки блокируются и читаются до записи, а запись
+  // ограничена ими же — сделка, подошедшая под условие в эту долю секунды,
+  // переносится следующим разом, а не без события.
+  const dealIds = await dealIdsWhere(tx, dealWhere)
+  const deals = await withDealEvents(tx, orgId, dealIds, async (t) => ({
+    value: await t.deal.updateMany({
+      where: { ...dealWhere, id: { in: dealIds } },
+      data: { assignedTo: toUserId },
+    }),
+  }))
 
   const leads = await tx.lead.updateMany({
     where: {

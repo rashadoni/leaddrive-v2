@@ -1,5 +1,6 @@
-import { MtmAttendanceEmployees } from "@/components/mtm/attendance-employees"
+import { redirectToAttendanceTab, type AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirect"
 
-export default function MtmAttendanceEmployeesPage() {
-  return <MtmAttendanceEmployees />
+/** Former page; now Personnel → people → employees. */
+export default async function AttendanceEmployeesRedirect({ searchParams }: { searchParams: AttendanceSearchParams }) {
+  return redirectToAttendanceTab("people", "employees", searchParams)
 }

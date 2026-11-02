@@ -26,7 +26,7 @@ export function CollapsibleSection({
   return (
     <div
       data-tour-id={tourId}
-      className={cn("rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card", className)}
+      className={cn("rounded-xl border border-border bg-card", className)}
     >
       <button
         type="button"

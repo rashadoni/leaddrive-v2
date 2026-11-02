@@ -140,7 +140,29 @@ export function customerMutationScopeForActor(
   }
 }
 
-/** Contacts are visible through direct assignment or an accessible active workplace. */
+/**
+ * A doctor taken off this agent: an assignment to him has ended and none is
+ * active. Owner, 2026-10-16, once the agent's card let a tick be taken off:
+ * «нужно, чтоб пропадал сразу». Until then such a doctor stayed in the agent's
+ * app through his institution — one on the agent's route in the last thirty
+ * days, or one assigned to the agent — for as long as that lasted. A doctor
+ * who was never the agent's is not affected: an institution still shows its
+ * doctors. Attached again, he is back at once (the `none` arm).
+ */
+export function contactTakenOffAgent(agentId: string, date: Date): Prisma.MtmContactWhereInput {
+  return {
+    AND: [
+      { agentAssignments: { some: { agentId, deletedAt: null, effectiveTo: { lte: date } } } },
+      { agentAssignments: { none: { agentId, ...activeFieldAssignmentWindow(date) } } },
+    ],
+  }
+}
+
+/**
+ * Contacts are visible through direct assignment or an accessible active
+ * workplace — for a field agent, not through a workplace once the doctor was
+ * taken off him (`contactTakenOffAgent`). His manager still sees the doctor.
+ */
 export function contactScopeForActor(
   actor: MtmRouteActor,
   date: Date,
@@ -167,6 +189,7 @@ export function contactScopeForActor(
             customer: customerScopeForActor(actor, date),
           },
         },
+        ...(actor.role === "AGENT" && actor.agentId ? { NOT: contactTakenOffAgent(actor.agentId, date) } : {}),
       },
     ],
   }

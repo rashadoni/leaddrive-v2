@@ -1,0 +1,19 @@
+# Explicit test-only override: the unchanged CDC preflight rejects the base
+# 64 MiB cap. 4096 MiB is a finite retention ceiling, not a preallocation and
+# not evidence of production outage capacity. All isolation/caps are inherited.
+services:
+  postgres:
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_replication_slots=4
+      - -c
+      - max_wal_senders=4
+      - -c
+      - max_slot_wal_keep_size=4096MB
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - max_connections=30

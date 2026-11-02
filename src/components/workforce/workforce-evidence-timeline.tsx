@@ -277,8 +277,8 @@ function WorkforceEvidenceTimelineScope({ organizationId }: { organizationId: st
       </div>
     </section>
 
-    <form className="overflow-hidden rounded-xl border border-zinc-200 bg-background dark:border-zinc-800" onSubmit={loadTimeline}>
-      <div className="border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-6">
+    <form className="overflow-hidden rounded-xl border border-border bg-background" onSubmit={loadTimeline}>
+      <div className="border-b border-border px-5 py-5 sm:px-6">
         <div className="flex max-w-3xl gap-3">
           <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300"><ShieldCheck className="size-5" aria-hidden="true" /></span>
           <div>
@@ -307,7 +307,7 @@ function WorkforceEvidenceTimelineScope({ organizationId }: { organizationId: st
 
         <div className="space-y-3">
           <p id="evidence-employee-label" className="text-sm font-medium">{t("employee")}</p>
-          {selectedTarget ? <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 px-4 py-2 dark:border-zinc-700">
+          {selectedTarget ? <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-2">
             <span className="flex min-w-0 flex-1 items-center gap-2 break-words text-sm font-medium [overflow-wrap:anywhere]"><UserRoundCheck className="size-4 shrink-0 text-orange-600" aria-hidden="true" />{selectedTarget.label}</span>
             <Button ref={changeEmployeeButton} type="button" variant="ghost" className="min-h-11" onClick={() => { pendingEmployeeFocus.current = "search"; setSelectedTarget(null); setTargets([]); invalidateTimeline() }}>{t("changeEmployee")}</Button>
           </div> : <>
@@ -353,7 +353,7 @@ function TimelineResult({ timeline, dateTime, t }: {
   t: ReturnType<typeof useTranslations>
 }) {
   return <section aria-labelledby="evidence-result-title" className="space-y-4">
-    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
       <div>
         <p className="text-sm font-medium text-orange-700 dark:text-orange-300">{t("derivedOnly")}</p>
         <h2 id="evidence-result-title" className="mt-1 break-words text-xl font-semibold tracking-tight [overflow-wrap:anywhere]">{timeline.employeeName}</h2>
@@ -362,7 +362,7 @@ function TimelineResult({ timeline, dateTime, t }: {
       <Badge variant="outline">{t("recordCount", { count: timeline.evidence.length })}</Badge>
     </div>
 
-    {timeline.evidence.length === 0 ? <div className="rounded-xl border border-dashed border-zinc-300 px-5 py-12 text-center dark:border-zinc-700"><p className="font-medium">{t("emptyTitle")}</p><p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{t("empty")}</p></div> : <ol className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+    {timeline.evidence.length === 0 ? <div className="rounded-xl border border-dashed border-zinc-300 px-5 py-12 text-center dark:border-border"><p className="font-medium">{t("emptyTitle")}</p><p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{t("empty")}</p></div> : <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border">
       {timeline.evidence.map((item, index) => <li key={`${item.capturedAt}-${index}`} className="grid gap-4 px-5 py-5 sm:grid-cols-[11rem_minmax(0,1fr)] sm:px-6">
         <div>
           <time dateTime={item.capturedAt} className="text-sm font-medium tabular-nums">{dateTime.format(new Date(item.capturedAt))}</time>

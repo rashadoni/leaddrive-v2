@@ -745,10 +745,10 @@ export default function ReportBuilderPage() {
                       key={f.name}
                       type="button"
                       onClick={() => toggleColumn(f.name)}
-                      className={`inline-flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 text-xs font-medium transition-colors ${
+                      className={`inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors ${
                         selected
                           ? "border-primary bg-primary/10 text-primary"
-                          : "border-zinc-200 dark:border-zinc-700 bg-background text-muted-foreground hover:bg-muted"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted"
                       }`}
                     >
                       {selected && <Check className="h-3 w-3" />}
@@ -895,10 +895,10 @@ export default function ReportBuilderPage() {
                     key={ct.value}
                     type="button"
                     onClick={() => setChartType(ct.value)}
-                    className={`rounded-md border border-zinc-200 dark:border-zinc-700 px-2 py-1.5 text-xs font-medium transition-colors ${
+                    className={`rounded-md border border-border px-2 py-1.5 text-xs font-medium transition-colors ${
                       chartType === ct.value
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-zinc-200 dark:border-zinc-700 bg-background text-muted-foreground hover:bg-muted"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     {ct.label}
@@ -928,7 +928,7 @@ export default function ReportBuilderPage() {
                     key={r.id}
                     type="button"
                     onClick={() => loadReport(r)}
-                    className="w-full flex items-center gap-2 rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-left text-xs hover:bg-muted transition-colors"
+                    className="w-full flex items-center gap-2 rounded-md border border-border px-3 py-2 text-left text-xs hover:bg-muted transition-colors"
                   >
                     <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -1115,7 +1115,7 @@ export default function ReportBuilderPage() {
             <button
               type="button"
               onClick={() => handleExport("csv")}
-              className="flex flex-col items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:bg-muted transition-colors"
+              className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 hover:bg-muted transition-colors"
             >
               <FileSpreadsheet className="h-8 w-8 text-green-600" />
               <span className="text-sm font-medium">CSV</span>
@@ -1126,7 +1126,7 @@ export default function ReportBuilderPage() {
             <button
               type="button"
               onClick={() => handleExport("xlsx")}
-              className="flex flex-col items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:bg-muted transition-colors"
+              className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 hover:bg-muted transition-colors"
             >
               <FileSpreadsheet className="h-8 w-8 text-blue-600" />
               <span className="text-sm font-medium">Excel</span>
@@ -1167,7 +1167,7 @@ function renderDataTable(
   maxHeight = 500,
 ) {
   return (
-    <div className="overflow-auto border border-zinc-200 dark:border-zinc-700 rounded-lg" style={{ maxHeight }}>
+    <div className="overflow-auto border border-border rounded-lg" style={{ maxHeight }}>
       <table className="w-full text-sm">
         <thead className="bg-muted/50 sticky top-0">
           <tr>

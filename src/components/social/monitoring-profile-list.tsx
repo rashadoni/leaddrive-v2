@@ -1669,7 +1669,7 @@ function SelectedMonitoringWorkbench({
       className="min-w-0 overflow-hidden rounded-2xl border bg-card shadow-sm"
       aria-labelledby={`${workflowId}-title`}
     >
-      <header className="flex flex-col gap-4 border-b bg-gradient-to-br from-primary/[0.065] via-card to-card px-4 py-5 sm:px-6">
+      <header className="flex flex-col gap-4 border-b bg-card px-4 py-5 sm:px-6">
         <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <MonitoringProfileLogo name={profile.name} logoUrl={profile.logoUrl} />

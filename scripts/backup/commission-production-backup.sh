@@ -19,6 +19,11 @@ EVIDENCE_AT_UTC="${9:-}"
 OFFLINE_OPERATOR="${10:-}"
 EXPECTED_CANDIDATE_SHA256="${11:-}"
 REMOTE_INPUT_STAGE="${12:-}"
+OWNER_RECIPIENT="${13:-}"
+# Earlier main the owner key receipt / candidate is bound to. The workflow has
+# already proved it is an ancestor of WORKFLOW_SHA with byte-identical recovery
+# code (scripts/backup/evidence-main-window.sh); empty means WORKFLOW_SHA.
+EVIDENCE_MAIN_SHA="${14:-}"
 
 BACKUP_ENV_FILE="/etc/leaddrive/backup.env"
 BACKUP_SERVICE="leaddrive-postgres-backup.service"
@@ -37,6 +42,10 @@ COMMISSION_LOCK="/run/lock/leaddrive-backup-commission.lock"
 COMMISSION_STATE_ROOT="/var/lib/leaddrive-backup-commission"
 COMMISSION_FENCE_JOURNAL="$COMMISSION_STATE_ROOT/runner-fence.env"
 EVIDENCE_ROOT="/etc/leaddrive/backup-evidence"
+case "$OPERATION" in
+  run-owner-backup|certify-owner-restore) EVIDENCE_ROOT="$EVIDENCE_ROOT/owner-operated" ;;
+  *) [ -z "$OWNER_RECIPIENT" ] || { printf '%s\n' 'owner recipient is forbidden for independent operations' >&2; exit 1; } ;;
+esac
 CUSTODY_MARKER="$EVIDENCE_ROOT/key-custody.env"
 CANDIDATE_DIR="$EVIDENCE_ROOT/candidates"
 RESTORE_DIR="$EVIDENCE_ROOT/restores"
@@ -55,6 +64,10 @@ INCOMING_EVIDENCE_BUNDLE=""
 INCOMING_ALLOWED_SIGNERS=""
 INCOMING_CODE_BUNDLE=""
 INCOMING_MONITORING_CONFIG=""
+INCOMING_B2_WRITER_CONFIG=""
+B2_ROLLBACK_DIR=""
+B2_ENV_REPLACED=0
+B2_CONFIG_COMMITTED=0
 
 TOOLS_ROOT="/usr/local/lib/leaddrive-backup/tools"
 AGE_VERSION="1.3.2"
@@ -77,12 +90,13 @@ AWS_LINK="/usr/local/bin/aws"
 # Filled from the reviewed offline helper files before this branch is merged.
 # The signed evidence must prove that the independent operator ran these exact
 # bytes from the exact main revision, not an arbitrary look-alike verifier.
+OWNER_KEY_VERIFIER_SHA256="d72e3bcd19b0838e3d47ff45d3f5580eac3c668fde8aef07dea900971b33a7ca"
 CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
-ARCHIVE_VERIFIER_SHA256="c6d4caabb1f44db3036c79d59b63253f961fa8ce29780724c9d15667dac644a6"
-POSTGRES_BACKUP_SHA256="b2b0ca62ab77afe5ff2cda88351f71a038163b791484adc886cad806fe07edff"
-SECRETS_SNAPSHOT_SHA256="16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99"
-RUNTIME_FILES_SNAPSHOT_SHA256="d5fe33b4b0b0e581194b3aff770eca45a14a493774ec314340146bd69475e53e"
-RESTORE_CANARY_SHA256="af743a9bd8df3daa6ba6b60d90141daea28629f6140d8d12d1623f6b083f5d9e"
+ARCHIVE_VERIFIER_SHA256="028d52f8c22c7690a3523ea9db960d5d001ac478bc634063d6065d46c78b4abf"
+POSTGRES_BACKUP_SHA256="cb1ca4edf130be15ae1d3e76ec431b20fe8ab19d2e1686468d554d027c6802f5"
+SECRETS_SNAPSHOT_SHA256="2efda4aa77c291fe014a6e9795a709ed776f1d217c954ba617abf017743f77e5"
+RUNTIME_FILES_SNAPSHOT_SHA256="e32fa4fdab76e4ad162d7c1463916a3847824c3d438a972051b095da4b4e8330"
+RESTORE_CANARY_SHA256="fc028191f18ee58233ab6fdbaa0a450789d47ca7c9b81567a99fb62161f66355"
 PII_PROOF_SHA256="e83f3fc65c56e0dc8db7eb26e47780c0901917908c05d7aa6552792a37f99e18"
 CANARY_SQL_SHA256="5c3a9bf2b14c84c4deafa31525ac23518ba2290ab32a7cf5f66e2d05d4b249c9"
 
@@ -130,6 +144,14 @@ COMMISSION_SHIP_LOGS_SHA256=""
 COMMISSION_RECOVERY_PROGRAM_SET_SHA256=""
 COMMISSION_RECOVERY_DB_CONTRACT_SHA256=""
 ACTIVE_TRANSIENT_UNIT=""
+SCRATCH_UNIT=""
+SCRATCH_DESCRIPTION=""
+SCRATCH_INVOCATION=""
+SCRATCH_SYSTEM_IDENTIFIER=""
+SCRATCH_LOCK_HELD=0
+SCRATCH_TEMPLATE=""
+SCRATCH_TEMPLATE_NONCE=""
+SCRATCH_SOURCE_IDENTIFIER=""
 COMMISSION_FENCE_STAGE=""
 LOG_GENESIS_ANCHOR_SHA256=""
 LOG_GENESIS_ANCHOR_BYTES=""
@@ -169,8 +191,17 @@ fatal() {
 
 safe_remove_stage_tree() {
   local path="$1"
+  if [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]+$ ]] \
+    && [ "$path" = "$TOOLS_ROOT/commission-code-${WORKFLOW_RUN_ID}" ] \
+    && [ "$(realpath -e -- "$TOOLS_ROOT" 2>/dev/null || true)" = "$TOOLS_ROOT" ] \
+    && [ "$(realpath -e -- "$path" 2>/dev/null || true)" = "$path" ] \
+    && (assert_root_directory "backup tool authority" "$TOOLS_ROOT" \
+      && assert_root_directory "current-run code stage" "$path") >/dev/null 2>&1; then
+    rm -rf -- "$path"
+    return
+  fi
   case "$path" in
-    /var/tmp/leaddrive-backup-tools.*|/var/tmp/leaddrive-backup-evidence.*|/var/tmp/leaddrive-backup-commission-stage.[A-Za-z0-9]*|/run/leaddrive-backup-commission-code-[0-9]*|"$SIGNED_DIR"/.signed-stage.*|"$TOOLS_ROOT"/age/.1.3.2.stage.*|"$TOOLS_ROOT"/aws-cli/.2.36.40.stage.*|"$AGE_ROOT"|"$AWS_ROOT")
+    /var/tmp/leaddrive-backup-tools.*|/var/tmp/leaddrive-backup-evidence.*|/var/tmp/leaddrive-backup-commission-stage.[A-Za-z0-9]*|"$SIGNED_DIR"/.signed-stage.*|"$TOOLS_ROOT"/age/.1.3.2.stage.*|"$TOOLS_ROOT"/aws-cli/.2.36.40.stage.*|"$AGE_ROOT"|"$AWS_ROOT")
       rm -rf -- "$path"
       ;;
     *)
@@ -181,7 +212,17 @@ safe_remove_stage_tree() {
 
 cleanup() {
   local status=$?
+  local scratch_cleanup_failed=0
   trap - EXIT
+
+  if [ "$B2_ENV_REPLACED" -eq 1 ] && [ "$B2_CONFIG_COMMITTED" -eq 0 ]; then
+    # The durable, root-only predecessor also survives a host/process crash.
+    # Never print its contents or remove it as temporary input.
+    if ! restore_b2_writer_predecessor; then
+      printf '%s\n' '[backup-commission] FATAL: storage rollback failed; protected predecessor retained' >&2
+    fi
+    status=1
+  fi
 
   if [ -n "$ACTIVE_TRANSIENT_UNIT" ]; then
     case "$ACTIVE_TRANSIENT_UNIT" in
@@ -195,6 +236,24 @@ cleanup() {
         ;;
     esac
     ACTIVE_TRANSIENT_UNIT=""
+  fi
+
+  # Retire the database worker before its scratch server. Never stop a unit
+  # merely because its name resembles ours; check the creation nonce too.
+  if [ -n "$SCRATCH_UNIT" ]; then
+    if ! stop_commission_scratch; then
+      if [ "$OPERATION" = probe-native-scratch ]; then
+        printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; scratch state preserved for inspection' >&2
+      else
+        printf '%s\n' '[backup-commission] FATAL: owned scratch shutdown unproved; runner fence retained for inspection' >&2
+      fi
+      status=1
+      scratch_cleanup_failed=1
+    fi
+  fi
+  if [ "$SCRATCH_LOCK_HELD" -eq 1 ]; then
+    exec 4>&-
+    SCRATCH_LOCK_HELD=0
   fi
 
   if [ "$BACKUP_LOCK_HELD" -eq 1 ]; then
@@ -213,11 +272,12 @@ cleanup() {
     exec 5>&-
     LOG_LOCK_HELD=0
   fi
-  if [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
+  if [ "$scratch_cleanup_failed" -eq 0 ] && [ "$OPERATION" != configure-b2-writer ] \
+    && [ "$OPERATION" != probe-native-scratch ] && { [ "$BACKUP_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$SECRETS_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$RUNTIME_FILES_SERVICE_RUNTIME_MASKED" -eq 1 ] \
     || [ "$LOG_SERVICE_RUNTIME_MASKED" -eq 1 ] \
-    || [ -e "$COMMISSION_FENCE_JOURNAL" ] || [ -L "$COMMISSION_FENCE_JOURNAL" ]; then
+    || [ -e "$COMMISSION_FENCE_JOURNAL" ] || [ -L "$COMMISSION_FENCE_JOURNAL" ]; }; then
     if ! clear_commission_runner_fence; then
       printf '[backup-commission] FATAL: runner fence cleanup failed; durable recovery journal retained\n' >&2
       status=1
@@ -262,7 +322,7 @@ cleanup() {
   fi
   if [ -n "$ENV_STAGE" ]; then
     case "$ENV_STAGE" in
-      /etc/leaddrive/.backup.env.age-stage.*|/etc/leaddrive/.backup.env.lock-stage.*|/etc/leaddrive/.backup.env.log-retention-stage.*|/etc/leaddrive/.backup.env.monitoring-stage.*) unlink -- "$ENV_STAGE" ;;
+      /etc/leaddrive/.backup.env.age-stage.*|/etc/leaddrive/.backup.env.lock-stage.*|/etc/leaddrive/.backup.env.log-retention-stage.*|/etc/leaddrive/.backup.env.monitoring-stage.*|/etc/leaddrive/.backup.env.b2-stage.*) unlink -- "$ENV_STAGE" ;;
     esac
   fi
   if [ -n "$MARKER_STAGE" ]; then
@@ -298,6 +358,14 @@ exec 9>"$COMMISSION_LOCK"
 flock -n 9 || fatal "another backup commissioning operation is active"
 
 [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || fatal "workflow SHA is invalid"
+[ -n "$EVIDENCE_MAIN_SHA" ] || EVIDENCE_MAIN_SHA="$WORKFLOW_SHA"
+[[ "$EVIDENCE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] || fatal "evidence main SHA is invalid"
+if [ "$EVIDENCE_MAIN_SHA" != "$WORKFLOW_SHA" ]; then
+  case "$OPERATION" in
+    run-owner-backup|certify-owner-restore) ;;
+    *) fatal "only owner operations accept evidence bound to an earlier main" ;;
+  esac
+fi
 [[ "$WORKFLOW_ACTOR" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,78}$ ]] \
   || fatal "workflow actor is invalid"
 [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]{1,20}$ ]] || fatal "workflow run id is invalid"
@@ -311,6 +379,7 @@ INCOMING_EVIDENCE_BUNDLE="$REMOTE_INPUT_STAGE/evidence.tar"
 INCOMING_ALLOWED_SIGNERS="$REMOTE_INPUT_STAGE/allowed-signers"
 INCOMING_CODE_BUNDLE="$REMOTE_INPUT_STAGE/backup-code.tar"
 INCOMING_MONITORING_CONFIG="$REMOTE_INPUT_STAGE/healthchecks.env"
+INCOMING_B2_WRITER_CONFIG="$REMOTE_INPUT_STAGE/b2-writer.env"
 
 trim_value() {
   local value="$1"
@@ -496,6 +565,136 @@ configure_monitoring_urls() {
   sync -f -- "$BACKUP_ENV_FILE" /etc/leaddrive \
     || fatal "cannot durably commit monitoring configuration"
   log "configured four distinct Healthchecks.io dead-man URLs; values redacted"
+}
+
+validate_b2_writer_config() {
+  local file="$1" key value endpoint region
+  [ "$(stat -c '%s' "$file")" -le 8192 ] || fatal "writer input exceeds the bounded schema"
+  # Data only: never source/eval a provider file. Exactly five generated lines,
+  # no comments, exports, quoting, duplicate keys, private keys or other settings.
+  awk -F= '
+    $0 !~ /^[A-Z0-9_]+=[A-Za-z0-9_+\/.=:-]+$/ { bad=1 }
+    $1 !~ /^(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)$/ { bad=1 }
+    seen[$1]++ { if (seen[$1] > 1) bad=1 }
+    END { if (NR != 5 || length(seen) != 5 || bad) exit 1 }
+  ' "$file" || fatal "writer input must contain exactly five supported literal records"
+  endpoint="$(read_unique_value_from "$file" BACKUP_S3_ENDPOINT)"
+  region="$(read_unique_value_from "$file" BACKUP_S3_REGION)"
+  object_storage_endpoint_matches_region "$endpoint" "$region" \
+    || fatal "writer endpoint does not match its B2 region"
+  [ "$(read_unique_value_from "$file" BACKUP_S3_BUCKET)" = leaddrive-prod-backups ] \
+    || fatal "writer input must target the approved backup bucket"
+  for key in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+    value="$(read_unique_value_from "$file" "$key")"
+    [[ "$value" =~ ^[A-Za-z0-9_+/=-]{16,200}$ ]] || fatal "writer credential has an unsupported shape"
+  done
+}
+
+restore_b2_writer_predecessor() {
+  [[ "$B2_ROLLBACK_DIR" =~ ^/etc/leaddrive/backup-storage-rollback\.[0-9]{1,20}\.[A-Za-z0-9]{6,64}$ ]] || return 1
+  [ -d "$B2_ROLLBACK_DIR" ] && [ ! -L "$B2_ROLLBACK_DIR" ] \
+    && [ "$(stat -c '%U:%G:%a' "$B2_ROLLBACK_DIR")" = root:root:700 ] || return 1
+  [ -f "$B2_ROLLBACK_DIR/backup.env" ] && [ ! -L "$B2_ROLLBACK_DIR/backup.env" ] || return 1
+  ENV_STAGE="$(mktemp /etc/leaddrive/.backup.env.b2-stage.XXXXXX)" || return 1
+  cp --preserve=mode,ownership -- "$B2_ROLLBACK_DIR/backup.env" "$ENV_STAGE" || return 1
+  sync -f -- "$ENV_STAGE" /etc/leaddrive || return 1
+  mv -- "$ENV_STAGE" "$BACKUP_ENV_FILE" || return 1
+  ENV_STAGE=""
+  sync -f -- "$BACKUP_ENV_FILE" /etc/leaddrive || return 1
+  B2_ENV_REPLACED=0
+}
+
+configure_b2_writer() {
+  local owner mode key value service state marker lock_state enabled retention_mode days
+  local -a storage_keys=(BACKUP_S3_ENDPOINT BACKUP_S3_REGION BACKUP_S3_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY)
+  assert_confirmation CONFIGURE_B2_WRITER_ON_13_140_132_245
+  [ -z "$EXPECTED_RECIPIENT_SHA256$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256$OWNER_RECIPIENT" ] \
+    || fatal "storage configuration accepts no recipient or evidence override"
+  assert_root_directory /etc /etc
+  assert_root_directory /etc/leaddrive /etc/leaddrive
+  assert_root_file "canonical backup environment" "$BACKUP_ENV_FILE"
+  owner="$(stat -c '%U:%G' "$BACKUP_ENV_FILE")"
+  mode="$(stat -c '%a' "$BACKUP_ENV_FILE")"
+  { [ "$owner:$mode" = root:root:600 ] || [ "$owner:$mode" = root:leaddrive-backup:640 ]; } \
+    || fatal "canonical backup environment ownership or mode is unsafe"
+  [ -z "$(read_unique_value BACKUP_ENV_FILE)" ] || fatal "backup environment redirects its authority"
+  assert_owner_source_boundary
+  for marker in "$LOG_GENESIS_ANCHOR" "$CURRENT_RESTORE_MARKER" "$BOOTSTRAP_RESTORE_MARKER"; do
+    [ ! -e "$marker" ] && [ ! -L "$marker" ] || fatal "storage replacement refuses existing independent recovery evidence"
+  done
+  # Match the immutable standalone artifact authority used by server-deploy
+  # and production inventory, never the app-root compatibility alias.
+  assert_root_file "live deployment marker" /opt/leaddrive-v2/.next/standalone/.deploy-sha
+  [ "$(cat /opt/leaddrive-v2/.next/standalone/.deploy-sha)" = "$WORKFLOW_SHA" ] \
+    || fatal "storage setup requires the exact reviewed main to be live"
+  for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
+    state="$(systemctl is-active "$service" 2>/dev/null || true)"
+    case "$state" in inactive|failed|unknown) ;; *) fatal "storage setup requires inactive recovery services" ;; esac
+  done
+  assert_root_file "staged writer input" "$INCOMING_B2_WRITER_CONFIG"
+  [ "$(stat -c '%U:%G:%a' "$INCOMING_B2_WRITER_CONFIG")" = root:root:600 ] \
+    && [ "$(realpath -e -- "$INCOMING_B2_WRITER_CONFIG")" = "$INCOMING_B2_WRITER_CONFIG" ] \
+    || fatal "writer input must be canonical root:root mode0600"
+  validate_b2_writer_config "$INCOMING_B2_WRITER_CONFIG"
+  assert_toolchain
+  # Verify the NEW writer against its own exact endpoint, not the old env.
+  # Only a read: this cannot enable/alter Object Lock, upload or spend storage.
+  lock_state="$(run_aws 45 \
+    "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" AWS_ACCESS_KEY_ID)" \
+    "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" AWS_SECRET_ACCESS_KEY)" \
+    s3api get-object-lock-configuration \
+    --endpoint-url "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" BACKUP_S3_ENDPOINT)" \
+    --region "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" BACKUP_S3_REGION)" \
+    --no-cli-pager --bucket leaddrive-prod-backups \
+    --query 'ObjectLockConfiguration.[ObjectLockEnabled,Rule.DefaultRetention.Mode,Rule.DefaultRetention.Days]' \
+    --cli-connect-timeout 10 --cli-read-timeout 20 \
+    --output text 2>/dev/null)" || fatal "new writer cannot verify Object Lock; configuration unchanged"
+  read -r enabled retention_mode days <<<"$lock_state"
+  [ "$enabled" = Enabled ] && [ "$retention_mode" = COMPLIANCE ] \
+    && [[ "$days" =~ ^[0-9]{1,5}$ ]] && [ "$days" -ge 14 ] \
+    && [ "$lock_state" = "$(printf 'Enabled\tCOMPLIANCE\t%s' "$days")" ] \
+    || fatal "new writer did not prove COMPLIANCE default retention of at least14days"
+  for key in "${storage_keys[@]}"; do read_unique_value "$key" >/dev/null; done
+  # Reject a malformed predecessor rather than normalising unrelated bytes.
+  [ "$(tail -c 1 "$BACKUP_ENV_FILE" | od -An -tu1 | tr -d '[:space:]')" = 10 ] \
+    || fatal "canonical environment must end with a newline"
+  B2_ROLLBACK_DIR="$(mktemp -d "/etc/leaddrive/backup-storage-rollback.$WORKFLOW_RUN_ID.XXXXXXXXXXXX")"
+  chmod 0700 "$B2_ROLLBACK_DIR"
+  cp --preserve=mode,ownership -- "$BACKUP_ENV_FILE" "$B2_ROLLBACK_DIR/backup.env"
+  sync -f -- "$B2_ROLLBACK_DIR/backup.env" "$B2_ROLLBACK_DIR" /etc/leaddrive
+  ENV_STAGE="$(mktemp /etc/leaddrive/.backup.env.b2-stage.XXXXXX)"
+  awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)[[:space:]]*=/' \
+    "$BACKUP_ENV_FILE" >"$ENV_STAGE"
+  for key in "${storage_keys[@]}"; do
+    value="$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" "$key")"
+    printf '%s=%s\n' "$key" "$value" >>"$ENV_STAGE"
+  done
+  chown --reference="$BACKUP_ENV_FILE" "$ENV_STAGE"
+  chmod --reference="$BACKUP_ENV_FILE" "$ENV_STAGE"
+  for key in "${storage_keys[@]}"; do
+    [ "$(read_unique_value_from "$ENV_STAGE" "$key")" = "$(read_unique_value_from "$INCOMING_B2_WRITER_CONFIG" "$key")" ] \
+      || fatal "writer configuration staging mismatch"
+  done
+  cmp -s \
+    <(awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)[[:space:]]*=/' "$BACKUP_ENV_FILE") \
+    <(awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_S3_ENDPOINT|BACKUP_S3_REGION|BACKUP_S3_BUCKET|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY)[[:space:]]*=/' "$ENV_STAGE") \
+    || fatal "storage setup changed unrelated backup settings"
+  # Detect a concurrent local edit before atomic replacement. Shared Actions
+  # production + commissioning locks and disabled timers are also mandatory.
+  cmp -s "$BACKUP_ENV_FILE" "$B2_ROLLBACK_DIR/backup.env" || fatal "canonical environment changed during storage setup"
+  assert_owner_source_boundary
+  sync -f -- "$ENV_STAGE" /etc/leaddrive
+  cmp -s "$BACKUP_ENV_FILE" "$B2_ROLLBACK_DIR/backup.env" || fatal "canonical environment changed before storage commit"
+  for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
+    state="$(systemctl is-active "$service" 2>/dev/null || true)"
+    case "$state" in inactive|failed|unknown) ;; *) fatal "recovery service started before storage commit" ;; esac
+  done
+  mv -- "$ENV_STAGE" "$BACKUP_ENV_FILE"
+  B2_ENV_REPLACED=1
+  ENV_STAGE=""
+  sync -f -- "$BACKUP_ENV_FILE" /etc/leaddrive
+  B2_CONFIG_COMMITTED=1
+  log "B2 writer configured; protected predecessor retained; encryption/recipient/timers unchanged; backup/restore NOT RUN"
 }
 
 ensure_root_directory() {
@@ -736,20 +935,11 @@ assert_backup_env() {
   [ -z "$(read_unique_value BACKUP_ENV_FILE)" ] \
     || fatal "backup environment may not redirect BACKUP_ENV_FILE"
   assert_recovery_policy
-  for file in \
-    /etc/leaddrive/backup.pgpass \
-    /etc/leaddrive/managed-postgres-ca.crt \
-    /etc/leaddrive/restore-verifier.pgpass \
-    /etc/leaddrive/restore-postgres-ca.crt; do
-    assert_root_file "database connection material" "$file"
-  done
   for file in /etc/leaddrive/backup.pgpass /etc/leaddrive/restore-verifier.pgpass; do
-    owner="$(stat -c '%U:%G:%a' "$file")"
-    { [ "$owner" = "root:leaddrive-backup:640" ] \
-        || [ "$owner" = "root:leaddrive-backup:440" ]; } \
-      || fatal "$file must be root:leaddrive-backup mode 0640 or 0440"
+    assert_backup_password_file "$file"
   done
   for file in /etc/leaddrive/managed-postgres-ca.crt /etc/leaddrive/restore-postgres-ca.crt; do
+    assert_root_file "database CA material" "$file"
     mode="$(stat -c '%a' "$file")"
     case "$mode" in 400|440|444|600|640|644) ;; *) fatal "$file has an unsafe CA mode" ;; esac
   done
@@ -765,6 +955,22 @@ assert_backup_env() {
         -print -quit | grep -q .; then
     fatal "legacy backup root contains possible plaintext/ciphertext remnants; inspect and remove through the incident runbook"
   fi
+}
+
+assert_backup_password_file() {
+  local file="$1" owner group mode backup_uid backup_gid
+  [[ "$file" = /* ]] && [ -f "$file" ] && [ ! -L "$file" ] \
+    || fatal "PostgreSQL password file must be an absolute regular non-symlink file"
+  backup_uid="$(id -u leaddrive-backup)" || fatal "backup service account is absent"
+  backup_gid="$(id -g leaddrive-backup)" || fatal "backup service group is absent"
+  [ "$backup_uid" != 0 ] && [ "$backup_gid" != 0 ] \
+    || fatal "backup service must use a non-root account and group"
+  owner="$(stat -c '%u' "$file")"
+  group="$(stat -c '%g' "$file")"
+  [ "$owner:$group" = "$backup_uid:$backup_gid" ] \
+    || fatal "PostgreSQL password file must belong to the backup account and group"
+  mode="$(stat -c '%a' "$file")"
+  case "$mode" in 400|600) ;; *) fatal "PostgreSQL password file must use private mode 0400 or 0600" ;; esac
 }
 
 assert_confirmation() {
@@ -1019,7 +1225,7 @@ recover_commission_runner_fence() {
   old_run_id="$(read_unique_value_from "$COMMISSION_FENCE_JOURNAL" WORKFLOW_RUN_ID)"
   old_operation="$(read_unique_value_from "$COMMISSION_FENCE_JOURNAL" OPERATION)"
   [[ "$old_run_id" =~ ^[0-9]{1,20}$ ]] \
-    && [[ "$old_operation" =~ ^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore)$ ]] \
+    && [[ "$old_operation" =~ ^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore|run-owner-backup)$ ]] \
     || fatal "commissioning runner-fence journal identity is invalid"
   for label in database secrets runtime-files; do
     unit="leaddrive-backup-commission-${label}-${old_run_id}.service"
@@ -1541,6 +1747,13 @@ run_aws() {
     timeout "$timeout_seconds" "$AWS_BIN" "$@"
 }
 
+# Object Storage is Backblaze B2 (S3-compatible API). Hetzner Object Storage
+# went away with the Hetzner account in September 2026; its endpoint form is no
+# longer accepted. The region is B2's cluster name, e.g. eu-central-003.
+object_storage_endpoint_matches_region() {
+  [[ "$2" =~ ^[a-z]{2}-[a-z]+-[0-9]{3}$ ]] && [ "$1" = "https://s3.$2.backblazeb2.com" ]
+}
+
 prove_object_lock() {
   local endpoint region bucket access_key secret_key lock_state
   local lock_enabled lock_mode lock_days
@@ -1549,8 +1762,8 @@ prove_object_lock() {
   bucket="$(require_static_value BACKUP_S3_BUCKET)"
   access_key="$(require_static_value AWS_ACCESS_KEY_ID)"
   secret_key="$(require_static_value AWS_SECRET_ACCESS_KEY)"
-  [ "$endpoint" = "https://${region}.your-objectstorage.com" ] \
-    || fatal "Object Storage endpoint does not match its configured Hetzner region"
+  object_storage_endpoint_matches_region "$endpoint" "$region" \
+    || fatal "Object Storage endpoint does not match its configured B2 region"
   lock_state="$(run_aws 45 "$access_key" "$secret_key" \
     s3api get-object-lock-configuration \
       --endpoint-url "$endpoint" --region "$region" --no-cli-pager \
@@ -1567,6 +1780,10 @@ prove_object_lock() {
 
 ensure_evidence_directories() {
   assert_root_directory "/etc/leaddrive" /etc/leaddrive
+  if [ "$EVIDENCE_ROOT" = /etc/leaddrive/backup-evidence/owner-operated ]; then
+    ensure_root_directory /etc/leaddrive/backup-evidence
+    chmod 0700 /etc/leaddrive/backup-evidence
+  fi
   ensure_root_directory "$EVIDENCE_ROOT"
   chmod 0700 "$EVIDENCE_ROOT"
   ensure_root_directory "$CANDIDATE_DIR"
@@ -1620,7 +1837,9 @@ verify_signed_evidence() {
   local expected_recipient="$2"
   local candidate_file="${3:-}"
   local entries evidence_file signature_file verified_epoch now_epoch maximum_age_seconds
-  local candidate_format evidence_format recovery_scope candidate_sha key
+  local candidate_format evidence_format recovery_scope candidate_sha key signature_namespace
+  signature_namespace=leaddrive-backup-evidence
+  [ "$expected_type" != owner-archive-restore ] || signature_namespace=leaddrive-owner-backup-evidence
 
   command -v ssh-keygen >/dev/null 2>&1 || fatal "ssh-keygen is required for offline evidence verification"
   [ -f "$INCOMING_EVIDENCE_BUNDLE" ] && [ ! -L "$INCOMING_EVIDENCE_BUNDLE" ] \
@@ -1648,13 +1867,13 @@ verify_signed_evidence() {
     || fatal "signed offline evidence files are unexpectedly large"
 
   ssh-keygen -Y verify -f "$OFFLINE_ALLOWED_SIGNERS" \
-    -I "$OFFLINE_OPERATOR" -n leaddrive-backup-evidence \
+    -I "$OFFLINE_OPERATOR" -n "$signature_namespace" \
     -s "$signature_file" <"$evidence_file" >/dev/null 2>&1 \
     || fatal "offline evidence signature is not valid for the trusted operator"
 
   evidence_format=1
   recovery_scope=""
-  if [ "$expected_type" = archive-restore ]; then
+  if [ "$expected_type" = archive-restore ] || [ "$expected_type" = owner-archive-restore ]; then
     assert_root_file "archive evidence candidate" "$candidate_file"
     candidate_sha="$(sha256sum "$candidate_file" | awk '{print $1}')"
     [ "$candidate_sha" = "$EXPECTED_CANDIDATE_SHA256" ] \
@@ -1673,6 +1892,22 @@ verify_signed_evidence() {
     esac
   fi
 
+  if [ "$expected_type" = archive-restore ] && grep -Eq '^(OPERATOR_MODEL|INDEPENDENT_HUMAN_REVIEW|TWO_OFFLINE_MEDIA)=' "$evidence_file"; then
+    fatal "independent archive evidence must not carry owner-mode claims"
+  fi
+  if [ "$expected_type" = owner-archive-restore ]; then
+    [ "$OPERATION" = certify-owner-restore ] && [ "$candidate_format" = 2 ] \
+      && [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = owner-operated-data-only ] \
+      && [ "$(read_unique_value_from "$evidence_file" OPERATOR_MODEL)" = owner_operated ] \
+      && [ "$(read_unique_value_from "$evidence_file" INDEPENDENT_HUMAN_REVIEW)" = not_performed ] \
+      && [ "$(read_unique_value_from "$evidence_file" TWO_OFFLINE_MEDIA)" = not_met ] \
+      || fatal "owner proof may not claim independent/full/offline-media certification"
+    recovery_scope=owner-operated-data-only
+  fi
+  if [ "$expected_type" = archive-restore ] || [ "$expected_type" = owner-archive-restore ]; then
+    [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = "$recovery_scope" ] \
+      || fatal "candidate scope cannot cross owner/independent admission boundaries"
+  fi
   [ "$(read_unique_value_from "$evidence_file" FORMAT_VERSION)" = "$evidence_format" ] \
     && [ "$(read_unique_value_from "$evidence_file" EVIDENCE_TYPE)" = "$expected_type" ] \
     && [ "$(read_unique_value_from "$evidence_file" STATUS)" = "verified" ] \
@@ -1680,13 +1915,13 @@ verify_signed_evidence() {
     && [ "$(read_unique_value_from "$evidence_file" EVIDENCE_REF)" = "$EVIDENCE_REF" ] \
     && [ "$(read_unique_value_from "$evidence_file" OFFLINE_OPERATOR)" = "$OFFLINE_OPERATOR" ] \
     && [ "$(read_unique_value_from "$evidence_file" VERIFIED_AT_UTC)" = "$EVIDENCE_AT_UTC" ] \
-    && [ "$(read_unique_value_from "$evidence_file" REVIEWED_MAIN_SHA)" = "$WORKFLOW_SHA" ] \
+    && [ "$(read_unique_value_from "$evidence_file" REVIEWED_MAIN_SHA)" = "$EVIDENCE_MAIN_SHA" ] \
     || fatal "signed offline evidence does not match the commissioned operation"
   verified_epoch="$(date -u -d "$EVIDENCE_AT_UTC" '+%s' 2>/dev/null)" \
     || fatal "signed evidence timestamp is invalid"
   now_epoch="$(date -u '+%s')"
   case "$expected_type" in
-    archive-restore) maximum_age_seconds=3024000 ;;
+    archive-restore|owner-archive-restore) maximum_age_seconds=3024000 ;;
     age-key-custody) maximum_age_seconds=7776000 ;;
     *) fatal "unsupported signed evidence type" ;;
   esac
@@ -1705,7 +1940,7 @@ verify_signed_evidence() {
         && [ "$(read_unique_value_from "$evidence_file" CUSTODY_VERIFIER_SHA256)" = "$CUSTODY_VERIFIER_SHA256" ] \
         || fatal "signed key-custody evidence does not prove both offline copies"
       ;;
-    archive-restore)
+    archive-restore|owner-archive-restore)
       [ "$(read_unique_value_from "$evidence_file" RECOVERY_SCOPE)" = "$recovery_scope" ] \
         && [ "$(read_unique_value_from "$evidence_file" CANDIDATE_SHA256)" = "$candidate_sha" ] \
         && [ "$(read_unique_value_from "$evidence_file" DATABASE_CIPHERTEXT_SHA256)" = "$(read_unique_value_from "$candidate_file" DATABASE_CIPHERTEXT_SHA256)" ] \
@@ -2293,7 +2528,7 @@ activate_encryption() {
 }
 
 prepare_commission_code() {
-  local entries expected_entries bundled_manifest file
+  local entries expected_entries bundled_manifest file stage
   [ -f "$INCOMING_CODE_BUNDLE" ] && [ ! -L "$INCOMING_CODE_BUNDLE" ] \
     || fatal "exact-main backup code bundle is missing"
   [ "$(stat -c '%u' "$INCOMING_CODE_BUNDLE")" = "0" ] \
@@ -2316,10 +2551,18 @@ prepare_commission_code() {
     | awk '$1 !~ /^-/ { unsafe=1 } END { exit unsafe }' \
     || fatal "exact-main backup code bundle contains a link or special file"
 
-  CODE_STAGE="/run/leaddrive-backup-commission-code-${WORKFLOW_RUN_ID}"
-  [ ! -e "$CODE_STAGE" ] && [ ! -L "$CODE_STAGE" ] \
+  # Public reviewed executables belong with the already admitted tools, not
+  # with plaintext staging: /run may deliberately disallow execution.
+  assert_root_directory "backup tool authority" "$TOOLS_ROOT"
+  [ "$(realpath -e -- "$TOOLS_ROOT")" = "$TOOLS_ROOT" ] \
+    || fatal "backup tool authority must be canonical"
+  [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]+$ ]] || fatal "unsafe code-stage run identifier"
+  stage="$TOOLS_ROOT/commission-code-${WORKFLOW_RUN_ID}"
+  [ ! -e "$stage" ] && [ ! -L "$stage" ] \
     || fatal "this workflow run already has a staged backup-code directory"
-  install -d -o root -g root -m 0755 "$CODE_STAGE"
+  # Acquire cleanup ownership only after an exclusive creation succeeds.
+  mkdir -m 0755 -- "$stage"
+  CODE_STAGE="$stage"
   tar --no-same-owner --no-same-permissions -xf "$INCOMING_CODE_BUNDLE" -C "$CODE_STAGE"
   while IFS= read -r file || [ -n "$file" ]; do
     [ -f "$CODE_STAGE/$file" ] && [ ! -L "$CODE_STAGE/$file" ] \
@@ -2542,6 +2785,432 @@ assert_full_recovery_program_matches_committed_genesis() {
   fi
 }
 
+assert_empty_transient_workspace() {
+  local path="$1" expected_uid="$2" expected_gid="$3" entries
+  [ -d "$path" ] && [ ! -L "$path" ] \
+    && [ "$(realpath -e -- "$path")" = "$path" ] \
+    && [ "$(stat -c '%u:%g:%a' "$path")" = "$expected_uid:$expected_gid:750" ] \
+    || fatal "transient database workspace has unsafe canonical ownership or mode"
+  entries="$(find "$path" -mindepth 1 -maxdepth 1 -print -quit)" \
+    || fatal "cannot inspect transient database workspace; nothing launched"
+  [ -z "$entries" ] \
+    || fatal "transient database workspace is not empty; existing files preserved"
+}
+
+assert_transient_database_memory_budget() {
+  local available_kib swap_kib
+  available_kib="$(awk '$1 == "MemAvailable:" { print $2 }' /proc/meminfo)"
+  swap_kib="$(awk '$1 == "SwapTotal:" { print $2 }' /proc/meminfo)"
+  [[ "$available_kib" =~ ^[0-9]+$ ]] && [ "$available_kib" -ge 8388608 ] \
+    || fatal "database worker requires at least 8 GiB currently available host memory"
+  [[ "$swap_kib" =~ ^[0-9]+$ ]] && [ "$swap_kib" -eq 0 ] \
+    || fatal "database worker requires a swap-free production host"
+  log "database worker admitted: private_tmpfs_bytes=3221225472 memory_max_bytes=4294967296"
+}
+
+scratch_control_state() {
+  LC_ALL=C /usr/lib/postgresql/16/bin/pg_controldata \
+    /var/lib/postgresql/16/leaddriverestore 2>/dev/null \
+    | awk -F: '/^Database system identifier:/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); id=$2}
+      /^Database cluster state:/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); state=$2}
+      END {if (id ~ /^[0-9]+$/ && state != "") print id "|" state; else exit 1}'
+}
+
+assert_scratch_port_free() {
+  local listeners
+  listeners="$(ss -H -ltn 'sport = :55432')" || return 1
+  [ -z "$listeners" ]
+}
+
+scratch_connection_query() {
+  local target="$1" sql="$2" key value
+  local -a connection=(PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C HOME=/nonexistent
+    PGOPTIONS='-c statement_timeout=10000 -c default_transaction_read_only=on -c search_path=pg_catalog,pg_temp')
+  if [ "$target" = source ]; then
+    for key in PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGPASSFILE PGSSLMODE PGSSLROOTCERT PGCONNECT_TIMEOUT; do
+      value="$(require_static_value "$key")" || return 1
+      connection+=("$key=$value")
+    done
+  elif [ "$target" = scratch ]; then
+    connection+=(PGHOST=127.0.0.1 PGHOSTADDR=127.0.0.1 PGPORT=55432
+      PGDATABASE=postgres PGUSER=leaddrive_restore_verifier
+      PGPASSFILE=/etc/leaddrive/restore-verifier.pgpass PGSSLMODE=verify-full
+      PGSSLROOTCERT=/etc/leaddrive/restore-postgres-ca.crt PGCONNECT_TIMEOUT=2)
+  else
+    return 1
+  fi
+  # env execs timeout: route/passfile parameters are not retained in the
+  # long-lived timeout/runuser argv. No source process environment is inherited.
+  env -i "${connection[@]}" timeout 35 runuser -u leaddrive-backup -- \
+    /usr/lib/postgresql/16/bin/psql -X -w -v ON_ERROR_STOP=1 -At -c "$sql" 2>/dev/null
+}
+
+admit_commission_scratch() {
+  local path expected state control source_id entries metadata configured
+  local lock=/var/lib/leaddrive-recovery-runner-locks/postgres-restore-scratch-maintenance.lock
+  local data=/var/lib/postgresql/16/leaddriverestore
+  local config=/etc/postgresql/16/leaddriverestore
+  [[ "$WORKFLOW_RUN_ID" =~ ^[0-9]{1,20}$ ]] || fatal "invalid scratch operation identity"
+  assert_transient_database_memory_budget
+  assert_root_directory "scratch maintenance lock directory" "${lock%/*}"
+  [ "$(realpath -e -- "${lock%/*}")" = "${lock%/*}" ] \
+    && [ -f "$lock" ] && [ ! -L "$lock" ] \
+    && [ "$(stat -c '%U:%a:%h' -- "$lock")" = root:600:1 ] \
+    || fatal "scratch maintenance lock authority refused"
+  exec 4<"$lock"
+  flock -n 4 || fatal "scratch maintenance is already active"
+  [ "$(stat -Lc '%d:%i' -- "$lock")" = "$(stat -Lc '%d:%i' -- "/proc/$$/fd/4")" ] \
+    || fatal "scratch maintenance lock inode changed"
+  SCRATCH_LOCK_HELD=1
+  for path in /etc/postgresql /etc/postgresql/16 /var/lib/postgresql /var/lib/postgresql/16 \
+    "$data" "$config"; do
+    [ -d "$path" ] && [ ! -L "$path" ] && [ "$(realpath -e -- "$path")" = "$path" ] \
+      || fatal "scratch directory authority is not canonical"
+    metadata="$(stat -c '%U:%a' -- "$path")"
+    case "$metadata" in root:700|root:750|root:755|postgres:700|postgres:750|postgres:755) ;;
+      *) fatal "scratch directory authority is unsafe" ;; esac
+  done
+  [ "$(stat -c '%U:%G:%a' -- "$data")" = postgres:postgres:700 ] \
+    || fatal "scratch data authority must remain private to postgres"
+  for path in "$config/postgresql.conf" "$config/pg_hba.conf" "$config/pg_ident.conf" \
+    "$config/start.conf" "$config/server.crt" "$config/server.key" \
+    "$data/PG_VERSION" "$data/global/pg_control" "$data/postgresql.auto.conf"; do
+    [ -f "$path" ] && [ ! -L "$path" ] && [ "$(realpath -e -- "$path")" = "$path" ] \
+      && [ "$(stat -c '%h' -- "$path")" = 1 ] \
+      || fatal "scratch file authority is not canonical"
+    metadata="$(stat -c '%U:%a' -- "$path")"
+    case "$metadata" in root:600|root:640|root:644|postgres:600|postgres:640|postgres:644) ;;
+      *) fatal "scratch file authority is unsafe" ;; esac
+  done
+  [ "$(cat -- "$data/PG_VERSION")" = 16 ] || fatal "scratch major is not the reviewed PostgreSQL 16"
+  configured="$(sed 's/#.*//; /^[[:space:]]*$/d; s/^[[:space:]]*//; s/[[:space:]]*$//' "$config/start.conf")"
+  [ "$configured" = manual ] || fatal "scratch must remain manually started"
+  configured="$(sed 's/#.*//; /^[[:space:]]*$/d' "$data/postgresql.auto.conf")"
+  [ -z "$configured" ] || fatal "scratch auto-configuration contains unreviewed settings"
+  for path in postmaster.pid standby.signal recovery.signal; do
+    [ ! -e "$data/$path" ] && [ ! -L "$data/$path" ] \
+      || fatal "scratch has pre-existing process/recovery state; nothing started"
+  done
+  [ -d "$data/pg_wal" ] && [ ! -L "$data/pg_wal" ] \
+    && [ "$(realpath -e -- "$data/pg_wal")" = "$data/pg_wal" ] \
+    || fatal "scratch WAL must stay inside the separate cluster"
+  entries="$(find "$data/pg_tblspc" -mindepth 1 -maxdepth 1 -print -quit)" \
+    || fatal "scratch tablespace inventory is unreadable"
+  [ -z "$entries" ] && [ ! -L "$data/pg_tblspc" ] \
+    || fatal "external scratch tablespaces are forbidden"
+  entries="$(find "$data" -xdev \( -type l -o -type f -links +1 \) -print -quit)" \
+    || fatal "cannot inspect scratch storage aliases"
+  [ -z "$entries" ] || fatal "scratch data contains a symlink or shared file; preserve it for inspection"
+  cmp -s "$config/pg_hba.conf" <(printf '%s\n' \
+    '# Managed LeadDrive restore scratch authentication' \
+    'local all postgres peer' 'local all all reject' \
+    'hostssl all leaddrive_restore_verifier 127.0.0.1/32 scram-sha-256' \
+    'host all all 127.0.0.1/32 reject' 'host all all 0.0.0.0/0 reject' \
+    'host all all ::0/0 reject') \
+    || fatal "scratch authentication policy differs from reviewed provisioning"
+  for expected in 'VERIFY_PGHOST:127.0.0.1' 'VERIFY_PGPORT:55432' \
+    'VERIFY_PGUSER:leaddrive_restore_verifier' 'VERIFY_PGMAINTENANCE_DB:postgres' \
+    'VERIFY_PGPASSFILE:/etc/leaddrive/restore-verifier.pgpass' 'VERIFY_PGSSLMODE:verify-full' \
+    'VERIFY_PGSSLROOTCERT:/etc/leaddrive/restore-postgres-ca.crt'; do
+    [ "$(require_static_value "${expected%%:*}")" = "${expected#*:}" ] \
+      || fatal "scratch client configuration differs from the fixed provisioned contract"
+  done
+  [ "$(require_static_value PGSSLMODE)" = verify-full ] \
+    && [ "$(require_static_value PGPORT)" != 55432 ] \
+    && [ "$(read_unique_value VERIFY_ALLOW_SOURCE_CLUSTER)" != 1 ] \
+    || fatal "scratch/source connection boundary refused"
+  assert_root_file "scratch public CA" /etc/leaddrive/restore-postgres-ca.crt
+  ! cmp -s /etc/leaddrive/restore-postgres-ca.crt /etc/leaddrive/managed-postgres-ca.crt \
+    || fatal "scratch CA must differ from source CA"
+  state="$(systemctl show --property=ActiveState --value postgresql@16-leaddriverestore.service)" \
+    || fatal "cannot inspect canonical scratch service state"
+  [ "$state" = inactive ] || fatal "canonical scratch service is not inactive"
+  entries="$(systemctl list-units --all --plain --no-legend 'leaddrive-restore-scratch-*.service')" \
+    || fatal "cannot inspect old scratch lifecycle units"
+  [ -z "$entries" ] || fatal "prior scratch lifecycle state exists; preserve and inspect it"
+  assert_scratch_port_free || fatal "scratch port already has a listener"
+  control="$(scratch_control_state)" || fatal "cannot inspect stopped scratch identity"
+  [[ "$control" =~ ^([0-9]{1,20})\|shut\ down$ ]] \
+    || fatal "scratch is not a cleanly stopped standalone cluster"
+  SCRATCH_SYSTEM_IDENTIFIER="${BASH_REMATCH[1]}"
+  source_id="$(scratch_connection_query source "SELECT (pg_control_system()).system_identifier::text")" \
+    || fatal "source identity query failed before scratch launch"
+  [[ "$source_id" =~ ^[0-9]{1,20}$ ]] && [ "$source_id" != "$SCRATCH_SYSTEM_IDENTIFIER" ] \
+    || fatal "scratch system identity is not distinct from source"
+  configured="$(df -B1 --output=avail "$data" | tail -1 | tr -d '[:space:]')"
+  [[ "$configured" =~ ^[0-9]+$ ]] && [ "$configured" -ge 10737418240 ] \
+    || fatal "scratch requires at least 10 GiB free on its separate data filesystem"
+}
+
+start_commission_scratch() {
+  local unit runtime load token state deadline proof runtime_seconds=14520
+  # A metadata-only preflight must not leave a four-hour server behind after
+  # controller loss. Full backup retains its separately reviewed ceiling.
+  [ "$OPERATION" != probe-native-scratch ] || runtime_seconds=600
+  admit_commission_scratch
+  unit="leaddrive-restore-scratch-${WORKFLOW_RUN_ID}.service"
+  runtime="leaddrive-restore-scratch-${WORKFLOW_RUN_ID}"
+  load="$(systemctl show --property=LoadState --value "$unit")" \
+    || fatal "cannot inspect requested scratch unit"
+  [ "$load" = not-found ] || fatal "requested scratch unit already exists"
+  [ ! -e "/run/$runtime" ] && [ ! -L "/run/$runtime" ] \
+    || fatal "scratch runtime already exists"
+  token="$(cat /proc/sys/kernel/random/uuid)"
+  [[ "$token" =~ ^[0-9a-f-]{36}$ ]] || fatal "cannot allocate scratch ownership nonce"
+  SCRATCH_DESCRIPTION="LeadDrive scratch $WORKFLOW_RUN_ID $token"
+  SCRATCH_UNIT="$unit"
+  systemd-run --quiet --unit="$unit" --description="$SCRATCH_DESCRIPTION" \
+    --uid=postgres --gid=postgres --property=Type=exec \
+    --property=RuntimeDirectory="$runtime" --property=RuntimeDirectoryMode=0700 \
+    --property=ProtectSystem=strict \
+    --property=ReadWritePaths=/var/lib/postgresql/16/leaddriverestore \
+    --property=MemoryHigh=805306368 --property=MemoryMax=1073741824 --property=MemorySwapMax=0 \
+    --property=RuntimeMaxSec="$runtime_seconds" --property=TimeoutStopSec=60 \
+    --property=KillSignal=SIGINT --property=KillMode=mixed --property=Restart=no \
+    --property=UMask=0077 --property=LimitCORE=0 --property=TasksMax=64 \
+    --property=NoNewPrivileges=yes --property=PrivateDevices=yes --property=PrivateTmp=yes \
+    --property=PrivateIPC=yes --property=ProtectHome=yes --property=RestrictNamespaces=yes \
+    --property=RestrictAddressFamilies='AF_UNIX AF_INET' --property=RestrictSUIDSGID=yes \
+    --property=StandardOutput=journal --property=StandardError=journal \
+    /usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/leaddriverestore \
+    -c config_file=/etc/postgresql/16/leaddriverestore/postgresql.conf \
+    -c data_directory=/var/lib/postgresql/16/leaddriverestore \
+    -c hba_file=/etc/postgresql/16/leaddriverestore/pg_hba.conf \
+    -c ident_file=/etc/postgresql/16/leaddriverestore/pg_ident.conf \
+    -c listen_addresses=127.0.0.1 -c port=55432 \
+    -c "unix_socket_directories=/run/$runtime" -c "external_pid_file=/run/$runtime/postgres.pid" \
+    -c ssl=on -c ssl_min_protocol_version=TLSv1.2 \
+    -c ssl_cert_file=/etc/postgresql/16/leaddriverestore/server.crt \
+    -c ssl_key_file=/etc/postgresql/16/leaddriverestore/server.key \
+    -c ssl_passphrase_command= -c archive_library= \
+    -c archive_mode=off -c archive_command= -c restore_command= -c primary_conninfo= \
+    -c shared_preload_libraries= -c session_preload_libraries= -c local_preload_libraries= \
+    -c logging_collector=off -c log_destination=stderr \
+    -c max_connections=8 -c shared_buffers=128MB -c work_mem=4MB \
+    -c maintenance_work_mem=64MB -c max_parallel_workers=0 -c max_worker_processes=0 \
+    -c dynamic_shared_memory_type=mmap -c huge_pages=off -c temp_file_limit=1048576 \
+    >/dev/null 2>&1 || fatal "bounded scratch launch failed; cleanup will inspect ownership"
+  SCRATCH_INVOCATION="$(systemctl show --property=InvocationID --value "$unit")"
+  [[ "$SCRATCH_INVOCATION" =~ ^[0-9a-f]{32}$ ]] || fatal "scratch invocation identity is unavailable"
+  deadline=$((SECONDS + 45))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    state="$(systemctl show --property=ActiveState --value "$unit")" || break
+    [ "$state" = active ] || break
+    if proof="$(scratch_connection_query scratch "SELECT (pg_control_system()).system_identifier::text || '|' || current_setting('port') || '|' || rolsuper::int || '|' || rolcreatedb::int || '|' || rolcreaterole::int || '|' || rolreplication::int || '|' || rolbypassrls::int || '|' || rolcanlogin::int || '|' || rolinherit::int || '|' || (SELECT count(*) FROM pg_auth_members WHERE roleid=pg_roles.oid OR member=pg_roles.oid) || '|' || (SELECT ssl::int FROM pg_stat_ssl WHERE pid=pg_backend_pid()) || '|' || (SELECT count(*) FROM pg_database WHERE datname ~ '^leaddrive_restore_(verify|template)_') FROM pg_roles WHERE rolname=session_user")"; then
+      [ "$proof" = "$SCRATCH_SYSTEM_IDENTIFIER|55432|0|1|0|0|0|1|0|0|1|0" ] \
+        || fatal "scratch TLS/limited-role/identity/orphan preflight refused"
+      log "bounded scratch started; distinct identity, verify-full, limited role and no orphan canary proved before dump"
+      return 0
+    fi
+    sleep 1
+  done
+  fatal "scratch TLS readiness deadline expired"
+}
+
+assert_owned_scratch_running() {
+  [ "$SCRATCH_LOCK_HELD" = 1 ] \
+    && [ "$SCRATCH_UNIT" = "leaddrive-restore-scratch-${WORKFLOW_RUN_ID}.service" ] \
+    && [[ "$SCRATCH_INVOCATION" =~ ^[0-9a-f]{32}$ ]] \
+    && [ -n "$SCRATCH_DESCRIPTION" ] \
+    && [ "$(systemctl show --property=Description --value "$SCRATCH_UNIT")" = "$SCRATCH_DESCRIPTION" ] \
+    && [ "$(systemctl show --property=InvocationID --value "$SCRATCH_UNIT")" = "$SCRATCH_INVOCATION" ] \
+    && [ "$(systemctl show --property=ActiveState --value "$SCRATCH_UNIT")" = active ]
+}
+
+scratch_admin_sql() {
+  local database="$1"
+  { [ "$database" = postgres ] || [ "$database" = "$SCRATCH_TEMPLATE" ]; } \
+    && assert_owned_scratch_running || return 1
+  # Local peer socket of this exact active unit, never a source route/passfile.
+  env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C HOME=/nonexistent \
+    PGOPTIONS='-c search_path=pg_catalog,pg_temp -c statement_timeout=20000 -c lock_timeout=5000' \
+    timeout 90 runuser -u postgres -- /usr/lib/postgresql/16/bin/psql \
+    -X -w -qAt -v ON_ERROR_STOP=1 \
+    -h "/run/leaddrive-restore-scratch-${WORKFLOW_RUN_ID}" -p 55432 -U postgres -d "$database" 2>/dev/null
+}
+
+prepare_commission_scratch_template() {
+  local helper="$CODE_STAGE/scripts/backup/native-scratch-template.mjs" sql proof token
+  [ -f "$helper" ] && [ ! -L "$helper" ] && [ -z "$SCRATCH_TEMPLATE" ] \
+    && assert_owned_scratch_running || fatal "native template authority refused"
+  sql="$(node "$helper" --source-contract-sql)" || fatal "source compatibility plan refused"
+  proof="$(scratch_connection_query source "$sql")" \
+    || fatal "source compatibility query failed"
+  [ "$proof" = 1 ] || fatal "source extension/locale contract changed; no template or dump created"
+  SCRATCH_SOURCE_IDENTIFIER="$(scratch_connection_query source 'SELECT (pg_control_system()).system_identifier::text')" \
+    || fatal "cannot recheck source identity before native template"
+  [[ "$SCRATCH_SOURCE_IDENTIFIER" =~ ^[1-9][0-9]{0,19}$ ]] \
+    && [ "$SCRATCH_SOURCE_IDENTIFIER" != "$SCRATCH_SYSTEM_IDENTIFIER" ] \
+    || fatal "native template source/target boundary refused"
+  token="$(cat /proc/sys/kernel/random/uuid)"
+  SCRATCH_TEMPLATE_NONCE="${token//-/}"
+  [[ "$WORKFLOW_RUN_ID" =~ ^[1-9][0-9]{0,19}$ ]] \
+    && [[ "$SCRATCH_TEMPLATE_NONCE" =~ ^[0-9a-f]{32}$ ]] \
+    || fatal "native template ownership nonce refused"
+  SCRATCH_TEMPLATE="leaddrive_restore_template_${WORKFLOW_RUN_ID}_${SCRATCH_TEMPLATE_NONCE:0:12}"
+  node "$helper" --plan create "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" \
+    "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" | scratch_admin_sql postgres >/dev/null \
+    || fatal "native template creation/availability refused; preserve unknown state"
+  node "$helper" --plan bootstrap "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" \
+    "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" | scratch_admin_sql "$SCRATCH_TEMPLATE" >/dev/null \
+    || fatal "native template extension bootstrap refused"
+  node "$helper" --plan seal "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" \
+    "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" | scratch_admin_sql postgres >/dev/null \
+    || fatal "native template connection seal refused"
+  log "owned native UTF8/locale/exact extension template prepared; verifier is NOSUPERUSER"
+}
+
+drop_commission_scratch_template() {
+  local proof helper="$CODE_STAGE/scripts/backup/native-scratch-template.mjs"
+  [ -n "${SCRATCH_TEMPLATE:-}" ] || return 0
+  [ "$SCRATCH_TEMPLATE" = "leaddrive_restore_template_${WORKFLOW_RUN_ID}_${SCRATCH_TEMPLATE_NONCE:0:12}" ] \
+    && assert_owned_scratch_running || return 1
+  proof="$(node "$helper" --plan drop "$SCRATCH_SYSTEM_IDENTIFIER" "$SCRATCH_SOURCE_IDENTIFIER" \
+    "$WORKFLOW_RUN_ID" "$SCRATCH_TEMPLATE_NONCE" | scratch_admin_sql postgres)" || return 1
+  [ "$proof" = 0 ] || return 1
+  SCRATCH_TEMPLATE=""
+  SCRATCH_TEMPLATE_NONCE=""
+  SCRATCH_SOURCE_IDENTIFIER=""
+}
+
+stop_commission_scratch() {
+  local load description invocation control
+  [ -n "$SCRATCH_UNIT" ] || return 0
+  [ "$SCRATCH_LOCK_HELD" = 1 ] \
+    && [ "$SCRATCH_UNIT" = "leaddrive-restore-scratch-${WORKFLOW_RUN_ID}.service" ] \
+    && [ -n "$SCRATCH_DESCRIPTION" ] || return 1
+  load="$(systemctl show --property=LoadState --value "$SCRATCH_UNIT")" || return 1
+  if [ "$load" != not-found ]; then
+    description="$(systemctl show --property=Description --value "$SCRATCH_UNIT")" || return 1
+    [ "$description" = "$SCRATCH_DESCRIPTION" ] || return 1
+    if [ -n "$SCRATCH_INVOCATION" ]; then
+      invocation="$(systemctl show --property=InvocationID --value "$SCRATCH_UNIT")" || return 1
+      # Inactive/expired units can already have lost their invocation ID.
+      [ -z "$invocation" ] || [ "$invocation" = "$SCRATCH_INVOCATION" ] || return 1
+    fi
+    # Expired/unowned services are never restarted to clean data. If a template
+    # remains, preserve it and retain the runner fence for explicit inspection.
+    if [ -n "${SCRATCH_TEMPLATE:-}" ]; then
+      # Still retire our positively identified server on cleanup refusal. The
+      # template/global state remains and prevents a false success or retry.
+      drop_commission_scratch_template || true
+    fi
+    systemctl stop "$SCRATCH_UNIT" >/dev/null 2>&1 || return 1
+  fi
+  assert_scratch_port_free || return 1
+  [ ! -e /var/lib/postgresql/16/leaddriverestore/postmaster.pid ] \
+    && [ ! -L /var/lib/postgresql/16/leaddriverestore/postmaster.pid ] || return 1
+  control="$(scratch_control_state)" || return 1
+  [ "$control" = "$SCRATCH_SYSTEM_IDENTIFIER|shut down" ] || return 1
+  [ -z "${SCRATCH_TEMPLATE:-}" ] || return 1
+  systemctl reset-failed "$SCRATCH_UNIT" >/dev/null 2>&1 || true
+  SCRATCH_UNIT=""
+  SCRATCH_INVOCATION=""
+  log "owned scratch stopped cleanly; no cluster/configuration/credential deletion"
+}
+
+lock_native_preflight_runners() {
+  local service state spec fd file expected
+  # This preparatory route never masks, enables, disables or repairs a runner.
+  # Require the owner-only disabled boundary and hold the same existing lock
+  # inodes as every real writer; no unrelated lock/directory is created.
+  assert_owner_source_boundary
+  for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
+    state="$(systemctl is-active "$service" 2>/dev/null || true)"
+    case "$state" in inactive|failed|unknown) ;; *) fatal "scratch preflight requires inactive recovery services" ;; esac
+  done
+  for spec in "8:$BACKUP_RUNTIME_LOCK:root:leaddrive-backup:660" \
+    "7:$SECRETS_RUNTIME_LOCK:root:root:600" \
+    "6:$RUNTIME_FILES_RUNTIME_LOCK:root:root:600" \
+    "5:$LOG_RUNTIME_LOCK:root:leaddrive-backup:660"; do
+    fd="${spec%%:*}"; spec="${spec#*:}"; file="${spec%%:*}"; expected="${spec#*:}"
+    assert_root_directory "recovery lock authority" "${file%/*}"
+    [ "$(realpath -e -- "${file%/*}")" = "${file%/*}" ] \
+      && [ -f "$file" ] && [ ! -L "$file" ] \
+      && [ "$(stat -c '%U:%G:%a:%h' -- "$file")" = "$expected:1" ] \
+      || fatal "scratch preflight persistent lock authority refused"
+    case "$fd" in
+      8) exec 8<"$file" ;;
+      7) exec 7<"$file" ;;
+      6) exec 6<"$file" ;;
+      5) exec 5<"$file" ;;
+      *) fatal "scratch preflight lock descriptor refused" ;;
+    esac
+    flock -n "$fd" || fatal "a recovery writer is active; scratch preflight refused"
+    [ "$(stat -Lc '%d:%i' -- "$file")" = "$(stat -Lc '%d:%i' -- "/proc/$$/fd/$fd")" ] \
+      || fatal "scratch preflight lock inode changed"
+    case "$fd" in
+      8) BACKUP_LOCK_HELD=1 ;;
+      7) SECRETS_LOCK_HELD=1 ;;
+      6) RUNTIME_FILES_LOCK_HELD=1 ;;
+      5) LOG_LOCK_HELD=1 ;;
+    esac
+  done
+}
+
+native_preflight_preservation_digest() {
+  local file
+  # Hashes and private paths remain inside this process, never in the report.
+  # No content is staged, uploaded or accepted as a recovery receipt.
+  for file in "$BACKUP_ENV_FILE" /etc/leaddrive/backup.pgpass \
+    /etc/leaddrive/restore-verifier.pgpass /etc/leaddrive/managed-postgres-ca.crt \
+    /etc/leaddrive/restore-postgres-ca.crt \
+    /etc/postgresql/16/leaddriverestore/postgresql.conf \
+    /etc/postgresql/16/leaddriverestore/pg_hba.conf \
+    /etc/postgresql/16/leaddriverestore/server.crt \
+    /etc/postgresql/16/leaddriverestore/server.key \
+    /opt/leaddrive-v2/.next/standalone/.deploy-sha; do
+    [ -f "$file" ] && [ ! -L "$file" ] \
+      && [ "$(realpath -e -- "$file")" = "$file" ] \
+      && [ "$(stat -c '%h' -- "$file")" = 1 ] || return 1
+    stat -c '%d:%i:%u:%g:%a:%s' -- "$file" || return 1
+    sha256sum -- "$file" || return 1
+  done | sha256sum | awk '{print $1}'
+}
+
+probe_native_scratch_template() {
+  local before after source_before source_after sql proof
+  assert_confirmation CHECK_NATIVE_SCRATCH_TEMPLATE_ON_13_140_132_245
+  [ -z "$EXPECTED_RECIPIENT_SHA256$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256$OWNER_RECIPIENT" ] \
+    || fatal "native scratch preflight accepts no keys, recipients or recovery evidence"
+  for proof in "$INCOMING_EVIDENCE_BUNDLE" "$INCOMING_ALLOWED_SIGNERS" \
+    "$INCOMING_MONITORING_CONFIG" "$INCOMING_B2_WRITER_CONFIG"; do
+    [ ! -e "$proof" ] && [ ! -L "$proof" ] \
+      || fatal "native scratch preflight refuses unrelated protected inputs"
+  done
+  assert_backup_env
+  assert_root_file "live deployment marker" /opt/leaddrive-v2/.next/standalone/.deploy-sha
+  [ "$(cat /opt/leaddrive-v2/.next/standalone/.deploy-sha)" = "$WORKFLOW_SHA" ] \
+    || fatal "native scratch preflight requires exact reviewed main to be live"
+  lock_native_preflight_runners
+  prepare_commission_code
+  before="$(native_preflight_preservation_digest)" || fatal "cannot snapshot native preflight configuration authority"
+  [[ "$before" =~ ^[0-9a-f]{64}$ ]] || fatal "invalid native preflight preservation digest"
+  source_before="$(scratch_connection_query source 'SELECT (pg_control_system()).system_identifier::text || chr(124) || pg_postmaster_start_time()::text')" \
+    || fatal "cannot snapshot source lifecycle before native preflight"
+  [[ "$source_before" =~ ^[1-9][0-9]{0,19}\|.+$ ]] || fatal "source lifecycle proof is empty or malformed"
+  start_commission_scratch
+  prepare_commission_scratch_template
+  # No customer clone/dump/restore or upload. All DDL is restricted by the
+  # existing planner to the newly owned empty scratch template.
+  drop_commission_scratch_template || fatal "native preflight owned template cleanup refused"
+  stop_commission_scratch || fatal "native preflight clean shutdown not proved"
+  sql="$(node "$CODE_STAGE/scripts/backup/native-scratch-template.mjs" --source-contract-sql)" \
+    || fatal "native preflight final source plan refused"
+  proof="$(scratch_connection_query source "$sql")" \
+    || fatal "native preflight final source compatibility query failed"
+  [ "$proof" = 1 ] || fatal "source compatibility changed during native preflight"
+  source_after="$(scratch_connection_query source 'SELECT (pg_control_system()).system_identifier::text || chr(124) || pg_postmaster_start_time()::text')" \
+    || fatal "cannot recheck source lifecycle after native preflight"
+  after="$(native_preflight_preservation_digest)" || fatal "cannot recheck native preflight configuration authority"
+  [ "$before" = "$after" ] && [ "$source_before" = "$source_after" ] \
+    || fatal "native preflight preservation proof changed; not a successful preflight"
+  assert_owner_source_boundary
+  release_backup_locks
+  log "NATIVE_SCRATCH_PREFLIGHT=passed; owned empty template removed; scratch stopped; source lifecycle/configuration unchanged"
+  log "REAL_BACKUP=not_run REAL_RESTORE=not_run B2_UPLOAD=not_run SCHEDULE_ACTIVATION=not_run KAFKA=not_run"
+}
+
 LAST_TRANSIENT_INVOCATION=""
 run_transient_backup_unit() {
   local label="$1"
@@ -2551,7 +3220,7 @@ run_transient_backup_unit() {
   local timeout_seconds="$5"
   local output_file="$6"
   local unit="leaddrive-backup-commission-${label}-${WORKFLOW_RUN_ID}.service"
-  local launch_status result exec_status invocation load_state active_state sub_state deadline
+  local launch_status result exec_status invocation load_state active_state sub_state deadline workspace_uid workspace_gid
   local -a identity_args=()
   local -a storage_args=()
   local -a executable_args=()
@@ -2564,13 +3233,25 @@ run_transient_backup_unit() {
   fi
   case "$label" in
     database)
+      assert_transient_database_memory_budget
+      workspace_uid="$(id -u -- "$run_user")"
+      workspace_gid="$(getent group "$run_group" | awk -F: '{ print $3 }')"
+      [[ "$workspace_uid" =~ ^[0-9]+$ ]] && [ "$workspace_uid" -gt 0 ] \
+        && [[ "$workspace_gid" =~ ^[0-9]+$ ]] && [ "$workspace_gid" -gt 0 ] \
+        || fatal "database workspace requires the dedicated unprivileged identity"
+      assert_empty_transient_workspace /run/leaddrive-postgres-backup "$workspace_uid" "$workspace_gid"
       storage_args=(
         --property=StateDirectory=leaddrive-postgres-backup
         --property=StateDirectoryMode=0750
-        --property=RuntimeDirectory=leaddrive-postgres-backup
-        --property=RuntimeDirectoryMode=0750
         --property=ReadWritePaths=/var/lib/leaddrive-postgres-backup
-        --property=ReadWritePaths=/run/leaddrive-postgres-backup
+        # Separate mount in this unit only; never resize/remount global /run.
+        # Do not also declare RuntimeDirectory or ReadWritePaths for this path:
+        # systemd's same-path bind/access mount wins over TemporaryFileSystem.
+        # The guarded, pre-existing host directory remains empty underneath.
+        # The ceiling is not preallocation. Cgroup memory includes tmpfs pages.
+        "--property=TemporaryFileSystem=/run/leaddrive-postgres-backup:rw,nodev,nosuid,noexec,size=3221225472,mode=0750,uid=$workspace_uid,gid=$workspace_gid"
+        --property=MemoryHigh=3221225472
+        --property=MemoryMax=4294967296
       )
       executable_args=(--commission-monthly)
       ;;
@@ -2598,6 +3279,14 @@ run_transient_backup_unit() {
       ;;
     *) fatal "unsupported transient backup label" ;;
   esac
+  if [ "$OPERATION" = run-owner-backup ]; then
+    executable_args=(--owner-operated "$OWNER_RECIPIENT")
+  fi
+  if [ "$label" = database ]; then
+    [[ "${SCRATCH_TEMPLATE:-}" =~ ^leaddrive_restore_template_[1-9][0-9]{0,19}_[0-9a-f]{12}$ ]] \
+      || fatal "database worker requires its admitted native template"
+    executable_args=(--scratch-template "$SCRATCH_TEMPLATE" "${executable_args[@]}")
+  fi
   ACTIVE_TRANSIENT_UNIT="$unit"
   set +e
   systemd-run --quiet \
@@ -2608,6 +3297,7 @@ run_transient_backup_unit() {
     --property=StandardOutput=journal \
     --property=StandardError=journal \
     --property=TimeoutStartSec="$timeout_seconds" \
+    --property=RuntimeMaxSec="$timeout_seconds" \
     --property=MemorySwapMax=0 \
     --property=UMask=0077 \
     --property=NoNewPrivileges=yes \
@@ -2685,6 +3375,18 @@ run_verified_backup() {
   local candidate_file candidate_sha created_at code_bundle_sha candidate_format_version recovery_scope
 
   case "$OPERATION" in
+    run-owner-backup)
+      assert_confirmation "CREATE_OWNER_BACKUP_ON_13_140_132_245"
+      candidate_format_version=2
+      recovery_scope=owner-operated-data-only
+      assert_owner_evidence_inputs
+      [ -z "$EXPECTED_CANDIDATE_SHA256" ] || fatal "owner backup cannot claim prior restore"
+      [[ "$OWNER_RECIPIENT" =~ ^age1[0-9a-z]{58}$ ]] \
+        && [ "$(recipient_sha256 "$OWNER_RECIPIENT")" = "$EXPECTED_RECIPIENT_SHA256" ] \
+        || fatal "owner recipient does not bind the key-readability proof"
+      verify_owner_key_proof
+      assert_owner_source_boundary
+      ;;
     run-bootstrap-backup)
       assert_confirmation "CREATE_BOOTSTRAP_BACKUP_ON_13_140_132_245"
       candidate_format_version=2
@@ -2697,24 +3399,41 @@ run_verified_backup() {
       ;;
     *) fatal "backup creation was invoked through an unsupported operation" ;;
   esac
-  [ -z "$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256" ] \
-    || fatal "backup creation accepts only the reviewed recipient digest"
+  if [ "$OPERATION" != run-owner-backup ]; then
+    [ -z "$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256" ] \
+      || fatal "backup creation accepts only the reviewed recipient digest"
+  fi
   fence_backup_runner
   assert_backup_env
   assert_toolchain
-  recipient="$(assert_expected_recipient)"
-  recipient_sha="$(recipient_sha256 "$recipient")"
-  assert_custody_marker "$recipient_sha"
-  encryption="$(read_unique_value BACKUP_ENCRYPTION)"
-  [ "${encryption:-age}" = "age" ] || fatal "refusing to run an unencrypted backup"
+  if [ "$OPERATION" = run-owner-backup ]; then
+    recipient="$OWNER_RECIPIENT"
+    recipient_sha="$EXPECTED_RECIPIENT_SHA256"
+  else
+    recipient="$(assert_expected_recipient)"
+    recipient_sha="$(recipient_sha256 "$recipient")"
+    assert_custody_marker "$recipient_sha"
+    encryption="$(read_unique_value BACKUP_ENCRYPTION)"
+    [ "${encryption:-age}" = "age" ] || fatal "refusing to run an unencrypted backup"
+  fi
   prove_object_lock
+  if [ "$OPERATION" = run-owner-backup ]; then
+    install_or_validate_allowed_signers
+    SIGNED_EVIDENCE_FILE="$REMOTE_INPUT_STAGE/owner-key.env"
+    SIGNED_SIGNATURE_FILE="$REMOTE_INPUT_STAGE/owner-key.env.sig"
+    SIGNED_EVIDENCE_SHA256="$(sha256sum "$SIGNED_EVIDENCE_FILE" | awk '{print $1}')"
+    SIGNED_SIGNATURE_SHA256="$(sha256sum "$SIGNED_SIGNATURE_FILE" | awk '{print $1}')"
+    preserve_signed_evidence
+  fi
   ensure_evidence_directories
   candidate_file="$CANDIDATE_DIR/${WORKFLOW_RUN_ID}.env"
   [ ! -e "$candidate_file" ] && [ ! -L "$candidate_file" ] \
     || fatal "this workflow run already has a candidate record"
   prepare_commission_code
   code_bundle_sha="$(sha256sum "$INCOMING_CODE_BUNDLE" | awk '{print $1}')"
-  if [ "$candidate_format_version" = 2 ]; then
+  if [ "$OPERATION" = run-owner-backup ]; then
+    : # Data-only owner proof never reads/writes log cursor/genesis authority.
+  elif [ "$candidate_format_version" = 2 ]; then
     [ ! -e "$LOG_GENESIS_ANCHOR" ] && [ ! -L "$LOG_GENESIS_ANCHOR" ] \
       || fatal "bootstrap-only backup is forbidden after a log-genesis anchor exists"
     for path in "$LOG_BOOTSTRAP_TRANSACTION" "$LOG_BOOTSTRAP_PREPARING" "$LOG_BOOTSTRAP_TOMBSTONE"; do
@@ -2734,10 +3453,13 @@ run_verified_backup() {
   database_log="$WORK_DIR/database.log"
   secrets_log="$WORK_DIR/secrets.log"
   runtime_files_log="$WORK_DIR/runtime-files.log"
+  start_commission_scratch
+  prepare_commission_scratch_template
   release_backup_locks
   run_transient_backup_unit database leaddrive-backup leaddrive-backup \
     "$CODE_STAGE/scripts/backup/postgres-backup.sh" 14400 "$database_log"
   database_invocation="$LAST_TRANSIENT_INVOCATION"
+  stop_commission_scratch || fatal "scratch shutdown was not proved; no completed candidate admitted"
   run_transient_backup_unit secrets root root \
     "$CODE_STAGE/scripts/backup/snapshot-secrets.sh" 1800 "$secrets_log"
   secrets_invocation="$LAST_TRANSIENT_INVOCATION"
@@ -3425,10 +4147,123 @@ certify_offline_restore() {
   log "independent $recovery_scope evidence certified; all four recovery timers remain disabled for the matching reviewed deployment stage"
 }
 
-recover_commission_runner_fence
+if [ "$OPERATION" = configure-b2-writer ] || [ "$OPERATION" = probe-native-scratch ]; then
+  [ ! -e "$COMMISSION_FENCE_JOURNAL" ] && [ ! -L "$COMMISSION_FENCE_JOURNAL" ] \
+    || {
+      [ "$OPERATION" != probe-native-scratch ] \
+        || fatal "native preflight refuses a pending commissioning fence; use the existing recovery procedure"
+      fatal "storage setup refuses a pending commissioning fence; use the existing recovery procedure"
+    }
+else
+  recover_commission_runner_fence
+fi
+
+# Owner-only technical route: no independent marker, env mutation, log genesis,
+# schedule activation or implicit fallback from the independent ceremony.
+assert_owner_evidence_inputs() {
+  local epoch now
+  [ "$KEY_CUSTODY_ATTESTATION" = OWNER_OPERATED_ONLINE_CUSTODY_ACCEPTED ] \
+    || fatal "owner-operated custody policy was not explicitly accepted"
+  [ "$OFFLINE_OPERATOR" = "$WORKFLOW_ACTOR" ] \
+    || fatal "owner proof principal must be the authenticated workflow actor"
+  [[ "$EXPECTED_RECIPIENT_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    && [[ "$EVIDENCE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$ ]] \
+    && [[ "$EVIDENCE_AT_UTC" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] \
+    || fatal "invalid owner evidence binding"
+  epoch="$(date -u -d "$EVIDENCE_AT_UTC" '+%s')" || fatal "invalid owner evidence time"
+  now="$(date -u '+%s')"
+  [ "$epoch" -le $((now + 300)) ] && [ "$epoch" -ge $((now - 86400)) ] \
+    || fatal "owner operation requires evidence within24h and at most5min future"
+}
+
+assert_owner_source_boundary() {
+  local timer load
+  [ "$(read_unique_value BACKUP_ENCRYPTION)" != age ] \
+    || fatal "owner one-shot route cannot operate on an independently commissioned host"
+  for timer in "$BACKUP_TIMER" "$SECRETS_TIMER" "$RUNTIME_FILES_TIMER" "$LOG_TIMER"; do
+    load="$(systemctl show --property=LoadState --value "$timer" 2>/dev/null || true)"
+    if [ "$load" != not-found ]; then
+      [ "$load" = loaded ] \
+        && [ "$(systemctl is-enabled "$timer" 2>/dev/null || true)" = disabled ] \
+        && [ "$(systemctl is-active "$timer" 2>/dev/null || true)" = inactive ] \
+        || fatal "owner one-shot route requires all existing recovery timers disabled/inactive"
+    fi
+  done
+}
+
+verify_owner_key_proof() {
+  local verifier="$REMOTE_INPUT_STAGE/owner-key-proof.mjs" file
+  for file in "$verifier" "$REMOTE_INPUT_STAGE/owner-key.env" \
+    "$REMOTE_INPUT_STAGE/owner-key.env.sig" "$INCOMING_ALLOWED_SIGNERS"; do
+    assert_root_file "owner proof input" "$file"
+    [ "$(stat -c '%a' "$file")" = 600 ] || fatal "unsafe owner proof input mode"
+  done
+  [ "$(sha256sum "$verifier" | awk '{print $1}')" = "$OWNER_KEY_VERIFIER_SHA256" ] \
+    || fatal "owner key verifier differs from reviewed code"
+  node "$verifier" verify "$REMOTE_INPUT_STAGE/owner-key.env" \
+    "$REMOTE_INPUT_STAGE/owner-key.env.sig" "$INCOMING_ALLOWED_SIGNERS" \
+    "$EXPECTED_RECIPIENT_SHA256" "$EVIDENCE_MAIN_SHA" "$WORKFLOW_ACTOR" >/dev/null \
+    || fatal "owner key-readability signature/proof did not verify"
+  [ "$(read_unique_value_from "$REMOTE_INPUT_STAGE/owner-key.env" VERIFIED_AT_UTC)" = "$EVIDENCE_AT_UTC" ] \
+    || fatal "owner key proof time differs from workflow input"
+}
+
+certify_owner_restore() {
+  local candidate_file candidate_epoch evidence_epoch recorded_at target
+  assert_confirmation "CERTIFY_OWNER_RESTORE_ON_13_140_132_245"
+  assert_owner_evidence_inputs
+  [ -z "$OWNER_RECIPIENT" ] || fatal "owner restore certification does not accept a recipient override"
+  [[ "$EXPECTED_CANDIDATE_SHA256" =~ ^[0-9a-f]{64}$ ]] || fatal "owner candidate digest required"
+  assert_backup_env
+  assert_toolchain
+  assert_owner_source_boundary
+  candidate_file="$(find_candidate_by_digest "$EXPECTED_CANDIDATE_SHA256")"
+  [ "$(read_unique_value_from "$candidate_file" FORMAT_VERSION)" = 2 ] \
+    && [ "$(read_unique_value_from "$candidate_file" RECOVERY_SCOPE)" = owner-operated-data-only ] \
+    && [ "$(read_unique_value_from "$candidate_file" WORKFLOW_SHA)" = "$EVIDENCE_MAIN_SHA" ] \
+    && [ "$(read_unique_value_from "$candidate_file" CREATED_BY)" = "$WORKFLOW_ACTOR" ] \
+    && [ "$(read_unique_value_from "$candidate_file" RECIPIENT_SHA256)" = "$EXPECTED_RECIPIENT_SHA256" ] \
+    || fatal "owner candidate does not bind this actor/main/recipient"
+  candidate_epoch="$(date -u -d "$(read_unique_value_from "$candidate_file" CREATED_AT_UTC)" '+%s')" \
+    || fatal "owner candidate time invalid"
+  evidence_epoch="$(date -u -d "$EVIDENCE_AT_UTC" '+%s')"
+  [ "$evidence_epoch" -ge "$candidate_epoch" ] || fatal "owner restore evidence predates candidate"
+  prove_object_lock
+  install_or_validate_allowed_signers
+  verify_signed_evidence owner-archive-restore "$EXPECTED_RECIPIENT_SHA256" "$candidate_file"
+  assert_candidate_remote_objects "$candidate_file"
+  preserve_signed_evidence
+  recorded_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  target="$RESTORE_DIR/owner-${WORKFLOW_RUN_ID}.env"
+  [ ! -e "$target" ] && [ ! -L "$target" ] || fatal "owner receipt already exists"
+  MARKER_STAGE="$(mktemp "$RESTORE_DIR/.owner-restore-stage.XXXXXX")"
+  printf '%s\n' 'FORMAT_VERSION=1' 'EVIDENCE_TYPE=owner-archive-restore' \
+    'STATUS=technical_restore_verified' 'OPERATOR_MODEL=owner_operated' \
+    'INDEPENDENT_HUMAN_REVIEW=not_performed' 'TWO_OFFLINE_MEDIA=not_met' \
+    'INDEPENDENT_READY=no' 'ENTERPRISE_GA_READY=no' \
+    "CANDIDATE_SHA256=$EXPECTED_CANDIDATE_SHA256" \
+    "RECIPIENT_SHA256=$EXPECTED_RECIPIENT_SHA256" \
+    "SIGNED_EVIDENCE_SHA256=$SIGNED_EVIDENCE_SHA256" \
+    "SIGNED_SIGNATURE_SHA256=$SIGNED_SIGNATURE_SHA256" \
+    "ALLOWED_SIGNERS_SHA256=$ALLOWED_SIGNERS_SHA256" \
+    "REVIEWED_MAIN_SHA=$WORKFLOW_SHA" "CANDIDATE_MAIN_SHA=$EVIDENCE_MAIN_SHA" \
+    "OWNER_OPERATOR=$WORKFLOW_ACTOR" \
+    "RECORDED_AT_UTC=$recorded_at" "WORKFLOW_RUN_ID=$WORKFLOW_RUN_ID" >"$MARKER_STAGE"
+  chmod 0600 "$MARKER_STAGE"
+  sync -f -- "$MARKER_STAGE" "$RESTORE_DIR"
+  ln -- "$MARKER_STAGE" "$target" || fatal "owner receipt publication raced; nothing overwritten"
+  unlink -- "$MARKER_STAGE"
+  MARKER_STAGE=""
+  sync -f -- "$target" "$RESTORE_DIR"
+  log "owner technical restore recorded; independent_ready=no enterprise_ga_ready=no; schedules unchanged"
+}
 
 case "$OPERATION" in
+  probe-native-scratch) probe_native_scratch_template ;;
+  run-owner-backup) run_verified_backup ;;
+  certify-owner-restore) certify_owner_restore ;;
   configure-monitoring-urls) configure_monitoring_urls ;;
+  configure-b2-writer) configure_b2_writer ;;
   install-backup-tools) install_tools ;;
   activate-backup-encryption) activate_encryption ;;
   run-bootstrap-backup|run-verified-backup) run_verified_backup ;;

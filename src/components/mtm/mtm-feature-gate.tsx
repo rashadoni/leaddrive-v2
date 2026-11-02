@@ -48,8 +48,8 @@ export function MtmFeatureGate({ feature, children }: { feature: keyof typeof FE
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center" data-testid={`${config.testId}-disabled`}>
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-        <Icon className="h-7 w-7 text-primary" aria-hidden="true" />
+      <div className="flex h-16 w-16 items-center justify-center">
+        <Icon className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
       </div>
       <h1 className="mt-5 text-lg font-semibold text-foreground">{t("title")}</h1>
       <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">{t("body")}</p>

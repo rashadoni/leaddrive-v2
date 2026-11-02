@@ -1,0 +1,11 @@
+# Installed by scripts/zeytun-line/install-watch.sh.
+[Unit]
+Description=Zeytun line watch: ask the line the way the station does, tell the owner on Telegram
+OnFailure=ld-line-watch-failed.service
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@
+# One request (10 s at most) and at most a few Telegram sends.
+TimeoutStartSec=2min
+Nice=5

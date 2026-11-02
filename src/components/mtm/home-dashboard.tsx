@@ -109,6 +109,8 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
   const comparison = totals && !regionOnly ? weekComparison(totals, week.previous) : { kind: "unknown" as const }
   const card = today ? planCard({ today, plan, nextWorkday: attention.data?.nextWorkday ?? null }) : { kind: "none" as const }
   const waiting = attentionRowCount(attention.data)
+  // Until the first team list arrives every figure is still on its way.
+  const teamPending = !team && !teamFailed
   // The lower row: read once a day per filters, never polled.
   const insights = useHomeInsights({ organizationId, viewerId, regionId, teamId, today })
 
@@ -136,6 +138,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
   const planKpi = card.kind === "today"
     ? {
         label: t("kpiTodayPlan"),
+        hint: t("hint.kpiTodayPlan"),
         icon: <CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />,
         // A plan in progress is never red: at noon a third done is the day, not a failure.
         tone: (planPercent !== null && planPercent >= 95 ? "green" : "amber") as HomeTone,
@@ -148,6 +151,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
     : card.kind === "next"
       ? {
           label: card.isTomorrow ? t("kpiTomorrowPlan") : t("kpiNextDayPlan", { date: dayLabel(card.date, locale, { day: "numeric", month: "short" }) }),
+          hint: t("hint.kpiNextDayPlan"),
           icon: <RouteIcon className="h-[18px] w-[18px]" aria-hidden="true" />,
           tone: (card.withRoute === 0 ? "red" : card.withRoute >= card.agents ? "green" : "amber") as HomeTone,
           value: String(card.withRoute),
@@ -161,6 +165,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
         }
       : {
           label: t("kpiTodayPlan"),
+          hint: t("hint.kpiTodayPlan"),
           icon: <CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />,
           tone: "zinc" as HomeTone,
           value: null,
@@ -217,17 +222,20 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
         <HomeKpi
           testId="mtm-home-kpi-field"
           label={t("kpiInField")}
+          hint={t("hint.kpiInField")}
           icon={<MapPin className="h-[18px] w-[18px]" aria-hidden="true" />}
           tone={now.inField > 0 ? "green" : "zinc"}
           value={team ? String(now.inField) : null}
           unit={team ? t("kpiInFieldUnit", { total: now.total }) : null}
           pill={now.atCustomer > 0 ? t("pillAtCustomer", { count: now.atCustomer }) : null}
           sub={fieldSub}
+          loading={teamPending}
         />
-        <HomeKpi testId="mtm-home-kpi-plan" {...planKpi} />
+        <HomeKpi testId="mtm-home-kpi-plan" {...planKpi} loading={teamPending} />
         <HomeKpi
           testId="mtm-home-kpi-week"
           label={t("kpiWeekPlan")}
+          hint={t("hint.kpiWeekPlan")}
           icon={<TrendingUp className="h-[18px] w-[18px]" aria-hidden="true" />}
           tone={weekTone}
           value={totals && totals.planned > 0 ? String(totals.done) : null}
@@ -235,15 +243,18 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
           pill={weekPercent !== null ? `${weekPercent}%` : null}
           progress={weekPercent}
           sub={weekSub}
+          loading={teamPending}
         />
         <HomeKpi
           testId="mtm-home-kpi-attention"
           label={t("kpiAttention")}
+          hint={t("hint.kpiAttention")}
           icon={<BellRing className="h-[18px] w-[18px]" aria-hidden="true" />}
           tone={waiting === null ? "zinc" : waiting > 0 ? "amber" : "green"}
           value={waiting === null ? null : String(waiting)}
           unit={waiting ? t("issuesUnit", { count: waiting }) : null}
           sub={waiting === null ? (attention.failed ? t("attentionLoadFailed") : null) : waiting === 0 ? t("attentionClear") : waitingParts}
+          loading={waiting === null && !attention.failed}
         />
       </div>
 

@@ -34,7 +34,10 @@ export function splitHistoryPathAtGaps(
 
 /** One palette for the map and its legend, so the two cannot disagree. */
 export const HISTORY_MAP_COLORS = {
-  track: "#2563eb",
+  /** The day's line where he drove (owner 2026-11-01: car / on foot on the line itself). */
+  track: "#1d4ed8",
+  /** Where he walked: the same line, green and dotted. */
+  walk: "#0d8a4a",
   gap: "#dc2626",
   plan: "#7c3aed",
   stop: "#f59e0b",

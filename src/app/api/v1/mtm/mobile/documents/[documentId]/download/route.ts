@@ -2,11 +2,11 @@ import { readFile, stat } from "node:fs/promises"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { contentDispositionAttachment } from "@/lib/export/tabular"
-import { resolveMobileDocumentStoragePath } from "@/lib/mtm/mobile-document"
+import { resolveMobileDocumentStoragePath, storedMobileDocumentBytes } from "@/lib/mtm/mobile-document"
 import { requireMtmMobileMediaAccess } from "@/lib/mtm/mobile-media-guard"
 import { mtmMediaObjectReadFailureResponse } from "@/lib/mtm/media-object-http"
 import { readCommittedMtmMediaObject, toMtmReservedMediaObject } from "@/lib/mtm/media-object-lifecycle"
-import { expandVisibleProductGroupIds } from "@/lib/mtm/product-group-access"
+import { mtmPhoneProductWhere } from "@/lib/mtm/product-visibility"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 
 type RouteContext = { params: Promise<{ documentId: string }> }
@@ -21,20 +21,6 @@ export const GET = withMobileRls<RouteContext>(async (req, auth, { params }) => 
   }
 
   try {
-    const productGroups = await prisma.mtmProductGroup.findMany({
-      where: { organizationId: auth.orgId, isActive: true },
-      select: {
-        id: true,
-        parentId: true,
-        members: { where: { agentId: auth.agentId }, select: { id: true } },
-      },
-    })
-    const visibleProductGroupIds = expandVisibleProductGroupIds(productGroups.map((group) => ({
-      id: group.id,
-      parentId: group.parentId,
-      hasDirectMembership: group.members.length > 0,
-    })))
-
     const document = await prisma.mtmDocument.findFirst({
       where: {
         id: documentId,
@@ -52,15 +38,8 @@ export const GET = withMobileRls<RouteContext>(async (req, auth, { params }) => 
               },
             },
           },
-          ...(visibleProductGroupIds.size > 0 ? [{
-            products: {
-              some: {
-                organizationId: auth.orgId,
-                groupId: { in: [...visibleProductGroupIds] },
-                isActive: true,
-              },
-            },
-          }] : []),
+          // A presentation's file goes to whoever gets the presentation in the app.
+          { products: { some: mtmPhoneProductWhere({ orgId: auth.orgId, agentId: auth.agentId }) } },
         ],
       },
       select: {
@@ -103,11 +82,14 @@ export const GET = withMobileRls<RouteContext>(async (req, auth, { params }) => 
       }
     } else {
       const filePath = resolveMobileDocumentStoragePath(document.storageKey)
-      const [fileStat, legacyBytes] = await Promise.all([stat(filePath), readFile(filePath)])
-      if (!fileStat.isFile() || fileStat.size !== document.sizeBytes) {
+      const [fileStat, storedBytes] = await Promise.all([stat(filePath), readFile(filePath)])
+      // An encrypted file is larger on disk than the recorded plain size, so the
+      // plain size is compared after decoding.
+      const plainBytes = await storedMobileDocumentBytes(auth.orgId, { isFile: fileStat.isFile(), size: fileStat.size }, storedBytes)
+      if (!plainBytes || plainBytes.byteLength !== document.sizeBytes) {
         return NextResponse.json({ error: "Document file is unavailable" }, { status: 410 })
       }
-      bytes = legacyBytes
+      bytes = plainBytes
     }
     if (bytes.byteLength !== document.sizeBytes) {
       return NextResponse.json({ error: "Document file is unavailable" }, { status: 410 })

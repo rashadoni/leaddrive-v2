@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
@@ -164,15 +165,17 @@ export function LiveMapAgentEvents({
             </ol>
           ) : null}
           {hidden > 0 || (expanded && events.length > SHOWN_AT_FIRST) ? (
-            <button
-              type="button"
-              onClick={() => setExpanded((open) => !open)}
-              aria-expanded={expanded}
-              data-testid="live-map-agent-events-more"
-              className="mt-1 inline-flex min-h-8 items-center font-semibold text-orange-700 underline underline-offset-2 dark:text-primary [@media(pointer:coarse)]:min-h-11"
-            >
-              {expanded ? tMap("events.fewer") : tMap("events.more", { count: hidden })}
-            </button>
+            <Hint text={tMap(expanded ? "hint.eventsFewer" : "hint.eventsMore")}>
+              <button
+                type="button"
+                onClick={() => setExpanded((open) => !open)}
+                aria-expanded={expanded}
+                data-testid="live-map-agent-events-more"
+                className="mt-1 inline-flex min-h-8 items-center font-semibold text-orange-700 underline underline-offset-2 dark:text-primary [@media(pointer:coarse)]:min-h-11"
+              >
+                {expanded ? tMap("events.fewer") : tMap("events.more", { count: hidden })}
+              </button>
+            </Hint>
           ) : null}
           {known.cut && (expanded || hidden === 0) ? (
             <div className="mt-1 text-muted-foreground" data-testid="live-map-agent-events-cut">{tMap("events.cut", { count: ACTIVITY_LIMIT })}</div>

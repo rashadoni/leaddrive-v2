@@ -183,7 +183,7 @@ export function CsvImportDialog({ open, onOpenChange, entityType, onImported }: 
                   <span className="text-xs w-[120px] truncate font-mono bg-muted px-2 py-1 rounded">{h}</span>
                   <span className="text-xs text-muted-foreground">→</span>
                   <select
-                    className="text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 flex-1"
+                    className="text-xs border border-input rounded px-2 py-1 flex-1"
                     value={fieldMapping[h] || ""}
                     onChange={e => setFieldMapping(prev => ({ ...prev, [h]: e.target.value || null }))}
                   >
@@ -197,7 +197,7 @@ export function CsvImportDialog({ open, onOpenChange, entityType, onImported }: 
             </div>
 
             {/* Preview rows */}
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-auto max-h-[200px]">
+            <div className="rounded-lg border border-border overflow-auto max-h-[200px]">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-muted/50">

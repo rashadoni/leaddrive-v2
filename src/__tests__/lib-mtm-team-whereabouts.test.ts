@@ -60,7 +60,7 @@ describe("the team rows carry the next stop", () => {
     const card = readFileSync("src/components/mtm/home-team-card.tsx", "utf8")
     expect(card).toContain('t("detailAtCustomer"')
     expect(card).toContain('t("detailHeading"')
-    expect(card).toContain('action={{ href: "/mtm/map", label: t("openMap") }}')
+    expect(card).toContain('action={{ href: "/mtm/map", label: t("openMap"), hint: t("hint.openMap") }}')
     const dashboard = readFileSync("src/components/mtm/home-dashboard.tsx", "utf8")
     expect(dashboard).toContain("homeTeam(team.rows, team.workdayEnabled)")
   })

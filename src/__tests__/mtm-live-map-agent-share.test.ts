@@ -544,7 +544,8 @@ describe("the «Ссылка на местоположение» block of the ca
       await press(byTestId("live-map-share-revoke-link-1"))
       expect(comesBefore(copyButton, byTestId("live-map-share-revoke-step-link-1"))).toBe(true)
       // The keyboard walks the page in that order: nothing in the block is given a place of its own.
-      expect(container.querySelectorAll('[tabindex]:not([tabindex="-1"])')).toHaveLength(0)
+      // (A value with a hint is reachable — tabindex 0 — but in the page's order, not ahead of it.)
+      expect(container.querySelectorAll('[tabindex]:not([tabindex="-1"]):not([tabindex="0"])')).toHaveLength(0)
     })
 
     it("a link somebody else has already stopped: said in words, the row goes, and the list is read again", async () => {

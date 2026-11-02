@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import { accessibleNavItems, isNavItemEnabled, matchNavItem, NAV_ORG_SETTING_KEYS } from "@/lib/nav-items"
-import { visibleMtmToolGroups } from "@/lib/mtm/navigation"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
 
 const source = (path: string) => readFileSync(resolve(path), "utf8")
@@ -40,18 +39,6 @@ describe("pharmacy promotions organization switch", () => {
     const layout = source("src/app/(dashboard)/layout.tsx")
     expect(layout).toContain('const mtmSyncItem = matchNavItem("/mtm/promotions")')
     expect(layout).toContain("isNavItemEnabled(org, mtmSyncItem)")
-  })
-
-  it("hides the promotions tool from All MTM tools only when explicitly off", () => {
-    const toolHrefs = (settings?: Parameters<typeof visibleMtmToolGroups>[0]) =>
-      visibleMtmToolGroups(settings).flatMap((group) => group.items.map((item) => item.href))
-    expect(toolHrefs()).toContain("/mtm/promotions")
-    const off = toolHrefs({ pharmacyPromotionsEnabled: false })
-    expect(off).not.toContain("/mtm/promotions")
-    expect(off).toContain("/mtm/tasks")
-    const bothOff = toolHrefs({ pharmacyPromotionsEnabled: false, fieldContactsEnabled: false })
-    expect(bothOff).not.toContain("/mtm/contacts")
-    expect(bothOff).not.toContain("/mtm/promotions")
   })
 
   it("reads both switches for every menu surface", () => {

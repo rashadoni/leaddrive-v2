@@ -2,7 +2,7 @@ import { officeAttendanceMobilePath } from "@/lib/mtm/attendance-employee-contra
 import { NextRequest, NextResponse } from "next/server"
 import jwt, { type JwtPayload } from "jsonwebtoken"
 import { prisma } from "./prisma"
-import { runWithRlsBypass } from "./rls-context"
+import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
   createSessionFingerprint,
   hasCurrentSessionFingerprint,
@@ -10,6 +10,9 @@ import {
 import { requireAuthSecret } from "./auth-secret"
 import { isTenantCapabilityEnabled } from "./tenant-capabilities"
 import { resolveWorkforceExceptionResponseRecording } from "./workforce/exception-response-rollout"
+import { readAttendanceFeature } from "./mtm/attendance-feature"
+import { readLegacyCredentialBoundary } from "./identity/legacy-credential-boundary"
+import { isIdentityMobileToken, readIdentityMobileRuntimeClaims, resolveIdentityMobileRuntime } from "./identity/mobile-runtime"
 
 export function requireJwtSecret(): string {
   return requireAuthSecret()
@@ -17,6 +20,7 @@ export function requireJwtSecret(): string {
 export const JWT_SECRET: string = requireJwtSecret()
 
 export interface MobileAuthResult {
+  identityApplication?: "TIME" | "ROUTE_FIELD"
   agentId: string
   userId: string
   orgId: string
@@ -33,6 +37,12 @@ export interface MobileAuthResult {
 export interface MobileTenantCapabilities {
   routeField: boolean
   workforceHrm: boolean
+  /**
+   * Personnel (HR work-time attendance), sold apart from routes since
+   * 2026-10-14. Alone it admits only office staff to the attendance endpoints.
+   * Optional for in-process callers; `resolveMobileAuth` always sets it.
+   */
+  personnel?: boolean
   /**
    * Workforce add-ons remain independently false unless explicitly sold and
    * enabled. Optional typing keeps existing in-process callers compatible;
@@ -89,8 +99,15 @@ export function getMobileAuth(req: NextRequest): MobileTokenAuthResult | null {
   if (!authHeader?.startsWith("Bearer ")) return null
 
   const token = authHeader.slice(7)
+  if (token.length > 4096) return null
   // Skip API keys (ld_ prefix)
   if (token.startsWith("ld_")) return null
+
+  if (isIdentityMobileToken(token)) {
+    const claims = readIdentityMobileRuntimeClaims(token)
+    return claims ? { agentId: claims.actorId, userId: claims.sub, orgId: claims.organizationId,
+      name: "", email: "", role: "", identityApplication: claims.application } : null
+  }
 
   try {
     const verified = jwt.verify(token, JWT_SECRET)
@@ -136,6 +153,9 @@ export async function resolveMobileAuth(
   req: NextRequest,
   _options: MobileAuthOptions = {},
 ): Promise<MobileAuthResult | null> {
+  const authorization = req.headers.get("authorization")
+  if (authorization?.startsWith("Bearer ") && authorization.length > 4103) return null
+  if (authorization?.startsWith("Bearer ") && isIdentityMobileToken(authorization.slice(7))) return resolveIdentityMobileRuntime(req, authorization.slice(7), prisma)
   const decoded = getMobileAuth(req)
   if (!decoded) return null
   let currentRole: string | null = null
@@ -148,12 +168,19 @@ export async function resolveMobileAuth(
   }
 
   try {
+    // A verified legacy JWT must not bypass irreversible identity cutover.
+    // The reader checks the current link AND reviewed original actor owner;
+    // disabling rollout or relinking a card cannot restore the old token.
+    const legacyBoundary = await runWithTenant(decoded.orgId,
+      () => readLegacyCredentialBoundary(prisma, decoded.orgId, { kind: "ACTOR", actorId: decoded.agentId }))
+    if (legacyBoundary !== "LEGACY") return null
     // RLS: revocation check runs before any tenant context exists — bypass-wrapped.
     const agent = await runWithRlsBypass(() => prisma.mtmAgent.findFirst({
       where: { id: decoded.agentId, organizationId: decoded.orgId },
       select: {
         role: true,
         status: true,
+        fieldDeletedAt: true,
         userId: true,
         passwordHash: true,
         organization: {
@@ -166,7 +193,7 @@ export async function resolveMobileAuth(
       console.warn(`[mobile-auth][revocation] agent not found — agentId=${decoded.agentId} orgId=${decoded.orgId}`)
       return null
     }
-    if (agent.status !== "ACTIVE") {
+    if (agent.status !== "ACTIVE" || (agent.fieldDeletedAt && agent.role !== "EMPLOYEE")) {
       console.warn(`[mobile-auth][revocation] agent not ACTIVE — agentId=${decoded.agentId} status=${agent.status}`)
       return null
     }
@@ -182,19 +209,21 @@ export async function resolveMobileAuth(
     }
     const routeFieldEnabled = isTenantCapabilityEnabled("route-field", entitlementFields)
     const workforceEnabled = isTenantCapabilityEnabled("workforce-hrm", entitlementFields)
+    const personnelEnabled = isTenantCapabilityEnabled("personnel", entitlementFields)
     const attendanceQrEnabled = workforceEnabled
       && isTenantCapabilityEnabled("attendance-qr", entitlementFields)
     const attendanceDeviceTrustEnabled = workforceEnabled
       && isTenantCapabilityEnabled("attendance-device-trust", entitlementFields)
     const workforceExceptionResponseEnabled = workforceEnabled
       && resolveWorkforceExceptionResponseRecording(agent.organization.features) === "AVAILABLE"
-    if (!routeFieldEnabled && !workforceEnabled) {
-      console.warn(`[mobile-auth][revocation] Route Field and Workforce are disabled — agentId=${decoded.agentId} orgId=${decoded.orgId}`)
+    if (!routeFieldEnabled && !workforceEnabled && !personnelEnabled) {
+      console.warn(`[mobile-auth][revocation] Route Field, Workforce and Personnel are disabled — agentId=${decoded.agentId} orgId=${decoded.orgId}`)
       return null
     }
     tenantCapabilities = {
       routeField: routeFieldEnabled,
       workforceHrm: workforceEnabled,
+      personnel: personnelEnabled,
       attendanceQr: attendanceQrEnabled,
       attendanceDeviceTrust: attendanceDeviceTrustEnabled,
       workforceExceptionResponse: workforceExceptionResponseEnabled,
@@ -213,14 +242,18 @@ export async function resolveMobileAuth(
       return null
     }
     currentRole = agent.role
+    // Personnel alone is office attendance only: no field agent, and only the
+    // endpoints the office app uses (the same allowlist as an EMPLOYEE).
+    if (!routeFieldEnabled && !workforceEnabled
+      && (currentRole === "AGENT" || !officeAttendanceMobilePath(req.method, new URL(req.url).pathname))) return null
     if (currentRole === "EMPLOYEE") {
-      if (!routeFieldEnabled || !agent.userId || !officeAttendanceMobilePath(req.method, new URL(req.url).pathname)) return null
+      if (!personnelEnabled || !agent.userId || !officeAttendanceMobilePath(req.method, new URL(req.url).pathname)) return null
       const allowed = await runWithRlsBypass(async () => {
         const [member, feature] = await Promise.all([
           prisma.mtmAgent.findFirst({ where: { id: decoded.agentId, organizationId: decoded.orgId, attendanceParticipant: true }, select: { id: true } }),
-          prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: decoded.orgId, key: "attendanceEnabled" } }, select: { value: true } }),
+          readAttendanceFeature(prisma, decoded.orgId),
         ])
-        return Boolean(member) && feature?.value === true
+        return Boolean(member) && feature
       })
       if (!allowed) return null
     }

@@ -46,8 +46,8 @@ const runWithTenantSpy = vi.fn((_organizationId: string, fn: () => unknown) => f
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(async (
-      callback: (tx: { $executeRawUnsafe: typeof advisoryLockSpy }) => Promise<unknown>,
-    ) => callback({ $executeRawUnsafe: advisoryLockSpy })),
+      callback: (tx: { $executeRaw: typeof advisoryLockSpy }) => Promise<unknown>,
+    ) => callback({ $executeRaw: advisoryLockSpy })),
     channelConnection: {
       findFirst: vi.fn(async () => state.connection),
       updateMany: vi.fn(async () => ({ count: 1 })),
@@ -187,6 +187,13 @@ describe("POST /api/v1/webhooks/tiktok-business", () => {
       expect.objectContaining({ id: "lead_1" }),
       { awaitDelivery: true },
     )
+    // The lead's lock is taken on the fence's own transaction, not on one of its own.
+    expect(withTenantFence).toHaveBeenCalledWith(
+      "org_1",
+      expect.any(Function),
+      { lockKeys: ["tiktok-business-lead-ad:org_1:lead_tiktok_1"] },
+    )
+    expect(advisoryLockSpy).not.toHaveBeenCalled()
   })
 
   it("ignores Lead Ads payloads when importLead is disabled", async () => {
@@ -301,7 +308,7 @@ describe("POST /api/v1/webhooks/tiktok-business", () => {
       status: "already_linked",
     }])
     expect(advisoryLockSpy).toHaveBeenCalledWith(
-      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+      ["SELECT pg_advisory_xact_lock(hashtextextended(", ", 0))"],
       "tiktok-business-lead-ad:org_1:lead_tiktok_retry",
     )
     expect(runWithTenantSpy).toHaveBeenCalledTimes(2)

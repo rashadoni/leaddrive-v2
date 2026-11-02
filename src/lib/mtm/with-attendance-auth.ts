@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { AuthResult } from "@/lib/api-auth"
-import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
+import { withPersonnelWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { getMtmAttendanceAccess } from "@/lib/mtm/attendance-access"
 
 type Access = Extract<Awaited<ReturnType<typeof getMtmAttendanceAccess>>, { enabled: true }>
@@ -11,7 +11,7 @@ export function withMtmAttendanceAuth<C = unknown>(
   action: "read" | "write",
   handler: (req: NextRequest, auth: AttendanceAuth, ctx: C) => Promise<Response>,
 ) {
-  return withRouteFieldWebRlsAuth<C>(action, async (req, auth, ctx) => {
+  return withPersonnelWebRlsAuth<C>(action, async (req, auth, ctx) => {
     const access = await getMtmAttendanceAccess(auth.orgId, auth.userId, auth.role)
     if (!access.enabled) {
       return NextResponse.json({ error: "Not found", code: "MTM_ATTENDANCE_DISABLED" }, { status: 404 })

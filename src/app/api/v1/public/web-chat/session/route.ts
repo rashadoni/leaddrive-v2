@@ -8,6 +8,9 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { clientIp } from "@/lib/request-ip"
 import { parsePreChatForm, validatePreChatSubmission } from "@/lib/web-chat-prechat"
 import { matchOrCreateWebChatContact } from "@/lib/web-chat-contact"
+import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
+import { pageChosenWidgetLang, widgetLangMetadata } from "@/lib/web-chat-visitor-language"
+import { widgetGreeting } from "@/app/embed/chat/[key]/widget-i18n"
 
 export async function OPTIONS(req: NextRequest) {
   // Preflight: echo origin if whitelisted, otherwise deny
@@ -23,6 +26,9 @@ const schema = z.object({
   visitorEmail: z.string().trim().email().max(254).optional().or(z.literal("")),
   visitorPhone: z.string().max(50).optional(),
   pageUrl: z.string().max(2000).optional(),
+  // The widget's language and whether the site set it (data-lang) — web-chat-visitor-language.ts.
+  lang: z.enum(["en", "ru", "az"]).optional(),
+  langChosen: z.boolean().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -130,13 +136,17 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  const greeting = widget.greeting || "Hi! How can we help?"
+  // The greeting opens the chat in the widget's language: the page's data-lang, else the
+  // organization's — and records it, for a chat escalated before the visitor writes.
+  const widgetLang = pageChosenWidgetLang(parsed.data) ?? (await loadOrganizationLocale(widget.organizationId))
+  const greeting = widgetGreeting(widget.greeting, widgetLang)
   await prisma.webChatMessage.create({
     data: {
       organizationId: widget.organizationId,
       sessionId: session.id,
       fromRole: "bot",
       text: greeting,
+      metadata: widgetLangMetadata(widgetLang),
     },
   })
 

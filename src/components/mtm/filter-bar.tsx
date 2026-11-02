@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react"
 import { Check, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
@@ -58,6 +58,7 @@ export function MtmFilterSearch({
   clearLabel,
   delayMs = 350,
   testId,
+  narrow = false,
 }: {
   value: string
   onChange: (value: string) => void
@@ -66,11 +67,13 @@ export function MtmFilterSearch({
   clearLabel: string
   delayMs?: number
   testId?: string
+  /** Gives way to a row of chips beside it (12rem instead of 16rem before it grows). */
+  narrow?: boolean
 }) {
   const [draft, setDraft] = useDebouncedDraft(value, onChange, delayMs)
 
   return (
-    <label className="flex h-10 min-w-0 flex-[1_1_16rem] items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 dark:border-zinc-700">
+    <label className={`flex h-10 min-w-0 ${narrow ? "flex-[1_1_12rem]" : "flex-[1_1_16rem]"} items-center gap-2 rounded-full border border-border bg-card px-3 text-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20`}>
       <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <input
         data-testid={testId}
@@ -127,12 +130,12 @@ export function MtmFilterSelect({
   const active = value !== emptyValue
   const current = options.find((option) => option.value === value)?.label ?? (value || allLabel)
   return (
-    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-primary/40 bg-primary/10 pr-1.5 text-primary" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
+    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-foreground pr-1.5 font-semibold text-foreground" : "border-border bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground"}`}>
       <span className="truncate">{active || showValue ? `${label}: ${current}` : label}</span>
       {active && clearable && !disabled ? (
         <button
           type="button"
-          className="relative z-10 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-primary/15"
+          className="relative z-10 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-muted"
           aria-label={`${label}: ${allLabel}`}
           onClick={() => onChange(emptyValue)}
         >
@@ -177,7 +180,7 @@ export function MtmFilterDate({
   testId?: string
 }) {
   return (
-    <label className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30 dark:border-zinc-700">
+    <label className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card px-3 text-sm text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30">
       <span>{label}</span>
       <input data-testid={testId} type={type} min={min} max={max} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
     </label>
@@ -191,12 +194,58 @@ export function MtmFilterMore({ open, onToggle, count, label, testId }: { open: 
       data-testid={testId}
       aria-expanded={open}
       onClick={onToggle}
-      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}
+      className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${open || count > 0 ? "crm-choice-selected text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
     >
       <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
       {label}
       {count > 0 ? <span className="rounded-full bg-primary px-1.5 text-xs font-semibold leading-5 text-primary-foreground">{count}</span> : null}
     </button>
+  )
+}
+
+export type MtmQuickChip = {
+  value: string
+  label: string
+  /** How many rows the chip holds; omitted while it is not known. */
+  count?: number | null
+  testId?: string
+}
+
+/**
+ * The quick views over a list — «Все», «Не были в октябре», «Не
+ * запланированы»… — each with how many it holds (owner, 2026-10-16, from a
+ * picture of «Клиенты»). One is on at a time; «Все» is the empty value.
+ */
+export function MtmQuickChips({ label, chips, value, onChange, renderChip }: {
+  label: string
+  chips: MtmQuickChip[]
+  value: string
+  onChange: (value: string) => void
+  /** Wraps a chip, e.g. in the hint that says what it holds. */
+  renderChip?: (chip: MtmQuickChip, element: ReactElement) => ReactNode
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2">
+      {chips.map((chip) => {
+        const on = chip.value === value
+        const element = (
+          <button
+            key={chip.value || "all"}
+            type="button"
+            data-testid={chip.testId}
+            aria-pressed={on}
+            onClick={() => onChange(chip.value)}
+            className={`inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${on ? "crm-choice-selected text-foreground" : "border-border bg-card text-foreground hover:bg-muted/60"}`}
+          >
+            {chip.label}
+            {typeof chip.count === "number" ? (
+              <span className="ml-1.5 text-xs font-semibold tabular-nums text-muted-foreground">{chip.count}</span>
+            ) : null}
+          </button>
+        )
+        return renderChip ? <span key={chip.value || "all"} className="contents">{renderChip(chip, element)}</span> : element
+      })}
+    </div>
   )
 }
 
@@ -240,8 +289,8 @@ export function MtmFilterGrid({ children, testId }: { children: ReactNode; testI
 }
 
 const FIELD_BOX = "h-10 w-full min-w-0 rounded-lg border text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/20"
-const FIELD_IDLE = "border-zinc-200 bg-card dark:border-zinc-700"
-const FIELD_SET = "border-primary/50 bg-primary/5"
+const FIELD_IDLE = "border-border bg-card"
+const FIELD_SET = "border-foreground"
 
 function MtmFilterFieldLabel({ htmlFor, id, children }: { htmlFor?: string; id?: string; children: ReactNode }) {
   return (
@@ -452,7 +501,7 @@ export function MtmFilterMultiField({
         </div>
         <PopoverContent align="start" collisionPadding={8} className="w-[max(var(--radix-popover-trigger-width),16rem)] max-w-[calc(100vw-2rem)] p-0">
           {allOptions.length > 8 ? (
-            <label className="flex items-center gap-2 border-b border-zinc-200 px-3 dark:border-zinc-700">
+            <label className="flex items-center gap-2 border-b border-border px-3">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <input
                 type="text"

@@ -230,7 +230,7 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
                 "min-h-[200px] flex-1 space-y-2.5 overflow-hidden rounded-xl border border-t-[3px] p-2.5 transition-all duration-200",
                 isDropping
                   ? "border-primary/40 bg-primary/5 ring-2 ring-primary/30 ring-dashed"
-                  : "border-zinc-200 hover:bg-muted/30 dark:border-zinc-700",
+                  : "border-border hover:bg-muted/30",
               )}
               // Колонка держит цвет своей стадии: полоса сверху и очень слабый
               // фон. Раньше цвет жил только в двухпиксельной точке заголовка, а
@@ -258,7 +258,7 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
               ))}
 
               {stageDeals.length === 0 && (
-                <div className="m-1 flex h-[72px] items-center justify-center rounded-lg border border-dashed border-zinc-200 text-[11px] text-muted-foreground/50 dark:border-zinc-700">
+                <div className="m-1 flex h-[72px] items-center justify-center rounded-lg border border-dashed border-border text-[11px] text-muted-foreground/50">
                   {emptyLabel}
                 </div>
               )}

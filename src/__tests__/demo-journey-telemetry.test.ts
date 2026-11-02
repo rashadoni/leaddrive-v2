@@ -14,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: vi.fn(),
     demoGrant: { findUnique: vi.fn(), updateMany: vi.fn() },
     demoAccessEvent: { create: vi.fn(), count: vi.fn() },
+    demoSocialConnection: { updateMany: vi.fn() },
   },
 }))
 
@@ -38,6 +39,7 @@ import {
   type DemoProspectIdentity,
   type JourneyEventRow,
 } from "@/lib/demo-center/journey"
+import { DEMO_JOURNEY_MODULES, DEMO_NEXT_MODULE_FINISH_PATH, DEMO_NEXT_MODULE_STEP_ID, suggestedDemoModule } from "@/lib/demo-center/journey"
 
 const manifest = PROSPECT_TO_CLOSED_WON
 const NOW = new Date("2026-09-21T09:00:00.000Z")
@@ -48,9 +50,17 @@ const identity: DemoProspectIdentity = {
   emailMasked: "n***@xezerlog.az",
   phoneMasked: "+994 ** *** 45 67",
   sourceChannel: "instagram",
+  // Every module asked for: «what next» suggests them in the story's own order.
+  interests: DEMO_JOURNEY_MODULES.map((module) => module.id),
 }
 
 function actionFor(snapshot: DemoJourneySnapshot, story: DemoJourneyManifest): DemoJourneyAction {
+  // «What next» (modules.ts): go on to the module the guide suggests, and
+  // finish once every module was walked.
+  if (snapshot.stepId === DEMO_NEXT_MODULE_STEP_ID) {
+    const next = suggestedDemoModule(story, snapshot)
+    return next ? { type: "open-section", sectionId: next.firstSectionId } : { type: "ui", path: DEMO_NEXT_MODULE_FINISH_PATH, value: true }
+  }
   const located = findStep(story, snapshot.stepId)
   if (!located) throw new Error(`unknown step ${snapshot.stepId}`)
   const { step } = located
@@ -101,7 +111,11 @@ describe("journey reports", () => {
 
   it("reports each section opening, the state it reached and the end of the story", () => {
     const opened = reports.filter((report) => report.name === "journey.section_opened").map((report) => report.sectionId)
-    expect(opened).toEqual(activeSections(manifest).slice(1).map((section) => section.id))
+    const story = activeSections(manifest).slice(1).map((section) => section.id)
+    // Every module in the story's order (all were asked for), with «what
+    // next» between them — the guide no longer crosses a module's edge itself.
+    expect(opened.filter((id) => id !== "next-module")).toEqual(story.filter((id) => id !== "next-module"))
+    expect(opened.filter((id) => id === "next-module").length).toBeGreaterThan(5)
     expect(reports.filter((report) => report.name === "journey.transition").map((report) => report.to)).toContain("CLOSED_WON")
     expect(reports.filter((report) => report.name === "journey.completed")).toHaveLength(1)
   })
@@ -244,6 +258,24 @@ describe("the events route takes journey reports", () => {
     expect(response.status).toBe(200)
     expect(prisma.demoGrant.updateMany).toHaveBeenCalled()
     expect(prisma.demoAccessEvent.create).not.toHaveBeenCalled()
+  })
+
+  it("«Bitir» — the story's end — asks for the release of the prospect's own Facebook Page, even past the cap", async () => {
+    vi.mocked(prisma.demoAccessEvent.count).mockResolvedValue(JOURNEY_EVENTS_PER_GRANT)
+    vi.mocked(prisma.demoSocialConnection.updateMany).mockResolvedValue({ count: 1 })
+    const last = activeSections(manifest).at(-1)!.id
+    const response = await post({ eventType: "JOURNEY", name: "journey.completed", sectionId: last })
+    expect(response.status).toBe(200)
+    expect(prisma.demoSocialConnection.updateMany).toHaveBeenCalledWith({
+      where: { grantId: "grant-j", scrubbedAt: null, releaseRequestedAt: null },
+      data: { releaseRequestedAt: expect.any(Date), releaseReason: "finished" },
+    })
+  })
+
+  it("no other report touches the Page", async () => {
+    await post({ eventType: "JOURNEY", name: "journey.section_opened", sectionId: "source" })
+    await post({ eventType: "JOURNEY", name: "journey.step_viewed", sectionId: "source" })
+    expect(prisma.demoSocialConnection.updateMany).not.toHaveBeenCalled()
   })
 
   it("rejects unknown fields instead of storing them", async () => {

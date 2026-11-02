@@ -9,6 +9,9 @@ import { decimalToNumber } from "@/lib/prisma-decimal"
 import { getSupportAgentConfig } from "@/lib/ai/support-agent"
 import { isSupportAiEnabled, SUPPORT_AI_DISABLED_ERROR } from "@/lib/ai/support-feature"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
+import { ASSISTANT_ESCALATION_DESCRIPTION_HEAD, chatTicketDescription } from "@/lib/ticketing/chat-transcript"
+import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
+import { assistantEscalationSubject } from "@/lib/ticketing/customer-ticket-text"
 import { resolveAiModel } from "@/lib/ai/budget"
 
 const DEFAULT_SYSTEM_PROMPT = `Ты — Da Vinci, интеллектуальный движок техподдержки LeadDrive CRM.
@@ -88,16 +91,11 @@ async function createEscalationTicket(
       select: { role: true, content: true, createdAt: true },
     })
 
-    // Build description with full chat history
-    const chatHistory = chatMessages
-      .map((m: { role: string; content: string; createdAt: Date }) => `[${m.role === "user" ? "Клиент" : "Da Vinci"}] ${m.content}`)
-      .join("\n\n")
-
     const ticket = await createTicketWithAssignment({
       organizationId,
       ticketNumberPrefix: "DV",
-      subject: `[Da Vinci Эскалация] ${userMessage.slice(0, 80)}`,
-      description: `Автоматически создан при эскалации из Da Vinci чата.\n\nСессия: ${sessionId}\n\n--- ИСТОРИЯ ЧАТА ---\n${chatHistory}`,
+      subject: assistantEscalationSubject(await loadOrganizationLocale(organizationId), userMessage),
+      description: chatTicketDescription([ASSISTANT_ESCALATION_DESCRIPTION_HEAD, "", `Сессия: ${sessionId}`], chatMessages),
       priority: "high",
       initialStatus: "open",
       category: "ai_escalation",
@@ -535,6 +533,21 @@ export async function POST(req: NextRequest) {
   const shouldCreateTicket = assistantContent.includes("[CREATE_TICKET]")
     || /создайте тикет|создать тикет|откройте тикет|открыть тикет|create a ticket/i.test(assistantContent)
 
+  // Clean markers from response before sending to user — and before an escalation below copies
+  // the chat into the ticket, whose conversation the customer reads in the portal.
+  const cleanedContent = assistantContent
+    .replace(/\[ESCALATE\]/g, "")
+    .replace(/\[CREATE_TICKET\]/g, "")
+    .trim()
+
+  // Update the saved message with cleaned content if markers were present
+  if (cleanedContent !== assistantContent) {
+    await prisma.aiChatMessage.update({
+      where: { id: assistantMessage.id },
+      data: { content: cleanedContent },
+    })
+  }
+
   let escalationTicketId: string | null = null
   let escalationTicketNumber: string | null = null
 
@@ -566,20 +579,6 @@ export async function POST(req: NextRequest) {
       escalationTicketId = result.ticketId
       escalationTicketNumber = result.ticketNumber
     }
-  }
-
-  // Clean markers from response before sending to user
-  const cleanedContent = assistantContent
-    .replace(/\[ESCALATE\]/g, "")
-    .replace(/\[CREATE_TICKET\]/g, "")
-    .trim()
-
-  // Update the saved message with cleaned content if markers were present
-  if (cleanedContent !== assistantContent) {
-    await prisma.aiChatMessage.update({
-      where: { id: assistantMessage.id },
-      data: { content: cleanedContent },
-    })
   }
 
   return NextResponse.json({

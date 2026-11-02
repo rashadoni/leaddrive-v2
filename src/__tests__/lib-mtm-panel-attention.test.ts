@@ -141,12 +141,16 @@ describe("the rows of the block", () => {
   })
 
   it("leads each row to the list of exactly those rows", () => {
-    expect(attentionItemHref({ kind: "contactCreateRequests", date: "2026-10-08" })).toBe("/mtm/contacts")
+    // The queue above the Clients list, unfolded (owner, 2026-10-20): the bare
+    // list showed existing clients and the request folded to one line. What
+    // the address opens is checked on the page in mtm-panel-contact-request-link-ui.
+    expect(attentionItemHref({ kind: "contactCreateRequests", date: "2026-10-08" })).toBe("/mtm/contacts?requests=open")
     expect(attentionItemHref({ kind: "customerCreateRequests", date: null })).toBe("/mtm/routes?view=approvals")
     expect(attentionItemHref({ kind: "routeChangeRequests", date: null })).toBe("/mtm/routes?view=approvals")
     expect(attentionItemHref({ kind: "routesAwaitingPublish", date: "2026-10-12" })).toBe("/mtm/routes")
-    // /mtm/alerts opens on today: without the day the alerts of 8 October stay off screen.
-    expect(attentionItemHref({ kind: "olderAlerts", date: "2026-10-08" })).toBe("/mtm/alerts?date=2026-10-08")
+    // /mtm/alerts opens on every open alert, whatever its day (2026-10-15). A
+    // link to one day showed one of the seven the row counted.
+    expect(attentionItemHref({ kind: "olderAlerts", date: "2026-10-08" })).toBe("/mtm/alerts")
     expect(attentionItemHref({ kind: "olderAlerts", date: null })).toBe("/mtm/alerts")
     // The gallery opens on this week and every status: the link names both.
     expect(attentionItemHref({ kind: "photosPendingReview", date: "2026-10-07" })).toBe("/mtm/photos?status=PENDING&period=all")

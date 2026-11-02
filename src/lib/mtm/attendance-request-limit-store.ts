@@ -5,6 +5,7 @@ import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { capabilitySettingsFromTenantSettings, getTenantCapabilityDefinition, resolveTenantCapability, tenantModulesFromFields } from "@/lib/tenant-capabilities"
 import { AttendanceRequestLimitsSchema, AttendanceRequestLimitsUpdateSchema, DEFAULT_ATTENDANCE_REQUEST_LIMITS, type AttendanceRequestLimits } from "@/lib/mtm/attendance-request-limits"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 const KEY = "attendanceRequestLimits"
 const storedSchema = AttendanceRequestLimitsSchema.extend({ schemaVersion: z.literal(1) })
@@ -35,14 +36,12 @@ async function requireAdmin(tx: Prisma.TransactionClient, organizationId: string
   }
   await tx.$queryRaw`SELECT "id" FROM "organizations" WHERE "id" = ${organizationId} FOR SHARE`
   const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { plan: true, addons: true, features: true, modules: true, settings: true } })
-  const definition = getTenantCapabilityDefinition("route-field")
+  const definition = getTenantCapabilityDefinition("personnel")
   if (!org || !definition) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_FORBIDDEN", 403)
   const settings = capabilitySettingsFromTenantSettings(org.settings)
   const capability = resolveTenantCapability(definition, { plan: org.plan, addons: org.addons, modules: tenantModulesFromFields(org), hidden: settings.hidden, requested: settings.requested })
   if (!capability.enabled || capability.status === "disabled") throw new AttendanceRequestLimitError("MTM_ATTENDANCE_FORBIDDEN", 403)
-  await tx.$queryRaw`SELECT "id" FROM "mtm_settings" WHERE "organizationId" = ${organizationId} AND "key" = 'attendanceEnabled' FOR SHARE`
-  const feature = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (feature?.value !== true) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_DISABLED", 404)
+  if (!await readAttendanceFeature(tx, organizationId, { lock: true })) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_DISABLED", 404)
 }
 
 /** Versioned replacement affects new submissions only; request snapshots remain immutable. */

@@ -41,7 +41,7 @@ const BODY = { operationId: "tap-00000001", workdayId: "wd-1" }
 function signIn(overrides: Record<string, unknown> = {}) {
   vi.mocked(resolveMobileAuth).mockResolvedValue({
     orgId: ORG, agentId: AGENT, userId: "", email: "agent@example.test", name: "Agent", role: "AGENT",
-    tenantCapabilities: { routeField: true, workforceHrm: false },
+    tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true },
     ...overrides,
   } as never)
 }

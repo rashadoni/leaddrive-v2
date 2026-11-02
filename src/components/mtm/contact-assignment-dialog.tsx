@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, UserMinus, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,19 @@ export type ContactAssignmentResult = {
 
 type Step = "PARAMETERS" | "PREVIEW" | "RESULT"
 
+/** Why a contact stays as it is, for the reasons the label alone does not explain. Keys written out so a test finds every one. */
+const ISSUE_HINT = {
+  NO_PRIMARY_ASSIGNMENT: "hint.assignmentIssueNobody",
+  MULTIPLE_PRIMARY_OWNERS: "hint.assignmentIssueMultiplePrimary",
+  FUTURE_ASSIGNMENT_CONFLICT: "hint.assignmentIssueFuture",
+  OPEN_VISIT_CONFLICT: "hint.assignmentIssueOpenVisit",
+  ROUTE_PLAN_CONFLICT: "hint.assignmentIssueRoutePlan",
+} as const satisfies Partial<Record<AssignmentIssue, string>>
+
+function issueHintKey(issue: AssignmentIssue) {
+  return Object.prototype.hasOwnProperty.call(ISSUE_HINT, issue) ? ISSUE_HINT[issue as keyof typeof ISSUE_HINT] : null
+}
+
 function localDateKey(): string {
   const now = new Date()
   const offset = now.getTimezoneOffset() * 60_000
@@ -94,6 +108,7 @@ export function ContactAssignmentDialog({
   onCompleted: (result: ContactAssignmentResult) => void
 }) {
   const t = useTranslations("mtmContactExplorer.assignment")
+  const th = useTranslations("mtmContactExplorer")
   const [step, setStep] = useState<Step>("PARAMETERS")
   const [targetAgentId, setTargetAgentId] = useState(initialTargetAgentId ?? "")
   const [effectiveFrom, setEffectiveFrom] = useState(asOf || localDateKey())
@@ -242,7 +257,7 @@ export function ContactAssignmentDialog({
       <DialogContent className="space-y-4">
         {step === "PARAMETERS" ? (
           <>
-            <div className="rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-100">
+            <div className="rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <div className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
@@ -256,7 +271,7 @@ export function ContactAssignmentDialog({
                 <div>
                   <Label htmlFor="contact-assignment-target">{t("targetAgent")}</Label>
                   {lockTargetAgent && initialTargetAgentId ? (
-                    <p id="contact-assignment-target" data-testid="contact-assignment-target-locked" className="mt-1.5 flex min-h-11 items-center rounded-lg border border-zinc-200 bg-muted/35 px-3 text-sm font-medium dark:border-zinc-700">
+                    <p id="contact-assignment-target" data-testid="contact-assignment-target-locked" className="mt-1.5 flex min-h-11 items-center rounded-lg border border-border bg-muted/35 px-3 text-sm font-medium">
                       {agents.find((agent) => agent.id === initialTargetAgentId)?.name ?? "—"}
                     </p>
                   ) : (
@@ -282,7 +297,7 @@ export function ContactAssignmentDialog({
                   value={effectiveFrom}
                   min={asOf || undefined}
                   onChange={(event) => setEffectiveFrom(event.target.value)}
-                  className="mt-1.5 min-h-11 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
               </div>
             </div>
@@ -306,14 +321,14 @@ export function ContactAssignmentDialog({
           <>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Summary label={t("selected")} value={preview.summary.selected} />
-              <Summary label={t("canChange")} value={preview.summary.assignable} tone="positive" />
-              <Summary label={t("excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} />
-              <Summary label={t("planConflicts")} value={preview.summary.routePlanConflicts} tone={preview.summary.routePlanConflicts ? "warning" : "neutral"} />
+              <Summary label={t("canChange")} value={preview.summary.assignable} tone="positive" hint={th("hint.assignmentCanChange")} />
+              <Summary label={t("excluded")} value={preview.summary.excluded} tone={preview.summary.excluded ? "warning" : "neutral"} hint={th("hint.assignmentExcluded")} />
+              <Summary label={t("planConflicts")} value={preview.summary.routePlanConflicts} tone={preview.summary.routePlanConflicts ? "warning" : "neutral"} hint={th("hint.assignmentPlanConflicts")} />
             </div>
             {mode === "ASSIGN" ? (
-              <div className="rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
+              <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
                 {t("newOwner")}: <span className="font-medium">{preview.targetAgent?.name || "—"}</span>
-                <span className="float-right text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+                <HintValue className="float-right text-xs text-muted-foreground" text={th("hint.assignmentEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
                 {/* Attaching takes the client from nobody — said in words, because it used to. */}
                 {(preview.summary.additional ?? 0) > 0 ? (
                   <p data-testid="contact-assignment-additional" className="mt-2 text-muted-foreground">
@@ -322,33 +337,36 @@ export function ContactAssignmentDialog({
                 ) : null}
               </div>
             ) : (
-              <div data-testid="contact-assignment-detach-from" className="rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
+              <div data-testid="contact-assignment-detach-from" className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
                 {sourceAgent
                   ? <>{t("detachFrom")}: <span className="font-medium">{sourceAgent.name}</span></>
                   : t("detachFromAll")}
-                <span className="float-right text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+                <HintValue className="float-right text-xs text-muted-foreground" text={th("hint.assignmentEffectiveFrom")}>{preview.effectiveFrom}</HintValue>
               </div>
             )}
             {preview.summary.excluded > 0 ? (
               <div>
                 <h3 className="text-sm font-semibold">{t("excludedContacts")}</h3>
-                <div className="mt-2 max-h-56 divide-y divide-zinc-200 overflow-y-auto rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                <div className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
                   {preview.rows.filter((row) => !row.assignable).map((row) => (
                     <div key={row.contactId} className="p-3 text-sm">
                       <p className="font-medium">{row.displayName || row.contactId}</p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {row.issues.map((issue) => (
-                          <span key={issue} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
-                            {t(`issues.${issue}`)}
-                          </span>
-                        ))}
+                        {row.issues.map((issue) => {
+                          const hintKey = issueHintKey(issue)
+                          return (
+                            <HintValue key={issue} text={hintKey ? th(hintKey) : null} className="rounded-full px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+                              {t(`issues.${issue}`)}
+                            </HintValue>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+              <div className="flex items-center gap-2 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm">
                 <CheckCircle2 className="h-4 w-4" />
                 {t("noConflicts")}
               </div>
@@ -357,7 +375,7 @@ export function ContactAssignmentDialog({
         ) : null}
 
         {step === "RESULT" && result ? (
-          <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
+          <div className="flex items-start gap-3 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-4">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
               <p className="font-semibold">{t("completedTitle")}</p>
@@ -370,7 +388,7 @@ export function ContactAssignmentDialog({
         ) : null}
 
         {error ? (
-          <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+          <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -380,20 +398,35 @@ export function ContactAssignmentDialog({
         {step === "PARAMETERS" ? (
           <>
             <Button type="button" variant="outline" onClick={close} disabled={busy}>{t("cancel")}</Button>
-            <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
-              {busy ? t("buildingPreview") : t("review")}
-            </Button>
+            <Hint wrap text={busy || contactIds.length === 0 ? null : th("hint.assignmentReview")}>
+              <Button type="button" onClick={() => void buildPreview()} disabled={busy || contactIds.length === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-1 h-4 w-4" />}
+                {busy ? t("buildingPreview") : t("review")}
+              </Button>
+            </Hint>
           </>
         ) : step === "PREVIEW" ? (
           <>
             <Button type="button" variant="outline" onClick={() => { setStep("PARAMETERS"); setError("") }} disabled={busy}>
               {t("changeParameters")}
             </Button>
-            <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.assignable === 0}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ModeIcon className="mr-1 h-4 w-4" />}
-              {busy ? t("applying") : t("apply", { count: preview?.summary.assignable ?? 0 })}
-            </Button>
+            <Hint
+              wrap
+              text={busy || !preview
+                ? null
+                : preview.summary.assignable === 0
+                  ? th("hint.assignmentNothing")
+                  : mode === "ASSIGN"
+                    ? th("hint.assignmentApplyAssign")
+                    : sourceAgentId
+                      ? th("hint.assignmentApplyUnassign")
+                      : th("hint.assignmentApplyUnassignAll")}
+            >
+              <Button type="button" onClick={() => void execute()} disabled={busy || !preview || preview.summary.assignable === 0}>
+                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ModeIcon className="mr-1 h-4 w-4" />}
+                {busy ? t("applying") : t("apply", { count: preview?.summary.assignable ?? 0 })}
+              </Button>
+            </Hint>
           </>
         ) : (
           <Button type="button" onClick={close}>{t("close")}</Button>
@@ -407,20 +440,22 @@ function Summary({
   label,
   value,
   tone = "neutral",
+  hint,
 }: {
   label: string
   value: number
   tone?: "positive" | "warning" | "neutral"
+  hint?: string
 }) {
   return (
     <div className={`rounded-lg border p-3 ${
       tone === "positive"
-        ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+        ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500"
         : tone === "warning"
-          ? "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
-          : "border-zinc-200 bg-muted/30 dark:border-zinc-700"
+          ? "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"
+          : "border-border bg-muted/30"
     }`}>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground"><HintValue text={hint}>{label}</HintValue></p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   )

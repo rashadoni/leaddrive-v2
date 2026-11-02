@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 // Mock rate-limit before importing middleware
 vi.mock("@/lib/rate-limit", () => ({
@@ -82,6 +82,34 @@ describe("middleware", async () => {
     // Reset env so CRM_ONLY_MODE is effectively true for localhost tests
     process.env.NEXT_PUBLIC_MARKETING_URL = "https://leaddrivecrm.org"
     process.env.NEXT_PUBLIC_APP_URL = "https://app.leaddrivecrm.org"
+  })
+
+  describe("Time download public boundary", () => {
+    it.each(["/time", "/time/download", "/api/v1/public/time-app/latest"])("admits anonymous %s without requesting device permissions", async pathname => {
+      const res = await authMiddleware(makeReq({ pathname, host: "app.leaddrivecrm.org", auth: null }))
+      expect(res.status).toBe(200)
+      expect(res.headers.get("permissions-policy")).toBe("camera=(), microphone=(), geolocation=()")
+    })
+    it.each(["az", "ru", "en"])("selects the link language %s over a cookie", async lang => {
+      const res = await authMiddleware(makeReq({ pathname: `/time?lang=${lang}`, host: "app.leaddrivecrm.org", cookies: { NEXT_LOCALE: "ru" } }))
+      expect(forwardedRequestHeader(res, "x-locale")).toBe(lang)
+    })
+    it("defaults to Azerbaijani and respects the existing locale cookie", async () => {
+      const first = await authMiddleware(makeReq({ pathname: "/time", host: "app.leaddrivecrm.org" }))
+      expect(forwardedRequestHeader(first, "x-locale")).toBe("az")
+      const known = await authMiddleware(makeReq({ pathname: "/time?lang=invalid", host: "app.leaddrivecrm.org", cookies: { NEXT_LOCALE: "en" } }))
+      expect(forwardedRequestHeader(known, "x-locale")).toBe("en")
+    })
+    it.each(["/timesheets", "/time-admin"])("does not exempt similarly named protected routes: %s", async pathname => {
+      const res = await authMiddleware(makeReq({ pathname, host: "app.leaddrivecrm.org" }))
+      expect(res.status).toBe(307)
+      expect(res.headers.get("location")).toContain("/login")
+    })
+    it("keeps latest-version requests behind the existing public GET rate limit", async () => {
+      vi.mocked(checkRateLimit).mockReturnValue(false)
+      const res = await authMiddleware(makeReq({ pathname: "/api/v1/public/time-app/latest", host: "app.leaddrivecrm.org" }))
+      expect(res.status).toBe(429)
+    })
   })
 
   // ─── Auth redirect ────────────────────────────────────────
@@ -283,6 +311,34 @@ describe("middleware", async () => {
 
     expect(res.status).toBe(200)
     expect(forwardedRequestHeader(res, "x-locale")).toBe("en")
+  })
+
+  it.each(["az", "en", "ru"])(
+    "opens a ticket-closure link in the customer's language (?lang=%s) — the customer has no cookie",
+    async (lang) => {
+      // The link reaches the customer by WhatsApp or e-mail; without ?lang= an
+      // Azerbaijani customer read the confirmation page in the default Russian.
+      const res = await authMiddleware(makeReq({
+        pathname: `/ticket-closure/${"t".repeat(43)}?lang=${lang}`,
+        host: "app.leaddrivecrm.org",
+        auth: null,
+      }))
+
+      expect(res.status).toBe(200)
+      expect(forwardedRequestHeader(res, "x-locale")).toBe(lang)
+    },
+  )
+
+  it("keeps a ticket-closure link without a known ?lang= on the visitor's own language", async () => {
+    const withCookie = await authMiddleware(makeReq({
+      pathname: `/ticket-closure/${"t".repeat(43)}?lang=tr`,
+      host: "app.leaddrivecrm.org",
+      auth: null,
+      cookies: { NEXT_LOCALE: "en" },
+    }))
+    expect(forwardedRequestHeader(withCookie, "x-locale")).toBe("en")
+    const bare = await authMiddleware(makeReq({ pathname: `/ticket-closure/${"t".repeat(43)}`, host: "app.leaddrivecrm.org", auth: null }))
+    expect(forwardedRequestHeader(bare, "x-locale")).toBeNull()
   })
 
   it.each(["/demo-open", "/demo-access/abc123"])(
@@ -539,7 +595,7 @@ describe("middleware", async () => {
     const res = await authMiddleware(req)
     expect(res.status).toBe(307)
     expect(res.headers.get("location")).toBe("https://mars.leaddrivecrm.org/login?error=cross-tenant")
-    expect(res.headers.get("set-cookie")).toContain("authjs.session-token=;")
+    expect(res.headers.get("set-cookie")).toBeNull()
   })
 
   it("allows /manifest.json without authentication", async () => {
@@ -660,6 +716,61 @@ describe("middleware", async () => {
       await policy("/portal/login", null),
     ]
     expect(elsewhere.filter((value) => !value.includes("geolocation=()"))).toEqual([])
+  })
+
+  // The branch screen has no account, yet must say where it stands before it is
+  // given a code (owner, 2026-10-30). Only that page asks; its API does not.
+  it("lets the branch screen page ask for its location, and not its API or a look-alike path", async () => {
+    const policy = async (pathname: string) =>
+      (await authMiddleware(makeReq({ pathname, auth: null, host: "app.leaddrivecrm.org" }))).headers.get("permissions-policy") ?? ""
+    expect(await policy("/screen")).toBe("camera=(), microphone=(), geolocation=(self)")
+    expect(await policy("/screenshots")).not.toContain("geolocation=(self)")
+    expect(await policy("/api/v1/public/attendance-screen/qr")).not.toContain("geolocation=(self)")
+  })
+
+  // «Səslə soruşun» (owner, 2026-10-20): the private demo's button records a
+  // question in the browser, so that page may ask for the microphone — only
+  // while the demo's voice switch is on, and no other public page ever.
+  describe("the private demo's microphone", () => {
+    const DEMO_PAGE = `/demo-access/${"a".repeat(64)}`
+    const DENIED = "camera=(), microphone=(), geolocation=()"
+    const policy = async (pathname: string, auth: unknown = null, method = "GET") =>
+      (await authMiddleware(makeReq({ pathname, auth, method, host: "app.leaddrivecrm.org" }))).headers.get("permissions-policy")
+
+    afterEach(() => {
+      delete process.env.DEMO_ASSISTANT_VOICE
+    })
+
+    it("stays denied while the switch is off — its default", async () => {
+      delete process.env.DEMO_ASSISTANT_VOICE
+      expect(await policy(DEMO_PAGE)).toBe(DENIED)
+      process.env.DEMO_ASSISTANT_VOICE = "off"
+      expect(await policy(DEMO_PAGE)).toBe(DENIED)
+    })
+
+    it("with the switch on, opens to the private demo page alone: not its location or camera, not the open demo, not an API answer", async () => {
+      process.env.DEMO_ASSISTANT_VOICE = "on"
+      expect(await policy(DEMO_PAGE)).toBe("camera=(), microphone=(self), geolocation=()")
+      expect(await policy(`${DEMO_PAGE}/`)).toBe("camera=(), microphone=(self), geolocation=()")
+      const elsewhere = {
+        "/demo-open": await policy("/demo-open"),
+        "/demo": await policy("/demo"),
+        "/login": await policy("/login"),
+        "/demo-accessx": await policy("/demo-accessx"),
+        transcribe: await policy(`/api/v1/public/demo-access/${"a".repeat(64)}/assistant/transcribe`, null, "POST"),
+        state: await policy(`/api/v1/public/demo-access/${"a".repeat(64)}`),
+        // Signed out, the admin preview is a redirect to the login page.
+        "/demo-preview": await policy("/demo-preview/request-1"),
+      }
+      expect(Object.entries(elsewhere).filter(([, value]) => value !== DENIED)).toEqual([])
+    })
+
+    it("leaves the signed-in admin preview on the signed-in app's policy, switch or not (no voice button is drawn there)", async () => {
+      const superadmin = { user: { id: "u1", organizationId: "org-1", role: "superadmin" } }
+      const before = await policy("/demo-preview/request-1", superadmin)
+      process.env.DEMO_ASSISTANT_VOICE = "on"
+      expect(await policy("/demo-preview/request-1", superadmin)).toBe(before)
+    })
   })
 
   // ─── Rate limiting ────────────────────────────────────────
@@ -976,6 +1087,61 @@ describe("middleware", async () => {
     expect(res.headers.get("location")).toContain("/login")
   })
 
+  it("lets the exact pharmacy pilot route reach bearer auth without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const req = makeReq({
+      pathname: "/api/internal/voice-agent/pharmacy-inbound",
+      method: "POST",
+      auth: null,
+      headers: { "x-real-ip": "7.7.7.7" },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe(
+      "webhook:voice-agent-runtime:7.7.7.7",
+    )
+  })
+
+  it("lets the line watch reach its yes/no health route without a session, rate limited", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/internal/voice-agent/line-health", method: "GET", auth: null, headers: { "x-real-ip": "7.7.7.8" },
+    }))
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("webhook:voice-agent-runtime:7.7.7.8")
+  })
+
+  it("lets the station's heartbeat reach its bearer check without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/internal/asterisk/station-heartbeat", method: "POST", auth: null, headers: { "x-real-ip": "7.7.7.9" },
+    }))
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+  })
+
+  it("lets the station's call recording reach its bearer check without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/internal/asterisk/call-recording", method: "POST", auth: null, headers: { "x-real-ip": "7.7.7.9" },
+    }))
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+  })
+
+  it("keeps paths adjacent to the pharmacy pilot route behind a session", async () => {
+    const req = makeReq({
+      pathname: "/api/internal/voice-agent/pharmacy-inbound/debug",
+      method: "POST",
+      auth: null,
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/login")
+  })
+
   it("lets only the exact no-call control-plane probe reach bearer auth", async () => {
     vi.mocked(checkRateLimit).mockReturnValue(true)
     const req = makeReq({
@@ -1089,6 +1255,20 @@ describe("middleware", async () => {
       windowMs: 60000,
     })
     expect(vi.mocked(checkRateLimit)).toHaveBeenCalledTimes(1)
+  })
+
+  it("lets the exact inbound AI handoff route reach bearer auth without a session", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const req = makeReq({
+      pathname: "/api/internal/asterisk/inbound-handoff",
+      method: "POST",
+      auth: null,
+      headers: { "x-real-ip": "7.7.7.7" },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("webhook:voice-agent-runtime:7.7.7.7")
   })
 
   it("keeps paths adjacent to inbound browser readiness behind a session", async () => {
@@ -1243,8 +1423,10 @@ describe("middleware", async () => {
   //
   // Session cookie is shared across *.leaddrivecrm.org (COOKIE_DOMAIN).
   // Middleware must not let a user whose session is for tenant X operate
-  // on tenant Y's subdomain — redirect to /login?error=cross-tenant and
-  // clear the shared cookie.
+  // on tenant Y's subdomain — redirect to /login?error=cross-tenant (401 for
+  // an API call) and leave the shared cookie alone: it holds the session the
+  // person signed into last, and a stale tab of the other tenant must not
+  // sign them out of it.
 
   it("redirects to /login?error=cross-tenant when session org differs from subdomain slug", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -1268,12 +1450,32 @@ describe("middleware", async () => {
     expect(location).toContain("error=cross-tenant")
     // Redirect should stay on the tenant subdomain (host), not bounce to app.
     expect(location).toContain("afigroup.leaddrivecrm.org")
-    // Session cookie must be cleared so the user lands on /login fresh.
-    const setCookie = res.headers.get("set-cookie") || ""
-    expect(setCookie).toMatch(/authjs\.session-token=;/)
+    // The shared cookie is not touched: signing in here replaces it.
+    expect(res.headers.get("set-cookie")).toBeNull()
     // Structured warn for ops visibility.
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringMatching(/^\[cross-tenant-block\] session-slug=leaddrive host-slug=afigroup/),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it("does not sign the person out of the tenant they just entered when a stale tab of another polls", async () => {
+    // Production 2026-10-25: a Zeytun sign-in, then the still-open LeadDrive
+    // tab's /api/v1/notifications poll arrived with the new Zeytun session.
+    // Clearing the shared cookie here undid the Zeytun sign-in in seconds.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const req = makeReq({
+      pathname: "/api/v1/notifications",
+      host: "leaddrive.leaddrivecrm.org",
+      auth: { user: { id: "u-zeytun", organizationId: "org-zeytun", organizationSlug: "zeytun", role: "admin" } },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(401)
+    expect(await res.json()).toMatchObject({ code: "session_expired" })
+    expect(res.headers.get("set-cookie")).toBeNull()
+    expect(forwardedRequestHeader(res, "x-organization-id")).toBeNull()
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[cross-tenant-block\] session-slug=zeytun host-slug=leaddrive path=\/api\/v1\/notifications/),
     )
     warnSpy.mockRestore()
   })
@@ -1506,6 +1708,31 @@ describe("middleware", async () => {
     })
     const res = await authMiddleware(req)
     expect(res.status).toBe(403)
+  })
+
+  it.each([
+    ["/api/v1/mtm/attendance/report", 200],
+    ["/api/v1/mtm/attendance", 200],
+    ["/api/v1/mtm/routes", 403],
+    ["/api/v1/mtm/agents", 403],
+    ["/api/v1/mtm/attendance-old", 403],
+  ])("a Personnel-only tenant reaches only the attendance API: %s → %i", async (pathname, status) => {
+    const req = makeReq({
+      pathname,
+      host: "app.leaddrivecrm.org",
+      auth: {
+        user: {
+          id: "u1",
+          organizationId: "org-1",
+          role: "manager",
+          plan: "tier-25",
+          addons: [],
+          modules: { core: true, personnel: true },
+        },
+      },
+    })
+    const res = await authMiddleware(req)
+    expect(res.status === 403 ? 403 : 200).toBe(status)
   })
 
   it("allows MTM API for a mobile/API-key caller (no session modules)", async () => {

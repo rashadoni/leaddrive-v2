@@ -1,0 +1,528 @@
+Station change of 2026-10-16 07:28 UTC, recorded after the fact.
+
+Applies to /opt/fanum-voice/fanum-voice-core.py on the PBX.
+
+  before: 50dc8af71151ab99dba0f5e0f3c35372b8793992cc2341f5eac3287caee3686d  (voice-core-crm-opening.patch)
+  after:  80292277924ec452586357d73ddc20665ae76b24f5668bf806698514fd007b63
+
+Not made from this repository and left no backup on the station; recovered on
+2026-10-20 by reading the live file when voice-core-demo-max-seconds.patch
+refused to install over an unexpected hash. What it does:
+- every new call is in Azerbaijani; another language only when the caller
+  explicitly asks for a named language in this call (EXPLICIT_LANGUAGE_POLICY,
+  appended to every instruction and again after the call continuation);
+- a caller turn sends the model a language-control note before activityStart;
+- Turkish joins az/ru/en; fresh-recovery ask-repeat sentences in ru/en/tr;
+- transcription language detection never changes the call's language.
+
+--- a/opt/fanum-voice/fanum-voice-core.py	(station 50dc8af71151ab99dba0f5e0f3c35372b8793992cc2341f5eac3287caee3686d)
++++ b/opt/fanum-voice/fanum-voice-core.py	(patched 80292277924ec452586357d73ddc20665ae76b24f5668bf806698514fd007b63)
+@@ -286,7 +286,7 @@
+ Sən Fanumun telefonla danışan ağıllı satış köməkçisisən. Məqsədin müştərini dinləmək, ehtiyacını anlamaq və uyğun növbəti sualı verməkdir.
+ 
+ # Dil və danışıq tərzi
+-Söhbətə Azərbaycan dilində başla. Müştəri rus və ya ingilis dilində danışarsa və ya həmin dilə keçməyi xahiş edərsə, dərhal seçdiyi dilə keç və söhbətin sonuna qədər həmin dildə danış. Dil aydın deyilsə, son istifadə olunan dildə qısa dəqiqləşdirici sual ver. Sakit, isti, peşəkar və insan kimi səslən. Qısa cümlələr işlət, bir dəfəyə yalnız bir sual ver və cavabları iki qısa cümlədən çox uzatma.
++Hər yeni zəngdə yalnız Azərbaycan dilində danış. Yalnız bu zəngdə müştəri özü açıq şəkildə başqa konkret dildə danışmağı xahiş edərsə həmin dilə keç. Müştərinin başqa dildə danışması, bir söz deməsi və ya keçmiş zəngdəki dil seçimi icazə deyil. Xahiş və ya dil aydın deyilsə, dili dəyişmədən dəqiqləşdir. Sakit, isti, peşəkar və insan kimi səslən. Qısa cümlələr işlət, bir dəfəyə yalnız bir sual ver və cavabları iki qısa cümlədən çox uzatma.
+ 
+ # Dinləmə və məntiq
+ Hər cavabdan əvvəl müştərinin dediyini mənaca nəzərə al. Artıq cavablandırılmış sualı təkrar vermə. Sabit anket oxuma; növbəti sualı söhbətin məzmununa görə seç. Müştəri sözünü kəsərsə dərhal dayan və onu dinlə. Audio aydın deyilsə təxmin etmə, nəzakətlə bir dəfə dəqiqləşdir.
+@@ -297,13 +297,22 @@
+ LIVE_CONVERSATION_POLICY = """# Canlı söhbət qaydası
+ Müştərinin son dediyinə birbaşa cavab ver və yalnız bundan sonra uyğun növbəti sualı seç. Əvvəlcədən yazılmış sual siyahısını ardıcıl oxuma. Müştərinin artıq verdiyi məlumatı yenidən soruşma. Müştəri danışmağa başlayanda dərhal sus və onu sona qədər dinlə. Cavabı bilmirsənsə uydurma; qısa şəkildə menecerin dəqiqləşdirəcəyini de. Müştərinin dediyi rəqəmi, ölçünü, miqdarı, yeri və ya adı aydın eşitməmisənsə qeyd etmə: qısaca təkrar edib təsdiq istə. Səs aydın deyilsə təxmin etmə, nəzakətlə yenidən soruş."""
+ VOICE_DELIVERY_POLICY = """# Səs və dil — son üstün qayda
+-Söhbətə Azərbaycan dilində başla. Müştəri rus və ya ingilis dilində danışarsa və ya həmin dilə keçməyi xahiş edərsə, dərhal seçdiyi dilə keç. Müştəri yenidən dil dəyişməyincə söhbətin sonuna qədər yalnız son seçilmiş dildə danış və Azərbaycan dilinə özbaşına qayıtma.
++Hər yeni zəngdə Azərbaycan dilində başla və danışmağa davam et. Başqa dilə yalnız müştəri BU ZƏNGDƏ özü açıq şəkildə keçməyi xahiş edəndə və konkret dili adlandıranda keç. Müştərinin rusca, ingiliscə, türkcə və ya başqa dildə danışması öz-özlüyündə dil dəyişmək üçün icazə deyil. Dil seçimini onun aksentindən və ya transkripsiyadakı yazılışdan çıxarma. Açıq xahişdən sonra həmin dildə qal; geri Azərbaycan dilinə və ya başqa dilə keçmək üçün də yeni açıq xahiş lazımdır.
+ CRM təlimatındakı Azərbaycan dilində yazılmış salamlaşma, sual, qiymət izahı və sağollaşma nümunələrini müştərinin seçdiyi dilə təbii şəkildə tərcümə et. Təsdiqlənmiş brend və məhsul adlarını dəyişdirmə.
+ Rahat, səmimi, axıcı və bir az sürətli danış. Diktor kimi oxuma, sözləri uzatma, eyni ritmi təkrarlama və Azərbaycan sözlərini ingilis intonasiyası ilə demə.
+ Bir anda yalnız bir sual ver. Adətən bir və ya iki qısa cümlə de, sonra müştərinin cavabını gözlə.
+ Müştərinin tonuna uyğun sakit anlayış, yüngül sevinc və ya empatiya göstər. Yalnız həqiqətən təbii olan anda qısa «hmm», «aydındır» və ya «başa düşdüm» işlət; bunu ardıcıl cavablarda təkrarlama və teatrallaşdırma.
+ Rəqəmi, ölçünü, qiyməti və telefon nömrəsini aydın de, amma süni fasilələr yaratma."""
+ 
++EXPLICIT_LANGUAGE_POLICY = """# Mütləq dil qaydası — bütün digər dil göstərişlərindən üstündür
++Hər yeni telefon zənginin dili AZƏRBAYCAN DİLİDİR. Abonent bu zəngdə özü açıq şəkildə başqa konkret dilə keçməyi xahiş etməyibsə, bütün cavabları yalnız Azərbaycan dilində ver. Türk dilinə və digər dillərə özbaşına keçmək QADAĞANDIR.
++Dil dəyişmək üçün hər iki şərt lazımdır: abonentin özünün danışıq dilini dəyişmək barədə açıq xahişi və istədiyi konkret dilin adı. Məsələn, «Rus dilində danışın, zəhmət olmasa», «Перейдите на русский», «Please switch to English», «Türk dilinə keçək» və «Mənə rus dilində danışmaq daha rahatdır» açıq seçimdir.
++Abonentin başqa dildə adi cümlə deməsi, aksenti, tək «rusca» və ya «English» sözü, «Rus dilində danışırsınız?» kimi bacarıq sualı, sitat, tərcümə istəyi və ya inkar dili dəyişməyə icazə vermir. Yalnız «başqa dilə keçək» deyirsə və dili adlandırmırsa, mövcud dildə hansı dili istədiyini soruş; təxmin etmə.
++Azərbaycan dilini türk dili ilə qarışdırma. Azərbaycan cümlələri türkcə yazılsa və ya oxşar sözlər işlədilsə belə, bunu türk dilinə keçmək xahişi sayma.
++Bir açıq seçimdən sonra həmin dildə qal. Abonent başqa dildə danışmağa başlasa belə, yeni açıq və konkret xahiş olmayınca dili dəyişmə. Azərbaycan dilinə qayıtmaq da açıq xahiş tələb edir.
++Əvvəlki zənglərin mətni, CRM qeydləri, nümunələr və ya agentin əvvəlki səhvi bu yeni zəng üçün dil dəyişmək icazəsi deyil. Əlaqə bu zəngin içində bərpa edilərsə, yalnız bu zəngdəki son açıq dil seçimini saxla; belə seçim yoxdursa Azərbaycan dilində davam et.
++Dil barədə qərarı abonentin yerinə vermə və dili dəyişməyi özün təklif etmə."""
++
+ # Владелец, 2026-08-19: агент говорит с клиентом от лица компании, и любая
+ # «эрудиция» за рамками своей темы — это слова компании. Рамку держит
+ # отдельный блок, а не правка DEFAULT_INSTRUCTION: инструкция приходит и из
+@@ -354,6 +363,9 @@
+ }
+ FRESH_RECOVERY_REPEAT_SENTENCES = {
+     "az": "Zəhmət olmasa, yalnız son ölçünü və ya sualınızı təkrar edin.",
++    "ru": "Пожалуйста, повторите только последний размер или вопрос.",
++    "en": "Please repeat only your last measurement or question.",
++    "tr": "Lütfen yalnızca son ölçüyü veya sorunuzu tekrar edin.",
+ }
+ KNOWLEDGE_HEADING = "# Şirkət və məhsullar haqqında təsdiqlənmiş biliklər"
+ TRANSCRIPTION_HINT_LIMIT = 700
+@@ -415,11 +427,9 @@
+     # each death forced a replacement session.
+     os.environ.get("GEMINI_LIVE_INPUT_WARMUP_SECONDS", "1.0")
+ )
+-# This line speaks Azerbaijani only. Automatic language detection was the
+-# source of a whole class of failures: one Azerbaijani phrase that Gemini
+-# transcribed in Turkish orthography was enough to conduct the rest of the call
+-# in Turkish. The detector and the request parser are left in place and fully
+-# tested, but nothing they produce can become an instruction any more.
++# Azerbaijani is the default for each new call. Only an explicit customer
++# request naming a language authorizes a change. Automatic transcription
++# language detection must never change the conversation or recovery language.
+ def _default_lookback_frames():
+     """Frames of pre-window audio kept so a confirmed barge reaches the model whole.
+ 
+@@ -440,7 +450,7 @@
+     os.environ.get("GEMINI_LIVE_GATED_LOOKBACK_FRAMES", "")
+     or _default_lookback_frames()
+ )
+-SUPPORTED_CALLER_LANGUAGES = ("az", "ru", "en")
++SUPPORTED_CALLER_LANGUAGES = ("az", "ru", "en", "tr")
+ TECHNICAL_VOICE_POLICY_VERSION = "fanum-voice-policy-v1"
+ _runtime_prompt = {"value": INSTRUCTION, "enabled": False, "expires": 0.0}
+ _runtime_prompt_lock = threading.Lock()
+@@ -1343,9 +1353,18 @@
+         CALL_SCOPE_POLICY.strip(),
+         LIVE_CONVERSATION_POLICY.strip(),
+         VOICE_DELIVERY_POLICY.strip(),
++        EXPLICIT_LANGUAGE_POLICY.strip(),
+     ]
+     return "\n\n".join(section for section in sections if section)
+ 
++def instruction_with_call_language_policy(instruction, continuation=""):
++    """Past-call context never authorizes a different language in a new call."""
++    return (
++        str(instruction or "").rstrip() + str(continuation or "")
++        + "\n\n" + EXPLICIT_LANGUAGE_POLICY
++    )
++
++
+ def crm_result_url():
+     """Resolve the sibling PBX callback without logging either endpoint."""
+     if CRM_RESULT_URL:
+@@ -4740,6 +4759,7 @@
+         aliases = {
+             "az": (
+                 "azərbaycan dilində",
++                "azərbaycan dilinə",
+                 "azərbaycan dili",
+                 "azərbaycan",
+                 "azərbaycanca",
+@@ -4753,6 +4773,7 @@
+             ),
+             "ru": (
+                 "rus dilində",
++                "rus dilinə",
+                 "rus dili",
+                 "rusca",
+                 "rusça",
+@@ -4765,6 +4786,7 @@
+             ),
+             "en": (
+                 "ingilis dilində",
++                "ingilis dilinə",
+                 "ingilis dili",
+                 "ingiliscə",
+                 "ingilisce",
+@@ -4778,6 +4800,7 @@
+             ),
+             "tr": (
+                 "türk dilində",
++                "türk dilinə",
+                 "türk dili",
+                 "türkcə",
+                 "türkçe",
+@@ -4895,10 +4918,9 @@
+             for language, start, end, is_bare in left + right:
+                 if is_bare:
+                     alias_spans.setdefault(language, []).append((start, end))
+-        if len(bare_targets) == 1:
+-            return next(iter(bare_targets)), False
+-        if len(bare_targets) > 1:
+-            return None, True
++        # A bare language name is a mention, not permission to switch.
++        # Only a direct request or an explicit personal preference below can
++        # select the language of this call.
+ 
+         action_spans = []
+         negative_action_tokens = {
+@@ -4918,9 +4940,157 @@
+                 )
+                 for start, end in spans(action_tokens)
+             )
++        # An explicitly named language preference is itself a request. Match
++        # the complete clause, so reports, negations, and alternatives cannot
++        # be mistaken for the caller's personal choice.
++        comfort_action_starts = set()
++        for language_spans in alias_spans.values():
++            for language_start, language_end in language_spans:
++                clause = clause_ids[language_start]
++                indexes = [
++                    index for index, owner in enumerate(clause_ids)
++                    if owner == clause
++                ]
++                first, last = indexes[0], indexes[-1] + 1
++                marked = " ".join(
++                    tokens[first:language_start]
++                    + ["TARGET"] + tokens[language_end:last]
++                )
++                if re.fullmatch(
++                    r"мне удобнее (?:говорить )?(?:на |по )?TARGET",
++                    marked,
++                ):
++                    action = tokens.index("удобнее", first, last)
++                    before = False
++                elif re.fullmatch(
++                    r"(?:mənə TARGET|TARGET mənə) (?:danışmaq )?(?:daha )?rahatdır",
++                    marked,
++                ):
++                    action = tokens.index("rahatdır", first, last)
++                    before = True
++                else:
++                    continue
++                comfort_action_starts.add(action)
++                span = (action, action + 1, False, before)
++                if span not in action_spans:
++                    action_spans.append(span)
++
+         if not action_spans:
+             return None, False
+ 
++        def action_is_direct_request(action_start, action_end,
++                                     language_start, language_end):
++            if action_start in comfort_action_starts:
++                return True
++            clause = clause_ids[action_start]
++            first = next(
++                index for index, owner in enumerate(clause_ids)
++                if owner == clause
++            )
++            last = max(
++                index for index, owner in enumerate(clause_ids)
++                if owner == clause
++            ) + 1
++            prefix_start = first
++            earlier_actions = [
++                start for start, _end, _negative, _before in action_spans
++                if first <= start < action_start
++            ]
++            if earlier_actions:
++                first_action = min(earlier_actions)
++                initial_target_indexes = {
++                    index
++                    for language_spans in alias_spans.values()
++                    for start, end in language_spans
++                    if first <= start and end <= first_action
++                    for index in range(start, end)
++                }
++                initial_prefix = " ".join(
++                    tokens[index] for index in range(first, first_action)
++                    if index not in initial_target_indexes
++                )
++                # A second direct command may follow a negative first one.
++                # Do not inherit a subject from a statement such as "we speak
++                # Russian and speak English" into permission to switch.
++                if initial_prefix in {
++                    "", "please", "do not", "don t", "dont", "never",
++                    "please do not", "please don t", "не", "пожалуйста",
++                    "пожалуйста не", "давайте", "давайте не",
++                    "zəhmət olmasa", "gəlin", "lütfen",
++                }:
++                    for index in range(first_action + 1, action_start + 1):
++                        punctuation = folded[
++                            word_matches[index - 1].end():
++                            word_matches[index].start()
++                        ]
++                        if "," in punctuation:
++                            prefix_start = index
++                        if tokens[index] in {
++                            "but", "and", "however", "а", "но", "и",
++                            "amma", "ancaq", "lakin", "və", "ama", "fakat",
++                        }:
++                            prefix_start = index + 1
++            # AZ/TR commonly put the language before the command. Removing
++            # just that target leaves the grammatical subject/request prefix.
++            prefix = " ".join(
++                tokens[index] for index in range(prefix_start, action_start)
++                if not language_start <= index < language_end
++            )
++            verb = " ".join(tokens[action_start:action_end])
++            suffix = " ".join(tokens[action_end:last])
++            if verb in {"speak", "talk", "switch", "change"}:
++                prefixes = {
++                    "", "please", "could you please", "would you please",
++                    "can you please", "will you please", "please could you",
++                    "please would you", "please can you", "let us", "let s",
++                    "can we", "could we", "i want to", "i would like to",
++                }
++                if verb in {"switch", "change"}:
++                    prefixes |= {"can you", "could you", "would you", "will you"}
++                # "I/we/you speak" is a statement; "Do/Can you speak?"
++                # asks about a capability. Neither authorizes a switch.
++                return prefix in prefixes
++            if verb in {
++                "говори", "говорите", "перейди", "перейдите", "перейдем",
++                "перейдём", "перейти", "переходи", "переходите", "поговорим",
++                "говорить",
++            }:
++                prefixes = {
++                    "", "пожалуйста", "давайте", "давайте пожалуйста",
++                    "пожалуйста давайте", "хочу", "я хочу", "я хотел бы",
++                    "я хотела бы", "мне удобнее", "мне удобнее на",
++                }
++                return prefix in prefixes
++            if verb in {
++                "danış", "danışın", "danışaq", "keç", "keçin", "keçək",
++                "danışmaq", "danışa", "keçmək",
++            }:
++                polite = "zəhmət olmasa"
++                if verb in {"danışmaq", "keçmək"}:
++                    return (
++                        prefix in {"", "mən", polite}
++                        and re.fullmatch(r"istəyirəm(?: zəhmət olmasa)?", suffix)
++                        is not None
++                    )
++                if verb == "danışa":
++                    return (
++                        prefix == polite or suffix.endswith(polite)
++                    ) and prefix in {"", polite}
++                return prefix in {"", polite, "gəlin", "gəlin zəhmət olmasa"}
++            if verb in {
++                "konuş", "konuşun", "konuşalım", "konus", "konusun",
++                "konusalım", "konuşabilir", "konusabilir", "konuşmak",
++                "geç", "geçin", "geçelim", "geçmek",
++            }:
++                if verb in {"konuşabilir", "konusabilir"}:
++                    return prefix == "lütfen" or (
++                        not prefix and suffix.endswith("lütfen")
++                    )
++                if verb in {"konuşmak", "geçmek"}:
++                    return prefix in {"", "ben", "lütfen"} and suffix == "istiyorum"
++                return prefix in {"", "lütfen"}
++            return False
++
+         joined = " ".join(tokens)
+         block_phrases = (
+             # Reported speech, in all four supported caller languages.
+@@ -5062,6 +5232,11 @@
+                         language_start,
+                         inherently_negative,
+                     )
++                    if not negated and not action_is_direct_request(
++                        action_start, action_end, language_start, language_end
++                    ):
++                        blocked_request = True
++                        continue
+                     pair = {
+                         "language": language,
+                         "position": max(action_end, language_end),
+@@ -5305,36 +5480,30 @@
+         return best
+ 
+     def record_transcript(self, item_id, role, text, expected_ws=None):
+-        detected = (
+-            self._detect_caller_language(text) if role == "customer" else None
+-        )
+         recorded = super().record_transcript(
+-            item_id,
+-            role,
+-            text,
+-            expected_ws=expected_ws,
+-        )
+-        switched = False
+-        if recorded and detected is not None:
+-            with self.state_lock:
+-                switched = detected != self.last_clear_caller_language
+-                self.last_clear_caller_language = detected
+-                if detected in SUPPORTED_CALLER_LANGUAGES:
+-                    # The raw value drives the existing request/negation logic
+-                    # unchanged. This is the one the model is ever told to
+-                    # speak, so an unsupported detection can never overwrite a
+-                    # language the caller is actually using.
+-                    self.last_supported_caller_language = detected
++            item_id, role, text, expected_ws=expected_ws,
++        )
++        if not recorded or role != "customer":
++            return recorded
++        # Transcripts are cumulative revisions, not immutable final messages.
++        # Re-evaluate ordered customer items so a later negation/alternative
++        # can revoke a language inferred from an incomplete earlier revision.
++        with self.state_lock:
++            language = "az"
++            for key in self.transcript_order:
++                item = self.transcript_items.get(key, {})
++                if item.get("role") != "customer":
++                    continue
++                requested, pending = self._requested_caller_language(item.get("text", ""))
++                if not pending and requested in SUPPORTED_CALLER_LANGUAGES:
++                    language = requested
++            switched = language != self.last_supported_caller_language
++            self.last_clear_caller_language = language
++            self.last_supported_caller_language = language
+         if switched:
+-            # A language switch must be visible in telemetry without exposing
+-            # any transcript: it is the single most common trigger the owner
+-            # reports, and the previous runtime left no marker for it at all.
+             latency(
+-                "dialog_language",
+-                self.call_id,
+-                language=detected,
+-                source="transcript",
+-                engine="gemini_live",
++                "dialog_language", self.call_id, language=language,
++                source="explicit_customer_request", engine="gemini_live",
+             )
+         return recorded
+ 
+@@ -5622,6 +5791,56 @@
+             ws.send_json(event)
+             return True
+ 
++    def _language_turn_event(self):
++        """Refresh the authorized language at a confirmed caller-turn boundary.
++
++        This is application context, not caller speech and not a new response
++        request. Never put it in the transcript or derive permission from model
++        output. The current audio can still contain a new explicit request.
++        """
++        with self.state_lock:
++            language = self.last_supported_caller_language
++        names = {"az": "Azərbaycan dili", "ru": "rus dili",
++                 "en": "ingilis dili", "tr": "türk dili"}
++        name = names.get(language, names["az"])
++        instruction = (
++            "[Telefon tətbiqinin dil nəzarəti; abonentin nitqi deyil.] "
++            "Bu zəngdə hazırda icazə verilən cavab dili: " + name + ". "
++            "Növbəti cavabı bütövlükdə bu dildə ver. "
++            "Yalnız abonent İNDİ özü açıq şəkildə konkret başqa dili adlandırıb "
++            "həmin dilə keçməyi xahiş edərsə bu seçimi dəyiş. "
++            "Onun başqa dildə adi danışması, aksenti, tanış sözlər və "
++            "transkripsiya səhvləri icazə deyil. Dil dəyişməyi özün təklif etmə. "
++            "Əvvəlki cavabında başqa dil işlətmisənsə, o səhvi davam etdirmə. "
++            "Bu xidməti qeydi səsləndirmə və ona ayrıca cavab vermə; "
++            "abonentin bu növbədəki sözlərinə cavab ver."
++        )
++        if language == "az":
++            instruction += (
++                " Azərbaycan dilinin ədəbi danışıq formasını işlət: "
++                "məlumat, kömək, qiymət, tikinti, divar, pəncərə, "
++                "neçə, üçün, zəhmət olmasa. Azərbaycan və türk dilləri "
++                "ayrı dillərdir; Azərbaycan cümlələrini türkcəyə çevirmə."
++            )
++        return {"clientContent": {"turns": [
++            {"role": "user", "parts": [{"text": instruction}]}],
++            "turnComplete": False}}
++
++    def _send_gemini_activity(self, ws, activity_open):
++        # Keep context and activityStart consecutive on the same current socket.
++        # Client content can interrupt generation: send it only when local VAD
++        # has confirmed the caller is taking the turn, never during idle audio.
++        with self.control_send_lock:
++            with self.state_lock:
++                if (self.closed or self.hangup_started or self.input_stream_fenced
++                        or self.fresh_recovery_input_fenced or self.ws is not ws):
++                    return False
++            if activity_open:
++                ws.send_json(self._language_turn_event())
++            ws.send_json({"realtimeInput": (
++                {"activityStart": {}} if activity_open else {"activityEnd": {}})})
++            return True
++
+     def _greeting_event(self):
+         if self.is_callback:
+             request = (
+@@ -5701,14 +5920,9 @@
+             non_business = set(self.non_business_transcript_items)
+             audible = set(self.audible_agent_items)
+             keys = dict(self.dialog_turn_keys)
+-            language = self.last_clear_caller_language
+-            if language not in SUPPORTED_CALLER_LANGUAGES:
+-                # This line speaks Azerbaijani and Russian only. Fall back to
+-                # the language this call was actually being conducted in, not
+-                # to the module default: resetting to the default answered a
+-                # Russian caller in Azerbaijani merely because they had asked
+-                # whether the agent speaks English.
+-                language = self.last_supported_caller_language
++            # This state is derived solely from explicit requests in this
++            # call, never the detected language of ordinary customer speech.
++            language = self.last_supported_caller_language
+             greeting_audible = self.greeting_audible
+             greeting_item_id = self.greeting_item_id
+             greeting_item_ids = set(self.greeting_item_ids)
+@@ -6110,8 +6324,9 @@
+             continuation_box["opening"] if not continuation_thread.is_alive() else ""
+         )
+         self.is_callback = "# Bu zəng yarımçıq söhbətin davamıdır" in continuation
+-        if continuation:
+-            self.instruction = self.instruction.rstrip() + continuation
++        self.instruction = instruction_with_call_language_policy(
++            self.instruction, continuation,
++        )
+         latency(
+             "gemini_continuation",
+             self.call_id,
+@@ -7568,14 +7783,10 @@
+             # come from the same local RMS detector that already owns
+             # barge-in. Failures here fall through to the audio frame below,
+             # which owns error handling and recovery for this websocket.
+-            marker = {
+-                "realtimeInput": (
+-                    {"activityStart": {}} if activity_open
+-                    else {"activityEnd": {}}
+-                )
+-            }
+             try:
+-                self._send_gemini_event(active_ws, marker)
++                sent = self._send_gemini_activity(active_ws, activity_open)
++                if not sent:
++                    return
+                 # Diagnostic only. Turn boundaries are now produced locally, so
+                 # a silent call is either "no start" or "start with no end";
+                 # without this the two are indistinguishable in the log.
+@@ -8530,12 +8741,18 @@
+         The audible result is a caller who hears "one moment" instead of a line
+         that has gone silent for reasons they cannot distinguish from a drop.
+         """
++        # The cached notice is Azerbaijani. Do not change the language of a
++        # call whose subscriber has explicitly requested another language.
++        with self.state_lock:
++            if self.last_supported_caller_language != "az":
++                return
+         pcm8 = recovery_notice_pcm8()
+         if not pcm8:
+             return
+         stop = threading.Event()
+         with self.state_lock:
+-            if self.closed or self.hangup_started:
++            if (self.closed or self.hangup_started
++                    or self.last_supported_caller_language != "az"):
+                 return
+             previous = self.recovery_notice_stop
+             self.recovery_notice_stop = stop
+@@ -8568,6 +8785,9 @@
+                             if self.closed or self.hangup_started:
+                                 outcome = "call_ended"
+                                 break
++                            if self.last_supported_caller_language != "az":
++                                outcome = "language_changed"
++                                break
+                         if stop.is_set():
+                             outcome = "yielded"
+                             break
+@@ -8713,12 +8933,7 @@
+                             recovery_local_turn_epoch = (
+                                 self.validated_local_turn_epoch
+                             )
+-                            recovery_language = (
+-                                self.last_clear_caller_language
+-                                if self.last_clear_caller_language
+-                                in SUPPORTED_CALLER_LANGUAGES
+-                                else self.last_supported_caller_language
+-                            )
++                            recovery_language = self.last_supported_caller_language
+                             # Captured before the reset below clears it: a
+                             # caller turn that the provider never transcribed
+                             # is invisible afterwards, and the replacement

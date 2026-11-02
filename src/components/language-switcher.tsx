@@ -6,8 +6,8 @@ import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useTranslations } from "next-intl"
 
-const LANGUAGE_CODES = ["ru", "az", "en"] as const
-const LANGUAGE_KEYS: Record<string, string> = {
+export const LANGUAGE_CODES = ["ru", "az", "en"] as const
+export const LANGUAGE_KEYS: Record<string, string> = {
   ru: "langRussian",
   az: "langAzerbaijani",
   en: "langEnglish",
@@ -21,6 +21,11 @@ function getLocaleFromCookie(): string {
       .find((row) => row.startsWith("NEXT_LOCALE="))
       ?.split("=")[1] || "ru"
   )
+}
+
+export function switchLocale(locale: string) {
+  document.cookie = `NEXT_LOCALE=${locale};path=/;max-age=${365 * 24 * 60 * 60}`
+  window.location.reload()
 }
 
 export function LanguageSwitcher() {
@@ -57,11 +62,6 @@ export function LanguageSwitcher() {
       })
     }
     setOpen(!open)
-  }
-
-  function switchLocale(locale: string) {
-    document.cookie = `NEXT_LOCALE=${locale};path=/;max-age=${365 * 24 * 60 * 60}`
-    window.location.reload()
   }
 
   const currentLabel = tc(LANGUAGE_KEYS[current] || "langRussian")

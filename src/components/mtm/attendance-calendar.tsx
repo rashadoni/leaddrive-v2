@@ -1,19 +1,26 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { useFormatter, useTranslations } from "next-intl"
-import { CalendarDays } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDate, formatDateTime } from "@/lib/format-date"
+import { CalendarCheck, CalendarDays, Clock, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomeCard } from "@/components/mtm/home-parts"
+import { azOfficialCalendar } from "@/lib/mtm/az-official-calendar"
 
 const ENDPOINT = "/api/v1/mtm/attendance/calendar"
-const EDITABLE_KINDS = ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY", "EXCEPTION_WORKDAY"] as const
+const EDITABLE_KINDS = ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY", "WEEKEND", "EXCEPTION_WORKDAY"] as const
 const KIND_MESSAGES: Record<string, string> = { PUBLIC_HOLIDAY: "calendarPublicHoliday", COMPANY_HOLIDAY: "calendarCompanyHoliday", EXCEPTION_WORKDAY: "calendarExceptionWorkday",
   WORKING_DAY: "calendarWorkingDay", WEEKEND: "calendarWeekend", MOVED_WORKDAY: "calendarMovedWorkday", MOVED_DAY_OFF: "calendarMovedDayOff" }
 type EditableKind = typeof EDITABLE_KINDS[number]
 type CalendarDay = { id: string; date: string; kind: string; name: string | null; updatedAt: string; canEdit: boolean }
 type CalendarData = { today: string; days: CalendarDay[]; canManage: boolean }
+/** What Settings → Holidays offers for the year (attendanceOfficialCalendarView). */
+type OfficialView = { year: number; checkedAt?: string | null } & ({ state: "DECIDED"; source: string | null } | { state: "NOT_YET" | "DISMISSED" }
+  | { state: "UNREADABLE"; sourceUrl: string | null }
+  | { state: "FOUND"; fingerprint: string; decision: string | null; sourceUrl: string | null; publishedOn: string | null; entries: { date: string; kind: string; name: string }[] })
+const FOUND_PREVIEW = 3
 type Draft = { id?: string; version?: string; date: string; kind: EditableKind; name: string }
 const SELECT_CLASS = "min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 
@@ -28,7 +35,7 @@ function editableKind(kind: string): kind is EditableKind { return (EDITABLE_KIN
 /** Manually entered organization calendar; a blank list is never a legal holiday source. */
 export function MtmAttendanceCalendar() {
   const t = useTranslations("mtmAttendance")
-  const format = useFormatter()
+  const locale = useLocale()
   const [data, setData] = useState<CalendarData | null>(null)
   const [year, setYear] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -39,6 +46,9 @@ export function MtmAttendanceCalendar() {
   const [saving, setSaving] = useState(false)
   const [mustReload, setMustReload] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [official, setOfficial] = useState<{ added: number; past: number; existing: number } | null>(null)
+  const [officialView, setOfficialView] = useState<OfficialView | null>(null)
+  const [showAllFound, setShowAllFound] = useState(false)
   const loadController = useRef<AbortController | null>(null)
   const mutationController = useRef<AbortController | null>(null)
   const interruptedSave = useRef(false)
@@ -54,6 +64,7 @@ export function MtmAttendanceCalendar() {
     setSaved(null)
     setRemovingId(null)
     setData(null)
+    if (!acknowledgeInterrupted) setOfficial(null)
     setDraft(null)
     if (interruptedSave.current) setSaving(false)
     if (selectedYear) setYear(selectedYear)
@@ -67,6 +78,17 @@ export function MtmAttendanceCalendar() {
         return
       }
       const loaded = body.data as CalendarData
+      // The found / not yet line is extra: without it the block says what it said before.
+      let view: OfficialView | null = null
+      if (loaded.canManage) {
+        const shown = selectedYear ?? loaded.today.slice(0, 4)
+        const answer = await fetch(`${ENDPOINT}/official?year=${shown}`, { cache: "no-store", signal: controller.signal }).catch(() => null)
+        const viewBody = answer?.ok ? await answer.json().catch(() => null) : null
+        if (controller.signal.aborted) return
+        view = viewBody?.success === true && typeof viewBody.data?.state === "string" ? viewBody.data as OfficialView : null
+      }
+      setOfficialView(view)
+      setShowAllFound(false)
       setData(loaded)
       setYear(selectedYear ?? loaded.today.slice(0, 4))
       setDraft(blankDraft(loaded.today))
@@ -93,7 +115,7 @@ export function MtmAttendanceCalendar() {
     }
   }, [load])
 
-  const dateLabel = (value: string) => format.dateTime(new Date(`${value}T12:00:00.000Z`), { dateStyle: "medium", timeZone: "UTC" })
+  const dateLabel = (value: string) => formatDate(`${value}T12:00:00.000Z`, locale, { dateStyle: "medium", timeZone: "UTC" })
   const kindLabel = (kind: string) => t(KIND_MESSAGES[kind] ?? "calendarOtherDay")
   const canEdit = (day: CalendarDay) => Boolean(data?.canManage && day.canEdit && editableKind(day.kind) && day.date > data.today)
 
@@ -157,6 +179,48 @@ export function MtmAttendanceCalendar() {
     }
   }
 
+  /** One press adds the year's official days; the server skips past and already entered dates. */
+  async function addOfficial(fingerprint?: string) {
+    if (!data?.canManage || !year || saving || mutationController.current || mustReload) return
+    const controller = new AbortController()
+    mutationController.current = controller
+    setSaving(true); setSaveError(null); setSaved(null); setOfficial(null)
+    try {
+      const response = await fetch(`${ENDPOINT}/official`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ year: Number(year), ...(fingerprint ? { fingerprint } : {}) }), signal: controller.signal })
+      const body = await response.json().catch(() => null)
+      if (controller.signal.aborted) return
+      if (body?.code === "MTM_ATTENDANCE_CALENDAR_FOUND_CHANGED") { mutationController.current = null; await load(year, true); setSaveError(t("calendarFoundChanged")); return }
+      if (!response.ok || body?.success !== true || typeof body.data?.added !== "number") { setSaveError(t("calendarOfficialFailed")); return }
+      const result = body.data as { added: number; past: number; existing: number }
+      mutationController.current = null
+      await load(year, true)
+      setOfficial(result)
+    } catch { if (!controller.signal.aborted) setSaveError(t("calendarOfficialFailed")) }
+    finally {
+      if (mutationController.current === controller) mutationController.current = null
+      if (!controller.signal.aborted) setSaving(false)
+    }
+  }
+  /** "Wrong, don't add": hides exactly this found list for this organization. */
+  async function dismissFound(fingerprint: string) {
+    if (!data?.canManage || !year || saving || mutationController.current || mustReload) return
+    const controller = new AbortController()
+    mutationController.current = controller
+    setSaving(true); setSaveError(null); setSaved(null); setOfficial(null)
+    try {
+      const response = await fetch(`${ENDPOINT}/official`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ year: Number(year), fingerprint, dismiss: true }), signal: controller.signal })
+      const body = await response.json().catch(() => null)
+      if (controller.signal.aborted) return
+      mutationController.current = null
+      if (body?.code === "MTM_ATTENDANCE_CALENDAR_FOUND_CHANGED") { await load(year, true); setSaveError(t("calendarFoundChanged")); return }
+      if (!response.ok || body?.success !== true) { setSaveError(t("calendarOfficialFailed")); return }
+      await load(year, true)
+    } catch { if (!controller.signal.aborted) setSaveError(t("calendarOfficialFailed")) }
+    finally {
+      if (mutationController.current === controller) mutationController.current = null
+      if (!controller.signal.aborted) setSaving(false)
+    }
+  }
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void mutate() }
   const days = data ? [...data.days].sort((a, b) => a.date.localeCompare(b.date)) : []
   const currentYear = data ? Number(data.today.slice(0, 4)) : null
@@ -177,11 +241,11 @@ export function MtmAttendanceCalendar() {
               onChange={(event) => void load(event.target.value)}>{[currentYear, currentYear + 1].map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
         </div>
         {days.length ? <div className="overflow-x-auto" role="region" aria-label={t("calendarTitle")} tabIndex={0}><table className="block w-full table-fixed text-left text-sm sm:table" aria-label={t("calendarTitle")}>
-          <thead className="hidden border-b border-zinc-200 text-xs text-muted-foreground dark:border-zinc-700 sm:table-header-group"><tr>
+          <thead className="hidden border-b border-border text-xs text-muted-foreground sm:table-header-group"><tr>
             <th scope="col" className="w-[18%] py-3 pr-3 font-medium">{t("calendarDate")}</th><th scope="col" className="w-[23%] py-3 pr-3 font-medium">{t("calendarKind")}</th>
             <th scope="col" className="py-3 pr-3 font-medium">{t("calendarName")}</th><th scope="col" className="w-[25%] py-3 font-medium">{t("calendarActions")}</th>
           </tr></thead>
-          <tbody className="block sm:table-row-group">{days.map((day) => <tr key={day.id} data-testid="attendance-calendar-day" className="block space-y-2 border-b border-zinc-200 py-4 last:border-b-0 dark:border-zinc-700 sm:table-row sm:space-y-0 sm:py-0">
+          <tbody className="block sm:table-row-group">{days.map((day) => <tr key={day.id} data-testid="attendance-calendar-day" className="block space-y-2 border-b border-border py-4 last:border-b-0 sm:table-row sm:space-y-0 sm:py-0">
             <th scope="row" className="block break-words font-medium sm:table-cell sm:py-4 sm:pr-3"><time dateTime={day.date}>{dateLabel(day.date)}</time></th>
             <td className="block break-words sm:table-cell sm:py-4 sm:pr-3">{kindLabel(day.kind)}</td>
             <td className="block break-words text-muted-foreground sm:table-cell sm:py-4 sm:pr-3">{day.name || t("calendarUnnamed")}</td>
@@ -193,8 +257,33 @@ export function MtmAttendanceCalendar() {
               <Button type="button" variant="ghost" className="min-h-11 text-destructive" disabled={disabled} onClick={() => { setRemovingId(day.id); setSaved(null) }} aria-label={t("calendarDeleteDate", { date: dateLabel(day.date) })}>{t("calendarDelete")}</Button></div>
               : <span className="text-xs text-muted-foreground">{t(day.date <= data.today ? "calendarPastReadOnly" : !day.canEdit ? "calendarPairedReadOnly" : "calendarViewOnly")}</span>}</td>
           </tr>)}</tbody>
-        </table></div> : <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-sm text-muted-foreground dark:border-zinc-700">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
-        {data.canManage ? <form className="space-y-4 border-t border-zinc-200 pt-5 dark:border-zinc-700" onSubmit={submit} aria-label={t(draft.id ? "calendarEditForm" : "calendarAddForm")}>
+        </table></div> : <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">{t("calendarEmpty", { year: year ?? String(currentYear) })}</p>}
+        {data.canManage && year && officialView?.state === "FOUND" ? <div className="space-y-3 rounded-xl border-2 border-primary bg-card p-4" data-testid="attendance-calendar-found">
+          <p className="flex items-center gap-2 text-sm font-semibold"><CalendarCheck className="h-4 w-4 text-primary" aria-hidden="true" />{t("calendarFoundTitle", { year })}</p>
+          <p className="text-sm text-muted-foreground">{t("calendarFoundSource", { decision: officialView.decision ?? "—", date: officialView.publishedOn ? dateLabel(officialView.publishedOn) : "—" })}
+            {officialView.sourceUrl ? <>{" · "}<a className="text-primary underline-offset-2 hover:underline" href={officialView.sourceUrl} target="_blank" rel="noopener noreferrer">{t("calendarFoundOpen")}</a></> : null}</p>
+          <div className="overflow-x-auto"><table className="w-full table-fixed text-left text-sm"><thead className="text-xs text-muted-foreground"><tr>
+            <th scope="col" className="w-[28%] py-2 pr-3 font-medium">{t("calendarDate")}</th><th scope="col" className="w-[30%] py-2 pr-3 font-medium">{t("calendarKind")}</th><th scope="col" className="py-2 font-medium">{t("calendarName")}</th></tr></thead>
+            <tbody>{(showAllFound ? officialView.entries : officialView.entries.slice(0, FOUND_PREVIEW)).map((entry) => <tr key={entry.date} className="border-t border-border" data-testid="attendance-calendar-found-day">
+              <td className="py-2 pr-3"><time dateTime={entry.date}>{dateLabel(entry.date)}</time></td><td className="py-2 pr-3">{kindLabel(entry.kind)}</td><td className="break-words py-2 text-muted-foreground">{entry.name}</td></tr>)}
+              {!showAllFound && officialView.entries.length > FOUND_PREVIEW ? <tr className="border-t border-border"><td colSpan={3} className="py-2 text-muted-foreground">{t("calendarFoundMore", { count: officialView.entries.length - FOUND_PREVIEW })}{" · "}
+                <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => setShowAllFound(true)}>{t("calendarFoundShowAll")}</button></td></tr> : null}</tbody></table></div>
+          <p className="max-w-prose text-sm text-muted-foreground">{t("calendarFoundHint")}</p>
+          <div className="flex flex-wrap gap-2"><Button type="button" className="min-h-11 rounded-full" disabled={disabled} onClick={() => void addOfficial(officialView.fingerprint)}>{t("calendarFoundAdd")}</Button>
+            <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={disabled} onClick={() => void dismissFound(officialView.fingerprint)}>{t("calendarFoundDismiss")}</Button></div>
+          {official ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300" data-testid="attendance-calendar-official-result">{t("calendarOfficialDone", official)}</p> : null}
+        </div> : data.canManage && year ? <div className="space-y-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4" data-testid="attendance-calendar-official">
+          <p className="text-sm font-semibold">{t("calendarOfficialTitle", { year })}</p>
+          <p className="max-w-prose text-sm text-muted-foreground">{azOfficialCalendar(Number(year)).complete ? t("calendarOfficialHint", { source: azOfficialCalendar(Number(year)).source ?? "" }) : t("calendarOfficialPartial", { year })}</p>
+          {officialView?.state === "NOT_YET" ? <p className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground" data-testid="attendance-calendar-watch">
+            <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />{t("calendarNotYet", { year })}{officialView.checkedAt ? ` · ${t("calendarLastChecked", { time: formatDateTime(officialView.checkedAt, locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Baku" }) })}` : ""}</p> : null}
+          {officialView?.state === "UNREADABLE" ? <p className="flex items-center gap-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card px-3 py-2 text-sm text-amber-900 dark:text-amber-200" data-testid="attendance-calendar-watch">
+            <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{t("calendarUnreadable", { year })}{officialView.sourceUrl ? <>{" · "}<a className="underline underline-offset-2" href={officialView.sourceUrl} target="_blank" rel="noopener noreferrer">{t("calendarFoundOpen")}</a></> : null}</span></p> : null}
+          {officialView?.state === "DISMISSED" ? <p className="text-sm text-muted-foreground" data-testid="attendance-calendar-watch">{t("calendarFoundDismissed")}</p> : null}
+          <Button type="button" className="min-h-11 rounded-full" disabled={disabled} onClick={() => void addOfficial()}>{t("calendarOfficialAdd", { year })}</Button>
+          {official ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300" data-testid="attendance-calendar-official-result">{t("calendarOfficialDone", official)}</p> : null}
+        </div> : null}
+        {data.canManage ? <form className="space-y-4 border-t border-border pt-5" onSubmit={submit} aria-label={t(draft.id ? "calendarEditForm" : "calendarAddForm")}>
           <fieldset disabled={disabled} className="space-y-4"><legend className="mb-3 text-sm font-semibold">{t(draft.id ? "calendarEditForm" : "calendarAddForm")}</legend>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(12rem,1.3fr)_minmax(14rem,2fr)]">
               <div className="space-y-2"><label htmlFor="attendance-calendar-date" className="text-sm font-medium">{t("calendarDate")}</label>

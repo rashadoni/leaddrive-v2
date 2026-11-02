@@ -23,6 +23,7 @@ import { validateUploadBytes } from "@/lib/upload-security"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { readFormDataRequestWithinLimit } from "@/lib/request-body-limit"
 import { runtimePublicUploadsRoot } from "@/lib/runtime-paths"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 export const runtime = "nodejs"
 
@@ -203,7 +204,7 @@ export const POST = withRlsSessionAuth(async (req, auth) => {
     // runtime volume; a write elsewhere must never be counted as success.
     try {
       await mkdir(targetDir, { recursive: true })
-      await writeFile(newFilePath, optimized)
+      await writeFile(newFilePath, sealTenantFile(auth.orgId, optimized))
     } catch {
       return NextResponse.json({ success: false, error: "Upload failed" }, { status: 500 })
     }

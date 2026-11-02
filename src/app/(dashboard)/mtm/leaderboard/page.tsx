@@ -1,16 +1,17 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { Button } from "@/components/ui/button"
-import { Trophy, Zap, Camera, Target, Heart, Star, ChevronDown, ChevronUp } from "lucide-react"
+import { Trophy, Zap, Camera, Target, Heart, Star, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { AgentDetailCard } from "@/components/leaderboard/agent-detail-card"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import type { NormalizedAgent, LeaderboardPeriod } from "@/lib/leaderboard/types"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 /**
  * Field UX audit 2026-09-05, W-12 / task C13 (backlog T15).
@@ -47,6 +48,14 @@ const SORTABLE: Array<{ key: SortKey; label: string; numeric: boolean }> = [
   { key: "approvedPhotos", label: "colPhotos", numeric: true },
   { key: "score", label: "colScore", numeric: true },
 ]
+
+/** What a column counts, under the cursor on its heading. */
+const COLUMN_HINT: Record<string, string> = {
+  visits: "hint.visits",
+  completedTasks: "hint.tasks",
+  approvedPhotos: "hint.photos",
+  score: "hint.score",
+}
 
 export default function MtmLeaderboardPage() {
   const t = useTranslations("mtmLeaderboard")
@@ -137,25 +146,26 @@ export default function MtmLeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={Trophy} title={t("title")} description={t("description")} />
-          <HelpButton slug="mtm-leaderboard" variant="label" />
-        </div>
-        <div className="flex gap-1 flex-wrap">
-          {(["weekly", "monthly", "all"] as const).map(p => (
-            <Button key={p} variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
-              {p === "weekly" ? t("weekly") : p === "monthly" ? t("monthly") : t("allTime")}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <MtmPageHeader
+        title={t("title")}
+        description={t("description")}
+        help="mtm-leaderboard"
+        actions={(
+          <div className="flex gap-1 flex-wrap">
+            {(["weekly", "monthly", "all"] as const).map(p => (
+              <Hint key={p} text={t("hint.period")}><Button variant="outline" size="sm" onClick={() => setPeriod(p)} className={mtmChipClass(period === p)}>
+                {p === "weekly" ? t("weekly") : p === "monthly" ? t("monthly") : t("allTime")}
+              </Button></Hint>
+            ))}
+          </div>
+        )}
+      />
 
       {loading ? (
         <div className="animate-pulse space-y-4"><div className="h-48 bg-muted rounded-lg" /><div className="h-64 bg-muted rounded-lg" /></div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div className="lg:col-span-2 rounded-lg border border-border bg-card p-4">
             <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" /> {t("fullRanking")}</h3>
             {rankings.length === 0 ? (
               <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">{t("noAgents")}</div>
@@ -163,16 +173,16 @@ export default function MtmLeaderboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-200 text-xs text-muted-foreground dark:border-zinc-700">
+                    <tr className="border-b border-border text-xs text-muted-foreground">
                       {SORTABLE.map(({ key, label, numeric }) => (
                         <th key={key} scope="col" className={numeric ? "px-2 py-2 text-right" : "px-2 py-2 text-left"}
                           aria-sort={sort.key === key ? (sort.desc ? "descending" : "ascending") : "none"}>
-                          <button type="button" onClick={() => toggleSort(key)}
+                          <Hint text={COLUMN_HINT[key] ? t(COLUMN_HINT[key]) : null}><button type="button" onClick={() => toggleSort(key)}
                             aria-label={t("sortBy", { column: t(label) })}
                             className={`inline-flex min-h-9 items-center gap-1 rounded px-1 font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sort.key === key ? "text-foreground" : ""}`}>
                             {t(label)}
                             {sort.key === key ? (sort.desc ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />) : null}
-                          </button>
+                          </button></Hint>
                         </th>
                       ))}
                     </tr>
@@ -184,11 +194,11 @@ export default function MtmLeaderboardPage() {
                         aria-label={t("openBreakdown", { name: agent.name })}
                         onClick={() => openBreakdown(agent.agentId)}
                         onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openBreakdown(agent.agentId) } }}
-                        className="cursor-pointer border-b border-zinc-100 last:border-b-0 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-800">
+                        className="cursor-pointer border-b border-border last:border-b-0 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                         <td className="px-2 py-2">
                           <div className="flex items-center gap-2">
                             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                              agent.rank === 1 ? "bg-amber-100 text-amber-700" : agent.rank === 2 ? "bg-slate-100 text-slate-600" : agent.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-muted text-muted-foreground"}`}>
+                              agent.rank === 1 ? "text-amber-700" : agent.rank === 2 ? "text-zinc-600" : agent.rank === 3 ? "text-orange-700" : "bg-muted text-muted-foreground"}`}>
                               {agent.rank}
                             </span>
                             <div className="min-w-0">
@@ -200,17 +210,24 @@ export default function MtmLeaderboardPage() {
                         <td className="px-2 py-2 text-right tabular-nums">{agent.visits}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{agent.completedTasks}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{agent.approvedPhotos}</td>
-                        <td className="px-2 py-2 text-right"><span className="font-bold text-primary tabular-nums">{agent.score}</span><span className="ml-1 text-[10px] text-muted-foreground">{t("pointsSuffix")}</span></td>
+                        <td className="px-2 py-2 text-right"><span className="font-bold text-primary tabular-nums">{agent.score}</span><span className="ml-1 text-xs text-muted-foreground">{t("pointsSuffix")}</span></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+            {/* Only field employees are ranked; say who is not, by name. */}
+            {(data?.notRanked?.length ?? 0) > 0 ? (
+              <p data-testid="mtm-leaderboard-not-ranked" className="mt-3 flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>{t("notRanked", { names: (data.notRanked as string[]).join(", ") })}</span>
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Star className="h-4 w-4 text-primary" /> {t("achievements")}</h3>
               {rankings.length > 0 && rankings[0].achievements ? (
                 <div className="space-y-3">
@@ -219,13 +236,13 @@ export default function MtmLeaderboardPage() {
                     const Icon = meta.icon; const completed = ach.progress >= ach.total
                     return (
                       <div key={ach.id} className="flex items-center gap-3">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${completed ? "bg-primary/10" : "bg-muted"}`}><Icon className={`h-4 w-4 ${completed ? meta.color : "text-muted-foreground"}`} /></div>
+                        <div className="h-8 w-8 rounded-full flex items-center justify-center"><Icon className={`h-4 w-4 ${completed ? meta.color : "text-muted-foreground"}`} /></div>
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium">{t(`ach_${ach.id}_label`)}</div>
-                          <div className="text-[10px] text-muted-foreground">{t(`ach_${ach.id}_desc`)}</div>
+                          <div className="text-xs text-muted-foreground">{t(`ach_${ach.id}_desc`)}</div>
                           <div className="w-full bg-muted rounded-full h-1 mt-1"><div className={`h-1 rounded-full ${completed ? "bg-green-500" : "bg-amber-500"}`} style={{ width: `${Math.min((ach.progress / ach.total) * 100, 100)}%` }} /></div>
                         </div>
-                        <span className="text-[10px] text-muted-foreground">{ach.progress}/{ach.total}</span>
+                        <span className="text-xs text-muted-foreground">{ach.progress}/{ach.total}</span>
                       </div>
                     )
                   })}
@@ -233,10 +250,11 @@ export default function MtmLeaderboardPage() {
               ) : (<div className="text-sm text-muted-foreground">{t("selectAgent")}</div>)}
             </div>
 
-            {rankings.length >= 3 && (
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            {/* With two field employees there is a top two, not nothing. */}
+            {rankings.length >= 2 && (
+              <div className="rounded-lg border border-border bg-card p-4">
                 <h3 className="font-semibold text-sm mb-1">{t("top3Weekly")}</h3>
-                <p className="mb-3 text-[11px] text-muted-foreground">{t("top3FromRanking")}</p>
+                <p className="mb-3 text-xs text-muted-foreground">{t("top3FromRanking")}</p>
                 <div className="space-y-2" data-testid="mtm-leaderboard-top3">
                   {/* `rankings`, never `sortedRankings`: see the note on the memo. */}
                   {rankings.slice(0, 3).map((agent: any) => (

@@ -106,7 +106,9 @@ describe("the agent period screen", () => {
     // Same scope rule as the GPS history.
     expect(route).toContain("actor.scopedAgentIds !== null && !actor.scopedAgentIds.includes(agentId)")
     const page = readFileSync("src/app/(dashboard)/mtm/routes/page.tsx", "utf8")
-    expect(page).toContain('data-testid="mtm-routes-view-agent"')
+    // Since 2026-10-15 it has no tab of its own: a name in the team week opens it.
+    expect(page).toContain("onOpenAgent={openAgentPeriod}")
+    expect(readFileSync("src/components/mtm/route-week-plan.tsx", "utf8")).toContain("onClick={() => onOpenAgent(agent.id)}")
   })
 })
 

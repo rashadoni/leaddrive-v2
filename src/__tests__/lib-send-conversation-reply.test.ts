@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   updateConversation: vi.fn(),
   findConversation: vi.fn(),
   sendChatwoot: vi.fn(),
+  sendNative: vi.fn(),
 }))
 
 const tx = {
@@ -37,6 +38,7 @@ vi.mock("@/lib/prisma", () => ({
     channelConfig: { findFirst: vi.fn() },
   },
 }))
+vi.mock("@/lib/tiktok-messaging/send", () => ({ sendNativeMessagingReply: mocks.sendNative }))
 vi.mock("@/lib/chatwoot", () => ({ sendChatwootMessage: mocks.sendChatwoot }))
 vi.mock("@/lib/channels/platform-connections", () => ({
   resolveChannelConnection: vi.fn(async () => ({ available: true })),
@@ -191,7 +193,7 @@ describe("sendConversationReply Chatwoot delivery ledger", () => {
         platform: "tiktok",
         deletedAt: null,
       },
-      select: { externalId: true },
+      select: { externalId: true, metadata: true },
     })
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(mocks.createMessage).not.toHaveBeenCalled()
@@ -480,5 +482,51 @@ describe("sendConversationReply Chatwoot delivery ledger", () => {
     expect(result).toMatchObject({ success: false, statusCode: 400 })
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(mocks.sendChatwoot).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("native TikTok transport boundary", () => {
+  it("uses the native adapter without touching Chatwoot", async () => {
+    mocks.findConversation.mockResolvedValue({ externalId: "tiktok-messaging:b:c", metadata: { provider: "tiktok_messaging" } })
+    mocks.sendNative.mockResolvedValue({ success: true, statusCode: 201, data: { id: "native1", status: "sent" } })
+    expect(await send({ to: "tiktok-messaging:b:c" })).toMatchObject({ success: true, data: { id: "native1" } })
+    expect(mocks.sendNative).toHaveBeenCalledTimes(1)
+    expect(mocks.sendChatwoot).not.toHaveBeenCalled()
+  })
+  it("fails closed if native metadata is damaged instead of treating its ID as legacy", async () => {
+    mocks.findConversation.mockResolvedValue({ externalId: "tiktok-messaging:b:c", metadata: {} })
+    expect(await send({ to: "tiktok-messaging:b:c" })).toMatchObject({ success: false, statusCode: 400 })
+    expect(mocks.sendChatwoot).not.toHaveBeenCalled()
+    expect(mocks.sendNative).not.toHaveBeenCalled()
+  })
+})
+
+describe("WhatsApp provider acceptance and receipts", () => {
+  it.each([false, true])("blocks stale A after a B message without sending or logging (media=%s)", async media => {
+    const { sendWhatsAppMessage, sendWhatsAppMedia } = await import("@/lib/whatsapp")
+    mocks.findAttempt.mockResolvedValue({ channelConfigId: "cfg-B" })
+    const result = await send({ channel: "whatsapp", to: "994501234567", channelConfigId: "cfg-A",
+      ...(media ? { attachment: { buffer: Buffer.from("x"), mime: "image/png", filename: "a.png", url: "/uploads/a.png" } } : {}) })
+    expect(result).toEqual({ success: false, statusCode: 409, error: "whatsapp_reply_channel_mismatch" })
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled()
+    expect(sendWhatsAppMedia).not.toHaveBeenCalled()
+    expect(mocks.createMessage).not.toHaveBeenCalled()
+    expect(mocks.updateConversation).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])("stores only sent and the provider receipt id (media=%s)", async media => {
+    const { sendWhatsAppMessage, sendWhatsAppMedia } = await import("@/lib/whatsapp")
+    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true, messageId: "wamid.receipt" })
+    vi.mocked(sendWhatsAppMedia).mockResolvedValue({ success: true, messageId: "wamid.receipt" })
+    mocks.findAttempt.mockResolvedValue({ channelConfigId: "cfg-1" })
+    mocks.createMessage.mockImplementation(async ({ data }) => ({ id: "msg-1", ...data }))
+    const result = await send({ channel: "whatsapp", to: "994501234567", deliveryIdempotency: undefined,
+      ...(media ? { attachment: { buffer: Buffer.from("x"), mime: "image/png", filename: "a.png", url: "/uploads/a.png" } } : {}) })
+    expect(result.success).toBe(true)
+    expect(mocks.createMessage).toHaveBeenCalledWith({ data: expect.objectContaining({
+      status: "sent", externalId: "wamid.receipt", conversationId: "conv-1", channelConfigId: "cfg-1",
+    }) })
+    expect(mocks.updateConversation).toHaveBeenCalled()
   })
 })

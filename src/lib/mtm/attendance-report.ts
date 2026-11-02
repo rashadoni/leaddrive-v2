@@ -23,8 +23,13 @@ const EVENT_TYPES: readonly string[] = ["START", "PAUSE", "RESUME", "FINISH", "R
 export interface MtmAttendanceEmployee {
   id: string
   name: string
+  /** Job title from the employee card; absent in older callers. */
+  position?: string | null
   teamId: string | null
   teamName: string | null
+  /** The card's department, above its team; absent in older callers. */
+  departmentId?: string | null
+  departmentName?: string | null
   employmentEvents?: readonly AttendanceEmploymentEvent[]
   attendanceIncludedFrom?: string | null
   participationEvents?: readonly AttendanceParticipationChange[]
@@ -101,6 +106,9 @@ export interface MtmAttendanceReportRow {
 
   employeeId: string
   employeeName: string
+  employeePosition?: string | null
+  departmentId?: string | null
+  departmentName?: string | null
   teamId: string | null
   teamName: string | null
   date: string
@@ -122,6 +130,8 @@ export interface MtmAttendanceReportRow {
   completedAt: string | null
   workedSeconds: number | null
   pausedSeconds: number | null
+  /** Lunch taken off the worked time because no break covering it was pressed (owner, 2026-10-16). */
+  lunchAutoSeconds?: number
   lateSeconds: number | null
   earlyLeaveSeconds: number | null
   flags: MtmAttendanceFlag[]
@@ -130,6 +140,8 @@ export interface MtmAttendanceReportRow {
   locationMarks?: AttendanceReportMark[]
   corrections?: MtmAttendanceCorrection[]
   approvedRequests?: AttendanceApprovedPeriod[]
+  /** HR's request for an explanation of this day and the employee's answer (owner, 2026-10-16). */
+  explanations?: { kind: "LATE" | "ABSENT"; status: "REQUESTED" | "ANSWERED" | "ACCEPTED" | "REJECTED"; answer: string | null }[]
 }
 
 export interface MtmAttendanceReportInput {
@@ -164,7 +176,9 @@ function workDate(value: Date | string): string | null {
 
 function rowKey(employeeId: string, date: string): string { return JSON.stringify([employeeId, date]) }
 
-type DayPlan = { shift?: AttendanceResolvedShift; rule: MtmAttendanceRule; today: string; start: string | null; end: string | null; expectedSeconds: number }
+type DayPlan = { shift?: AttendanceResolvedShift; rule: MtmAttendanceRule; today: string; start: string | null; end: string | null; expectedSeconds: number
+  /** The lunch hour as instants; null without lunch or when it cannot be placed. */
+  lunch: [number, number] | null }
 
 /** Resolve expensive timezone/DST conversions once per date, not once per employee. */
 function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, shift?: AttendanceResolvedShift | null): DayPlan {
@@ -175,7 +189,7 @@ function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, s
     lateGraceMinutes: rule.lateGraceMinutes, weekendDays: rule.weekendDays }).success)) {
     throw new MtmAttendanceReportError("MTM_ATTENDANCE_REPORT_INPUT_INVALID")
   }
-  const plan: DayPlan = { ...(shift ? { shift } : {}), rule, today: currentDateKey(now, rule.timezone), start: null, end: null,
+  const plan: DayPlan = { ...(shift ? { shift } : {}), rule, today: currentDateKey(now, rule.timezone), start: null, end: null, lunch: null,
     expectedSeconds: (minutesOfDay(rule.endTime) + (shift?.nextDay ? 1440 : 0) - minutesOfDay(rule.startTime) - rule.lunchMinutes - (shift?.shorteningMinutes ?? 0)) * 60 }
   try {
     const start = localDateTimeToUnambiguousUtc(`${date}T${rule.startTime}`, rule.timezone).toISOString()
@@ -187,6 +201,14 @@ function dayPlan(rules: readonly MtmAttendanceRule[], date: string, now: Date, s
     if (end > start && Number.isSafeInteger(plan.expectedSeconds) && plan.expectedSeconds >= 0) {
       plan.start = start
       plan.end = end
+      // The lunch window the rule names, or — for shifts and rules saved
+      // before lunch had a start — the lunch hour in the middle of the day.
+      const lunchSeconds = rule.lunchMinutes * 60
+      if (lunchSeconds > 0) {
+        const from = !shift && rule.lunchStart ? localDateTimeToUnambiguousUtc(`${date}T${rule.lunchStart}`, rule.timezone).getTime()
+          : (Date.parse(start) + Date.parse(end)) / 2 - lunchSeconds * 500
+        plan.lunch = [from, from + lunchSeconds * 1000]
+      }
     }
   } catch { /* A DST gap/fold remains unknown instead of choosing an instant. */ }
   return plan
@@ -228,7 +250,7 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
   const calendarKind = effective.overrideId !== null ? effective.kind : customWeekend ? "WEEKEND" : "WORKING_DAY"
   const expectedWorkSeconds = isWorkingDay ? plan.expectedSeconds : 0
   const row: MtmAttendanceReportRow = {
-    employeeId: employee.id, employeeName: employee.name, teamId: employee.teamId, teamName: employee.teamName,
+    employeeId: employee.id, employeeName: employee.name, employeePosition: employee.position ?? null, departmentId: employee.departmentId ?? null, departmentName: employee.departmentName ?? null, teamId: employee.teamId, teamName: employee.teamName,
     date, workdayId: null, kind: isWorkingDay ? date > today ? "UPCOMING" : "ABSENT"
       : ["PUBLIC_HOLIDAY", "COMPANY_HOLIDAY"].includes(calendarKind) ? "HOLIDAY" : "WEEKEND",
     factsState: "NONE", ruleId: rule.id, timezone: rule.timezone, calendarKind, calendarName: effective.name,
@@ -299,6 +321,19 @@ function buildRow(employee: MtmAttendanceEmployee, date: string, days: readonly 
     row.kind = day.status === "COMPLETED" ? "WORKED" : missingFinish ? "MISSING_FINISH" : "OPEN"
     row.workedSeconds = missingFinish ? null : calculation.fact.workedSeconds
     row.pausedSeconds = missingFinish && day.status === "PAUSED" ? null : calculation.fact.pausedSeconds
+    // Owner, 2026-10-16: «вычитать обед самому». Whoever was at work over the
+    // lunch hour and pressed no break that long still had lunch: the part of
+    // the lunch hour they were present for is taken off, less the breaks they
+    // pressed. A pressed break of an hour or more already covers it.
+    if (plan.lunch && row.workedSeconds !== null && row.pausedSeconds !== null) {
+      const presentUntil = row.completedAt ? Date.parse(row.completedAt) : now.getTime()
+      const overlap = Math.max(0, Math.floor((Math.min(plan.lunch[1], presentUntil) - Math.max(plan.lunch[0], Date.parse(row.startedAt!))) / 1000))
+      const lunchAuto = Math.min(row.workedSeconds, Math.max(0, overlap - row.pausedSeconds))
+      if (lunchAuto > 0) {
+        row.workedSeconds -= lunchAuto
+        row.lunchAutoSeconds = lunchAuto
+      }
+    }
     // Grace suppresses the violation; it does not deduct ten minutes from a
     // real 21-minute late arrival. No late/early verdict applies to a day off.
     row.lateSeconds = isWorkingDay && calculation.deviations.lateStartSeconds > rule.lateGraceMinutes * 60
@@ -379,6 +414,7 @@ export function buildMtmAttendanceReport(input: MtmAttendanceReportInput) {
 export interface MtmAttendanceRowFilter {
   employeeId?: string
   teamId?: string
+  departmentId?: string
   from?: string
   to?: string
   form?: "ALL" | "LATE_EARLY" | "ABSENCES" | "JOURNAL"
@@ -387,7 +423,7 @@ export interface MtmAttendanceRowFilter {
 /** Every report form selects from these rows rather than re-reading/calculating attendance. */
 export function filterMtmAttendanceRows(rows: readonly MtmAttendanceReportRow[], filter: MtmAttendanceRowFilter = {}) {
   return rows.filter((row) => (!filter.employeeId || row.employeeId === filter.employeeId)
-    && (!filter.teamId || row.teamId === filter.teamId) && (!filter.from || row.date >= filter.from) && (!filter.to || row.date <= filter.to)
+    && (!filter.teamId || row.teamId === filter.teamId) && (!filter.departmentId || row.departmentId === filter.departmentId) && (!filter.from || row.date >= filter.from) && (!filter.to || row.date <= filter.to)
     && (filter.form !== "LATE_EARLY" || (row.lateSeconds ?? 0) > 0 || (row.earlyLeaveSeconds ?? 0) > 0)
     && (filter.form !== "ABSENCES" || row.kind === "ABSENT") && (filter.form !== "JOURNAL" || row.events.length > 0 || Boolean(row.corrections?.length)))
 }

@@ -18,6 +18,8 @@ export async function register() {
     // needs it, always after this hook - and then uses its own JavaScript
     // masking, which is all it ever had here: the helper is not installed.
     process.env.WS_NO_BUFFER_UTIL ??= "1"
+    const { installServerShutdownDeadline } = await import("./lib/server-shutdown-deadline")
+    installServerShutdownDeadline()
     await import("../sentry.server.config")
   }
 

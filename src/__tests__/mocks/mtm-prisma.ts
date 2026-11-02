@@ -175,6 +175,7 @@ export interface MtmPrismaMock {
   mtmProductGroup: ModelMock
   mtmProductGroupMember: ModelMock
   mtmProduct: ModelMock
+  mtmProductViewer: ModelMock
   mtmPresentationSession: ModelMock
   mtmHrmRequest: ModelMock
   mtmRoute: ModelMock
@@ -196,7 +197,9 @@ export interface MtmPrismaMock {
   mtmAttendanceSchedule: ModelMock
   mtmAttendanceDelivery: ModelMock
   mtmAttendanceRule: ModelMock
+  mtmAttendanceExplanation: ModelMock
   mtmAttendanceBranch: ModelMock
+  mtmAttendanceBranchScreen: ModelMock
   mtmAttendanceBranchRevision: ModelMock
   mtmAttendancePrimaryBranchRevision: ModelMock
   mtmAttendanceLocationPolicy: ModelMock
@@ -273,10 +276,15 @@ export interface MtmPrismaMock {
   // Region/team hierarchy (M4-5)
   mtmRegion: ModelMock
   mtmTeam: ModelMock
+  mtmDepartment: ModelMock
   // Onboarding (M5+)
   mtmOnboarding: ModelMock
   mtmCustomerCreateRequest: ModelMock
   mtmCustomerLocationRequest: ModelMock
+  mtmCustomerHoursRequest: ModelMock
+  mtmJointFieldSession: ModelMock
+  mtmJointVisitPlan: ModelMock
+  mtmVisitEvaluation: ModelMock
   mtmContactCreateRequest: ModelMock
   mtmDeviceToken: ModelMock
   mtmMapZone: ModelMock
@@ -387,6 +395,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmProductGroup: makeModel(),
     mtmProductGroupMember: makeModel(),
     mtmProduct: makeModel(),
+    mtmProductViewer: makeModel(),
     mtmPresentationSession: makeModel(),
     mtmHrmRequest: makeModel(),
     mtmRoute: makeModel(),
@@ -408,7 +417,9 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmAttendanceSchedule: makeModel(),
     mtmAttendanceDelivery: makeModel(),
     mtmAttendanceRule: makeModel(),
+    mtmAttendanceExplanation: makeModel(),
     mtmAttendanceBranch: makeModel(),
+    mtmAttendanceBranchScreen: makeModel(),
     mtmAttendanceBranchRevision: makeModel(),
     mtmAttendancePrimaryBranchRevision: makeModel(),
     mtmAttendanceLocationPolicy: makeModel(),
@@ -484,9 +495,14 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceTimesheetApproval: makeModel(),
     mtmRegion: makeModel(),
     mtmTeam: makeModel(),
+    mtmDepartment: makeModel(),
     mtmOnboarding: makeModel(),
     mtmCustomerCreateRequest: makeModel(),
     mtmCustomerLocationRequest: makeModel(),
+    mtmCustomerHoursRequest: makeModel(),
+    mtmJointFieldSession: makeModel(),
+    mtmJointVisitPlan: makeModel(),
+    mtmVisitEvaluation: makeModel(),
     mtmContactCreateRequest: makeModel(),
     mtmDeviceToken: makeModel(),
     mtmMapZone: makeModel(),

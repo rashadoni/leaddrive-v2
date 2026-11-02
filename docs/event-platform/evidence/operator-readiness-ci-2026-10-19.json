@@ -1,0 +1,181 @@
+{
+  "apiVersion": "event-platform.leaddrive.io/v1",
+  "kind": "OperatorReadinessHistoricalCIResults",
+  "recordedAtUtc": "2026-10-19",
+  "sourceHeadSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+  "reviewedOriginMainSha": "abdc13018acc9f120ee4d50fbb121a90cc3efe63",
+  "historicalIntegrityOnly": true,
+  "activationAuthority": false,
+  "runs": {
+    "operator": {
+      "id": 39217390626,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390626",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "admission-postgres",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "broker": {
+      "id": 39217390814,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390814",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "broker-driver",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "disposableStack": {
+      "id": 39217390890,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390890",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "smoke",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "cdc": {
+      "id": 39217390847,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217390847",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "cdc-smoke",
+          "conclusion": "success"
+        },
+        {
+          "name": "full-cdc-fund",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "fullPrChecks": {
+      "id": 39217650528,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217650528",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "GitHub-hosted Linux production build",
+          "conclusion": "success"
+        },
+        {
+          "name": "pr-scope",
+          "conclusion": "success"
+        },
+        {
+          "name": "typecheck",
+          "conclusion": "success"
+        },
+        {
+          "name": "static-checks",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "scan": {
+      "id": 39217388559,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217388559",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "scan",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "runnerPolicy": {
+      "id": 39217388814,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217388814",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "runner-policy",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "tooling": {
+      "id": 39217388771,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/39217388771",
+      "headSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "validate",
+          "conclusion": "success"
+        }
+      ]
+    }
+  },
+  "operatorTests": {
+    "total": 318,
+    "perStep": [
+      226,
+      5,
+      17,
+      8,
+      9,
+      24,
+      8,
+      18,
+      3
+    ],
+    "failed": 0
+  },
+  "fullCdcMarkers": [
+    "full_cdc_fund_source_role=PASS; snapshot=PASS; connect_cold_restart_wal=PASS; raw_kafka_bytes_hash=PASS",
+    "full_cdc_fund_restricted_sql_exact_two_tenant_parity=PASS; committed_ack_loss_duplicate=PASS; worker_restart=PASS",
+    "full_cdc_fund_source_active_effects_other_tenant_unchanged=PASS; replay_sends=NONE",
+    "full_cdc_fund_shadow_only_fault_injection=PASS; historical_bug_source=NOT_CLAIMED; corrected_new_build_recovery=PASS; old_bad_builds_and_group_preserved=PASS",
+    "full_cdc_fund_integration=PASS; fixture_tls_acl=NOT_PROVEN; production_activation=NOT_RUN"
+  ],
+  "baselineLimits": {
+    "unitTestFailingFiles": 18,
+    "unitTestFailingFilesInBaseline": 18,
+    "typecheckTotalDiagnostics": 1327,
+    "typecheckGatedPairs": 64,
+    "typecheckGatedPairsInBaseline": 64,
+    "meaning": "Existing baseline gates passed; this is not a zero-error claim."
+  },
+  "physicalArtifact": {
+    "apiVersion": "event-platform.leaddrive.io/v1",
+    "kind": "OperatorReadinessHistoricalCIIntegrity",
+    "sourceHeadSha": "aa2e0f49e0bf50bdcd360f3df0175dee4ca11440",
+    "operatorRunId": 39217390626,
+    "artifactId": 12169689695,
+    "archiveSha256": "22253d360d006b1dd6e589c2b15ad81a3e15867d35ba2780746af7691b0cdd97",
+    "sourceMaterialHash": "add4e63025889bf6c06c3c5b92467cd9445effc3be105623eb149b511295d9a4",
+    "restoredAggregateCount": 3,
+    "deliveredAcknowledgedTestGates": 10,
+    "notificationJournalRecords": 20,
+    "profile": "disposable-postgres+loopback-http+machine-ack",
+    "historicalIntegrityOnly": true,
+    "activationAuthority": false,
+    "productionPitrEncryptionWormHumanPagingProven": false,
+    "artifactName": "kafka-operator-disposable-39217390626-1",
+    "artifactRetentionDays": 7
+  },
+  "notProven": [
+    "production activation, merge or deployment",
+    "production Kafka TLS/ACL/HA",
+    "one composed genuine stop/broker/soak/archive/restore/approval/alerts runtime admission",
+    "real exporter/rule-triggered notifications and human paging",
+    "production PITR/encrypted immutable offsite archive and RTO",
+    "persistent JIT/service/key/secret provisioning",
+    "first-pointer bootstrap, financial correction/reversal and continuous promoted-worker policy",
+    "exhaustive all-writer/all-effect/history/rebuild proof across 27 domains"
+  ]
+}

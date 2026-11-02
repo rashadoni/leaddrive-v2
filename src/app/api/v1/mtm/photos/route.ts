@@ -51,6 +51,7 @@ import { mtmPhotoThumbnailUrl } from "@/lib/mtm/photo-thumbnail-url"
 // bundle entirely and the HEIC branch threw MODULE_NOT_FOUND at
 // runtime.
 import heicConvert from "heic-convert"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 // F-39: server-side HEIC→JPEG quality. 0.85 is the Instagram/Apple
 // default for "high-quality photo" — visually indistinguishable from
@@ -453,7 +454,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       const uploadDir = runtimePublicUploadDirectory("mtm-photos")
       await mkdir(uploadDir, { recursive: true })
       filePath = path.join(uploadDir, fileName)
-      await writeFile(filePath, writeBuffer)
+      await writeFile(filePath, sealTenantFile(orgId, writeBuffer))
     }
 
     // Parse EXIF from the bytes we're about to store, then classify against

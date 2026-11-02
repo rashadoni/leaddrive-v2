@@ -1,0 +1,13 @@
+# Installed by scripts/event-platform/cluster/provision.sh install-backup-watch.
+# Two minutes after the main watch's ticks, so the two never probe together.
+[Unit]
+Description=Run the backup Kafka watch every 5 minutes
+
+[Timer]
+OnCalendar=*:2/5
+AccuracySec=10s
+Persistent=false
+Unit=ld-kafka-backup-watch.service
+
+[Install]
+WantedBy=timers.target

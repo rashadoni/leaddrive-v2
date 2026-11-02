@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { resolveMobileAuth, type MobileAuthResult } from "./mobile-auth"
 import { runWithTenant, runWithRlsBypass } from "./rls-context"
 
-export type MobileEndpointCapability = "route-field" | "workforce-hrm"
+export type MobileEndpointCapability = "route-field" | "workforce-hrm" | "personnel"
 type InferredMobileEndpointCapability = MobileEndpointCapability | "unconfigured-v2" | null
 
 export interface WithMobileRlsOptions {
@@ -11,7 +11,8 @@ export interface WithMobileRlsOptions {
    * `/mtm/*` handlers use it so a Workforce-only JWT cannot enter a legacy
    * Route & Field handler merely because both use mobile authentication.
    */
-  requiredCapability?: MobileEndpointCapability | null
+  /** A list admits a session that has any of them (device tokens serve both apps). */
+  requiredCapability?: MobileEndpointCapability | readonly MobileEndpointCapability[] | null
 }
 
 type WrappedMobileRouteHandler<C> = {
@@ -53,8 +54,14 @@ function requiredCapabilityForMobilePath(pathname: string): InferredMobileEndpoi
   return "route-field"
 }
 
+function hasMobileEndpointCapability(auth: MobileAuthResult, capabilityId: MobileEndpointCapability): boolean {
+  if (capabilityId === "workforce-hrm") return auth.tenantCapabilities?.workforceHrm === true
+  if (capabilityId === "personnel") return auth.tenantCapabilities?.personnel === true
+  return auth.tenantCapabilities?.routeField === true
+}
+
 function capabilityDisabledResponse(capabilityId: MobileEndpointCapability): NextResponse {
-  const label = capabilityId === "workforce-hrm" ? "Workforce HRM" : "Route & Field"
+  const label = capabilityId === "workforce-hrm" ? "Workforce HRM" : capabilityId === "personnel" ? "Personnel" : "Route & Field"
   return NextResponse.json({
     success: false,
     error: `${label} is not enabled for this tenant.`,
@@ -100,10 +107,8 @@ export function withMobileRls<C = unknown>(
       }, { status: 403 })
     }
     if (capabilityId) {
-      const allowed = capabilityId === "workforce-hrm"
-        ? auth.tenantCapabilities?.workforceHrm === true
-        : auth.tenantCapabilities?.routeField === true
-      if (!allowed) return capabilityDisabledResponse(capabilityId)
+      const required: readonly MobileEndpointCapability[] = typeof capabilityId === "string" ? [capabilityId] : capabilityId
+      if (!required.some(id => hasMobileEndpointCapability(auth, id))) return capabilityDisabledResponse(required[0])
     }
 
     return runWithTenant(auth.orgId, () => handler(req, auth, ctx as C))

@@ -49,11 +49,14 @@ vi.mock("@/lib/prisma", () => {
       create: vi.fn(),
     },
     channelConfig: {
+      findFirst: vi.fn(),
       findMany: vi.fn().mockResolvedValue([]),
     },
     channelMessage: {
+      findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    survey: { findFirst: vi.fn() },
     task: {
       updateMany: vi.fn(),
     },
@@ -114,6 +117,10 @@ vi.mock("@/lib/whatsapp", () => ({
   sendWhatsAppMessage: vi.fn().mockResolvedValue({ success: true }),
 }))
 
+vi.mock("@/lib/survey-triggers", () => ({
+  triggerSurveysOnTicketResolved: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { GET, POST } from "@/app/api/v1/tickets/route"
 import { GET as GET_BY_ID, PUT, DELETE, PATCH } from "@/app/api/v1/tickets/[id]/route"
 import { prisma, logAudit } from "@/lib/prisma"
@@ -122,6 +129,7 @@ import { autoAssignTicket } from "@/lib/auto-assign"
 import { fireWebhooks } from "@/lib/webhooks"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
+import { systemCommentText, systemTicketComment } from "@/lib/ticketing/chat-transcript"
 
 const SESSION = { orgId: "org-1", userId: "user-1", role: "admin", email: "a@b.com", name: "Test" }
 
@@ -564,6 +572,35 @@ describe("GET /api/v1/tickets/:id", () => {
     }))
   })
 
+  it("names the customer only on what the customer wrote, not on what the product wrote itself", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as any)
+    vi.mocked(prisma.ticket.findFirst).mockResolvedValue({
+      id: "tk1", subject: "Issue", organizationId: "org-1",
+      companyId: null, contactId: "ct1", assignedTo: null, createdBy: null,
+      comments: [
+        { id: "cm1", userId: null, comment: "Where is my order?", createdAt: new Date() },
+        // The AI auto-actions cron's acknowledgement, as it stores it.
+        { id: "cm2", userId: null, comment: systemTicketComment("We have received your request TK-0001. A specialist will respond within 2h. Thank you for your patience."), createdAt: new Date() },
+        // The same acknowledgement written before the cron marked it.
+        { id: "cm3", userId: null, comment: "We have received your request TK-0001. A specialist will respond within 2h. Thank you for your patience.", createdAt: new Date() },
+      ],
+      closureRequests: [],
+      entitlementMilestones: [],
+    } as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ id: "ct1", fullName: "John", email: "j@b.com", preferredLanguage: "en" } as any)
+
+    const res = await GET_BY_ID(makeRequest("http://localhost/api/v1/tickets/tk1"), makeParams("tk1"))
+    expect(res.status).toBe(200)
+    const comments = (await res.json()).data.comments as Array<{ id: string; comment: string; userName: string | null }>
+    expect(comments.map((c) => c.userName)).toEqual(["John", null, null])
+    // The page shows these under «System», with the text the cron meant.
+    expect(comments.slice(1).map((c) => systemCommentText(c.comment))).toEqual([
+      "We have received your request TK-0001. A specialist will respond within 2h. Thank you for your patience.",
+      "We have received your request TK-0001. A specialist will respond within 2h. Thank you for your patience.",
+    ])
+  })
+
   it("returns 404 when ticket not found", async () => {
     vi.mocked(getSession).mockResolvedValue(SESSION as any)
     vi.mocked(prisma.ticket.findFirst).mockResolvedValue(null)
@@ -771,5 +808,70 @@ describe("PATCH /api/v1/tickets/:id", () => {
       makeParams("tk1")
     )
     expect(res.status).toBe(404)
+  })
+})
+
+
+describe("WhatsApp ticket notification choices", () => {
+  it.each([false, true])("uses the selected sender and honors explicit off=%s", async (off) => {
+    const { sendWhatsAppMessage } = await import("@/lib/whatsapp")
+    vi.mocked(requireAuth).mockResolvedValue(SESSION as never)
+    vi.mocked(getSession).mockResolvedValue(SESSION as never)
+    const original = { id: "tkwa", ticketNumber: "TK-1", subject: "Help", description: "+994501234567", contactId: null,
+      status: "open", priority: "medium", organizationId: "org-1", tags: ["whatsapp"] }
+    vi.mocked(prisma.ticket.findFirst).mockResolvedValueOnce(original as never).mockResolvedValueOnce({ ...original, status: "in_progress" } as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([{ channelConfigId: "wa_b" }] as never)
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "wa_b", settings: { whatsappTicketStatusTemplates: off ? {} : { in_progress: "progress_b" }, whatsappTicketStatusTemplateLanguages: { in_progress: "ru" } } } as never)
+    const res = await PUT(makeRequest("http://localhost/api/v1/tickets/tkwa", { method: "PUT", body: JSON.stringify({ status: "in_progress" }) }), makeParams("tkwa"))
+    expect(res.status).toBe(200)
+    await vi.waitFor(() => expect(prisma.channelConfig.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: { settings: true } })))
+    if (off) expect(sendWhatsAppMessage).not.toHaveBeenCalled()
+    else await vi.waitFor(() => expect(sendWhatsAppMessage).toHaveBeenCalledWith(expect.objectContaining({ channelConfigId: "wa_b", templateName: "progress_b", templateLanguage: "ru" })))
+  })
+
+  it.each([
+    { settings: { whatsappTicketStatusTemplates: { resolved: "resolved_b" } }, embedded: false, label: "status template without a survey link" },
+    { settings: { whatsappSurveyTemplate: "" }, embedded: false, label: "explicit survey off" },
+    { settings: { whatsappSurveyTemplate: "survey_b" }, embedded: false, label: "separate survey template" },
+    { settings: {}, embedded: true, label: "legacy session-text survey" },
+  ])("does not suppress or bypass the survey sender for $label", async ({ settings, embedded }) => {
+    const { sendWhatsAppMessage } = await import("@/lib/whatsapp")
+    const { triggerSurveysOnTicketResolved } = await import("@/lib/survey-triggers")
+    vi.mocked(requireAuth).mockResolvedValue(SESSION as never)
+    vi.mocked(getSession).mockResolvedValue(SESSION as never)
+    const original = { id: "tkwa", ticketNumber: "TK-1", subject: "Help", description: "+994501234567", contactId: null,
+      status: "open", priority: "medium", organizationId: "org-1", tags: ["whatsapp"] }
+    vi.mocked(prisma.ticket.findFirst).mockResolvedValueOnce(original as never).mockResolvedValueOnce({ ...original, status: "resolved" } as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([{ channelConfigId: "wa_b" }] as never)
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "wa_b", settings } as never)
+    vi.mocked(prisma.survey.findFirst).mockResolvedValue({ id: "survey1", name: "Rate this service", publicSlug: "rating", triggers: { afterTicketResolve: true } } as never)
+    const res = await PUT(makeRequest("http://localhost/api/v1/tickets/tkwa", { method: "PUT", body: JSON.stringify({ status: "resolved" }) }), makeParams("tkwa"))
+    expect(res.status).toBe(200)
+    await vi.waitFor(() => expect(triggerSurveysOnTicketResolved).toHaveBeenCalledWith("org-1", expect.objectContaining({ id: "tkwa" }), { skipWhatsAppChannel: embedded }))
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1)
+    const message = vi.mocked(sendWhatsAppMessage).mock.calls[0][0]
+    expect(message.channelConfigId).toBe("wa_b")
+    expect(message.message.includes("/s/rating?")).toBe(embedded)
+  })
+
+  it.each([false, true])("closure confirmation does not switch business numbers (ambiguous=%s)", async (ambiguous) => {
+    const { sendWhatsAppMessage } = await import("@/lib/whatsapp")
+    vi.mocked(requireAuth).mockResolvedValue(SESSION as never)
+    vi.mocked(getSession).mockResolvedValue(SESSION as never)
+    const original = { id: "tkwa", ticketNumber: "TK-1", subject: "Help", contactId: null,
+      status: "open", priority: "medium", organizationId: "org-1", tags: [] }
+    vi.mocked(prisma.ticket.findFirst).mockResolvedValueOnce(original as never).mockResolvedValueOnce({ ...original, status: "resolved" } as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.ticketClosureRequest.create).mockResolvedValue({ id: "close_wa", status: "pending", channel: "whatsapp", recipient: "+994501234567" } as never)
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue((ambiguous ? [{ channelConfigId: "wa_a" }, { channelConfigId: "wa_b" }] : [{ channelConfigId: "wa_b" }]) as never)
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "wa_b" } as never)
+    const res = await PUT(makeRequest("http://localhost/api/v1/tickets/tkwa", { method: "PUT", body: JSON.stringify({ status: "resolved" }) }), makeParams("tkwa"))
+    expect(res.status).toBe(200)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(prisma.channelMessage.findMany).toHaveBeenCalledTimes(1)
+    if (ambiguous) expect(sendWhatsAppMessage).not.toHaveBeenCalled()
+    else expect(sendWhatsAppMessage).toHaveBeenCalledWith(expect.objectContaining({ channelConfigId: "wa_b", forceText: true, to: "+994501234567" }))
   })
 })

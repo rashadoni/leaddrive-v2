@@ -53,7 +53,11 @@ export function prepareDatabase() {
   apply('20260915210100_workforce_workday_reopen_ledger')
   for (const name of readdirSync('prisma/migrations').filter(name => /^20261013.*mtm_(attendance_|workday_employee_return)/.test(name)).sort()) apply(name)
   apply('20261014010000_mtm_attendance_utc_guard_clocks')
-  apply('20261014030000_mtm_attendance_installation_utc_guard_clock')
+  apply('20261016180000_personnel_lunch_start')
+  apply('20261016210000_mtm_attendance_explanations')
+  apply('20261112090000_mtm_attendance_branch_screens')
+  apply('20261113090000_mtm_attendance_branch_screen_place')
+  apply('20261120090000_mtm_attendance_installation_utc_guard_clock')
   sql(readFileSync('scripts/rls/enable-batch-5.sql', 'utf8'))
   const password = process.env.MTM_E2E_DATABASE_PASSWORD
   assert.match(password ?? '', /^[a-f0-9]{48}$/)
@@ -88,11 +92,19 @@ export async function seedFixture() {
     await admin.mtmAgent.create({ data: { organizationId: organization.id, userId: users[name].id, name: users[name].name, email: users[name].email, role, teamId: team.id } })
   }
   for (const org of [organization, foreignOrganization]) await admin.mtmSetting.create({ data: { organizationId: org.id, key: 'attendanceEnabled', value: true } })
-  // A user created after activation must also appear without manual enrollment.
+  // Technical cards still exist for CRM logins. Personnel lists only the
+  // explicitly added staff below; admin/hr/outside remain CRM-only controls.
   for (let index = 0; index < 52; index++) await admin.user.create({ data: { organizationId: organization.id, name: `Fixture roster ${String(index).padStart(2, '0')}`, email: `roster-${index}-${slug}@example.invalid`, passwordHash, role: 'sales' } })
   const agents = {}
   for (const [name, user] of Object.entries(users)) agents[name] = await admin.mtmAgent.findFirstOrThrow({ where: { organizationId: user.organizationId, userId: user.id } })
   await admin.mtmAgent.update({ where: { id: agents.employee.id }, data: { teamId: team.id } })
+  const personnel = await admin.mtmAgent.findMany({ where: { organizationId: organization.id,
+    OR: [{ id: { in: [agents.employee.id, agents.manager.id] } }, { name: { startsWith: 'Fixture roster ' } }] }, select: { id: true, userId: true } })
+  assert.equal(personnel.length, 54)
+  await admin.mtmAuditLog.createMany({ data: personnel.map(card => ({ organizationId: organization.id,
+    actorUserId: users.admin.id, agentId: card.id, entity: 'agent', entityId: card.id,
+    action: 'MTM_ATTENDANCE_EMPLOYEE_CREATED', metadataKind: 'mtm_attendance_employment',
+    newData: { userId: card.userId, fixtureOnly: true, hireDate: null } })) })
   // Read grants do not confer a reviewer role; exercise grant/revoke via HTTP.
   assert.equal(agents.employee.role, 'EMPLOYEE')
   assert.equal(agents.field.role, 'AGENT')

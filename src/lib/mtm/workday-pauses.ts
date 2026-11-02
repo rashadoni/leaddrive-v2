@@ -118,6 +118,20 @@ export function isDuringMtmWorkdayPause(moment: Date, pauses: readonly MtmWorkda
   return pauses.some((pause) => at > pause.from.getTime() && (pause.to === null || at < pause.to.getTime()))
 }
 
+/**
+ * When the latest break that is over ended — the moment from which a point
+ * is again a position at work (isMtmPositionHeldByBreak in mtm-types.ts).
+ * A break still running has no end and is not counted; null when no break
+ * has ended.
+ */
+export function mtmLastBreakEndedAt(pauses: readonly MtmWorkdayPause[]): Date | null {
+  let last: Date | null = null
+  for (const pause of pauses) {
+    if (pause.to && (!last || pause.to.getTime() > last.getTime())) last = pause.to
+  }
+  return last
+}
+
 /** Serialisable form for API responses. */
 export function serializeMtmWorkdayPauses(pauses: readonly MtmWorkdayPause[]): Array<{ from: string; to: string | null }> {
   return pauses.map((pause) => ({ from: pause.from.toISOString(), to: pause.to?.toISOString() ?? null }))

@@ -31,6 +31,17 @@ beforeEach(() => {
 })
 
 describe("conversation flow event dispatcher", () => {
+  it.each([
+    { nodeId: "send", action: "send_reply", ok: true },
+    { nodeId: "ai", action: "ai_reply", ok: true },
+    { nodeId: "ai", action: "ai_reply", ok: false, error: "drafted" },
+    { nodeId: "menu", action: "menu", ok: false, error: "awaiting_menu_reply" },
+  ])("preserves flow reply ownership for downstream autoresponders: %j", async (step) => {
+    runFlow.mockResolvedValue({ ok: true, status: "completed", terminal: false, steps: [step] })
+    const result = await emitConversationIngestEvents({ organizationId: "org_1", conversationId: "conv_1" })
+    expect(result).toMatchObject({ terminal: false, handledReply: true })
+  })
+
   it("is default-off unless the org has the conversationFlowEvents flag", async () => {
     orgFindUnique.mockResolvedValue({ features: [] })
     const result = await emitConversationEvent({

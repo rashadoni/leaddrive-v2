@@ -811,7 +811,7 @@ export default function TicketsPage() {
               </label>
               <div data-tour-id="tickets-kanban-toggle" className="order-first flex h-11 min-w-32 shrink-0 rounded-md border bg-card p-0.5 sm:order-none sm:h-9 sm:w-auto" role="group" aria-label={t("viewLabel")}>
                 {workspaceViews.map(({ key, label, icon: Icon }) => (
-                  <button key={key} type="button" aria-label={label} title={label} aria-pressed={view === key} onClick={() => selectView(key)} className={cn("flex min-h-11 min-w-11 flex-1 items-center justify-center rounded px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 motion-reduce:transition-none sm:min-h-8 sm:min-w-8", view === key ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                  <button key={key} type="button" aria-label={label} title={label} aria-pressed={view === key} onClick={() => selectView(key)} className={cn("flex min-h-11 min-w-11 flex-1 items-center justify-center rounded px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 motion-reduce:transition-none sm:min-h-8 sm:min-w-8", view === key ? "crm-choice-selected" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                     <Icon className="h-3.5 w-3.5" />
                     <span className={view === key ? "ml-1 whitespace-nowrap sm:sr-only" : "sr-only"}>{label}</span>
                   </button>
@@ -950,7 +950,7 @@ export default function TicketsPage() {
               <MotionItem key={status} className="w-[292px] flex-shrink-0">
                 <div
                   className={cn(
-                    "flex min-h-[220px] flex-col rounded-lg border border-zinc-200 bg-muted/30 transition-colors dark:border-zinc-800 dark:bg-zinc-900/25 motion-reduce:transition-none",
+                    "flex min-h-[220px] flex-col rounded-lg border border-border bg-muted/30 transition-colors dark:bg-zinc-900/25 motion-reduce:transition-none",
                     dragOverStatus === status && "border-primary/60 bg-primary/5 ring-2 ring-primary/20"
                   )}
                   onDragEnter={(event) => {
@@ -967,7 +967,7 @@ export default function TicketsPage() {
                   }}
                   onDrop={(event) => handleKanbanDrop(event, status)}
                 >
-                  <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-200 bg-background/95 px-3 py-2 backdrop-blur dark:border-zinc-800">
+                  <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-3 py-2 backdrop-blur">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className={cn("h-2 w-2 flex-shrink-0 rounded-full", statusDot[status] || "bg-zinc-400")} />
                       <span className="truncate text-sm font-semibold">{statusLabels[status]}</span>
@@ -980,7 +980,7 @@ export default function TicketsPage() {
                         key={ticket.id}
                         draggable={movingTicketId !== ticket.id}
                         className={cn(
-                          "cursor-grab rounded-lg border border-zinc-200 bg-card p-2.5 transition-[border-color,box-shadow,opacity,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm motion-reduce:transform-none motion-reduce:transition-none active:cursor-grabbing dark:border-zinc-800",
+                          "cursor-grab rounded-lg border border-border bg-card p-2.5 transition-[border-color,box-shadow,opacity,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm motion-reduce:transform-none motion-reduce:transition-none active:cursor-grabbing",
                           newIds.has(ticket.id) && "ticket-new-blink",
                           draggedTicketId === ticket.id && "opacity-50",
                           movingTicketId === ticket.id && "pointer-events-none opacity-60"
@@ -1039,7 +1039,7 @@ export default function TicketsPage() {
                     {columnTickets.length > KANBAN_COLLAPSE_LIMIT && (
                       <button
                         onClick={() => setExpandedKanbanColumns(prev => ({ ...prev, [status]: !isExpanded }))}
-                        className="flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-300 bg-background px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700 motion-reduce:transition-none"
+                        className="flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-dashed border-zinc-300 bg-background px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-border motion-reduce:transition-none"
                       >
                         {isExpanded ? (
                           <>

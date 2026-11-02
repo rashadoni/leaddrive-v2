@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Check, Loader2 } from "lucide-react"
@@ -136,7 +137,7 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
       aria-label={title}
       data-testid="live-map-zone-form"
       data-task={task.kind}
-      className={cn("flex flex-col gap-2 rounded-lg border border-zinc-300 bg-card p-2 text-sm dark:border-zinc-600", className)}
+      className={cn("flex flex-col gap-2 rounded-lg border border-border bg-card p-2 text-sm", className)}
     >
       <div className="text-xs font-semibold" data-testid="live-map-zone-form-title">{title}</div>
       {removes ? <p className="text-xs text-muted-foreground">{tMap("areas.form.deleteHint")}</p> : null}
@@ -151,7 +152,7 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
           autoFocus
           autoComplete="off"
           data-testid="live-map-zone-name"
-          className="h-10 w-full min-w-0 rounded-lg border border-zinc-200 bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/60 dark:border-zinc-700"
+          className="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/60"
         />
       ) : null}
       {asksRadius ? (
@@ -166,7 +167,7 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
             value={radius}
             onChange={(event) => setRadius(event.target.value)}
             data-testid="live-map-zone-radius"
-            className="h-10 w-28 rounded-lg border border-zinc-200 bg-background px-2.5 text-sm outline-none focus:border-primary/60 dark:border-zinc-700"
+            className="h-10 w-28 rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus:border-primary/60"
           />
           <span className="text-muted-foreground" data-testid="live-map-zone-radius-range">{tMap("areas.form.radiusRange", limits)}</span>
         </label>
@@ -178,22 +179,22 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
             // The swatch takes its hex from the palette in the code, by key;
             // its name is on the button for a pointer and for a reader.
             return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setColor(key)}
-                aria-pressed={chosen}
-                aria-label={tf(`mapColors.${key}`)}
-                title={tf(`mapColors.${key}`)}
-                data-testid={`live-map-zone-color-${key}`}
-                className={cn(
-                  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10",
-                  chosen ? "ring-2 ring-zinc-900 ring-offset-2 ring-offset-background dark:ring-zinc-100" : "ring-1 ring-zinc-400/60",
-                )}
-                style={{ backgroundColor: MTM_AGENT_MAP_COLORS[key] }}
-              >
-                {chosen ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
-              </button>
+              <Hint key={key} text={tf(`mapColors.${key}`)}>
+                <button
+                  type="button"
+                  onClick={() => setColor(key)}
+                  aria-pressed={chosen}
+                  aria-label={tf(`mapColors.${key}`)}
+                  data-testid={`live-map-zone-color-${key}`}
+                  className={cn(
+                    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10",
+                    chosen ? "ring-2 ring-zinc-900 ring-offset-2 ring-offset-background dark:ring-zinc-100" : "ring-1 ring-zinc-400/60",
+                  )}
+                  style={{ backgroundColor: MTM_AGENT_MAP_COLORS[key] }}
+                >
+                  {chosen ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
+                </button>
+              </Hint>
             )
           })}
           <button
@@ -203,7 +204,7 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
             data-testid="live-map-zone-color-none"
             className={cn(
               "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs [@media(pointer:coarse)]:h-10",
-              color === null ? "border-zinc-900 font-semibold dark:border-zinc-100" : "border-zinc-300 text-muted-foreground hover:bg-muted dark:border-zinc-600",
+              color === null ? "border-zinc-900 font-semibold dark:border-zinc-100" : "border-border text-muted-foreground hover:bg-muted",
             )}
           >
             {/* What «no colour» looks like on the map, so the choice is not a blank. */}
@@ -243,7 +244,7 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
           className={cn(
             "inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold disabled:opacity-70 [@media(pointer:coarse)]:min-h-11",
             removes ? "bg-red-600 text-white hover:bg-red-700" : "bg-primary text-primary-foreground",
-          )}
+          )} data-crm-button="default"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
           {tMap(removes ? (busy ? "areas.form.deleting" : "areas.form.delete") : (busy ? "areas.form.saving" : "areas.form.save"))}
@@ -253,7 +254,7 @@ export function LiveMapZoneForm({ task, onSubmit, onCancel, className, blocked =
           onClick={onCancel}
           disabled={busy}
           data-testid="live-map-zone-cancel"
-          className="inline-flex min-h-9 items-center rounded-lg border border-zinc-300 px-3 text-sm font-medium hover:bg-muted disabled:opacity-70 dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+          className="inline-flex min-h-9 items-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-muted disabled:opacity-70 [@media(pointer:coarse)]:min-h-11"
         >
           {tMap("areas.form.cancel")}
         </button>
@@ -280,7 +281,7 @@ export function LiveMapZoneGone({ onClose, className }: { onClose: () => void; c
     <div
       role="status"
       data-testid="live-map-zone-gone"
-      className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200", className)}
+      className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-2.5 py-1.5 text-xs", className)}
     >
       <span>{tMap("areas.errors.gone")}</span>
       <button

@@ -1,0 +1,790 @@
+Wrap up and end a call at the CRM's ceiling; drop the line's sales rules on demo calls.
+
+Applies to /opt/fanum-voice/fanum-voice-core.py on the PBX, as it stands since
+2026-10-16 07:28 UTC (the explicit-language change: Azerbaijani by default,
+another language only on the caller's explicit request). Built on 50dc8af7
+first and merged onto it; a demo script keeps EXPLICIT_LANGUAGE_POLICY, and a
+demo call's ask-repeat after a fresh recovery has az/ru/en/tr neutral wording.
+
+  before: 80292277924ec452586357d73ddc20665ae76b24f5668bf806698514fd007b63
+  after:  e38400b8d339f94b78c60f44c70e3cdcac5ed71269614c3be08c0d086bd94386
+
+- call-continuation `maxSeconds` (30-900) arms one deadline per call, counted
+  from the AudioSocket connect. In the last 20 s (never later than -8 s) the
+  agent is told to wrap up: in the first 4 s of that window only once the
+  floor has stayed free for 1.5 s, then at the first free moment.
+- The call ends through begin_hangup + AudioSocket close, so Handler.finally
+  posts the transcript exactly once:
+  - 1.5 s after a goodbye has played in full - the reply to the wrap-up, or
+    on a demo call the agent's own closing (call-continuation `closingKeys`,
+    one per language, matched with spaces out) - or after any later answer;
+  - 3 s after the caller spoke following a goodbye they heard in full, when
+    the model says nothing;
+  - at the cap.
+  A goodbye cut by the caller, interrupted by a provider reconnect, or whose
+  queued audio playback dropped is not "done". On a capped call, transcript
+  text arriving after turnComplete with no reply owed stays in the closed
+  turn (a new item for it would retarget playback and cut the goodbye); a
+  text-only item that still appears holds neither the floor nor the goodbye.
+- A continuation answer that was lost (timeout, transport) or still on its
+  way after 10 s is asked once more, off the greeting path, for the ceiling.
+- `variant: "demo"` drops CALL_SCOPE / CALL_QUALIFICATION /
+  STRUCTURED_MEASUREMENT (or uses the CRM's demo `prompt` instead of the
+  line's), keeps the two delivery policies, and words recovery without
+  "measurement". A call-less runtime-config answer marked `variant: "demo"`
+  serves that call only and is never cached.
+- Both CRM requests say `caps=demo-v1`: the CRM then never guesses a demo
+  call for a call-less prompt request. The call result says
+  `demoPromptApplied: true` only for a demo call that ran on the demo script.
+Ordinary calls: same prompt, same events, same payload (checked against the
+live core over 51 comparisons); the call-less request URL gains
+`?caps=demo-v1`, and a lost continuation answer is asked once more.
+Deploy order: the CRM change (runtime-config honours caps, call-continuation
+sends variant/prompt/closingKeys, call-result accepts demoPromptApplied)
+first; then this core.
+Install: pbx-voice-core-onefile-deploy.sh with EXPECTED_LIVE_HASH=80292277924ec452586357d73ddc20665ae76b24f5668bf806698514fd007b63,
+EXPECTED_HASH=e38400b8d339f94b78c60f44c70e3cdcac5ed71269614c3be08c0d086bd94386, BACKUP_LABEL=demo-max-seconds.
+
+--- a/opt/fanum-voice/fanum-voice-core.py	(station 80292277924ec452586357d73ddc20665ae76b24f5668bf806698514fd007b63)
++++ b/opt/fanum-voice/fanum-voice-core.py	(patched e38400b8d339f94b78c60f44c70e3cdcac5ed71269614c3be08c0d086bd94386)
+@@ -367,6 +367,53 @@
+     "en": "Please repeat only your last measurement or question.",
+     "tr": "Lütfen yalnızca son ölçüyü veya sorunuzu tekrar edin.",
+ }
++# Neutral ask-repeat for calls that are not the line's own sales calls (the
++# demo): the default sentence above asks for "the last measurement".
++FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL = {
++    "az": "Zəhmət olmasa, son dediyinizi təkrar edin.",
++    "ru": "Пожалуйста, повторите, что вы сказали последним.",
++    "en": "Please repeat the last thing you said.",
++    "tr": "Lütfen son söylediğinizi tekrar edin.",
++}
++# A call the CRM caps (call-continuation `maxSeconds`; today only the demo's
++# two minutes, owner 2026-10-18) is wrapped up by the agent and then ended by
++# the station through the ordinary hang-up path. Counted from the AudioSocket
++# connect, the same clock durationSeconds is measured on. Not MAX_SECONDS,
++# which is the legacy per-utterance limit.
++CALL_MAX_SECONDS_MIN = 30
++CALL_MAX_SECONDS_MAX = 900
++CALL_WRAPUP_LEAD_SECONDS = 20.0
++CALL_WRAPUP_LATEST_SECONDS = 8.0
++# Quiet after the agent's last goodbye before the station hangs up. A caller
++# who speaks in it takes the floor; the agent's answer to them is then the
++# goodbye, and the station hangs up this long after it.
++CALL_FAREWELL_HANGUP_DELAY_SECONDS = 1.5
++CALL_DEADLINE_POLL_SECONDS = 0.2
++# The wrap-up waits for the floor to stay free this long, so a caller about to
++# answer the agent's last question is not talked over by the goodbye - but
++# only for the first seconds of its window: an engaged caller answers within
++# a second, and a requirement held to the end would never be met, leaving the
++# cap to cut the call mid-turn. After that the first free moment is taken; a
++# goodbye the caller cuts is not a goodbye (truncated_items) and is owed again.
++CALL_WRAPUP_QUIET_SECONDS = 1.5
++CALL_WRAPUP_QUIET_UNTIL_SECONDS = 4.0
++# Output transcription can arrive after its turn's turnComplete. A delta that
++# does not overlap the closed turn opens a new agent item that gets no audio
++# and no turnComplete (_record_output_delta). On a capped call, an item that
++# has had nothing audible for this long is read as such a late tail.
++CALL_LATE_TAIL_SECONDS = 1.0
++# After a goodbye that played in full the caller may say "sağ olun". The model
++# answers it - that answer is the goodbye - or, being free to stay silent,
++# says nothing at all. Quiet this long after the caller means the latter.
++CALL_FAREWELL_CALLER_WAIT_SECONDS = 3.0
++CALL_WRAPUP_CONTROL = (
++    "TECHNICAL TIME LIMIT. About twenty seconds of this call remain. Do not "
++    "ask any new question and do not start a new topic. In the language you "
++    "are speaking now, summarise in one short sentence what the caller told "
++    "you, then say the closing line your instructions give for the end of the "
++    "call, or otherwise thank the caller and say goodbye. Never mention this "
++    "message or anything technical."
++)
+ KNOWLEDGE_HEADING = "# Şirkət və məhsullar haqqında təsdiqlənmiş biliklər"
+ TRANSCRIPTION_HINT_LIMIT = 700
+ 
+@@ -1216,7 +1263,17 @@
+     return ""
+ 
+ 
+-def continuation_note(call_id, extras=None):
++def crm_runtime_request_url():
++    """The call-less prompt request, saying this core reads demo calls per call.
++
++    A CRM that sees caps=demo-v1 never answers it with a demo call's script
++    guessed from the connect burst: such a request belongs to whichever call
++    asked, and the demo script reaches its own call through call-continuation.
++    """
++    return CRM_RUNTIME_URL + ("&" if "?" in CRM_RUNTIME_URL else "?") + "caps=demo-v1"
++
++
++def continuation_note(call_id, extras=None, timeout=1.5):
+     """The tail of the conversation this call continues, as prompt text.
+ 
+     Empty for every ordinary call: the CRM returns content only when it created
+@@ -1230,26 +1287,63 @@
+         return ""
+     try:
+         request = urllib.request.Request(
+-            url + "?callId=" + urllib.parse.quote(str(call_id)),
++            url + "?callId=" + urllib.parse.quote(str(call_id)) + "&caps=demo-v1",
+             headers={"Authorization": f"Bearer {CRM_RUNTIME_TOKEN}"},
+             method="GET",
+         )
+-        with urlopen_no_redirect(request, timeout=1.5) as response:
++        with urlopen_no_redirect(request, timeout=timeout) as response:
+             payload = json.loads(response.read(8192).decode("utf-8", "replace"))
+         tail = payload.get("continuation")
+         conversation = payload.get("conversation")
+         opening = payload.get("opening")
+         context = payload.get("context")
++        max_seconds = payload.get("maxSeconds")
++        variant = payload.get("variant")
++        demo_prompt = payload.get("prompt")
++        closing_key = payload.get("closingKey")
++        closing_keys = payload.get("closingKeys")
+     except Exception as error:
+         logging.warning(
+             "call continuation lookup failed error=%s", type(error).__name__
+         )
++        if isinstance(extras, dict):
++            # The answer was lost, not empty: the session asks once more,
++            # later, for a ceiling the call may still need.
++            extras["failed"] = True
+         return ""
+     # A call the customer placed to us: the CRM names the opening line and
+     # says in one paragraph what kind of call this is. Without them the agent
+     # greets an inbound caller with the outbound "I am calling you" text.
+     if isinstance(extras, dict) and isinstance(opening, str) and opening.strip():
+         extras["opening"] = opening.strip()[:500]
++    if isinstance(extras, dict):
++        # A per-call ceiling, independent of what kind of call this is.
++        # type() rather than isinstance(): True is not 1 second.
++        if (
++            type(max_seconds) in (int, float)
++            and CALL_MAX_SECONDS_MIN <= max_seconds <= CALL_MAX_SECONDS_MAX
++        ):
++            extras["max_seconds"] = float(max_seconds)
++        # Only the explicit flag drops the line's own sales rules.
++        if variant == "demo":
++            extras["demo"] = True
++            if isinstance(demo_prompt, str) and demo_prompt.strip():
++                extras["prompt"] = demo_prompt.strip()[:4000]
++            # One closing per language the CRM's script allows. Matched with
++            # the spaces out: the transcript joins its chunks with a space,
++            # so "Demoya" can arrive as "Demo ya".
++            keys = []
++            candidates = [closing_key]
++            if isinstance(closing_keys, list):
++                candidates += closing_keys[:5]
++            for candidate in candidates:
++                if not isinstance(candidate, str):
++                    continue
++                folded = closing_words(candidate).replace(" ", "")
++                if 3 <= len(folded) <= 120 and folded not in keys:
++                    keys.append(folded)
++            if keys:
++                extras["closing_keys"] = tuple(keys[:5])
+     note = ""
+     if isinstance(context, str) and context.strip():
+         note += "\n\n# Bu zəng haqqında\n" + context.strip()[:2000]
+@@ -1300,7 +1394,7 @@
+             )
+         try:
+             request = urllib.request.Request(
+-                CRM_RUNTIME_URL,
++                crm_runtime_request_url(),
+                 headers={"Authorization": f"Bearer {CRM_RUNTIME_TOKEN}"},
+                 method="GET",
+             )
+@@ -1318,6 +1412,12 @@
+                 )
+             )
+             enabled = requested_enabled and prompt_valid and policy_matches
++            if enabled and payload.get("variant") == "demo":
++                # The CRM matched this request to a demo call's connect burst
++                # and answered with the demo's script: serve it to this call
++                # only. Cached, it would greet the line's next calls for 60 s.
++                runtime_diagnostic("enabled")
++                return instruction_with_technical_policies(prompt.strip(), call_id)
+             if enabled:
+                 _runtime_prompt["value"] = prompt.strip()
+             _runtime_prompt["enabled"] = enabled
+@@ -1357,6 +1457,47 @@
+     ]
+     return "\n\n".join(section for section in sections if section)
+ 
++
++def demo_instruction(composed, demo_prompt=""):
++    """One demo call's instruction, without the line's own sales rules.
++
++    `composed` is what instruction_for_call built (kill switch and policy
++    handshake already enforced). A CRM demo script replaces the line's prompt
++    and knowledge outright; without one, only the three blocks written for the
++    line's business are removed. instruction_with_technical_policies joins
++    non-empty sections with a blank line after a non-empty base, so each block
++    is present exactly as a blank line plus POLICY.strip(). The delivery and
++    language policies stay: they are the whole fanum-voice-policy-v1 contract.
++    """
++    if demo_prompt:
++        return "\n\n".join([
++            demo_prompt.strip(),
++            LIVE_CONVERSATION_POLICY.strip(),
++            VOICE_DELIVERY_POLICY.strip(),
++            EXPLICIT_LANGUAGE_POLICY.strip(),
++        ])
++    for policy in (
++        STRUCTURED_MEASUREMENT_POLICY,
++        CALL_QUALIFICATION_POLICY,
++        CALL_SCOPE_POLICY,
++    ):
++        composed = composed.replace("\n\n" + policy.strip(), "", 1)
++    return composed
++
++
++def closing_words(text):
++    """Text reduced for matching a spoken closing: case, accents and punctuation off."""
++    import unicodedata
++    # Dotted and dotless i are one letter here: "QAYIDIN" casefolds to
++    # "qayidin", the CRM writes "qayıdın", a transcript may write either.
++    folded = unicodedata.normalize("NFD", str(text or "").casefold().replace("ı", "i"))
++    letters = "".join(
++        ch if ch.isalpha() else " "
++        for ch in folded
++        if unicodedata.category(ch) != "Mn"
++    )
++    return " ".join(letters.split())
++
+ def instruction_with_call_language_policy(instruction, continuation=""):
+     """Past-call context never authorizes a different language in a new call."""
+     return (
+@@ -1380,6 +1521,7 @@
+     turns,
+     agent_mid_utterance=None,
+     recovery_attempts=None,
++    demo_prompt_applied=False,
+ ):
+     """Deliver one bounded transcript to the CRM; never log transcript text."""
+     result_url = crm_result_url()
+@@ -1419,6 +1561,10 @@
+     # distinct from a measured false.
+     if agent_mid_utterance is not None:
+         payload["agentMidUtterance"] = bool(agent_mid_utterance)
++    # Only ever true, and only on a demo call that ran on the demo's script:
++    # every other call's payload stays exactly as it was.
++    if demo_prompt_applied is True:
++        payload["demoPromptApplied"] = True
+     if recovery_attempts is not None:
+         payload["recoveryAttempts"] = max(0, min(100, int(recovery_attempts)))
+     body = json.dumps(
+@@ -4502,6 +4648,15 @@
+         self.setup_complete = False
+         self.greeting_sent = False
+         self.is_callback = False
++        self.is_demo_call = False
++        self.crm_max_seconds = None
++        self.wrapup_sent = False
++        self.wrapup_response_seq = None
++        self.closing_keys = ()
++        self.closing_said = False
++        # The response seq of the agent's own closing, once it has played in
++        # full; every later answer of the agent is then a goodbye too.
++        self.closing_response_seq = None
+         self.audio_stream_end_sent = False
+         self.input_stream_fenced = False
+         self.gemini_input_resample_state = None
+@@ -4603,6 +4758,9 @@
+         # tell an answer the caller heard (never repeat it) from an answer that
+         # was generated but discarded (still owed, and safe to deliver).
+         self.audible_agent_items = set()
++        # Agent items playback dropped queued frames of because another item
++        # took current_item_id; read only by the capped-call farewell.
++        self.skipped_agent_items = set()
+         self.fresh_recovery_context_free = True
+         self.dialog_turn_keys = {}
+         self.greeting_item_id = None
+@@ -6178,7 +6336,9 @@
+             obligation = (
+                 "The caller's last words were not captured and cannot be "
+                 "recovered. Ask them, in one short sentence, to repeat only "
+-                "their last question or measurement. Do not guess what they "
++                + ("what they last said" if self.is_demo_call
++                   else "their last question or measurement")
++                + ". Do not guess what they "
+                 "said and do not answer anything else."
+             )
+         elif (
+@@ -6197,8 +6357,9 @@
+         ):
+             obligation = (
+                 "The last assistant answer is opaque and partial. Ask one short "
+-                "clarification for the caller to repeat only the question or "
+-                "measurement that still needs an answer; do not infer its "
++                "clarification for the caller to repeat only the "
++                + ("question" if self.is_demo_call else "question or measurement")
++                + " that still needs an answer; do not infer its "
+                 "missing content."
+             )
+         else:
+@@ -6208,6 +6369,14 @@
+                 "continue the scenario with its next single step, in one short "
+                 "turn."
+             )
++        if self.wrapup_sent or self.closing_response_seq is not None:
++            # Capped calls only: the station asked for the goodbye, or the
++            # agent already said its closing.
++            obligation = (
++                "The call is ending now. Without asking anything, say in one "
++                "short turn only the closing line your instructions give for "
++                "the end of the call."
++            )
+         control = (
+             "TECHNICAL CONTEXT RESTORE. The provider session for this ongoing "
+             "phone call was replaced for transport reasons. The turns above "
+@@ -6221,8 +6390,10 @@
+             + "Never mention this restore, any technical problem, or that "
+             "anything was lost. Speak only " + language_name + ". "
+             + obligation
+-            + " Ask for at most one measurement at a time and confirm the "
+-            "number and its unit."
++            + ("" if self.is_demo_call else (
++                " Ask for at most one measurement at a time and confirm the "
++                "number and its unit."
++            ))
+         )
+         turns.append({"role": "user", "parts": [{"text": control}]})
+         return {
+@@ -6233,10 +6404,11 @@
+         }
+ 
+     def _fresh_recovery_event(self, language):
+-        sentence = FRESH_RECOVERY_REPEAT_SENTENCES.get(
+-            language,
+-            FRESH_RECOVERY_REPEAT_SENTENCES["az"],
++        sentences = (
++            FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call
++            else FRESH_RECOVERY_REPEAT_SENTENCES
+         )
++        sentence = sentences.get(language, sentences["az"])
+         return {
+             "clientContent": {
+                 "turns": [{
+@@ -6258,6 +6430,263 @@
+             }
+         }
+ 
++    def _arm_call_deadline(self, max_seconds, late=False):
++        with self.state_lock:
++            if self.closed or self.hangup_started:
++                return
++            self.crm_max_seconds = max_seconds
++        latency("call_deadline", self.call_id, status="armed",
++                max_seconds=int(max_seconds), late=late, engine="gemini_live")
++        threading.Thread(target=self._call_deadline_loop, args=(max_seconds,),
++                         name="gemini-call-deadline", daemon=True).start()
++
++    def _arm_late_call_deadline(self, continuation_thread, continuation_box):
++        # The CRM answered after the greeting budget: the prompt is fixed by
++        # now, but the ceiling is not part of setup and still applies.
++        # The deadline counts from call_started, so waiting here costs the
++        # ceiling nothing.
++        continuation_thread.join(10.0)
++        if continuation_thread.is_alive() or continuation_box.get("failed"):
++            # The first answer was lost (a slow CRM times out in 1.5 s) or is
++            # still on its way (urllib's timeout is per socket operation, and
++            # name resolution is not covered by it): ask once more, off the
++            # greeting path, for the ceiling alone.
++            with self.state_lock:
++                if self.closed or self.hangup_started:
++                    return
++            first_box, continuation_box = continuation_box, {}
++            continuation_note(self.call_id, continuation_box, timeout=3.0)
++            # The first answer may have landed while the re-ask was out.
++            if not continuation_box.get("max_seconds"):
++                continuation_box = first_box
++        max_seconds = continuation_box.get("max_seconds")
++        if max_seconds:
++            self._arm_call_deadline(max_seconds, late=True)
++
++    def _call_deadline_loop(self, max_seconds):
++        """Wrap a capped call up, then end it through the ordinary hang-up path."""
++        deadline = self.call_started + float(max_seconds)
++        wrapup_from = deadline - CALL_WRAPUP_LEAD_SECONDS
++        wrapup_until = deadline - CALL_WRAPUP_LATEST_SECONDS
++        farewell_done_at = None
++        free_since = None
++        caller_quiet_since = None
++        while True:
++            time.sleep(CALL_DEADLINE_POLL_SECONDS)
++            with self.state_lock:
++                if self.closed or self.hangup_started:
++                    return
++                farewell = self._wrapup_farewell_state_locked()
++                floor_free = self._floor_free_locked()
++                caller_quiet = bool(
++                    not self.local_speech_active
++                    and not self.provider_activity_open
++                    and self.output_queue.empty()
++                    and self.playback_inflight_item_id is None
++                )
++            now = time.monotonic()
++            if now >= deadline:
++                self._end_call_at_deadline("cap")
++                return
++            if farewell == "caller":
++                farewell_done_at = None
++                if not caller_quiet:
++                    caller_quiet_since = None
++                elif caller_quiet_since is None:
++                    caller_quiet_since = now
++                elif now - caller_quiet_since >= CALL_FAREWELL_CALLER_WAIT_SECONDS:
++                    self._end_call_at_deadline("farewell")
++                    return
++                continue
++            caller_quiet_since = None
++            if farewell == "done":
++                if farewell_done_at is None:
++                    farewell_done_at = now
++                elif now - farewell_done_at >= CALL_FAREWELL_HANGUP_DELAY_SECONDS:
++                    self._end_call_at_deadline("farewell")
++                    return
++                continue
++            farewell_done_at = None
++            free_since = (free_since or now) if floor_free else None
++            if (
++                not self.wrapup_sent
++                and not self.closing_said
++                and wrapup_from <= now < wrapup_until
++                and free_since is not None
++                and (now - free_since >= CALL_WRAPUP_QUIET_SECONDS
++                     or now >= wrapup_from + CALL_WRAPUP_QUIET_UNTIL_SECONDS)
++            ):
++                self._try_send_wrapup()
++
++    def _closing_in_locked(self, text):
++        """The text carries one of the closings the CRM named (demo only)."""
++        if not self.closing_keys:
++            return False
++        words = closing_words(text).replace(" ", "")
++        return any(key in words for key in self.closing_keys)
++
++    def _late_tail_of_locked(self):
++        """The agent item a text-only late tail belongs to, or None.
++
++        The active item is such a tail when it has had nothing audible for
++        CALL_LATE_TAIL_SECONDS, nothing is queued or playing, the caller has
++        not spoken since, and it answers the same caller turn as the item
++        before it, which played in full. The tail never gets a turnComplete
++        and would hold a capped call's floor and goodbye until the cap.
++        """
++        item_id = self.active_agent_item_id
++        if item_id is None or item_id != "gemini-agent-%d" % self.gemini_response_seq:
++            return None
++        # Per item: response_first_audio and played_audio_ms are the
++        # session's, and the turn before may still be playing its last audio
++        # when the late text arrives.
++        if (item_id in self.audible_agent_items
++                or not self.output_queue.empty()
++                or self.playback_inflight_item_id is not None):
++            return None
++        if time.monotonic() - self.response_started_at < CALL_LATE_TAIL_SECONDS:
++            return None
++        if self.local_speech_active or self.customer_seq > self.active_agent_customer_seq:
++            return None
++        previous = "gemini-agent-%d" % (self.gemini_response_seq - 1)
++        stamp = self.dialog_turn_keys.get(previous)
++        if stamp is None or stamp[0] != self.active_agent_customer_seq:
++            return None
++        if (previous not in self.audible_agent_items
++                or previous in self.truncated_items
++                or previous in self.skipped_agent_items):
++            return None
++        return previous
++
++    def _wrapup_farewell_state_locked(self):
++        """None until a goodbye exists; then playing, done, or caller.
++
++        A goodbye is the agent's reply to the wrap-up, or (demo) its own turn
++        carrying a closing the CRM named once it has played in full, and any
++        answer the agent gives after either - the model cannot hang up itself.
++        A text-only late tail is judged as the turn it belongs to. "caller":
++        the goodbye played in full and the caller has spoken since.
++        """
++        tail_of = self._late_tail_of_locked()
++        if tail_of is not None:
++            item_seq = self.gemini_response_seq - 1
++            text = ((self.transcript_items.get(tail_of) or {}).get("text") or "")
++            text = text + " " + self.active_output_text
++        else:
++            item_seq = self.gemini_response_seq
++            text = self.active_output_text if self.active_agent_item_id is not None else ""
++        reply_to_wrapup = bool(
++            self.wrapup_response_seq is not None
++            and item_seq > self.wrapup_response_seq
++        )
++        after_closing = bool(
++            self.closing_response_seq is not None
++            and item_seq > self.closing_response_seq
++        )
++        own_closing = self._closing_in_locked(text)
++        if not (reply_to_wrapup or after_closing or own_closing):
++            return None
++        # A transport being replaced: the goodbye is still owed, never "done".
++        if (self.ws is None or self.reconnecting
++                or self.fresh_recovery_input_fenced
++                or self.fresh_recovery_waiting_for_audio):
++            return "playing"
++        if tail_of is None:
++            if (self.response_active or not self.agent_turn_complete
++                    or not self.output_queue.empty()
++                    or self.playback_inflight_item_id is not None):
++                return "playing"
++            if self.active_agent_item_id in self.truncated_items:
++                return None  # the goodbye was cut by the caller; they are still owed it
++        if own_closing and self.closing_response_seq is None:
++            # Latched only now, played in full and uncut: a closing the caller
++            # talked over leaves the wrap-up available.
++            self.closing_response_seq = item_seq
++            self.closing_said = True
++        if self.local_speech_active or self.customer_seq > self.active_agent_customer_seq:
++            return "caller"  # the caller spoke after a goodbye they heard in full
++        return "done"
++
++    def _floor_free_locked(self):
++        """Nobody has the floor: no agent audio owed or playing, no caller speech."""
++        return bool(
++            self.ws is not None
++            and not self.closed and not self.hangup_started
++            and not self.input_stream_fenced
++            and not self.fresh_recovery_input_fenced
++            and not self.reconnecting and self.greeting_sent
++            and ((self.agent_turn_complete and not self.response_active)
++                 or self._late_tail_of_locked() is not None)
++            and self.output_queue.empty()
++            and self.playback_inflight_item_id is None
++            and not self.local_speech_active
++            and not self.provider_activity_open
++            # The caller's latest turn already has its answer: between
++            # activityEnd and the reply's first audio the line is silent, and
++            # turnComplete would interrupt it.
++            and self.customer_seq <= self.active_agent_customer_seq
++            and not self.discarding_response
++            and not self.interrupt_boundary_pending
++            and not self.resume_progress_pending
++            and not self.fresh_recovery_episode_active
++        )
++
++    def _try_send_wrapup(self):
++        """Send the wrap-up once, only at a moment nobody has the floor."""
++        event = {"clientContent": {
++            "turns": [{"role": "user", "parts": [{"text": CALL_WRAPUP_CONTROL}]}],
++            "turnComplete": True,
++        }}
++        with self.gemini_event_lock:
++            with self.control_send_lock:
++                with self.state_lock:
++                    ws = self.ws
++                    if (self.wrapup_sent or self.closing_said
++                            or not self._floor_free_locked()):
++                        return False
++                    response_seq = self.gemini_response_seq
++                    over_tail = self._late_tail_of_locked() is not None
++                    if over_tail:
++                        # The tail never completed, so the reply's audio
++                        # lands in its item: count from the turn before it.
++                        response_seq -= 1
++                try:
++                    ws.send_json(event)
++                except Exception as error:
++                    logging.warning("call wrap-up send failed error=%s",
++                                    type(error).__name__)
++                    return False
++                with self.state_lock:
++                    self.wrapup_sent = True
++                    self.wrapup_response_seq = response_seq
++                    if over_tail and self.gemini_response_seq == response_seq + 1:
++                        # As answers_wrapup does for a fresh item.
++                        self.active_agent_customer_unresolved = False
++        # A replacement session's setup reads self.instruction.
++        self.instruction = (self.instruction.rstrip()
++                            + "\n\n# Zəngin sonu (texniki)\n" + CALL_WRAPUP_CONTROL)
++        latency("call_deadline", self.call_id, status="wrapup_sent",
++                elapsed_ms=elapsed_ms(self.call_started), engine="gemini_live")
++        return True
++
++    def _end_call_at_deadline(self, reason):
++        """End the call the way a caller hang-up does; never fail_closed().
++
++        begin_hangup first: it takes playback_write_lock, so a frame being
++        written finishes and every later writer sees hangup_started. A socket
++        closed under a live sendall reaches playback_loop as OSError ->
++        fail_closed, closing Gemini before wait_for_transcripts. Closing the
++        AudioSocket makes recv_exact return None; Handler.finally then posts
++        the transcript once.
++        """
++        latency("call_deadline", self.call_id, status="hangup", reason=reason,
++                elapsed_ms=elapsed_ms(self.call_started), engine="gemini_live")
++        self.begin_hangup()
++        try:
++            self.h.request.shutdown(socket.SHUT_RDWR)
++        except OSError:
++            pass
++
+     def _prime_audio_socket(self):
+         """Warm the phone playout path without claiming model audio was heard."""
+         preroll_ms = max(0, min(500, GEMINI_LIVE_MEDIA_PREROLL_MS))
+@@ -6298,7 +6727,10 @@
+         # hash-pinned, and its prompt cache is per-organisation while this is
+         # per-call. A box rather than a bare closure variable so the timeout
+         # path reads a value the thread has either set or not - never a tear.
+-        continuation_box = {"note": "", "opening": ""}
++        continuation_box = {
++            "note": "", "opening": "", "max_seconds": None, "demo": False, "prompt": "",
++            "closing_keys": (),
++        }
+         continuation_started = time.monotonic()
+ 
+         def _fetch_continuation():
+@@ -6319,11 +6751,19 @@
+         continuation_thread.join(
+             max(0.0, 2.0 - (time.monotonic() - continuation_started))
+         )
+-        continuation = continuation_box["note"] if not continuation_thread.is_alive() else ""
+-        self.crm_opening_text = (
+-            continuation_box["opening"] if not continuation_thread.is_alive() else ""
+-        )
++        # One read of the thread's state. Two separate is_alive() calls could
++        # straddle its finish and speak the CRM opening without its context.
++        fetched = not continuation_thread.is_alive()
++        continuation = continuation_box["note"] if fetched else ""
++        self.crm_opening_text = continuation_box["opening"] if fetched else ""
+         self.is_callback = "# Bu zəng yarımçıq söhbətin davamıdır" in continuation
++        self.crm_max_seconds = continuation_box["max_seconds"] if fetched else None
++        self.is_demo_call = bool(fetched and continuation_box["demo"])
++        if self.is_demo_call:
++            self.instruction = demo_instruction(
++                self.instruction, continuation_box["prompt"]
++            )
++            self.closing_keys = continuation_box["closing_keys"]
+         self.instruction = instruction_with_call_language_policy(
+             self.instruction, continuation,
+         )
+@@ -6331,8 +6771,9 @@
+             "gemini_continuation",
+             self.call_id,
+             status="applied" if continuation else (
+-                "timeout" if continuation_thread.is_alive() else "none"
++                "timeout" if not fetched else "none"
+             ),
++            demo=self.is_demo_call,
+             engine="gemini_live",
+         )
+         ws = None
+@@ -6387,6 +6828,15 @@
+             voice=GEMINI_LIVE_VOICE,
+             engine="gemini_live",
+         )
++        if self.crm_max_seconds:
++            self._arm_call_deadline(self.crm_max_seconds)
++        elif not fetched or continuation_box.get("failed"):
++            threading.Thread(
++                target=self._arm_late_call_deadline,
++                args=(continuation_thread, continuation_box),
++                name="gemini-call-deadline-late",
++                daemon=True,
++            ).start()
+ 
+     def _buffer_input_locked(self, pcm16):
+         if not pcm16:
+@@ -7999,7 +8449,13 @@
+                 )
+             )
+             if begins_new_response:
+-                self.active_agent_customer_unresolved = bool(
++                # Exactly once, for the first response after the wrap-up: it
++                # answers the station's control message, like the greeting.
++                answers_wrapup = bool(
++                    self.wrapup_response_seq is not None
++                    and self.gemini_response_seq == self.wrapup_response_seq
++                )
++                self.active_agent_customer_unresolved = not answers_wrapup and bool(
+                     (
+                         previous_agent_item_id is None
+                         and not self.greeting_sent
+@@ -8278,8 +8734,28 @@
+                 self.agent_turn_complete
+                 and self.active_agent_item_id is not None
+                 and self.customer_seq <= self.active_agent_customer_seq
+-                and self._is_bounded_late_transcript(
+-                    self.active_output_text, text
++                and (
++                    self._is_bounded_late_transcript(
++                        self.active_output_text, text
++                    )
++                    # Capped calls only: text after turnComplete with no
++                    # reply owed is the closed turn's own late tail. A new
++                    # item for it would retarget current_item_id, and
++                    # playback would drop the closed turn's queued audio -
++                    # the goodbye cut mid-sentence.
++                    or bool(
++                        self.crm_max_seconds
++                        and not self.local_speech_active
++                        and not self.provider_activity_open
++                        # A reply to the wrap-up may send its text first.
++                        and not (
++                            self.wrapup_response_seq is not None
++                            and self.gemini_response_seq
++                            == self.wrapup_response_seq
++                        )
++                        and not self.fresh_recovery_episode_active
++                        and not self.fresh_recovery_waiting_for_audio
++                    )
+                 )
+             )
+             if late_for_completed:
+@@ -9441,6 +9917,13 @@
+                         owed_response = bool(
+                             self.response_active
+                             or (
++                                # The wrap-up was sent and its reply has not
++                                # started: capped calls only.
++                                self.wrapup_response_seq is not None
++                                and self.gemini_response_seq
++                                == self.wrapup_response_seq
++                            )
++                            or (
+                                 # First audio means the greeting STARTED, not
+                                 # that it was delivered. A greeting cut in half
+                                 # by a transport fault is still owed: treating
+@@ -9559,6 +10042,12 @@
+                                         owed_response
+                                         or self.response_active
+                                         or (
++                                            self.wrapup_response_seq
++                                            is not None
++                                            and self.gemini_response_seq
++                                            == self.wrapup_response_seq
++                                        )
++                                        or (
+                                             self.greeting_sent
+                                             and not self.greeting_completed
+                                             and not
+@@ -9783,6 +10272,12 @@
+                             or generation != self.playback_generation
+                             or item_id != self.current_item_id
+                         ):
++                            if (
++                                not self.closed
++                                and not self.hangup_started
++                                and generation == self.playback_generation
++                            ):
++                                self.skipped_agent_items.add(item_id)
+                             self._release_gemini_playback_claim_locked(
+                                 generation,
+                                 item_id,
+@@ -10268,6 +10763,7 @@
+                 transcript_turns,
+                 agent_mid_utterance=getattr(session, "agent_mid_utterance", None),
+                 recovery_attempts=getattr(session, "fresh_recovery_count", None),
++                demo_prompt_applied=getattr(session, "is_demo_call", False) is True,
+             )
+             logging.info("AudioSocket disconnected call_id=%s engine=%s", session.call_id, engine)
+ 

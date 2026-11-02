@@ -21,7 +21,8 @@ type PanelDraft = {
 }
 
 type Loc = "en" | "ru" | "az"
-const COPY: Record<Loc, Record<string, string>> = {
+/** Exported so the guided demo's draft panel says exactly what this one does. */
+export const AI_DRAFT_PANEL_COPY: Record<Loc, Record<string, string>> = {
   en: {
     title: "AI draft — needs review",
     send: "Send",
@@ -73,7 +74,7 @@ export function AiDraftPanel({
   onResolved?: () => void
 }) {
   const locale = (useLocale() as Loc) || "en"
-  const c = COPY[locale] ?? COPY.en
+  const c = AI_DRAFT_PANEL_COPY[locale] ?? AI_DRAFT_PANEL_COPY.en
   const [draft, setDraft] = useState<PanelDraft | null>(null)
   const [text, setText] = useState("")
   const [busy, setBusy] = useState(false)
@@ -165,7 +166,7 @@ export function AiDraftPanel({
           type="button"
           onClick={() => act("send")}
           disabled={busy || !text.trim()}
-          className="rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50" data-crm-button="default"
         >
           {busy ? c.sending : c.send}
         </button>

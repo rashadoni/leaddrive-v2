@@ -12,6 +12,7 @@ import { applyTransitionEffects, callStateOf, createJourneyRecords, rebuildRecor
 import { DEMO_JOURNEY_HAPPY_PATH, canTransition, isTerminalJourneyState, journeyPath } from "./state"
 import type { DemoJourneyManifest, DemoJourneySection, DemoJourneyState, DemoJourneyStep } from "./types"
 import { DEMO_JOURNEY_STATES } from "./types"
+import { DEMO_NEXT_MODULE_SECTION_ID, moduleOfSection } from "./modules"
 
 export const DEMO_SNAPSHOT_VERSION = 1
 
@@ -112,10 +113,6 @@ export function createJourneySnapshot(
   }
 }
 
-function isWalked(section: DemoJourneySection, snapshot: DemoJourneySnapshot): boolean {
-  return section.steps.every((step) => !step.required || snapshot.completedSteps.includes(step.id))
-}
-
 /** Staged records are spaced up to this far apart, so a lead's timeline still reads in order. */
 const STAGED_STEP_MS = 60_000
 
@@ -167,12 +164,28 @@ function advance(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest, n
   if (nextStep) return { ...snapshot, stepId: nextStep.id }
   const nextSection = sections[sectionIndex + 1]
   if (!nextSection) return snapshot
-  // A module opened again ends among sections the prospect already walked.
-  // The guide does not lead through those a second time: it goes on to the
-  // next one not seen yet — the last screen, when nothing is left.
-  if (isWalked(nextSection, snapshot)) {
-    const unseen = sections.slice(sectionIndex + 1).find((candidate) => !isWalked(candidate, snapshot)) ?? sections[sections.length - 1]
-    const staged = unseen.id === nextSection.id ? null : stageTo(snapshot, unseen, now)
+  // A module ends on «what next?» (modules.ts). The guide used to walk the
+  // prospect over a module's edge by itself — the end of Service Desk opened
+  // Call Center, the end of the inbox the lead card — which the owner read as
+  // the demo jumping from module to module (2026-10-18). The welcome screen
+  // ends there too: the prospect picks where to begin. The lead story's
+  // records do not move; the module chosen next stages what it needs.
+  const hub = sections.find((candidate) => candidate.id === DEMO_NEXT_MODULE_SECTION_ID)
+  if (hub && section.id !== hub.id && nextSection.id !== hub.id && moduleOfSection(section.id)?.id !== moduleOfSection(nextSection.id)?.id) {
+    const finished = moduleOfSection(section.id)
+    return {
+      ...snapshot,
+      sectionId: hub.id,
+      stepId: hub.steps[0].id,
+      // Which module just ended, for the screen's heading.
+      ui: { ...snapshot.ui, "next.from": finished?.id ?? "" },
+      visitedSections: snapshot.visitedSections.includes(hub.id) ? snapshot.visitedSections : [...snapshot.visitedSections, hub.id],
+    }
+  }
+  // A standalone module may have been opened at any point of the story; the
+  // section after it then opens on the records it expects.
+  if (section.standalone && !nextSection.standalone && !nextSection.entryStates.includes(snapshot.state)) {
+    const staged = stageTo(snapshot, nextSection, now)
     if (staged) return staged
   }
   return {
@@ -229,7 +242,7 @@ export function sectionJumpTarget(
   snapshot: DemoJourneySnapshot,
   manifest: DemoJourneyManifest,
   sectionId: string,
-): { ok: true; section: DemoJourneySection; back: boolean } | { ok: false; error: string } {
+): { ok: true; section: DemoJourneySection; back: boolean; standalone?: true } | { ok: false; error: string } {
   const sections = activeSections(manifest)
   const targetIndex = sections.findIndex((section) => section.id === sectionId)
   const frontierIndex = sections.findIndex((section) => section.id === snapshot.sectionId)
@@ -237,6 +250,8 @@ export function sectionJumpTarget(
   if (!target) return { ok: false, error: `section "${sectionId}" is not in this story` }
   if (target.navGroup === "demo") return { ok: false, error: `"${target.id}" is reached by the story, not opened directly` }
   if (awaitingOutcome(snapshot, manifest)) return { ok: false, error: "the live call waits for its outcome" }
+  // A module of its own opens where it is, whatever the story's state.
+  if (target.standalone) return { ok: true, section: target, back: false, standalone: true }
   if (targetIndex <= frontierIndex) return { ok: true, section: target, back: true }
   // Only a real call is worth stopping a jump for. In the open demo the call
   // from the lead card is a simulation, and making it a toll gate on the way
@@ -314,6 +329,38 @@ export function reduceJourney(
       const jump = sectionJumpTarget(snapshot, manifest, action.sectionId)
       if (!jump.ok) return fail(jump.error)
       const target = jump.section
+      if (jump.standalone) {
+        // Its own screens from its first step; the lead story stays exactly
+        // where it was — no state, no records touched.
+        return {
+          ok: true,
+          snapshot: {
+            ...snapshot,
+            sectionId: target.id,
+            stepId: target.steps[0].id,
+            visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
+            ui: Object.fromEntries(Object.entries(snapshot.ui).filter(([path]) => DEMO_UI_QUOTAS.includes(path))),
+            updatedAt: now.toISOString(),
+          },
+        }
+      }
+      if (jump.back && target.entryStates.includes(snapshot.state) && !target.steps.some((candidate) => snapshot.completedSteps.includes(candidate.id))) {
+        // The story stands exactly where this section begins and the section
+        // was never walked: the prospect goes on from «what next» in the
+        // story's own order. Nothing to rebuild — the records the previous
+        // module left, the prospect's own messages among them, stay.
+        return {
+          ok: true,
+          snapshot: {
+            ...snapshot,
+            sectionId: target.id,
+            stepId: target.steps[0].id,
+            visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
+            ui: Object.fromEntries(Object.entries(snapshot.ui).filter(([path]) => DEMO_UI_QUOTAS.includes(path))),
+            updatedAt: now.toISOString(),
+          },
+        }
+      }
       if (jump.back) {
         // The module starts over: its records as they stand at its own
         // beginning, its guide from the first step. What was walked stays

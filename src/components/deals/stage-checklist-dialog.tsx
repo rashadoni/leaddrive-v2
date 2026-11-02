@@ -58,7 +58,7 @@ export function StageChecklistDialog({
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={e => e.stopPropagation()}
           >
-            <div className="w-full max-w-md rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card shadow-2xl overflow-hidden">
+            <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-2.5">

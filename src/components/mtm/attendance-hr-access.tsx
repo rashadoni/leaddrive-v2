@@ -10,12 +10,14 @@ import type { AttendanceHrUser } from "@/lib/mtm/attendance-hr-access"
 
 const ENDPOINT = "/api/v1/mtm/attendance/access"
 const ROLE_MESSAGES: Record<string, string> = { manager: "hrRoleManager", sales: "hrRoleSales", support: "hrRoleSupport", ticketing: "hrRoleTicketing", viewer: "hrRoleViewer" }
-type Props = { canManage: boolean; onAccessLost: () => void; accessUnavailable?: boolean }
+type Props = { canManage: boolean; onAccessLost: () => void; accessUnavailable?: boolean
+  /** Settings opens the editor itself; elsewhere it waits behind its button. */
+  alwaysOpen?: boolean }
 
 /** Separate per-user attendance permission; the API rechecks administrator access. */
-export function MtmAttendanceHrAccess({ canManage, onAccessLost, accessUnavailable = false }: Props) {
+export function MtmAttendanceHrAccess({ canManage, onAccessLost, accessUnavailable = false, alwaysOpen = false }: Props) {
   const t = useTranslations("mtmAttendance")
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(alwaysOpen)
   const [users, setUsers] = useState<AttendanceHrUser[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [search, setSearch] = useState("")
@@ -118,9 +120,9 @@ export function MtmAttendanceHrAccess({ canManage, onAccessLost, accessUnavailab
   const disabled = saving || loading || mustReload || Boolean(loadError)
 
   return <section data-testid="attendance-hr-access" className="space-y-3">
-    <Button type="button" variant="outline" className="min-h-11" disabled={saving} aria-expanded={open} aria-controls="attendance-hr-access-panel" onClick={() => setOpen(previous => !previous)}>
+    {alwaysOpen ? null : <Button type="button" variant="outline" className="min-h-11" disabled={saving} aria-expanded={open} aria-controls="attendance-hr-access-panel" onClick={() => setOpen(previous => !previous)}>
       <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />{t(open ? "hrClose" : "hrOpen")}
-    </Button>
+    </Button>}
     {open ? <div id="attendance-hr-access-panel"><HomeCard testId="attendance-hr-access-card" titleId="attendance-hr-access-title" title={t("hrTitle")} tone="orange" icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}>
       <div className="space-y-5 py-4">
         <div className="max-w-prose space-y-2"><p className="text-sm font-medium">{t("hrPermission")}</p><p className="text-sm text-muted-foreground">{t("hrIntro")}</p><p className="text-xs text-muted-foreground">{t("hrAdmins")}</p></div>
@@ -133,7 +135,7 @@ export function MtmAttendanceHrAccess({ canManage, onAccessLost, accessUnavailab
         {saved ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{saved}</p> : null}
         {!loading && !loadError ? <>
           {hasMore ? <p className="max-w-prose text-sm text-muted-foreground">{t("hrMoreResults")}</p> : null}
-          {users.length ? <ul aria-label={t("hrUsers")} className="divide-y divide-zinc-100 dark:divide-zinc-800">{users.map(user => <li key={user.id} className="space-y-3 py-4" data-testid="attendance-hr-user">
+          {users.length ? <ul aria-label={t("hrUsers")} className="divide-y divide-border">{users.map(user => <li key={user.id} className="space-y-3 py-4" data-testid="attendance-hr-user">
             <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 space-y-2"><h3 className="break-words text-sm font-semibold">{user.name || t("hrUnnamed")}</h3>
               <p className="text-xs text-muted-foreground">{t(ROLE_MESSAGES[user.role] ?? "hrRoleUser")} · {t(user.isActive ? "hrActive" : "hrInactive")}</p>
               <HomePill tone={user.allEmployees ? "blue" : "zinc"}>{t(user.allEmployees ? "hrAllEmployees" : "hrNormalScope")}</HomePill>

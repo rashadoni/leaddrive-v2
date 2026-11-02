@@ -1,0 +1,11 @@
+# Installed by scripts/event-platform/cluster/provision.sh install-watch.
+[Unit]
+Description=Kafka platform watch: probe every host, tell the owner on Telegram
+OnFailure=ld-kafka-watch-failed.service
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@
+# One pass: parallel SSH probes (40 s each) and one cluster view (up to 200 s).
+TimeoutStartSec=6min
+Nice=5

@@ -11,6 +11,7 @@ import {
   getContactRequesterSnapshot,
   resolveTicketCategoryForWrite,
 } from "@/lib/ticketing/category-service"
+import { systemTicketComment } from "@/lib/ticketing/chat-transcript"
 
 const MAX_ROWS = 5000
 const MAX_FILE_SIZE = 15 * 1024 * 1024
@@ -256,10 +257,13 @@ export const POST = withRlsAuth("tickets", "write", async (req, { orgId }) => {
           priority: ticket.priority,
         })
         if (c.response) {
+          // The company's response from the registry: the team's side, with no person
+          // behind it here. Unmarked, the portal showed it as the customer's own words
+          // and the agent's page named the customer as its author (until 2026-10-19).
           await tx.ticketComment.create({
             data: {
               ticketId: ticket.id,
-              comment: c.response,
+              comment: systemTicketComment(c.response),
               isInternal: false,
             },
           })

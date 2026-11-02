@@ -2,10 +2,13 @@ import { createHash } from "node:crypto"
 import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { Prisma, type MtmCustomerCategory, type MtmCustomerObjectType, type MtmCustomerStatus, type MtmExternalDocumentStatus } from "@prisma/client"
 import type { prisma as appPrisma } from "@/lib/prisma"
-import { buildMtmRouteDedupeKey, detectMtmRouteConflicts } from "@/lib/mtm/route-planning"
+import { buildMtmRouteDedupeKey, detectMtmRouteConflicts, type ExistingRouteForConflict } from "@/lib/mtm/route-planning"
 import { rankMtmCustomerDuplicates } from "@/lib/mtm/customer-request"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
 import type { MtmExcelRowError, MtmExcelImportType, ParsedMtmWorkbook } from "@/lib/mtm/excel-contract"
+import { localDateTimeToUtc } from "@/lib/timezone"
+import { readExcelWorkingHours } from "@/lib/mtm/excel-customer-hours"
+import { readWorkingHours } from "@/lib/mtm/customer-hours"
 
 type AppPrisma = typeof appPrisma
 type DbClient = AppPrisma | Prisma.TransactionClient
@@ -46,6 +49,7 @@ interface ExistingCustomerRow {
   longitude: number | null
   contactPerson: string | null
   phone: string | null
+  workingHours: unknown
 }
 
 interface ExistingRouteRow {
@@ -53,10 +57,9 @@ interface ExistingRouteRow {
   externalId: string | null
   dedupeKey: string | null
   status: string
-  agentId: string
-  assignments: Array<{ agentId: string; removedAt: Date | null }>
-  points: Array<{ customerId: string; deletedAt: Date | null }>
 }
+
+type ScheduledRouteRow = ExistingRouteForConflict & { date: Date }
 
 interface ExistingSalesDocumentRow {
   id: string
@@ -187,7 +190,7 @@ async function validateCustomers(
   const errors = [...parsed.errors]
   const existing = await db.mtmCustomer.findMany({
     where: { organizationId, deletedAt: null },
-    select: { id: true, code: true, objectType: true, name: true, status: true, category: true, address: true, city: true, district: true, territoryCode: true, latitude: true, longitude: true, contactPerson: true, phone: true },
+    select: { id: true, code: true, objectType: true, name: true, status: true, category: true, address: true, city: true, district: true, territoryCode: true, latitude: true, longitude: true, contactPerson: true, phone: true, workingHours: true },
   })
   const territories = await db.mtmRegion.findMany({ where: { organizationId, code: { not: null } }, select: { code: true } })
   const territoryCodes = new Set(territories.map((territory: { code: string | null }) => territory.code).filter(Boolean))
@@ -219,6 +222,9 @@ async function validateCustomers(
     const coordinates = normalizeMtmCoordinates({ latitude, longitude })
     const territoryCode = optionalText(row.values.territory_code, 128)
     if (territoryCode && !territoryCodes.has(territoryCode)) pushInvalid(parsed, row.rowNumber, "territory_code", errors, territoryCode, "Territory code does not exist")
+    // «Часы приёма»: only a row that fills an hours column says anything about them.
+    const hours = readExcelWorkingHours(row.values)
+    if (hours.kind === "invalid") pushInvalid(parsed, row.rowNumber, hours.column, errors, hours.rawValue, hours.message)
     if (code) {
       const duplicateRow = seen.get(code)
       if (duplicateRow) errors.push({ sheetName: parsed.sheetName, rowNumber: row.rowNumber, columnName: "external_code", errorCode: "DUPLICATE_IN_FILE", message: `External code also appears on row ${duplicateRow}`, rawValue: code })
@@ -240,6 +246,7 @@ async function validateCustomers(
       contactPerson: optionalText(row.values.contact_person),
       phone: optionalText(row.values.phone, 128),
       territoryCode,
+      ...(hours.kind === "hours" ? { workingHours: hours.hours } : {}),
     }
     const match = byCode.get(code)
     const comparable = match ? {
@@ -256,6 +263,7 @@ async function validateCustomers(
       contactPerson: match.contactPerson,
       phone: match.phone,
       territoryCode: match.territoryCode,
+      ...(hours.kind === "hours" ? { workingHours: readWorkingHours(match.workingHours) } : {}),
     } : null
     const duplicateCandidates = match ? [] : rankMtmCustomerDuplicates({ externalCode: code, name, phone: data.phone, latitude: coordinates.latitude, longitude: coordinates.longitude }, customerRows)
     rows.push({
@@ -274,6 +282,7 @@ async function validateRoutes(
   organizationId: string,
   parsed: ParsedMtmWorkbook,
   actor: MtmRouteActor,
+  timezone: string,
 ): Promise<{ rows: SnapshotRow[]; errors: MtmExcelRowError[] }> {
   const errors = [...parsed.errors]
   const [agents, customers, existingRoutes] = await Promise.all([
@@ -281,7 +290,7 @@ async function validateRoutes(
     db.mtmCustomer.findMany({ where: { organizationId, deletedAt: null, code: { not: null } }, select: { id: true, code: true } }),
     db.mtmRoute.findMany({
       where: { organizationId, deletedAt: null },
-      select: { id: true, externalId: true, dedupeKey: true, status: true, agentId: true, assignments: { select: { agentId: true, removedAt: true } }, points: { select: { customerId: true, deletedAt: true } } },
+      select: { id: true, externalId: true, dedupeKey: true, status: true },
     }),
   ])
   const routeRows = existingRoutes as unknown as ExistingRouteRow[]
@@ -292,6 +301,21 @@ async function validateRoutes(
   for (const row of parsed.rows) {
     const externalId = requiredText(parsed, row.rowNumber, row.values, "route_external_id", errors, 128)
     if (externalId) grouped.set(externalId, [...(grouped.get(externalId) ?? []), row])
+  }
+  // A schedule collides only with routes of its own day. Compare with the set
+  // the route builder and publish compare with: published or started routes
+  // of that date, with their real meeting slots. Without the date every route
+  // of the agent on any day counted, and without the slots every stop looked
+  // untimed — so each imported route "conflicted" and the override meant nothing.
+  const routeDates = [...new Set([...grouped.values()].map((rows) => isoDate(rows[0].values.route_date)).filter((date): date is string => date !== null))]
+  const scheduledRoutes = routeDates.length === 0 ? [] : await db.mtmRoute.findMany({
+    where: { organizationId, date: { in: routeDates.map(asDate) }, status: { in: ["PLANNED", "IN_PROGRESS"] }, deletedAt: null },
+    select: { id: true, date: true, status: true, agentId: true, assignments: { select: { agentId: true, removedAt: true } }, points: { select: { customerId: true, contactId: true, plannedTime: true, deletedAt: true } } },
+  })
+  const scheduledByDate = new Map<string, ScheduledRouteRow[]>()
+  for (const route of scheduledRoutes as ScheduledRouteRow[]) {
+    const date = route.date.toISOString().slice(0, 10)
+    scheduledByDate.set(date, [...(scheduledByDate.get(date) ?? []), route])
   }
   const snapshotRows: SnapshotRow[] = []
 
@@ -334,7 +358,14 @@ async function validateRoutes(
     if (errors.length > before || !routeDate || !primaryAgentId) continue
     points.sort((left, right) => left.orderIndex - right.orderIndex)
     const assignments = agentIds.map((agentId) => ({ agentId, role: agentId === primaryAgentId ? "PRIMARY" as const : "PARTICIPANT" as const }))
-    const fingerprintPoints = points.map((point) => ({ customerId: point.customerId, plannedTime: point.plannedTime ? `${routeDate}T${point.plannedTime}:00.000Z` : null }))
+    // `planned_time` is a wall-clock time in the organization's timezone (the
+    // template contract), resolved the way the route builder resolves its time
+    // inputs, so an imported 10:00 is the same instant as a 10:00 set by hand.
+    const timedPoints = points.map((point) => ({
+      ...point,
+      plannedAt: point.plannedTime ? localDateTimeToUtc(`${routeDate}T${point.plannedTime}`, timezone).toISOString() : null,
+    }))
+    const fingerprintPoints = timedPoints.map((point) => ({ customerId: point.customerId, plannedTime: point.plannedAt }))
     const dedupeKey = buildMtmRouteDedupeKey({ date: routeDate, primaryAgentId, assignments, points: fingerprintPoints })
     const existing = byExternalId.get(externalId)
     const duplicate = routeRows.find((route) => route.dedupeKey === dedupeKey && route.id !== existing?.id)
@@ -346,14 +377,14 @@ async function validateRoutes(
       errors.push({ sheetName: parsed.sheetName, rowNumber: first.rowNumber, columnName: "route_external_id", errorCode: "ROUTE_LOCKED", message: "Only draft routes can be changed by Excel import" })
       continue
     }
-    const conflicts = detectMtmRouteConflicts({ primaryAgentId, assignments, points: fingerprintPoints }, routeRows.filter((route) => route.id !== existing?.id))
+    const conflicts = detectMtmRouteConflicts({ primaryAgentId, assignments, points: fingerprintPoints }, (scheduledByDate.get(routeDate) ?? []).filter((route) => route.id !== existing?.id))
     snapshotRows.push({
       rowNumber: first.rowNumber,
       sourceRows: sourceRows.map((row) => row.rowNumber),
       operation: existing ? (existing.dedupeKey === dedupeKey ? "UNCHANGED" : "UPDATE") : "CREATE",
       existingId: existing?.id,
       warnings: conflicts.map((conflict) => ({ code: `ROUTE_CONFLICT_${conflict.code}`, message: `Conflicts with route ${conflict.routeId}` })),
-      data: { externalId, routeDate, routeName: optionalText(first.values.route_name), primaryAgentId, assignments, points, dedupeKey },
+      data: { externalId, routeDate, routeName: optionalText(first.values.route_name), primaryAgentId, assignments, points: timedPoints, dedupeKey },
     })
   }
   return { rows: snapshotRows, errors }
@@ -495,11 +526,13 @@ export async function validateMtmExcelImport(params: {
   parsed: ParsedMtmWorkbook
   checksum: string
   actor: MtmRouteActor
+  /** The organization's MTM timezone: route `planned_time` is local time there. */
+  timezone: string
 }): Promise<MtmExcelValidationResult> {
   const validated = params.parsed.type === "CUSTOMERS"
     ? await validateCustomers(params.db, params.organizationId, params.parsed)
     : params.parsed.type === "ROUTES"
-      ? await validateRoutes(params.db, params.organizationId, params.parsed, params.actor)
+      ? await validateRoutes(params.db, params.organizationId, params.parsed, params.actor, params.timezone)
       : params.parsed.type === "SALES_FACTS"
         ? await validateSalesFacts(params.db, params.organizationId, params.parsed)
         : await validatePlanFact(params.db, params.organizationId, params.parsed)
@@ -530,6 +563,16 @@ function asDate(value: unknown): Date {
   return new Date(`${String(value)}T00:00:00.000Z`)
 }
 
+/**
+ * The stop's meeting time as validation resolved it in the organization's
+ * timezone. A snapshot validated before `plannedAt` existed read `planned_time`
+ * as UTC; it is applied that way, so its stops still match its dedupe key.
+ */
+function pointPlannedTime(routeDate: string, point: Record<string, unknown>): Date | null {
+  if (typeof point.plannedAt === "string") return new Date(point.plannedAt)
+  return point.plannedTime ? new Date(`${routeDate}T${asString(point.plannedTime)}:00.000Z`) : null
+}
+
 function asNullableString(value: unknown): string | null {
   return typeof value === "string" && value ? value : null
 }
@@ -551,12 +594,19 @@ function asObjectArray(value: unknown): Array<Record<string, unknown>> {
 async function applyCustomerRows(
   tx: Prisma.TransactionClient,
   organizationId: string,
+  requestedBy: string,
   rows: SnapshotRow[],
 ): Promise<void> {
+  const now = new Date()
   for (const row of rows) {
     if (row.operation === "UNCHANGED") continue
     const data = row.data
     const code = asString(data.code)
+    // A row without hours columns leaves the place's «часы приёма» as they are.
+    const hours = readWorkingHours(data.workingHours)
+    const hoursData = hours
+      ? { workingHours: hours as unknown as Prisma.InputJsonValue, workingHoursUpdatedAt: now, workingHoursUpdatedBy: requestedBy }
+      : {}
     await tx.mtmCustomer.upsert({
       where: { organizationId_code: { organizationId, code } },
       create: {
@@ -573,6 +623,7 @@ async function applyCustomerRows(
         ...normalizeMtmCoordinates({ latitude: asNullableNumber(data.latitude), longitude: asNullableNumber(data.longitude) }),
         contactPerson: asNullableString(data.contactPerson),
         phone: asNullableString(data.phone),
+        ...hoursData,
       },
       update: {
         objectType: asString(data.objectType) as MtmCustomerObjectType,
@@ -586,6 +637,7 @@ async function applyCustomerRows(
         ...normalizeMtmCoordinates({ latitude: asNullableNumber(data.latitude), longitude: asNullableNumber(data.longitude) }),
         contactPerson: asNullableString(data.contactPerson),
         phone: asNullableString(data.phone),
+        ...hoursData,
       },
     })
   }
@@ -649,7 +701,7 @@ async function applyRouteRows(
               organizationId,
               customerId: asString(point.customerId),
               orderIndex: Number(point.orderIndex),
-              plannedTime: point.plannedTime ? new Date(`${routeDate}T${asString(point.plannedTime)}:00.000Z`) : null,
+              plannedTime: pointPlannedTime(routeDate, point),
               notes: asNullableString(point.notes),
             })),
           },
@@ -679,7 +731,7 @@ async function applyRouteRows(
               organizationId,
               customerId: asString(point.customerId),
               orderIndex: Number(point.orderIndex),
-              plannedTime: point.plannedTime ? new Date(`${routeDate}T${asString(point.plannedTime)}:00.000Z`) : null,
+              plannedTime: pointPlannedTime(routeDate, point),
               notes: asNullableString(point.notes),
             })),
           },
@@ -816,7 +868,7 @@ export async function applyMtmExcelImportJob(params: {
     })
     if (claim.count !== 1) throw new Error("Import job was already claimed")
 
-    if (snapshot.type === "CUSTOMERS") await applyCustomerRows(tx, params.organizationId, snapshot.rows)
+    if (snapshot.type === "CUSTOMERS") await applyCustomerRows(tx, params.organizationId, params.requestedBy, snapshot.rows)
     else if (snapshot.type === "ROUTES") await applyRouteRows(tx, params.organizationId, params.requestedBy, snapshot.rows)
     else if (snapshot.type === "SALES_FACTS") await applySalesRows(tx, params.organizationId, job.id, snapshot.rows)
     else await applyPlanRows(tx, params.organizationId, job.id, snapshot.rows)

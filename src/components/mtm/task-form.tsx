@@ -5,8 +5,9 @@ import { useLocale, useTranslations } from "next-intl"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { CalendarClock, MapPin, Repeat2, UserRound } from "lucide-react"
 
+import { Hint, HintValue } from "@/components/hint"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -136,7 +137,7 @@ const EMPTY_DRAFT: TaskCreateDraft = {
 
 function SectionLabel({ icon: Icon, title }: { icon: typeof CalendarClock; title: string }) {
   return (
-    <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 dark:border-zinc-700">
+    <div className="flex items-center gap-2 border-b border-border pb-2">
       <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
       <h3 className="text-sm font-semibold">{title}</h3>
     </div>
@@ -229,14 +230,15 @@ export function TaskDstBadge({ resolution }: { resolution: MtmTaskRecurrenceDstR
   if (!resolution || resolution.kind === "EXACT") return null
   const ambiguous = resolution.kind === "AMBIGUOUS_EARLIER"
   return (
-    <Badge
-      variant="warning"
-      title={ambiguous
+    <HintValue
+      text={ambiguous
         ? t("dstAmbiguousHint", { kind: resolution.kind })
         : t("dstShiftHint", { minutes: resolution.shiftedMinutes })}
     >
-      {ambiguous ? t("dstAmbiguous") : t("dstShift")}
-    </Badge>
+      <Badge variant="warning">
+        {ambiguous ? t("dstAmbiguous") : t("dstShift")}
+      </Badge>
+    </HintValue>
   )
 }
 
@@ -455,7 +457,7 @@ export function MtmTaskForm({
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogContent className="space-y-8">
-          {error ? <div className="rounded-lg border border-red-300 bg-red-50/70 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/25 dark:text-red-200" role="alert">{error}</div> : null}
+          {error ? <div className="rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm" role="alert">{error}</div> : null}
 
           <section className="space-y-4">
             <SectionLabel icon={UserRound} title={t("overview")} />
@@ -481,7 +483,7 @@ export function MtmTaskForm({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="task-group">{t("taskGroup")}</Label>
+                <Label htmlFor="task-group"><HintValue text={t("hint.formGroup")}>{t("taskGroup")}</HintValue></Label>
                 <Select
                   id="task-group"
                   value={form.taskGroupCode}
@@ -532,7 +534,7 @@ export function MtmTaskForm({
                 {selectedCustomer ? <p className="text-xs text-muted-foreground">{[selectedCustomer.locality || selectedCustomer.city, selectedCustomer.address].filter(Boolean).join(", ") || t("placeUnavailable")}</p> : null}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="task-visit">{t("event")}</Label>
+                <Label htmlFor="task-visit"><HintValue text={t("hint.formEvent")}>{t("event")}</HintValue></Label>
                 <Select id="task-visit" value={form.visitId} onChange={(event) => update("visitId", event.target.value)} disabled={loadingOptions || loadingVisits || !form.agentId}>
                   <option value="">{tf("none")}</option>
                   {visibleVisits.map((visit) => (
@@ -560,22 +562,22 @@ export function MtmTaskForm({
             <SectionLabel icon={Repeat2} title={t("recurrence")} />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
-                <Label htmlFor="task-recurrence">{t("rule")}</Label>
+                <Label htmlFor="task-recurrence"><HintValue text={t("hint.formRule")}>{t("rule")}</HintValue></Label>
                 <Select id="task-recurrence" value={form.recurrenceRule} onChange={(event) => update("recurrenceRule", event.target.value)} disabled={!canCreateRecurring}>
                   <option value="">{t("recurrenceOneOff")}</option>
                   {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((rule) => <option key={rule} value={rule}>{t(`recurrenceRules.${rule}`)}</option>)}
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="task-interval">{t("interval")}</Label>
+                <Label htmlFor="task-interval"><HintValue text={t("hint.formInterval")}>{t("interval")}</HintValue></Label>
                 <Input id="task-interval" type="number" min={1} max={365} value={form.recurrenceInterval} onChange={(event) => update("recurrenceInterval", event.target.value)} disabled={!form.recurrenceRule} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="task-until">{t("recurrenceEnd")}</Label>
+                <Label htmlFor="task-until"><HintValue text={t("hint.formRecurrenceEnd")}>{t("recurrenceEnd")}</HintValue></Label>
                 <Input id="task-until" type="datetime-local" value={form.recurrenceUntil} onChange={(event) => update("recurrenceUntil", event.target.value)} disabled={!form.recurrenceRule} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="task-recurrence-timezone">{t("recurrenceTimezone")}</Label>
+                <Label htmlFor="task-recurrence-timezone"><HintValue text={t("hint.formRecurrenceTimezone")}>{t("recurrenceTimezone")}</HintValue></Label>
                 <Select id="task-recurrence-timezone" value={form.recurrenceTimezone} onChange={(event) => update("recurrenceTimezone", event.target.value)} disabled={!form.recurrenceRule}>
                   {[...new Set([timezone, ...COMMON_TIMEZONES])].map((zone) => <option key={zone} value={zone}>{zone}</option>)}
                 </Select>
@@ -589,7 +591,7 @@ export function MtmTaskForm({
                 {recurrencePreview.occurrences.length ? (
                   <ol className="grid gap-2 sm:grid-cols-2">
                     {recurrencePreview.occurrences.map((occurrence, index) => (
-                      <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 items-center gap-3 rounded-lg border border-zinc-200 px-3 text-sm dark:border-zinc-700">
+                      <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 items-center gap-3 rounded-lg border border-border px-3 text-sm">
                         <span className="tabular-nums text-muted-foreground">{index + 1}</span>
                         <span>{formatInTimezone((occurrence.dueDate ?? occurrence.scheduledStartAt)!, form.recurrenceTimezone || timezone, { dateStyle: "medium", timeStyle: "short" }, locale)}</span>
                         <TaskDstBadge resolution={occurrence.dst} />
@@ -603,7 +605,7 @@ export function MtmTaskForm({
         </DialogContent>
         <DialogFooter className="flex-col-reverse sm:flex-row">
           <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={saving}>{t("keepList")}</Button>
-          <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loadingOptions}>{saving ? t("creating") : t("createTask")}</Button>
+          <Hint wrap side="top" text={saving ? null : loadingOptions ? t("hint.formCreateWaiting") : t("hint.formCreate")}><Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loadingOptions}>{saving ? t("creating") : t("createTask")}</Button></Hint>
         </DialogFooter>
       </form>
     </Dialog>

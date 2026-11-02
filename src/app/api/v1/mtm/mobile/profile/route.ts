@@ -46,6 +46,9 @@ export const GET = withMobileRls(async (req, auth) => {
     if (!agent) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 })
     }
+    const canonicalPhone = auth.identityApplication ? await prisma.identityPhoneClaim.findUnique({
+      where: { organizationId_userId: { organizationId: auth.orgId, userId: auth.userId } }, select: { normalizedPhone: true },
+    }) : null
 
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
     const todayDate = currentDateKey(new Date(), timezone)
@@ -89,7 +92,7 @@ export const GET = withMobileRls(async (req, auth) => {
           id: agent.id,
           name: agent.name,
           email: agent.email,
-          phone: agent.phone,
+          phone: auth.identityApplication ? canonicalPhone?.normalizedPhone ?? null : agent.phone,
           role: agent.role,
           status: agent.status,
           avatar: agent.avatar,

@@ -21,8 +21,15 @@ PROVIDER_SOURCE = "extensions_fanum.conf"
 SELECTOR_BYTES_RE = re.compile(rb"[0-9]{5,20}\n")
 SELECTOR_TEXT_RE = re.compile(r"[0-9]{5,20}")
 REVIEWED_WILDCARD_PATTERN = "_X."
-REVIEWED_WILDCARD_APPLICATIONS = (
+# The first step is only a log line, and the station has carried two spellings
+# of it: the one this bundle was first reviewed against, and the one live on
+# FANUM-PBX01 since 2026-09-14.  Either is accepted; every other step must match
+# exactly.
+REVIEWED_WILDCARD_NOOPS = (
     "NoOp(Fanum provider catch-all)",
+    "NoOp(Fanum SIP inbound: ${CALLERID(all)} to ${EXTEN})",
+)
+REVIEWED_WILDCARD_APPLICATIONS = (
     "Set(CHANNEL(language)=az)",
     "Set(DENOISE(rx)=on)",
     "Set(AGC(rx)=5000)",
@@ -58,97 +65,96 @@ PROVIDER_SUMMARY_RE = re.compile(
 
 BROWSER_CONTEXT = "fanum-inbound-browser"
 TERMINAL_CONTEXT = "fanum-inbound-browser-terminal"
+# The AI talks on this leg so the caller's channel outlives it (handoff to a
+# salesperson's browser, owner 2026-10-27).
+AI_LEG_CONTEXT = "fanum-inbound-ai-leg"
 LOADED_SOURCE = "fanum-inbound-browser.conf"
 
 BROWSER_PRIORITIES = (
-    ("NoOp(Fanum inbound browser gate)", 9),
-    ("Set(__FANUM_SAFE_CALL_ID=)", 10),
-    (
-        "AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,identify)",
-        11,
-    ),
-    (
-        'GotoIf($["${AGISTATUS}" = "SUCCESS"]?agi-succeeded:invalid-id)',
-        12,
-    ),
-    (
-        "GotoIf($[${LEN(${FANUM_SAFE_CALL_ID})} = 36]?identified:invalid-id)",
-        13,
-    ),
-    ("Set(__FANUM_INBOUND_TERMINAL_STATE=no_answer)", 14),
-    ("Set(CHANNEL(hangup_handler_push)=fanum-inbound-browser-terminal,s,1)", 15),
-    ("Ringing()", 16),
-    ("Set(FANUM_INBOUND_EVENT_OK=0)", 17),
-    (
-        "AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,"
-        "ringing,${FANUM_SAFE_CALL_ID},${ARG1})",
-        18,
-    ),
-    (
-        'GotoIf($["${FANUM_INBOUND_EVENT_OK}" = "1"]?'
-        "await-browser:registration-failed)",
-        19,
-    ),
-    ("Set(FANUM_BROWSER_READY=0)", 20),
-    (
-        "AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,"
-        "ready,${FANUM_SAFE_CALL_ID})",
-        21,
-    ),
-    ('GotoIf($["${FANUM_BROWSER_READY}" = "1"]?answer:missed)', 22),
-    ("Answer()", 23),
-    ("Set(__FANUM_INBOUND_TERMINAL_STATE=connected)", 24),
-    (
-        "AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,"
-        "answered,${FANUM_SAFE_CALL_ID})",
-        27,
-    ),
-    ("Set(CHANNEL(language)=az)", 28),
-    ("Set(DENOISE(rx)=on)", 29),
-    ("Set(AGC(rx)=5000)", 30),
-    ("AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9093)", 31),
-    ("Hangup()", 32),
-    ("Hangup()", 33),
-    ("Set(__FANUM_INBOUND_TERMINAL_STATE=failed)", 34),
-    ("Hangup()", 35),
-    ("Hangup()", 36),
+    ('NoOp(Fanum inbound browser gate)', 10),
+    ('Set(__FANUM_SAFE_CALL_ID=)', 11),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,identify)', 12),
+    ('GotoIf($["${AGISTATUS}" = "SUCCESS"]?agi-succeeded:invalid-id)', 13),
+    ('GotoIf($[${LEN(${FANUM_SAFE_CALL_ID})} = 36]?identified:invalid-id)', 14),
+    ('Set(__FANUM_INBOUND_TERMINAL_STATE=no_answer)', 15),
+    ('Set(CHANNEL(hangup_handler_push)=fanum-inbound-browser-terminal,s,1)', 16),
+    ('Ringing()', 17),
+    ('Set(FANUM_INBOUND_EVENT_OK=0)', 18),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,ringing,${FANUM_SAFE_CALL_ID},${ARG1})', 19),
+    ('GotoIf($["${FANUM_INBOUND_EVENT_OK}" = "1"]?await-browser:registration-failed)', 20),
+    ('Set(FANUM_BROWSER_READY=0)', 21),
+    ('Set(FANUM_INBOUND_ROUTE=)', 22),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,ready,${FANUM_SAFE_CALL_ID})', 23),
+    ('GotoIf($["${FANUM_BROWSER_READY}" = "1"]?answer)', 24),
+    ('GotoIf($["${FANUM_INBOUND_ROUTE}" = "ai"]?ai-answer:missed)', 27),
+    ('Answer()', 28),
+    ('Set(__FANUM_INBOUND_TERMINAL_STATE=connected)', 29),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID})', 32),
+    ('Set(CHANNEL(language)=az)', 33),
+    ('Set(DENOISE(rx)=on)', 34),
+    ('Set(AGC(rx)=5000)', 35),
+    ('AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9093)', 36),
+    ('Hangup()', 37),
+    ('Answer()', 40),
+    ('Set(__FANUM_INBOUND_TERMINAL_STATE=connected)', 41),
+    ('Set(FANUM_AI_ANSWERED_AT=${EPOCH})', 42),
+    ('MixMonitor(/var/spool/asterisk/fanum-recordings/${FANUM_SAFE_CALL_ID}.wav)', 46),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID})', 47),
+    ('Set(CHANNEL(language)=az)', 48),
+    ('Set(DENOISE(rx)=on)', 49),
+    ('Set(AGC(rx)=5000)', 50),
+    ('Dial(Local/s@fanum-inbound-ai-leg/n,,g)', 54),
+    ('Set(FANUM_HANDOFF=0)', 55),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,handoff,${FANUM_SAFE_CALL_ID})', 56),
+    ('GotoIf($["${FANUM_HANDOFF}" = "1"]?manager-wait:ai-done)', 57),
+    ('Playtones(ring)', 58),
+    ('Set(FANUM_BROWSER_READY=0)', 59),
+    ('Set(FANUM_INBOUND_ROUTE=)', 60),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,manager,${FANUM_SAFE_CALL_ID})', 61),
+    ('StopPlaytones()', 62),
+    ('GotoIf($["${FANUM_BROWSER_READY}" = "1"]?manager-answer)', 63),
+    ('GotoIf($["${FANUM_INBOUND_ROUTE}" = "ai"]?ai-leg:ai-done)', 65),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID})', 66),
+    ('AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9093)', 67),
+    ('Hangup()', 68),
+    ('Hangup()', 69),
+    ('Hangup()', 70),
+    ('Set(__FANUM_INBOUND_TERMINAL_STATE=failed)', 71),
+    ('Hangup()', 72),
+    ('Hangup()', 73),
+)
+
+AI_LEG_PRIORITIES = (
+    ('NoOp(Fanum inbound AI leg)', 76),
+    ('Answer()', 77),
+    ('AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9092)', 78),
+    ('Hangup()', 79),
 )
 
 TERMINAL_PRIORITIES = (
-    ("NoOp(Fanum inbound browser terminal event)", 39),
-    (
-        'ExecIf($["${CDR(answer)}" != ""]?'
-        "Set(FANUM_INBOUND_TERMINAL_STATE=connected))",
-        42,
-    ),
-    ("Set(FANUM_INBOUND_DURATION=0)", 43),
-    (
-        'ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected"]?'
-        "Set(FANUM_INBOUND_DURATION=${CDR(billsec)}))",
-        44,
-    ),
-    (
-        'ExecIf($["${FANUM_INBOUND_DURATION}" = ""]?'
-        "Set(FANUM_INBOUND_DURATION=0))",
-        45,
-    ),
-    (
-        "AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,"
-        "terminal,${FANUM_SAFE_CALL_ID},${FANUM_INBOUND_TERMINAL_STATE},"
-        "${FANUM_INBOUND_DURATION})",
-        46,
-    ),
-    ("Return()", 47),
+    ('NoOp(Fanum inbound browser terminal event)', 82),
+    ('ExecIf($["${CDR(answer)}" != ""]?Set(FANUM_INBOUND_TERMINAL_STATE=connected))', 85),
+    ('Set(FANUM_INBOUND_DURATION=0)', 86),
+    ('ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected"]?Set(FANUM_INBOUND_DURATION=${CDR(billsec)}))', 87),
+    ('ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected" & "${FANUM_AI_ANSWERED_AT}" != ""]?Set(FANUM_INBOUND_DURATION=$[${EPOCH} - ${FANUM_AI_ANSWERED_AT}]))', 89),
+    ('ExecIf($["${FANUM_INBOUND_DURATION}" = ""]?Set(FANUM_INBOUND_DURATION=0))', 90),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,terminal,${FANUM_SAFE_CALL_ID},${FANUM_INBOUND_TERMINAL_STATE},${FANUM_INBOUND_DURATION})', 91),
+    ('Return()', 92),
 )
 
 BROWSER_PRIORITY_LABELS = {
-    5: "agi-succeeded",
-    6: "identified",
-    12: "await-browser",
-    15: "answer",
-    23: "missed",
-    24: "registration-failed",
-    26: "invalid-id",
+    5: 'agi-succeeded',
+    6: 'identified',
+    12: 'await-browser',
+    17: 'answer',
+    25: 'ai-answer',
+    33: 'ai-leg',
+    37: 'manager-wait',
+    44: 'manager-answer',
+    47: 'ai-done',
+    48: 'missed',
+    49: 'registration-failed',
+    51: 'invalid-id',
 }
 
 
@@ -222,7 +228,11 @@ def _source_directive(line: str) -> tuple[str, str | None, str, str]:
 
 
 def _review_applications(applications: list[str]) -> None:
-    if tuple(applications) != REVIEWED_WILDCARD_APPLICATIONS:
+    if (
+        not applications
+        or applications[0] not in REVIEWED_WILDCARD_NOOPS
+        or tuple(applications[1:]) != REVIEWED_WILDCARD_APPLICATIONS
+    ):
         raise DialplanRefused("provider wildcard applications are unexpected")
 
 
@@ -367,8 +377,8 @@ def _loaded_context_sections(report: str) -> dict[str, list[str]]:
                 raise DialplanRefused("loaded browser context registrar is unexpected")
             headers.append((index, match.group(1)))
 
-    required = {BROWSER_CONTEXT, TERMINAL_CONTEXT}
-    if len(headers) != 2 or {name for _index, name in headers} != required:
+    required = {BROWSER_CONTEXT, AI_LEG_CONTEXT, TERMINAL_CONTEXT}
+    if len(headers) != len(required) or {name for _index, name in headers} != required:
         raise DialplanRefused("loaded browser contexts must occur exactly once")
 
     sections: dict[str, list[str]] = {}
@@ -432,13 +442,19 @@ def _verify_loaded_priority_sequence(
 
 
 def verify_loaded_browser_contexts(report: str) -> None:
-    """Prove both effective browser contexts, including priority order and source."""
+    """Prove the effective browser contexts, including priority order and source."""
     sections = _loaded_context_sections(report)
     _verify_loaded_priority_sequence(
         BROWSER_CONTEXT,
         sections[BROWSER_CONTEXT],
         BROWSER_PRIORITIES,
         BROWSER_PRIORITY_LABELS,
+    )
+    _verify_loaded_priority_sequence(
+        AI_LEG_CONTEXT,
+        sections[AI_LEG_CONTEXT],
+        AI_LEG_PRIORITIES,
+        {},
     )
     _verify_loaded_priority_sequence(
         TERMINAL_CONTEXT,

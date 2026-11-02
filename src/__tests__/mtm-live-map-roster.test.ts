@@ -26,7 +26,8 @@ vi.mock("next-intl", () => ({
 }))
 
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
-import { parseMtmLiveMapContract } from "@/lib/mtm-types"
+import type { MtmLiveMovement } from "@/lib/mtm/movement-mode"
+import { parseMtmLiveMapContract, presentMtmDashboardAgent } from "@/lib/mtm-types"
 import { MTM_AGENT_MAP_COLOR_KEYS } from "@/lib/mtm/agent-tags"
 import {
   applyRosterFilters,
@@ -44,6 +45,7 @@ import {
   rosterFilterOptions,
   rosterFilterTicked,
   rosterSignalAge,
+  rosterSpeed,
   rosterStatusChipOn,
   rosterTickState,
   rosterValue,
@@ -56,6 +58,7 @@ import {
   type RosterFilters,
   type RosterView,
 } from "@/lib/mtm/live-map-roster"
+import { rosterCellText, type RosterExportWords } from "@/lib/mtm/live-map-roster-export"
 import { LiveMapRoster } from "@/components/mtm/live-map-roster"
 
 const NOW = Date.parse("2026-10-09T10:00:00.000Z")
@@ -81,8 +84,8 @@ const TEAM = [
 ]
 // The edges of every class, and two people a sort cannot tell apart except by name.
 const EDGES = [
-  person("e1", "Vüqar", { battery: 19.9, speed: 2, routeVisited: 3, routeTotal: 3, fieldStatus: "ROUTE_FINISHED", workdayState: "CLOSED" }),
-  person("e2", "Anar", { battery: 20, speed: 2.1, routeVisited: 1, routeTotal: 4, workdayState: "PAUSED", isOnline: false }),
+  person("e1", "Vüqar", { battery: 19.9, speed: 2.4, routeVisited: 3, routeTotal: 3, fieldStatus: "ROUTE_FINISHED", workdayState: "CLOSED" }),
+  person("e2", "Anar", { battery: 20, speed: 2.5, routeVisited: 1, routeTotal: 4, workdayState: "PAUSED", isOnline: false }),
   person("e3", "Bəhruz", { battery: 49.9, speed: 0, routeVisited: 0, routeTotal: 4 }),
   person("e4", "Anar", { battery: 50, speed: 60, routeVisited: 2, routeTotal: 4, workdayState: "NOT_STARTED" }),
 ]
@@ -111,7 +114,38 @@ describe("what a column holds", () => {
     expect(rosterValue(person("x", "X", { fieldStatus: "SOMETHING_NEW" }), "status")).toBe("OFFLINE")
   })
 
-  it("draws the class boundaries where the labels say: below 20, 20-50, above 50; moving is faster than 2 km/h", () => {
+  // Verification of 2026-10-20: a grey last known point kept the speed of the
+  // fix it was — on a break, the speed he drove at before he pressed it. The
+  // column read «42 км/ч» beside «GPS неактивен», the speed filter put him
+  // under «В пути», the sort by speed ranked him first and the Excel file
+  // wrote it down, while his card and the map's balloon showed no speed.
+  it("has no speed for a position that is not live: on a break, or back from one before his first fix", () => {
+    const working = person("w1", "Fərid", { speed: 10 })
+    const paused = presentMtmDashboardAgent(
+      person("p1", "Nigar", { workdayState: "PAUSED", fieldStatus: "STOPPED", speed: 42 }),
+      { onlineSeconds: 300, delayedSeconds: 600 },
+      NOW,
+    )
+    // Back at work, the newest point still the one from before the break: the server sends it as the last known one.
+    const back = person("b1", "Murad", { freshness: "STALE", fieldStatus: "OFFLINE", speed: 50 })
+    expect(paused.freshness).toBe("STALE")
+    const rows = [working, paused, back]
+    expect(rows.map(rosterSpeed)).toEqual([10, null, null])
+    expect(rows.map((agent) => rosterValue(agent, "speed"))).toEqual(["MOVING", "UNKNOWN", "UNKNOWN"])
+    // «В пути» in the speed filter holds the one who is moving now.
+    expect(rosterFilterOptions(rows, {}, "speed")).toEqual([
+      { value: "MOVING", count: 1 }, { value: "STILL", count: 0 }, { value: "UNKNOWN", count: 2 },
+    ])
+    expect(ids(applyRosterFilters(rows, { speed: onlyRosterFilterValue("MOVING") }))).toEqual(["w1"])
+    // No speed is last whichever way the column is sorted.
+    expect(ids(sortRoster(rows, { column: "speed", direction: "desc" }, "az"))).toEqual(["w1", "b1", "p1"])
+    expect(ids(sortRoster(rows, { column: "speed", direction: "asc" }, "az"))).toEqual(["w1", "b1", "p1"])
+    // …and the Excel file says what the column says.
+    const words = { speed: (kmh: number) => `${kmh} km/h` } as unknown as RosterExportWords
+    expect(rows.map((agent) => rosterCellText(agent, "speed", words))).toEqual(["10 km/h", "—", "—"])
+  })
+
+  it("draws the class boundaries where the labels say: below 20, 20-50, above 50; moving is 3 km/h as the cell shows it", () => {
     expect(EDGES.map((agent) => rosterValue(agent, "battery"))).toEqual(["LOW", "MID", "MID", "HIGH"])
     expect(EDGES.map((agent) => rosterValue(agent, "speed"))).toEqual(["STILL", "MOVING", "STILL", "MOVING"])
     expect(EDGES.map((agent) => rosterValue(agent, "route"))).toEqual(["DONE", "IN_PROGRESS", "NOT_STARTED", "IN_PROGRESS"])
@@ -558,6 +592,7 @@ describe("the list on the page", () => {
   let state: { filters: RosterFilters; view: RosterView; hidden: Set<string>; selected: string | null; hiddenList: boolean }
   let agents: MtmDashboardAgent[]
   let workforceEnabled: boolean
+  let movements: Map<string, MtmLiveMovement | null> | undefined
 
   function Harness() {
     const [, rerender] = useState(0)
@@ -589,6 +624,7 @@ describe("the list on the page", () => {
       onSelect: (agentId: string) => update(() => { state.selected = state.selected === agentId ? null : agentId }),
       renderDetail: (agent: MtmDashboardAgent) => createElement("div", { "data-testid": "detail" }, `день: ${agent.name}`),
       nowMs: NOW,
+      movements,
       workforceEnabled,
       formatClock: (value: string | null | undefined) => value ? new Date(value).toISOString().slice(11, 16) : "",
       formatVisitOpened: (value: string) => earlierDay(value) ? `${value.slice(8, 10)}.${value.slice(5, 7)}, ${value.slice(11, 16)}` : new Date(value).toISOString().slice(11, 16),
@@ -634,6 +670,7 @@ describe("the list on the page", () => {
     state = { filters: {}, view: { ...ROSTER_DEFAULT_VIEW, columns: [...ROSTER_DEFAULT_VIEW.columns] }, hidden: new Set(), selected: null, hiddenList: false }
     agents = TEAM
     workforceEnabled = true
+    movements = undefined
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -859,6 +896,18 @@ describe("the list on the page", () => {
     expect(groupRow("t-south").querySelector("button")?.getAttribute("aria-expanded")).toBe("false")
   })
 
+  it("shows no speed beside a grey last known point", async () => {
+    agents = [
+      person("w1", "Fərid", { speed: 30 }),
+      presentMtmDashboardAgent(person("p1", "Nigar", { workdayState: "PAUSED", fieldStatus: "STOPPED", speed: 42 }), { onlineSeconds: 300, delayedSeconds: 600 }, NOW),
+    ]
+    state.view = { ...state.view, columns: [...state.view.columns, "speed"] }
+    await draw()
+    expect(cell("w1", "speed").textContent).toBe("30 км/ч")
+    expect(cell("p1", "status").textContent).toContain("GPS неактивен")
+    expect(cell("p1", "speed").textContent).toBe("—")
+  })
+
   it("chooses the columns of the wide table, keeps the name, and can put the list away", async () => {
     await draw()
     // Beside the map: name, status, signal. The rest wait for the wide table.
@@ -993,6 +1042,34 @@ describe("the list on the page", () => {
     expect(byTestId("live-map-agent-standing-s3")).toBeNull()
   })
 
+  // Owner, 2026-11-01, of the mockup «MTM: движение на карте»: the row says
+  // car or on foot with the marker's badge, and standing has its badge too.
+  it("says car or on foot for whoever is on the road, with the marker's badge", async () => {
+    agents = [
+      person("car", "Едет машиной", { speed: 34 }),
+      person("foot", "Идёт", { speed: 5 }),
+      person("still", "Стоит", { fieldStatus: "STOPPED", stationarySince: minutesAgo(18) }),
+      person("visit", "У клиента", { fieldStatus: "CHECKED_IN" }),
+      person("old", "Без способа", { speed: 20 }),
+    ]
+    movements = new Map([
+      ["car", { mode: "DRIVE", heading: 90 }],
+      ["foot", { mode: "WALK", heading: null }],
+      ["still", { mode: "STAY", heading: null }],
+      ["visit", { mode: "STAY", heading: null }],
+      ["old", null],
+    ])
+    await draw()
+    expect(visibleText(cell("car", "status"))).toBe("Едет · 34 км/ч")
+    expect(visibleText(cell("foot", "status"))).toBe("Пешком · 5 км/ч")
+    expect(visibleText(cell("still", "status"))).toBe("Стоит")
+    const badge = (agentId: string) => byTestId(`live-map-agent-movement-${agentId}`)?.getAttribute("data-mode") ?? null
+    expect(["car", "foot", "still", "visit", "old"].map(badge)).toEqual(["DRIVE", "WALK", "STAY", null, null])
+    // At a client and without a reading: the status word and its dot, as before.
+    expect(visibleText(cell("visit", "status"))).toBe("На точке")
+    expect(visibleText(cell("old", "status"))).toBe("В пути")
+  })
+
   it("does not group by a column this roster does not have, whatever layout was remembered", async () => {
     // Remembered in another organization, where there were teams.
     agents = TEAM.map((agent) => ({ ...agent, teamId: null, teamName: null }))
@@ -1009,10 +1086,15 @@ describe("the list on the page", () => {
     expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры")
     await press(byTestId("live-map-roster-filters-button"))
     const panel = byTestId("live-map-roster-filters-menu")!
+    const titles = () => [...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent)
+    // Owner, 2026-11-01 («фильтр хаотично построен»): one group a row, the ones
+    // a manager uses first; the rest under «Ещё фильтры» until asked for.
+    expect(titles()).toEqual(["Статус", "Отдел", "Приложение", "Сигнал"])
+    expect(byTestId("live-map-roster-filters-more")?.textContent).toBe("Ещё фильтры: рабочий день, маршрут, скорость, батарея")
+    await press(byTestId("live-map-roster-filters-more"))
     // Every column of this roster at once, also the ones the narrow list does
     // not draw. Particular people are picked from the search and the name column.
-    expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
-      .toEqual(["Статус", "Сигнал", "Отдел", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+    expect(titles()).toEqual(["Статус", "Отдел", "Приложение", "Сигнал", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
     // The values are on the panel already: one press from «Фильтры» to a filter.
     expect([...byTestId("live-map-roster-filters-group-battery")!.querySelectorAll("button")].map((value) => value.textContent))
       .toEqual(["Ниже 20%1", "20–50%1", "Выше 50%2", "Нет данных2"])
@@ -1127,8 +1209,8 @@ describe("the list on the page", () => {
       await settle()
       expect(floating()).toBe(true)
       expect(placed("live-map-roster-filters-menu")).toEqual(BESIDE_THE_LIST)
-      // A floating panel is closed by Escape or a press outside: it needs no «Готово».
-      expect(byTestId("live-map-roster-filters-done")).toBeNull()
+      // Closed by Escape, a press outside — or «Готово» at its foot, which says what is shown.
+      expect(byTestId("live-map-roster-filters-done")?.textContent).toBe("Готово · показано 6 из 6")
       expect(byTestId("live-map-roster-heading")?.className).toContain("sticky")
       // It is bounded by the room to the left of the list, so it is never cut by the edge of the screen.
       expect(byTestId("live-map-roster-filters-menu")?.className).toContain("var(--radix-popover-content-available-width)")
@@ -1392,9 +1474,10 @@ describe("the list on the page", () => {
       await draw()
       await press(byTestId("live-map-roster-filters-button"))
       const panel = byTestId("live-map-roster-filters-menu")!
-      // Nobody here has a team or a manager; the labels stand where the table has them.
+      await press(byTestId("live-map-roster-filters-more"))
+      // Nobody here has a team or a manager; the labels wait under «Ещё фильтры».
       expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
-        .toEqual(["Статус", "Сигнал", "Метки", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+        .toEqual(["Статус", "Приложение", "Сигнал", "Метки", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
       expect([...byTestId("live-map-roster-filters-group-tags")!.querySelectorAll("button")].map((value) => value.textContent))
         .toEqual(["аптеки1", "наставник1", "ночная смена1", "резерв2", "север1", "стажёр3", "Без меток2"])
 
@@ -1548,7 +1631,7 @@ describe("the page behind the list", () => {
     expect(rows).toBeGreaterThan(-1)
     expect(roster.slice(rows)).not.toMatch(/overflow-(y-)?(auto|scroll)|max-h-/)
     // The offsets are <main>'s own padding; without them rows show through above the heading.
-    expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",')
+    expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-border bg-card sm:-top-4 lg:-top-8",')
     // It follows the screen — except while it holds the open filters under the map, when it can be taller than the screen.
     expect(roster).toContain('!filtersInList && "[@media(min-height:600px)]:sticky",')
     expect(readFileSync("src/app/(dashboard)/layout.tsx", "utf8")).toMatch(/<main className=\{`[^`]*overflow-y-auto[^`]* p-3 sm:p-4 lg:p-8 /)

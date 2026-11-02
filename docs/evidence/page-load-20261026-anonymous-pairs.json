@@ -1,0 +1,178 @@
+{
+  "observedAt": "2026-10-26T10:41:18.525Z",
+  "kind": "paired-sequential-same-browser-existing-page",
+  "serviceWorkerControlled": true,
+  "visibility": "visible",
+  "samples": [
+    {
+      "pass": 1,
+      "path": "/api/health",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 101.79999995231628,
+      "totalMs": 102.79999995231628,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 1,
+      "path": "/api/health",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 50.60000002384186,
+      "totalMs": 52,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 1,
+      "path": "/api/v1/ping",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 68.20000004768372,
+      "totalMs": 69.10000002384186,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 1,
+      "path": "/api/v1/ping",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 57.89999997615814,
+      "totalMs": 58.699999928474426,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 1,
+      "path": "/api/auth/session",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 113.30000007152557,
+      "totalMs": 113.89999997615814,
+      "bodyBytes": 4,
+      "authenticated": false
+    },
+    {
+      "pass": 1,
+      "path": "/api/auth/session",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 52,
+      "totalMs": 52.800000071525574,
+      "bodyBytes": 4,
+      "authenticated": false
+    },
+    {
+      "pass": 2,
+      "path": "/api/health",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 38.60000002384186,
+      "totalMs": 39.300000071525574,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 2,
+      "path": "/api/health",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 33.59999990463257,
+      "totalMs": 34.39999997615814,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 2,
+      "path": "/api/v1/ping",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 48.39999997615814,
+      "totalMs": 49.60000002384186,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 2,
+      "path": "/api/v1/ping",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 39.300000071525574,
+      "totalMs": 40.300000071525574,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 2,
+      "path": "/api/auth/session",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 45.699999928474426,
+      "totalMs": 46.199999928474426,
+      "bodyBytes": 4,
+      "authenticated": false
+    },
+    {
+      "pass": 2,
+      "path": "/api/auth/session",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 60.40000009536743,
+      "totalMs": 61,
+      "bodyBytes": 4,
+      "authenticated": false
+    },
+    {
+      "pass": 3,
+      "path": "/api/health",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 56.39999997615814,
+      "totalMs": 56.800000071525574,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 3,
+      "path": "/api/health",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 46.60000002384186,
+      "totalMs": 48.60000002384186,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 3,
+      "path": "/api/v1/ping",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 48.89999997615814,
+      "totalMs": 49.300000071525574,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 3,
+      "path": "/api/v1/ping",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 77.19999992847443,
+      "totalMs": 77.79999995231628,
+      "bodyBytes": 11
+    },
+    {
+      "pass": 3,
+      "path": "/api/auth/session",
+      "credentials": "omit",
+      "status": 200,
+      "headersMs": 157.39999997615814,
+      "totalMs": 158.60000002384186,
+      "bodyBytes": 4,
+      "authenticated": false
+    },
+    {
+      "pass": 3,
+      "path": "/api/auth/session",
+      "credentials": "include",
+      "status": 200,
+      "headersMs": 55.5,
+      "totalMs": 56.200000047683716,
+      "bodyBytes": 4,
+      "authenticated": false
+    }
+  ],
+  "validAuthenticatedComparison": false,
+  "limitation": "The include-credentials session responses all had authenticated=false. These samples must not estimate authenticated overhead or be used as a before/after improvement claim."
+}

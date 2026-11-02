@@ -15,7 +15,9 @@
  *     `@@unique([orgId, contractNumber])` per schema:1108-1188 so this
  *     suffix is the only collision guard at this layer.
  *   - title: human-grade — "Quote {number} acceptance" — appears in
- *     contract list views as a clear provenance trail.
+ *     contract list views as a clear provenance trail. Written in the
+ *     organization's language (it was English for everybody, so an
+ *     Azerbaijani list read «Quote Q-12 acceptance»).
  *   - type: "service_agreement" — sensible default for CPQ-driven
  *     contracts; user can edit on the detail page.
  *   - status: "draft" — never auto-finalises; user explicitly transitions
@@ -31,6 +33,23 @@
  *     one-to-one Quote ↔ Contract (slice-3 piece-4 migration).
  */
 import type { Prisma } from "@prisma/client"
+import type { Locale } from "@/i18n/routing"
+
+/** The draft's own words, in the organization's language. */
+export const SPAWNED_CONTRACT_TEXT: Record<Locale, { title: (quote: string) => string; notes: (quote: string) => string }> = {
+  az: {
+    title: (quote) => `${quote} təklifinin qəbulu`,
+    notes: (quote) => `Qəbul edilmiş ${quote} təklifindən avtomatik yaradılıb.`,
+  },
+  ru: {
+    title: (quote) => `Принятие КП ${quote}`,
+    notes: (quote) => `Создан автоматически из принятого КП ${quote}.`,
+  },
+  en: {
+    title: (quote) => `Quote ${quote} acceptance`,
+    notes: (quote) => `Auto-spawned from accepted quote ${quote}.`,
+  },
+}
 
 export interface SpawnContractInput {
   organizationId: string
@@ -48,11 +67,14 @@ export interface SpawnContractInput {
   createdByUserId: string | null
   /** Override for test determinism. Default new Date(). */
   now?: Date
+  /** The organization's language for the title and notes. Default English. */
+  locale?: Locale
 }
 
 export function buildSpawnedContractData(input: SpawnContractInput): Prisma.ContractUncheckedCreateInput {
   const { organizationId, quote, rolledTotalAmount, dealCompanyId, createdByUserId } = input
   const now = input.now ?? new Date()
+  const text = SPAWNED_CONTRACT_TEXT[input.locale ?? "en"]
 
   // Suffix is the last 6 chars of the quote's cuid — gives ~32^6
   // (~10^9) namespace per quoteNumber prefix. Sufficient to avoid
@@ -64,7 +86,7 @@ export function buildSpawnedContractData(input: SpawnContractInput): Prisma.Cont
   return {
     organizationId,
     contractNumber,
-    title: `Quote ${quote.quoteNumber} acceptance`,
+    title: text.title(quote.quoteNumber),
     type: "service_agreement",
     status: "draft",
     companyId: dealCompanyId,
@@ -72,7 +94,7 @@ export function buildSpawnedContractData(input: SpawnContractInput): Prisma.Cont
     currency: quote.currency,
     valueAmount: typeof rolledTotalAmount === "string" ? rolledTotalAmount : rolledTotalAmount.toString(),
     startDate: now,
-    notes: `Auto-spawned from accepted quote ${quote.quoteNumber}.`,
+    notes: text.notes(quote.quoteNumber),
     createdBy: createdByUserId,
     spawnedFromQuoteId: quote.id,
   }

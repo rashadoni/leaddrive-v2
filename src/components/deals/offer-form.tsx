@@ -121,6 +121,26 @@ export function OfferForm({
     }).catch(() => {}).finally(() => setLoadingData(false))
   }, [orgId])
 
+  // A new offer from a deal starts with the deal's product lines
+  // (src/lib/deals/line-items.ts) instead of one line with the deal's amount.
+  useEffect(() => {
+    if (offer?.id) return
+    const h: Record<string, string> = orgId ? { "x-organization-id": orgId } : {} as Record<string, string>
+    fetch(`/api/v1/deals/${dealId}/line-items`, { headers: h }).then(r => r.json()).then((res) => {
+      const lines = res?.success ? res.data.lines as { productId: string | null; name: string; quantity: number; unitPrice: number | null; discountPct: number; total: number }[] : []
+      if (lines.length === 0) return
+      setItems((current) => current.length > 0 ? current : lines.map((line, index) => ({
+        ...(line.productId ? { productId: line.productId } : {}),
+        name: line.name,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice ?? 0,
+        discount: line.discountPct,
+        total: line.total,
+        sortOrder: index,
+      })))
+    }).catch(() => {})
+  }, [dealId, offer?.id, orgId])
+
   // Auto-fill from company when selected
   useEffect(() => {
     if (clientSource === "crm" && selectedCompanyId) {
@@ -244,14 +264,14 @@ export function OfferForm({
                 ))}
               </Select>
             </div>
-            <label className="flex items-center gap-2 h-10 px-3 border border-zinc-200 dark:border-zinc-700 rounded-md bg-muted/30 cursor-pointer whitespace-nowrap">
+            <label className="flex items-center gap-2 h-10 px-3 border border-border rounded-md bg-muted/30 cursor-pointer whitespace-nowrap">
               <input type="checkbox" checked={includeVat} onChange={e => setIncludeVat(e.target.checked)} className="h-4 w-4 rounded" />
               <span className="text-sm font-medium">ƏDV 18%</span>
             </label>
           </div>
 
           {/* ═══ SECTION 2: Client Info ═══ */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/20 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{t("clientInfo")}</span>
@@ -318,7 +338,7 @@ export function OfferForm({
           </div>
 
           {/* ═══ SECTION 3: Offer Details ═══ */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/20 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{t("offerDetails")}</span>
@@ -340,7 +360,7 @@ export function OfferForm({
           </div>
 
           {/* ═══ SECTION 4: Items ═══ */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/20 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
@@ -397,7 +417,7 @@ export function OfferForm({
 
           {/* ═══ SECTION 5: Totals ═══ */}
           {items.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/20 dark:to-cyan-950/20 p-4">
+            <div className="rounded-lg border border-border bg-muted/40 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Calculator className="h-4 w-4 text-teal-600" />
                 <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">{t("summary")}</span>
@@ -449,7 +469,7 @@ export function OfferForm({
           {/* ═══ Actions ═══ */}
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               {t("save")}
             </Button>

@@ -120,9 +120,9 @@ export function ProjectTasksTab({ projectId, tasks, allTasks, milestones, users,
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 rounded-lg border border-zinc-200 dark:border-zinc-700 p-0.5">
-            <button onClick={() => setTaskViewMode("list")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>List</button>
-            <button onClick={() => setTaskViewMode("kanban")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "kanban" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>{t("kanban")}</button>
+          <div className="flex gap-1 rounded-lg border border-border p-0.5">
+            <button onClick={() => setTaskViewMode("list")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "list" ? "crm-choice-selected " : "hover:bg-muted")}>List</button>
+            <button onClick={() => setTaskViewMode("kanban")} className={cn("px-3 py-1.5 text-sm rounded-md transition-colors", taskViewMode === "kanban" ? "crm-choice-selected " : "hover:bg-muted")}>{t("kanban")}</button>
           </div>
           <select value={taskFilterStatus} onChange={e => setTaskFilterStatus(e.target.value)} className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs">
             <option value="all">{t("status")}: All</option>
@@ -146,7 +146,7 @@ export function ProjectTasksTab({ projectId, tasks, allTasks, milestones, users,
 
       {/* Task form */}
       {showTaskForm && (
-        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">{editingTaskId ? t("edit") : t("addTask")}</h3>
             <button onClick={resetTaskForm} className="p-1 hover:bg-muted rounded"><X className="h-4 w-4" /></button>
@@ -182,10 +182,10 @@ export function ProjectTasksTab({ projectId, tasks, allTasks, milestones, users,
       {/* List view */}
       {taskViewMode === "list" && (
         filteredTasks.length > 0 ? (
-          <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card overflow-hidden">
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200/40 dark:border-zinc-700/40 bg-primary/[0.03]">
+                <tr className="border-b border-border bg-primary/[0.03]">
                   <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("name")}</th>
                   <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("status")}</th>
                   <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("priority")}</th>
@@ -197,7 +197,7 @@ export function ProjectTasksTab({ projectId, tasks, allTasks, milestones, users,
               </thead>
               <tbody>
                 {filteredTasks.map(task => (
-                  <tr key={task.id} className="border-b border-zinc-200 dark:border-zinc-700/20 hover:bg-muted/30 transition-colors">
+                  <tr key={task.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2.5 font-medium">{task.title}</td>
                     <td className="px-4 py-2.5">
                       <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", taskStatusColors[task.status])}>{taskStatusLabels[task.status]}</span>
@@ -240,7 +240,7 @@ export function ProjectTasksTab({ projectId, tasks, allTasks, milestones, users,
           {(["todo", "in_progress", "review", "done"] as const).map(status => (
             <div key={status}
               className={cn(
-                "min-h-[200px] rounded-xl p-3 border border-zinc-200/40 dark:border-zinc-700/40 transition-all duration-200 border-t-[3px]",
+                "min-h-[200px] rounded-xl p-3 border border-border transition-all duration-200 border-t-[3px]",
                 KANBAN_COLUMN_COLORS[status],
                 dragTask ? "bg-primary/5 shadow-inner" : "bg-muted/10",
               )}
@@ -257,7 +257,7 @@ export function ProjectTasksTab({ projectId, tasks, allTasks, milestones, users,
                     onDragStart={e => { e.dataTransfer.setData("text/plain", task.id); setDragTask(task.id) }}
                     onDragEnd={() => setDragTask(null)}
                     className={cn(
-                      "rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3 cursor-grab active:cursor-grabbing hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border-l-[3px]",
+                      "rounded-lg border border-border bg-card p-3 cursor-grab active:cursor-grabbing hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border-l-[3px]",
                       PRIORITY_BORDER[task.priority] || "border-l-gray-300",
                     )}>
                     <div className="font-medium text-sm mb-1.5">{task.title}</div>

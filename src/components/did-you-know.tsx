@@ -3,8 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Lightbulb, X, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
+import { Lightbulb, X, ArrowRight, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useCrmAppearance } from "@/components/ui/crm-appearance"
 import { motion, AnimatePresence } from "framer-motion"
 
 const STORAGE_KEY = "leaddrive_dismissed_tips"
@@ -191,17 +192,19 @@ function saveDismissed(dismissed: Set<string>) {
 export function DidYouKnow({
   page,
   className = "",
-  variant = "default",
+  variant: requestedVariant,
   density = "default",
 }: {
   page: string
   className?: string
-  variant?: "default" | "glass"
+  variant?: "default" | "glass" | "disclosure"
   density?: "default" | "compact"
 }) {
   const t = useTranslations("tips")
   const tc = useTranslations("common")
   const router = useRouter()
+  const crmAppearance = useCrmAppearance()
+  const variant = requestedVariant ?? (crmAppearance ? "disclosure" : "default")
   const [dismissed, setDismissed] = useState<Set<string>>(() => getDismissed())
   const [currentIdx, setCurrentIdx] = useState(0)
   const [direction, setDirection] = useState(0)
@@ -227,6 +230,50 @@ export function DidYouKnow({
   let title: string, desc: string, cta: string
   try { title = t(tip.titleKey); desc = t(tip.descKey); cta = t(tip.ctaKey) }
   catch { title = tip.titleKey; desc = tip.descKey; cta = tip.ctaKey }
+
+  if (variant === "disclosure") {
+    return (
+      <details className={`group rounded-xl border bg-card text-card-foreground ${className}`}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-xl px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <Lightbulb className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="min-w-0 flex-1 font-medium">{title}</span>
+          <span className="hidden text-xs text-muted-foreground sm:inline">{tc("details")}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+        </summary>
+        <div className="relative border-t p-4">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleDismiss}
+            aria-label={tc("close")}
+            className="absolute right-1 top-1 h-11 w-11 text-muted-foreground"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <p className="pr-10 text-sm leading-relaxed text-muted-foreground">{desc}</p>
+          {tip.href && (
+            <Button type="button" variant="outline" size="sm" className="mt-3 min-h-11" onClick={() => router.push(tip.href)}>
+              {cta} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+          )}
+          {available.length > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-3 border-t pt-3">
+              <Button type="button" variant="outline" size="icon" className="h-11 w-11" onClick={goPrev} disabled={safeIdx === 0} aria-label={tc("previousPage")}>
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              <span className="min-w-12 text-center text-xs text-muted-foreground" aria-live="polite">
+                {safeIdx + 1} / {available.length}
+              </span>
+              <Button type="button" variant="outline" size="icon" className="h-11 w-11" onClick={goNext} disabled={safeIdx >= available.length - 1} aria-label={tc("nextPage")}>
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </details>
+    )
+  }
 
   return (
     <div className={`relative rounded-xl ${density === "compact" ? "p-3" : "p-5"} shadow-sm ${

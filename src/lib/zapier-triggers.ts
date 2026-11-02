@@ -6,6 +6,8 @@ interface ZapierTriggerCatalogEntry {
 }
 
 export const ZAPIER_TRIGGER_CATALOG: ZapierTriggerCatalogEntry[] = [
+  { key: "whatsapp.message_received", label: "WhatsApp Message Received", description: "A new WhatsApp message was saved. Contains record IDs, not message content or phone numbers.", required_scopes: ["read:inbox"] },
+  { key: "whatsapp.message_status", label: "WhatsApp Message Status", description: "Meta reported a sent, delivered, read, or failed message. Deduplicate using the event data id.", required_scopes: ["read:inbox"] },
   { key: "lead.created", label: "New Lead", description: "Fires when a new lead is created", required_scopes: ["read:leads"] },
   { key: "lead.updated", label: "Lead Updated", description: "Fires when a lead is updated", required_scopes: ["read:leads"] },
   { key: "lead.converted", label: "Lead Converted", description: "Fires when a lead is converted to a deal", required_scopes: ["read:leads"] },

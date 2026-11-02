@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -36,7 +37,7 @@ async function save(reviewer: AttendanceReviewer, raw: unknown, kind: "policy" |
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-leave:${reviewer.organizationId}:${input.year}`},0))`
     await admin(tx, reviewer)
     const agentId = "agentId" in input ? input.agentId : null
-    if (agentId && !await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId: reviewer.organizationId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }] }, select: { id: true } })) return fail("EMPLOYEE_UNAVAILABLE", 404)
+    if (agentId && !await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId: reviewer.organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true } })) return fail("EMPLOYEE_UNAVAILABLE", 404)
     const [existing] = await tx.$queryRaw<Row[]>(Prisma.sql`SELECT id,year,version,"createdAt",value,"requestHash","createdBy" FROM ${table} WHERE "organizationId"=${reviewer.organizationId} AND "requestId"=${input.requestId}`)
     if (existing) {
       if (existing.requestHash !== hash || existing.createdBy !== reviewer.userId) return fail("REPLAY_MISMATCH")
@@ -71,7 +72,7 @@ export async function readAttendanceLeaveBalances(reviewer: AttendanceReviewer, 
     const usedThrough = parsed.data.usedThrough ?? today
     if (usedThrough > today) return fail("FUTURE_USAGE", 400)
     const user = await tx.user.findFirst({ where: { id: reviewer.userId, organizationId: reviewer.organizationId }, select: { role: true } })
-    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, OR: [{ role: "AGENT" }, { attendanceParticipant: true }],
+    const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE,
       ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }) }, select: { id: true, name: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], skip: offset, take: 51 })
     const page = employees.slice(0, 50), ids = page.map(row => row.id)
     const rawPolicy = await latestPolicy(tx, reviewer.organizationId, year), policy = rawPolicy ? policyDto(rawPolicy) : null

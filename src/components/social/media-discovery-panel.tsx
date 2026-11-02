@@ -470,7 +470,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
 
   return (
     <div className="space-y-4">
-      <section className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:p-5">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -481,7 +481,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
               </Badge>
             </div>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">{t("subtitle")}</p>
-            <ol className="mt-4 grid gap-0 overflow-hidden rounded-lg border border-zinc-200 sm:grid-cols-4 dark:border-zinc-700">
+            <ol className="mt-4 grid gap-0 overflow-hidden rounded-lg border border-border sm:grid-cols-4">
               {PIPELINE_STAGES.map((stage, index) => {
                 const Icon = stage.icon
                 const enabled = stage.key === "COVER_OCR"
@@ -492,7 +492,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
                       ? dashboard?.policy.asrEnabled
                       : dashboard?.policy.multimodalEnabled
                 return (
-                  <li key={stage.key} className="flex min-w-0 items-center gap-2 border-b border-zinc-200 px-3 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 dark:border-zinc-700">
+                  <li key={stage.key} className="flex min-w-0 items-center gap-2 border-b border-border px-3 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
                     <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${enabled && dashboard?.policy.enabled ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300" : "bg-muted text-muted-foreground"}`}>{index + 1}</span>
                     <span className="min-w-0"><span className="flex items-center gap-1 text-xs font-medium"><Icon className="h-3.5 w-3.5" />{t(`stages.${stage.key}`)}</span><span className="text-[10px] text-muted-foreground">{stageCounts[stage.key] ?? 0} {t("signals")}</span></span>
                   </li>
@@ -509,7 +509,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
-        <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+        <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-3">
             <div><h3 className="text-base font-semibold">{t("manualTitle")}</h3><p className="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground">{t("manualHint")}</p></div>
             <Button variant="ghost" size="icon" onClick={() => void load(true)} aria-label={t("refresh")}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></Button>
@@ -520,7 +520,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
               <div className="space-y-2"><Label htmlFor="social-media-subject">{t("subject")}</Label><Select id="social-media-subject" className="h-11" value={lead.subjectId} onChange={event => setLead(previous => ({ ...previous, subjectId: event.target.value }))}><option value="">{t("chooseSubject")}</option>{subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</Select>{!lead.subjectId && <p className="text-xs text-muted-foreground">{t("subjectRequiredHint")}</p>}</div>
               <div className="space-y-2"><Label htmlFor="social-media-platform">{t("platform")}</Label><Select id="social-media-platform" className="h-11" value={lead.platformHint} onChange={event => setLead(previous => ({ ...previous, platformHint: event.target.value }))}><option value="">{t("autoDetect")}</option>{["tiktok", "instagram", "facebook", "youtube"].map(platform => <option key={platform} value={platform}>{platform}</option>)}</Select></div>
             </div>
-            <details className="group rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+            <details className="group rounded-lg border border-border px-3 py-2">
               <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium"><span>{t("advancedOptions")}</span><ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" /></summary>
               <div className="grid gap-3 pb-2 pt-3 sm:grid-cols-2">
                 <div className="space-y-1.5"><Label>{t("mediaType")}</Label><Select value={lead.mediaType} onChange={event => setLead(previous => ({ ...previous, mediaType: event.target.value }))}>{["AUTO", "VIDEO", "IMAGE", "AUDIO"].map(type => <option key={type} value={type}>{t(`mediaTypes.${type}`)}</option>)}</Select></div>
@@ -532,7 +532,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
             <Button className="h-11 gap-2 px-5" onClick={submitLead} disabled={!lead.submittedUrl.trim() || !lead.subjectId || saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}{saving ? t("checking") : t("checkUrl")}</Button>
             <p className="max-w-md text-xs leading-5 text-muted-foreground">{t("checkPrivacyHint")}</p>
           </div>
-          {dashboard?.providerReadiness && <div className="mt-5 grid gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-4 dark:border-zinc-700 dark:bg-zinc-700">
+          {dashboard?.providerReadiness && <div className="mt-5 grid gap-px overflow-hidden rounded-lg border border-border bg-zinc-200 sm:grid-cols-2 lg:grid-cols-4 dark:bg-zinc-700">
             <ReadinessItem ready={dashboard.providerReadiness.freeOembedPlatforms.length > 0} label={t("readiness.metadata")} detail={t("readiness.metadataDetail")} />
             <ReadinessItem ready={dashboard.providerReadiness.ocrConfigured} label={t("readiness.ocr")} detail={dashboard.providerReadiness.ocrConfigured ? t("readiness.ready") : t("readiness.needsKey")} />
             <ReadinessItem ready={dashboard.providerReadiness.asrConfigured} label={t("readiness.asr")} detail={dashboard.providerReadiness.asrConfigured ? t("readiness.ready") : t("readiness.needsKey")} />
@@ -541,7 +541,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
           {lastResolution && <ResolutionSummary resolution={lastResolution} t={t} />}
         </div>
 
-        <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+        <div className="rounded-xl border border-border bg-card p-4">
           <h3 className="text-sm font-semibold">{t("referenceTitle")}</h3>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("referenceHint")}</p>
           <div className="mt-3 space-y-2">
@@ -555,13 +555,13 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
       </section>
 
       {policyDraft && (
-        <section className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-          <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 sm:flex-row sm:items-start sm:justify-between dark:border-zinc-700">
+        <section className="rounded-xl border border-border bg-card">
+          <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between">
             <div><h3 className="text-sm font-semibold">{t("policyTitle")}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("policyHint")}</p></div>
             <Button size="sm" onClick={savePolicy} disabled={saving}>{saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}{t("savePolicy")}</Button>
           </div>
           <div className="grid gap-0 lg:grid-cols-[1fr_1fr]">
-            <div className="grid gap-2 border-b border-zinc-200 p-4 lg:border-b-0 lg:border-r dark:border-zinc-700">
+            <div className="grid gap-2 border-b border-border p-4 lg:border-b-0 lg:border-r">
               {(["enabled", "coverOcrEnabled", "frameOcrEnabled", "asrEnabled", "multimodalEnabled", "preferPlatformTranscript"] as const).map(key => (
                 <label key={key} className="flex items-center justify-between gap-4 rounded-lg px-2 py-2 hover:bg-muted/50">
                   <span><span className="block text-xs font-medium">{t(`policy.${key}`)}</span><span className="block text-[11px] text-muted-foreground">{t(`policyHints.${key}`)}</span></span>
@@ -578,8 +578,8 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
         </section>
       )}
 
-      <section className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-        <div className="border-b border-zinc-200 p-4 dark:border-zinc-700">
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div><h3 className="text-sm font-semibold">{t("queueTitle")}</h3><p className="mt-1 max-w-3xl text-xs text-muted-foreground">{t("queueHint")}</p></div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -634,7 +634,7 @@ export function MediaDiscoveryPanel({ headers }: { headers: Record<string, strin
         ) : filteredObservations.length === 0 ? (
           <div className="px-4 py-10 text-center"><Filter className="mx-auto h-5 w-5 text-orange-500" /><p className="mt-3 text-sm font-medium">{t("filters.emptyTitle")}</p><p className="mt-1 text-xs text-muted-foreground">{t("filters.emptyHint")}</p><Button type="button" variant="outline" size="sm" className="mt-4" onClick={resetObservationFilters}>{t("filters.reset")}</Button></div>
         ) : (
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <div className="divide-y divide-border">
             {filteredObservations.map(observation => {
               const postUrl = observationPostUrl(observation)
               const openTarget = observationOpenTarget(observation)
@@ -718,7 +718,7 @@ function ReadinessItem({ ready, label, detail }: { ready: boolean; label: string
 function ResolutionSummary({ resolution, t }: { resolution: AssetResolution; t: ReturnType<typeof useTranslations> }) {
   const Icon = resolution.status === "RESOLVED" ? CheckCircle2 : resolution.status === "PARTIAL" ? AlertTriangle : XCircle
   const color = resolution.status === "RESOLVED" ? "text-emerald-600" : resolution.status === "PARTIAL" ? "text-amber-600" : "text-red-600"
-  return <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-700"><div className="flex items-start gap-3"><Icon className={`mt-0.5 h-5 w-5 shrink-0 ${color}`} /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{t(`resolutionStatuses.${resolution.status}`)}</p><Badge variant="outline" className="text-[10px]">{resolution.platform}</Badge><Badge variant="outline" className="text-[10px]">{resolution.provider}</Badge></div>{resolution.title && <p className="mt-1 truncate text-xs text-muted-foreground">{resolution.title}</p>}<div className="mt-2 flex flex-wrap gap-1.5">{resolution.resolvedCapabilities.map(capability => <Badge key={capability} variant="success" className="text-[10px]">{t(`capabilities.${capability}`)}</Badge>)}{resolution.blockers.map(blocker => <Badge key={blocker} variant="secondary" className="text-[10px]">{t(`blockers.${blockerKey(blocker)}`)}</Badge>)}</div></div>{resolution.thumbnailUrl && <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-md bg-muted"><MediaThumb url={resolution.thumbnailUrl} sizes="96px" /></div>}</div></div>
+  return <div className="mt-4 border-t border-border pt-4"><div className="flex items-start gap-3"><Icon className={`mt-0.5 h-5 w-5 shrink-0 ${color}`} /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{t(`resolutionStatuses.${resolution.status}`)}</p><Badge variant="outline" className="text-[10px]">{resolution.platform}</Badge><Badge variant="outline" className="text-[10px]">{resolution.provider}</Badge></div>{resolution.title && <p className="mt-1 truncate text-xs text-muted-foreground">{resolution.title}</p>}<div className="mt-2 flex flex-wrap gap-1.5">{resolution.resolvedCapabilities.map(capability => <Badge key={capability} variant="success" className="text-[10px]">{t(`capabilities.${capability}`)}</Badge>)}{resolution.blockers.map(blocker => <Badge key={blocker} variant="secondary" className="text-[10px]">{t(`blockers.${blockerKey(blocker)}`)}</Badge>)}</div></div>{resolution.thumbnailUrl && <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-md bg-muted"><MediaThumb url={resolution.thumbnailUrl} sizes="96px" /></div>}</div></div>
 }
 
 function blockerKey(value: string) {

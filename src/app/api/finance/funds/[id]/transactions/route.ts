@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { z, ZodError } from "zod"
 import { prisma } from "@/lib/prisma"
 import { PAGE_SIZE, getCurrencySymbol } from "@/lib/constants"
+import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 import { decimalToNumber, normalizeFundTransactionRow } from "@/lib/prisma-decimal"
 import { withRlsAuth } from "@/lib/with-rls"
 import {
@@ -131,6 +132,7 @@ export const POST = withRlsAuth<RouteContext>(
     }
     const commandId = randomUUID()
     const correlationId = randomUUID()
+    const currencySign = getCurrencySymbol(await resolveOrgDefaultCurrency(auth.orgId))
 
     try {
       const response = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -272,7 +274,7 @@ export const POST = withRlsAuth<RouteContext>(
           const cashBalance = totalInflows.minus(totalOutflows)
           if (totalFunds.gt(cashBalance) && cashBalance.gt(0)) {
             const coverage = cashBalance.div(totalFunds).mul(100).round().toNumber()
-            warning = `Warning: after deposit, total funds (${totalFunds.toFixed(4)} ${getCurrencySymbol()}) will exceed cash balance (${cashBalance.toFixed(4)} ${getCurrencySymbol()}). Coverage: ${coverage}%`
+            warning = `Warning: after deposit, total funds (${totalFunds.toFixed(4)} ${currencySign}) will exceed cash balance (${cashBalance.toFixed(4)} ${currencySign}). Coverage: ${coverage}%`
           }
         }
 

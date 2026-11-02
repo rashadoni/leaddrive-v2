@@ -177,8 +177,15 @@ export function expectedRows(snapshot: Pick<Snapshot, "workdays">): NumericRow[]
     const pausedSeconds = pauses.reduce((total, pause) => total + (pause.to!.getTime() - pause.from.getTime()) / 1000, 0)
     if (pausedSeconds !== day.totalPausedSeconds) fail("PAUSE_PARITY_FAILED")
     const late = (day.startedAt.getTime() - at(date, "09:00").getTime()) / 1000
+    // Owner, 2026-10-16: «вычитать обед самому». The baseline rule's 60-minute
+    // lunch is 13:00–14:00 (the middle of 09:00–18:00). The part of it the
+    // person was present for comes off worked time, less the breaks pressed.
+    const present = (day.completedAt.getTime() - day.startedAt.getTime()) / 1000 - pausedSeconds
+    const lunchOverlap = Math.max(0, (Math.min(at(date, "14:00").getTime(), day.completedAt.getTime())
+      - Math.max(at(date, "13:00").getTime(), day.startedAt.getTime())) / 1000)
+    const lunchSeconds = Math.min(present, Math.max(0, lunchOverlap - pausedSeconds))
     return { ...row, kind: "WORKED", pausedSeconds,
-      workedSeconds: (day.completedAt.getTime() - day.startedAt.getTime()) / 1000 - pausedSeconds,
+      workedSeconds: present - lunchSeconds,
       lateSeconds: late > 600 ? late : 0,
       earlyLeaveSeconds: Math.max(0, (at(date, "18:00").getTime() - day.completedAt.getTime()) / 1000) }
   }))
@@ -344,13 +351,13 @@ export function validateEvidence(value: unknown) {
     || typeof record.created !== "boolean" || record.readOnlyComparison !== true || record.loginMethod !== "credentials"
     || JSON.stringify(record.period) !== JSON.stringify({ from: DEMO.from, to: DEMO.to })) fail("OUTPUT_INVALID")
   const expected = { rows: [
-    { employeeId: DEMO_AGENTS[0], date: DEMO.from, kind: "WORKED", workedSeconds: 27540, pausedSeconds: 1800, lateSeconds: 1260, earlyLeaveSeconds: 1800 },
-    { employeeId: DEMO_AGENTS[0], date: DEMO.to, kind: "WORKED", workedSeconds: 31200, pausedSeconds: 1200, lateSeconds: 0, earlyLeaveSeconds: 0 },
+    { employeeId: DEMO_AGENTS[0], date: DEMO.from, kind: "WORKED", workedSeconds: 25740, pausedSeconds: 1800, lateSeconds: 1260, earlyLeaveSeconds: 1800 },
+    { employeeId: DEMO_AGENTS[0], date: DEMO.to, kind: "WORKED", workedSeconds: 28800, pausedSeconds: 1200, lateSeconds: 0, earlyLeaveSeconds: 0 },
     { employeeId: DEMO_AGENTS[1], date: DEMO.from, kind: "ABSENT", workedSeconds: 0, pausedSeconds: 0, lateSeconds: 0, earlyLeaveSeconds: 0 },
-    { employeeId: DEMO_AGENTS[1], date: DEMO.to, kind: "WORKED", workedSeconds: 31800, pausedSeconds: 0, lateSeconds: 0, earlyLeaveSeconds: 0 },
+    { employeeId: DEMO_AGENTS[1], date: DEMO.to, kind: "WORKED", workedSeconds: 28200, pausedSeconds: 0, lateSeconds: 0, earlyLeaveSeconds: 0 },
   ], totals: { rowCount: 4, employeeCount: 2, arrivedCount: 3, absentCount: 1, lateCount: 1, earlyLeaveCount: 1,
     missingFinishCount: 0, invalidFactsCount: 0, unknownWorkedCount: 0, unknownPausedCount: 0, isComplete: true,
-    workedSeconds: 90540, pausedSeconds: 3000, lateSeconds: 1260, earlyLeaveSeconds: 1800 },
+    workedSeconds: 82740, pausedSeconds: 3000, lateSeconds: 1260, earlyLeaveSeconds: 1800 },
   matches: { rows: true, journal: true, pauses: true, totals: true } }
   if (JSON.stringify({ rows: record.rows, totals: record.totals, matches: record.matches }) !== JSON.stringify(expected)) fail("OUTPUT_INVALID")
   return record

@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { Check, X } from "lucide-react"
+import { Check, X, MessageCircle, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
+import { MtmAgentClientPicker, announceDoctorChanges, doctorChangesLabel, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { changeAgentDoctors } from "@/lib/mtm/assign-agent-doctors"
 import { cn } from "@/lib/utils"
 import {
   MTM_AGENT_MAP_COLORS,
@@ -19,15 +22,25 @@ import {
   validateMtmAgentTags,
 } from "@/lib/mtm/agent-tags"
 
+/** What the server accepts for a number: «+», a country code, at most 15 digits; spaces and dashes are fine. */
+const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.replace(/[\s\-()]/g, ""))
+
+const PROFILE_ERROR: Record<string, string> = {
+  MTM_AGENT_PHONE_INVALID: "whatsappPhoneInvalid",
+  MTM_AGENT_PHONE_TAKEN: "whatsappPhoneTaken",
+  MTM_PASSWORD_WEAK: "passwordRules",
+  MTM_AGENT_CODE_TAKEN: "externalCodeTaken",
+}
+
 interface AgentFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: () => void
-  initialData?: AgentData
+  initialData?: MtmAgentFormData
   orgId?: string
 }
 
-interface AgentData {
+export interface MtmAgentFormData {
   id: string
   name?: string | null
   email?: string | null
@@ -95,13 +108,21 @@ function withTypedTags(
 export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }: AgentFormProps) {
   const tc = useTranslations("common")
   const tf = useTranslations("mtmForms")
-  const isEdit = !!initialData?.id
+  // A card created in this dialog whose doctors could not be assigned stays
+  // open as that card: saving again must not create a second agent.
+  const [savedAgentId, setSavedAgentId] = useState<string | null>(null)
+  const agentId = initialData?.id ?? savedAgentId
+  const isEdit = !!agentId
+  const [tab, setTab] = useState<"profile" | "clients">("profile")
+  const [clientsOpened, setClientsOpened] = useState(false)
+  const [clientChoice, setClientChoice] = useState<AgentClientChoice>({ contactIds: [], asOf: null })
+  // Taking doctors off the agent is asked once more, with the count.
+  const [confirmRemoval, setConfirmRemoval] = useState(false)
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     externalCode: "",
-    password: "",
     role: "AGENT",
     status: "ACTIVE",
     canPlanOwnRoutes: true,
@@ -120,12 +141,19 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   // Whether the manager pressed a colour button in this form: only then is
   // the colour his to save (see what is sent in handleSubmit).
   const [mapColorTouched, setMapColorTouched] = useState(false)
-  // Shown in clear by default. The manager sets this password for someone else
-  // and has to hand it over, so what is saved must be what they can read: on
-  // 2026-10-06 a manager set an agent's password twice behind the dots and the
-  // phone was refused both times — the card held something else, and nothing on
-  // the screen could show it.
+  // «Reset password» on an existing card, for when no code can reach the
+  // agent's WhatsApp. Kept out of `form`, which is sent whole: a password
+  // leaves the browser only when it was typed here.
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [password, setPassword] = useState("")
+  // Shown in clear by default: the manager hands this password over, so what
+  // is saved must be what they can read (2026-10-06: one typed behind the dots
+  // twice, and the phone refused both).
   const [passwordHidden, setPasswordHidden] = useState(false)
+  // The code an empty «External code» field will be given on saving, shown in
+  // the field before it is (owner, 2026-10-20: «чтоб автоматически задавался.
+  // последовательно»). The server draws it again at the save.
+  const [nextCode, setNextCode] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -135,9 +163,10 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       setForm({
         name: initialData?.name || "",
         email: initialData?.email || "",
-        phone: initialData?.phone || "",
+        // A new card starts with the country code: the number is how the agent
+        // signs in, by a code sent to its WhatsApp.
+        phone: initialData?.phone || (initialData?.id ? "" : "+994"),
         externalCode: initialData?.externalCode || "",
-        password: "",
         role: initialData?.role || "AGENT",
         status: initialData?.status || "ACTIVE",
         canPlanOwnRoutes: initialData?.canPlanOwnRoutes ?? true,
@@ -149,10 +178,16 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         mapColor: isMtmAgentMapColorKey(givenColor) ? givenColor : "",
       })
       setMapColorTouched(false)
+      setPasswordOpen(false)
+      setPassword("")
+      setPasswordHidden(false)
       setTagDraft("")
       setTagProblem(null)
       setError("")
-      setPasswordHidden(false)
+      setSavedAgentId(null)
+      setTab("profile")
+      setClientsOpened(false)
+      setClientChoice({ contactIds: [], asOf: null })
       fetch("/api/v1/mtm/agents?limit=200", {
         headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
       })
@@ -166,6 +201,15 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
           // «стажёр» on the only card that carries it would turn back.
           const others = cards.filter(card => card.id !== initialData?.id)
           setKnownTags(normalizeMtmAgentTags(others.flatMap(card => card.tags ?? [])).sort((a, b) => a.localeCompare(b)))
+        })
+        .catch(() => {})
+      setNextCode("")
+      fetch("/api/v1/mtm/agents/next-code", {
+        headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
+      })
+        .then(r => r.json())
+        .then(json => {
+          if (json?.success && typeof json.data?.code === "string") setNextCode(json.data.code)
         })
         .catch(() => {})
     }
@@ -208,8 +252,12 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   const tagDraftLeftOver = tagsFull && tagDraft.trim() !== ""
   const suggestedTags = normalizeMtmAgentTags([...form.tags, ...knownTags]).slice(form.tags.length)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    void submit(false)
+  }
+
+  const submit = async (removalConfirmed: boolean) => {
     // A label still in the field is on the screen, so it is saved with the
     // rest — or the save stops and says why, rather than losing it quietly.
     const labels = withTypedTags(form.tags, tagDraft, knownTags)
@@ -230,10 +278,30 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
     const mapColorChanged = mapColorTouched && (form.mapColor || null) !== (initialData?.mapColor ?? null)
     const sendTags = !isEdit || tagsChanged
     const sendMapColor = !isEdit || mapColorChanged
+    // The number signs the agent in (a code to WhatsApp), so a new card needs
+    // one written with its country code; a changed one is held to the same.
+    const phoneChanged = form.phone.trim() !== (initialData?.phone ?? "").trim()
+    if ((!isEdit || (phoneChanged && form.phone.trim())) && !internationalPhone(form.phone)) {
+      setError(tf("whatsappPhoneInvalid"))
+      return
+    }
+    // The form does its own checking (noValidate): a required field on the
+    // other tab would make the browser refuse the save without a word.
+    if (!form.name.trim()) {
+      setTab("profile")
+      setError(tf("agentNameRequired"))
+      return
+    }
+    const doctors = form.role === "AGENT" ? clientChoice.contactIds : []
+    const takeOff = form.role === "AGENT" && agentId ? clientChoice.removeIds ?? [] : []
+    if (takeOff.length > 0 && !removalConfirmed) {
+      setConfirmRemoval(true)
+      return
+    }
     setSaving(true)
     setError("")
     try {
-      const url = isEdit ? `/api/v1/mtm/agents/${initialData!.id}` : "/api/v1/mtm/agents"
+      const url = isEdit ? `/api/v1/mtm/agents/${agentId}` : "/api/v1/mtm/agents"
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
         headers: {
@@ -243,13 +311,30 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         body: JSON.stringify({
           ...form,
           managerId: form.managerId || null,
-          password: form.password || undefined, // only send if not empty
+          phone: isEdit && !phoneChanged ? undefined : form.phone.trim() || null,
+          password: isEdit && passwordOpen && password ? password : undefined,
           tags: sendTags ? labels.tags : undefined,
           mapColor: sendMapColor ? form.mapColor || null : undefined,
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || tc("failedToSave"))
+      if (!res.ok) {
+        if (PROFILE_ERROR[json.code]) setTab("profile")
+        throw new Error(PROFILE_ERROR[json.code] ? tf(PROFILE_ERROR[json.code]) : agentSaveErrorMessage(json, { tc, tf }))
+      }
+      const savedId: string | undefined = isEdit ? agentId! : json?.data?.id
+      if (savedId && !isEdit) setSavedAgentId(savedId)
+      if (savedId && (doctors.length > 0 || takeOff.length > 0)) {
+        try {
+          const done = await changeAgentDoctors(savedId, { add: doctors, remove: takeOff }, clientChoice.asOf ?? new Date().toISOString().slice(0, 10), tf("clientsReason"), orgId)
+          announceDoctorChanges(tf, done, takeOff.length > 0)
+        } catch {
+          // The card is saved; only the doctors are left to try again.
+          onSaved()
+          setTab("clients")
+          throw new Error(tf("clientsAssignFailed"))
+        }
+      }
       onSaved()
       onOpenChange(false)
     } catch (err: unknown) {
@@ -260,65 +345,121 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open} onOpenChange={onOpenChange} widthClassName={tab === "clients" ? "max-w-[48rem]" : undefined}>
       <DialogHeader>
         <DialogTitle>{isEdit ? tf("editAgent") : tf("addAgent")}</DialogTitle>
       </DialogHeader>
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        {/* Doctors are a field agent's: the tab is there for that role only. */}
+        {form.role === "AGENT" ? (
+          <div data-crm-tabs="" role="tablist" className="flex gap-1 border-b px-6" data-testid="agent-form-tabs">
+            {(["profile", "clients"] as const).map(key => (
+              <button data-crm-tab="" data-state={tab === key ? "active" : "inactive"}
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                data-testid={`agent-form-tab-${key}`}
+                onClick={() => { setTab(key); if (key === "clients") setClientsOpened(true) }}
+                className={cn("-mb-px border-b-2 px-3 py-2.5 text-sm transition-colors", tab === key ? "border-primary font-semibold text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}
+              >
+                {key === "profile" ? tf("tabProfile") : tf("tabClients")}
+                {key === "clients" && clientChoice.contactIds.length > 0 ? (
+                  <span className="ml-1.5 text-xs font-bold text-primary">+{clientChoice.contactIds.length}</span>
+                ) : null}
+                {key === "clients" && (clientChoice.removeIds?.length ?? 0) > 0 ? (
+                  <span className="ml-1 rounded-full px-1.5 py-0.5 text-xs font-bold text-red-700 dark:text-red-300">−{clientChoice.removeIds?.length}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
-          <div className="grid gap-4">
+          {error && <div role="alert" data-testid="mtm-form-error" className="mb-3 rounded border border-l-4 border-border border-l-red-500 bg-card p-2 text-sm text-foreground dark:border-l-red-500">{error}</div>}
+          {form.role === "AGENT" && clientsOpened ? (
+            <div className={cn(tab !== "clients" && "hidden")}>
+              <MtmAgentClientPicker agentId={agentId} orgId={orgId} onChange={setClientChoice} />
+            </div>
+          ) : null}
+          <div className={cn("grid gap-4", form.role === "AGENT" && tab === "clients" && "hidden")}>
             <div>
               <Label htmlFor="name">{`${tc("name")} *`}</Label>
               <Input id="name" value={form.name} onChange={e => update("name", e.target.value)} required />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="email">{tc("email")}</Label>
-                <Input id="email" type="email" value={form.email} onChange={e => update("email", e.target.value)} />
+                <Label htmlFor="phone">{`${tf("whatsappPhone")}${isEdit ? "" : " *"}`}</Label>
+                <Input id="phone" type="tel" inputMode="tel" placeholder="+994501234567" value={form.phone} onChange={e => update("phone", e.target.value)} required={!isEdit} />
               </div>
               <div>
-                <Label htmlFor="phone">{tc("phone")}</Label>
-                <Input id="phone" value={form.phone} onChange={e => update("phone", e.target.value)} />
+                <Label htmlFor="email">{tf("emailOptional")}</Label>
+                <Input id="email" type="email" value={form.email} onChange={e => update("email", e.target.value)} />
               </div>
             </div>
+            {/* Owner, 2026-10-16: «одно и то же правило для сотрудников и агентов
+                полевых» — the agent gets a code in WhatsApp and sets their own
+                password (as Personnel → Add employee). */}
+            <p className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm" data-testid="agent-code-login-note">
+              <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{isEdit && !form.phone.trim() ? tf("codeLoginNoPhone") : tf("codeLoginNote")}</span>
+            </p>
+            {/* Owner, 2026-10-17: «сделай сброс пароля, у меня нет 3-го номера» —
+                when no code can reach the number, the card's password is set
+                here and handed over. Not on a new card: it gets its own by code. */}
+            {isEdit ? (
+              passwordOpen ? (
+                <div data-testid="agent-password-reset">
+                  <Label htmlFor="agent-password">{tf("newPassword")}</Label>
+                  <div className="relative">
+                    {/* Not `id="password"` beside an email field: that is a sign-in
+                        form to a browser, which then offers — or fills in — the
+                        manager's own saved password. */}
+                    <Input
+                      id="agent-password"
+                      name="agent-new-password"
+                      type={passwordHidden ? "password" : "text"}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder={tf("passwordRules")}
+                      maxLength={72}
+                      autoComplete={passwordHidden ? "new-password" : "off"}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      className="pr-24"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPasswordHidden(hidden => !hidden)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                    >
+                      {passwordHidden ? tf("showPassword") : tf("hidePassword")}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{tf("passwordResetHint")}</p>
+                </div>
+              ) : (
+                <div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setPasswordOpen(true)} data-testid="agent-password-reset-open">
+                    <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />
+                    {tf("resetPassword")}
+                  </Button>
+                </div>
+              )
+            ) : null}
             <div>
               <Label htmlFor="externalCode">{tf("externalCode")}</Label>
-              <Input id="externalCode" value={form.externalCode} onChange={e => update("externalCode", e.target.value)} placeholder={tf("externalCodeHint")} />
-            </div>
-            <div>
-              <Label htmlFor="agent-password">{isEdit ? tf("newPassword") : tf("password")} {!isEdit && "*"}</Label>
-              <div className="relative">
-                {/* Not `id="password"` beside an email field: that is a sign-in
-                    form to a browser, which then offers — or fills in — the
-                    manager's own saved password. `new-password` says this is a
-                    credential being set; in clear it is an ordinary field the
-                    browser must not remember. */}
-                <Input
-                  id="agent-password"
-                  name="agent-new-password"
-                  type={passwordHidden ? "password" : "text"}
-                  value={form.password}
-                  onChange={e => update("password", e.target.value)}
-                  placeholder={isEdit ? tf("leaveEmptyToKeep") : tf("minSixChars")}
-                  minLength={isEdit ? undefined : 12}
-                  maxLength={72}
-                  required={!isEdit}
-                  autoComplete={passwordHidden ? "new-password" : "off"}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="pr-24"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPasswordHidden(hidden => !hidden)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                >
-                  {passwordHidden ? tf("showPassword") : tf("hidePassword")}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">{tf("passwordHint")}</p>
+              <Input
+                id="externalCode"
+                data-testid="agent-external-code"
+                value={form.externalCode}
+                onChange={e => update("externalCode", e.target.value)}
+                placeholder={nextCode ? tf("externalCodeAuto", { code: nextCode }) : tf("externalCodeHint")}
+              />
+              {!form.externalCode.trim() ? (
+                <p className="text-xs text-muted-foreground mt-1" data-testid="agent-external-code-hint">{tf("externalCodeAutoHint")}</p>
+              ) : null}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -340,7 +481,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             </div>
             {form.role === "AGENT" ? (
               <div className="grid gap-3">
-                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border p-3 text-sm">
                   <input
                     id="canPlanOwnRoutes"
                     className="mt-0.5 h-5 w-5 accent-primary"
@@ -353,7 +494,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
                     <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{tf("allowSelfRoutePlanningHint")}</span>
                   </span>
                 </label>
-                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border p-3 text-sm">
                   <input
                     id="canSelfPublishRoutes"
                     className="mt-0.5 h-5 w-5 accent-primary"
@@ -370,7 +511,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             ) : null}
             <div>
               <Label htmlFor="agent-tags">{tf("tags")}</Label>
-              <div className="mt-1 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-zinc-200/70 bg-card px-2 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20 dark:border-zinc-700/70">
+              <div className="mt-1 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20">
                 {form.tags.map(tag => (
                   <span key={tag} className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted py-0.5 pl-2.5 pr-1 text-sm">
                     <span className="truncate">{tag}</span>
@@ -474,7 +615,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
                     "inline-flex h-9 items-center rounded-full border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                     form.mapColor === ""
                       ? "border-zinc-900 font-medium dark:border-zinc-100"
-                      : "border-zinc-200 text-muted-foreground hover:bg-muted dark:border-zinc-700",
+                      : "border-border text-muted-foreground hover:bg-muted",
                   )}
                 >
                   {tf("mapColorNone")}
@@ -499,9 +640,47 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
-          <Button type="submit" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
+          <Button type="submit" disabled={saving} data-testid="agent-form-submit">
+            {saving ? tc("saving")
+              : (form.role === "AGENT" ? doctorChangesLabel(tf, clientChoice.contactIds.length, agentId ? clientChoice.removeIds?.length ?? 0 : 0, isEdit ? "save" : "create") : null)
+                ?? (isEdit ? tc("update") : tc("create"))}
+          </Button>
         </DialogFooter>
       </form>
     </Dialog>
+    {/* Beside the card, not inside it: the dialogs render in place. */}
+    <ConfirmDialog
+      open={confirmRemoval}
+      onOpenChange={setConfirmRemoval}
+      onConfirm={async () => {
+        setConfirmRemoval(false)
+        await submit(true)
+      }}
+      title={tf("clientsRemoveConfirmTitle")}
+      description={tf("clientsRemoveConfirmBody", { count: clientChoice.removeIds?.length ?? 0, name: form.name.trim() })}
+      confirmLabel={tf("clientsRemoveConfirm", { count: clientChoice.removeIds?.length ?? 0 })}
+    />
+    </>
   )
+}
+
+const AGENT_FIELD_LABELS: Record<string, (labels: { tc: (key: string) => string; tf: (key: string) => string }) => string> = {
+  name: ({ tc }) => tc("name"), phone: ({ tf }) => tf("whatsappPhone"), email: ({ tf }) => tf("emailOptional"),
+  externalCode: ({ tf }) => tf("externalCode"), role: ({ tf }) => tf("role"), status: ({ tc }) => tc("status"),
+  tags: ({ tf }) => tf("tags"), mapColor: ({ tf }) => tf("mapColor"), managerId: ({ tf }) => tf("manager"),
+  password: ({ tf }) => tf("newPassword"),
+}
+/**
+ * A refused save names the fields, in the page's language (owner's E2E test,
+ * 2026-10-17: the form printed the API's English «Validation failed» and left
+ * the manager to guess which input was meant — the same rule as the
+ * institution form's saveErrorMessage).
+ */
+export function agentSaveErrorMessage(body: unknown, labels: { tc: (key: string) => string; tf: (key: string) => string }): string {
+  const details = body && typeof body === "object" ? (body as { details?: unknown }).details : null
+  const fields = Array.isArray(details) ? details.map(issue => issue && typeof issue === "object" ? String((issue as { path?: unknown }).path ?? "") : "").filter(Boolean) : []
+  const named = [...new Set(fields.map(field => AGENT_FIELD_LABELS[field]?.(labels) ?? field))]
+  if (named.length) return `${labels.tf("invalidFields")}: ${named.join(", ")}`
+  const message = body && typeof body === "object" ? (body as { error?: unknown }).error : null
+  return typeof message === "string" && message && message !== "Validation failed" ? message : labels.tc("failedToSave")
 }

@@ -56,7 +56,7 @@ export function QuestionBuilder({ value, onChange }: Props) {
         <p className="text-xs text-muted-foreground">No questions yet. Add one below.</p>
       )}
       {value.map((q, idx) => (
-        <div key={q.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3 space-y-2">
+        <div key={q.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex flex-col gap-0.5">
               <button onClick={() => move(idx, -1)} disabled={idx === 0} className="disabled:opacity-30 text-muted-foreground hover:text-foreground">

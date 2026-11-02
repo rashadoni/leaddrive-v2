@@ -16,6 +16,7 @@
  */
 import { calculateDistance } from "@/lib/geo-utils"
 import { isLiveMapPositionVisible, type MtmDashboardAgent } from "@/lib/mtm-types"
+import { mtmSpeedMoving } from "@/lib/mtm/gps-speed"
 
 export const ROSTER_COLUMNS = ["name", "status", "signal", "distance", "team", "manager", "tags", "app", "workday", "route", "speed", "battery"] as const
 export type RosterColumnId = typeof ROSTER_COLUMNS[number]
@@ -71,9 +72,6 @@ const FIXED_ORDER: Partial<Record<RosterColumnId, readonly string[]>> = {
   distance: ROSTER_DISTANCE_ORDER,
 }
 
-/** Below this the phone is «standing»: GPS noise reads as one or two km/h. */
-const MOVING_ABOVE_KMH = 2
-
 /**
  * The value a column's filter and grouping work on. Numbers are put into the
  * few classes a dispatcher asks about («battery low»), not into ranges to type.
@@ -97,9 +95,13 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
       if (visited <= 0) return "NOT_STARTED"
       return visited >= total ? "DONE" : "IN_PROGRESS"
     }
-    case "speed":
-      if (typeof agent.speed !== "number" || !Number.isFinite(agent.speed)) return "UNKNOWN"
-      return agent.speed > MOVING_ABOVE_KMH ? "MOVING" : "STILL"
+    case "speed": {
+      const speed = rosterSpeed(agent)
+      if (speed == null) return "UNKNOWN"
+      // The one line every reading of «moving» uses (src/lib/mtm/gps-speed.ts):
+      // GPS jitter of a standing phone reads as one or two km/h.
+      return mtmSpeedMoving(speed) ? "MOVING" : "STILL"
+    }
     case "battery":
       if (typeof agent.battery !== "number" || !Number.isFinite(agent.battery)) return "UNKNOWN"
       return agent.battery < 20 ? "LOW" : agent.battery < 50 ? "MID" : "HIGH"
@@ -109,6 +111,21 @@ export function rosterValue(agent: MtmDashboardAgent, column: RosterColumnId): s
       return meters < 1_000 ? "NEAR" : meters < 5_000 ? "CLOSE" : meters < 20_000 ? "FAR" : "VERY_FAR"
     }
   }
+}
+
+/**
+ * The speed a row shows, filters, sorts and exports by — only that of a live
+ * position. A last known point carries the speed it had when it was taken: on
+ * a break that is the speed he drove at before he pressed «Перерыв», and
+ * until his first fix after the break it still is. The column said «42 км/ч»
+ * beside «GPS неактивен», the speed filter put him under «В пути» and the sort
+ * by speed ranked him first, while his card and the map's popup said nothing
+ * of a speed. The line is the one «Кто ближе» draws (rosterDistanceToPoint):
+ * a position that is no longer live gives `null`, which reads «—».
+ */
+export function rosterSpeed(agent: MtmDashboardAgent): number | null {
+  if (!isLiveMapPositionVisible(agent.freshness)) return null
+  return typeof agent.speed === "number" && Number.isFinite(agent.speed) ? agent.speed : null
 }
 
 /**
@@ -311,7 +328,7 @@ function sortKey(agent: MtmDashboardAgent, column: RosterColumnId): number | str
       const total = agent.routeTotal ?? 0
       return total > 0 ? (agent.routeVisited ?? 0) / total : null
     }
-    case "speed": return typeof agent.speed === "number" && Number.isFinite(agent.speed) ? agent.speed : null
+    case "speed": return rosterSpeed(agent)
     case "battery": return typeof agent.battery === "number" && Number.isFinite(agent.battery) ? agent.battery : null
     case "distance": return typeof agent.distanceMeters === "number" && Number.isFinite(agent.distanceMeters) ? agent.distanceMeters : null
   }

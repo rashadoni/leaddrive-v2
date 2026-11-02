@@ -43,6 +43,7 @@ interface TeamsConfig {
 }
 
 const WEBHOOK_EVENTS = [
+  "whatsapp.message_received", "whatsapp.message_status",
   "contact.created", "contact.updated", "contact.deleted",
   "deal.created", "deal.updated", "deal.stage_changed",
   "lead.created", "lead.updated",
@@ -54,7 +55,7 @@ type Loc = "en" | "ru" | "az"
 const LOCAL_COPY: Record<Loc, Record<string, string>> = {
   en: {
     webhookIntro: "Use webhooks when another system needs to react to CRM changes. LeadDrive will POST selected events to your URL.",
-    webhookUrlHint: "Use an HTTPS endpoint you control. Zapier, Make, n8n, or your own backend can receive this.",
+    webhookUrlHint: "Use an HTTPS endpoint you control. Zapier, Make, Pabbly, n8n, or your backend can receive this. For Google Sheets, connect the webhook to a spreadsheet action in your automation service.",
     webhookEventsHint: "Select only the events the receiver needs. Fewer events means fewer accidental automations.",
     noWebhooksHint: "Start here for custom channels, Zapier, Make, n8n, or any system that needs CRM events.",
     noSlackHint: "Paste a Slack incoming webhook URL to send contract and CRM alerts into a channel.",
@@ -66,7 +67,7 @@ const LOCAL_COPY: Record<Loc, Record<string, string>> = {
   },
   ru: {
     webhookIntro: "Используйте вебхуки, когда внешняя система должна реагировать на изменения в CRM. LeadDrive отправит выбранные события POST-запросом на ваш URL.",
-    webhookUrlHint: "Укажите HTTPS-адрес, которым вы управляете. Это может быть Zapier, Make, n8n или ваш сервер.",
+    webhookUrlHint: "Укажите HTTPS-адрес, которым вы управляете. Это может быть Zapier, Make, Pabbly, n8n или ваш сервер. Для Google Sheets свяжите webhook с действием записи строки в сервисе автоматизации.",
     webhookEventsHint: "Выберите только события, которые реально нужны получателю. Так меньше риск случайных автоматизаций.",
     noWebhooksHint: "Начните здесь для кастомных каналов, Zapier, Make, n8n или любой системы, которой нужны события из CRM.",
     noSlackHint: "Вставьте входящий webhook URL Slack, чтобы отправлять договорные и CRM-уведомления в канал.",
@@ -78,7 +79,7 @@ const LOCAL_COPY: Record<Loc, Record<string, string>> = {
   },
   az: {
     webhookIntro: "Xarici sistem CRM dəyişikliklərinə reaksiya verməlidirsə vebhuklardan istifadə edin. LeadDrive seçilmiş hadisələri URL-inizə POST edəcək.",
-    webhookUrlHint: "İdarə etdiyiniz HTTPS ünvanını yazın. Zapier, Make, n8n və ya öz serveriniz ola bilər.",
+    webhookUrlHint: "İdarə etdiyiniz HTTPS ünvanını yazın. Zapier, Make, Pabbly, n8n və ya öz serveriniz ola bilər. Google Sheets üçün webhook-u avtomatlaşdırma xidmətində sətir əlavə etmə əməliyyatına qoşun.",
     webhookEventsHint: "Yalnız qəbul edən sistemə lazım olan hadisələri seçin. Az hadisə daha az təsadüfi avtomatizasiya deməkdir.",
     noWebhooksHint: "Fərdi kanallar, Zapier, Make, n8n və ya CRM hadisələrinə ehtiyacı olan istənilən sistem üçün buradan başlayın.",
     noSlackHint: "Müqavilə və CRM bildirişlərini kanala göndərmək üçün Slack incoming webhook URL yerləşdirin.",
@@ -454,7 +455,7 @@ export default function IntegrationsPage() {
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">{c.webhookIntro}</p>
           {webhooks.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-200 px-5 py-8 text-center text-muted-foreground dark:border-zinc-700">
+            <div className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-muted-foreground">
               <Webhook className="mx-auto mb-3 h-9 w-9 opacity-30" />
               <p className="font-medium text-foreground">{t("noWebhooks")}</p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{c.noWebhooksHint}</p>
@@ -465,7 +466,7 @@ export default function IntegrationsPage() {
           ) : (
             <div className="space-y-3">
               {webhooks.map(wh => (
-                <div key={wh.id} className="flex items-center justify-between p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                <div key={wh.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-mono truncate">{wh.url}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -475,7 +476,7 @@ export default function IntegrationsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-3">
-                    <button
+                    <button data-crm-color-role="toggle"
                       onClick={() => toggleWebhook(wh.id, !wh.isActive)}
                       className={cn("w-2.5 h-2.5 rounded-full", wh.isActive ? "bg-green-500" : "bg-muted-foreground/30")}
                       title={wh.isActive ? t("statusActive") : t("statusInactive")}
@@ -503,7 +504,7 @@ export default function IntegrationsPage() {
         </CardHeader>
         <CardContent>
           {slackConfigs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-200 px-5 py-8 text-center text-muted-foreground dark:border-zinc-700">
+            <div className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-muted-foreground">
               <MessageSquare className="mx-auto mb-3 h-9 w-9 opacity-30" />
               <p className="font-medium text-foreground">{t("noSlack")}</p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{c.noSlackHint}</p>
@@ -514,7 +515,7 @@ export default function IntegrationsPage() {
           ) : (
             <div className="space-y-3">
               {slackConfigs.map(cfg => (
-                <div key={cfg.id} className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-2">
+                <div key={cfg.id} className="p-3 border border-border rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{cfg.configName}</p>
@@ -528,7 +529,7 @@ export default function IntegrationsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between pt-1 border-t border-border">
                     <div>
                       <p className="text-xs font-medium">{t("contractAlertsLabel")}</p>
                       <p className="text-xs text-muted-foreground">{t("contractAlertsHint")}</p>
@@ -557,7 +558,7 @@ export default function IntegrationsPage() {
         </CardHeader>
         <CardContent>
           {teamsConfigs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-200 px-5 py-8 text-center text-muted-foreground dark:border-zinc-700">
+            <div className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-muted-foreground">
               <MessageSquare className="mx-auto mb-3 h-9 w-9 opacity-30" />
               <p className="font-medium text-foreground">{t("noTeams")}</p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{c.noTeamsHint}</p>
@@ -568,7 +569,7 @@ export default function IntegrationsPage() {
           ) : (
             <div className="space-y-3">
               {teamsConfigs.map(cfg => (
-                <div key={cfg.id} className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-2">
+                <div key={cfg.id} className="p-3 border border-border rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{cfg.configName}</p>
@@ -582,7 +583,7 @@ export default function IntegrationsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between pt-1 border-t border-border">
                     <div>
                       <p className="text-xs font-medium">{t("contractAlertsLabel")}</p>
                       <p className="text-xs text-muted-foreground">{t("contractAlertsHint")}</p>
@@ -617,7 +618,7 @@ export default function IntegrationsPage() {
         <CardContent>
           <div className="space-y-3">
             {/* Native provider — always available */}
-            <div className="flex items-center justify-between p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
               <div>
                 <p className="text-sm font-medium">{t("esignProviderNative")}</p>
                 <p className="text-xs text-muted-foreground">{c.nativeESignHint}</p>
@@ -632,7 +633,7 @@ export default function IntegrationsPage() {
               "flex items-center justify-between p-3 border rounded-lg",
               esignProviderConnected
                 ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/20"
-                : "border-zinc-200 dark:border-zinc-700"
+                : "border-border"
             )}>
               <div>
                 <p className="text-sm font-medium">{t("esignProviderDocuSign")}</p>

@@ -20,7 +20,7 @@ export default function MtmAgentsHelpAz() {
         <p>
           <strong>Sahə agentləri</strong> — «Marşrutlar və sahə» modulunu telefonlarından işlədən
           insanların reyestridir: müştəri nöqtələrini gəzən, vizitləri qeyd edən, vizit fotoları
-          çəkən və sahə tapşırıqlarını yerinə yetirən sahə əməkdaşları və supervayzerlər. Həmin agentlərin
+          çəkən və sahə tapşırıqlarını yerinə yetirən sahə əməkdaşları və adminlər. Həmin agentlərin
           mobil tətbiqdə etdiyi hər şey burada yaratdığınız qeydə bağlıdır.
         </p>
         <p>
@@ -40,7 +40,7 @@ export default function MtmAgentsHelpAz() {
           <HelpDef term="Ümumi agentlər">Təşkilatınızdakı bütün agent qeydləri.</HelpDef>
           <HelpDef term="Aktiv">Statusu <em>Aktiv</em> olan agentlər.</HelpDef>
           <HelpDef term="Onlayn">Hazırda mobil tətbiqə daxil olmuş agentlər (real vaxt mövcudluq əlaməti).</HelpDef>
-          <HelpDef term="Rəhbərlər">Rolu <em>Menecer</em> və ya <em>Supervayzer</em> olan agentlər.</HelpDef>
+          <HelpDef term="Rəhbərlər">Rolu <em>Menecer</em> və ya <em>Admin</em> olan agentlər.</HelpDef>
         </dl>
         <p>
           Sayğacların altında hər agent kart kimi göstərilir: avatarda inisial, canlı{" "}
@@ -83,7 +83,7 @@ export default function MtmAgentsHelpAz() {
           <HelpDef term="Ad">Mütləqdir.</HelpDef>
           <HelpDef term="E-poçt / Telefon">Hər ikisi istəyə bağlıdır. E-poçt təşkilat daxilində unikaldır — onu eyni tenant-da iki agentdə təkrar istifadə etmək olmaz.</HelpDef>
           <HelpDef term="Parol">Agentin mobil tətbiqə girişi. Yaradılarkən mütləqdir (ən azı 12 simvol, böyük və kiçik hərf, rəqəm və xüsusi simvol); redaktədə cari parolu saxlamaq üçün boş buraxın.</HelpDef>
-          <HelpDef term="Rol">Agent, Supervayzer və ya Menecer.</HelpDef>
+          <HelpDef term="Rol">Agent, Admin və ya Menecer.</HelpDef>
           <HelpDef term="Status">Aktiv, Qeyri-aktiv və ya Bloklanmış.</HelpDef>
           <HelpDef term="Rəhbər">Agentin kimə tabe olduğu — mövcud reyestrdən seçilir (agent öz rəhbəri ola bilməz).</HelpDef>
         </dl>
@@ -98,7 +98,7 @@ export default function MtmAgentsHelpAz() {
 
       <HelpSection title="Rollar və tabeçilik xətti">
         <p>
-          <strong>Rəhbər</strong> sahəsi tabeçilik iyerarxiyası qurur: supervayzer və ya menecer
+          <strong>Rəhbər</strong> sahəsi tabeçilik iyerarxiyası qurur: admin və ya menecer
           bir qrup agentin üstündə dayanır. Bu zəncir sadəcə bəzək deyil — mobil tətbiqdə{" "}
           <strong>ərazi görünmə dairəsini</strong> idarə edir.
         </p>
@@ -111,7 +111,7 @@ export default function MtmAgentsHelpAz() {
         <HelpStep n={2}>
           <p>
             <strong>Mobildə</strong> görünmə dairəsi rola görə daralır: <em>menecer</em> və ya{" "}
-            <em>supervayzer</em> öz komandasını və ya regionunu, <em>agent</em> isə yalnız özünü
+            <em>admin</em> öz komandasını və ya regionunu, <em>agent</em> isə yalnız özünü
             görür. Burada qurduğunuz zəncir məhz bunu müəyyən edir.
           </p>
         </HelpStep>

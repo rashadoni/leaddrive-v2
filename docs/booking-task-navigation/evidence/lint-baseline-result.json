@@ -1,0 +1,23 @@
+{
+  "status": "PASS_NO_NEW_SCOPED_DIAGNOSTICS",
+  "baseSha": "98931730478d9092b99b77fe335d2946b11aa8e5",
+  "observedAt": "2026-10-25T03:31:06.843842+00:00",
+  "files": [
+    {
+      "path": "components/task-form.tsx",
+      "existingErrors": 11,
+      "existingWarnings": 2,
+      "currentErrors": 11,
+      "currentWarnings": 2,
+      "addedDiagnostics": 0
+    },
+    {
+      "path": "components/tasks/task-detail-view.tsx",
+      "existingErrors": 3,
+      "existingWarnings": 3,
+      "currentErrors": 3,
+      "currentWarnings": 3,
+      "addedDiagnostics": 0
+    }
+  ]
+}

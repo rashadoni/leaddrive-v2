@@ -137,7 +137,7 @@ describe("MTM guided route builder UI contract", () => {
     expect(builder).toContain('data-testid="mtm-route-auto-schedule"')
     expect(builder).toContain('aria-describedby="mtm-route-auto-schedule-hint"')
     expect(builder).toContain('id="mtm-route-auto-schedule-hint"')
-    expect(builder).toContain('title={t("autoScheduleStopsHint")}')
+    expect(builder).toContain('<Hint text={t("hint.builderAutoSchedule")}')
     expect(builder).toContain("if (stop.plannedTime) return stop")
     expect(builder).toContain('MTM_ROUTE_TIME_SLOTS.filter((time) => time >= "09:00" && !occupiedTimes.has(time))')
     expect(builder).toContain("availableTimes[availableTimeIndex] ?? null")
@@ -154,7 +154,9 @@ describe("MTM guided route builder UI contract", () => {
   it("uses touch-safe responsive controls and a mobile-safe persistent action area", () => {
     const actionAreaClasses = builder.match(/data-testid="mtm-route-builder-actions" className="([^"]+)"/)?.[1] ?? ""
     expect(builder).toContain("sm:grid-cols-[auto_minmax(0,1fr)_auto]")
-    expect(builder).toContain('className="min-h-11 min-w-11"')
+    // 44 px high; with its word (owner: buttons say what they do) a stop's
+    // button is wider than the old 44 px square, never narrower.
+    expect(builder).toContain('className="min-h-11 gap-1.5"')
     expect(builder).toContain("env(safe-area-inset-bottom)")
     expect(builder).toContain('data-testid="mtm-route-builder-actions"')
     expect(actionAreaClasses).toContain("sticky")
@@ -355,7 +357,8 @@ describe("MTM guided route builder UI contract", () => {
     expect(builder).toContain("data-route-target-direction={target.direction}")
     expect(builder).not.toContain("mtm-route-open-multi-day-planning")
     expect(builder).not.toContain("planSeveralDays")
-    expect(routesPage).toContain('data-testid="mtm-routes-view-matrix"')
+    // The week plan has no tab since 2026-10-15; an old link still opens it.
+    expect(routesPage).toContain('viewMode === "matrix" ? (')
   })
 
   it("keeps the recovery path inside the route builder when no customer is available", () => {

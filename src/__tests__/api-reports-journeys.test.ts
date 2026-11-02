@@ -905,6 +905,43 @@ describe("PUT /api/v1/journeys/:id", () => {
     expect(prisma.journeyStep.createMany).toHaveBeenCalled()
   })
 
+  it.each([{ steps: [] }, { steps: [{ stepType: "wait", stepOrder: 0, config: { days: 1, unit: "minutes" } }] }])(
+    "saves a steps-only replacement without treating an empty parent update as missing",
+    async ({ steps }) => {
+      vi.mocked(prisma.journey.updateMany).mockImplementation(async (args: { data: Record<string, unknown> }) => ({
+        count: Object.keys(args.data).length > 0 ? 1 : 0,
+      }))
+      vi.mocked(prisma.journey.findFirst).mockResolvedValue({ id: "j1", steps } as never)
+
+      const res = await PUT_JOURNEY(
+        makeReq("http://localhost:3000/api/v1/journeys/j1", {
+          method: "PUT", body: JSON.stringify({ steps }),
+        }),
+        makeParams("j1"),
+      )
+
+      expect(res.status).toBe(200)
+      expect(prisma.journey.updateMany).toHaveBeenCalledWith({
+        where: { id: "j1", organizationId: "org-1" },
+        data: { updatedAt: expect.any(Date) },
+      })
+      expect(prisma.journeyStep.deleteMany).toHaveBeenCalledWith({ where: { journeyId: "j1" } })
+    },
+  )
+
+  it("does not replace steps when the parent is missing or belongs to another organization", async () => {
+    vi.mocked(prisma.journey.updateMany).mockResolvedValue({ count: 0 })
+    const res = await PUT_JOURNEY(
+      makeReq("http://localhost:3000/api/v1/journeys/foreign", {
+        method: "PUT", body: JSON.stringify({ steps: [] }),
+      }),
+      makeParams("foreign"),
+    )
+    expect(res.status).toBe(404)
+    expect(prisma.journeyStep.deleteMany).not.toHaveBeenCalled()
+    expect(prisma.journeyStep.createMany).not.toHaveBeenCalled()
+  })
+
   it("caps journey steps before persistence", async () => {
     const res = await PUT_JOURNEY(
       makeReq("http://localhost:3000/api/v1/journeys/j1", {

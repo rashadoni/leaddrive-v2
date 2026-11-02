@@ -32,12 +32,28 @@ CONFIG_PATH = Path("/etc/fanum-pbx-coordinator.env")
 SPOOL_DIR = Path("/var/spool/fanum-inbound-browser-events")
 LIFECYCLE_PATH = "/api/internal/asterisk/call-lifecycle"
 READINESS_PATH = "/api/internal/asterisk/inbound-browser-ready"
+HANDOFF_PATH = "/api/internal/asterisk/inbound-handoff"
 READY_TIMEOUT_SECONDS = 25.0
+# Owner, 2026-10-27: the AI hands a call to a person; the managers' browsers
+# ring this long before the call goes back to the AI (HANDOFF_RING_SECONDS in
+# src/lib/voip/inbound-handoff.ts).
+MANAGER_WAIT_SECONDS = 30.0
 READY_POLL_SECONDS = 1.0
 HTTP_TIMEOUT_SECONDS = 2.0
+# Owner's call, 2026-10-28: hung up after the first ring. At the top of the
+# minute the CRM answered this event in over 2 s (1-4 s measured that hour),
+# and one timeout ended the call. The caller hears ringing meanwhile, and a
+# repeated event (same eventId and callId) is the same call to the CRM, so
+# ringing is retried within this budget before the call is given up.
+RINGING_DELIVERY_SECONDS = 8.0
+RINGING_RETRY_PAUSE_SECONDS = 0.25
 MAX_SPOOL_FILES = 1_000
 DRAIN_BATCH_SIZE = 100
 PARTY_RE = re.compile(r"^[+0-9A-Za-z*#(). _-]{1,64}$")
+# The number the caller dialled, as the channel reports it (CALLERID(dnid)).
+# Owner, 2026-10-26: each client gets its own SIP number, and the CRM picks the
+# client by it. The station's CDR shows the provider's DIDs as 994 + nine digits.
+DIALLED_RE = re.compile(r"^\+?[0-9]{5,20}$")
 TERMINAL_STATES = frozenset({"connected", "no_answer", "busy", "failed", "cancelled"})
 SPOOL_STATE_ORDER = {
     "ringing": 0,
@@ -46,6 +62,9 @@ SPOOL_STATE_ORDER = {
 }
 
 _hangup_requested = False
+# Indirection for tests; the station uses the real clock.
+_clock = time.monotonic
+_sleep = time.sleep
 
 
 class ConfigurationError(Exception):
@@ -63,13 +82,17 @@ class RuntimeConfig:
     lifecycle_url: str
     readiness_url: str
     runtime_token: str
+    handoff_url: str = ""
 
 
 class LifecycleClient(Protocol):
     def send_lifecycle(self, payload: Mapping[str, object]) -> SendResult:
         ...
 
-    def browser_ready(self, call_id: str) -> bool:
+    def answer_route(self, call_id: str) -> str:
+        ...
+
+    def handoff(self, call_id: str, action: str) -> bool:
         ...
 
 
@@ -139,6 +162,7 @@ def load_runtime_config(path: Path = CONFIG_PATH) -> RuntimeConfig:
         lifecycle_url=lifecycle_url,
         readiness_url=readiness_url,
         runtime_token=token,
+        handoff_url=urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, HANDOFF_PATH, "", "")),
     )
 
 
@@ -186,15 +210,51 @@ class HttpLifecycleClient:
             return SendResult.RETRY
         return SendResult.REJECTED
 
-    def browser_ready(self, call_id: str) -> bool:
+    def answer_route(self, call_id: str) -> str:
+        """Who takes the call now: "browser", "ai", or "" (keep ringing).
+
+        "ai" means the CRM has handed this call to the AI voice agent under
+        the organisation's inbound answer setting.  Every failure keeps the
+        caller ringing, exactly as a browser that is not ready yet.
+        """
         try:
             status, body = self._post(self._config.readiness_url, {"callId": call_id})
             if not 200 <= status < 300:
-                return False
+                return ""
             decoded = json.loads(body.decode("utf-8"))
-            return isinstance(decoded, dict) and decoded.get("ready") is True
         except (OSError, TimeoutError, UnicodeError, json.JSONDecodeError, urllib.error.URLError, ValueError):
+            return ""
+        if not isinstance(decoded, dict):
+            return ""
+        if decoded.get("ready") is True:
+            return "browser"
+        if decoded.get("route") == "ai":
+            return "ai"
+        return ""
+
+    def handoff(self, call_id: str, action: str) -> bool:
+        """`start`: did the AI hand this call to a person (ring the browsers)?
+        `return`: nobody answered, give it back to the AI. Every failure is
+        False: the call then ends, or stays with a browser already bridged."""
+        expected = {"start": "handoff", "return": "returned"}.get(action)
+        if expected is None or not self._config.handoff_url:
             return False
+        for _attempt in range(2):
+            try:
+                status, body = self._post(self._config.handoff_url, {"callId": call_id, "action": action})
+            except (OSError, TimeoutError, urllib.error.URLError, ValueError):
+                continue
+            if 500 <= status < 600:
+                continue
+            try:
+                decoded = json.loads(body.decode("utf-8"))
+            except (UnicodeError, json.JSONDecodeError):
+                return False
+            return 200 <= status < 300 and isinstance(decoded, dict) and decoded.get(expected) is True
+        return False
+
+    def browser_ready(self, call_id: str) -> bool:
+        return self.answer_route(call_id) == "browser"
 
     def preflight(self) -> bool:
         """Prove both authenticated routes without creating or changing a call."""
@@ -359,7 +419,12 @@ def _send_ringing_durable(
             queued = _queue_payload(payload, spool_dir)
             if queued is None:
                 return SendResult.RETRY
+            deadline = _clock() + RINGING_DELIVERY_SECONDS
             result = client.send_lifecycle(payload)
+            while (result is SendResult.RETRY and not _hangup_requested
+                   and _clock() + RINGING_RETRY_PAUSE_SECONDS + HTTP_TIMEOUT_SECONDS <= deadline):
+                _sleep(RINGING_RETRY_PAUSE_SECONDS)
+                result = client.send_lifecycle(payload)
             if result is not SendResult.RETRY:
                 _remove_spooled(queued)
             return result
@@ -442,15 +507,16 @@ def _wait_ready(
     timeout_seconds: float,
     monotonic: Callable[[], float],
     sleep: Callable[[float], None],
-) -> bool:
+) -> str:
     deadline = monotonic() + timeout_seconds
     while not _hangup_requested:
-        if client.browser_ready(call_id):
-            return True
+        route = client.answer_route(call_id)
+        if route in {"browser", "ai"}:
+            return route
         if monotonic() >= deadline:
-            return False
+            return ""
         sleep(READY_POLL_SECONDS)
-    return False
+    return ""
 
 
 def run_mode(
@@ -481,7 +547,10 @@ def run_mode(
 
     if mode == "ringing":
         from_number = agi_variables.get("agi_callerid", "").strip()
-        to_number = arguments[1].strip() if len(arguments) == 2 else ""
+        # The dialled number when the channel has one; otherwise the route's
+        # alias, which the CRM reads as "the installation's default client".
+        dialled = agi_variables.get("agi_dnid", "").strip()
+        to_number = dialled if DIALLED_RE.fullmatch(dialled) else (arguments[1].strip() if len(arguments) == 2 else "")
         if not PARTY_RE.fullmatch(from_number) or not PARTY_RE.fullmatch(to_number):
             _agi_set(output, "FANUM_INBOUND_EVENT_OK", "0")
             return 1
@@ -493,14 +562,39 @@ def run_mode(
         return 0 if sent else 1
 
     if mode == "ready":
-        ready = _wait_ready(
+        route = _wait_ready(
             client,
             call_id,
             timeout_seconds=ready_timeout_seconds,
             monotonic=monotonic,
             sleep=sleep,
         )
-        _agi_set(output, "FANUM_BROWSER_READY", "1" if ready else "0")
+        _agi_set(output, "FANUM_BROWSER_READY", "1" if route == "browser" else "0")
+        if route == "ai":
+            _agi_set(output, "FANUM_INBOUND_ROUTE", "ai")
+        return 0
+
+    if mode == "handoff" and len(arguments) == 1:
+        # After the AI leg: a network call is fine here, the caller is
+        # already answered and hears the AI's last words fade.
+        _agi_set(output, "FANUM_HANDOFF", "1" if client.handoff(call_id, "start") else "0")
+        return 0
+
+    if mode == "manager" and len(arguments) == 1:
+        route = _wait_ready(
+            client,
+            call_id,
+            timeout_seconds=MANAGER_WAIT_SECONDS,
+            monotonic=monotonic,
+            sleep=sleep,
+        )
+        if route == "browser":
+            _agi_set(output, "FANUM_BROWSER_READY", "1")
+            return 0
+        _agi_set(output, "FANUM_BROWSER_READY", "0")
+        # A caller who hung up while it rang is not given back to the AI.
+        if not _hangup_requested and client.handoff(call_id, "return"):
+            _agi_set(output, "FANUM_INBOUND_ROUTE", "ai")
         return 0
 
     if mode == "answered" and len(arguments) == 1:

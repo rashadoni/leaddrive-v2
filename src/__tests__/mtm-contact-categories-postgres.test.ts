@@ -500,7 +500,7 @@ pgDescribe("client categories on a real Postgres", () => {
       run(follows)
     }, 120_000)
 
-    it("deletes an employee who has not worked, with the team history the database wrote for them", async () => {
+    it("removes an employee from Field while retaining the team and client history", async () => {
       const agent = await hire("Created by mistake")
       expect(await teamHistory(agent.id)).toBe(1)
       // Clients attached to them are an arrangement, not work history.
@@ -515,29 +515,26 @@ pgDescribe("client categories on a real Postgres", () => {
       const { status, body } = await remove(agent.id)
 
       expect([status, body]).toEqual([200, { success: true }])
-      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id } }))).toBe(0)
-      expect(await teamHistory(agent.id)).toBe(0)
-      expect(await bypass(() => prisma.mtmContactAgentAssignment.count({ where: { agentId: agent.id } }))).toBe(0)
-      // The client is nobody's now, not gone.
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id, fieldDeletedAt: null } }))).toBe(0)
+      expect(await teamHistory(agent.id)).toBe(1)
+      expect(await bypass(() => prisma.mtmContactAgentAssignment.count({ where: { agentId: agent.id } }))).toBe(1)
+      // Client and assignment records are retained for history.
       expect(await bypass(() => prisma.mtmContact.count({ where: { id: client.id } }))).toBe(1)
-      // Who deleted whom stays in the journal. The row cannot point at the
-      // employee — he is gone, and `agentId` is a foreign key — so it names him
-      // by id and keeps his name: written with his id in `agentId`, Postgres
-      // refused the insert and the handler answered 200 with no row at all.
+      // Retained actor and audit stay linked, in the same transaction.
       const journal = await bypass(() => prisma.mtmAuditLog.findMany({
         where: { organizationId: ORG, action: "AGENT_DELETE", entityId: agent.id },
         select: { agentId: true, actorUserId: true, entity: true, metadataKind: true, oldData: true },
       }))
       expect(journal).toEqual([{
-        agentId: null,
+        agentId: agent.id,
         actorUserId: "admin-user",
         entity: "agent",
         metadataKind: "agent_delete",
-        oldData: { id: agent.id, name: "Created by mistake", email: null, role: "AGENT" },
+        oldData: { id: agent.id, name: "Created by mistake", role: "AGENT" },
       }])
     })
 
-    it("keeps an employee who has a visit, and says so instead of naming a constraint", async () => {
+    it("removes Field access for an employee with a visit without deleting the visit", async () => {
       const agent = await hire("Has been in the field")
       const visit = await bypass(async () => {
         const customer = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Mərkəzi Klinika" }, select: { id: true } })
@@ -546,15 +543,38 @@ pgDescribe("client categories on a real Postgres", () => {
 
       const { status, body } = await remove(agent.id)
 
-      expect(status).toBe(409)
-      expect(body.code).toBe("MTM_AGENT_HAS_HISTORY")
-      expect(body.data.kinds).toContain("MtmVisit.agentId")
+      expect(status).toBe(200)
+      expect(body).toEqual({ success: true })
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id, fieldDeletedAt: null } }))).toBe(0)
       expect(JSON.stringify(body)).not.toMatch(/prisma|constraint|fkey/i)
       // Before this check the delete cascaded through the employee's visits.
       expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id } }))).toBe(1)
       expect(await bypass(() => prisma.mtmVisit.count({ where: { id: visit.id } }))).toBe(1)
-      // A refused deletion is not journalled as one.
-      expect(await bypass(() => prisma.mtmAuditLog.count({ where: { action: "AGENT_DELETE", entityId: agent.id } }))).toBe(0)
+      // Removal is recorded while all historical facts remain.
+      expect(await bypass(() => prisma.mtmAuditLog.count({ where: { action: "AGENT_DELETE", entityId: agent.id } }))).toBe(1)
+    })
+
+    it("stops push delivery to a removed Field actor while keeping an independent Time phone reachable", async () => {
+      const { notifyAgents } = await import("@/lib/mtm/push-notify")
+      const { agentsReachableByPush } = await import("@/lib/mtm/agent-task-glance")
+      const field = await hire("Removed push recipient")
+      const person = await bypass(() => prisma.user.create({ data: { organizationId: ORG,
+        email: `time-push-${field.id}@fixture.invalid`, name: "Time push recipient", role: "viewer", passwordHash: "!fixture-no-login" }, select: { id: true } }))
+      const time = await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, userId: person.id,
+        name: "Time push recipient", role: "EMPLOYEE", attendanceParticipant: true }, select: { id: true } }))
+      await bypass(() => prisma.mtmDeviceToken.createMany({ data: [
+        { organizationId: ORG, agentId: field.id, token: `fixture-field-${field.id}` },
+        { organizationId: ORG, agentId: time.id, token: `fixture-time-${time.id}` },
+      ] }))
+      expect((await remove(field.id)).status).toBe(200)
+      const send = vi.fn(async ({ messages }: { messages: Array<{ token: string }> }) =>
+        messages.map(({ token }) => ({ token, ok: true as const })))
+      const sent = await bypass(() => notifyAgents({ client: prisma, organizationId: ORG,
+        agentIds: [field.id, time.id], title: "Synthetic", body: "No provider access", configured: true, send: send as never }))
+      expect(sent).toEqual({ sent: 1, failed: 0, retired: 0 })
+      expect(send.mock.calls[0][0].messages.map(m => m.token)).toEqual([`fixture-time-${time.id}`])
+      expect(await bypass(() => agentsReachableByPush(prisma, ORG, [field.id, time.id], true))).toEqual(new Set([time.id]))
+      expect(await bypass(() => prisma.mtmDeviceToken.count({ where: { agentId: field.id } }))).toBe(1)
     })
 
     it("still refuses to rewrite or erase the team history of an employee who exists", async () => {
@@ -837,6 +857,44 @@ pgDescribe("client categories on a real Postgres", () => {
         vi.useRealTimers()
       }
     })
+
+    // The owner's line of 2026-10-15: from 3 km/h as a screen shows it
+    // (src/lib/mtm/gps-speed.ts). The live map reads the newest five points
+    // itself and asks the database for any moving one older than that within
+    // five minutes — so the line is drawn twice, once in a Prisma filter on
+    // the stored column. Here the moving point is the sixth newest: only
+    // Postgres can see it.
+    it("a standing phone's jitter reads «Стоит» on the live map, and 3 km/h as shown reads «В пути» from the database alone", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      try {
+        const DAY = 24 * 60
+        const { GET } = await import("@/app/api/v1/mtm/locations/route")
+        async function statusAfter(start: number, firstSpeed: number) {
+          // One point at `firstSpeed`, then two and a half minutes of a phone lying still.
+          const speeds = [firstSpeed, 1.4, 2.4, 1.9, 2.4, 1.1]
+          for (const [index, speed] of speeds.entries()) {
+            const minutes = start + index / 2
+            await gps({ minutes, latitude: north(9_000), speed })
+            // The flag left unset, as the web and API-key entry leaves it: the speed alone has to say it.
+            await bypass(() => prisma.mtmAgentLocation.create({
+              data: { organizationId: ORG, agentId, latitude: north(9_000), longitude: 49.85, accuracy: 10, speed, isMoving: false, recordedAt: at(minutes) },
+            }))
+          }
+          await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { isOnline: true, lastSeenAt: at(start + 2.5) } }))
+          vi.setSystemTime(at(start + 3))
+          const response = await GET(new NextRequest("http://localhost:3000/api/v1/mtm/locations"))
+          const body = await response.json()
+          expect(response.status, JSON.stringify(body).slice(0, 300)).toBe(200)
+          return body.data.agentLocations.find((entry: { agentId: string }) => entry.agentId === agentId)?.fieldStatus
+        }
+        // 2.4 km/h is «2 km/h» on a screen: jitter. Until 2026-10-15 it said «В пути».
+        expect(await statusAfter(2 * DAY + 41, 2.4)).toBe("STOPPED")
+        // 2.5 km/h is «3 km/h».
+        expect(await statusAfter(2 * DAY + 51, 2.5)).toBe("ON_ROAD")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   // Labels and a personal map colour on an employee's card (owner, 2026-10-09:
@@ -925,6 +983,94 @@ pgDescribe("client categories on a real Postgres", () => {
 
       await bypass(() => prisma.mtmAgent.update({ where: { id: labelled }, data: { tags: [], mapColor: null } }))
       expect((await roster(`?employee=${encodeURIComponent("сев")}`)).map((row) => row.agentId)).toEqual([])
+    })
+  })
+
+  // «Тут код агента — чтоб автоматически задавался, последовательно» (owner,
+  // 2026-10-20). Which code is taken is decided by the database's unique index
+  // on the organization and the code: two saves at the same moment draw the
+  // same number, and only Postgres says which of them lost — in a refusal a
+  // mocked Prisma has to be told the shape of.
+  describe("an agent's code given in sequence", () => {
+    const CODES = "org-agent-codes"
+    const asWebAdmin = async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue({ orgId: CODES, userId: "codes-admin", role: "admin", email: "codes-admin@example.com", name: "Admin" } as never)
+    }
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const codeOf = async (id: string) => (await bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id }, select: { externalCode: true } }))).externalCode
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        await prisma.organization.create({ data: { id: CODES, name: "Fictional code company", slug: "agent-codes-test" } })
+        // Newest last: a manager with AG-007, an agent once typed by hand as NZ-001, the newest agent AG-016.
+        const day = (n: number) => new Date(Date.UTC(2026, 9, n))
+        await prisma.mtmAgent.create({ data: { id: "codes-manager", organizationId: CODES, name: "Fictional Manager", role: "MANAGER", externalCode: "AG-007", createdAt: day(2) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-typed", organizationId: CODES, name: "Fictional Typed", externalCode: "NZ-001", createdAt: day(3) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-newest", organizationId: CODES, name: "Fictional Newest", externalCode: "AG-016", status: "INACTIVE", createdAt: day(19) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-none", organizationId: CODES, name: "Fictional Without Code", createdAt: day(1) } })
+        await prisma.mtmAgent.create({ data: { id: "codes-untouched", organizationId: CODES, name: "Fictional Untouched", createdAt: day(1) } })
+      })
+    })
+
+    afterAll(async () => {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValue(null)
+    })
+
+    it("shows the next code, gives it to a new agent saved without one, and five saved at once get five codes in a row", async () => {
+      await asWebAdmin()
+      const { GET } = await import("@/app/api/v1/mtm/agents/next-code/route")
+      const { POST } = await import("@/app/api/v1/mtm/agents/route")
+      const shown = await GET(new NextRequest("http://localhost:3000/api/v1/mtm/agents/next-code"))
+      expect((await shown.json()).data).toEqual({ code: "AG-017" })
+
+      const first = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional First", externalCode: "", role: "AGENT" }))
+      const firstBody = await first.json()
+      expect(first.status, JSON.stringify(firstBody).slice(0, 300)).toBe(201)
+      expect(firstBody.data.externalCode).toBe("AG-017")
+
+      const crowd = await Promise.all([1, 2, 3, 4, 5].map((n) => POST(send("POST", "/api/v1/mtm/agents", { name: `Fictional Crowd ${n}`, role: "AGENT" }))))
+      const bodies = await Promise.all(crowd.map((response) => response.json()))
+      expect(crowd.map((response) => response.status), JSON.stringify(bodies).slice(0, 400)).toEqual([201, 201, 201, 201, 201])
+      expect(bodies.map((body) => body.data.externalCode).sort()).toEqual(["AG-018", "AG-019", "AG-020", "AG-021", "AG-022"])
+    })
+
+    it("keeps a code typed by hand, refuses one another agent holds by name, and the sequence goes on past the typed one", async () => {
+      await asWebAdmin()
+      const { POST } = await import("@/app/api/v1/mtm/agents/route")
+      const typed = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional Typed Again", externalCode: "EXT-9" }))
+      expect(typed.status).toBe(201)
+      expect((await typed.json()).data.externalCode).toBe("EXT-9")
+
+      const taken = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional Duplicate", externalCode: "AG-007" }))
+      expect(taken.status).toBe(409)
+      expect((await taken.json()).code).toBe("MTM_AGENT_CODE_TAKEN")
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { organizationId: CODES, name: "Fictional Duplicate" } }))).toBe(0)
+
+      const next = await POST(send("POST", "/api/v1/mtm/agents", { name: "Fictional After Typed" }))
+      expect((await next.json()).data.externalCode).toBe("AG-023")
+    })
+
+    it("gives a card without a code the next one when the form saves it, leaves it alone when the field is not sent, and refuses a taken one", async () => {
+      await asWebAdmin()
+      const { PUT } = await import("@/app/api/v1/mtm/agents/[id]/route")
+      const saved = await PUT(put("/api/v1/mtm/agents/codes-none", { name: "Fictional Without Code", externalCode: "" }), params("codes-none"))
+      expect(saved.status).toBe(200)
+      expect(await codeOf("codes-none")).toBe("AG-024")
+
+      await PUT(put("/api/v1/mtm/agents/codes-untouched", { status: "INACTIVE" }), params("codes-untouched"))
+      expect(await codeOf("codes-untouched")).toBeNull()
+
+      // Saved again with its own code, the card keeps it.
+      const again = await PUT(put("/api/v1/mtm/agents/codes-none", { name: "Fictional Renamed", externalCode: "AG-024" }), params("codes-none"))
+      expect(again.status).toBe(200)
+      expect(await codeOf("codes-none")).toBe("AG-024")
+
+      const refused = await PUT(put("/api/v1/mtm/agents/codes-none", { externalCode: "AG-007" }), params("codes-none"))
+      expect(refused.status).toBe(409)
+      expect((await refused.json()).code).toBe("MTM_AGENT_CODE_TAKEN")
+      expect(await codeOf("codes-none")).toBe("AG-024")
     })
   })
 
@@ -1435,7 +1581,7 @@ pgDescribe("client categories on a real Postgres", () => {
       ])
     })
 
-    it("leaves with its employee: an employee who only ever had links is deleted through the real route, and his links are gone", async () => {
+    it("retains link history when the agent is removed from Field", async () => {
       const { getSession } = await import("@/lib/api-auth")
       vi.mocked(getSession).mockResolvedValue({ orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" } as never)
       const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
@@ -1452,8 +1598,8 @@ pgDescribe("client categories on a real Postgres", () => {
       const body = await deleted.json()
       // Not 409 MTM_AGENT_HAS_HISTORY: a link is an arrangement about him, not his work.
       expect(deleted.status, JSON.stringify(body).slice(0, 300)).toBe(200)
-      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: leaving } }))).toBe(0)
-      expect(await linksOf(leaving)).toBe(0)
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: leaving, fieldDeletedAt: null } }))).toBe(0)
+      expect(await linksOf(leaving)).toBe(2)
       // His, and nobody else's.
       expect(await linksOf(shown)).toBe(others)
       expect(await linksOf(elsewhere)).toBe(1)
@@ -2389,6 +2535,30 @@ pgDescribe("client categories on a real Postgres", () => {
       expect((await cardOf(asker, pharmacy)).locationRequest).toMatchObject({ id: requestId, status: "REJECTED", mine: true, decisionComment: "Точку уже поправили вручную" })
     })
 
+    // Owner, 2026-10-16: «тут должно быть либо подтверждаю, либо отклоняю».
+    // The card always offers both; over a pin moved since, «Подтвердить» asks
+    // once more and then sends confirmPinMoved.
+    it("moves a pin changed since the request only on the manager's explicit confirmation, and journals what it replaced", async () => {
+      const further = { latitude: north(DOOR.latitude, 500), longitude: 49.852 }
+      const asked = await ask(asker, pharmacy, sending("confirm-moved-0001", { proposed: further }))
+      expect(asked.status, JSON.stringify(asked.body).slice(0, 300)).toBe(201)
+      const requestId = asked.body.data.request.id
+      const byHand = { latitude: north(DOOR.latitude, 60), longitude: 49.8505 }
+      await bypass(() => prisma.mtmCustomer.update({ where: { id: pharmacy }, data: byHand }))
+
+      // A tab that never showed the warning still cannot move it.
+      expect(await decide(requestId, { decision: "APPROVED" })).toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_CUSTOMER_MOVED" } })
+      expect(await pinOf(pharmacy)).toEqual(at(byHand))
+
+      const confirmed = await decide(requestId, { decision: "APPROVED", confirmPinMoved: true })
+      expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 300)).toBe(200)
+      expect(await pinOf(pharmacy)).toEqual(at(further))
+      expect((await rows({ id: requestId }))[0]).toMatchObject({ status: "APPROVED", reviewedBy: "admin-user" })
+      const journal = await bypass(() => prisma.mtmAuditLog.findFirstOrThrow({ where: { organizationId: ORG, entityId: requestId, entity: "customer_location_request" }, orderBy: { createdAt: "desc" } }))
+      expect(journal.oldData).toMatchObject({ status: "SUBMITTED", ...at(byHand) })
+      expect(journal.newData).toMatchObject({ status: "APPROVED", confirmedOverPinMovedSinceRequest: true })
+    })
+
     it("gives a customer that had no pin its first one", async () => {
       expect(await pinOf(pinless)).toEqual({ latitude: null, longitude: null })
       const asked = await ask(asker, pinless, sending("first-pin-000001"))
@@ -2553,6 +2723,273 @@ pgDescribe("client categories on a real Postgres", () => {
         // The request is answered: the next check-in there is refused again.
         expect((await checkIn(asker, pinlessClinic, CLINIC_DOOR)).body).toMatchObject({ code: "MTM_VISIT_CUSTOMER_NO_COORDINATES" })
       })
+    })
+  })
+
+  // Owner, 2026-10-16: on the agent's card, specialty → city → district, then the
+  // doctors — since 2026-10-20 one row each, with his class and his institution.
+  // Asked of the real handler: which doctors it reads (active, with a current
+  // workplace), their class as stored, and which are already the agent's.
+  describe("choosing an agent's doctors on his card", () => {
+    const picker = async (query: string) => {
+      const { GET } = await import("@/app/api/v1/mtm/contacts/agent-picker/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/contacts/agent-picker?${query}`))
+      return { status: response.status, body: await response.json() }
+    }
+    let agent = ""
+    beforeAll(async () => {
+      await bypass(async () => {
+        agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Picker Agent", role: "AGENT" }, select: { id: true } })).id
+        const clinic = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Clinic", city: "Bakı", district: "Nəsimi", address: "Fictional küç. 1" }, select: { id: true } })
+        const suburb = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Suburb", locality: "Xırdalan" }, select: { id: true } })
+        const make = async (firstName: string, specialtyName: string, customerId: string | null, status: "ACTIVE" | "INACTIVE" = "ACTIVE", ended = false, category?: "VIP") => {
+          const contact = await prisma.mtmContact.create({
+            data: { organizationId: ORG, firstName, lastName: "Pickerova", displayName: `Pickerova ${firstName}`, type: "DOCTOR", specialtyName, status, ...(category ? { category } : {}) },
+            select: { id: true },
+          })
+          if (customerId) await prisma.mtmContactWorkplace.create({ data: { organizationId: ORG, contactId: contact.id, customerId, isPrimary: true, ...(ended ? { endedOn: new Date("2026-01-01T00:00:00.000Z") } : {}) } })
+          return contact.id
+        }
+        const ayan = await make("Ayan", "Pickerologist", clinic.id)
+        await make("Bahar", "Pickerologist", clinic.id, "ACTIVE", false, "VIP")
+        await make("Cəmilə", "Pickerologist", suburb.id)
+        await make("Dünya", "Pickerologist", clinic.id, "INACTIVE")
+        await make("Elmira", "Pickerologist", clinic.id, "ACTIVE", true)
+        await make("Fidan", "Otherologist", clinic.id)
+        await prisma.mtmContactAgentAssignment.create({ data: { organizationId: ORG, contactId: ayan, agentId: agent, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z") } })
+      })
+    })
+
+    it("offers the cities of the chosen specialty, then their districts, and lists each active doctor with his class and institution", async () => {
+      const bySpecialty = await picker(`agentId=${agent}&specialty=Pickerologist`)
+      expect(bySpecialty.status, JSON.stringify(bySpecialty.body).slice(0, 300)).toBe(200)
+      // Dünya is inactive. Elmira left her workplace: she is a doctor without one.
+      expect(bySpecialty.body.data.cities).toEqual(expect.arrayContaining([
+        { value: "bakı", label: "Bakı", count: 2 },
+        { value: "xırdalan", label: "Xırdalan", count: 1 },
+        { value: "__none__", label: null, count: 1 },
+      ]))
+      const baku = await picker(`agentId=${agent}&specialty=pickerologist&city=Bakı`)
+      expect(baku.body.data.districts).toEqual([{ value: "nəsimi", label: "Nəsimi", count: 2 }])
+      const contacts = baku.body.data.contacts as Array<{ name: string; category: string; assignedHere: boolean; place: { institution: { name: string } | null; address: string | null; district: string | null } }>
+      // Ayan was never graded: the column's own default, B.
+      expect(contacts.map(contact => [contact.name, contact.category, contact.place.institution?.name, contact.place.district, contact.place.address, contact.assignedHere])).toEqual([
+        ["Pickerova Ayan", "B", "Fictional Picker Clinic", "Nəsimi", "Fictional küç. 1", true],
+        ["Pickerova Bahar", "VIP", "Fictional Picker Clinic", "Nəsimi", "Fictional küç. 1", false],
+      ])
+      expect(baku.body.data.institutions).toBe(1)
+      expect(baku.body.data.assignedHere).toBe(1)
+    })
+
+    // Owner, 2026-10-21: «я не заметил категории клиентов… нужно добавить в
+    // фильтр». The class step reads the company's own classes and the class as
+    // stored, and narrows the list by it.
+    it("offers every class the company grades with, «0» included, and narrows the doctors by the class chosen", async () => {
+      await bypass(() => prisma.mtmSetting.create({ data: { organizationId: ORG, key: "contactClasses", value: ["A", "B", "C", "VIP"] } }))
+      try {
+        const all = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı`)
+        expect(all.status, JSON.stringify(all.body).slice(0, 300)).toBe(200)
+        expect(all.body.data.classes).toEqual([
+          { value: "A", label: "A", count: 0 },
+          { value: "B", label: "B", count: 1 },
+          { value: "C", label: "C", count: 0 },
+          { value: "VIP", label: "VIP", count: 1 },
+        ])
+        const vip = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı&class=VIP`)
+        expect((vip.body.data.contacts as Array<{ name: string }>).map(contact => contact.name)).toEqual(["Pickerova Bahar"])
+        expect(vip.body.data.matching).toBe(1)
+        expect(vip.body.data.assignedHere).toBe(0)
+      } finally {
+        await bypass(() => prisma.mtmSetting.deleteMany({ where: { organizationId: ORG, key: "contactClasses" } }))
+      }
+    })
+
+    it("refuses an agent of another company", async () => {
+      expect((await picker("agentId=not-an-agent-here&specialty=Pickerologist")).status).toBe(403)
+    })
+  })
+
+  // Owner, 2026-10-16, once a tick could be taken off on an agent's card: «в
+  // приложении будут видны те клиенты, которые будут оставлены?» — and, told
+  // that a doctor at an institution on the agent's route stayed in the app up
+  // to thirty days through it: «да, нужно, чтоб пропадал сразу».
+  describe("a doctor taken off an agent, in the agent's app", () => {
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    const today = new Date().toISOString().slice(0, 10)
+    const ids = {} as Record<"agent" | "clinic" | "taken" | "never" | "kept", string>
+    const ours = (names: string[]) => names.filter((name) => name.startsWith("Routeova ")).sort()
+    const asAgent = async () => {
+      const { resolveMobileAuth } = await import("@/lib/mobile-auth")
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ agentId: ids.agent, userId: `user-of-${ids.agent}`, orgId: ORG, email: "route-agent@example.com", name: "Agent", role: "AGENT" } as never)
+    }
+    /** What the phone's offline sync hands over: the doctors, and the ones to drop. */
+    const pull = async (since?: string) => {
+      await asAgent()
+      const { GET } = await import("@/app/api/v1/mtm/mobile/sync/pull/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/mobile/sync/pull?entities=contacts${since ? `&since=${encodeURIComponent(since)}` : ""}`))
+      const body = await response.json()
+      if (response.status !== 200) throw new Error(`pull ${response.status}: ${JSON.stringify(body).slice(0, 300)}`)
+      return {
+        timestamp: body.timestamp as string,
+        names: ours((body.changes.contacts.updated as Array<{ displayName: string }>).map((contact) => contact.displayName)),
+        dropped: body.changes.contacts.deleted as string[],
+      }
+    }
+    /** The doctors the app's card of the institution lists. */
+    const card = async () => {
+      await asAgent()
+      const { GET } = await import("@/app/api/v2/mtm/mobile/route-field/organizations/[id]/route")
+      const response = await GET(new NextRequest(`http://localhost:3000/api/v2/mtm/mobile/route-field/organizations/${ids.clinic}`), params(ids.clinic))
+      const body = await response.json()
+      if (response.status !== 200) throw new Error(`card ${response.status}: ${JSON.stringify(body).slice(0, 300)}`)
+      return ours((body.data.organization.contacts as Array<{ name: string }>).map((contact) => contact.name))
+    }
+    /** The manager's tick on the agent's card: the same preview → apply. */
+    const tick = async (mode: "ASSIGN" | "UNASSIGN", contactId: string, key: string) => {
+      const { POST: preview } = await import("@/app/api/v1/mtm/contact-assignments/preview/route")
+      const { POST: execute } = await import("@/app/api/v1/mtm/contact-assignments/route")
+      const request = {
+        contactIds: [contactId],
+        mode,
+        targetAgentId: mode === "ASSIGN" ? ids.agent : null,
+        ...(mode === "UNASSIGN" ? { sourceAgentId: ids.agent } : {}),
+        effectiveFrom: today,
+        reason: "Chosen on the agent's card",
+      }
+      const previewed = await (await preview(send("POST", "/api/v1/mtm/contact-assignments/preview", request))).json()
+      if (!previewed.data?.previewToken) throw new Error(`preview refused: ${JSON.stringify(previewed).slice(0, 300)}`)
+      const executed = await execute(send("POST", "/api/v1/mtm/contact-assignments", { ...request, previewToken: previewed.data.previewToken, idempotencyKey: `taken-off-${key}` }))
+      expect(executed.status, JSON.stringify(await executed.clone().json()).slice(0, 300)).toBe(200)
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        ids.agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Route Agent", role: "AGENT" }, select: { id: true } })).id
+        ids.clinic = (await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Route Clinic" }, select: { id: true } })).id
+        // The clinic is on the agent's route today: through it, every doctor
+        // working there is in his app — those who were never his as well.
+        const route = await prisma.mtmRoute.create({ data: { organizationId: ORG, agentId: ids.agent, date: new Date(`${today}T00:00:00.000Z`), status: "PLANNED" }, select: { id: true } })
+        await prisma.mtmRoutePoint.create({ data: { organizationId: ORG, routeId: route.id, customerId: ids.clinic } })
+        for (const [key, firstName] of [["taken", "Taken"], ["never", "Never"], ["kept", "Kept"]] as const) {
+          ids[key] = (await prisma.mtmContact.create({ data: { organizationId: ORG, firstName, lastName: "Routeova", displayName: `Routeova ${firstName}`, type: "DOCTOR" }, select: { id: true } })).id
+          await prisma.mtmContactWorkplace.create({ data: { organizationId: ORG, contactId: ids[key], customerId: ids.clinic, isPrimary: true } })
+        }
+        for (const contactId of [ids.taken, ids.kept]) {
+          await prisma.mtmContactAgentAssignment.create({ data: { organizationId: ORG, contactId, agentId: ids.agent, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z") } })
+        }
+      })
+    })
+
+    it("is dropped by the phone at the next sync and leaves the clinic's card, while the others stay", async () => {
+      const before = await pull()
+      expect(before.names).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+      expect(await card()).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+
+      await tick("UNASSIGN", ids.taken, "off")
+
+      // The phone that synced before is told to drop him, and only him…
+      const delta = await pull(before.timestamp)
+      expect(delta.dropped).toContain(ids.taken)
+      expect(delta.dropped).not.toContain(ids.kept)
+      expect(delta.dropped).not.toContain(ids.never)
+      // …a phone syncing from scratch never gets him, and the card of his
+      // clinic — on the agent's route today — no longer lists him.
+      expect((await pull()).names).toEqual(["Routeova Kept", "Routeova Never"])
+      expect(await card()).toEqual(["Routeova Kept", "Routeova Never"])
+    })
+
+    it("is back in the app once ticked again", async () => {
+      await tick("ASSIGN", ids.taken, "back")
+      expect((await pull()).names).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+      expect(await card()).toEqual(["Routeova Kept", "Routeova Never", "Routeova Taken"])
+    })
+  })
+
+  // Owner, 2026-10-20: «запросы на нового врача от агента не могу найти, куда
+  // пришло» — the first one had waited twelve days, saved and listed, but nobody
+  // was told it had come.
+  describe("a new-doctor request from the phone", () => {
+    const ids = {} as Record<"agent" | "lead" | "otherLead", string>
+    const submit = async (key: string) => {
+      const { resolveMobileAuth } = await import("@/lib/mobile-auth")
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ agentId: ids.agent, userId: `user-of-${ids.agent}`, orgId: ORG, email: "doctor-agent@example.com", name: "Agent", role: "AGENT" } as never)
+      const { POST } = await import("@/app/api/v2/mtm/mobile/route-field/contact-create-requests/route")
+      const response = await POST(send("POST", "/api/v2/mtm/mobile/route-field/contact-create-requests", {
+        idempotencyKey: key,
+        displayName: "Fictional Newdoctor",
+        specialtyName: "Terapevt",
+        clinicName: "Fictional Request Clinic",
+      }))
+      return { status: response.status, body: await response.json() }
+    }
+    const toldAbout = (requestId: string) => bypass(() => prisma.notification.findMany({
+      where: { organizationId: ORG, entityType: "mtm_contact_create_request", entityId: requestId },
+      orderBy: { userId: "asc" },
+    }))
+    // Fire-and-forget: the answer goes out before the bell rows are written —
+    // wait until the count has stood still for a while.
+    const settle = async (requestId: string) => {
+      let last = -1
+      let still = 0
+      for (let attempt = 0; attempt < 100 && still < 5; attempt++) {
+        const count = (await toldAbout(requestId)).length
+        still = count === last && count > 0 ? still + 1 : 0
+        last = count
+        await new Promise((resolve) => setTimeout(resolve, 40))
+      }
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        await prisma.user.createMany({
+          data: [
+            { id: "doctor-lead", organizationId: ORG, email: "doctor-lead@example.com", name: "Lead of the agent", passwordHash: "-", role: "member", preferredLanguage: "az" },
+            { id: "doctor-other-lead", organizationId: ORG, email: "doctor-other-lead@example.com", name: "Lead of nobody here", passwordHash: "-", role: "member", preferredLanguage: "ru" },
+            // The company's web administrator, with no MTM card at all.
+            { id: "doctor-web-admin", organizationId: ORG, email: "doctor-web-admin@example.com", name: "Web administrator", passwordHash: "-", role: "admin", preferredLanguage: "en" },
+          ],
+        })
+        ids.lead = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Lead", role: "MANAGER", userId: "doctor-lead" }, select: { id: true } })).id
+        ids.otherLead = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Other Lead", role: "MANAGER", userId: "doctor-other-lead" }, select: { id: true } })).id
+        ids.agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Doctor Agent", role: "AGENT", managerId: ids.lead }, select: { id: true } })).id
+      })
+    })
+
+    it("tells his manager and the company's administrators, in their language — not a manager of other people — and only once", async () => {
+      const first = await submit("doctor-request-0001")
+      expect(first.status, JSON.stringify(first.body).slice(0, 300)).toBe(201)
+      const requestId = first.body.data.id as string
+      await settle(requestId)
+      const told = await toldAbout(requestId)
+      const users = told.map((row) => row.userId)
+      expect(users).toContain("doctor-lead")
+      expect(users).not.toContain("doctor-other-lead")
+      // The company's web administrator may decide any request; told in his language.
+      expect(users).toContain("doctor-web-admin")
+      expect(told.find((row) => row.userId === "doctor-web-admin")?.title).toBe("New doctor: an agent asks to add one")
+      expect(told.find((row) => row.userId === "doctor-lead")).toMatchObject({
+        type: "info",
+        isRead: false,
+        title: "Yeni həkim: agent əlavə etməyi xahiş edir",
+        message: "Fictional Doctor Agent «Fictional Newdoctor» həkimini (Fictional Request Clinic) əlavə etməyi xahiş edir. Yoxlayın və təsdiq edin və ya rədd edin.",
+      })
+
+      // The phone repeats the sending: the same request, nobody told twice.
+      const again = await submit("doctor-request-0001")
+      expect(again.body.idempotent).toBe(true)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect((await toldAbout(requestId)).length).toBe(told.length)
+    })
+
+    it("counts his manager among the cards whose phone is told — the one without a CRM login too", async () => {
+      const { contactCreateRequestReviewerCards } = await import("@/lib/mtm/contact-create-request-notify")
+      await bypass(() => prisma.mtmAgent.update({ where: { id: ids.lead }, data: { userId: null } }))
+      const cards = await bypass(() => contactCreateRequestReviewerCards({ organizationId: ORG, requestedByAgentId: ids.agent }))
+      const cardIds = cards.map((card) => card.id)
+      expect(cardIds).toContain(ids.lead)
+      expect(cardIds).not.toContain(ids.otherLead)
+      expect(cardIds).not.toContain(ids.agent)
+      await bypass(() => prisma.mtmAgent.update({ where: { id: ids.lead }, data: { userId: "doctor-lead" } }))
     })
   })
 })

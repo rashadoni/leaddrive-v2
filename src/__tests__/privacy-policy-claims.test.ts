@@ -118,6 +118,25 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
   })
 })
 
+describe.each(LOCALES)("the e-qaimə Chrome extension — %s", locale => {
+  // The Chrome Web Store listing points here. What it says must match the
+  // extension: it reads the signed-in company's invoices, sends them to
+  // LeadDrive only, and the portal's pass never leaves the browser
+  // (extensions/e-qaime, checked by e-qaime-extension.test.ts).
+  const p = privacy(locale)
+
+  it("describes what is read, where it goes, and what never leaves the browser", () => {
+    for (const key of ["sExt", "pExt", "pExt_l1", "pExt_l2", "pExt_l3", "pExt_l4", "pExt_note"] as const) {
+      expect(p[key], `${key} must remain published in ${locale}`).toBeTruthy()
+    }
+    expect(p.pExt).toContain("new.e-taxes.gov.az")
+    expect(p.pExt_l3).toMatch(/never|никогда|heç vaxt/i)
+    expect(p.pExt_l4).toContain("leaddrivecrm.org")
+    expect(p.pExt_note).toContain("Limited Use")
+    expect(p.s10).toMatch(/^11\./)
+  })
+})
+
 describe("the privacy page renders the corrected sections", () => {
   const page = readFileSync("src/app/(marketing)/legal/privacy/page.tsx", "utf8")
 
@@ -130,6 +149,11 @@ describe("the privacy page renders the corrected sections", () => {
 
   it.each(["s9", "p9", "p9_l1", "p9_l2", "p9_l3", "p9_l4", "p9_controller", "p9_note", "s10", "p10"])(
     "renders Workforce privacy key %s",
+    key => expect(page).toContain(`t("${key}")`),
+  )
+
+  it.each(["sExt", "pExt", "pExt_l1", "pExt_l2", "pExt_l3", "pExt_l4", "pExt_note"])(
+    "renders e-qaimə extension key %s",
     key => expect(page).toContain(`t("${key}")`),
   )
 })

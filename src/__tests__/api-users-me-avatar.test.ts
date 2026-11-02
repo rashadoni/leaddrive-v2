@@ -77,6 +77,7 @@ import { POST } from "@/app/api/v1/users/me/avatar/route"
 import { unlink, writeFile } from "fs/promises"
 import { prisma } from "@/lib/prisma"
 import sharp from "sharp"
+import { decodeTenantFileBytes, isTenantFileEnvelope } from "@/lib/crypto/tenant-file-encryption"
 
 function reqWith(file: File | null, headers?: Record<string, string>): NextRequest {
   const fd = new FormData()
@@ -137,7 +138,10 @@ describe("POST /api/v1/users/me/avatar", () => {
     expect(json.url).toMatch(/^\/uploads\/avatars\/org-1\/av-[0-9a-f]{32}\.webp$/)
     expect(writeFile).toHaveBeenCalled()
     for (const call of vi.mocked(writeFile).mock.calls) {
-      expect(call[1]).toEqual(sharpState.output)
+      // Stored sealed for the caller's tenant: the re-encoded image, not plaintext.
+      const stored = call[1] as Buffer
+      expect(isTenantFileEnvelope(stored)).toBe(true)
+      expect(decodeTenantFileBytes("org-1", stored)).toEqual(sharpState.output)
     }
     // persisted on the caller's own row only
     expect(state.lastUpdate.where).toEqual({

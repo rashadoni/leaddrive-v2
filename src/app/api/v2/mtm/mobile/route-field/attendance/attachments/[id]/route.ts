@@ -10,4 +10,4 @@ export const GET = withMobileRls<AttachmentContext>(async (_req, auth, ctx) => {
     const file = await readAttendanceDocument({ organizationId: auth.orgId, self: { organizationId: auth.orgId, agentId: auth.agentId, role: auth.role } }, id)
     return new Response(new Uint8Array(file.bytes), { headers: { ...attendancePrivateHeaders, "content-type": file.mimeType, "content-disposition": 'attachment; filename="document.jpg"' } })
   } catch (error) { return attendanceRequestFailure(error) }
-}, { requiredCapability: "route-field" })
+}, { requiredCapability: "personnel" })

@@ -53,6 +53,13 @@ describe("buildSpawnedContractData — basics", () => {
     expect(data.spawnedFromQuoteId).toBe("cmpr3l6e20003508qa37m0daf")
   })
 
+  it("writes the title and notes in the organization's language", () => {
+    const data = buildSpawnedContractData({ ...fixture(), locale: "az" })
+    expect(data.title).toBe("Q-2026-001 təklifinin qəbulu")
+    expect(data.notes).toBe("Qəbul edilmiş Q-2026-001 təklifindən avtomatik yaradılıb.")
+    expect(buildSpawnedContractData({ ...fixture(), locale: "ru" }).title).toBe("Принятие КП Q-2026-001")
+  })
+
   it("notes line auto-explains the provenance", () => {
     const data = buildSpawnedContractData(fixture())
     expect(data.notes).toBe("Auto-spawned from accepted quote Q-2026-001.")

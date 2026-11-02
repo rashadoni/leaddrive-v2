@@ -486,11 +486,11 @@ export function WorkforceCalendarConfiguration() {
   )
 
   return <section
-    className="overflow-hidden rounded-xl border border-zinc-200 bg-background dark:border-zinc-800"
+    className="overflow-hidden rounded-xl border border-border bg-background"
     aria-labelledby="workforce-calendar-configuration-title"
     aria-busy={loading || saving}
   >
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-6">
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-5 py-5 sm:px-6">
       <div className="flex max-w-3xl gap-3">
         <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
           <CalendarDays className="h-5 w-5" aria-hidden="true" />
@@ -527,7 +527,7 @@ export function WorkforceCalendarConfiguration() {
       })}</p>
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("reversalReviewHint")}</p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal bg-orange-700 hover:bg-orange-800 dark:bg-primary dark:hover:bg-primary/90" onFocus={revealKeyboardReversalAction} onClick={() => void reverseMovedDay()} disabled={saving}>
+        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal" onFocus={revealKeyboardReversalAction} onClick={() => void reverseMovedDay()} disabled={saving}>
           {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}
           {t("reversalConfirm")}
         </Button>
@@ -535,7 +535,7 @@ export function WorkforceCalendarConfiguration() {
       </div>
     </div> : null}
 
-    <div className="grid gap-5 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-6 lg:grid-cols-2">
+    <div className="grid gap-5 border-b border-border px-5 py-5 sm:px-6 lg:grid-cols-2">
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="workforce-calendar-scope">{t("scope")}</label>
         <Select
@@ -811,7 +811,7 @@ export function WorkforceCalendarConfiguration() {
         </div>
       </form>
 
-      <div className="border-t border-zinc-200 dark:border-zinc-800">
+      <div className="border-t border-border">
         <div className="px-5 py-5 sm:px-6">
           <h3 className="font-semibold">{
             scope === "TEAM" && selectedTeam
@@ -823,12 +823,12 @@ export function WorkforceCalendarConfiguration() {
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("upcomingHint", { timezone: visibleCalendar.timezone })}</p>
         </div>
         {visibleCalendar.days.length === 0
-          ? <p className="border-t border-zinc-200 px-5 py-8 text-sm text-muted-foreground dark:border-zinc-800 sm:px-6">{t(scope === "TEAM"
+          ? <p className="border-t border-border px-5 py-8 text-sm text-muted-foreground sm:px-6">{t(scope === "TEAM"
               ? "emptyTeam"
               : scope === "AGENT"
                 ? "emptyAgent"
                 : "emptyOrganization")}</p>
-          : <ul className="divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+          : <ul className="divide-y divide-border border-t border-border">
             {visibleCalendar.days.map((day) => <li key={`${day.date}:${day.kind}`} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="min-w-0">
                 <p className="font-medium [overflow-wrap:anywhere]">{day.name || t("unnamed")}</p>

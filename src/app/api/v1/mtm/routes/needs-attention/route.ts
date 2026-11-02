@@ -40,6 +40,11 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
     organizationId: auth.orgId,
     status: "SUBMITTED",
   }
+  // «Часы не те?» (owner 2026-11-02): an agent's proposed «часы приёма» of a place.
+  const customerHoursRequests: Prisma.MtmCustomerHoursRequestWhereInput = {
+    organizationId: auth.orgId,
+    status: "SUBMITTED",
+  }
 
   if (actor.scopedAgentIds !== null) {
     const scopedAgentIds = [...actor.scopedAgentIds]
@@ -49,23 +54,26 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
     ]
     customerRequests.requestedByAgentId = { in: scopedAgentIds }
     customerLocationRequests.requestedByAgentId = { in: scopedAgentIds }
+    customerHoursRequests.requestedByAgentId = { in: scopedAgentIds }
   }
 
-  const [routeChangeCount, customerRequestCount, customerLocationRequestCount] = await Promise.all([
+  const [routeChangeCount, customerRequestCount, customerLocationRequestCount, customerHoursRequestCount] = await Promise.all([
     prisma.mtmRouteChangeRequest.count({ where: routeChanges }),
     prisma.mtmCustomerCreateRequest.count({ where: customerRequests }),
     prisma.mtmCustomerLocationRequest.count({ where: customerLocationRequests }),
+    prisma.mtmCustomerHoursRequest.count({ where: customerHoursRequests }),
   ])
 
   return NextResponse.json({
     success: true,
     data: {
       schemaVersion: 1,
-      total: routeChangeCount + customerRequestCount + customerLocationRequestCount,
+      total: routeChangeCount + customerRequestCount + customerLocationRequestCount + customerHoursRequestCount,
       categories: {
         routeChanges: { count: routeChangeCount },
         customerRequests: { count: customerRequestCount },
         customerLocationRequests: { count: customerLocationRequestCount },
+        customerHoursRequests: { count: customerHoursRequestCount },
       },
     },
   })

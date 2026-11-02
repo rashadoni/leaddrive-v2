@@ -28,12 +28,57 @@ const rule = (change: Partial<MtmAttendanceRule>): MtmAttendanceRule => ({ ...MT
   id: "rule-a", effectiveFrom: "2026-10-01", ...change })
 
 describe("MTM attendance shared report calculation", () => {
-  it("deducts only actual pauses from facts while lunch reduces the planned norm", () => {
+  // Owner, 2026-10-16: «вычитать обед самому».
+  it("takes the lunch hour off worked time unless a pressed break already covers it; lunch also reduces the planned norm", () => {
     const withLunch = row(completed({ totalPausedSeconds: 3600,
       events: [event("START", "09:00"), event("PAUSE", "13:00"), event("RESUME", "14:00"), event("FINISH", "18:00")] }))
     expect(withLunch).toMatchObject({ kind: "WORKED", factsState: "VALID", expectedWorkSeconds: 28800,
       workedSeconds: 28800, pausedSeconds: 3600, lateSeconds: 0, earlyLeaveSeconds: 0 })
-    expect(row(completed())).toMatchObject({ expectedWorkSeconds: 28800, workedSeconds: 32400, pausedSeconds: 0 })
+    expect(withLunch.lunchAutoSeconds).toBeUndefined()
+    expect(row(completed())).toMatchObject({ expectedWorkSeconds: 28800, workedSeconds: 28800, pausedSeconds: 0, lunchAutoSeconds: 3600 })
+  })
+
+  // Owner, 2026-10-16: «вычитать обед самому». The baseline rule has no
+  // lunchStart, so its 60-minute lunch sits in the middle of 09:00–18:00.
+  describe("automatic lunch", () => {
+    const pausedDay = (pause: string, resume: string, seconds: number) => completed({ totalPausedSeconds: seconds,
+      events: [event("START", "09:00"), event("PAUSE", pause), event("RESUME", resume), event("FINISH", "18:00")] })
+
+    it("takes the whole 13:00–14:00 lunch from a 09:00–18:00 day without a break", () => {
+      expect(row(completed())).toMatchObject({ workedSeconds: 28800, pausedSeconds: 0, lunchAutoSeconds: 3600 })
+    })
+
+    it("takes nothing more when a 13:00–14:00 break was pressed", () => {
+      const result = row(pausedDay("13:00", "14:00", 3600))
+      expect(result).toMatchObject({ workedSeconds: 28800, pausedSeconds: 3600 })
+      expect(result.lunchAutoSeconds).toBeUndefined()
+    })
+
+    it("takes the remaining 40 minutes after a pressed 20-minute break", () => {
+      expect(row(pausedDay("13:00", "13:20", 1200))).toMatchObject({ workedSeconds: 28800, pausedSeconds: 1200, lunchAutoSeconds: 2400 })
+    })
+
+    it("takes only the 30 minutes of lunch someone who left at 13:30 was present for", () => {
+      const result = row(completed({ completedAt: at("13:30"), events: [event("START", "09:00"), event("FINISH", "13:30")] }))
+      expect(result).toMatchObject({ workedSeconds: 14400, lunchAutoSeconds: 1800, earlyLeaveSeconds: 16200 })
+    })
+
+    it("takes nothing from someone who arrived at 14:10, after lunch", () => {
+      const result = row(completed({ startedAt: at("14:10"), events: [event("START", "14:10"), event("FINISH", "18:00")] }))
+      expect(result).toMatchObject({ workedSeconds: 13800, lateSeconds: 18600 })
+      expect(result.lunchAutoSeconds).toBeUndefined()
+    })
+
+    it("uses the rule's own lunchStart: 12:00–13:00, arriving 12:30 takes 30 minutes", () => {
+      const result = row(completed({ startedAt: at("12:30"), events: [event("START", "12:30"), event("FINISH", "18:00")] }),
+        { rules: [rule({ lunchStart: "12:00" })] })
+      expect(result).toMatchObject({ workedSeconds: 18000, lunchAutoSeconds: 1800 })
+    })
+
+    it("takes the lunch already passed from an open day: 20 minutes at 13:20", () => {
+      const open = completed({ status: "STARTED", completedAt: null, events: [event("START", "09:00")] })
+      expect(row(open, { now: at("13:20") })).toMatchObject({ kind: "OPEN", workedSeconds: 14400, lunchAutoSeconds: 1200 })
+    })
   })
 
   it.each([["09:10", 0], ["09:10:01", 601], ["09:21", 1260]])("applies grace to %s without subtracting it from real lateness", (start, expected) => {
@@ -45,7 +90,7 @@ describe("MTM attendance shared report calculation", () => {
   it("compares early leaving with scheduled end, independently of worked hours", () => {
     const result = row(completed({ startedAt: at("07:00"), completedAt: at("16:40"),
       events: [event("START", "07:00"), event("FINISH", "16:40")] }))
-    expect(result.workedSeconds).toBe(34800)
+    expect(result.workedSeconds).toBe(31200) // 9:40 present − the 13:00–14:00 lunch
     expect(result.earlyLeaveSeconds).toBe(4800)
     expect(result.flags).toContain("EARLY_LEAVE")
   })
@@ -137,7 +182,7 @@ describe("MTM attendance shared report calculation", () => {
   it("retains working facts on days off without calling them late or early", () => {
     const result = row(completed({ startedAt: at("10:00"), completedAt: at("16:00"), events: [event("START", "10:00"), event("FINISH", "16:00")] }),
       { calendar: [override({})] })
-    expect(result).toMatchObject({ kind: "WORKED", expectedWorkSeconds: 0, workedSeconds: 21600, lateSeconds: 0, earlyLeaveSeconds: 0, flags: ["WORKED_ON_DAY_OFF"] })
+    expect(result).toMatchObject({ kind: "WORKED", expectedWorkSeconds: 0, workedSeconds: 18000, lunchAutoSeconds: 3600, lateSeconds: 0, earlyLeaveSeconds: 0, flags: ["WORKED_ON_DAY_OFF"] })
   })
 
   it("filters forms and sums exactly the same rows, retaining unknown counts", () => {
@@ -148,7 +193,8 @@ describe("MTM attendance shared report calculation", () => {
     const report = buildMtmAttendanceReport(input({ employees: [employee, secondEmployee], workdays: [late, open], to: "2026-10-14", now: at("19:00", "2026-10-14") }))
     const rows = filterMtmAttendanceRows(report.rows, { form: "LATE_EARLY", teamId: employee.teamId })
     expect(rows).toHaveLength(1)
-    expect(summarizeMtmAttendanceRows(rows)).toMatchObject({ rowCount: 1, workedSeconds: 27540, pausedSeconds: 1800, lateSeconds: 1260, earlyLeaveSeconds: 1800, isComplete: true })
+    // 8:09 present − 0:30 pressed break − the other 0:30 of the 13:00–14:00 lunch = 7:09.
+    expect(summarizeMtmAttendanceRows(rows)).toMatchObject({ rowCount: 1, workedSeconds: 25740, pausedSeconds: 1800, lateSeconds: 1260, earlyLeaveSeconds: 1800, isComplete: true })
     expect(filterMtmAttendanceRows(report.rows, { form: "ABSENCES" })).toHaveLength(4)
     expect(filterMtmAttendanceRows(report.rows, { form: "JOURNAL" })).toHaveLength(2)
     expect(filterMtmAttendanceRows(report.rows, { employeeId: secondEmployee.id, from: "2026-10-13", to: "2026-10-13" })).toHaveLength(1)
@@ -187,7 +233,7 @@ describe("automatic attendance participation in reports", () => {
     const person = { ...employee, attendanceIncludedFrom: "2026-10-13T20:30:00Z" }
     const report = buildMtmAttendanceReport(input({ employees: [person], workdays: [completed()], to: "2026-10-14", now: at("19:00", "2026-10-14") }))
     expect(report.rows.map(row => row.date)).toEqual([date, "2026-10-14"])
-    expect(report.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, employmentState: "UNKNOWN" })
+    expect(report.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 28800, employmentState: "UNKNOWN" })
   })
   it("preserves earlier history and leaves excluded days out even when legacy field work continues", () => {
     const person = { ...employee, participationEvents: [{ included: false, effectiveAt: "2026-10-13T06:00:00Z" }] }
@@ -195,7 +241,7 @@ describe("automatic attendance participation in reports", () => {
     const workdays = [completed(), legacyDay]
     const before = JSON.stringify(workdays)
     const report = buildMtmAttendanceReport(input({ employees: [person], workdays, to: "2026-10-15", now: at("19:00", "2026-10-15") }))
-    expect(report.rows.map(row => row.date)).toEqual([date]); expect(report.totals.workedSeconds).toBe(32400)
+    expect(report.rows.map(row => row.date)).toEqual([date]); expect(report.totals.workedSeconds).toBe(28800)
     expect(JSON.stringify(workdays)).toBe(before)
   })
   it("re-inclusion resumes on its civil date without filling the excluded interval", () => {

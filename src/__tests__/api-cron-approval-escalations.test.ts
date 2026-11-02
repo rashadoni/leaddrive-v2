@@ -31,6 +31,10 @@ vi.mock("@/lib/prisma", () => ({
     },
     user: {
       findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue({ preferredLanguage: null }),
+    },
+    organization: {
+      findUnique: vi.fn().mockResolvedValue({ settings: { language: "az" } }),
     },
   },
 }))

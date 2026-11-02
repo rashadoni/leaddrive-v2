@@ -29,6 +29,17 @@ import { PROSPECT_TO_CLOSED_WON, withLiveCall, type DemoJourneyManifest, type De
  */
 export const DEMO_GUIDE_VOICE = { model: "gemini-2.5-flash-preview-tts", voice: "Kore" } as const
 
+/**
+ * How the guide is told to speak: the delivery the demo clips were read with.
+ * A preview model hears the direction in front of the text; a 3.8 model would
+ * read that sentence aloud, so it gets the style as metadata instead. The
+ * recordings (`scripts/demo-guide/generate-voice.ts`) and the answers the
+ * guide speaks live (`/assistant/voice`) both use these, so a spoken answer
+ * sounds like the step it follows.
+ */
+export const DEMO_GUIDE_VOICE_DIRECTION = "Sakit, aydın və mehriban səslə, tələsmədən, Azərbaycan dilində oxu:"
+export const DEMO_GUIDE_VOICE_STYLE = "calm, clear and kind, unhurried"
+
 /** Under public/sounds, which the proxy serves without a session. */
 export const DEMO_GUIDE_VOICE_DIR = "sounds/demo-guide"
 

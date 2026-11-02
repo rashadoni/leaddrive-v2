@@ -14,6 +14,7 @@ scripts/backup/canary.sql
 scripts/backup/hash-recovery-db-contract.sh
 scripts/backup/hash-recovery-program-set.sh
 scripts/backup/migration-ledger.sql
+scripts/backup/native-scratch-template.mjs
 scripts/backup/postgres-backup.sh
 scripts/backup/postgres-restore-canary.sh
 scripts/backup/prove-restored-pii.mjs

@@ -1,0 +1,17 @@
+# Installed by scripts/event-platform/cluster/provision.sh fund-shadow-install
+# on the pilot's Connect host. One finite session of the Fund shadow worker:
+# it stops once the group has caught up (or at the plan's maxDurationMs).
+[Unit]
+Description=Fund shadow pilot: fold new Fund events into the shadow balances
+After=docker.service wg-quick@wg0.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/node /opt/ld-fund-shadow/runner.cjs
+TimeoutStartSec=6min
+Nice=10
+MemoryMax=384M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes

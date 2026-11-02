@@ -230,6 +230,8 @@ export const GET = withMobileRls(async (req, auth) => {
                   phone: true,
                   latitude: true,
                   longitude: true,
+                  // «Часы приёма» (customer-hours.ts): the stop says whether the place is open.
+                  workingHours: true,
                 },
               },
               contact: {

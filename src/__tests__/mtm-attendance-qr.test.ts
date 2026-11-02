@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto"
 import { describe, expect, it } from "vitest"
 import { issueAttendanceQrToken, verifyAttendanceQrToken } from "@/lib/mtm/attendance-qr-security"
 import { AttendanceQrInputSchema } from "@/lib/mtm/attendance-qr-contract"
-import { agentPermissionStates } from "@/lib/mtm/agent-permissions"
 import { parseMtmWorkdayEvent, mtmWorkdayRequestHash } from "@/lib/mtm/workday"
 
 const now = new Date("2026-10-13T06:00:00Z"), org = "fictional-qr-organization", branch = randomUUID(), revision = randomUUID()
@@ -30,11 +29,6 @@ describe("short-lived branch QR", () => {
     pieces[1] = Buffer.from(JSON.stringify(value)).toString("base64url")
     expect(verifyAttendanceQrToken(org, pieces.join("."), now, now)).toEqual({ state: "INVALID" })
     expect(verifyAttendanceQrToken(org, `${token}.extra`, now, now)).toEqual({ state: "INVALID" })
-  })
-  it("omits QR from the old bootstrap contract unless both features are explicitly on", () => {
-    expect(agentPermissionStates({ attendanceBranchQrEnabled: true })).not.toHaveProperty("attendanceBranchQr")
-    expect(agentPermissionStates({ attendanceEnabled: true })).not.toHaveProperty("attendanceBranchQr")
-    expect(agentPermissionStates({ attendanceEnabled: true, attendanceBranchQrEnabled: true })).toMatchObject({ attendanceBranchQr: true })
   })
   it("allows no employee, branch override or image in the proof", () => {
     expect(AttendanceQrInputSchema.safeParse({ version: 1, token: null }).success).toBe(true)

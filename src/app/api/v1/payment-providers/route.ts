@@ -86,6 +86,14 @@ export const POST = withRlsAuth("payments", "write", async (req: NextRequest, au
     )
   }
   const type = body.type as PaymentProviderType
+  if (type === "kapitalbank") {
+    // Its password is stored only as tenant-bound ciphertext, which this
+    // generic route does not write.
+    return NextResponse.json(
+      { error: "Kapital Bank is configured in the invoice settings", code: "CONFIGURED_ELSEWHERE" },
+      { status: 400 },
+    )
+  }
 
   // --- name
   if (typeof body.name !== "string" || !body.name.trim()) {

@@ -2,7 +2,8 @@ const OPERATIONS = new Set([
   "auth-rls-resolve", "auth-rls-permission", "auth-rls-session",
   "auth-mobile-scope-rejected", "auth-mobile-permission-rejected",
   "auth-sms-dispatch", "auth-login", "auth-session-validation",
-  "audit-persist", "application-render",
+  "audit-persist", "application-render", "tenant-data-key-load",
+  "shell-events-watch",
 ] as const)
 
 type Operation = typeof OPERATIONS extends Set<infer T> ? T : never

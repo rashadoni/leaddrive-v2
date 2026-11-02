@@ -1,6 +1,6 @@
 import { readAttendanceInstallationAttention } from "@/lib/mtm/attendance-installation-store"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
-import { attendanceReviewWhere } from "@/lib/mtm/attendance-request-review"
+import { attendanceAwaitingReviewerWhere, attendanceReviewWhere } from "@/lib/mtm/attendance-request-review"
 import { checkPermission, type Role } from "@/lib/permissions"
 import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
@@ -149,7 +149,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   // Off means no attendance query and no new item in this legacy response.
   const attendanceGroups = settings.attendanceEnabled === true && auth.principalType === "session" && checkPermission(auth.role as Role, "mtm", "write")
     ? await prisma.mtmHrmRequest.groupBy({ by: ["agentId"],
-      where: { ...attendanceReviewWhere(auth.orgId, auth.userId, { ...actor, scopedAgentIds: agentIds === null ? null : [...agentIds] }), status: "PENDING" },
+      where: { ...attendanceReviewWhere(auth.orgId, auth.userId, { ...actor, scopedAgentIds: agentIds === null ? null : [...agentIds] }), status: "PENDING",
+        ...attendanceAwaitingReviewerWhere(actor, settings.attendanceTwoStepApproval === true) },
       _count: { _all: true }, _min: { submittedAt: true },
     }) : []
   const attendanceSummary = summarizeByAgent(attendanceGroups.map((row) => ({ agentId: row.agentId, count: row._count._all, date: row._min.submittedAt })), "earliest")

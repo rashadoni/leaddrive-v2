@@ -33,6 +33,7 @@ export const PAYMENT_PROVIDER_TYPES = [
   "paypal",
   "yookassa",
   "robokassa",
+  "kapitalbank",
 ] as const
 
 export type PaymentProviderType = (typeof PAYMENT_PROVIDER_TYPES)[number]

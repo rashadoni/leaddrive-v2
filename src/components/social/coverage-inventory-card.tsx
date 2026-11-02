@@ -102,7 +102,7 @@ export function CoverageInventoryCard({ orgId }: Props) {
 
   if (loading) {
     return (
-      <section className="rounded-xl border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-700">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("loading")}
@@ -113,13 +113,13 @@ export function CoverageInventoryCard({ orgId }: Props) {
 
   if (error || !data) {
     return (
-      <section className="rounded-xl border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-700">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm text-muted-foreground">{t("loadError")}</span>
           <button
             type="button"
             onClick={load}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1 text-xs hover:bg-muted dark:border-zinc-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             {t("refresh")}
@@ -132,8 +132,8 @@ export function CoverageInventoryCard({ orgId }: Props) {
   const platforms = Array.from(new Set(data.rows.map((r) => r.platform)))
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-700">
-      <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 dark:border-zinc-700 sm:flex-row sm:items-start sm:justify-between">
+    <section className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <MapIcon className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function CoverageInventoryCard({ orgId }: Props) {
           <button
             type="button"
             onClick={load}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs hover:bg-muted dark:border-zinc-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             {t("refresh")}
@@ -165,7 +165,7 @@ export function CoverageInventoryCard({ orgId }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-zinc-200 px-4 py-2.5 text-xs dark:border-zinc-700">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border px-4 py-2.5 text-xs">
         <span className="text-muted-foreground">{t("summaryLabel")}:</span>
         {STATUS_ORDER.map((status) => (
           <span key={status} className="inline-flex items-center gap-1.5">
@@ -192,7 +192,7 @@ export function CoverageInventoryCard({ orgId }: Props) {
               <th className="px-3 py-2 font-medium">{t("colLimitation")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <tbody className="divide-y divide-border">
             {platforms.map((platform) =>
               data.rows
                 .filter((r) => r.platform === platform)

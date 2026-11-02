@@ -31,6 +31,7 @@ import {
 } from "@/lib/mtm/media-object-lifecycle"
 import { readMtmMediaObjectStorageConfig } from "@/lib/mtm/media-object-storage"
 import { withMobileRls } from "@/lib/with-mobile-rls"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 // Multipart framing and small text fields need headroom beyond the binary-file
 // limit. The parser enforces this while streaming, so an undeclared large body
@@ -379,7 +380,7 @@ export const POST = withMobileRls(async (req, auth) => {
     const storageKey = createMobileDocumentStorageKey()
     storagePath = resolveMobileDocumentStoragePath(storageKey)
     await mkdir(mobileDocumentStorageRoot(), { recursive: true })
-    await writeFile(storagePath, bytes, { flag: "wx" })
+    await writeFile(storagePath, sealTenantFile(auth.orgId, bytes), { flag: "wx" })
 
     const document = await persistDocument({ storageKey })
 

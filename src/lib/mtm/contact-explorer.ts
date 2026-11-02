@@ -1,5 +1,6 @@
 import { contactSpecialtyKey } from "@/lib/mtm/contact-specialties"
 import { MTM_CONTACT_CLASS_VALUES } from "@/lib/mtm/contact-classes"
+import { MTM_CLIENT_QUICK_FILTERS } from "@/lib/mtm/client-list-quick"
 
 export const MTM_CONTACT_PAGE_SIZES = [25, 50, 100, 200] as const
 export const MTM_CONTACT_BULK_LIMIT = 200
@@ -40,6 +41,8 @@ export interface ContactExplorerFilters {
   organizationKind: string
   objectType: string
   coveragePeriod: string
+  /** The chip over the list: NOT_VISITED, NOT_PLANNED or UNASSIGNED; empty is «Все». */
+  quick: string
 }
 
 export const EMPTY_CONTACT_FILTERS: ContactExplorerFilters = {
@@ -63,6 +66,7 @@ export const EMPTY_CONTACT_FILTERS: ContactExplorerFilters = {
   organizationKind: "",
   objectType: "",
   coveragePeriod: "",
+  quick: "",
 }
 
 export type ContactTextFilterKey = Exclude<keyof ContactExplorerFilters, "specialties">
@@ -74,6 +78,7 @@ const CONTACT_CATEGORIES = new Set<string>(MTM_CONTACT_CLASS_VALUES)
 const ORGANIZATION_TYPES = new Set(["PHARMACY", "CLINIC", "STORE", "OTHER"])
 const ASSIGNMENT_STATES = new Set(["ASSIGNED", "UNASSIGNED"])
 const COVERAGE_PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/
+const QUICK_FILTERS = new Set<string>(MTM_CLIENT_QUICK_FILTERS)
 
 /** Trimmed, de-duplicated (case-insensitively), bounded — from a URL or a saved view. */
 export function contactSpecialtyFilterValues(values: readonly unknown[]): string[] {
@@ -104,6 +109,7 @@ export function contactFiltersFromSearchParams(params: URLSearchParams): Contact
     if (key === "objectType" && value && !ORGANIZATION_TYPES.has(value)) continue
     if (key === "assignmentState" && value && !ASSIGNMENT_STATES.has(value)) continue
     if (key === "coveragePeriod" && value && !COVERAGE_PERIOD.test(value)) continue
+    if (key === "quick" && value && !QUICK_FILTERS.has(value)) continue
     Object.assign(filters, { [key]: value })
   }
   // `specialtyCode` is the single-choice filter this one replaced: a link or a

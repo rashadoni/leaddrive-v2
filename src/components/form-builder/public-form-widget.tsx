@@ -7,6 +7,7 @@
  * `/api/v1/public/forms/[slug]/submit?org=`. Shows per-field errors
  * inline, success message or redirect on success.
  */
+import { collectAdAttribution } from "@/lib/ad-conversions/collect"
 import { useState, type FormEvent } from "react"
 import type { FieldError, FormFieldSchema } from "@/lib/form-builder/types"
 import { isValidVisitorId, VISITOR_ID_PARAM } from "@/lib/web-tracking-shapes"
@@ -60,7 +61,7 @@ export function PublicFormWidget({ organizationId, slug, fields, successMessage,
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(visitorId ? { values, visitorId } : { values }),
+        body: JSON.stringify({ values, ...(visitorId ? { visitorId } : {}), attribution: collectAdAttribution() }),
       })
       const body: { details?: FieldError[]; error?: string; data?: { redirectUrl?: string | null } } = await res.json()
       if (!res.ok) {

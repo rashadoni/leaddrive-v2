@@ -15,7 +15,7 @@ import { DEMO_DEAL_STAGES, demoMoney, type DemoActivityRecord } from "@/lib/demo
 import { cn } from "@/lib/utils"
 import { LeadCardView } from "./lead-scene"
 import type { DemoSceneProps } from "../scene-props"
-import { demoTarget } from "../demo-target"
+import { demoLabel, demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -25,6 +25,10 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
  * presses «Convert» in the real product; after the conversion it shows the
  * board and then the card. Stage labels come from the product's own `deals`
  * namespace, and the chevron bar is the product's own StageProgress.
+ *
+ * As on `deals/page.tsx`: a card opens the deal's page (there is no
+ * quick-view sheet — the demo used to draw one), a stage changes on the page's
+ * stage bar or by dragging, and the summary is the board's four figures.
  */
 export function DealScene(props: DemoSceneProps) {
   const { snapshot, step, reviewMode } = props
@@ -41,8 +45,6 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
   const { deal, lead } = snapshot.records
   const [view, setView] = useState<"kanban" | "list">("kanban")
   const [cardOpen, setCardOpen] = useState(snapshot.state !== "DEAL_CREATED")
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [sheetTab, setSheetTab] = useState<"overview" | "history" | "activities" | "team">("overview")
   // «Sövdələşmə kartı» talks about the card, so it opens with the step: the
   // kanban's advance does not remount the scene, and the card used to stay
   // shut behind two clicks the step never asked for.
@@ -67,16 +69,15 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     color: stage.key === "won" ? "#22c55e" : "#FF4D00",
   }))
 
-  // `stageKey` names the stage clicked on the stage bar; the kanban's
-  // «next stage» button passes none.
-  const advance = (stageKey?: string) => {
+  // `stageKey` names the stage clicked on the deal page's stage bar.
+  const advance = (stageKey: string) => {
     if (reviewMode) {
       hint(S.reviewOnly)
       return
     }
     if (step?.id === "deal-advance") {
       const next = DEMO_DEAL_STAGES[deal.stageIndex + 1]?.key
-      if (stageKey !== undefined && stageKey !== next) {
+      if (stageKey !== next) {
         hint(S.hintFollow(step.title))
         return
       }
@@ -95,14 +96,12 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     hint(S.hintFollow(step?.title ?? ""))
   }
 
-  const openCard = () => {
-    if (reviewMode || snapshot.state !== "DEAL_CREATED") {
-      setCardOpen(true)
-      return
-    }
-    hint(S.hintFollow(step?.title ?? ""))
-    setCardOpen(true)
-  }
+  // A card on the board opens the deal's page, as in the product.
+  const openCard = () => setCardOpen(true)
+  const nextStageKey = DEMO_DEAL_STAGES[deal.stageIndex + 1]?.key
+  const won = deal.wonAt !== null
+  const openAmount = won ? 0 : deal.amount
+  const weighted = Math.round((openAmount * deal.probability) / 100)
 
   const activityCount = (type: DemoActivityRecord["type"]) => (lead?.activities ?? []).filter((entry) => entry.type === type).length
   const daysInFunnel = Math.max(0, Math.round((Date.parse(snapshot.updatedAt) - Date.parse(deal.createdAt)) / 86_400_000))
@@ -111,37 +110,32 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     return (
       <div data-testid="demo-scene-deals-board" className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">{t("totalDeals", { count: 1 })}</p>
+          </div>
+          {/* The pipeline picker appears in the product only with a second pipeline. */}
           <div className="flex flex-wrap items-center gap-2">
-            <div data-tour-id="deals-view-tabs" className="flex items-center gap-1 rounded-lg border border-zinc-200 p-1 dark:border-zinc-700">
+            <div data-tour-id="deals-view-tabs" className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700">
               {([
+                { key: "analytics" as const, Icon: BarChart3, label: tc("analytics") },
                 { key: "kanban" as const, Icon: Columns3, label: tc("kanban") },
                 { key: "list" as const, Icon: List, label: tc("list") },
-                { key: "analytics" as const, Icon: BarChart3, label: tc("analytics") },
               ]).map(({ key, Icon, label }) => (
                 <button
                   key={key}
                   type="button"
-                  title={label}
                   onClick={() => (key === "analytics" ? hint(S.hintDisabled) : setView(key))}
                   aria-current={view === key ? "page" : undefined}
                   className={cn(
-                    "rounded-md px-3 py-1.5 transition-colors",
-                    view === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
+                    view === key ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-4 w-4" /> {label}
                 </button>
               ))}
             </div>
-            <select
-              data-tour-id="deals-pipeline-select"
-              aria-label={t("pipelineCategory")}
-              onChange={() => hint(S.demoButtonHint)}
-              className="rounded-lg border border-zinc-200 bg-background px-3 py-1.5 text-sm text-muted-foreground dark:border-zinc-700"
-            >
-              <option>{t("title")}</option>
-            </select>
             <Button data-tour-id="deals-new" onClick={() => hint(S.demoButtonHint)}>
               <Plus className="mr-1 h-4 w-4" /> {t("newDeal")}
             </Button>
@@ -149,9 +143,16 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
         </div>
 
         <div data-tour-id="deals-summary" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">{S.dealAmount}</span>
-            <span className="text-lg font-bold">{demoMoney(deal.amount)}</span>
+          <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("statPipelineValue")}</p>
+              <p className="mt-1 text-3xl font-semibold leading-none tracking-tight tabular-nums">{demoMoney(openAmount)}</p>
+            </div>
+            <div className="flex flex-wrap items-end gap-x-7 gap-y-3 sm:ml-auto">
+              <SummaryFigure label={t("weightedBar")} value={demoMoney(weighted)} />
+              <SummaryFigure label={t("statWon")} value={demoMoney(won ? deal.amount : 0)} tone="text-emerald-600 dark:text-emerald-400" />
+              <SummaryFigure label={t("statLost")} value="0" tone="text-red-600 dark:text-red-400" />
+            </div>
           </div>
           <div className="mt-3 flex gap-1">
             {DEMO_DEAL_STAGES.map((stage, index) => (
@@ -185,18 +186,14 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                   <div className="min-h-[180px] space-y-2">
                     {cards.map((card) => (
                       <div key={card.id} data-tour-id="deals-card" className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
-                        <button type="button" onClick={() => setSheetOpen(true)} className="block w-full text-left">
+                        <button type="button" onClick={openCard} className="block w-full text-left" {...demoTarget("deal-advance")} {...demoLabel(S.arrowOpenDeal)}>
                           <span className="block truncate text-xs font-medium">{card.title}</span>
-                          <span className="mt-1 block text-[11px] text-muted-foreground">{demoMoney(card.amount)}</span>
-                          <span className="mt-1 block text-[11px] text-muted-foreground">
-                            {S.dealProbability}: {card.probability}%
+                          <span className="mt-1 block truncate text-[11px] text-muted-foreground">{lead?.companyName}</span>
+                          <span className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span>{demoMoney(card.amount)}</span>
+                            <span>{card.probability}%</span>
                           </span>
                         </button>
-                        {index < DEMO_DEAL_STAGES.length - 1 && (
-                          <Button size="sm" variant="outline" className="mt-2 h-auto min-h-9 w-full min-w-0 justify-center whitespace-normal py-1.5 text-center text-[11px] leading-tight" onClick={() => advance()} {...demoTarget("deal-advance")}>
-                            {S.dragHint}
-                          </Button>
-                        )}
                       </div>
                     ))}
                     {cards.length === 0 && (
@@ -230,47 +227,6 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
           </div>
         )}
 
-        {sheetOpen && (
-          <div data-tour-id="deal-detail-sheet" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{deal.title}</p>
-                <p className="text-xs text-muted-foreground">{stageLabel(deal.stageIndex)} · {demoMoney(deal.amount)}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button size="sm" onClick={openCard}>{t("tabOverview")}</Button>
-                <Button size="sm" variant="ghost" onClick={() => setSheetOpen(false)}>{tc("close")}</Button>
-              </div>
-            </div>
-            <div className="mt-3 flex gap-1 border-b">
-              {([
-                { key: "overview" as const, label: t("overview") },
-                { key: "history" as const, label: t("hintColStage") },
-                { key: "activities" as const, label: t("toolbarFeed") },
-                { key: "team" as const, label: tc("assignee") },
-              ]).map((entry) => (
-                <button
-                  key={entry.key}
-                  type="button"
-                  onClick={() => setSheetTab(entry.key)}
-                  aria-current={sheetTab === entry.key ? "page" : undefined}
-                  className={cn(
-                    "-mb-px border-b-2 px-3 py-1.5 text-xs transition-colors",
-                    sheetTab === entry.key ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {entry.label}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 text-sm">
-              {sheetTab === "overview" && <p className="text-muted-foreground">{S.dealProbability}: {deal.probability}% · {S.dealExpectedClose}: {formatDate(deal.expectedCloseAt, locale)}</p>}
-              {sheetTab === "history" && <p className="text-muted-foreground">{stageLabel(deal.stageIndex)} · {formatDate(deal.createdAt, locale)}</p>}
-              {sheetTab === "activities" && <p className="text-muted-foreground">{lead?.timeline.at(-1)?.title ?? "—"}</p>}
-              {sheetTab === "team" && <p className="text-muted-foreground">{lead?.assignedToName ?? "—"}</p>}
-            </div>
-          </div>
-        )}
       </div>
     )
   }
@@ -294,7 +250,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
           stages={stages}
           currentStage={DEMO_DEAL_STAGES[deal.stageIndex].key}
           onStageClick={(stageKey) => advance(stageKey)}
-          stageButtonProps={(stageKey) => (stageKey === "won" ? demoTarget("closed-won-move") : undefined)}
+          stageButtonProps={(stageKey) => (stageKey === "won" ? demoTarget("closed-won-move") : stageKey === nextStageKey ? demoTarget("deal-advance") : undefined)}
         />
       </div>
 
@@ -307,6 +263,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
               <Field label={S.dealExpectedClose} value={formatDate(deal.expectedCloseAt, locale)} />
               <Field label={tc("assignee")} value={lead?.assignedToName ?? "—"} />
               <Field label={t("hintColStage")} value={stageLabel(deal.stageIndex)} />
+              <Field label={S.dealCampaign} value={snapshot.records.campaign.name} />
             </div>
           </div>
           <div data-tour-id="deal-next-best-offers" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
@@ -386,6 +343,15 @@ function Field({ label, value }: { label: string; value: string }) {
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="min-w-0 truncate font-medium">{value}</span>
+    </div>
+  )
+}
+
+function SummaryFigure({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("mt-0.5 text-lg font-semibold leading-tight tabular-nums", tone)}>{value}</p>
     </div>
   )
 }

@@ -176,6 +176,7 @@ describe("GET /api/v1/admin/tenants/[id]/capabilities", () => {
     expect(body.data.capabilities).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "route-field", status: "enabled", entitlementKeys: ["route-field"] }),
+        expect.objectContaining({ id: "brand-monitoring", label: "Brand Monitoring", status: "requires_plan", entitlementKeys: ["social"] }),
         expect.objectContaining({ id: "ai-security-monitoring", status: "requested", entitlementKeys: ["ai_security_monitoring"] }),
       ]),
     )
@@ -183,6 +184,41 @@ describe("GET /api/v1/admin/tenants/[id]/capabilities", () => {
 })
 
 describe("PATCH /api/v1/admin/tenants/[id]/capabilities", () => {
+  it("grants, disables and re-enables brand monitoring while preserving other tenant settings", async () => {
+    const originalFeatures = [...tenant.features, "omnichannel", "social_brand_protection_only"]
+    const originalModules = { ...tenant.modules, omnichannel: true, social_brand_protection_only: true }
+    let stored = { ...tenant, features: originalFeatures, modules: originalModules }
+    vi.mocked(prisma.organization.findUnique).mockImplementation(async () => stored as any)
+    vi.mocked(prisma.organization.update).mockImplementation(async ({ data }) => {
+      stored = { ...stored, ...data } as typeof stored
+      return { id: "t1" } as any
+    })
+
+    for (const action of ["approve", "disable", "approve"] as const) {
+      const enabled = action === "approve"
+      const res = await PATCH(makeReq("PATCH", { capabilityId: "brand-monitoring", action }), makeParams())
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.data.capabilities).toContainEqual(expect.objectContaining({
+        id: "brand-monitoring",
+        enabled,
+        status: enabled ? "enabled" : "disabled",
+        actions: expect.arrayContaining([enabled ? "disable" : "enable"]),
+      }))
+      expect(stored.features).toEqual(enabled ? [...originalFeatures, "social"] : originalFeatures)
+      expect(stored.modules).toEqual({ ...originalModules, social: enabled })
+      expect(stored.settings).toEqual(tenant.settings)
+      expect(stored.addons).toEqual(tenant.addons)
+      expect(logAudit).toHaveBeenLastCalledWith(
+        "admin-org", action, "tenant_capability", "t1:brand-monitoring", tenant.name, expect.any(Object),
+      )
+    }
+    expect(prisma.appInstallation.create).not.toHaveBeenCalled()
+    expect(prisma.appInstallation.update).not.toHaveBeenCalled()
+    expect(ensureWorkforceDefaultProfile).not.toHaveBeenCalled()
+  })
+
   it("approves a requested feature capability by updating features, modules, and request state", async () => {
     // ai-security-monitoring is layered on the `ai` owner module — grant it via addons.
     vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
