@@ -147,6 +147,9 @@ describe("Personnel → Today", () => {
       workdays: [day("id-Айсель", today, "08:55"), day("id-Нигяр", today, "09:25"), day("id-Эльвин", today, "09:00")] })
     await render()
     const cards = [...container.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-board-group"]')]
+    // Two departments make a pair across the row, not two of four columns with emptiness beside (prod, 2026-11-03).
+    expect(byTestId("attendance-board-groups")!.className).toContain("sm:grid-cols-2")
+    expect(byTestId("attendance-board-groups")!.className).not.toMatch(/xl:grid-cols-[34]/)
     expect(cards.map(card => card.textContent!.split(p("boardShow"))[0])).toEqual([p("boardDepartment").replace("{name}", "Продажи"), p("boardDepartment").replace("{name}", "Склад")])
     expect(cards.map(card => card.querySelector('[data-testid="attendance-board-percent"]')!.textContent)).toEqual(["100%", "50%"])
     expect(cards[1].querySelector('[data-testid="attendance-board-facts"]')!.textContent).toContain(p("boardAbsent").replace("{count}", "1"))
