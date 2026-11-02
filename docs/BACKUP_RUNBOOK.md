@@ -725,7 +725,7 @@ logical backup; Kafka, особенно пока transport пассивен, н�
 |---|---|---|
 | PostgreSQL data | encrypted logical dump + authority catalog | exact Object Lock version; PITR ещё open |
 | `/etc/leaddrive/{app,backup,migration}.env` | encrypted snapshot | exact Object Lock version |
-| `/var/lib/leaddrive-v2/uploads`, `help-videos` | encrypted content inventory | host-loss copy; не application-consistent generation |
+| `/var/lib/leaddrive-v2/uploads`, `help-videos` | **на этом хосте offsite-копии НЕТ** (job не запускался ни разу, см. «Почему четыре таймера стоят»); в commissioned-режиме — encrypted content inventory | когда job работает: host-loss copy, не application-consistent generation. Пока не работает: база вернётся из B2, а файлы, на которые она ссылается, — нет. `help-videos` с 2026-11-02 лежат в объектном хранилище отдельно |
 | `/etc/leaddrive/{backup.pgpass,restore-verifier.pgpass,managed-postgres-ca.crt,restore-postgres-ca.crt}` | намеренно не архивируются | reissue/rotate из managed DB control plane, PKI и независимого secret authority; пока такой authority не оформлен — enterprise NO-GO |
 | `/var/lib/leaddrive-v2/state` | operational backfill/provider sentinels, не архивируются этим job | перед GA либо отдельный encrypted operational-state snapshot, либо reviewed deterministic reconstruction с доказательством безопасного повторного запуска |
 | `/var/lib/leaddrive-v2/recovery/event-platform-fund-v1` | временная критичная rollback evidence первого Fund cutover | cutover запрещён без отдельной immutable копии; удалить/retire только после approved burn-in |
@@ -1095,6 +1095,61 @@ age-зашифрованного снимка секретов. **Значит, 
 упирается в закрытую часть age-ключа владельца:** без неё WAL-архив так же
 нечитаем, как дампы. Вторая офлайн-копия этого ключа — отдельная задача, и она
 важнее всего остального в этом разделе.
+
+## Почему четыре таймера стоят, и что из этого следует (2026-11-02)
+
+Сторож с бокса показал на проде: `leaddrive-postgres-backup.timer` и
+`leaddrive-secrets-snapshot.timer` — `disabled`,
+`leaddrive-runtime-files-snapshot.timer` — `not-found`, `leaddrive-log-ship`
+включён и работать не может. Это **не авария и не недосмотр**, у всех четырёх
+одна причина, и она в коде деплоя.
+
+**Причина одна: подсистема бэкапов на этом хосте не commissioned.**
+`event_platform_recovery_gate_mode` в `scripts/server-deploy.sh` читает
+`/etc/leaddrive/backup.env`: если там `BACKUP_ENCRYPTION=age` — режим
+`commissioned`, иначе `plain`. В `plain` деплой **не устанавливает** восемь
+юнитов подсистемы вовсе («установить их на хосте, который никогда не был
+commissioned, значит поставить на часы четыре таймера, чьих программ нет и чья
+offsite-цель больше не существует, — каждое срабатывание было бы гарантированным
+отказом и ежедневной ложной тревогой») и гасит их, если они на хосте уже есть.
+
+Отсюда и разница в состояниях: два `disabled` — это юниты, доставшиеся от
+прежней, commissioned жизни хоста (до переезда с Hetzner), а
+`runtime-files-snapshot` на этом хосте не устанавливался никогда.
+
+**Включать их руками нельзя, и дело не только в правилах.** Деплой намеренно
+падает, если найдёт любой из четырёх запланированным на таком хосте
+(`is still scheduled on a host where the backup subsystem is not
+commissioned`). То есть ручное `systemctl enable` ломает следующий деплой —
+и при этом ничего не бэкапит, потому что off-site цель той эпохи не существует.
+
+**Что из этого НЕ следует.** Бэкапов нет — неверно. База и секреты уезжают
+живой цепочкой, и она к этим юнитам отношения не имеет: прод age-шифрует
+ночной дамп и архив `/etc/leaddrive` ключом владельца и rsync-ит `*.age` на
+dev-бокс, оттуда `leaddrive-b2-mirror` (таймер на боксе, 04:19) копирует их в
+приватный bucket ключом только на запись и сам тревожит в Telegram, если
+источник старше 30 часов. Плюс pgBackRest с 2026-11-01: WAL и
+полные/разностные бэкапы в B2. То есть у базы и секретов три места, а
+`leaddrive-postgres-backup` и `leaddrive-secrets-snapshot` добавили бы к этому
+не сохранность, а **доказуемость** (immutable версии, Object Lock, evidence,
+сертификация) — это цель ISO 27001, а не условие восстановления.
+
+**Что из этого следует, и это единственное важное.**
+`leaddrive-runtime-files-snapshot` — единственный из трёх, который ничего не
+дублирует: он уносит `/var/lib/leaddrive-v2/uploads` и `help-videos`. В
+`uploads` лежат договоры, вложения задач и тикетов, фото и документы MTM, медиа
+чатов и **записи звонков** (`uploads/call-recordings/<orgId>/`). Этих байтов нет
+нигде, кроме прода и локальной пред-деплойной копии на том же диске. База
+вернётся из B2 — файлы, на которые она ссылается, не вернутся. Таблица
+host-loss выше это обещала; теперь в ней написано, как есть.
+
+Чем это закрывается, когда владелец решит: у `snapshot-runtime-files.sh` есть
+режим `--owner-operated <age1…>`, которому нужен только публичный ключ
+владельца, а не вся церемония. Два вопроса перед включением — размер `uploads`
+на проде (записи звонков растут непрерывно, 90 дней хранения) и то, что файлы
+клиентов **уже зашифрованы на диске** ключом организации с 2026-10-22, поэтому
+копия может оказаться дешевле полного ночного tar. Ни того, ни другого не
+измерить из сессии, у которой нет чтения прода.
 
 ## Сторож трёх вещей, которых никто не стерёг (2026-11-02)
 
