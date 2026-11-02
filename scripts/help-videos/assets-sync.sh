@@ -19,9 +19,21 @@
 #   * storage has the manifest, disk does not match it  -> pull
 #   * disk has the files, storage has no manifest       -> publish
 #   * both agree                                        -> do nothing
-# Stage one runs this while the artifact still carries the videos, so it
-# publishes. Once they leave the tree the same call pulls instead, with no
-# change here.
+# Stage one ran this while the artifact still carried the videos, so it
+# published. Now the videos are gone from the artifact and the same call pulls.
+#
+# Two flags exist for the deploy path, and both are about the window before PM2
+# stops:
+#   --pull-only  never upload here. The pre-stop call must not push 265 MB
+#                while the old release is still serving; publishing belongs
+#                after the health checks, where nothing waits on us.
+#   --expect F   the manifest must equal F byte for byte, or nothing is written.
+#                F is the master set this release was built against
+#                (video/player/masters.sha256, shipped in the bundle). Without
+#                it a release would serve whatever set happens to sit in the
+#                bucket, including a half-published or a newer one, and the
+#                per-file sha256 check cannot see that: it only proves the bytes
+#                match the manifest it was handed.
 set -Eeuo pipefail
 
 umask 077
@@ -44,11 +56,15 @@ set +a
 VERSION=""
 LOCAL_DIR=""
 DRY_RUN=0
+PULL_ONLY=0
+EXPECT_FILE=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --version) VERSION="${2:-}"; shift 2 ;;
     --dir) LOCAL_DIR="${2:-}"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --pull-only) PULL_ONLY=1; shift ;;
+    --expect) EXPECT_FILE="${2:-}"; shift 2 ;;
     *) printf '[help-video-sync] FATAL unknown argument: %s\n' "$1" >&2; exit 1 ;;
   esac
 done
@@ -58,6 +74,9 @@ case "$VERSION" in
   '' | *[!A-Za-z0-9._-]*) printf '[help-video-sync] FATAL --version must be [A-Za-z0-9._-]+, got "%s"\n' "$VERSION" >&2; exit 1 ;;
 esac
 [ -n "$LOCAL_DIR" ] || { printf '[help-video-sync] FATAL --dir is required\n' >&2; exit 1; }
+if [ -n "$EXPECT_FILE" ]; then
+  [ -s "$EXPECT_FILE" ] || { printf '[help-video-sync] FATAL --expect %s is missing or empty\n' "$EXPECT_FILE" >&2; exit 1; }
+fi
 case "$HELP_VIDEO_OBJECT_PREFIX" in
   */* | '' | /*) printf '[help-video-sync] FATAL prefix must be a single path segment\n' >&2; exit 1 ;;
 esac
@@ -109,15 +128,15 @@ fi
 if [ "$remote_manifest" = 1 ]; then
   remote_count="$(grep -c . <"$work/remote.sha256" || true)"
   log "storage holds $remote_count files for version $VERSION; disk holds ${local_count:-0}"
-  if cmp -s "$work/local.sha256" "$work/remote.sha256"; then
-    log 'disk already matches storage'
-    printf 'SUMMARY help-video-sync version=%s action=none files=%s\n' "$VERSION" "${remote_count:-0}"
-    exit 0
+  if [ -n "$EXPECT_FILE" ] && ! cmp -s "$EXPECT_FILE" "$work/remote.sha256"; then
+    log "FATAL storage holds a different master set for version $VERSION than this release was built with"
+    log "expected $(grep -c . <"$EXPECT_FILE" || true) file(s) per $EXPECT_FILE; refusing to pull"
+    exit 1
   fi
-
   # Pull: fetch only what is missing or different, verify each file against the
   # manifest, and move it into place only after it verifies. A half-written
-  # video must never be served.
+  # video must never be served. Files on disk that storage does not list are
+  # left alone — they are a previous release's clips, not our business.
   install -d -m 0755 "$LOCAL_DIR"
   pulled=0
   while read -r digest name; do
@@ -135,6 +154,11 @@ if [ "$remote_manifest" = 1 ]; then
     rm -f "$work/$name"
     pulled=$((pulled + 1))
   done <"$work/remote.sha256"
+  if [ "$pulled" -eq 0 ]; then
+    log 'disk already holds every file storage lists'
+    printf 'SUMMARY help-video-sync version=%s action=none files=%s\n' "$VERSION" "${remote_count:-0}"
+    exit 0
+  fi
   log "pulled $pulled file(s) into $LOCAL_DIR"
   printf 'SUMMARY help-video-sync version=%s action=pull files=%s\n' "$VERSION" "$pulled"
   exit 0
@@ -143,10 +167,46 @@ fi
 # No manifest in storage: this release still carries the masters, so publish
 # them. Nothing is published without files to publish — an empty directory
 # would otherwise record an empty manifest and make the pull a no-op for ever.
+if [ "$PULL_ONLY" = 1 ]; then
+  log "no manifest in storage for version $VERSION and --pull-only was given; leaving the disk alone"
+  printf 'SUMMARY help-video-sync version=%s action=none reason=no-manifest files=%s\n' "$VERSION" "${local_count:-0}"
+  exit 0
+fi
 [ "${local_count:-0}" -gt 0 ] || {
   log "FATAL storage has no manifest for $VERSION and $LOCAL_DIR has no help-video files"
   exit 1
 }
+if [ -n "$EXPECT_FILE" ]; then
+  # Publish exactly the set this release was built with, and nothing else.
+  # Not the directory listing: production keeps the clips of every release it
+  # has ever served, so demanding an identical directory would refuse the very
+  # first publish and leave the bucket empty for ever. Extras are ignored; an
+  # expected file that is missing or does not match its digest is a refusal,
+  # because publishing it would hand the next host bytes nobody reviewed.
+  # Uploading the expected file itself as the manifest also makes the stored
+  # manifest byte-identical to the committed one by construction — which is
+  # precisely what the pull compares.
+  missing=0
+  while read -r digest name; do
+    [ -n "${name:-}" ] || continue
+    if [ ! -f "$LOCAL_DIR/$name" ]; then
+      log "expected master missing on disk: $name"
+      missing=$((missing + 1))
+      continue
+    fi
+    got="$(sha256sum -- "$LOCAL_DIR/$name" | awk '{print $1}')"
+    [ "$got" = "$digest" ] || {
+      log "expected master does not match its digest: $name"
+      missing=$((missing + 1))
+    }
+  done <"$EXPECT_FILE"
+  [ "$missing" -eq 0 ] || {
+    log "FATAL $missing of the master(s) this release expects are missing or changed in $LOCAL_DIR; refusing to publish"
+    exit 1
+  }
+  cp -- "$EXPECT_FILE" "$work/local.sha256"
+  local_count="$(grep -c . <"$work/local.sha256" || true)"
+fi
 [ "$DRY_RUN" = 0 ] || {
   log "would publish ${local_count} file(s) as version $VERSION"
   printf 'SUMMARY help-video-sync version=%s action=would-publish files=%s\n' "$VERSION" "$local_count"

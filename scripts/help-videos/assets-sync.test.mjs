@@ -244,19 +244,197 @@ test('the accepted filenames are the serving route\'s own pattern', () => {
   assert.equal(scriptPattern.replace(/\\\\/g, '\\'), routePattern);
 });
 
-test('the deploy publishes outside the downtime window, and does not pull yet', () => {
-  // The artifact's videos are copied into the runtime directory with PM2
-  // stopped. Moving 266 MB there would add minutes of downtime to every
-  // deploy, so the publish waits until the release is healthy. The pull is
-  // deliberately not on the deploy path until it can stage and rename.
+test('--pull-only never uploads, even with a bucket that has nothing', () => {
+  // The pre-handoff call must not push 265 MB while the old release is still
+  // answering. With no manifest in storage it leaves both sides alone.
+  const w = world();
+  try {
+    seedLocal(w);
+    const out = run(w, ['--pull-only']);
+    assert.equal(out.status, 0, out.stdout);
+    assert.match(out.stdout, /action=none reason=no-manifest/);
+    assert.ok(!existsSync(join(w.bucket, 'help-videos/v1')), 'something was uploaded under --pull-only');
+    for (const n of NAMES) assert.ok(existsSync(join(w.local, n)), `${n} was removed from disk`);
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('--pull-only still pulls what storage holds', () => {
+  const w = world();
+  try {
+    seedLocal(w);
+    assert.equal(run(w).status, 0);
+    for (const n of NAMES) rmSync(join(w.local, n));
+    const out = run(w, ['--pull-only']);
+    assert.equal(out.status, 0, out.stdout);
+    assert.match(out.stdout, /action=pull files=3/);
+    for (const n of NAMES) assert.ok(existsSync(join(w.local, n)), `${n} was not pulled`);
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('--expect refuses a stored set that is not the one this release was built with', () => {
+  // The per-file sha256 check cannot catch this: it proves the bytes match the
+  // manifest it was handed, not that the manifest is the right one. Without
+  // this a release would serve whatever set happens to sit under its version.
+  const w = world();
+  try {
+    seedLocal(w);
+    assert.equal(run(w).status, 0);
+    const expected = join(w.dir, 'masters.sha256');
+    writeFileSync(expected, readFileSync(join(w.bucket, 'help-videos/v1/manifest.sha256'), 'utf8'));
+    // Storage gains a clip this release does not know about.
+    seedLocal(w, ['leads.az.VOICE.mp4']);
+    rmSync(join(w.bucket, 'help-videos/v1/manifest.sha256'));
+    assert.equal(run(w).status, 0, 'republishing the wider set should succeed');
+    for (const n of NAMES) rmSync(join(w.local, n));
+    rmSync(join(w.local, 'leads.az.VOICE.mp4'));
+
+    const out = run(w, ['--pull-only', '--expect', expected]);
+    assert.notEqual(out.status, 0, out.stdout);
+    assert.match(out.stdout, /different master set/);
+    assert.equal(readdirSync(w.local).length, 0, 'files were installed despite the refusal');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('--expect refuses to publish a master that is missing or changed on disk', () => {
+  const w = world();
+  try {
+    seedLocal(w);
+    const expected = join(w.dir, 'masters.sha256');
+    writeFileSync(
+      expected,
+      [`${'0'.repeat(64)}  boards.ru.VOICE.mp4`, `${'0'.repeat(64)}  never-recorded.az.VOICE.mp4`, ''].join('\n'),
+    );
+    const out = run(w, ['--expect', expected]);
+    assert.notEqual(out.status, 0, out.stdout);
+    assert.match(out.stdout, /does not match its digest: boards\.ru\.VOICE\.mp4/);
+    assert.match(out.stdout, /missing on disk: never-recorded\.az\.VOICE\.mp4/);
+    assert.match(out.stdout, /2 of the master\(s\) this release expects/);
+    assert.ok(!existsSync(join(w.bucket, 'help-videos/v1/manifest.sha256')), 'a wrong set was published anyway');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('--expect publishes the release\'s own set and ignores what else is on disk', () => {
+  // Production keeps the clips of every release it has ever served. Demanding
+  // an identical directory would have refused the very first publish — the one
+  // that moves the masters into storage at all — and left the bucket empty.
+  const w = world();
+  try {
+    seedLocal(w, [...NAMES, 'retired.az.VOICE.mp4']);
+    const expected = join(w.dir, 'masters.sha256');
+    writeFileSync(
+      expected,
+      `${[...NAMES]
+        .sort()
+        .map((n) => `${digest(join(w.local, n))}  ${n}`)
+        .join('\n')}\n`,
+    );
+    const out = run(w, ['--expect', expected]);
+    assert.equal(out.status, 0, out.stdout);
+    assert.match(out.stdout, /action=publish files=3/);
+    const stored = readdirSync(join(w.bucket, 'help-videos/v1'));
+    assert.ok(!stored.includes('retired.az.VOICE.mp4'), 'a file outside the release set was published');
+    // Byte-identical by construction, which is what the pull's --expect compares.
+    assert.equal(
+      readFileSync(join(w.bucket, 'help-videos/v1/manifest.sha256'), 'utf8'),
+      readFileSync(expected, 'utf8'),
+    );
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('a leftover clip on disk does not look like a difference for ever', () => {
+  const w = world();
+  try {
+    seedLocal(w);
+    assert.equal(run(w).status, 0);
+    seedLocal(w, ['retired.az.VOICE.mp4']);
+    const out = run(w, ['--pull-only']);
+    assert.equal(out.status, 0, out.stdout);
+    assert.match(out.stdout, /action=none files=3/, 'an extra file on disk was read as a pending pull');
+    assert.ok(existsSync(join(w.local, 'retired.az.VOICE.mp4')), 'a file storage does not list was removed');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('the committed master manifest is the shape both sides read', () => {
+  // Since 2026-11-02 this file, not the working tree, is what says a help video
+  // exists: the deploy pulls against it and the demo/help tests assert against
+  // it. A malformed or unsorted line would make the byte-for-byte comparison
+  // with the stored manifest fail on a healthy release.
+  const serve = readFileSync('src/lib/help-videos/serve.ts', 'utf8');
+  const routePattern = new RegExp(serve.match(/HELP_VIDEO_FILE_PATTERN = (\/\^.+\$\/)/)[1].slice(1, -1));
+  const lines = readFileSync('video/player/masters.sha256', 'utf8').split('\n');
+  assert.equal(lines.at(-1), '', 'the manifest must end with a newline');
+  const names = [];
+  for (const line of lines.slice(0, -1)) {
+    const match = /^([0-9a-f]{64}) {2}(\S+)$/.exec(line);
+    assert.ok(match, `cannot read manifest line "${line}"`);
+    assert.match(match[2], routePattern, `${match[2]} is not a name the route would serve`);
+    names.push(match[2]);
+  }
+  assert.ok(names.length > 0, 'the manifest lists no masters');
+  assert.equal(new Set(names).size, names.length, 'a name is listed twice');
+  assert.deepEqual(names, [...names].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), 'the manifest is not in C order');
+  // Posters and videos come in pairs: a video without its poster advertises a
+  // card whose <video> cannot play.
+  for (const name of names) {
+    if (!name.endsWith('.VOICE.mp4')) continue;
+    assert.ok(names.includes(name.replace('.VOICE.mp4', '.poster.jpg')), `${name} has no poster`);
+  }
+});
+
+test('the deploy pulls before the handoff and publishes after the health checks', () => {
+  // Stage two (2026-11-02): the artifact carries no videos, so the masters
+  // arrive from storage while the old release is still answering — the 265 MB
+  // copy that used to run with PM2 stopped is gone. Publishing stays after the
+  // health checks, where nothing waits on it.
   const deploy = readFileSync('scripts/server-deploy.sh', 'utf8');
-  const stopPoint = deploy.indexOf('cp -a "$BUNDLED_HELP_VIDEO_DIR/."');
+  assert.doesNotMatch(deploy, /BUNDLED_HELP_VIDEO_DIR/, 'the deploy still reads videos out of the artifact');
+  const pull = deploy.indexOf('--pull-only');
+  const stop = deploy.indexOf('log "Stopping old processes..."');
   const publish = deploy.indexOf('Step 9c: Publish the help-video masters');
   const cleanup = deploy.indexOf('Step 10: Cleanup');
-  assert.ok(stopPoint > 0 && publish > 0 && cleanup > 0);
-  assert.ok(stopPoint < publish, 'the publish must not sit in the PM2-stopped window');
-  assert.ok(publish < cleanup);
+  assert.ok(pull > 0 && stop > 0 && publish > 0 && cleanup > 0);
+  assert.ok(pull < stop, 'the pull must happen before the processes are stopped');
+  assert.ok(publish > stop && publish < cleanup, 'the publish must stay after the handoff');
+
+  const pullStep = deploy.slice(pull - 2000, stop);
+  assert.match(pullStep, /--expect "\$HELP_VIDEO_MASTERS_MANIFEST"/, 'the pull does not pin the expected set');
+  assert.match(pullStep, /WARNING: pulling the help-video masters failed/);
+  assert.doesNotMatch(pullStep, /^\s*(fatal|exit 1)\b/m, 'a failed pull must not fail an otherwise healthy release');
+  assert.match(deploy, /help-videos=\$HELP_VIDEO_PULL_ACTION/, 'the outcome must reach the SUMMARY line');
+
   const step = deploy.slice(publish, cleanup);
   assert.match(step, /WARNING: publishing the help-video masters failed/);
-  assert.doesNotMatch(step, /\bfatal\b/, 'a failed publish must not fail a healthy deploy');
+  assert.doesNotMatch(step, /^\s*(fatal|exit 1)\b/m, 'a failed publish must not fail a healthy deploy');
+});
+
+test('the puller and the manifest are release-owned, and the bytes are not in the artifact', () => {
+  // The whole of stage one was undone by one missing file: deploy.yml never
+  // copied the puller into the bundle, and the host only said so in a WARNING
+  // at its last step. Both ends assert it now.
+  const workflow = readFileSync('.github/workflows/deploy.yml', 'utf8');
+  assert.doesNotMatch(workflow, /cp -r video\/player/, 'the artifact still carries the help-video bytes');
+  assert.match(workflow, /cp video\/player\/masters\.sha256 \.next\/standalone\/help-videos\/masters\.sha256/);
+  assert.match(workflow, /cp scripts\/help-videos\/assets-sync\.sh \.next\/standalone\/scripts\/help-videos\//);
+  assert.match(workflow, /the artifact must not carry help-video bytes any more/);
+
+  const deploy = readFileSync('scripts/server-deploy.sh', 'utf8');
+  const validate = deploy.slice(
+    deploy.indexOf('validate_release_owned_operations_artifact() {'),
+    deploy.indexOf('release artifact is missing its cron-script manifest'),
+  );
+  assert.match(validate, /missing executable help-video sync script/);
+  assert.match(validate, /missing the help-video master manifest/);
+  assert.match(validate, /missing the help-video asset version/);
 });

@@ -1109,19 +1109,42 @@ jobs:
           fi
           echo "::notice::Service worker staged ($(wc -c < .next/standalone/public/sw.js) bytes)"
 
-          if [ -d video/player ]; then
-            mkdir -p .next/standalone/help-videos/player
-            cp -r video/player/. .next/standalone/help-videos/player/
-            HELP_VIDEO_ASSET_VERSION="$(
-              sed -nE 's/^const HELP_VIDEO_ASSET_VERSION = "([^"]+)"$/\1/p' \
-                src/content/help/video-assets.ts
-            )"
-            [ -n "$HELP_VIDEO_ASSET_VERSION" ] || {
-              echo "::error::Could not read HELP_VIDEO_ASSET_VERSION"
-              exit 1
-            }
-            printf '%s\n' "$HELP_VIDEO_ASSET_VERSION" > .next/standalone/help-videos/asset-version
+          # The help-video masters do NOT ride in the artifact (2026-11-02):
+          # 265 MB in every tarball, twice on the production disk, and copied
+          # once more on every deploy with PM2 already stopped. Production pulls
+          # them from object storage before the handoff instead. What ships is
+          # the version the code asks for, the manifest of the exact master set
+          # this release was built against — so the pull can refuse a different
+          # one — and the puller itself. Stage one shipped the puller nowhere
+          # and the host reported it in a WARNING at the very last step of the
+          # deploy, which is exactly why nobody saw it for a day. Hence the
+          # assertions: here, where they are free, and again on the host.
+          mkdir -p .next/standalone/help-videos .next/standalone/scripts/help-videos
+          HELP_VIDEO_ASSET_VERSION="$(
+            sed -nE 's/^const HELP_VIDEO_ASSET_VERSION = "([^"]+)"$/\1/p' \
+              src/content/help/video-assets.ts
+          )"
+          [ -n "$HELP_VIDEO_ASSET_VERSION" ] || {
+            echo "::error::Could not read HELP_VIDEO_ASSET_VERSION"
+            exit 1
+          }
+          printf '%s\n' "$HELP_VIDEO_ASSET_VERSION" > .next/standalone/help-videos/asset-version
+          cp video/player/masters.sha256 .next/standalone/help-videos/masters.sha256
+          cp scripts/help-videos/assets-sync.sh .next/standalone/scripts/help-videos/assets-sync.sh
+          chmod +x .next/standalone/scripts/help-videos/assets-sync.sh
+          if [ ! -x .next/standalone/scripts/help-videos/assets-sync.sh ]; then
+            echo "::error::the help-video puller is not executable in the artifact"
+            exit 1
           fi
+          if [ ! -s .next/standalone/help-videos/masters.sha256 ]; then
+            echo "::error::the help-video master manifest is missing from the artifact"
+            exit 1
+          fi
+          if [ -e .next/standalone/help-videos/player ]; then
+            echo "::error::the artifact must not carry help-video bytes any more"
+            exit 1
+          fi
+          echo "::notice::Help-video masters stay in object storage; the artifact carries the manifest ($(grep -c . < .next/standalone/help-videos/masters.sha256) files, version $HELP_VIDEO_ASSET_VERSION)"
 
           cp -r prisma .next/standalone/prisma
 
