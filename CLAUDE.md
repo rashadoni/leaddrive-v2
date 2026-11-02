@@ -303,11 +303,16 @@
   ночной дамп и архив `/etc/leaddrive` ключом владельца и rsync-ит `*.age` на
   dev-бокс, оттуда таймер `leaddrive-b2-mirror` кладёт их в B2 и сам тревожит,
   если источник старше 30 ч; плюс pgBackRest. Три места.
-- **Чего правда нет: offsite-копии файлов клиентов.** `uploads` (договоры,
-  вложения, фото MTM, медиа чатов, записи звонков) живут только на проде.
-  База вернётся из B2, файлы — нет. Закрывается
-  `snapshot-runtime-files.sh --owner-operated <age1…>` — нужен только публичный
-  ключ владельца, но это прод-действие и вопрос размера.
+- **Копия файлов клиентов — `uploads-offsite-mirror.sh`** (таймер
+  `leaddrive-uploads-offsite`, 05:20 UTC): по файлу, потоком через age на ключ
+  владельца, на ключах из `wal-archive.env`, прогон ограничен по байтам и
+  времени, из bucket ничего не удаляется. Не церемониальный
+  `snapshot-runtime-files.sh`: тому нужен commissioned env и полный tar дерева
+  в tmpfs. **`uploads/call-recordings` в копию не входит** — у них свой срок
+  90 дней, и вечная копия отменила бы его молча. Ставится на проде один раз
+  (`uploads-offsite-install.sh --recipient age1…`), программа приезжает
+  деплоем; сторож читает `/var/lib/leaddrive-uploads-offsite/state` и тревожит
+  на 30/50 ч. Порядок — `docs/BACKUP_RUNBOOK.md`, «Копия файлов клиентов».
 - **Новое условие, без которого прод нельзя считать здоровым, — в
   `WATCHED_JOBS` / `assessPage` / `assessDisks`**, и с тестом в
   `scripts/backup/host-health-contract.test.mjs` (гейт в `static-checks`).

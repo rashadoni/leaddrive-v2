@@ -1,0 +1,39 @@
+[Unit]
+Description=LeadDrive offsite copy of client files (uploads) — streamed through age into object storage
+Documentation=file:/opt/leaddrive-v2/docs/BACKUP_RUNBOOK.md
+# A failed run is reported by state, not by this unit: the host health watch
+# reads /var/lib/leaddrive-uploads-offsite/state and says so. The unit
+# exits non-zero only when nothing at all could be sent.
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Runs as root: the files are mode 0600 under a root-owned runtime directory,
+# and the bucket credentials live in a root-only env file.
+ExecStart=/usr/local/lib/leaddrive-v2/ops/current/backup/uploads-offsite-mirror.sh --run
+# A night's work is bounded inside the script (--max-bytes, --max-seconds); the
+# timeout is the outer fence for a hung upload.
+TimeoutStartSec=45min
+UMask=0077
+Nice=15
+IOSchedulingClass=idle
+
+PrivateTmp=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectSystem=strict
+ReadOnlyPaths=-/etc/leaddrive /var/lib/leaddrive-v2/uploads
+ReadWritePaths=-/var/lib/leaddrive-uploads-offsite
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

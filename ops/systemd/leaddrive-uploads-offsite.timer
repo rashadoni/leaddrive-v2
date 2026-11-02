@@ -1,0 +1,15 @@
+[Unit]
+Description=Copy new client files offsite once a night
+
+[Timer]
+# After pgBackRest (01:10) and clear of the nightly dump (~03:30), so three
+# jobs do not read the same disk at once. Each run is bounded, so a first
+# catch-up spreads over as many nights as it needs.
+OnCalendar=*-*-* 05:20:00 UTC
+AccuracySec=5min
+RandomizedDelaySec=15min
+Persistent=true
+Unit=leaddrive-uploads-offsite.service
+
+[Install]
+WantedBy=timers.target

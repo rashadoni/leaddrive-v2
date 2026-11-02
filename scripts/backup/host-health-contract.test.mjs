@@ -20,6 +20,7 @@ import {
   WATCHED_MOUNTS,
   assessBackupFiles,
   assessDisks,
+  assessUploadsOffsite,
   assessJobs,
   assessPage,
   checkPage,
@@ -35,10 +36,11 @@ const WATCHED = WATCHED_JOBS[0];
 const DUMP = WATCHED_BACKUP_FILES.find((f) => f.key === 'dump');
 const SECRETS = WATCHED_BACKUP_FILES.find((f) => f.key === 'secrets');
 
-function probe({ jobs = [], disks = [], files = [], dir = '', newest = '', now = NOW } = {}) {
+function probe({ jobs = [], disks = [], files = [], dir = '', newest = '', offsite = null, now = NOW } = {}) {
   return parseProbe(
     [
       `now=${Math.round(now / 1000)}`,
+      ...(offsite ? Object.entries({ offsite: 'present', ...offsite }).map(([k, v]) => `${k}=${v}`) : []),
       ...(dir ? [`backupdir=${dir}`] : []),
       ...(newest ? [`newest=${newest}`] : []),
       ...files.map((f) => `file=${f.key} found=${f.found ?? ''}`),
@@ -209,6 +211,43 @@ test('free space is judged per filesystem, by percent and by gibibytes', () => {
   const empty = assessDisks(probe({ disks: [{ mount: '/', fs: '/dev/sdc1', total: 100 * gib, avail: (DISK_CRIT_GIB - 1) * gib }] }));
   assert.equal(empty[0].critical, true);
   assert.deepEqual(assessDisks(probe({ disks: [{ mount: '/x', fs: 'none', total: 0, avail: 0 }] })), []);
+});
+
+test('the offsite copy of client files is silent until it exists', () => {
+  // It is not installed on every host, and the open gap is recorded in the
+  // runbook. A watch that reds on a decision not yet taken is noise.
+  assert.deepEqual(assessUploadsOffsite(probe({})), []);
+});
+
+test('an offsite copy that stopped is an alarm', () => {
+  const at = (hours, extra = {}) => assessUploadsOffsite(
+    probe({ offsite: { offsite_ran_at: agoHours(hours), offsite_status: 'ok', offsite_pending: 0, ...extra } }),
+  );
+  assert.deepEqual(at(5), []);
+  assert.deepEqual(at(29), []);
+  assert.equal(at(31)[0].critical, false);
+  assert.match(at(31)[0].text, /не делалась 31 ч/);
+  assert.equal(at(51)[0].critical, true);
+
+  // The backlog is named in the message, because "no copy for two days" reads
+  // differently when four thousand files are still waiting.
+  assert.match(at(51, { offsite_pending: 4000 })[0].text, /в очереди 4000 файл/);
+
+  // Its own verdict is forwarded even while the file is fresh.
+  const refused = assessUploadsOffsite(probe({ offsite: { offsite_ran_at: agoHours(1), offsite_status: 'crit', offsite_pending: 3, offsite_failures: 3 } }));
+  assert.equal(refused[0].critical, true);
+  assert.match(refused[0].text, /не отправила ни одного файла \(отказов 3\)/);
+  const partial = assessUploadsOffsite(probe({ offsite: { offsite_ran_at: agoHours(1), offsite_status: 'warn', offsite_pending: 1, offsite_failures: 1 } }));
+  assert.equal(partial[0].critical, false);
+
+  // A state file without a run time is broken, not healthy.
+  const broken = assessUploadsOffsite(probe({ offsite: { offsite_ran_at: '', offsite_status: 'ok' } }));
+  assert.equal(broken[0].critical, true);
+});
+
+test('the probe reads the offsite state only if it is there', () => {
+  const program = probeProgram();
+  assert.match(program, /if \[ -f \/var\/lib\/leaddrive-uploads-offsite\/state \]; then cat/);
 });
 
 test('the page verdict says whether the application is alive', () => {
