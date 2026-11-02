@@ -595,6 +595,19 @@ jobs:
           SOCIAL_FENCE_OPENERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           SOCIAL_FENCE_OPENERS_DB_GATE: required
 
+      - name: Migration quiet window database gate
+        # The deploy refuses to migrate while anything is live, and until
+        # 2026-11-02 it read a lease left by a killed scheduler as live work:
+        # one deploy could block the next deploy's migration for the whole TTL
+        # of an abandoned job, ten or fifteen minutes (run 41480027867). The
+        # deploy's own SQL is lifted out of the script and run here against
+        # rows shaped like the ones production leaves behind, because "renewed
+        # recently" cannot be asserted against a mock.
+        run: npx vitest run src/__tests__/deploy-migration-window-postgres.test.ts
+        env:
+          DEPLOY_MIGRATION_WINDOW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEPLOY_MIGRATION_WINDOW_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Where an employee spent a break is not stored, read off the table
         # after the real GPS ingestion handlers ran on a real Postgres. Until

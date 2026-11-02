@@ -1140,14 +1140,58 @@ wait_for_migration_window() {
          AND state <> 'idle'" 2>/dev/null) || fatal "cannot inspect active database transactions"
 
     live_system_jobs=0
+    stale_system_jobs=0
+    system_job_detail=""
     table_exists=$(psql "$MIGRATION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -At -c \
       "SELECT to_regclass('public.system_job_leases') IS NOT NULL" 2>/dev/null) || \
       fatal "cannot inspect system job lease availability"
     if [ "$table_exists" = "t" ]; then
+      # A lease counts as live only while it is being RENEWED, not merely
+      # because its expiry is still in the future.
+      #
+      # Why: every deploy stops the scheduler process (pm2 delete
+      # leaddrive-v2-jobs) without releasing what it held, so a job caught
+      # mid-run leaves status='running' with an expiry up to its whole TTL
+      # ahead — and those TTLs are 10 and 15 minutes (finance-deadlines,
+      # social-poll-all, mtm-auto-checkout). Nothing holds that lease any more,
+      # but the old check saw a future expiry and waited for it. One deploy
+      # could therefore block the NEXT deploy's migration for a quarter of an
+      # hour; it did on 2026-11-02, five minutes of `system=1` with tx=0.
+      #
+      # withJobLease renews every ttlMs/3 (src/lib/cron/job-lease.ts), and each
+      # renewal writes both "leaseUntil" and "updatedAt" from the same
+      # CURRENT_TIMESTAMP — so a lease carries its own TTL as
+      # "leaseUntil" - "updatedAt", and a living one is never older than a
+      # third of it. Half the TTL is a missed heartbeat and a half of slack:
+      # generous for a stalled event loop, and far short of the whole TTL an
+      # orphan would otherwise claim. Measured against a real PostgreSQL on
+      # 2026-11-02: a 15-minute lease killed eight minutes ago reads as
+      # orphaned, one renewed a minute ago reads as live.
+      #
+      # Nothing is deleted here: an orphan expires on its own and a later tick
+      # recovers it. This only stops the deploy from waiting for a worker that
+      # no longer exists.
       live_system_jobs=$(psql "$MIGRATION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -At -c \
         "SELECT count(*) FROM system_job_leases
-         WHERE status = 'running' AND \"leaseUntil\" > now()" 2>/dev/null) || \
+         WHERE status = 'running' AND \"leaseUntil\" > now()
+           AND \"updatedAt\" > now() - ((\"leaseUntil\" - \"updatedAt\") * 0.5)" 2>/dev/null) || \
         fatal "cannot inspect system job leases"
+      stale_system_jobs=$(psql "$MIGRATION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -At -c \
+        "SELECT count(*) FROM system_job_leases
+         WHERE status = 'running' AND \"leaseUntil\" > now()
+           AND \"updatedAt\" <= now() - ((\"leaseUntil\" - \"updatedAt\") * 0.5)" 2>/dev/null) || \
+        fatal "cannot inspect abandoned system job leases"
+      # Named, not counted: the one thing missing when this gate failed was
+      # knowing WHICH lease was in the way and whether anybody still held it.
+      system_job_detail=$(psql "$MIGRATION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -At -c \
+        "SELECT coalesce(string_agg(
+           name || ' (renewed ' || round(extract(epoch from now() - \"updatedAt\")) ||
+           's ago, ttl ' || round(extract(epoch from \"leaseUntil\" - \"updatedAt\")) || 's, ' ||
+           CASE WHEN \"updatedAt\" > now() - ((\"leaseUntil\" - \"updatedAt\") * 0.5)
+                THEN 'live' ELSE 'abandoned' END || ')', ', ' ORDER BY name), '')
+         FROM system_job_leases
+         WHERE status = 'running' AND \"leaseUntil\" > now()" 2>/dev/null) || \
+        system_job_detail=""
     fi
 
     live_collector_jobs=0
@@ -1178,7 +1222,11 @@ wait_for_migration_window() {
        [ "$live_system_jobs" = "0" ] && \
        [ "$live_collector_jobs" = "0" ] && \
        [ "$live_outbound_jobs" = "0" ]; then
-      log "Migration quiet window verified: no active transactions or live job leases"
+      if [ "${stale_system_jobs:-0}" != "0" ]; then
+        log "Migration quiet window verified; $stale_system_jobs abandoned job lease(s) disregarded: $system_job_detail"
+      else
+        log "Migration quiet window verified: no active transactions or live job leases"
+      fi
       return 0
     fi
 
@@ -1188,12 +1236,14 @@ wait_for_migration_window() {
       # line that matters.
       if [ $((attempt % 6)) -eq 1 ] || [ "$attempt" -eq 1 ]; then
         log "Waiting for migration quiet window (tx=$active_transactions system=$live_system_jobs collector=$live_collector_jobs outbound=$live_outbound_jobs; attempt $attempt/$attempts)"
+        [ -z "$system_job_detail" ] || log "  job leases: $system_job_detail"
       fi
       sleep 5
     fi
   done
 
-  fatal "migration quiet window unavailable after $((attempts * 5)) seconds (tx=$active_transactions system=$live_system_jobs collector=$live_collector_jobs outbound=$live_outbound_jobs)"
+  [ -z "$system_job_detail" ] || log "Job leases at the last attempt: $system_job_detail"
+  fatal "migration quiet window unavailable after $((attempts * 5)) seconds (tx=$active_transactions system=$live_system_jobs collector=$live_collector_jobs outbound=$live_outbound_jobs stale_system=$stale_system_jobs)"
 }
 
 cleanup_event_platform_cutover_lock() {
