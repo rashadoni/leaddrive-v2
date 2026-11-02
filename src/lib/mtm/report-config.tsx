@@ -59,8 +59,8 @@ export function reportRowHref(type: ReportType, row: Record<string, unknown>): s
 
 /** `day` is a calendar day stored as a date; `action` is a visit action's code, said in words. */
 export type ColKind = "text" | "status" | "role" | "number" | "percent" | "minutes" | "date" | "day" | "action"
-  /** Seconds as m:ss; metres; the reasons a visit is suspicious; a last visit that may be «never»; whole days. */
-  | "seconds" | "meters" | "reasons" | "lastVisit" | "days"
+  /** Seconds as m:ss; metres; the reasons a visit is suspicious; a last visit that may be «never»; whole days; hours, a dash when not counted. */
+  | "seconds" | "meters" | "reasons" | "lastVisit" | "days" | "hours"
 export interface ReportColumn { key: string; labelKey: string; kind: ColKind }
 export interface ReportDef { icon: LucideIcon; iconClass: string; columns: ReportColumn[] }
 
@@ -215,7 +215,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
       { key: "firstVisit", labelKey: "colFirstVisit", kind: "text" },
       { key: "lastVisit", labelKey: "colLastVisitTime", kind: "text" },
       { key: "end", labelKey: "colDayEnd", kind: "text" },
-      { key: "hours", labelKey: "colHours", kind: "number" },
+      { key: "hours", labelKey: "colHours", kind: "hours" },
       { key: "visits", labelKey: "colVisits", kind: "number" },
       { key: "atClients", labelKey: "colAtClients", kind: "minutes" },
     ],

@@ -79,6 +79,17 @@ describe("suspicious: visits that do not look like visits", () => {
     expect(report.rows.find((row) => row.id === "far")?.distance).toBeGreaterThan(1000)
     expect(summary(report)).toMatchObject({ "sum.suspicious": 3, "sum.suspiciousShare": 75, "sum.shortVisits": 1, "sum.farVisits": 1, "sum.noGpsVisits": 1 })
   })
+
+  it("names a visit nobody finished — longer than three hours", async () => {
+    const base = { status: "CHECKED_OUT", checkInLat: 40.4093, checkInLng: 49.8671, checkInCustomerLat: 40.4093, checkInCustomerLng: 49.8671, checkInGeofenceRadius: 100, agent: { name: "Seymur" }, customer: { name: "Apteka" } }
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([
+      { ...base, id: "long-ok", checkInAt: new Date("2026-11-03T08:00:00Z"), duration: 180 },
+      { ...base, id: "forgotten", checkInAt: new Date("2026-11-03T09:00:00Z"), duration: 7321 },
+    ] as never)
+    const report = await computeFieldReport("suspicious", input)
+    expect(report.rows.map((row) => [row.id, row.reasons])).toEqual([["forgotten", "LONG"]])
+    expect(summary(report)).toMatchObject({ "sum.suspicious": 1, "sum.longVisits": 1 })
+  })
 })
 
 describe("presentations: what was really shown", () => {
@@ -123,6 +134,19 @@ describe("field_day: when the day began, the first and the last visit, the hours
     expect(report.rows.find((row) => row.id === "w-2")).toMatchObject({ end: "05.11 10:33", closedLater: true, hours: 25.2 })
     expect(report.rows.find((row) => row.id === "w-1")).toMatchObject({ end: "17:00", closedLater: false })
     expect(summary(report)).toMatchObject({ "sum.avgHours": 8 })
+  })
+
+  it("leaves the minutes of a visit nobody finished out of the time at clients", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { id: "w-1", agentId: "a-seymur", workDate: new Date("2026-11-03T00:00:00Z"), startedAt: new Date("2026-11-03T05:00:00Z"), completedAt: null, totalPausedSeconds: 0, agent: { name: "Seymur" } },
+    ] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([
+      { agentId: "a-seymur", checkInAt: new Date("2026-11-03T06:30:00Z"), duration: 20 },
+      { agentId: "a-seymur", checkInAt: new Date("2026-11-03T12:10:00Z"), duration: 7321 },
+    ] as never)
+    const report = await computeFieldReport("field_day", input)
+    // An open day has no hours — the screen shows a dash, not a zero.
+    expect(report.rows[0]).toMatchObject({ visits: 2, atClients: 20, hours: null, end: "" })
   })
 })
 

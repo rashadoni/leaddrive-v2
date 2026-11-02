@@ -21147,7 +21147,8 @@
     "reason": {
       "NO_GPS": "no position",
       "FAR": "far from the client",
-      "SHORT": "too short"
+      "SHORT": "too short",
+      "LONG": "too long — not finished"
     },
     "neverVisited": "none yet",
     "metersShort": "m",
@@ -21181,11 +21182,11 @@
     "colContacts": "Doctors",
     "type_joint_evaluations_desc": "How managers rated their agents on joint visits: the average and the weakest point. Agents never see this report.",
     "type_joint_evaluations": "Joint visit ratings",
-    "type_field_day_desc": "Day start, first and last visit, day end, hours worked and time at clients.",
+    "type_field_day_desc": "Day start, first and last visit, day end, hours worked and time at clients (unfinished visits longer than 3 hours are not counted).",
     "type_field_day": "Day in the field",
     "type_presentations_desc": "Which product was shown how often, to how many clients, and for how long.",
     "type_presentations": "Presentations",
-    "type_suspicious_desc": "Visits shorter than 5 minutes, started far from the client, or without a position.",
+    "type_suspicious_desc": "Visits shorter than 5 minutes, longer than 3 hours (never finished), started far from the client, or without a position.",
     "type_suspicious": "Suspicious visits",
     "type_not_visited_desc": "Clients nobody came to in the period — VIP and A first, then the longest forgotten.",
     "type_not_visited": "Clients not visited",
@@ -21330,6 +21331,7 @@
       "noGpsVisits": "No position",
       "farVisits": "Far away",
       "shortVisits": "Too short",
+      "longVisits": "Too long",
       "suspiciousShare": "Share of visits",
       "suspicious": "Suspicious",
       "notVisitedShare": "Of all doctors",
