@@ -63,7 +63,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true, phone: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
-    const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, phone: true, position: true, managerId: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
+    const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, phone: true, position: true, personnelNumber: true, managerId: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
       user: { select: { identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
       identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
       auditLogs: { where: { organizationId, metadataKind: "mtm_attendance_employment", OR: [
@@ -92,7 +92,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
       return { id: user.id, name: user.name, existingRole: card?.role ?? null, existingTeamId: card?.teamId ?? null,
         eligible: false }
     }), employees: tracked.map(card => ({ id: card.id, name: card.name, role: card.role, status: card.status, teamName: card.team?.name ?? null,
-      departmentId: card.departmentId, departmentName: card.department?.name ?? null, position: card.position ?? null, teamId: card.teamId, managerId: card.managerId,
+      departmentId: card.departmentId, departmentName: card.department?.name ?? null, position: card.position ?? null, personnelNumber: card.personnelNumber ?? null, teamId: card.teamId, managerId: card.managerId,
       phone: identityDirectoryPhone({ userAccount: card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? (card.userId ? phones.get(card.userId) ?? null : null) }), todayMark: marks.get(card.id) ?? null,
       included: !card.attendanceExcluded, participationVersion: latestParticipation.get(card.id) ?? null, includedFrom: card.attendanceIncludedFrom?.toISOString() ?? null,
       history: events.filter(event => event.agentId === card.id).map(event => ({ id: event.id, kind: event.kind,
@@ -248,6 +248,10 @@ export async function updateAttendanceEmployeeCard(actor: AttendanceReviewer, ra
   }, { timeout: 15_000 })
 }
 
+/** One lock per organization for unit names: creating a unit by name and renaming one (attendance-unit-rename.ts) take it, so neither makes namesakes. */
+export async function lockAttendanceUnitNames(tx: Prisma.TransactionClient, organizationId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-unit-names:${organizationId}`}, 0))`
+}
 /**
  * Where a card sits (owner, 2026-10-22: «тут есть отдел, но нет департамента»):
  * a department and a section (şöbə, an MTM team) in it, each an existing one or
@@ -258,6 +262,8 @@ export async function updateAttendanceEmployeeCard(actor: AttendanceReviewer, ra
  */
 export async function resolveAttendanceUnit(tx: Prisma.TransactionClient, organizationId: string, input: AttendanceUnitInput, current: string | null = null) {
   const named = input.newDepartmentName !== undefined || input.departmentId !== undefined
+  // A name looked up and created here must not race a rename to the same name.
+  if (input.newDepartmentName || input.newTeamName) await lockAttendanceUnitNames(tx, organizationId)
   let departmentId: string | null
   if (input.newDepartmentName) {
     // A department typed again by name is the same department.
@@ -308,7 +314,7 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE },
-      select: { id: true, name: true, phone: true, email: true, role: true, status: true, position: true, teamId: true, managerId: true, attendanceExcluded: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
+      select: { id: true, name: true, phone: true, email: true, role: true, status: true, position: true, personnelNumber: true, teamId: true, managerId: true, attendanceExcluded: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
         user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true, identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
         identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } } } })
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
@@ -343,7 +349,7 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
       employee: { id: card.id, name: card.user?.name ?? card.name, phone, email: realEmail(card.email) ?? realEmail(card.user?.email),
         role: card.role, status: card.status, crmRole: card.user?.role ?? null, loginEditable: !card.user?.identityAccount?.cutoverAt && !card.identityActorBinding?.account.cutoverAt
           && (!card.user || !LOGIN_LOCKED_ROLES.has(card.user.role)),
-        position: card.position ?? null, teamId: card.teamId, teamName: card.team?.name ?? null, departmentId: card.departmentId, departmentName: card.department?.name ?? null, managerId: card.managerId,
+        position: card.position ?? null, personnelNumber: card.personnelNumber ?? null, teamId: card.teamId, teamName: card.team?.name ?? null, departmentId: card.departmentId, departmentName: card.department?.name ?? null, managerId: card.managerId,
         included: !card.attendanceExcluded, participationVersion: participation.at(-1)?.id ?? null, todayMark: marks.get(agentId) ?? null,
         history: events.map(event => ({ id: event.id, kind: event.kind, date: employmentDate(event, timezone), at: event.effectiveAt.toISOString(), byName: names.get(event.recordedByUserId) ?? null })) } }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
@@ -365,8 +371,8 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
     await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'identity-registry:' + organizationId}, 0))`
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor)
-    const [card] = await tx.$queryRaw<Array<{ name: string; phone: string | null; email: string | null; userId: string | null; position: string | null; teamId: string | null; departmentId: string | null; managerId: string | null }>>`
-      SELECT name, phone, email, "userId", "position", "teamId", "departmentId", "managerId" FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${agentId}
+    const [card] = await tx.$queryRaw<Array<{ name: string; phone: string | null; email: string | null; userId: string | null; position: string | null; personnelNumber: string | null; teamId: string | null; departmentId: string | null; managerId: string | null }>>`
+      SELECT name, phone, email, "userId", "position", "personnelNumber", "teamId", "departmentId", "managerId" FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${agentId}
         AND ${attendanceTrackedCardSql()} FOR UPDATE`
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     if (card.userId) await tx.$queryRaw`SELECT id FROM users WHERE "organizationId" = ${organizationId} AND id = ${card.userId} FOR UPDATE`
@@ -392,15 +398,22 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
       const manager = await tx.mtmAgent.findFirst({ where: { organizationId, id: input.managerId, status: "ACTIVE", role: { in: [...ATTENDANCE_MANAGER_ROLES] } }, select: { id: true } })
       if (!manager || await managerAssignmentCreatesCycle(tx, { organizationId, agentId, managerId: input.managerId })) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID", 422)
     }
+    // A personnel number names one person on the timesheet; the organization's
+    // registry lock above serializes this check with every other profile save.
+    const personnelNumber = input.personnelNumber === undefined ? card.personnelNumber : input.personnelNumber
+    if (personnelNumber && personnelNumber.toLowerCase() !== card.personnelNumber?.toLowerCase()
+      && await tx.mtmAgent.findFirst({ where: { organizationId, personnelNumber: { equals: personnelNumber, mode: "insensitive" }, NOT: { id: agentId } }, select: { id: true } })) {
+      throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN", 409)
+    }
     const { teamId, departmentId } = await resolveAttendanceUnit(tx, organizationId, input, card.departmentId)
     // The CRM user needs an address; without a real one it keeps one that reaches nobody.
     const userEmail = emailChange ? input.email ?? `staff-${randomUUID()}@${NO_EMAIL_DOMAIN}` : undefined
     if (user) await tx.user.update({ where: { id: user.id }, data: { name: input.name, ...(phoneChange ? { phone: input.phone } : {}), ...(userEmail ? { email: userEmail } : {}) } })
-    await tx.mtmAgent.update({ where: { organizationId, id: agentId }, data: { name: input.name, position: input.position, teamId, departmentId, managerId: input.managerId,
+    await tx.mtmAgent.update({ where: { organizationId, id: agentId }, data: { name: input.name, position: input.position, personnelNumber, teamId, departmentId, managerId: input.managerId,
       ...(phoneChange ? { phone: input.phone } : {}), ...(emailChange ? { email: input.email ?? null } : {}) } })
     const hire = input.hireDate && !(await history(tx, organizationId, [agentId])).length ? await recordAttendanceInitialHire(tx, actor, agentId, input.hireDate, timezone) : null
-    const before = { name: user?.name ?? card.name, phone: beforePhone, email: beforeEmail, position: card.position, teamId: card.teamId, departmentId: card.departmentId, managerId: card.managerId }
-    const after = { name: input.name, phone: phoneChange ? input.phone! : beforePhone, email: emailChange ? input.email ?? null : beforeEmail, position: input.position, teamId, departmentId, managerId: input.managerId }
+    const before = { name: user?.name ?? card.name, phone: beforePhone, email: beforeEmail, position: card.position, personnelNumber: card.personnelNumber, teamId: card.teamId, departmentId: card.departmentId, managerId: card.managerId }
+    const after = { name: input.name, phone: phoneChange ? input.phone! : beforePhone, email: emailChange ? input.email ?? null : beforeEmail, position: input.position, personnelNumber, teamId, departmentId, managerId: input.managerId }
     const audit = await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "agent", entityId: agentId,
       action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED", metadataKind: "mtm_attendance_employee_card", oldData: before,
       newData: { ...after, ...(hire ? { hireEventId: hire.id, hireDate: input.hireDate } : {}) } }, select: { id: true } })

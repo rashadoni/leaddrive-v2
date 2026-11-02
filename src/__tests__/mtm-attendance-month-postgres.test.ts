@@ -55,7 +55,7 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
   const detail=await run(()=>store.readAttendanceMonth(reviewer,closed.id,"ru"));expect(detail.corrections).toHaveLength(1);expect(JSON.stringify(detail)).not.toMatch(/PRIVATE_|latitude|longitude|pauseIntervals/)
   expect(detail.corrections[0].before?.startedAt).toBe(at("2026-09-28","09:10").toISOString());expect(detail.corrections[0].after.startedAt).toBe(at("2026-09-28","09:00").toISOString())
   const {buildAttendanceXlsx,buildAttendancePdf}=await import("@/lib/mtm/attendance-export");// The closed month's file is the N-1t: №, then the employee.
-  expect(before.form).toBe("N1T");expect(buildAttendanceXlsx(before.table).worksheets[0].getRow(2).getCell(1).value).toBe(1);expect(buildAttendanceXlsx(before.table).worksheets[0].getRow(2).getCell(2).value).toBe("Fictional month employee");expect(buildAttendancePdf(before.table).subarray(0,4).toString()).toBe("%PDF")
+  expect(before.form).toBe("N1T");expect(buildAttendanceXlsx(before.table).worksheets[0].getRow(2).getCell(1).value).toBe(1);expect(buildAttendanceXlsx(before.table).worksheets[0].getRow(2).getCell(before.table.columns.findIndex(column=>column.key==="employee")+1).value).toBe("Fictional month employee");expect(buildAttendancePdf(before.table).subarray(0,4).toString()).toBe("%PDF")
  })
  it("refuses raw missing-day insertion/events but permits the existing approved genesis correction",async()=>{
   const id=await employee(),closed=await command([id]).then(input=>run(()=>store.closeAttendanceMonth(reviewer,input)))
@@ -292,7 +292,8 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
    // A later rename changes today's list, never the frozen form or its file.
    await inD(()=>prisma.mtmAgent.update({where:{id:ids[120]},data:{name:"Renamed after the close"}}))
    expect((await inD(()=>store.readAttendanceMonthN1tForm(closer,{month,locale:"az"}))).table).toEqual(file.table)
-   expect((await live("az")).rows.find(row=>row.key===ids[120])!.cells[1]).toBe("Renamed after the close")
+   const today=await live("az")
+   expect(today.rows.find(row=>row.key===ids[120])!.cells[today.columns.findIndex(column=>column.key==="employee")]).toBe("Renamed after the close")
   },240000)
  })
  it.each(["feature","agent"])("waits for a concurrent %s update without reversing fence/row lock order",async target=>{

@@ -29,7 +29,7 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
     const from = localDateTimeToUtc(`${f.day}T00:00`, org.timezone)
     const next = new Date(`${f.day}T12:00Z`); next.setUTCDate(next.getUTCDate() + 1)
     const to = localDateTimeToUtc(`${next.toISOString().slice(0, 10)}T00:00`, org.timezone)
-    const busy = f.bookingId ? new Map<string, BusyInterval[]>() : await loadBusyByHost(auth.orgId, hosts.map((host) => host.id), from, to)
+    const busy = f.bookingId ? new Map<string, BusyInterval[]>() : await loadBusyByHost(auth.orgId, hosts.map((host) => host.id), from, to, org.timezone)
     if (f.bookingId) {
       for (const host of hosts) {
         const external = await bookingCalendarBusy(auth.orgId, host.id, new Date(from.getTime() - 240 * 60_000), new Date(to.getTime() + 240 * 60_000), f.bookingId)
@@ -46,7 +46,7 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
     // form will refuse looks free on the rail.
     const busyByHost = hosts.map((host) => ({
       hostId: host.id,
-      intervals: (busy.get(host.id) ?? []).map((item) => ({ start: item.start.toISOString(), end: item.end.toISOString() })),
+      intervals: (busy.get(host.id) ?? []).filter((item) => item.kind !== "off").map((item) => ({ start: item.start.toISOString(), end: item.end.toISOString() })),
     }))
     return NextResponse.json({ success: true, data: { page: { orgName: org.name, title: page.title, description: page.description, durationMinutes: page.durationMinutes, locationType: page.locationType, locationText: page.locationText, hostNames: hosts.map((host) => host.name), timezone: org.timezone }, hosts: hosts.map(({ id, name }) => ({ id, name })), days, busy: busyByHost } }, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {

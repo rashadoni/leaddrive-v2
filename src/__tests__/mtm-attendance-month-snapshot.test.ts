@@ -21,7 +21,7 @@ describe("closed month payload uses frozen content",()=>{
    const t=createTranslator({locale,messages:{mtmAttendance:JSON.parse(readFileSync(`messages/${locale}.json`,"utf8")).mtmAttendance},namespace:"mtmAttendance"})
    expect(built.payload.n1t![locale]).toEqual(buildAttendanceTable(input,attendanceN1tConfig("2026-09-01","2026-09-30"),locale,t))
   }
-  expect(built.payload.n1t!.az.columns.slice(0,4).map(c=>c.key)).toEqual(["index","employee","position","team"])
+  expect(built.payload.n1t!.az.columns.slice(0,5).map(c=>c.key)).toEqual(["index","personnelNumber","employee","position","team"])
   expect(frozenAttendanceMonthTable(built.payload,"ru")).toEqual({form:"N1T",table:built.payload.n1t!.ru})
   expect(built.ongoing).toBe(false)
   // With its figures and layout, so that the blocks of a month over 100 people read back as one form.

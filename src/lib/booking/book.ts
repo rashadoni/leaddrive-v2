@@ -25,6 +25,7 @@ import type { AdAttribution } from "@/lib/ad-conversions/attribution"
 import {
   computeSlots,
   defaultWeeklyHours,
+  offHoursIntervals,
   parseWeeklyHours,
   type BookingRules,
   type BusyInterval,
@@ -108,7 +109,14 @@ export async function activeHosts(orgId: string, hostIds: string[]): Promise<{ i
  * connected, their Google Calendar. An unavailable connected calendar blocks
  * automatic reservations for that host until its availability can be checked.
  */
-export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarAccountIds: Map<string, string | null> }> {
+/**
+ * Everything that makes a host unavailable in the window: their confirmed
+ * meetings, their connected calendar, and the hours their own schedule says
+ * they do not work. The timezone is required because that last one is read on
+ * the organization's clock — and because every caller of this function also
+ * decides whether a slot may be booked, so none of them may quietly skip it.
+ */
+export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date, timezone: string): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarAccountIds: Map<string, string | null> }> {
   const accounts = await calendarAccounts(prisma, hostIds)
   const calendarAccountIds = new Map(hostIds.map((id) => [id, accounts.get(id)?.id ?? null]))
   const busy = Object.assign(new Map<string, BusyInterval[]>(hostIds.map((id) => [id, []])), { unavailableHostIds: new Set<string>(), calendarAccountIds })
@@ -126,6 +134,15 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
       busy.get(hostId)?.push({ start: from, end: to })
     }
   }))
+  // A host with no schedule of their own keeps the page's hours: no row, no
+  // intervals, and the day comes out exactly as it did before schedules
+  // existed.
+  const schedules = await prisma.bookingHostSchedule.findMany({ where: { organizationId: orgId, userId: { in: hostIds } }, select: { userId: true, weekly: true } })
+  for (const schedule of schedules) {
+    const weekly = parseWeeklyHours(schedule.weekly)
+    if (!weekly) continue
+    busy.get(schedule.userId)?.push(...offHoursIntervals(weekly, timezone, from, to))
+  }
   return busy
 }
 
@@ -141,7 +158,7 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
   const rules = rulesOf(page, org.timezone)
   const hosts = await activeHosts(orgId, page.hostIds)
   const { from, to } = windowOf(rules, now)
-  const busy = await loadBusyByHost(orgId, hosts.map((host) => host.id), from, to)
+  const busy = await loadBusyByHost(orgId, hosts.map((host) => host.id), from, to, org.timezone)
   const days: DaySlots[] = computeSlots({ rules, hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
   if (!days.length && busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
   return {

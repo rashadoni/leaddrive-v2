@@ -522,6 +522,33 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(bot.status).toBe(400)
   })
 
+  it("a host's own working days cut the page's hours, and a time outside them is refused", async () => {
+    const slug = await newPage()
+    const outside = await someSlot(slug)
+    const clock = (iso: string) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Baku" }).format(new Date(iso))
+    expect(clock(outside)).not.toMatch(/^10:/)
+
+    // The page is open all day; Leyla is there for one hour. Free time is the
+    // intersection, and the page must not offer what she cannot take.
+    await bypass(() => prisma.bookingHostSchedule.create({ data: {
+      organizationId: ORG, userId: HOST_A,
+      weekly: Object.fromEntries(["0", "1", "2", "3", "4", "5", "6"].map((day) => [day, [{ start: "10:00", end: "11:00" }]])),
+    } }))
+    const limited = (await view(slug)).body.data.days.flatMap((day: { slots: { startsAt: string }[] }) => day.slots.map((slot) => slot.startsAt))
+    expect(limited.length).toBeGreaterThan(0)
+    for (const startsAt of limited) expect(clock(startsAt)).toMatch(/^10:(00|30)$/)
+    expect(limited).not.toContain(outside)
+
+    // And the check that actually protects the day: a stale page cannot book
+    // an hour the host does not work.
+    expect((await book(slug, outside)).status).toBe(409)
+
+    // No row means the page's hours, exactly as before schedules existed.
+    await bypass(() => prisma.bookingHostSchedule.deleteMany({ where: { organizationId: ORG, userId: HOST_A } }))
+    const restored = (await view(slug)).body.data.days.flatMap((day: { slots: { startsAt: string }[] }) => day.slots)
+    expect(restored.length).toBeGreaterThan(limited.length)
+  })
+
   it("a closed page and an unknown link are not found", async () => {
     const slug = await newPage({ isActive: false })
     expect((await view(slug)).status).toBe(404)

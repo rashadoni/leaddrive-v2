@@ -12,14 +12,14 @@ const isDayKey = (key: string) => /^\d{4}-\d{2}-\d{2}$/.test(key)
 /**
  * A month grid on screen (owner, 2026-10-15: «Forma N-1t» ran off the page).
  * Excel and PDF keep every column as built; the screen only regroups them:
- * position and department go under the name, a day shows its code with the
+ * personnel number, position and department go under the name, a day shows its code with the
  * hours beneath (hours only from 85rem — below that the code alone fits, the
  * hours stay in the cell's tooltip), and an empty notes column is not drawn.
  */
 function screenColumns(table: AttendanceTable) {
   const index = (key: string) => table.columns.findIndex(column => column.key === key)
   const monthGrid = table.columns.some(column => isDayKey(column.key)) && index("employee") >= 0
-  const folded = monthGrid ? ["position", "team"].map(index).filter(at => at >= 0) : []
+  const folded = monthGrid ? ["personnelNumber", "position", "team"].map(index).filter(at => at >= 0) : []
   const notes = index("notes"), emptyNotes = monthGrid && notes >= 0 && table.rows.every(row => !String(row.cells[notes] ?? "").trim())
   return { monthGrid, employee: index("employee"), folded, shown: table.columns.map((column, at) => ({ column, at })).filter(({ at }) => !folded.includes(at) && !(emptyNotes && at === notes)) }
 }
@@ -130,7 +130,9 @@ export function AttendanceReportTable({ table, testId = "attendance-report-table
     <thead><tr>{layout.shown.map(({ column }) => <th key={column.key} scope="col" className={`border-b py-2 align-bottom text-xs font-medium leading-tight text-muted-foreground ${isDayKey(column.key) ? `${DAY_WIDTH} px-0 text-center` : layout.monthGrid && totalColumn(column.key) ? "w-16 px-1 text-right" : "px-2 text-left"}`}>{isDayKey(column.key) ? Number(column.key.slice(8)) : column.label}</th>)}</tr></thead>
     <tbody>{table.rows.map(row => <tr key={row.key} className="border-b last:border-0" data-testid="attendance-report-row">{layout.shown.map(({ column, at }) => {
       const cell = row.cells[at], day = isDayKey(column.key), name = at === layout.employee
-      const under = name ? layout.folded.map(index => String(row.cells[index] ?? "")).filter(text => text && text !== "—") : []
+      // The personnel number under the name says what it is: «№ T-07», not a bare «T-07».
+      const under = name ? layout.folded.map(index => String(row.cells[index] ?? "")).map((text, at) => table.columns[layout.folded[at]].key === "personnelNumber" && text && text !== "—" ? `№ ${text}` : text)
+        .filter(text => text && text !== "—") : []
       // A month grid reads along the first line: number, name, codes and totals share it.
       return <td key={column.key} className={`py-2 text-[13px] tabular-nums ${layout.monthGrid ? "align-top leading-tight" : ""} ${day ? `${DAY_WIDTH} px-0` : layout.monthGrid && totalColumn(column.key) ? "px-1 text-right" : "px-2"} ${name ? "min-w-28 font-semibold" : ""}`}>
         {day ? <DayCell text={String(cell ?? "")} /> : cell}

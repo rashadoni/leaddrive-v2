@@ -662,6 +662,15 @@ jobs:
           SOCIAL_FENCE_OPENERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           SOCIAL_FENCE_OPENERS_DB_GATE: required
 
+      - name: Migration quiet window database gate
+        # Same gate as in pr-checks: a job lease counts as live only while it
+        # is being renewed, so an abandoned one cannot hold the window (see the
+        # test's header).
+        run: npx vitest run src/__tests__/deploy-migration-window-postgres.test.ts
+        env:
+          DEPLOY_MIGRATION_WINDOW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          DEPLOY_MIGRATION_WINDOW_DB_GATE: required
+
       - name: MTM break coordinates database gate
         # Same gate as in pr-checks: no GPS entry — the phone's two routes, the
         # web/API-key one — stores a point taken during the employee's break

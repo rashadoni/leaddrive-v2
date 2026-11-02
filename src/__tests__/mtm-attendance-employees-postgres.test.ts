@@ -62,6 +62,9 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     // Departments (2026-10-22): the table's tenant policy, exactly as its migration writes it.
     const departments = readFileSync("prisma/migrations/20261029090000_mtm_departments/migration.sql", "utf8")
     sql(scratch!.adminDb, departments.slice(departments.indexOf('ALTER TABLE "mtm_departments" ENABLE'), departments.indexOf('ALTER TABLE "mtm_teams"')))
+    // Personnel number (2026-11-02): its per-organization index, exactly as the migration writes it (db push cannot express it).
+    const numbers = readFileSync("prisma/migrations/20261121090000_mtm_agent_personnel_number/migration.sql", "utf8")
+    sql(scratch!.adminDb, numbers.slice(numbers.indexOf("CREATE UNIQUE INDEX"), numbers.indexOf("COMMIT;")))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
@@ -788,6 +791,59 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     expect(result.rows.map(row => row.employeePosition)).toEqual(["Fictional senior cashier"])
   })
 
+  // Owner, 2026-11-02 (HRSS clip: «Tabel №» next to every name): the card keeps a
+  // personnel number, one person's within the organization, and the timesheet
+  // and «Forma N-1t» print it.
+  it("keeps a personnel number unique per organization and prints it on the report and N-1t", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const { attendanceN1tConfig, attendanceTableText } = await import("@/lib/mtm/attendance-month-snapshot")
+    const { buildAttendanceTable } = await import("@/lib/mtm/attendance-table")
+    const first = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional numbered clerk", phone: "+994550007721" }))
+    const second = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional second numbered", phone: "+994550007722" }))
+    // Another organization's T-07 is not this one's.
+    await bypass(() => prisma.mtmAgent.create({ data: { organizationId, name: "Fictional foreign numbered", personnelNumber: "T-07" } }))
+    const page = (name: string, personnelNumber?: string | null) => ({ name, position: null, teamId: null, managerId: null, ...(personnelNumber === undefined ? {} : { personnelNumber }) })
+    const number = (agentId: string) => tenant(automaticOrg, async () => (await prisma.mtmAgent.findUniqueOrThrow({ where: { id: agentId }, select: { personnelNumber: true } })).personnelNumber)
+
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "  T-07 ")))
+    expect(await number(first.agentId)).toBe("T-07")
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, first.agentId))).employee.personnelNumber).toBe("T-07")
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))).employees.find(row => row.id === first.agentId)).toMatchObject({ personnelNumber: "T-07" })
+
+    // The same number in another case is the same number: refused, nothing written.
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, second.agentId, page("Fictional second numbered renamed", "t-07"))))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN", status: 409 })
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: second.agentId }, select: { name: true, personnelNumber: true } })))
+      .toEqual({ name: "Fictional second numbered", personnelNumber: null })
+    // The database refuses it too, whatever writes it.
+    await expect(bypass(() => prisma.mtmAgent.update({ where: { id: second.agentId }, data: { personnelNumber: "t-07" } }))).rejects.toMatchObject({ code: "P2002" })
+    // Its own number in another case, a tab without the field (keeps it), and clearing it.
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "t-07")))
+    expect(await number(first.agentId)).toBe("t-07")
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk")))
+    expect(await number(first.agentId)).toBe("t-07")
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, second.agentId, page("Fictional second numbered", "T-08")))
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "")))
+    expect(await number(first.agentId)).toBeNull()
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "x".repeat(33)))))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_INVALID" })
+    const journal = await tenant(automaticOrg, () => prisma.mtmAuditLog.findMany({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED", agentId: second.agentId }, select: { oldData: true, newData: true } }))
+    expect(journal).toHaveLength(1)
+    expect(journal[0]).toMatchObject({ oldData: { personnelNumber: null }, newData: { personnelNumber: "T-08" } })
+
+    // The timesheet rows and the N-1t carry the number next to the name.
+    const today = (await import("@/lib/mtm/mobile-week")).currentDateKey(new Date(), "Asia/Baku")
+    const result = await tenant(automaticOrg, () => report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null },
+      query: { from: today, to: today, employeeId: second.agentId, form: "ALL" } }))
+    expect(result.rows.map(row => row.employeePersonnelNumber)).toEqual(["T-08"])
+    // The N-1t is a whole calendar month; today's row falls inside it.
+    const monthEnd = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10)
+    const table = buildAttendanceTable(result, attendanceN1tConfig(`${today.slice(0, 7)}-01`, monthEnd), "ru", attendanceTableText("ru"))
+    expect(table.columns.slice(0, 3).map(column => column.key)).toEqual(["index", "personnelNumber", "employee"])
+    expect(table.columns[1].label).toBe(attendanceTableText("ru")("reportPersonnelNumber"))
+    expect(table.rows.map(row => row.cells.slice(0, 3))).toEqual([[1, "T-08", "Fictional second numbered"]])
+  })
+
   // Owner, 2026-10-22: «тут есть отдел, но нет департамента». A department sits
   // above a section; its head belongs to it without a section.
   it("keeps a department above the section, reused by name and closed to other tenants", async () => {
@@ -832,6 +888,61 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, head.agentId))).employee).toMatchObject({ departmentId: headUnit.departmentId, departmentName: "Fictional IT department" })
     // Row-level security: each tenant sees only its own departments.
     expect(await tenant(organizationId, () => prisma.mtmDepartment.findMany({ select: { name: true } }))).toEqual([{ name: "Fictional foreign department" }])
+  })
+
+  // Owner, 2026-11-02: «нет редактирования названия который уже был создан… если
+  // будет ошибка то исправить уже нет варианта». A typo is fixed by renaming; the
+  // name stays one unit's, because a card typing it again must find that unit.
+  it("renames a department and a section, refuses a namesake and journals each change", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const { renameAttendanceUnit } = await import("@/lib/mtm/attendance-unit-rename")
+    const rename = (input: unknown, actor = automaticAdmin) => tenant(automaticOrg, () => renameAttendanceUnit(actor, input))
+    const clerk = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional stock clerk", phone: "+994550007711",
+      newDepartmentName: "Fictional stokc", newTeamName: "Fictional shiping" }))
+    const { departmentId, teamId } = await tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: clerk.agentId }, select: { departmentId: true, teamId: true } }))
+    const itDepartment = await tenant(automaticOrg, () => prisma.mtmDepartment.findFirstOrThrow({ where: { name: "Fictional IT department" }, select: { id: true } }))
+
+    await expect(rename({ kind: "DEPARTMENT", id: departmentId, name: "  Fictional stock  " })).resolves.toEqual({ kind: "DEPARTMENT", id: departmentId, name: "Fictional stock", changed: true })
+    await expect(rename({ kind: "SECTION", id: teamId, name: "Fictional shipping" })).resolves.toMatchObject({ name: "Fictional shipping", changed: true })
+    // The card, the directory and the report read the unit's name, so they all show the new one.
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))).employees.find(row => row.id === clerk.agentId))
+      .toMatchObject({ departmentId, departmentName: "Fictional stock", teamId, teamName: "Fictional shipping" })
+
+    // Another department's name, in any case, is refused and nothing changes.
+    await expect(rename({ kind: "DEPARTMENT", id: departmentId, name: "FICTIONAL it department" })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_UNIT_NAME_TAKEN" })
+    // A section's namesake in its own department is refused; in another department it is a different section.
+    const receiving = await bypass(() => prisma.mtmTeam.create({ data: { organizationId: automaticOrg, name: "Fictional receiving", departmentId }, select: { id: true } }))
+    await expect(rename({ kind: "SECTION", id: receiving.id, name: "fictional SHIPPING" })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_UNIT_NAME_TAKEN" })
+    const desk = await bypass(() => prisma.mtmTeam.create({ data: { organizationId: automaticOrg, name: "Fictional desk", departmentId: itDepartment.id }, select: { id: true } }))
+    await expect(rename({ kind: "SECTION", id: desk.id, name: "Fictional shipping" })).resolves.toMatchObject({ changed: true })
+    // A section outside any department is listed with every department's sections: any namesake collides.
+    const loose = await bypass(() => prisma.mtmTeam.create({ data: { organizationId: automaticOrg, name: "Fictional loose two" }, select: { id: true } }))
+    await expect(rename({ kind: "SECTION", id: loose.id, name: "Fictional receiving" })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_UNIT_NAME_TAKEN" })
+    expect(await tenant(automaticOrg, () => prisma.mtmTeam.findMany({ where: { id: { in: [receiving.id, loose.id] } }, select: { name: true }, orderBy: { name: "asc" } })))
+      .toEqual([{ name: "Fictional loose two" }, { name: "Fictional receiving" }])
+
+    // The corrected name typed on a new card finds the renamed department and section.
+    const second = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional second clerk", phone: "+994550007712",
+      newDepartmentName: "fictional STOCK", newTeamName: "Fictional shipping" }))
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: second.agentId }, select: { departmentId: true, teamId: true } }))).toEqual({ departmentId, teamId })
+
+    // The same name again changes nothing and writes no journal row.
+    await expect(rename({ kind: "DEPARTMENT", id: departmentId, name: "Fictional stock" })).resolves.toMatchObject({ changed: false })
+    const journal = await tenant(automaticOrg, () => prisma.mtmAuditLog.findMany({ where: { action: "MTM_ATTENDANCE_UNIT_RENAMED" }, orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { actorUserId: true, entity: true, entityId: true, oldData: true, newData: true } }))
+    expect(journal).toEqual([
+      { actorUserId: automaticAdminId, entity: "mtm_department", entityId: departmentId, oldData: { name: "Fictional stokc" }, newData: { name: "Fictional stock" } },
+      { actorUserId: automaticAdminId, entity: "mtm_team", entityId: teamId, oldData: { name: "Fictional shiping" }, newData: { name: "Fictional shipping" } },
+      { actorUserId: automaticAdminId, entity: "mtm_team", entityId: desk.id, oldData: { name: "Fictional desk" }, newData: { name: "Fictional shipping" } },
+    ])
+
+    // Only an administrator renames; another tenant's unit is not found from here.
+    await expect(rename({ kind: "DEPARTMENT", id: departmentId, name: "Fictional warehouse" }, { ...automaticAdmin, userId: "automatic-user-001" })).rejects.toMatchObject({ status: 403 })
+    const foreign = await tenant(organizationId, () => prisma.mtmDepartment.findFirstOrThrow({ select: { id: true } }))
+    await expect(rename({ kind: "DEPARTMENT", id: foreign.id, name: "Fictional takeover" })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_UNIT_NOT_FOUND" })
+    expect(await tenant(organizationId, () => prisma.mtmDepartment.findUniqueOrThrow({ where: { id: foreign.id }, select: { name: true } }))).toEqual({ name: "Fictional foreign department" })
+    await expect(rename({ kind: "DEPARTMENT", id: departmentId, name: "   " })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_UNIT_INVALID" })
+    expect(await tenant(automaticOrg, () => prisma.mtmDepartment.findUniqueOrThrow({ where: { id: departmentId! }, select: { name: true } }))).toEqual({ name: "Fictional stock" })
   })
 
   // Owner, 2026-10-15: Today shows an administrator what is left to set up; each
