@@ -1,4 +1,4 @@
-import { notifyAttendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
+import { attendanceRequestApprovalRoute, notifyAttendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
 import { pushAttendanceRequestToReviewers } from "@/lib/mtm/attendance-request-push"
 import { autoApproveForgottenDayClose, isForgottenDayClose } from "@/lib/mtm/attendance-auto-close"
 import { attendanceCorrectionFitsJournal } from "@/lib/mtm/attendance-time-correction"
@@ -182,7 +182,9 @@ export async function readOwnAttendanceRequestQuota(self: AttendanceSelf, month:
     await requireAttendanceSelf(db, self)
     const limits = await readAttendanceRequestLimits(self.organizationId, db)
     const usage = await attendanceRequestQuotaUsage(db, self, month)
+    // Who will approve, for the request form (2026-11-02); an older app ignores the field.
+    const approval = await attendanceRequestApprovalRoute(db, { organizationId: self.organizationId, agentId: self.agentId })
     return { month, limits, ...usage, remainingMinutes: Math.max(0, limits.monthlyMinutes - usage.usedMinutes),
-      remainingRequests: Math.max(0, limits.monthlyRequests - usage.usedRequests) }
+      remainingRequests: Math.max(0, limits.monthlyRequests - usage.usedRequests), approval }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead })
 }

@@ -549,6 +549,11 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     const first = (await tenant(self.organizationId, () => store.submitAttendanceRequest(employee, leave("2027-03-01")))).request
     // The managers hear first; HR is not rung for a request no manager has seen.
     expect(await bellsFor(first.id)).toEqual(["request-pg-manager", "request-pg-upper"])
+    // The form says so before sending (2026-11-02): the managers by name, then HR.
+    const route = async () => (await tenant(self.organizationId, () => store.readOwnAttendanceRequestQuota(employee, "2027-03"))).approval
+    expect(await route()).toEqual({ twoStep: true, managers: ["Fictional line manager", "Fictional upper manager"] })
+    // An employee nobody manages hears «HR decides»: no manager names at all.
+    expect((await tenant(self.organizationId, () => store.readOwnAttendanceRequestQuota(self, "2027-03"))).approval).toEqual({ twoStep: true, managers: [] })
 
     const passed = await decide(manager, first.id, first.version, "APPROVED", "Fine by me")
     expect(passed).toMatchObject({ passedToHr: true, idempotent: false, request: { status: "PENDING", decidedAt: null } })
@@ -592,6 +597,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
 
     // Off (the default): the manager's approval is the decision, as before.
     await bypass(() => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: self.organizationId, key: "attendanceTwoStepApproval" } }, data: { value: false } }))
+    expect(await route()).toEqual({ twoStep: false, managers: ["Fictional line manager", "Fictional upper manager"] })
     const fourth = (await tenant(self.organizationId, () => store.submitAttendanceRequest(employee, leave("2027-03-22")))).request
     expect(await bellsFor(fourth.id)).toEqual(["request-pg-admin", "request-pg-manager", "request-pg-upper"])
     expect(await decide(manager, fourth.id, fourth.version, "APPROVED")).toMatchObject({ passedToHr: false, request: { status: "APPROVED" } })

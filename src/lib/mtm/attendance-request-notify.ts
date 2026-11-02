@@ -54,6 +54,23 @@ export async function attendanceRequestReviewers(
 }
 
 /**
+ * Who approves this employee's requests, said in the request form before it is
+ * sent (owner, 2026-11-02, HRSS clip: the form shows its approval chain). The
+ * managers by name — the people the employee already works under — and HR
+ * only as a role: the administrators' names are not the employee's business.
+ * The same reviewers as the bell, so the form never promises a person the
+ * request will not reach.
+ */
+export async function attendanceRequestApprovalRoute(tx: Prisma.TransactionClient, input: { organizationId: string; agentId: string }) {
+  const reviewers = await attendanceRequestReviewers(tx, input)
+  const twoStep = await readAttendanceTwoStepApproval(tx, input.organizationId)
+  const ids = reviewers.filter((reviewer) => !reviewer.hr).map((reviewer) => reviewer.id)
+  const users = ids.length ? await tx.user.findMany({ where: { organizationId: input.organizationId, id: { in: ids } }, select: { name: true } }) : []
+  const managers = [...new Set(users.map((user) => user.name?.trim() ?? "").filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  return { twoStep, managers }
+}
+
+/**
  * Who hears of a new request. With two-step approval on, the employee's
  * managers — HR hears once a manager approves (`notifyAttendanceRequestHr`);
  * an employee with no manager to ask goes straight to HR.
