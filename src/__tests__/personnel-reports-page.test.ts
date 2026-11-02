@@ -64,7 +64,7 @@ describe("Report viewer", () => {
   const lateDay = { id: "a", agentId: "aysel", workDate: "2026-10-13", status: "COMPLETED", startedAt: "2026-10-13T10:47:37+04:00", completedAt: at("2026-10-13", "18:00"), totalPausedSeconds: 0,
     events: [{ type: "START", occurredAt: "2026-10-13T10:47:37+04:00" }, { type: "FINISH", occurredAt: at("2026-10-13", "18:00") }] }
   const report = (from: string, to: string) => ({ ...buildMtmAttendanceReport({ from, to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
-    employees: [{ id: "nigar", name: "Нигяр", position: "Бухгалтер", teamId: "centre", teamName: "Центр" }, { id: "rashad", name: "Рашад", teamId: "north", teamName: "Север" },
+    employees: [{ id: "nigar", name: "Нигяр", position: "Бухгалтер", personnelNumber: "T-07", teamId: "centre", teamName: "Центр" }, { id: "rashad", name: "Рашад", teamId: "north", teamName: "Север" },
       ...(withLate ? [{ id: "aysel", name: "Айсель", position: "Кассир", departmentId: "finance", departmentName: "Финансы", teamId: "centre", teamName: "Центр" }] : [])],
     workdays: [{ id: "n", agentId: "nigar", workDate: "2026-10-13", status: "COMPLETED", startedAt: at("2026-10-13", "09:00"), completedAt: at("2026-10-13", "18:00"), totalPausedSeconds: 0,
       events: [{ type: "START", occurredAt: at("2026-10-13", "09:00") }, { type: "FINISH", occurredAt: at("2026-10-13", "18:00") }] }, ...(withLate ? [lateDay] : [])] }),
@@ -147,7 +147,8 @@ describe("Report viewer", () => {
     // The day columns read as day numbers on screen.
     expect(headers.slice(2, 33)).toEqual(Array.from({ length: 31 }, (_, index) => String(index + 1)))
     const details = [...container.querySelectorAll('[data-testid="attendance-report-row"]')].map(row => row.querySelector('[data-testid="attendance-report-employee-details"]')?.textContent)
-    expect(details).toEqual(["Бухгалтер · Центр", "Север"])
+    // The personnel number goes under the name too, saying what it is (2026-11-02).
+    expect(details).toEqual(["№ T-07 · Бухгалтер · Центр", "Север"])
     // A worked day shows its code with the hours beneath, the whole text in its tooltip.
     // Every day has the same shape (code line, hours line), so codes line up along the row.
     const cells = [...container.querySelectorAll<HTMLElement>("td span[title]")]

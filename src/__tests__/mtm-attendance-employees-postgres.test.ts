@@ -62,6 +62,9 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     // Departments (2026-10-22): the table's tenant policy, exactly as its migration writes it.
     const departments = readFileSync("prisma/migrations/20261029090000_mtm_departments/migration.sql", "utf8")
     sql(scratch!.adminDb, departments.slice(departments.indexOf('ALTER TABLE "mtm_departments" ENABLE'), departments.indexOf('ALTER TABLE "mtm_teams"')))
+    // Personnel number (2026-11-02): its per-organization index, exactly as the migration writes it (db push cannot express it).
+    const numbers = readFileSync("prisma/migrations/20261121090000_mtm_agent_personnel_number/migration.sql", "utf8")
+    sql(scratch!.adminDb, numbers.slice(numbers.indexOf("CREATE UNIQUE INDEX"), numbers.indexOf("COMMIT;")))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`)
     prisma = (await import("@/lib/prisma")).prisma
     ;({ runWithTenant: tenant, runWithRlsBypass: bypass } = await import("@/lib/rls-context"))
@@ -786,6 +789,59 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     const result = await tenant(automaticOrg, () => report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null },
       query: { from: today, to: today, employeeId: created.agentId, form: "ALL" } }))
     expect(result.rows.map(row => row.employeePosition)).toEqual(["Fictional senior cashier"])
+  })
+
+  // Owner, 2026-11-02 (HRSS clip: «Tabel №» next to every name): the card keeps a
+  // personnel number, one person's within the organization, and the timesheet
+  // and «Forma N-1t» print it.
+  it("keeps a personnel number unique per organization and prints it on the report and N-1t", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const { attendanceN1tConfig, attendanceTableText } = await import("@/lib/mtm/attendance-month-snapshot")
+    const { buildAttendanceTable } = await import("@/lib/mtm/attendance-table")
+    const first = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional numbered clerk", phone: "+994550007721" }))
+    const second = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional second numbered", phone: "+994550007722" }))
+    // Another organization's T-07 is not this one's.
+    await bypass(() => prisma.mtmAgent.create({ data: { organizationId, name: "Fictional foreign numbered", personnelNumber: "T-07" } }))
+    const page = (name: string, personnelNumber?: string | null) => ({ name, position: null, teamId: null, managerId: null, ...(personnelNumber === undefined ? {} : { personnelNumber }) })
+    const number = (agentId: string) => tenant(automaticOrg, async () => (await prisma.mtmAgent.findUniqueOrThrow({ where: { id: agentId }, select: { personnelNumber: true } })).personnelNumber)
+
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "  T-07 ")))
+    expect(await number(first.agentId)).toBe("T-07")
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, first.agentId))).employee.personnelNumber).toBe("T-07")
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))).employees.find(row => row.id === first.agentId)).toMatchObject({ personnelNumber: "T-07" })
+
+    // The same number in another case is the same number: refused, nothing written.
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, second.agentId, page("Fictional second numbered renamed", "t-07"))))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN", status: 409 })
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: second.agentId }, select: { name: true, personnelNumber: true } })))
+      .toEqual({ name: "Fictional second numbered", personnelNumber: null })
+    // The database refuses it too, whatever writes it.
+    await expect(bypass(() => prisma.mtmAgent.update({ where: { id: second.agentId }, data: { personnelNumber: "t-07" } }))).rejects.toMatchObject({ code: "P2002" })
+    // Its own number in another case, a tab without the field (keeps it), and clearing it.
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "t-07")))
+    expect(await number(first.agentId)).toBe("t-07")
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk")))
+    expect(await number(first.agentId)).toBe("t-07")
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, second.agentId, page("Fictional second numbered", "T-08")))
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "")))
+    expect(await number(first.agentId)).toBeNull()
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "x".repeat(33)))))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_INVALID" })
+    const journal = await tenant(automaticOrg, () => prisma.mtmAuditLog.findMany({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED", agentId: second.agentId }, select: { oldData: true, newData: true } }))
+    expect(journal).toHaveLength(1)
+    expect(journal[0]).toMatchObject({ oldData: { personnelNumber: null }, newData: { personnelNumber: "T-08" } })
+
+    // The timesheet rows and the N-1t carry the number next to the name.
+    const today = (await import("@/lib/mtm/mobile-week")).currentDateKey(new Date(), "Asia/Baku")
+    const result = await tenant(automaticOrg, () => report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null },
+      query: { from: today, to: today, employeeId: second.agentId, form: "ALL" } }))
+    expect(result.rows.map(row => row.employeePersonnelNumber)).toEqual(["T-08"])
+    // The N-1t is a whole calendar month; today's row falls inside it.
+    const monthEnd = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10)
+    const table = buildAttendanceTable(result, attendanceN1tConfig(`${today.slice(0, 7)}-01`, monthEnd), "ru", attendanceTableText("ru"))
+    expect(table.columns.slice(0, 3).map(column => column.key)).toEqual(["index", "personnelNumber", "employee"])
+    expect(table.columns[1].label).toBe(attendanceTableText("ru")("reportPersonnelNumber"))
+    expect(table.rows.map(row => row.cells.slice(0, 3))).toEqual([[1, "T-08", "Fictional second numbered"]])
   })
 
   // Owner, 2026-10-22: «тут есть отдел, но нет департамента». A department sits

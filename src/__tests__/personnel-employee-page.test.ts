@@ -35,7 +35,7 @@ beforeEach(() => {
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   detail = { timezone: "Asia/Baku", today: "2026-10-16", teams: [{ id: "team-kassa", name: "Касса", departmentId: "dep-finance" }], departments: [{ id: "dep-finance", name: "Финансы" }], managers: [{ id: "m-saida", name: "Saida", position: "Главный бухгалтер" }],
     month: { from: "2026-10-01", to: "2026-10-16", workedDays: 9, workedSeconds: 292800, lateCount: 2, absentCount: 1, leaveDays: 0, sickDays: 0, isComplete: true },
-    employee: { id: "togrul", name: "Togrul", phone: "+994501112233", email: null, role: "EMPLOYEE", status: "ACTIVE", loginEditable: true, position: null, teamId: null, teamName: null, departmentId: null, departmentName: null, managerId: null,
+    employee: { id: "togrul", name: "Togrul", phone: "+994501112233", email: null, role: "EMPLOYEE", status: "ACTIVE", loginEditable: true, position: null, personnelNumber: null, teamId: null, teamName: null, departmentId: null, departmentName: null, managerId: null,
       included: true, participationVersion: null, history: [], todayMark: { status: "STARTED", startedAt: "2026-10-16T04:57:00.000Z", completedAt: null } } }
   fetchMock.mockReset(); fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? json({ eventId: "e1", idempotent: false }) : json(detail)); vi.stubGlobal("fetch", fetchMock)
 })
@@ -71,15 +71,15 @@ describe("Personnel → employee page", () => {
     expect(container.querySelector('[data-testid="employees-history"]')!.textContent).toContain(t("employeesNoHistory"))
   })
 
-  it("saves name, phone, email, job and the first hire date in one request, then says so", async () => {
+  it("saves name, phone, email, job, personnel number and the first hire date in one request, then says so", async () => {
     await render()
     await edit("employee-name", "Togrul Məmmədov"); await edit("employee-phone", "+994 55 000 11 22"); await edit("employee-email", "togrul@example.test")
-    await edit("employee-position", "Менеджер"); await edit("employee-department", "team-kassa"); await edit("employee-manager", "m-saida"); await edit("employee-hire-date", "2026-03-02")
+    await edit("employee-position", "Менеджер"); await edit("employee-personnel-number", " T-07 "); await edit("employee-department", "team-kassa"); await edit("employee-manager", "m-saida"); await edit("employee-hire-date", "2026-03-02")
     // The section names its department (owner, 2026-10-22: department above the section).
     expect(field("employee-department-unit").value).toBe("dep-finance")
     await submit(saveForm)
     expect(String(posts()[0][0])).toBe("/api/v1/mtm/attendance/employees/togrul")
-    expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ name: "Togrul Məmmədov", position: "Менеджер", departmentId: "dep-finance", teamId: "team-kassa", managerId: "m-saida",
+    expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ name: "Togrul Məmmədov", position: "Менеджер", personnelNumber: "T-07", departmentId: "dep-finance", teamId: "team-kassa", managerId: "m-saida",
       phone: "+994 55 000 11 22", email: "togrul@example.test", hireDate: "2026-03-02" })
     expect(container.textContent).toContain(p("employeeSaved"))
   })
@@ -159,6 +159,22 @@ describe("Personnel → employee page", () => {
     await render()
     expect(container.querySelector('[data-testid="attendance-employee-remove-crm"]')!.textContent).toBe(p("removeCrmUser"))
     expect([...container.querySelectorAll("button")].some(item => item.textContent === p("removeButton"))).toBe(false)
+  })
+
+  // Owner, 2026-11-02 (HRSS clip): «Tabel №» on the card; a number another person holds is refused in words.
+  it("shows the saved personnel number and says when another employee has it", async () => {
+    detail.employee = { ...detail.employee, personnelNumber: "T-07" }
+    fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? json(null, 409, "MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN") : json(detail))
+    await render()
+    expect((field("employee-personnel-number") as HTMLInputElement).value).toBe("T-07")
+    await edit("employee-personnel-number", "T-08")
+    await submit(saveForm)
+    expect(JSON.parse(String(posts()[0][1]!.body))).toMatchObject({ personnelNumber: "T-08" })
+    expect(container.querySelector('[role="alert"]')!.textContent).toBe(p("employeeNumberTaken"))
+    // Cleared, the number is sent as none.
+    await edit("employee-personnel-number", "  ")
+    await submit(saveForm)
+    expect(JSON.parse(String(posts()[1][1]!.body))).toMatchObject({ personnelNumber: null })
   })
 
   it("names a missing employee in words", async () => {

@@ -24,7 +24,7 @@ const DEPARTMENT_FILTER = "dep:"
 /**
  * Personnel → Employees (owner, 2026-10-16: «просил редактируемыми сделать
  * сотрудников… будет неудобно использовать, когда список будет больше 200»).
- * The list finds a person — by name, position, department, section or phone — and says
+ * The list finds a person — by name, personnel number, position, department, section or phone — and says
  * where they are today; «Edit» opens their own page. Search, filters and page
  * live in the address, so «back» from the employee returns to the same list.
  */
@@ -68,7 +68,7 @@ export function MtmAttendanceEmployees() {
   useEffect(() => { if (`?${query}` !== `?${params.toString()}`) router.replace(`${pathname}?${query}`, { scroll: false }) }, [query, params, pathname, router])
 
   const needle = search.trim().toLocaleLowerCase(locale), digits = search.replace(/\D/g, "")
-  const matches = (employee: Employee) => !needle || [employee.name, employee.position, employee.departmentName, employee.teamName].some(value => value?.toLocaleLowerCase(locale).includes(needle))
+  const matches = (employee: Employee) => !needle || [employee.name, employee.position, employee.personnelNumber, employee.departmentName, employee.teamName].some(value => value?.toLocaleLowerCase(locale).includes(needle))
     || (digits.length >= 3 && (employee.phone ?? "").replace(/\D/g, "").includes(digits))
   const employees = (directory?.employees ?? []).filter(employee => matches(employee)
     && (!department || (department === NO_DEPARTMENT ? !employee.teamId && !employee.departmentId
@@ -92,7 +92,7 @@ export function MtmAttendanceEmployees() {
     const hire = [...employee.history].reverse().find(event => event.kind !== "TERMINATION")
     const missing = [!employee.position && p("employeeMissingPosition"), !hire && p("employeeMissingHire")].filter(Boolean) as string[]
     if (missing.length) return <span className="text-amber-700 dark:text-amber-400" data-testid="employee-missing">{p("employeeMissing", { fields: missing.join(", ") })}</span>
-    return [employee.position, hire && p("employeeSince", { date: date(hire.date) })].filter(Boolean).join(" · ")
+    return [employee.personnelNumber && `№ ${employee.personnelNumber}`, employee.position, hire && p("employeeSince", { date: date(hire.date) })].filter(Boolean).join(" · ")
   }
   const reset = () => setPage(0)
   const back = encodeURIComponent(`/mtm/attendance/people?${query}`)

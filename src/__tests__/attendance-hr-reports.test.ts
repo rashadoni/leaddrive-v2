@@ -25,7 +25,12 @@ const report = buildMtmAttendanceReport({ from: "2026-10-05", to: "2026-10-09", 
     day("rashad", "2026-10-05", "09:00", "18:00"), day("rashad", "2026-10-09", "09:00", "17:00")] })
 const config = (mode: AttendanceViewConfig["mode"], columns: string[], filters: Partial<AttendanceViewConfig["filters"]> = {}) =>
   AttendanceViewConfigSchema.parse({ version: 1, mode, columns, showTotals: true, filters: { from: "2026-10-05", to: "2026-10-09", form: "ALL", ...filters } })
-const rowOf = (table: ReturnType<typeof buildAttendanceTable>, name: string) => Object.fromEntries(table.columns.map((column, index) => [column.key, table.rows.find(row => row.cells[0] === name || row.cells[1] === name)!.cells[index]]))
+// A row by the person's name (or a team's name), wherever the form puts that column.
+const rowOf = (table: ReturnType<typeof buildAttendanceTable>, name: string) => {
+  const at = ["employee", "team"].map(key => table.columns.findIndex(column => column.key === key)).filter(index => index >= 0)
+  const row = table.rows.find(item => at.some(index => item.cells[index] === name))!
+  return Object.fromEntries(table.columns.map((column, index) => [column.key, row.cells[index]]))
+}
 
 describe("HR reports on the report engine", () => {
   it("sums one row per employee: planned and worked days, absences, leave and attendance rate", () => {
@@ -69,12 +74,15 @@ describe("HR reports on the report engine", () => {
     expect(rowOf(table, "Центр")).toMatchObject({ employees: 1, workedDays: 4, lateCount: 1 })
   })
 
-  it("lays out «Forma N-1t»: number, name, position, unit, day codes, days and hours worked", () => {
+  it("lays out «Forma N-1t»: number, personnel number, name, position, unit, day codes, days and hours worked", () => {
     const table = buildAttendanceTable(report, config("MONTH", [...ATTENDANCE_REPORTS.n1t.columns], { from: "2026-10-01", to: "2026-10-31" }), "ru", t)
     expect(table.title).toBe(ru.mtmAttendance.reportN1tTitle)
-    expect(table.columns.slice(0, 4).map(column => column.key)).toEqual(["index", "employee", "position", "team"])
-    expect(table.columns[2].label).toBe(ru.mtmAttendance.reportPosition)
+    expect(table.columns.slice(0, 5).map(column => column.key)).toEqual(["index", "personnelNumber", "employee", "position", "team"])
+    expect(table.columns[1].label).toBe(ru.mtmAttendance.reportPersonnelNumber)
+    expect(table.columns[3].label).toBe(ru.mtmAttendance.reportPosition)
     expect(rowOf(table, "Нигяр").position).toBe("Бухгалтер"); expect(rowOf(table, "Рашад").position).toBe("—")
+    // No number on the card: a dash, never another person's or an empty cell.
+    expect(rowOf(table, "Рашад").personnelNumber).toBe("—")
     expect(table.columns.filter(column => /^\d{4}-\d{2}-\d{2}$/.test(column.key))).toHaveLength(31)
     expect(table.rows.map(row => row.cells[0])).toEqual([1, 2])
     expect(rowOf(table, "Нигяр").workedDays).toBe(4)

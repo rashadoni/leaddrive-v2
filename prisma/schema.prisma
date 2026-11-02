@@ -6283,6 +6283,10 @@ model MtmAgent {
   name           String
   /// Job title HR writes on «Forma N-1t» (Personnel → Employees → card).
   position       String?        @db.VarChar(120)
+  /// Personnel number (tabel nömrəsi) HR writes on the timesheet and «Forma N-1t».
+  /// Unique per organization ignoring case — a partial index in migration
+  /// 20261121090000_mtm_agent_personnel_number, not expressible here.
+  personnelNumber String?       @db.VarChar(32)
   email          String?
   phone          String?
   externalCode   String?
