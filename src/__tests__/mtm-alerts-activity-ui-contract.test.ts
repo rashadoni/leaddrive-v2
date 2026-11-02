@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 import { mtmAccessErrorKey } from "@/lib/mtm/access-error"
-import { activityRowHref } from "@/lib/mtm/activity-actions"
+import { activityRowHref, activitySubjectName } from "@/lib/mtm/activity-actions"
 import { fieldSyncAuditData, routeTransitionActions } from "@/lib/mtm/field-sync-audit"
 import { groupMtmAlertsByAgentDay, type MtmAlertDayRow } from "@/lib/mtm/alert-day-groups"
 
@@ -115,7 +115,9 @@ describe("activity rows", () => {
     }
     expect(messages.az.mtmActivity.action.CHECK_IN).not.toBe("Check-in")
     expect(messages.ru.mtmActivity.action.CHECK_OUT).not.toBe("Check-out")
-    expect(pages.activity).toContain("subject?.customerName")
+    // The «Kimə» cell names the client the API resolved.
+    expect(activitySubjectName({ action: "CHECK_IN", subject: { customerName: "Aptek", visitId: "v", routeId: null } }, (k) => k)).toBe("Aptek")
+    expect(pages.activity).toContain("activitySubjectName(l, t)")
     expect(pages.activity).toContain("activityRowHref(log)")
   })
 
