@@ -111,8 +111,8 @@ jobs:
           assert report['numFailedTests']==0 and report['numFailedTestSuites']==0
           regression=[t for suite in report['testResults'] for t in suite['assertionResults'] if 'non-UTC canonical NO_CONSENT' in t['fullName']]
           assert len(regression)==2 and all(t['status']=='passed' for t in regression)
-          clock=[t for suite in report['testResults'] for t in suite['assertionResults'] if 'non-UTC guards preserve UTC' in t['fullName'] or 'non-UTC risk dates' in t['fullName'] or 'sets UTC only on four' in t['fullName']]
-          assert len(clock)==5 and all(t['status']=='passed' for t in clock)
+          clock=[t for suite in report['testResults'] for t in suite['assertionResults'] if 'non-UTC guards preserve UTC' in t['fullName'] or 'non-UTC risk dates' in t['fullName'] or 'sets UTC only on five' in t['fullName'] or 'Europe/Berlin installation' in t['fullName']]
+          assert len(clock)==6 and all(t['status']=='passed' for t in clock)
           receipt['green']={'status':'PASS','passed':report['numPassedTests'],'failed':0,'nonUtcRegressionPassed':len(regression),'utcGuardAndRiskPassed':len(clock)}
           path.write_text(json.dumps(receipt,indent=2)+'\n')
           PY
