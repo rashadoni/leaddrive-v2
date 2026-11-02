@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { MtmAttendanceEmployeeRemove } from "@/components/mtm/attendance-employee-remove"
-import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
+import { MtmAttendanceDepartmentField, applyAttendanceUnitRename, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
 import { MtmAttendanceEmployeePreparation } from "@/components/mtm/attendance-employee-preparation"
 import { createDateFormatter, formatTime } from "@/lib/format-date"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
@@ -148,7 +148,10 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
             <Input id="employee-position" maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></Field>
           <Field id="employee-personnel-number" label={p("employeeCardPersonnelNumber")} hint={p("employeeCardPersonnelNumberHint")}>
             <Input id="employee-personnel-number" maxLength={ATTENDANCE_PERSONNEL_NUMBER_MAX} className="min-h-11" value={form.personnelNumber} onChange={event => set("personnelNumber")(event.target.value)} /></Field>
-          <MtmAttendanceDepartmentField id="employee-department" teams={detail.teams} departments={detail.departments ?? []} value={form.department} onChange={set("department")} />
+          <MtmAttendanceDepartmentField id="employee-department" teams={detail.teams} departments={detail.departments ?? []} value={form.department} onChange={set("department")}
+            onRenamed={unit => setDetail(current => current && { ...applyAttendanceUnitRename(current, unit), employee: { ...current.employee,
+              ...(unit.kind === "DEPARTMENT" && current.employee.departmentId === unit.id ? { departmentName: unit.name } : {}),
+              ...(unit.kind === "SECTION" && current.employee.teamId === unit.id ? { teamName: unit.name } : {}) } })} />
           <Field id="employee-manager" label={p("employeeCardManager")} hint={p("employeeCardManagerHint")}>
             <select id="employee-manager" className={SELECT} value={form.managerId} onChange={event => set("managerId")(event.target.value)}>
               <option value="">{p("employeeCardNoManager")}</option>

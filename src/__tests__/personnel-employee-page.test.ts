@@ -177,6 +177,57 @@ describe("Personnel → employee page", () => {
     expect(JSON.parse(String(posts()[1][1]!.body))).toMatchObject({ personnelNumber: null })
   })
 
+  // Owner, 2026-11-02: «нет редактирования названия который уже был создан». The
+  // chosen department and section are renamed in place, by their own button.
+  it("renames the chosen department in place and refuses a taken section name, without saving the card", async () => {
+    detail.employee = { ...detail.employee, departmentId: "dep-finance", departmentName: "Финансы", teamId: "team-kassa", teamName: "Касса" }
+    const patches: unknown[] = []
+    fetchMock.mockImplementation(async (_url, options) => {
+      if (options?.method !== "PATCH") return json(detail)
+      const body = JSON.parse(String(options.body)); patches.push(body)
+      return body.kind === "SECTION" ? json(null, 409, "MTM_ATTENDANCE_UNIT_NAME_TAKEN") : json({ ...body, name: body.name.trim(), changed: true })
+    })
+    await render()
+    const renameButton = (kind: string) => container.querySelector<HTMLButtonElement>(`[data-testid="unit-rename-${kind}"]`)
+    expect(renameButton("department")!.textContent).toBe(p("unitRename"))
+    expect(renameButton("section")).not.toBeNull()
+
+    await act(async () => renameButton("department")!.click())
+    const input = field("unit-rename-department-dep-finance") as HTMLInputElement
+    expect(input.value).toBe("Финансы")
+    // The editor stands in place of the list.
+    expect(container.querySelector("#employee-department-unit")).toBeNull()
+    await edit("unit-rename-department-dep-finance", "  Финансы и учёт ")
+    // Enter inside the card's form saves the name, not the card.
+    await act(async () => { field("unit-rename-department-dep-finance").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })) })
+    for (let i = 0; i < 3; i++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(patches).toEqual([{ kind: "DEPARTMENT", id: "dep-finance", name: "Финансы и учёт" }])
+    expect(fetchMock.mock.calls.filter(([, options]) => options?.method && !["GET", "PATCH"].includes(options.method))).toHaveLength(0)
+    const department = field("employee-department-unit") as HTMLSelectElement
+    expect(department.value).toBe("dep-finance")
+    expect(department.selectedOptions[0].textContent).toBe("Финансы и учёт")
+    expect(container.querySelector("h1")!.parentElement!.textContent).toContain("Финансы и учёт")
+
+    await act(async () => renameButton("section")!.click())
+    await edit("unit-rename-section-team-kassa", "Бухгалтерия")
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="unit-rename-section-editor"] button')!.click())
+    for (let i = 0; i < 3; i++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(container.querySelector('[data-testid="unit-rename-section-editor"] [role="alert"]')!.textContent).toBe(p("unitRenameTakenSection", { name: "Бухгалтерия" }))
+    // Cancel brings the list back with the old name.
+    const cancel = [...container.querySelectorAll<HTMLButtonElement>('[data-testid="unit-rename-section-editor"] button')].find(item => item.textContent === p("unitRenameCancel"))!
+    await act(async () => cancel.click())
+    expect((field("employee-department") as HTMLSelectElement).selectedOptions[0].textContent).toBe("Касса")
+  })
+
+  it("offers no rename until an existing department or section is chosen", async () => {
+    await render()
+    expect(container.querySelector('[data-testid="unit-rename-department"]')).toBeNull()
+    expect(container.querySelector('[data-testid="unit-rename-section"]')).toBeNull()
+    await edit("employee-department-unit", "dep-finance")
+    expect(container.querySelector('[data-testid="unit-rename-department"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="unit-rename-section"]')).toBeNull()
+  })
+
   it("names a missing employee in words", async () => {
     fetchMock.mockResolvedValue(json(null, 404)); await render()
     expect(container.querySelector('[role="alert"]')!.textContent).toBe(p("employeeNotFound"))
