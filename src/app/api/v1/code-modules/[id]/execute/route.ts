@@ -20,6 +20,7 @@ import type {
   ContactRepository,
   DealRepository,
 } from "@/lib/apex/types"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 /**
  * Slice 1 Deal repository — tenant-scoped Prisma wrapper. The
@@ -54,17 +55,20 @@ function makeDealRepo(organizationId: string, actorUserId?: string | null): Deal
     async create(data) {
       const name = typeof data.name === "string" ? data.name : ""
       if (!name) throw new Error("crm.deals.create requires `name`")
-      const created = await prisma.deal.create({
-        data: {
-          organizationId,
-          name,
-          stage: typeof data.stage === "string" ? data.stage : "LEAD",
-          valueAmount: typeof data.valueAmount === "number" ? data.valueAmount : 0,
-          currency: typeof data.currency === "string" ? data.currency : "AZN",
-          companyId: typeof data.companyId === "string" ? data.companyId : null,
-          assignedTo: typeof data.assignedTo === "string" ? data.assignedTo : null,
-        },
-        select: { id: true, name: true, stage: true, valueAmount: true },
+      const created = await withDealEvents(prisma, organizationId, [], async (tx) => {
+        const row = await tx.deal.create({
+          data: {
+            organizationId,
+            name,
+            stage: typeof data.stage === "string" ? data.stage : "LEAD",
+            valueAmount: typeof data.valueAmount === "number" ? data.valueAmount : 0,
+            currency: typeof data.currency === "string" ? data.currency : "AZN",
+            companyId: typeof data.companyId === "string" ? data.companyId : null,
+            assignedTo: typeof data.assignedTo === "string" ? data.assignedTo : null,
+          },
+          select: { id: true, name: true, stage: true, valueAmount: true },
+        })
+        return { value: row, createdIds: [row.id] }
       })
       return { ...created, valueAmount: decimalToNumber(created.valueAmount) }
     },
@@ -88,10 +92,9 @@ function makeDealRepo(organizationId: string, actorUserId?: string | null): Deal
           : null
       const stageChanges = !!prior && prior.stage !== patch.stage
       if (stageChanges) patch.stageChangedAt = new Date()
-      const result = await prisma.deal.updateMany({
-        where: { id, organizationId },
-        data: patch,
-      })
+      const result = await withDealEvents(prisma, organizationId, [id], async (tx) => ({
+        value: await tx.deal.updateMany({ where: { id, organizationId }, data: patch }),
+      }))
       if (result.count === 0) throw new Error(`Deal ${id} not found in tenant`)
       if (stageChanges && prior) {
         const newAmount =

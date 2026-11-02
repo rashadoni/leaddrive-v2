@@ -13,12 +13,18 @@ import {
   customerPinStillAt,
   customerPinUnchangedSince,
 } from "@/lib/mtm/customer-location-request"
+import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
 const bodySchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
   comment: z.string().trim().max(500).nullable().optional(),
+  // «Подтвердить» on a request whose pin was moved after the agent asked:
+  // the manager was shown that and said yes (owner, 2026-10-16: «тут должно
+  // быть либо подтверждаю, либо отклоняю»). Without it such an answer is 409,
+  // so a tab that never showed the warning cannot move the pin a second time.
+  confirmPinMoved: z.boolean().optional(),
 })
 
 class ConcurrentDecisionError extends Error {}
@@ -71,6 +77,9 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
   }
 
   const now = new Date()
+  // Where the pin stood when it was moved: what the agent saw, or — confirmed
+  // over a later change — where somebody had put it since. For the journal.
+  let replaced = { latitude: request.previousLatitude, longitude: request.previousLongitude }
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const claimed = await tx.mtmCustomerLocationRequest.updateMany({
@@ -84,14 +93,21 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
           where: { id: request.customerId, organizationId: auth.orgId, deletedAt: null },
           select: { latitude: true, longitude: true },
         })
-        if (!customer || !customerPinUnchangedSince(request, customer)) throw new CustomerMovedError("Customer pin changed")
-        // From the place the agent saw, and no other: a pin moved a moment ago by somebody else is not moved again.
+        if (!customer) throw new CustomerMovedError("Customer gone")
+        const unchanged = customerPinUnchangedSince(request, customer)
+        if (!unchanged && !body.confirmPinMoved) throw new CustomerMovedError("Customer pin changed")
+        if (!unchanged) {
+          const current = normalizeMtmCoordinates(customer)
+          replaced = { latitude: current.latitude, longitude: current.longitude }
+        }
+        // From the place this answer was given against, and no other: a pin
+        // moved a moment ago by somebody else is not moved again.
         const moved = await tx.mtmCustomer.updateMany({
           where: {
             id: request.customerId,
             organizationId: auth.orgId,
             deletedAt: null,
-            ...customerPinStillAt(request),
+            ...customerPinStillAt({ previousLatitude: replaced.latitude, previousLongitude: replaced.longitude }),
           },
           data: { latitude: request.proposedLatitude, longitude: request.proposedLongitude },
         })
@@ -160,13 +176,16 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
     entity: "customer_location_request",
     entityId: id,
     metadataKind: "customer_location_decision",
-    oldData: { status: "SUBMITTED", latitude: request.previousLatitude, longitude: request.previousLongitude },
+    oldData: { status: "SUBMITTED", latitude: replaced.latitude, longitude: replaced.longitude },
     newData: {
       status: body.decision,
       customerId: request.customerId,
       latitude: body.decision === "APPROVED" ? request.proposedLatitude : request.previousLatitude,
       longitude: body.decision === "APPROVED" ? request.proposedLongitude : request.previousLongitude,
       comment,
+      ...(body.decision === "APPROVED" && body.confirmPinMoved && (replaced.latitude !== request.previousLatitude || replaced.longitude !== request.previousLongitude)
+        ? { confirmedOverPinMovedSinceRequest: true, pinWhenAgentAsked: { latitude: request.previousLatitude, longitude: request.previousLongitude } }
+        : {}),
     },
     req,
   }).catch((error) => console.warn("[MTM/customer-location-requests/decision] audit failed", error))

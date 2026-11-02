@@ -26,6 +26,7 @@ const mobileAuth = (role: string): MobileAuthResult => ({
   tenantCapabilities: {
     routeField: true,
     workforceHrm: true,
+    personnel: true,
     attendanceQr: false,
     attendanceDeviceTrust: false,
   },
@@ -75,6 +76,22 @@ const v2Request = () => new NextRequest("http://localhost:3000/api/v1/mtm/mobile
 })
 
 describe("GET /api/v1/mtm/mobile/bootstrap", () => {
+  it("issues offline drafts only for the authenticated agent and supplied installation", async () => {
+    const response = await GET(v2Request())
+    expect(response.status).toBe(200)
+    const { data } = await response.json()
+    expect(data.offlineGrant).toMatchObject({ version: 1, kind: "LOCAL_FIELD_DRAFTS", tenantId: ORG, principalId: AGENT, deviceId: "device-1" })
+    expect(Date.parse(data.offlineGrant.expiresAt) - Date.parse(data.offlineGrant.issuedAt)).toBe(7 * 24 * 60 * 60 * 1000)
+  })
+  it("does not issue an installation-independent offline grant to an older client", async () => {
+    expect((await (await GET(request())).json()).data.offlineGrant).toBeNull()
+  })
+  it("does not grant offline drafts after the authenticated entitlement was withdrawn", async () => {
+    const auth = mobileAuth("AGENT")
+    auth.tenantCapabilities!.routeField = false
+    vi.mocked(resolveMobileAuth).mockResolvedValue(auth)
+    expect((await (await GET(v2Request())).json()).data.offlineGrant).toBeNull()
+  })
   it.each(["AGENT", "EMPLOYEE"])("hides attendance for excluded %s without granting field access", async role => {
     vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth(role))
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role, attendanceParticipant: true, attendanceExcluded: true, name: "Fictional employee", canPlanOwnRoutes: true } as never)
@@ -85,6 +102,60 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.policies).not.toHaveProperty("attendanceMarkVersion")
     expect(json.data.permissions.includes("ROUTE_EXECUTE")).toBe(role === "AGENT")
     expect(json.data.permissions.includes("WORKTIME_SELF_MUTATE")).toBe(role === "AGENT")
+  })
+  it.each([["AGENT", false], ["EMPLOYEE", true]] as const)("gives an enrolled %s requests and day marks only when it is office staff", async (role, office) => {
+    // Owner, 2026-10-14: a field agent's day is for the field manager, not HR
+    // attendance; 2026-10-20: «у полевого агента всё кадровое убрать совсем» —
+    // no leave or time-correction requests either.
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth(role))
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role, attendanceParticipant: true, attendanceExcluded: false, name: "Fictional employee", canPlanOwnRoutes: true } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "attendanceBranchQrEnabled", value: true }] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.agentPermissions).toMatchObject({ attendanceRequests: office, attendanceWorkday: office, attendanceLocation: office, attendanceInstallation: office, attendanceBranchQr: office })
+    expect(json.data.policies.attendanceMarkVersion === 1).toBe(office)
+    expect(json.data.policies.attendanceBranchQrVersion === 1).toBe(office)
+    // The agent's own "Start day" stays its field session.
+    expect(json.data.permissions.includes("WORKTIME_SELF_MUTATE")).toBe(role === "AGENT")
+  })
+  // The office shell opens its attendance screens from these keys. They were
+  // matrix switches until 2026-10-20 and are not any more; the shape the
+  // phone receives must not move with that: absent until Attendance is on,
+  // and the branch QR key only while the QR rule is on as well.
+  it.each([
+    [[], []],
+    [[{ key: "attendanceEnabled", value: false }, { key: "attendanceBranchQrEnabled", value: true }], []],
+    [[{ key: "attendanceEnabled", value: true }], ["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation"]],
+    [[{ key: "attendanceEnabled", value: true }, { key: "attendanceBranchQrEnabled", value: true }], ["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation", "attendanceBranchQr"]],
+  ] as const)("sends an enrolled office employee the attendance keys it always had (%j)", async (stored, keys) => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth("EMPLOYEE"))
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false, name: "Fictional employee", canPlanOwnRoutes: false } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue(stored as never)
+    const permissions = (await (await GET(request())).json()).data.policies.agentPermissions as Record<string, boolean>
+    expect(Object.entries(permissions).filter(([key]) => key.startsWith("attendance"))).toEqual(keys.map((key) => [key, true]))
+  })
+  it("gives an office employee of a Personnel-only tenant its attendance and no field surface", async () => {
+    // Personnel is sold apart from routes (owner, 2026-10-14). The app opens
+    // its office tabs from these attendance flags, whatever routeField says.
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...mobileAuth("EMPLOYEE"), tenantCapabilities: { routeField: false, workforceHrm: false, personnel: true } })
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false, name: "Fictional employee", canPlanOwnRoutes: false } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    const response = await GET(request())
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.data.policies.agentPermissions).toMatchObject({ attendanceRequests: true, attendanceWorkday: true })
+    expect(json.data.policies.attendanceMarkVersion).toBe(1)
+    expect(json.data.modules.routeField.enabled).toBe(false)
+    expect(json.data.routeTargetTypes).toEqual([])
+    expect(json.data.sync.streams).toBeUndefined()
+    expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenCalled()
+  })
+  it("gives no attendance to a tenant with routes but without Personnel", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ ...mobileAuth("AGENT"), tenantCapabilities: { routeField: true, workforceHrm: false, personnel: false } })
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role: "AGENT", attendanceParticipant: true, attendanceExcluded: false, name: "Fictional agent", canPlanOwnRoutes: true } as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.agentPermissions).toMatchObject({ attendanceRequests: false, attendanceWorkday: false })
+    expect(json.data.modules.routeField.enabled).toBe(true)
   })
   it("returns tenant, principal, capabilities and explicit unversioned state", async () => {
     const response = await GET(request())
@@ -409,6 +480,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       workforce: { enabled: true },
     })
     expect(json.data.routeTargetTypes).toEqual([])
+    expect(json.data.sync.streams).toBeUndefined()
     expect(json.data.permissions).toEqual(["WORKTIME_SELF_READ", "WORKTIME_SELF_MUTATE"])
     expect(json.data.sync.streams).toBeUndefined()
     expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenCalledTimes(1)
@@ -816,6 +888,28 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     }))
   })
 
+  it("tells the phone the latest mark of a still-open day, so «Günü bağla» cannot finish before it", async () => {
+    // Owner's phone, 2026-10-18: 18:30 asked for a day with a break at 22:18.
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-left-open",
+      workDate: new Date("2026-08-22T00:00:00.000Z"),
+      status: "STARTED",
+      startedAt: new Date("2026-08-22T05:00:00.000Z"),
+      pausedAt: null,
+      completedAt: null,
+    } as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockResolvedValue({ occurredAt: new Date("2026-08-22T18:18:57.116Z") } as never)
+
+    const json = await (await GET(request())).json()
+
+    expect(json.data.workday).toMatchObject({ id: "workday-left-open", lastMarkAt: "2026-08-22T18:18:57.116Z" })
+    expect(prisma.mtmAgentWorkdayEvent.findFirst).toHaveBeenCalledWith({
+      where: { organizationId: ORG, agentId: AGENT, workdayId: "workday-left-open" },
+      orderBy: { occurredAt: "desc" },
+      select: { occurredAt: true },
+    })
+  })
+
   it("looks up today's shift by the stored date, not the tenant-midnight instant", async () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     // 18:30 in Asia/Baku (UTC+4) on 2026-09-15.
@@ -867,6 +961,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.permissions).toEqual(["WORKTIME_SELF_READ", "WORKTIME_SELF_MUTATE"])
     expect(json.data.policies).toMatchObject({ canPlanOwnRoutes: false, workforce: { enabled: true } })
     expect(json.data.routeTargetTypes).toEqual([])
+    expect(json.data.sync.streams).toBeUndefined()
   })
 
   it("preserves workday bootstrap data for an old MTM-only tenant", async () => {

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Check, CircleAlert, Loader2, Search, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -226,7 +227,7 @@ export function MtmContactDuplicateReportDialog({
                     aria-checked={active}
                     className={cn(
                       "grid min-h-11 w-full gap-1 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active ? "border-primary bg-primary/5" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700",
+                      active ? "border-foreground ring-1 ring-inset ring-foreground" : "border-border hover:bg-muted/60",
                     )}
                     onClick={() => { setSelected(candidate); setError(""); submission.current = null }}
                   >
@@ -244,7 +245,7 @@ export function MtmContactDuplicateReportDialog({
           ) : null}
 
           {selected ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
+            <div className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
               <p className="font-medium">{t("duplicateSelected", { name: selected.displayName })}</p>
               <p className="mt-1 text-xs leading-5">{t("duplicateApprovalHint")}</p>
             </div>
@@ -265,10 +266,12 @@ export function MtmContactDuplicateReportDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || !selected}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {saving ? t("duplicateSubmitting") : t("duplicateSubmit")}
-          </Button>
+          <Hint wrap text={saving ? null : !selected ? t("hint.dupChooseMain") : t("hint.dupSubmit")}>
+            <Button type="submit" disabled={saving || !selected}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {saving ? t("duplicateSubmitting") : t("duplicateSubmit")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
@@ -353,11 +356,13 @@ export function MtmContactDuplicateDecisionDialog({
           </div>
         ) : null}
         {request?.duplicateTarget ? (
-          <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+          <div className="rounded-xl border border-border p-3">
             <p className="text-xs font-medium text-muted-foreground">{t("duplicateCanonicalContact")}</p>
-            <Link className="mt-1 inline-flex min-h-11 items-center font-semibold text-primary hover:underline" href={`/mtm/contacts/${request.duplicateTarget.id}`} target="_blank">
-              {request.duplicateTarget.displayName}
-            </Link>
+            <Hint text={t("hint.dupOpenMain")} align="start">
+              <Link className="mt-1 inline-flex min-h-11 items-center font-semibold text-primary hover:underline" href={`/mtm/contacts/${request.duplicateTarget.id}`} target="_blank">
+                {request.duplicateTarget.displayName}
+              </Link>
+            </Hint>
             <p className="text-xs text-muted-foreground">{request.duplicateTarget.externalCode || t("externalCodeMissing")}</p>
           </div>
         ) : null}
@@ -372,12 +377,16 @@ export function MtmContactDuplicateDecisionDialog({
       </DialogContent>
       <DialogFooter>
         <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-        <Button type="button" variant="destructive" disabled={saving} onClick={() => void decide("REJECTED")}>
-          <X className="h-4 w-4" />{t("duplicateReject")}
-        </Button>
-        <Button type="button" disabled={saving || !request?.duplicateTarget} onClick={() => void decide("APPROVED")}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{t("duplicateApprove")}
-        </Button>
+        <Hint wrap text={saving ? null : t("hint.dupReject")}>
+          <Button type="button" variant="destructive" disabled={saving} onClick={() => void decide("REJECTED")}>
+            <X className="h-4 w-4" />{t("duplicateReject")}
+          </Button>
+        </Hint>
+        <Hint wrap text={saving ? null : !request?.duplicateTarget ? t("hint.dupMainUnavailable") : t("hint.dupApprove")}>
+          <Button type="button" disabled={saving || !request?.duplicateTarget} onClick={() => void decide("APPROVED")}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{t("duplicateApprove")}
+          </Button>
+        </Hint>
       </DialogFooter>
     </Dialog>
   )

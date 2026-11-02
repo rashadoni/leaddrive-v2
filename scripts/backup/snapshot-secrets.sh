@@ -26,12 +26,18 @@
 set -euo pipefail
 
 MODE="upload"
+OWNER_RECIPIENT=""
 if [ "${1:-}" = "--dry-run" ] && [ "$#" -eq 1 ]; then
   MODE="dry-run"
+elif [ "${1:-}" = "--owner-operated" ] && [ "$#" -eq 2 ]; then
+  [[ "$2" =~ ^age1[0-9a-z]{58}$ ]] || exit 2
+  OWNER_RECIPIENT="$2"
 elif [ "$#" -ne 0 ]; then
-  printf 'Usage: %s [--dry-run]\n' "$0" >&2
+  printf 'Usage: %s [--dry-run|--owner-operated PUBLIC_RECIPIENT]\n' "$0" >&2
   exit 2
 fi
+
+readonly OWNER_RECIPIENT
 
 BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/leaddrive/backup.env}"
 APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
@@ -47,6 +53,10 @@ SECRET_FILES=(
   /etc/leaddrive/app.env
   /etc/leaddrive/backup.env
   /etc/leaddrive/migration.env
+  # The pgBackRest repository passphrase. The WAL archive is encrypted with it
+  # and the only copy lives on the host the archive exists to replace, so it
+  # must travel with the other recovery secrets.
+  /etc/leaddrive/wal-archive.env
 )
 
 log()   { echo "[$(date '+%H:%M:%S')] $1"; }
@@ -100,6 +110,7 @@ assert_secret_source() {
   [ "$owner" = "root" ] || fatal "required recovery file must be root-owned: $file"
   case "$file:$group:$mode" in
     /etc/leaddrive/app.env:root:600|/etc/leaddrive/migration.env:root:600) ;;
+    /etc/leaddrive/wal-archive.env:root:600) ;;
     /etc/leaddrive/backup.env:root:600|/etc/leaddrive/backup.env:leaddrive-backup:640) ;;
     *) fatal "required recovery file ownership or mode is unsafe: $file" ;;
   esac
@@ -154,7 +165,7 @@ flock -n 9 || fatal "another snapshot run holds the lock"
   "$(stat -Lc '%d:%i' "/proc/$$/fd/9" 2>/dev/null || true)" ] \
   || fatal "secrets lock inode changed while it was acquired"
 
-RECIPIENT="${SECRETS_AGE_RECIPIENT:-${BACKUP_AGE_RECIPIENT:-}}"
+RECIPIENT="${OWNER_RECIPIENT:-${SECRETS_AGE_RECIPIENT:-${BACKUP_AGE_RECIPIENT:-}}}"
 [ -n "$RECIPIENT" ] || fatal "no age recipient (SECRETS_AGE_RECIPIENT or BACKUP_AGE_RECIPIENT)"
 require_env BACKUP_S3_ENDPOINT
 require_env BACKUP_S3_BUCKET

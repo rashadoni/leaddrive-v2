@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 import { OpenDemo } from "@/components/demo-center/journey/open-demo"
+import { isSuperAdminSession } from "@/lib/superadmin-guard"
 
 export const dynamic = "force-dynamic"
 
@@ -18,20 +20,24 @@ export const metadata: Metadata = {
  */
 
 /**
- * The demo, open to anyone, on its own page.
+ * The demo without a request: the owner's own walk-through and the page the
+ * intro clips are filmed on.
  *
- * Deliberately outside the marketing chrome: the whole point is that the
- * visitor lands inside the product rather than on another page about it.
+ * Open to anyone from 2026-09-22 until 2026-10-18, when the owner closed it:
+ * a prospect's demo opens only from the link mailed to the address on their
+ * request, once that address is confirmed (`demo-access/[token]/confirm`).
+ * Anyone else is sent to the request form.
  *
- * `name` and `company` only decide who the lead in the story is. They arrive
- * from the visitor's own form on /demo, stay in their browser, and are never
- * posted anywhere.
+ * Deliberately outside the marketing chrome: the visitor lands inside the
+ * product rather than on another page about it. `name` and `company` only
+ * decide who the lead in the story is; they stay in the browser.
  */
 export default async function OpenDemoPage({
   searchParams,
 }: {
   searchParams: Promise<{ name?: string | string[]; company?: string | string[] }>
 }) {
+  if (!(await isSuperAdminSession())) redirect("/demo")
   const query = await searchParams
   const first = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value)
   return <OpenDemo name={first(query.name)} company={first(query.company)} />

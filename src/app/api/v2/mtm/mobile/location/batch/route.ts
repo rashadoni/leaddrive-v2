@@ -10,6 +10,7 @@ import { readMtmMobileGpsBatchPilot } from "@/lib/mtm/mobile-gps-guard"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { mtmMobileLocationPayloadSha256 } from "@/lib/mtm/mobile-location-idempotency"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
+import { mtmSpeedMoving } from "@/lib/mtm/gps-speed"
 import { recordMtmMobileGpsTelemetry, type MtmMobileGpsResult } from "@/lib/mtm/mobile-gps-telemetry"
 import {
   isDuringMtmWorkdayPause,
@@ -197,7 +198,7 @@ function parseBatch(body: unknown, now: Date):
       heading,
       altitude,
       battery,
-      isMoving: (speed ?? 0) > 1,
+      isMoving: mtmSpeedMoving(speed),
       recordedAt,
       payloadSha256: "",
     }

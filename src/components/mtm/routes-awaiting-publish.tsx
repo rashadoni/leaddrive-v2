@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Send } from "lucide-react"
@@ -49,7 +50,7 @@ export function MtmRoutesAwaitingPublish({
     <section
       data-testid="mtm-routes-awaiting-publish"
       aria-labelledby="mtm-routes-awaiting-publish-title"
-      className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30"
+      className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3"
     >
       <h2 id="mtm-routes-awaiting-publish-title" className="text-sm font-semibold text-amber-950 dark:text-amber-100">
         {t("awaitingTitle", { count: waiting.length })}
@@ -70,11 +71,13 @@ export function MtmRoutesAwaitingPublish({
               </span>
             </p>
             <div className="flex shrink-0 gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => onOpen(route)}>{t("awaitingOpen")}</Button>
-              <Button type="button" size="sm" disabled={publishing !== null} onClick={() => { void publish(route) }}>
-                <Send className="mr-1 h-4 w-4" aria-hidden="true" />
-                {publishing === route.id ? t("publishing") : t("publishRoute")}
-              </Button>
+              <Hint text={t("hint.awaitingOpen")}><Button type="button" size="sm" variant="outline" onClick={() => onOpen(route)}>{t("awaitingOpen")}</Button></Hint>
+              <Hint wrap text={t("hint.publish")}>
+                <Button type="button" size="sm" disabled={publishing !== null} onClick={() => { void publish(route) }}>
+                  <Send className="mr-1 h-4 w-4" aria-hidden="true" />
+                  {publishing === route.id ? t("publishing") : t("publishRoute")}
+                </Button>
+              </Hint>
             </div>
           </li>
         ))}

@@ -1,8 +1,12 @@
 // src/__tests__/lib-cron-auth.test.ts
+import type { AsyncLocalStorage } from "node:async_hooks"
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { NextRequest } from "next/server"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { getRlsContext, rlsStorage } from "@/lib/rls-context"
+import { isScheduledWork } from "@/lib/scheduled-work"
+
+const scheduledWork = (globalThis as unknown as { __scheduledWorkStorage: AsyncLocalStorage<true> }).__scheduledWorkStorage
 
 function req(headers: Record<string, string> = {}) {
   return new NextRequest("http://localhost/api/cron/test", { headers })
@@ -13,6 +17,7 @@ describe("requireCronAuth", () => {
   beforeEach(() => {
     process.env.CRON_SECRET = "s3cret"
     rlsStorage.enterWith(undefined as never) // reset leaked context between tests
+    scheduledWork.enterWith(undefined as never)
   })
   afterEach(() => { process.env.CRON_SECRET = OLD })
 
@@ -31,6 +36,13 @@ describe("requireCronAuth", () => {
     const res = requireCronAuth(req({ "x-cron-secret": "s3cret" }))
     expect(res).toBeNull()
     expect(getRlsContext()).toEqual({ bypass: true })
+  })
+
+  it("marks the rest of the request as scheduled work, and only when the secret matches", () => {
+    expect(requireCronAuth(req({ "x-cron-secret": "wrong" }))?.status).toBe(401)
+    expect(isScheduledWork()).toBe(false)
+    expect(requireCronAuth(req({ "x-cron-secret": "s3cret" }))).toBeNull()
+    expect(isScheduledWork()).toBe(true)
   })
 
   it("accepts Authorization: Bearer form", () => {

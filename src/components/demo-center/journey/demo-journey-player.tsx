@@ -36,20 +36,30 @@ import {
 } from "@/lib/demo-center/session-clock"
 import { cn } from "@/lib/utils"
 import { DemoCoachMark } from "./demo-coach-mark"
-import { DemoJourneyGuide, IntroClip } from "./demo-journey-guide"
+import { DemoJourneyGuide, IntroClip, type DemoAssistantActionResult } from "./demo-journey-guide"
+import { planAssistantAction, type DemoAssistantAction } from "@/lib/demo-center/assistant/actions"
+import { LIVE_WHATSAPP_CHAT_SECTIONS, LIVE_WHATSAPP_TICKET_SECTIONS, useDemoLiveWhatsApp } from "./use-demo-live-whatsapp"
+import { LIVE_SOCIAL_SECTIONS, demoSocialInboxView, useDemoLiveSocial } from "./use-demo-live-social"
 import { createJourneyReporter, type JourneyReporter } from "./journey-reporter"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
 import { useGuideVoice } from "./demo-guide-voice"
 import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { BoardScene } from "./scenes/board-scene"
+import { CallsScene } from "./scenes/calls-scene"
 import { CampaignScene } from "./scenes/campaign-scene"
+import { ContractsScene } from "./scenes/contracts-scene"
 import { DealScene } from "./scenes/deal-scene"
 import { InboxScene } from "./scenes/inbox-scene"
+import { AiAgentScene } from "./scenes/ai-agent-scene"
 import { LeadScene } from "./scenes/lead-scene"
+import { MtmScene } from "./scenes/mtm-scene"
+import { PersonnelScene } from "./scenes/personnel-scene"
 import { OrientationScene } from "./scenes/orientation-scene"
 import { QuoteScene } from "./scenes/quote-scene"
 import { ScenePending } from "./scenes/scene-pending"
 import { SummaryScene } from "./scenes/summary-scene"
+import { NextModuleScene } from "./scenes/next-module-scene"
+import { SupportScene } from "./scenes/support-scene"
 import type { DemoJourneyVariant, DemoSceneProps } from "./scene-props"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 import type { DemoLiveCallState } from "./demo-live-call"
@@ -62,9 +72,12 @@ import type { DemoLiveCallState } from "./demo-live-call"
  * current section, and the guide panel. The coach mark points at the real
  * control inside the scene.
  *
- * It never fetches: everything it shows comes from the snapshot. Session
- * lifecycle (start, OTP, expiry, revoke) stays with the access shell; this
- * component only counts the deadlines it is given and calls `onAccessLost`.
+ * The story comes from the snapshot. The one thing it reads besides is the
+ * prospect's live WhatsApp thread (./use-demo-live-whatsapp.ts), once for the
+ * page: the guide's panel shows it, and the Service Desk scene the real ticket
+ * it opened — scenes themselves never fetch. Session lifecycle (start, OTP,
+ * expiry, revoke) stays with the access shell; this component only counts the
+ * deadlines it is given and calls `onAccessLost`.
  */
 
 const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
@@ -72,6 +85,7 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   source: CampaignScene,
   conversation: InboxScene,
   "ai-reply": InboxScene,
+  "ai-agent-setup": AiAgentScene,
   "lead-created": LeadScene,
   "lead-qualified": LeadScene,
   "ai-call": LeadScene,
@@ -80,6 +94,31 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   deal: DealScene,
   quote: QuoteScene,
   "closed-won": DealScene,
+  "sd-queue": SupportScene,
+  "sd-ticket": SupportScene,
+  "sd-resolve": SupportScene,
+  "sd-rules": SupportScene,
+  "sd-results": SupportScene,
+  "cc-log": CallsScene,
+  "cc-call": CallsScene,
+  "cc-promise": CallsScene,
+  "mtm-today": MtmScene,
+  "mtm-place": MtmScene,
+  "mtm-plan": MtmScene,
+  "mtm-live": MtmScene,
+  "mtm-visit": MtmScene,
+  "mtm-history": MtmScene,
+  "mtm-results": MtmScene,
+  "prs-today": PersonnelScene,
+  "prs-explain": PersonnelScene,
+  "prs-timesheet": PersonnelScene,
+  "prs-risk": PersonnelScene,
+  "prs-month": PersonnelScene,
+  "ctr-list": ContractsScene,
+  "ctr-approve": ContractsScene,
+  "ctr-sign": ContractsScene,
+  "ctr-control": ContractsScene,
+  "next-module": NextModuleScene,
   summary: SummaryScene,
 }
 
@@ -116,6 +155,12 @@ export interface DemoJourneyPlayerProps {
   onAccessLost?: () => void
   /** A grant with a real AI call: pass `withLiveCall(manifest)` as `manifest` too. */
   liveCall?: DemoLiveCallState
+  /**
+   * The server's voice switch is on: Da Vinci's answers are spoken and the
+   * prospect may ask by voice. Granted sessions only — the routes behind it
+   * refuse anything else.
+   */
+  assistantVoice?: boolean
 }
 
 function storageKey(token: string): string {
@@ -133,6 +178,7 @@ export function DemoJourneyPlayer({
   idleExpiresAt,
   onAccessLost,
   liveCall,
+  assistantVoice = false,
   variant = "granted",
 }: DemoJourneyPlayerProps) {
   const persistProgress = variant !== "preview"
@@ -155,6 +201,40 @@ export function DemoJourneyPlayer({
   useEffect(() => {
     accessLostRef.current = onAccessLost
   }, [onAccessLost])
+  // The guide's hands (assistant/actions.ts) act on the position of the
+  // latest render, not on the one the question was asked from: an answer
+  // arrives after its fetch, and the story may have moved meanwhile.
+  const assistantRef = useRef<{
+    snapshot: DemoJourneySnapshot
+    manifest: DemoJourneyManifest
+    openSection: (sectionId: string) => void
+    pointStep: () => void
+    hint: (message: string) => void
+  } | null>(null)
+  const runAssistantAction = useCallback((action: DemoAssistantAction, askedKey: string): DemoAssistantActionResult => {
+    const current = assistantRef.current
+    if (!current) return "dropped"
+    const { snapshot: latest, manifest: story } = current
+    const plan = planAssistantAction(action, latest, story)
+    // The screen changed while the answer was on its way: a jump that would
+    // still open something is offered as a worded button instead, and «show
+    // the step» answered a step the prospect has already left.
+    if (`${latest.sectionId}:${latest.stepId}` !== askedKey) {
+      if (action.kind === "point_step") return "moved"
+      return plan?.kind === "open" ? "offer" : "dropped"
+    }
+    if (!plan) return "dropped"
+    if (plan.kind === "point") {
+      current.pointStep()
+      return "done"
+    }
+    if (plan.kind === "refused") {
+      current.hint(plan.reason === "waits_for_call" ? S.jumpWaitsForCall : S.jumpRefused)
+      return "dropped"
+    }
+    current.openSection(plan.sectionId)
+    return "done"
+  }, [])
   const reporterRef = useRef<JourneyReporter | null>(null)
   useEffect(() => {
     reporterRef.current = variant === "granted"
@@ -273,6 +353,15 @@ export function DemoJourneyPlayer({
 
   const reachable = useReachableRoutes(snapshot, manifest)
 
+  // The prospect's live WhatsApp: read in the chapters that show it, on a granted session.
+  const shownSectionId = viewSectionId ?? snapshot?.sectionId ?? null
+  const liveWhatsAppActive = variant === "granted" && !!shownSectionId
+    && (LIVE_WHATSAPP_CHAT_SECTIONS.has(shownSectionId) || LIVE_WHATSAPP_TICKET_SECTIONS.has(shownSectionId))
+  const liveWhatsApp = useDemoLiveWhatsApp(token, liveWhatsAppActive)
+  // The prospect's own Facebook Page: the same chapters, a granted session only.
+  const liveSocialActive = variant === "granted" && !!shownSectionId && LIVE_SOCIAL_SECTIONS.has(shownSectionId)
+  const liveSocial = useDemoLiveSocial(token, liveSocialActive)
+
   if (!snapshot) return null
 
   const sections = activeSections(manifest)
@@ -316,6 +405,24 @@ export function DemoJourneyPlayer({
     } else openSection(sectionId)
   }
 
+  assistantRef.current = {
+    snapshot,
+    manifest,
+    openSection,
+    // The step's card and arrow out again. The mounted coach mark owns
+    // anchorMissing: clearing it here hid the panel's own «İrəli» and the
+    // «Bələdçidən davam et» fallback while the mark still had nothing to point
+    // at. Only leaving review remounts the mark, so only then does it search again.
+    pointStep: () => {
+      setHiddenCoachKey(null)
+      if (reviewMode) {
+        setViewSectionId(null)
+        setAnchorMissing(false)
+      }
+    },
+    hint,
+  }
+
   const Scene = SCENES[viewSection.id]
   const sceneProps: DemoSceneProps = {
     manifest,
@@ -327,6 +434,12 @@ export function DemoJourneyPlayer({
     dispatch,
     hint,
     openSection,
+    live: liveWhatsAppActive || liveSocialActive
+      ? {
+        whatsappTicket: liveWhatsAppActive ? liveWhatsApp.state?.ticket ?? null : null,
+        social: liveSocialActive ? demoSocialInboxView(liveSocial.state) : null,
+      }
+      : undefined,
   }
 
   const activeRoute = viewSection.navGroup === "demo" ? null : viewSection.route.replace(/\/\[[a-zA-Z]+\]$/, "")
@@ -424,7 +537,10 @@ export function DemoJourneyPlayer({
               inbox thread was squeezed to 32px and «Göndər» could not be
               pressed (owner's screen, 2026-09-22). */}
           <div className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
+            {/* The scenes are CRM screens, so they are set in the CRM's font
+                (`font-dashboard`, as the dashboard's <main>); the demo
+                routes' layouts define it (`demo-scene-font.ts`). */}
+            <main id="demo-scene" className="font-dashboard min-w-0 overflow-y-auto p-4 sm:p-6">
               {viewSection.intro && manifest.capabilities.video ? (
                 <IntroClip
                   // Its own key: the scene below is keyed by the section too, and
@@ -437,9 +553,14 @@ export function DemoJourneyPlayer({
                   token={token}
                   variant={variant}
                   compact={reviewMode || stepIndex > 0}
+                  stepKey={step?.id}
                   onClipEvent={(name) => {
-                    // A clip carries its own voiceover: the guide falls silent for it.
+                    // A clip carries its own voiceover: the guide falls silent for
+                    // it, and picks the step up again when it ends — before, the
+                    // rest of the chapter's first step went unsaid. A clip that
+                    // will not play gives the step back to the guide at once.
                     if (name === "video.started") voice.stop()
+                    if ((name === "video.completed" || name === "video.error") && step) voice.play(stepVoiceUrl(step))
                     reporterRef.current?.report({ eventType: "JOURNEY", name, sectionId: viewSection.id })
                   }}
                 />
@@ -477,6 +598,10 @@ export function DemoJourneyPlayer({
               }}
               liveCall={liveCall}
               onOutcome={(to) => step && dispatch({ type: "outcome", stepId: step.id, to })}
+              liveWhatsApp={liveWhatsAppActive && !reviewMode ? liveWhatsApp : undefined}
+              liveSocial={liveSocialActive && !reviewMode ? liveSocial : undefined}
+              onAssistantAction={variant === "granted" ? runAssistantAction : undefined}
+              assistantVoice={variant === "granted" && assistantVoice}
             />
           </div>
         </div>
@@ -505,7 +630,7 @@ export function DemoJourneyPlayer({
             onSkip={() => dispatch({ type: "skip-step", stepId: step.id })}
             onClose={() => setHiddenCoachKey(coachKey)}
             onMissing={setAnchorMissing}
-            voice={{ on: voice.on, onToggle: () => voice.toggle(stepVoiceUrl(step)) }}
+            voice={{ on: voice.on, blocked: voice.blocked, onToggle: () => voice.toggle(stepVoiceUrl(step)), onUnblock: voice.unblock }}
           />
         )}
       </section>

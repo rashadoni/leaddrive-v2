@@ -7,6 +7,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import az from "../../messages/az.json"
+import ru from "../../messages/ru.json"
+import en from "../../messages/en.json"
 
 const adminUrl = process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
 if (!adminUrl && process.env.MTM_ATTENDANCE_DB_GATE === "required") throw new Error("MTM_ATTENDANCE_TEST_DATABASE_URL is required")
@@ -35,7 +38,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
   let report: typeof import("@/lib/mtm/attendance-report-store")
   let createdRole = false, createdDb = false
   const ORG = "correction-pg-a", OTHER = "correction-pg-b", AGENT = "correction-pg-employee", ADMIN = "correction-pg-admin"
-  const self = { organizationId: ORG, agentId: AGENT, role: "AGENT" }
+  const self = { organizationId: ORG, agentId: AGENT, role: "EMPLOYEE" }
   const reviewer = { organizationId: ORG, userId: ADMIN, principalType: "session" as const }
   const at = (date: string, time: string) => new Date(`${date}T${time}:00+04:00`)
   const input = (date: string, startTime = "09:00", endTime = "18:00") => ({ clientRequestId: randomUUID(), kind: "TIME_CORRECTION", unit: "HOURS", startDate: date, endDate: date, startTime, endTime, reason: "Fictional forgotten mark" })
@@ -78,14 +81,14 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     report = await import("@/lib/mtm/attendance-report-store")
     await bypass(async () => {
       for (const id of [ORG, OTHER]) {
-        await prisma.organization.create({ data: { id, name: "Fictional correction company", slug: id, modules: { "route-field": true } } })
+        await prisma.organization.create({ data: { id, name: "Fictional correction company", slug: id, modules: { "route-field": true, personnel: true } } })
         await prisma.mtmSetting.create({ data: { organizationId: id, key: "attendanceEnabled", value: true } })
       }
       for (const [id, role] of [[ADMIN, "admin"], ["correction-pg-owner", "admin"], ["correction-pg-hr", "manager"], ["correction-pg-supervisor", "manager"]]) {
         await prisma.user.create({ data: { id, organizationId: ORG, name: "Fictional reviewer", email: `${id}@example.invalid`, role, passwordHash: "unusable-fixture-hash", mtmAttendanceAll: id === "correction-pg-hr" } })
       }
       for (const id of ["correction-team-a", "correction-team-b"]) await prisma.mtmTeam.create({ data: { id, organizationId: ORG, name: id } })
-      await prisma.mtmAgent.create({ data: { id: AGENT, organizationId: ORG, name: "Fictional employee", role: "AGENT", userId: "correction-pg-owner", teamId: "correction-team-a" } })
+      await prisma.mtmAgent.create({ data: { id: AGENT, organizationId: ORG, name: "Fictional employee", role: "EMPLOYEE", attendanceParticipant: true, userId: "correction-pg-owner", teamId: "correction-team-a" } })
       await prisma.mtmAgent.create({ data: { id: "correction-supervisor-card", organizationId: ORG, name: "Other team supervisor", role: "SUPERVISOR", userId: "correction-pg-supervisor", teamId: "correction-team-b" } })
     })
   }, 240_000)
@@ -138,7 +141,8 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     await tenant(ORG, async () => {
       expect(await prisma.mtmAgentWorkdayEvent.findMany({ where: { workdayId: day.id }, orderBy: { occurredAt: "asc" } })).toEqual(before)
       const result = await report.readMtmAttendanceReport({ organizationId: ORG, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { form: "ALL", from: "2026-09-02", to: "2026-09-02" } })
-      expect(result.rows[0]).toMatchObject({ factsState: "VALID", workedSeconds: 30600, pausedSeconds: 1800, lateSeconds: 0, earlyLeaveSeconds: 0 })
+      // 09:00–18:00 less the pressed 30-minute break, less the other half of the lunch hour (owner, 2026-10-16).
+      expect(result.rows[0]).toMatchObject({ factsState: "VALID", workedSeconds: 28800, lunchAutoSeconds: 1800, pausedSeconds: 1800, lateSeconds: 0, earlyLeaveSeconds: 0 })
       expect(result.rows[0].corrections).toHaveLength(1)
       expect(result.rows[0].corrections![0]).toMatchObject({ reviewer: { id: ADMIN }, before: { kind: "WORKDAY", facts: { startedAt: at("2026-09-02", "09:30").toISOString() } }, after: { startedAt: at("2026-09-02", "09:00").toISOString() } })
       expect(JSON.stringify(result)).not.toMatch(/latitude|longitude|12\.34567|45\.67891|PRIVATE_BREAK_MARKER|Fictional forgotten mark/)
@@ -192,6 +196,94 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
       expect(await prisma.mtmAgentWorkday.count({ where: { workDate: new Date("2026-09-08") } })).toBe(0)
       expect(await prisma.mtmHrmRequest.findUnique({ where: { id: request.id } })).toMatchObject({ status: "PENDING", correctionWorkdayId: null })
     })
+  })
+  it("closes a day before its own later marks: they stay in the journal, not in the day", async () => {
+    // Owner, 2026-10-18: «отметки после указанного окончания не считаются рабочим временем, но остаются в истории дня».
+    // A day left open: started 09:30, a break pressed at 19:00 and lifted at 19:10 — after the real 18:00 finish.
+    const date = "2026-09-05"
+    const day = await tenant(ORG, async () => {
+      const row = await prisma.mtmAgentWorkday.create({ data: { organizationId: ORG, agentId: AGENT, workDate: new Date(`${date}T00:00:00Z`), status: "STARTED", startedAt: at(date, "09:30"), totalPausedSeconds: 600 } })
+      await prisma.mtmAgentWorkdayEvent.createMany({ data: ([["START", "09:30"], ["PAUSE", "19:00"], ["RESUME", "19:10"]] as const).map(([type, time]) => ({
+        organizationId: ORG, agentId: AGENT, workdayId: row.id, clientEventId: randomUUID(), type, occurredAt: at(date, time), appliedAt: at(date, time), claimedAt: at(date, time), serverReceivedAt: at(date, time) })) })
+      return row
+    })
+    const { request } = await submit(input(date, "09:30", "18:00"))
+    expect(request.status).toBe("PENDING")
+    await approve(request)
+    await tenant(ORG, async () => {
+      expect(await prisma.mtmAgentWorkday.findUnique({ where: { id: day.id } })).toMatchObject({ status: "COMPLETED", completedAt: at(date, "18:00"), totalPausedSeconds: 0 })
+      // The evening marks are still there…
+      expect(await prisma.mtmAgentWorkdayEvent.count({ where: { workdayId: day.id } })).toBe(3)
+      expect(await prisma.workforceTimeCorrection.findFirstOrThrow({ where: { requestId: request.id } })).toMatchObject({ afterFacts: expect.objectContaining({ totalPausedSeconds: 0, completedAt: at(date, "18:00").toISOString() }) })
+      // …and not in the day: no break counted, nothing left early.
+      const result = await report.readMtmAttendanceReport({ organizationId: ORG, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { form: "ALL", from: date, to: date } })
+      expect(result.rows[0]).toMatchObject({ factsState: "VALID", pausedSeconds: 0, earlyLeaveSeconds: 0 })
+    })
+  })
+  it("auto-approves «Закрыть день» where the company switched it on — only with the start untouched, so lateness stays", async () => {
+    // Owner, 2026-10-18: «автоподтверждение, но чтоб были показаны опоздания» — only «Закрыть день».
+    const setting = (key: string, value: Prisma.InputJsonValue) => tenant(ORG, () => prisma.mtmSetting.upsert({
+      where: { organizationId_key: { organizationId: ORG, key } }, create: { organizationId: ORG, key, value }, update: { value } }))
+    const bell = (requestId: string) => tenant(ORG, () => prisma.notification.count({ where: { entityId: requestId } }))
+    await setting("attendanceAutoCloseForgottenDay", true)
+    await setting("attendanceAutoCloseForgottenDayBy", ADMIN)
+    try {
+      // The start untouched: closed at once, in the name of whoever switched it on.
+      const day = await seedDay("2026-09-10", "STARTED")
+      const closed = await submit(input("2026-09-10", "09:30", "18:00"))
+      expect(closed.request.status).toBe("APPROVED")
+      expect([az, ru, en].map((messages) => messages.mtmAttendance.autoCloseDecisionNote)).toContain(closed.request.decisionNote)
+      await tenant(ORG, async () => {
+        expect(await prisma.mtmAgentWorkday.findUnique({ where: { id: day.id } })).toMatchObject({ status: "COMPLETED", startedAt: at("2026-09-10", "09:30"), completedAt: at("2026-09-10", "18:00") })
+        expect(await prisma.workforceTimeCorrection.findFirstOrThrow({ where: { requestId: closed.request.id } })).toMatchObject({ source: "REQUEST_APPROVAL", actorUserId: ADMIN })
+        expect(await prisma.mtmHrmRequest.findUnique({ where: { id: closed.request.id } })).toMatchObject({ decidedByUserId: ADMIN })
+        // The employee hears the decision; nobody is asked to make one.
+        expect(await prisma.mtmNotification.count({ where: { metadata: { path: ["attendanceRequestId"], equals: closed.request.id } } })).toBe(1)
+        // Lateness is measured from the start the phone recorded: 09:30 against 09:00.
+        const result = await report.readMtmAttendanceReport({ organizationId: ORG, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { form: "ALL", from: "2026-09-10", to: "2026-09-10" } })
+        expect(result.rows[0]).toMatchObject({ factsState: "VALID", lateSeconds: 1800 })
+        expect(result.rows[0].flags).toContain("LATE_START")
+      })
+      expect(await bell(closed.request.id)).toBe(0)
+
+      // A paused day closes the same way, its open break ending at the finish.
+      const paused = await seedDay("2026-09-11", "PAUSED")
+      expect((await submit(input("2026-09-11", "09:30", "13:00"))).request.status).toBe("APPROVED")
+      expect(await tenant(ORG, () => prisma.mtmAgentWorkday.findUnique({ where: { id: paused.id } }))).toMatchObject({ status: "COMPLETED", pausedAt: null })
+
+      // A moved start goes to the manager, whatever the setting.
+      await seedDay("2026-09-12", "STARTED")
+      const moved = await submit(input("2026-09-12", "09:00", "18:00"))
+      expect(moved.request.status).toBe("PENDING")
+      expect(await tenant(ORG, () => prisma.workforceTimeCorrection.count({ where: { requestId: moved.request.id } }))).toBe(0)
+
+      // A completed day is an amendment, not a forgotten close.
+      await seedDay("2026-09-13")
+      expect((await submit(input("2026-09-13", "09:30", "18:00"))).request.status).toBe("PENDING")
+
+      // A failure inside the approval — here its audit row — leaves the request waiting, not lost.
+      await seedDay("2026-09-14", "STARTED")
+      sql(scratch!.adminDb, `CREATE FUNCTION fixture_reject_auto_close_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action = 'MTM_ATTENDANCE_REQUEST_DECIDED' THEN RAISE EXCEPTION 'fixture audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_auto_close_audit BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION fixture_reject_auto_close_audit();`)
+      const failedOver = await (async () => {
+        try { return await submit(input("2026-09-14", "09:30", "18:00")) }
+        finally { sql(scratch!.adminDb, "DROP TRIGGER fixture_auto_close_audit ON mtm_audit_logs; DROP FUNCTION fixture_reject_auto_close_audit();") }
+      })()
+      expect(failedOver.request.status).toBe("PENDING")
+      await tenant(ORG, async () => {
+        expect(await prisma.mtmHrmRequest.findUnique({ where: { id: failedOver.request.id } })).toMatchObject({ status: "PENDING", decidedByUserId: null })
+        expect(await prisma.workforceTimeCorrection.count({ where: { requestId: failedOver.request.id } })).toBe(0)
+        expect(await prisma.mtmAgentWorkday.findFirstOrThrow({ where: { agentId: AGENT, workDate: new Date("2026-09-14") } })).toMatchObject({ status: "STARTED" })
+      })
+      // …and the manager can still approve it by hand.
+      await approve(failedOver.request)
+
+      // Switched off: the manager decides.
+      await setting("attendanceAutoCloseForgottenDay", false)
+      await seedDay("2026-09-15", "STARTED")
+      expect((await submit(input("2026-09-15", "09:30", "18:00"))).request.status).toBe("PENDING")
+    } finally {
+      await tenant(ORG, () => prisma.mtmSetting.deleteMany({ where: { organizationId: ORG, key: { in: ["attendanceAutoCloseForgottenDay", "attendanceAutoCloseForgottenDayBy"] } } }))
+    }
   })
   it("rolls back request, genesis, ledger and notification together when the decision audit fails", async () => {
     const { request } = await submit(input("2026-09-09"))

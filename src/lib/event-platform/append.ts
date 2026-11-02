@@ -75,6 +75,9 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
     : BigInt(input.expectedVersion)
   if (expected !== null && expected < BigInt(0)) throw new RangeError("expectedVersion cannot be negative")
 
+  // Prisma binds raw Date parameters as timestamptz. These columns and the
+  // ORM-written event use UTC TIMESTAMP(3), so an implicit session-timezone
+  // cast makes the deferred stream-coherence guard reject a valid append.
   let heads: Array<{ currentVersion: bigint }>
   if (expected === null) {
     // Blind append: create version 1 or atomically increment the existing head.
@@ -82,7 +85,7 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       `INSERT INTO "event_aggregate_heads" (
          "organizationId", "aggregateType", "aggregateId", "currentVersion",
          "lastEventId", "lastEventAt", "createdAt", "updatedAt"
-       ) VALUES ($1, $2, $3, 1, $4::uuid, $5::timestamp, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ) VALUES ($1, $2, $3, 1, $4::uuid, ($5::timestamptz AT TIME ZONE 'UTC'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT ("organizationId", "aggregateType", "aggregateId") DO UPDATE
          SET "currentVersion" = "event_aggregate_heads"."currentVersion" + 1,
              "lastEventId" = EXCLUDED."lastEventId",
@@ -101,7 +104,7 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       `INSERT INTO "event_aggregate_heads" (
          "organizationId", "aggregateType", "aggregateId", "currentVersion",
          "lastEventId", "lastEventAt", "createdAt", "updatedAt"
-       ) VALUES ($1, $2, $3, 1, $4::uuid, $5::timestamp, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ) VALUES ($1, $2, $3, 1, $4::uuid, ($5::timestamptz AT TIME ZONE 'UTC'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT ("organizationId", "aggregateType", "aggregateId") DO NOTHING
        RETURNING "currentVersion"`,
       input.organizationId,
@@ -119,7 +122,7 @@ export async function appendDomainEvent<TData extends Record<string, CanonicalJs
       `UPDATE "event_aggregate_heads"
           SET "currentVersion" = "currentVersion" + 1,
               "lastEventId" = $4::uuid,
-              "lastEventAt" = $5::timestamp,
+              "lastEventAt" = ($5::timestamptz AT TIME ZONE 'UTC'),
               "updatedAt" = CURRENT_TIMESTAMP
         WHERE "organizationId" = $1
           AND "aggregateType" = $2

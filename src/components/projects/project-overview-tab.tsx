@@ -46,7 +46,7 @@ export function ProjectOverviewTab({ project, allTasks, milestones, membersCount
 
       {/* Task breakdown */}
       <MotionItem>
-        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-5 hover:shadow-md transition-all duration-200">
+        <div className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-all duration-200">
           <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("tasks")}</h3>
           <div className="grid grid-cols-4 gap-3">
             {(["todo", "in_progress", "review", "done"] as const).map(st => (
@@ -61,7 +61,7 @@ export function ProjectOverviewTab({ project, allTasks, milestones, membersCount
 
       {/* Budget summary */}
       <MotionItem>
-        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-5 hover:shadow-md transition-all duration-200">
+        <div className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-all duration-200">
           <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("budget")}</h3>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
@@ -90,7 +90,7 @@ export function ProjectOverviewTab({ project, allTasks, milestones, membersCount
       {/* Milestones timeline */}
       {milestones.length > 0 && (
         <MotionItem>
-          <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-5 hover:shadow-md transition-all duration-200">
+          <div className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-all duration-200">
             <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("milestones")}</h3>
             <div className="space-y-1.5">
               {milestones.map(m => {

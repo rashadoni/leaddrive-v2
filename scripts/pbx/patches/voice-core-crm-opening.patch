@@ -1,0 +1,68 @@
+--- a/opt/fanum-voice/fanum-voice-core.py	(station 5af0742e3e3a0469282b303f4cc5928fe39fc6ef9a16a0c21ea79fb42350f273)
++++ b/opt/fanum-voice/fanum-voice-core.py	(patched 50dc8af71151ab99dba0f5e0f3c35372b8793992cc2341f5eac3287caee3686d)
+@@ -1206,7 +1206,7 @@
+     return ""
+ 
+ 
+-def continuation_note(call_id):
++def continuation_note(call_id, extras=None):
+     """The tail of the conversation this call continues, as prompt text.
+ 
+     Empty for every ordinary call: the CRM returns content only when it created
+@@ -1228,12 +1228,21 @@
+             payload = json.loads(response.read(8192).decode("utf-8", "replace"))
+         tail = payload.get("continuation")
+         conversation = payload.get("conversation")
++        opening = payload.get("opening")
++        context = payload.get("context")
+     except Exception as error:
+         logging.warning(
+             "call continuation lookup failed error=%s", type(error).__name__
+         )
+         return ""
++    # A call the customer placed to us: the CRM names the opening line and
++    # says in one paragraph what kind of call this is. Without them the agent
++    # greets an inbound caller with the outbound "I am calling you" text.
++    if isinstance(extras, dict) and isinstance(opening, str) and opening.strip():
++        extras["opening"] = opening.strip()[:500]
+     note = ""
++    if isinstance(context, str) and context.strip():
++        note += "\n\n# Bu zəng haqqında\n" + context.strip()[:2000]
+     if isinstance(conversation, str) and conversation.strip():
+         # What the customer already wrote to the company. Without it the agent
+         # opens with "your number was in our system" to somebody who has been
+@@ -5626,7 +5635,7 @@
+                 "Aşağıdakı mətni olduğu kimi de. Heç bir söz əlavə etmə, "
+                 "çıxarma və ya dəyişmə. Sakit, səmimi və təbii danış; son "
+                 "sualı yumşaq, yerli Azərbaycan intonasiyası ilə ver:\n\n"
+-                + GEMINI_LIVE_OPENING_TEXT
++                + (getattr(self, "crm_opening_text", "") or GEMINI_LIVE_OPENING_TEXT)
+             )
+         return {
+             "clientContent": {
+@@ -6075,11 +6084,13 @@
+         # hash-pinned, and its prompt cache is per-organisation while this is
+         # per-call. A box rather than a bare closure variable so the timeout
+         # path reads a value the thread has either set or not - never a tear.
+-        continuation_box = {"note": ""}
++        continuation_box = {"note": "", "opening": ""}
+         continuation_started = time.monotonic()
+ 
+         def _fetch_continuation():
+-            continuation_box["note"] = continuation_note(self.call_id)
++            continuation_box["note"] = continuation_note(
++                self.call_id, continuation_box
++            )
+ 
+         continuation_thread = threading.Thread(
+             target=_fetch_continuation,
+@@ -6095,6 +6106,9 @@
+             max(0.0, 2.0 - (time.monotonic() - continuation_started))
+         )
+         continuation = continuation_box["note"] if not continuation_thread.is_alive() else ""
++        self.crm_opening_text = (
++            continuation_box["opening"] if not continuation_thread.is_alive() else ""
++        )
+         self.is_callback = "# Bu zəng yarımçıq söhbətin davamıdır" in continuation
+         if continuation:
+             self.instruction = self.instruction.rstrip() + continuation

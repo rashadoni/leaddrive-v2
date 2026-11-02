@@ -176,6 +176,43 @@ describe("GET /api/v1/mtm/alerts?view=groups", () => {
     expect(dayWhere.isResolved).toBe(false) // default: open
   })
 
+  // Owner, 2026-10-15: the Panel said «7 не решено», its button opened one day
+  // and the page showed 1. Without a day the list is every open alert.
+  it("opens on every open alert, whatever its day, grouped per day — and counts the old ones for «close all»", async () => {
+    asWebManager()
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValueOnce([
+      { ...deviation("d12", "2026-10-12T19:30:00.000Z", 900), type: "LONG_BREAK", metadata: { messageKey: "visitStillOpen", messageParams: { minutes: 128, thresholdMinutes: 120 }, visitId: "visit-1" } },
+      deviation("d8b", "2026-10-08T18:01:00.000Z", 1_600),
+      deviation("d8a", "2026-10-08T09:56:00.000Z", 700),
+    ] as never)
+    vi.mocked(prisma.mtmAlert.count).mockResolvedValueOnce(2)
+
+    const { data } = await (await ListAlerts(req("/api/v1/mtm/alerts?view=groups"))).json()
+
+    const [[{ where: listWhere }], ...rest] = vi.mocked(prisma.mtmAlert.findMany).mock.calls as any
+    expect(listWhere).toMatchObject({ organizationId: ORG, agentId: { in: MANAGER_SCOPE }, isResolved: false })
+    // No day: nothing is cut by date.
+    expect(listWhere.createdAt).toBeUndefined()
+    // The old ones are in the list already; only their count is read, for the button.
+    expect(rest).toHaveLength(0)
+    expect(data).toMatchObject({ mode: "open", date: null, status: "open", stale: { total: 2, groups: [] } })
+    expect(data.groups.map((group: any) => [group.dateKey, group.openCount])).toEqual([
+      ["2026-10-12", 1],
+      ["2026-10-08", 2],
+    ])
+  })
+
+  it("shows one day when a day is chosen, and when resolved or all alerts are asked for", async () => {
+    asWebManager()
+    for (const query of ["date=2026-10-08", "status=resolved", "status=all"]) {
+      vi.mocked(prisma.mtmAlert.findMany).mockClear()
+      const { data } = await (await ListAlerts(req(`/api/v1/mtm/alerts?view=groups&${query}`))).json()
+      const dayWhere = (vi.mocked(prisma.mtmAlert.findMany).mock.calls[0][0] as any).where
+      expect(data.mode, query).toBe("day")
+      expect(dayWhere.createdAt?.gte, query).toBeInstanceOf(Date)
+    }
+  })
+
   it("refuses a deep link to an agent outside the scope", async () => {
     asWebManager()
     const res = await ListAlerts(req("/api/v1/mtm/alerts?view=groups&agentId=agent-other"))

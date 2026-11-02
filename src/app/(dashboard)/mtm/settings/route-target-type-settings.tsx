@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState } from "react"
 import { ArrowDown, ArrowUp, ChevronDown, Lock, Plus, Route, Trash2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
@@ -18,6 +19,7 @@ import {
   type MtmRouteTargetAudience,
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Language = keyof MtmRouteTargetType["labels"]
 const LANGUAGES: readonly Language[] = ["az", "ru", "en"]
@@ -97,7 +99,7 @@ export function RouteTargetTypeSettings({
   const shown = rows.filter((row) => row.enabled)
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700" aria-labelledby="route-target-types-title">
+    <section className="rounded-lg border border-border bg-card p-4" aria-labelledby="route-target-types-title">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -106,15 +108,17 @@ export function RouteTargetTypeSettings({
           </div>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("routeTargetHint")}</p>
         </div>
-        <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addRow} disabled={rows.length >= 20}>
-          <Plus className="h-4 w-4" />{t("routeTargetAdd")}
-        </Button>
+        <Hint wrap text={t("hint.routeTargetAdd")}>
+          <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addRow} disabled={rows.length >= 20}>
+            <Plus className="h-4 w-4" />{t("routeTargetAdd")}
+          </Button>
+        </Hint>
       </div>
 
       {/* Two equal halves, like every other row of the settings page: the
           list and what the agent sees stand side by side at one height. */}
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700" data-testid="route-target-rows">
+        <ul className="divide-y divide-border border-y border-border" data-testid="route-target-rows">
           {rows.map((row, index) => {
             // The unfiltered button is always there, always first and always on
             // (coerceMtmRouteTargetTypes): only its name is the organization's.
@@ -134,28 +138,32 @@ export function RouteTargetTypeSettings({
                     </span>
                   ) : (
                     <>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-h-11 min-w-9"
-                        aria-label={t("routeTargetMoveUp")}
-                        onClick={() => moveRow(index, -1)}
-                        disabled={index <= 1}
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-h-11 min-w-9"
-                        aria-label={t("routeTargetMoveDown")}
-                        onClick={() => moveRow(index, 1)}
-                        disabled={index === rows.length - 1}
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                      </Button>
+                      <Hint wrap text={t("hint.routeTargetMoveUp")}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="min-h-11 gap-1.5"
+                          aria-label={t("routeTargetMoveUp")}
+                          onClick={() => moveRow(index, -1)}
+                          disabled={index <= 1}
+                        >
+                          <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
+                        </Button>
+                      </Hint>
+                      <Hint wrap text={t("hint.routeTargetMoveDown")}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="min-h-11 gap-1.5"
+                          aria-label={t("routeTargetMoveDown")}
+                          onClick={() => moveRow(index, 1)}
+                          disabled={index === rows.length - 1}
+                        >
+                          <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
+                        </Button>
+                      </Hint>
                     </>
                   )}
                   <button
@@ -173,7 +181,7 @@ export function RouteTargetTypeSettings({
                     </span>
                     <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
                   </button>
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     role="switch"
                     aria-checked={row.enabled}
@@ -241,16 +249,18 @@ export function RouteTargetTypeSettings({
                         {t("routeTargetOtherLanguages")}
                       </button>
                       {fixed ? null : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={() => onChange(rows.filter((candidate) => candidate.id !== row.id))}
-                          disabled={rows.length <= 1 || lastEnabled}
-                        >
-                          <Trash2 className="mr-1 h-4 w-4" />{t("routeTargetDelete")}
-                        </Button>
+                        <Hint wrap text={t("hint.routeTargetDelete")}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => onChange(rows.filter((candidate) => candidate.id !== row.id))}
+                            disabled={rows.length <= 1 || lastEnabled}
+                          >
+                            <Trash2 className="mr-1 h-4 w-4" />{t("routeTargetDelete")}
+                          </Button>
+                        </Hint>
                       )}
                     </div>
                     {translationsOpen ? (
@@ -272,7 +282,7 @@ export function RouteTargetTypeSettings({
 
         {/* The picker as the agent's phone draws it, from the rows on the left:
             what is switched off is not here, and the order is the order. */}
-        <aside className="rounded-2xl border border-zinc-200 bg-muted/40 p-4 dark:border-zinc-700" aria-label={t("routeTargetPreviewTitle")} data-testid="route-target-preview">
+        <aside className="rounded-2xl border border-border bg-muted/40 p-4" aria-label={t("routeTargetPreviewTitle")} data-testid="route-target-preview">
           <div className="mx-auto w-full max-w-xs">
           <p className="text-center text-xs text-muted-foreground">{t("routeTargetPreviewTitle")}</p>
           <p className="mt-2 text-sm font-semibold">{t("routeTargetPreviewQuestion")}</p>
@@ -284,7 +294,7 @@ export function RouteTargetTypeSettings({
                   key={row.id}
                   className={cn(
                     "truncate rounded-xl border px-2 py-2 text-center text-xs font-medium",
-                    index === 0 ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 bg-background dark:border-zinc-700",
+                    index === 0 ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 bg-background dark:border-border",
                     // Pairs; an odd last button takes the whole row instead of half of it.
                     shown.length % 2 === 1 && index === shown.length - 1 && "col-span-2",
                   )}

@@ -29,7 +29,10 @@ const SAMPLE: DemoProspectIdentity = {
   jobTitle: "Satış direktoru",
   emailMasked: "ni•••@xezerlogistika.az",
   phoneMasked: "+994 ••••• 67",
-  sourceChannel: "instagram",
+  // From the site's demo form: the story then runs on a channel the product
+  // offers customers today (web chat), not Instagram Direct, which Meta has
+  // not approved.
+  sourceChannel: "website",
 }
 
 export function OpenDemo({ name, company }: { name?: string; company?: string }) {

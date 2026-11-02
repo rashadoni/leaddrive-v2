@@ -2,6 +2,7 @@ import ExcelJS from "exceljs"
 import JSZip from "jszip"
 import { createHash } from "node:crypto"
 import { contentDispositionAttachment } from "@/lib/export/tabular"
+import { MTM_EXCEL_HOURS_COLUMNS, MTM_EXCEL_HOURS_EXAMPLE } from "@/lib/mtm/excel-customer-hours"
 
 export const MTM_EXCEL_TEMPLATE_VERSION = "1.0"
 export const MTM_EXCEL_MAX_BYTES = 20 * 1024 * 1024
@@ -65,6 +66,8 @@ const CONTRACTS: Record<MtmExcelImportType, MtmExcelContract> = {
       { key: "contact_person", required: false, example: "A. Aliyev" },
       { key: "phone", required: false, example: "+994501234567" },
       { key: "territory_code", required: false, example: "BAKU-N" },
+      // «Часы приёма»: two columns a day and one lunch (excel-customer-hours.ts).
+      ...MTM_EXCEL_HOURS_COLUMNS.map((key) => ({ key, required: false, example: MTM_EXCEL_HOURS_EXAMPLE[key] ?? "" })),
     ],
   },
   ROUTES: {
@@ -119,19 +122,19 @@ const CONTRACTS: Record<MtmExcelImportType, MtmExcelContract> = {
 const COPY: Record<MtmExcelLocale, { title: string; steps: string[]; required: string; optional: string }> = {
   en: {
     title: "LeadDrive MTM Excel template",
-    steps: ["Keep machine column names unchanged.", "Use ISO dates (YYYY-MM-DD) and 24-hour time (HH:mm).", "External codes are text; keep leading zeroes.", "Remove formulas from data cells before upload."],
+    steps: ["Keep machine column names unchanged.", "Use ISO dates (YYYY-MM-DD) and 24-hour time (HH:mm).", "External codes are text; keep leading zeroes.", "Remove formulas from data cells before upload.", "Places: opening hours go in mon_from/mon_to … sun_from/sun_to and one lunch_from/lunch_to for every working day. Leave both columns of a day empty for a day off; leave all of them empty to keep the place's hours as they are."],
     required: "Required",
     optional: "Optional",
   },
   ru: {
     title: "Шаблон LeadDrive MTM для Excel",
-    steps: ["Не изменяйте машинные имена столбцов.", "Используйте даты YYYY-MM-DD и время HH:mm.", "Внешние коды являются текстом; сохраняйте ведущие нули.", "Перед загрузкой удалите формулы из ячеек данных."],
+    steps: ["Не изменяйте машинные имена столбцов.", "Используйте даты YYYY-MM-DD и время HH:mm.", "Внешние коды являются текстом; сохраняйте ведущие нули.", "Перед загрузкой удалите формулы из ячеек данных.", "Места: часы приёма — в колонках mon_from/mon_to … sun_from/sun_to (с/до по дням) и один обед lunch_from/lunch_to на все рабочие дни. Обе колонки дня пустые — выходной; все пустые — часы места не меняются."],
     required: "Обязательно",
     optional: "Необязательно",
   },
   az: {
     title: "LeadDrive MTM Excel şablonu",
-    steps: ["Maşın sütun adlarını dəyişməyin.", "Tarix üçün YYYY-MM-DD, vaxt üçün HH:mm istifadə edin.", "Xarici kodlar mətndir; başlanğıc sıfırlarını saxlayın.", "Yükləməzdən əvvəl məlumat xanalarındakı formulları silin."],
+    steps: ["Maşın sütun adlarını dəyişməyin.", "Tarix üçün YYYY-MM-DD, vaxt üçün HH:mm istifadə edin.", "Xarici kodlar mətndir; başlanğıc sıfırlarını saxlayın.", "Yükləməzdən əvvəl məlumat xanalarındakı formulları silin.", "Yerlər: qəbul saatları mon_from/mon_to … sun_from/sun_to sütunlarında (günlər üzrə başlanğıc/son) və bütün iş günləri üçün bir nahar lunch_from/lunch_to. Günün hər iki sütunu boşdursa — istirahət günü; hamısı boşdursa — yerin saatları dəyişmir."],
     required: "Məcburi",
     optional: "İstəyə bağlı",
   },
@@ -211,7 +214,12 @@ export function buildMtmExcelTemplate(type: MtmExcelImportType, locale: MtmExcel
 function valueFromCell(cell: ExcelJS.Cell): unknown {
   const value = cell.value
   if (value == null) return null
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  if (value instanceof Date) {
+    // A time-only cell («09:00» formatted as time) comes as a moment on Excel's
+    // day zero, 1899-12-30: its clock is the value, not its date.
+    if (value.getUTCFullYear() < 1900) return value.toISOString().slice(11, 16)
+    return value.toISOString().slice(0, 10)
+  }
   if (typeof value === "object") {
     if ("richText" in value) return value.richText.map((part) => part.text).join("")
     if ("text" in value && typeof value.text === "string") return value.text

@@ -18,6 +18,7 @@ interface GrantSummary {
   /** Issued for a guided scenario rather than a module playlist. */
   journey: boolean
   liveCallEnabled: boolean
+  liveSocialEnabled: boolean
   sentAt: string | null
   openedAt: string | null
   sessionStartedAt: string | null
@@ -30,6 +31,7 @@ const CLOSED_GRANT_STATUSES = new Set(["COMPLETED", "EXPIRED", "REVOKED"])
 export function DemoRequestEditor({
   requestId,
   liveCallAvailable,
+  liveSocialAvailable,
   requestPhoneCallable,
   requestStatus,
   requestedModuleIds,
@@ -39,6 +41,8 @@ export function DemoRequestEditor({
   requestId: string
   /** The agent can speak as LeadDrive on a demo call (the PBX asks per call). */
   liveCallAvailable: boolean
+  /** This server names the demo's Meta app, so a prospect can connect his own Facebook Page. */
+  liveSocialAvailable: boolean
   /** The request carries an Azerbaijani mobile: the only number the live call may ring. */
   requestPhoneCallable: boolean
   requestStatus: string
@@ -60,6 +64,7 @@ export function DemoRequestEditor({
   const [sessionMinutes, setSessionMinutes] = useState(120)
   const [inactivityMinutes, setInactivityMinutes] = useState(30)
   const [liveCall, setLiveCall] = useState(false)
+  const [liveSocial, setLiveSocial] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -103,7 +108,13 @@ export function DemoRequestEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // A grant is one or the other; the API refuses both or neither.
-          ...(journey ? { scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId, liveCallEnabled: liveCall && liveCallAvailable && requestPhoneCallable } : { moduleIds: selected }),
+          ...(journey
+            ? {
+              scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId,
+              liveCallEnabled: liveCall && liveCallAvailable && requestPhoneCallable,
+              liveSocialEnabled: liveSocial && liveSocialAvailable,
+            }
+            : { moduleIds: selected }),
           linkValidDays,
           sessionDurationMinutes: sessionMinutes,
           inactivityMinutes,
@@ -272,7 +283,26 @@ export function DemoRequestEditor({
             </span>
           </label>
         ) : null}
-        <div className="mt-5 flex flex-col gap-4 rounded-xl bg-zinc-900 p-5 text-zinc-100 lg:flex-row lg:items-center lg:justify-between dark:bg-zinc-100 dark:text-zinc-900">
+        {mode === "journey" ? (
+          <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <input
+              type="checkbox"
+              data-testid="demo-issue-live-social"
+              checked={liveSocial && liveSocialAvailable}
+              disabled={!liveSocialAvailable}
+              onChange={(event) => setLiveSocial(event.target.checked)}
+              className="mt-1 h-4 w-4 accent-orange-600 disabled:opacity-40"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">{t("liveSocialTitle")}</span>
+              <span className="mt-1 block text-xs leading-5 text-zinc-500">{t("liveSocialBody")}</span>
+              {!liveSocialAvailable ? (
+                <span className="mt-1 block text-xs leading-5 text-amber-700 dark:text-amber-400">{t("liveSocialUnavailable")}</span>
+              ) : null}
+            </span>
+          </label>
+        ) : null}
+        <div data-crm-action-surface="inverse" className="mt-5 flex flex-col gap-4 rounded-xl bg-zinc-900 p-5 text-zinc-100 lg:flex-row lg:items-center lg:justify-between dark:bg-zinc-100 dark:text-zinc-900">
           <div className="flex items-start gap-3">
             <KeyRound className="mt-0.5 h-5 w-5 text-orange-400" />
             <div><p className="text-sm font-semibold">{t("issueTitle")}</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">{t("issueBody")}</p></div>
@@ -291,7 +321,7 @@ export function DemoRequestEditor({
             ) : (
               <Button type="button" variant="outline" disabled className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 dark:border-zinc-400 dark:text-zinc-900"><Eye className="h-4 w-4" />{t("previewSelected")}</Button>
             )}
-            <Button type="button" disabled={busy !== null || (mode === "modules" && !selected.length) || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0 bg-orange-600 text-white hover:bg-orange-700">
+            <Button type="button" disabled={busy !== null || (mode === "modules" && !selected.length) || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0">
               {busy === "issue" ? <Clock3 className="h-4 w-4 animate-spin" /> : latestGrant ? <RotateCcw className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               {latestGrant ? t("reissueAndSend") : t("issueAndSend")}
             </Button>
@@ -312,6 +342,7 @@ export function DemoRequestEditor({
                     <Badge variant="outline">{grant.status.replaceAll("_", " ")}</Badge>
                     <span className="text-xs text-zinc-500">{grant.journey ? t("grantJourney") : t("grantModules", { count: grant.moduleIds.length })}</span>
                     {grant.liveCallEnabled ? <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300">{t("liveCallOn")}</Badge> : null}
+                    {grant.liveSocialEnabled ? <Badge className="bg-sky-100 text-sky-800 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300">{t("liveSocialOn")}</Badge> : null}
                   </div>
                   <p className="mt-2 text-xs text-zinc-500">
                     {t("grantExpires", { date: new Date(grant.expiresAt).toLocaleString(locale) })}

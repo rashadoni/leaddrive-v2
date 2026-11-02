@@ -30,6 +30,8 @@ import type { RlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
+import { checkSignInPhone } from "@/lib/mtm/mobile-login-phone"
+import { mtmAgentCodeTakenResponse, writeWithMtmAgentCode } from "@/lib/mtm/agent-external-code"
 import {
   MTM_AGENT_WEB_ONLY_SELECT,
   mtmAgentNotesReader,
@@ -102,6 +104,15 @@ async function mayReadWorkdayTimes(auth: RlsAuth): Promise<boolean> {
 }
 
 /** То же состояние, но без моментов времени. */
+/**
+ * Owner, 2026-10-14: a field agent's day belongs to the field manager, who sees
+ * when it started and when it finished — not HR's timesheet, and not the
+ * moments of a break (an agent's break is their own time).
+ */
+function fieldManagerTimes(presence: MtmAgentPresence): MtmAgentPresence {
+  return presence.kind === "paused" ? { kind: "paused", since: null } : presence
+}
+
 function withoutTimes(presence: MtmAgentPresence): MtmAgentPresence {
   switch (presence.kind) {
     case "working": return { kind: "working", since: null }
@@ -123,9 +134,15 @@ export const GET = withRls(async (req, auth) => {
   const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50")))
 
   try {
-    const where: Prisma.MtmAgentWhereInput = { organizationId: orgId }
+    const where: Prisma.MtmAgentWhereInput = { organizationId: orgId,
+      ...(searchParams.get("includeEmployees") === "1" ? {} : { fieldDeletedAt: null }) }
     if (Object.values(MtmAgentStatus).includes(status as MtmAgentStatus)) where.status = status as MtmAgentStatus
     if (Object.values(MtmAgentRole).includes(role as MtmAgentRole)) where.role = role as MtmAgentRole
+    // Office employees are Personnel, not field staff (owner, 2026-10-15): they
+    // are listed and added in Personnel → Employees, never among MTM agents.
+    // The CRM user page asks for every card it may link (includeEmployees=1),
+    // or it would offer a second card to a user who already has one.
+    else if (searchParams.get("includeEmployees") !== "1") where.role = { not: "EMPLOYEE" }
 
     // M4-5: territory-scope enforcement for mobile callers.
     // Web admin panel (cookie auth, no mobile JWT) sees all agents in the org.
@@ -193,6 +210,11 @@ export const GET = withRls(async (req, auth) => {
           // Read only to answer two yes/no questions below; the token itself
           // and the coordinates never leave this handler.
           expoPushToken: true,
+          // Where the Route & Field app registers its FCM address; the legacy
+          // expoPushToken column is no longer written. Reading only the column
+          // marked every agent «notifications not connected» (owner's E2E
+          // test, 2026-10-17). One live row is enough for the yes/no.
+          deviceTokens: { where: { disabledAt: null }, select: { id: true }, take: 1 },
           latestLocation: { select: { receivedAt: true } },
           // The linked web login's email, so the page can find a manager by the
           // address they sign in with (prod 2026-09-15: «rashad@guven.az» lived
@@ -329,7 +351,7 @@ export const GET = withRls(async (req, auth) => {
       success: true,
       data: {
         agents: agents.map((row) => {
-          const { expoPushToken, latestLocation, ...rest } = row
+          const { expoPushToken, deviceTokens, latestLocation, ...rest } = row
           // Taken out of the row whoever asks, and put back only for whoever
           // reads them: the select already leaves them out for everyone else,
           // and this is the second lock for the day the select grows.
@@ -346,14 +368,14 @@ export const GET = withRls(async (req, auth) => {
             ...agent,
             ...(webSession ? { userEmail: user?.email ?? null } : {}),
             ...(readsNotes ? { tags: notesOfThisCard ? tags ?? [] : [], mapColor: notesOfThisCard ? mapColor ?? null : null } : {}),
-            presence: showTimes ? presence : withoutTimes(presence),
+            presence: showTimes ? presence : webSession && agent.role === "AGENT" ? fieldManagerTimes(presence) : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
             activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,
             clients: clientsAvailable ? (clientsByAgent.get(agent.id) ?? 0) : null,
             app: mtmAgentAppActivity({
               lastLocationAt: latestLocation?.receivedAt ?? null,
               lastSeenAt: agent.lastSeenAt ?? null,
-              hasPushToken: Boolean(expoPushToken),
+              hasPushToken: Boolean(expoPushToken) || (deviceTokens?.length ?? 0) > 0,
               now,
             }),
           }
@@ -422,19 +444,31 @@ export const POST = withRls(async (req, auth) => {
       }
     }
 
-    // Hash password if provided (for mobile app login)
+    // The number is how the agent signs in — a code to its WhatsApp — so it is
+    // written with its country code and held by nobody else active here. An
+    // integration may still create a card without one.
+    if (body.phone) {
+      const phone = await checkSignInPhone(prisma, orgId, body.phone)
+      if (!phone.ok) return NextResponse.json({ error: phone.error, code: phone.code }, { status: phone.status })
+      body.phone = phone.phone
+    }
+
+    // A password sent by an integration or a tab opened before 2026-10-16 is
+    // still honoured; the form sends none — the agent sets his own by a code,
+    // or an administrator sets one later with «Reset password» on the card.
     let passwordHash: string | null = null
     if (body.password) {
       const passwordError = passwordPolicyError(body.password)
-      if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
+      if (passwordError) return NextResponse.json({ error: passwordError, code: "MTM_PASSWORD_WEAK" }, { status: 400 })
       passwordHash = await bcrypt.hash(body.password, 12)
     }
 
-    const agent = await prisma.mtmAgent.create({
+    // No code typed: the next one in the organization's sequence is given.
+    const saved = await writeWithMtmAgentCode(prisma, orgId, body.externalCode ?? null, (externalCode) => prisma.mtmAgent.create({
       data: {
         organizationId: orgId,
         name: body.name,
-        externalCode: body.externalCode ?? null,
+        externalCode,
         email: body.email ?? null,
         phone: body.phone ?? null,
         passwordHash,
@@ -451,7 +485,9 @@ export const POST = withRls(async (req, auth) => {
       // card, or a manager, whose new card is never his own (the link check
       // above). So the answer may carry the labels and the colour just saved.
       select: { ...AGENT_RESPONSE_SELECT, ...MTM_AGENT_WEB_ONLY_SELECT },
-    })
+    }))
+    if (!saved.ok) return mtmAgentCodeTakenResponse(saved.code)
+    const agent = saved.value
 
     await writeMtmAudit({
       organizationId: orgId,
@@ -462,6 +498,7 @@ export const POST = withRls(async (req, auth) => {
       metadataKind: "agent_create",
       newData: {
         name: agent.name,
+        externalCode: agent.externalCode,
         email: agent.email,
         role: agent.role,
         canPlanOwnRoutes: agent.canPlanOwnRoutes,

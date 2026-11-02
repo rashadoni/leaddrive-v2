@@ -12,6 +12,8 @@ import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
 import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
 import { dedicatedChannelTypeError } from "@/lib/channels/dedicated-channel-types"
+import { orgHasModule } from "@/lib/api-auth"
+import { META_MONITORED_CHANNEL_TYPES, metaMonitoringStates, type MetaMonitoringState } from "@/lib/channels/meta-monitoring-state"
 
 const createChannelSchema = z.object({
   channelType: z.string().min(1),
@@ -55,6 +57,25 @@ type ChannelListRow = {
   updatedAt: Date
 }
 
+/**
+ * Brand Monitoring state of each Facebook/Instagram row (lib/channels/meta-monitoring-state). Only for a
+ * workspace that has Brand Monitoring, and it never fails the channel list: without it the rows just show no
+ * monitoring line.
+ */
+async function monitoringByRow(
+  orgId: string,
+  channels: ReadonlyArray<{ id: string; channelType: string; pageId?: string | null }>,
+): Promise<Map<string, MetaMonitoringState>> {
+  if (!channels.some((channel) => META_MONITORED_CHANNEL_TYPES.has(channel.channelType))) return new Map()
+  try {
+    if (!(await orgHasModule(orgId, "social"))) return new Map()
+    return await metaMonitoringStates(orgId, channels)
+  } catch (e) {
+    console.error("[channels GET] monitoring state", e)
+    return new Map()
+  }
+}
+
 export async function GET(req: NextRequest) {
   const gate = await gateChannelsAccess(req)
   if (gate instanceof NextResponse) return gate
@@ -95,9 +116,11 @@ export async function GET(req: NextRequest) {
       // A Facebook/Instagram row whose pageId another workspace claimed first delivers nothing here —
       // the card must not call it connected. Only the boolean crosses the tenant boundary.
       const claimedElsewhere = await channelIdsClaimedElsewhere(orgId, channels)
+      const monitoring = await monitoringByRow(orgId, channels)
       const safeChannels = channels.map((channel) => ({
         ...publicChannelConfig(channel),
         claimedElsewhere: claimedElsewhere.has(channel.id),
+        ...(monitoring.has(channel.id) ? { monitoring: monitoring.get(channel.id) } : {}),
       }))
 
       return NextResponse.json({ success: true, data: safeChannels })

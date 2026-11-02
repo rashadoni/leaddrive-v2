@@ -14,6 +14,10 @@ vi.mock("@/lib/api-auth", () => ({
   isAuthError: vi.fn((v: any) => v && v.status >= 400),
 }))
 
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({
+  readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"), readLegacyPhoneCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"),
+}))
+
 vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn().mockResolvedValue("hashed-pw"), compare: vi.fn() },
 }))
@@ -47,6 +51,7 @@ import { GET as MobilePing } from "@/app/api/v1/mtm/mobile/ping/route"
 import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
 import bcrypt from "bcryptjs"
+import { readLegacyCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
 import jwt from "jsonwebtoken"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 
@@ -79,6 +84,7 @@ function makeParams(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(readLegacyCredentialBoundary).mockResolvedValue("LEGACY")
   vi.mocked(consumePublicRateLimit).mockResolvedValue({
     allowed: true,
     retryAfterSeconds: 0,
@@ -688,6 +694,40 @@ describe("PUT /api/v1/mtm/settings", () => {
 
 // ─── POST /api/v1/mtm/mobile/auth ──────────────────────────
 describe("POST /api/v1/mtm/mobile/auth", () => {
+  it.each(["MIGRATED", "UNAVAILABLE"] as const)("refuses %s legacy admission before password comparison or token creation", async boundary => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "a-boundary", organizationId: ORG, role: "AGENT", userId: null,
+      email: "boundary@test.com", passwordHash: "old-hash", organization: MOBILE_ORG,
+    } as any)
+    vi.mocked(readLegacyCredentialBoundary).mockResolvedValue(boundary)
+    const response = await MobileAuth(makeJsonReq("/api/v1/mtm/mobile/auth", "POST", {
+      email: "boundary@test.com", password: "old-password",
+    }))
+    expect(response.status).toBe(401)
+    expect(readLegacyCredentialBoundary).toHaveBeenCalledWith(prisma, ORG, { kind: "ACTOR", actorId: "a-boundary" })
+    expect(bcrypt.compare).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.update).not.toHaveBeenCalled()
+    expect(jwt.sign).not.toHaveBeenCalled()
+  })
+
+  it("does not auto-link an unconverted card to a canonical person with the same email", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "a-unlinked", organizationId: ORG, role: "AGENT", userId: null,
+      email: "boundary@test.com", passwordHash: null, organization: MOBILE_ORG,
+    } as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "u-canonical", passwordHash: "old-user-hash" } as any)
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+    vi.mocked(readLegacyCredentialBoundary).mockImplementation(async (_client, _org, principal) =>
+      principal.kind === "ACTOR" ? "LEGACY" : "MIGRATED")
+    const response = await MobileAuth(makeJsonReq("/api/v1/mtm/mobile/auth", "POST", {
+      email: "boundary@test.com", password: "old-password",
+    }))
+    expect(response.status).toBe(401)
+    expect(readLegacyCredentialBoundary).toHaveBeenCalledWith(prisma, ORG, { kind: "USER", userId: "u-canonical" })
+    expect(prisma.mtmAgent.update).not.toHaveBeenCalled()
+    expect(jwt.sign).not.toHaveBeenCalled()
+  })
+
   it("returns 400 when email or password missing", async () => {
     const res = await MobileAuth(makeJsonReq("/api/v1/mtm/mobile/auth", "POST", { email: "x@test.com" }))
     expect(res.status).toBe(400)
@@ -825,6 +865,23 @@ describe("POST /api/v1/mtm/mobile/auth", () => {
       capabilityId: "mobile-field-app",
     })
     expect(jwt.sign).not.toHaveBeenCalled()
+  })
+
+  it.each([["MANAGER", 200], ["AGENT", 403]] as const)("lets a %s of a Personnel-only tenant in only as office staff (%i)", async (role, status) => {
+    // Personnel is sold apart from routes (owner, 2026-10-14): office staff
+    // use the phone for their own attendance; a field agent needs routes.
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: `a-personnel-${role}`, name: "Fictional office", email: "office@test.com", phone: null, role, avatar: null,
+      passwordHash: "hashed", userId: null, organizationId: ORG,
+      organization: { ...MOBILE_ORG, features: [], modules: { personnel: true } },
+    } as any)
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+    const response = await MobileAuth(makeJsonReq("/api/v1/mtm/mobile/auth", "POST", { email: "office@test.com", password: "secret" }))
+    expect(response.status).toBe(status)
+    if (status === 403) {
+      expect(await response.json()).toMatchObject({ code: "TENANT_CAPABILITY_DISABLED", capabilityId: "mobile-field-app" })
+      expect(jwt.sign).not.toHaveBeenCalled()
+    } else expect(jwt.sign).toHaveBeenCalledTimes(1)
   })
 
   it("does not auto-link a CRM user when both tenant products are disabled", async () => {

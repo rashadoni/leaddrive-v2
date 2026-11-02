@@ -50,15 +50,16 @@ describe("company day kinds", () => {
     const row = report.rows.find((item) => item.workdayId === "day")!
     const status = attendanceStatusText(row, locale, t)
     expect(status).toBe(`WX · ${items[0].names[locale]}`)
-    expect(attendanceMonthCell(row, t)).toBe("WX · 9:00")
+    // 09:00–18:00 without a break, less the automatic 1:00 lunch (owner, 2026-10-16: «вычитать обед самому»).
+    expect(attendanceMonthCell(row, t)).toBe("WX · 8:00")
     for (const mode of ["DAY", "MONTH", "JOURNAL"] as const) {
       const config: AttendanceViewConfig = { version: 1, mode, columns: mode === "MONTH" ? ["employee", "days", "worked"] : ["employee", "status"], showTotals: true,
         filters: { from: input.from, to: input.to, form: mode === "JOURNAL" ? "JOURNAL" : "ALL" } }
       const table = buildAttendanceTable(report, config, locale, t)
-      expect(JSON.stringify(table)).toContain(mode === "MONTH" ? "WX · 9:00" : status)
+      expect(JSON.stringify(table)).toContain(mode === "MONTH" ? "WX · 8:00" : status)
       const file = await buildAttendanceXlsx(table).xlsx.writeBuffer()
       const book = new ExcelJS.Workbook(); await book.xlsx.load(file)
-      expect(JSON.stringify(book.worksheets[0].getSheetValues())).toContain(mode === "MONTH" ? "WX · 9:00" : status)
+      expect(JSON.stringify(book.worksheets[0].getSheetValues())).toContain(mode === "MONTH" ? "WX · 8:00" : status)
       expect(attendancePdfText(buildAttendancePdf(table))).toContain(items[0].names[locale])
     }
   })

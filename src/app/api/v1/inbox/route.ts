@@ -1,3 +1,4 @@
+import { isPhoneRestrictedPrincipal } from "@/lib/customer-phone-privacy"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -10,6 +11,7 @@ import { sendConversationReply } from "@/lib/inbox/send-conversation-reply"
 import { PAGE_SIZE } from "@/lib/constants"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { markMarketingContacted } from "@/lib/inbox/customer-stage"
+import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
 
 export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
@@ -84,6 +86,11 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
     function resolveKey(msg: typeof messages[0]): string {
       const meta = msg.metadata as any
       const tgChatId = meta?.chatId as string | undefined
+
+      // Native TikTok threads retain their account/conversation binding even after contact linking.
+      if (msg.channelType === "tiktok" && meta?.provider === "tiktok_messaging" && msg.conversationId) {
+        return `tiktok_native_${msg.conversationId}`
+      }
 
       // If message already has contactId, use it
       if (msg.contactId) return `contact_${msg.contactId}`
@@ -187,9 +194,9 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         let contactPhone: string | null = null
         let contactLifecycleStage: string | null = null
 
-        if (key.startsWith("contact_")) {
-          contactId = key.replace("contact_", "")
-          const c = contactById[contactId]
+        if (key.startsWith("contact_") || (msg.channelType === "tiktok" && meta?.provider === "tiktok_messaging" && msg.contactId)) {
+          contactId = key.startsWith("contact_") ? key.replace("contact_", "") : msg.contactId
+          const c = contactId ? contactById[contactId] : undefined
           if (c) {
             contactName = c.fullName || contactName
             contactEmail = c.email
@@ -232,6 +239,9 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       if (msg.direction === "inbound" && msg.from && !/^-?\d+$/.test(msg.from)) {
         threads[key].contactName = msg.from
       }
+      if (msg.direction === "inbound" && meta?.provider === "tiktok_messaging" && typeof meta.senderName === "string") {
+        threads[key].contactName = meta.senderName
+      }
       // Update last message if this is newer
       if (new Date(msg.createdAt) > new Date(threads[key].lastMessageAt)) {
         threads[key].lastMessage = msg.body?.slice(0, 100) || ""
@@ -245,12 +255,12 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       .map((t: any) => ({
         ...t,
         channels: Array.from(t.channels),
-        // Option-D — derive the persisted conversation id from the thread's own
-        // messages. This does NOT change grouping (resolveKey is unchanged), so
-        // the legacy /inbox threads stay byte-identical; we only annotate them.
-        // (A contact merged from multiple SocialConversations surfaces the most
-        // recent one — messages are newest-first.)
-        socialConversationId: t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
+        ...whatsappThreadReplyBinding(t.messages),
+        // Messages are newest-first. A WhatsApp thread may contain an unbound
+        // message from B followed by a canonical conversation from A; do not
+        // expose A as the reply target for that merged contact thread.
+        socialConversationId: t.lastChannel === "whatsapp" && whatsappThreadReplyBinding(t.messages).whatsappReplyBlocked
+          ? null : t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
       }))
       .sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
 
@@ -264,6 +274,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         where: { id: { in: convIds }, organizationId: orgId },
         select: {
           id: true,
+          contactName: true,
           status: true,
           assignedTo: true,
           snoozedUntil: true,
@@ -283,6 +294,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       })
       type SocialState = {
         id: string
+        contactName: string | null
         status: string
         assignedTo: string | null
         snoozedUntil: Date | null
@@ -334,8 +346,15 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         const qualificationLeadId = typeof metadata.qualificationLeadId === "string"
           ? metadata.qualificationLeadId
           : null
+        // Instagram/Messenger/VK messages carry only the opaque sender id (IGSID/PSID/peer id) in
+        // `from`, so a thread with no CRM contact shows a 16-digit number. The webhook stores the
+        // resolved @username / name on the conversation (lib/social/meta-sender-profile) — show it.
+        const storedName = s?.contactName?.trim()
+        const showStoredName = !c.contactId && typeof c.contactName === "string"
+          && /^-?\d+$/.test(c.contactName) && !!storedName && !/^-?\d+$/.test(storedName)
         return s ? {
           ...c,
+          ...(showStoredName ? { contactName: storedName } : {}),
           status: s.status,
           assignedTo: s.assignedTo,
           snoozedUntil: s.snoozedUntil,
@@ -826,6 +845,10 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
   }
   const conversationId = owned.conversationId
+  if (channel === "whatsapp" && authSession.hideCustomerPhoneForOperators === true
+    && isPhoneRestrictedPrincipal(authSession) && !conversationId) {
+    return NextResponse.json({ error: "Open a customer conversation before replying" }, { status: 400 })
+  }
   const leadId = owned.leadId
 
   // For TikTok (Chatwoot), Facebook, Instagram and VK the transport recipient
@@ -856,16 +879,17 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     replyTo = boundConversation.externalId
     boundChannelConfigId = boundConversation.channelConfigId
   } else if (channel === "whatsapp" && conversationId) {
-    // WhatsApp keeps the composer's `to` (the customer's phone), but answers from the number the
-    // conversation came in on: a workspace can hold several numbers (Embedded Signup makes that routine),
-    // and without the channel the transport picked the workspace's first one — a number the customer
-    // never wrote to, outside its 24h window, so Meta refused the reply. A send with no conversation
-    // (a phone typed into a new thread) keeps the workspace's number.
+    // The recipient and sending number are server-owned. A masked browser value
+    // (or a forged phone) must never redirect a reply away from this conversation.
     const boundConversation = await prisma.socialConversation.findFirst({
       where: { id: conversationId, organizationId: orgId, platform: "whatsapp", deletedAt: null },
-      select: { channelConfigId: true },
+      select: { externalId: true, channelConfigId: true },
     })
-    boundChannelConfigId = boundConversation?.channelConfigId ?? null
+    if (!boundConversation) {
+      return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
+    }
+    replyTo = boundConversation.externalId
+    boundChannelConfigId = boundConversation.channelConfigId
   }
 
   // Web-chat reply: single-source — write a WebChatMessage(agent) into the session (the visitor's
@@ -1000,7 +1024,7 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
       )
     }
     return NextResponse.json(
-      result.internal || result.statusCode === 400 ? { error: result.error } : { success: false, error: result.error },
+      result.internal || result.statusCode === 400 ? { error: result.error } : { success: false, error: result.error, ...(result.deliveryUnknown === false ? { deliveryUnknown: false } : {}) },
       { status: result.statusCode },
     )
   }

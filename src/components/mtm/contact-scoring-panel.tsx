@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -119,22 +120,35 @@ type ReviewTarget = {
   title: string
 }
 
+// What a record's status means, under the cursor on its badge (owner,
+// 2026-10-15: «подсказок в модуле очень мало»). Key by key, so a test finds
+// every one of them.
+const STATUS_HINT: Record<string, string> = {
+  PENDING: "hint.statusPending",
+  VERIFIED: "hint.statusVerified",
+  REJECTED: "hint.statusRejected",
+  ENDED: "hint.statusEnded",
+}
+
 function ToneBadge({
   children,
   tone = "neutral",
+  hint,
 }: {
   children: React.ReactNode
   tone?: "positive" | "warning" | "negative" | "neutral"
+  /** What the badge means, under the cursor. */
+  hint?: string | null
 }) {
   return (
     <span className={cn(
       "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-      tone === "positive" && "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200",
-      tone === "warning" && "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
-      tone === "negative" && "bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-200",
+      tone === "positive" && "text-emerald-700 dark:text-emerald-300",
+      tone === "warning" && "text-amber-700 dark:text-amber-300",
+      tone === "negative" && "text-red-700 dark:text-red-300",
       tone === "neutral" && "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
     )}>
-      {children}
+      <HintValue text={hint}>{children}</HintValue>
     </span>
   )
 }
@@ -150,14 +164,17 @@ function DataTile({
   label,
   value,
   hint,
+  explain,
 }: {
   label: string
   value: React.ReactNode
   hint?: React.ReactNode
+  /** How the value is counted, under the cursor on its label. */
+  explain?: string | null
 }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded-xl border border-zinc-200 bg-background p-3 dark:border-zinc-700">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="grid min-w-0 gap-1 rounded-xl border border-border bg-background p-3">
+      <span className="text-xs font-medium text-muted-foreground"><HintValue text={explain}>{label}</HintValue></span>
       <span className="break-words text-sm font-semibold tabular-nums">{value ?? "—"}</span>
       {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
     </div>
@@ -167,19 +184,22 @@ function DataTile({
 function PanelSection({
   title,
   icon: Icon,
+  hint,
   children,
 }: {
   title: string
   icon: React.ComponentType<{ className?: string }>
+  /** Which records the section shows, under the cursor on its heading. */
+  hint?: string | null
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-start gap-3">
-        <div className="rounded-xl bg-primary/10 p-2 text-primary">
+        <div className="p-2 text-muted-foreground">
           <Icon className="h-5 w-5" />
         </div>
-        <h2 className="self-center text-base font-semibold">{title}</h2>
+        <h2 className="self-center text-base font-semibold"><HintValue text={hint}>{title}</HintValue></h2>
       </div>
       <div className="mt-4">{children}</div>
     </section>
@@ -364,30 +384,34 @@ export function MtmContactScoringPanel({
   return (
     <div className="grid gap-5">
       {(canAssess || canRecordPotential) ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
           <div className="grid gap-1">
             <h2 className="font-semibold">{t("lifecycleActionsTitle")}</h2>
             {nothingRecorded ? <p className="text-sm text-muted-foreground">{t("nothingRecorded")}</p> : null}
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {canAssess ? (
-              <Button type="button" variant="outline" className="min-h-11" onClick={() => setAssessmentCreateOpen(true)}>
-                <SquarePen className="h-4 w-4" />
-                {t("newAssessment")}
-              </Button>
+              <Hint text={t("hint.newAssessment")}>
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => setAssessmentCreateOpen(true)}>
+                  <SquarePen className="h-4 w-4" />
+                  {t("newAssessment")}
+                </Button>
+              </Hint>
             ) : null}
             {canRecordPotential ? (
-              <Button type="button" className="min-h-11" onClick={() => setPotentialCreateOpen(true)}>
-                <Plus className="h-4 w-4" />
-                {t("newPotential")}
-              </Button>
+              <Hint text={canReviewPotential ? t("hint.newPotentialManager") : t("hint.newPotential")}>
+                <Button type="button" className="min-h-11" onClick={() => setPotentialCreateOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  {t("newPotential")}
+                </Button>
+              </Hint>
             ) : null}
           </div>
         </div>
       ) : null}
 
       {effectiveAssessment ? <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
-        <PanelSection title={t("currentAssessmentTitle")} icon={ShieldCheck}>
+        <PanelSection title={t("currentAssessmentTitle")} icon={ShieldCheck} hint={t("hint.currentAssessment")}>
             <AssessmentCard
               assessment={effectiveAssessment}
               current={activeAssessment?.id === effectiveAssessment.id}
@@ -415,7 +439,7 @@ export function MtmContactScoringPanel({
         </PanelSection>
       </div> : null}
 
-      {assessmentHistory.length ? <PanelSection title={t("assessmentHistoryTitle")} icon={History}>
+      {assessmentHistory.length ? <PanelSection title={t("assessmentHistoryTitle")} icon={History} hint={t("hint.assessmentHistory")}>
           <div className="grid gap-4">
             {assessmentHistory.map((assessment) => (
               <AssessmentCard
@@ -432,7 +456,7 @@ export function MtmContactScoringPanel({
           </div>
       </PanelSection> : null}
 
-      {activePotentials.length ? <PanelSection title={t("activePotentialsTitle")} icon={Scale}>
+      {activePotentials.length ? <PanelSection title={t("activePotentialsTitle")} icon={Scale} hint={t("hint.activePotentials")}>
           <div className="grid gap-4 xl:grid-cols-2">
             {activePotentials.map((potential) => (
               <PotentialCard
@@ -455,7 +479,7 @@ export function MtmContactScoringPanel({
           </div>
       </PanelSection> : null}
 
-      {pastPotentials.length ? <PanelSection title={t("potentialHistoryTitle")} icon={FlaskConical}>
+      {pastPotentials.length ? <PanelSection title={t("potentialHistoryTitle")} icon={FlaskConical} hint={t("hint.potentialHistory")}>
           <div className="grid gap-4 xl:grid-cols-2">
             {pastPotentials.map((potential) => (
               <PotentialCard
@@ -574,14 +598,14 @@ function AssessmentCard({
   return (
     <article className={cn(
       "grid gap-4 rounded-2xl border p-4",
-      current ? "border-primary/30 bg-primary/[0.035]" : "border-zinc-200 dark:border-zinc-700",
+      current ? "border-primary/30 bg-primary/[0.035]" : "border-border",
     )}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold">{title}</h3>
-            <ToneBadge tone={statusTone(assessment.status)}>{t(`statuses.${assessment.status}`)}</ToneBadge>
-            {current ? <ToneBadge tone="positive">{t("currentlyEffective")}</ToneBadge> : null}
+            <ToneBadge tone={statusTone(assessment.status)} hint={STATUS_HINT[assessment.status] ? t(STATUS_HINT[assessment.status]) : null}>{t(`statuses.${assessment.status}`)}</ToneBadge>
+            {current ? <ToneBadge tone="positive" hint={t("hint.effective")}>{t("currentlyEffective")}</ToneBadge> : null}
           </div>
           <span className="text-xs text-muted-foreground">
             {dateFormatter.format(new Date(assessment.periodStart))} — {assessment.periodEnd ? dateFormatter.format(new Date(assessment.periodEnd)) : t("openEnded")}
@@ -597,9 +621,9 @@ function AssessmentCard({
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <DataTile label={t("actualScore")} value={actual === null ? null : numberFormatter.format(actual)} />
-        <DataTile label={t("targetScore")} value={target === null ? null : numberFormatter.format(target)} />
-        <DataTile label={t("scoreDifference")} value={delta === null ? null : numberFormatter.format(delta)} />
+        <DataTile label={t("actualScore")} explain={t("hint.actualScore")} value={actual === null ? null : numberFormatter.format(actual)} />
+        <DataTile label={t("targetScore")} explain={t("hint.targetScore")} value={target === null ? null : numberFormatter.format(target)} />
+        <DataTile label={t("scoreDifference")} explain={t("hint.scoreDifference")} value={delta === null ? null : numberFormatter.format(delta)} />
         <DataTile label={t("granularCategory")} value={assessment.granularCategory} />
       </div>
 
@@ -610,7 +634,7 @@ function AssessmentCard({
       </div>
 
       {glossarySnapshot ? (
-        <details className="rounded-xl border border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/10">
+        <details className="rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500">
           <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200">
             <ShieldCheck className="mr-1.5 inline h-4 w-4" />
             {t("governedGlossaryTitle")}
@@ -674,14 +698,14 @@ function PotentialCard({
   return (
     <article className={cn(
       "grid gap-4 rounded-2xl border p-4",
-      current ? "border-emerald-300/70 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/10" : "border-zinc-200 dark:border-zinc-700",
+      current ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500" : "border-border",
     )}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold">{title}</h3>
-            <ToneBadge tone={statusTone(potential.status)}>{t(`potentialStatuses.${potential.status}`)}</ToneBadge>
-            {current ? <ToneBadge tone="positive">{t("currentlyEffective")}</ToneBadge> : null}
+            <ToneBadge tone={statusTone(potential.status)} hint={STATUS_HINT[potential.status] ? t(STATUS_HINT[potential.status]) : null}>{t(`potentialStatuses.${potential.status}`)}</ToneBadge>
+            {current ? <ToneBadge tone="positive" hint={t("hint.effective")}>{t("currentlyEffective")}</ToneBadge> : null}
           </div>
           <span className="text-xs text-muted-foreground">
             {potential.periodStart ? dateFormatter.format(new Date(potential.periodStart)) : t("dateMissing")} — {potential.periodEnd ? dateFormatter.format(new Date(potential.periodEnd)) : t("openEnded")}
@@ -696,23 +720,25 @@ function PotentialCard({
             />
           ) : null}
           {canEnd ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => onEnd({ id: potential.id, title, periodStart: potential.periodStart })}
-            >
-              <CalendarClock className="h-4 w-4" />
-              {t("endPeriod")}
-            </Button>
+            <Hint text={t("hint.endPeriod")}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onEnd({ id: potential.id, title, periodStart: potential.periodStart })}
+              >
+                <CalendarClock className="h-4 w-4" />
+                {t("endPeriod")}
+              </Button>
+            </Hint>
           ) : null}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <DataTile label={t("potentialValue")} value={numberFormatter.format(potentialValue)} />
-        <DataTile label={t("coverageValue")} value={numberFormatter.format(coverageValue)} />
-        <DataTile label={t("uncoveredDifference")} value={numberFormatter.format(difference)} />
+        <DataTile label={t("potentialValue")} explain={t("hint.potentialValue")} value={numberFormatter.format(potentialValue)} />
+        <DataTile label={t("coverageValue")} explain={t("hint.coverageValue")} value={numberFormatter.format(coverageValue)} />
+        <DataTile label={t("uncoveredDifference")} explain={t("hint.uncoveredDifference")} value={numberFormatter.format(difference)} />
         <DataTile label={t("measurementCategory")} value={potential.categoryLabel || potential.category} />
       </div>
 
@@ -726,10 +752,10 @@ function PotentialCard({
 
       {potential.evidenceVisits.length ? (
         <div className="grid gap-2">
-          <span className="flex items-center gap-2 text-xs font-semibold"><Link2 className="h-4 w-4" />{t("evidenceVisits", { count: potential.evidenceVisits.length })}</span>
+          <span className="flex items-center gap-2 text-xs font-semibold"><Link2 className="h-4 w-4" /><HintValue text={t("hint.evidenceVisits")}>{t("evidenceVisits", { count: potential.evidenceVisits.length })}</HintValue></span>
           <div className="grid gap-2">
             {potential.evidenceVisits.map(({ visit }) => (
-              <div key={visit.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
+              <div key={visit.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-border px-3 py-2 text-xs">
                 <span>{visit.customer.name}</span>
                 <span className="text-muted-foreground">{visit.checkInAt ? dateTimeFormatter.format(new Date(visit.checkInAt)) : t("dateMissing")}</span>
               </div>
@@ -755,8 +781,8 @@ function ReviewButtons({
 }) {
   return (
     <div className="flex gap-2">
-      <Button type="button" size="sm" variant="outline" onClick={onReject}>{t("reject")}</Button>
-      <Button type="button" size="sm" onClick={onApprove}>{t("approve")}</Button>
+      <Hint text={t("hint.reject")}><Button type="button" size="sm" variant="outline" onClick={onReject}>{t("reject")}</Button></Hint>
+      <Hint text={t("hint.approve")}><Button type="button" size="sm" onClick={onApprove}>{t("approve")}</Button></Hint>
     </div>
   )
 }
@@ -769,7 +795,7 @@ function ProvenanceRows({
   t: ReturnType<typeof useTranslations>
 }) {
   return (
-    <details className="rounded-xl border border-zinc-200 p-3 text-xs dark:border-zinc-700">
+    <details className="rounded-xl border border-border p-3 text-xs">
       <summary className="cursor-pointer font-semibold">{t("provenance")}</summary>
       <dl className="mt-3 grid gap-2">
         {rows.map(([key, value]) => (

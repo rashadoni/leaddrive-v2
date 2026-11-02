@@ -35,8 +35,8 @@ export function DashboardWidgetShell({
   emptyDescription,
 }: DashboardWidgetShellProps) {
   return (
-    <section className={cn("dashboard-bento-card flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)] dark:border-zinc-700", className)}>
-      <div className={cn("shrink-0 flex items-start justify-between gap-3 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800", headerClassName)}>
+    <section className={cn("dashboard-bento-card flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)]", className)}>
+      <div className={cn("shrink-0 flex items-start justify-between gap-3 border-b border-border px-4 py-3", headerClassName)}>
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             {icon ? <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">{icon}</span> : null}
@@ -47,7 +47,7 @@ export function DashboardWidgetShell({
         {href ? (
           <Link
             href={href}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:border-zinc-700"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           >
             {actionLabel}
             <ExternalLink className="h-3 w-3" />
@@ -60,7 +60,7 @@ export function DashboardWidgetShell({
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
         ) : empty ? (
-          <div className="flex min-h-32 flex-col justify-center rounded-lg border border-dashed border-zinc-200 bg-muted/20 px-4 py-5 text-sm dark:border-zinc-800">
+          <div className="flex min-h-32 flex-col justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5 text-sm">
             <p className="font-medium">{emptyTitle}</p>
             {emptyDescription ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{emptyDescription}</p> : null}
           </div>

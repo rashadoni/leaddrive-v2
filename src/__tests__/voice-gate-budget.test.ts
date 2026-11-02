@@ -45,8 +45,10 @@ const saved: Record<string, string | undefined> = {}
 beforeEach(() => {
   vi.clearAllMocks()
   for (const k of ENV_KEYS) saved[k] = process.env[k]
-  process.env.VOICE_PILOT_ORG_ID = "org-pilot"
-  process.env.VOICE_PILOT_USER_IDS = "user-1,user-2"
+  // Set to a DIFFERENT organisation on purpose: the old env allowlist must
+  // no longer decide anything (see "ignores the retired env allowlist").
+  process.env.VOICE_PILOT_ORG_ID = "org-somewhere-else"
+  process.env.VOICE_PILOT_USER_IDS = "user-9"
   process.env.VOICE_REALTIME_PROVIDER = "gemini_live"
   process.env.GEMINI_API_KEY = "key_x"
   vi.mocked(getOrgModuleContext).mockResolvedValue({ plan: "creator", addons: [], modules: {} } as any)
@@ -62,31 +64,34 @@ afterEach(() => {
 })
 
 describe("checkVoicePilotAccess", () => {
-  it("allows an enrolled admin in the enrolled org", async () => {
+  // Owner, 2026-10-26: the «Голос» switch in Settings → Users is the grant.
+  // Zeytun Pharma's admin had it ticked and no microphone, because an env list
+  // named another organisation.
+  it("allows an admin whose switch is on, in any organisation", async () => {
     await expect(checkVoicePilotAccess(ADMIN)).resolves.toEqual({ ok: true })
+    await expect(checkVoicePilotAccess({ ...ADMIN, orgId: "org-zeytun" })).resolves.toEqual({ ok: true })
   })
 
-  // An unset org must read as "nobody", never as "everyone".
-  it("denies when the pilot is unconfigured", async () => {
+  it("ignores the retired env allowlist, set or unset", async () => {
     delete process.env.VOICE_PILOT_ORG_ID
-    const r = await checkVoicePilotAccess(ADMIN)
-    expect(r).toEqual({ ok: false, reason: "voice_pilot_not_configured" })
+    delete process.env.VOICE_PILOT_USER_IDS
+    await expect(checkVoicePilotAccess(ADMIN)).resolves.toEqual({ ok: true })
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ voiceEnabled: false } as any)
+    process.env.VOICE_PILOT_ORG_ID = ADMIN.orgId
+    process.env.VOICE_PILOT_USER_IDS = ADMIN.userId
+    await expect(checkVoicePilotAccess(ADMIN)).resolves.toEqual({ ok: false, reason: "voice_not_granted" })
   })
 
-  // The org gate is what stops a superadmin carrying another tenant's data
-  // into the pilot workspace — their session can legitimately name any org.
-  it("denies a user acting inside a non-enrolled organization", async () => {
-    const r = await checkVoicePilotAccess({ ...ADMIN, orgId: "org-other", role: "superadmin" })
-    expect(r).toEqual({ ok: false, reason: "voice_pilot_org_not_enrolled" })
+  // The switch is read in the organisation the session acts in, scoped to it.
+  it("looks the switch up for this user inside this organisation", async () => {
+    await checkVoicePilotAccess(ADMIN)
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { id: ADMIN.userId, organizationId: ADMIN.orgId },
+      select: { voiceEnabled: true },
+    })
   })
 
-  it("denies a user outside the allowlist", async () => {
-    const r = await checkVoicePilotAccess({ ...ADMIN, userId: "user-9" })
-    expect(r).toEqual({ ok: false, reason: "voice_pilot_user_not_enrolled" })
-  })
-
-  it("denies a non-eligible role even when allowlisted and ticked", async () => {
-    process.env.VOICE_PILOT_USER_IDS = "viewer-1"
+  it("denies a non-eligible role even when ticked", async () => {
     const r = await checkVoicePilotAccess({ ...ADMIN, userId: "viewer-1", role: "viewer" })
     expect(r).toEqual({ ok: false, reason: "voice_pilot_role_denied" })
   })
@@ -100,7 +105,6 @@ describe("checkVoicePilotAccess", () => {
   })
 
   it("allows a manager whose box is ticked", async () => {
-    process.env.VOICE_PILOT_USER_IDS = ""
     const r = await checkVoicePilotAccess({ ...ADMIN, userId: "mgr-1", role: "manager" })
     expect(r).toEqual({ ok: true })
   })
@@ -113,11 +117,16 @@ describe("checkVoicePilotAccess", () => {
     expect(r).toEqual({ ok: false, reason: "voice_grant_check_failed" })
   })
 
-  // Superadmin is not a member of the tenant and has no row to tick.
-  it("does not require a ticked box for superadmin", async () => {
+  // Superadmin follows the same switch. Inside another tenant they have no
+  // row, so their session — which can name any organisation — gets no voice
+  // there; this used to be the env org gate's job.
+  it("requires the switch for superadmin too", async () => {
     vi.mocked(prisma.user.findFirst).mockResolvedValue({ voiceEnabled: false } as any)
-    const r = await checkVoicePilotAccess({ ...ADMIN, role: "superadmin" })
-    expect(r).toEqual({ ok: true })
+    await expect(checkVoicePilotAccess({ ...ADMIN, role: "superadmin" })).resolves.toEqual({ ok: false, reason: "voice_not_granted" })
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
+    await expect(checkVoicePilotAccess({ ...ADMIN, orgId: "org-other", role: "superadmin" })).resolves.toEqual({ ok: false, reason: "voice_not_granted" })
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ voiceEnabled: true } as any)
+    await expect(checkVoicePilotAccess({ ...ADMIN, role: "superadmin" })).resolves.toEqual({ ok: true })
   })
 
   it("denies when the ai module is off", async () => {

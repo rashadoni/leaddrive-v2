@@ -11,7 +11,7 @@ export function WeeklyMetrics({ metrics }: { metrics: any }) {
   const totalTickets = (metrics?.ticketsPerDay || []).reduce((s: number, v: number) => s + v, 0)
 
   return (
-    <div className="dashboard-bento-card rounded-lg bg-card border border-zinc-200 dark:border-zinc-700 shadow-sm p-3">
+    <div className="dashboard-bento-card rounded-lg bg-card border border-border shadow-sm p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <BarChart3 className="h-4 w-4 text-muted-foreground" />
@@ -33,7 +33,7 @@ export function WeeklyMetrics({ metrics }: { metrics: any }) {
           </div>
           <MiniBarChart data={metrics?.ticketsPerDay?.length > 0 ? metrics.ticketsPerDay : [0,0,0,0,0,0,0]} color="bg-cyan-400" height="h-7" />
         </div>
-        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border">
           <div className="text-center">
             <div className="text-sm font-bold">{metrics?.slaCompliance ?? 0}%</div>
             <div className="text-[8px] text-muted-foreground">{t("slaCompliance")}</div>

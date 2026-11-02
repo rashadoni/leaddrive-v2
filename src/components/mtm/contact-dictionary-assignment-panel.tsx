@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { BadgeCheck, CircleAlert, History, Pencil, Settings2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -116,16 +117,19 @@ function AssignmentBadge({
   assignment: GovernedContactDictionaryAssignment
   locale: string
 }) {
+  const t = useTranslations("mtmContactDictionaryAssignments")
   return (
-    <span className={cn(
-      "inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-      assignment.valid
-        ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200"
-        : "bg-amber-100 text-amber-950 dark:bg-amber-900/30 dark:text-amber-100",
-    )}>
-      {assignment.valid ? <BadgeCheck className="h-3.5 w-3.5 flex-none" /> : <CircleAlert className="h-3.5 w-3.5 flex-none" />}
-      <span className="truncate">{assignment.entry ? localized(assignment.entry.labels, locale) : assignment.entryCode}</span>
-    </span>
+    <Hint text={assignment.valid ? t("hint.dictValueValid") : t("hint.dictValueInvalid")}>
+      <span tabIndex={0} className={cn(
+        "inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+        assignment.valid
+          ? "text-emerald-700 dark:text-emerald-300"
+          : "text-amber-700 dark:text-amber-300",
+      )}>
+        {assignment.valid ? <BadgeCheck className="h-3.5 w-3.5 flex-none" /> : <CircleAlert className="h-3.5 w-3.5 flex-none" />}
+        <span className="truncate">{assignment.entry ? localized(assignment.entry.labels, locale) : assignment.entryCode}</span>
+      </span>
+    </Hint>
   )
 }
 
@@ -347,7 +351,7 @@ export function MtmContactDictionaryAssignmentPanel({
     // Nothing to choose from yet, and only the person who can create the
     // lists gets this far: tell them where.
     return (
-      <section data-testid="mtm-contact-categories-empty" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+      <section data-testid="mtm-contact-categories-empty" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="grid gap-1">
           <h2 className="text-base font-semibold">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">{t("noLists")}</p>
@@ -360,34 +364,38 @@ export function MtmContactDictionaryAssignmentPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
+    <section className="rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2 text-primary"><ShieldCheck className="h-5 w-5" /></div>
+          <div className="p-2 text-muted-foreground"><ShieldCheck className="h-5 w-5" /></div>
           <h2 className="text-base font-semibold">{t("title")}</h2>
         </div>
         {(canManage || canRequestChanges) && dictionaries.length ? (
-          <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
-            <Pencil className="h-4 w-4" />
-            {canManage ? t("edit") : t("suggest")}
-          </Button>
+          <Hint text={canManage ? t("hint.dictEdit") : t("hint.dictSuggest")}>
+            <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
+              <Pencil className="h-4 w-4" />
+              {canManage ? t("edit") : t("suggest")}
+            </Button>
+          </Hint>
         ) : null}
       </div>
 
       {groups.length ? <div className={cn(
-        "grid border-t border-zinc-200 dark:border-zinc-700 md:divide-x md:divide-zinc-200 md:dark:divide-zinc-700",
+        "grid border-t border-border md:divide-x md:divide-border md:dark:divide-border",
         groups.length === 2 && "md:grid-cols-2",
         groups.length === 3 && "md:grid-cols-3",
         groups.length === 4 && "md:grid-cols-2 xl:grid-cols-4",
       )}>
         {groups.map(([kind, label]) => (
-          <div key={kind} data-testid={`mtm-contact-category-group-${kind}`} className="grid content-start gap-3 border-b border-zinc-200 p-4 last:border-b-0 dark:border-zinc-700 lg:border-b-0 sm:p-5">
+          <div key={kind} data-testid={`mtm-contact-category-group-${kind}`} className="grid content-start gap-3 border-b border-border p-4 last:border-b-0 lg:border-b-0 sm:p-5">
             <h3 className="text-sm font-semibold">{t(label)}</h3>
             {kind === "CLIENT_TYPE" && !assignedClientType && clientCategory.entry ? (
               <div className="flex flex-wrap gap-2">
-                <span className="inline-flex min-w-0 items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
-                  <span className="truncate">{localized(clientCategory.entry.labels, locale)}</span>
-                </span>
+                <Hint text={t("hint.dictDefaultType")}>
+                  <span tabIndex={0} className="inline-flex min-w-0 items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
+                    <span className="truncate">{localized(clientCategory.entry.labels, locale)}</span>
+                  </span>
+                </Hint>
               </div>
             ) : renderAssignmentGroup(kind)}
             {kind === "CLIENT_TYPE" && clientCategoryFields.length > 0 ? (
@@ -405,7 +413,7 @@ export function MtmContactDictionaryAssignmentPanel({
       </div> : null}
 
       {pendingRequests.length ? (
-        <div className="grid gap-3 border-t border-zinc-200 bg-amber-50/60 p-4 dark:border-zinc-700 dark:bg-amber-950/10 sm:p-5">
+        <div className="grid gap-3 border-t border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sm font-semibold"><CircleAlert className="h-4 w-4" />{t("pendingTitle")}</div>
           {pendingRequests.map((request) => (
             <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -416,8 +424,8 @@ export function MtmContactDictionaryAssignmentPanel({
               </div>
               {canManage ? (
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" onClick={() => { setReviewTarget({ id: request.id, decision: "REJECTED" }); setReviewComment(""); setError("") }}>{t("reject")}</Button>
-                  <Button type="button" size="sm" onClick={() => { setReviewTarget({ id: request.id, decision: "APPROVED" }); setReviewComment(""); setError("") }}>{t("approve")}</Button>
+                  <Hint text={t("hint.dictReject")}><Button type="button" size="sm" variant="outline" onClick={() => { setReviewTarget({ id: request.id, decision: "REJECTED" }); setReviewComment(""); setError("") }}>{t("reject")}</Button></Hint>
+                  <Hint text={t("hint.dictApprove")}><Button type="button" size="sm" onClick={() => { setReviewTarget({ id: request.id, decision: "APPROVED" }); setReviewComment(""); setError("") }}>{t("approve")}</Button></Hint>
                 </div>
               ) : null}
             </div>
@@ -426,11 +434,11 @@ export function MtmContactDictionaryAssignmentPanel({
       ) : null}
 
       {historical.length ? (
-        <details className="group border-t border-zinc-200 p-4 dark:border-zinc-700 sm:p-5">
+        <details className="group border-t border-border p-4 sm:p-5">
           <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-sm font-semibold">
             <History className="h-4 w-4" />{t("history", { count: historical.length })}
           </summary>
-          <div className="mt-3 divide-y divide-zinc-200 dark:divide-zinc-700">
+          <div className="mt-3 divide-y divide-border">
             {historical.map((assignment) => (
               <div key={assignment.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                 <AssignmentBadge assignment={assignment} locale={locale} />
@@ -451,7 +459,7 @@ export function MtmContactDictionaryAssignmentPanel({
               <DialogDescription>{t("editDescription")}</DialogDescription>
             </DialogHeader>
 
-            {clientTypeDictionary ? <div className="grid gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+            {clientTypeDictionary ? <div className="grid gap-3 rounded-xl border border-border p-3">
               <div className="grid gap-2">
                 <Label htmlFor="contact-client-type">{t("clientType")}</Label>
                   <Select id="contact-client-type" className="min-h-11" value={clientTypeCode || "__none__"} onChange={(event) => {
@@ -493,7 +501,7 @@ export function MtmContactDictionaryAssignmentPanel({
             ] as const).map(([dictionary, values, update, label]) => (dictionary ? (
               <fieldset key={label} className="grid gap-3">
                 <legend className="text-sm font-medium">{t(label)}</legend>
-                  <div className="grid gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2">
+                  <div className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-2">
                     {dictionary.entries.map((entry) => (
                       <label key={entry.code} className="flex min-h-10 cursor-pointer items-start gap-2 rounded-lg px-2 py-2 hover:bg-muted/60">
                         <input
@@ -517,7 +525,7 @@ export function MtmContactDictionaryAssignmentPanel({
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>{t("cancel")}</Button>
-              <Button type="submit" disabled={saving}>{saving ? t("saving") : canManage ? t("save") : t("submit")}</Button>
+              <Hint wrap text={saving ? null : canManage ? t("hint.dictSave") : t("hint.dictSubmit")}><Button type="submit" disabled={saving}>{saving ? t("saving") : canManage ? t("save") : t("submit")}</Button></Hint>
             </DialogFooter>
           </form>
         </DialogContent>

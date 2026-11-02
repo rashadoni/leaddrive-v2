@@ -283,7 +283,8 @@ export default function ticketdetailHelpAz() {
           Bu səhifədə yalnız öz təşkilatınızın biletlərini, agentlərini və müştəri kontekstini
           görürsünüz — Müştəri 360, təyinat siyahısı və bilik bazası məqalələri hamısı sizin
           tenant-ınızla məhdudlaşır. <strong>Daxili qeydlər müştəriyə heç vaxt göndərilmir</strong>;
-          müştəriyə yalnız adi cavablar (və e-poçt/messenger inteqrasiyaları) çatır.
+          adi cavabı müştəri müştəri portalında görür, bilet WhatsApp-dan gəlibsə, cavab ona
+          WhatsApp-da da göndərilir. E-poçtla cavab göndərilmir.
         </p>
       </HelpCallout>
     </div>

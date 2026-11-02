@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { DEMO_WHATSAPP_MAX_CHARS } from "./demo-whatsapp"
 import { DEMO_MODULE_IDS, isDemoModuleId } from "@/lib/demo-center/catalog"
+import { DEMO_JOURNEY_MODULES, isDemoJourneyModuleId } from "@/lib/demo-center/journey/modules"
 import { DEMO_JOURNEY_STATES, JOURNEY_REPORT_NAMES, getDemoJourneyScenario } from "@/lib/demo-center/journey"
 import { normalizeEmail } from "@/lib/demo-center/security"
 
@@ -20,13 +20,18 @@ export const demoRequestSchema = z.object({
   email: z.string().trim().email().max(254).transform(normalizeEmail),
   phone: optionalText(40),
   message: optionalText(4_000),
-  requestedModules: z.array(z.string()).max(DEMO_MODULE_IDS.length).default([])
-    .transform((values) => [...new Set(values.filter(isDemoModuleId))]),
+  // The guided demo's modules the prospect ticked (journey/modules.ts), or a
+  // catalog module from an older form; anything else is dropped.
+  requestedModules: z.array(z.string()).max(DEMO_MODULE_IDS.length + DEMO_JOURNEY_MODULES.length).default([])
+    .transform((values) => [...new Set(values.filter((value) => isDemoJourneyModuleId(value) || isDemoModuleId(value)))]),
   locale: z.enum(["az", "ru", "en"]).default("az"),
   consent: z.literal(true),
   // Honeypot input is intentionally accepted here so bots receive the same
   // generic success response instead of learning which anti-spam check fired.
   website: z.string().max(500).optional(),
+  // The bot check's solution; checked by the route, which answers a script
+  // the way it answers the honeypot (src/lib/demo-center/form-challenge.ts).
+  challenge: z.unknown().optional(),
   // Owner, 2026-09-23: «убери привязку к почте корпоративному». A gmail
   // address is how most buyers here write, and the demo is granted by hand
   // anyway — the address was never the thing that decided it.
@@ -56,10 +61,15 @@ export const demoGrantIssueSchema = z.object({
   locale: z.enum(["az", "ru", "en"]).default("az"),
   /** A real AI call to the prospect's proven phone. Only in a guided scenario. */
   liveCallEnabled: z.boolean().default(false),
+  /** The prospect may connect his own Facebook Page for the day. Only in a guided scenario. */
+  liveSocialEnabled: z.boolean().default(false),
 }).superRefine((value, context) => {
   const hasScenario = !!value.scenarioId
   if (value.liveCallEnabled && !hasScenario) {
     context.addIssue({ code: "custom", path: ["liveCallEnabled"], message: "A live call needs a guided scenario" })
+  }
+  if (value.liveSocialEnabled && !hasScenario) {
+    context.addIssue({ code: "custom", path: ["liveSocialEnabled"], message: "A Facebook Page connection needs a guided scenario" })
   }
   const hasModules = value.moduleIds.length > 0
   if (hasScenario && hasModules) {
@@ -73,10 +83,6 @@ export const demoGrantIssueSchema = z.object({
   }
 })
 
-export const demoOtpSchema = z.object({
-  code: z.string().trim().regex(/^\d{6}$/),
-})
-
 /** The AI calls only the phone the prospect gave on the request form (owner
  *  decision 2026-09-22): the browser cannot name any other number, so a demo
  *  cannot be used to point the agent at somebody else's phone. */
@@ -85,9 +91,28 @@ export const demoPhoneCodeSchema = z.object({ useRequestPhone: z.literal(true) }
 export const demoPhoneTelegramSchema = z.object({ consent: z.boolean() }).strict()
 
 /** One message the prospect types in the demo's live WhatsApp thread. */
-export const demoWhatsAppSendSchema = z.object({
-  text: z.string().trim().min(1).max(DEMO_WHATSAPP_MAX_CHARS),
+/** «WhatsApp-a mesaj göndərin»: the welcome to the request's own phone, with the consent line ticked. */
+export const demoWhatsAppWelcomeSchema = z.object({
+  action: z.literal("welcome"),
+  consent: z.literal(true),
 }).strict()
+
+/** What the demo page may ask of its WhatsApp thread: our welcome, or a ticket from the next message. */
+export const demoWhatsAppActionSchema = z.discriminatedUnion("action", [
+  demoWhatsAppWelcomeSchema,
+  z.object({ action: z.literal("ticket") }).strict(),
+])
+
+/**
+ * What the demo page may ask of the prospect's own Facebook Page: start the
+ * connect with the consent line ticked, pick one of the granted Pages by its
+ * place in the list (never by an id), or «Ayır».
+ */
+export const demoSocialActionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("start"), consent: z.literal(true) }).strict(),
+  z.object({ action: z.literal("choose"), page: z.number().int().min(0).max(24) }).strict(),
+  z.object({ action: z.literal("disconnect") }).strict(),
+])
 
 export const demoPhoneVerifySchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),

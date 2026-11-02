@@ -540,7 +540,7 @@ export function ConversationFlowCanvas({
                 type="button"
                 disabled={disabled || saving || !dirty || !onSaveGraph}
                 onClick={saveGraph}
-                className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0" data-crm-button="default"
               >
                 {saving ? mergedEditorLabels.saving : mergedEditorLabels.save}
               </button>

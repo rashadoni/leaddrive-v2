@@ -1,5 +1,6 @@
-import { MtmAttendanceDecisionJournal } from "@/components/mtm/attendance-decision-journal"
+import { redirectToAttendanceTab, type AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirect"
 
-export default function AttendanceDecisionsPage() {
-  return <MtmAttendanceDecisionJournal />
+/** Former page; now Personnel → timesheet → decisions. */
+export default async function AttendanceDecisionsRedirect({ searchParams }: { searchParams: AttendanceSearchParams }) {
+  return redirectToAttendanceTab("timesheet", "decisions", searchParams)
 }

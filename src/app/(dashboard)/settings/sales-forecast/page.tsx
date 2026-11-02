@@ -236,7 +236,7 @@ export default function SalesForecastPage() {
                 type="checkbox"
                 checked={showVat}
                 onChange={(e) => setShowVat(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-zinc-200 dark:border-zinc-700"
+                className="h-3.5 w-3.5 rounded border-input"
               />
               {ts("sfWithVat")}
             </label>
@@ -307,7 +307,7 @@ export default function SalesForecastPage() {
                       const month = mi + 1
                       const displayVal = getVal(dept.id, month)
                       return (
-                        <td key={mi} className="p-1 border border-zinc-200 dark:border-zinc-700">
+                        <td key={mi} className="p-1 border border-border">
                           <Input
                             type="number"
                             className="h-8 text-right text-xs tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -318,7 +318,7 @@ export default function SalesForecastPage() {
                         </td>
                       )
                     })}
-                    <td className="p-2 border border-zinc-200 dark:border-zinc-700 text-right font-semibold tabular-nums bg-blue-50 dark:bg-blue-950">
+                    <td className="p-2 border border-border text-right font-semibold tabular-nums bg-blue-50 dark:bg-blue-950">
                       {fmt(rowTotal(dept.id))}
                     </td>
                   </tr>
@@ -331,11 +331,11 @@ export default function SalesForecastPage() {
                     {ts("sfVatRow")}
                   </td>
                   {MONTHS.map((_, mi) => (
-                    <td key={mi} className="p-2 border border-zinc-200 dark:border-zinc-700 text-right tabular-nums">
+                    <td key={mi} className="p-2 border border-border text-right tabular-nums">
                       {fmt(colVat(mi + 1))}
                     </td>
                   ))}
-                  <td className="p-2 border border-zinc-200 dark:border-zinc-700 text-right tabular-nums font-medium bg-amber-100 dark:bg-amber-900/30">
+                  <td className="p-2 border border-border text-right tabular-nums font-medium bg-amber-100 dark:bg-amber-900/30">
                     {fmt(grandVat())}
                   </td>
                 </tr>
@@ -345,11 +345,11 @@ export default function SalesForecastPage() {
                     {ts("sfGrandTotal", { vat: showVat ? ts("sfGrandTotalWithVat") : ts("sfGrandTotalNoVat") })}
                   </td>
                   {MONTHS.map((_, mi) => (
-                    <td key={mi} className="p-2 border border-zinc-200 dark:border-zinc-700 text-right tabular-nums">
+                    <td key={mi} className="p-2 border border-border text-right tabular-nums">
                       {fmt(colTotal(mi + 1))}
                     </td>
                   ))}
-                  <td className="p-2 border border-zinc-200 dark:border-zinc-700 text-right tabular-nums bg-blue-100 dark:bg-blue-900">
+                  <td className="p-2 border border-border text-right tabular-nums bg-blue-100 dark:bg-blue-900">
                     {fmt(grandTotal())}
                   </td>
                 </tr>

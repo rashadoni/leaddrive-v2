@@ -14,6 +14,7 @@ import {
   contactScopeForActor,
 } from "@/lib/mtm/field-scope"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import { readMtmClientVisitSummary } from "@/lib/mtm/client-visit-summary"
 import {
   effectiveMtmContactRequiredFields,
   mergedMtmContactState,
@@ -271,7 +272,7 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
     : actor.role === "AGENT"
       ? (actor.agentId ? [actor.agentId] : [])
       : [...actor.scopedAgentIds]
-  const [eligibleBrandPotentialVisits, brandPotentialAgents] = await Promise.all([
+  const [eligibleBrandPotentialVisits, brandPotentialAgents, visitSummary] = await Promise.all([
     prisma.mtmVisit.findMany({
       where: {
         organizationId: auth.orgId,
@@ -296,6 +297,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
         select: { id: true, name: true, role: true },
       })
       : Promise.resolve([]),
+    // The visits on top of the card (owner, 2026-10-16): last, open, next.
+    readMtmClientVisitSummary(prisma, { organizationId: auth.orgId, subject: { contactId: id }, asOf }),
   ])
   return NextResponse.json({
     success: true,
@@ -316,6 +319,9 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
         // The classes this tenant grades clients with (A, B, C, VIP…).
         classes: settings.contactClasses,
       },
+      visitSummary,
+      // A visit open this long is «не закрыт агентом» (the long-open visit setting).
+      longOpenMinutes: settings.autoCheckoutMinutes,
       asOf: asOf.toISOString().slice(0, 10),
       timezone,
       capabilities: {

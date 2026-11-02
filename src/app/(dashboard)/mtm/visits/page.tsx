@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -29,10 +30,9 @@ import {
 } from "lucide-react"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
-import { HelpButton } from "@/components/help/help-button"
 import { MtmVisitForm } from "@/components/mtm/visit-form"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -52,11 +52,17 @@ import {
 } from "@/lib/mtm/visit-review"
 import { VisitReviewPanel, visitStatusClasses, type ReviewedVisitFacts } from "./visit-review-panel"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
+import { JointVisitMark } from "@/components/mtm/visit-evaluation-views"
 import { VisitWorkspace } from "./visit-workspace"
+import { RemindAgentButton, useLeftOpenSince, useMinuteClock, useOpenForText } from "./visit-left-open"
+import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type MtmVisitRow = {
   id: string
   canMutate?: boolean
+  /** The agent said his manager was on this visit with him. */
+  joint?: boolean
   agentId?: string | null
   customerId?: string | null
   status: "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | string
@@ -167,6 +173,10 @@ export default function MtmVisitsPage() {
     geofenceRadius: null,
   })
   const [activeVisits, setActiveVisits] = useState<ActiveVisitRow[]>([])
+  // The tenant's long-open line (autoCheckoutMinutes): past it a visit is «не закрыт агентом», not «идёт».
+  const [longOpenMinutes, setLongOpenMinutes] = useState(MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES)
+  const now = useMinuteClock()
+  const openForText = useOpenForText()
   const [viewer, setViewer] = useState<VisitViewer | null>(null)
   const [activeVisitId, setActiveVisitId] = useState<string | null>(null)
   const [focusedVisitUnavailable, setFocusedVisitUnavailable] = useState(false)
@@ -394,6 +404,7 @@ export default function MtmVisitsPage() {
       const body = await res.json().catch(() => null)
       if (!isCurrentRequest() || !res.ok || !body?.success) return []
       const nextViewer: VisitViewer | null = body.data.viewer ?? null
+      if (typeof body.data.longOpenMinutes === "number" && body.data.longOpenMinutes > 0) setLongOpenMinutes(body.data.longOpenMinutes)
       const isOwn = (visit: ActiveVisitRow) => isOwnVisitExecution(nextViewer, { agentId: visit.agentId, status: "CHECKED_IN" })
       let next: ActiveVisitRow[] = body.data.visits ?? []
 
@@ -548,11 +559,16 @@ export default function MtmVisitsPage() {
   // only where they are the whole period.
   const listIsPartial = visitsRemaining > 0 || meta.sourceTruncated
   const ownActiveVisits = activeVisits.filter((visit) => isOwnVisitExecution(viewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
-  const teamActiveVisits = activeVisits.filter((visit) => !ownActiveVisits.includes(visit))
+  const openTeamVisits = activeVisits.filter((visit) => !ownActiveVisits.includes(visit))
+  // Owner, 2026-10-15: a visit opened three days before stood here as «идёт
+  // сейчас». It is listed apart, as what it is: left open by the agent.
+  const leftOpenVisits = openTeamVisits.filter((visit) => isMtmVisitLeftOpen({ checkInAt: visit.checkInAt }, now, longOpenMinutes))
+  const teamActiveVisits = openTeamVisits.filter((visit) => !leftOpenVisits.includes(visit))
   const focusedOwnExecution = Boolean(focusedVisitId && ownActiveVisits.some((visit) => visit.id === focusedVisitId))
   // Until the viewer is known, an agent's own ?visitId must not flash the office review.
   const focusPending = Boolean(focusedVisitId && !activeResolved && !focusedVisitUnavailable)
   const showReview = Boolean(focusedVisitId && activeResolved && !focusedOwnExecution && !focusedVisitUnavailable)
+  const otherLeftOpenVisits = showReview && focusedVisitId ? leftOpenVisits.filter((visit) => visit.id !== focusedVisitId) : leftOpenVisits
   // The three-step guide teaches how to execute a visit; office users review.
   const subtitle = !activeResolved ? t("subtitleNeutral") : viewer?.role === "AGENT" ? t("subtitleAgent") : t("subtitle")
 
@@ -590,7 +606,16 @@ export default function MtmVisitsPage() {
     router.push(visitHref(visitId))
   }
 
-  function statusBadge(visit: { status: string }) {
+  function statusBadge(visit: { status: string; checkInAt?: string | null; checkOutAt?: string | null }) {
+    // The same visit says the same thing in the history as in its card (2026-10-15).
+    if (visit.checkInAt && isMtmVisitLeftOpen({ status: visit.status, checkInAt: visit.checkInAt, checkOutAt: visit.checkOutAt ?? null }, now, longOpenMinutes)) {
+      return (
+        <span data-testid="mtm-visit-row-left-open" className="inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("statusLeftOpen")}
+        </span>
+      )
+    }
     const Icon = visit.status === "CHECKED_IN"
       ? Clock
       : visit.status === "CHECKED_OUT"
@@ -617,14 +642,15 @@ export default function MtmVisitsPage() {
         <VisitPlaceBadge place={visitPlaceSummary(visit, meta.geofenceRadius)} />
         {/* Why a visit «вне зоны» was accepted: its agent had reported the pin as wrong, from that very place. */}
         {request ? (
-          <span
+          <Hint text={t("hint.locationRequest")}><span
+            tabIndex={0}
             data-testid="mtm-visit-location-request"
             className={request.waiting
-              ? "inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
-              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"}
+              ? "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300"
+              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"}
           >
             {t(request.key)}
-          </span>
+          </span></Hint>
         ) : null}
       </span>
     )
@@ -646,8 +672,8 @@ export default function MtmVisitsPage() {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moreActions")}>
-              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moreActions")}>
+              <MoreHorizontal className="h-5 w-5" aria-hidden="true" /><MtmWord word="more" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -677,7 +703,7 @@ export default function MtmVisitsPage() {
   if (loading && visits.length === 0 && activeVisits.length === 0) {
     return (
       <div className="space-y-6">
-        <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
+        <MtmPageHeader title={t("title")} description={subtitle} help="mtm-visits" />
         <div className="animate-pulse space-y-4 motion-reduce:animate-none">
           <div className="h-24 rounded-2xl bg-muted" />
           <div className="h-80 rounded-2xl bg-muted" />
@@ -688,12 +714,11 @@ export default function MtmVisitsPage() {
 
   return (
     <div className="space-y-6 pb-8" data-testid="mtm-visits-guided-history">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-2">
-          <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
-          <HelpButton slug="mtm-visits" variant="label" />
-        </div>
-        <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+      <MtmPageHeader
+        title={t("title")}
+        description={subtitle}
+        help="mtm-visits"
+        actions={<>
           {returnHref ? (
             <Button asChild variant="outline" className="min-h-11">
               <Link href={returnHref}>
@@ -702,15 +727,17 @@ export default function MtmVisitsPage() {
               </Link>
             </Button>
           ) : null}
-          <Button className="min-h-11" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("add")}
-          </Button>
-        </div>
-      </div>
+          <Hint text={t("hint.add")}>
+            <Button className="min-h-11" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("add")}
+            </Button>
+          </Hint>
+        </>}
+      />
 
       {focusedVisitUnavailable && focusedVisitId ? (
-        <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        <div role="status" className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
           {t("focusedUnavailable")}
         </div>
       ) : null}
@@ -720,21 +747,23 @@ export default function MtmVisitsPage() {
       ) : null}
 
       {showReview && focusedVisitId ? (
-        <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-3">
           <VisitReviewPanel
             key={focusedVisitId}
             visitId={focusedVisitId}
             refreshToken={refreshTick}
             closeHref={visitHref(null)}
             onVisitLoaded={applyReviewedVisit}
+            longOpenMinutes={longOpenMinutes}
+            orgId={orgId ? String(orgId) : undefined}
           />
-          <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} />
+          <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} collapsed />
         </div>
       ) : null}
 
       {ownActiveVisits.length > 0 && activeVisitId ? (
-        <section className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="active-visit-title">
-          <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <section className="rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="active-visit-title">
+          <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-950" aria-hidden="true" />
@@ -748,7 +777,7 @@ export default function MtmVisitsPage() {
                 <select
                   value={activeVisitId}
                   onChange={(event) => setActiveVisitId(event.target.value)}
-                  className="min-h-11 min-w-64 rounded-lg border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"
+                  className="min-h-11 min-w-64 rounded-lg border border-input bg-background px-3 text-sm"
                 >
                   {ownActiveVisits.map((visit) => (
                     <option key={visit.id} value={visit.id}>
@@ -770,21 +799,21 @@ export default function MtmVisitsPage() {
       ) : null}
 
       {teamActiveVisits.length > 0 ? (
-        <section className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="team-active-visits-title">
-          <div className="border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+        <section className="rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="team-active-visits-title">
+          <div className="border-b border-border p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-950" aria-hidden="true" />
               <h2 id="team-active-visits-title" className="font-semibold text-foreground">{t("teamActiveTitle", { count: teamActiveVisits.length })}</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{t("teamActiveHint")}</p>
           </div>
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <ul className="divide-y divide-border">
             {teamActiveVisits.slice(0, TEAM_ACTIVE_PREVIEW_LIMIT).map((visit) => (
               <li key={visit.id}>
                 <Link
                   href={visitHref(visit.id)}
                   aria-current={visit.id === focusedVisitId ? "true" : undefined}
-                  className={`flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 sm:px-5 ${visit.id === focusedVisitId ? "bg-primary/5" : ""}`}
+                  className={`flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 sm:px-5 ${visit.id === focusedVisitId ? "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]" : ""}`}
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-foreground">{visit.customer?.name || t("unknownCustomer")}</span>
@@ -796,7 +825,7 @@ export default function MtmVisitsPage() {
             ))}
           </ul>
           {teamActiveVisits.length > TEAM_ACTIVE_PREVIEW_LIMIT ? (
-            <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-5">
+            <div className="border-t border-border px-4 py-3 sm:px-5">
               <Button
                 variant="ghost"
                 size="sm"
@@ -814,34 +843,54 @@ export default function MtmVisitsPage() {
         </section>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="visit-history-title">
-        <header className="space-y-4 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+      {/* The visit open in the card above already says it was left open. */}
+      {otherLeftOpenVisits.length > 0 ? (
+        <LeftOpenVisits
+          visits={otherLeftOpenVisits}
+          now={now}
+          timezone={meta.timezone}
+          orgId={orgId ? String(orgId) : undefined}
+          focusedVisitId={focusedVisitId}
+          visitHref={visitHref}
+          openForText={openForText}
+          canRemind={viewer?.role !== "AGENT"}
+        />
+      ) : null}
+
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="visit-history-title">
+        <header className="space-y-4 border-b border-border p-4 sm:p-5">
           <h2 id="visit-history-title" className="text-lg font-semibold text-foreground">{t("historyTitle")}</h2>
           {/* Owner 2026-09-27: filters in one row. The period sat apart as
               a segmented control and four stat tiles stood between it and
               the rest; the numbers are one line under the row now. */}
           <MtmFilterBar testId="mtm-visits-filters">
             <MtmFilterSearch value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
-            <MtmFilterSelect testId="mtm-visits-range" label={t("rangeLabel")} value={historyRange} emptyValue="today" showValue allLabel={t("rangeToday")}
-              options={HISTORY_RANGES.map((range) => ({ value: range.value, label: t(range.label) }))}
-              onChange={(value) => {
-                setRangeChosenByUser(true)
-                setWidenedFrom(null)
-                setHistoryRange(value as HistoryRange)
-              }} />
-            <MtmFilterSelect testId="mtm-visits-status" label={t("statusFilterLabel")} value={activeFilter} emptyValue="all" allLabel={t("all")}
-              options={[
-                { value: "all", label: `${t("all")} (${visits.length})` },
-                ...(["CHECKED_IN", "CHECKED_OUT"] as const).map((status) => ({ value: status, label: `${t(VISIT_FILTER_LABELS[status])} (${statusCounts[status] || 0})` })),
-              ]}
-              onChange={setActiveFilter} />
-            <MtmFilterSelect testId="mtm-visits-sort" label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
-              options={[
-                { value: "date_desc", label: t("sortDateDesc") },
-                { value: "date_asc", label: t("sortDateAsc") },
-                { value: "duration", label: t("sortDuration") },
-              ]}
-              onChange={setSortBy} />
+            <Hint wrap text={t("hint.range")}>
+              <MtmFilterSelect testId="mtm-visits-range" label={t("rangeLabel")} value={historyRange} emptyValue="today" showValue allLabel={t("rangeToday")}
+                options={HISTORY_RANGES.map((range) => ({ value: range.value, label: t(range.label) }))}
+                onChange={(value) => {
+                  setRangeChosenByUser(true)
+                  setWidenedFrom(null)
+                  setHistoryRange(value as HistoryRange)
+                }} />
+            </Hint>
+            <Hint wrap text={t("hint.status")}>
+              <MtmFilterSelect testId="mtm-visits-status" label={t("statusFilterLabel")} value={activeFilter} emptyValue="all" allLabel={t("all")}
+                options={[
+                  { value: "all", label: `${t("all")} (${visits.length})` },
+                  ...(["CHECKED_IN", "CHECKED_OUT"] as const).map((status) => ({ value: status, label: `${t(VISIT_FILTER_LABELS[status])} (${statusCounts[status] || 0})` })),
+                ]}
+                onChange={setActiveFilter} />
+            </Hint>
+            <Hint wrap text={t("hint.sort")}>
+              <MtmFilterSelect testId="mtm-visits-sort" label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+                options={[
+                  { value: "date_desc", label: t("sortDateDesc") },
+                  { value: "date_asc", label: t("sortDateAsc") },
+                  { value: "duration", label: t("sortDuration") },
+                ]}
+                onChange={setSortBy} />
+            </Hint>
           </MtmFilterBar>
           {widenedFrom ? (
             <p role="status" data-testid="mtm-visits-widened" className="text-sm text-muted-foreground">
@@ -849,10 +898,10 @@ export default function MtmVisitsPage() {
             </p>
           ) : null}
           <MtmResultLine
-            aside={<span data-testid="mtm-visits-summary">
+            aside={<HintValue text={t("hint.summary")}><span data-testid="mtm-visits-summary">
               {listIsPartial ? null : <>{t("statTotal")}: {displayedTotal} · </>}{t("statCheckedOut")}: {statusCounts.CHECKED_OUT || 0} · {t("statMedianDuration")}:{" "}
               <span data-testid="mtm-visits-median-duration">{medianDuration == null ? "—" : `${medianDuration} ${t("min")}`}</span> · {t("statGpsConfirmed")}: {confirmedGps}
-            </span>}
+            </span></HintValue>}
           >
             {meta.sourceTruncated ? (
               <span role="status" className="text-amber-700 dark:text-amber-300">
@@ -878,7 +927,7 @@ export default function MtmVisitsPage() {
           </div>
         ) : (
           <div className="p-3 sm:p-5">
-            <div className="hidden overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 xl:block">
+            <div className="hidden overflow-hidden rounded-xl border border-border xl:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50 text-left">
@@ -899,7 +948,7 @@ export default function MtmVisitsPage() {
                         key={visit.id}
                         onClick={() => openVisit(visit.id)}
                         aria-selected={isFocused}
-                        className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${isFocused ? "bg-primary/5 outline outline-1 -outline-offset-1 outline-primary/40" : ""}`}
+                        className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${isFocused ? "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]" : ""}`}
                       >
                         <td className="px-4 py-3">
                           <Link href={visitHref(visit.id)} onClick={(event) => event.stopPropagation()} className="font-semibold text-foreground hover:underline">
@@ -907,7 +956,10 @@ export default function MtmVisitsPage() {
                           </Link>
                           <p className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground">{visit.customer?.address || t("noAddress")}</p>
                         </td>
-                        <td className="px-4 py-3 text-foreground">{visit.agent?.name || t("unknownAgent")}</td>
+                        <td className="px-4 py-3 text-foreground">
+                          {visit.agent?.name || t("unknownAgent")}
+                          {visit.joint ? <span className="mt-0.5 block"><JointVisitMark /></span> : null}
+                        </td>
                         <td className="px-4 py-3">{statusBadge(visit)}</td>
                         <td className="px-4 py-3">
                           <p className="font-medium text-foreground">{formattedDate(visit.checkInAt)}</p>
@@ -928,7 +980,7 @@ export default function MtmVisitsPage() {
               {filtered.map((visit) => {
                 const isFocused = focusedVisit?.id === visit.id
                 return (
-                  <article key={visit.id} className={`rounded-xl border bg-background p-4 ${isFocused ? "border-primary ring-1 ring-primary/30" : "border-zinc-200 dark:border-zinc-800"}`}>
+                  <article key={visit.id} className={`rounded-xl border bg-background p-4 ${isFocused ? "border-primary ring-1 ring-primary/30" : "border-border"}`}>
                     <Link href={visitHref(visit.id)} className="block" aria-current={isFocused ? "true" : undefined}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -941,10 +993,11 @@ export default function MtmVisitsPage() {
                         {statusBadge(visit)}
                       </div>
 
-                      <dl className="mt-4 grid gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800 sm:grid-cols-2">
+                      <dl className="mt-4 grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
                         <div>
                           <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><UserRound className="h-3.5 w-3.5" aria-hidden="true" />{t("colAgent")}</dt>
                           <dd className="mt-1 text-sm font-medium text-foreground">{visit.agent?.name || t("unknownAgent")}</dd>
+                          {visit.joint ? <dd className="mt-0.5"><JointVisitMark /></dd> : null}
                         </div>
                         <div>
                           <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{t("colCheckIn")}</dt>
@@ -961,7 +1014,7 @@ export default function MtmVisitsPage() {
                       </dl>
                     </Link>
 
-                    {visit.canMutate === true ? <div className="mt-3 border-t border-zinc-200 pt-2 dark:border-zinc-800">{visitActions(visit, true)}</div> : null}
+                    {visit.canMutate === true ? <div className="mt-3 border-t border-border pt-2">{visitActions(visit, true)}</div> : null}
                   </article>
                 )
               })}
@@ -969,11 +1022,13 @@ export default function MtmVisitsPage() {
           </div>
         )}
         {!loading && visitsRemaining > 0 ? (
-          <div className="flex justify-center border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <Button data-testid="mtm-visits-load-more" variant="outline" className="min-h-11" disabled={visitsLoadingMore} onClick={() => void loadMoreVisits()}>
-              {visitsLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
-              {t("loadMore", { count: Math.min(VISIT_PAGE_SIZE, visitsRemaining) })}
-            </Button>
+          <div className="flex justify-center border-t border-border px-4 py-3">
+            <Hint wrap text={t("hint.loadMore")}>
+              <Button data-testid="mtm-visits-load-more" variant="outline" className="min-h-11" disabled={visitsLoadingMore} onClick={() => void loadMoreVisits()}>
+                {visitsLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+                {t("loadMore", { count: Math.min(VISIT_PAGE_SIZE, visitsRemaining) })}
+              </Button>
+            </Hint>
           </div>
         ) : null}
       </section>
@@ -993,5 +1048,57 @@ export default function MtmVisitsPage() {
         itemName={deleteItem?.customer?.name || tf("thisVisit")}
       />
     </div>
+  )
+}
+
+/**
+ * Visits the agents opened and did not close, apart from those going on now
+ * (owner, 2026-10-15). Each says since when and for how long, and reminds the
+ * agent; the office does not close it for him (2026-09-25).
+ */
+function LeftOpenVisits({ visits, now, timezone, orgId, focusedVisitId, visitHref, openForText, canRemind }: {
+  visits: ActiveVisitRow[]
+  now: Date
+  timezone: string
+  orgId?: string
+  focusedVisitId: string | null
+  visitHref: (id: string | null) => string
+  openForText: (checkInAt: string, now: Date) => string
+  canRemind: boolean
+}) {
+  const t = useTranslations("mtmVisitsPage")
+  const since = useLeftOpenSince(timezone)
+  return (
+    <section data-testid="mtm-visits-left-open" className="rounded-2xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 shadow-sm" aria-labelledby="left-open-visits-title">
+      <div className="border-b border-amber-200 p-4 dark:border-amber-900 sm:p-5">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+          <h2 id="left-open-visits-title" className="font-semibold text-foreground">{t("leftOpenTitle", { count: visits.length })}</h2>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">{t("leftOpenHint")}</p>
+      </div>
+      <ul className="divide-y divide-amber-200 dark:divide-amber-900">
+        {visits.map((visit) => (
+          <li key={visit.id} className={`flex min-h-14 flex-wrap items-center gap-3 px-4 py-3 sm:px-5 ${visit.id === focusedVisitId ? "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))]" : ""}`}>
+            <Link href={visitHref(visit.id)} aria-current={visit.id === focusedVisitId ? "true" : undefined} className="min-w-0 flex-1 hover:underline">
+              <span className="block truncate font-medium text-foreground">{visit.customer?.name || t("unknownCustomer")}</span>
+              <span className="block truncate text-sm text-muted-foreground">
+                {visit.agent?.name || t("unknownAgent")} · <span className="font-medium text-amber-800 dark:text-amber-300">{t("leftOpenSince", { since: since(visit.checkInAt), openFor: openForText(visit.checkInAt, now) })}</span>
+              </span>
+            </Link>
+            {canRemind && visit.agentId ? (
+              <RemindAgentButton
+                agentId={visit.agentId}
+                customerName={visit.customer?.name || t("unknownCustomer")}
+                checkInAt={visit.checkInAt}
+                timezone={timezone}
+                orgId={orgId}
+                testId={`mtm-visit-remind-${visit.id}`}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

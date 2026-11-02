@@ -55,6 +55,8 @@ import { canEnvelopeTransition } from "@/lib/esign/state-machine"
 import { issueToken } from "@/lib/esign/token-issuer"
 import { buildAuditEvent } from "@/lib/esign/audit-event-builder"
 import { sendEmail } from "@/lib/email"
+import { signingEmail } from "@/lib/contract-lifecycle/notification-text"
+import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { getContractSignatureEligibilityError } from "@/lib/clm/signature-eligibility"
 
 // ─── Signing-link base URL ────────────────────────────────────────────────────
@@ -372,16 +374,20 @@ export const POST = withRls(async (req, { orgId, session }, { params }: { params
     // ── Best-effort email to each signer ─────────────────────────────────────
     // Wrapped in try/catch — email failure MUST NOT fail the response.
     try {
+      // A signer is outside the CRM: the invitation speaks the organization's language.
+      const locale = await loadOrganizationLocale(orgId)
       for (const link of signingLinks) {
+        const email = signingEmail(locale, {
+          kind: "invitation",
+          fullName: link.fullName,
+          subject: envelope.subject,
+          message: envelope.message,
+          signingLink: link.signingLink,
+        })
         await sendEmail({
           to: link.email,
-          subject: `[Action Required] Please sign: ${envelope.subject}`,
-          html: buildSigningEmailHtml({
-            fullName: link.fullName,
-            subject: envelope.subject,
-            message: envelope.message,
-            signingLink: link.signingLink,
-          }),
+          subject: email.subject,
+          html: email.html,
           organizationId: orgId,
           transactional: true,
         })
@@ -438,52 +444,3 @@ export const POST = withRls(async (req, { orgId, session }, { params }: { params
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 })
-
-// ─── Email template ───────────────────────────────────────────────────────────
-
-function buildSigningEmailHtml({
-  fullName,
-  subject,
-  message,
-  signingLink,
-}: {
-  fullName: string
-  subject: string
-  message: string | null
-  signingLink: string
-}): string {
-  const safeFullName = htmlEscape(fullName)
-  const safeSubject = htmlEscape(subject)
-  const safeMessage = message ? `<p style="color:#555">${htmlEscape(message)}</p>` : ""
-  const safeLink = htmlEscape(signingLink)
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Document signing request</title></head>
-<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-  <h2 style="color:#1a1a2e">You have a document to sign</h2>
-  <p>Hello ${safeFullName},</p>
-  <p>You have been asked to review and sign the following document:</p>
-  <p><strong>${safeSubject}</strong></p>
-  ${safeMessage}
-  <p style="margin:32px 0">
-    <a href="${safeLink}"
-       style="background:#4f46e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block">
-      Review &amp; Sign Document
-    </a>
-  </p>
-  <p style="color:#888;font-size:12px">
-    Or copy this link into your browser:<br>
-    <a href="${safeLink}" style="color:#4f46e5;word-break:break-all">${safeLink}</a>
-  </p>
-  <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-  <p style="color:#aaa;font-size:11px">
-    This is a transactional email. Do not forward this link — it is unique to you.
-  </p>
-</body>
-</html>`
-}
-
-function htmlEscape(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-}

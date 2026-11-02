@@ -1,0 +1,7 @@
+[Unit]
+Description=Tell the owner the WAL archive watch itself failed
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/leaddrive/wal-archive.env
+ExecStart=/bin/sh -c '"${WAL_ALERT_COMMAND:-/usr/local/bin/notify-telegram}" "Сторож WAL-архива сам упал на $(hostname -s); проверь journalctl -u leaddrive-wal-check"'

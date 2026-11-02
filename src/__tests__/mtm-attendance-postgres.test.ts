@@ -56,6 +56,7 @@ pgDescribe("MTM attendance on PostgreSQL", () => {
     createdDb = true
     sql(scratch!.adminDb, 'CREATE TABLE organizations (id TEXT PRIMARY KEY);')
     sql(scratch!.adminDb, readFileSync("prisma/migrations/20261013010000_mtm_attendance_rules/migration.sql", "utf8"))
+    sql(scratch!.adminDb, readFileSync("prisma/migrations/20261016180000_personnel_lunch_start/migration.sql", "utf8"))
     sql(scratch!.adminDb, `
       INSERT INTO organizations(id) VALUES ('${org}'), ('${otherOrg}');
       GRANT USAGE ON SCHEMA public TO "${scratch!.role}";
@@ -125,5 +126,15 @@ pgDescribe("MTM attendance on PostgreSQL", () => {
     }))).rejects.toThrow()
     expect(await tenant(otherOrg, () => store.readAttendanceRules(otherOrg))).toEqual([])
     expect(await prisma.$queryRaw`SELECT id FROM mtm_attendance_rules`).toEqual([])
+  })
+  // Owner, 2026-10-16: «тут не указано время обеденного перерыва».
+  it("keeps the lunch's start time, refuses a lunch outside the day, and reads old rules as time unknown", async () => {
+    const date = addDateKeyDays(firstDate, 10)
+    const saved = await tenant(org, () => store.createAttendanceRule(org, "fixture-admin", "Asia/Baku", { ...input, effectiveFrom: date, lunchStart: "13:00" }))
+    expect(saved.lunchStart).toBe("13:00")
+    expect((await tenant(org, () => store.readAttendanceRules(org))).find(rule => rule.effectiveFrom === date)?.lunchStart).toBe("13:00")
+    await expect(tenant(org, () => store.createAttendanceRule(org, "fixture-admin", "Asia/Baku", { ...input, effectiveFrom: addDateKeyDays(date, 1), lunchStart: "17:30" })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_RULE_INVALID" })
+    expect((await tenant(org, () => store.readAttendanceRules(org))).find(rule => rule.effectiveFrom === firstDate)?.lunchStart).toBeNull()
   })
 })

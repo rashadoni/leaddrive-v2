@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
 import {
   isAuthError,
-  moduleDisabledResponse,
-  orgHasModule,
   requireSessionAuth,
 } from "@/lib/api-auth"
 import type { Role } from "@/lib/permissions"
@@ -20,22 +17,17 @@ export type ChannelsAccess = {
 }
 
 /**
- * Shared access gate for the channels-config API ([P3]). Channel config is the omni-channel add-on
- * surface (ADDON_MODULES.channels → "omnichannel"). Returns `{ orgId }` to proceed, or a `NextResponse`
+ * Shared access gate for the channels-config API ([P3]). Returns `{ orgId }` to proceed, or a `NextResponse`
  * to short-circuit — callers do `if (g instanceof NextResponse) return g`.
  *
  * Layers (do NOT conflate):
  *  - Org-scoping at the query layer (`where: { organizationId }`) is the CROSS-TENANT security boundary.
- *  - This helper is the FEATURE/BILLING gate (a non-omnichannel tenant shouldn't self-serve channels).
+ *  - This helper decides WHO in the organisation may touch channel config: a session admin, never an API key.
  *
- * GRANDFATHER rule — pass if ANY of:
- *  1. superadmin (cross-org admin),
- *  2. org has the `omnichannel` module (the paying case),
- *  3. org ALREADY has ≥1 ChannelConfig row.
- * Clause 3 guarantees the gate NEVER locks an existing channel-using tenant out of managing their own
- * channels (incl. editing/rotating SMS creds — closes the prior [P3] caveat); it only blocks a brand-new
- * non-omnichannel tenant from starting. Made safe-by-design because verifying which tenants actually
- * hold the omnichannel add-on needs prod-DB access that is restricted.
+ * Until 2026-10-26 it was also a billing gate — only tenants with the `omnichannel` module (or an existing
+ * channel row) could set channels up. The owner moved Channels into Settings for every tenant: WhatsApp, Telegram
+ * and e-mail serve MTM notifications, sales and support, not only the Omni-channel inbox («каналы могут
+ * использоваться в разных модулях»). The inbox itself stays behind `omnichannel`.
  */
 export async function gateChannelsAccess(
   req: NextRequest,
@@ -53,9 +45,5 @@ export async function gateChannelsAccess(
   }
 
   const { orgId, role, userId } = session
-  if (role === "superadmin") return { orgId, role, userId }
-  if (await orgHasModule(orgId, "omnichannel")) return { orgId, role, userId }
-  const existing = await prisma.channelConfig.count({ where: { organizationId: orgId } })
-  if (existing > 0) return { orgId, role, userId } // grandfather — never lock out a tenant already using channels
-  return moduleDisabledResponse("omnichannel")
+  return { orgId, role, userId }
 }

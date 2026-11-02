@@ -95,10 +95,19 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 })
 
 /**
- * `view=groups` — the office list: one tenant-local day, grouped per agent +
- * situation, plus the open alerts older than MTM_ALERT_STALE_DAYS listed apart
- * ("old"). Nothing is closed here: a GET never mutates, stale rows are only
- * offered to a person who can close them.
+ * `view=groups` — the office list, grouped per agent + situation + day.
+ *
+ * - No `date` and the status «open» (what the page opens on): every open
+ *   alert, whatever its day. Owner, 2026-10-15: the Panel said «7 не
+ *   решено», its button opened one day and showed 1 — the list read only the
+ *   chosen day and, apart, what was older than a week, so an alert two to six
+ *   days old was on no screen at all.
+ * - A `date`, or the status «resolved» / «all»: that one tenant-local day
+ *   (today without a date), plus the open alerts older than
+ *   MTM_ALERT_STALE_DAYS listed apart («old»).
+ *
+ * Nothing is closed here: a GET never mutates, stale rows are only offered to
+ * a person who can close them.
  */
 async function groupedAlerts(
   searchParams: URLSearchParams,
@@ -129,16 +138,23 @@ async function groupedAlerts(
       ...(agentId ? { agentId } : {}),
       ...(type ? { type } : {}),
     }
-    const dayWhere: Prisma.MtmAlertWhereInput = {
-      ...base,
-      createdAt: { gte: dayStart, lt: dayEnd },
-      ...(status === "open" ? { isResolved: false } : status === "resolved" ? { isResolved: true } : {}),
-    }
+    const mode: "open" | "day" = !isDateKey(dateParam) && status === "open" ? "open" : "day"
+    const dayWhere: Prisma.MtmAlertWhereInput = mode === "open"
+      ? { ...base, isResolved: false }
+      : {
+          ...base,
+          createdAt: { gte: dayStart, lt: dayEnd },
+          ...(status === "open" ? { isResolved: false } : status === "resolved" ? { isResolved: true } : {}),
+        }
     const staleWhere: Prisma.MtmAlertWhereInput = { ...base, isResolved: false, createdAt: { lt: staleBefore } }
 
     const [dayRows, staleRows, staleTotal] = await Promise.all([
       prisma.mtmAlert.findMany({ where: dayWhere, orderBy: { createdAt: "desc" }, take: DAY_ROW_CAP, select: alertRowSelect }),
-      prisma.mtmAlert.findMany({ where: staleWhere, orderBy: { createdAt: "desc" }, take: STALE_ROW_CAP, select: alertRowSelect }),
+      // Every open alert is in the list already; only the count of the old
+      // ones is needed, for «close all older than a week».
+      mode === "open"
+        ? Promise.resolve([] as AlertRow[])
+        : prisma.mtmAlert.findMany({ where: staleWhere, orderBy: { createdAt: "desc" }, take: STALE_ROW_CAP, select: alertRowSelect }),
       prisma.mtmAlert.count({ where: staleWhere }),
     ])
 
@@ -146,7 +162,8 @@ async function groupedAlerts(
       success: true,
       data: {
         timezone,
-        date: dateKey,
+        mode,
+        date: mode === "open" ? null : dateKey,
         today: todayKey,
         status,
         staleDays: MTM_ALERT_STALE_DAYS,

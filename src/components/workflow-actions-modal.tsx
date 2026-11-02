@@ -46,7 +46,7 @@ export function WorkflowActionsModal({ workflow, onClose, onSaved, orgId }: Work
     { value: "create_task", label: t("actionCreateTask"), icon: CheckSquare, color: "bg-teal-500", borderColor: "border-teal-200 bg-teal-50/50" },
     { value: "update_field", label: t("actionUpdateField"), icon: Edit3, color: "bg-purple-500", borderColor: "border-purple-200 bg-purple-50/50" },
     { value: "send_notification", label: t("actionNotification"), icon: Bell, color: "bg-orange-500", borderColor: "border-orange-200 bg-orange-50/50" },
-    { value: "webhook", label: t("actionWebhook"), icon: Globe, color: "bg-muted-foreground/50", borderColor: "border-zinc-200 dark:border-zinc-700 bg-muted/50" },
+    { value: "webhook", label: t("actionWebhook"), icon: Globe, color: "bg-muted-foreground/50", borderColor: "border-border bg-muted/50" },
     { value: "auto_assign", label: t("actionAutoAssign"), icon: UserPlus, color: "bg-indigo-500", borderColor: "border-indigo-200 bg-indigo-50/50" },
   ]
 
@@ -179,7 +179,7 @@ export function WorkflowActionsModal({ workflow, onClose, onSaved, orgId }: Work
                       <div className={cn("flex items-center justify-center w-9 h-9 rounded-full text-white shrink-0 mt-1", info.color)}>
                         <Icon className="h-4 w-4" />
                       </div>
-                      <div className={cn("flex-1 border border-zinc-200 dark:border-zinc-700 rounded-lg px-4 py-3", info.borderColor)}>
+                      <div className={cn("flex-1 border border-border rounded-lg px-4 py-3", info.borderColor)}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-semibold text-sm">{index + 1}. {info.label}</span>
                           <div className="flex items-center gap-1">
@@ -232,7 +232,7 @@ export function WorkflowActionsModal({ workflow, onClose, onSaved, orgId }: Work
                       type="button"
                       onClick={() => setNewType(at.value)}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-left transition-colors hover:bg-muted/50",
+                        "flex items-center gap-3 p-3 rounded-lg border border-border text-left transition-colors hover:bg-muted/50",
                         at.borderColor
                       )}
                     >

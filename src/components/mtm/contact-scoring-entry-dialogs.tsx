@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { CalendarClock, CircleAlert, FileCheck2, Link2, Plus, SquarePen } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -82,17 +83,20 @@ function FormField({
   label,
   required = false,
   hint,
+  labelHint,
   children,
 }: {
   id: string
   label: string
   required?: boolean
   hint?: string
+  /** Under the cursor: what the value means and how it is counted. */
+  labelHint?: string
   children: React.ReactNode
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}{required ? " *" : ""}</Label>
+      <Label htmlFor={id}><HintValue text={labelHint}>{label}</HintValue>{required ? " *" : ""}</Label>
       {children}
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
@@ -243,7 +247,7 @@ export function MtmAssessmentCreateDialog({
         <DialogContent>
           <div className="grid gap-5">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+            <div className="rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <FileCheck2 className="mr-2 inline h-4 w-4" />
               {t("appendOnlyAssessmentHint")}
             </div>
@@ -276,7 +280,7 @@ export function MtmAssessmentCreateDialog({
                 <Input id="assessment-period-end" type="date" min={form.periodStart} value={form.periodEnd} onChange={(event) => update("periodEnd", event.target.value)} />
               </FormField>
             </div>
-            <div className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 rounded-2xl border border-border p-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormField id="assessment-office" label={t("office")}>
                 <Input id="assessment-office" value={form.office} maxLength={500} onChange={(event) => update("office", event.target.value)} />
               </FormField>
@@ -295,14 +299,14 @@ export function MtmAssessmentCreateDialog({
               <FormField id="assessment-category" label={t("granularCategory")}>
                 <Input id="assessment-category" value={form.granularCategory} maxLength={500} onChange={(event) => update("granularCategory", event.target.value)} />
               </FormField>
-              <FormField id="assessment-actual" label={t("actualScore")}>
+              <FormField id="assessment-actual" label={t("actualScore")} labelHint={t("hint.actualScore")}>
                 <Input id="assessment-actual" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.actualScore} onChange={(event) => update("actualScore", event.target.value)} />
               </FormField>
-              <FormField id="assessment-target" label={t("targetScore")}>
+              <FormField id="assessment-target" label={t("targetScore")} labelHint={t("hint.targetScore")}>
                 <Input id="assessment-target" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.targetScore} onChange={(event) => update("targetScore", event.target.value)} />
               </FormField>
               <div className="grid content-start gap-3">
-                <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 px-3 dark:border-zinc-700">
+                <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border px-3">
                   <input type="checkbox" checked={form.isKol} onChange={(event) => update("isKol", event.target.checked)} className="h-4 w-4 accent-primary" />
                   <span>{t("kol")}</span>
                 </Label>
@@ -318,10 +322,12 @@ export function MtmAssessmentCreateDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || loadingFormulas || formulas.length === 0}>
-            <SquarePen className="h-4 w-4" />
-            {saving ? t("savingRecord") : t("createAssessment")}
-          </Button>
+          <Hint wrap text={saving || loadingFormulas ? null : formulas.length === 0 ? t("hint.entryNoFormula") : t("hint.entryCreateAssessment")}>
+            <Button type="submit" disabled={saving || loadingFormulas || formulas.length === 0}>
+              <SquarePen className="h-4 w-4" />
+              {saving ? t("savingRecord") : t("createAssessment")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
@@ -466,7 +472,7 @@ export function MtmPotentialCreateDialog({
         <DialogContent>
           <div className="grid gap-5">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+            <div className="rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <Link2 className="mr-2 inline h-4 w-4" />
               {t("appendOnlyPotentialHint")}
             </div>
@@ -508,11 +514,11 @@ export function MtmPotentialCreateDialog({
                 <Input id="potential-product-name" value={form.productName} maxLength={500} onChange={(event) => update("productName", event.target.value)} />
               </FormField>
             </div>
-            <div className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700 sm:grid-cols-2 lg:grid-cols-3">
-              <FormField id="potential-value" label={t("potentialValue")} required>
+            <div className="grid gap-4 rounded-2xl border border-border p-4 sm:grid-cols-2 lg:grid-cols-3">
+              <FormField id="potential-value" label={t("potentialValue")} required labelHint={t("hint.potentialValue")}>
                 <Input id="potential-value" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.potentialValue} onChange={(event) => update("potentialValue", event.target.value)} required />
               </FormField>
-              <FormField id="potential-coverage" label={t("coverageValue")} required>
+              <FormField id="potential-coverage" label={t("coverageValue")} required labelHint={t("hint.coverageValue")}>
                 <Input id="potential-coverage" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.coverageValue} onChange={(event) => update("coverageValue", event.target.value)} required />
               </FormField>
               <FormField id="potential-category" label={t("measurementCategory")}>
@@ -537,7 +543,7 @@ export function MtmPotentialCreateDialog({
                 <p className="text-xs text-muted-foreground">{t("evidenceVisitSelectionHint")}</p>
               </div>
               {visibleEligibleVisits.length ? (
-                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-2 dark:border-zinc-700">
+                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-border p-2">
                   {visibleEligibleVisits.map((visit) => (
                     <Label key={visit.id} className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:bg-muted/50">
                       <input
@@ -555,7 +561,7 @@ export function MtmPotentialCreateDialog({
                     </Label>
                   ))}
                 </div>
-              ) : <p className="rounded-xl border border-dashed border-zinc-300 p-4 text-sm text-muted-foreground dark:border-zinc-700">{t("eligibleVisitsEmpty")}</p>}
+              ) : <p className="rounded-xl border border-dashed border-zinc-300 p-4 text-sm text-muted-foreground dark:border-border">{t("eligibleVisitsEmpty")}</p>}
             </div>
             <FormField id="potential-evidence-note" label={t("evidenceNote")} hint={t("evidenceNoteHint")}>
               <Textarea id="potential-evidence-note" value={form.evidenceNote} maxLength={1000} rows={3} onChange={(event) => update("evidenceNote", event.target.value)} />
@@ -564,10 +570,12 @@ export function MtmPotentialCreateDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || (perAgentDimension && agents.length === 0)}>
-            <Plus className="h-4 w-4" />
-            {saving ? t("savingRecord") : t("createPotential")}
-          </Button>
+          <Hint wrap text={saving ? null : perAgentDimension && agents.length === 0 ? t("hint.entryNoAgents") : t("hint.entryCreatePotential")}>
+            <Button type="submit" disabled={saving || (perAgentDimension && agents.length === 0)}>
+              <Plus className="h-4 w-4" />
+              {saving ? t("savingRecord") : t("createPotential")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>
@@ -634,7 +642,7 @@ export function MtmPotentialEndDialog({
         <DialogContent>
           <div className="grid gap-4">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+            <div className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
               <CalendarClock className="mr-2 inline h-4 w-4" />
               {t("potentialEndAppendOnlyHint")}
             </div>
@@ -648,10 +656,12 @@ export function MtmPotentialEndDialog({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={saving || reason.trim().length < 2}>
-            <CalendarClock className="h-4 w-4" />
-            {saving ? t("savingRecord") : t("endPotential")}
-          </Button>
+          <Hint wrap text={saving ? null : reason.trim().length < 2 ? t("hint.entryEndReasonRequired") : t("hint.entryEndPotential")}>
+            <Button type="submit" disabled={saving || reason.trim().length < 2}>
+              <CalendarClock className="h-4 w-4" />
+              {saving ? t("savingRecord") : t("endPotential")}
+            </Button>
+          </Hint>
         </DialogFooter>
       </form>
     </Dialog>

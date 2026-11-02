@@ -15,6 +15,7 @@ import {
   mutableVisitWhere,
 } from "@/lib/mtm/visit-scope"
 import { contactScopeForActor, customerScopeForActor } from "@/lib/mtm/field-scope"
+import { lockMtmVisitSnapshot, recordMtmVisitChange } from "@/lib/mtm/visit-events"
 
 export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
@@ -244,11 +245,13 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
     const before = body.agentId || body.status === "CANCELLED" ? current : null
 
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const snapshot = await lockMtmVisitSnapshot(tx, auth.orgId, id)
       const changed = await tx.mtmVisit.updateMany({
         where: mutableVisitWhere(actor, auth.orgId, { id }),
         data,
       })
       if (changed.count === 0) return null
+      await recordMtmVisitChange(tx, auth.orgId, id, snapshot)
       return changed
     })
     if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -304,11 +307,13 @@ export const DELETE = withRouteFieldRlsAuth("delete", async (req, auth, { params
       return NextResponse.json({ error: "Not found", code: "MTM_VISIT_NOT_FOUND" }, { status: 404 })
     }
     const deleted = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const snapshot = await lockMtmVisitSnapshot(tx, auth.orgId, id)
       const changed = await tx.mtmVisit.updateMany({
         where: mutableVisitWhere(actor, auth.orgId, { id }),
         data: { deletedAt: new Date() },
       })
       if (changed.count === 0) return null
+      await recordMtmVisitChange(tx, auth.orgId, id, snapshot)
       return changed
     })
     if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 })

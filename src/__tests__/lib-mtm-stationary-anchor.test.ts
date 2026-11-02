@@ -61,12 +61,16 @@ describe("what a GPS point does to the current stop", () => {
   it("a moving point ends the stop, by the flag or by the speed alone — whatever its accuracy", () => {
     const standing = replay([point(0), point(1)])
     expect(nextMtmStationaryAnchor(standing, point(2, { isMoving: true }))).toEqual(MTM_STATIONARY_NO_ANCHOR)
-    expect(nextMtmStationaryAnchor(standing, point(2, { speed: 1.5 }))).toEqual(MTM_STATIONARY_NO_ANCHOR)
+    // A walk: 3.4 km/h, as production stores one.
+    expect(nextMtmStationaryAnchor(standing, point(2, { speed: 3.4 }))).toEqual(MTM_STATIONARY_NO_ANCHOR)
+    // From what a screen shows as «3 km/h» (src/lib/mtm/gps-speed.ts).
+    expect(nextMtmStationaryAnchor(standing, point(2, { speed: 2.5 }))).toEqual(MTM_STATIONARY_NO_ANCHOR)
     // Ending a stop is the careful direction, and the same point makes the map say «в пути».
     expect(classifyMtmStationaryPoint(vague(2, { speed: 12 }))).toBe("MOVING")
     expect(nextMtmStationaryAnchor(standing, vague(2, { isMoving: true }))).toEqual(MTM_STATIONARY_NO_ANCHOR)
-    // GPS noise of a metre a second is not movement.
-    expect(nextMtmStationaryAnchor(standing, point(2, { speed: 1 }))).toEqual(CONFIRMED(2))
+    // A standing phone's GPS jitter, stored at one or two km/h, is not movement:
+    // it kept ending the stop some fifty times a day until 2026-10-15.
+    for (const speed of [1, 1.5, 2.4]) expect(nextMtmStationaryAnchor(standing, point(2, { speed }))).toEqual(CONFIRMED(2))
     // He stops again: a new stop, counted from the new moment.
     expect(replay([point(0), point(1), point(2, { isMoving: true }), point(3), point(4)])).toMatchObject({ stationarySince: at(3), stationaryConfirmedAt: at(4) })
   })

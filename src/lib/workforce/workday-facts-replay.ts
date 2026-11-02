@@ -213,6 +213,46 @@ function correctionFacts(
   }
 }
 
+/**
+ * The breaks of a corrected day inside its own boundaries.
+ *
+ * Owner, 2026-10-18: «отметки после указанного окончания не считаются рабочим
+ * временем, но остаются в истории дня». A day left open and closed later by a
+ * correction can carry marks after the finish the employee states — a return to
+ * work, a break pressed by mistake. They stay in the immutable journal; the
+ * corrected day simply ends where the correction says, so a break that starts
+ * after the finish (or ends before the start) is outside it, and one crossing a
+ * boundary counts only its part inside. Until then such a correction was
+ * refused («pause interval is outside corrected workday boundaries»): 13
+ * October could not end before a break pressed at 22:18.
+ *
+ * An open break (the day still paused) has no end of its own: the caller closes
+ * it at the finish first, as an approved close always has.
+ */
+export function clipWorkdayPauseIntervals(
+  intervals: ReadonlyArray<{ startedAt: string; endedAt: string | null }>,
+  startedAt: string,
+  completedAt: string | null,
+): Array<{ startedAt: string; endedAt: string | null }> {
+  const start = instantMs("startedAt", startedAt)
+  const end = completedAt == null ? null : instantMs("completedAt", completedAt)
+  return intervals.flatMap((interval) => {
+    const from = Math.max(instantMs("pause startedAt", interval.startedAt), start)
+    const rawTo = interval.endedAt == null ? null : instantMs("pause endedAt", interval.endedAt)
+    const to = rawTo == null ? null : end == null ? rawTo : Math.min(rawTo, end)
+    if (end != null && from >= end) return []
+    if (to != null && to < from) return []
+    // Unchanged intervals keep their original text, so a valid chain replays byte-for-byte as before.
+    if (from === instantMs("pause startedAt", interval.startedAt) && to === rawTo) return [{ ...interval }]
+    return [{ startedAt: new Date(from).toISOString(), endedAt: to == null ? null : new Date(to).toISOString() }]
+  })
+}
+
+/** Seconds of the closed breaks, as the projection stores them. */
+export function workdayClosedPauseSeconds(intervals: ReadonlyArray<{ startedAt: string; endedAt: string | null }>): number {
+  return closedPauseSeconds(intervals)
+}
+
 function closedPauseSeconds(intervals: ReadonlyArray<{ startedAt: string; endedAt: string | null }>): number {
   return intervals.reduce((total, interval) => {
     if (interval.endedAt == null) return total
@@ -300,7 +340,8 @@ function applyCorrection(
 
   const next: ReplayedState = {
     projection: { ...after },
-    pauseIntervals,
+    // Marks outside the corrected start–finish stay in the journal, not in the day.
+    pauseIntervals: clipWorkdayPauseIntervals(pauseIntervals, after.startedAt, after.status === "COMPLETED" ? after.completedAt : null),
   }
   assertProjectionMatchesIntervals(next)
   return next

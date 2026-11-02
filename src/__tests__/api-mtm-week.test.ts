@@ -871,6 +871,51 @@ describe("GET /api/v1/mtm/week", () => {
     expect(second.data.lastSourceAt).toBe(first.data.lastSourceAt)
   })
 
+  // The live map shows somebody on a break as the grey point he left before
+  // it, «GPS неактивен» (demo clip «Marşrut & Sahə», owner 2026-10-20). This
+  // line said «Fasilədə» beside a green «GPS online» at the same moment.
+  it("calls the GPS of somebody on a break, or just back from one, what the live map calls it: no longer live", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+      agentId: "agent-1",
+      role: "AGENT",
+      scopedAgentIds: ["agent-1"],
+    } as never)
+    const shift = {
+      id: "workday-break",
+      workDate: new Date("2026-07-15T00:00:00.000Z"),
+      startedAt: new Date("2026-07-15T07:00:00.000Z"),
+      completedAt: null,
+      updatedAt: new Date("2026-07-15T07:00:00.000Z"),
+    }
+    const journal = [
+      { workdayId: "workday-break", type: "PAUSE", occurredAt: new Date("2026-07-15T07:47:00.000Z"), appliedAt: new Date("2026-07-15T07:47:00.000Z") },
+      { workdayId: "workday-break", type: "RESUME", occurredAt: new Date("2026-07-15T07:50:00.000Z"), appliedAt: new Date("2026-07-15T07:50:00.000Z") },
+    ]
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockImplementation((async (query: {
+      where: { workdayId: { in: string[] }; type: { in: string[] } }
+    }) => journal.filter((event) => query.where.workdayId.in.includes(event.workdayId) && query.where.type.in.includes(event.type))) as never)
+    const fixAt = (iso: string) => vi.mocked(prisma.mtmAgentLocation.findFirst).mockResolvedValue({
+      id: "location-1", recordedAt: new Date(iso), latitude: 40.4, longitude: 49.8, accuracy: 12, battery: 71,
+    } as never)
+    const gpsWith = async (workday: Record<string, unknown>) => {
+      vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([{ ...workday, events: [] }] as never)
+      vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(workday as never)
+      return (await (await GET(weekRequest("?days=1&anchor=2026-07-15"))).json()).data.gps
+    }
+    // 07:56 by the clock; the point is two and a half minutes old — fresh by the clock.
+    vi.setSystemTime(new Date("2026-07-15T07:56:00.000Z"))
+    fixAt("2026-07-15T07:53:30.000Z")
+    expect((await gpsWith({ ...shift, status: "PAUSED", pausedAt: new Date("2026-07-15T07:54:00.000Z"), totalPausedSeconds: 180 })).freshness).toBe("STALE")
+    // At work, the point taken after his last break: live.
+    expect((await gpsWith({ ...shift, status: "STARTED", pausedAt: null, totalPausedSeconds: 180 })).freshness).toBe("ONLINE")
+    // Back at work since 07:50, and the newest point, four and a half minutes
+    // old, is still the one from before the break.
+    fixAt("2026-07-15T07:46:30.000Z")
+    vi.setSystemTime(new Date("2026-07-15T07:51:00.000Z"))
+    const back = await gpsWith({ ...shift, status: "STARTED", pausedAt: null, totalPausedSeconds: 180 })
+    expect([back.freshness, back.recordedAt]).toEqual(["STALE", "2026-07-15T07:46:30.000Z"])
+  })
+
   it("keeps the source snapshot stable across tenant midnight and marks an overnight active duration unknown", async () => {
     vi.setSystemTime(new Date("2026-07-14T19:59:59.000Z")) // 23:59:59 Asia/Baku
     vi.mocked(resolveMtmRouteActor).mockResolvedValue({

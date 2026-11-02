@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, Download, FileText, Plus, Search } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Download, FileSignature, FileText, Plus, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatDate } from "@/lib/format-date"
-import { DEMO_QUOTE_LICENCES, demoMoney, quoteTotals } from "@/lib/demo-center/journey"
+import { formatDate, formatDateTime } from "@/lib/format-date"
+import { DEMO_QUOTE_LICENCES, demoMoney, quoteTotals, type DemoQuoteRecord } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
-import { demoTarget } from "../demo-target"
+import { demoLabel, demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -17,8 +17,13 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
  *
  * Mirrors the real list (`quotes/page.tsx`) and detail page
  * (`quotes/[id]/page.tsx`) — number, status badge, linked deal, line items,
- * totals, validity — using the product's own `quotes` / `quotesDetail`
- * namespaces and the real CPQ status vocabulary.
+ * subtotal / discount / total, validity, lifecycle stamps — using the
+ * product's own `quotes` / `quotesDetail` namespaces and the real CPQ status
+ * vocabulary and transitions (`QUOTE_TRANSITIONS`, src/lib/cpq/types.ts):
+ * a sent quote is first viewed, then accepted, and accepting it spawns a
+ * draft contract. The demo used to accept straight from «sent», add an
+ * «ƏDV 18%» line the product has not got, and say the customer accepts by a
+ * link that does not exist.
  */
 
 const STATUS_TINT: Record<string, string> = {
@@ -28,17 +33,28 @@ const STATUS_TINT: Record<string, string> = {
   accepted: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 }
 
+/** What the product offers from each status, besides the step's own button (QUOTE_TRANSITIONS). */
+const OTHER_TRANSITIONS: Record<string, readonly ("rejected" | "expired")[]> = {
+  draft: ["expired"],
+  sent: ["rejected", "expired"],
+  viewed: ["rejected", "expired"],
+  accepted: [],
+}
+
 export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("quotes")
   const td = useTranslations("quotesDetail")
   const locale = useLocale()
   const { quote: storedQuote, deal, lead } = snapshot.records
-  // The click on the quantity is the edit: the line, the subtotal and the VAT
-  // change with it at once; the sent quote then carries the same number.
+  // The click on the quantity is the edit: the line, the subtotal and the
+  // total change with it at once; the sent quote then carries the same number.
   const linesEdited = snapshot.ui["quote.linesEdited"] === true
-  const quote = storedQuote && linesEdited
+  const editedQuote = storedQuote && linesEdited
     ? { ...storedQuote, lines: storedQuote.lines.map((line) => (line.id === "ql-1" ? { ...line, quantity: DEMO_QUOTE_LICENCES } : line)) }
     : storedQuote
+  // «Viewed» is the e-mail's tracking pixel in a live account; the demo sends
+  // no e-mail, so the prospect marks it — the product has the same button.
+  const quote = viewedQuote(editedQuote, snapshot.ui["quote.viewed"] === true, snapshot.updatedAt)
   const [detail, setDetail] = useState(!!quote)
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -73,6 +89,18 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
       return
     }
     dispatch({ type: "ui", path: "quote.linesEdited", value: true })
+  }
+
+  const markViewed = () => {
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
+    if (step?.id !== "quote-accept") {
+      hint(S.hintFollow(step?.title ?? ""))
+      return
+    }
+    dispatch({ type: "ui", path: "quote.viewed", value: true })
   }
 
   const transition = (to: "QUOTE_SENT" | "QUOTE_ACCEPTED", stepId: string) => {
@@ -129,7 +157,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               className="w-full rounded-lg border border-zinc-200 bg-background py-2 pl-9 pr-3 text-sm dark:border-zinc-700"
             />
           </div>
-          {(["all", "draft", "sent", "viewed", "accepted"] as const).map((status, index) => (
+          {(["all", "draft", "sent", "viewed", "accepted", "rejected", "expired"] as const).map((status, index) => (
             <button
               key={status}
               type="button"
@@ -162,7 +190,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                   <td className="px-4 py-2 text-muted-foreground">{deal?.title}</td>
                   <td className="px-4 py-2"><Badge className={STATUS_TINT[quote.status]}>{t(`status.${quote.status}`)}</Badge></td>
                   <td className="px-4 py-2 text-muted-foreground">{quote.lines.length}</td>
-                  <td className="px-4 py-2 text-right font-medium">{demoMoney(quoteTotals(quote).gross)}</td>
+                  <td className="px-4 py-2 text-right font-medium">{demoMoney(quoteTotals(quote).total)}</td>
                 </tr>
               </tbody>
             </table>
@@ -180,7 +208,8 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
 
   const totals = quoteTotals(quote)
   const canSend = quote.status === "draft"
-  const canAccept = quote.status === "sent" || quote.status === "viewed"
+  const canView = quote.status === "sent"
+  const canAccept = quote.status === "viewed"
 
   return (
     <div data-testid="demo-scene-quote-detail" className="space-y-4">
@@ -203,16 +232,37 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               {td("actions.markAs.sent")}
             </Button>
           )}
+          {canView && (
+            <Button size="sm" variant="outline" onClick={markViewed} {...demoTarget("quote-accept")} {...demoLabel(S.arrowMarkViewed)}>
+              {td("actions.markAs.viewed")}
+            </Button>
+          )}
           {canAccept && (
-            <Button size="sm" onClick={() => transition("QUOTE_ACCEPTED", "quote-accept")} {...demoTarget("quote-accept")}>
+            <Button size="sm" onClick={() => transition("QUOTE_ACCEPTED", "quote-accept")} {...demoTarget("quote-accept")} {...demoLabel(S.arrowMarkAccepted)}>
               {td("actions.markAs.accepted")}
             </Button>
           )}
+          {OTHER_TRANSITIONS[quote.status].map((to) => (
+            <Button key={to} size="sm" variant="outline" className={cn(to === "rejected" && "text-destructive")} onClick={() => hint(S.demoButtonHint)}>
+              {td(`actions.markAs.${to}`)}
+            </Button>
+          ))}
           <Button size="sm" variant="outline" onClick={() => hint(S.demoButtonHint)} title={td("actions.pdfTitle")}>
             <Download className="mr-1 h-4 w-4" /> {td("actions.pdf")}
           </Button>
         </div>
       </div>
+
+      {quote.contractNumber && (
+        <div data-tour-id="quote-contract" className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/30">
+          <FileSignature className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-emerald-900 dark:text-emerald-200">{td("toast.contractCreated", { number: quote.contractNumber })}</p>
+            <p className="mt-0.5 text-xs text-emerald-800/80 dark:text-emerald-300/80">{S.quoteContractNote}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => hint(S.quoteContractHint)}>{td("toast.viewContract")}</Button>
+        </div>
+      )}
 
       <div data-tour-id="quote-customer" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{td("customer")}</p>
@@ -258,14 +308,30 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
       <div data-tour-id="quote-summary" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
         <h3 className="mb-2 font-semibold">{td("summary.title")}</h3>
         <dl className="space-y-1.5 text-sm">
-          <Line label={td("summary.subtotal")} value={demoMoney(totals.net)} />
-          <Line label={`${S.quoteVat} ${quote.vatPercent}%`} value={demoMoney(totals.vat)} />
-          <Line label={td("summary.total")} value={demoMoney(totals.gross)} strong />
+          <Line label={td("summary.subtotal")} value={demoMoney(totals.subtotal)} />
+          <Line label={td("summary.discount")} value={totals.discount > 0 ? `−${demoMoney(totals.discount)}` : "—"} />
+          <Line label={td("summary.total")} value={demoMoney(totals.total)} strong />
           <Line label={td("field.validUntil")} value={formatDate(quote.validUntil, locale)} />
         </dl>
+        <ul className="mt-3 space-y-1 border-t border-zinc-200 pt-3 text-xs text-muted-foreground dark:border-zinc-700">
+          <li>{td("timeline.created")}: {formatDateTime(quote.createdAt, locale)}</li>
+          {quote.sentAt && <li>{td("timeline.sent")}: {formatDateTime(quote.sentAt, locale)}</li>}
+          {quote.viewedAt && <li>{td("timeline.viewed")}: {formatDateTime(quote.viewedAt, locale)}</li>}
+          {quote.acceptedAt && (
+            <li className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> {td("timeline.accepted")}: {formatDateTime(quote.acceptedAt, locale)}
+            </li>
+          )}
+        </ul>
       </div>
     </div>
   )
+}
+
+/** The quote as the screen shows it once the prospect has marked it viewed. */
+function viewedQuote(quote: DemoQuoteRecord | null, viewed: boolean, at: string): DemoQuoteRecord | null {
+  if (!quote || !viewed || quote.status !== "sent") return quote
+  return { ...quote, status: "viewed", viewedAt: quote.viewedAt ?? at }
 }
 
 function Row({ label, value }: { label: string; value: string }) {

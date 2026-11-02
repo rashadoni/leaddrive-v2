@@ -3,6 +3,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { parseOptionalDateRange } from "@/lib/finance/date-range"
 import { decimalToNumber } from "@/lib/prisma-decimal"
+import { isOverdueItem, openBillsWhere } from "@/lib/finance/open-items"
 
 export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   const now = new Date()
@@ -13,11 +14,7 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
   const issueDateFilter = rangeResult.hasDateRange ? rangeResult.dateRangeFilter : undefined
 
   const bills = await prisma.bill.findMany({
-    where: {
-      organizationId: orgId,
-      status: { in: ["pending", "partially_paid", "overdue"] },
-      ...(issueDateFilter && { issueDate: issueDateFilter }),
-    },
+    where: openBillsWhere(orgId, issueDateFilter),
     select: {
       id: true, billNumber: true, vendorName: true, vendorId: true, title: true,
       totalAmount: true, balanceDue: true, dueDate: true, status: true, category: true,
@@ -48,7 +45,7 @@ export const GET = withRlsAuth("finance", "read", async (req, { orgId }) => {
       aging[bucket].amount += balance
       aging[bucket].count += 1
 
-      if (new Date(bill.dueDate) < now && balance > 0) {
+      if (isOverdueItem(balance, bill.dueDate, now)) {
         overdueTotal += balance
         overdueCount += 1
       }

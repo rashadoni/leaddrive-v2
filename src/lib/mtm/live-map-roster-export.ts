@@ -1,5 +1,6 @@
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
-import { ROSTER_COLUMNS, rosterLabels, rosterValue, type RosterColumnId } from "@/lib/mtm/live-map-roster"
+import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
+import { ROSTER_COLUMNS, rosterLabels, rosterSpeed, rosterValue, type RosterColumnId } from "@/lib/mtm/live-map-roster"
 
 /**
  * The live map's list as a table of words, for the Excel file.
@@ -79,8 +80,11 @@ export function rosterCellText(agent: MtmDashboardAgent, column: RosterColumnId,
     }
     case "route":
       return (agent.routeTotal ?? 0) > 0 ? words.routeProgress(agent.routeVisited ?? 0, agent.routeTotal ?? 0) : EMPTY
-    case "speed":
-      return finite(agent.speed) ? words.speed(Math.round(agent.speed)) : EMPTY
+    case "speed": {
+      // As the column reads: no speed from a position that is not live.
+      const kmh = mtmSpeedKmh(rosterSpeed(agent))
+      return kmh == null ? EMPTY : words.speed(kmh)
+    }
     case "battery":
       return finite(agent.battery) ? `${Math.round(agent.battery)}%` : EMPTY
   }

@@ -45,42 +45,36 @@ Fund/event-platform cutover. Даже после `machine_ready=yes` отдел�
 `enterprise_ga_ready=no` остаётся NO-GO для corporate launch до закрытия
 PITR/second-provider/full-authority/runtime-consistency gates.
 
-### 0.1. Что требуется для снятия NO-GO
+### 0.1. Актуальный порядок снятия NO-GO — уточнение 2026-10-19
 
-Все стадии должны выполняться из exact current `main` SHA, сериализоваться с
-production deploy и оставлять PII-free evidence. Private age identity,
-offline signing private key и восстановленные secrets запрещено передавать на
-production, в GitHub Actions, репозиторий или журнал.
+Старый трёхтаймерный порядок заменён четырёхтаймерной ceremony из
+[BACKUP_RUNBOOK](../BACKUP_RUNBOOK.md). Исторические receipts ниже сохраняются,
+но не служат текущими командами запуска. Свежий статус и критерии Farah:
+[A3 recovery readiness](../event-platform/A3_RECOVERY_READINESS.md).
 
-1. Зарегистрировать **публичный** Ed25519 signing key независимого оператора в
-   `BACKUP_OFFLINE_ALLOWED_SIGNERS`; включить required reviewer и main-only
-   deployment policy для GitHub environment `production`.
-2. При выключенных трёх timers установить pinned `age` и AWS CLI, проверить их версии,
-   hashes/signature, root ownership и versioned paths.
-3. Отдельно прочитать обе offline-копии age identity, каждой расшифровать probe и
-   подписать key-custody evidence зарегистрированным ключом второго оператора.
-4. Переключить PostgreSQL backup на `age`, повторно доказать live Object Lock и
-   оставить все timers выключенными.
-5. Создать новые, относящиеся к `13.140.132.245`, зашифрованные candidates базы,
-   recovery-set secrets и runtime media; связать каждый с exact object key,
-   version ID, размером и ciphertext SHA-256.
-6. На изолированной offline restore-машине скачать именно эти versions,
-   расшифровать DB, secrets и runtime archives, проверить manifests/checksums,
-   authority/RLS catalog и runtime inventory, выполнить scratch data restore и
-   tenant canary, затем доказать чтение хотя
-   бы одной реально зашифрованной PII-колонки ключом из восстановленного secrets
-   snapshot.
-7. Подписать PII-free archive-restore evidence независимым оператором, сохранить
-   исходный signed bundle по неизменяемой ссылке и проверить подпись/все bindings
-   при commissioning. Только отдельная стадия certification после этого может
-   опубликовать immutable recovery catalog и включить все три timers.
-8. Повторить read-only readiness. Закрытие допускается только при
-   `machine_ready=yes`, успешных encrypted runs, трёх `enabled/active` timers
-   и повторно проверяемом signed evidence для нового хоста.
+1. Проверить exact current main и main-only GitHub production branch policy.
+   Required reviewers сняты действующим deployment contract; независимый
+   offline signer и проверка подписей остаются обязательными.
+2. При выключенных четырёх timers проверить pinned tools, отдельный scratch,
+   Object Lock и две читаемые независимые копии age identity. Private age/signing
+   keys не передавать production, Actions или в журнал.
+3. Отдельно авторизованным commissioning подготовить encrypted bootstrap
+   candidate v2; независимо скачать exact versions DB/secrets/runtime, проверить
+   hashes, decrypt, canary/RLS/PII/runtime и подписать evidence. Bootstrap
+   certification предшествует full candidate v3 с immutable log genesis.
+4. Выполнить full independent exact-version drill, включая log genesis,
+   проверить подписи и bindings, опубликовать v3 catalog. Certification сама по
+   себе не включает timers. Наличие catalog не доказывает clean-host restore.
+5. Только отдельный разрешённый normal reviewed deploy выполняет activation
+   ceremony всех четырёх timers. После него проверить loaded/enabled/active и
+   дождаться обычных успешных runs; до свежих runs machine_ready=no ожидаем.
+6. Закрытие foundation допускается только при machine_ready=yes и успешных
+   проверяемых receipts; enterprise gates остаются отдельными. Решение Farah
+   и успешный recovery drill необходимы для приёмки A3, не заменяют друг друга.
 
-Отсутствие второго человека, signer key, одной из копий, secrets/runtime archive или
-PII-значения для контрольного чтения не разрешается заменять строкой
-«подтверждено владельцем»: это остаётся явным blocker-ом.
+В этой подготовительной задаче ни одна изменяющая стадия не разрешена и не
+выполнялась. Отсутствие ключевой копии, подписи, реального PII proof или второго
+оператора остаётся blocker, а не заменяется подтверждением владельца/Codex.
 
 ## 0a. Историческое evidence старого хоста — не текущий production-контроль
 
@@ -248,6 +242,9 @@ Jobs запускать и timers включать **только** через r
 durable timer-state journal и evidence binding.
 
 ## 6. Учение с дублёром — то, ради чего всё делалось
+
+Исторический bootstrap scope v2 ниже не заменяет актуальный full v3 drill
+с log genesis из BACKUP_RUNBOOK; для текущей приёмки применять §0.1 выше.
 
 Это и есть Go/No-Go из runbook и главное свидетельство для аудитора.
 

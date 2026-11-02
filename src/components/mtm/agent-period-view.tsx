@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -9,7 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import type { AgentPeriod, AgentPeriodDayStatus } from "@/lib/mtm/agent-period"
+import { agentPeriodChoices, agentPeriodDefaultAgentId, type AgentPeriodChoice } from "@/lib/mtm/agent-period-choice"
 import type { DistanceBasis } from "@/lib/mtm/road-distance"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
 
 /**
  * Owner 2026-09-25: «a manager wants to see what one field agent did over a
@@ -40,13 +43,13 @@ export function agentPeriodPreset(preset: Preset, today: string): { from: string
 }
 
 const STATUS_TONE: Record<AgentPeriodDayStatus, string> = {
-  FULL: "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300",
-  PARTIAL: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-  NOT_WORKED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+  FULL: "text-emerald-700 dark:text-emerald-300",
+  PARTIAL: "text-amber-700 dark:text-amber-300",
+  NOT_WORKED: "text-red-700 dark:text-red-300",
   UNPLANNED: "bg-muted text-muted-foreground",
   DAY_OFF: "bg-transparent text-muted-foreground",
   UPCOMING: "bg-transparent text-muted-foreground",
-  SHIFT_OPEN: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  SHIFT_OPEN: "text-amber-700 dark:text-amber-300",
   GPS_ONLY: "bg-muted text-muted-foreground",
 }
 
@@ -70,13 +73,17 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
     fetch("/api/v1/mtm/agents?limit=200", { signal: controller.signal })
       .then((response) => response.json())
       .then((body) => {
-        const list: Agent[] = (body?.data?.agents ?? []).map((agent: Agent) => ({ id: agent.id, name: agent.name }))
-        setAgents(list)
-        setAgentId((current) => current || list[0]?.id || "")
+        const all: AgentPeriodChoice[] = (body?.data?.agents ?? []).map((agent: AgentPeriodChoice & { app?: { lastSignalAt?: string | null } }) => ({
+          id: agent.id, name: agent.name, role: agent.role, status: agent.status, lastSignalAt: agent.app?.lastSignalAt ?? null,
+        }))
+        // Field agents only, opened on the one in the field last.
+        const list = agentPeriodChoices(all, initialAgentId)
+        setAgents(list.map((agent) => ({ id: agent.id, name: agent.name })))
+        setAgentId((current) => current || agentPeriodDefaultAgentId(list))
       })
       .catch(() => undefined)
     return () => controller.abort()
-  }, [])
+  }, [initialAgentId])
 
   useEffect(() => {
     if (!agentId || !range.from || !range.to || range.to < range.from) return
@@ -118,9 +125,9 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
           {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
         </Select>
         {AGENT_PERIOD_PRESETS.map((value) => (
-          <Button key={value} type="button" variant={preset === value ? "default" : "outline"} aria-pressed={preset === value} className="min-h-11" onClick={() => { setPreset(value); setRange(agentPeriodPreset(value, today)) }}>
+          <Hint key={value} text={t("hint.presets")}><Button type="button" variant="outline" aria-pressed={preset === value} className={`min-h-11 ${mtmChipClass(preset === value)}`} onClick={() => { setPreset(value); setRange(agentPeriodPreset(value, today)) }}>
             {t(`presets.${value}`)}
-          </Button>
+          </Button></Hint>
         ))}
         <span className="inline-flex items-center gap-1">
           <Input type="date" aria-label={t("from")} value={range.from} max={range.to} onChange={(event) => { setPreset(null); setRange((current) => ({ ...current, from: event.target.value })) }} className="min-h-11 w-40" />
@@ -137,13 +144,13 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
         <div className={loading ? "space-y-4 opacity-60 transition-opacity" : "space-y-4 transition-opacity"} aria-busy={loading}>
           <div data-testid="mtm-agent-period-cards" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
-              { label: t("cards.workDays"), value: `${summary.workedDays}`, extra: `/ ${summary.plannedDays || pastDays}` },
-              { label: t("cards.inField"), value: duration(summary.fieldSeconds), extra: "" },
-              { label: t("cards.visitsPlan"), value: `${summary.visits}`, extra: summary.planned ? `/ ${summary.planned} · ${Math.round((summary.visitedPoints / summary.planned) * 100)}%` : "" },
-              { label: t("cards.distance"), value: km(summary.distanceMeters), extra: period.distanceBasis === "ROADS" ? t("byRoads") : "" },
+              { label: t("cards.workDays"), hint: t("hint.workDays"), value: `${summary.workedDays}`, extra: `/ ${summary.plannedDays || pastDays}` },
+              { label: t("cards.inField"), hint: t("hint.inField"), value: duration(summary.fieldSeconds), extra: "" },
+              { label: t("cards.visitsPlan"), hint: t("hint.visitsPlan"), value: `${summary.visits}`, extra: summary.planned ? `/ ${summary.planned} · ${Math.round((summary.visitedPoints / summary.planned) * 100)}%` : "" },
+              { label: t("cards.distance"), hint: t("hint.distance", { byRoads: t("byRoads") }), value: km(summary.distanceMeters), extra: period.distanceBasis === "ROADS" ? t("byRoads") : "" },
             ].map((card) => (
               <div key={card.label} className="rounded-lg bg-muted/40 p-3">
-                <div className="text-xs text-muted-foreground">{card.label}</div>
+                <div className="text-xs text-muted-foreground"><HintValue text={card.hint}>{card.label}</HintValue></div>
                 <div className="text-xl font-semibold tabular-nums">{card.value} <span className="text-sm font-normal text-muted-foreground">{card.extra}</span></div>
               </div>
             ))}
@@ -177,14 +184,14 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
                 )
               }
               return (
-                <li key={day.date} className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+                <li key={day.date} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="text-base font-semibold text-foreground">{dayTitle(day.date)}</h3>
                     <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${STATUS_TONE[day.status]}`}>{t(`statuses.${day.status}`, { count: day.remaining })}</span>
                   </div>
                   {facts.length ? <p className="mt-1 text-sm text-muted-foreground">{facts.join(" · ")}</p> : null}
                   {day.visitList.length ? (
-                    <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800">
+                    <ul className="mt-3 divide-y divide-border">
                       {day.visitList.map((visit) => (
                         <li key={visit.id}>
                           <Link href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`} className="grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-baseline gap-3 rounded-md px-1 py-2 hover:bg-muted/50">
@@ -199,9 +206,11 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
                       ))}
                     </ul>
                   ) : <p className="mt-2 text-sm text-muted-foreground">{t("noVisits")}</p>}
-                  <Link href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agentId)}&date=${day.date}`} className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                    <MapPinned className="h-4 w-4" />{t("openOnMap")}
-                  </Link>
+                  <Hint text={t("hint.openOnMap")}>
+                    <Link href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agentId)}&date=${day.date}`} className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                      <MapPinned className="h-4 w-4" />{t("openOnMap")}
+                    </Link>
+                  </Hint>
                 </li>
               )
             })}

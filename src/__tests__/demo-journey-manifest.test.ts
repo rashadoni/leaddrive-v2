@@ -5,14 +5,17 @@
  * the real pages, routes must be real sidebar entries inside the four
  * visible groups, every included inventory section must be demonstrated,
  * coverage must meet the 80 % target per product area, the state chain must
- * be walkable, and intro clips marked available must exist on disk.
+ * be walkable, and intro clips marked available must be in the published
+ * master set.
  */
 import { describe, expect, it } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
+import { manifestNames } from "../../scripts/help-video/sync-video-availability.mjs"
 import {
   DEMO_ANCHORS,
   DEMO_BUILT_AREAS,
+  DEMO_JOURNEY_MODULES,
   DEMO_COVERAGE_TARGET_PERCENT,
   DEMO_JOURNEY_SCENARIOS,
   DEMO_JOURNEY_STATES,
@@ -29,16 +32,25 @@ import {
   type DemoJourneyState,
 } from "@/lib/demo-center/journey"
 import { getHelpVideoForSlug } from "@/content/help/video-assets"
+import { DEMO_JOURNEY_STRINGS } from "@/components/demo-center/journey/strings"
+import { activeSections } from "@/lib/demo-center/journey"
 
 const ROOT = process.cwd()
+const MASTERS: Set<string> = manifestNames()
 const read = (relative: string) => readFileSync(path.join(ROOT, relative), "utf8")
 
-/** Sidebar group label → group-module id, for the four groups the demo shows. */
+/** Sidebar group label → group-module id, for the groups the demo shows.
+ *  Route & Field, Personnel and Service Desk joined in October 2026 as
+ *  modules of their own. */
 const NAV_GROUP_TO_MODULE: Record<string, string> = {
   CRM: "crm",
   Sales: "sales",
   Communication: "omnichannel",
   Marketing: "marketing",
+  Support: "support",
+  "Route & Field": "mtm",
+  Personnel: "mtm",
+  "Contracts Control": "contracts",
 }
 
 /** Pulls `{ href, group }` pairs out of nav-items.ts without importing it
@@ -72,8 +84,10 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
     expect(getDemoJourneyScenario("constructor")).toBeNull()
   })
 
-  it("shows only the four groups the owner chose and only real sidebar routes", () => {
-    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing"])
+  it("shows only the groups the owner chose and only real sidebar routes", () => {
+    expect(manifest.navGroups).toEqual(["crm", "sales", "omnichannel", "marketing", "support", "mtm", "contracts"])
+    expect(manifest.visibleRoutes).toContain("/mtm/attendance")
+    expect(manifest.visibleRoutes).toContain("/tickets")
     const entries = navEntries()
     expect(entries.length).toBeGreaterThan(100)
     for (const route of manifest.visibleRoutes) {
@@ -84,8 +98,10 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
     }
     const inScope = entries.filter((entry) => NAV_GROUP_TO_MODULE[entry.group])
     // The whole point of the limited version: the prospect sees a handful of
-    // pages, not the full navigation of the four groups.
-    expect(manifest.visibleRoutes.length).toBeLessThanOrEqual(8)
+    // pages, not the full navigation of the groups. Since the demo became a
+    // set of modules (owner, 2026-10-13) each module adds its entry, so the
+    // bound is per group: at most two pages each.
+    expect(manifest.visibleRoutes.length).toBeLessThanOrEqual(manifest.navGroups.length * 2)
     expect(inScope.length).toBeGreaterThan(manifest.visibleRoutes.length * 4)
   })
 
@@ -113,6 +129,7 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "source",
       "conversation",
       "ai-reply",
+      "ai-agent-setup",
       "lead-created",
       "lead-qualified",
       "ai-call",
@@ -121,8 +138,56 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "deal",
       "quote",
       "closed-won",
+      // Modules of their own beside the story (October 2026).
+      "sd-queue",
+      "sd-ticket",
+      "sd-resolve",
+      "sd-rules",
+      "sd-results",
+      "cc-log",
+      "cc-call",
+      "cc-promise",
+      "mtm-today",
+      "mtm-place",
+      "mtm-plan",
+      "mtm-live",
+      "mtm-visit",
+      "mtm-history",
+      "mtm-results",
+      "prs-today",
+      "prs-explain",
+      "prs-timesheet",
+      "prs-risk",
+      "prs-month",
+      "ctr-list",
+      "ctr-approve",
+      "ctr-sign",
+      "ctr-control",
+      // Every module ends here: «what next» (modules.ts).
+      "next-module",
       "summary",
     ])
+  })
+
+  it("keeps every module's sections together and in story order, each product section in exactly one module", () => {
+    // The hub cuts in wherever the next section belongs to another module
+    // (snapshot.ts advance): a section left out of its module, or listed out of
+    // order, would end that module in its middle.
+    const order = manifest.sections.map((section) => section.id)
+    const owner = new Map<string, string>()
+    for (const entry of DEMO_JOURNEY_MODULES) {
+      for (const id of entry.sections) {
+        expect(owner.get(id), `${id} is in two modules`).toBeUndefined()
+        owner.set(id, entry.id)
+      }
+      const at = entry.sections.map((id) => order.indexOf(id))
+      expect(at.every((index) => index >= 0), entry.id).toBe(true)
+      expect(at, entry.id).toEqual(at.map((_, offset) => at[0] + offset))
+    }
+    for (const section of manifest.sections) {
+      if (section.route.startsWith("demo:")) continue
+      expect(owner.has(section.id), `${section.id} is in no module`).toBe(true)
+    }
   })
 
   it("calls from the card and says, where it matters, that this one is a simulation", () => {
@@ -245,11 +310,20 @@ describe("Guided journey coverage", () => {
   const EXPECTED: Record<string, { included: number; total: number; percent: number }> = {
     campaigns: { included: 7, total: 8, percent: 88 },
     // +2 on 2026-10-13: the channel rail and assigning to a colleague are now demonstrated.
-    inbox: { included: 10, total: 12, percent: 83 },
-    leads: { included: 20, total: 23, percent: 87 },
-    tasks: { included: 11, total: 13, percent: 85 },
-    deals: { included: 14, total: 17, percent: 82 },
-    quotes: { included: 8, total: 10, percent: 80 },
+    inbox: { included: 16, total: 20, percent: 80 },
+    leads: { included: 21, total: 23, percent: 91 },
+    tasks: { included: 12, total: 14, percent: 86 },
+    deals: { included: 13, total: 16, percent: 81 },
+    quotes: { included: 9, total: 11, percent: 82 },
+    // 2026-10-17: Service Desk, a module of its own.
+    support: { included: 16, total: 19, percent: 84 },
+    // 2026-10-17: Call Center, a module of its own (own PBX, what every seller has).
+    voip: { included: 12, total: 15, percent: 80 },
+    // 2026-10-17: Route & Field, a module of its own.
+    mtm: { included: 19, total: 23, percent: 83 },
+    personnel: { included: 12, total: 15, percent: 80 },
+    // 2026-10-17: Contracts, a module of its own.
+    contracts: { included: 16, total: 20, percent: 80 },
   }
 
   it("meets the 80 % target in every shown product area", () => {
@@ -336,15 +410,33 @@ describe("Guided journey state machine", () => {
   })
 })
 
+describe("The last screen", () => {
+  it("says what every module gives a business — a new module cannot ship without its line", () => {
+    // Owner's criterion for each module (2026-10-13): at the end, what you did
+    // and how it ties to sales. The «what you did» is the steps' own results;
+    // the business line is written once per module, keyed by its menu route.
+    // The modules as moduleProgress groups them: one per menu route.
+    const routes = [...new Set(activeSections(PROSPECT_TO_CLOSED_WON).filter((section) => section.navGroup !== "demo").map((section) => section.route.replace(/\/\[[a-zA-Z]+\]$/, "")))]
+    expect(routes.length).toBeGreaterThan(5)
+    for (const route of routes) {
+      expect(DEMO_JOURNEY_STRINGS.moduleValue[route], route).toMatch(/\S/)
+    }
+    // And no line for a module the demo no longer has.
+    expect(Object.keys(DEMO_JOURNEY_STRINGS.moduleValue).sort()).toEqual([...routes].sort())
+  })
+})
+
 describe("Guided journey intro clips", () => {
   it("only marks clips available when the Azerbaijani file and poster exist", () => {
     for (const section of manifest.sections) {
       if (!section.intro) continue
-      const video = path.join(ROOT, "video/player", `${section.intro.slug}.az.VOICE.mp4`)
-      const poster = path.join(ROOT, "video/player", `${section.intro.slug}.az.poster.jpg`)
+      // Object storage holds the bytes since 2026-11-02; the committed master
+      // manifest is the list the deploy pulls, so it answers "does it exist".
+      const video = `${section.intro.slug}.az.VOICE.mp4`
+      const poster = `${section.intro.slug}.az.poster.jpg`
       if (section.intro.status === "available") {
-        expect(existsSync(video), `${section.id}: ${video}`).toBe(true)
-        expect(existsSync(poster), `${section.id}: ${poster}`).toBe(true)
+        expect(MASTERS.has(video), `${section.id}: ${video}`).toBe(true)
+        expect(MASTERS.has(poster), `${section.id}: ${poster}`).toBe(true)
       }
       expect(section.intro.caption.trim()).not.toBe("")
     }
@@ -376,6 +468,14 @@ describe("Guided journey intro clips", () => {
       "demo-inbox": "the Omni-channel reel's invented conversations, Aysu Nəbiyeva's thread opened",
       "demo-leads": "fourteen invented leads, «Leyla Məmmədova» (Northline Logistics) opened",
       "demo-boards": "the invented «Satış» and «Marketinq» boards, task SAT-1 opened",
+      // Filmed 2026-10-17 from the open demo's own chapter screens (the stand
+      // has no data for these modules): the companies and people are invented
+      // in scenes/support-demo-data.ts and scenes/calls-demo-data.ts.
+      "demo-support": "the chapter's invented morning queue, WA-0417 (Sahil Market) taken and resolved",
+      "demo-calls": "the chapter's invented call log and lead Fərid Hacıyev (Xəzər Tikinti MMC)",
+      "demo-mtm": "the chapter's invented Baku field team (mtm-demo-data.ts), Nar Klinika visit and Aptek 24 place request",
+      "demo-personnel": "the chapter's invented company's day, timesheet and N-1t (personnel-demo-data.ts)",
+      "demo-contracts": "the chapter's invented service company's contracts, Xəzər Tikinti MMC draft signed by Elnur Məmmədov",
     }
     for (const section of manifest.sections) {
       if (section.intro?.status !== "available") continue
@@ -422,7 +522,11 @@ describe("The open demo", () => {
     expect(player).toContain('className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]"')
   })
 
-  it("opens the story with no gate: nothing is fetched, nothing is verified", () => {
+  it("admits only the signed-in owner, and the story itself fetches nothing", () => {
+    // Owner, 2026-10-18: a prospect's demo opens only from the link mailed to
+    // the address on their request, once it is confirmed. The open demo stays
+    // the owner's own walk-through; anyone else is sent to the request form.
+    expect(code(route)).toMatch(/if \(!\(await isSuperAdminSession\(\)\)\) redirect\("\/demo"\)/)
     const body = code(shell) + code(route)
     for (const forbidden of ["fetch(", "/api/", "otpHash", "sessionHash", "demoGrant"]) {
       expect(body, forbidden).not.toContain(forbidden)
@@ -454,7 +558,7 @@ describe("The open demo", () => {
     }
   })
 
-  it("lives outside the marketing layout, and is reachable without a session", () => {
+  it("lives outside the marketing layout, and answers a visitor without a login form", () => {
     // This shipped wrong once. The page sat in `src/app/(marketing)/demo/start`,
     // so the marketing layout wrapped a full-screen product surface: navbar in
     // the visitor's own language above an Azerbaijani demo, plus a footer,
@@ -464,8 +568,9 @@ describe("The open demo", () => {
     expect(existsSync(path.join(ROOT, "src/app/(marketing)/demo/start/page.tsx"))).toBe(false)
     expect(existsSync(path.join(ROOT, "src/app/demo-open/page.tsx"))).toBe(true)
 
-    // Public, or the visitor meets a login form instead of the demo. The
-    // matcher compares whole segments, so "/demo" does not cover "/demo-open".
+    // Public to the proxy, so a visitor is sent to the request form by the
+    // page rather than meeting a login form. The matcher compares whole
+    // segments, so "/demo" does not cover "/demo-open".
     const proxy = read("src/proxy.ts")
     const publicLine = proxy.split("\n").find((line) => line.startsWith("const publicPaths"))
     expect(publicLine).toBeDefined()
@@ -477,8 +582,8 @@ describe("The open demo", () => {
     expect(marketingLine).toBeDefined()
     expect(marketingLine).not.toContain("demo-open")
 
-    // The only way in is the button on /demo; a stale href is a dead end.
-    expect(read("src/app/(marketing)/demo/page.tsx")).toContain('"/demo-open"')
+    // And /demo no longer offers it: the request form is the only way in.
+    expect(read("src/app/(marketing)/demo/page.tsx")).not.toContain("demo-open")
   })
 
   it("is pinned to the scenario language by the proxy, not by a second bundle", () => {

@@ -65,20 +65,25 @@ export const DEMO_INBOX_THREADS: readonly DemoInboxThread[] = [
       { id: "m2", from: "customer", text: "Sifariş nömrəsi 4471-dir.", minutesAgo: 8 },
     ],
   },
+  // The AI agent's lines obey the product's own commitment rules
+  // (src/lib/inbox/omnichannel-commitment-rules.ts): no time, no promised
+  // call, no invented price, no «I passed it to the manager». They used to
+  // say «passed it on — they will call you today», which the guard strips.
+  // Instagram is not here: Meta has not approved Direct for customers.
   {
-    id: "ig-price",
+    id: "tg-price",
     contactName: "Günel Hüseynova",
     companyName: null,
-    channel: "instagram",
+    channel: "telegram",
     unread: 0,
     unanswered: false,
     assignee: null,
     botHandled: true,
     messages: [
       { id: "m1", from: "customer", text: "Salam, qiymət siyahınızı göndərə bilərsiniz?", minutesAgo: 34 },
-      { id: "m2", from: "ai", text: "Salam, Günel xanım! Qiymət komandanın ölçüsündən asılıdır. Neçə nəfər istifadə edəcək? Menecerimiz sizə uyğun təklif hazırlayar.", minutesAgo: 33 },
+      { id: "m2", from: "ai", text: "Salam, Günel xanım! Qiymət komandanın ölçüsündən və lazım olan modullardan asılıdır. Neçə nəfər istifadə edəcək?", minutesAgo: 33 },
       { id: "m3", from: "customer", text: "Təxminən 12 nəfər.", minutesAgo: 30 },
-      { id: "m4", from: "ai", text: "Təşəkkür edirəm. Sorğunuzu satış menecerinə ötürdüm — bu gün sizinlə əlaqə saxlayacaq.", minutesAgo: 30 },
+      { id: "m4", from: "ai", text: "Təşəkkür edirəm! Dəqiq qiyməti menecer təsdiqləməlidir. Hansı modullar maraqlıdır: satış, Gələnlər qutusu, yoxsa hər ikisi?", minutesAgo: 30 },
     ],
   },
   {
@@ -171,12 +176,13 @@ export const DEMO_INBOX_THREADS: readonly DemoInboxThread[] = [
 /** The inbox channel the prospect's own request arrives on. */
 export function demoInboxChannelOf(source: DemoSourceChannel): DemoInboxChannel {
   switch (source) {
+    // Someone who saw an Instagram ad writes from the site: Instagram Direct is
+    // not offered to customers while Meta has not approved it.
     case "instagram":
-      return "instagram"
-    case "whatsapp":
-      return "whatsapp"
     case "website":
       return "web-chat"
+    case "whatsapp":
+      return "whatsapp"
     // A referral or an event lead is entered from a form; the reply goes by e-mail.
     case "referral":
     case "event":

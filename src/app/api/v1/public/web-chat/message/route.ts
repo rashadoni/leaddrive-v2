@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { buildWidgetCorsHeaders, isOriginAllowed } from "@/lib/widget-cors"
 import { escalateWebChatToTicket } from "@/lib/web-chat-escalate"
+import { pageChosenWidgetLang, widgetLangMetadata } from "@/lib/web-chat-visitor-language"
+import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { sendPushToUser } from "@/lib/push-send"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
@@ -30,6 +32,9 @@ const schema = z.object({
   sessionId: z.string().min(1),
   text: z.string().min(1).max(4000),
   lang: z.enum(["en", "ru", "az"]).optional(),
+  // True when the site set the widget's language (data-lang); otherwise the widget is in the
+  // organization's language, which the server reads itself (web-chat-visitor-language.ts).
+  langChosen: z.boolean().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -72,12 +77,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Origin not allowed" }, { status: 403, headers })
   }
 
+  // The page's data-lang, else the organization's language — what the widget shows the visitor,
+  // and so what the AI replies and the escalation notice are written in.
+  const widgetLang = pageChosenWidgetLang(parsed.data) ?? (await loadOrganizationLocale(session.organizationId))
+
   const visitorMsg = await prisma.webChatMessage.create({
     data: {
       organizationId: session.organizationId,
       sessionId: session.id,
       fromRole: "visitor",
       text: parsed.data.text,
+      metadata: widgetLangMetadata(widgetLang),
     },
   })
 
@@ -182,7 +192,7 @@ export async function POST(req: NextRequest) {
     : null
   if (widget.aiEnabled && !session.aiPaused && inRollout && capVerdict?.allowed) {
     try {
-      const reply = await generateAiReply(session.organizationId, session.id, parsed.data.text, parsed.data.lang, capVerdict?.limits.maxOutputTokens)
+      const reply = await generateAiReply(session.organizationId, session.id, parsed.data.text, widgetLang, capVerdict?.limits.maxOutputTokens)
       if (reply) {
         // A2 — send-or-draft gate over the widget policy (aiDraftMode / aiThreshold; both
         // default-off = pre-A2 behavior). A draft parks the reply on the conversation for
@@ -283,7 +293,7 @@ async function generateAiReply(
   orgId: string,
   sessionId: string,
   userText: string,
-  lang?: "en" | "ru" | "az",
+  lang: "en" | "ru" | "az",
   maxOutputTokens = 400,
 ): Promise<{ text: string; quality: AiQualityMetadata; logId?: string; forceHandoff: boolean } | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -317,7 +327,7 @@ async function generateAiReply(
     const res = await client.messages.create({
       model,
       max_tokens: Math.min(400, maxOutputTokens),
-      system: (SYSTEM_PROMPTS[lang || "en"] || SYSTEM_PROMPTS.en) + OMNICHANNEL_COMMITMENT_RULES,
+      system: (SYSTEM_PROMPTS[lang] || SYSTEM_PROMPTS.en) + OMNICHANNEL_COMMITMENT_RULES,
       messages: maskedMessages,
     })
     const generatedText = res.content

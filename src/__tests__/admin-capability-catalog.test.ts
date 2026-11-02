@@ -1,10 +1,11 @@
-import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 import { navItems } from "@/lib/nav-items"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import {
   CAPABILITY_SECTIONS,
+  TENANT_MODULE_SECTIONS,
+  TENANT_MODULE_CONTROLS,
   SIDEBAR_SECTIONS,
   TOGGLEABLE_CAPABILITIES,
   TOGGLEABLE_MODULES,
@@ -14,22 +15,6 @@ import {
   isCapabilityEnabled,
 } from "@/lib/admin-sidebar-catalog"
 
-function source(path: string): string {
-  return readFileSync(path, "utf8")
-}
-
-/**
- * Some sidebar areas are gated by a tenant capability rather than a group
- * module: `capability` where there is no group module at all (HRM), and
- * `tenantCapability` for a capability layered inside a historical group module
- * (Route & Field).
- *
- * They are deliberately kept out of the module catalogue — a Workforce grant
- * must not read as an MTM module toggle — but the consequence was that the
- * superadmin tenant editor had no control for them at all: HRM could not be
- * turned on or off anywhere, which is what the owner ran into. They get their
- * own card, built from the same navigation the sidebar renders.
- */
 describe("admin capability catalog", () => {
   it("covers every available capability-gated area in the navigation", () => {
     const expected = new Set(
@@ -110,14 +95,21 @@ describe("admin capability catalog", () => {
     ).toBe(false)
   })
 
-  it("is rendered by the tenant editor as its own card", () => {
-    const editor = source("src/app/admin/tenants/[id]/edit/page.tsx")
-    expect(editor).toContain("CAPABILITY_SECTIONS")
-    expect(editor).toContain("data-tenant-capability={capabilityId}")
-    expect(editor).toContain("enableCapability(f.features, capabilityId)")
-    expect(editor).toContain("disableCapability(f.features, capabilityId)")
-    // Separate card, not folded into the module count.
-    expect(editor).toContain('t("tenants.capabilities")')
-    expect(editor).toContain("countEnabledModules(form.features)")
+  it("unifies module and capability pages once, with each actual gate", () => {
+    const routes = TENANT_MODULE_SECTIONS.find((section) => section.group === "Route & Field")!
+    expect(routes.controls).toEqual([
+      { kind: "capability", id: "route-field" }, { kind: "module", id: "mtm" },
+    ])
+    expect(routes.items.find((item) => item.href === "/mtm")?.control.id).toBe("route-field")
+    expect(routes.items.find((item) => item.href === "/mtm/settings")?.control.id).toBe("mtm")
+    expect(TENANT_MODULE_SECTIONS.find((section) => section.group === "Personnel")?.controls)
+      .toEqual([{ kind: "capability", id: "personnel" }])
+    const hrefs = TENANT_MODULE_SECTIONS.flatMap((section) => section.items.map((item) => item.href))
+    expect(new Set(hrefs).size).toBe(hrefs.length)
+    expect(new Set(hrefs)).toEqual(new Set(navItems.filter((item) => {
+      const capability = item.capability ?? item.tenantCapability
+      return capability ? isCrmCapabilityAvailable(capability) : Boolean(item.module)
+    }).map((item) => item.href)))
+    expect(TENANT_MODULE_CONTROLS.map((control) => control.id)).not.toContain("workforce-hrm")
   })
 })

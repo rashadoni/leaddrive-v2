@@ -1,0 +1,86 @@
+name: Retire event CDC source on production
+
+# Read-only report of the production CDC source (slot, publication, CDC role).
+#
+# Runs scripts/event-platform/retire-cdc-source.sh on the production host:
+#   inspect (default) — read-only report;
+#   restore           — undo a retire: CDC role LOGIN, publication back; the
+#                       connector recreates its slot when it starts.
+# Apply (retire) was removed from here on 2026-10-25: a session acting on an
+# earlier owner decision dispatched it at 14:42 UTC and dropped the live slot
+# after the owner had decided to keep Kafka. Retiring needs the owner's direct
+# word on the same day and runs by hand on the host (CLAUDE.md «Kafka
+# остаётся», retire-cdc-source.sh), never from a button anyone holding the
+# GitHub token can press.
+# Dispatch-only and on the production-deploy lock; it never runs from a push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "inspect — только посмотреть; restore — вернуть вход роли CDC и публикацию (снять CDC отсюда нельзя)"
+        type: choice
+        options: [inspect, restore]
+        default: inspect
+
+permissions:
+  contents: read
+
+jobs:
+  retire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    # Shares the production lock with deploys and waits its turn behind them
+    # without replacing a pending deploy (same as event-platform-readiness.yml).
+    # The first dispatch, 2026-10-25, used the default single pending slot and
+    # was replaced by a deploy while main kept deploying.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate inputs
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in inspect|restore) ;; *) echo "::error::mode must be inspect or restore; apply runs only by hand, see CLAUDE.md «Kafka остаётся»"; exit 1 ;; esac
+          bash -n scripts/event-platform/retire-cdc-source.sh
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Run on production
+        env:
+          MODE: ${{ inputs.mode }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in inspect|restore) ;; *) exit 1 ;; esac
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" "bash -s -- $MODE" \
+            < scripts/event-platform/retire-cdc-source.sh
+
+      - name: CRM answers from outside
+        if: inputs.mode != 'inspect'
+        run: |
+          set -euo pipefail
+          for path in /api/v1/ping /login; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://app.leaddrivecrm.org$path")"
+            echo "$path → $code"
+            [ "$code" = 200 ] || { echo "::error::$path answered $code"; exit 1; }
+          done
+
+      - name: Cleanup SSH material
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts ~/.ssh/config

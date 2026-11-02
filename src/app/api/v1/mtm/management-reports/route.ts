@@ -4,6 +4,12 @@ import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { buildXlsxWorkbook, contentDispositionAttachment } from "@/lib/export/tabular"
 import { protectMtmExcelText } from "@/lib/mtm/excel-contract"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
+import { isValidTimezone } from "@/lib/timezone"
+import { planShareInRange, reportDailySeries, resolveReportRange } from "@/lib/mtm/report-period"
+import { readReportFilters, reportAgentIds } from "@/lib/mtm/report-filters"
+import { reportExportSheets } from "@/lib/mtm/report-export"
 
 const TYPES = ["route_execution", "action_compliance", "promises", "sales"] as const
 type ManagementReportType = typeof TYPES[number]
@@ -21,11 +27,13 @@ interface RequirementSource {
   actionKey: string
   minCount: number
   actionResults: Array<{ status: string }>
-  snapshot: { visit: { agent: { team: { name: string } | null } } }
+  snapshot: { visit: { checkInAt: Date; agent: { team: { name: string } | null } } }
 }
 
 interface PromiseSource {
   id: string
+  customerId: string
+  checkInAt: Date
   nextActionDueAt: Date | null
   outcome: string | null
   resultNotes: string | null
@@ -48,28 +56,23 @@ interface SalesPlanSource {
   customerId: string | null
   agentId: string | null
   territoryCode: string | null
+  periodStart: Date
   plannedAmount: unknown
   plannedQuantity: unknown
+  customer?: { name: string } | null
+  agent?: { name: string } | null
 }
 
-function periodStart(period: string, now: Date): Date {
-  if (period === "today") return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1)
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  start.setDate(start.getDate() - 6)
-  return start
-}
-
-function dayKey(value: Date): string {
-  return value.toISOString().slice(0, 10)
-}
+/** A promise made before the period and still not kept is shown with the period's: it did not stop being late. */
+const OVERDUE_LOOKBACK_DAYS = 90
 
 function pct(value: number, total: number): number {
   return total > 0 ? Math.round(value / total * 100) : 0
 }
 
-function safeRows(rows: Record<string, unknown>[], columns: string[]): unknown[][] {
-  return rows.map((row) => columns.map((column) => protectMtmExcelText(row[column])))
+/** A calendar day stored as a date (`@db.Date`), as the UTC midnight Prisma reads it as. */
+function dateOnly(key: string): Date {
+  return new Date(`${key}T00:00:00.000Z`)
 }
 
 export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
@@ -80,16 +83,34 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
   const period = search.get("period") ?? "week"
   const format = search.get("format")
   const now = new Date()
-  const start = periodStart(period, now)
-  const scopedAgentIds = actor.scopedAgentIds
-  const agentWhere = scopedAgentIds === null ? {} : { agentId: { in: [...scopedAgentIds] } }
+  // Audit 2026-11-01: these four reports counted from the server's own
+  // midnight (UTC) while the other three used the organization's — in Baku a
+  // morning visit fell into yesterday here and into today there.
+  const settings = await getMtmSettings(auth.orgId)
+  const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+  const range = resolveReportRange(search, currentDateKey(now, timezone), timezone)
+  if ("error" in range) return NextResponse.json({ success: false, error: range.error }, { status: 400 })
+  const window = { gte: range.start, lt: range.end }
+  const days = { gte: dateOnly(range.fromKey), lte: dateOnly(range.toKey) }
+  const scopedAgentIds = await reportAgentIds(auth.orgId, actor.scopedAgentIds === null ? null : [...actor.scopedAgentIds], readReportFilters(search))
+  const agentWhere = scopedAgentIds === null ? {} : { agentId: { in: scopedAgentIds } }
+  const routeScope = scopedAgentIds === null ? {} : { OR: [{ agentId: { in: scopedAgentIds } }, { assignments: { some: { agentId: { in: scopedAgentIds }, removedAt: null } } }] }
+  const promiseWhere = {
+    organizationId: auth.orgId,
+    deletedAt: null,
+    ...agentWhere,
+    OR: [
+      { nextActionDueAt: window },
+      { nextActionDueAt: { gte: new Date(range.start.getTime() - OVERDUE_LOOKBACK_DAYS * 86_400_000), lt: range.start } },
+    ],
+  }
 
   if (!type) {
     const [routes, requirements, promises, sales] = await Promise.all([
-      prisma.mtmRoute.count({ where: { organizationId: auth.orgId, date: { gte: start }, deletedAt: null, ...(scopedAgentIds === null ? {} : { OR: [{ agentId: { in: [...scopedAgentIds] } }, { assignments: { some: { agentId: { in: [...scopedAgentIds] }, removedAt: null } } }] }) } }),
-      prisma.mtmVisitRequirement.count({ where: { organizationId: auth.orgId, mode: "REQUIRED", snapshot: { visit: { checkInAt: { gte: start }, ...agentWhere } } } }),
-      prisma.mtmVisit.count({ where: { organizationId: auth.orgId, nextActionDueAt: { not: null, gte: start }, deletedAt: null, ...agentWhere } }),
-      prisma.mtmExternalSalesLine.count({ where: { organizationId: auth.orgId, document: { documentDate: { gte: start }, ...(scopedAgentIds === null ? {} : { agentId: { in: [...scopedAgentIds] } }) } } }),
+      prisma.mtmRoute.count({ where: { organizationId: auth.orgId, date: days, deletedAt: null, ...routeScope } }),
+      prisma.mtmVisitRequirement.count({ where: { organizationId: auth.orgId, mode: "REQUIRED", snapshot: { visit: { checkInAt: window, ...agentWhere } } } }),
+      prisma.mtmVisit.count({ where: { organizationId: auth.orgId, nextActionDueAt: window, deletedAt: null, ...agentWhere } }),
+      prisma.mtmExternalSalesLine.count({ where: { organizationId: auth.orgId, document: { documentDate: days, ...agentWhere } } }),
     ])
     return NextResponse.json({ success: true, data: { counts: { route_execution: routes, action_compliance: requirements, promises, sales } } })
   }
@@ -101,7 +122,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
 
   if (type === "route_execution") {
     const routes = await prisma.mtmRoute.findMany({
-      where: { organizationId: auth.orgId, date: { gte: start }, deletedAt: null, ...(scopedAgentIds === null ? {} : { OR: [{ agentId: { in: [...scopedAgentIds] } }, { assignments: { some: { agentId: { in: [...scopedAgentIds] }, removedAt: null } } }] }) },
+      where: { organizationId: auth.orgId, date: days, deletedAt: null, ...routeScope },
       include: { agent: { include: { team: { include: { region: true } } } } },
       orderBy: { date: "desc" },
     })
@@ -110,46 +131,75 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const planned = routeRecords.reduce((sum, route) => sum + route.totalPoints, 0)
     const actual = routeRecords.reduce((sum, route) => sum + route.visitedPoints, 0)
     summary = [{ labelKey: "sum.total", value: routeRecords.length, kind: "number" }, { labelKey: "sum.plannedStops", value: planned, kind: "number" }, { labelKey: "sum.completedStops", value: actual, kind: "number" }, { labelKey: "sum.compliance", value: pct(actual, planned), kind: "percent" }]
-    const daily = new Map<string, number>()
-    routeRecords.forEach((route) => daily.set(dayKey(route.date), (daily.get(dayKey(route.date)) ?? 0) + route.visitedPoints))
-    series = [...daily].map(([date, count]) => ({ date, count })).sort((left, right) => left.date.localeCompare(right.date))
+    // A route's date is a calendar day already: read in UTC, never shifted.
+    series = reportDailySeries(routeRecords.map((route) => ({ at: route.date, value: route.visitedPoints })), range, "UTC")
   } else if (type === "action_compliance") {
     const requirements = await prisma.mtmVisitRequirement.findMany({
-      where: { organizationId: auth.orgId, mode: "REQUIRED", snapshot: { visit: { checkInAt: { gte: start }, ...agentWhere } } },
+      where: { organizationId: auth.orgId, mode: "REQUIRED", snapshot: { visit: { checkInAt: window, ...agentWhere } } },
       include: { actionResults: true, snapshot: { include: { visit: { include: { agent: { include: { team: true } } } } } } },
     })
     const groups = new Map<string, { team: string; action: string; required: number; compliant: number }>()
     const requirementRecords = requirements as unknown as RequirementSource[]
+    const compliantAt: Array<{ at: Date }> = []
     for (const requirement of requirementRecords) {
       const team = requirement.snapshot.visit.agent.team?.name ?? "—"
       const key = `${team}|${requirement.actionKey}`
       const group = groups.get(key) ?? { team, action: requirement.actionKey, required: 0, compliant: 0 }
       group.required += 1
       const completed = requirement.actionResults.filter((result) => result.status === "COMPLETED" || result.status === "WAIVED").length
-      if (completed >= requirement.minCount) group.compliant += 1
+      if (completed >= requirement.minCount) {
+        group.compliant += 1
+        compliantAt.push({ at: requirement.snapshot.visit.checkInAt })
+      }
       groups.set(key, group)
     }
     rows = [...groups.values()].map((group, index) => ({ id: index, ...group, compliance: pct(group.compliant, group.required) }))
     const compliant = [...groups.values()].reduce((sum, group) => sum + group.compliant, 0)
     summary = [{ labelKey: "sum.requiredActions", value: requirementRecords.length, kind: "number" }, { labelKey: "sum.compliantActions", value: compliant, kind: "number" }, { labelKey: "sum.compliance", value: pct(compliant, requirementRecords.length), kind: "percent" }]
-    series = [{ date: dayKey(now), count: compliant }]
+    // Was one point «today» whatever the period: now the done actions day by day.
+    series = reportDailySeries(compliantAt, range, timezone)
   } else if (type === "promises") {
     const visits = await prisma.mtmVisit.findMany({
-      where: { organizationId: auth.orgId, nextActionDueAt: { not: null, gte: start }, deletedAt: null, ...agentWhere },
+      where: promiseWhere,
       include: { agent: true, customer: true },
       orderBy: { nextActionDueAt: "asc" },
     })
     const promiseRecords = visits as unknown as PromiseSource[]
-    rows = promiseRecords.map((visit) => ({ id: visit.id, dueAt: visit.nextActionDueAt, agent: visit.agent.name, customer: visit.customer.name, outcome: visit.outcome ?? "", status: visit.nextActionDueAt! < now ? "OVERDUE" : "OPEN", notes: visit.resultNotes ?? visit.notes ?? "" }))
-    const overdue = promiseRecords.filter((visit) => visit.nextActionDueAt! < now).length
-    summary = [{ labelKey: "sum.openPromises", value: promiseRecords.length, kind: "number" }, { labelKey: "sum.overduePromises", value: overdue, kind: "number" }, { labelKey: "sum.overdueRate", value: pct(overdue, promiseRecords.length), kind: "percent" }]
-    const daily = new Map<string, number>()
-    promiseRecords.forEach((visit) => daily.set(dayKey(visit.nextActionDueAt!), (daily.get(dayKey(visit.nextActionDueAt!)) ?? 0) + 1))
-    series = [...daily].map(([date, count]) => ({ date, count })).sort((left, right) => left.date.localeCompare(right.date))
+    // A promise is kept when somebody came back to the client after it was made.
+    // Before, nothing was ever «done»: every promise stayed open or overdue.
+    const lastVisits = promiseRecords.length > 0 ? await prisma.mtmVisit.groupBy({
+      by: ["customerId"],
+      where: { organizationId: auth.orgId, deletedAt: null, customerId: { in: [...new Set(promiseRecords.map((visit) => visit.customerId))] } },
+      _max: { checkInAt: true },
+    }) : []
+    const lastVisitOf = new Map((lastVisits as Array<{ customerId: string; _max: { checkInAt: Date | null } }>).map((item) => [item.customerId, item._max.checkInAt]))
+    const statusOf = (visit: PromiseSource) => {
+      const last = lastVisitOf.get(visit.customerId)
+      if (last && last.getTime() > visit.checkInAt.getTime()) return "DONE"
+      return visit.nextActionDueAt! < now ? "OVERDUE" : "OPEN"
+    }
+    // The period's promises, and the earlier ones that are still late.
+    const shown = promiseRecords
+      .map((visit) => ({ visit, status: statusOf(visit) }))
+      .filter(({ visit, status }) => visit.nextActionDueAt! >= range.start || status === "OVERDUE")
+    rows = shown.map(({ visit, status }) => ({ id: visit.id, dueAt: visit.nextActionDueAt, agent: visit.agent.name, customer: visit.customer.name, outcome: visit.outcome ?? "", status, notes: visit.resultNotes ?? visit.notes ?? "" }))
+    const overdue = shown.filter(({ status }) => status === "OVERDUE").length
+    const done = shown.filter(({ status }) => status === "DONE").length
+    summary = [
+      { labelKey: "sum.openPromises", value: shown.length - done, kind: "number" },
+      { labelKey: "sum.keptPromises", value: done, kind: "number" },
+      { labelKey: "sum.overduePromises", value: overdue, kind: "number" },
+      { labelKey: "sum.overdueRate", value: pct(overdue, shown.length), kind: "percent" },
+    ]
+    series = reportDailySeries(shown.filter(({ visit }) => visit.nextActionDueAt! >= range.start).map(({ visit }) => ({ at: visit.nextActionDueAt! })), range, timezone)
   } else {
     const [documents, plans] = await Promise.all([
-      prisma.mtmExternalSalesDocument.findMany({ where: { organizationId: auth.orgId, documentDate: { gte: start }, ...(scopedAgentIds === null ? {} : { agentId: { in: [...scopedAgentIds] } }) }, include: { customer: true, agent: true, lines: true } }),
-      prisma.mtmSalesPlanLine.findMany({ where: { organizationId: auth.orgId, periodStart: { gte: start }, ...(scopedAgentIds === null ? {} : { agentId: { in: [...scopedAgentIds] } }) } }),
+      prisma.mtmExternalSalesDocument.findMany({ where: { organizationId: auth.orgId, documentDate: days, ...agentWhere }, include: { customer: true, agent: true, lines: true } }),
+      // A monthly plan that began before the range still covers part of it.
+      prisma.mtmSalesPlanLine.findMany({
+        where: { organizationId: auth.orgId, periodStart: { gte: dateOnly(`${range.fromKey.slice(0, 7)}-01`), lte: dateOnly(range.toKey) }, ...agentWhere },
+        include: { customer: { select: { name: true } }, agent: { select: { name: true } } },
+      }),
     ])
     const groups = new Map<string, { customerId: string; customer: string; agentId: string | null; agent: string; territory: string; actualAmount: number; actualQuantity: number; planAmount: number; planQuantity: number }>()
     const salesDocuments = documents as unknown as SalesDocumentSource[]
@@ -162,30 +212,36 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       groups.set(key, group)
     }
     for (const plan of salesPlans) {
+      const share = planShareInRange(plan.periodStart, range)
+      if (share <= 0) continue
       const key = `${plan.customerId ?? ""}|${plan.agentId ?? ""}`
-      const group = groups.get(key) ?? { customerId: plan.customerId ?? "", customer: "", agentId: plan.agentId, agent: "", territory: plan.territoryCode ?? "", actualAmount: 0, actualQuantity: 0, planAmount: 0, planQuantity: 0 }
-      group.planAmount += Number(plan.plannedAmount ?? 0)
-      group.planQuantity += Number(plan.plannedQuantity ?? 0)
+      const group = groups.get(key) ?? { customerId: plan.customerId ?? "", customer: plan.customer?.name ?? "", agentId: plan.agentId, agent: plan.agent?.name ?? "", territory: plan.territoryCode ?? "", actualAmount: 0, actualQuantity: 0, planAmount: 0, planQuantity: 0 }
+      group.planAmount += Number(plan.plannedAmount ?? 0) * share
+      group.planQuantity += Number(plan.plannedQuantity ?? 0) * share
       groups.set(key, group)
     }
-    rows = [...groups.values()].map((group, index) => ({ id: index, ...group, amountVariance: group.actualAmount - group.planAmount, quantityVariance: group.actualQuantity - group.planQuantity, attainment: pct(group.actualAmount, group.planAmount) }))
+    const round = (value: number) => Math.round(value * 100) / 100
+    rows = [...groups.values()].map((group, index) => ({
+      id: index,
+      customer: group.customer,
+      agent: group.agent,
+      territory: group.territory,
+      planAmount: round(group.planAmount),
+      actualAmount: round(group.actualAmount),
+      amountVariance: round(group.actualAmount - group.planAmount),
+      attainment: pct(group.actualAmount, group.planAmount),
+    }))
     const actual = [...groups.values()].reduce((sum, group) => sum + group.actualAmount, 0)
     const plan = [...groups.values()].reduce((sum, group) => sum + group.planAmount, 0)
-    summary = [{ labelKey: "sum.actualSales", value: Math.round(actual * 100) / 100, kind: "number" }, { labelKey: "sum.planSales", value: Math.round(plan * 100) / 100, kind: "number" }, { labelKey: "sum.attainment", value: pct(actual, plan), kind: "percent" }]
-    const daily = new Map<string, number>()
-    salesDocuments.forEach((document) => daily.set(dayKey(document.documentDate), (daily.get(dayKey(document.documentDate)) ?? 0) + Number(document.totalAmount ?? 0)))
-    series = [...daily].map(([date, count]) => ({ date, count })).sort((left, right) => left.date.localeCompare(right.date))
+    summary = [{ labelKey: "sum.actualSales", value: round(actual), kind: "number" }, { labelKey: "sum.planSales", value: round(plan), kind: "number" }, { labelKey: "sum.attainment", value: pct(actual, plan), kind: "percent" }]
+    series = reportDailySeries(salesDocuments.map((document) => ({ at: document.documentDate, value: Number(document.totalAmount ?? 0) })), range, "UTC")
   }
 
   if (format === "xlsx") {
-    const columns = rows.length > 0 ? Object.keys(rows[0]).filter((key) => key !== "id") : []
-    const workbook = buildXlsxWorkbook([
-      { name: "Summary", headers: ["metric", "value"], rows: summary.map((item) => [item.labelKey, item.value]) },
-      { name: type, headers: columns, rows: safeRows(rows, columns) },
-    ])
+    const workbook = buildXlsxWorkbook(await reportExportSheets(type, summary, rows, search.get("lang"), protectMtmExcelText))
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer())
-    return new NextResponse(buffer as unknown as BodyInit, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": contentDispositionAttachment(`mtm-${type}-${period}.xlsx`), "Cache-Control": "no-store" } })
+    return new NextResponse(buffer as unknown as BodyInit, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": contentDispositionAttachment(`mtm-${type}-${range.fromKey}-${range.toKey}.xlsx`), "Cache-Control": "no-store" } })
   }
 
-  return NextResponse.json({ success: true, data: { summary, series, reportData: rows, total: rows.length, page: 1, limit: rows.length, period, type } })
+  return NextResponse.json({ success: true, data: { summary, series, reportData: rows, total: rows.length, page: 1, limit: rows.length, period: range.preset === "custom" ? period : range.preset, from: range.fromKey, to: range.toKey, type } })
 })

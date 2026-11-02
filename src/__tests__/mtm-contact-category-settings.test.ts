@@ -70,10 +70,17 @@ let usage: Array<{ type: string; _count: { _all: number } }> = []
 let container: HTMLDivElement
 let root: Root
 
+// Requests the screens have made and the routes have not answered yet. A fixed
+// number of turns raced the first test's cold imports of the route chain and
+// lost on main on 2026-10-26 (deploy of 9683d7a: «expected [] …»); wait for
+// the answers instead.
+const inFlight = new Set<Promise<Response>>()
+
 async function settle() {
-  for (let turn = 0; turn < 6; turn += 1) {
+  for (let turn = 0; turn < 200 && (turn < 6 || inFlight.size > 0); turn += 1) {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
   }
+  if (inFlight.size > 0) throw new Error(`${inFlight.size} request(s) still unanswered`)
 }
 
 async function render(element: ReturnType<typeof createElement>) {
@@ -147,7 +154,7 @@ beforeEach(() => {
     return row
   }) as never)
 
-  vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+  const answer = async (input: string, init?: RequestInit): Promise<Response> => {
     const url = new URL(input, "http://localhost:3000")
     const request = new NextRequest(url, init as never)
     if (url.pathname === "/api/v1/mtm/contact-categories") {
@@ -158,6 +165,14 @@ beforeEach(() => {
       return Response.json({ success: true, data: { organizations: [] } })
     }
     throw new Error(`unexpected request: ${url.pathname}`)
+  }
+  inFlight.clear()
+  vi.stubGlobal("fetch", vi.fn((input: string, init?: RequestInit) => {
+    const pending = answer(input, init)
+    inFlight.add(pending)
+    const done = () => { inFlight.delete(pending) }
+    pending.then(done, done)
+    return pending
   }))
 
   container = document.createElement("div")

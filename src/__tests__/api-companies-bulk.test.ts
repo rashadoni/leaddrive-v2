@@ -51,13 +51,14 @@ describe("POST /api/v1/companies/bulk → action: delete", () => {
     expect(prisma.company.deleteMany).not.toHaveBeenCalled()
   })
 
-  it("deletes scoped by organizationId", async () => {
+  it("deletes scoped by organizationId, never a pharmacy from 1C", async () => {
     mockAuthSequence([{ role: "admin" }, { role: "admin" }])
 
     const res = await POST(makeRequest({ ids: ["c1", "c2"], action: "delete" }))
     expect(res.status).toBe(200)
     const call = vi.mocked(prisma.company.deleteMany).mock.calls[0][0] as any
-    expect(call.where).toEqual({ id: { in: ["c1", "c2"] }, organizationId: "org-1" })
+    // A company from an outside register comes back with the next load: it is closed there.
+    expect(call.where).toEqual({ id: { in: ["c1", "c2"] }, organizationId: "org-1", externalSource: null })
   })
 })
 

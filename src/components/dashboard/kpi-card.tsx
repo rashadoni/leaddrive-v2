@@ -15,7 +15,7 @@ export function KpiCard({ title, value, sub, icon }: {
   title: string; value: string | number; sub?: string; icon: React.ReactNode; color?: string
 }) {
   return (
-    <div className="dashboard-kpi-card rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex flex-col gap-2 hover:shadow-md transition-all duration-200">
+    <div className="dashboard-kpi-card rounded-xl border border-border bg-card p-4 flex flex-col gap-2 hover:shadow-md transition-all duration-200">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground truncate">{title}</span>
         <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-muted/50 shrink-0 text-muted-foreground">

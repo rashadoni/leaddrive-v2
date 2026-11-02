@@ -325,7 +325,7 @@ export default function OfferDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-x-auto">
+            <div className="border border-border rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted text-xs font-semibold uppercase tracking-wider text-muted-foreground">

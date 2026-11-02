@@ -8,6 +8,7 @@ import {
   type HistoryVisit,
 } from "@/lib/mtm/location-history"
 import { drivingDistanceMeters } from "@/lib/mtm/road-distance"
+import { mtmWorkdayPauses, type MtmWorkdayPauseEvent } from "@/lib/mtm/workday-pauses"
 
 /**
  * «Пробег сегодня» and «В движении» of the selected employee, for the live
@@ -24,9 +25,8 @@ import { drivingDistanceMeters } from "@/lib/mtm/road-distance"
  *    «Маршрут дня»;
  *  - the time the phone was silent and neither a break nor a stop explains it.
  *
- * The time in motion is not read off the fixes' `speed` or `isMoving`: that
- * field is taken as m/s in one place and printed as km/h in another, and a
- * drive is a stretch of track between two places, not a flag on a fix.
+ * The time in motion is not read off the fixes' `speed` or `isMoving`: a
+ * drive is a stretch of track between two places, not a reading of one fix.
  *
  * Pure: no React, no fetch, no database.
  */
@@ -78,21 +78,15 @@ export function liveMapDayPolicy(settings: {
 }
 
 /**
- * The shift's breaks as intervals, from its PAUSE and RESUME events in time
- * order. A second PAUSE without a RESUME does not open a second break; a
- * break still going on has no end.
+ * The shift's breaks as intervals, as the one reader of the workday journal
+ * reads them (workday-pauses.ts) — History reads them the same way, so the
+ * card and History cannot tell one day two ways. The events are the journal's
+ * MTM_WORKDAY_PAUSE_EVENT_TYPES: without FINISH a day finished during a break
+ * kept that break open to midnight. A second «пауза» opens nothing; a break
+ * still going on has no end.
  */
-export function liveMapDayPauses(events: ReadonlyArray<{ type: string; occurredAt: Date }>): HistoryPauseInterval[] {
-  const pauses: HistoryPauseInterval[] = []
-  for (const event of events) {
-    const open = pauses.length > 0 && !pauses[pauses.length - 1].endedAt
-    if (event.type === "PAUSE") {
-      if (!open) pauses.push({ startedAt: event.occurredAt, endedAt: null })
-    } else if (event.type === "RESUME" && open) {
-      pauses[pauses.length - 1].endedAt = event.occurredAt
-    }
-  }
-  return pauses
+export function liveMapDayPauses(events: readonly MtmWorkdayPauseEvent[]): HistoryPauseInterval[] {
+  return mtmWorkdayPauses(events).map((pause) => ({ startedAt: pause.from, endedAt: pause.to }))
 }
 
 /**

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Replace only the inbound AGI helper (fanum-inbound-browser-agi.py) with the
+# reviewed candidate next to this script. Owner, 2026-10-26: each client gets
+# its own SIP number; the helper now tells the CRM the number dialled.
+#
+# Asterisk runs the helper per call, so nothing is reloaded or restarted. The
+# live file must be the previous reviewed helper (or already the candidate);
+# it is backed up, replaced atomically, self-checked and restored on failure.
+# No call is placed; the dialplan and the AI core are not touched.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+readonly DST="/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py"
+readonly PREVIOUS_SHA256="1b271acbd6095ea073c13bc901d6d7a2bbe660dc41f86cd664b73c33249e3f12"
+readonly CANDIDATE_SHA256="05e09d88735a9bc8372be5afc759a7bc395f49e86598777ea51e86035cf45bb3"
+readonly HERE="$(cd "$(dirname "$0")" && pwd)"
+readonly CANDIDATE="$HERE/fanum-inbound-browser-agi.py"
+
+fail() { printf 'fanum-inbound-agi-deploy: %s\n' "$1" >&2; exit 1; }
+[ "$(id -u)" = "0" ] || fail "run as root"
+[ -f "$CANDIDATE" ] && [ ! -L "$CANDIDATE" ] || fail "candidate is missing"
+[ "$(sha256sum "$CANDIDATE" | cut -d' ' -f1)" = "$CANDIDATE_SHA256" ] || fail "candidate digest is unexpected"
+[ -f "$DST" ] && [ ! -L "$DST" ] || fail "live helper is missing"
+live="$(sha256sum "$DST" | cut -d' ' -f1)"
+if [ "$live" = "$CANDIDATE_SHA256" ]; then
+  printf 'helper=already_current sha256=%s\n' "$live"; exit 0
+fi
+[ "$live" = "$PREVIOUS_SHA256" ] || fail "live helper drifted from the reviewed one"
+owner="$(stat -c '%U:%G %a' "$DST")"
+
+readonly BACKUP_DIR="/var/backups/fanum-inbound-browser/agi-$(date -u +%Y%m%dT%H%M%SZ)"
+install -d -o root -g root -m 0700 "$BACKUP_DIR"
+cp -p -- "$DST" "$BACKUP_DIR/fanum-inbound-browser-agi.py"
+
+restore() {
+  cp -p -- "$BACKUP_DIR/fanum-inbound-browser-agi.py" "$DST.restore.$$"
+  mv -f -- "$DST.restore.$$" "$DST"
+  printf 'helper=restored sha256=%s\n' "$(sha256sum "$DST" | cut -d' ' -f1)" >&2
+}
+
+tmp="$(dirname "$DST")/.fanum-inbound-browser-agi.py.$$"
+install -o "${owner%%:*}" -g "$(echo "${owner#*:}" | cut -d' ' -f1)" -m "${owner##* }" -- "$CANDIDATE" "$tmp"
+mv -f -- "$tmp" "$DST"
+if [ "$(sha256sum "$DST" | cut -d' ' -f1)" != "$CANDIDATE_SHA256" ] || ! python3 "$DST" --self-check >/dev/null 2>&1; then
+  restore; fail "installed helper did not verify; the previous helper is back"
+fi
+printf 'helper=deployed sha256=%s owner="%s" backup=%s asterisk_reloaded=no calls_placed=no\n' \
+  "$CANDIDATE_SHA256" "$(stat -c '%U:%G %a' "$DST")" "$BACKUP_DIR"

@@ -63,4 +63,22 @@ describe("new-client request queue", () => {
     expect(queue?.textContent).toContain("Dr. Aliyev")
     expect(toastError).not.toHaveBeenCalled()
   })
+
+  // Owner, 2026-10-16, from a picture: one line over the list, the cards on «Рассмотреть».
+  it("is one line until «Рассмотреть» opens the cards", async () => {
+    const queue = await render(200, {
+      success: true,
+      data: { requests: [
+        { id: "r-1", displayName: "Dr. Aliyev", specialtyName: "Кардиолог", clinicName: "Klinika", requestedByAgent: { id: "a-1", name: "Seymur" } },
+        { id: "r-2", displayName: "Dr. Huseynova", clinicName: "Klinika", requestedByAgent: { id: "a-1", name: "Seymur" } },
+      ] },
+    })
+    expect(queue?.textContent).toContain("Новые врачи от агентов ждут решения — «Dr. Aliyev», Кардиолог · Seymur и ещё 1")
+    expect(queue?.querySelector("textarea")).toBeNull()
+
+    const toggle = queue?.querySelector<HTMLButtonElement>('[data-testid="mtm-contact-create-requests-toggle"]')
+    await act(async () => { toggle?.click() })
+    expect(queue?.querySelectorAll("article")).toHaveLength(2)
+    expect(toggle?.textContent).toBe("Свернуть")
+  })
 })

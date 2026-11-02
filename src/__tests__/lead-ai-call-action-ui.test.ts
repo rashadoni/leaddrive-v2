@@ -87,7 +87,7 @@ describe("manual AI call settings contract", () => {
     expect(voipSettingsPage).toContain("manualLeadAiCallsEnabled,")
     expect(voipSettingsPage).toContain('id="manual-lead-ai-calls"')
     expect(voipSettingsPage).toContain(
-      'disabled={!voiceAgentEnabled || provider !== "asterisk" || voiceAgentMode === "inbound"}',
+      'disabled={!voiceAgentEnabled || provider !== "asterisk"}',
     )
   })
 

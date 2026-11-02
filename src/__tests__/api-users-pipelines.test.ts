@@ -15,7 +15,11 @@ vi.mock("@/lib/prisma", () => {
     pipeline: model(),
     customField: model(),
     // Модели, которые трогает передача незакрытой работы при обезличивании.
-    deal: model(),
+    // Сделки выбираются по id перед передачей (события сделок,
+    // src/lib/deals/deal-events.ts); здесь их нет — передавать нечего.
+    deal: { ...model(), findMany: vi.fn().mockResolvedValue([]) },
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     lead: model(),
     ticket: model(),
     task: model(),

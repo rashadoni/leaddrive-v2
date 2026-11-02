@@ -15,13 +15,15 @@ describe("MTM calendar-first planning UI contract", () => {
 
   it("opens the calendar section on the team calendar and the routes section as a list", () => {
     // Owner 2026-09-23: the calendar is its own section; routes open as a list.
-    expect(page).toContain('useState<RouteViewMode>(calendarSurface ? "calendar" : "list")')
+    expect(page).toContain("const defaultView = defaultMtmRouteView(surface)")
+    expect(page).toContain("useState<RouteViewMode>(defaultView)")
     const calendarPage = source("src/app/(dashboard)/mtm/calendar/page.tsx")
     expect(calendarPage).toContain('<MtmRoutesWorkspace surface="calendar" />')
     expect(page).toContain('data-testid="mtm-routes-view-calendar"')
     expect(page).toContain('data-testid="mtm-routes-view-list"')
     expect(page).toContain('data-testid="mtm-routes-view-week"')
-    expect(page).toContain('calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week"')
+    // The team's week is a reviewer's tab of the calendar (its hint says what it holds).
+    expect(page).toContain('calendarSurface && capabilities.canReview ? <Hint text={t("hint.viewWeek")}><Button data-testid="mtm-routes-view-week"')
     // Owner 2026-09-25: every view is its own tab in one row — no dropdown.
     expect(page).toContain('data-testid="mtm-route-view-tabs"')
     expect(page).not.toContain('data-testid="mtm-routes-more-views"')
@@ -44,8 +46,11 @@ describe("MTM calendar-first planning UI contract", () => {
   })
 
   it("prefills date from the month and date plus employee from the week", () => {
-    expect(page).toContain('onCreateRoute={(date) => openNewRoute({ date, returnView: "calendar" })}')
-    expect(page).toContain('onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}')
+    // A new route is planned on its own page, on a map, since 2026-10-15; the
+    // day of the month and the employee of the week go with it.
+    expect(page).toContain('onCreateRoute={(date) => openPlanner({ date })}')
+    expect(page).toContain('onCreateRoute={({ date, agentId }) => openPlanner({ date, agentId })}')
+    expect(page).toContain('router.push(query ? `/mtm/routes/plan?${query}` : "/mtm/routes/plan")')
     expect(page).toContain("initialDate={editData ? undefined : builderPreset?.date}")
     expect(page).toContain("initialAgentId={editData ? undefined : builderPreset?.agentId}")
     expect(builder).toContain("initialDate?: string")
@@ -104,13 +109,14 @@ describe("MTM calendar-first planning UI contract", () => {
   })
 
   it("remembers a normal view without overriding route or planning deep links", () => {
-    expect(page).toContain('leaddrive:mtm:routes:view:')
+    // Each section remembers its own view (2026-10-15): one key opened the calendar inside «Маршруты».
+    expect(page).toContain('leaddrive:mtm:${calendarSurface ? "calendar" : "routes"}:view:')
     expect(page).toContain('window.localStorage.getItem(viewPreferenceKey)')
     expect(page).toContain('window.localStorage.setItem(viewPreferenceKey, viewMode)')
     expect(page).toContain('const requestedViewMode = routeViewMode(searchParams.get("view"))')
     expect(page).toContain('if (requestedRouteId)')
     expect(page).toContain('if (requestedRouteId || requestedViewMode || requestedCustomerId || requestedContactId || requestedPlanningAgentId) return')
-    expect(page).toContain('canUseRouteView(requestedViewMode, capabilities.canReview)')
+    expect(page).toContain("canUseMtmRouteView(requestedViewMode, capabilities.canReview, surface)")
   })
 
   it("does not leave a grey empty grid cell when filters return an odd candidate count", () => {
@@ -149,7 +155,7 @@ describe("MTM calendar-first planning UI contract", () => {
     expect(builder).not.toContain('onClick={() => setPeriod(value)}')
     expect(builder).not.toContain('data-testid="mtm-route-planning-day"')
     expect(page).not.toContain("setMatrixPreset")
-    expect(page).toContain('setViewMode("matrix")')
+    expect(page).toContain('viewMode === "matrix" ? (')
     expect(matrix).toContain('data-testid="mtm-week-day-list"')
     expect(matrix).toContain("data.planningDays.map((day, index)")
     expect(matrix).toContain('period: "7_DAYS"')

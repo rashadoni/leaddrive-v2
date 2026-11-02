@@ -34,6 +34,7 @@ export type CallbackRefusal =
   | "call_too_short"
   | "stale_break"
   | "not_an_ai_call"
+  | "demo_call"
 
 export type CallbackDecision =
   | { callback: true; reason: "agent_cut_off" | "provider_recovered" }
@@ -49,6 +50,8 @@ export type CallbackEvidence = {
   /** Set when this call is itself a callback, which never earns another. */
   continuesCallId: string | null
   callMode: string
+  /** A call the guided demo placed (consentAudit.via = demo_center). */
+  demoCall?: boolean
   durationSeconds: number
   endedAt: Date
   now: Date
@@ -57,6 +60,12 @@ export type CallbackEvidence = {
 export function decideCallback(evidence: CallbackEvidence): CallbackDecision {
   if (evidence.callMode !== "ai") {
     return { callback: false, reason: "not_an_ai_call" }
+  }
+  // A demo call is a two-minute showcase the station ends itself at its cap
+  // (voice-core-demo-max-seconds.patch): its end is never a break, and a
+  // callback would carry none of the demo's script — the line's own instead.
+  if (evidence.demoCall === true) {
+    return { callback: false, reason: "demo_call" }
   }
   // Exactly one retry. Checked before anything else so that no combination of
   // later rules can ever produce a second one.

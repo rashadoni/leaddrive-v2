@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { missingVoipFields, normalizeVoipSettings } from "@/lib/voip/configs"
 import {
   composeVoiceAgentInstruction,
@@ -16,6 +17,7 @@ import {
   PROMPT_SERVED_HASH,
 } from "@/lib/demo-center/call-prompt"
 import { claimConnectingDemoCall } from "@/lib/demo-center/call-prompt-match"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -42,26 +44,31 @@ function authorized(request: NextRequest): boolean {
  * PBX-only prompt endpoint. It never returns contacts, leads, or credentials.
  *
  * Asked without `callId` it answers with the organisation's own prompt —
- * except for the one request that belongs to a demo call's connect burst
+ * except, for a core that does not read the script per call, the one request
+ * that belongs to a demo call's connect burst
  * (src/lib/demo-center/call-prompt-match.ts): the PBX names the connecting
  * call in its sibling requests of the same second, and that demo call gets
- * the demo's script. Every other call is answered exactly as before. Asked with the `callId` the CRM
+ * the demo's script. A core that sends `caps=demo-v1` gets the demo's script
+ * only from call-continuation, by the call's id, and never a guess here.
+ * Every other call is answered exactly as before. Asked with the `callId` the CRM
  * minted for one call, it answers for that call: a call the demo placed gets
  * the demo's approved script (src/lib/demo-center/call-prompt.ts) instead of
  * the organisation's prompt, whose identity belongs to other people's sales
  * calls. Each per-call answer is recorded on the call as a call event, which
  * is also how the demo knows the PBX has started asking per call at all.
  */
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID
-  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
   const callId = request.nextUrl.searchParams.get("callId")?.trim() || null
   // The id is the UUID the CRM minted before originating; anything else is a
   // caller error, not a call to look up.
   if (callId !== null && !/^[0-9a-fA-F-]{36}$/.test(callId)) {
     return NextResponse.json({ error: "callId must be the call's UUID" }, { status: 400 })
   }
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId }))?.organizationId
+  if (!organizationId) return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
 
   const configs = await runWithTenant(organizationId, () => prisma.channelConfig.findMany({
     where: { organizationId, channelType: "voip", isActive: true },
@@ -101,10 +108,17 @@ export async function GET(request: NextRequest) {
     knowledge: settings?.voiceAgentKnowledge,
   })
 
+  // A core that reads each call's script from call-continuation by the call's
+  // own id (voice-core-demo-max-seconds.patch) says so, and is never handed a
+  // guessed demo call here: a call-less request belongs to whichever call
+  // asked, and a guess that lands on another call gives that caller the
+  // prospect's name and the demo's script for the whole call.
+  const readsScriptPerCall = (request.nextUrl.searchParams.get("caps") ?? "").split(",").includes("demo-v1")
+
   if (!callId) {
     // Never at the line's expense: if matching fails for any reason, every
     // call — the demo's included — gets the organisation's prompt as before.
-    const demo = await runWithTenant(organizationId, async () => {
+    const demo = readsScriptPerCall ? null : await runWithTenant(organizationId, async () => {
       const call = await claimConnectingDemoCall(organizationId)
       if (!call) return null
       const lead = call.leadId
@@ -183,3 +197,5 @@ export async function GET(request: NextRequest) {
     { headers: { "Cache-Control": "no-store" } },
   )
 }
+
+export const GET = withStationTiming("runtime-config", handleGet)

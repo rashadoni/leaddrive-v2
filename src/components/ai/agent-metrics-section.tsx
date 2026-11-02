@@ -61,7 +61,7 @@ export function AgentMetricsSection({
     v == null ? "—" : v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${Math.round(v)}ms`
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-center gap-2">
         <Activity className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-bold">{t("agentMetricsTitle")}</h2>
@@ -71,11 +71,11 @@ export function AgentMetricsSection({
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
         {/* Left: headline stats */}
         <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+          <div className="rounded-lg border border-border p-4">
             <p className="text-xs text-muted-foreground">{t("sessionsServed")}</p>
             <p className="text-3xl font-bold mt-1">{sessionsServed.toLocaleString()}</p>
           </div>
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+          <div className="rounded-lg border border-border p-4">
             <p className="text-xs text-muted-foreground">{t("successRate")}</p>
             <p className={cn(
               "text-3xl font-bold mt-1",
@@ -107,7 +107,7 @@ export function AgentMetricsSection({
           </div>
 
           {/* Latency */}
-          <div className="flex items-center gap-6 mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+          <div className="flex items-center gap-6 mt-4 pt-3 border-t border-border">
             <p className="text-xs font-semibold flex items-center gap-1.5">
               <Gauge className="h-3.5 w-3.5 text-muted-foreground" /> {t("latencyTitle")}
             </p>

@@ -6,7 +6,8 @@ const list = read("src/app/portal/tickets/page.tsx")
 const detail = read("src/app/portal/tickets/[id]/page.tsx")
 const chat = read("src/app/portal/chat/page.tsx")
 const layout = read("src/app/portal/layout.tsx")
-const closure = read("src/app/ticket-closure/[token]/page.tsx")
+// The page loads and saves; what the customer sees is its view (shown in the demo too).
+const closure = read("src/app/ticket-closure/[token]/page.tsx") + read("src/components/tickets/ticket-closure-request-view.tsx")
 const knowledge = read("src/app/portal/knowledge-base/page.tsx")
 const listApi = read("src/app/api/v1/public/portal-tickets/route.ts")
 const detailApi = read("src/app/api/v1/public/portal-tickets/[id]/route.ts")
@@ -49,12 +50,14 @@ describe("Customer Support Portal UX contract", () => {
     expect(detail).not.toMatch(/formatDate\([^\n]*timeStyle/)
     expect(closure).not.toMatch(/formatDate\([^\n]*timeStyle/)
     expect(layout).toContain("customer-support-surface")
+    // Public support keeps the AA-safe orange fallback outside the CRM scope.
+    expect(layout).not.toContain("data-crm-workspace")
     expect(closure).toContain("customer-support-surface")
     expect(layout).toContain('data-testid="portal-company-name"')
     expect(layout).not.toMatch(/portal-company-name[^>]*hidden/)
     expect(closure).toContain("<ThemeProvider>")
     expect(globalStyles).toContain('.customer-support-surface :where(button, a, [role="button"]).bg-primary')
-    expect(globalStyles).toContain("background-color: hsl(20 92% 38%) !important")
+    expect(globalStyles).toContain("background-color: hsl(var(--crm-action, 20 92% 38%)) !important")
   })
 
   it("implements recoverable loading, empty, error, offline and mutation states", () => {

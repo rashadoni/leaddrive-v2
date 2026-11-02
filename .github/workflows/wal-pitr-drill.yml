@@ -1,0 +1,47 @@
+name: WAL PITR drill
+
+on:
+  # Not a required check, so it keeps a paths filter: it only has something to
+  # say when the archive or its watch changes. The weekly run is the one that
+  # matters — a recovery path nobody exercises is a recovery path nobody has.
+  pull_request:
+    paths:
+      - "scripts/backup/wal-pitr-drill.sh"
+      - "scripts/backup/wal-archive-install.sh"
+      - "scripts/backup/wal-archive-check.sh"
+      - "scripts/backup/wal-archive-contract.test.mjs"
+      - "ops/backup/wal-archive.env.example"
+      - "ops/systemd/leaddrive-wal-check*"
+      - ".github/workflows/wal-pitr-drill.yml"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: wal-pitr-drill-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    name: wal-pitr-drill
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install PostgreSQL 16 and pgBackRest
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-16 pgbackrest
+          pgbackrest version
+
+      - name: Restore a throwaway cluster to a point between two rows
+        run: |
+          export PATH="/usr/lib/postgresql/16/bin:$PATH"
+          scripts/backup/wal-pitr-drill.sh
+
+      - name: Wiring around the drill
+        run: node --test scripts/backup/wal-archive-contract.test.mjs

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { describe, expect, it } from "vitest"
 import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
+import { attendanceRequestFailure } from "@/lib/mtm/attendance-request-http"
 
 const marker = "MTM_ATTENDANCE_EMPLOYEE_IDENTITY_CONFLICT"
 const connector = (message = marker, code = "23514") => `ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "${code}", message: "${message}", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })`
@@ -8,6 +9,16 @@ const unknown = (message: string) => new Prisma.PrismaClientUnknownRequestError(
 const known = (code: string, meta: Record<string, unknown>, message = "Raw query failed") => new Prisma.PrismaClientKnownRequestError(message, { code, meta, clientVersion: "fixture" })
 
 describe("automatic attendance identity conflict response", () => {
+  it.each(["IDENTITY_CANONICAL_CREDENTIAL_REQUIRED", "IDENTITY_CANONICAL_PHONE_RESERVED"])("returns a safe refusal from old registration forms for %s", async code => {
+    const error = known("P2010", { code: "23514", message: `ERROR: ${code}` })
+    for (const response of [attendanceIdentityConflictResponse(error), attendanceRequestFailure(error)]) {
+      expect(response?.status).toBe(409)
+      expect(await response!.json()).toMatchObject({ code })
+      expect(response?.headers.get("cache-control")).toBe("private, no-store")
+    }
+    expect(attendanceIdentityConflictResponse(unknown(`Invalid input: "${code}"`))).toBeNull()
+    expect(attendanceRequestFailure(new Error(code)).status).toBe(500)
+  })
   it("explains protected active-user links with a distinct attendance-only action", async () => {
     const marker = "MTM_ATTENDANCE_EMPLOYEE_LINK_REQUIRED"
     const response = attendanceIdentityConflictResponse(unknown(connector(marker)))

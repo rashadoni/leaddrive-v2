@@ -107,7 +107,7 @@ suite("attendance demo fixture with real PostgreSQL guards", () => {
     const report = buildMtmAttendanceReport({ employees: snapshot.agents.map(agent => ({ id: agent.id, name: "Demo", teamId: null, teamName: null,
       attendanceIncludedFrom: agent.attendanceIncludedFrom?.toISOString() ?? null })),
       workdays: snapshot.workdays, calendar: [], rules: [], from: DEMO.from, to: DEMO.to, now: new Date("2026-10-13T10:00:00Z") })
-    expect(verifyParity(snapshot, report).totals.workedSeconds).toBe(90540)
+    expect(verifyParity(snapshot, report).totals.workedSeconds).toBe(82740) // after the automatic lunch (owner, 2026-10-16)
     expect(await prepareDemo(db, "replacement-must-not-be-used")).toBe(false)
     expect(await readOnlyDemo(db)).toEqual(snapshot)
     expect(await db.organization.findUnique({ where: { id: "untouched-customer-fixture" } })).toEqual(customer)

@@ -298,8 +298,8 @@ export function MonitoringSubjectManager({
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
-        <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 sm:flex-row sm:items-start sm:justify-between dark:border-zinc-700">
+      <section className="rounded-lg border border-border bg-card">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-orange-500" />
@@ -323,15 +323,15 @@ export function MonitoringSubjectManager({
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map(item => <div key={item} className="h-24 animate-pulse rounded-lg bg-muted" />)}</div>
       ) : subjects.length === 0 ? (
-        <section className="rounded-lg border border-dashed border-zinc-300 px-4 py-10 text-center dark:border-zinc-700">
+        <section className="rounded-lg border border-dashed border-zinc-300 px-4 py-10 text-center dark:border-border">
           <Tags className="mx-auto h-5 w-5 text-orange-500" />
           <p className="mt-3 text-sm font-medium">{t("emptyTitle")}</p>
           <p className="mx-auto mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{t("emptyHint")}</p>
           <Button size="sm" className="mt-4 gap-1.5" onClick={openCreate}><Plus className="h-3.5 w-3.5" />{t("createFirst")}</Button>
         </section>
       ) : (
-        <section className="overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <section className="overflow-hidden rounded-lg border border-border bg-card">
+          <div className="divide-y divide-border">
             {subjects.map(subject => {
               const SubjectIcon = typeIcon(subject.type)
               const positiveAliases = subject.aliases.filter(alias => !alias.isNegative).slice(0, 6)
@@ -443,12 +443,12 @@ export function MonitoringSubjectManager({
               <div className="space-y-1.5"><Label>{t("geographies")}</Label><Input value={form.geographies} onChange={event => setForm(previous => ({ ...previous, geographies: event.target.value }))} placeholder={t("geographiesPlaceholder")} /></div>
             </div>
 
-            <fieldset className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <fieldset className="rounded-lg border border-border p-3">
               <legend className="px-1 text-xs font-medium">{t("replyProfilesTitle")}</legend>
               <p className="mb-2 text-xs leading-5 text-muted-foreground">{t("replyProfilesHint")}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {availableAccounts.map(account => (
-                  <label key={account.id} className="flex items-start gap-2 rounded-md border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
+                  <label key={account.id} className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-xs">
                     <input type="checkbox" className="mt-0.5 rounded" checked={form.replyAccountIds.includes(account.id)} onChange={() => setForm(previous => ({ ...previous, replyAccountIds: toggle(previous.replyAccountIds, account.id) }))} />
                     <span><span className="block font-medium">{account.displayName || account.handle}</span><span className="text-muted-foreground">{account.platform} · {t("ownedRepliesOnly")}</span></span>
                   </label>
@@ -456,7 +456,7 @@ export function MonitoringSubjectManager({
               </div>
             </fieldset>
 
-            <fieldset className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <fieldset className="rounded-lg border border-border p-3">
               <legend className="px-1 text-xs font-medium">{t("relationsTitle")}</legend>
               <p className="mb-2 text-xs leading-5 text-muted-foreground">{t("relationsHint")}</p>
               <div className="space-y-2">
@@ -513,7 +513,7 @@ export function MonitoringSubjectManager({
               </div>
             </fieldset>
 
-            <label className="block rounded-lg border border-zinc-200 p-3 text-xs dark:border-zinc-700">
+            <label className="block rounded-lg border border-border p-3 text-xs">
               <span className="block font-medium">{t("linkAgent")}</span>
               <Select
                 className="mt-2 w-full"

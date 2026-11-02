@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFile, readdir } from "node:fs/promises"
+import { readFile, readdir, mkdtemp, writeFile, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -19,6 +20,9 @@ const activationEvidence = {
   requestedBy: "operator-a",
   approvedBy: "operator-b",
   kafka: {
+    capacityVerified: true, placementVerified: true, aclNegativeTestsVerified: true,
+    effectiveTopicConfigsVerified: true, infrastructureEvidenceId: "synthetic-topology",
+    replicationFactor: 3, minInSyncReplicas: 2,
     failureDomains: 3, autoTopicCreationDisabled: true, tlsVerified: true,
     encryptionAtRest: true, privateEndpoints: true, backupDrTested: true,
     bootstrapServers: ["broker-a:9093", "broker-b:9093", "broker-c:9093"],
@@ -26,7 +30,7 @@ const activationEvidence = {
   connect: {
     imageDigest: `sha256:${"b".repeat(64)}`, postgresConnectorVerified: true,
     outboxRouterVerified: true, acksAllVerified: true, idempotenceVerified: true,
-    internalTopicReplicationFactor: 3,
+    internalTopicReplicationFactor: 3, outsideWebHostVerified: true,
   },
   registry: {
     privateEndpoint: true, tlsVerified: true, jsonSchemaReferencesVerified: true,
@@ -35,9 +39,14 @@ const activationEvidence = {
   postgres: {
     backupEvidenceId: "restore-1001", restoreVerified: true, walLevel: "logical",
     maxSlotWalKeepSizeBytes: 4_294_967_296, capacityApproved: true,
+    peakWalBytesPerSecond: 1024, maxOutageSeconds: 3600,
+    walWarningBytes: 1_073_741_824, walStopBytes: 2_147_483_648,
+    walDiskBudgetBytes: 8_589_934_592, checkpointOvershootBytes: 1_073_741_824,
+    cdcStopDrillVerified: true, walBudgetEvidenceId: "synthetic-budget",
   },
   archive: { immutable: true, offProviderCopy: true, retentionDays: 400, watermarkAlertLive: true },
   monitoring: {
+    brokerFreeSpace: true, minIsr: true, alertDeliveryVerified: true,
     connectorFailure: true, slotWalBytes: true, postgresFreeSpace: true,
     underReplicatedPartitions: true, consumerLag: true, schemaRejections: true,
     quarantineRate: true, tenantProjectionParity: true,
@@ -65,6 +74,104 @@ assert.throws(
   () => validateActivationEvidence({ ...activationEvidence, postgres: { ...activationEvidence.postgres, walLevel: "replica" } }),
   /wal_level must be logical/,
 )
+
+// A copied template or padded identity must not become an activation receipt.
+for (const [section, field, value] of [
+  [null, "approvedBy", " operator-a "],
+  [null, "requestedBy", "operator-a\n"],
+  [null, "changeId", "__APPROVED_CHANGE_ID__"],
+  ["kafka", "infrastructureEvidenceId", "__INFRASTRUCTURE_EVIDENCE_ID__"],
+  ["postgres", "walBudgetEvidenceId", "<approved-budget-id>"],
+  ["postgres", "backupEvidenceId", "restore\nreceipt"],
+  ["drill", "evidenceId", "__DRILL_RECEIPT__"],
+]) {
+  const invalid = structuredClone(activationEvidence)
+  if (section) invalid[section][field] = value
+  else invalid[field] = value
+  assert.throws(() => validateActivationEvidence(invalid), `${field} must be a real canonical identifier`)
+}
+for (const references of [
+  ["vault://a", "vault://b", "vault://c", "vault://d"],
+  { a: "vault://a", b: "vault://b", c: "vault://c", d: "vault://d" },
+  { ...activationEvidence.secretReferences, postgresCdc: undefined },
+  { ...activationEvidence.secretReferences, postgresCdc: "__SECRET_MANAGER_REFERENCE__" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault://" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault://?query-only" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault://#fragment-only" },
+  { ...activationEvidence.secretReferences, postgresCdc: "vault:// source/password" },
+]) {
+  assert.throws(() => validateActivationEvidence({ ...activationEvidence, secretReferences: references }))
+}
+for (const role of Object.keys(activationEvidence.secretReferences)) {
+  const references = { ...activationEvidence.secretReferences }
+  delete references[role]
+  references.unrelatedExtraRole = "vault://unrelated/extra"
+  assert.throws(() => validateActivationEvidence({ ...activationEvidence, secretReferences: references }),
+    /is required/, `an extra role must not replace ${role}`)
+}
+
+// Malformed credential locations must be rejected without echoing their contents.
+const admissionProbeDirectory = await mkdtemp(path.join(tmpdir(), "ld-activation-admission-"))
+try {
+  const invalid = structuredClone(activationEvidence)
+  const syntheticSensitiveValue = " synthetic-sensitive-reference "
+  invalid.secretReferences.postgresCdc = syntheticSensitiveValue
+  const evidenceFile = path.join(admissionProbeDirectory, "evidence.json")
+  await writeFile(evidenceFile, JSON.stringify(invalid), { mode: 0o600 })
+  const result = spawnSync(process.execPath, [
+    path.join(repoRoot, "scripts/event-platform/activation-preflight.mjs"),
+    "--evidence", evidenceFile, "--expected-environment", "prod",
+    "--expected-sha", activationEvidence.releaseSha,
+  ], { encoding: "utf8" })
+  assert.equal(result.status, 1)
+  assert.equal(result.stdout, "")
+  assert.match(result.stderr, /secretReferences.postgresCdc must not contain surrounding whitespace/)
+  assert.ok(!result.stderr.includes("synthetic-sensitive-reference"), "CLI must not echo malformed secret references")
+} finally {
+  await rm(admissionProbeDirectory, { recursive: true, force: true })
+}
+
+for (const field of ["maxSlotWalKeepSizeBytes", "peakWalBytesPerSecond", "maxOutageSeconds",
+  "walWarningBytes", "walStopBytes", "walDiskBudgetBytes", "checkpointOvershootBytes"]) {
+  for (const value of [undefined, 0, -1, Infinity, NaN, 1.5, "1024", Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => validateActivationEvidence({ ...activationEvidence, postgres: {
+      ...activationEvidence.postgres, [field]: value,
+    } }), `${field} must reject invalid numeric budgets`)
+  }
+}
+// Synthetic admission controls only: these values are not production evidence.
+for (const [section, field, value] of [
+  ["postgres", "maxSlotWalKeepSizeBytes", Infinity],
+  ["postgres", "maxSlotWalKeepSizeBytes", "4294967296"],
+  ["postgres", "maxSlotWalKeepSizeBytes", -1],
+  ["postgres", "walStopBytes", 4_294_967_296],
+  ["postgres", "maxOutageSeconds", 9_000_000],
+  ["postgres", "walDiskBudgetBytes", 4_294_967_296],
+  ["postgres", "cdcStopDrillVerified", false],
+  ["kafka", "failureDomains", 1],
+  ["kafka", "failureDomains", Infinity],
+  ["kafka", "replicationFactor", 1],
+  ["kafka", "minInSyncReplicas", 1],
+  ["kafka", "minInSyncReplicas", 3],
+  ["kafka", "tlsVerified", false],
+  ["kafka", "privateEndpoints", false],
+  ["archive", "retentionDays", 399],
+  ["archive", "offProviderCopy", false],
+  ["monitoring", "consumerLag", false],
+  ["postgres", "peakWalBytesPerSecond", Number.MAX_SAFE_INTEGER],
+  ["kafka", "aclNegativeTestsVerified", false],
+  ["kafka", "placementVerified", false],
+  ["connect", "outsideWebHostVerified", false],
+  ["monitoring", "brokerFreeSpace", false],
+  ["monitoring", "alertDeliveryVerified", false],
+]) {
+  const invalid = structuredClone(activationEvidence)
+  invalid[section][field] = value
+  assert.throws(() => validateActivationEvidence(invalid), `${section}.${field} must block activation`)
+}
+assert.throws(() => validateActivationEvidence({ ...activationEvidence, postgres: {
+  ...activationEvidence.postgres, walStopBytes: undefined,
+} }))
 
 async function readText(relativePath) {
   return readFile(path.join(repoRoot, relativePath), "utf8")
@@ -200,10 +307,18 @@ assert.equal(config["transforms.outbox.table.field.event.payload"], "envelope")
 assert.equal(config["transforms.outbox.route.by.field"], "topic")
 assert.equal(config["transforms.outbox.route.topic.regex"], "leaddrive\\.domain\\.([a-z][a-z0-9-]*)\\.v1")
 assert.equal(config["transforms.outbox.route.topic.replacement"], "ld.__ENV__.$1.events.v1")
-assert.equal(config["transforms.outbox.table.expand.json.payload"], "true")
+// Preserve existing PostgreSQL JSON text; schema inference/JSON expansion can
+// silently drop empty arrays. Actual A/B CDC run39075079346 proved the loss.
+assert.equal(config["transforms.outbox.table.expand.json.payload"], "false")
 assert.equal(config["transforms.outbox.table.field.additional.missing"], "error")
-assert.equal(config["transforms.outbox.table.json.payload.null.behavior"], "optional_bytes")
-assert.equal(config["value.converter.schemas.enable"], "false")
+assert.equal(config["key.converter"], "org.apache.kafka.connect.storage.StringConverter")
+assert.equal(config["value.converter"], "org.apache.kafka.connect.storage.StringConverter")
+assert.equal(Object.hasOwn(config, "transforms.outbox.table.json.payload.null.behavior"), false)
+assert.equal(Object.hasOwn(config, "value.converter.schemas.enable"), false)
+// Header-only additions keep the unexpanded payload a String rather than a
+// wrapper Struct that StringConverter would stringify incorrectly.
+assert.equal(config["transforms.outbox.table.fields.additional.placement"],
+  "eventType:header:eventtype,organizationId:header:organizationid,payloadHash:header:payloadhash")
 assert.match(config["slot.name"], /^leaddrive_event_outbox___ENV__$/)
 assert.match(
   config["snapshot.select.statement.overrides.public.event_outbox"],
@@ -816,7 +931,7 @@ const runnerFenceRecoveryEnd = backupCommission.indexOf("\n}\n\n", runnerFenceRe
 const runnerFenceRecovery = backupCommission.slice(runnerFenceRecoveryStart, runnerFenceRecoveryEnd)
 assert.ok(
   runnerFenceRecovery.includes(
-    "^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore)$",
+    "^(install-backup-tools|activate-backup-encryption|run-bootstrap-backup|certify-bootstrap-restore|run-verified-backup|certify-offline-restore|run-owner-backup)$",
   ),
   "runner-fence recovery must accept every bounded commissioning operation, including both bootstrap stages",
 )
@@ -917,6 +1032,328 @@ const workflowSources = await Promise.all(
 for (const [file, source] of workflowSources) {
   assert.equal(source.includes("ssh-keyscan"), false, `${file} must not trust a runtime-scanned SSH host key`)
 }
+
+// LEADDRIVE_COLD_PRODUCTION_BUILD=1 turns on Next's webpack build worker
+// (next.config.ts). The worker returns each compiler's result to the parent as
+// ONE JSON string over IPC, and V8 caps a string at 536,870,888 characters; on
+// 2026-10-21 the server compiler's debug trace events alone were 349,059,529
+// of the ≈537M that killed the build (it then hung until the step timeout).
+// So every cold build must run scripts/ci/patch-next-build-worker-trace.mjs
+// after its last install, before `next build`, in the same directory, in a
+// step that can neither be skipped on its own nor have its failure swallowed,
+// and from the workflow's own commit: the commit being built may predate the
+// script (deploy.yml's bootstrap resume builds an older main commit).
+//
+// The workflows are read line by line (no YAML library is a direct
+// dependency): comments are dropped first, and mappings are found by their
+// indentation, so any consistent indentation works.
+const yamlIndent = (line) => line.match(/^ */u)[0].length
+const yamlBlank = (line) => line.trim() === ""
+// `#` starts a comment at the start of a line or after whitespace, outside a
+// quoted scalar. Inside a `run:` block that is a shell comment, which runs
+// nothing either.
+function stripYamlComment(line) {
+  let quote = ""
+  for (let at = 0; at < line.length; at++) {
+    const char = line[at]
+    if (quote) {
+      if (char === quote) quote = ""
+    } else if ((char === '"' || char === "'") && (at === 0 || /[\s:[{,]/u.test(line[at - 1]))) {
+      quote = char
+    } else if (char === "#" && (at === 0 || /\s/u.test(line[at - 1]))) {
+      return line.slice(0, at).trimEnd()
+    }
+  }
+  return line
+}
+// The keys of the mapping in `lines`, at the indentation of its first line:
+// each with its line, inline value and the lines below it. `steps:` may also
+// be followed by its sequence at its own indentation (`steps:\n- run: …`).
+function yamlMapping(lines) {
+  const indent = yamlIndent(lines.find((line) => !yamlBlank(line)) ?? "")
+  const keys = new Map()
+  lines.forEach((line, at) => {
+    const key = !yamlBlank(line) && yamlIndent(line) === indent && line.match(/^\s*([\w-]+):(?:[ \t]+(.*))?$/u)
+    if (!key || keys.has(key[1])) return
+    const children = []
+    for (const next of lines.slice(at + 1)) {
+      const compactSequence = key[1] === "steps" && /^\s*-(?:\s|$)/u.test(next)
+      if (!yamlBlank(next) && (yamlIndent(next) < indent || (yamlIndent(next) === indent && !compactSequence))) break
+      children.push(next)
+    }
+    keys.set(key[1], { line, value: (key[2] ?? "").trim(), children })
+  })
+  return keys
+}
+// A scalar: block scalars (| and >) and plain continuation lines joined,
+// surrounding quotes removed.
+function yamlScalar(entry) {
+  if (!entry) return undefined
+  const content = entry.children.map((line) => line.trim()).filter(Boolean)
+  const text = /^[|>]/u.test(entry.value)
+    ? content.join(entry.value.startsWith(">") ? " " : "\n")
+    : [entry.value, ...content].join(" ")
+  return text.trim().replace(/^(["'])([\s\S]*)\1$/u, "$2")
+}
+const yamlText = (entry) => (entry ? [entry.line, ...entry.children].join("\n") : "")
+function yamlSteps(entry) {
+  const lines = entry?.children ?? []
+  const indent = yamlIndent(lines.find((line) => !yamlBlank(line)) ?? "")
+  const steps = []
+  for (const line of lines) {
+    if (!yamlBlank(line) && yamlIndent(line) === indent && /^\s*-(?:\s|$)/u.test(line)) steps.push([line])
+    else if (steps.length > 0) steps.at(-1).push(line)
+  }
+  return steps.map((stepLines) => {
+    const [, dash, rest] = stepLines[0].match(/^(\s*-[ \t]*)(.*)$/u)
+    return { text: stepLines.join("\n"), keys: yamlMapping([" ".repeat(dash.length) + rest, ...stepLines.slice(1)]) }
+  })
+}
+const yamlRunDirectory = (defaults) =>
+  yamlScalar(yamlMapping(yamlMapping(defaults?.children ?? []).get("run")?.children ?? []).get("working-directory"))
+const normalDirectory = (directory) => path.posix.normalize(directory).replace(/(.)\/$/u, "$1")
+// Literal "1" is cold. So is any value known only at run time — an
+// expression, a shell variable, a block scalar, an anchor or a tag: it may be "1".
+const COLD_SETTING = /\bLEADDRIVE_COLD_PRODUCTION_BUILD[ \t]*[:=][ \t]*("[^"\n]*"|'[^'\n]*'|[^\s,}\]"']*)/gu
+const setsColdBuild = (text) =>
+  [...text.matchAll(COLD_SETTING)].some(([, raw]) => raw.replace(/^(["'])(.*)\1$/u, "$2") === "1" || /^[|>&*!]|\$/u.test(raw))
+const COLD_BUILD = /\b(?:next build|npm run build)\b/u
+const NPM_INSTALL = /\bnpm\s+(?:ci|install|i)\b/u
+const TRACE_PATCH = /\bnode[ \t]+\S*scripts\/ci\/patch-next-build-worker-trace\.mjs\b/u
+// The patch step runs the patch and nothing else, so the step's exit status is
+// the patch's: no `|| true`, `; true`, `&&` chain, pipe, background job or
+// second line (after `set +e`, say).
+const TRACE_PATCH_ALONE =
+  /^node[ \t]+(\$GITHUB_WORKSPACE\/|\$\{GITHUB_WORKSPACE\}\/)?((?:[\w.-]+\/)*?)scripts\/ci\/patch-next-build-worker-trace\.mjs(?:[ \t]+[^\s;&|<>`()]+)*$/u
+// A checkout ref other than the workflow's own commit, which that workflow
+// proves to be its own commit; each proof must stay in the file.
+const WORKFLOW_COMMIT_REFS = new Map([
+  [
+    "support-ux-historical-layout.yml",
+    {
+      ref: "${{needs.prepare.outputs.after_sha}}",
+      proof: [
+        "after_sha: ${{ steps.identity.outputs.after_sha }}",
+        "AFTER_SHA: ${{ github.sha }}",
+        String.raw`printf 'after_sha=%s\nmain_sha=%s\nmain_snapshot_sha=%s\nanchor=%s\n' "$AFTER_SHA"`,
+      ],
+    },
+  ],
+])
+function buildWorkerTracePatchGaps(file, source) {
+  const top = yamlMapping(source.split("\n").map(stripYamlComment))
+  const workflowCold = [...top].some(([key, entry]) => key !== "jobs" && setsColdBuild(yamlText(entry)))
+  const workflowDirectory = yamlRunDirectory(top.get("defaults"))
+  const builds = []
+  const gaps = []
+  for (const [job, jobEntry] of yamlMapping(top.get("jobs")?.children ?? [])) {
+    const keys = yamlMapping(jobEntry.children)
+    const steps = yamlSteps(keys.get("steps"))
+    const jobCold = workflowCold || setsColdBuild(yamlText(jobEntry))
+    const jobDirectory = yamlRunDirectory(keys.get("defaults")) ?? workflowDirectory ?? "."
+    const run = (step) => yamlScalar(step.keys.get("run")) ?? ""
+    const directory = (step) => normalDirectory(yamlScalar(step.keys.get("working-directory")) ?? jobDirectory)
+    const condition = (step) =>
+      (yamlScalar(step.keys.get("if")) ?? "").replace(/^\$\{\{([\s\S]*)\}\}$/u, "$1").replace(/\s+/gu, " ").trim()
+    steps.forEach((step, stepIndex) => {
+      if (!jobCold || !COLD_BUILD.test(run(step))) return
+      const where = `${file} job ${job}, step ${stepIndex + 1}`
+      builds.push(`${file}:${job}`)
+      const patchIndex = steps.findLastIndex((candidate, at) => at < stepIndex && TRACE_PATCH.test(run(candidate)))
+      if (patchIndex < 0) {
+        gaps.push(`${where}: cold webpack build without scripts/ci/patch-next-build-worker-trace.mjs before it`)
+        return
+      }
+      const patch = steps[patchIndex]
+      const beforeBuild = run(step).slice(0, run(step).search(COLD_BUILD))
+      if (steps.slice(patchIndex + 1, stepIndex).some((between) => NPM_INSTALL.test(between.text)) || NPM_INSTALL.test(beforeBuild)) {
+        gaps.push(`${where}: npm reinstalls node_modules between the trace patch and the build`)
+      }
+      if (directory(patch) !== directory(step)) {
+        gaps.push(`${where}: the trace patch runs in another working-directory than the build`)
+      }
+      if (patch.keys.has("if") && condition(patch) !== condition(step)) {
+        gaps.push(`${where}: the trace patch step has its own if: (${condition(patch)}), not the build's (${condition(step) || "none"})`)
+      }
+      if (!/^(?:false)?$/u.test(yamlScalar(patch.keys.get("continue-on-error")) ?? "")) {
+        gaps.push(`${where}: the trace patch step has continue-on-error, so a refused patch lets the build run unpatched`)
+      }
+      const alone = run(patch).match(TRACE_PATCH_ALONE)
+      if (!alone) {
+        gaps.push(`${where}: the trace patch step must run the patch alone (no ||, ;, &&, pipe or second command), so its exit status is the patch's`)
+        return
+      }
+      const script = path.posix.join(alone[1] ? "." : directory(patch), `${alone[2]}scripts/ci/patch-next-build-worker-trace.mjs`)
+      let origin
+      for (const candidate of steps.slice(0, patchIndex)) {
+        if (!/^actions\/checkout@/u.test(yamlScalar(candidate.keys.get("uses")) ?? "")) continue
+        const inputs = yamlMapping(candidate.keys.get("with")?.children ?? [])
+        const checkoutPath = normalDirectory(yamlScalar(inputs.get("path")) ?? ".")
+        const covers = checkoutPath === "." ? !script.startsWith("../") : script.startsWith(`${checkoutPath}/`)
+        const depth = checkoutPath === "." ? 0 : checkoutPath.length
+        if (covers && (!origin || depth >= origin.depth)) {
+          origin = {
+            depth,
+            path: checkoutPath,
+            ref: (yamlScalar(inputs.get("ref")) ?? "").replace(/\s+/gu, ""),
+            repository: (yamlScalar(inputs.get("repository")) ?? "").replace(/\s+/gu, ""),
+          }
+        }
+      }
+      const ownCommit = (ref) => ref === "" || ref === "${{github.sha}}" || WORKFLOW_COMMIT_REFS.get(file)?.ref === ref
+      if (!origin) {
+        gaps.push(`${where}: no checkout before the trace patch provides ${script}`)
+      } else if (!ownCommit(origin.ref) || !["", "${{github.repository}}"].includes(origin.repository)) {
+        gaps.push(
+          `${where}: the trace patch comes from the checkout of ${origin.repository || "this repository"} at ` +
+            `${origin.ref} in ${origin.path}, which may predate the script; take it from the workflow's own ` +
+            "commit (ref: ${{ github.sha }}), e.g. a sparse checkout beside the build",
+        )
+      }
+    })
+  }
+  return { builds, gaps }
+}
+{
+  const workflow = (jobEnv, steps, top = []) => [
+    "name: synthetic",
+    "on: workflow_dispatch",
+    ...top,
+    "jobs:",
+    "  build:",
+    "    runs-on: ubuntu-24.04",
+    ...jobEnv,
+    "    steps:",
+    ...steps,
+    "",
+  ].join("\n")
+  const checkout = ["      - uses: actions/checkout@v6"]
+  const install = ["      - run: npm ci", "      - run: npx prisma generate"]
+  const setup = [...checkout, ...install]
+  const patchRun = "node scripts/ci/patch-next-build-worker-trace.mjs"
+  const patchWith = (...lines) => ["      - name: Keep Next build-worker trace events out of IPC", ...lines]
+  const patch = patchWith(`        run: ${patchRun}`)
+  const build = ["      - name: Build", "        run: npx next build --webpack", "        env:", '          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"']
+  const buildWith = (...lines) => [...build.slice(0, 2), ...lines, ...build.slice(2)]
+  const runtimeDefaults = ["    defaults:", "      run:", "        working-directory: runtime"]
+  const sideCheckout = (ref, ...more) => [
+    "      - uses: actions/checkout@v6",
+    "        with:",
+    `          ref: ${ref}`,
+    "          path: .workflow-build-patch",
+    "          persist-credentials: false",
+    ...more,
+  ]
+  const olderCheckout = ["      - uses: actions/checkout@v6", "        with:", "          ref: ${{ inputs.target_sha }}"]
+  const sidePatch = patchWith("        run: node .workflow-build-patch/scripts/ci/patch-next-build-worker-trace.mjs")
+  const fourSpaces = (steps) => [
+    "name: synthetic",
+    "on: workflow_dispatch",
+    "jobs:",
+    "    build:",
+    "        runs-on: ubuntu-24.04",
+    "        steps:",
+    "            - uses: actions/checkout@v6",
+    "            - run: npm ci",
+    ...steps,
+    "            - run: npx next build --webpack",
+    "              env:",
+    '                  LEADDRIVE_COLD_PRODUCTION_BUILD: "1"',
+    "",
+  ].join("\n")
+  const compactSteps = [
+    "name: synthetic",
+    "on: workflow_dispatch",
+    "jobs:",
+    "  build:",
+    "    runs-on: ubuntu-24.04",
+    "    steps:",
+    "    - uses: actions/checkout@v6",
+    "    - run: npm ci",
+    "    - run: npx next build --webpack",
+    "      env:",
+    '        LEADDRIVE_COLD_PRODUCTION_BUILD: "1"',
+    "    timeout-minutes: 90",
+    "",
+  ].join("\n")
+  const gapsOf = (source) => buildWorkerTracePatchGaps("synthetic.yml", source).gaps
+  for (const [label, source] of [
+    ["a patched cold build", workflow([], [...setup, ...patch, ...build])],
+    ["a build without the cold flag (no build worker, no patch needed)", workflow([], [...setup, ...build.slice(0, 2)])],
+    ["a build with the flag set to a literal other than 1", workflow([], [...setup, ...build.slice(0, 3), '          LEADDRIVE_COLD_PRODUCTION_BUILD: "0"'])],
+    ["a patch step with the build's own if:, spelled differently", workflow([], [...setup, ...patchWith("        if: ${{ inputs.mode == 'ephemeral' }}", `        run: ${patchRun}`), ...buildWith("        if: inputs.mode == 'ephemeral'")])],
+    ["a patch step with continue-on-error: false", workflow([], [...setup, ...patchWith("        continue-on-error: false", `        run: ${patchRun}`), ...build])],
+    ["a patch run line with a trailing comment", workflow([], [...setup, ...patchWith(`        run: ${patchRun} # see the script`), ...build])],
+    ["a patched build at four-space indentation", fourSpaces([`            - run: ${patchRun}`])],
+    ["a patched build under a job default working-directory", workflow(runtimeDefaults, [...setup, ...patch, ...buildWith("        working-directory: runtime")])],
+    ["an older build checkout patched from a side checkout of github.sha", workflow([], [...olderCheckout, ...install, ...sideCheckout("${{ github.sha }}"), ...sidePatch, ...build])],
+  ]) {
+    assert.deepEqual(gapsOf(source), [], `the build-worker trace guard must accept ${label}`)
+  }
+  for (const [label, source, reason] of [
+    ["unpatched", workflow([], [...setup, ...build]), /without scripts\/ci\/patch-next-build-worker-trace\.mjs/u],
+    ["patched after the build", workflow([], [...setup, ...build, ...patch]), /without/u],
+    ["reinstalled after the patch", workflow([], [...checkout, ...patch, ...install, ...build]), /reinstalls/u],
+    ["reinstalled inside the build step", workflow([], [...setup, ...patch, "      - run: |", "          npm ci", "          npx next build --webpack", "        env:", '          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"']), /reinstalls/u],
+    ["cold through job env", workflow(["    env:", '      LEADDRIVE_COLD_PRODUCTION_BUILD: "1"'], [...setup, "      - run: npm run build -- --webpack"]), /without/u],
+    ["cold through workflow env", workflow([], [...setup, "      - run: npm run build -- --webpack"], ["env:", "  LEADDRIVE_COLD_PRODUCTION_BUILD: 1"]), /without/u],
+    ["cold with a trailing comment on the flag", workflow([], [...setup, ...build.slice(0, 3), '          LEADDRIVE_COLD_PRODUCTION_BUILD: "1" # build worker']), /without/u],
+    ["cold through an expression", workflow([], [...setup, ...build.slice(0, 3), "          LEADDRIVE_COLD_PRODUCTION_BUILD: ${{ inputs.cold }}"]), /without/u],
+    ["cold through a quoted expression", workflow([], [...setup, ...build.slice(0, 3), "          LEADDRIVE_COLD_PRODUCTION_BUILD: \"${{ inputs.cold && '1' || '0' }}\""]), /without/u],
+    ["cold through a shell variable", workflow([], [...setup, "      - run: |", '          export LEADDRIVE_COLD_PRODUCTION_BUILD="$COLD"', "          npx next build --webpack"]), /without/u],
+    ["at four-space indentation", fourSpaces([]), /without/u],
+    ["in a steps sequence at the key's own indentation", compactSteps, /without/u],
+    ["only checked out, never run", workflow([], [...setup, "      - uses: actions/checkout@v6", "        with:", "          sparse-checkout: scripts/ci/patch-next-build-worker-trace.mjs", ...build]), /without/u],
+    ["only mentioned in a comment", workflow([], [...setup, "      - run: echo skip", "        # node scripts/ci/patch-next-build-worker-trace.mjs", ...build]), /without/u],
+    ["only mentioned in a shell comment", workflow([], [...setup, "      - run: |", "          echo skip # node scripts/ci/patch-next-build-worker-trace.mjs", ...build]), /without/u],
+    ["patched in another directory", workflow([], [...setup, ...patch, ...buildWith("        working-directory: runtime")]), /another working-directory/u],
+    ["patched at the root against a job default working-directory", workflow(runtimeDefaults, [...setup, ...patchWith("        working-directory: .", `        run: ${patchRun}`), ...build]), /another working-directory/u],
+    ["patched under a workflow default working-directory the build leaves", workflow([], [...setup, ...patch, ...buildWith("        working-directory: .")], ["defaults:", "  run:", "    working-directory: runtime"]), /another working-directory/u],
+    ["patched in a step that never runs (if: false)", workflow([], [...setup, ...patchWith("        if: false", `        run: ${patchRun}`), ...build]), /own if:/u],
+    ["patched under a narrower condition than the build's", workflow([], [...setup, ...patchWith("        if: ${{ inputs.mode == 'ephemeral' }}", `        run: ${patchRun}`), ...buildWith("        if: ${{ inputs.mode != 'remote' }}")]), /own if:/u],
+    ["patched with continue-on-error", workflow([], [...setup, ...patchWith("        continue-on-error: true", `        run: ${patchRun}`), ...build]), /continue-on-error/u],
+    ["patched with continue-on-error from an expression", workflow([], [...setup, ...patchWith("        continue-on-error: ${{ inputs.lenient }}", `        run: ${patchRun}`), ...build]), /continue-on-error/u],
+    ["patched with || true", workflow([], [...setup, ...patchWith(`        run: ${patchRun} || true`), ...build]), /alone/u],
+    ["patched with ; true", workflow([], [...setup, ...patchWith(`        run: ${patchRun}; true`), ...build]), /alone/u],
+    ["patched with || :", workflow([], [...setup, ...patchWith(`        run: ${patchRun} || :`), ...build]), /alone/u],
+    ["patched in an && chain", workflow([], [...setup, ...patchWith(`        run: ${patchRun} && echo patched`), ...build]), /alone/u],
+    ["patched under set +e", workflow([], [...setup, ...patchWith("        run: |", "          set +e", `          ${patchRun}`), ...build]), /alone/u],
+    ["patched before a second command", workflow([], [...setup, ...patchWith("        run: |", `          ${patchRun}`, "          true"), ...build]), /alone/u],
+    ["patched from the older commit it builds", workflow([], [...olderCheckout, ...install, ...patch, ...build]), /may predate the script/u],
+    ["patched from a side checkout of an input SHA", workflow([], [...olderCheckout, ...install, ...sideCheckout("${{ inputs.target_sha }}"), ...sidePatch, ...build]), /may predate the script/u],
+    ["patched from another repository", workflow([], [...setup, ...sideCheckout("${{ github.sha }}", "          repository: someone/else"), ...sidePatch, ...build]), /someone\/else/u],
+  ]) {
+    const gaps = gapsOf(source)
+    assert.equal(gaps.length, 1, `the build-worker trace guard must reject a cold build that is ${label}, once:\n${gaps.join("\n")}`)
+    assert.match(gaps[0], reason, `the build-worker trace guard rejects a cold build that is ${label} for the wrong reason`)
+  }
+}
+const coldBuilds = []
+for (const [file, source] of workflowSources) {
+  const { builds, gaps } = buildWorkerTracePatchGaps(file, source)
+  assert.deepEqual(gaps, [], `cold webpack builds must run scripts/ci/patch-next-build-worker-trace.mjs first:\n${gaps.join("\n")}`)
+  coldBuilds.push(...builds)
+}
+for (const expected of [
+  "deploy.yml:build",
+  "pr-checks.yml:production-build",
+  "hrm-tenant-capability-ui.yml:build-typecheck",
+  "support-ux-evidence.yml:capture",
+  "support-ux-historical-layout.yml:capture",
+  "workforce-exception-report-browser-evidence.yml:wf-c6-010-build",
+]) {
+  assert.ok(coldBuilds.includes(expected), `the build-worker trace guard no longer sees the cold build in ${expected}`)
+}
+for (const [file, { proof }] of WORKFLOW_COMMIT_REFS) {
+  const source = workflowSources.find(([name]) => name === file)?.[1] ?? ""
+  for (const line of proof) {
+    assert.ok(source.includes(line), `${file} no longer proves its controller checkout is the workflow's own commit: ${line}`)
+  }
+}
+assert.ok(
+  nextConfig.includes("scripts/ci/patch-next-build-worker-trace.mjs"),
+  "next.config.ts must point from webpackBuildWorker to the trace patch it depends on",
+)
 const productionHostWorkflows = workflowSources.filter(([, source]) => source.includes("secrets.SERVER_HOST"))
 for (const [file, source] of productionHostWorkflows) {
   if (file !== "deploy.yml") {

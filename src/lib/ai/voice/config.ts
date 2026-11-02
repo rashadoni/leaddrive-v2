@@ -1,11 +1,8 @@
 /**
- * Voice-console configuration. Everything here is env-driven on purpose: the
- * pilot allowlist must not be self-serviceable from inside the app.
- *
- * `PATCH /api/v1/settings/ai-features` can already flip org feature flags, and
- * `UserPreference` rows are written by their own owner — so a DB-backed pilot
- * flag would be a grant the grantee can issue to themselves. Changing who has
- * voice therefore requires a deploy, which is the point.
+ * Voice-console configuration: the provider, its key and the limits. Who gets
+ * voice is not here — that is the admin-set «Голос» switch on the user row
+ * (see gate.ts). It is not a preference: `UserPreference` rows are written by
+ * their own owner, and a grant the grantee can issue to themselves is no grant.
  */
 
 /**
@@ -47,8 +44,6 @@ export const HEARTBEAT_INTERVAL_SECONDS = 15
 export const SESSION_TOKEN_TTL_SECONDS = 360
 
 export type VoicePilotConfig = {
-  orgId: string | null
-  userIds: string[]
   realtimeProvider: string | null
   geminiApiKey: string | null
 }
@@ -81,10 +76,7 @@ export function voiceWritesEnabled(): boolean {
  * frozen into a warm lambda/PM2 process after a deploy changes it.
  */
 export function readVoicePilotConfig(): VoicePilotConfig {
-  const raw = process.env.VOICE_PILOT_USER_IDS ?? ""
   return {
-    orgId: process.env.VOICE_PILOT_ORG_ID || null,
-    userIds: raw.split(",").map((s) => s.trim()).filter(Boolean),
     realtimeProvider: process.env.VOICE_REALTIME_PROVIDER || null,
     // The browser never receives this long-lived key. The token route uses it
     // only to mint a single-use Gemini Live ephemeral token.

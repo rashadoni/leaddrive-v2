@@ -13,12 +13,24 @@ const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
   updateMany: vi.fn(),
   findMessages: vi.fn(),
+  findConfigs: vi.fn(),
+  findLead: vi.fn(),
+  createEvents: vi.fn(),
 }))
 
+// The number -> organization lookup is its own suite (voice-line-numbers-postgres);
+// here every call belongs to the installation's default organization, as before it.
+vi.mock("@/lib/voip/line-numbers", () => ({
+  voiceOrganizationFor: async () => process.env.VOICE_AGENT_ORGANIZATION_ID
+    ? { organizationId: process.env.VOICE_AGENT_ORGANIZATION_ID, channelConfigId: null } : null,
+}))
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     callLog: { findFirst: mocks.findFirst, updateMany: mocks.updateMany },
     channelMessage: { findMany: mocks.findMessages },
+    channelConfig: { findMany: mocks.findConfigs },
+    lead: { findFirst: mocks.findLead },
+    callEvent: { createMany: mocks.createEvents },
   },
 }))
 vi.mock("@/lib/rls-context", () => ({
@@ -26,6 +38,7 @@ vi.mock("@/lib/rls-context", () => ({
 }))
 
 import { GET, trimTranscriptTail } from "@/app/api/internal/voice-agent/call-continuation/route"
+import { DEFAULT_INBOUND_GREETING, INBOUND_CALL_CONTEXT } from "@/lib/voip/inbound-answer"
 
 const originalToken = process.env.FANUM_VOICE_RUNTIME_TOKEN
 const originalOrg = process.env.VOICE_AGENT_ORGANIZATION_ID
@@ -37,9 +50,9 @@ const TRANSCRIPT = [
   "AI operator: Üç yüz manatdır.",
 ].join("\n")
 
-function request(id: string = callId, token = "runtime-token") {
+function request(id: string = callId, token = "runtime-token", query = "") {
   return new NextRequest(
-    `http://localhost/api/internal/voice-agent/call-continuation?callId=${id}`,
+    `http://localhost/api/internal/voice-agent/call-continuation?callId=${id}${query}`,
     { headers: { authorization: `Bearer ${token}` } },
   )
 }
@@ -72,6 +85,8 @@ beforeEach(() => {
   mocks.findMessages.mockReset()
   mocks.findMessages.mockResolvedValue([])
   mocks.updateMany.mockResolvedValue({ count: 1 })
+  mocks.findConfigs.mockReset()
+  mocks.findConfigs.mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -263,6 +278,213 @@ describe("lead correspondence", () => {
     const where = mocks.findMessages.mock.calls[0][0].where
     expect(where.createdAt.gte).toBeInstanceOf(Date)
     expect(mocks.findMessages.mock.calls[0][0].take).toBe(10)
+  })
+})
+
+describe("an inbound call the AI answered", () => {
+  function inboundRow(overrides: Record<string, unknown> = {}) {
+    return callbackRow({ continuesCallId: null, direction: "inbound", ...overrides })
+  }
+
+  it("gives the agent the organisation's inbound greeting and says the customer called", async () => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow())
+    mocks.findConfigs.mockResolvedValue([{
+      settings: {
+        provider: "asterisk",
+        voiceAgentEnabled: true,
+        voiceAgentInboundGreeting: "  Salam, Gobustone! Sizi dinləyirəm.  ",
+      },
+    }])
+
+    const response = await GET(request())
+
+    await expect(response.json()).resolves.toEqual({
+      continuation: null,
+      conversation: null,
+      opening: "Salam, Gobustone! Sizi dinləyirəm.",
+      context: INBOUND_CALL_CONTEXT,
+    })
+  })
+
+  it("falls back to the neutral inbound greeting when the organisation wrote none", async () => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow())
+    mocks.findConfigs.mockResolvedValue([{ settings: { provider: "asterisk", voiceAgentEnabled: true } }])
+
+    const body = await (await GET(request())).json()
+
+    expect(body.opening).toBe(DEFAULT_INBOUND_GREETING)
+    expect(body.opening).not.toMatch(/zəng etmişəm/u)
+  })
+
+  it.each(["ai", "human_then_ai"])("passes separate rules when AI answers in %s mode", async (mode) => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow())
+    mocks.findConfigs.mockResolvedValue([{
+      settings: {
+        provider: "asterisk", voiceAgentEnabled: true, inboundAnswerMode: mode,
+        voiceAgentInboundGreeting: "Salam! Mən virtual köməkçiyəm.",
+        voiceAgentInboundRules: "  Məsləhət təklif et və bir sual ver.  ",
+        voiceAgentPrompt: "Unrelated outbound script",
+      },
+    }])
+    const body = await (await GET(request())).json()
+    expect(body.opening).toBe("Salam! Mən virtual köməkçiyəm.")
+    expect(body.context).toContain(INBOUND_CALL_CONTEXT)
+    expect(body.context).toContain("Məsləhət təklif et və bir sual ver.")
+    expect(body.context).not.toContain("Unrelated outbound script")
+    expect(mocks.findConfigs.mock.calls[0][0].where.organizationId).toBe("org-test")
+  })
+
+  it("keeps an inbound-origin callback on its continuation without new greeting/rules", async () => {
+    mocks.findFirst.mockResolvedValueOnce(callbackRow({ direction: "inbound" })).mockResolvedValueOnce(originalRow())
+    const body = await (await GET(request())).json()
+    expect(body).toEqual({ continuation: TRANSCRIPT, conversation: null })
+    expect(mocks.findConfigs).not.toHaveBeenCalled()
+  })
+
+  it("fits multibyte JSON by removing oldest correspondence, preserving exact greeting and rules", async () => {
+    mocks.findFirst.mockResolvedValueOnce(inboundRow({ leadId: "lead-1" }))
+    const opening = "漢".repeat(500)
+    const rules = "語".repeat(1_000)
+    mocks.findConfigs.mockResolvedValue([{
+      settings: { provider: "asterisk", voiceAgentEnabled: true, voiceAgentInboundGreeting: opening, voiceAgentInboundRules: rules },
+    }])
+    mocks.findMessages.mockResolvedValue(Array.from({ length: 6 }, (_, index) => ({
+      direction: "inbound", body: `${index}${"字".repeat(298)}`,
+    })))
+    const text = await (await GET(request())).text()
+    const body = JSON.parse(text)
+    expect(Buffer.byteLength(text, "utf8")).toBeLessThanOrEqual(8_000)
+    expect(body.opening).toBe(opening)
+    expect(body.context).toContain(rules)
+    expect(body.conversation).toContain(`0${"字".repeat(298)}`)
+    expect(body.conversation).not.toContain(`4${"字".repeat(298)}`)
+  })
+
+  it("adds nothing to an outbound AI call or to a human inbound call", async () => {
+    for (const row of [
+      callbackRow({ continuesCallId: null, direction: "outbound" }),
+      inboundRow({ callMode: "human" }),
+    ]) {
+      mocks.findFirst.mockResolvedValueOnce(row)
+      const body = await (await GET(request())).json()
+      expect(body).toEqual({ continuation: null, conversation: null })
+    }
+    expect(mocks.findConfigs).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * A call the demo placed (2026-10-18). The station speaks `opening` word for
+ * word and appends `context` to that one call; without them the prospect was
+ * greeted with the line's own greeting — another business's — and asked about
+ * building materials and square metres.
+ */
+describe("a call the demo placed", () => {
+  const demoRow = (overrides: Record<string, unknown> = {}) => callbackRow({
+    continuesCallId: null,
+    direction: "outbound",
+    leadId: "lead-demo",
+    consentAudit: { via: "demo_center" },
+    ...overrides,
+  })
+
+  beforeEach(() => {
+    mocks.findLead.mockReset()
+    mocks.findLead.mockResolvedValue({ contactName: "Nigar Əliyeva" })
+    mocks.createEvents.mockReset()
+    mocks.createEvents.mockResolvedValue({ count: 1 })
+  })
+
+  it("opens as LeadDrive with the approved first sentence, frames the call, caps it at two minutes and names it a demo", async () => {
+    const { buildDemoCallContext, buildDemoCallPrompt, demoCallOpening, DEMO_CALL_CLOSING_KEY, DEMO_CALL_CLOSING_KEYS, DEMO_CALL_MAX_SECONDS } = await import("@/lib/demo-center/call-prompt")
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const body = await (await GET(request())).json()
+    expect(body).toEqual({
+      continuation: null,
+      conversation: null,
+      opening: demoCallOpening("Nigar"),
+      context: buildDemoCallContext(),
+      maxSeconds: DEMO_CALL_MAX_SECONDS,
+      // The station's core drops the line's own sales rules only on this flag,
+      // and speaks the demo's script instead of the line's prompt.
+      variant: "demo",
+      prompt: buildDemoCallPrompt({ firstName: "Nigar" }),
+      closingKey: DEMO_CALL_CLOSING_KEY,
+      closingKeys: [...DEMO_CALL_CLOSING_KEYS],
+    })
+    expect(body.prompt).not.toMatch(/Gobustone/i)
+    expect(body.opening).toMatch(/^Salam, Nigar! Mən LeadDrive-ın AI köməkçisiyəm/)
+    expect(body.opening).not.toMatch(/Gobustone/i)
+    expect(DEMO_CALL_MAX_SECONDS).toBe(120)
+  })
+
+  it("fits what the station reads: 500 characters of opening, 2,000 of context, 4,000 of script, 8,192 bytes in all", async () => {
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const response = await GET(request())
+    const text = await response.text()
+    const body = JSON.parse(text)
+    expect(body.opening.length).toBeLessThanOrEqual(500)
+    expect(body.context.length).toBeLessThanOrEqual(2_000)
+    expect(body.prompt.length).toBeLessThanOrEqual(4_000)
+    expect(Buffer.byteLength(text, "utf8")).toBeLessThan(8_192)
+    // It tells the agent the line's own rules are not for this call.
+    expect(body.context).toContain("kvadratmetr")
+    expect(body.context).toContain("aid deyil")
+  })
+
+  it("greets without a name it cannot read, and never hands over the prospect's phone, email or correspondence", async () => {
+    mocks.findLead.mockResolvedValueOnce({ contactName: "123 <x>" })
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const body = await (await GET(request())).json()
+    expect(body.opening).toMatch(/^Salam! Mən LeadDrive-ın/)
+    expect(body.conversation).toBeNull()
+    expect(mocks.findMessages).not.toHaveBeenCalled()
+  })
+
+  it("writes only the connecting signal, whichever core asks", async () => {
+    const { DEMO_CALL_CONNECTING_EVENT } = await import("@/lib/demo-center/call-prompt-match")
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    await GET(request(callId, "runtime-token", "&caps=demo-v1"))
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    await GET(request())
+    const written = mocks.createEvents.mock.calls.map((call) => call[0].data[0].eventType)
+    expect(written).toEqual([DEMO_CALL_CONNECTING_EVENT, DEMO_CALL_CONNECTING_EVENT])
+  })
+
+  it("names the closing the station listens for to end the call, in every language the script allows", async () => {
+    const { DEMO_CALL_CLOSING, DEMO_CALL_CLOSING_EN, DEMO_CALL_CLOSING_KEY, DEMO_CALL_CLOSING_KEYS, DEMO_CALL_CLOSING_RU } = await import("@/lib/demo-center/call-prompt")
+    mocks.findFirst.mockResolvedValueOnce(demoRow())
+    const body = await (await GET(request())).json()
+    expect(body.closingKey).toBe(DEMO_CALL_CLOSING_KEY)
+    expect(body.closingKeys).toEqual([...DEMO_CALL_CLOSING_KEYS])
+    // The script the agent speaks carries each closing word for word, so the station can hear it.
+    for (const [closing, key] of [[DEMO_CALL_CLOSING, DEMO_CALL_CLOSING_KEYS[0]], [DEMO_CALL_CLOSING_RU, DEMO_CALL_CLOSING_KEYS[1]], [DEMO_CALL_CLOSING_EN, DEMO_CALL_CLOSING_KEYS[2]]]) {
+      expect(closing.toLowerCase()).toContain(key)
+      expect(body.prompt).toContain(closing)
+    }
+  })
+
+  it("ends every way the script ends a call with words the station listens for", async () => {
+    // The model cannot hang up: the station ends the call once it has heard a
+    // closing key. An ending without one — a refusal, «do not call me again»,
+    // the time running out — left the line silent until the cap.
+    const { buildDemoCallContext, buildDemoCallPrompt, DEMO_CALL_CLOSING_KEYS } = await import("@/lib/demo-center/call-prompt")
+    const sentences = [buildDemoCallPrompt({ firstName: "Nigar" }), buildDemoCallContext()]
+      .flatMap((text) => text.split("\n"))
+      .filter((line) => /zəngi bitir|sağollaş|bitir\b/i.test(line))
+    expect(sentences.length).toBeGreaterThanOrEqual(4)
+    for (const line of sentences) {
+      expect(line, line).not.toMatch(/sağollaş/i)
+      const quoted = [...line.matchAll(/"([^"]+)"/g)].map((match) => match[1].toLowerCase())
+      expect(quoted.some((text) => DEMO_CALL_CLOSING_KEYS.some((key) => text.includes(key))), line).toBe(true)
+    }
+  })
+
+  it("leaves every other call exactly as it was", async () => {
+    mocks.findFirst.mockResolvedValueOnce(demoRow({ consentAudit: { via: "manual" } }))
+    expect(await (await GET(request())).json()).toEqual({ continuation: null, conversation: null })
+    mocks.findFirst.mockResolvedValueOnce(demoRow({ callMode: "human" }))
+    expect(await (await GET(request())).json()).toEqual({ continuation: null, conversation: null })
   })
 })
 

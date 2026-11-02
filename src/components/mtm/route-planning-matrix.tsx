@@ -15,6 +15,7 @@ import {
   Search,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { formatDate } from "@/lib/format-date"
@@ -31,6 +32,8 @@ import {
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
 import type { MtmRoutePlannerContextPatch } from "@/lib/mtm/route-planner-context"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type Direction = MtmRouteTargetDirection
 type Period = "5_DAYS" | "7_DAYS" | "MONTH"
@@ -343,10 +346,10 @@ export function MtmRoutePlanningMatrix({
     <section
       data-testid="mtm-route-planning-matrix"
       data-loaded-agent-id={data?.agent.id ?? ""}
-      className="border-y border-zinc-200 bg-card dark:border-zinc-700"
+      className="border-y border-border bg-card"
       aria-busy={loading}
     >
-      <header className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+      <header className="border-b border-border px-4 py-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -370,16 +373,20 @@ export function MtmRoutePlanningMatrix({
             <div className="space-y-1 text-xs">
               <span className="text-muted-foreground">{t("weekPlannerWeekStarts")}</span>
               <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-2">
-                <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={() => setWeekStart(addDays(weekStart, -7))} disabled={loading} aria-label={t("weekPlannerPreviousWeek")}><ChevronLeft className="h-4 w-4" /></Button>
+                <Hint text={t("hint.previousWeek")}>
+                  <Button type="button" variant="outline" size="sm" className="min-h-11 gap-1.5" onClick={() => setWeekStart(addDays(weekStart, -7))} disabled={loading} aria-label={t("weekPlannerPreviousWeek")}><ChevronLeft className="h-4 w-4" /><MtmWord word="previous" /></Button>
+                </Hint>
                 <Input type="date" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} disabled={loading} aria-label={t("weekPlannerWeekStarts")} />
-                <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={() => setWeekStart(addDays(weekStart, 7))} disabled={loading} aria-label={t("weekPlannerNextWeek")}><ChevronRight className="h-4 w-4" /></Button>
+                <Hint text={t("hint.nextWeek")}>
+                  <Button type="button" variant="outline" size="sm" className="min-h-11 gap-1.5" onClick={() => setWeekStart(addDays(weekStart, 7))} disabled={loading} aria-label={t("weekPlannerNextWeek")}><MtmWord word="next" /><ChevronRight className="h-4 w-4" /></Button>
+                </Hint>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {error ? <div role="alert" className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div> : null}
+      {error ? <div role="alert" className="flex items-start gap-2 border-b border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 px-4 py-3 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div> : null}
       {!agentId ? (
         <div className="grid min-h-52 place-items-center px-4 py-8 text-center">
           <div><MapPin className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 font-semibold">{t("weekPlannerChooseAgent")}</p></div>
@@ -387,7 +394,7 @@ export function MtmRoutePlanningMatrix({
       ) : !data ? (
         <div className="grid min-h-52 place-items-center px-4 py-8"><Loader2 className="h-7 w-7 animate-spin text-primary motion-reduce:animate-none" aria-label={t("loading")} /></div>
       ) : (
-        <div data-testid="mtm-week-day-list" className="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <div data-testid="mtm-week-day-list" className="divide-y divide-border">
           {data.planningDays.map((day, index) => {
             const snapshot = daySnapshots[day.date]
             if (!snapshot) return null
@@ -403,7 +410,7 @@ export function MtmRoutePlanningMatrix({
                   onClick={() => setActiveDay(expanded ? "" : day.date)}
                   aria-expanded={expanded}
                 >
-                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold ${expanded ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>{index + 1}</span>
+                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold ${expanded ? "text-primary ring-2 ring-inset ring-primary" : "bg-muted text-foreground"}`}>{index + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold capitalize">{dayLabel(day.date, locale)}</span>
                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">
@@ -412,14 +419,19 @@ export function MtmRoutePlanningMatrix({
                         : t("weekPlannerDayEmpty")}
                     </span>
                   </span>
-                  {snapshot.locked || snapshot.multipleDrafts ? <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-label={t("weekPlannerLocked")} /> : null}
+                  {snapshot.locked || snapshot.multipleDrafts ? (
+                    // Why the day is shut: the three causes buildDaySnapshot folds into one lock.
+                    <Hint text={t(snapshot.multipleDrafts ? "hint.matrixLockedDrafts" : !day.routePlanningAllowed ? "hint.matrixLockedCalendar" : "hint.matrixLockedPublished")}>
+                      <span className="inline-flex shrink-0"><Lock className="h-4 w-4 text-muted-foreground" aria-label={t("weekPlannerLocked")} /></span>
+                    </Hint>
+                  ) : null}
                   <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
                 </button>
 
                 {expanded ? (
-                  <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
+                  <div className="border-t border-border px-4 py-3">
                     {canOpenDayPlanner ? (
-                      <div className="mb-3 flex flex-col gap-2 border-b border-zinc-200 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700">
+                      <div className="mb-3 flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-muted-foreground">{t("weekPlannerOpenDayHint")}</p>
                         <Button
                           data-testid="mtm-week-planner-open-day"
@@ -434,7 +446,7 @@ export function MtmRoutePlanningMatrix({
                       </div>
                     ) : null}
                     {snapshot.locked || snapshot.multipleDrafts ? (
-                      <div className="flex items-start gap-3 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                      <div className="flex items-start gap-3 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm">
                         <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                         <p>{snapshot.multipleDrafts ? t("weekPlannerMultipleDrafts", { date: compactDayLabel(day.date, locale) }) : t("weekPlannerPublishedLocked")}</p>
                       </div>
@@ -448,7 +460,7 @@ export function MtmRoutePlanningMatrix({
                             </div>
                             <span className="text-sm font-medium tabular-nums">{snapshot.stops.length}</span>
                           </div>
-                          <div className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                          <div className="mt-3 divide-y divide-border border-y border-border">
                             {snapshot.stops.map((stop, stopIndex) => (
                               <div key={stop.key} className="grid min-h-16 grid-cols-[32px_minmax(0,1fr)] items-center gap-3 py-2 sm:grid-cols-[32px_minmax(0,1fr)_auto]">
                                 <span className="grid h-8 w-8 place-items-center rounded-full bg-muted text-xs font-semibold">{stopIndex + 1}</span>
@@ -469,25 +481,26 @@ export function MtmRoutePlanningMatrix({
                           <h3 id={`picker-${day.date}`} className="font-semibold">{t("weekPlannerAddTitle")}</h3>
                           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={t("weekPlannerTargetType")}>
                             {enabledTargetTypes.map((target) => (
-                              <Button
-                                key={target.id}
-                                type="button"
-                                variant={selectedTargetId === target.id ? "default" : "outline"}
-                                size="sm"
-                                className="min-h-11"
-                                disabled={loading}
-                                onClick={() => {
-                                  setDayTargetTypes((current) => ({ ...current, [day.date]: target.id }))
-                                  setSearchByDay((current) => ({ ...current, [day.date]: "" }))
-                                }}
-                              >{routeTargetLabel(target, locale)}</Button>
+                              <Hint key={target.id} text={t("hint.matrixTargetType")}>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className={`min-h-11 ${mtmChipClass(selectedTargetId === target.id)}`}
+                                  disabled={loading}
+                                  onClick={() => {
+                                    setDayTargetTypes((current) => ({ ...current, [day.date]: target.id }))
+                                    setSearchByDay((current) => ({ ...current, [day.date]: "" }))
+                                  }}
+                                >{routeTargetLabel(target, locale)}</Button>
+                              </Hint>
                             ))}
                           </div>
                           <div className="relative mt-3">
                             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input value={searchByDay[day.date] ?? ""} onChange={(event) => setSearchByDay((current) => ({ ...current, [day.date]: event.target.value }))} placeholder={t("weekPlannerSearchPlaceholder")} className="pl-9" disabled={loading} />
                           </div>
-                          <div className="mt-3 max-h-80 divide-y divide-zinc-200 overflow-y-auto border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                          <div className="mt-3 max-h-80 divide-y divide-border overflow-y-auto border-y border-border">
                             {loading ? <div className="grid min-h-24 place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" /></div> : null}
                             {!loading && data.candidates.slice(0, 60).map((candidate) => {
                               return (
@@ -500,21 +513,24 @@ export function MtmRoutePlanningMatrix({
                                   onClick={() => openPlannerForDay(day, snapshot, selectedTarget, candidate.name)}
                                   aria-label={`${t("openDayPlanner")}: ${candidate.name}`}
                                 >
-                                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><CalendarDays className="h-4 w-4" /></span>
+                                  <span className="grid h-9 w-9 shrink-0 place-items-center text-muted-foreground"><CalendarDays className="h-4 w-4" /></span>
                                   <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm font-semibold">{candidate.name}</span>
                                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">{[candidate.specialtyName, candidate.customer.name, candidate.customer.address].filter(Boolean).join(" · ")}</span>
                                     {candidate.coverage ? (
-                                      <span
-                                        data-testid="mtm-matrix-coverage-preview"
-                                        className="mt-1 block truncate text-[11px] font-medium text-amber-800 dark:text-amber-300"
-                                        title={candidate.coverage.explanation.summary[coverageLocale]}
-                                      >
-                                        {t("candidateCoverageGap", { value: candidate.coverage.uncoveredMoi })}
-                                      </span>
+                                      <Hint text={candidate.coverage.explanation.summary[coverageLocale]} align="start">
+                                        <span
+                                          data-testid="mtm-matrix-coverage-preview"
+                                          className="mt-1 block truncate text-xs font-medium text-amber-800 dark:text-amber-300"
+                                        >
+                                          {t("candidateCoverageGap", { value: candidate.coverage.uncoveredMoi })}
+                                        </span>
+                                      </Hint>
                                     ) : null}
                                   </span>
-                                  <span className="hidden shrink-0 text-xs font-medium text-primary sm:inline">{t("openDayPlanner")}</span>
+                                  <Hint text={t("hint.matrixCandidateOpen")}>
+                                    <span className="hidden shrink-0 text-xs font-medium text-primary sm:inline">{t("openDayPlanner")}</span>
+                                  </Hint>
                                 </button>
                               )
                             })}

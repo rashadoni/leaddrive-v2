@@ -24,6 +24,7 @@ import {
   type DemoJourneySnapshot,
   type DemoProspectIdentity,
 } from "@/lib/demo-center/journey"
+import { DEMO_JOURNEY_MODULES, DEMO_NEXT_MODULE_FINISH_PATH, DEMO_NEXT_MODULE_STEP_ID, suggestedDemoModule } from "@/lib/demo-center/journey"
 
 const manifest = PROSPECT_TO_CLOSED_WON
 const NOW = new Date("2026-09-22T09:00:00.000Z")
@@ -34,6 +35,8 @@ const identity: DemoProspectIdentity = {
   emailMasked: "n***@xezerlog.az",
   phoneMasked: "+994 ** *** 45 67",
   sourceChannel: "instagram",
+  // Every module asked for: «what next» suggests them in the story's own order.
+  interests: DEMO_JOURNEY_MODULES.map((module) => module.id),
 }
 
 const start = (m: DemoJourneyManifest = manifest) => createJourneySnapshot(m, identity, NOW)
@@ -41,6 +44,12 @@ const jump = (snapshot: DemoJourneySnapshot, sectionId: string, m: DemoJourneyMa
   reduceJourney(snapshot, { type: "open-section", sectionId }, m, NOW)
 
 function actionFor(snapshot: DemoJourneySnapshot, m: DemoJourneyManifest = manifest): DemoJourneyAction {
+  // «What next» (modules.ts): go on to the module the guide suggests, and
+  // finish once every module was walked.
+  if (snapshot.stepId === DEMO_NEXT_MODULE_STEP_ID) {
+    const next = suggestedDemoModule(m, snapshot)
+    return next ? { type: "open-section", sectionId: next.firstSectionId } : { type: "ui", path: DEMO_NEXT_MODULE_FINISH_PATH, value: true }
+  }
   const { step } = findStep(m, snapshot.stepId)!
   switch (step.completion.kind) {
     case "viewed":
@@ -102,7 +111,7 @@ describe("opening a section ahead of the story", () => {
   })
 
   it("lets the story carry on from there to the end with the ordinary rules", () => {
-    for (const sectionId of ["conversation", "lead-created", "task", "deal", "quote", "closed-won"]) {
+    for (const sectionId of ["conversation", "ai-agent-setup", "lead-created", "task", "deal", "quote", "closed-won"]) {
       const { snapshot } = jump(start(), sectionId)
       expect(driveToEnd(snapshot).state, sectionId).toBe("COMPLETED")
     }
@@ -277,25 +286,148 @@ describe("what the admin hears about a jump", () => {
 
 describe("what is reported when the guide skips modules already walked", () => {
   it("files the prospect's own step, never the states that were staged past", () => {
-    // Deals walked after a jump, then the campaigns opened from behind: their
-    // last step lands the story on the next module not seen yet.
-    let current = jump(start(), "deal").snapshot
-    const drive = (until: (snapshot: DemoJourneySnapshot) => boolean) => {
-      for (let guard = 0; guard < 200 && !until(current); guard += 1) current = reduceJourney(current, actionFor(current), manifest, NOW).snapshot
-    }
-    drive((snapshot) => snapshot.sectionId === "summary")
-    current = jump(current, "conversation").snapshot
-    drive((snapshot) => snapshot.sectionId === "ai-reply")
-    // Walk the two inbox chapters and the lead chapters up to the last step before the walked deals.
-    drive((snapshot) => snapshot.stepId === "task-reports")
+    // Only the inbox walked, then «Demonu bitir» on «what next»: the last
+    // screen stages the lead story past the call, the deal and the win.
+    let current = jump(start(), "conversation").snapshot
+    for (let guard = 0; guard < 200 && current.sectionId !== "next-module"; guard += 1) current = reduceJourney(current, actionFor(current), manifest, NOW).snapshot
+    expect(current.state).toBe("LEAD_QUALIFIED")
     const before = current
-    const result = reduceJourney(before, actionFor(before), manifest, NOW)
-    expect(result.snapshot.sectionId, "past the walked deals, quote and win").toBe("summary")
+    const result = reduceJourney(before, { type: "ui", path: DEMO_NEXT_MODULE_FINISH_PATH, value: true }, manifest, NOW)
+    expect(result.snapshot.sectionId).toBe("summary")
     expect(result.snapshot.state).not.toBe(before.state)
 
     const reports = journeyReportsBetween(before, result.snapshot, { moved: result.transitioned ?? null })
     expect(reports.map((report) => report.name)).toEqual(["journey.step_completed", "journey.section_opened"])
     // …and each of them is one the server accepts.
     for (const report of reports) expect(acceptJourneyReport(manifest, report).ok, report.name).toBe(true)
+  })
+})
+
+/**
+ * Route & Field is a module of its own (owner, 2026-10-17): a field team's
+ * day, not a step of the prospect's lead. Opening it must not stage the lead
+ * story up to it, nor rewind a story already walked; leaving it for a story
+ * module or the last screen works as any other move.
+ */
+describe("a module of its own: Route & Field", () => {
+  const walkSection = (snapshot: DemoJourneySnapshot, sectionId: string): DemoJourneySnapshot => {
+    let current = snapshot
+    for (let guard = 0; guard < 20 && current.sectionId === sectionId; guard += 1) {
+      const result = reduceJourney(current, actionFor(current), manifest, NOW)
+      if (!result.ok) throw new Error(`${current.stepId}: ${result.error}`)
+      current = result.snapshot
+    }
+    return current
+  }
+
+  it("opens at the very start without touching the lead story", () => {
+    const before = start()
+    const result = jump(before, "mtm-today")
+    expect(result.ok).toBe(true)
+    expect(result.transitioned).toBeUndefined()
+    expect(result.snapshot).toMatchObject({ sectionId: "mtm-today", stepId: "mtm-today-figures", state: "STARTED" })
+    expect(result.snapshot.records).toEqual(before.records)
+  })
+
+  it("opens after the win without rewinding it", () => {
+    const won = driveToEnd(start())
+    // A finished session takes no more moves; one a step short of the end is where it matters.
+    const beforeEnd = (() => {
+      let current = start()
+      for (let guard = 0; guard < 200 && current.sectionId !== "mtm-today"; guard += 1) current = reduceJourney(current, actionFor(current), manifest, NOW).snapshot
+      return current
+    })()
+    expect(won.state).toBe("COMPLETED")
+    expect(beforeEnd.state).toBe("CLOSED_WON")
+    const reopened = jump(walkSection(beforeEnd, "mtm-today"), "mtm-today")
+    expect(reopened.snapshot.state).toBe("CLOSED_WON")
+    expect(reopened.snapshot.records.deal?.wonAt).not.toBeNull()
+  })
+
+  it("walks through its seven screens, on to Personnel and Contracts, and hands over to the last screen with the story staged", () => {
+    // Modules not yet walked are suggested in the story's order: after
+    // Route & Field the guide offers the lead story first, so Personnel and
+    // Contracts are chosen here as a prospect would, from «what next».
+    const onlyThese = { ...start(), identity: { ...identity, interests: ["route-field", "personnel", "contracts"] } }
+    let current = jump(onlyThese, "mtm-today").snapshot
+    for (const sectionId of ["mtm-today", "mtm-place", "mtm-plan", "mtm-live", "mtm-visit", "mtm-history", "mtm-results", "prs-today", "prs-explain", "prs-timesheet", "prs-risk", "prs-month", "ctr-list", "ctr-approve", "ctr-sign", "ctr-control"]) {
+      // Each module ends on «what next»; the next one is the prospect's choice.
+      if (current.sectionId === "next-module") current = reduceJourney(current, actionFor(current), manifest, NOW).snapshot
+      expect(current.sectionId).toBe(sectionId)
+      // Neither module moves the lead story.
+      expect(current.state).toBe("STARTED")
+      current = walkSection(current, sectionId)
+    }
+    expect(current.sectionId).toBe("next-module")
+    current = reduceJourney(current, { type: "ui", path: DEMO_NEXT_MODULE_FINISH_PATH, value: true }, manifest, NOW).snapshot
+    expect(current.sectionId).toBe("summary")
+    // The last screen expects a closed deal; finishing staged the story to it.
+    expect(current.state).toBe("CLOSED_WON")
+    expect(sectionStatus(current, manifest, "mtm-results")).toBe("done")
+    expect(sectionStatus(current, manifest, "prs-month")).toBe("done")
+    expect(sectionStatus(current, manifest, "ctr-control")).toBe("done")
+    // The lead story's own steps were not done in the prospect's name.
+    // («Demonu bitir» is the prospect's own step.)
+    expect(current.completedSteps.filter((id) => !id.startsWith("mtm-") && !id.startsWith("prs-") && !id.startsWith("ctr-"))).toEqual(["next-module-pick"])
+  })
+
+  it("opens Service Desk from the start, walks its five screens and goes on to Call Center", () => {
+    const before = start()
+    const opened = jump(before, "sd-queue")
+    expect(opened.ok).toBe(true)
+    expect(opened.snapshot).toMatchObject({ sectionId: "sd-queue", stepId: "sd-queue-figures", state: "STARTED" })
+    expect(opened.snapshot.records).toEqual(before.records)
+    let current = opened.snapshot
+    for (const sectionId of ["sd-queue", "sd-ticket", "sd-resolve", "sd-rules", "sd-results"]) {
+      expect(current.sectionId).toBe(sectionId)
+      expect(current.state).toBe("STARTED")
+      current = walkSection(current, sectionId)
+    }
+    // The module ends on «what next», not inside Call Center.
+    expect(current.sectionId).toBe("next-module")
+    expect(current.ui["next.from"]).toBe("service-desk")
+    expect(sectionStatus(current, manifest, "sd-results")).toBe("done")
+    expect(current.completedSteps.filter((id) => !id.startsWith("sd-"))).toEqual([])
+  })
+
+  it("opens Call Center from the start, walks its three screens and goes on to Route & Field", () => {
+    const before = start()
+    const opened = jump(before, "cc-log")
+    expect(opened.ok).toBe(true)
+    expect(opened.snapshot).toMatchObject({ sectionId: "cc-log", stepId: "cc-log-figures", state: "STARTED" })
+    expect(opened.snapshot.records).toEqual(before.records)
+    let current = opened.snapshot
+    for (const sectionId of ["cc-log", "cc-call", "cc-promise"]) {
+      expect(current.sectionId).toBe(sectionId)
+      expect(current.state).toBe("STARTED")
+      current = walkSection(current, sectionId)
+    }
+    expect(current.sectionId).toBe("next-module")
+    expect(sectionStatus(current, manifest, "cc-promise")).toBe("done")
+    expect(current.completedSteps.filter((id) => !id.startsWith("cc-"))).toEqual([])
+  })
+
+  it("opens Contracts from the start and walks its four screens to the last one", () => {
+    const before = start()
+    const opened = jump(before, "ctr-list")
+    expect(opened.ok).toBe(true)
+    expect(opened.snapshot).toMatchObject({ sectionId: "ctr-list", stepId: "ctr-list-figures", state: "STARTED" })
+    expect(opened.snapshot.records).toEqual(before.records)
+    let current = opened.snapshot
+    for (const sectionId of ["ctr-list", "ctr-approve", "ctr-sign", "ctr-control"]) {
+      expect(current.sectionId).toBe(sectionId)
+      expect(current.state).toBe("STARTED")
+      current = walkSection(current, sectionId)
+    }
+    expect(current.sectionId).toBe("next-module")
+    expect(sectionStatus(current, manifest, "ctr-control")).toBe("done")
+    expect(current.completedSteps.filter((id) => !id.startsWith("ctr-"))).toEqual([])
+  })
+
+  it("lets the prospect leave it for a story module, which starts over as usual", () => {
+    const inMtm = walkSection(jump(start(), "mtm-today").snapshot, "mtm-today")
+    const result = jump(inMtm, "conversation")
+    expect(result.ok).toBe(true)
+    expect(result.snapshot).toMatchObject({ sectionId: "conversation", stepId: "conversation-channels", state: "SOURCE_SEEN" })
   })
 })

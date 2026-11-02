@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useMemo, useState, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, ChevronDown, Filter, Search } from "lucide-react"
@@ -76,7 +77,7 @@ export function RosterColumnValueList({
   return (
     <>
       {options.length >= SEARCH_FROM_OPTIONS ? (
-        <label className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-3 dark:border-zinc-700">
+        <label className="flex shrink-0 items-center gap-2 border-b border-border px-3">
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
             type="search"
@@ -97,7 +98,7 @@ export function RosterColumnValueList({
           const ticked = rosterFilterTicked(filter, option.value)
           return (
             <li key={option.value}>
-              <label className={cn("flex min-h-9 cursor-pointer items-center gap-2 px-3 text-sm hover:bg-muted/60 [@media(pointer:coarse)]:min-h-11", ticked && "bg-primary/5 font-medium")}>
+              <label className={cn("flex min-h-9 cursor-pointer items-center gap-2 px-3 text-sm hover:bg-muted/60 [@media(pointer:coarse)]:min-h-11", ticked && "font-semibold")}>
                 <input
                   type="checkbox"
                   checked={ticked}
@@ -127,7 +128,7 @@ export function RosterColumnMenuPanel({
   const tMap = useTranslations("mtmMap")
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid={`roster-column-menu-${column}`}>
-      <div className="grid shrink-0 grid-cols-2 gap-1 border-b border-zinc-200 p-2 dark:border-zinc-700">
+      <div className="grid shrink-0 grid-cols-2 gap-1 border-b border-border p-2">
         {(["asc", "desc"] as const).map((direction) => {
           const Icon = direction === "asc" ? ArrowUp : ArrowDown
           const current = sortDirection === direction
@@ -140,7 +141,7 @@ export function RosterColumnMenuPanel({
               onClick={() => onSort(direction)}
               className={cn(
                 "inline-flex min-h-9 items-center gap-1.5 rounded-md border px-2 text-left text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                current ? "border-primary bg-primary/10" : "border-zinc-200 hover:bg-muted dark:border-zinc-700",
+                current ? "crm-choice-selected" : "border-border hover:bg-muted",
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -149,15 +150,15 @@ export function RosterColumnMenuPanel({
           )
         })}
       </div>
-      <p className="shrink-0 px-3 pt-2 text-[11px] text-muted-foreground">{tMap("roster.filter.hint")}</p>
+      <p className="shrink-0 px-3 pt-2 text-xs text-muted-foreground">{tMap("roster.filter.hint")}</p>
       <RosterColumnValueList column={column} options={options} filter={filter} onFilterChange={onFilterChange} showCounts={showCounts} />
       {filter ? (
-        <div className="shrink-0 border-t border-zinc-200 p-2 dark:border-zinc-700">
+        <div className="shrink-0 border-t border-border p-2">
           <button
             type="button"
             onClick={() => onFilterChange(undefined)}
             data-testid={`roster-filter-reset-${column}`}
-            className="inline-flex min-h-9 w-full items-center justify-center rounded-md border border-zinc-200 text-xs font-semibold hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11"
+            className="inline-flex min-h-9 w-full items-center justify-center rounded-md border border-border text-xs font-semibold hover:bg-muted [@media(pointer:coarse)]:min-h-11"
           >
             {tMap("roster.filter.reset")}
           </button>
@@ -165,6 +166,22 @@ export function RosterColumnMenuPanel({
       ) : null}
     </div>
   )
+}
+
+/** What each column holds, said under the cursor on its heading — once for the column, not on every row. */
+const COLUMN_HINT: Record<RosterColumnId, string> = {
+  name: "hint.colName",
+  status: "hint.colStatus",
+  signal: "hint.colSignal",
+  distance: "hint.distance",
+  team: "hint.colTeam",
+  manager: "hint.colManager",
+  tags: "hint.colTags",
+  app: "hint.colApp",
+  workday: "hint.workday",
+  route: "hint.routeProgress",
+  speed: "hint.speed",
+  battery: "hint.batteryList",
 }
 
 /**
@@ -184,25 +201,27 @@ export function LiveMapRosterColumnMenu(props: RosterColumnMenuProps & {
 
   return (
     <Popover onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-testid={`roster-column-${column}`}
-          data-filtered={filter ? "true" : "false"}
-          aria-label={tMap("roster.filter.open", { column: label })}
-          className={cn(
-            "flex h-9 w-full min-w-0 items-center gap-1 rounded px-1 text-left text-[11px] font-semibold uppercase tracking-wide transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:h-11",
-            filter ? ROSTER_ACTION_TEXT : "text-muted-foreground",
-            className,
-          )}
-        >
-          <span className="min-w-0 truncate">{label}</span>
-          {sortDirection ? <SortIcon className="h-3 w-3 shrink-0" aria-hidden="true" /> : null}
-          {filter
-            ? <Filter className="h-3 w-3 shrink-0 fill-current" aria-hidden="true" />
-            : <ChevronDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />}
-        </button>
-      </PopoverTrigger>
+      <Hint text={`${tMap(COLUMN_HINT[column])} ${tMap("hint.columnHeader")}`}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            data-testid={`roster-column-${column}`}
+            data-filtered={filter ? "true" : "false"}
+            aria-label={tMap("roster.filter.open", { column: label })}
+            className={cn(
+              "flex h-9 w-full min-w-0 items-center gap-1 rounded px-1 text-left text-xs font-semibold uppercase tracking-wide transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:h-11",
+              filter ? ROSTER_ACTION_TEXT : "text-muted-foreground",
+              className,
+            )}
+          >
+            <span className="min-w-0 truncate">{label}</span>
+            {sortDirection ? <SortIcon className="h-3 w-3 shrink-0" aria-hidden="true" /> : null}
+            {filter
+              ? <Filter className="h-3 w-3 shrink-0 fill-current" aria-hidden="true" />
+              : <ChevronDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />}
+          </button>
+        </PopoverTrigger>
+      </Hint>
       {/* After the trigger, not before it: the trigger names itself the anchor
           when it mounts, and the last one to speak is the one the menu stands
           beside. Put first, this line left the menu in the corner of the screen. */}

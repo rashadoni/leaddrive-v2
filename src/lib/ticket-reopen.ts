@@ -2,6 +2,7 @@ import { prisma, logAudit } from "@/lib/prisma"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { fireWebhooks } from "@/lib/webhooks"
 import { resolveTicketSla } from "@/lib/sla-resolver"
+import { cancelPendingTicketClosureRequests } from "@/lib/ticketing/closure-requests"
 
 export type ReopenChannel =
   | "whatsapp"
@@ -203,6 +204,13 @@ export async function reopenTicketForCustomerReply(input: ReopenInput): Promise<
         // the dominant reopen entry point (the manual PUT status-change bumps it too).
         data: { status: "open", resolvedAt: null, closedAt: null, reopenCount: { increment: 1 }, ...sla },
       })
+      // The customer still holds the link that asked them to confirm the closure.
+      // Pressed after this reply, it closed the ticket the reply had just reopened
+      // (until 2026-10-18 only the agent's status change cancelled it). Should this
+      // fail, the confirmation still refuses a ticket that is no longer resolved —
+      // the customer's message must not be lost to it.
+      await cancelPendingTicketClosureRequests(orgId, ticket.id)
+        .catch(err => console.error("[ticket-reopen] closure request cancel error:", err))
     }
 
     await prisma.ticketComment.create({

@@ -87,6 +87,7 @@ import { LiveMapZoneForm, LiveMapZoneGone, liveMapZoneFormChange, type LiveMapZo
 import { LiveMapZoneList } from "@/components/mtm/live-map-zone-list"
 import { LiveMapZonesCard } from "@/components/mtm/live-map-zones-card"
 import { MTM_AGENT_MAP_COLOR_KEYS, MTM_AGENT_MAP_COLORS } from "@/lib/mtm/agent-tags"
+import { readHint } from "./helpers/hint"
 import {
   LIVE_MAP_ZONE_DEFAULT_HEX,
   type LiveMapZone,
@@ -183,7 +184,10 @@ describe("the small form of a zone", () => {
     const swatches = MTM_AGENT_MAP_COLOR_KEYS.map((key) => byTestId(`live-map-zone-color-${key}`)!)
     expect(swatches.map((swatch) => swatch.getAttribute("aria-label")))
       .toEqual(["Розовый", "Фуксия", "Фиолетовый", "Тёмно-синий", "Голубой", "Бирюзовый", "Салатовый", "Чёрный"])
-    expect(swatches.map((swatch) => swatch.getAttribute("title"))).toEqual(swatches.map((swatch) => swatch.getAttribute("aria-label")))
+    // Under the cursor each swatch says its name, as it does to a screen reader.
+    const hints: (string | null)[] = []
+    for (const swatch of swatches) hints.push(await readHint(swatch))
+    expect(hints).toEqual(swatches.map((swatch) => swatch.getAttribute("aria-label")))
     // The swatch is painted from the palette in the code, by key.
     expect(swatches[5].style.backgroundColor).toBe("rgb(13, 148, 136)")
     // A new zone starts with no colour chosen, and that choice has its own words.

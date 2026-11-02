@@ -189,7 +189,7 @@ export function AccountDetailDrawer({ account, onClose, onChanged }: Props) {
             <button
               onClick={createTask}
               disabled={taskState === "saving"}
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm font-medium hover:bg-muted disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-50"
             >
               {taskState === "saving" ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarPlus className="w-4 h-4" />}
               {t("detail.createTask")}
@@ -212,7 +212,7 @@ export function AccountDetailDrawer({ account, onClose, onChanged }: Props) {
                 key={stage}
                 onClick={() => changeStage(stage)}
                 disabled={saving !== null}
-                className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-muted disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {saving === stage && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 → {t(`stageLabels.${stage}`)}

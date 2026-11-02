@@ -158,8 +158,8 @@ export default function VelocityPage() {
                 onClick={() => setPeriodKey(opt.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm border ${
                   periodKey === opt.key
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card hover:bg-muted border-zinc-200 dark:border-zinc-700"
+                    ? "crm-choice-selected  "
+                    : "bg-card hover:bg-muted border-border"
                 }`}
               >
                 {opt.label}
@@ -211,7 +211,7 @@ export default function VelocityPage() {
               </MotionCard>
             ) : (
               <>
-                <div className="mb-5 grid gap-3 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 md:grid-cols-[auto_1fr] md:items-center">
+                <div className="mb-5 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-[auto_1fr] md:items-center">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Info className="h-4 w-4" />
                   </span>
@@ -235,7 +235,7 @@ export default function VelocityPage() {
                       className={`overflow-hidden border rounded-xl ${
                         s.isBottleneck
                           ? "border-amber-300 bg-amber-50/40 dark:border-amber-800 dark:bg-amber-950/20"
-                          : "border-zinc-200 dark:border-zinc-700"
+                          : "border-border"
                       }`}
                     >
                       <div className="p-5">
@@ -315,16 +315,16 @@ export default function VelocityPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 border-t border-zinc-200 bg-muted/20 dark:border-zinc-700">
-                        <span className="flex items-center gap-2 border-b border-r border-zinc-200 px-4 py-2.5 text-xs dark:border-zinc-700">
+                      <div className="grid grid-cols-2 border-t border-border bg-muted/20">
+                        <span className="flex items-center gap-2 border-b border-r border-border px-4 py-2.5 text-xs">
                           <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
                           {t("advancedCount", { count: s.dealsAdvanced })}
                         </span>
-                        <span className="flex items-center gap-2 border-b border-zinc-200 px-4 py-2.5 text-xs dark:border-zinc-700">
+                        <span className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs">
                           <ArrowDownLeft className="h-3.5 w-3.5 text-slate-500" />
                           {t("regressedCount", { count: s.dealsRegressed })}
                         </span>
-                        <span className="flex items-center gap-2 border-r border-zinc-200 px-4 py-2.5 text-xs dark:border-zinc-700">
+                        <span className="flex items-center gap-2 border-r border-border px-4 py-2.5 text-xs">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                           {t("wonCount", { count: s.dealsWon })}
                         </span>
@@ -336,7 +336,7 @@ export default function VelocityPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedStage(s)}
-                        className="flex w-full items-center justify-between border-t border-zinc-200 px-5 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset dark:border-zinc-700"
+                        className="flex w-full items-center justify-between border-t border-border px-5 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
                       >
                         {t("showDetails")}
                         <ChevronRight className="h-4 w-4" />
@@ -391,12 +391,12 @@ export default function VelocityPage() {
               </div>
 
               {selectedStage.detailDeals.length === 0 ? (
-                <div className="mt-4 rounded-xl border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-700">
+                <div className="mt-4 rounded-xl border border-dashed border-zinc-300 p-6 text-center dark:border-border">
                   <p className="text-sm font-medium">{t("noVisibleDealDetails")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("noVisibleDealDetailsHint")}</p>
                 </div>
               ) : (
-                <div className="mt-4 divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                <div className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border">
                   {selectedStage.detailDeals.map((deal) => (
                     <div key={deal.id} className="p-4">
                       <div className="flex items-start justify-between gap-4">

@@ -24,17 +24,17 @@ export default function OrgSettingsHelpAz() {
         goal="Şirkətin CRM-də görünən adını və loqosunu yeniləmək, eyni zamanda cari tarif planını və istifadəçi/kontakt limitlərini bir yerdə görmək"
       >
         Səhifəyə <HelpKey>Tənzimləmələr</HelpKey> → <HelpKey>Təşkilat</HelpKey> yolu ilə çatırsınız.
-        Bütün dəyişikliklər yalnız sizin təşkilatınıza (tenant) aiddir. Səhifə iki kartdan ibarətdir:
-        biri redaktə oluna bilən (ad və loqo), digəri yalnız oxunan tarif məlumatıdır.
+        Bütün dəyişikliklər yalnız sizin təşkilatınıza (tenant) aiddir. Səhifə üç kartdan ibarətdir:
+        ad və loqo, müştərilərlə ünsiyyət dili və yalnız oxunan tarif məlumatı.
       </HelpScenario>
 
       <HelpSection title="Səhifədə nə var">
         <p>
           Başlıqda bina ikonası ilə <HelpKey>Təşkilat</HelpKey> adı, altında «Şirkət adı, loqo və
-          tarif planı» izahı var. Aşağıda iki kart durur. Birinci kart{" "}
+          tarif planı» izahı var. Aşağıda üç kart durur. Birinci kart{" "}
           <strong>Şirkət məlumatları</strong> — burada <strong>Təşkilat adı</strong> və{" "}
-          <strong>Loqo URL</strong> sahələri, altında <HelpKey>Saxla</HelpKey> düyməsi var. İkinci
-          kart <strong>Tarif və limitlər</strong> — burada üç xana (cari tarif, maks. istifadəçilər,
+          <strong>Loqo URL</strong> sahələri, altında <HelpKey>Saxla</HelpKey> düyməsi var. İkinci kart müştərilərlə
+          ünsiyyət dilidir (aşağıda). Üçüncü kart <strong>Tarif və limitlər</strong> — burada üç xana (cari tarif, maks. istifadəçilər,
           maks. kontaktlar) və slug göstərilir; bu kart yalnız məlumat verir, redaktə olunmur.
         </p>
         <dl className="rounded-md border p-3">
@@ -81,10 +81,34 @@ export default function OrgSettingsHelpAz() {
         </HelpStep>
       </HelpSection>
 
+      <HelpSection title="Müştərilərlə ünsiyyət dili">
+        <p>
+          İkinci kart — <strong>Müştərilərlə ünsiyyət dili</strong>. CRM müştərinin öz dilini bilmədikdə
+          ona bu dildə yazır: saytdakı çat pəncərəsi, onun salamlaması və AI cavabları, biletlər üzrə
+          mesajlar, müqavilənin yenilənməsi barədə məktublar. Kartında öz dili göstərilmiş müştəriyə
+          biletlər üzrə mesajlar onun dilində gedir.
+        </p>
+        <HelpStep n={1}>
+          <p>
+            Siyahıdan dili seçin və altındakı <HelpKey>Yadda saxla</HelpKey> düyməsini basın.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Yaşıl zolaq «Müştərilərlə ünsiyyət dili yadda saxlanıldı». Saytdakı çat ziyarətçi onu növbəti
+            dəfə açanda yeni dildə danışacaq.
+          </HelpCallout>
+        </HelpStep>
+        <HelpCallout kind="tip">
+          <p>
+            Dili yalnız administrator dəyişə bilər; digərləri onu düyməsiz görür. Gündəlik AI icmalı hər
+            əməkdaşa öz dilində gəlir, bu dil onun üçün ehtiyat dildir.
+          </p>
+        </HelpCallout>
+      </HelpSection>
+
       <HelpSection title="Tarif və limitləri yoxla">
         <HelpStep n={1}>
           <p>
-            İkinci kart — <strong>Tarif və limitlər</strong> — yalnız məlumat üçündür; burada redaktə
+            Üçüncü kart — <strong>Tarif və limitlər</strong> — yalnız məlumat üçündür; burada redaktə
             ediləsi heç nə yoxdur. Üç xanaya baxın.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">

@@ -1,33 +1,18 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useLocale, useTranslations } from "next-intl"
-import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
-import { ArrowRight, CheckCircle2, CircleAlert, Loader2, RefreshCw, RotateCcw } from "lucide-react"
+import { CircleAlert, Loader2, RefreshCw } from "lucide-react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
-import { formatDateTime } from "@/lib/format-date"
-
-type ClosureStatus = "pending" | "confirmed" | "rejected" | "expired" | "canceled"
-
-type ClosureRequestView = {
-  id: string
-  status: ClosureStatus
-  dueAt: string
-  ticket: {
-    ticketNumber: string | null
-    subject: string
-    status: string
-  }
-}
+import { TicketClosureRequestView, type TicketClosureRequest } from "@/components/tickets/ticket-closure-request-view"
 
 export default function TicketClosurePage() {
   const params = useParams<{ token: string }>()
   const token = params.token
   const t = useTranslations("portal")
-  const locale = useLocale()
-  const [request, setRequest] = useState<ClosureRequestView | null>(null)
+  const [request, setRequest] = useState<TicketClosureRequest | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState<"confirm" | "reject" | null>(null)
   const [message, setMessage] = useState("")
@@ -76,16 +61,15 @@ export default function TicketClosurePage() {
         status: body.data.status,
         ticket: body.data.ticket || current.ticket,
       } : current)
-      setMessage(action === "confirm" ? t("closureConfirmedMessage") : t("closureRejectedMessage"))
+      // A ticket reopened since the link was sent is neither closed nor returned by
+      // it: the request comes back canceled, and its outcome line says so.
+      setMessage(body.data.status === "confirmed" ? t("closureConfirmedMessage") : body.data.status === "rejected" ? t("closureRejectedMessage") : "")
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : t("closureSaveFailed"))
     } finally {
       setSubmitting(null)
     }
   }
-
-  const isPending = request?.status === "pending"
-  const statusLabel = request ? t(`closureStatus.${request.status}`) : ""
 
   return (
     <ThemeProvider>
@@ -106,49 +90,7 @@ export default function TicketClosurePage() {
             </Button>
           </div>
         ) : request ? (
-          <div className="space-y-5">
-            <header>
-              <p className="text-sm text-muted-foreground">{request.ticket.ticketNumber || t("ticketFallback")}</p>
-              <h1 id="closure-title" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{t("closureTitle")}</h1>
-              <p className="mt-2 max-w-[65ch] text-sm leading-6 text-muted-foreground">{request.ticket.subject}</p>
-            </header>
-
-            <dl className="divide-y rounded-md border text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
-                <dt className="text-muted-foreground">{t("closureRequestStatus")}</dt>
-                <dd className="font-medium">{statusLabel}</dd>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
-                <dt className="text-muted-foreground">{t("closureAutoClose")}</dt>
-                <dd className="font-medium"><time dateTime={request.dueAt}>{formatDateTime(request.dueAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></dd>
-              </div>
-            </dl>
-
-            {message && <p data-testid="ticket-closure-success" className="rounded-md border px-3 py-2.5 text-sm" role="status" aria-live="polite">{message}</p>}
-            {error && <p data-testid="ticket-closure-save-error" className="rounded-md border px-3 py-2.5 text-sm" role="alert">{error}</p>}
-
-            {isPending ? (
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button data-testid="ticket-closure-confirm" className="min-h-11 sm:flex-1" onClick={() => void submit("confirm")} disabled={Boolean(submitting)}>
-                  {submitting === "confirm" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
-                  {t("closureConfirm")}
-                </Button>
-                <Button data-testid="ticket-closure-reject" variant="outline" className="min-h-11 sm:flex-1" onClick={() => void submit("reject")} disabled={Boolean(submitting)}>
-                  {submitting === "reject" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <RotateCcw aria-hidden="true" />}
-                  {t("closureReject")}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p data-testid="ticket-closure-outcome" className="text-sm leading-6 text-muted-foreground" role="status">{t(`closureOutcome.${request.status}`)}</p>
-                <Button asChild variant="outline" className="min-h-11">
-                  <Link href="/portal/login" data-testid="ticket-closure-portal-link">
-                    {t("closureReturnToPortal")}<ArrowRight aria-hidden="true" />
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </div>
+          <TicketClosureRequestView request={request} submitting={submitting} message={message} error={error} onSubmit={(action) => void submit(action)} />
         ) : null}
         </section>
       </main>

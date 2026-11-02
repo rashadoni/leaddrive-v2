@@ -59,7 +59,8 @@ vi.mock("@/lib/api-auth", () => ({
     Response.json({ error: "Forbidden", moduleId }, { status: 403 })),
 }))
 
-vi.mock("@/lib/permissions", () => ({
+vi.mock("@/lib/permissions", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/permissions")>()),
   checkPermission: vi.fn().mockReturnValue(true),
 }))
 

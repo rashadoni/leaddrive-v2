@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { BadgeCheck, BookOpenCheck, Check, CopyPlus, FileClock, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
+import { Hint, HintValue } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -125,6 +126,20 @@ function normalizeClientTypeEntries(entries: ClientTypeEntry[]): ClientTypeEntry
   }))
 }
 
+const DICTIONARY_KIND_HINT = {
+  CLIENT_TYPE: "hint.dictionaryKindClientType",
+  PSYCHOTYPE: "hint.dictionaryKindPsychotype",
+  PRODUCT_CATEGORY: "hint.dictionaryKindProduct",
+  BRAND_CATEGORY: "hint.dictionaryKindBrand",
+  TASK_GROUP: "hint.dictionaryKindTaskGroup",
+} as const
+
+const DICTIONARY_STATUS_HINT = {
+  DRAFT: "hint.dictionaryStatusDraft",
+  ACTIVE: "hint.dictionaryStatusActive",
+  RETIRED: "hint.dictionaryStatusRetired",
+} as const
+
 function statusVariant(status: DictionaryStatus): "success" | "warning" | "outline" {
   if (status === "ACTIVE") return "success"
   if (status === "DRAFT") return "warning"
@@ -166,10 +181,10 @@ function ClientTypeBuilder({ entries, onChange }: { entries: ClientTypeEntry[]; 
         <section key={`${entryIndex}-${entry.code}`} className="space-y-4 rounded-xl border bg-muted/20 p-4">
           <div className="flex items-center justify-between gap-3">
             <h4 className="font-semibold">{entry.labels.ru || entry.labels.en || t("unnamedCategory", { number: entryIndex + 1 })}</h4>
-            <Button type="button" variant="ghost" size="sm" aria-label={t("removeCategory")} onClick={() => onChange(entries.filter((_, index) => index !== entryIndex))} disabled={entries.length === 1}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            <Hint text={entries.length === 1 ? null : t("hint.dictionaryRemoveCategory")}><Button type="button" variant="ghost" size="sm" aria-label={t("removeCategory")} onClick={() => onChange(entries.filter((_, index) => index !== entryIndex))} disabled={entries.length === 1}><Trash2 className="h-4 w-4 text-destructive" /></Button></Hint>
           </div>
           <div className="grid gap-3 sm:grid-cols-4">
-            <div><Label>{t("entryCode")}</Label><Input value={entry.code} onChange={(event) => updateEntry(entryIndex, (current) => ({ ...current, code: event.target.value }))} className="mt-1 min-h-11 font-mono uppercase" required /></div>
+            <div><Label><HintValue text={t("hint.dictionaryEntryCode")}>{t("entryCode")}</HintValue></Label><Input value={entry.code} onChange={(event) => updateEntry(entryIndex, (current) => ({ ...current, code: event.target.value }))} className="mt-1 min-h-11 font-mono uppercase" required /></div>
             {(["ru", "az", "en"] as const).map((language) => <div key={language}><Label>{t("entryLabel", { language: language.toUpperCase() })}</Label><Input value={entry.labels[language]} onChange={(event) => updateEntry(entryIndex, (current) => ({ ...current, labels: { ...current.labels, [language]: event.target.value } }))} className="mt-1 min-h-11" required /></div>)}
           </div>
           <div className="space-y-3 border-t pt-4">
@@ -178,13 +193,13 @@ function ClientTypeBuilder({ entries, onChange }: { entries: ClientTypeEntry[]; 
             {entry.fields.map((field, fieldIndex) => (
               <div key={`${fieldIndex}-${field.key}`} className="space-y-3 rounded-lg border bg-background p-3">
                 <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
-                  <div><Label>{t("fieldKey")}</Label><Input value={field.key} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, key: event.target.value }))} className="mt-1 min-h-11 font-mono" required /></div>
+                  <div><Label><HintValue text={t("hint.dictionaryFieldKey")}>{t("fieldKey")}</HintValue></Label><Input value={field.key} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, key: event.target.value }))} className="mt-1 min-h-11 font-mono" required /></div>
                   <div><Label>{t("fieldType")}</Label><Select value={field.type} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, type: event.target.value as ClientTypeFieldType, options: event.target.value === "SELECT" ? current.options ?? [{ code: "OPTION_1", labels: { ru: "", az: "", en: "" } }] : undefined }))} className="mt-1 min-h-11">{(["TEXT", "TEXTAREA", "PHONE", "EMAIL", "NUMBER", "DATE", "SELECT"] as const).map((type) => <option key={type} value={type}>{t(`fieldTypes.${type}`)}</option>)}</Select></div>
-                  <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={field.required} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, required: event.target.checked }))} className="h-4 w-4" />{t("requiredField")}</label>
-                  <Button type="button" variant="ghost" size="sm" aria-label={t("removeField")} onClick={() => updateEntry(entryIndex, (current) => ({ ...current, fields: current.fields.filter((_, index) => index !== fieldIndex) }))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <Hint text={t("hint.dictionaryRequired")}><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={field.required} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, required: event.target.checked }))} className="h-4 w-4" />{t("requiredField")}</label></Hint>
+                  <Hint text={t("hint.dictionaryRemoveField")}><Button type="button" variant="ghost" size="sm" aria-label={t("removeField")} onClick={() => updateEntry(entryIndex, (current) => ({ ...current, fields: current.fields.filter((_, index) => index !== fieldIndex) }))}><Trash2 className="h-4 w-4 text-destructive" /></Button></Hint>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">{(["ru", "az", "en"] as const).map((language) => <div key={language}><Label>{t("fieldLabel", { language: language.toUpperCase() })}</Label><Input value={field.labels[language]} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, labels: { ...current.labels, [language]: event.target.value } }))} className="mt-1 min-h-11" required /></div>)}</div>
-                {field.type === "SELECT" ? <div className="space-y-2 border-t pt-3"><div className="flex items-center justify-between"><p className="text-xs font-semibold">{t("selectOptions")}</p><Button type="button" variant="outline" size="sm" onClick={() => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: [...(current.options ?? []), { code: `OPTION_${(current.options?.length ?? 0) + 1}`, labels: { ru: "", az: "", en: "" } }] }))}><Plus className="mr-1 h-3.5 w-3.5" />{t("addOption")}</Button></div>{(field.options ?? []).map((option, optionIndex) => <div key={`${optionIndex}-${option.code}`} className="grid gap-2 sm:grid-cols-[0.8fr_1fr_1fr_1fr_auto]"><Input aria-label={t("optionCode")} value={option.code} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: (current.options ?? []).map((item, index) => index === optionIndex ? { ...item, code: event.target.value } : item) }))} className="min-h-11 font-mono uppercase" required />{(["ru", "az", "en"] as const).map((language) => <Input key={language} aria-label={t("optionLabel", { language: language.toUpperCase() })} placeholder={language.toUpperCase()} value={option.labels[language]} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: (current.options ?? []).map((item, index) => index === optionIndex ? { ...item, labels: { ...item.labels, [language]: event.target.value } } : item) }))} className="min-h-11" required />)}<Button type="button" variant="ghost" size="sm" aria-label={t("removeOption")} onClick={() => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: (current.options ?? []).filter((_, index) => index !== optionIndex) }))}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}</div> : null}
+                {field.type === "SELECT" ? <div className="space-y-2 border-t pt-3"><div className="flex items-center justify-between"><p className="text-xs font-semibold">{t("selectOptions")}</p><Button type="button" variant="outline" size="sm" onClick={() => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: [...(current.options ?? []), { code: `OPTION_${(current.options?.length ?? 0) + 1}`, labels: { ru: "", az: "", en: "" } }] }))}><Plus className="mr-1 h-3.5 w-3.5" />{t("addOption")}</Button></div>{(field.options ?? []).map((option, optionIndex) => <div key={`${optionIndex}-${option.code}`} className="grid gap-2 sm:grid-cols-[0.8fr_1fr_1fr_1fr_auto]"><Input aria-label={t("optionCode")} value={option.code} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: (current.options ?? []).map((item, index) => index === optionIndex ? { ...item, code: event.target.value } : item) }))} className="min-h-11 font-mono uppercase" required />{(["ru", "az", "en"] as const).map((language) => <Input key={language} aria-label={t("optionLabel", { language: language.toUpperCase() })} placeholder={language.toUpperCase()} value={option.labels[language]} onChange={(event) => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: (current.options ?? []).map((item, index) => index === optionIndex ? { ...item, labels: { ...item.labels, [language]: event.target.value } } : item) }))} className="min-h-11" required />)}<Hint text={t("hint.dictionaryRemoveOption")}><Button type="button" variant="ghost" size="sm" aria-label={t("removeOption")} onClick={() => updateField(entryIndex, fieldIndex, (current) => ({ ...current, options: (current.options ?? []).filter((_, index) => index !== optionIndex) }))}><Trash2 className="h-4 w-4 text-destructive" /></Button></Hint></div>)}</div> : null}
               </div>
             ))}
           </div>
@@ -375,7 +390,7 @@ export function ContactDictionarySettings() {
   }
 
   return (
-    <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+    <section className="border-t border-border pt-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -396,7 +411,7 @@ export function ContactDictionarySettings() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-sm text-sky-950 dark:border-sky-900/70 dark:bg-sky-950/20 dark:text-sky-100">
+      <div className="mt-4 rounded-lg border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
         <p className="font-medium">{t("governanceTitle")}</p>
         <p className="mt-0.5 text-xs leading-relaxed opacity-80">{t("governanceDescription")}</p>
       </div>
@@ -404,11 +419,11 @@ export function ContactDictionarySettings() {
       {loading && dictionaries.length === 0 ? (
         <div className="mt-5 grid gap-3 lg:grid-cols-2">{[1, 2].map((item) => <div key={item} className="h-44 animate-pulse rounded-lg bg-muted" />)}</div>
       ) : loadError && dictionaries.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+        <div className="mt-5 rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-4 text-sm">
           <p>{loadError}</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>{t("retry")}</Button>
         </div>
       ) : ordered.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-700">
+        <div className="mt-5 rounded-lg border border-dashed border-zinc-300 p-6 text-center dark:border-border">
           <FileClock className="mx-auto h-6 w-6 text-muted-foreground" />
           <p className="mt-2 text-sm font-medium">{t("emptyTitle")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("emptyDescription")}</p>
@@ -416,31 +431,31 @@ export function ContactDictionarySettings() {
       ) : (
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {ordered.map((dictionary) => (
-            <article key={dictionary.id} className={`rounded-lg border p-4 ${dictionary.status === "ACTIVE" ? "border-emerald-300 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/15" : "border-zinc-200 bg-card dark:border-zinc-700"}`}>
+            <article key={dictionary.id} className={`rounded-lg border p-4 ${dictionary.status === "ACTIVE" ? "border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500" : "border-border bg-card"}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{nameFor(dictionary)}</h3>
-                    <Badge variant="outline">{t(`kinds.${dictionary.kind}`)}</Badge>
-                    <Badge variant={statusVariant(dictionary.status)}>{t(`statuses.${dictionary.status}`)}</Badge>
+                    <HintValue text={t(DICTIONARY_KIND_HINT[dictionary.kind])}><Badge variant="outline">{t(`kinds.${dictionary.kind}`)}</Badge></HintValue>
+                    <HintValue text={t(DICTIONARY_STATUS_HINT[dictionary.status])}><Badge variant={statusVariant(dictionary.status)}>{t(`statuses.${dictionary.status}`)}</Badge></HintValue>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{t("versionEntries", { version: dictionary.version, count: dictionary.entries.length })}</p>
                 </div>
                 {canConfigure ? <div className="flex flex-wrap gap-2">
-                  {dictionary.status === "ACTIVE" ? <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => createNewVersion(dictionary)}><CopyPlus className="mr-1 h-4 w-4" />{t("newVersion")}</Button> : null}
-                  {dictionary.status === "DRAFT" ? <Button type="button" size="sm" className="min-h-11 sm:min-h-8" onClick={() => { setApprovalReference(""); setActivateTarget(dictionary) }}><BadgeCheck className="mr-1 h-4 w-4" />{t("activate")}</Button> : null}
+                  {dictionary.status === "ACTIVE" ? <Hint text={t("hint.dictionaryNewVersion")}><Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => createNewVersion(dictionary)}><CopyPlus className="mr-1 h-4 w-4" />{t("newVersion")}</Button></Hint> : null}
+                  {dictionary.status === "DRAFT" ? <Hint text={t("hint.dictionaryActivate")}><Button type="button" size="sm" className="min-h-11 sm:min-h-8" onClick={() => { setApprovalReference(""); setActivateTarget(dictionary) }}><BadgeCheck className="mr-1 h-4 w-4" />{t("activate")}</Button></Hint> : null}
                 </div> : null}
               </div>
               <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
-                <div><dt className="text-muted-foreground">{t("effectiveFrom")}</dt><dd className="mt-0.5 font-medium">{dateOnly.format(new Date(dictionary.effectiveFrom))}</dd></div>
+                <div><dt className="text-muted-foreground"><HintValue text={t("hint.dictionaryEffectiveFrom")}>{t("effectiveFrom")}</HintValue></dt><dd className="mt-0.5 font-medium">{dateOnly.format(new Date(dictionary.effectiveFrom))}</dd></div>
                 <div><dt className="text-muted-foreground">{t("signedAt")}</dt><dd className="mt-0.5 font-medium">{dictionary.signedAt ? dateTime.format(new Date(dictionary.signedAt)) : t("notSigned")}</dd></div>
                 <div><dt className="text-muted-foreground">{t("source")}</dt><dd className="mt-0.5 font-medium">{dictionary.sourceSystem}</dd></div>
                 <div><dt className="text-muted-foreground">{t("approval")}</dt><dd className="mt-0.5 break-words font-medium">{dictionary.approvalReference || "—"}</dd></div>
               </dl>
-              <details className="mt-4 rounded-md border border-zinc-200 bg-background/80 dark:border-zinc-700">
+              <details className="mt-4 rounded-md border border-border bg-background/80">
                 <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium">{t("showEntries")}</summary>
-                <pre className="overflow-x-auto border-t border-zinc-200 p-3 text-[11px] leading-relaxed dark:border-zinc-700">{JSON.stringify(dictionary.entries, null, 2)}</pre>
-                <p className="break-all border-t border-zinc-200 px-3 py-2 font-mono text-[10px] text-muted-foreground dark:border-zinc-700">SHA-256: {dictionary.entriesHash}</p>
+                <pre className="overflow-x-auto border-t border-border p-3 text-xs leading-relaxed">{JSON.stringify(dictionary.entries, null, 2)}</pre>
+                <p className="break-all border-t border-border px-3 py-2 font-mono text-xs text-muted-foreground">SHA-256: {dictionary.entriesHash}</p>
               </details>
             </article>
           ))}
@@ -469,7 +484,7 @@ export function ContactDictionarySettings() {
               <div><Label htmlFor="contact-dictionary-observed">{t("sourceObservedAt")}</Label><Input id="contact-dictionary-observed" type="datetime-local" value={form.sourceObservedAt} onChange={(event) => setForm((current) => ({ ...current, sourceObservedAt: event.target.value }))} className="mt-1.5 min-h-11" required /></div>
               <div><Label htmlFor="contact-dictionary-effective">{t("effectiveFrom")}</Label><Input id="contact-dictionary-effective" type="date" value={form.effectiveFrom} onChange={(event) => setForm((current) => ({ ...current, effectiveFrom: event.target.value }))} className="mt-1.5 min-h-11" required /></div>
             </div>
-            {formError ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">{formError}</p> : null}
+            {formError ? <p role="alert" className="rounded-md border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">{formError}</p> : null}
           </DialogContent>
           <DialogFooter><Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>{t("cancel")}</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}{saving ? t("creating") : t("createDraft")}</Button></DialogFooter>
         </form>
@@ -478,10 +493,10 @@ export function ContactDictionarySettings() {
       <Dialog open={Boolean(activateTarget)} onOpenChange={(open) => !open && !saving && setActivateTarget(null)}>
         <DialogHeader><DialogTitle>{t("activateTitle")}</DialogTitle><DialogDescription>{activateTarget ? t("activateDescription", { name: nameFor(activateTarget), version: activateTarget.version }) : ""}</DialogDescription></DialogHeader>
         <DialogContent className="space-y-4">
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100"><p className="font-medium">{t("activationEffectTitle")}</p><p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p></div>
+          <div className="rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm"><p className="font-medium">{t("activationEffectTitle")}</p><p className="mt-1 text-xs leading-relaxed opacity-80">{t("activationEffectDescription")}</p></div>
           <div><Label htmlFor="contact-dictionary-approval">{t("approvalReference")}</Label><Input id="contact-dictionary-approval" value={approvalReference} onChange={(event) => setApprovalReference(event.target.value)} className="mt-1.5 min-h-11" maxLength={500} required /></div>
         </DialogContent>
-        <DialogFooter><Button type="button" variant="outline" onClick={() => setActivateTarget(null)} disabled={saving}>{t("cancel")}</Button><Button type="button" onClick={() => void activateDictionary()} disabled={saving || approvalReference.trim().length < 3}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}{saving ? t("activating") : t("confirmActivation")}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="outline" onClick={() => setActivateTarget(null)} disabled={saving}>{t("cancel")}</Button><Hint wrap text={!saving && approvalReference.trim().length < 3 ? t("hint.dictionaryApprovalNeeded") : null}><Button type="button" onClick={() => void activateDictionary()} disabled={saving || approvalReference.trim().length < 3}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}{saving ? t("activating") : t("confirmActivation")}</Button></Hint></DialogFooter>
       </Dialog>
     </section>
   )

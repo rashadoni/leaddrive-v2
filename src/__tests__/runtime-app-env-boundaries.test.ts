@@ -18,6 +18,7 @@ const appEnvConsumers = [
   ".github/workflows/reset-brandprotection-social-monitoring.yml",
   ".github/workflows/seed-brandprotection.yml",
   ".github/workflows/seed-demo-journey-clips.yml",
+  ".github/workflows/set-demo-switches.yml",
   ".github/workflows/set-map-provider.yml",
   ".github/workflows/set-openai-key.yml",
   ".github/workflows/set-social-app-secrets.yml",
@@ -62,6 +63,7 @@ describe("canonical production app-env boundary", () => {
   it("serializes atomic app-env writers through one host lock", () => {
     const writers = [
       [".github/workflows/canary-brandprotection.yml", "ENV"],
+      [".github/workflows/set-demo-switches.yml", "ENV"],
       [".github/workflows/set-map-provider.yml", "ENV"],
       [".github/workflows/set-openai-key.yml", "ENV"],
       [".github/workflows/set-social-app-secrets.yml", "ENV"],

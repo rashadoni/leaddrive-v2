@@ -521,8 +521,11 @@ describe("saving the channel form keeps what other screens and endpoints wrote",
     const id = await whatsappRow()
     const templates = {
       whatsappTicketStatusTemplates: { resolved: "ticket_resolved", closed: "ticket_closed" },
+      whatsappTicketStatusTemplateLanguages: { resolved: "az", closed: "ru" },
       whatsappSurveyTemplate: "csat_survey",
+      whatsappSurveyTemplateLanguage: "az",
       whatsappJourneyDefaultTemplate: "journey_default",
+      whatsappJourneyDefaultTemplateLanguage: "ru",
     }
     expect((await setNotificationTemplates(jsonRequest("/api/v1/whatsapp/notification-settings", "PUT", templates))).status).toBe(200)
     expect((await setLeadGroup(jsonRequest("/api/v1/social/whatsapp-group-settings", "PUT", { groupId: "120363@g.us", groupName: "Sales leads" }))).status).toBe(200)
@@ -650,15 +653,27 @@ describe("saving the channel form keeps what other screens and endpoints wrote",
   it("does not let any other client write or erase what those endpoints own", async () => {
     const id = await whatsappRow()
     await setPolicy({ configId: id, mode: "agent", draftMode: true })
-    await setNotificationTemplates(jsonRequest("/api/v1/whatsapp/notification-settings", "PUT", { whatsappSurveyTemplate: "csat_survey" }))
+    const templates = {
+      whatsappTicketStatusTemplates: { resolved: "ticket_resolved" },
+      whatsappTicketStatusTemplateLanguages: { resolved: "az" },
+      whatsappSurveyTemplate: "csat_survey",
+      whatsappSurveyTemplateLanguage: "az",
+      whatsappJourneyDefaultTemplate: "journey_default",
+      whatsappJourneyDefaultTemplateLanguage: "ru",
+    }
+    await setNotificationTemplates(jsonRequest("/api/v1/whatsapp/notification-settings", "PUT", templates))
 
-    await putDirectly(id, { settings: { replyMode: "ai", draftMode: false, whatsappSurveyTemplate: "spoofed" } })
+    await putDirectly(id, { settings: {
+      replyMode: "ai", draftMode: false, whatsappSurveyTemplate: "spoofed",
+      whatsappTicketStatusTemplateLanguages: { resolved: "en" },
+      whatsappSurveyTemplateLanguage: "en", whatsappJourneyDefaultTemplateLanguage: "en",
+    } })
     expect(await policyInMatrix(id)).toMatchObject({ mode: "agent", draftMode: true })
-    expect(await notificationTemplates()).toMatchObject({ whatsappSurveyTemplate: "csat_survey" })
+    expect(await notificationTemplates()).toEqual(templates)
 
     await putDirectly(id, { settings: {} })
     expect(await policyInMatrix(id)).toMatchObject({ mode: "agent", draftMode: true })
-    expect(await notificationTemplates()).toMatchObject({ whatsappSurveyTemplate: "csat_survey" })
+    expect(await notificationTemplates()).toEqual(templates)
 
     // Nor switch on a policy the matrix never set: that endpoint is admin-only, validated and audited.
     const telegram = await telegramRow()

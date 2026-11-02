@@ -68,6 +68,38 @@ class InboundSelectorTransformTest(unittest.TestCase):
                 with self.assertRaises(transform.DialplanRefused):
                     transform.install_route(PREFIX + route + SUFFIX, SELECTOR_DID)
 
+    def test_accepts_the_wildcard_log_line_live_on_the_station(self):
+        # FANUM-PBX01 has logged the caller in the first step since 2026-09-14.
+        # Only that log line may differ; the rest stays reviewed byte-for-byte.
+        live = WILDCARD_ROUTE.replace(
+            "NoOp(Fanum provider catch-all)",
+            "NoOp(Fanum SIP inbound: ${CALLERID(all)} to ${EXTEN})",
+        )
+        source = PREFIX + live + SUFFIX
+
+        changed = transform.install_route(source, SELECTOR_DID)
+
+        self.assertIn(live, changed)
+        self.assertEqual(transform.verify_installed_route(changed, SELECTOR_DID), None)
+        for unreviewed in (
+            live.replace("${CALLERID(all)}", "${CALLERID(num)}"),
+            live.replace("NoOp(Fanum SIP inbound", "Verbose(Fanum SIP inbound"),
+        ):
+            with self.subTest(unreviewed=unreviewed):
+                with self.assertRaises(transform.DialplanRefused):
+                    transform.install_route(PREFIX + unreviewed + SUFFIX, SELECTOR_DID)
+
+        report = """[ Context 'from-fanum-provider' created by 'pbx_config' ]
+  '994125550100' => 1. Gosub(fanum-inbound-browser,s,1(fanum-inbound-browser)) [extensions_fanum.conf:8]
+  '_X.' =>          1. NoOp(Fanum SIP inbound: ${CALLERID(all)} to ${EXTEN}) [extensions_fanum.conf:2]
+                    2. Set(CHANNEL(language)=az)                       [extensions_fanum.conf:3]
+                    3. Set(DENOISE(rx)=on)                             [extensions_fanum.conf:4]
+                    4. Set(AGC(rx)=5000)                               [extensions_fanum.conf:5]
+                    5. Hangup()                                        [extensions_fanum.conf:6]
+-= 2 extensions (6 priorities) in 1 context. =-
+"""
+        self.assertEqual(transform.verify_loaded_context(report, SELECTOR_DID), None)
+
     def test_selector_file_is_one_strict_lf_terminated_numeric_line(self):
         with tempfile.TemporaryDirectory() as temporary:
             selector = Path(temporary) / "selector"

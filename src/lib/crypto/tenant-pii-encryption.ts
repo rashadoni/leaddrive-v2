@@ -7,8 +7,10 @@
  * level master KEK.
  *
  * Trust model (slice-2 interim):
- *   • Master KEK: env var `TENANT_PII_MASTER_KEY` (32 bytes, hex).
- *     Set per environment via secret manager. NEVER committed.
+ *   • Master KEK: `TENANT_PII_MASTER_KEY` (32 bytes, hex). Production keeps
+ *     it only in the root-only env file and points the process at that file
+ *     with `TENANT_PII_MASTER_KEY_FILE` (see `readMasterKeyHex`); tests and
+ *     CI set the variable directly. NEVER committed.
  *   • Per-tenant DEK: HKDF-SHA256(KEK, salt=orgId, info=INFO_LABEL)
  *     → 32-byte key. Deterministic — same orgId always derives the
  *     same DEK from the same KEK. No DB storage in slice-2.
@@ -48,6 +50,13 @@
  *     R2/R7/R8 column-by-column rollout.
  */
 import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } from "crypto"
+import { readFileSync } from "fs"
+import {
+  currentTenantDataKey,
+  tenantDataKeyForRead,
+  TenantDataKeyUnavailableError,
+  type TenantDataKeyMaterial,
+} from "@/lib/crypto/tenant-data-key-cache"
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 
@@ -71,23 +80,64 @@ const INFO_LABEL = "leaddrive-tenant-pii-v1"
  */
 const WORKFORCE_EVIDENCE_HMAC_INFO = "leaddrive-workforce-evidence-hmac-v1"
 
+/**
+ * Distinct from the column DEK so that file envelopes and PII columns never
+ * share a key, even though both are derived from the same master KEK.
+ */
+const TENANT_FILE_INFO = "leaddrive-tenant-file-v1"
+
 const ENV_VAR = "TENANT_PII_MASTER_KEY"
+const FILE_ENV_VAR = "TENANT_PII_MASTER_KEY_FILE"
 
 /* ─── Master KEK load (the slice-3 vault-swap choke point) ──────── */
 
 let cachedMasterKek: Buffer | null = null
 
+/** The single `NAME=value` line for `name` in an env-format file (same rules as the deploy's loader). */
+function readUniqueEnvFileValue(file: string, name: string): string | undefined {
+  let match: string | undefined
+  for (const rawLine of readFileSync(file, "utf8").split(/\r?\n/)) {
+    let line = rawLine.trim()
+    if (!line || line.startsWith("#")) continue
+    if (line.startsWith("export ")) line = line.slice(7).trim()
+    const parsed = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line)
+    if (!parsed || parsed[1] !== name) continue
+    if (match !== undefined) throw new Error(`${FILE_ENV_VAR}: ${name} appears more than once`)
+    let value = parsed[2].trim()
+    if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
+      value = value.slice(1, -1)
+    }
+    match = value
+  }
+  return match
+}
+
 /**
- * Load the master KEK. Single choke point for the slice-3 swap
- * from env-var → NamedCredentials vault. Cached across calls
- * (KEK doesn't change within a process); use `resetMasterKekCache()`
- * in tests.
+ * The KEK as hex. In production the process environment carries only
+ * `TENANT_PII_MASTER_KEY_FILE`, the root-only env file the key already lives
+ * in: the key itself is then absent from PM2's saved dump and from every child
+ * process. A variable set alongside must name the same key.
+ */
+function readMasterKeyHex(): string | undefined {
+  const file = process.env[FILE_ENV_VAR]?.trim()
+  const direct = process.env[ENV_VAR]
+  if (!file) return direct
+  const fromFile = readUniqueEnvFileValue(file, ENV_VAR)
+  if (!fromFile) throw new Error(`${FILE_ENV_VAR} names a file without ${ENV_VAR}.`)
+  if (direct && direct !== fromFile) throw new Error(`${ENV_VAR} and ${FILE_ENV_VAR} name different keys.`)
+  return fromFile
+}
+
+/**
+ * Load the master KEK. Single choke point for where the key comes from.
+ * Cached across calls (KEK doesn't change within a process); use
+ * `resetMasterKekCache()` in tests.
  *
- * Throws if `TENANT_PII_MASTER_KEY` is missing or malformed.
+ * Throws if the key is missing or malformed, or the two sources disagree.
  */
 function loadMasterKek(): Buffer {
   if (cachedMasterKek) return cachedMasterKek
-  const raw = process.env[ENV_VAR]
+  const raw = readMasterKeyHex()
   if (!raw) {
     throw new Error(
       `${ENV_VAR} is not set. Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`,
@@ -103,6 +153,19 @@ function loadMasterKek(): Buffer {
   }
   cachedMasterKek = Buffer.from(raw, "hex")
   return cachedMasterKek
+}
+
+/**
+ * True when the master KEK loads. For preflight checks in jobs that would
+ * otherwise fail on every row; it never reveals the key or why it failed.
+ */
+export function isTenantPiiMasterKeyConfigured(): boolean {
+  try {
+    loadMasterKek()
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -156,11 +219,218 @@ export function deriveTenantWorkforceEvidenceHmacKey(orgId: string): Buffer {
   ))
 }
 
+/**
+ * Tenant key for uploaded-file envelopes (`src/lib/crypto/tenant-file-encryption.ts`).
+ * The envelope derives a per-file key from it with a random salt, so this key
+ * itself never encrypts bytes directly. Uncached for the same reason as the
+ * Workforce evidence key; HKDF costs ~20 µs, far below one file read.
+ */
+export function deriveTenantFileEncryptionKey(orgId: string): Buffer {
+  if (typeof orgId !== "string" || orgId.length === 0) {
+    throw new Error("deriveTenantFileEncryptionKey: orgId required")
+  }
+  return Buffer.from(hkdfSync(
+    "sha256",
+    loadMasterKek(),
+    Buffer.from(orgId, "utf8"),
+    TENANT_FILE_INFO,
+    KEY_BYTES,
+  ))
+}
+
+/* ─── Stored per-tenant data keys (stage 2b, owner 2026-10-22) ───── */
+
+/**
+ * Every organization gets its own RANDOM 32-byte data key, stored in
+ * `tenant_data_keys` wrapped by the master key, with versions
+ * (`src/lib/crypto/tenant-data-keys.ts` loads and creates them). Unlike the
+ * HKDF key above it is not a function of the master key and the orgId, so
+ * deleting an organization's rows destroys its key (crypto-shredding), and a
+ * new master key only has to rewrap a few rows, not re-encrypt every value.
+ *
+ * Wrap: AES-256-GCM under a wrapping key derived from the master KEK (HKDF,
+ * its own label, so the KEK never encrypts with itself), AAD
+ * `${orgId}|${version}|${masterKeyId}` — a wrapped key moved to another
+ * organization or version, or labelled with another master key, fails its tag.
+ * Format: base64( IV(12) | wrapped key(32) | tag(16) ).
+ */
+const DATA_KEY_WRAP_INFO = "leaddrive-tenant-data-key-wrap-v1"
+const MASTER_KEY_ID_INFO = "leaddrive-tenant-master-key-id-v1"
+const DATA_KEY_COLUMN_INFO = "leaddrive-tenant-pii-v2-column"
+const DATA_KEY_FILE_INFO = "leaddrive-tenant-file-v2"
+
+/**
+ * Names the master key without revealing it: an HMAC of a fixed label under
+ * the KEK. Stored beside every wrapped key, so a row wrapped by another master
+ * key is recognised as such instead of failing as "corrupted".
+ */
+export function tenantMasterKeyId(): string {
+  return `m-${createHmac("sha256", loadMasterKek()).update(MASTER_KEY_ID_INFO, "utf8").digest("hex").slice(0, 16)}`
+}
+
+function dataKeyWrappingKey(): Buffer {
+  return Buffer.from(hkdfSync("sha256", loadMasterKek(), Buffer.alloc(0), DATA_KEY_WRAP_INFO, KEY_BYTES))
+}
+
+function dataKeyAad(orgId: string, version: number, masterKeyId: string): Buffer {
+  if (typeof orgId !== "string" || orgId.length === 0 || orgId.includes("|")) {
+    throw new Error("tenant data key: orgId required")
+  }
+  if (!Number.isInteger(version) || version < 1) throw new Error("tenant data key: version must be a positive integer")
+  return Buffer.from(`${orgId}|${version}|${masterKeyId}`, "utf8")
+}
+
+/** A fresh random data key. The caller wraps it and then zeroes it. */
+export function generateTenantDataKey(): Buffer {
+  return randomBytes(KEY_BYTES)
+}
+
+/** Wrap a data key under the current master key, for storage. */
+export function wrapTenantDataKey(
+  orgId: string,
+  version: number,
+  dataKey: Buffer,
+): { wrappedKey: string; masterKeyId: string } {
+  if (!Buffer.isBuffer(dataKey) || dataKey.length !== KEY_BYTES) throw new Error("tenant data key: 32-byte key required")
+  const masterKeyId = tenantMasterKeyId()
+  const iv = randomBytes(IV_BYTES)
+  const cipher = createCipheriv(ALGORITHM, dataKeyWrappingKey(), iv)
+  cipher.setAAD(dataKeyAad(orgId, version, masterKeyId))
+  const wrapped = Buffer.concat([cipher.update(dataKey), cipher.final()])
+  return { wrappedKey: Buffer.concat([iv, wrapped, cipher.getAuthTag()]).toString("base64"), masterKeyId }
+}
+
+/**
+ * Unwrap a stored data key. Throws when it was wrapped by another master key,
+ * for another organization or version, or was altered.
+ */
+export function unwrapTenantDataKey(orgId: string, version: number, masterKeyId: string, wrappedKey: string): Buffer {
+  if (masterKeyId !== tenantMasterKeyId()) throw new Error("tenant data key: wrapped by another master key")
+  const wire = Buffer.from(wrappedKey, "base64")
+  if (wire.length !== IV_BYTES + KEY_BYTES + TAG_BYTES) throw new Error("tenant data key: malformed wrapped key")
+  const decipher = createDecipheriv(ALGORITHM, dataKeyWrappingKey(), wire.subarray(0, IV_BYTES))
+  decipher.setAAD(dataKeyAad(orgId, version, masterKeyId))
+  decipher.setAuthTag(wire.subarray(IV_BYTES + KEY_BYTES))
+  return Buffer.concat([decipher.update(wire.subarray(IV_BYTES, IV_BYTES + KEY_BYTES)), decipher.final()])
+}
+
+/**
+ * The column and file keys one data key yields. Separate labels keep a column
+ * value and a file envelope from ever sharing a key; the orgId salt binds both
+ * to the organization the data key was unwrapped for.
+ */
+export function tenantDataKeyMaterial(orgId: string, dataKey: Buffer): TenantDataKeyMaterial {
+  const salt = Buffer.from(orgId, "utf8")
+  return {
+    column: Buffer.from(hkdfSync("sha256", dataKey, salt, DATA_KEY_COLUMN_INFO, KEY_BYTES)),
+    file: Buffer.from(hkdfSync("sha256", dataKey, salt, DATA_KEY_FILE_INFO, KEY_BYTES)),
+  }
+}
+
+/* ─── Wire helpers shared by v1 and v2 ───────────────────────────── */
+
+function sealValue(key: Buffer, aad: string, plaintext: string): string {
+  const iv = randomBytes(IV_BYTES)
+  const cipher = createCipheriv(ALGORITHM, key, iv)
+  cipher.setAAD(Buffer.from(aad, "utf8"))
+  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()])
+  return Buffer.concat([iv, ciphertext, cipher.getAuthTag()]).toString("base64")
+}
+
+function openValue(key: Buffer, aad: string, payloadB64: string, caller: string): string {
+  const wire = Buffer.from(payloadB64, "base64")
+  if (wire.length < IV_BYTES + TAG_BYTES + 1) {
+    throw new Error(`${caller}: ciphertext too short (got ${wire.length} bytes, min ${IV_BYTES + TAG_BYTES + 1})`)
+  }
+  const decipher = createDecipheriv(ALGORITHM, key, wire.subarray(0, IV_BYTES))
+  decipher.setAAD(Buffer.from(aad, "utf8"))
+  decipher.setAuthTag(wire.subarray(wire.length - TAG_BYTES))
+  return Buffer.concat([decipher.update(wire.subarray(IV_BYTES, wire.length - TAG_BYTES)), decipher.final()]).toString("utf8")
+}
+
+/**
+ * v2 column value: `v2:<data key version>:<base64( IV | ciphertext | tag )>`.
+ * Same AAD as the v1 value it replaces (orgId, or orgId|table|column); only
+ * the key differs — the organization's stored data key of that version.
+ */
+const V2_VALUE = /^v2:([1-9][0-9]{0,8}):([A-Za-z0-9+/]+={0,2})$/
+
+function parseV2(value: string): { version: number; payload: string } | null {
+  if (ciphertextVersion(value) !== CIPHERTEXT_VERSION_V2) return null
+  const match = V2_VALUE.exec(value)
+  return match ? { version: Number(match[1]), payload: match[2] } : null
+}
+
+function formatV2(version: number, payloadB64: string): string {
+  return wrapCiphertextVersion(CIPHERTEXT_VERSION_V2, `${version}:${payloadB64}`, { unsafeAllow: true })
+}
+
+/** v2 when the organization's data key is loaded in this process, v1 otherwise. */
+function sealForTenant(orgId: string, aad: string, plaintext: string): string {
+  const current = currentTenantDataKey(orgId)
+  if (current) return formatV2(current.version, sealValue(current.material.column, aad, plaintext))
+  return sealValue(deriveTenantDek(orgId), aad, plaintext)
+}
+
+/** Strict v2 read: throws when the key is not loaded, does not exist, or the tag fails. */
+function openV2(orgId: string, aad: string, v2: { version: number; payload: string }, caller: string): string {
+  const material = tenantDataKeyForRead(orgId, v2.version)
+  if (!material) throw new Error(`${caller}: data key version ${v2.version} does not exist`)
+  return openValue(material.column, aad, v2.payload, caller)
+}
+
+/**
+ * Tolerant v2 read for the soft decrypt paths. A missing key still throws
+ * (`TenantDataKeyUnavailableError`) — handing the stored string back as
+ * plaintext would let the next save encrypt it as if it were the value. A tag
+ * that fails under every AAD is treated like any other undecryptable string.
+ */
+function softOpenV2(orgId: string, aads: string[], v2: { version: number; payload: string }, value: string): string {
+  const material = tenantDataKeyForRead(orgId, v2.version)
+  if (!material) return value
+  for (const aad of aads) {
+    try {
+      return openValue(material.column, aad, v2.payload, "softDecryptForTenant")
+    } catch {
+      // next AAD
+    }
+  }
+  return value
+}
+
+/**
+ * Re-encrypt one stored value under the organization's current data key, for
+ * the v1 → v2 sweep (`src/lib/crypto/tenant-data-key-reencrypt.ts`). Keeps the
+ * AAD the value was written with: column-bound when it verifies, orgId-only
+ * otherwise. Returns null when the value is not a v1 ciphertext of this
+ * organization (plaintext, already v2, another tenant's). Throws
+ * `TenantDataKeyUnavailableError` when the data key is not loaded.
+ */
+export function reencryptForTenantDataKey(orgId: string, table: string, column: string, value: string): string | null {
+  if (typeof value !== "string" || ciphertextVersion(value) !== CIPHERTEXT_VERSION_V1) return null
+  if (!/^[A-Za-z0-9+/]+=*$/.test(value) || Buffer.from(value, "base64").length < IV_BYTES + TAG_BYTES + 1) return null
+  const current = currentTenantDataKey(orgId)
+  if (!current) throw new TenantDataKeyUnavailableError()
+  const dek = deriveTenantDek(orgId)
+  for (const aad of [`${orgId}|${table}|${column}`, orgId]) {
+    let plaintext: string
+    try {
+      plaintext = openValue(dek, aad, value, "reencryptForTenantDataKey")
+    } catch {
+      continue
+    }
+    return formatV2(current.version, sealValue(current.material.column, aad, plaintext))
+  }
+  return null
+}
+
 /* ─── Encrypt / decrypt API ──────────────────────────────────────── */
 
 /**
  * Encrypt a plaintext PII value for a specific tenant. Returns
- * base64-armored ciphertext with embedded IV + auth tag.
+ * base64-armored ciphertext with embedded IV + auth tag — v2
+ * (`v2:<version>:…`, the organization's stored data key) when that key is
+ * loaded in this process, v1 (HKDF-derived key) otherwise.
  *
  * The orgId is included as authenticated additional data (AAD), so
  * decrypt requires the SAME orgId — protects against cross-tenant
@@ -173,21 +443,8 @@ export function encryptForTenant(orgId: string, plaintext: string): string {
   if (typeof plaintext !== "string" || plaintext.length === 0) {
     throw new Error("encryptForTenant: plaintext must be non-empty string")
   }
-  const dek = deriveTenantDek(orgId)
-  const iv = randomBytes(IV_BYTES)
-  const cipher = createCipheriv(ALGORITHM, dek, iv)
-  cipher.setAAD(Buffer.from(orgId, "utf8"))
-  const ciphertext = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ])
-  const tag = cipher.getAuthTag()
-  if (tag.length !== TAG_BYTES) {
-    // Defensive — Node should always give 16-byte GCM tag.
-    throw new Error("encryptForTenant: unexpected GCM tag length")
-  }
-  // Wire format: IV (12) | ciphertext | tag (16), then base64.
-  return Buffer.concat([iv, ciphertext, tag]).toString("base64")
+  // Wire format: IV (12) | ciphertext | tag (16), then base64 (v2 prefixed).
+  return sealForTenant(orgId, orgId, plaintext)
 }
 
 /**
@@ -204,6 +461,8 @@ export function decryptForTenant(orgId: string, ciphertextB64: string): string {
   if (typeof ciphertextB64 !== "string" || ciphertextB64.length === 0) {
     throw new Error("decryptForTenant: ciphertext must be non-empty string")
   }
+  const v2 = parseV2(ciphertextB64)
+  if (v2) return openV2(orgId, orgId, v2, "decryptForTenant")
   const wire = Buffer.from(ciphertextB64, "base64")
   if (wire.length < IV_BYTES + TAG_BYTES + 1) {
     throw new Error(
@@ -247,12 +506,11 @@ export function decryptForTenant(orgId: string, ciphertextB64: string): string {
  * So `value.startsWith("v")` AND `value[2] === ":"` is sufficient
  * to detect v2+.
  *
- * Migration plan:
- *   • Phase 1 (this PR): scheme + helpers shipped, NOT used yet.
- *   • Phase 2: DEK rotation cron uses v2 format with rotation
- *     metadata embedded; reads dispatch on prefix.
- *   • Phase 3: backfill re-encrypts v1 → v2 over time; legacy v1
- *     read path remains until migration completes.
+ * In use since stage 2b (2026-10-22): v2 is `v2:<data key version>:<payload>`,
+ * written by `encryptForTenant*` under the organization's stored data key
+ * (see "Stored per-tenant data keys" above); every decrypt dispatches on the
+ * prefix. `/api/cron/tenant-data-key-reencrypt` rewrites v1 values to v2;
+ * the v1 read path stays for as long as any v1 value does.
  */
 export const CIPHERTEXT_VERSION_V1 = 1
 export const CIPHERTEXT_VERSION_V2 = 2
@@ -275,20 +533,14 @@ export function ciphertextVersion(value: string): number {
 }
 
 /**
- * Wrap a base64 payload with a version prefix. Currently only used
- * by tests + future migration paths. Routes continue to write v1
- * (no prefix) until slice-3 cuts over.
+ * Wrap a base64 payload with a version prefix — the low-level step of the
+ * v2 format. A v2 value also carries its data key version
+ * (`v2:<version>:<payload>`), which only `encryptForTenant*` knows, so a
+ * caller that wraps a bare payload produces a value no reader accepts.
  *
- * ⚠️ FOOTGUN GUARD: `decryptForTenant` / `softDecryptForTenant` do
- * NOT yet call `stripCiphertextVersion` — if a `vN:…` value gets
- * written to a column today and read back, the decrypt would fail
- * (soft path returns the prefixed string as plaintext, which is
- * wrong). To prevent this in production code paths, the helper
- * accepts only the test-mode override; production callers must use
- * the post-Phase-2-cutover variants (not yet written).
- *
- * Pass `{ unsafeAllow: true }` from tests / scripts that own the
- * full read cycle and don't go through `decryptForTenant`.
+ * ⚠️ FOOTGUN GUARD: hence the explicit override. Pass
+ * `{ unsafeAllow: true }` only from code that owns the full encode/decode
+ * cycle (tests, `formatV2` in this module).
  */
 export function wrapCiphertextVersion(
   version: number,
@@ -316,13 +568,14 @@ export function wrapCiphertextVersion(
 }
 
 /**
- * Strip the version prefix and return the bare base64 payload. v1
- * inputs pass through unchanged.
+ * Strip the version prefix (and a v2 value's data key version) and return
+ * the bare base64 payload. v1 inputs pass through unchanged.
  */
 export function stripCiphertextVersion(value: string): string {
   const v = ciphertextVersion(value)
   if (v === CIPHERTEXT_VERSION_V1) return value
-  return value.slice(3) // strip "vN:"
+  // strip "vN:", then "<key version>:" — base64 has no ":", so this never eats payload
+  return value.slice(3).replace(/^[0-9]+:/, "")
 }
 
 /* ─── Column-bound encryption (slice-3 follow-up #5) ─────────────── */
@@ -377,16 +630,7 @@ export function encryptForTenantBound(
     // (orgId="a", table="b|c", column="d") collision.
     throw new Error("encryptForTenantBound: AAD components must not contain '|'")
   }
-  const dek = deriveTenantDek(orgId)
-  const iv = randomBytes(IV_BYTES)
-  const cipher = createCipheriv(ALGORITHM, dek, iv)
-  cipher.setAAD(Buffer.from(`${orgId}|${table}|${column}`, "utf8"))
-  const ciphertext = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ])
-  const tag = cipher.getAuthTag()
-  return Buffer.concat([iv, ciphertext, tag]).toString("base64")
+  return sealForTenant(orgId, `${orgId}|${table}|${column}`, plaintext)
 }
 
 /**
@@ -405,6 +649,8 @@ export function decryptForTenantBound(
       "decryptForTenantBound: ciphertext must be non-empty string",
     )
   }
+  const v2 = parseV2(ciphertextB64)
+  if (v2) return openV2(orgId, `${orgId}|${table}|${column}`, v2, "decryptForTenantBound")
   const wire = Buffer.from(ciphertextB64, "base64")
   if (wire.length < IV_BYTES + TAG_BYTES + 1) {
     throw new Error(
@@ -443,6 +689,8 @@ export function softDecryptForTenantBound(
   if (value === null || value === undefined || value === "") {
     return null
   }
+  const v2 = parseV2(value)
+  if (v2) return softOpenV2(orgId, [`${orgId}|${table}|${column}`, orgId], v2, value)
   if (
     !/^[A-Za-z0-9+/]+=*$/.test(value) ||
     Buffer.from(value, "base64").length < IV_BYTES + TAG_BYTES + 1
@@ -556,6 +804,8 @@ export function softDecryptForTenant(
   if (value === null || value === undefined || value === "") {
     return null
   }
+  const v2 = parseV2(value)
+  if (v2) return softOpenV2(orgId, [orgId], v2, value)
   // Heuristic: valid ciphertext is base64 AND decodes to at least
   // IV+TAG+1 bytes (29+). Anything shorter must be plaintext.
   // The base64 regex is permissive — plaintext that happens to be

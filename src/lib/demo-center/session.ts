@@ -10,8 +10,8 @@ export type DemoGrantLifecycle =
   | "DELIVERY_FAILED"
 
 export type DemoAccessState =
-  | "ready_for_otp"
-  | "otp_sent"
+  /** The emailed link is open and the address is not confirmed in this browser yet. */
+  | "ready"
   | "verified"
   | "active"
   | "active_elsewhere"
@@ -59,9 +59,10 @@ export function publicAccessState(
   if (grant.status === "ACTIVE") return credentials.session ? "active" : "active_elsewhere"
   if (grant.status === "OTP_VERIFIED") {
     const verificationAlive = !!grant.verificationExpiresAt && grant.verificationExpiresAt > now
-    return credentials.verified && verificationAlive ? "verified" : "ready_for_otp"
+    return credentials.verified && verificationAlive ? "verified" : "ready"
   }
-  if (grant.status === "OTP_SENT") return "otp_sent"
-  if (grant.status === "SENT") return "ready_for_otp"
+  // OTP_SENT: a code requested before the code gave way to the button
+  // (2026-10-18). The button confirms such a grant like any other.
+  if (grant.status === "SENT" || grant.status === "OTP_SENT") return "ready"
   return "unavailable"
 }

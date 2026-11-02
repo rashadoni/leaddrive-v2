@@ -37,12 +37,13 @@ function noStoreJson(body: unknown, init?: ResponseInit) {
  */
 export const POST = withMobileRls(async (req, auth) => {
   const attendanceOnly = !hasMobileCapability(auth.role, "FIELD_EXECUTE")
-  if (!auth.agentId || (attendanceOnly && auth.tenantCapabilities?.routeField!==true)) {
+  // An office employee's own day is Personnel (sold apart from routes since 2026-10-14).
+  if (!auth.agentId || (attendanceOnly && auth.tenantCapabilities?.personnel!==true)) {
     return noStoreJson({ error: "Forbidden", code: "MTM_WORKDAY_RETURN_FORBIDDEN" }, { status: 403 })
   }
   if (attendanceOnly) {
     try {
-      await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},"attendanceWorkday")
+      await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role})
     } catch (error) {
       if (!(error instanceof AttendanceRequestError)) return noStoreJson({error:"Attendance access unavailable"},{status:503})
       return noStoreJson({error:"Forbidden",code:"MTM_WORKDAY_RETURN_FORBIDDEN"},{status:403})

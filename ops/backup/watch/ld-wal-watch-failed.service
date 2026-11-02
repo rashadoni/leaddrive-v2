@@ -1,0 +1,9 @@
+# Installed by scripts/backup/install-wal-watch.sh.
+# A watch that crashes must not look like a healthy archive: the watch itself
+# tells the owner, at most once every six hours.
+[Unit]
+Description=Tell the owner the WAL archive watch itself failed
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@ --notify-failure

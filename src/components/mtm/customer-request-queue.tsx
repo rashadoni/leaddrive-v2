@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
@@ -20,7 +21,7 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -64,7 +65,7 @@ function ValueLine({ icon: Icon, label, value }: { icon: typeof Building2; label
     <div className="flex min-w-0 items-start gap-2.5">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <div className="min-w-0">
-        <dt className="text-[11px] font-medium text-muted-foreground">{label}</dt>
+        <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
         <dd className="truncate text-sm text-foreground">{value}</dd>
       </div>
     </div>
@@ -125,8 +126,8 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
   }
 
   return (
-    <section id="mtm-customer-approval-queue" className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="customer-approval-heading">
-      <header className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <section id="mtm-customer-approval-queue" className="overflow-hidden rounded-xl border border-border bg-card" aria-labelledby="customer-approval-heading">
+      <header className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 id="customer-approval-heading" className="flex items-center gap-2 text-base font-semibold">
@@ -146,7 +147,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
 
       {!loading && requests.length === 0 ? (
         <div className="flex min-h-48 flex-col items-center justify-center px-6 py-10 text-center">
-          <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
           </span>
           <h3 className="text-sm font-semibold">{t("noCustomerApprovalsTitle")}</h3>
@@ -154,7 +155,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
         </div>
       ) : null}
 
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+      <div className="divide-y divide-border">
         {requests.map((request) => {
           const candidates = request.duplicateCandidates ?? []
           const exact = candidates.filter((candidate) => candidate.exact)
@@ -186,13 +187,13 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                 <div className="rounded-lg bg-muted/45 px-3.5 py-3">
                   <p className="text-xs font-medium text-muted-foreground">{t("requestReasonLabel")}</p>
                   <p className="mt-1 text-sm leading-relaxed">{request.reason}</p>
-                  {request.agentComment ? <p className="mt-2 border-t border-zinc-200 pt-2 text-sm text-muted-foreground dark:border-zinc-700">{request.agentComment}</p> : null}
+                  {request.agentComment ? <p className="mt-2 border-t border-border pt-2 text-sm text-muted-foreground">{request.agentComment}</p> : null}
                 </div>
 
                 {candidates.length > 0 ? (
-                  <section className={`rounded-lg border p-3.5 ${blocked ? "border-red-200 bg-red-50/70 dark:border-red-900 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20"}`} aria-label={t("duplicateCheckTitle")}>
+                  <section className={`rounded-lg border p-3.5 ${blocked ? "border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500" : "border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500"}`} aria-label={t("duplicateCheckTitle")}>
                     <div className="flex items-start gap-3">
-                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${blocked ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"}`}>
+                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${blocked ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-300"}`}>
                         {blocked ? <ShieldAlert className="h-4 w-4" aria-hidden="true" /> : <AlertTriangle className="h-4 w-4" aria-hidden="true" />}
                       </span>
                       <div>
@@ -206,18 +207,18 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                         <div key={candidate.id} className="rounded-lg bg-card px-3 py-3 shadow-sm">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-[11px] font-medium text-muted-foreground">{t("existingCustomer")}</p>
+                              <p className="text-xs font-medium text-muted-foreground">{t("existingCustomer")}</p>
                               <p className="truncate text-sm font-semibold">{candidate.name}</p>
                             </div>
-                            <Badge variant={candidate.exact ? "destructive" : "warning"}>{t("matchScore", { score: candidate.score })}</Badge>
+                            <HintValue text={t("hint.matchScore")}><Badge variant={candidate.exact ? "destructive" : "warning"}>{t("matchScore", { score: candidate.score })}</Badge></HintValue>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                             {candidate.code ? <span className="flex items-center gap-1"><Hash className="h-3 w-3" aria-hidden="true" />{candidate.code}</span> : null}
                             {candidate.phone ? <span className="flex items-center gap-1"><Phone className="h-3 w-3" aria-hidden="true" />{candidate.phone}</span> : null}
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                            <span className="text-[11px] text-muted-foreground">{t("matchesBy")}</span>
-                            {candidate.reasons.map((reason) => <Badge key={reason} variant="outline" className="bg-card text-[11px]">{t(`duplicateReason.${reason}`)}</Badge>)}
+                            <span className="text-xs text-muted-foreground">{t("matchesBy")}</span>
+                            {candidate.reasons.map((reason) => <Badge key={reason} variant="outline" className="bg-card text-xs">{t(`duplicateReason.${reason}`)}</Badge>)}
                           </div>
                         </div>
                       ))}
@@ -231,7 +232,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                 )}
               </div>
 
-              <aside className="border-t border-zinc-200 bg-muted/25 p-4 dark:border-zinc-700 xl:border-l xl:border-t-0 xl:p-5" aria-label={t("decisionTitle")}>
+              <aside className="border-t border-border bg-muted/25 p-4 xl:border-l xl:border-t-0 xl:p-5" aria-label={t("decisionTitle")}>
                 <div className="xl:sticky xl:top-4">
                   <div className="flex items-center gap-2">
                     <CircleHelp className="h-4 w-4 text-primary" aria-hidden="true" />
@@ -242,7 +243,7 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                   <div className="mt-4">
                     <div className="flex items-center justify-between gap-2">
                       <Label htmlFor={`customer-decision-${request.id}`}>{t("decisionCommentLabel")}</Label>
-                      <span className="text-[11px] text-muted-foreground">{t("decisionCommentRequirement")}</span>
+                      <span className="text-xs text-muted-foreground">{t("decisionCommentRequirement")}</span>
                     </div>
                     <Textarea
                       id={`customer-decision-${request.id}`}
@@ -256,18 +257,24 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
                   </div>
 
                   <div className="mt-4 space-y-2" aria-live="polite">
-                    <Button className="w-full" onClick={() => decide(request.id, "APPROVED")} disabled={busy || blocked}>
-                      {busy ? <Loader2 className="animate-spin" /> : <Check />}
-                      {t("approveCreateCustomer")}
-                    </Button>
-                    <Button className="w-full justify-between" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busy || !comment.trim()}>
-                      <span className="flex items-center gap-2"><CircleHelp />{t("requestCustomerDetails")}</span>
-                      <ArrowRight />
-                    </Button>
-                    <Button className="w-full justify-between text-destructive hover:text-destructive" variant="outline" onClick={() => decide(request.id, "REJECTED")} disabled={busy || !comment.trim()}>
-                      <span className="flex items-center gap-2"><X />{t("rejectCustomerRequest")}</span>
-                      <ArrowRight />
-                    </Button>
+                    <Hint wrap text={t("hint.approveCustomer")}>
+                      <Button className="w-full" onClick={() => decide(request.id, "APPROVED")} disabled={busy || blocked}>
+                        {busy ? <Loader2 className="animate-spin" /> : <Check />}
+                        {t("approveCreateCustomer")}
+                      </Button>
+                    </Hint>
+                    <Hint wrap text={t("hint.customerDetails")}>
+                      <Button className="w-full justify-between" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busy || !comment.trim()}>
+                        <span className="flex items-center gap-2"><CircleHelp />{t("requestCustomerDetails")}</span>
+                        <ArrowRight />
+                      </Button>
+                    </Hint>
+                    <Hint wrap text={t("hint.customerReject")}>
+                      <Button className="w-full justify-between text-destructive hover:text-destructive" variant="outline" onClick={() => decide(request.id, "REJECTED")} disabled={busy || !comment.trim()}>
+                        <span className="flex items-center gap-2"><X />{t("rejectCustomerRequest")}</span>
+                        <ArrowRight />
+                      </Button>
+                    </Hint>
                   </div>
                 </div>
               </aside>

@@ -1,0 +1,37 @@
+name: Event platform tooling checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/event-platform/**'
+      - 'ops/event-platform/**'
+      - '.github/workflows/event-platform-*.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/event-platform/**'
+      - 'ops/event-platform/**'
+      - '.github/workflows/event-platform-*.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: event-platform-tools-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: bash -n scripts/event-platform/inspect-production.sh
+      - run: node --test scripts/event-platform/*.test.mjs
+      - run: node scripts/ci/check-github-runner-policy.mjs

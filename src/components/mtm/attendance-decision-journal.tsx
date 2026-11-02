@@ -31,6 +31,7 @@ export function MtmAttendanceDecisionJournal() {
   const readRequest = useRef<AbortController | null>(null)
   const exportRequest = useRef<AbortController | null>(null)
   const lastQuery = useRef<AttendanceDecisionJournalQuery | undefined>(undefined)
+  const applyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function cancelExport() {
     exportRequest.current?.abort(); exportRequest.current = null
@@ -62,7 +63,7 @@ export function MtmAttendanceDecisionJournal() {
   }, [clearPrivate])
   useEffect(() => {
     void load()
-    return () => { readRequest.current?.abort(); exportRequest.current?.abort() }
+    return () => { readRequest.current?.abort(); exportRequest.current?.abort(); if (applyTimer.current) clearTimeout(applyTimer.current) }
   }, [load])
   useEffect(() => {
     exportRequest.current?.abort(); exportRequest.current = null
@@ -74,10 +75,19 @@ export function MtmAttendanceDecisionJournal() {
   const pageCount = Math.max(1, Math.ceil((table?.rows.length ?? 0) / PAGE_SIZE))
   const visible = table?.rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) ?? []
   const exportDisabled = dirty || loading || Boolean(exporting) || mustRefresh || accessUnavailable
-  function changeDraft(next: AttendanceDecisionJournalQuery) { cancelExport(); setDraft(next); setError(mustRefresh ? "journalChanged" : null) }
+  // Filters apply themselves, as on the newer Personnel screens (owner, 2026-10-16:
+  // the old screens' own «Show» button made HR relearn every page). A half-typed
+  // date waits; a finished but impossible period says so.
+  function changeDraft(next: AttendanceDecisionJournalQuery) {
+    cancelExport(); setDraft(next); setError(mustRefresh ? "journalChanged" : null)
+    if (applyTimer.current) clearTimeout(applyTimer.current)
+    const parsed = AttendanceDecisionJournalQuerySchema.safeParse(next)
+    if (!parsed.success) { if (next.from && next.to) setError("journalInvalidPeriod"); return }
+    applyTimer.current = setTimeout(() => { applyTimer.current = null; void load(parsed.data) }, 400)
+  }
   function apply(event: FormEvent) {
     event.preventDefault()
-    if (loading) return
+    if (applyTimer.current) { clearTimeout(applyTimer.current); applyTimer.current = null }
     const parsed = AttendanceDecisionJournalQuerySchema.safeParse(draft)
     if (!parsed.success) { setError("journalInvalidPeriod"); return }
     void load(parsed.data)
@@ -119,11 +129,10 @@ export function MtmAttendanceDecisionJournal() {
     <header className="space-y-2"><h1 id="attendance-decision-journal-title" className="text-2xl font-semibold tracking-tight">{t("journalTitle")}</h1><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("journalDescription")}</p></header>
     <Card data-testid="attendance-decision-journal-card" aria-labelledby="attendance-decision-journal-title" className="rounded-2xl px-5 py-1">
       <div className="space-y-4 py-4">
-        {!accessUnavailable && <><form className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.2fr_auto]" onSubmit={apply} aria-label={t("journalFilters")}>
-          <div className="space-y-2"><label htmlFor="attendance-journal-from" className="text-sm font-medium">{t("reportFrom")}</label><Input id="attendance-journal-from" type="date" required className="min-h-11" value={draft.from} disabled={loading} onChange={event => changeDraft({ ...draft, from: event.target.value })} /></div>
-          <div className="space-y-2"><label htmlFor="attendance-journal-to" className="text-sm font-medium">{t("reportTo")}</label><Input id="attendance-journal-to" type="date" required className="min-h-11" value={draft.to} disabled={loading} onChange={event => changeDraft({ ...draft, to: event.target.value })} /></div>
-          <div className="space-y-2"><label htmlFor="attendance-journal-status" className="text-sm font-medium">{t("journalStatus")}</label><select id="attendance-journal-status" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" value={draft.status} disabled={loading} onChange={event => changeDraft({ ...draft, status: event.target.value as AttendanceDecisionJournalQuery["status"] })}>{Object.entries(STATUS).map(([status, key]) => <option key={status} value={status}>{t(key)}</option>)}</select></div>
-          <Button type="submit" variant="outline" className="min-h-11" disabled={loading}>{t("journalApply")}</Button>
+        {!accessUnavailable && <><form className="grid items-end gap-4 sm:grid-cols-3" onSubmit={apply} aria-label={t("journalFilters")}>
+          <div className="space-y-2"><label htmlFor="attendance-journal-from" className="text-sm font-medium">{t("reportFrom")}</label><Input id="attendance-journal-from" type="date" required className="min-h-11" value={draft.from} onChange={event => changeDraft({ ...draft, from: event.target.value })} /></div>
+          <div className="space-y-2"><label htmlFor="attendance-journal-to" className="text-sm font-medium">{t("reportTo")}</label><Input id="attendance-journal-to" type="date" required className="min-h-11" value={draft.to} onChange={event => changeDraft({ ...draft, to: event.target.value })} /></div>
+          <div className="space-y-2"><label htmlFor="attendance-journal-status" className="text-sm font-medium">{t("journalStatus")}</label><select id="attendance-journal-status" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" value={draft.status} onChange={event => changeDraft({ ...draft, status: event.target.value as AttendanceDecisionJournalQuery["status"] })}>{Object.entries(STATUS).map(([status, key]) => <option key={status} value={status}>{t(key)}</option>)}</select></div>
         </form><p className="text-xs text-muted-foreground">{t("journalPeriodHint")}</p></>}
         {loading && <p role="status" className="text-sm text-muted-foreground">{t("journalLoading")}</p>}
         {error && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{t(error)}</p>{!accessUnavailable && <Button type="button" variant="outline" className="min-h-11" disabled={loading} onClick={() => void load(lastQuery.current)}>{t("reportReload")}</Button>}</div>}

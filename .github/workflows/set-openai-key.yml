@@ -70,5 +70,16 @@ jobs:
           echo "OPENAI_API_KEY: written to canonical app env"
           export OPENAI_API_KEY
           pm2 restart leaddrive-v2 --update-env >/dev/null
+          # The scheduler's process (pm2 leaddrive-v2-jobs) runs the jobs these keys
+          # steer and keeps its own copy of the environment until restarted too.
+          if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
+            pm2 restart leaddrive-v2-jobs --update-env >/dev/null
+          fi
+          # The phone line's process (pm2 leaddrive-v2-line-a or -b) keeps its own copy too.
+          for line_app in leaddrive-v2-line-a leaddrive-v2-line-b; do
+            if pm2 describe "$line_app" >/dev/null 2>&1; then
+              pm2 restart "$line_app" --update-env >/dev/null
+            fi
+          done
           echo "pm2 restarted"
           REMOTE

@@ -1,5 +1,6 @@
 "use client"
 
+import { HintValue } from "@/components/hint"
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 
@@ -154,7 +155,7 @@ export function LiveMapAgentDay({ agentId, refreshKey, formatDistance, settleMs 
             <>
               <dl className="space-y-0.5">
                 <div className="flex items-baseline justify-between gap-2" data-testid="live-map-agent-day-distance">
-                  <dt className="text-muted-foreground">{t("day.distance")}</dt>
+                  <dt className="text-muted-foreground"><HintValue text={t("hint.dayDistance", { byRoads: t("day.byRoads") })}>{t("day.distance")}</HintValue></dt>
                   <dd className="text-right font-semibold tabular-nums text-foreground">
                     {formatDistance(totals.distanceMeters)}
                     {totals.byRoads ? <span className="font-normal text-muted-foreground"> · {t("day.byRoads")}</span> : null}
@@ -163,13 +164,13 @@ export function LiveMapAgentDay({ agentId, refreshKey, formatDistance, settleMs 
                 {/* «В движении 0 мин» on a day without a single drive reads as a fault. */}
                 {totals.movingSeconds > 0 ? (
                   <div className="flex items-baseline justify-between gap-2" data-testid="live-map-agent-day-moving">
-                    <dt className="text-muted-foreground">{t("day.moving")}</dt>
+                    <dt className="text-muted-foreground"><HintValue text={t("hint.dayMoving")}>{t("day.moving")}</HintValue></dt>
                     <dd className="text-right font-semibold tabular-nums text-foreground">{duration(totals.movingSeconds)}</dd>
                   </div>
                 ) : null}
                 {totals.unknownSeconds > 0 ? (
                   <div className="flex items-baseline justify-between gap-2" data-testid="live-map-agent-day-unknown">
-                    <dt className="text-muted-foreground">{t("day.unknown")}</dt>
+                    <dt className="text-muted-foreground"><HintValue text={t("hint.dayUnknown")}>{t("day.unknown")}</HintValue></dt>
                     <dd className="text-right font-semibold tabular-nums text-foreground">{duration(totals.unknownSeconds)}</dd>
                   </div>
                 ) : null}

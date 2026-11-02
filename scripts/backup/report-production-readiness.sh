@@ -51,11 +51,11 @@ AWS_ROOT="/usr/local/lib/leaddrive-backup/tools/aws-cli/$AWS_VERSION"
 AWS_BIN="$AWS_ROOT/v2/current/bin/aws"
 AWS_PROVENANCE="$AWS_ROOT/LEADDRIVE_PROVENANCE"
 CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
-ARCHIVE_VERIFIER_SHA256="c6d4caabb1f44db3036c79d59b63253f961fa8ce29780724c9d15667dac644a6"
-POSTGRES_BACKUP_SHA256="b2b0ca62ab77afe5ff2cda88351f71a038163b791484adc886cad806fe07edff"
-SECRETS_SNAPSHOT_SHA256="16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99"
-RUNTIME_FILES_SNAPSHOT_SHA256="d5fe33b4b0b0e581194b3aff770eca45a14a493774ec314340146bd69475e53e"
-RESTORE_CANARY_SHA256="af743a9bd8df3daa6ba6b60d90141daea28629f6140d8d12d1623f6b083f5d9e"
+ARCHIVE_VERIFIER_SHA256="028d52f8c22c7690a3523ea9db960d5d001ac478bc634063d6065d46c78b4abf"
+POSTGRES_BACKUP_SHA256="cb1ca4edf130be15ae1d3e76ec431b20fe8ab19d2e1686468d554d027c6802f5"
+SECRETS_SNAPSHOT_SHA256="2efda4aa77c291fe014a6e9795a709ed776f1d217c954ba617abf017743f77e5"
+RUNTIME_FILES_SNAPSHOT_SHA256="e32fa4fdab76e4ad162d7c1463916a3847824c3d438a972051b095da4b4e8330"
+RESTORE_CANARY_SHA256="fc028191f18ee58233ab6fdbaa0a450789d47ca7c9b81567a99fb62161f66355"
 PII_PROOF_SHA256="e83f3fc65c56e0dc8db7eb26e47780c0901917908c05d7aa6552792a37f99e18"
 CANARY_SQL_SHA256="5c3a9bf2b14c84c4deafa31525ac23518ba2290ab32a7cf5f66e2d05d4b249c9"
 ISSUES=0
@@ -83,6 +83,122 @@ fail() {
 enterprise_gap() {
   ENTERPRISE_GAPS=$((ENTERPRISE_GAPS + 1))
   printf '[backup-readiness] ENTERPRISE-GAP: %s\n' "$*"
+}
+
+# Keep untrusted AWS output inside a bounded private pipe, not a shell variable,
+# file or log. Only the Python classifier's fixed enum can leave this function.
+# The final NUL-framed exit status is supplied by this shell AFTER the real CLI;
+# success-looking output must never hide a nonzero CLI/timeout exit.
+read_object_lock_diagnostic() {
+  {
+  {
+    local cli_status
+    if env -i \
+      PATH=/usr/bin:/bin HOME=/nonexistent LC_ALL=C \
+      AWS_ACCESS_KEY_ID="${CONFIG[AWS_ACCESS_KEY_ID]}" \
+      AWS_SECRET_ACCESS_KEY="${CONFIG[AWS_SECRET_ACCESS_KEY]}" \
+      AWS_EC2_METADATA_DISABLED=true AWS_PAGER='' AWS_CLI_AUTO_PROMPT=off \
+      AWS_MAX_ATTEMPTS=1 AWS_RETRY_MODE=standard \
+      AWS_CONFIG_FILE=/dev/null AWS_SHARED_CREDENTIALS_FILE=/dev/null \
+      timeout --kill-after=5 45 "$AWS_BIN" s3api get-object-lock-configuration \
+        --endpoint-url "${CONFIG[BACKUP_S3_ENDPOINT]}" \
+        --region "${CONFIG[BACKUP_S3_REGION]}" \
+        --no-cli-pager --bucket "${CONFIG[BACKUP_S3_BUCKET]}" \
+        --query 'ObjectLockConfiguration.[ObjectLockEnabled,Rule.DefaultRetention.Mode,Rule.DefaultRetention.Days]' \
+        --output text 2>&1; then
+      cli_status=0
+    else
+      cli_status=$?
+    fi
+    printf '\0LEADDRIVE_CLI_EXIT=%d\0' "$cli_status"
+  } 2>&1 | env -i PATH=/usr/bin:/bin LC_ALL=C \
+    timeout --kill-after=5 55 python3 -I -c '
+import re
+import sys
+
+def classify():
+    limit = 16384
+    retained = bytearray()
+    oversized = False
+    while True:
+        chunk = sys.stdin.buffer.read(4096)
+        if not chunk:
+            break
+        if len(retained) + len(chunk) > limit:
+            oversized = True
+        if not oversized:
+            retained.extend(chunk)
+    if oversized:
+        return "oversized_response"
+    framed = bytes(retained)
+    trailer = re.search(rb"\x00LEADDRIVE_CLI_EXIT=([0-9]{1,3})\x00$", framed)
+    if trailer is None or int(trailer[1]) > 255:
+        return "invalid_response"
+    status = int(trailer[1])
+    body = framed[:trailer.start()]
+    if status == 0:
+        lines = body.splitlines()
+        if len(lines) != 1:
+            return "invalid_response"
+        parts = lines[0].split(b"\t")
+        if len(parts) != 3:
+            return "invalid_response"
+        if (parts[0] == b"Enabled" and parts[1] == b"COMPLIANCE"
+                and re.fullmatch(rb"[0-9]{1,10}", parts[2])
+                and int(parts[2]) >= 14):
+            return "verified"
+        return "policy_mismatch"
+    if status == 124:
+        return "request_timeout"
+    if status == 137:
+        return "process_killed"
+    if status in (2, 252):
+        return "cli_usage_error"
+    if status == 253:
+        return "cli_configuration_error"
+    if status == 254:
+        service = re.match(rb"\s*An error occurred \(([A-Za-z0-9]+)\) when calling the GetObjectLockConfiguration operation(?: \(reached max retries: [0-9]{1,3}\))?:", body)
+        if service:
+            return {
+                b"AccessDenied": "access_denied",
+                b"InvalidAccessKeyId": "credentials_rejected",
+                b"SignatureDoesNotMatch": "credentials_rejected",
+                b"ExpiredToken": "credentials_rejected",
+                b"NoSuchBucket": "bucket_not_found",
+                b"ObjectLockConfigurationNotFoundError": "lock_configuration_missing",
+                b"NotImplemented": "operation_unsupported",
+                b"UnsupportedOperation": "operation_unsupported",
+                b"AuthorizationHeaderMalformed": "auth_request_rejected",
+                b"AuthorizationQueryParametersError": "auth_request_rejected",
+                b"RequestTimeTooSkewed": "request_time_rejected",
+                b"IncorrectEndpoint": "routing_rejected",
+                b"IllegalLocationConstraintException": "routing_rejected",
+                b"PermanentRedirect": "routing_rejected",
+                b"TemporaryRedirect": "routing_rejected",
+                b"InvalidRequest": "request_rejected",
+                b"InvalidArgument": "request_rejected",
+                b"InvalidBucketState": "bucket_state_rejected",
+                b"InternalError": "provider_failure",
+                b"ServiceUnavailable": "provider_failure",
+                b"SlowDown": "throttled",
+            }.get(service[1], "service_code_unrecognized")
+        return "service_error_format_unrecognized"
+    if status == 255:
+        if body.lstrip().startswith(b"SSL validation failed for "):
+            return "tls_error"
+        if body.lstrip().startswith((b"Could not connect to the endpoint URL:",
+                                     b"Connect timeout on endpoint URL:",
+                                     b"Read timeout on endpoint URL:")):
+            return "endpoint_unreachable"
+    return "unknown_failure"
+
+try:
+    result = classify()
+except Exception:
+    result = "invalid_response"
+print(result)
+' 2>/dev/null
+  } 2>/dev/null
 }
 
 trim_value() {
@@ -156,6 +272,13 @@ if command -v apt-cache >/dev/null 2>&1; then
   info "apt candidates: age=${age_candidate:-none}, awscli=${aws_candidate:-none}"
 fi
 
+# Object Storage is Backblaze B2 (S3-compatible API). Hetzner Object Storage
+# went away with the Hetzner account in September 2026; its endpoint form is no
+# longer accepted. The region is B2's cluster name, e.g. eu-central-003.
+object_storage_endpoint_matches_region() {
+  [[ "$2" =~ ^[a-z]{2}-[a-z]+-[0-9]{3}$ ]] && [ "$1" = "https://s3.$2.backblazeb2.com" ]
+}
+
 looks_like_placeholder() {
   local value="${1,,}"
   case "$value" in
@@ -184,23 +307,27 @@ require_config_key() {
 check_service_secret_file() {
   local key="$1"
   local path="${CONFIG[$key]:-}"
-  local owner mode
+  local owner group mode backup_uid backup_gid
 
   [ -n "$path" ] || return 0
   if [[ "$path" != /* ]] || [ ! -f "$path" ] || [ -L "$path" ]; then
     fail "$key does not name a regular absolute non-symlink file"
     return 0
   fi
-  owner="$(stat -c '%U:%G' "$path" 2>/dev/null || true)"
+  owner="$(stat -c '%u' "$path" 2>/dev/null || true)"
+  group="$(stat -c '%g' "$path" 2>/dev/null || true)"
   mode="$(stat -c '%a' "$path" 2>/dev/null || true)"
+  backup_uid="$(id -u leaddrive-backup 2>/dev/null || true)"
+  backup_gid="$(id -g leaddrive-backup 2>/dev/null || true)"
   case "$mode" in
-    440|600|640) ;;
-    *) fail "$key file must use mode 0440, 0600 or 0640 (observed mode redacted from output)" ;;
+    400|600) ;;
+    *) fail "$key file must use private mode 0400 or 0600 (observed mode redacted from output)" ;;
   esac
-  case "$owner:$mode" in
-    leaddrive-backup:*:600|root:leaddrive-backup:440|root:leaddrive-backup:640) ;;
-    *) fail "$key file ownership is not service-user 0600 or root:service-group 0440/0640" ;;
-  esac
+  if [ -z "$backup_uid" ] || [ -z "$backup_gid" ] \
+    || [ "$backup_uid" = 0 ] || [ "$backup_gid" = 0 ] \
+    || [ "$owner:$group" != "$backup_uid:$backup_gid" ]; then
+    fail "$key file must belong to the backup service account and group"
+  fi
   if command -v runuser >/dev/null 2>&1 \
     && runuser -u leaddrive-backup -- /bin/sh -c 'test -r "$1"' sh "$path"; then
     pass "$key file is readable by the backup service user"
@@ -831,10 +958,10 @@ for health_key in BACKUP_HEALTHCHECK_URL SECRETS_HEALTHCHECK_URL \
 done
 
 if [ -n "${CONFIG[BACKUP_S3_ENDPOINT]:-}" ] && [ -n "${CONFIG[BACKUP_S3_REGION]:-}" ] \
-  && [ "${CONFIG[BACKUP_S3_ENDPOINT]}" = "https://${CONFIG[BACKUP_S3_REGION]}.your-objectstorage.com" ]; then
-  pass "Object Storage endpoint matches the configured Hetzner region"
+  && object_storage_endpoint_matches_region "${CONFIG[BACKUP_S3_ENDPOINT]}" "${CONFIG[BACKUP_S3_REGION]}"; then
+  pass "Object Storage endpoint matches the configured B2 region"
 else
-  fail "Object Storage endpoint does not match the configured Hetzner region"
+  fail "Object Storage endpoint does not match the configured B2 region"
 fi
 
 backup_encryption="${CONFIG[BACKUP_ENCRYPTION]:-age}"
@@ -2134,15 +2261,22 @@ check_recent_service_success() {
   local service="$1"
   local label="$2"
   local maximum_age="$3"
-  local result status exit_timestamp exit_epoch now_epoch swap_max
-  result="$(systemctl show --property=Result --value "$service" 2>/dev/null || true)"
-  status="$(systemctl show --property=ExecMainStatus --value "$service" 2>/dev/null || true)"
-  exit_timestamp="$(systemctl show --property=ExecMainExitTimestamp --value "$service" 2>/dev/null || true)"
-  swap_max="$(systemctl show --property=MemorySwapMax --value "$service" 2>/dev/null || true)"
-  exit_epoch="$(date -u -d "$exit_timestamp" '+%s' 2>/dev/null || true)"
+  local load_state result status exit_timestamp exit_epoch now_epoch swap_max
+  load_state="$(systemctl show --property=LoadState --value "$service" 2>/dev/null)" || load_state=""
+  result="$(systemctl show --property=Result --value "$service" 2>/dev/null)" || result=""
+  status="$(systemctl show --property=ExecMainStatus --value "$service" 2>/dev/null)" || status=""
+  exit_timestamp="$(systemctl show --property=ExecMainExitTimestamp --value "$service" 2>/dev/null)" || exit_timestamp=""
+  swap_max="$(systemctl show --property=MemorySwapMax --value "$service" 2>/dev/null)" || swap_max=""
+  # GNU date parses an empty/blank string as today's midnight. Default success/0
+  # metadata for a never-run or absent unit must not become a fresh-run receipt.
+  exit_epoch=""
+  if [ "$load_state" = "loaded" ] && [[ "$exit_timestamp" =~ [^[:space:]] ]]; then
+    exit_epoch="$(date -u -d "$exit_timestamp" '+%s' 2>/dev/null)" || exit_epoch=""
+  fi
   now_epoch="$(date -u '+%s')"
-  if [ "$result" = "success" ] && [ "$status" = "0" ] \
+  if [ "$load_state" = "loaded" ] && [ "$result" = "success" ] && [ "$status" = "0" ] \
     && [[ "$exit_epoch" =~ ^[0-9]+$ ]] \
+    && [ "$exit_epoch" -gt 0 ] \
     && [ "$exit_epoch" -le $((now_epoch + 300)) ] \
     && [ "$exit_epoch" -ge $((now_epoch - maximum_age)) ]; then
     pass "$label last successful run is fresh"
@@ -2213,31 +2347,23 @@ if [ "$AWS_TOOLCHAIN_READY" -eq 1 ] \
   && [ -n "${CONFIG[BACKUP_S3_BUCKET]:-}" ] \
   && [ -n "${CONFIG[AWS_ACCESS_KEY_ID]:-}" ] \
   && [ -n "${CONFIG[AWS_SECRET_ACCESS_KEY]:-}" ]; then
-  set +e
-  lock_state="$(env -i \
-    PATH=/usr/bin:/bin HOME=/nonexistent \
-    AWS_ACCESS_KEY_ID="${CONFIG[AWS_ACCESS_KEY_ID]}" \
-    AWS_SECRET_ACCESS_KEY="${CONFIG[AWS_SECRET_ACCESS_KEY]}" \
-    AWS_EC2_METADATA_DISABLED=true AWS_PAGER='' \
-    AWS_CONFIG_FILE=/dev/null AWS_SHARED_CREDENTIALS_FILE=/dev/null \
-    timeout 45 "$AWS_BIN" s3api get-object-lock-configuration \
-      --endpoint-url "${CONFIG[BACKUP_S3_ENDPOINT]}" \
-      --region "${CONFIG[BACKUP_S3_REGION]}" \
-      --no-cli-pager --bucket "${CONFIG[BACKUP_S3_BUCKET]}" \
-      --query 'ObjectLockConfiguration.[ObjectLockEnabled,Rule.DefaultRetention.Mode,Rule.DefaultRetention.Days]' \
-      --output text 2>/dev/null)"
-  lock_status=$?
-  set -e
-  if [ "$lock_status" -ne 0 ]; then
-    fail "writer credential cannot verify bucket Object Lock"
+  if lock_diagnostic="$(read_object_lock_diagnostic)"; then
+    case "$lock_diagnostic" in
+      verified)
+        pass "bucket default Object Lock is COMPLIANCE for at least 14 days"
+        ;;
+      policy_mismatch)
+        fail "bucket default Object Lock is not COMPLIANCE for at least 14 days"
+        ;;
+      access_denied|credentials_rejected|bucket_not_found|lock_configuration_missing|operation_unsupported|auth_request_rejected|request_time_rejected|routing_rejected|request_rejected|bucket_state_rejected|provider_failure|throttled|service_code_unrecognized|service_error_format_unrecognized|tls_error|endpoint_unreachable|request_timeout|process_killed|cli_usage_error|cli_configuration_error|service_error|unknown_failure|invalid_response|oversized_response)
+        fail "writer credential cannot verify bucket Object Lock (diagnostic=$lock_diagnostic; values redacted)"
+        ;;
+      *)
+        fail "writer credential cannot verify bucket Object Lock (diagnostic=unavailable; values redacted)"
+        ;;
+    esac
   else
-    read -r lock_enabled lock_mode lock_days <<<"$lock_state"
-    if [ "$lock_enabled" = "Enabled" ] && [ "$lock_mode" = "COMPLIANCE" ] \
-      && [[ "$lock_days" =~ ^[0-9]+$ ]] && [ "$lock_days" -ge 14 ]; then
-      pass "bucket default Object Lock is COMPLIANCE for at least 14 days"
-    else
-      fail "bucket default Object Lock is not COMPLIANCE for at least 14 days"
-    fi
+    fail "writer credential cannot verify bucket Object Lock (diagnostic=unavailable; values redacted)"
   fi
 fi
 

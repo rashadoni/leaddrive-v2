@@ -1,13 +1,13 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useSession } from "next-auth/react"
 import { notifyMtmSettingsChanged, type MtmNavOrgSettings } from "@/hooks/use-mtm-org-settings"
 import { NAV_ORG_SETTING_KEYS } from "@/lib/nav-items"
 import { toast } from "sonner"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import {
   Settings, Save, Satellite, Lock, Wrench, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
   AlertTriangle, RotateCcw, ChevronDown,
@@ -21,10 +21,13 @@ import { ContactCardSettings } from "./contact-card-settings"
 import { ContactDictionarySettings } from "./contact-dictionary-settings"
 import { OrganizationAttributePackageSettings } from "./organization-attribute-package-settings"
 import { RouteTargetTypeSettings } from "./route-target-type-settings"
+import { VisitEvaluationQuestionSettings } from "./visit-evaluation-question-settings"
 import { COMMON_TIMEZONES } from "@/lib/timezone"
 import type { MtmRouteTargetType } from "@/lib/mtm/route-target-types"
+import type { MtmVisitEvaluationQuestion } from "@/lib/mtm/visit-evaluation-questions"
 import { CoveragePolicyAdmin } from "@/components/mtm/coverage-policy-admin"
 import { KpiPolicyAdmin } from "@/components/mtm/kpi-policy-admin"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 import {
   MTM_SETTING_ERROR_CODES,
   MTM_SETTING_NUMBER_RANGES,
@@ -34,7 +37,7 @@ import {
   type MtmSettingFieldError,
 } from "@/lib/mtm/settings-validation"
 
-type SettingValue = string | number | boolean | string[] | MtmRouteTargetType[] | null | undefined
+type SettingValue = string | number | boolean | string[] | MtmRouteTargetType[] | MtmVisitEvaluationQuestion[] | null | undefined
 type SettingsMap = Record<string, SettingValue>
 type UnitKey = "unitSeconds" | "unitMinutes" | "unitMeters" | "unitHour" | "unitPhotos"
 
@@ -57,11 +60,6 @@ type SettingItem = {
  * daily work comes first; what only an implementer touches is last.
  */
 const SETTINGS_TABS = ["visit", "routes", "alerts", "clients", "company", "admin"] as const
-const ATTENDANCE_TOUCH_SETTING_KEYS = new Set([
-  "attendanceEmployeeRemindersEnabled", "attendanceManagerAlertsEnabled",
-  "attendanceRejectOutsideBranch", "attendanceAllowSharedInstallations",
-  "attendanceRejectMockLocations", "attendanceClockDifferenceSeconds",
-])
 type SettingsTab = typeof SETTINGS_TABS[number]
 const SETTINGS_TAB_LABEL: Record<SettingsTab, string> = {
   visit: "tabVisit", routes: "tabRoutes", alerts: "tabAlerts", clients: "tabClients", company: "tabCompany", admin: "tabAdmin",
@@ -262,22 +260,9 @@ export default function MtmSettingsPage() {
     }
   }, [dirty])
 
+  // The attendance switch itself lives in Personnel → Settings (2026-10-15).
   const updateSetting = (key: string, value: SettingValue) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
-    if (key === "attendanceEnabled" && value === false) {
-      // This field disappears with attendance. Drop only its unaccepted input;
-      // keep the last valid value so a hidden error cannot block switching off.
-      setNumberDrafts((prev) => {
-        const next = { ...prev }
-        delete next.attendanceClockDifferenceSeconds
-        return next
-      })
-      setFieldErrors((prev) => {
-        const next = { ...prev }
-        delete next.attendanceClockDifferenceSeconds
-        return next
-      })
-    }
   }
 
   // A block that saves itself (the client card) reports what is now stored:
@@ -413,8 +398,6 @@ export default function MtmSettingsPage() {
       items: [
         { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
         { key: "pharmacyPromotionsEnabled", labelKey: "lblPharmacyPromotions", hintKey: "hintPharmacyPromotions", type: "boolean", adminOnly: true },
-        { key: "attendanceEnabled", labelKey: "lblAttendance", hintKey: "hintAttendance", type: "boolean", adminOnly: true },
-        { key: "attendanceRejectOutsideBranch", labelKey: "lblAttendanceRejectOutsideBranch", hintKey: "hintAttendanceRejectOutsideBranch", type: "boolean", adminOnly: true },
       ],
     },
     {
@@ -446,7 +429,7 @@ export default function MtmSettingsPage() {
       items: [
         {
           key: "alertLongBreak", labelKey: "lblAlertLongBreak", hintKey: "hintAlertLongBreak", type: "boolean",
-          thresholds: [{ key: "autoCheckoutMinutes", labelKey: "lblAutoCheckoutMinutes", unitKey: "unitMinutes" }],
+          thresholds: [{ key: "autoCheckoutMinutes", labelKey: "lblAutoCheckoutMinutes", hintKey: "hintAutoCheckout", unitKey: "unitMinutes" }],
         },
         {
           // One stored key (alertOutOfZone) controls both alerts below.
@@ -457,8 +440,8 @@ export default function MtmSettingsPage() {
               titleKey: "subRouteDeviation",
               hintKey: "hintSubRouteDeviation",
               thresholds: [
-                { key: "deviationThresholdMeters", labelKey: "lblDeviationThreshold", unitKey: "unitMeters" },
-                { key: "deviationAlertThrottleMinutes", labelKey: "lblDeviationThrottle", unitKey: "unitMinutes" },
+                { key: "deviationThresholdMeters", labelKey: "lblDeviationThreshold", hintKey: "hintDeviationThreshold", unitKey: "unitMeters" },
+                { key: "deviationAlertThrottleMinutes", labelKey: "lblDeviationThrottle", hintKey: "hintDeviationThrottle", unitKey: "unitMinutes" },
               ],
             },
           ],
@@ -500,25 +483,10 @@ export default function MtmSettingsPage() {
         { key: "teamScheduleVisibilityEnabled", labelKey: "lblTeamScheduleVisibility", hintKey: "hintTeamScheduleVisibility", type: "boolean" },
       ],
     },
-    {
-      titleKey: "groupAttendanceReminders",
-      tab: "company",
-      icon: BellRing,
-      items: [
-        { key: "attendanceEmployeeRemindersEnabled", labelKey: "lblAttendanceEmployeeReminders", hintKey: "hintAttendanceEmployeeReminders", type: "boolean", adminOnly: true },
-        { key: "attendanceManagerAlertsEnabled", labelKey: "lblAttendanceManagerAlerts", hintKey: "hintAttendanceManagerAlerts", type: "boolean", adminOnly: true },
-      ],
-    },
-    {
-      titleKey: "groupAttendanceRisk",
-      tab: "company",
-      icon: AlertTriangle,
-      items: [
-        { key: "attendanceAllowSharedInstallations", labelKey: "lblAttendanceAllowSharedInstallations", hintKey: "hintAttendanceAllowSharedInstallations", type: "boolean", adminOnly: true },
-        { key: "attendanceRejectMockLocations", labelKey: "lblAttendanceRejectMockLocations", hintKey: "hintAttendanceRejectMockLocations", type: "boolean", adminOnly: true },
-        { key: "attendanceClockDifferenceSeconds", labelKey: "lblAttendanceClockDifferenceSeconds", hintKey: "hintAttendanceClockDifferenceSeconds", type: "number", unitKey: "unitSeconds", adminOnly: true },
-      ],
-    },
+    // Attendance reminders, «Закрыть день» approval and the checks of marks
+    // live in Personnel → Settings (owner, 2026-10-18: «настройки, которые
+    // относятся к учёту времени, перемести в настройки соответствующего
+    // модуля»), like the attendance switch itself (2026-10-15).
     {
       // Set once when the module is rolled out and then left alone: the kill
       // switch of the visit rules and two switches about data, none of which
@@ -552,7 +520,7 @@ export default function MtmSettingsPage() {
   // Which tab holds a setting. A change or a mistake in a tab that is not
   // open must not be invisible: its tab carries a mark, and a refused save
   // opens the tab with the first mistake instead of pointing at nothing.
-  const tabByKey = new Map<string, SettingsTab>([["routeTargetTypes", "routes"]])
+  const tabByKey = new Map<string, SettingsTab>([["routeTargetTypes", "routes"], ["visitEvaluationQuestions", "visit"]])
   for (const group of [...settingGroups, { ...advancedGroup, tab: "admin" as const }]) {
     if (!group.tab) continue
     for (const item of group.items) {
@@ -588,7 +556,7 @@ export default function MtmSettingsPage() {
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `mtm-setting-error-${key}` : undefined}
           onChange={(e) => updateNumber(key, e.target.value)}
-          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${ATTENDANCE_TOUCH_SETTING_KEYS.has(key) ? "h-11" : ""} ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
+          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-input"}`}
         />
         {/* The unit used to live only in the screen-reader label and in a
             «(м)» glued to some titles; a number without it is a guess. */}
@@ -600,16 +568,15 @@ export default function MtmSettingsPage() {
   }
 
   const renderSwitch = (item: SettingItem, disabled: boolean) => (
-    <button
+    <button data-crm-color-role="toggle"
       type="button"
       role="switch"
       aria-checked={!!settings[item.key]}
       aria-label={ts(item.labelKey)}
       disabled={disabled}
       onClick={() => updateSetting(item.key, !settings[item.key])}
-      className={`relative inline-flex w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ATTENDANCE_TOUCH_SETTING_KEYS.has(item.key) ? "h-11" : `h-6 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}`}
+      className={`relative inline-flex w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 h-6 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}
     >
-      {ATTENDANCE_TOUCH_SETTING_KEYS.has(item.key) ? <span aria-hidden="true" className={`absolute inset-x-0 h-6 rounded-full ${settings[item.key] ? "bg-primary" : "bg-muted"}`} /> : null}
       <span className={`relative inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings[item.key] ? "translate-x-6" : "translate-x-1"}`} />
     </button>
   )
@@ -618,7 +585,10 @@ export default function MtmSettingsPage() {
     <div className="space-y-2">
       {thresholds.map((threshold) => (
         <div key={threshold.key} className="flex items-start justify-between gap-4">
-          <div className="min-w-0 pt-1 text-sm">{ts(threshold.labelKey)}</div>
+          <div className="min-w-0 pt-1 text-sm">
+            {ts(threshold.labelKey)}
+            {threshold.hintKey ? <div className="mt-0.5 text-xs text-muted-foreground">{ts(threshold.hintKey)}</div> : null}
+          </div>
           {renderNumber(threshold.key, threshold.labelKey, threshold.unitKey, disabled)}
         </div>
       ))}
@@ -633,11 +603,10 @@ export default function MtmSettingsPage() {
   // `lockNote`: a switch that cannot be pressed says why. The advanced block
   // says it once for all of its rows instead.
   const renderItem = (item: SettingItem, lockNote = true) => {
-    if (item.key === "attendanceRejectOutsideBranch" && settings.attendanceEnabled !== true) return null
     const disabled = item.adminOnly === true && !canChangeAdminOnly
     const switchOn = settings[item.key] === true
     return (
-      <div key={item.key} data-setting-row={item.key} className={`space-y-3 ${item.key === "attendanceRejectOutsideBranch" ? "border-t border-zinc-200 pt-4 dark:border-zinc-700" : ""}`}>
+      <div key={item.key} data-setting-row={item.key} className="space-y-3">
         <div className={`flex items-start justify-between gap-4 ${item.type === "text" ? "flex-col sm:flex-row" : ""}`}>
           <div className="min-w-0">
             <div className="text-sm font-medium">{ts(item.labelKey)}</div>
@@ -674,7 +643,7 @@ export default function MtmSettingsPage() {
           )}
         </div>
         {item.key === "maxPhotosPerVisit" && typeof settings.maxPhotosPerVisit === "number" && policyPhotoMinimum > settings.maxPhotosPerVisit ? (
-          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{ts("maxPhotosBelowPolicyMinimum")}</span>
           </div>
@@ -699,14 +668,14 @@ export default function MtmSettingsPage() {
     )
   }
 
-  const cardClass = "rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4"
+  const cardClass = "rounded-lg border border-border bg-card p-4"
 
   // Every tab is one grid of two equal columns (owner, 2026-10-08, shown a
   // half-width card with nothing beside it: «симметрично делай… половинчатые
   // блоки»). A card is either half of a pair — the pair shares one height —
   // or, when it would stand alone, the whole row with its settings laid out
   // in columns of its own. There is no third kind.
-  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name && (!["groupAttendanceRisk", "groupAttendanceReminders"].includes(group.titleKey) || settings.attendanceEnabled === true))
+  const groupsOf = (name: SettingsTab) => settingGroups.filter((group) => group.tab === name)
   const renderGroup = (group: SettingGroup, span: "half" | "full", extraClass = "") => {
     const GroupIcon = group.icon
     const columns = span === "half" ? "space-y-4" : `grid gap-x-8 gap-y-4 ${group.items.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`
@@ -727,25 +696,22 @@ export default function MtmSettingsPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={Settings} title={t("mtmSettings")} description={ts("subtitle")} />
+      <MtmPageHeader title={t("mtmSettings")} description={ts("subtitle")} help="mtm-settings" />
       <div className="animate-pulse grid gap-3 md:grid-cols-2">{[1, 2, 3, 4].map(i => <div key={i} className="h-56 bg-muted rounded-lg" />)}</div>
     </div>
   )
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <PageDescription icon={Settings} title={t("mtmSettings")} description={ts("subtitle")} />
-        <HelpButton slug="mtm-settings" variant="label" />
-      </div>
+      <MtmPageHeader title={t("mtmSettings")} description={ts("subtitle")} help="mtm-settings" />
 
       {/* Six tabs instead of one ten-screen page (owner, 2026-10-08: «сделай
           компактнее… сама структура какая-то непонятная»). Every panel stays
           mounted and is only hidden, so an unsaved change in one tab is still
           there after a look at another. */}
-      <div role="tablist" aria-label={ts("tabsLabel")} className="flex flex-wrap gap-2" data-testid="mtm-settings-tabs">
+      <div data-crm-tabs="" role="tablist" aria-label={ts("tabsLabel")} className={MTM_TAB_ROW} data-testid="mtm-settings-tabs">
         {SETTINGS_TABS.map((name) => (
-          <button
+          <button data-crm-tab="" data-state={tab === name ? "active" : "inactive"}
             key={name}
             type="button"
             role="tab"
@@ -753,19 +719,17 @@ export default function MtmSettingsPage() {
             aria-selected={tab === name}
             aria-controls={`mtm-settings-panel-${name}`}
             onClick={() => setTab(name)}
-            className={`min-h-11 rounded-full border px-4 text-sm font-medium transition-colors ${tab === name
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}
+            className={`text-sm font-medium transition-colors ${mtmTabClass(tab === name)}`}
           >
             {ts(SETTINGS_TAB_LABEL[name])}
             {tabsWithErrors.has(name) || tabsWithChanges.has(name) ? (
-              <span
+              <Hint text={ts(tabsWithErrors.has(name) ? "tabMarkMistake" : "tabMarkUnsaved")}><span
                 data-testid={`mtm-settings-tab-mark-${name}`}
                 data-mark={tabsWithErrors.has(name) ? "mistake" : "unsaved"}
                 className={`ml-2 inline-block h-2 w-2 rounded-full ${tabsWithErrors.has(name) ? "bg-rose-500" : "bg-amber-400"}`}
               >
                 <span className="sr-only">{ts(tabsWithErrors.has(name) ? "tabMarkMistake" : "tabMarkUnsaved")}</span>
-              </span>
+              </span></Hint>
             ) : null}
           </button>
         ))}
@@ -787,6 +751,16 @@ export default function MtmSettingsPage() {
               key={visitPolicyEditorKey}
               legacyPhotoRequired={loaded.photoRequired === true}
               aside={groupsOf("visit").map((group) => renderGroup(group, "half", "flex-1"))}
+            />
+          ) : null}
+
+          {/* What a manager rates on a joint visit (owner, 2026-10-21): the
+              whole width under the visit rules, saved with «Сохранить». */}
+          {name === "visit" ? (
+            <VisitEvaluationQuestionSettings
+              value={settings.visitEvaluationQuestions}
+              saved={loaded.visitEvaluationQuestions}
+              onChange={(value) => updateSetting("visitEvaluationQuestions", value)}
             />
           ) : null}
 
@@ -824,7 +798,7 @@ export default function MtmSettingsPage() {
 
           {name === "admin" ? (
             <>
-              <details data-settings-group="groupAdvanced" className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+              <details data-settings-group="groupAdvanced" className="group rounded-lg border border-border bg-card">
                 <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
                   <Satellite className="h-4 w-4 text-muted-foreground" /> {ts(advancedGroup.titleKey)}
                   <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -845,7 +819,7 @@ export default function MtmSettingsPage() {
                 <details
                   data-settings-group="groupImplementerTools"
                   data-testid="mtm-settings-implementer-tools"
-                  className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card"
+                  className="group rounded-lg border border-border bg-card"
                   onToggle={(event) => { if ((event.currentTarget as HTMLDetailsElement).open) setImplementerToolsOpened(true) }}
                 >
                   <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
@@ -879,7 +853,7 @@ export default function MtmSettingsPage() {
       <div
         data-testid="mtm-settings-save-bar"
         hidden={!dirty && !saving}
-        className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card/95 px-4 py-2 shadow-sm backdrop-blur dark:border-zinc-700"
+        className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card/95 px-4 py-2 shadow-sm backdrop-blur"
       >
         <span role="status" aria-live="polite" className={`text-sm ${dirty ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
           {dirty ? ts("dirtyIndicator") : ts("noChanges")}

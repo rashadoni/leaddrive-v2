@@ -152,7 +152,7 @@ describe("attendance export buttons bound to the displayed snapshot", () => {
     await render()
     await click("Download PDF", panel())
     const signal = exports()[0][1]?.signal
-    await click("Event journal")
+    await click(messages("en").mtmAttendance.reportJournal)
     expect(signal?.aborted).toBe(true)
     await act(async () => resolve(new Response(new Uint8Array([1]), { headers: { "content-type": "application/pdf" } })))
     expect(downloads).toHaveLength(0)

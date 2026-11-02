@@ -14,7 +14,7 @@ export function RecentDeals({ deals }: { deals: any[] }) {
   const t = useTranslations("dashboard")
 
   return (
-    <div className="dashboard-bento-card rounded-lg bg-card border border-zinc-200 dark:border-zinc-700 shadow-sm p-3">
+    <div className="dashboard-bento-card rounded-lg bg-card border border-border shadow-sm p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Handshake className="h-4 w-4 text-blue-500" />

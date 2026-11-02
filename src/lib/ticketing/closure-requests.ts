@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { locales, type Locale } from "@/i18n/routing"
 
 export const TICKET_CLOSURE_CONFIRMATION_DAYS = 7
 
@@ -31,9 +32,16 @@ export function ticketClosureDueAt(from = new Date()): Date {
   return new Date(from.getTime() + TICKET_CLOSURE_CONFIRMATION_DAYS * 24 * 60 * 60 * 1000)
 }
 
-export function buildTicketClosureUrl(token: string): string {
+/**
+ * The link the customer confirms the closure at. It carries the language the
+ * customer is written to in (`?lang=`, read by the proxy before the page
+ * renders): whoever opens it from WhatsApp has no language cookie and would
+ * otherwise read the application default.
+ */
+export function buildTicketClosureUrl(token: string, locale?: Locale): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || process.env.NEXTAUTH_URL || ""
-  const path = `/ticket-closure/${encodeURIComponent(token)}`
+  const lang = locale && (locales as readonly string[]).includes(locale) ? `?lang=${locale}` : ""
+  const path = `/ticket-closure/${encodeURIComponent(token)}${lang}`
   return baseUrl ? `${baseUrl.replace(/\/$/, "")}${path}` : path
 }
 
@@ -58,6 +66,8 @@ export async function createTicketClosureRequestForTicket(params: {
   orgId: string
   ticket: TicketForClosureRequest
   requestedBy?: string | null
+  /** The customer's language, put on the confirmation link. */
+  locale?: Locale
 }): Promise<{
   id: string
   status: string
@@ -102,7 +112,7 @@ export async function createTicketClosureRequestForTicket(params: {
     id: request.id,
     status: request.status,
     token,
-    confirmationUrl: buildTicketClosureUrl(token),
+    confirmationUrl: buildTicketClosureUrl(token, params.locale),
     requestedAt: request.requestedAt,
     dueAt: request.dueAt,
     channel: request.channel,
@@ -142,36 +152,42 @@ export async function confirmTicketClosureByHash(params: {
     return { status: "expired" as const, ticket: result.ticket }
   }
 
-  if (params.action === "confirm") {
-    const ticket = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  // The answer is about a resolved ticket. One that is no longer resolved — the
+  // customer wrote again and it was reopened, or the team took it back — is not
+  // closed by an old link, nor reopened a second time: the request just ends.
+  // Both writes are conditional, so a reopen committed between the read above
+  // and this transaction is seen here (READ COMMITTED re-checks the WHERE).
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const now = new Date()
+    const settled = await tx.ticketClosureRequest.updateMany({
+      where: { id: request.id, status: "pending" },
+      data: params.action === "confirm" ? { status: "confirmed", confirmedAt: now } : { status: "rejected", rejectedAt: now },
+    })
+    if (settled.count === 0) {
+      const current = await tx.ticketClosureRequest.findFirst({
+        where: { id: request.id },
+        select: { status: true, ticket: true },
+      })
+      return { status: (current?.status ?? request.status) as "confirmed" | "rejected" | "expired" | "canceled", ticket: current?.ticket ?? request.ticket }
+    }
+
+    const answered = await tx.ticket.updateMany({
+      where: { id: request.ticketId, organizationId: params.orgId, status: "resolved" },
+      data: params.action === "confirm"
+        ? { status: "closed", closedAt: now }
+        : { status: "open", resolvedAt: null, closedAt: null, reopenCount: { increment: 1 } },
+    })
+    if (answered.count === 0) {
       await tx.ticketClosureRequest.update({
         where: { id: request.id },
-        data: { status: "confirmed", confirmedAt: new Date() },
+        data: { status: "canceled", canceledAt: now, confirmedAt: null, rejectedAt: null },
       })
-      return tx.ticket.update({
-        where: { id: request.ticketId },
-        data: { status: "closed", closedAt: new Date() },
-      })
-    })
-    return { status: "confirmed" as const, ticket }
-  }
+    }
 
-  const ticket = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.ticketClosureRequest.update({
-      where: { id: request.id },
-      data: { status: "rejected", rejectedAt: new Date() },
-    })
-    return tx.ticket.update({
-      where: { id: request.ticketId },
-      data: {
-        status: "open",
-        resolvedAt: null,
-        closedAt: null,
-        reopenCount: { increment: 1 },
-      },
-    })
+    const ticket = await tx.ticket.findFirst({ where: { id: request.ticketId, organizationId: params.orgId } })
+    if (answered.count === 0) return { status: "canceled" as const, ticket }
+    return { status: params.action === "confirm" ? "confirmed" as const : "rejected" as const, ticket }
   })
-  return { status: "rejected" as const, ticket }
 }
 
 export async function getTicketClosureRequestByHash(orgId: string, tokenHash: string) {

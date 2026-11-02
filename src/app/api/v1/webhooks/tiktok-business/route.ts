@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma, logAudit } from "@/lib/prisma"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
+import { lockTurns, withAdvisoryLock } from "@/lib/lock-turns"
 import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import { parseTikTokLeadAdWebhook, type ParsedTikTokLeadAdEvent } from "@/lib/channels/tiktok-webhook-events"
 import { connectionCan, type ChannelConnectionLike } from "@/lib/channels/platform-connections"
@@ -117,25 +118,22 @@ async function findTikTokLeadAdLead(
   })
 }
 
-async function withTikTokLeadAdEventLock<T>(
-  organizationId: string,
-  tiktokLeadId: string,
-  process: () => Promise<T>,
-): Promise<T> {
-  return prisma.$transaction(async tx => {
-    await tx.$executeRawUnsafe(
-      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-      `tiktok-business-lead-ad:${organizationId}:${tiktokLeadId}`,
-    )
-    // The advisory transaction owns only the lock. Clear its ALS inTx marker
-    // before global Prisma calls so each CRM operation establishes tenant RLS
-    // on the pooled connection it actually uses.
-    return runWithTenant(organizationId, process)
-  }, {
-    maxWait: 30_000,
-    timeout: 5 * 60_000,
-  })
+/** The advisory lock every process takes for one TikTok lead of one organization. */
+function leadAdLockKey(organizationId: string, tiktokLeadId: string): string {
+  return `tiktok-business-lead-ad:${organizationId}:${tiktokLeadId}`
 }
+
+/**
+ * While the organization's monitoring is paused for a clean-slate reset, each
+ * delivery takes its leads' locks in lock transactions of its own, so it takes
+ * the organization's turn in this process first and one of two slots
+ * (`@/lib/lock-turns`): waiting for a lock must not keep a pooled connection.
+ * Otherwise the social-monitoring fence queues the delivery itself and takes
+ * the lead locks on its own transaction. Until 2026-10-19 a burst of as many
+ * deliveries as the pool has connections waited for the fence holding one each
+ * and left the delivery inside the fence none for its work.
+ */
+const leadAdTurns = lockTurns("tiktok-business-lead-ad", 2)
 
 async function processLeadAdEvent(
   organizationId: string,
@@ -290,6 +288,40 @@ async function processLeadAdEvent(
   return { mentionId: mentionResult?.id ?? null, leadId: lead.id, status: "lead_created" as const }
 }
 
+/** One delivery's events: inside the organization's fence, or while it is paused under each lead's lock alone. */
+async function processLeadAdEvents(organizationId: string, events: ParsedTikTokLeadAdEvent[]) {
+  // Each event's lead lock is taken on the fence's own transaction: one
+  // connection holds the fence and the locks.
+  const fenced = await withSocialMonitoringTenantCollectionFence(
+    organizationId,
+    async () => {
+      const results = []
+      for (const event of events) {
+        results.push(await processLeadAdEvent(organizationId, event, { includeSocialMention: true }))
+      }
+      return results
+    },
+    { lockKeys: events.map((event) => leadAdLockKey(organizationId, event.tiktokLeadId)) },
+  )
+  if (fenced.allowed) return { results: fenced.value, monitoringSkipped: null }
+
+  // Lead Ads are CRM intake first. A clean-slate pause suppresses only the
+  // SocialMention mirror; lead matching, creation and CRM side effects stay live.
+  const results = await leadAdTurns.run(organizationId, async () => {
+    const results = []
+    for (const event of events) {
+      results.push(await withAdvisoryLock(
+        organizationId,
+        leadAdLockKey(organizationId, event.tiktokLeadId),
+        () => processLeadAdEvent(organizationId, event, { includeSocialMention: false }),
+        { maxWait: 30_000, timeout: 5 * 60_000 },
+      ))
+    }
+    return results
+  })
+  return { results, monitoringSkipped: fenced.reason }
+}
+
 export async function POST(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token")
   if (!token) return NextResponse.json({ error: "Missing token" }, { status: 400 })
@@ -303,51 +335,18 @@ export async function POST(req: NextRequest) {
   const events = parseTikTokLeadAdWebhook(body)
   if (events.length === 0) return NextResponse.json({ ok: true, ignored: "no-valid-events" })
 
-  return runWithTenant(connection.organizationId, async () => {
-    const fenced = await withSocialMonitoringTenantCollectionFence(
-      connection.organizationId,
-      async () => {
-        const results = []
-        for (const event of events) {
-          results.push(await withTikTokLeadAdEventLock(
-            connection.organizationId,
-            event.tiktokLeadId,
-            () => processLeadAdEvent(
-              connection.organizationId,
-              event,
-              { includeSocialMention: true },
-            ),
-          ))
-        }
-        return results
-      },
-    )
-
-    const results = fenced.allowed ? fenced.value : []
-    if (!fenced.allowed) {
-      // Lead Ads are CRM intake first. A clean-slate pause suppresses only the
-      // SocialMention mirror; lead matching, creation and CRM side effects stay live.
-      for (const event of events) {
-        results.push(await withTikTokLeadAdEventLock(
-          connection.organizationId,
-          event.tiktokLeadId,
-          () => processLeadAdEvent(
-            connection.organizationId,
-            event,
-            { includeSocialMention: false },
-          ),
-        ))
-      }
-    }
+  const organizationId = connection.organizationId
+  return runWithTenant(organizationId, async () => {
+    const { results, monitoringSkipped } = await processLeadAdEvents(organizationId, events)
 
     // Scored once each event's lock transaction has committed, never inside it.
     // Only new leads: a matched existing lead keeps the score it already has.
     for (const result of results) {
-      if (result.status === "lead_created") await scoreLeadNow(connection.organizationId, result.leadId)
+      if (result.status === "lead_created") await scoreLeadNow(organizationId, result.leadId)
     }
 
     await prisma.channelConnection.updateMany({
-      where: { id: connection.id, organizationId: connection.organizationId },
+      where: { id: connection.id, organizationId },
       data: {
         lastInboundAt: new Date(),
         lastHealthCheckAt: new Date(),
@@ -360,7 +359,7 @@ export async function POST(req: NextRequest) {
       data: {
         ingested: results.length,
         results,
-        ...(!fenced.allowed ? { monitoringSkipped: fenced.reason } : {}),
+        ...(monitoringSkipped ? { monitoringSkipped } : {}),
       },
     })
   })

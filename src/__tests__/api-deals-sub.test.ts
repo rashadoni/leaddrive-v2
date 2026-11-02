@@ -30,7 +30,6 @@ vi.mock("@anthropic-ai/sdk", () => ({
   },
 }))
 
-import { GET as GET_PRODUCTS, POST as POST_PRODUCTS } from "@/app/api/v1/deals/[id]/products/route"
 import { GET as GET_COMPETITORS, POST as POST_COMPETITORS, DELETE as DELETE_COMPETITORS } from "@/app/api/v1/deals/[id]/competitors/route"
 import { GET as GET_CONTACT_ROLES, POST as POST_CONTACT_ROLES } from "@/app/api/v1/deals/[id]/contact-roles/route"
 import { GET as GET_TEAM, POST as POST_TEAM } from "@/app/api/v1/deals/[id]/team/route"
@@ -65,62 +64,8 @@ beforeEach(() => {
 })
 
 // ─── Products ───────────────────────────────────────────────────────
-
-describe("GET /deals/[id]/products", () => {
-  it("returns 401 when unauthenticated", async () => {
-    vi.mocked(getOrgId).mockResolvedValueOnce(null as any)
-    const res = await GET_PRODUCTS(makeReq("http://localhost:3000/api/v1/deals/deal-1/products"), idParams("deal-1"))
-    expect(res.status).toBe(401)
-  })
-
-  it("returns 404 when deal not found", async () => {
-    vi.mocked(prisma.deal.findFirst).mockResolvedValueOnce(null)
-    const res = await GET_PRODUCTS(makeReq("http://localhost:3000/api/v1/deals/deal-1/products"), idParams("deal-1"))
-    expect(res.status).toBe(404)
-  })
-
-  it("returns products from deal metadata", async () => {
-    vi.mocked(prisma.deal.findFirst).mockResolvedValueOnce({ metadata: { products: [{ productId: "p1", name: "Widget" }] } } as any)
-    const res = await GET_PRODUCTS(makeReq("http://localhost:3000/api/v1/deals/deal-1/products"), idParams("deal-1"))
-    const json = await res.json()
-    expect(res.status).toBe(200)
-    expect(json.data).toHaveLength(1)
-    expect(json.data[0].name).toBe("Widget")
-  })
-})
-
-describe("POST /deals/[id]/products", () => {
-  it("adds product to deal and returns 409 on duplicate", async () => {
-    vi.mocked(prisma.deal.findFirst).mockResolvedValueOnce({ metadata: { products: [{ productId: "p1" }] } } as any)
-    vi.mocked(prisma.deal.updateMany).mockResolvedValueOnce({ count: 1 } as any)
-
-    const res = await POST_PRODUCTS(
-      makeReq("http://localhost:3000/api/v1/deals/deal-1/products", {
-        method: "POST",
-        body: JSON.stringify({ productId: "p1", name: "Widget", price: 100 }),
-      }),
-      idParams("deal-1"),
-    )
-    expect(res.status).toBe(409)
-  })
-
-  it("adds new product successfully", async () => {
-    vi.mocked(prisma.deal.findFirst).mockResolvedValueOnce({ metadata: { products: [] } } as any)
-    vi.mocked(prisma.deal.updateMany).mockResolvedValueOnce({ count: 1 } as any)
-
-    const res = await POST_PRODUCTS(
-      makeReq("http://localhost:3000/api/v1/deals/deal-1/products", {
-        method: "POST",
-        body: JSON.stringify({ productId: "p2", name: "Gadget", price: 200 }),
-      }),
-      idParams("deal-1"),
-    )
-    const json = await res.json()
-    expect(res.status).toBe(200)
-    expect(json.data).toHaveLength(1)
-    expect(json.data[0].productId).toBe("p2")
-  })
-})
+// /deals/[id]/products now adds deal lines (src/lib/deals/line-items.ts); its
+// behaviour is covered on a real Postgres in deal-line-items-postgres.test.ts.
 
 // ─── Competitors ────────────────────────────────────────────────────
 

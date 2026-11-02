@@ -13,6 +13,7 @@ import { NextIntlClientProvider, type AbstractIntlMessages } from "next-intl"
 import { MtmHomeDashboard, type HomeTeamToday } from "@/components/mtm/home-dashboard"
 import { homeWeekFacts, normalizeHomeAttention, normalizeHomeInsights } from "@/components/mtm/home-data"
 import type { HomeTeamCardRow } from "@/components/mtm/home-team-card"
+import { readHint } from "./helpers/hint"
 
 vi.mock("next/link", () => ({
   default: (props: { children?: ReactNode; href: string; prefetch?: boolean; [key: string]: unknown }) => {
@@ -260,13 +261,14 @@ describe("Zeytun Pharma, Sunday 11 October", () => {
     expect(request.querySelector("p")?.textContent).toBe("Заявка на нового клиента")
     expect(request.textContent).toContain("Seymur Məmmədov · ждёт с 8 окт.")
     expect(request.querySelector("a")?.textContent).toBe("Открыть заявку")
-    expect(request.querySelector("a")?.getAttribute("href")).toBe("/mtm/contacts")
+    // The request queue unfolded, not the list of existing clients (owner, 2026-10-20).
+    expect(request.querySelector("a")?.getAttribute("href")).toBe("/mtm/contacts?requests=open")
 
     const alerts = attentionRow("olderAlerts")!
     expect(alerts.querySelector("p")?.textContent).toBe("6 оповещений не разобрано")
     expect(alerts.textContent).toContain("8 окт. · 5 «Вне маршрута», 1 «Долгий перерыв»")
-    // The alerts page opens on today; the link carries the day these are on.
-    expect(alerts.querySelector("a")?.getAttribute("href")).toBe("/mtm/alerts?date=2026-10-08")
+    // The alerts page opens on every open alert, whatever its day — all six are there.
+    expect(alerts.querySelector("a")?.getAttribute("href")).toBe("/mtm/alerts")
 
     const photos = attentionRow("photosPendingReview")!
     expect(photos.querySelector("p")?.textContent).toBe("2 фото не проверены")
@@ -301,7 +303,8 @@ describe("Zeytun Pharma, Sunday 11 October", () => {
       },
     })
 
-    it("stands first, in red, with the hour it was sent and the one filled button", async () => {
+    // No row's button is filled since 2026-10-18: the screen keeps one orange fill.
+    it("stands first, in red, with the hour it was sent", async () => {
       // 18:04 in Baku, today.
       const scenario = waiting("2026-10-11T14:04:00.000Z", "2026-10-11")
       serve(scenario)
@@ -349,7 +352,9 @@ describe("Zeytun Pharma, Sunday 11 October", () => {
     expect(rows[0].textContent).toContain("активности нет")
     expect(cells(rows[0]).map((cell) => cell.getAttribute("data-tone"))).toEqual(["none", "none", "partial", "partial", "none", "off", "off"])
     expect(cells(rows[0]).map((cell) => cell.textContent)).toEqual(["–", "–", "1/3", "1/4", "–", "", ""])
-    expect(cells(rows[0])[2].getAttribute("title")).toBe("среда, 7 октября: посещено 1 из 3")
+    // What a cell holds is said under the cursor, as it is to a screen reader.
+    expect(await readHint(cells(rows[0])[2])).toBe("среда, 7 октября: посещено 1 из 3")
+    expect(cells(rows[0])[2].getAttribute("aria-label")).toBe("среда, 7 октября: посещено 1 из 3")
     expect(rows[0].querySelector("[data-testid='mtm-home-team-total']")?.textContent).toBe("2/7")
     expect(text("mtm-home-team")).toContain("Неделя: 2 визита · с подтверждением по GPS 100%")
     expect(container.querySelector("[data-testid='mtm-home-team'] a[href='/mtm/analytics?period=thisWeek']")?.textContent).toBe("Открыть результаты")
@@ -413,6 +418,30 @@ describe("a working Tuesday with five agents", () => {
     expect(kpi("attention").sub).toBe("1 заявка")
   })
 
+  // Owner, 2026-10-15: «подсказок в модуле очень мало». Every figure says
+  // under the cursor what it counts, every button where it leads, every chip
+  // what it means — in the language of the screen.
+  it("says under the cursor what each figure counts, where each button leads and what each chip means", async () => {
+    serve(TUESDAY)
+    await render("ru", TUESDAY)
+    const hint = (key: string) => {
+      const home = (JSON.parse(readFileSync("messages/ru.json", "utf8")) as { mtmDashboardPage: { home: { hint: Record<string, string> } } }).mtmDashboardPage.home.hint
+      return home[key]
+    }
+    const label = (id: string) => container.querySelector(`[data-testid='mtm-home-kpi-${id}'] [data-hint-value]`)
+    expect(await readHint(label("field"))).toBe(hint("kpiInField"))
+    expect(await readHint(label("plan"))).toBe(hint("kpiTodayPlan"))
+    expect(await readHint(label("week"))).toBe(hint("kpiWeekPlan"))
+    expect(await readHint(label("attention"))).toBe(hint("kpiAttention"))
+    // The waiting request's button says where it leads.
+    const button = container.querySelector("[data-testid='mtm-home-attention'] a")
+    expect(await readHint(button)).toMatch(/^Откроет /)
+    // The chip of a silent phone with a plan explains «не начал».
+    const rows = teamRows()
+    const chip = [...rows[3].querySelectorAll("[tabindex='0']")].find((node) => node.textContent?.includes("не начал"))
+    expect(await readHint(chip)).toBe(hint("stateNotStarted"))
+  })
+
   it("lists the team with those busy now first, each with a chip, a place and the week", async () => {
     serve(TUESDAY)
     await render("ru", TUESDAY)
@@ -425,7 +454,8 @@ describe("a working Tuesday with five agents", () => {
     // A plan and a silent phone is «not started», and its day is not judged yet.
     expect(rows[3].textContent).toContain("не начал")
     expect(cells(rows[3]).slice(0, 2).map((cell) => [cell.getAttribute("data-tone"), cell.textContent])).toEqual([["partial", "5/8"], ["pending", "0/5"]])
-    expect(rows[3].querySelector("a[href='/mtm/alerts?agentId=a4']")?.getAttribute("title")).toBe("1 открытое оповещение")
+    expect(rows[3].querySelector("a[href='/mtm/alerts?agentId=a4']")?.getAttribute("aria-label")).toBe("1 открытое оповещение")
+    expect(await readHint(rows[3].querySelector("a[href='/mtm/alerts?agentId=a4']"))).toBe("1 открытое оповещение. Его открытые оповещения — нажмите, чтобы открыть.")
     expect(rows[4].textContent).toContain("активности нет")
     // Seymur: Monday done, today in progress, Wednesday ahead.
     expect(cells(rows[1]).map((cell) => `${cell.getAttribute("data-tone")}:${cell.textContent}`)).toEqual(["full:6/6", "partial:3/8", "upcoming:7", "none:–", "none:–", "off:", "off:"])
@@ -496,15 +526,22 @@ describe("when something does not load", () => {
     expect(text("mtm-home-team")).not.toContain("Данные недели не загрузились")
   })
 
-  it("shows dashes while the team list has not arrived, and its own failure with a retry", async () => {
+  it("shows grey bars while the team list has not arrived, and its own failure with a retry", async () => {
     serve(ZEYTUN)
     await render("ru", ZEYTUN, { team: null, teamLoading: true })
-    expect(kpi("field").value).toBe("—")
-    expect(text("mtm-home-team")).toContain("Загружаем")
+    // A dash reads as «none»; until the list arrives the figures are grey bars
+    // (owner-approved mockup, 2026-11-01), and so are the team's rows.
+    for (const name of ["field", "plan", "week"]) {
+      expect(kpi(name).value).toBe("")
+      expect(container.querySelector(`[data-testid='mtm-home-kpi-${name}-loading']`)).not.toBeNull()
+    }
+    expect(container.querySelector("[data-testid='mtm-home-team'] [role='status']")?.getAttribute("aria-label")).toContain("Загружаем")
     await act(async () => { root?.unmount() })
 
     serve(ZEYTUN)
     await render("ru", ZEYTUN, { team: null, teamLoading: false, teamFailed: true })
+    // A list that failed is not on its way: the figures say «unknown», not «loading».
+    expect(kpi("field").value).toBe("—")
     const retry = Array.from(container.querySelectorAll<HTMLButtonElement>("[data-testid='mtm-home-team'] button")).find((button) => button.textContent === "Повторить")
     await act(async () => { retry?.dispatchEvent(new MouseEvent("click", { bubbles: true })) })
     expect(retried).toHaveBeenCalledTimes(1)

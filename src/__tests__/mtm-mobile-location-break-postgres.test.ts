@@ -22,6 +22,11 @@
  * Every instant is taken relative to now — the handlers refuse the future and
  * anything older than a week — so nothing here depends on the date.
  *
+ * The same two mobile handlers decide which point is «moving» — the phone
+ * sends only its speed — and that flag is what History shows and what ends a
+ * stop on the live map. Since 2026-10-15 the line is 3 km/h as a screen shows
+ * it (src/lib/mtm/gps-speed.ts); the last block reads it back off the table.
+ *
  * Set MTM_LOCATION_BREAK_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
  *   MTM_LOCATION_BREAK_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
@@ -99,6 +104,7 @@ const DEVICE = "device-break-1"
 const BATCH_URL = "http://localhost:3000/api/v2/mtm/mobile/location/batch"
 const POINT_URL = "http://localhost:3000/api/v1/mtm/mobile/location"
 const WEB_URL = "http://localhost:3000/api/v1/mtm/locations"
+const NOTIFICATIONS_URL = "http://localhost:3000/api/v1/mtm/mobile/notifications"
 
 function prismaCli(args: string[], env: NodeJS.ProcessEnv, input?: string) {
   const result = spawnSync(process.execPath, [PRISMA_CLI, ...args], { input, encoding: "utf8", env })
@@ -145,6 +151,8 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
   let postBatch!: typeof import("@/app/api/v2/mtm/mobile/location/batch/route").POST
   let postPoint!: typeof import("@/app/api/v1/mtm/mobile/location/route").POST
   let postWeb!: typeof import("@/app/api/v1/mtm/locations/route").POST
+  let getRoster!: typeof import("@/app/api/v1/mtm/locations/route").GET
+  let getNotifications!: typeof import("@/app/api/v1/mtm/mobile/notifications/route").GET
   let sequence = 0
 
   beforeAll(async () => {
@@ -159,6 +167,8 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
     postBatch = (await import("@/app/api/v2/mtm/mobile/location/batch/route")).POST
     postPoint = (await import("@/app/api/v1/mtm/mobile/location/route")).POST
     postWeb = (await import("@/app/api/v1/mtm/locations/route")).POST
+    getRoster = (await import("@/app/api/v1/mtm/locations/route")).GET
+    getNotifications = (await import("@/app/api/v1/mtm/mobile/notifications/route")).GET
     await bypass(() => prisma.organization.create({
       data: { id: ORG, name: "Tenant with field agents", slug: ORG, modules: { mtm: true, "route-field": true } },
     }))
@@ -281,6 +291,94 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
     }))
     return row ? (row.recordedAt.getTime() - DAY_STARTED_AT.getTime()) / 60_000 : null
   }
+
+  /** What the agent's row says of his app: when it was last heard from, and whether GPS made him «online». */
+  async function presence(agentId: string): Promise<{ lastSeenAt: Date | null; isOnline: boolean }> {
+    return bypass(() => prisma.mtmAgent.findUniqueOrThrow({ where: { id: agentId }, select: { lastSeenAt: true, isOnline: true } }))
+  }
+
+  /** The bell on the phone asking for its notifications, as it does every two minutes while the app is open. */
+  async function pollBell(agentId: string) {
+    callAs(agentId)
+    const response = await getNotifications(new NextRequest(NOTIFICATIONS_URL, { headers: { Authorization: "Bearer mobile" } }))
+    return response.status
+  }
+
+  // The demo clip «Marşrut & Sahə» (owner, 2026-10-20: production as in the
+  // clip): on a break the agent's app still reads «Şəbəkədədir». No point is
+  // accepted during a break, so the bell's poll is what keeps the app
+  // present then — and it writes nothing about where he is.
+  it("keeps the app present on a break from the bell's poll, and stores no place for it", async () => {
+    const { agentId } = await agentWithDay({ status: "PAUSED", journal: [{ type: "PAUSE", minute: 120 }] })
+    expect((await sendBatch(agentId, [{ clientLocationId: "before", minute: 110 }])).status).toBe(201)
+    // Ten minutes later the map would already call his app gone.
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60_000)
+    await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { lastSeenAt: tenMinutesAgo } }))
+
+    const asked = Date.now()
+    expect(await pollBell(agentId)).toBe(200)
+
+    const row = await presence(agentId)
+    expect(row.lastSeenAt?.getTime()).toBeGreaterThanOrEqual(asked - 1_000)
+    expect(row.isOnline).toBe(true)
+    expect(await storedMinutes(agentId)).toEqual([110])
+    expect(await markerMinute(agentId)).toBe(110)
+  })
+
+  // A finished day clears «online»; a manager who reopens it hands it back
+  // paused. The app open on that break said «не на связи» until his first
+  // fix after it (verification of 2026-10-20).
+  it("makes the app present on a break a manager reopened, after the finish cleared it", async () => {
+    const { agentId } = await agentWithDay({ status: "PAUSED", journal: [{ type: "FINISH", minute: 150 }, { type: "REOPEN", minute: 150, appliedMinute: 160 }] })
+    await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { isOnline: false, lastSeenAt: at(150) } }))
+    expect(await pollBell(agentId)).toBe(200)
+    const row = await presence(agentId)
+    expect(row.isOnline).toBe(true)
+    expect(row.lastSeenAt?.getTime()).toBeGreaterThan(at(170).getTime())
+    expect(await storedMinutes(agentId)).toEqual([])
+  })
+
+  it("makes nobody present who is at work, has finished or has not started: that stays a GPS fact", async () => {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60_000)
+    const people = [
+      { ...await agentWithDay({ status: "STARTED", journal: [] }), wasOnline: true },
+      { ...await agentWithDay({ status: "COMPLETED", journal: [{ type: "PAUSE", minute: 100 }, { type: "FINISH", minute: 120 }] }), wasOnline: false },
+      { ...await agentWithDay(null), wasOnline: false },
+    ]
+    for (const { agentId, wasOnline } of people) {
+      await bypass(() => prisma.mtmAgent.update({ where: { id: agentId }, data: { lastSeenAt: tenMinutesAgo, isOnline: wasOnline } }))
+      expect(await pollBell(agentId)).toBe(200)
+      expect(await presence(agentId)).toEqual({ lastSeenAt: tenMinutesAgo, isOnline: wasOnline })
+      expect(await storedMinutes(agentId)).toEqual([])
+    }
+  })
+
+  /** The managers' live roster as the web map reads it, by employee. */
+  async function roster(): Promise<Record<string, { freshness: string; fieldStatus: string; recordedAt?: string }>> {
+    const response = await getRoster(new NextRequest(WEB_URL))
+    expect(response.status).toBe(200)
+    const body = await response.json() as { data: { agentLocations: Array<{ agentId: string; freshness: string; fieldStatus: string; recordedAt?: string }> } }
+    return Object.fromEntries(body.data.agentLocations.map((row) => [row.agentId, row]))
+  }
+
+  // Back from a short break the phone has not sent a fix yet, and the newest
+  // stored point — fresh by the clock — is the one he left before it. The
+  // roster reads the shift's journal for it (live-break-ends.ts) and calls
+  // it the last known point, not where he is (verification of 2026-10-20).
+  it("calls the point left before a break that has just ended the last known one, until the first fix after it", async () => {
+    const shift = { status: "STARTED" as const, journal: [{ type: "PAUSE" as const, minute: 176 }, { type: "RESUME" as const, minute: 178 }] }
+    const notYet = await agentWithDay(shift)
+    const moving = await agentWithDay(shift)
+    for (const { workdayId } of [notYet, moving]) {
+      await bypass(() => prisma.mtmAgentWorkday.update({ where: { id: workdayId }, data: { totalPausedSeconds: 120 } }))
+    }
+    expect((await sendBatch(notYet.agentId, [{ clientLocationId: "before", minute: 175 }])).status).toBe(201)
+    expect((await sendBatch(moving.agentId, [{ clientLocationId: "before", minute: 175 }, { clientLocationId: "after", minute: 179 }])).status).toBe(201)
+
+    const rows = await roster()
+    expect(rows[notYet.agentId]).toMatchObject({ freshness: "STALE", fieldStatus: "OFFLINE", recordedAt: at(175).toISOString() })
+    expect(rows[moving.agentId]).toMatchObject({ freshness: "ONLINE", recordedAt: at(179).toISOString() })
+  })
 
   it("stores the work on both sides of a break and nothing taken inside it", async () => {
     const { agentId, workdayId } = await agentWithDay({
@@ -519,5 +617,103 @@ pgDescribe("GPS recorded during a break on a real Postgres", () => {
       clientLocationId: "before-the-day",
     })
     expect(await storedMinutes(agentId)).toEqual([])
+  })
+
+  /**
+   * The owner's line of 2026-10-15: from 3 km/h as a screen shows it. The
+   * speeds are production's: a standing phone's GPS jitter is stored at
+   * 1–2.4 km/h, a walk at 3–4, a drive at tens; the app sends no speed at all
+   * for Android's 0. Until that day both routes stored everything above
+   * 1 km/h as moving, and a phone lying on a counter ended its own stop some
+   * fifty times a day.
+   */
+  describe("which points are stored as moving", () => {
+    type Fix = { clientLocationId: string; minute: number; speed: number | null; north?: number }
+    const fixPayload = (fix: Fix) => ({
+      clientLocationId: fix.clientLocationId,
+      latitude: 40.4 + (fix.north ?? 0) / 111_195,
+      longitude: 49.8,
+      accuracy: 8,
+      ...(fix.speed == null ? {} : { speed: fix.speed }),
+      recordedAt: at(fix.minute).toISOString(),
+    })
+    const SPEEDS = [null, 1.4, 2.4, 2.5, 3.4, 52.2]
+    /** «2 km/h» on a screen stands; «3 km/h» moves. */
+    const MOVING = [false, false, false, true, true, true]
+    const fixes = (prefix: string, firstMinute: number): Fix[] =>
+      SPEEDS.map((speed, index) => ({ clientLocationId: `${prefix}-${index}`, minute: firstMinute + index, speed }))
+
+    async function sendFixesInBatch(agentId: string, sent: Fix[]) {
+      callAs(agentId)
+      const response = await postBatch(new NextRequest(BATCH_URL, {
+        method: "POST",
+        headers: { Authorization: "Bearer mobile", "content-type": "application/json", "x-field-device-id": DEVICE },
+        body: JSON.stringify({ points: sent.map(fixPayload) }),
+      }))
+      return response.status
+    }
+
+    async function sendFix(agentId: string, fix: Fix) {
+      callAs(agentId)
+      const response = await postPoint(new NextRequest(POINT_URL, {
+        method: "POST",
+        headers: { Authorization: "Bearer mobile", "content-type": "application/json" },
+        body: JSON.stringify(fixPayload(fix)),
+      }))
+      return response.status
+    }
+
+    async function stored(agentId: string) {
+      const rows: Array<{ speed: number | null; isMoving: boolean }> = await bypass(() => prisma.mtmAgentLocation.findMany({
+        where: { organizationId: ORG, agentId },
+        orderBy: { recordedAt: "asc" },
+        select: { speed: true, isMoving: true },
+      }))
+      return rows
+    }
+
+    async function stop(agentId: string) {
+      return bypass(() => prisma.mtmAgentLatestLocation.findUniqueOrThrow({
+        where: { organizationId_agentId: { organizationId: ORG, agentId } },
+        select: { stationarySince: true, stationaryConfirmedAt: true },
+      }))
+    }
+
+    it("the batch route stores a point as moving from what a screen shows as 3 km/h", async () => {
+      const { agentId } = await agentWithDay({ status: "STARTED", journal: [] })
+
+      expect(await sendFixesInBatch(agentId, fixes("batch", 20))).toBe(201)
+
+      expect(await stored(agentId)).toEqual(SPEEDS.map((speed, index) => ({ speed, isMoving: MOVING[index] })))
+    })
+
+    it("the single-point route stores the same flags for the same speeds", async () => {
+      const { agentId } = await agentWithDay({ status: "STARTED", journal: [] })
+
+      for (const fix of fixes("single", 20)) expect(await sendFix(agentId, fix)).toBe(200)
+
+      expect(await stored(agentId)).toEqual(SPEEDS.map((speed, index) => ({ speed, isMoving: MOVING[index] })))
+    })
+
+    it("a standing phone's jitter keeps the stop the live map counts; a walk ends it", async () => {
+      const { agentId } = await agentWithDay({ status: "STARTED", journal: [] })
+      const standing: Fix[] = [
+        { clientLocationId: "lay-down", minute: 40, speed: null },
+        { clientLocationId: "jitter-1", minute: 41, speed: 1.4, north: 6 },
+        { clientLocationId: "jitter-2", minute: 42, speed: 2.4, north: -7 },
+        { clientLocationId: "jitter-3", minute: 43, speed: 1.9, north: 4 },
+      ]
+
+      expect(await sendFixesInBatch(agentId, standing)).toBe(201)
+      expect(await stop(agentId)).toEqual({ stationarySince: at(40), stationaryConfirmedAt: at(43) })
+
+      // The single-point route keeps it too.
+      expect(await sendFix(agentId, { clientLocationId: "jitter-4", minute: 44, speed: 2.2, north: -5 })).toBe(200)
+      expect(await stop(agentId)).toEqual({ stationarySince: at(40), stationaryConfirmedAt: at(44) })
+
+      // He picks the phone up and walks out at 3.4 km/h.
+      expect(await sendFixesInBatch(agentId, [{ clientLocationId: "walk", minute: 45, speed: 3.4, north: 25 }])).toBe(201)
+      expect(await stop(agentId)).toEqual({ stationarySince: null, stationaryConfirmedAt: null })
+    })
   })
 })

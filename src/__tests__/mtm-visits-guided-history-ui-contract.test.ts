@@ -49,7 +49,7 @@ describe("MTM visits guided history UI contract", () => {
   })
 
   it("uses a desktop summary table and touch-safe cards on phones and tablets", () => {
-    expect(page).toContain('className="hidden overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 xl:block"')
+    expect(page).toContain('className="hidden overflow-hidden rounded-xl border border-border xl:block"')
     expect(page).toContain('data-testid="mtm-visit-mobile-cards"')
     expect(page).toContain("xl:hidden")
     expect(page).toContain("min-h-11 min-w-11")

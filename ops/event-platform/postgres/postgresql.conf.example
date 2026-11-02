@@ -13,8 +13,9 @@ wal_level = logical
 max_replication_slots = 10
 max_wal_senders = 10
 
-# A finite cap prevents an offline connector from exhausting the primary disk.
-# 8 GiB is the initial floor, not a substitute for sizing or slot-lag alerts.
+# A finite cap bounds slot retention at checkpoints, not instantaneous disk use.
+# Allow checkpoint overshoot and all other slots/WAL users in the disk budget.
+# 8 GiB is illustrative, not an approved capacity budget or a hard disk quota.
 max_slot_wal_keep_size = '8GB'
 
 # Keep a bounded recent WAL cushion for short disconnects. Long recovery uses

@@ -14,6 +14,7 @@ import {
 import { withRouteFieldRlsAuth, type MtmRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { mtmTaskScopeWhere } from "@/lib/mtm/task-access"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -150,7 +151,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
     const storageKey = createMobileDocumentStorageKey()
     storagePath = resolveMobileDocumentStoragePath(storageKey)
     await mkdir(mobileDocumentStorageRoot(), { recursive: true })
-    await writeFile(storagePath, bytes, { flag: "wx" })
+    await writeFile(storagePath, sealTenantFile(auth.orgId, bytes), { flag: "wx" })
 
     const occurredAt = new Date()
     const result = await prisma.$transaction(async (tx) => {

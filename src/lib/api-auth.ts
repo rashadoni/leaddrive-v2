@@ -3,13 +3,26 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "./auth"
 import { prisma } from "./prisma"
 import { runWithRlsBypass, enterTenantContext } from "./rls-context"
+import { preloadTenantDataKeys } from "./crypto/tenant-data-keys"
 import { isMtmApiPath } from "./mtm/mobile-api-path"
 import { isMtmWebOnlyPath } from "./mtm-web-only"
 import { checkPermission, resolveModuleFromPath, methodToAction, PERMISSION_MODULE_TO_MODULE_ID, type Role, type Module, type Action } from "./permissions"
 import { hasModule, moduleRecordFromOrgFields, type ModuleId, MODULE_REGISTRY } from "./modules"
+import { customerPhonePrivacyEnabled } from "./customer-phone-privacy"
 import { effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
+import { recordReviewerRead } from "./audit/reviewer-read-log"
+
+/**
+ * Enter the tenant context for the rest of this request and load the
+ * organization's data key ring (`src/lib/crypto/tenant-data-keys.ts`), so the
+ * route's synchronous PII column reads and writes find it. The preload never
+ * throws; it is a Map lookup while the ring is fresh.
+ */
+async function enterTenant(orgId: string): Promise<void> {
+  if (enterTenantContext(orgId)) await preloadTenantDataKeys(orgId)
+}
 
 // In-memory cache for org status + module access checks
 const orgCache = new Map<string, { checkedAt: number; isActive: boolean; plan: string; addons: string[]; modules: Record<string, boolean> }>()
@@ -88,15 +101,15 @@ async function loadOrgContext(orgId: string): Promise<{ isActive: boolean; plan:
  * errors fail closed because this check is part of authentication, not an
  * optional feature gate.
  */
-async function organizationIsActiveFresh(orgId: string): Promise<boolean> {
+async function organizationSecurityFresh(orgId: string) {
   try {
     const organization = await runWithRlsBypass(() => prisma.organization.findUnique({
       where: { id: orgId },
-      select: { isActive: true },
+      select: { isActive: true, settings: true },
     }))
-    return organization?.isActive === true
+    return { active: organization?.isActive === true, phonePrivacy: customerPhonePrivacyEnabled(organization?.settings) }
   } catch {
-    return false
+    return { active: false, phonePrivacy: false }
   }
 }
 
@@ -189,6 +202,9 @@ export interface AuthResult {
    * is exactly what it was before this field existed.
    */
   hiddenModules?: string[]
+  /** Fresh server-side organization policy. Never copied from JWT/client claims.
+   * Absent means the default, unrestricted policy for legacy internal fixtures. */
+  hideCustomerPhoneForOperators?: boolean
 }
 
 function sessionHiddenModules(role: Role, stored: unknown): { hiddenModules?: string[] } {
@@ -250,9 +266,9 @@ async function resolveCookieSession(): Promise<CookieSessionResolution> {
     }
 
     if (session.role !== "superadmin") {
-      if (!(await organizationIsActiveFresh(session.orgId))) {
-        return { denial: "inactive_organization" }
-      }
+      const security = await organizationSecurityFresh(session.orgId)
+      if (!security.active) return { denial: "inactive_organization" }
+      if (security.phonePrivacy) session.hideCustomerPhoneForOperators = true
     }
 
     return { session }
@@ -266,8 +282,7 @@ async function resolveCookieSession(): Promise<CookieSessionResolution> {
  * SECURITY: Always uses organizationId from the authenticated session JWT,
  * never trusts the x-organization-id header directly (prevents tenant bypass).
  */
-export async function getSession(_req: NextRequest): Promise<AuthResult | null> {
-  void _req
+export async function getSession(req: NextRequest): Promise<AuthResult | null> {
   const resolved = await resolveCookieSession()
   if (!resolved.session) return null
 
@@ -276,7 +291,8 @@ export async function getSession(_req: NextRequest): Promise<AuthResult | null> 
   // (e.g. `session?.orgId || await getOrgId(req)`), so without this the Postgres
   // RLS policies would fail-closed and return zero rows on that path. Mirrors the
   // entry getOrgId/requireAuth already do; enterTenantContext refuses empty orgId.
-  enterTenantContext(resolved.session.orgId)
+  await enterTenant(resolved.session.orgId)
+  recordReviewerRead(req, resolved.session)
   return resolved.session
 }
 
@@ -308,7 +324,8 @@ export async function requireSessionAuth(req: NextRequest): Promise<AuthResult |
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  enterTenantContext(resolved.session.orgId)
+  await enterTenant(resolved.session.orgId)
+  recordReviewerRead(req, resolved.session)
   return resolved.session
 }
 
@@ -387,7 +404,7 @@ async function getApiKeyAuth(req: NextRequest): Promise<ApiKeyAuthResult | null>
 export async function getOrgId(req: NextRequest): Promise<string | null> {
   const session = await getSession(req)
   if (session?.orgId) {
-    enterTenantContext(session.orgId)
+    await enterTenant(session.orgId)
     return session.orgId
   }
 
@@ -400,7 +417,7 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
   if (isMtmApiPath(pathname) && !isMtmWebOnlyPath(pathname)) {
     const mobileAuth = await resolveMobileAuth(req)
     if (mobileAuth?.orgId) {
-      enterTenantContext(mobileAuth.orgId)
+      await enterTenant(mobileAuth.orgId)
       return mobileAuth.orgId
     }
   } else {
@@ -428,8 +445,66 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
   }
   if (!apiKeyHasModule(apiKeyAuth, resolvedModule)) return null
 
-  enterTenantContext(apiKeyAuth.orgId)
+  await enterTenant(apiKeyAuth.orgId)
   return apiKeyAuth.orgId
+}
+
+/**
+ * The module half of requireAuth, for a person already authenticated: may this
+ * role do `action` on `module`, has the tenant got the module, and has an admin
+ * hidden it from this person. Returns the 403 requireAuth would answer, or null.
+ * `orgContext` null skips the tenant-module gate, as requireAuth does for a
+ * superadmin. One request that serves several modules (the shell's event
+ * stream) asks this once per module instead of re-running requireAuth.
+ */
+export function moduleAccessDenial(
+  session: Pick<AuthResult, "role" | "hiddenModules">,
+  orgContext: { plan: string; addons: string[]; modules: Record<string, boolean> } | null,
+  module: Module | string,
+  action: Action,
+  options?: RequireAuthOptions,
+): NextResponse | null {
+  const allowed = checkPermission(session.role, module, action)
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        error: "Forbidden",
+        message: `Role "${session.role}" cannot "${action}" on "${module}"`,
+      },
+      { status: 403 }
+    )
+  }
+
+  // Check if the module is enabled for this organization. Bridge the
+  // permissions name → ModuleId first so renamed modules (kb→knowledge-base,
+  // inbox→omnichannel, energy-utilities→energy) are gated, not skipped.
+  const gateModule = PERMISSION_MODULE_TO_MODULE_ID[module] ?? module
+  const deferLegacyMtmGate =
+    options?.deferLegacyModuleGate === "mtm" &&
+    module === "mtm" &&
+    gateModule === "mtm"
+  if (orgContext && gateModule in MODULE_REGISTRY && !deferLegacyMtmGate) {
+    if (!hasModule(orgContext, gateModule as ModuleId)) {
+      return NextResponse.json(
+        { error: "Forbidden", message: `Module "${gateModule}" is not enabled for your organization.` },
+        { status: 403 }
+      )
+    }
+  }
+
+  // The tenant has the module; has an admin hidden it from this person? The
+  // proxy already refuses these by URL from the masked JWT record, but a route
+  // can name a module its path does not resolve to, and `orgContext` above is
+  // read fresh from the organization row — it knows nothing about the user.
+  //
+  // The MTM deferral applies here too, for the same reason it exists: the
+  // `mtm` scope is a container for two capabilities, and only the wrapper
+  // that asked for the deferral knows which one this route belongs to. It
+  // makes the per-user check itself, off `session.hiddenModules`.
+  if (!deferLegacyMtmGate && session.hiddenModules?.includes(hideableIdForGateModule(gateModule))) {
+    return userModuleHiddenResponse(gateModule)
+  }
+  return null
 }
 
 /**
@@ -493,7 +568,7 @@ export async function requireAuth(
       if (!(await tenantBindingOk(req, apiKeyAuth.orgId))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }
-      enterTenantContext(apiKeyAuth.orgId)
+      await enterTenant(apiKeyAuth.orgId)
       return apiKeyAuth
     }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -540,7 +615,7 @@ export async function requireAuth(
       // RLS: org-status check runs before tenant context is entered — bypass-wrapped.
       const org = await runWithRlsBypass(() => prisma.organization.findUnique({
         where: { id: session.orgId },
-        select: { isActive: true, plan: true, addons: true, features: true, modules: true },
+        select: { isActive: true, plan: true, addons: true, features: true, modules: true, settings: true },
       }))
       const isActive = org?.isActive === true
       const plan = org?.plan || "starter"
@@ -554,6 +629,7 @@ export async function requireAuth(
       if (!isActive) {
         return NextResponse.json({ error: "Organization is deactivated. Contact your administrator." }, { status: 403 })
       }
+      if (customerPhonePrivacyEnabled(org?.settings)) session.hideCustomerPhoneForOperators = true
       orgContext = { plan, addons, modules }
     } catch {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -566,53 +642,16 @@ export async function requireAuth(
 
   // Check permission if we could resolve a module
   if (resolvedModule) {
-    const allowed = checkPermission(session.role, resolvedModule, resolvedAction)
-    if (!allowed) {
-      return NextResponse.json(
-        {
-          error: "Forbidden",
-          message: `Role "${session.role}" cannot "${resolvedAction}" on "${resolvedModule}"`,
-        },
-        { status: 403 }
-      )
-    }
-
-    // Check if the module is enabled for this organization. Bridge the
-    // permissions name → ModuleId first so renamed modules (kb→knowledge-base,
-    // inbox→omnichannel, energy-utilities→energy) are gated, not skipped.
-    const gateModule = PERMISSION_MODULE_TO_MODULE_ID[resolvedModule] ?? resolvedModule
-    const deferLegacyMtmGate =
-      options?.deferLegacyModuleGate === "mtm" &&
-      resolvedModule === "mtm" &&
-      gateModule === "mtm"
-    if (orgContext && gateModule in MODULE_REGISTRY && !deferLegacyMtmGate) {
-      if (!hasModule(orgContext, gateModule as ModuleId)) {
-        return NextResponse.json(
-          { error: "Forbidden", message: `Module "${gateModule}" is not enabled for your organization.` },
-          { status: 403 }
-        )
-      }
-    }
-
-    // The tenant has the module; has an admin hidden it from this person? The
-    // proxy already refuses these by URL from the masked JWT record, but a route
-    // can name a module its path does not resolve to, and `orgContext` above is
-    // read fresh from the organization row — it knows nothing about the user.
-    //
-    // The MTM deferral applies here too, for the same reason it exists: the
-    // `mtm` scope is a container for two capabilities, and only the wrapper
-    // that asked for the deferral knows which one this route belongs to. It
-    // makes the per-user check itself, off `session.hiddenModules`.
-    if (!deferLegacyMtmGate && session.hiddenModules?.includes(hideableIdForGateModule(gateModule))) {
-      return userModuleHiddenResponse(gateModule)
-    }
+    const denied = moduleAccessDenial(session, orgContext, resolvedModule, resolvedAction, options)
+    if (denied) return denied
   }
 
   // RLS: bind tenant context to the remainder of this request. MUST stay the
   // last statement before the single success return — every 401/403 gate above
   // returns without entering a context (fail-closed). Superadmin sessions enter
   // their own org here; requireSuperAdmin upgrades to bypass right after.
-  enterTenantContext(session.orgId)
+  await enterTenant(session.orgId)
+  recordReviewerRead(req, session)
   return session
 }
 

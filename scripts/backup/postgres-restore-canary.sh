@@ -20,7 +20,9 @@ RESTORED_MIGRATION_LEDGER=""
 RESTORED_APPLIED_MIGRATIONS=""
 CONTRACT_MIGRATIONS=""
 EXPECTED_APPLIED_MIGRATIONS=""
+RUN_VERIFY_PGPASS=""
 VERIFY_ENV=()
+TEMPLATE_ARGS=()
 
 log() {
   printf '[restore-canary] %s\n' "$*"
@@ -49,14 +51,113 @@ assert_connection_file() {
   [ -f "$file" ] && [ ! -L "$file" ] && [ -r "$file" ] \
     || fatal "$label must be a readable regular non-symlink file"
   owner="$(stat -c '%u' "$file")"
+  mode="$(stat -c '%a' "$file")"
+  if [ "$kind" = password ]; then
+    [ "$owner" = "$(id -u)" ] || fatal "$label must belong to the verifier account"
+    case "$mode" in 400|600) ;; *) fatal "$label must use private mode 0400 or 0600" ;; esac
+    return 0
+  fi
   { [ "$owner" = "0" ] || [ "$owner" = "$(id -u)" ]; } \
     || fatal "$label must belong to root or the verifier account"
-  mode="$(stat -c '%a' "$file")"
   case "$kind:$mode" in
     ca:400|ca:440|ca:444|ca:600|ca:640|ca:644) ;;
-    password:400|password:440|password:600|password:640) ;;
     *) fatal "$label has an unsafe mode" ;;
   esac
+}
+
+prepare_run_verifier_passfile() {
+  local work="${TMPDIR:-}"
+  [[ "$SCRATCH_DB" =~ ^leaddrive_restore_verify_[0-9]{8}_[0-9]{6}_[0-9]+$ ]] \
+    || fatal "per-run verifier target is invalid"
+  [ -n "$work" ] && [ -d "$work" ] && [ ! -L "$work" ] \
+    && [ "$(realpath -e -- "$work")" = "$work" ] \
+    && [ "$(stat -c '%u:%a' "$work")" = "$(id -u):700" ] \
+    && [ "$(findmnt -n -o FSTYPE --target "$work")" = tmpfs ] \
+    || fatal "per-run verifier credentials require a private canonical tmpfs directory"
+  assert_connection_file VERIFY_PGPASSFILE "$VERIFY_PGPASSFILE" password
+  RUN_VERIFY_PGPASS="$(mktemp "$work/leaddrive-canary-auth.XXXXXX")"
+  # Keep the existing password bytes on this host and only in private RAM.
+  # Narrow one matching libpq entry to the maintenance DB and this exact canary;
+  # never rewrite the canonical passfile or use a database/host/user wildcard.
+  node --input-type=module - "$VERIFY_PGPASSFILE" "$RUN_VERIFY_PGPASS" \
+    "$VERIFY_PGHOST" "$VERIFY_PGPORT" "$VERIFY_PGMAINTENANCE_DB" "$VERIFY_PGUSER" "$SCRATCH_DB" <<'NODE' 2>/dev/null \
+    || fatal "cannot derive bounded per-run verifier authentication"
+  import fs from 'node:fs';
+  try {
+    const [input, output, host, port, maintenance, user, target] = process.argv.slice(2);
+    const values = [host, port, maintenance, user, target];
+    if (values.some(v => !v || /[^\x20-\x7e]|\*/.test(v)) || maintenance === target) throw Error();
+    const fd = fs.openSync(input, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    let payload;
+    try {
+      const s = fs.fstatSync(fd), b = Buffer.alloc(65537);
+      if (!s.isFile() || s.uid !== process.getuid() || ![0o400, 0o600].includes(s.mode & 0o7777) || s.size > 65536) throw Error();
+      let length = 0;
+      while (length < b.length) {
+        const n = fs.readSync(fd, b, length, b.length - length, null);
+        if (!n) break;
+        length += n;
+      }
+      if (length > 65536) throw Error();
+      payload = b.subarray(0, length).toString('latin1');
+    } finally { fs.closeSync(fd); }
+    if (/[\x00\r]/.test(payload)) throw Error();
+    const matches = [];
+    for (const line of payload.split('\n')) {
+      if (!line || line.startsWith('#')) continue;
+      const fields = [];
+      let text = '', raw = '', escaped = false, password;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (escaped) { text += c; raw += c; escaped = false; }
+        else if (c === '\\') { raw += c; escaped = true; }
+        else if (c === ':') {
+          fields.push({ text, any: raw === '*' }); text = ''; raw = '';
+          if (fields.length === 4) { password = line.slice(i + 1); break; }
+        } else { text += c; raw += c; }
+      }
+      if (fields.length !== 4 || !password || password.length > 8192) throw Error();
+      const expected = [host, port, maintenance, user];
+      if (fields.every((f, i) => f.any || f.text === expected[i])) matches.push(password);
+    }
+    if (matches.length !== 1) throw Error();
+    const escape = v => v.replaceAll('\\', '\\\\').replaceAll(':', '\\:');
+    const entries = [maintenance, target].map(db => Buffer.concat([
+      Buffer.from([host, port, db, user].map(escape).join(':') + ':', 'utf8'),
+      Buffer.from(matches[0], 'latin1'), Buffer.from('\n'),
+    ]));
+    const out = fs.openSync(output, fs.constants.O_WRONLY | fs.constants.O_NOFOLLOW);
+    try {
+      const s = fs.fstatSync(out);
+      if (!s.isFile() || s.uid !== process.getuid() || (s.mode & 0o7777) !== 0o600 || s.nlink !== 1 || s.size !== 0) throw Error();
+      fs.writeFileSync(out, Buffer.concat(entries)); fs.fsyncSync(out);
+    } finally { fs.closeSync(out); }
+  } catch { process.exitCode = 1; }
+NODE
+}
+
+confirm_scratch_database_absent() {
+  env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
+    psql -X -v ON_ERROR_STOP=1 -At -v candidate="$SCRATCH_DB" <<'SQL'
+SELECT count(*) FROM pg_database WHERE datname = :'candidate';
+SQL
+}
+
+configure_verifier_environment() {
+  VERIFY_ENV=(
+    "PGHOST=$VERIFY_PGHOST"
+    # The source uses PGHOSTADDR for its TLS name/route split. Never inherit
+    # that route when connecting to the independently configured verifier.
+    "PGHOSTADDR="
+    "PGPORT=$VERIFY_PGPORT"
+    "PGUSER=$VERIFY_PGUSER"
+    "PGPASSFILE=${RUN_VERIFY_PGPASS:-$VERIFY_PGPASSFILE}"
+    "PGCONNECT_TIMEOUT=$VERIFY_PGCONNECT_TIMEOUT"
+    "PGSSLMODE=$VERIFY_PGSSLMODE"
+  )
+  if [ "$VERIFY_PGSSLMODE" = verify-full ]; then
+    VERIFY_ENV+=("PGSSLROOTCERT=$VERIFY_PGSSLROOTCERT")
+  fi
 }
 
 cleanup() {
@@ -70,10 +171,7 @@ cleanup() {
         for drop_attempt in 1 2 3; do
           if env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
               dropdb --if-exists --force "$SCRATCH_DB" >/dev/null 2>&1 \
-            && [ "$(env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
-              psql -X -v ON_ERROR_STOP=1 -At -v candidate="$SCRATCH_DB" -c \
-                "SELECT count(*) FROM pg_database WHERE datname = :'candidate'" \
-              2>/dev/null || printf '1')" = "0" ]; then
+            && [ "$(confirm_scratch_database_absent 2>/dev/null || printf '1')" = "0" ]; then
             remaining=0
             break
           fi
@@ -99,6 +197,7 @@ cleanup() {
   [ -z "$RESTORED_APPLIED_MIGRATIONS" ] || rm -f -- "$RESTORED_APPLIED_MIGRATIONS"
   [ -z "$CONTRACT_MIGRATIONS" ] || rm -f -- "$CONTRACT_MIGRATIONS"
   [ -z "$EXPECTED_APPLIED_MIGRATIONS" ] || rm -f -- "$EXPECTED_APPLIED_MIGRATIONS"
+  [ -z "$RUN_VERIFY_PGPASS" ] || rm -f -- "$RUN_VERIFY_PGPASS"
   exit "$status"
 }
 trap cleanup EXIT
@@ -129,6 +228,8 @@ require_command createdb
 require_command dropdb
 require_command pg_restore
 require_command psql
+require_command node
+require_command findmnt
 require_command cmp
 require_command head
 require_command mv
@@ -182,17 +283,7 @@ case "$VERIFY_PGSSLMODE" in
   *) fatal "VERIFY_PGSSLMODE must be verify-full for production restore checks" ;;
 esac
 
-VERIFY_ENV=(
-  "PGHOST=$VERIFY_PGHOST"
-  "PGPORT=$VERIFY_PGPORT"
-  "PGUSER=$VERIFY_PGUSER"
-  "PGPASSFILE=$VERIFY_PGPASSFILE"
-  "PGCONNECT_TIMEOUT=$VERIFY_PGCONNECT_TIMEOUT"
-  "PGSSLMODE=$VERIFY_PGSSLMODE"
-)
-if [ "$VERIFY_PGSSLMODE" = "verify-full" ]; then
-  VERIFY_ENV+=("PGSSLROOTCERT=$VERIFY_PGSSLROOTCERT")
-fi
+configure_verifier_environment
 
 role_state="$(env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
   psql -X -v ON_ERROR_STOP=1 -AtF '|' -c \
@@ -220,6 +311,8 @@ verify_system_identifier="$(env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTEN
   || fatal "scratch verification endpoint is the source PostgreSQL cluster"
 
 SCRATCH_DB="leaddrive_restore_verify_$(date -u '+%Y%m%d_%H%M%S')_$$"
+prepare_run_verifier_passfile
+configure_verifier_environment
 RESTORED_CANARY="$(mktemp "${TMPDIR:-/tmp}/leaddrive-restored-canary.XXXXXX")"
 SOURCE_SECURITY="$(mktemp "${TMPDIR:-/tmp}/leaddrive-source-security.XXXXXX")"
 RESTORED_SECURITY="$(mktemp "${TMPDIR:-/tmp}/leaddrive-restored-security.XXXXXX")"
@@ -229,13 +322,38 @@ CONTRACT_MIGRATIONS="$(mktemp "${TMPDIR:-/tmp}/leaddrive-contract-migrations.XXX
 EXPECTED_APPLIED_MIGRATIONS="$(mktemp "${TMPDIR:-/tmp}/leaddrive-expected-applied-migrations.XXXXXX")"
 
 log "creating isolated scratch database $SCRATCH_DB"
+if [ -n "${VERIFY_PGTEMPLATE:-}" ]; then
+  [[ "$VERIFY_PGTEMPLATE" =~ ^leaddrive_restore_template_[1-9][0-9]{0,19}_[0-9a-f]{12}$ ]] \
+    || fatal "native template identity refused"
+  [ -f "$SCRIPT_DIR/native-scratch-template.mjs" ] && [ ! -L "$SCRIPT_DIR/native-scratch-template.mjs" ] \
+    || fatal "native template compatibility helper is unavailable"
+  template_state="$(env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
+    psql -X -w -qAt -v ON_ERROR_STOP=1 -c \
+    "SELECT count(*) FROM pg_catalog.pg_database d JOIN pg_catalog.pg_roles r ON r.oid=d.datdba
+      WHERE d.datname='$VERIFY_PGTEMPLATE' AND r.rolname=session_user AND NOT d.datistemplate AND NOT d.datallowconn")" \
+    || fatal "native template admission query failed"
+  [ "$template_state" = 1 ] || fatal "native template ownership/seal refused"
+  TEMPLATE_ARGS=(--template="$VERIFY_PGTEMPLATE")
+fi
 env "${VERIFY_ENV[@]}" PGDATABASE="$VERIFY_PGMAINTENANCE_DB" \
-  createdb --maintenance-db="$VERIFY_PGMAINTENANCE_DB" "$SCRATCH_DB"
+  createdb --maintenance-db="$VERIFY_PGMAINTENANCE_DB" "${TEMPLATE_ARGS[@]}" "$SCRATCH_DB"
 SCRATCH_DB_CREATED=1
 
+prove_native_clone() {
+  [ -n "${VERIFY_PGTEMPLATE:-}" ] || return 0
+  local proof sql
+  sql="$(node "$SCRIPT_DIR/native-scratch-template.mjs" --clone-proof-sql)" \
+    || fatal "native clone compatibility plan refused"
+  proof="$(env "${VERIFY_ENV[@]}" PGDATABASE="$SCRATCH_DB" \
+    psql -X -w -qAt -v ON_ERROR_STOP=1 -c "$sql")" \
+    || fatal "native clone compatibility query failed"
+  [ "$proof" = 1 ] || fatal "native clone exact extension/ownership/locale/limited-role proof refused"
+}
+prove_native_clone
 log "restoring dump"
 env "${VERIFY_ENV[@]}" PGDATABASE="$SCRATCH_DB" \
   pg_restore --exit-on-error --no-owner --no-privileges --dbname="$SCRATCH_DB" "$DUMP_FILE"
+prove_native_clone
 
 log "comparing the exact Prisma migration ledger from the restored database"
 env "${VERIFY_ENV[@]}" PGDATABASE="$SCRATCH_DB" \
@@ -255,9 +373,19 @@ log "restored Prisma migration ledger proof passed"
 awk -F '\t' '
   NR == 1 { if ($1 != "SCHEMA" || $2 != "prisma/schema.prisma" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
   NR == 2 { if ($1 != "MIGRATION_LOCK" || $2 != "prisma/migrations/migration_lock.toml" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
+  $1 == "LEDGER_EXCEPTION" {
+    if (NF != 4 || !migrations || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ \
+        || $3 !~ /^([0-9a-f]{64}|manual-[0-9]{8,14})$/ \
+        || (previous_exception != "" && previous_exception >= $2)) bad=1
+    else if ($4 == "applied-not-in-code") { if ($2 in contract) bad=1 }
+    else if ($4 == "checksum-differs") { if (!($2 in contract) || contract[$2] == $3) bad=1 }
+    else bad=1
+    previous_exception=$2; next
+  }
+  previous_exception != "" { bad=1; next }
   $1 != "MIGRATION" || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ || $3 !~ /^[0-9a-f]{64}$/ { bad=1; next }
   seen[$2]++ { bad=1 }
-  { if (previous != "" && previous >= $2) bad=1; previous=$2; migrations++ }
+  { if (previous != "" && previous >= $2) bad=1; previous=$2; contract[$2]=$3; migrations++ }
   END { if (NR < 3 || migrations < 1 || bad) exit 1 }
 ' "$SOURCE_DB_CONTRACT" || fatal "recovery DB contract manifest is malformed"
 awk -F '\t' '$1 == "MIGRATION" { print $2 "\t" $3 }' \
@@ -277,6 +405,33 @@ SQL
 tail -n +2 "$RESTORED_APPLIED_MIGRATIONS" >"$RESTORED_APPLIED_MIGRATIONS.rows"
 mv -- "$RESTORED_APPLIED_MIGRATIONS.rows" "$RESTORED_APPLIED_MIGRATIONS"
 LC_ALL=C sort -o "$RESTORED_APPLIED_MIGRATIONS" "$RESTORED_APPLIED_MIGRATIONS"
+# BEGIN reviewed migration ledger exceptions
+# Byte-identical in postgres-backup.sh and postgres-restore-canary.sh
+# (migration-ledger-exceptions.test.mjs). A ledger row equal in name AND
+# checksum to a LEDGER_EXCEPTION of the recovery DB contract is accounted for:
+# applied-not-in-code drops out, checksum-differs takes the repository
+# checksum. Anything else passes through unchanged to the exact prefix check.
+apply_reviewed_ledger_exceptions() {
+  awk -F '\t' -v OFS='\t' '
+    FNR == NR {
+      if ($1 == "MIGRATION") contract[$2] = $3
+      else if ($1 == "LEDGER_EXCEPTION") exception[$2 "\t" $3] = $4
+      next
+    }
+    ($1 "\t" $2) in exception {
+      if (exception[$1 "\t" $2] == "applied-not-in-code") next
+      if (exception[$1 "\t" $2] == "checksum-differs") { print $1, contract[$1]; next }
+    }
+    { print }
+  ' "$1" "$2"
+}
+# END reviewed migration ledger exceptions
+apply_reviewed_ledger_exceptions "$SOURCE_DB_CONTRACT" "$RESTORED_APPLIED_MIGRATIONS" \
+  >"$RESTORED_APPLIED_MIGRATIONS.reviewed" || fatal "cannot apply reviewed migration ledger exceptions"
+if ! cmp -s -- "$RESTORED_APPLIED_MIGRATIONS" "$RESTORED_APPLIED_MIGRATIONS.reviewed"; then
+  log "restored ledger matched reviewed exceptions of the recovery DB contract"
+fi
+mv -- "$RESTORED_APPLIED_MIGRATIONS.reviewed" "$RESTORED_APPLIED_MIGRATIONS"
 awk -F '\t' '
   NF != 2 || $1 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ || $2 !~ /^[0-9a-f]{64}$/ { bad=1 }
   seen[$1]++ { bad=1 }

@@ -4,6 +4,7 @@ import type { prisma as appPrisma } from "@/lib/prisma"
 import { buildXlsxWorkbook } from "@/lib/export/tabular"
 import { protectMtmExcelText } from "@/lib/mtm/excel-contract"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
+import { formatInTimezone } from "@/lib/timezone"
 
 type AppPrisma = typeof appPrisma
 
@@ -39,6 +40,11 @@ function dateOnly(value: Date | string | null | undefined): string {
 function dateTime(value: Date | string | null | undefined): string {
   if (!value) return ""
   return (value instanceof Date ? value : new Date(value)).toISOString()
+}
+
+/** `planned_time` is local time in the organization's timezone — the import reads it the same way. */
+function localTime(value: Date, timezone: string): string {
+  return formatInTimezone(value, timezone, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).slice(0, 5)
 }
 
 function dateFilter(from: string, to: string): Prisma.DateTimeFilter | undefined {
@@ -100,7 +106,7 @@ export async function buildMtmExcelExport(params: {
     rows = routes.flatMap((route: typeof routes[number]) => {
       const agentCodes = route.assignments.map((assignment: { agent: { externalCode: string | null; name: string } }) => assignment.agent.externalCode || assignment.agent.name).join(",")
       const primaryCode = route.agent.externalCode || route.agent.name
-      return route.points.map((point: { orderIndex: number; customer: { code: string | null; name: string }; plannedTime: Date | null; status: string; visitedAt: Date | null; notes: string | null }) => [route.externalId || route.id, dateOnly(route.date), route.name, route.status, agentCodes || primaryCode, primaryCode, point.orderIndex, point.customer.code, point.customer.name, point.plannedTime ? point.plannedTime.toISOString().slice(11, 16) : "", point.status, dateTime(point.visitedAt), point.notes])
+      return route.points.map((point: { orderIndex: number; customer: { code: string | null; name: string }; plannedTime: Date | null; status: string; visitedAt: Date | null; notes: string | null }) => [route.externalId || route.id, dateOnly(route.date), route.name, route.status, agentCodes || primaryCode, primaryCode, point.orderIndex, point.customer.code, point.customer.name, point.plannedTime ? localTime(point.plannedTime, params.timezone) : "", point.status, dateTime(point.visitedAt), point.notes])
     })
     sheetName = "routes"
   } else if (params.type === "SALES_FACTS") {

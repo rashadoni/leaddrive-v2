@@ -264,7 +264,7 @@ export function JourneyForm({ open, onOpenChange, onSaved, initialData, orgId }:
                   key={tmpl.id}
                   type="button"
                   onClick={() => selectTemplate(tmpl)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-primary/50 hover:shadow-sm transition-all text-center group"
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-primary/50 hover:shadow-sm transition-all text-center group"
                 >
                   <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110", tmpl.color)}>
                     <Icon className="h-5 w-5" />
@@ -385,7 +385,7 @@ export function JourneyForm({ open, onOpenChange, onSaved, initialData, orgId }:
               </div>
 
               {/* Goal configuration toggle */}
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
+              <div className="border border-border rounded-lg p-3">
                 <button
                   type="button"
                   className="flex items-center gap-2 text-sm font-medium w-full text-left"

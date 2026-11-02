@@ -1,7 +1,7 @@
 // GENERATED FILE — do not edit by hand.
-// Run `npm run help-video:sync` after adding or removing files in video/player.
-// Source of truth: the recorded assets themselves, so the help-video card is
-// only offered for a section+locale that can actually play.
+// Run `npm run help-video:sync` after changing video/player/masters.sha256.
+// Source of truth: the published master set, so the help-video card is only
+// offered for a section+locale production can actually play.
 import type { HelpVideoLocale } from "./video-assets"
 
 export const HELP_VIDEO_AVAILABILITY: Readonly<Record<string, readonly HelpVideoLocale[]>> = {
@@ -10,9 +10,14 @@ export const HELP_VIDEO_AVAILABILITY: Readonly<Record<string, readonly HelpVideo
   "deal-detail": ["az", "en", "ru"],
   "deals": ["az", "en", "ru"],
   "demo-boards": ["az"],
+  "demo-calls": ["az"],
   "demo-campaigns": ["az"],
+  "demo-contracts": ["az"],
   "demo-inbox": ["az"],
   "demo-leads": ["az"],
+  "demo-mtm": ["az"],
+  "demo-personnel": ["az"],
+  "demo-support": ["az"],
   "forecast": ["az", "en", "ru"],
   "forecast-snapshots": ["az", "en", "ru"],
   "forecast-velocity": ["az", "en", "ru"],

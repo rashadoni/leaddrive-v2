@@ -19,9 +19,16 @@ const META_GRAPH_BASE = process.env.META_GRAPH_BASE || "https://graph.facebook.c
 // `messaging_postbacks` covers button/quick-reply taps.
 const DM_SUBSCRIBED_FIELDS = "messages,messaging_postbacks"
 
+/**
+ * `options.fields` narrows what the Page sends us. The demo's own Page
+ * connection (src/lib/demo-center/demo-social-oauth.ts) asks for `messages`
+ * alone: it answers text only, so postbacks from a prospect's Page are never
+ * delivered at all. Every existing caller keeps the default.
+ */
 export async function subscribePageToMessages(
   pageId: string,
   pageAccessToken: string,
+  options: { fields?: "messages" } = {},
 ): Promise<{ success: boolean; error?: string }> {
   if (!pageId || !pageAccessToken) return { success: false, error: "missing pageId or token" }
   try {
@@ -29,7 +36,7 @@ export async function subscribePageToMessages(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        subscribed_fields: DM_SUBSCRIBED_FIELDS,
+        subscribed_fields: options.fields ?? DM_SUBSCRIBED_FIELDS,
         access_token: pageAccessToken,
       }),
       signal: AbortSignal.timeout(10_000),

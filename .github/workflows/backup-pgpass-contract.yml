@@ -1,0 +1,69 @@
+name: Backup PostgreSQL password-file contract
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'scripts/backup/*pgpass*.test.mjs'
+      - 'scripts/backup/postgres-backup.sh'
+      - 'scripts/backup/postgres-restore-canary.sh'
+      - 'scripts/backup/commission-production-backup.sh'
+      - 'scripts/backup/report-production-readiness.sh'
+      - 'scripts/server-deploy.sh'
+      - '.github/scripts/remediate_postgres_source_tls.py'
+      - '.github/workflows/backup-pgpass-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/backup/*pgpass*.test.mjs'
+      - 'scripts/backup/postgres-backup.sh'
+      - 'scripts/backup/postgres-restore-canary.sh'
+      - 'scripts/backup/commission-production-backup.sh'
+      - 'scripts/backup/report-production-readiness.sh'
+      - 'scripts/server-deploy.sh'
+      - '.github/scripts/remediate_postgres_source_tls.py'
+      - '.github/workflows/backup-pgpass-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-pgpass-contract-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pgpass-contract:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16.13-alpine@sha256:4941ef97aaa2633ce9808f7766f8b8d746dd039ce8c51ca6da185c3dc63ab579
+        env:
+          POSTGRES_USER: contract_fixture
+          POSTGRES_PASSWORD: only_synthetic_fixture
+          POSTGRES_DB: pgpass_contract_test
+          POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+        ports:
+          - 127.0.0.1::5432
+        options: >-
+          --memory 256m --memory-swap 256m
+          --health-cmd "pg_isready -U contract_fixture -d pgpass_contract_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Guard regressions and actual libpq authentication
+        env:
+          LEADDRIVE_PGPASS_INTEGRATION: '1'
+          TESTPG_PORT: ${{ job.services.postgres.ports[5432] }}
+        run: |
+          psql --version
+          node --test scripts/backup/pgpass-contract.test.mjs scripts/backup/libpq-pgpass.test.mjs
+      - name: Pinned recovery helper consistency
+        run: node scripts/ci/test-event-platform-assets.mjs

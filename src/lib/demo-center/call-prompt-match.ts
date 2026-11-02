@@ -63,6 +63,37 @@ export async function noteDemoCallConnecting(
   }
 }
 
+/**
+ * The station says it ran this demo call on the demo's script
+ * (call-result `demoPromptApplied`). The evidence demoCallAgentReady reads,
+ * written from what the station applied, not from what the CRM sent: a
+ * continuation answer the station timed out on is not evidence.
+ */
+export async function recordDemoPromptApplied(
+  organizationId: string,
+  callLogId: string,
+  providerCallId: string,
+): Promise<void> {
+  try {
+    await prisma.callEvent.createMany({
+      data: [{
+        organizationId,
+        callLogId,
+        provider: "asterisk",
+        providerCallId,
+        eventType: PROMPT_SERVED_EVENT,
+        eventHash: PROMPT_SERVED_HASH,
+        payload: { variant: "demo", matchedBy: "station" },
+      }],
+      skipDuplicates: true,
+    })
+  } catch (error) {
+    console.error("[demo-call] station prompt evidence not recorded", {
+      errorType: error instanceof Error ? error.name : "unknown",
+    })
+  }
+}
+
 export interface ConnectingDemoCall {
   readonly callLogId: string
   readonly providerCallId: string

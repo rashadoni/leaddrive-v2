@@ -180,8 +180,8 @@ export function LeadCallAnalytics({
       ) : null}
 
       {!loading && !error && calls.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <div className="overflow-hidden rounded-lg border border-border">
+          <div className="divide-y divide-border">
             {visibleCalls.map((call) => {
               const expanded = expandedId === call.id
               const directionLabel = call.direction === "outbound"

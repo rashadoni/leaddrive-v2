@@ -38,7 +38,8 @@ describe("explicit employment dates and leave edge cases", () => {
     const date = "2026-10-14", startedAt = `${date}T06:00:00Z`, completedAt = `${date}T13:00:00Z`
     const result = buildMtmAttendanceReport({ ...input(), from: date, to: date, workdays: [{ id: "day", agentId: "employee", workDate: date, status: "COMPLETED", startedAt, completedAt, totalPausedSeconds: 0,
       events: [{ type: "START", occurredAt: startedAt }, { type: "FINISH", occurredAt: completedAt }] }] })
-    expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 25200, expectedWorkSeconds: 0, lateSeconds: 0, earlyLeaveSeconds: 0, flags: ["WORKED_OUTSIDE_EMPLOYMENT"] })
+    // 10:00–17:00 Baku − the automatic 13:00–14:00 lunch (owner, 2026-10-16: «вычитать обед самому»).
+    expect(result.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 21600, lunchAutoSeconds: 3600, expectedWorkSeconds: 0, lateSeconds: 0, earlyLeaveSeconds: 0, flags: ["WORKED_OUTSIDE_EMPLOYMENT"] })
     expect(result.rows[0].events).toHaveLength(2)
     expect(filterMtmAttendanceRows(result.rows, { form: "ABSENCES" })).toHaveLength(0)
   })
@@ -53,10 +54,11 @@ describe("explicit employment dates and leave edge cases", () => {
     const base = { ...input(), from: date, to: date, workdays: [{ id: "day", agentId: "employee", workDate: date, status: "COMPLETED", startedAt, completedAt, totalPausedSeconds: 0,
       events: [{ type: "START", occurredAt: startedAt }, { type: "FINISH", occurredAt: completedAt }] }] }
     const approved = buildMtmAttendanceReport({ ...base, approvedRequests: [leave] })
-    expect(approved.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, annualLeaveDays: 1, flags: ["WORKED_ON_APPROVED_ABSENCE"] })
+    // 09:00–18:00 Baku − the automatic 13:00–14:00 lunch = 8:00.
+    expect(approved.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 28800, annualLeaveDays: 1, flags: ["WORKED_ON_APPROVED_ABSENCE"] })
     const cancelled = buildMtmAttendanceReport(base)
     expect(cancelled.totals.annualLeaveDays).toBe(0)
-    expect(cancelled.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 32400, flags: [] })
+    expect(cancelled.rows[0]).toMatchObject({ kind: "WORKED", workedSeconds: 28800, flags: [] })
     expect(cancelled.rows[0].events).toEqual(approved.rows[0].events)
   })
 })

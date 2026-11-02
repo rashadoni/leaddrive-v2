@@ -173,6 +173,7 @@ export interface InboxConversation {
   // Option-D — present only when the thread is backed by a persisted
   // SocialConversation row (channels that populate ChannelMessage.conversationId).
   socialConversationId?: string | null
+  whatsappReplyBlocked?: boolean
   status?: string
   assignedTo?: string | null
   snoozedUntil?: string | null

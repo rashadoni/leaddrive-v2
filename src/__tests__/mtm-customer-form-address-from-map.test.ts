@@ -143,3 +143,25 @@ describe("organization form — the address comes from the map", () => {
     expect([body.address, body.city]).toEqual(["Old street 1", "Old city"])
   })
 })
+
+// Owner's E2E test, 2026-10-17: the form had no type and every new institution became a «Mağaza» (STORE).
+describe("organization form — the institution's type", () => {
+  it("asks for the type, offers a clinic first, and sends what was chosen", async () => {
+    await show()
+    const type = container.querySelector("#objectType") as HTMLSelectElement
+    expect(type.value).toBe("CLINIC")
+    expect([...type.options].map(option => option.value)).toEqual(["CLINIC", "PHARMACY", "STORE", "OTHER"])
+    expect(container.textContent).toContain(ru.mtmCustomers.add)
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(type, "PHARMACY"); type.dispatchEvent(new Event("change", { bubbles: true })) })
+    await act(async () => { const name = container.querySelector("#name") as HTMLInputElement; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(name, "Aptek 1"); name.dispatchEvent(new Event("input", { bubbles: true })) })
+    await save()
+    expect(JSON.parse((fetchMock.mock.calls[0] as [string, { body: string }])[1].body).objectType).toBe("PHARMACY")
+  })
+
+  it("keeps an older record's own type when it is edited", async () => {
+    await show({ ...CARD, objectType: "DOCTOR" } as typeof CARD)
+    expect((container.querySelector("#objectType") as HTMLSelectElement).value).toBe("DOCTOR")
+    await save()
+    expect(JSON.parse((fetchMock.mock.calls[0] as [string, { body: string }])[1].body).objectType).toBe("DOCTOR")
+  })
+})

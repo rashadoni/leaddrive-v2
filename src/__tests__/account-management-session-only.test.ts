@@ -32,9 +32,19 @@ vi.mock("@/lib/api-auth", () => ({
   isAuthError: vi.fn((value: unknown) => value instanceof Response),
 }))
 
+// This suite tests human-session admission. Canonical migration/transaction
+// invariants are exercised by the real identity and endpoint PG contracts.
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    ({ allowed: true, value: await work(client) })),
+}))
+
 vi.mock("@/lib/prisma", () => ({
   logAudit: vi.fn(async () => undefined),
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     user: {
       findFirst: vi.fn(),
       create: vi.fn(),
@@ -52,7 +62,7 @@ vi.mock("@/lib/prisma", () => ({
     // Модели, которые трогает передача незакрытой работы при обезличивании
     // пользователя (src/lib/user-work-handover.ts). Без них tx.deal.updateMany
     // — undefined, и падение выглядело бы как поломка авторизации.
-    deal: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    deal: { updateMany: vi.fn().mockResolvedValue({ count: 0 }), findMany: vi.fn().mockResolvedValue([]) },
     lead: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     ticket: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     task: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
@@ -78,6 +88,7 @@ vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn(async () => "hashed-password") },
 }))
 
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
 import { requireAuth, requireSessionAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { POST as createUser } from "@/app/api/v1/users/route"
@@ -144,6 +155,7 @@ describe("account-security management is browser-session-only", () => {
       const response = await attempt()
       expect(response.status).toBe(401)
     }
+    expect(withLegacyCredentialMaintenance).not.toHaveBeenCalled()
 
     expect(requireSessionAuth).toHaveBeenCalledTimes(accountManagementAttempts().length)
     expect(requireAuth).not.toHaveBeenCalled()
@@ -189,6 +201,8 @@ describe("account-security management is browser-session-only", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(targetUser as never)
       .mockResolvedValueOnce(targetUser as never)
+      .mockResolvedValueOnce(targetUser as never)
+      // Credential maintenance re-reads the same target under its write lock.
       .mockResolvedValueOnce(targetUser as never)
     vi.mocked(prisma.user.create).mockResolvedValue({
       id: "user-new",

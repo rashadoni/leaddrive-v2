@@ -11,12 +11,19 @@ import { inDemoSalesOrganization } from "./sales-org"
  * Owner, 2026-09-23 — chosen over «first you approve»: the prospect fills the
  * form and the invitation is already in their inbox, so «check your email» on
  * the screen is true. What is handed out this way is the guided story with
- * the assistant and the clips; the two things that cost money and touch the
- * owner's own numbers — the real AI call and the WhatsApp thread — stay off
- * and remain his to switch on for a particular request in Demo Center.
+ * the assistant and the clips. The real AI call, and our WhatsApp number
+ * writing first to the phone on the request, stay off and remain his to
+ * switch on for a particular request in Demo Center: both reach a phone that
+ * anyone could have typed into the form. The WhatsApp thread the prospect
+ * starts from their own phone is on (`liveWhatsAppEnabled`): their message,
+ * with the session's code, is the proof.
  *
- * The link is not a secret by itself: opening it asks for a code sent to the
- * same address, so a forwarded link opens nothing (`demo-access/[token]`).
+ * The link is the address confirmation (owner, 2026-10-18): it goes only to
+ * the address on the request, and the demo opens once the prospect follows it
+ * and presses the button there (`demo-access/[token]/confirm`). The owner is
+ * told about the request at that moment, not when the form is sent — anyone
+ * can type any address into the form. The session is still bound to the one
+ * browser that pressed it.
  *
  * Three refusals, all quiet — the request is stored either way and the owner
  * sees it in Demo Center:
@@ -68,6 +75,7 @@ export async function autoIssueDemoGrant(params: {
       locale: params.request.locale,
       // Not from a form: the owner turns these on per request in Demo Center.
       liveCallEnabled: false,
+      liveSocialEnabled: false,
     },
     now,
   }).catch((error) => {

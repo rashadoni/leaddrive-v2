@@ -63,8 +63,11 @@ export const MtmAgentStatus = z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"])
 
 export const AgentCreateSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  externalCode: z.string().trim().min(1).max(128).optional().nullable(),
-  email: z.string().email().max(200).optional().nullable(),
+  // The agent form sends its optional fields as "" when left empty; until
+  // 2026-10-17 that refused every new agent without an email and a code
+  // («Validation failed», found by the owner's end-to-end test).
+  externalCode: z.preprocess(emptyStringAsNull, z.string().trim().min(1).max(128).optional().nullable()),
+  email: z.preprocess(emptyStringAsNull, z.string().trim().email().max(200).optional().nullable()),
   phone: optionalString,
   password: z.string().min(1).max(72).optional(),
   role: MtmAgentRole.optional(),

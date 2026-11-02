@@ -119,7 +119,7 @@ export function SegmentConditionBuilder({ initialConditions, onSave }: SegmentCo
                 onClick={() => toggleLogic(gi)}
                 className={cn(
                   "px-2 py-0.5 rounded-full text-xs font-bold transition-colors",
-                  group.logic === "AND" ? "bg-blue-500 text-white" : "bg-orange-500 text-white"
+                  "crm-choice-selected"
                 )}
               >
                 {group.logic}

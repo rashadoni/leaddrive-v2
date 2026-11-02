@@ -440,7 +440,7 @@ export default function SignPortalPage() {
                 {contract.renderedBody}
               </div>
             ) : (
-              <p className="text-zinc-400 italic text-sm">No document body available.</p>
+              <p className="text-zinc-400 italic text-sm">{t("noDocumentBody")}</p>
             )}
           </div>
         </div>

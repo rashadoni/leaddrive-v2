@@ -15,7 +15,6 @@
     "src/__tests__/lib-social-monitoring-import-fence.test.ts TS2345": 1,
     "src/__tests__/lib-social-relevance-confidence-policy.test.ts TS2345": 1,
     "src/__tests__/lib-voice-agent-post-call.test.ts TS2339": 1,
-    "src/__tests__/mtm-module-navigation.test.ts TS2322": 1,
     "src/__tests__/softphone-end-to-end.test.ts TS2322": 1,
     "src/app/api/cron/social-poll/route.ts TS2345": 7,
     "src/app/api/cron/social-web-news/route.ts TS2322": 1,

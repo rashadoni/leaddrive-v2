@@ -4,18 +4,20 @@ import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
-import { customerScopeForActor } from "@/lib/mtm/field-scope"
+import { contactTakenOffAgent, customerScopeForActor } from "@/lib/mtm/field-scope"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { LOCATION_REQUEST_ANSWER_SHOWN_DAYS, customerLocationRequestForAgent } from "@/lib/mtm/customer-location-request"
+import { HOURS_REQUEST_ANSWER_SHOWN_DAYS, customerHoursRequestForAgent } from "@/lib/mtm/customer-hours-request"
+import { readWorkingHours } from "@/lib/mtm/customer-hours"
 
 const ROUTE_FIELD_CONTACT_LIMIT = 50
 const ROUTE_FIELD_VISIT_LIMIT = 15
 
 /** Fixed allowlist for the standalone Route Field detail card. */
-const routeFieldOrganizationSelect = (agentId: string) => ({
+const routeFieldOrganizationSelect = (agentId: string, asOf: Date) => ({
   id: true,
   code: true,
   name: true,
@@ -34,8 +36,12 @@ const routeFieldOrganizationSelect = (agentId: string) => ({
   // The person at the organization itself. Agents visit it and must know whom
   // to ask for; they still cannot change it (owner, 2026-10-02).
   contactPerson: true,
+  // «Часы приёма»: the agent sees whether the place is open, and offers
+  // «Часы не те?» when the door says otherwise.
+  workingHours: true,
+  // Not a doctor taken off this agent: he is gone from the agent's app at once.
   contactWorkplaces: {
-    where: { deletedAt: null, endedOn: null, contact: { deletedAt: null, status: "ACTIVE" } },
+    where: { deletedAt: null, endedOn: null, contact: { deletedAt: null, status: "ACTIVE", NOT: contactTakenOffAgent(agentId, asOf) } },
     orderBy: [{ isPrimary: "desc" }, { startedOn: "desc" }, { id: "asc" }],
     take: ROUTE_FIELD_CONTACT_LIMIT,
     select: {
@@ -91,6 +97,8 @@ function projectRouteFieldOrganization(source: RouteFieldOrganizationSource) {
     ...normalizeMtmCoordinates(source),
     phone: source.phone,
     contactPerson: source.contactPerson,
+    // ISO weekday "1".."7" → { open, close, breakFrom?, breakTo? } or null; null as a whole = not given.
+    workingHours: readWorkingHours(source.workingHours),
     contacts: source.contactWorkplaces.map((workplace) => ({
       id: workplace.contact.id,
       name: workplace.contact.displayName,
@@ -150,7 +158,7 @@ export const GET = withMobileRls(async (_req, auth, { params }: { params: Promis
       objectType: { not: "DOCTOR" },
       AND: [customerScopeForActor(actor, asOf)],
     },
-    select: routeFieldOrganizationSelect(actor.agentId),
+    select: routeFieldOrganizationSelect(actor.agentId, asOf),
   })
   if (!organization) return noStoreJson({ error: "Not found", code: "MTM_ROUTE_FIELD_ORGANIZATION_NOT_FOUND" }, { status: 404 })
 
@@ -185,11 +193,39 @@ export const GET = withMobileRls(async (_req, auth, { params }: { params: Promis
     select: locationRequestSelect,
   })
 
+  // «Часы не те?»: the same — the waiting request, else this agent's own answer, for a week.
+  const hoursRequestSelect = {
+    id: true,
+    status: true,
+    requestedByAgentId: true,
+    proposedHours: true,
+    decisionComment: true,
+    submittedAt: true,
+    reviewedAt: true,
+  } as const
+  const hoursAnsweredSince = new Date(Date.now() - HOURS_REQUEST_ANSWER_SHOWN_DAYS * 24 * 60 * 60 * 1000)
+  const hoursRequest = await prisma.mtmCustomerHoursRequest.findFirst({
+    where: { organizationId: auth.orgId, customerId: organization.id, status: "SUBMITTED" },
+    orderBy: { submittedAt: "desc" },
+    select: hoursRequestSelect,
+  }) ?? await prisma.mtmCustomerHoursRequest.findFirst({
+    where: {
+      organizationId: auth.orgId,
+      customerId: organization.id,
+      requestedByAgentId: actor.agentId,
+      status: { in: ["APPROVED", "REJECTED"] },
+      reviewedAt: { gte: hoursAnsweredSince },
+    },
+    orderBy: { reviewedAt: "desc" },
+    select: hoursRequestSelect,
+  })
+
   return noStoreJson({
     success: true,
     data: {
       organization: projectRouteFieldOrganization(organization),
       locationRequest: locationRequest ? customerLocationRequestForAgent(locationRequest, actor.agentId) : null,
+      hoursRequest: hoursRequest ? customerHoursRequestForAgent(hoursRequest, actor.agentId) : null,
       asOf: asOf.toISOString().slice(0, 10),
       timezone,
       contactLimit: ROUTE_FIELD_CONTACT_LIMIT,

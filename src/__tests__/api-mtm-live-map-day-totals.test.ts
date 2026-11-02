@@ -537,6 +537,20 @@ describe("GET /api/v1/mtm/locations/day-totals", () => {
       expect(body.data).toMatchObject({ unknownSeconds: 0, movingSeconds: 20 * 60 })
     })
 
+    // Breaks are read as History reads them (workday-pauses.ts). This route
+    // paired PAUSE with RESUME itself: a shift finished during its break kept
+    // the break open to midnight, and explained every later silence away.
+    it("a break ends where the shift was finished during it", async () => {
+      shifts = [{ ...shifts[0], status: "COMPLETED", completedAt: utc("05:15:00") }]
+      shiftEvents = [
+        { id: "e1", organizationId: ORG, agentId: AGENT, type: "PAUSE", occurredAt: utc("05:10:20"), appliedAt: utc("05:10:20") },
+        { id: "e2", organizationId: ORG, agentId: AGENT, type: "FINISH", occurredAt: utc("05:15:00"), appliedAt: utc("05:15:00") },
+      ]
+      const { body } = await read()
+      // Five minutes of break do not explain half an hour of silence: the day says «нет данных» as History does.
+      expect(body.data).toMatchObject({ unknownSeconds: 30 * 60, movingSeconds: 20 * 60 })
+    })
+
     it("without the workforce module neither the shift nor its breaks are read: the silence stays unexplained", async () => {
       vi.mocked(prisma.organization.findUnique).mockResolvedValue({
         plan: "pro", addons: [], features: ["mtm"], modules: { mtm: true, "workforce-hrm": false }, settings: {},

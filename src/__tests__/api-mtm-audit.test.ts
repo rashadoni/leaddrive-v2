@@ -54,6 +54,18 @@ vi.mock("@/lib/rate-limit", () => ({
   hashForRateLimit: vi.fn(async (s: string) => s),
 }))
 
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({
+  readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"), readLegacyPhoneCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"),
+}))
+
+const linkFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialWrite: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    linkFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    ({ allowed: true, value: await work(client) })),
+}))
+
 vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn().mockResolvedValue("hashed-pw"), compare: vi.fn() },
 }))
@@ -99,6 +111,8 @@ import { prisma } from "@/lib/prisma"
 import { getOrgId, getSession, requireAuth } from "@/lib/api-auth"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken"
+import { readLegacyCredentialBoundary } from "@/lib/identity/legacy-credential-boundary"
 
 const ORG = "org-1"
 const MOBILE_ORG = {
@@ -128,7 +142,9 @@ function pp(id: string) {
 }
 
 beforeEach(() => {
+  linkFence.allowed = true
   vi.clearAllMocks()
+  vi.mocked(readLegacyCredentialBoundary).mockResolvedValue("LEGACY")
   vi.mocked(getOrgId).mockResolvedValue(ORG)
   vi.mocked(getSession).mockResolvedValue({
     orgId: ORG,
@@ -187,12 +203,14 @@ describe("audit: agents", () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "John", email: "j@t.com", role: "AGENT" } as any)
     vi.mocked(prisma.mtmAgent.deleteMany).mockResolvedValue({ count: 1 } as any)
     await DeleteAgent(plainReq("/api/v1/mtm/agents/a1"), pp("a1"))
-    // agentId is a foreign key to the employee who has just been deleted: the
-    // row names him by entityId. What Postgres does with anything else is in
-    // mtm-contact-categories-postgres.test.ts — this mock accepts any id.
+    // Field removal retains the historical actor. The journal must keep
+    // that link and use the same transaction so audit failure rolls back removal.
     expect(writeMtmAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ agentId: null, action: "AGENT_DELETE", entity: "agent", entityId: "a1", metadataKind: "agent_delete" })
+      expect.objectContaining({ agentId: "a1", actorUserId: "admin-user", action: "AGENT_DELETE", entity: "agent", entityId: "a1", metadataKind: "agent_delete",
+        newData: expect.objectContaining({ historyRetained: true, fieldDeletedAt: expect.any(String) }) }),
+      prisma,
     )
+    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
   })
 })
 
@@ -703,6 +721,7 @@ describe("audit: mobile auth", () => {
       userId: null, // previously unlinked
       organizationId: ORG,
       role: "AGENT",
+      status: "ACTIVE",
       avatar: null,
       phone: null,
       name: "Agent",
@@ -710,9 +729,15 @@ describe("audit: mobile auth", () => {
     } as any)
     vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "u1", passwordHash: "hashed-user-pw" } as any)
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
-    vi.mocked(prisma.mtmAgent.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue(MOBILE_ORG as any)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
 
-    await MobileAuth(jsonReq("/api/v1/mtm/mobile/auth", "POST", { email: "agent@t.com", password: "user-pw" }))
+    const response = await MobileAuth(jsonReq("/api/v1/mtm/mobile/auth", "POST", { email: "agent@t.com", password: "user-pw" }))
+    expect(response.status).toBe(200)
+    expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: ORG, id: "a1", userId: null, passwordHash: null }),
+      data: { userId: "u1" },
+    }))
 
     // Verify AUTO_LINK fired — preserves both old (null) and new (u1) userId values
     expect(writeMtmAudit).toHaveBeenCalledWith(
@@ -723,11 +748,30 @@ describe("audit: mobile auth", () => {
         metadataKind: "auto_link",
         oldData: { userId: null },
         newData: expect.objectContaining({ userId: "u1" }),
-      })
+      }), prisma,
     )
     // And MOBILE_LOGIN follows (success path) — both are part of the same flow
     expect(writeMtmAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "MOBILE_LOGIN", entityId: "a1" })
     )
+  })
+
+  it.each(["cutover", "credential-change", "link-change"])("refuses an auto-link after %s without a success audit", async race => {
+    const card = { id: "a-link-race", organizationId: ORG, email: "race@example.invalid", role: "AGENT",
+      status: "ACTIVE", userId: null, passwordHash: null, organization: MOBILE_ORG }
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "u-link-race", passwordHash: "old-proof", passwordChangedAt: null } as any)
+    vi.mocked(bcrypt.compare).mockImplementationOnce(async () => {
+      if (race === "cutover") linkFence.allowed = false
+      if (race === "credential-change") vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "u-link-race", passwordHash: "changed-proof", passwordChangedAt: null } as any)
+      if (race === "link-change") vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...card, userId: "other-user" } as any)
+      return true
+    })
+    const response = await MobileAuth(jsonReq("/api/v1/mtm/mobile/auth", "POST", { email: card.email, password: "user-pw" }))
+    expect(response.status).toBe(401)
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+    expect(writeMtmAudit).not.toHaveBeenCalledWith(expect.objectContaining({ action: "AUTO_LINK" }), expect.anything())
+    expect(writeMtmAudit).not.toHaveBeenCalledWith(expect.objectContaining({ action: "MOBILE_LOGIN" }))
+    expect(jwt.sign).not.toHaveBeenCalled()
   })
 })

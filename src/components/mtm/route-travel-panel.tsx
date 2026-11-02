@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { ExternalLink, Loader2, Map, Navigation, Route as RouteIcon } from "lucide-react"
@@ -224,7 +225,7 @@ export function MtmRouteTravelPanel({ route, canCalculate, locale, orgId }: Prop
     : new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(distanceKm)
 
   return (
-    <section data-testid="mtm-route-travel-panel" aria-labelledby="mtm-route-travel-heading" className="space-y-3 rounded-lg border border-zinc-200 bg-muted/20 p-3 dark:border-zinc-700">
+    <section data-testid="mtm-route-travel-panel" aria-labelledby="mtm-route-travel-heading" className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h4 id="mtm-route-travel-heading" className="flex items-center gap-2 text-sm font-semibold">
@@ -233,7 +234,7 @@ export function MtmRouteTravelPanel({ route, canCalculate, locale, orgId }: Prop
           </h4>
           <p className="mt-1 text-xs text-muted-foreground">{t("routeTravelDescription")}</p>
         </div>
-        <span className="rounded-full border border-zinc-200 bg-background px-2 py-1 text-xs text-muted-foreground dark:border-zinc-700">
+        <span className="rounded-full border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
           {t("routeTravelManualOrder")}
         </span>
       </div>
@@ -253,25 +254,31 @@ export function MtmRouteTravelPanel({ route, canCalculate, locale, orgId }: Prop
           <p className="text-xs text-muted-foreground">{t("routeTravelReady")}</p>
         )}
         {calculationReady ? (
-          <Button type="button" size="sm" className="min-h-11" onClick={() => void requestEstimate()} disabled={calculating}>
-            {calculating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> : <RouteIcon className="mr-1 h-4 w-4" aria-hidden="true" />}
-            {calculating ? t("routeTravelCalculating") : t("routeTravelCalculate")}
-          </Button>
+          <Hint wrap text={t("hint.travelCalculate")}>
+            <Button type="button" size="sm" className="min-h-11" onClick={() => void requestEstimate()} disabled={calculating}>
+              {calculating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> : <RouteIcon className="mr-1 h-4 w-4" aria-hidden="true" />}
+              {calculating ? t("routeTravelCalculating") : t("routeTravelCalculate")}
+            </Button>
+          </Hint>
         ) : null}
         {travelPolicy.calculationEnabled && !googleMapOpen ? (
-          <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setGoogleMapOpen(true)}>
-            <Map className="mr-1 h-4 w-4" aria-hidden="true" />
-            {t("routeTravelOpenGoogleMap")}
-          </Button>
+          <Hint text={t("hint.travelMap")}>
+            <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setGoogleMapOpen(true)}>
+              <Map className="mr-1 h-4 w-4" aria-hidden="true" />
+              {t("routeTravelOpenGoogleMap")}
+            </Button>
+          </Hint>
         ) : null}
         {travelPolicy.navigationEnabled && navigationUrl ? (
-          <Button asChild type="button" size="sm" variant="outline" className="min-h-11">
-            <a href={navigationUrl} target="_blank" rel="noreferrer">
-              <Navigation className="mr-1 h-4 w-4" aria-hidden="true" />
-              {t("routeTravelOpenNavigation")}
-              <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
-            </a>
-          </Button>
+          <Hint text={t("hint.travelNavigation")}>
+            <Button asChild type="button" size="sm" variant="outline" className="min-h-11">
+              <a href={navigationUrl} target="_blank" rel="noreferrer">
+                <Navigation className="mr-1 h-4 w-4" aria-hidden="true" />
+                {t("routeTravelOpenNavigation")}
+                <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            </Button>
+          </Hint>
         ) : null}
       </div>
 
@@ -280,7 +287,7 @@ export function MtmRouteTravelPanel({ route, canCalculate, locale, orgId }: Prop
       ) : null}
 
       {result && distanceValue !== null ? (
-        <div className="grid gap-2 rounded-md border border-cyan-200 bg-cyan-50 p-3 text-sm dark:border-cyan-900 dark:bg-cyan-950/30 sm:grid-cols-2">
+        <div className="grid gap-2 rounded-md border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm sm:grid-cols-2">
           <div>
             <div className="text-xs text-muted-foreground">{t("routeTravelDistance")}</div>
             <div className="mt-0.5 font-semibold">{t("routeTravelDistanceValue", { value: distanceValue })}</div>
@@ -297,7 +304,7 @@ export function MtmRouteTravelPanel({ route, canCalculate, locale, orgId }: Prop
 
       {googleMapOpen ? (
         googleMapUrl ? (
-          <div className="space-y-2 rounded-md border border-zinc-200 bg-background p-2 dark:border-zinc-700">
+          <div className="space-y-2 rounded-md border border-border bg-background p-2">
             <p className="text-xs text-muted-foreground">{t("routeTravelGoogleMapHint")}</p>
             <iframe
               title={t("routeTravelGoogleMap")}

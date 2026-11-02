@@ -199,10 +199,10 @@ function RatingButton({
 }) {
   const activeClasses: Record<typeof tone, string> = {
     negative: "bg-red-100 text-red-700 border-red-300 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900",
-    neutral: "bg-zinc-100 text-zinc-700 border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
+    neutral: "bg-zinc-100 text-zinc-700 border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-border",
     positive: "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900",
   }
-  const tint = active ? activeClasses[tone] : "bg-transparent border-zinc-200 dark:border-zinc-700 hover:bg-muted"
+  const tint = active ? activeClasses[tone] : "bg-transparent border-border hover:bg-muted"
 
   return (
     <button

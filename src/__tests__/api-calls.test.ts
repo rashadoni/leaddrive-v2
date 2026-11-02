@@ -1316,8 +1316,10 @@ describe("PATCH /api/v1/calls/[id]/disposition", () => {
     expect(activityIds).toEqual(["call_callback_cl1", "call_callback_cl1"])
   })
 
-  it("files a deterministic task for the installed callback reminder", async () => {
+  it("files a deterministic task for the installed callback reminder, titled in the caller's language", async () => {
     const callbackAt = new Date(Date.now() + 86_400_000).toISOString()
+    // The task is the employee's: an Azerbaijani-speaking seller reads «Geri zəng», not «Callback».
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({ preferredLanguage: "az", organization: { settings: { language: "ru" } } } as never)
     vi.mocked(getOrgId).mockResolvedValue("org1")
     vi.mocked(getSession).mockResolvedValue({ orgId: "org1", userId: "sales-1", role: "sales" } as never)
     const txCallLogUpdateMany = vi.fn().mockResolvedValue({ count: 1 })
@@ -1359,7 +1361,7 @@ describe("PATCH /api/v1/calls/[id]/disposition", () => {
       create: expect.objectContaining({
         id: "call_callback_cl1",
         organizationId: "org1",
-        title: "Callback",
+        title: "Geri zəng",
         dueDate: new Date(callbackAt),
         assignedTo: "sales-1",
         relatedType: "lead",
@@ -1898,9 +1900,12 @@ describe("GET /api/v1/calls/active", () => {
     expect(prisma.callLog.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         organizationId: "org1",
-        AND: [accessibleCallWhere("admin", "admin-1")],
         status: { in: ["ringing", "answering", "in-progress", "initiated"] },
-        startedAt: { gte: expect.any(Date) },
+        AND: [
+          accessibleCallWhere("admin", "admin-1"),
+          // A call the AI handed to a person rings from the handoff.
+          { OR: [{ startedAt: { gte: expect.any(Date) } }, { handoffRequestedAt: { gte: expect.any(Date) } }] },
+        ],
       }),
       select: expect.objectContaining({
         id: true,
@@ -1939,7 +1944,7 @@ describe("GET /api/v1/calls/active", () => {
     expect(json.data[0]).toMatchObject({ leadId: null, lead: null })
     expect(prisma.lead.findMany).not.toHaveBeenCalled()
     const activeQuery = vi.mocked(prisma.callLog.findMany).mock.calls[0]?.[0]
-    expect(activeQuery?.where?.AND).toEqual([accessibleCallWhere("support", "support-1")])
+    expect((activeQuery?.where?.AND as unknown[] | undefined)?.[0]).toEqual(accessibleCallWhere("support", "support-1"))
   })
 
   it("shows a fresh inbound browser claim only to its owner and releases an expired ringing row", async () => {

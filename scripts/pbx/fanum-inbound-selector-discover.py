@@ -23,8 +23,10 @@ import tempfile
 PROVIDER_ENDPOINT = "fanum-provider"
 SELECTOR_PATH = Path("/etc/fanum-inbound-browser.did")
 SELECTOR_RE = re.compile(r"[0-9]{5,20}")
+# Asterisk 20 follows a live status with its expiry, e.g. "Registered (exp. 107s)".
 REGISTRATION_LINE_RE = re.compile(
-    r"^\s*(?P<name>[A-Za-z0-9_.-]+)/sip:\S+.*\bRegistered\b\s*$",
+    r"^\s*(?P<name>[A-Za-z0-9_.-]+)/sip:\S+.*\bRegistered\b"
+    r"(?:\s+\(exp\.\s+-?[0-9]+s\))?\s*$",
     re.IGNORECASE,
 )
 

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the LeadDrive WAL archive watch every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=15s
+RandomizedDelaySec=30s
+Persistent=false
+Unit=leaddrive-wal-check.service
+
+[Install]
+WantedBy=timers.target

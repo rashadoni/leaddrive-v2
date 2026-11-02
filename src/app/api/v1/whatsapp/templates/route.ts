@@ -1,3 +1,4 @@
+import { selectWhatsAppSettingsChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { createWhatsAppTemplateInMeta, listApprovedTemplates, syncTemplatesFromMeta } from "@/lib/whatsapp"
@@ -20,6 +21,10 @@ const createTemplateSchema = z.object({
 //        language=en|ru|az (optional)
 //        category=MARKETING|UTILITY|AUTHENTICATION (optional)
 export const GET = withRls(async (req, { orgId }) => {
+  const channelConfigId = new URL(req.url).searchParams.get("channelConfigId")
+  const selection = await selectWhatsAppSettingsChannel(orgId, channelConfigId)
+  if (!selection.id && channelConfigId) return NextResponse.json({ success: false, error: selection.error }, { status: 404 })
+
 
   const { searchParams } = new URL(req.url)
   const status = searchParams.get("status") || "all"
@@ -29,7 +34,7 @@ export const GET = withRls(async (req, { orgId }) => {
   // Summary of the channel config for the admin UI — stale sync/validate
   // timestamps are useful to spot tenants that haven't pulled Meta changes.
   const cfg = await prisma.channelConfig.findFirst({
-    where: { organizationId: orgId, channelType: "whatsapp", isActive: true },
+    where: { id: selection.id || "", organizationId: orgId, channelType: "whatsapp", isActive: true },
     select: {
       accessToken: true, apiKey: true,
       phoneNumberId: true, phoneNumber: true,
@@ -38,6 +43,7 @@ export const GET = withRls(async (req, { orgId }) => {
     },
   })
   const meta = {
+    channelConfigId: selection.id,
     hasConfig: !!(cfg && (cfg.accessToken || cfg.apiKey) && (cfg.phoneNumberId || cfg.phoneNumber)),
     phoneNumberId: cfg?.phoneNumberId || cfg?.phoneNumber || null,
     displayName: cfg?.displayName || null,
@@ -46,13 +52,14 @@ export const GET = withRls(async (req, { orgId }) => {
   }
 
   if (status === "APPROVED") {
-    const data = await listApprovedTemplates(orgId, { language, category })
+    const data = await listApprovedTemplates(orgId, { language, category, channelConfigId: selection.id || undefined })
     return NextResponse.json({ success: true, data, meta })
   }
 
   const data = await prisma.whatsAppTemplate.findMany({
     where: {
       organizationId: orgId,
+      ...(selection.id ? { channelConfigId: selection.id } : {}),
       ...(status !== "all" ? { status } : {}),
       ...(language ? { language } : {}),
       ...(category ? { category } : {}),
@@ -66,6 +73,9 @@ export const GET = withRls(async (req, { orgId }) => {
 // No body: sync templates from Meta.
 // Body { action: "create", ... }: submit a new template to Meta for approval.
 export const POST = withRls(async (req, { orgId }) => {
+  const selection = await selectWhatsAppSettingsChannel(orgId, new URL(req.url).searchParams.get("channelConfigId"))
+  if (!selection.id) return NextResponse.json({ success: false, error: selection.error }, { status: selection.error === "whatsapp_channel_required" ? 409 : 404 })
+
   const raw = await req.text()
   if (raw.trim()) {
     let body: unknown
@@ -83,11 +93,11 @@ export const POST = withRls(async (req, { orgId }) => {
       )
     }
 
-    const result = await createWhatsAppTemplateInMeta(orgId, parsed.data)
+    const result = await createWhatsAppTemplateInMeta(orgId, parsed.data, { channelConfigId: selection.id })
     return NextResponse.json(result, { status: result.success ? 201 : META_FAILURE_STATUS })
   }
 
-  const result = await syncTemplatesFromMeta(orgId)
+  const result = await syncTemplatesFromMeta(orgId, { channelConfigId: selection.id })
   return NextResponse.json(result, { status: result.success ? 200 : META_FAILURE_STATUS })
 })
 

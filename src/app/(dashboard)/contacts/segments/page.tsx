@@ -163,7 +163,7 @@ export default function InsightsPage() {
         <>
           {/* SMS attribution + Engagement — pinned to the very top */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-blue-600" /> {t("smsAttribution")}
               </h2>
@@ -194,7 +194,7 @@ export default function InsightsPage() {
               )}
             </div>
 
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h2 className="text-sm font-semibold mb-3">{t("engagementByCategory")}</h2>
               <div className="space-y-2">
                 {data.engagementByCategory.map((r, i) => (
@@ -242,9 +242,9 @@ export default function InsightsPage() {
           </div>
 
           {/* AI insights */}
-          <div className="rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 p-4">
+          <div className="crm-panel p-4">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-semibold flex items-center gap-2 text-violet-700 dark:text-violet-300">
+              <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
                 <Sparkles className="h-4 w-4" /> {t("aiTitle")}
               </h2>
               <Button variant="outline" size="sm" onClick={fetchInsights} disabled={insightsLoading}>
@@ -255,7 +255,7 @@ export default function InsightsPage() {
               <ul className="space-y-1.5 text-sm">
                 {insights.map((ln, i) => (
                   <li key={i} className="flex gap-2">
-                    <span className="text-violet-500">•</span>
+                    <span className="text-muted-foreground">•</span>
                     <span>{ln}</span>
                   </li>
                 ))}
@@ -267,7 +267,7 @@ export default function InsightsPage() {
 
           {/* Category + Source */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h2 className="text-sm font-semibold mb-3">{t("byCategory")}</h2>
               {(() => {
                 const categorized = data.byCategory.filter(r => r.category && r.category !== "(none)")
@@ -311,7 +311,7 @@ export default function InsightsPage() {
               })()}
             </div>
 
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h2 className="text-sm font-semibold mb-3">{t("bySource")}</h2>
               {(() => {
                 const sourced = data.bySource.filter(r => r.source && r.source !== "(none)")
@@ -349,7 +349,7 @@ export default function InsightsPage() {
 
           {/* Top brands + Weekly timeseries */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h2 className="text-sm font-semibold mb-3">{t("topBrands")}</h2>
               {data.topBrands.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-8 text-center">{t("noBrands")}</p>
@@ -370,7 +370,7 @@ export default function InsightsPage() {
               )}
             </div>
 
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <h2 className="text-sm font-semibold mb-3">{t("weeklyTitle", { entity: entityLabel.toLowerCase() })}</h2>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={weeklyFormatted}>
@@ -391,7 +391,7 @@ export default function InsightsPage() {
 
 function StatTile({ icon: Icon, label, value, sub, subColor }: { icon: any; label: string; value: number | string; sub?: string; subColor?: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-1">
         <Icon className="h-4 w-4 text-muted-foreground" />
         <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>

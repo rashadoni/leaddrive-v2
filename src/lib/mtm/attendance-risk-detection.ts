@@ -6,6 +6,7 @@ import { notifyAttendanceRiskReviewers } from "@/lib/mtm/attendance-risk-notify"
 import { lockAttendanceRiskPolicy, readAttendanceRiskPolicy, type AttendanceRiskPolicy } from "@/lib/mtm/attendance-risk-policy"
 import { isValidTimezone } from "@/lib/timezone"
 import { WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS } from "@/lib/mtm/workday"
+import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 
 export const ATTENDANCE_RISK_DETECTOR_VERSION = "mtm-attendance-risk-v1"
 type Details = Parameters<typeof AttendanceRiskDetailsSchema.parse>[0]
@@ -46,8 +47,7 @@ export async function enforceAttendanceMockRule(tx: Prisma.TransactionClient, or
  * review hint: two different people can safely submit on the same phone. */
 export async function recordAttendanceRisks(tx: Prisma.TransactionClient, input: { organizationId: string; eventId: string; policy: AttendanceRiskPolicy }) {
   const { organizationId, eventId, policy } = input
-  const enabled = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "attendanceEnabled" } }, select: { value: true } })
-  if (enabled?.value !== true) return
+  if (!await readAttendanceFeature(tx, organizationId)) return
   const [fact] = await tx.$queryRaw<AttendanceRiskFact[]>`SELECT m."agentId",m."eventId",m."installationId",m."claimedAt",m."serverReceivedAt",m."isMock",m."locationState",m."distanceMeters",m."branchRevisionId",w."workDate"
     FROM mtm_attendance_mark_evidence m JOIN mtm_agent_workday_events e ON e."organizationId"=m."organizationId" AND e.id=m."eventId"
     JOIN mtm_agent_workdays w ON w."organizationId"=e."organizationId" AND w.id=e."workdayId"

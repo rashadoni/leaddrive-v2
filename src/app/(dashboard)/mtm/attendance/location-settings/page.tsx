@@ -1,3 +1,6 @@
-import { MtmAttendanceLocationPolicy } from "@/components/mtm/attendance-location-policy"
+import { redirectToAttendanceTab, type AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirect"
 
-export default function AttendanceLocationSettingsPage() { return <MtmAttendanceLocationPolicy /> }
+/** Former page; now Personnel → settings → location. */
+export default async function AttendanceLocationSettingsRedirect({ searchParams }: { searchParams: AttendanceSearchParams }) {
+  return redirectToAttendanceTab("settings", "location", searchParams)
+}

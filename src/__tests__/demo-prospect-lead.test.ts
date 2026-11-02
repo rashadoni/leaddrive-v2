@@ -4,9 +4,8 @@
  * Every rule in the header of src/lib/demo-center/prospect-lead.ts has a test
  * here: the organisation comes from server config only, only the verified
  * email links, a claim prevents two creates, failures are recorded and never
- * thrown, and the public verify response never carries the internal lead.
+ * thrown, and the public confirm response never carries the internal lead.
  */
-import bcrypt from "bcryptjs"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
@@ -30,6 +29,8 @@ vi.mock("@/lib/rls-context", () => ({
 }))
 vi.mock("@/lib/inbound-lead-match", () => ({ matchInboundLeadId: mockMatchInboundLeadId }))
 vi.mock("@/lib/crm-commands/lead/create-lead", () => ({ createLeadCommand: mockCreateLeadCommand }))
+// The owner's notification has its own tests (demo-email-confirmation.test.ts).
+vi.mock("@/lib/demo-center/email-confirmation", () => ({ confirmDemoRequestEmail: vi.fn(async () => "confirmed") }))
 
 import { prisma } from "@/lib/prisma"
 import { DEMO_LEAD_CLAIM_LEASE_MS, ensureDemoProspectLead } from "@/lib/demo-center/prospect-lead"
@@ -242,44 +243,38 @@ describe("failure", () => {
   })
 })
 
-describe("the public verify route", () => {
+describe("the public confirm route", () => {
   const TOKEN = "b".repeat(64)
-  const CODE = "123456"
 
-  async function verify() {
-    const { POST } = await import("@/app/api/v1/public/demo-access/[token]/verify/route")
+  async function confirm() {
+    const { POST } = await import("@/app/api/v1/public/demo-access/[token]/confirm/route")
     return POST(
-      new NextRequest(new URL(`/api/v1/public/demo-access/${TOKEN}/verify`, "http://localhost:3000"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: CODE }),
-      }),
+      new NextRequest(new URL(`/api/v1/public/demo-access/${TOKEN}/confirm`, "http://localhost:3000"), { method: "POST" }),
       { params: Promise.resolve({ token: TOKEN }) },
     )
   }
 
-  function sentGrant(otpHash: string) {
+  function sentGrant(overrides: Record<string, unknown> = {}) {
     return {
       id: "grant-1",
       requestId: "request-1",
-      status: "OTP_SENT",
-      otpHash,
-      otpExpiresAt: new Date("2099-01-01T00:00:00.000Z"),
-      otpAttempts: 0,
+      status: "SENT",
+      verifiedAt: null,
       linkExpiresAt: new Date("2099-01-01T00:00:00.000Z"),
       sessionStartedAt: null,
       sessionLastSeenAt: null,
       sessionExpiresAt: null,
       inactivityMinutes: 30,
+      ...overrides,
     }
   }
 
   it("turns the proven email into a lead, and says nothing about it", async () => {
-    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(sentGrant(bcrypt.hashSync(CODE, 4)) as never)
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(sentGrant() as never)
     vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
     vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-1" } as never)
 
-    const response = await verify()
+    const response = await confirm()
     const body = await response.json()
 
     expect(response.status).toBe(200)
@@ -288,26 +283,30 @@ describe("the public verify route", () => {
     expect(JSON.stringify(body)).not.toMatch(/lead|org-/i)
   })
 
-  it("still verifies the prospect when the lead cannot be created", async () => {
-    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(sentGrant(bcrypt.hashSync(CODE, 4)) as never)
+  it("still confirms the prospect when the lead cannot be created", async () => {
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(sentGrant() as never)
     vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
     vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-1" } as never)
     mockCreateLeadCommand.mockRejectedValue(new Error("CRM unavailable"))
 
-    const response = await verify()
+    const response = await confirm()
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ success: true, state: "verified" })
   })
 
-  it("creates nothing for a wrong code", async () => {
-    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(sentGrant(bcrypt.hashSync("654321", 4)) as never)
-    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
-    vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-1" } as never)
+  it("creates nothing for a link whose session already started", async () => {
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(sentGrant({
+      status: "ACTIVE",
+      sessionStartedAt: new Date(),
+      sessionLastSeenAt: new Date(),
+      sessionExpiresAt: new Date("2099-01-01T00:00:00.000Z"),
+    }) as never)
 
-    const response = await verify()
+    const response = await confirm()
 
-    expect(response.status).toBe(401)
+    expect(response.status).toBe(409)
+    expect(prisma.demoGrant.updateMany).not.toHaveBeenCalled()
     expect(prisma.demoRequest.findUnique).not.toHaveBeenCalled()
     expect(mockCreateLeadCommand).not.toHaveBeenCalled()
   })

@@ -10,6 +10,9 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/
 function requiredString(value, label) {
   assert.equal(typeof value, "string", `${label} must be a string`)
   assert.ok(value.trim(), `${label} is required`)
+  assert.ok(value === value.trim(), `${label} must not contain surrounding whitespace`)
+  assert.ok(!/[\x00-\x1f\x7f]/u.test(value), `${label} must not contain control characters`)
+  assert.ok(!/__[^\s]*__|<[^>]+>/u.test(value), `${label} must not contain template placeholders`)
 }
 
 function requiredTrue(value, label) {
@@ -17,8 +20,13 @@ function requiredTrue(value, label) {
 }
 
 function distinctStrings(values, label) {
+  assert.ok(Array.isArray(values), `${label} must be an array`)
   values.forEach((value, index) => requiredString(value, `${label}[${index}]`))
   assert.equal(new Set(values).size, values.length, `${label} must be distinct`)
+}
+
+function positiveInteger(value, label) {
+  assert.ok(Number.isSafeInteger(value) && value > 0, `${label} must be a finite positive safe integer`)
 }
 
 export function validateActivationEvidence(evidence, expected = {}) {
@@ -34,6 +42,15 @@ export function validateActivationEvidence(evidence, expected = {}) {
   requiredString(evidence.approvedBy, "approvedBy")
   assert.notEqual(evidence.requestedBy, evidence.approvedBy, "activation requires a different approver")
 
+  positiveInteger(evidence.kafka.failureDomains, "kafka.failureDomains")
+  for (const gate of ["capacityVerified", "placementVerified", "aclNegativeTestsVerified", "effectiveTopicConfigsVerified"]) {
+    requiredTrue(evidence.kafka[gate], `kafka.${gate}`)
+  }
+  requiredString(evidence.kafka.infrastructureEvidenceId, "kafka.infrastructureEvidenceId")
+  positiveInteger(evidence.kafka.replicationFactor, "kafka.replicationFactor")
+  positiveInteger(evidence.kafka.minInSyncReplicas, "kafka.minInSyncReplicas")
+  assert.ok(evidence.kafka.replicationFactor >= 3 && evidence.kafka.minInSyncReplicas >= 2
+    && evidence.kafka.minInSyncReplicas < evidence.kafka.replicationFactor, "Kafka requires RF >= 3 and 2 <= minISR < RF")
   assert.ok(evidence.kafka.failureDomains >= 3, "Kafka must span at least three failure domains")
   requiredTrue(evidence.kafka.autoTopicCreationDisabled, "kafka.autoTopicCreationDisabled")
   requiredTrue(evidence.kafka.tlsVerified, "kafka.tlsVerified")
@@ -48,6 +65,8 @@ export function validateActivationEvidence(evidence, expected = {}) {
   requiredTrue(evidence.connect.outboxRouterVerified, "connect.outboxRouterVerified")
   requiredTrue(evidence.connect.acksAllVerified, "connect.acksAllVerified")
   requiredTrue(evidence.connect.idempotenceVerified, "connect.idempotenceVerified")
+  requiredTrue(evidence.connect.outsideWebHostVerified, "connect.outsideWebHostVerified")
+  positiveInteger(evidence.connect.internalTopicReplicationFactor, "connect.internalTopicReplicationFactor")
   assert.ok(evidence.connect.internalTopicReplicationFactor >= 3, "Connect internal topics require replication factor >= 3")
 
   requiredTrue(evidence.registry.privateEndpoint, "registry.privateEndpoint")
@@ -58,17 +77,34 @@ export function validateActivationEvidence(evidence, expected = {}) {
   requiredString(evidence.postgres.backupEvidenceId, "postgres.backupEvidenceId")
   requiredTrue(evidence.postgres.restoreVerified, "postgres.restoreVerified")
   assert.equal(evidence.postgres.walLevel, "logical", "PostgreSQL wal_level must be logical")
-  assert.ok(evidence.postgres.maxSlotWalKeepSizeBytes > 0, "PostgreSQL slot WAL cap must be finite")
+  for (const field of ["maxSlotWalKeepSizeBytes", "peakWalBytesPerSecond", "maxOutageSeconds",
+    "walWarningBytes", "walStopBytes", "walDiskBudgetBytes", "checkpointOvershootBytes"]) {
+    positiveInteger(evidence.postgres[field], `postgres.${field}`)
+  }
+  const pg = evidence.postgres
+  const outageBytes = pg.peakWalBytesPerSecond * pg.maxOutageSeconds
+  // This checks the declared slot cap only. walBudgetEvidenceId must cover
+  // measured aggregate disk demand, including other slots and checkpoint lag.
+  const diskBytes = pg.maxSlotWalKeepSizeBytes + pg.checkpointOvershootBytes
+  assert.ok(Number.isSafeInteger(outageBytes) && outageBytes <= pg.walStopBytes,
+    "WAL outage budget must fit below the stop threshold")
+  assert.ok(pg.walWarningBytes < pg.walStopBytes && pg.walStopBytes < pg.maxSlotWalKeepSizeBytes,
+    "WAL thresholds must satisfy warning < stop < finite slot cap")
+  assert.ok(Number.isSafeInteger(diskBytes) && diskBytes <= pg.walDiskBudgetBytes,
+    "WAL disk budget must fit the declared slot cap plus checkpoint overshoot")
+  requiredTrue(pg.cdcStopDrillVerified, "postgres.cdcStopDrillVerified")
+  requiredString(pg.walBudgetEvidenceId, "postgres.walBudgetEvidenceId")
   requiredTrue(evidence.postgres.capacityApproved, "postgres.capacityApproved")
 
   requiredTrue(evidence.archive.immutable, "archive.immutable")
   requiredTrue(evidence.archive.offProviderCopy, "archive.offProviderCopy")
+  positiveInteger(evidence.archive.retentionDays, "archive.retentionDays")
   assert.ok(evidence.archive.retentionDays >= 400, "immutable archive retention must be at least 400 days")
   requiredTrue(evidence.archive.watermarkAlertLive, "archive.watermarkAlertLive")
 
   for (const gate of [
     "connectorFailure", "slotWalBytes", "postgresFreeSpace", "underReplicatedPartitions",
-    "consumerLag", "schemaRejections", "quarantineRate", "tenantProjectionParity",
+    "brokerFreeSpace", "minIsr", "alertDeliveryVerified", "consumerLag", "schemaRejections", "quarantineRate", "tenantProjectionParity",
   ]) requiredTrue(evidence.monitoring[gate], `monitoring.${gate}`)
 
   for (const gate of ["ordering", "duplicateHandling", "tenantIsolation", "effectFence", "archiveReconciliation"]) {
@@ -76,11 +112,18 @@ export function validateActivationEvidence(evidence, expected = {}) {
   }
   requiredString(evidence.drill.evidenceId, "drill.evidenceId")
 
-  const secretRefs = Object.values(evidence.secretReferences ?? {})
-  assert.ok(secretRefs.length >= 4, "separate Kafka, Connect, Registry, and CDC secret references are required")
+  const references = evidence.secretReferences
+  assert.ok(references && typeof references === "object" && !Array.isArray(references),
+    "secretReferences must be a role-keyed object")
+  const roles = ["kafkaConsumer", "connectProducer", "schemaRegistry", "postgresCdc"]
+  for (const role of roles) {
+    assert.ok(Object.hasOwn(references, role), `secretReferences.${role} is required`)
+    requiredString(references[role], `secretReferences.${role}`)
+  }
+  const secretRefs = Object.values(references)
   distinctStrings(secretRefs, "secretReferences")
   for (const reference of secretRefs) {
-    assert.match(reference, /^(vault|aws-secretsmanager|gcp-secretmanager|azure-keyvault):\/\//, "credentials must be secret-manager references")
+    assert.match(reference, /^(vault|aws-secretsmanager|gcp-secretmanager|azure-keyvault):\/\/[^\s/?#]+[^\s]*$/u, "credentials must be nonempty secret-manager references")
   }
 
   return {

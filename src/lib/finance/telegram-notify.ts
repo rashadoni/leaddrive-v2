@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
 import { APP_URL } from "@/lib/domains"
 import { getCurrencySymbol } from "@/lib/constants"
+import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 import {
   FINANCE_NOTIF_DEFAULTS,
   financeTelegramTarget,
@@ -22,6 +23,16 @@ import {
 import { sendFinanceTelegram } from "@/lib/finance/telegram-send"
 
 /** Load notification settings for an organization */
+/** The organization's currency sign; the deployment's when there is no organization or it cannot be read. */
+async function financeNoticeCurrencySign(orgId?: string): Promise<string> {
+  if (!orgId) return getCurrencySymbol()
+  try {
+    return getCurrencySymbol(await resolveOrgDefaultCurrency(orgId))
+  } catch {
+    return getCurrencySymbol()
+  }
+}
+
 async function getNotifSettings(orgId?: string): Promise<FinanceNotifSettings> {
   if (!orgId) return FINANCE_NOTIF_DEFAULTS
   try {
@@ -127,7 +138,7 @@ export async function notifyOverdueBills(bills: { billNumber: string; vendorName
   if (bills.length === 0) return
   const settings = await getNotifSettings(orgId)
   const total = bills.reduce((s, b) => s + b.amount, 0)
-  const cur = getCurrencySymbol()
+  const cur = await financeNoticeCurrencySign(orgId)
   const list = bills.slice(0, 10).map((b) => `${b.billNumber} — ${b.vendorName}: ${fmt(b.amount)} ${cur} (due ${fmtDate(b.dueDate)})`).join("\n")
 
   let tgText = `🔴 <b>Overdue: ${bills.length} bill(s) for ${fmt(total)} ${cur}</b>\n\n`
@@ -148,7 +159,7 @@ export async function notifyOverdueInvoices(invoices: { invoiceNumber: string; c
   const settings = await getNotifSettings(orgId)
   const total = invoices.reduce((s, b) => s + b.amount, 0)
 
-  const cur = getCurrencySymbol()
+  const cur = await financeNoticeCurrencySign(orgId)
   let tgText = `🔴 <b>Overdue A/R: ${invoices.length} invoice(s) for ${fmt(total)} ${cur}</b>\n\n`
   invoices.slice(0, 10).forEach((inv) => { tgText += `• ${inv.invoiceNumber} — ${inv.companyName}: <b>${fmt(inv.amount)} ${cur}</b>\n` })
   tgText += `\n📎 <a href="${APP_URL}/finance?tab=receivables">Open receivables</a>`
@@ -170,7 +181,7 @@ export async function notifyUpcomingDeadlines(
   if (bills.length === 0 && invoices.length === 0) return
   const settings = await getNotifSettings(orgId)
 
-  const cur = getCurrencySymbol()
+  const cur = await financeNoticeCurrencySign(orgId)
   let tgText = `⏰ <b>Deadlines in the next ${daysAhead} day(s)</b>\n`
   let emailHtml = `<h2>Deadlines in the next ${daysAhead} day(s)</h2>`
   let summary = ""

@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next"
 import { headers } from "next/headers"
-import { NextIntlClientProvider, type AbstractIntlMessages } from "next-intl"
-import { getLocale, getMessages } from "next-intl/server"
+import type { AbstractIntlMessages } from "next-intl"
+import { getLocale, getMessages, getTimeZone } from "next-intl/server"
+import { IntlCatalogProvider } from "@/components/intl-catalog-provider"
 import { Providers } from "@/components/providers"
+import type { Locale } from "@/i18n/routing"
 import { BASEMAP_PROVIDER_META, basemapProviderFromEnv, serializeBasemapProvider } from "@/lib/mtm/basemap-provider"
 import { Toaster } from "sonner"
 import "./globals.css"
@@ -53,16 +55,23 @@ const PUBLIC_PORTAL_PATHS = new Set([
 // path (LOCATION_SHARE_LINK_PAGE_PATH in src/lib/mtm/location-share-link.ts);
 // a test keeps the two equal.
 const PUBLIC_LOCATION_SHARE_LINK_PATH = "/share/location"
+// The branch screen at an entrance (src/app/screen): a tablet with no account.
+const PUBLIC_BRANCH_SCREEN_PATH = "/screen"
 
 /**
  * Do not serialize the complete CRM catalog into unauthenticated auth/portal
  * hydration data. Besides increasing every public response, the full catalog
  * includes internal RBAC labels that have no place on a sign-in page.
+ *
+ * Every other page gets `null`: no messages in its HTML at all. The browser
+ * loads the whole catalog of the page's language as a cached file of its own
+ * (src/components/intl-catalog-provider.tsx) — writing it into every page
+ * made the HTML of the home page 1.8 MB.
  */
 function messagesForClient(
   pathname: string | null,
   messages: AbstractIntlMessages,
-): AbstractIntlMessages {
+): AbstractIntlMessages | null {
   const normalizedPath = pathname?.replace(/\/+$/, "") || "/"
   if (PUBLIC_AUTH_PATHS.has(normalizedPath)) {
     return { auth: messages.auth } as AbstractIntlMessages
@@ -75,7 +84,10 @@ function messagesForClient(
   if (normalizedPath === PUBLIC_LOCATION_SHARE_LINK_PATH || normalizedPath.startsWith(`${PUBLIC_LOCATION_SHARE_LINK_PATH}/`)) {
     return { mtmLocationShareLink: messages.mtmLocationShareLink } as AbstractIntlMessages
   }
-  return messages
+  if (normalizedPath === PUBLIC_BRANCH_SCREEN_PATH) {
+    return { attendanceBranchScreen: messages.attendanceBranchScreen } as AbstractIntlMessages
+  }
+  return null
 }
 
 export default async function RootLayout({
@@ -85,6 +97,9 @@ export default async function RootLayout({
 }>) {
   const hdrs = await headers()
   const locale = await getLocale()
+  // next-intl's server provider used to fill this in by itself; the client
+  // provider is told it, so dates on screen stay in the same zone.
+  const timeZone = await getTimeZone()
   const messages = messagesForClient(
     hdrs.get("x-request-pathname"),
     await getMessages() as AbstractIntlMessages,
@@ -107,11 +122,11 @@ export default async function RootLayout({
         {basemapProvider ? <meta name={BASEMAP_PROVIDER_META} content={basemapProvider} /> : null}
       </head>
       <body className="font-sans antialiased">
-        {/* @ts-expect-error nonce prop supported at runtime */}
-        <NextIntlClientProvider messages={messages} nonce={nonce}>
+        {/* src/i18n/request.ts only ever answers with one of the locales. */}
+        <IntlCatalogProvider locale={locale as Locale} timeZone={timeZone} messages={messages}>
           <Providers nonce={nonce}>{children}</Providers>
           <Toaster richColors position="top-right" />
-        </NextIntlClientProvider>
+        </IntlCatalogProvider>
       </body>
     </html>
   )

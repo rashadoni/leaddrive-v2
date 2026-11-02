@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { LiveMapZoneForm, liveMapZoneFormChange } from "@/components/mtm/live-map-zone-form"
@@ -95,20 +96,28 @@ export function LiveMapZoneList({ zones, canWrite, formatArea, onChange, onShowO
               ) : (
                 // The same words on every row: a screen reader is also told which zone each belongs to.
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-3">
-                  <button type="button" className={ACTION} aria-label={`${tMap("areas.showOnMap")}: ${zone.name}`} onClick={() => onShowOnMap(zone)} data-testid={`live-map-zone-show-${zone.id}`}>
-                    {tMap("areas.showOnMap")}
-                  </button>
+                  <Hint text={tMap("hint.areaOnMap")}>
+                    <button type="button" className={ACTION} aria-label={`${tMap("areas.showOnMap")}: ${zone.name}`} onClick={() => onShowOnMap(zone)} data-testid={`live-map-zone-show-${zone.id}`}>
+                      {tMap("areas.showOnMap")}
+                    </button>
+                  </Hint>
                   {canWrite ? (
                     <>
-                      <button type="button" className={ACTION} aria-label={`${tMap("areas.rename")}: ${zone.name}`} onClick={() => setEditing({ zoneId: zone.id, kind: "rename" })} data-testid={`live-map-zone-rename-${zone.id}`}>
-                        {tMap("areas.rename")}
-                      </button>
-                      <button type="button" className={ACTION} aria-label={`${tMap("areas.recolor")}: ${zone.name}`} onClick={() => setEditing({ zoneId: zone.id, kind: "color" })} data-testid={`live-map-zone-recolor-${zone.id}`}>
-                        {tMap("areas.recolor")}
-                      </button>
-                      <button type="button" className={`${ACTION} text-red-700 dark:text-red-400`} aria-label={`${tMap("areas.remove")}: ${zone.name}`} onClick={() => setEditing({ zoneId: zone.id, kind: "delete" })} data-testid={`live-map-zone-remove-${zone.id}`}>
-                        {tMap("areas.remove")}
-                      </button>
+                      <Hint text={tMap("hint.areaRename")}>
+                        <button type="button" className={ACTION} aria-label={`${tMap("areas.rename")}: ${zone.name}`} onClick={() => setEditing({ zoneId: zone.id, kind: "rename" })} data-testid={`live-map-zone-rename-${zone.id}`}>
+                          {tMap("areas.rename")}
+                        </button>
+                      </Hint>
+                      <Hint text={tMap("hint.areaRecolor")}>
+                        <button type="button" className={ACTION} aria-label={`${tMap("areas.recolor")}: ${zone.name}`} onClick={() => setEditing({ zoneId: zone.id, kind: "color" })} data-testid={`live-map-zone-recolor-${zone.id}`}>
+                          {tMap("areas.recolor")}
+                        </button>
+                      </Hint>
+                      <Hint text={tMap("hint.areaRemove")}>
+                        <button type="button" className={`${ACTION} text-red-700 dark:text-red-400`} aria-label={`${tMap("areas.remove")}: ${zone.name}`} onClick={() => setEditing({ zoneId: zone.id, kind: "delete" })} data-testid={`live-map-zone-remove-${zone.id}`}>
+                          {tMap("areas.remove")}
+                        </button>
+                      </Hint>
                     </>
                   ) : null}
                 </div>

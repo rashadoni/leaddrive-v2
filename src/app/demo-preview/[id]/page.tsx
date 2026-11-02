@@ -44,7 +44,7 @@ const SAMPLE_IDENTITY: DemoProspectIdentity = {
   jobTitle: "Satış direktoru",
   emailMasked: "ni•••@xezerlogistika.az",
   phoneMasked: "+994 ••••• 67",
-  sourceChannel: "instagram",
+  sourceChannel: "website",
 }
 
 export default async function DemoRequestPreviewPage({

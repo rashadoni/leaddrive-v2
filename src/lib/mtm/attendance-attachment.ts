@@ -7,6 +7,7 @@ import sharp from "sharp"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { resolveRuntimePaths } from "@/lib/runtime-paths"
+import { openTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { AttendanceRequestDetailsSchema, AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { lockAttendanceRequests, requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-request-store"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -53,7 +54,7 @@ export async function uploadAttendanceDocument(self: AttendanceSelf, raw: unknow
     const key = randomBytes(24).toString("hex")
     const location = attendanceAttachmentPath(key)
     await mkdir(path.dirname(location), { recursive: true, mode: 0o700 })
-    await writeFile(location, prepared.bytes, { flag: "wx", mode: 0o600 })
+    await writeFile(location, sealTenantFile(self.organizationId, prepared.bytes), { flag: "wx", mode: 0o600 })
     // On an ambiguous commit response preserve this private file: deleting it
     // could break an already committed request. No URL exists without a DB row.
     const record = await db.mtmAttendanceAttachment.create({ data: {
@@ -85,9 +86,11 @@ export async function readAttendanceDocument(reader: Reader, id: string) {
     const file = await open(attendanceAttachmentPath(record.storageKey), constants.O_RDONLY | constants.O_NOFOLLOW)
     try {
       const stat = await file.stat()
-      if (!stat.isFile() || stat.size !== record.sizeBytes || stat.size > MAX_ATTENDANCE_ATTACHMENT_BYTES) throw new Error("size")
-      const bytes = await file.readFile()
-      if (sha256(bytes) !== record.checksumSha256) throw new Error("checksum")
+      // The on-disk size of an encrypted file exceeds the plain size by the
+      // envelope overhead (header + 16 bytes per 64 KiB), never by a megabyte.
+      if (!stat.isFile() || stat.size > MAX_ATTENDANCE_ATTACHMENT_BYTES + 1024 * 1024) throw new Error("size")
+      const bytes = await openTenantFileBytes(reader.organizationId, await file.readFile())
+      if (bytes.byteLength !== record.sizeBytes || sha256(bytes) !== record.checksumSha256) throw new Error("checksum")
       return { bytes, mimeType: record.mimeType }
     } finally { await file.close() }
   } catch { throw new AttendanceRequestError("MTM_ATTENDANCE_DOCUMENT_UNAVAILABLE", 404) }

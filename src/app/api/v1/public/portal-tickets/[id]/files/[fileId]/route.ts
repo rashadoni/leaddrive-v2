@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getPortalUser } from "@/lib/portal-auth"
 import { runWithTenant } from "@/lib/rls-context"
+import { openTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
 import {
   resolveTicketAttachmentPath,
   TICKET_ATTACHMENT_MAX_FILE_SIZE,
@@ -50,7 +51,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     const filePath = resolveTicketAttachmentPath(file.fileName)
     if (!filePath) return NextResponse.json({ error: "Not found" }, { status: 404 })
     try {
-      const bytes = await readFile(filePath)
+      const bytes = await openTenantFileBytes(user.organizationId, await readFile(filePath))
       if (bytes.byteLength !== file.fileSize || bytes.byteLength > TICKET_ATTACHMENT_MAX_FILE_SIZE) {
         return NextResponse.json({ error: "File unavailable" }, { status: 410 })
       }

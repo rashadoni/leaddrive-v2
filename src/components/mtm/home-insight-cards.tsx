@@ -1,10 +1,11 @@
 "use client"
 
+import { Hint, HintValue } from "@/components/hint"
 import type { ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { ArrowUpRight, Clock3, Image as ImageIcon, MapPin, ShieldCheck, Stethoscope, Wrench } from "lucide-react"
-import { HomeCard, HomeCardFoot, HomePill, HOME_ICON, type HomeTone } from "@/components/mtm/home-parts"
+import { HomeCard, HomeCardFoot, HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { createDateFormatter } from "@/lib/format-date"
 import { percentOf } from "@/lib/mtm/home-dashboard"
 import { HOME_BASE_OTHER_KEY, type HomeBase, type HomeQuality, type HomeSetupKind, type HomeSetupStep } from "@/lib/mtm/home-insights"
@@ -35,32 +36,43 @@ export function HomeSetupStrip({ steps }: { steps: readonly HomeSetupStep[] }) {
   const t = useTranslations("mtmDashboardPage.home")
   if (steps.length === 0) return null
   return (
-    <div data-testid="mtm-home-setup" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
-      <Wrench className="h-4 w-4 shrink-0" aria-hidden="true" />
+    // White with a border and orange links, not a blue strip of pills
+    // (owner-approved colours, 2026-10-18).
+    <div data-testid="mtm-home-setup" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border bg-card px-4 py-2.5 text-sm text-foreground">
+      <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="font-semibold">{t("setupTitle", { count: steps.length })}</span>
       {steps.map((step) => (
-        <Link
-          key={step.kind}
-          href={SETUP_HREF[step.kind]}
-          prefetch={false}
-          data-testid={`mtm-home-setup-${step.kind}`}
-          className="inline-flex min-h-9 items-center gap-1 rounded-full bg-white px-3 text-xs font-semibold text-sky-800 ring-1 ring-inset ring-sky-200 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-sky-950/60 dark:text-sky-100 dark:ring-sky-800 md:min-h-7"
-        >
-          {step.kind === "noVisitNorms" ? t("setupNoVisitNorms") : t(SETUP_KEY[step.kind], { count: step.count })}
-          <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
-        </Link>
+        <Hint key={step.kind} text={t(SETUP_HINT[step.kind])}>
+          <Link
+            href={SETUP_HREF[step.kind]}
+            prefetch={false}
+            data-testid={`mtm-home-setup-${step.kind}`}
+            className="inline-flex min-h-9 items-center gap-1 rounded text-[13px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-7"
+          >
+            {step.kind === "noVisitNorms" ? t("setupNoVisitNorms") : t(SETUP_KEY[step.kind], { count: step.count })}
+            <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+          </Link>
+        </Hint>
       ))}
     </div>
   )
 }
 
+/** What each step of the strip leads to, said under the cursor. */
+const SETUP_HINT = {
+  customersWithoutPin: "hint.setupCustomersWithoutPin",
+  contactsUnclassified: "hint.setupContactsUnclassified",
+  noVisitNorms: "hint.setupNoVisitNorms",
+} as const satisfies Record<HomeSetupKind, string>
+
+/** Bars are the brand orange; how far a share got is said by its % in colour. */
 const BAR: Record<HomeTone, string> = {
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-rose-500",
-  blue: "bg-sky-500",
+  green: "bg-primary",
+  amber: "bg-primary",
+  red: "bg-primary",
+  blue: "bg-primary",
   zinc: "bg-zinc-300 dark:bg-zinc-600",
-  orange: "bg-orange-500",
+  orange: "bg-primary",
 }
 
 /** A share of the base, coloured by how much of it was reached: the scale of «Результаты». */
@@ -103,7 +115,7 @@ export function HomeBaseCard({ base, monthStart }: { base: HomeBase | null; mont
       icon={<Stethoscope className="h-4 w-4" aria-hidden="true" />}
       tone="blue"
       title={customers ? t("baseTitleCustomers", { month }) : t("baseTitle", { month })}
-      action={base ? { href: listHref, label: t("baseOpenList") } : null}
+      action={base ? { href: listHref, label: t("baseOpenList"), hint: t("hint.baseOpenList") } : null}
     >
       {!base ? (
         <p className="py-4 text-sm text-muted-foreground">{t("baseEmpty")}</p>
@@ -111,7 +123,7 @@ export function HomeBaseCard({ base, monthStart }: { base: HomeBase | null; mont
         <>
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pb-1 pt-3">
             <span data-testid="mtm-home-base-visited" className="text-[30px] font-bold leading-none tracking-tight tabular-nums">{base.visited}</span>
-            <span className="text-sm font-medium text-muted-foreground">{t("baseVisitedOf", { total: base.total })}</span>
+            <HintValue className="text-sm font-medium text-muted-foreground" text={t("hint.baseVisited")}>{t("baseVisitedOf", { total: base.total })}</HintValue>
             {percentText ? <HomePill tone={reachTone(percent)} className="ml-auto">{percentText}</HomePill> : null}
           </div>
           <ul>
@@ -135,6 +147,7 @@ export function HomeBaseCard({ base, monthStart }: { base: HomeBase | null; mont
               text={base.visited >= base.total ? t("baseAllVisited") : t("baseNotVisited", { count: base.total - base.visited })}
               href="/mtm/routes"
               link={t("basePlan")}
+              linkHint={t("hint.basePlan")}
             />
           </div>
         </>
@@ -143,15 +156,15 @@ export function HomeBaseCard({ base, monthStart }: { base: HomeBase | null; mont
   )
 }
 
-function QualityRow({ testId, icon, tone, label, sub, value }: { testId: string; icon: ReactNode; tone: HomeTone; label: string; sub: string; value: string }) {
+function QualityRow({ testId, icon, tone, label, sub, value, hint }: { testId: string; icon: ReactNode; tone: HomeTone; label: string; sub: string; value: string; hint: string }) {
   return (
-    <li data-testid={testId} className="flex items-center gap-3 border-b border-zinc-100 py-2.5 last:border-b-0 dark:border-zinc-800">
-      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", HOME_ICON[tone])}>{icon}</span>
+    <li data-testid={testId} className="flex items-center gap-3 border-b border-border py-2.5 last:border-b-0">
+      <span className="flex h-9 w-6 shrink-0 items-center justify-center text-muted-foreground">{icon}</span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-sm font-semibold"><HintValue text={hint}>{label}</HintValue></p>
         <p className="text-xs text-muted-foreground">{sub}</p>
       </div>
-      <HomePill tone={tone} className="px-2.5 py-1 text-sm font-bold tabular-nums">{value}</HomePill>
+      <HomePill tone={tone} className="text-sm font-bold tabular-nums">{value}</HomePill>
     </li>
   )
 }
@@ -166,7 +179,7 @@ export function HomeQualityCard({ quality }: { quality: HomeQuality | null }) {
       icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
       tone="green"
       title={t("qualityTitle")}
-      action={quality ? { href: "/mtm/visits", label: t("qualityOpenVisits") } : null}
+      action={quality ? { href: "/mtm/visits", label: t("qualityOpenVisits"), hint: t("hint.qualityOpenVisits") } : null}
     >
       {!quality ? (
         <p className="py-4 text-sm text-muted-foreground">{t("qualityEmpty")}</p>
@@ -174,6 +187,7 @@ export function HomeQualityCard({ quality }: { quality: HomeQuality | null }) {
         <ul>
           <QualityRow
             testId="mtm-home-quality-place"
+            hint={t("hint.qualityAtPlace")}
             icon={<MapPin className={icon} aria-hidden="true" />}
             tone={quality.awayFromPlace > 0 ? "amber" : quality.atPlace === quality.visits ? "green" : "zinc"}
             label={t("qualityAtPlace")}
@@ -185,6 +199,7 @@ export function HomeQualityCard({ quality }: { quality: HomeQuality | null }) {
           />
           <QualityRow
             testId="mtm-home-quality-photo"
+            hint={t("hint.qualityWithPhoto")}
             icon={<ImageIcon className={icon} aria-hidden="true" />}
             tone={quality.withPhoto === quality.visits ? "green" : "amber"}
             label={t("qualityWithPhoto")}
@@ -193,6 +208,7 @@ export function HomeQualityCard({ quality }: { quality: HomeQuality | null }) {
           />
           <QualityRow
             testId="mtm-home-quality-long"
+            hint={t("hint.qualityTooLong")}
             icon={<Clock3 className={icon} aria-hidden="true" />}
             tone={quality.tooLong > 0 ? "amber" : "green"}
             label={t("qualityTooLong")}
@@ -201,6 +217,7 @@ export function HomeQualityCard({ quality }: { quality: HomeQuality | null }) {
           />
           <QualityRow
             testId="mtm-home-quality-short"
+            hint={t("hint.qualityTooShort")}
             icon={<Clock3 className={icon} aria-hidden="true" />}
             tone={quality.tooShort > 0 ? "amber" : "green"}
             label={t("qualityTooShort")}

@@ -89,7 +89,7 @@ export function ContactFieldSettings({
             <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t(`groups.${group.key}`)}
             </legend>
-            <div className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+            <div className="divide-y divide-border rounded-xl border border-border">
               {group.fields.map((field) => {
                 const state = stateOf(field)
                 const locked = LOCKED_FIELDS.has(field)

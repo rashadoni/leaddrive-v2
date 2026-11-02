@@ -44,7 +44,8 @@ export const PHOTO_BURST_SUSPICIOUS = "PHOTO_BURST_SUSPICIOUS"
 
 /**
  * Write an entry to the MtmAuditLog table.
- * Always call with .catch(() => {}) so it never fails the main request.
+ * Existing informational callers may catch failures. Credential writers pass
+ * their transaction client and let failures roll back the credential change.
  */
 export async function writeMtmAudit(params: {
   organizationId: string
@@ -61,7 +62,7 @@ export async function writeMtmAudit(params: {
   req?: NextRequest // to extract IP and user agent
   /** The office user who acted; defaults to the signed-in user of the request. */
   actorUserId?: string | null
-}) {
+}, db: Pick<Prisma.TransactionClient, "mtmAuditLog"> = prisma) {
   const ipAddress =
     params.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     params.req?.headers.get("x-real-ip") ||
@@ -69,7 +70,7 @@ export async function writeMtmAudit(params: {
   const userAgent = params.req?.headers.get("user-agent") || null
   const actorUserId = params.actorUserId ?? currentAuditActorUserId()
 
-  await prisma.mtmAuditLog.create({
+  await db.mtmAuditLog.create({
     data: {
       organizationId: params.organizationId,
       agentId: params.agentId ?? null,

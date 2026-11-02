@@ -23,10 +23,12 @@ vi.mock("@/lib/api-auth", () => {
     isAuthError: (value: unknown) => value instanceof Response,
   }
 })
+vi.mock("@/lib/inbox/send-conversation-reply", () => ({ sendConversationReply: vi.fn() }))
 
 import { POST } from "@/app/api/v1/inbox/conversations/[id]/messages/route"
 import { prisma } from "@/lib/prisma"
 import { getSession } from "@/lib/api-auth"
+import { sendConversationReply } from "@/lib/inbox/send-conversation-reply"
 
 const req = (body: object): NextRequest => ({ json: async () => body }) as unknown as NextRequest
 const params = <T extends object>(p: T) => ({ params: Promise.resolve(p) })
@@ -45,6 +47,30 @@ describe("inbox conversation send — platform=inbox guard ([P3])", () => {
     } as never)
     const res = await POST(req({ text: "hi" }), params({ id: "sc1" }))
     expect(res.status).toBe(400)
+    expect(prisma.channelMessage.create).not.toHaveBeenCalled()
+  })
+
+  it("enforces the same channel guard for the direct WhatsApp conversation endpoint", async () => {
+    vi.mocked(prisma.socialConversation.findFirst).mockResolvedValue({
+      id: "sc-A", platform: "whatsapp", externalId: "994501234567", channelConfigId: "A", contactId: "c1", leadId: null,
+    } as never)
+    vi.mocked(sendConversationReply).mockResolvedValue({ success: false, statusCode: 409, error: "whatsapp_reply_channel_mismatch" })
+    const res = await POST(req({ text: "hi", channelConfigId: "B", to: "forged" }), params({ id: "sc-A" }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: "whatsapp_reply_channel_mismatch" })
+    expect(sendConversationReply).toHaveBeenCalledWith({ organizationId: "org1", channel: "whatsapp", to: "994501234567",
+      body: "hi", conversationId: "sc-A", channelConfigId: "A", contactId: "c1", leadId: null })
+    expect(prisma.channelMessage.create).not.toHaveBeenCalled()
+  })
+
+  it("returns the shared single-number result without writing a second outbound message", async () => {
+    vi.mocked(prisma.socialConversation.findFirst).mockResolvedValue({
+      id: "sc-A", platform: "whatsapp", externalId: "994501234567", channelConfigId: "A",
+    } as never)
+    vi.mocked(sendConversationReply).mockResolvedValue({ success: true, statusCode: 201, data: { id: "msg1", status: "sent" } })
+    const res = await POST(req({ text: "hi" }), params({ id: "sc-A" }))
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ success: true, data: { id: "msg1", status: "sent" } })
     expect(prisma.channelMessage.create).not.toHaveBeenCalled()
   })
 })

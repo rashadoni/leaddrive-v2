@@ -1,5 +1,6 @@
 "use client"
 
+import { callStatusLabelKey } from "@/lib/calls/status-label"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -67,16 +68,6 @@ type CallSummary = {
 type ConnectionState = "checking" | "connected" | "disconnected" | "configured" | "not_configured" | "error"
 type LoadError = "forbidden" | "failed" | null
 
-const STATUS_KEYS: Record<string, string> = {
-  initiated: "initiated",
-  ringing: "ringing",
-  "in-progress": "inProgress",
-  completed: "completed",
-  "no-answer": "noAnswer",
-  busy: "busy",
-  failed: "failed",
-}
-
 const FAILURE_STATUSES = new Set(["no-answer", "busy", "failed"])
 
 function durationLabel(seconds: number | null | undefined): string {
@@ -86,7 +77,7 @@ function durationLabel(seconds: number | null | undefined): string {
 
 function CallStatusBadge({ status }: { status: string }) {
   const t = useTranslations("voip")
-  const key = STATUS_KEYS[status] || "unknown"
+  const key = callStatusLabelKey(status)
   return (
     <Badge
       variant={FAILURE_STATUSES.has(status) ? "destructive" : "outline"}

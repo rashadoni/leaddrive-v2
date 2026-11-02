@@ -30,6 +30,15 @@ function evidence(overrides: Partial<CallbackEvidence> = {}): CallbackEvidence {
 }
 
 describe("decideCallback", () => {
+  it("never calls a demo call back, even cut off mid-sentence or after a recovery", () => {
+    // The station ends a demo call itself at two minutes; a callback would
+    // ring the prospect again with the line's own script, not the demo's.
+    expect(decideCallback(evidence({ demoCall: true, agentMidUtterance: true }))).toEqual({ callback: false, reason: "demo_call" })
+    expect(decideCallback(evidence({ demoCall: true, recoveryAttempts: 2 }))).toEqual({ callback: false, reason: "demo_call" })
+    // Without the mark, the same evidence is a break.
+    expect(decideCallback(evidence({ agentMidUtterance: true })).callback).toBe(true)
+  })
+
   it("calls back when the customer hung up mid-sentence", () => {
     expect(decideCallback(evidence({ agentMidUtterance: true }))).toEqual({
       callback: true,

@@ -50,6 +50,8 @@ export type DayTripMove = {
   durationSeconds: number
   distanceMeters: number
   pointCount: number
+  /** Car or on foot (history-replay.ts `dayTripLegMode`); null — it does not say; absent — not read. */
+  mode?: "DRIVE" | "WALK" | null
 }
 
 export type DayTripGap = {

@@ -28,10 +28,43 @@ export function buildAttendancePdf(table: AttendanceTable): Buffer {
   const identity = table.columns.findIndex((column) => column.key === "employee")
   const all = table.columns.map((_, index) => index)
   const bands: number[][] = []
-  for (let i = 0; i < all.length; i += 12) {
-    const band = all.slice(i, i + 12)
+  // A day report (up to 16 columns) stays on one page width — its notes are not a second page
+  // (owner, 2026-11-01); only a month grid's 31 days are cut into bands.
+  const perBand = all.length <= 16 ? all.length : 12
+  for (let i = 0; i < all.length; i += perBand) {
+    const band = all.slice(i, i + perBand)
     if (i && identity >= 0 && !band.includes(identity)) band.unshift(identity)
     bands.push(band)
+  }
+  /**
+   * Every column first gets room for its longest word (header included), so a word such as
+   * «TExnologiyaları» is never cut in the middle; what is left goes mostly to the notes and the
+   * name-like columns. When even the words do not fit, the earlier proportional split is kept.
+   */
+  const columnWidths = (band: number[], fontSize: number) => {
+    const keys = band.map((index) => table.columns[index].key)
+    const weights = keys.map((key) => key === "notes" ? 4 : ["employee", "position", "department", "team", "status"].includes(key) ? 1.2 : 0.3)
+    const proportional = () => {
+      const old = keys.map((key) => ["employee", "team", "status", "notes"].includes(key) ? 1.6 : 1)
+      const sum = old.reduce((total, weight) => total + weight, 0)
+      return old.map((weight) => width * weight / sum)
+    }
+    // A name and a date are kept on one line when they fit in a fifth of the page; other cells only keep their words whole.
+    const widest = (values: unknown[], bold: boolean, whole: boolean) => {
+      doc.setFont(font, bold ? "bold" : "normal").setFontSize(fontSize)
+      let result = 0
+      for (const value of values) for (const piece of whole ? [String(value ?? "")] : String(value ?? "").split(/\s+/)) result = Math.max(result, doc.getTextWidth(piece))
+      return result
+    }
+    const longest = band.map((index) => {
+      const name = table.columns[index].key === "employee" || table.columns[index].key === "date"
+      const cells = Math.min(widest(table.rows.map((row) => row.cells[index]), false, name), name ? width / 5 : Infinity)
+      return Math.min(Math.max(widest([table.columns[index].label], true, false), cells, name ? widest(table.rows.map((row) => row.cells[index]), false, false) : 0) + 4.5, width / 3)
+    })
+    const needed = longest.reduce((total, value) => total + value, 0)
+    if (needed > width) return proportional()
+    const weightSum = weights.reduce((total, weight) => total + weight, 0)
+    return longest.map((value, position) => value + (width - needed) * weights[position] / weightSum)
   }
   let y = margin
   const textBlock = (text: string, bold = false, size = 8) => {
@@ -49,11 +82,10 @@ export function buildAttendancePdf(table: AttendanceTable): Buffer {
   for (let bandIndex = 0; bandIndex < bands.length; bandIndex++) {
     const band = bands[bandIndex]
     if (bandIndex) { doc.addPage(); y = margin; textBlock(table.title, true, 12); y += 2 }
-    const weights = band.map((index) => ["employee", "team", "status", "notes"].includes(table.columns[index].key) ? 1.6 : 1)
-    const weightSum = weights.reduce((sum, weight) => sum + weight, 0)
-    const widths = weights.map((weight) => width * weight / weightSum)
+    const fontSize = band.length > 12 ? 7 : 8
+    const widths = columnWidths(band, fontSize)
     const draw = (values: (string | number)[], header: boolean) => {
-      doc.setFont(font, header ? "bold" : "normal").setFontSize(8)
+      doc.setFont(font, header ? "bold" : "normal").setFontSize(fontSize)
       const cells = band.map((index, position) => doc.splitTextToSize(String(values[index] ?? ""), widths[position] - 4) as string[])
       const lineCount = Math.max(1, ...cells.map((lines) => lines.length))
       // Very long user-entered text continues rather than being clipped.
@@ -63,7 +95,7 @@ export function buildAttendancePdf(table: AttendanceTable): Buffer {
         const count = Math.min(capacity, lineCount - offset)
         const height = count * 4 + 4
         let x = margin
-        doc.setFont(font, header ? "bold" : "normal").setFontSize(8)
+        doc.setFont(font, header ? "bold" : "normal").setFontSize(fontSize)
         for (let position = 0; position < band.length; position++) {
           if (header) { doc.setFillColor(250, 237, 228); doc.rect(x, y, widths[position], height, "F") }
           doc.setDrawColor(228, 228, 231).rect(x, y, widths[position], height)

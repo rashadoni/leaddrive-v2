@@ -1242,6 +1242,14 @@ describe("generateChannelAiReply", () => {
     expect(anthropicCreate).not.toHaveBeenCalled()
   })
 
+  it("does not spend when the budget database is unavailable", async () => {
+    vi.mocked(checkAiBudget).mockRejectedValue(new Error("budget database unavailable"))
+    const r = await generateChannelAiReply({ orgId: "o1", channel: "whatsapp", externalId: "p", userMessage: "hi", senderName: "X" })
+    expect(r.skipped).toBe("budget_unavailable")
+    expect(anthropicCreate).not.toHaveBeenCalled()
+    expect(prisma.aiChatSession.create).not.toHaveBeenCalled()
+  })
+
   it("skips when over the AI budget (never calls the model)", async () => {
     vi.mocked(checkAiBudget).mockResolvedValue({ allowed: false } as never)
     const r = await generateChannelAiReply({ orgId: "o1", channel: "facebook", externalId: "p", userMessage: "hi", senderName: "X" })

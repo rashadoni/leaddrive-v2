@@ -133,6 +133,7 @@ let txMock: {
   mtmRoute: { updateMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> }
   mtmAuditLog: { create: ReturnType<typeof vi.fn> }
   $executeRaw: ReturnType<typeof vi.fn>
+  $queryRawUnsafe: ReturnType<typeof vi.fn>
 }
 
 const uuid = () => "123e4567-e89b-42d3-a456-426614174000"
@@ -188,6 +189,8 @@ beforeEach(() => {
     mtmRoute: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findFirst: vi.fn().mockResolvedValue(null) },
     mtmAuditLog: { create: vi.fn().mockResolvedValue({}) },
     $executeRaw: vi.fn().mockResolvedValue(0),
+    // Visit events read the row by SQL; no row here, so none are written.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
   }
   vi.mocked(prisma.$transaction).mockImplementation(((cb: (tx: unknown) => unknown) => cb(txMock)) as never)
 })

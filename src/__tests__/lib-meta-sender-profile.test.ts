@@ -81,6 +81,62 @@ describe("resolveMetaSenderName", () => {
     await expect(resolveMetaSenderName(base)).resolves.toBe("1318586653085202")
   })
 
+  it("logs Meta's error code and message, not just the HTTP status", async () => {
+    fetchMock.mockResolvedValue(graph(400, {
+      error: { message: "(#100) Missing feature", type: "OAuthException", code: 100, error_subcode: 2018218 },
+    }))
+
+    await expect(resolveMetaSenderName({ ...base, platform: "facebook" })).resolves.toBe("1318586653085202")
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("facebook lookup for sender 1318586653085202 failed (400) code=100 subcode=2018218 type=OAuthException: (#100) Missing feature"),
+    )
+  })
+
+  it("names a Messenger sender from the conversation when Meta refuses the profile call", async () => {
+    // Prod, 2026-09-21: every Messenger profile lookup came back 400. The page's conversation with the sender
+    // carries the name in its participants and needs no extra permission.
+    fetchMock
+      .mockResolvedValueOnce(graph(400, { error: { message: "(#100) Missing feature", code: 100 } }))
+      .mockResolvedValueOnce(graph(200, {
+        data: [{ participants: { data: [
+          { id: "373662722735767", name: "Lead Drive CRM" },
+          { id: "1318586653085202", name: "Rashad Rahimov" },
+        ] } }],
+      }))
+
+    await expect(
+      resolveMetaSenderName({ ...base, platform: "facebook", accountId: "373662722735767" }),
+    ).resolves.toBe("Rashad Rahimov")
+    const url = new URL(String(fetchMock.mock.calls[1][0]))
+    expect(url.origin + url.pathname).toBe("https://graph.facebook.com/v20.0/373662722735767/conversations")
+    expect(Object.fromEntries(url.searchParams)).toEqual({ platform: "messenger", user_id: "1318586653085202", fields: "participants" })
+    expect(fetchMock.mock.calls[1][1].headers).toEqual({ Authorization: "Bearer page-token" })
+  })
+
+  it("takes the Instagram @username from the participants, and asks the IG-Login graph for an IG-Login channel", async () => {
+    fetchMock
+      .mockResolvedValueOnce(graph(200, {}))
+      .mockResolvedValueOnce(graph(200, { data: [{ participants: { data: [
+        { id: "17841400000000000", username: "zeytun.pharma" },
+        { id: "1318586653085202", username: "sev_mova" },
+      ] } }] }))
+
+    await expect(resolveMetaSenderName({ ...base, igLogin: true, accountId: "17841400000000000" })).resolves.toBe("@sev_mova")
+    const url = new URL(String(fetchMock.mock.calls[1][0]))
+    expect(url.origin + url.pathname).toBe("https://graph.instagram.com/v21.0/me/conversations")
+    expect(url.searchParams.get("platform")).toBe("instagram")
+  })
+
+  it("keeps the sender id when the conversation has no matching participant either", async () => {
+    fetchMock
+      .mockResolvedValueOnce(graph(400, { error: { message: "nope" } }))
+      .mockResolvedValueOnce(graph(200, { data: [{ participants: { data: [{ id: "someone-else", name: "Other" }] } }] }))
+
+    await expect(
+      resolveMetaSenderName({ ...base, platform: "facebook", accountId: "373662722735767" }),
+    ).resolves.toBe("1318586653085202")
+  })
+
   it("falls back to the sender id when the channel has no token", async () => {
     await expect(resolveMetaSenderName({ ...base, token: null })).resolves.toBe("1318586653085202")
     expect(fetchMock).not.toHaveBeenCalled()

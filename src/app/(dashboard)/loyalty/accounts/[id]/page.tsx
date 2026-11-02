@@ -238,7 +238,7 @@ function ActionForm({
         onChange={(e) => setPoints(e.target.value)}
         placeholder={t("pointsPlaceholder")}
         required
-        className="w-full px-3 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-background text-sm font-mono"
+        className="w-full px-3 py-1.5 rounded border border-input bg-background text-sm font-mono"
       />
       <input
         type="text"
@@ -246,7 +246,7 @@ function ActionForm({
         onChange={(e) => setReason(e.target.value)}
         placeholder={t("reasonPlaceholder")}
         maxLength={500}
-        className="w-full px-3 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-background text-sm"
+        className="w-full px-3 py-1.5 rounded border border-input bg-background text-sm"
       />
       {err && (
         <p className="text-xs text-red-600 flex items-start gap-1">
@@ -365,7 +365,7 @@ export default function LoyaltyAccountDetailPage({
               Tier names come from the overview dictionary so account detail
               stays aligned with dashboard and member list labels.
             */}
-            <MotionCard className="p-5 border border-zinc-200 dark:border-zinc-700 rounded-lg mb-4">
+            <MotionCard className="p-5 border border-border rounded-lg mb-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -427,7 +427,7 @@ export default function LoyaltyAccountDetailPage({
             </MotionCard>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-4 border border-border rounded-lg">
                 <ActionForm
                   mode="earn"
                   accountId={data.account.id}
@@ -436,7 +436,7 @@ export default function LoyaltyAccountDetailPage({
                   t={t}
                 />
               </MotionCard>
-              <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-4 border border-border rounded-lg">
                 <ActionForm
                   mode="redeem"
                   accountId={data.account.id}
@@ -447,7 +447,7 @@ export default function LoyaltyAccountDetailPage({
               </MotionCard>
             </div>
 
-            <MotionCard className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <MotionCard className="p-4 border border-border rounded-lg">
               <h2 className="text-lg font-semibold mb-3">
                 {t("transactionHistory")}
               </h2>

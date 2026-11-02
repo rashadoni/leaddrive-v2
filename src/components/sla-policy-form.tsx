@@ -336,7 +336,7 @@ export function SlaPolicyForm({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button>
-          <Button data-testid="sla-policy-submit" type="submit" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" disabled={saving || Boolean(validationMessage) || !form.name.trim()}>
+          <Button data-testid="sla-policy-submit" type="submit" className="min-h-11" disabled={saving || Boolean(validationMessage) || !form.name.trim()}>
             {saving ? tc("saving") : isEdit ? tc("update") : tc("create")}
           </Button>
         </DialogFooter>

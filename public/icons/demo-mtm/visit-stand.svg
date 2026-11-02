@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Nümunə foto: məhsul stendi">
+  <rect width="400" height="300" fill="#f1f5f9"/>
+  <rect x="0" y="230" width="400" height="70" fill="#e2e8f0"/>
+  <rect x="120" y="30" width="160" height="210" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="120" y="30" width="160" height="56" rx="10" fill="#ff7a3d"/>
+  <text x="200" y="64" font-family="system-ui, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">KARDIO+</text>
+  <g fill="#fde7dc"><rect x="138" y="100" width="124" height="34" rx="4"/><rect x="138" y="142" width="124" height="34" rx="4"/><rect x="138" y="184" width="124" height="34" rx="4"/></g>
+  <g fill="#ff7a3d"><rect x="146" y="106" width="22" height="22" rx="3"/><rect x="174" y="106" width="22" height="22" rx="3"/><rect x="202" y="106" width="22" height="22" rx="3"/><rect x="230" y="106" width="22" height="22" rx="3"/>
+  <rect x="146" y="148" width="22" height="22" rx="3"/><rect x="174" y="148" width="22" height="22" rx="3"/><rect x="202" y="148" width="22" height="22" rx="3"/>
+  <rect x="146" y="190" width="22" height="22" rx="3"/><rect x="174" y="190" width="22" height="22" rx="3"/></g>
+  <text x="200" y="290" font-family="system-ui, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">nümunə foto · demo</text>
+</svg>

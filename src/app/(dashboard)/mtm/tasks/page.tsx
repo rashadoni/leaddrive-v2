@@ -1,5 +1,6 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -13,18 +14,17 @@ import {
   ChevronRight,
   CalendarOff,
   ClipboardList,
-  Plus,
   RefreshCw,
   UserRound,
   X,
 } from "lucide-react"
 
-import { HelpButton } from "@/components/help/help-button"
 import { MtmFilterBar, MtmFilterReset, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { mtmTaskDueFormat } from "@/lib/mtm/task-due"
-import { MtmTaskForm, type TaskAgentOption, type TaskGroupOption } from "@/components/mtm/task-form"
-import { Badge } from "@/components/ui/badge"
+import { type TaskAgentOption, type TaskGroupOption } from "@/components/mtm/task-form"
+import { MtmTaskQuickAdd, type TaskRecipient } from "@/components/mtm/task-quick-add"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { invalidateOperationalWeekSnapshotsAfterTaskMutation } from "@/lib/mtm/operational-week-cache"
@@ -59,7 +59,7 @@ type TaskListData = {
   page: number
   limit: number
   filters: {
-    agents: TaskAgentOption[]
+    agents: TaskRecipient[]
     teams: TeamOption[]
     taskGroups: TaskGroupOption[]
     taskGroupCatalogAvailable: boolean
@@ -127,7 +127,6 @@ export default function MtmTasksPage() {
   const [data, setData] = useState<TaskListData | null>(null)
   const [phase, setPhase] = useState<LoadPhase>("loading")
   const [error, setError] = useState("")
-  const [formOpen, setFormOpen] = useState(false)
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "")
   const [search, setSearch] = useState(searchParams.get("search") || "")
   const [status, setStatus] = useState(searchParams.get("status") || DEFAULT_TASK_STATUS)
@@ -316,24 +315,22 @@ export default function MtmTasksPage() {
   // The badge on «More filters» counts only what is inside that panel.
   const panelFilters = [agentId, teamId].filter(Boolean).length
   const canCreate = capability(data?.capabilities || {}, "canCreate", "CREATE")
-  const canCreateRecurring = capability(data?.capabilities || {}, "canCreateRecurring", "CREATE_RECURRING")
   const canBulk = capability(data?.capabilities || {}, "canBulkReassign", "BULK_REASSIGN")
 
   return (
     <div className="space-y-6 pb-20 lg:pb-6">
-      <header className="flex flex-col gap-4 border-b border-zinc-200 pb-5 dark:border-zinc-700 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <PageDescription icon={ClipboardList} title={t("title")} />
-          <HelpButton slug="mtm-tasks" variant="label" />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canCreate ? (
-            <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}>
-              <Plus className="h-4 w-4" />{t("add")}
-            </Button>
-          ) : null}
-        </div>
-      </header>
+      <MtmPageHeader title={t("title")} help="mtm-tasks" />
+      {/* Owner 2026-10-20: «добавить задачу слишком длинный процесс… максимально
+          облегчи». One line — whom, what, which day — instead of the dialog. */}
+      {canCreate ? (
+        <MtmTaskQuickAdd
+          agents={data?.filters.agents || []}
+          timezone={data?.timezone || "UTC"}
+          orgId={orgId ? String(orgId) : undefined}
+          defaultAgentId={agentId || undefined}
+          onCreated={load}
+        />
+      ) : null}
 
       {/* Owner 2026-09-27: filters in one row. Team and employee — the filters
           a manager uses most — sat behind «Ещё фильтры». */}
@@ -341,25 +338,29 @@ export default function MtmTasksPage() {
         <MtmFilterBar testId="mtm-task-filters">
           <MtmFilterSearch value={searchInput} onChange={setSearchInput} delayMs={0} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
           {contactId ? (
-            <span role="status" className="inline-flex h-10 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1.5 text-sm text-primary">
+            <span role="status" className="inline-flex h-10 items-center gap-1 rounded-full border border-foreground pl-3 pr-1.5 text-sm font-semibold text-foreground">
               {t("contactContext", { name: data?.contactName ?? "…" })}
-              <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-primary/15" onClick={() => { setContactId(""); setPage(1) }} aria-label={t("clearContactContext")}><X className="h-3.5 w-3.5" /></button>
+              <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted" onClick={() => { setContactId(""); setPage(1) }} aria-label={t("clearContactContext")}><X className="h-3.5 w-3.5" /></button>
             </span>
           ) : null}
           {(data?.filters.teams || []).length > 0 ? (
-            <MtmFilterSelect testId="mtm-task-team" label={t("teamFilter")} value={teamId} allLabel={t("allTeams")}
-              options={(data?.filters.teams || []).map((team) => ({ value: team.id, label: team.name }))}
-              onChange={(nextTeamId) => {
-                setTeamId(nextTeamId)
-                const selectedAgent = (data?.filters.agents || []).find((agent) => agent.id === agentId)
-                if (selectedAgent && nextTeamId && selectedAgent.teamId !== nextTeamId && selectedAgent.team?.id !== nextTeamId) setAgentId("")
-                setPage(1)
-              }} />
+            <Hint wrap text={t("hint.team")}>
+              <MtmFilterSelect testId="mtm-task-team" label={t("teamFilter")} value={teamId} allLabel={t("allTeams")}
+                options={(data?.filters.teams || []).map((team) => ({ value: team.id, label: team.name }))}
+                onChange={(nextTeamId) => {
+                  setTeamId(nextTeamId)
+                  const selectedAgent = (data?.filters.agents || []).find((agent) => agent.id === agentId)
+                  if (selectedAgent && nextTeamId && selectedAgent.teamId !== nextTeamId && selectedAgent.team?.id !== nextTeamId) setAgentId("")
+                  setPage(1)
+                }} />
+            </Hint>
           ) : null}
-          <MtmFilterSelect testId="mtm-task-agent" label={t("agentFilter")} value={agentId} allLabel={t("allAgents")}
-            options={(data?.filters.agents || []).filter((agent) => !teamId || agent.teamId === teamId || agent.team?.id === teamId).map((agent) => ({ value: agent.id, label: agent.name }))}
-            onChange={(value) => { setAgentId(value); setPage(1) }} />
-          <MtmFilterReset show={Boolean(search || panelFilters || contactId)} onReset={clearFilters} label={tFilters("reset")} />
+          <Hint wrap text={t("hint.agent")}>
+            <MtmFilterSelect testId="mtm-task-agent" label={t("agentFilter")} value={agentId} allLabel={t("allAgents")}
+              options={(data?.filters.agents || []).filter((agent) => !teamId || agent.teamId === teamId || agent.team?.id === teamId).map((agent) => ({ value: agent.id, label: agent.name }))}
+              onChange={(value) => { setAgentId(value); setPage(1) }} />
+          </Hint>
+          <Hint wrap text={t("hint.reset")}><MtmFilterReset show={Boolean(search || panelFilters || contactId)} onReset={clearFilters} label={tFilters("reset")} /></Hint>
         </MtmFilterBar>
       </section>
 
@@ -382,16 +383,15 @@ export default function MtmTasksPage() {
             ]).filter((chip) => chip.value !== "CANCELLED" || chip.count > 0 || status === "CANCELLED").map((chip) => {
               const pressed = status === chip.value
               return (
-                <button
-                  key={chip.value}
+                <Hint key={chip.value} text={t(`hint.chip${chip.value}`)}><button
                   type="button"
                   aria-pressed={pressed}
                   onClick={() => { setStatus(chip.value); setPage(1) }}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "border-primary bg-primary/10 font-semibold text-primary" : "border-zinc-200 hover:bg-muted dark:border-zinc-700"}`}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "crm-choice-selected text-foreground" : "border-border hover:bg-muted"}`}
                 >
                   <span className={pressed ? "" : chip.tone}>{chip.label}</span>
                   {!data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}
-                </button>
+                </button></Hint>
               )
             })}
           </nav>
@@ -403,8 +403,8 @@ export default function MtmTasksPage() {
                 <option value="">{t("chooseAssignee")}</option>
                 {(data?.filters.agents || []).map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
               </Select>
-              <Button type="button" className="min-h-11" disabled={!bulkAgentId || bulkSaving} onClick={bulkReassign}>{bulkSaving ? t("reassigning") : t("reassign")}</Button>
-              <Button type="button" variant="ghost" className="min-h-11 sm:ml-auto" onClick={() => setSelected([])}>{t("clearSelection")}</Button>
+              <Hint wrap text={t("hint.reassign")}><Button type="button" className="min-h-11" disabled={!bulkAgentId || bulkSaving} onClick={bulkReassign}>{bulkSaving ? t("reassigning") : t("reassign")}</Button></Hint>
+              <Hint text={t("hint.clearSelection")}><Button type="button" variant="ghost" className="min-h-11 sm:ml-auto" onClick={() => setSelected([])}>{t("clearSelection")}</Button></Hint>
             </section>
           ) : null}
 
@@ -415,7 +415,7 @@ export default function MtmTasksPage() {
           {phase === "loading" && !data ? (
             <div className="space-y-3" role="status"><div className="h-14 animate-pulse rounded-lg bg-muted/60 motion-reduce:animate-none" />{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-muted/40 motion-reduce:animate-none" />)}<span className="sr-only">{t("loading")}</span></div>
           ) : !pageTasks.length && !undatedTasks.length ? (
-            <StatePanel icon={ClipboardList} title={activeFilters ? t("noResults") : t("empty")} hint={activeFilters ? t("noResultsHint") : t("emptyHint")} action={activeFilters ? <Button type="button" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button> : canCreate ? <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" />{t("add")}</Button> : undefined} />
+            <StatePanel icon={ClipboardList} title={activeFilters ? t("noResults") : t("empty")} hint={activeFilters ? t("noResultsHint") : t("emptyHint")} action={activeFilters ? <Button type="button" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button> : undefined} />
           ) : (
             <>
               {undatedTasks.length ? (
@@ -464,7 +464,7 @@ export default function MtmTasksPage() {
           </div>
 
           {data && data.total > data.limit ? (
-            <nav className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700" aria-label={t("pagination")}>
+            <nav className="flex items-center justify-between gap-3 border-t border-border pt-4" aria-label={t("pagination")}>
               <Button type="button" variant="outline" className="min-h-11" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft className="h-4 w-4" />{t("previous")}</Button>
               <span className="text-sm tabular-nums text-muted-foreground">{t("pageOf", { page, total: totalPages })}</span>
               <Button type="button" variant="outline" className="min-h-11" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>{t("next")}<ChevronRight className="h-4 w-4" /></Button>
@@ -473,14 +473,13 @@ export default function MtmTasksPage() {
         </>
       )}
 
-      <MtmTaskForm open={formOpen} onOpenChange={setFormOpen} onSaved={load} orgId={orgId ? String(orgId) : undefined} agentOptions={data?.filters.agents || []} taskGroupOptions={data?.filters.taskGroups || []} taskGroupCatalogAvailable={Boolean(data?.filters.taskGroupCatalogAvailable)} timezone={data?.timezone || "UTC"} canCreateRecurring={canCreateRecurring} />
     </div>
   )
 }
 
 function StatePanel({ icon: Icon, title, hint, action }: { icon: typeof AlertCircle; title: string; hint: string; action?: ReactNode }) {
   return (
-    <section className="flex min-h-60 flex-col items-center justify-center gap-3 border-y border-zinc-200 px-4 py-10 text-center dark:border-zinc-700" role="status">
+    <section className="flex min-h-60 flex-col items-center justify-center gap-3 border-y border-border px-4 py-10 text-center" role="status">
       <Icon className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
       <p className="max-w-lg text-sm text-muted-foreground">{hint}</p>
@@ -502,7 +501,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
   const router = useRouter()
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 lg:block">
+      <div className="hidden overflow-x-auto rounded-xl border border-border lg:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/35 text-left text-xs text-muted-foreground">
             <tr>
@@ -516,7 +515,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
               <th className="px-4 py-3 font-medium">{t("colDueDate")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <tbody className="divide-y divide-border">
             {tasks.map((task) => (
               <tr key={task.id} className="cursor-pointer transition-colors hover:bg-muted/25" onClick={() => router.push(href(task.id))}>
                 {/* A finished task cannot be reassigned: no box at all rather than a grey one. */}
@@ -533,7 +532,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
         </table>
       </div>
 
-      <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 lg:hidden">
+      <div className="divide-y divide-border border-y border-border lg:hidden">
         {tasks.map((task) => (
           <article key={task.id} className="py-5">
             <div className="flex items-start gap-3">

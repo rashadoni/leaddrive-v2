@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { COMMITMENT_CALL_FIELD } from "@/lib/commitments/record-call-commitment"
+import { settleCallback, summarizeLateCallbacks, type CallbackStatus, type SellerSummary } from "@/lib/commitments/late-callback-summary"
 
 /**
  * Who called the customer back late, and who never called at all.
@@ -17,7 +18,7 @@ import { COMMITMENT_CALL_FIELD } from "@/lib/commitments/record-call-commitment"
  * was given, not against when we got round to looking.
  */
 
-export type CallbackStatus = "on_time" | "late" | "missed"
+export type { CallbackStatus, SellerSummary }
 
 export type LateCallbackRow = {
   taskId: string
@@ -33,27 +34,12 @@ export type LateCallbackRow = {
   lateByMinutes: number | null
 }
 
-export type SellerSummary = {
-  sellerId: string | null
-  sellerName: string
-  promises: number
-  onTime: number
-  late: number
-  missed: number
-  /** Worst overrun in minutes among the late ones; null when none were late. */
-  worstLateMinutes: number | null
-}
-
 export type LateCallbackReport = {
   from: Date
   to: Date
   rows: LateCallbackRow[]
   sellers: SellerSummary[]
   totals: { promises: number; onTime: number; late: number; missed: number }
-}
-
-function minutesBetween(from: Date, to: Date): number {
-  return Math.max(0, Math.round((to.getTime() - from.getTime()) / 60_000))
 }
 
 export async function buildLateCallbackReport(input: {
@@ -165,14 +151,12 @@ export async function buildLateCallbackReport(input: {
     const leadId = task.relatedType === "lead" ? task.relatedId : null
     const lead = leadId ? leadById.get(leadId) : undefined
     const seller = task.assignedTo ? sellerById.get(task.assignedTo) : undefined
-    // The promise was made on the call that produced the task, so only a touch
-    // after that moment can be the promised callback.
-    const contactedAt = (leadId ? touchesByLead.get(leadId) ?? [] : [])
-      .find((at) => at >= task.createdAt) ?? null
-    const deadline = new Date(dueDate.getTime() + tolerance * 60_000)
-    const status: CallbackStatus = !contactedAt
-      ? "missed"
-      : contactedAt <= deadline ? "on_time" : "late"
+    const settled = settleCallback({
+      promisedFor: dueDate,
+      madeAt: task.createdAt,
+      touches: leadId ? touchesByLead.get(leadId) ?? [] : [],
+      toleranceMinutes: tolerance,
+    })
     return {
       taskId: task.id,
       leadId,
@@ -181,44 +165,16 @@ export async function buildLateCallbackReport(input: {
       sellerId: task.assignedTo,
       sellerName: seller?.name?.trim() || seller?.email?.trim() || "—",
       promisedFor: dueDate,
-      contactedAt,
-      status,
-      lateByMinutes: status === "late" && contactedAt
-        ? minutesBetween(deadline, contactedAt)
-        : status === "on_time" ? 0 : null,
+      ...settled,
     }
   })
 
-  const bySeller = new Map<string, SellerSummary>()
-  for (const row of rows) {
-    const key = row.sellerId ?? "__unassigned__"
-    const summary = bySeller.get(key) ?? {
-      sellerId: row.sellerId,
-      sellerName: row.sellerId ? row.sellerName : "—",
-      promises: 0, onTime: 0, late: 0, missed: 0, worstLateMinutes: null,
-    }
-    summary.promises += 1
-    if (row.status === "on_time") summary.onTime += 1
-    else if (row.status === "late") {
-      summary.late += 1
-      summary.worstLateMinutes = Math.max(summary.worstLateMinutes ?? 0, row.lateByMinutes ?? 0)
-    } else summary.missed += 1
-    bySeller.set(key, summary)
-  }
-
-  const sellersOut = [...bySeller.values()].sort(
-    (a, b) => (b.missed + b.late) - (a.missed + a.late) || b.promises - a.promises,
-  )
+  const { sellers: sellersOut, totals } = summarizeLateCallbacks(rows)
   return {
     from: input.from,
     to: input.to,
     rows,
     sellers: sellersOut,
-    totals: {
-      promises: rows.length,
-      onTime: rows.filter((r) => r.status === "on_time").length,
-      late: rows.filter((r) => r.status === "late").length,
-      missed: rows.filter((r) => r.status === "missed").length,
-    },
+    totals,
   }
 }

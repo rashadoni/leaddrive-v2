@@ -268,7 +268,7 @@ function TouchQueue({ reloadToken, onChanged }: { reloadToken: number; onChanged
   const overdueCount = touches.filter((touch) => touch.overdue).length
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl bg-card overflow-hidden">
+    <div className="border border-border rounded-xl bg-card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3.5 border-b">
         <h2 className="font-semibold flex items-center gap-2">
           <Zap className="h-4 w-4 text-primary" />
@@ -294,7 +294,7 @@ function TouchQueue({ reloadToken, onChanged }: { reloadToken: number; onChanged
                 value={limitInput}
                 onChange={(e) => setLimitInput(e.target.value)}
                 placeholder={t("dailyLimit.placeholder")}
-                className="w-20 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 bg-background"
+                className="w-20 border border-input rounded px-2 py-1 bg-background"
               />
               <button
                 onClick={() => {
@@ -352,7 +352,7 @@ function TouchQueue({ reloadToken, onChanged }: { reloadToken: number; onChanged
       ) : touches.length === 0 ? (
         <p className="px-5 py-6 text-sm text-muted-foreground text-center">{t("touches.empty")}</p>
       ) : (
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <div className="divide-y divide-border">
           {touches.map((touch) => (
             <div key={touch.enrollmentId} className="flex items-center gap-3 px-5 py-3">
               <div className={cn("h-8 w-8 rounded-lg grid place-items-center shrink-0", touchIconClasses[touch.stepType])}>
@@ -534,7 +534,7 @@ function EmailComposer({ touch, onClose, onSent, onMarkSent }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="px-5 py-4 border-b flex items-center justify-between">
           <h2 className="font-semibold">{t("composer.title", { name: touch.entityName })}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
@@ -554,7 +554,7 @@ function EmailComposer({ touch, onClose, onSent, onMarkSent }: {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={9}
-              className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded-md px-3 py-2 bg-background resize-y"
+              className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background resize-y"
             />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -650,12 +650,12 @@ function ParticipantsTab({ sequenceId }: { sequenceId: string }) {
     <div className="border-t bg-muted/20">
       <div className="flex items-center gap-1.5 px-5 py-2.5 flex-wrap">
         {["", "active", "paused", "completed", "stopped"].map((s) => (
-          <button
+          <button data-crm-filter="" data-state={filter === s ? "active" : "inactive"}
             key={s || "all"}
             onClick={() => setFilter(s)}
             className={cn(
               "text-xs px-2.5 py-1 rounded-full font-medium",
-              filter === s ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground border border-zinc-200 dark:border-zinc-700"
+              filter === s ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground border border-border"
             )}
           >
             {s ? t(`participants.status.${s}` as never) : t("participants.all")}
@@ -680,7 +680,7 @@ function ParticipantsTab({ sequenceId }: { sequenceId: string }) {
             </thead>
             <tbody>
               {rows.map((p) => (
-                <tr key={p.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                <tr key={p.id} className="border-t border-border">
                   <td className="px-5 py-2">
                     <a href={p.entityHref} className="font-medium hover:text-primary hover:underline">{p.entityName ?? "—"}</a>
                     {p.entityCompany && <span className="text-muted-foreground text-xs"> · {p.entityCompany}</span>}
@@ -729,14 +729,14 @@ function SequenceExpanded({ seq }: { seq: SalesSequence }) {
 
   return (
     <div className="border-t">
-      <div className="flex items-center gap-4 px-5 pt-2.5 text-sm">
-        <button
+      <div data-crm-tabs="" className="flex items-center gap-4 px-5 pt-2.5 text-sm">
+        <button data-crm-tab="" data-state={tab === "steps" ? "active" : "inactive"}
           onClick={() => setTab("steps")}
           className={cn("pb-2 -mb-px border-b-2 font-medium", tab === "steps" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
         >
           {t("tabs.steps")}
         </button>
-        <button
+        <button data-crm-tab="" data-state={tab === "participants" ? "active" : "inactive"}
           onClick={() => setTab("participants")}
           className={cn("pb-2 -mb-px border-b-2 font-medium", tab === "participants" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
         >
@@ -854,15 +854,15 @@ function EnrollDialog({ sequence, onClose, onEnrolled }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         <div className="px-5 py-4 border-b flex items-center justify-between">
           <h2 className="font-semibold">{t("enroll.title", { name: sequence.name })}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
         </div>
         <div className="p-5 space-y-3 flex-1 overflow-y-auto">
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 p-0.5 text-sm font-medium">
+          <div data-crm-tabs="" className="flex rounded-lg border border-border p-0.5 text-sm font-medium">
             {(["lead", "contact"] as const).map((et) => (
-              <button
+              <button data-crm-tab="" data-state={entityType === et ? "active" : "inactive"}
                 key={et}
                 onClick={() => { setEntityType(et); setResults([]) }}
                 className={cn(
@@ -890,7 +890,7 @@ function EnrollDialog({ sequence, onClose, onEnrolled }: {
           ) : results.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">{t("enroll.noResults")}</p>
           ) : (
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <div className="divide-y divide-border border border-border rounded-lg">
               {results.map((candidate) => (
                 <div key={candidate.id} className="flex items-center gap-3 px-3 py-2">
                   <div className="flex-1 min-w-0">
@@ -1049,7 +1049,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <h2 className="font-semibold text-lg">{initial ? t("form.editTitle") : t("form.newTitle")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
@@ -1081,7 +1081,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
           <p className="text-xs text-muted-foreground -mt-2">{t("form.activeHint")}</p>
 
           {/* Auto-exit rules */}
-          <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-2">
+          <div className="border border-border rounded-lg p-4 space-y-2">
             <h3 className="text-sm font-semibold">{t("form.exitHeading")}</h3>
             {/* E2 — reply reaction: stop | pause | continue */}
             <label className="flex items-center gap-2 text-sm">
@@ -1089,7 +1089,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
               <select
                 value={replyReaction}
                 onChange={(e) => setReplyReaction(e.target.value as "stop" | "pause" | "continue")}
-                className="text-sm border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 bg-background"
+                className="text-sm border border-input rounded px-2 py-1 bg-background"
               >
                 <option value="stop">{t("form.replyStop")}</option>
                 <option value="pause">{t("form.replyPause")}</option>
@@ -1150,7 +1150,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
 
             <div className="space-y-3">
               {steps.map((step, idx) => (
-                <div key={idx} className={cn("border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-3", step.isActive ? "bg-muted/30" : "bg-muted/10 opacity-70")}>
+                <div key={idx} className={cn("border border-border rounded-lg p-4 space-y-3", step.isActive ? "bg-muted/30" : "bg-muted/10 opacity-70")}>
                   <div className="flex items-center gap-2">
                     {/* E5 — reorder controls */}
                     <span className="flex flex-col -my-1">
@@ -1177,7 +1177,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
                     <select
                       value={step.type}
                       onChange={(e) => updateStep(idx, { type: e.target.value as FormStep["type"] })}
-                      className="text-sm border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 bg-background"
+                      className="text-sm border border-input rounded px-2 py-1 bg-background"
                     >
                       {STEP_TYPES.map((stType) => (
                         <option key={stType} value={stType}>{t(`stepType.${stType}` as never)}</option>
@@ -1199,7 +1199,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
                         min={0}
                         value={step.delayDays}
                         onChange={(e) => updateStep(idx, { delayDays: Number(e.target.value) })}
-                        className="w-16 text-sm border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 bg-background"
+                        className="w-16 text-sm border border-input rounded px-2 py-1 bg-background"
                       />
                       <span className="text-xs text-muted-foreground">{t("form.daysSuffix")}</span>
                     </div>
@@ -1214,7 +1214,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
                       <select
                         value={step.threadMode ?? "continue"}
                         onChange={(e) => updateStep(idx, { threadMode: e.target.value as "continue" | "new" })}
-                        className="text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 bg-background"
+                        className="text-xs border border-input rounded px-2 py-1 bg-background"
                       >
                         <option value="continue">{t("form.threadContinue")}</option>
                         <option value="new">{t("form.threadNew")}</option>
@@ -1232,7 +1232,7 @@ function SequenceForm({ initial, onSave, onClose }: SequenceFormProps) {
                     onChange={(e) => updateStep(idx, { body: e.target.value || null })}
                     placeholder={step.type === "email" ? t("form.emailBodyPlaceholder") : t("form.descriptionBodyPlaceholder")}
                     rows={2}
-                    className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded-md px-3 py-2 bg-background resize-none"
+                    className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background resize-none"
                   />
                 </div>
               ))}
@@ -1270,7 +1270,7 @@ function CadenceInsights({ funnel, leaderboard }: { funnel: FunnelSequence[]; le
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-muted-foreground border-b border-zinc-200 dark:border-zinc-700">
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
                   <th className="py-2 pr-4 font-medium">{t("insights.colOwner")}</th>
                   <th className="py-2 px-4 font-medium text-right">{t("insights.colEnrollments")}</th>
                   <th className="py-2 px-4 font-medium text-right">{t("insights.colReplied")}</th>
@@ -1280,7 +1280,7 @@ function CadenceInsights({ funnel, leaderboard }: { funnel: FunnelSequence[]; le
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.ownerId ?? "unassigned"} className="border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+                  <tr key={r.ownerId ?? "unassigned"} className="border-b border-border last:border-0">
                     <td className="py-2 pr-4">{r.ownerName ?? t("insights.unassigned")}</td>
                     <td className="py-2 px-4 text-right tabular-nums">{r.total}</td>
                     <td className="py-2 px-4 text-right tabular-nums">{r.replied}</td>
@@ -1303,7 +1303,7 @@ function CadenceInsights({ funnel, leaderboard }: { funnel: FunnelSequence[]; le
           </div>
           <p className="text-xs text-muted-foreground -mt-2">{t("insights.funnelHint")}</p>
           {funnel.map((seq) => (
-            <div key={seq.sequenceId} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div key={seq.sequenceId} className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium truncate">{seq.name}</span>
                 <span className="text-xs text-muted-foreground shrink-0 ml-2">{t("insights.funnelEntered", { count: seq.entered })}</span>
@@ -1487,7 +1487,7 @@ export default function SequencesPage() {
           { label: t("stats.meetings"), value: orgStats ? String(orgStats.meetings) : "—" },
           { label: t("stats.avgTouches"), value: orgStats?.avgTouchesToReply != null ? String(orgStats.avgTouchesToReply) : "—" },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">{stat.label}</p>
             <p className="text-2xl font-bold mt-1">{stat.value}</p>
           </div>
@@ -1496,7 +1496,7 @@ export default function SequencesPage() {
 
       {/* Insights — step funnel + rep leaderboard (collapsible; decorative) */}
       {(funnel.length > 0 || leaderboard.some((r) => r.total > 0)) && (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card">
+        <div className="rounded-xl border border-border bg-card">
           <button
             type="button"
             onClick={() => setShowInsights((v) => !v)}
@@ -1507,7 +1507,7 @@ export default function SequencesPage() {
             {showInsights ? <ChevronDown className="h-4 w-4 ml-auto" /> : <ChevronRight className="h-4 w-4 ml-auto" />}
           </button>
           {showInsights && (
-            <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 space-y-6">
+            <div className="border-t border-border p-4 space-y-6">
               <CadenceInsights funnel={funnel} leaderboard={leaderboard} />
             </div>
           )}
@@ -1546,7 +1546,7 @@ export default function SequencesPage() {
             const activeStepCount = seq.steps.length
             const needsStepsBeforeActivate = !seq.isActive && activeStepCount === 0
             return (
-              <div key={seq.id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl bg-card overflow-hidden">
+              <div key={seq.id} className="border border-border rounded-xl bg-card overflow-hidden">
                 {/* Card header */}
                 <div className="flex items-center gap-3 px-5 py-4">
                   <button onClick={() => toggleExpand(seq.id)} className="text-muted-foreground hover:text-foreground shrink-0">

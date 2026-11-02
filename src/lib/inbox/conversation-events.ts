@@ -26,6 +26,8 @@ export interface EmitConversationEventResult {
   ok: boolean
   /** A flow reached a delivery-unknown terminal action. No later flow or reply pipeline may send. */
   terminal: boolean
+  /** A flow sent a reply, presented a menu or drafted AI; downstream default responders must yield. */
+  handledReply?: boolean
   skipped?: "flag_off" | "conversation_not_found" | "delivery_unconfirmed" | "no_flows" | "unsupported_event"
   eventType: "conversation_opened" | "message_inbound" | "conversation_idle" | "ai_escalated"
   flowsRun: number
@@ -151,6 +153,7 @@ export async function emitConversationEvent(params: EmitConversationEventParams)
   }
 
   const results: EmitConversationEventResult["results"] = []
+  let handledReply = false
   for (const flow of flows) {
     try {
       const result = await runConversationFlow({
@@ -159,6 +162,11 @@ export async function emitConversationEvent(params: EmitConversationEventParams)
         organizationId: params.organizationId,
         actorUserId: params.actorUserId ?? null,
       })
+      handledReply ||= result.steps.some((step) =>
+        ((step.action === "send_reply" || step.action === "ai_reply") && step.ok === true)
+        || (step.action === "ai_reply" && step.error === "drafted")
+        || (step.action === "menu" && step.error === "awaiting_menu_reply"),
+      )
       const terminal = result.terminal === true
       results.push({ flowId: flow.id, ok: result.ok, status: result.status, error: result.error, terminal })
       // Delivery-unknown is terminal across the whole event, not merely this graph:
@@ -181,7 +189,7 @@ export async function emitConversationEvent(params: EmitConversationEventParams)
   }
 
   const terminal = results.some((result) => result.terminal)
-  return { ok: results.every((r) => r.ok), terminal, eventType, flowsRun: results.length, results }
+  return { ok: results.every((r) => r.ok), terminal, ...(handledReply ? { handledReply: true } : {}), eventType, flowsRun: results.length, results }
 }
 
 export async function emitConversationIngestEvents(params: {
@@ -199,6 +207,7 @@ export async function emitConversationIngestEvents(params: {
   opened?: EmitConversationEventResult
   inbound?: EmitConversationEventResult
   terminal: boolean
+  handledReply?: boolean
 }> {
   const opened = params.wasCreated
     ? await emitConversationEvent({
@@ -248,5 +257,7 @@ export async function emitConversationIngestEvents(params: {
     console.error("[conversation-events] cadence auto-exit failed (non-fatal):", err)
   }
 
-  return { opened, inbound, terminal: opened?.terminal === true || inbound?.terminal === true }
+  return { opened, inbound, terminal: opened?.terminal === true || inbound?.terminal === true,
+    ...(opened?.handledReply || inbound?.handledReply ? { handledReply: true } : {}),
+  }
 }

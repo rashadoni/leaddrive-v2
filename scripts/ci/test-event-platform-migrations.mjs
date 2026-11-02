@@ -151,7 +151,84 @@ executeSql(appUrl, `
   );
 `, "remove unreplayable legacy Fund fixtures")
 executeFile(migratorUrl, "prisma/migrations/20260901100000_fund_event_source_pilot/migration.sql")
+
+// Production shape of the backup role (scripts/backup/bootstrap-backup-role.sql):
+// BYPASSRLS, read-only transactions, SELECT on every table. The projection
+// migration mirrors write grants to every reader of projection_builds, which
+// on 2026-10-21 left production's backup role able to write and stopped the
+// owner backup. 20261026090000 must take those grants back.
+executeSql(adminUrl, `
+  CREATE ROLE backup_reader_probe NOLOGIN NOSUPERUSER NOINHERIT BYPASSRLS;
+  ALTER ROLE backup_reader_probe SET default_transaction_read_only = on;
+  GRANT USAGE ON SCHEMA public TO backup_reader_probe;
+  GRANT SELECT ON TABLE "projection_builds" TO backup_reader_probe;
+`, "create read-only backup role probe")
 executeFile(migratorUrl, "prisma/migrations/20260906120000_projection_replay_control_plane/migration.sql")
+const backupWritesSql = `
+  SELECT count(*)::int AS writable
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('r', 'p')
+     AND (has_table_privilege('backup_reader_probe', c.oid, 'INSERT')
+       OR has_table_privilege('backup_reader_probe', c.oid, 'UPDATE')
+       OR has_table_privilege('backup_reader_probe', c.oid, 'DELETE')
+       OR has_table_privilege('backup_reader_probe', c.oid, 'TRUNCATE')
+       OR has_table_privilege('backup_reader_probe', c.oid, 'TRIGGER'))
+`
+const probeAdmin = makeRlsTestPrisma(adminUrl)
+try {
+  const [beforeFix] = await probeAdmin.$queryRawUnsafe(backupWritesSql)
+  if (beforeFix.writable !== 2) {
+    throw new Error(`expected the projection migration to reproduce two backup write grants, got ${beforeFix.writable}`)
+  }
+  executeFile(migratorUrl, "prisma/migrations/20261026090000_backup_role_read_only_projections/migration.sql")
+  const [afterFix] = await probeAdmin.$queryRawUnsafe(backupWritesSql)
+  if (afterFix.writable !== 0) {
+    throw new Error(`backup role can still write ${afterFix.writable} public table(s)`)
+  }
+  const [kept] = await probeAdmin.$queryRawUnsafe(`
+    SELECT has_table_privilege('backup_reader_probe', 'public.projection_activations', 'SELECT') AS backup_reads_activations,
+           has_table_privilege('backup_reader_probe', 'public.projection_promotion_events', 'SELECT') AS backup_reads_events,
+           has_table_privilege('event_app', 'public.projection_activations', 'INSERT') AS app_inserts_activations,
+           has_table_privilege('event_app', 'public.projection_activations', 'UPDATE') AS app_updates_activations,
+           has_table_privilege('event_app', 'public.projection_promotion_events', 'INSERT') AS app_inserts_events
+  `)
+  if (Object.values(kept).some((value) => value !== true)) {
+    throw new Error(`backup read or application write access changed: ${JSON.stringify(kept)}`)
+  }
+  // Re-running is a no-op, as on production where the grants were revoked by hand first.
+  executeFile(migratorUrl, "prisma/migrations/20261026090000_backup_role_read_only_projections/migration.sql")
+
+  // pg_dump needs SELECT on the owner-only cutover gate (production backup
+  // 2026-10-22 stopped there). 20261028090000 grants exactly that to the
+  // read-only backup role, and the deploy postcondition accepts nothing more.
+  executeFile(migratorUrl, "prisma/migrations/20261028090000_backup_role_reads_cutover_gate/migration.sql")
+  const [gate] = await probeAdmin.$queryRawUnsafe(`
+    SELECT has_table_privilege('backup_reader_probe', 'public.event_platform_cutover_gates', 'SELECT') AS backup_reads,
+           has_table_privilege('backup_reader_probe', 'public.event_platform_cutover_gates', 'INSERT') AS backup_inserts,
+           has_table_privilege('event_app', 'public.event_platform_cutover_gates', 'SELECT') AS app_reads
+  `)
+  if (gate.backup_reads !== true || gate.backup_inserts !== false || gate.app_reads !== false) {
+    throw new Error(`cutover gate access is not backup-read-only: ${JSON.stringify(gate)}`)
+  }
+  executeFile(migratorUrl, "scripts/event-platform-postconditions.sql")
+  for (const [label, grant, revoke] of [
+    ["backup role write", "GRANT INSERT ON TABLE event_platform_cutover_gates TO backup_reader_probe", "REVOKE INSERT ON TABLE event_platform_cutover_gates FROM backup_reader_probe"],
+    ["grantable backup read", "GRANT SELECT ON TABLE event_platform_cutover_gates TO backup_reader_probe WITH GRANT OPTION", "REVOKE GRANT OPTION FOR SELECT ON TABLE event_platform_cutover_gates FROM backup_reader_probe"],
+    ["application read", "GRANT SELECT ON TABLE event_platform_cutover_gates TO event_app", "REVOKE SELECT ON TABLE event_platform_cutover_gates FROM event_app"],
+    ["public read", "GRANT SELECT ON TABLE event_platform_cutover_gates TO PUBLIC", "REVOKE SELECT ON TABLE event_platform_cutover_gates FROM PUBLIC"],
+  ]) {
+    executeSql(migratorUrl, grant, `grant ${label}`)
+    expectExecutionRejected(`postcondition accepts ${label}`, () => {
+      executeFile(migratorUrl, "scripts/event-platform-postconditions.sql")
+    })
+    executeSql(migratorUrl, revoke, `revoke ${label}`)
+  }
+  executeFile(migratorUrl, "prisma/migrations/20261028090000_backup_role_reads_cutover_gate/migration.sql")
+} finally {
+  await probeAdmin.$disconnect()
+}
 executeFile(migratorUrl, "scripts/event-platform-postconditions.sql")
 
 const admin = makeRlsTestPrisma(adminUrl)

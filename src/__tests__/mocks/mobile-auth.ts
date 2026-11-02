@@ -9,7 +9,7 @@ function withDefaultTenantCapabilities(value: unknown): unknown {
   // their supplied true/false values unchanged.
   return "tenantCapabilities" in auth
     ? value
-    : { ...auth, tenantCapabilities: { routeField: true, workforceHrm: true } }
+    : { ...auth, tenantCapabilities: { routeField: true, workforceHrm: true, personnel: true } }
 }
 
 function capabilityAwareMobileAuthMock() {

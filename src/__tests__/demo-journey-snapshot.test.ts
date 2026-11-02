@@ -27,6 +27,7 @@ import {
   type DemoJourneySnapshot,
   type DemoProspectIdentity,
 } from "@/lib/demo-center/journey"
+import { DEMO_JOURNEY_MODULES, DEMO_NEXT_MODULE_FINISH_PATH, DEMO_NEXT_MODULE_STEP_ID, suggestedDemoModule } from "@/lib/demo-center/journey"
 
 const manifest = PROSPECT_TO_CLOSED_WON
 const NOW = new Date("2026-09-21T09:00:00.000Z")
@@ -38,10 +39,18 @@ const identity: DemoProspectIdentity = {
   emailMasked: "n***@xezerlog.az",
   phoneMasked: "+994 ** *** 45 67",
   sourceChannel: "instagram",
+  // Every module asked for: «what next» suggests them in the story's own order.
+  interests: DEMO_JOURNEY_MODULES.map((module) => module.id),
 }
 
 /** The action the manifest's own completion rule asks for at this step. */
 function actionFor(snapshot: DemoJourneySnapshot): DemoJourneyAction {
+  // «What next» (modules.ts): go on to the module the guide suggests, and
+  // finish once every module was walked.
+  if (snapshot.stepId === DEMO_NEXT_MODULE_STEP_ID) {
+    const next = suggestedDemoModule(manifest, snapshot)
+    return next ? { type: "open-section", sectionId: next.firstSectionId } : { type: "ui", path: DEMO_NEXT_MODULE_FINISH_PATH, value: true }
+  }
   const located = findStep(manifest, snapshot.stepId)
   if (!located) throw new Error(`unknown step ${snapshot.stepId}`)
   const { step } = located
@@ -83,8 +92,10 @@ describe("Journey snapshot: creation", () => {
   })
 
   it("seeds the prospect's own world without a lead yet", () => {
-    expect(snapshot.records.campaign.channel).toBe("instagram")
-    expect(snapshot.records.campaign.name).toContain("Instagram")
+    // An Instagram ad brings the prospect to the site; the campaign is one the
+    // product can send (e-mail), not an «Instagram campaign» it cannot.
+    expect(snapshot.records.campaign.type).toBe("email")
+    expect(snapshot.records.lead).toBeNull()
     expect(snapshot.records.conversation.contactName).toBe(identity.name)
     expect(snapshot.records.conversation.messages[0].text).toContain(identity.company)
     expect(snapshot.records.conversation.aiDraft?.text).toContain("Nigar")
@@ -184,16 +195,21 @@ describe("Journey snapshot: the story end to end", () => {
     expect(afterTask.records.task?.assigneeName).toBeTruthy()
   })
 
-  it("carries one amount from the accepted quote onwards — deal, card and summary agree", () => {
+  it("carries one amount from the lead to the win — deal, quote and summary agree", () => {
     // The screens used to disagree at the finish: the deal held the 4,800
-    // estimate, the quote 4,814.40 and the summary a rounded 4,814. The
-    // acceptance is where they are made one number.
+    // estimate, the quote 4,814.40 (with a VAT line the product's quote has
+    // not got) and the summary a rounded 4,814. The sample prices now total
+    // the estimate, and accepting a quote leaves the deal alone, as it does
+    // in the product.
     const afterAccept = driveTo(start, "closed-won-move")
-    const gross = quoteTotals(afterAccept.records.quote!).gross
+    const total = quoteTotals(afterAccept.records.quote!).total
     expect(afterAccept.records.quote?.status).toBe("accepted")
-    expect(afterAccept.records.deal?.amount).toBe(gross)
+    expect(afterAccept.records.quote?.contractNumber).toBe(`${afterAccept.records.quote?.quoteNumber}-CTR-7d41c2`)
+    expect(afterAccept.records.deal?.amount).toBe(total)
+    expect(afterAccept.records.lead?.estimatedValue).toBe(total)
     expect(afterAccept.records.lead?.timeline.some((entry) => entry.id === "tl-quote-accepted")).toBe(true)
-    expect(demoMoney(gross)).toBe("4,814.40 ₼")
+    expect(demoMoney(total)).toBe("4,800 ₼")
+    expect(demoMoney(4_814.4)).toBe("4,814.40 ₼")
     // A whole sum keeps no qəpik, so the story does not print 4,800.00.
     expect(demoMoney(4_800)).toBe("4,800 ₼")
   })
@@ -210,7 +226,7 @@ describe("Journey snapshot: the story end to end", () => {
     }
   })
 
-  it("reaches closed won with the deal amount taken from the accepted quote", () => {
+  it("reaches closed won with the accepted quote's total", () => {
     const done = driveTo(start, null)
     expect(done.state).toBe("COMPLETED")
     expect(done.completedAt).not.toBeNull()
@@ -218,12 +234,12 @@ describe("Journey snapshot: the story end to end", () => {
     expect(done.records.deal?.wonAt).not.toBeNull()
     expect(done.records.deal?.stageIndex).toBe(DEMO_DEAL_STAGES.length - 1)
     expect(done.records.quote?.status).toBe("accepted")
-    expect(done.records.deal?.amount).toBe(quoteTotals(done.records.quote!).gross)
+    expect(done.records.deal?.amount).toBe(quoteTotals(done.records.quote!).total)
     const progress = journeyProgress(done, manifest)
     expect(progress.requiredDone).toBe(progress.requiredTotal)
     expect(progress.sectionsDone).toBe(progress.sectionsTotal)
     expect(sectionStatus(done, manifest, "source")).toBe("done")
-    expect([...reachableRoutes(done, manifest)].sort()).toEqual(["/boards", "/campaigns", "/deals", "/inbox", "/leads", "/quotes"])
+    expect([...reachableRoutes(done, manifest)].sort()).toEqual(["/boards", "/campaigns", "/contracts", "/deals", "/inbox", "/inbox/ai-agent", "/inbox/voip", "/leads", "/mtm", "/mtm/attendance", "/quotes", "/tickets"])
   })
 
   it("never applies an effect twice: replaying a transition on the same records is a no-op", () => {

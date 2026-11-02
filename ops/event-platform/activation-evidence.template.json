@@ -13,7 +13,14 @@
     "encryptionAtRest": false,
     "privateEndpoints": false,
     "backupDrTested": false,
-    "bootstrapServers": []
+    "bootstrapServers": [],
+    "capacityVerified": false,
+    "placementVerified": false,
+    "aclNegativeTestsVerified": false,
+    "effectiveTopicConfigsVerified": false,
+    "infrastructureEvidenceId": "",
+    "replicationFactor": 0,
+    "minInSyncReplicas": 0
   },
   "connect": {
     "imageDigest": "__SHA256_IMAGE_DIGEST__",
@@ -21,7 +28,8 @@
     "outboxRouterVerified": false,
     "acksAllVerified": false,
     "idempotenceVerified": false,
-    "internalTopicReplicationFactor": 0
+    "internalTopicReplicationFactor": 0,
+    "outsideWebHostVerified": false
   },
   "registry": {
     "privateEndpoint": false,
@@ -34,7 +42,15 @@
     "restoreVerified": false,
     "walLevel": "replica",
     "maxSlotWalKeepSizeBytes": 0,
-    "capacityApproved": false
+    "capacityApproved": false,
+    "peakWalBytesPerSecond": 0,
+    "maxOutageSeconds": 0,
+    "walWarningBytes": 0,
+    "walStopBytes": 0,
+    "walDiskBudgetBytes": 0,
+    "checkpointOvershootBytes": 0,
+    "cdcStopDrillVerified": false,
+    "walBudgetEvidenceId": ""
   },
   "archive": {
     "immutable": false,
@@ -50,7 +66,10 @@
     "consumerLag": false,
     "schemaRejections": false,
     "quarantineRate": false,
-    "tenantProjectionParity": false
+    "tenantProjectionParity": false,
+    "brokerFreeSpace": false,
+    "minIsr": false,
+    "alertDeliveryVerified": false
   },
   "drill": {
     "evidenceId": "__NON_PRODUCTION_DRILL_EVIDENCE_ID__",

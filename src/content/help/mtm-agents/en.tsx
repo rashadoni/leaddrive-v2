@@ -22,7 +22,7 @@ export default function MtmAgentsHelpEn() {
       <HelpSection title="Why this matters">
         <p>
           <strong>Field Agents</strong> is the roster of people who run the Route &amp; Field
-          module from their phones — the field reps and supervisors who visit customer points,
+          module from their phones — the field reps and admins who visit customer points,
           check in, complete field tasks, and take visit photos. Everything those agents do in
           the mobile app is tied back to a record you create here.
         </p>
@@ -42,7 +42,7 @@ export default function MtmAgentsHelpEn() {
           <HelpDef term="Total Agents">Every agent record in your organization.</HelpDef>
           <HelpDef term="Active">Agents whose status is <em>Active</em>.</HelpDef>
           <HelpDef term="Online">Agents currently signed in on the mobile app (a live presence flag).</HelpDef>
-          <HelpDef term="Managers">Agents with the <em>Manager</em> or <em>Supervisor</em> role.</HelpDef>
+          <HelpDef term="Managers">Agents with the <em>Manager</em> or <em>Admin</em> role.</HelpDef>
         </dl>
         <p>
           Below the counters, each agent is a card: an avatar initial, their name with a live{" "}
@@ -85,7 +85,7 @@ export default function MtmAgentsHelpEn() {
           <HelpDef term="Name">Required.</HelpDef>
           <HelpDef term="Email / Phone">Both optional. Email is unique per organization — you can&apos;t reuse one across two agents in the same tenant.</HelpDef>
           <HelpDef term="Password">The agent&apos;s mobile-app login. Required on create (at least 12 characters with uppercase, lowercase, a number and a special character); on edit, leave it blank to keep the current one.</HelpDef>
-          <HelpDef term="Role">Agent, Supervisor, or Manager.</HelpDef>
+          <HelpDef term="Role">Agent, Admin, or Manager.</HelpDef>
           <HelpDef term="Status">Active, Inactive, or Suspended.</HelpDef>
           <HelpDef term="Manager">Who this agent reports to — picked from the existing roster (an agent can&apos;t be their own manager).</HelpDef>
         </dl>
@@ -100,7 +100,7 @@ export default function MtmAgentsHelpEn() {
 
       <HelpSection title="Roles &amp; the reporting line">
         <p>
-          The <strong>Manager</strong> field builds a reporting hierarchy: a Supervisor or Manager
+          The <strong>Manager</strong> field builds a reporting hierarchy: a Admin or Manager
           sits above a group of Agents. That chain isn&apos;t cosmetic — it drives{" "}
           <strong>territory scope</strong> in the mobile app.
         </p>
@@ -113,7 +113,7 @@ export default function MtmAgentsHelpEn() {
         <HelpStep n={2}>
           <p>
             On <strong>mobile</strong>, scope narrows by role: a <em>Manager</em> or{" "}
-            <em>Supervisor</em> sees their own team or region, while an <em>Agent</em> sees only
+            <em>Admin</em> sees their own team or region, while an <em>Agent</em> sees only
             themselves. The chain you set here is exactly what decides that.
           </p>
         </HelpStep>

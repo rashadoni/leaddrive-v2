@@ -137,7 +137,7 @@ export function CompanyMonitoringLink({ companyId, companyName }: { companyId: s
   if (unavailable) return null
   if (loadError) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-800">
+      <div className="rounded-xl border border-border bg-card p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Radio className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <span className="text-sm font-semibold">{t("title")}</span>
@@ -158,7 +158,7 @@ export function CompanyMonitoringLink({ companyId, companyName }: { companyId: s
   if (linked === null) return null
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-800">
+    <div className="rounded-xl border border-border bg-card p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Radio className="h-4 w-4 text-primary" aria-hidden="true" />
         <span className="text-sm font-semibold">{t("title")}</span>

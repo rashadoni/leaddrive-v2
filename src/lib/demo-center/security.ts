@@ -3,11 +3,7 @@ import { generateOneTimeToken, hashOneTimeToken } from "@/lib/one-time-token"
 
 const DEMO_SESSION_COOKIE_PREFIX = "ld_demo_session_"
 const DEMO_VERIFICATION_COOKIE_PREFIX = "ld_demo_verified_"
-export const DEMO_OTP_TTL_MS = 10 * 60 * 1000
 export const DEMO_VERIFICATION_TTL_MS = 15 * 60 * 1000
-export const DEMO_OTP_RESEND_COOLDOWN_MS = 60 * 1000
-export const DEMO_MAX_OTP_ATTEMPTS = 5
-export const DEMO_MAX_OTP_SENDS = 5
 
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase()

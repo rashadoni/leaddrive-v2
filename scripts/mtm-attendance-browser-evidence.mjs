@@ -18,14 +18,31 @@ assert.match(head ?? '', /^[a-f0-9]{40}$/)
 assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), head)
 const output = process.env.MTM_E2E_OUTPUT || 'artifacts/mtm-attendance-e2e'
 await mkdir(output, { recursive: true })
-const messages = JSON.parse(await readFile('messages/en.json', 'utf8')).mtmAttendance
+const english = JSON.parse(await readFile('messages/en.json', 'utf8'))
+const messages = english.mtmAttendance
+/** Personnel labels (`personnel.*`), for the screens rebuilt on 2026-10-14. */
+const pt = key => { const value = key.split('.').reduce((node, part) => node?.[part], english.personnel); assert.equal(typeof value, 'string', `Missing label personnel.${key}`); return value }
+/** The branch screen's own labels (`attendanceBranchScreen.*`). */
+const st = key => { const value = english.attendanceBranchScreen?.[key]; assert.equal(typeof value, 'string', `Missing label attendanceBranchScreen.${key}`); return value }
 const t = (key, vars = {}) => {
   assert.equal(typeof messages[key], 'string', `Missing label ${key}`)
   return messages[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
 }
-const routes = ['', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
-const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
+const routes = ['', 'timesheet', 'settings', 'requests', 'decisions', 'employees', 'branches', 'branches/report', 'shifts', 'leave-balances', 'months', 'installations', 'branch-qr', 'review', 'location-settings', 'recordings']
+// The former pages are tabs of the four Personnel destinations now. Each route
+// key keeps its case name; the value is [address, sidebar destination].
+const destinations = {
+  '': ['', ''], timesheet: ['timesheet', 'timesheet'], settings: ['settings?tab=hours', 'settings'], requests: ['requests', ''],
+  decisions: ['timesheet?view=decisions', 'timesheet'], employees: ['people?tab=employees', 'people'], branches: ['people?tab=branches', 'people'],
+  'branches/report': ['timesheet?view=branches', 'timesheet'], shifts: ['settings?tab=shifts', 'settings'], 'leave-balances': ['settings?tab=leave', 'settings'],
+  months: ['timesheet?view=months', 'timesheet'], installations: ['people?tab=phones', 'people'], 'branch-qr': ['settings?tab=qr', 'settings'],
+  review: ['review', ''], 'location-settings': ['settings?tab=location', 'settings'], recordings: ['recordings', null],
+  'day-kinds': ['settings?tab=day-kinds', 'settings'], 'request-limits': ['settings?tab=requests', 'settings'], 'hr-access': ['settings?tab=access', 'settings'],
+}
+const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/reports', '/mtm/attendance/settings']
+const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-branch-screen-pair-show-revoke', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
 caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
+caseNames.push('employee-explanations-authentication', 'browser-existing-crm-phone-hire')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -107,9 +124,29 @@ function playwrightFocusSession(targetPage) {
   return frame._client
 }
 async function readyPage(path) {
-  await page.goto(`/mtm/attendance${path ? `/${path}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+  const target = path in destinations ? destinations[path][0] : path
+  await page.goto(`/mtm/attendance${target ? `/${target}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
   await page.locator('h1').first().waitFor({ timeout: 120000 })
   await poll(async () => !(await page.locator('[aria-busy="true"]').count()), 'Page still busy', 120000)
+}
+// Explicit Personnel staff; a technical CRM card alone is not a directory entry.
+const rosterCard = name => fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId: fixture.organization.id, name } })
+/** Closed months pick a month with arrows (the browser's month input printed English in Azerbaijani). */
+async function chooseMonth(target) {
+  const picker = page.getByTestId('attendance-months-picker')
+  for (let step = 0; step < 36 && await picker.getAttribute('data-month') !== target; step++) {
+    await picker.getByRole('button', { name: pt((await picker.getAttribute('data-month')) > target ? 'previousMonth' : 'nextMonth'), exact: true }).click()
+  }
+  assert.equal(await picker.getAttribute('data-month'), target)
+}
+async function openTimesheetExtras() {
+  await readyPage('timesheet')
+  // Saved forms and deliveries open from the timesheet's "More" menu.
+  if (!(await page.getByTestId('attendance-timesheet-extras').count())) {
+    await page.getByTestId('attendance-timesheet-more').click()
+    await page.getByRole('menuitem', { name: pt('customFormAndDelivery'), exact: true }).click()
+  }
+  await page.getByTestId('attendance-personal-views').waitFor({ timeout: 120000 })
 }
 async function readyLeaveBalances() {
   const started = Date.now()
@@ -126,6 +163,18 @@ async function readyLeaveBalances() {
   }
   assert.ok(body.data.rows.length)
   await page.getByTestId('leave-row').first().waitFor()
+}
+/** Filters apply themselves (2026-10-16): wait for the read whose query carries the final values. */
+async function filterResponse(action, path, expected) {
+  const waiting = page.waitForResponse(response => {
+    const url = new URL(response.url())
+    return url.pathname === path && response.request().method() === 'GET' && Object.entries(expected).every(([key, value]) => url.searchParams.get(key) === value)
+  }, { timeout: 120000 })
+  void waiting.catch(() => {})
+  await action()
+  const response = await waiting
+  assert.equal(response.status(), 200, 'Filtered read succeeds')
+  return response
 }
 async function clickResponse(locator, path, method = 'POST', status = 200, parseBody = true) {
   const waiting = page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method, { timeout: 120000 })
@@ -212,6 +261,13 @@ try {
     assert.equal(await fixture.admin.mtmAgentWorkdayEvent.count({ where: { workdayId } }), 4)
     await assert.rejects(() => fixture.admin.mtmAgentWorkday.update({ where: { id: workdayId }, data: { completedAt: new Date() } }))
     state.workdayId = workdayId
+    const marks = await mobile('employee', `/marks?workdayId=${encodeURIComponent(workdayId)}`)
+    assert.deepEqual(marks.items.map(item => item.action), ['START', 'PAUSE', 'RESUME', 'FINISH'])
+    assert.ok(marks.items.every(item => item.location.coordinates === null && item.qr === null))
+    assert.ok(!/installationId|requestHash|nonceFingerprint/.test(JSON.stringify(marks)))
+    state.ownMarks = marks
+    await mobile('employee', `/marks?workdayId=${randomUUID()}`, { status: 404 })
+    await mobile('field', `/marks?workdayId=${encodeURIComponent(workdayId)}`, { status: 403 })
     return { transitions: 4, exactOperationRetries: 4, persistedEvents: 4 }
   })
   await run('report-scope-exports', 'authenticated-http', async () => {
@@ -284,9 +340,13 @@ try {
     await api('admin', '/request-limits', { method: 'PUT', body: { version: updated.version, monthlyMinutes: -1, monthlyRequests: 4 }, status: 400 })
   })
   await run('employee-participation', 'authenticated-http+database', async () => {
-    const before = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })
+    // Owner, 2026-10-14: a field agent's day is the field manager's, not HR
+    // attendance — it is not in the directory; office staff are.
+    const before = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.manager.id } })
     const directory = await api('admin', '/employees')
-    assert.equal(directory.employees.length, 58)
+    assert.equal(directory.employees.length, 54)
+    assert.equal(directory.employees.some(row => row.id === fixture.agents.field.id), false)
+    for (const name of ['admin', 'hr', 'outside']) assert.equal(directory.employees.some(row => row.id === fixture.agents[name].id), false)
     assert.ok(directory.employees.every(row => row.included))
     assert.ok(directory.employees.every(row => row.history.length === 0))
     const row = directory.employees.find(row => row.id === before.id)
@@ -298,11 +358,23 @@ try {
     const after = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: before.id } })
     assert.equal(after.attendanceExcluded, true)
     for (const key of ['role', 'teamId', 'userId', 'passwordHash', 'canPlanOwnRoutes', 'canSelfPublishRoutes']) assert.equal(after[key], before[key])
-    // Field operations remain usable; attendance-specific self requests deny.
+    // A field agent has no HR requests at all (owner, 2026-10-20).
     await mobile('field', '/requests', { status: 403 })
     await request(mobiles.field, '/api/v1/mtm/mobile/bootstrap')
     await api('admin', '/employees/participation', { method: 'POST', body: { ...input, clientRequestId: randomUUID(), included: true, previousEventId: result.eventId } })
     assert.equal((await api('admin', '/employees')).employees.find(row => row.id === before.id).included, true)
+  })
+  await run('employee-explanations-authentication', 'authenticated-http', async () => {
+    const before = await mobile('employee', '/explanations')
+    assert.equal(before.today, today)
+    assert.ok(Array.isArray(before.items) && Array.isArray(before.candidates))
+    const rejected = await mobile('employee', '/explanations', {
+      method: 'POST', body: { date: date(-1), kind: 'ABSENT', text: '' }, status: 400, raw: true,
+    })
+    assert.equal((await rejected.json()).code, 'MTM_ATTENDANCE_EXPLANATION_INVALID')
+    assert.deepEqual(await mobile('employee', '/explanations'), before)
+    await mobile('field', '/explanations', { status: 403 })
+    return { realOfficeJwt: true, ownRead: true, invalidAnswerRejectedWithoutWrite: true, fieldAgentDenied: true }
   })
   await run('employment-history', 'authenticated-http+database', async () => {
     const base = { agentId: fixture.agents.outside.id, reason: 'Fictional employment history', previousEventId: null }
@@ -361,6 +433,13 @@ try {
     for (const status of ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']) await api('admin', `/requests?status=${status}`)
     state.uiApprove = await submit('ANNUAL_LEAVE', 23)
     state.uiReject = await submit('SICK_LEAVE', 24)
+    const time = instant => new Intl.DateTimeFormat('en-GB', { timeZone: state.ownMarks.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(instant))
+    const end = new Date(Date.parse(state.ownMarks.items.at(-1).claimedAt) + 60000)
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: state.ownMarks.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(end)
+    const part = key => parts.find(item => item.type === key).value
+    const correction = { clientRequestId: randomUUID(), kind: 'TIME_CORRECTION', unit: 'HOURS', startDate: state.ownMarks.workDate, endDate: `${part('year')}-${part('month')}-${part('day')}`,
+      startTime: time(state.ownMarks.items[0].claimedAt), endTime: time(end), reason: 'Fictional browser correction context', attachmentIds: [] }
+    state.uiCorrection = (await mobile('employee', '/requests', { method: 'POST', body: correction, status: 201 })).request
     const own = await mobile('employee', '/requests')
     assert.ok(own.items.some(row => row.id === cancelled.id && row.status === 'CANCELLED'))
     return { submitReplay: true, reviewerScope: true, approveRejectRevokeCancel: true }
@@ -376,7 +455,9 @@ try {
     assert.equal(report.rows.filter(row => input.agentIds.includes(row.employeeId) && row.kind === 'APPROVED_REQUEST').length, 2)
   })
   await run('installation-decisions', 'mobile-http+authenticated-http', async () => {
-    for (const [role, action] of [['employee', 'APPROVE'], ['field', 'REJECT']]) {
+    // A field agent's day is not HR attendance: no phone approval for it.
+    await mobile('field', '/installation', { method: 'POST', body: { requestId: randomUUID() }, status: 403 })
+    for (const [role, action] of [['employee', 'APPROVE'], ['employee', 'REJECT']]) {
       await mobile(role, '/installation', { method: 'POST', body: { requestId: randomUUID() } })
       const queue = await api('admin', '/installations?status=PENDING')
       const row = queue.items.find(item => item.employeeId === fixture.agents[role].id)
@@ -451,7 +532,7 @@ try {
     assert.equal((await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })).status, 'COMPLETED')
     return { detector: 'synthetic seeded case; detector logic NOT_RUN here', reviewPreservesWorkday: true }
   })
-  const pageEndpoints = { '': '/report', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
+  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-screens', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
   for (const route of routes) await run(`page:${route || 'report'}`, 'browser-navigation', async () => {
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}${pageEndpoints[route]}` && response.request().method() === 'GET', { timeout: 120000 })
     void loaded.catch(() => {})
@@ -461,35 +542,66 @@ try {
     assert.equal(errors.filter(text => [t('reportLoadError'), t('reportAccessUnavailable')].includes(text.trim())).length, 0)
     // Inventory is evidence of discoverable controls, not a claim they were clicked.
     const controls = await page.locator('main button, main a, main input, main select, main textarea').evaluateAll(elements => elements.map(element => ({ tag: element.tagName.toLowerCase(), role: element.getAttribute('role'), type: element.getAttribute('type'), name: (element.getAttribute('aria-label') || element.textContent || '').trim().slice(0, 160), href: element.getAttribute('href'), disabled: element.hasAttribute('disabled') })))
-    manifest.controls.push({ route: `/mtm/attendance${route ? `/${route}` : ''}`, coverage: 'inventory-only; see named action cases for exercised controls', controls })
+    manifest.controls.push({ route: `/mtm/attendance${destinations[route][0] ? `/${destinations[route][0]}` : ''}`, coverage: 'inventory-only; see named action cases for exercised controls', controls })
     await page.screenshot({ path: `${output}/page-${route.replaceAll('/', '-') || 'report'}.png`, fullPage: false })
-    if (route !== 'recordings') {
-      const link = page.locator(`aside a[href="/mtm/attendance${route ? `/${route}` : ''}"]`)
-      assert.equal(await link.count(), 1, 'Exactly one HR sidebar destination')
+    const section = destinations[route][1]
+    if (section !== null) {
+      const link = page.locator(`aside a[href="/mtm/attendance${section ? `/${section}` : ''}"]`)
+      // The section appears once the organization's attendance switch is
+      // known (it stays hidden while loading), so wait for it before counting.
+      await link.first().waitFor({ state: 'attached', timeout: 120000 })
+      assert.equal(await link.count(), 1, 'Exactly one Personnel sidebar destination')
       assert.equal(await link.getAttribute('aria-current'), 'page')
     }
     return { headingVisible: true, realDataRead: true, controlsInventoried: controls.length }
   })
   await run('browser-report-tabs-filters-pagination', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
-    await page.getByTestId('attendance-day-table').waitFor()
-    assert.equal(await page.getByTestId('attendance-day-row').count(), 50)
+    await readyPage('timesheet')
+    // One screen (owner, 2026-10-14): the month opens at once, without a tab row.
+    await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    assert.equal(await page.getByTestId('attendance-tabs').count(), 0)
+    const people = () => page.getByTestId('attendance-month-person')
+    assert.equal(await people().count(), 50)
+    const firstPerson = await people().first().innerText()
     await button('reportNext').click()
-    await poll(async () => (await page.getByTestId('attendance-day-row').count()) < 50, 'Report next page')
+    await poll(async () => await people().first().innerText() !== firstPerson, 'Timesheet next page')
     await button('reportPrevious').click()
-    for (const key of ['reportMonth', 'reportLateEarly', 'reportAbsences', 'overtimeTitle', 'reportJournal', 'reportDay']) {
-      const tab = button(key, page.getByRole('group', { name: t('reportForm'), exact: true }))
-      await tab.click()
-      assert.equal(await tab.getAttribute('aria-pressed'), 'true')
-      if (key === 'reportMonth') await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    await poll(async () => await people().first().innerText() === firstPerson, 'Timesheet previous page')
+    // Each deviation is a filter button whose count is the people it keeps.
+    const filters = {}
+    for (const kind of ['late', 'absent', 'missing-finish', 'overtime']) {
+      const filter = page.getByTestId(`attendance-filter-${kind}`)
+      const expected = Number((await filter.innerText()).match(/(\d+)\s*$/)?.[1])
+      assert.ok(Number.isInteger(expected), `Filter ${kind} shows a count`)
+      await filter.click()
+      await poll(async () => await filter.getAttribute('aria-pressed') === 'true', `Filter ${kind} on`)
+      await poll(async () => await people().count() === Math.min(expected, 50), `Filter ${kind} keeps its people`, 120000)
+      await filter.click()
+      await poll(async () => await filter.getAttribute('aria-pressed') === 'false', `Filter ${kind} off`)
+      filters[kind] = expected
     }
-    await page.locator('#attendance-report-from').fill(today)
-    await page.locator('#attendance-report-to').fill(today)
-    await clickResponse(button('reportApply'), `${apiRoot}/report`, 'GET')
-    await page.locator('#attendance-report-team').selectOption(fixture.team.id)
-    await page.locator('#attendance-report-employee').selectOption(fixture.agents.employee.id)
-    assert.equal(await page.getByTestId('attendance-day-row').count(), 1)
-    assert.ok((await page.getByTestId('attendance-day-row').innerText()).includes(fixture.users.employee.name))
+    // The day card opens from a real cell with the marks and one action.
+    await page.getByTestId('attendance-month-cell').first().click()
+    const card = page.getByTestId('attendance-day-popover')
+    await card.waitFor()
+    assert.equal(await card.locator('a').count(), 1)
+    await page.keyboard.press('Escape')
+    // The month arrows reload the report for the previous month by themselves.
+    const previousMonth = `${new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1, 12)).toISOString().slice(0, 7)}-01`
+    const reloaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/report` && response.request().method() === 'GET'
+      && new URL(response.url()).searchParams.get('from') === previousMonth, { timeout: 120000 })
+    await page.getByRole('button', { name: pt('previousMonth'), exact: true }).click()
+    assert.equal((await reloaded).status(), 200)
+    await page.getByRole('button', { name: pt('nextMonth'), exact: true }).click()
+    await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    // Scope to the timesheet: the sidebar has its own menu search field.
+    const sheet = page.getByTestId('attendance-timesheet')
+    const team = sheet.locator(`select[aria-label="${t('reportTeam')}"]`)
+    await team.selectOption(fixture.team.id)
+    await poll(async () => await team.inputValue() === fixture.team.id, 'Team filter applied')
+    await sheet.locator('input[type="search"]').fill(fixture.users.employee.name)
+    await poll(async () => (await people().count()) === 1, 'Search narrows to one employee')
+    assert.ok((await people().innerText()).includes(fixture.users.employee.name))
     // A real file download follows the button and confirms the browser flow.
     for (const key of ['exportExcel', 'exportPdf']) {
       const download = page.waitForEvent('download', { timeout: 120000 })
@@ -498,14 +610,17 @@ try {
       assert.equal(await file.failure(), null)
       assert.match(file.suggestedFilename(), key === 'exportPdf' ? /\.pdf$/i : /\.xlsx$/i)
     }
-    await page.locator('#attendance-report-from').fill(date(2))
-    await page.locator('#attendance-report-to').fill(today)
-    await button('reportApply').click()
-    assert.ok(await page.locator('[role="alert"]').count())
-    return { reportTabs: 6, pagination: true, teamEmployeeFilter: true, browserDownloads: 2, invalidRange: true }
+    // Rarer reports sit under "More" and come back to the timesheet.
+    await page.getByTestId('attendance-timesheet-more').click()
+    for (const view of ['branches', 'decisions', 'months']) assert.equal(await page.getByRole('menuitem', { name: pt(`tabs.${view}`), exact: true }).count(), 1)
+    await page.getByRole('menuitem', { name: pt('tabs.decisions'), exact: true }).click()
+    await page.waitForURL(url => url.searchParams.get('view') === 'decisions', { timeout: 120000 })
+    await page.getByTestId('attendance-back-to-timesheet').click()
+    await page.getByTestId('attendance-month-grid').waitFor({ timeout: 120000 })
+    return { oneScreen: true, filters, monthDayCard: true, pagination: true, monthArrows: true, teamAndSearchFilter: true, browserDownloads: 2, moreMenu: 3 }
   })
   await run('browser-views-save-rename-delete-cancel', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await openTimesheetExtras()
     const section = page.getByTestId('attendance-personal-views')
     await section.locator('#attendance-view-name').fill('Fixture browser form')
     await clickResponse(button('viewsSave', section), `${apiRoot}/views`)
@@ -527,30 +642,38 @@ try {
     return { createdRenamedOpenedDeleted: true, deleteCancellation: true }
   })
   await run('browser-employee-search-switch-history', 'browser-action+database-backed-http', async () => {
+    // Owner, 2026-10-16: the list finds a person, «Edit» opens their page, «back» returns to the same list.
     await readyPage('employees')
     await page.getByTestId('employee-row').first().waitFor()
-    assert.equal(await page.getByTestId('employee-row').count(), 25)
+    await page.locator('#employee-search').fill('Fixture admin')
+    assert.equal(await page.getByTestId('employee-row').count(), 0)
+    await page.locator('#employee-search').fill('')
+    assert.equal(await page.getByTestId('employee-row').count(), 50)
     await button('employeesNext').click(); await button('employeesPrevious').click()
-    await page.locator('#employee-search').fill(fixture.users.field.name)
+    await page.locator('#employee-search').fill('Fixture roster 00')
     const row = page.getByTestId('employee-row')
     assert.equal(await row.count(), 1)
-    const toggle = row.getByRole('switch')
+    await poll(async () => new URL(page.url()).searchParams.get('q') === 'Fixture roster 00', 'Search kept in the address')
+    await row.getByRole('link', { name: pt('employeeEditNamed').replace('{name}', 'Fixture roster 00'), exact: true }).click()
+    await page.getByTestId('attendance-employee-page').waitFor()
+    await page.getByTestId('employee-preparation').waitFor()
+    assert.ok((await page.getByTestId('employee-preparation').innerText()).includes(pt('preparation.noFakeMark')))
+    assert.equal(await page.getByTestId('employee-preparation-phone').count(), 1)
+    await page.getByTestId('employee-preparation').screenshot({ path: `${output}/employee-preparation.png` })
+    const toggle = page.getByRole('switch')
     assert.equal(await toggle.getAttribute('aria-checked'), 'true')
     await clickResponse(toggle, `${apiRoot}/employees/participation`)
     await poll(async () => await toggle.getAttribute('aria-checked') === 'false' && await toggle.isEnabled(), 'Exclusion confirmed')
-    await page.locator('#employee-participation').selectOption('INCLUDED')
-    assert.equal(await row.count(), 0)
+    await clickResponse(toggle, `${apiRoot}/employees/participation`)
+    await poll(async () => await toggle.getAttribute('aria-checked') === 'true' && await toggle.isEnabled(), 'Inclusion confirmed')
+    await page.getByTestId('attendance-employee-back').click()
+    await row.first().waitFor()
+    assert.equal(await page.locator('#employee-search').inputValue(), 'Fixture roster 00')
     await page.locator('#employee-participation').selectOption('EXCLUDED')
-    await row.waitFor()
-    await clickResponse(row.getByRole('switch'), `${apiRoot}/employees/participation`)
+    assert.equal(await row.count(), 0)
     await page.locator('#employee-participation').selectOption('ALL')
-    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: fixture.users.field.name }) }).click()
-    const history = page.getByTestId('employees-history')
-    await history.waitFor()
-    await button('employeesClose', history).click()
-    assert.equal(await history.count(), 0)
-    assert.equal((await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })).role, 'AGENT')
-    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, historyOpenClose: true }
+    assert.equal((await rosterCard('Fixture roster 00')).role, 'EMPLOYEE')
+    return { pagination: true, search: true, inclusionFilter: true, switchRoundTrip: true, employeePageAndBack: true, employeePreparation: true }
   })
   await run('browser-branch-create-edit-archive-cancel', 'browser-action+database-backed-http', async () => {
     await readyPage('branches')
@@ -590,74 +713,140 @@ try {
     const own = await mobile('employee', '/requests')
     assert.equal(own.items.find(item => item.id === state.uiApprove.id).status, 'CANCELLED')
     assert.equal(own.items.find(item => item.id === state.uiReject.id).status, 'REJECTED')
+    row = page.getByTestId(`attendance-request-${state.uiCorrection.id}`)
+    await button('requestsOpen', row).click()
+    const comparison = row.getByTestId('attendance-correction-comparison')
+    await comparison.waitFor()
+    assert.ok((await comparison.innerText()).includes(t('correctionBefore')))
+    assert.ok((await comparison.innerText()).includes(t('correctionProposed')))
+    assert.equal(await comparison.locator('a').getAttribute('href'), `/mtm/attendance/timesheet?date=${state.ownMarks.workDate}&employeeId=${fixture.agents.employee.id}`)
+    await page.getByTestId('attendance-requests-freshness').waitFor()
+    await comparison.screenshot({ path: `${output}/correction-comparison.png` })
+    await row.locator('textarea').fill('Fictional correction rejected with context')
+    await clickResponse(button('requestsReject', row), `${apiRoot}/requests/${state.uiCorrection.id}/decision`)
+    const correctionResult = (await mobile('employee', '/requests')).items.find(item => item.id === state.uiCorrection.id)
+    assert.equal(correctionResult.status, 'REJECTED')
+    assert.equal(correctionResult.decisionNote, 'Fictional correction rejected with context')
+    return { correctionComparison: true, correctionDecisionReturnedToEmployee: true }
   })
-  await run('browser-qr-toggle-refresh-hide', 'browser-action+database-backed-http', async () => {
+  await run('browser-qr-branch-screen-pair-show-revoke', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
     await readyPage('branch-qr')
     const toggle = page.getByRole('switch', { name: t('qrRule') })
     assert.equal(await toggle.getAttribute('aria-checked'), 'false')
-    let visibilitySession, windowId
+    let kioskContext, visibilitySession, windowId
     try {
       // The component aborts the old PUT response while loading its new state.
       // Prove the real status and resulting state without reading a discarded body.
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'true', 'QR enabled')
       assert.equal((await api('admin', '/branch-qr')).enabled, true)
-      const qr = page.getByRole('img', { name: t('qrImageAlt') })
+      // A signed-in browser shows no code and cannot mint one (owner, 2026-10-29).
+      assert.equal(await page.locator('main img').count(), 0)
+      await api('admin', '/branch-qr', { method: 'POST', body: { branchId: state.branch.id }, status: 410 })
+      const row = page.getByTestId('attendance-qr-branch').filter({ hasText: state.branch.name })
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 120000 })
+      const pairing = await clickResponse(button('qrScreenPair', row), `${apiRoot}/branch-screens`)
+      assert.equal(await row.getByTestId('attendance-qr-pairing-code').textContent(), pairing.code)
+      // The tablet at the branch: a browser with no CRM session at all, standing
+      // at the branch's current point (owner, 2026-10-30: a screen elsewhere gets no code).
+      const point = await fixture.admin.mtmAttendanceBranchRevision.findFirst({ where: { branchId: state.branch.id }, orderBy: { version: 'desc' }, select: { latitude: true, longitude: true } })
+      const atBranch = { latitude: point.latitude, longitude: point.longitude, accuracy: 15 }
+      kioskContext = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1024, height: 768 }, locale: 'en-US', permissions: ['geolocation'], geolocation: atBranch })
+      await kioskContext.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort())
+      const kiosk = await kioskContext.newPage()
+      await kiosk.goto('/screen?lang=en', { waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      await kiosk.locator('#branch-screen-code').fill(pairing.code.toLowerCase())
+      const paired = kiosk.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/public/attendance-screen/pair', { timeout: 120000 })
+      void paired.catch(() => {})
+      await kiosk.getByRole('button', { name: st('pairButton'), exact: true }).click()
+      assert.equal((await paired).status(), 200)
+      const qr = kiosk.getByRole('img', { name: st('qrAlt') })
       await qr.waitFor({ timeout: 120000 })
       assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
-      await button('qrRefresh').click()
-      await qr.waitFor({ timeout: 120000 })
+      assert.equal(await kiosk.getByTestId('branch-screen-branch').textContent(), state.branch.name)
+      // The secret is an httpOnly cookie of the screen's own routes: no script reads it.
+      assert.equal(await kiosk.evaluate(() => document.cookie.includes('ld_branch_screen')), false)
+      const [cookie] = (await kioskContext.cookies()).filter(item => item.name === 'ld_branch_screen')
+      assert.equal(cookie?.httpOnly, true); assert.equal(cookie?.path, '/api/v1/public/attendance-screen')
+      await row.getByText(t('qrScreenJustPaired'), { exact: true }).waitFor({ timeout: 30000 })
+      await kiosk.screenshot({ path: `${output}/branch-screen-qr.png`, fullPage: false })
       // Release Playwright's own per-session capture handle before minimizing
       // the native window. A separate CDP session cannot undo that override.
       // Never assign document.visibilityState or dispatch synthetic events.
-      visibilitySession = playwrightFocusSession(page)
+      visibilitySession = playwrightFocusSession(kiosk)
       await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
       ;({ windowId } = await visibilitySession.send('Browser.getWindowForTarget'))
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } })
       await poll(async () => (await visibilitySession.send('Browser.getWindowBounds', { windowId })).bounds.windowState === 'minimized', 'Native Chromium window minimized')
       await poll(async () => {
-        const visibilityState = await page.evaluate(() => document.visibilityState)
-        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session' }
+        const visibilityState = await kiosk.evaluate(() => document.visibilityState)
+        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session', page: 'branch screen' }
         return visibilityState === 'hidden'
       }, 'QR native window background visibility')
       await poll(async () => await qr.count() === 0, 'QR hidden in background')
       manifest.qrLifecycle.qrAbsentWhileHidden = true
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-      await page.bringToFront()
-      await poll(async () => await page.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
+      await kiosk.bringToFront()
+      await poll(async () => await kiosk.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
       await qr.waitFor({ timeout: 120000 })
       manifest.qrLifecycle.qrRestoredInForeground = true
+      // Carried ~3 km away: at its next refresh the screen shows no code and
+      // says why; the administrator's list marks it; back at the branch the code returns.
+      await kioskContext.setGeolocation({ ...atBranch, latitude: atBranch.latitude + 0.03 })
+      await kiosk.getByTestId('branch-screen-away').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      assert.ok((await kiosk.getByTestId('branch-screen-away').textContent()).includes(st('notAtBranchTitle')))
+      const awayPlace = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens[0].place
+      assert.equal(awayPlace.state, 'AWAY'); assert.ok(awayPlace.distanceMeters > 3000)
+      await kiosk.screenshot({ path: `${output}/branch-screen-away.png`, fullPage: false })
+      await kioskContext.setGeolocation(atBranch)
+      await qr.waitFor({ timeout: 120000 })
+      manifest.qrLifecycle.qrWithheldAwayFromBranch = true
+      // Disconnected: the screen's next request is refused and it asks for a code again.
+      const [screen] = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens
+      await button('qrScreenRevoke', row).click()
+      await clickResponse(button('qrScreenRevokeYes', row), `${apiRoot}/branch-screens/${screen.id}/revoke`)
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 30000 })
+      await kiosk.reload({ waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      await page.bringToFront()
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
-      assert.equal(await qr.count(), 0)
     } finally {
       // Failed lifecycle assertions must still leave the disposable policy OFF.
       try {
         await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
       } finally {
-        if (visibilitySession) {
-          try {
-            if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-            await page.bringToFront()
-          } finally {
-            await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+        try {
+          if (visibilitySession) {
+            try {
+              if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
+            } finally {
+              await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+            }
           }
+        } finally {
+          await kioskContext?.close()
+          await page.bringToFront()
         }
       }
     }
-    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
+    return { enabledThenDisabled: true, signedInBrowserGetsNoCode: true, pairedWithoutSignIn: true, secretHttpOnly: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, revokedScreenUnpaired: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await readyPage('request-limits')
     const limits = page.getByTestId('attendance-request-limits')
     await limits.getByRole('button').first().click()
     await page.locator('#attendance-limits-hours').fill('12')
     await page.locator('#attendance-limits-count').fill('5')
     await clickResponse(button('limitsSave', limits), `${apiRoot}/request-limits`, 'PUT')
     assert.equal((await api('admin', '/request-limits')).monthlyMinutes, 720)
+    await readyPage('day-kinds')
     const kinds = page.getByTestId('attendance-day-kinds')
-    await button('kindsOpen', kinds).click()
+    // Settings opens the editor itself (2026-10-16): no «Open» button.
     await button('kindsAdd', kinds).click()
     await button('kindsCancel', page.getByTestId('attendance-kind-editor')).click()
     await button('kindsPresetRu', kinds).click()
@@ -668,6 +857,7 @@ try {
     await page.locator('#attendance-kind-name-en').fill('Fixture browser remote')
     await clickResponse(button('kindsSave', page.getByTestId('attendance-kind-editor')), `${apiRoot}/day-kinds`, 'PUT')
     assert.equal((await api('admin', '/day-kinds')).items.find(item => item.key === 'REMOTE_WORK').names.en, 'Fixture browser remote')
+    await readyPage('hr-access')
     const hr = page.getByTestId('attendance-hr-access')
     await hr.getByRole('button').first().click()
     await page.locator('#attendance-hr-search').fill('Fixture hr')
@@ -679,7 +869,7 @@ try {
     return { limitsSaved: true, catalogueEdited: true, presetCancelled: true, hrSearchRevokeCancelled: true }
   })
   await run('browser-delivery-create-edit-cancel-delete', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await openTimesheetExtras()
     const section = page.getByTestId('attendance-deliveries')
     await section.getByRole('button').first().click()
     await button('deliveryNew', section).click()
@@ -716,8 +906,7 @@ try {
     await readyPage('decisions')
     await page.locator('#attendance-journal-from').fill(today)
     await page.locator('#attendance-journal-to').fill(date(30))
-    await page.locator('#attendance-journal-status').selectOption('APPROVED')
-    await clickResponse(button('journalApply'), `${apiRoot}/decisions`, 'GET')
+    await filterResponse(() => page.locator('#attendance-journal-status').selectOption('APPROVED'), `${apiRoot}/decisions`, { from: today, to: date(30), status: 'APPROVED' })
     await page.getByTestId('attendance-journal-row').first().waitFor()
     const download = page.waitForEvent('download', { timeout: 120000 })
     await button('exportExcel').click(); assert.equal(await (await download).failure(), null)
@@ -754,7 +943,8 @@ try {
     await readyPage('location-settings')
     const editor = page.getByTestId('geo-policy-editor')
     await editor.locator('#geo-text-en').fill('')
-    assert.equal(await editor.getByLabel(t('geoPolicyEnable')).isEnabled(), false)
+    // The double check is chosen above the agreement; it waits for all three texts.
+    assert.equal(await page.getByTestId('geo-policy-status').getByLabel(t('geoPolicyEnable')).isEnabled(), false)
     await clickResponse(button('geoPolicySave', editor), `${apiRoot}/location-policy`)
     assert.equal((await api('admin', '/location-policy')).policy.enabled, false)
     await readyPage('branches/report')
@@ -787,7 +977,7 @@ try {
   await run('browser-month-frozen-download', 'browser-action+database-backed-http', async () => {
     assert.ok(state.closedMonth)
     await readyPage('months')
-    await page.locator('input[type="month"]').fill(state.closedMonth.month)
+    await chooseMonth(state.closedMonth.month)
     await page.getByLabel(t('monthCloseChooseSaved')).selectOption(state.closedMonth.id)
     await button('monthCloseExcel').waitFor()
     for (const key of ['monthCloseExcel', 'monthClosePdf']) {
@@ -797,17 +987,33 @@ try {
     assert.ok(await page.getByText(t('monthCloseFrozen'), { exact: true }).isVisible())
   })
   await run('browser-rules-calendar-crud', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    // Settings is one page of cards (2026-10-14); a card opens its editor.
+    await readyPage('settings?tab=')
+    await page.getByTestId('attendance-settings-hub').waitFor({ timeout: 120000 })
+    // An administrator sees twelve cards: reminders, request approval and the
+    // checks of marks came from MTM → Settings → Company (owner, 2026-10-18, #882).
+    assert.deepEqual(await page.locator('[data-testid^="attendance-settings-card-"]').evaluateAll(cards => cards.map(card => card.dataset.testid.replace('attendance-settings-card-', ''))),
+      ['hours', 'holidays', 'shifts', 'day-kinds', 'reminders', 'leave', 'requests', 'approval', 'qr', 'location', 'checks', 'access'])
+    // The organization switch sits on top of Personnel → Settings (moved from MTM settings).
+    await page.getByTestId('attendance-feature-on').waitFor({ timeout: 120000 })
+    await page.getByTestId('attendance-settings-card-hours').click()
+    await page.waitForURL(url => url.searchParams.get('tab') === 'hours', { timeout: 120000 })
+    await page.getByTestId('attendance-rules').waitFor({ timeout: 120000 })
     const before = await api('admin', '/rules')
     const rules = page.getByTestId('attendance-rules')
     await page.locator('#attendance-start').fill('09:30')
     await page.locator('#attendance-end').fill('18:30')
-    await page.locator('#attendance-lunch').fill('60')
+    // Lunch is a time window (2026-10-16).
+    await page.locator('#attendance-lunch').fill('13:00')
+    await page.locator('#attendance-lunch-end').fill('14:00')
     await page.locator('#attendance-grace').fill('15')
     await page.locator('#attendance-effective-from').fill(before.minEffectiveFrom)
     const savedRule = await clickResponse(button('rulesSave', rules), `${apiRoot}/rules`, 'POST', 201)
     assert.equal(savedRule.startTime, '09:30')
+    assert.equal(savedRule.lunchStart, '13:00'); assert.equal(savedRule.lunchMinutes, 60)
     assert.equal((await api('admin', '/rules')).current.id, before.current.id)
+    // Holidays are their own card now, next to working hours.
+    await readyPage('settings?tab=holidays')
     const calendar = page.getByTestId('attendance-calendar'), calendarDate = date(16)
     await page.locator('#attendance-calendar-year').selectOption(calendarDate.slice(0, 4))
     await page.locator('#attendance-calendar-date').fill(calendarDate)
@@ -827,9 +1033,8 @@ try {
     assert.ok(!(await api('admin', `/calendar?from=${calendarDate}&to=${calendarDate}`)).days.some(day => day.id === holiday.id))
   })
   await run('browser-hr-grant-revoke', 'browser-action+authenticated-http', async () => {
-    await readyPage('')
+    await readyPage('hr-access')
     const section = page.getByTestId('attendance-hr-access')
-    await button('hrOpen', section).click()
     await page.locator('#attendance-hr-search').fill('Fixture hr')
     await clickResponse(button('hrSearch', section), `${apiRoot}/access`, 'GET')
     const row = page.getByTestId('attendance-hr-user').filter({ hasText: 'Fixture hr' })
@@ -839,13 +1044,12 @@ try {
     await row.getByRole('button', { name: t('hrGrantNamed', { name: 'Fixture hr' }) }).click()
     await clickResponse(button('hrConfirmGrant', row), `${apiRoot}/access/${fixture.users.hr.id}`, 'PATCH')
     await api('hr', `/report?from=${today}&to=${today}&form=ALL`)
-    await button('hrClose', section).click()
     return { originalSessionRevokedThenRestored: true }
   })
   await run('browser-kind-create-archive-restore', 'browser-action+database-backed-http', async () => {
-    await readyPage('')
+    await readyPage('day-kinds')
     const kinds = page.getByTestId('attendance-day-kinds')
-    await button('kindsOpen', kinds).click(); await button('kindsAdd', kinds).click()
+    await button('kindsAdd', kinds).click()
     for (const locale of ['az', 'ru', 'en']) await page.locator(`#attendance-kind-name-${locale}`).fill('Fixture browser custom')
     await page.locator('#attendance-kind-code').fill('FXL')
     await page.locator('#attendance-kind-group').selectOption('WORK')
@@ -868,29 +1072,41 @@ try {
   })
   await run('browser-employment-record', 'browser-action+database-backed-http', async () => {
     await readyPage('employees')
-    await page.locator('#employee-search').fill('Fixture field')
-    const row = page.getByTestId('employee-row').filter({ hasText: 'Fixture field' })
-    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture field' }) }).click()
+    await page.locator('#employee-search').fill('Fixture roster 01')
+    const card = await rosterCard('Fixture roster 01')
+    await page.getByTestId('employee-row').filter({ hasText: 'Fixture roster 01' }).getByRole('link', { name: pt('employeeEditNamed').replace('{name}', 'Fixture roster 01'), exact: true }).click()
     const history = page.getByTestId('employees-history')
+    await history.waitFor()
     await page.locator('#employment-kind').selectOption('HIRE')
     await page.locator('#employment-date').fill(date(-90))
     await page.locator('#employment-reason').fill('Fictional documented employment date')
     await clickResponse(button('employeesSaveChange', history), `${apiRoot}/employees/history`)
-    await row.getByRole('button', { name: t('employeesHistoryNamed', { name: 'Fixture field' }) }).click()
     await history.getByTestId('employment-event').waitFor()
-    assert.equal((await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: fixture.agents.field.id } })).role, 'AGENT')
-    await button('employeesClose', history).click()
+    // The job title is saved from the same page.
+    await page.locator('#employee-position').fill('Fixture clerk')
+    await clickResponse(page.getByRole('button', { name: pt('employeeSave'), exact: true }), `${apiRoot}/employees/${card.id}`)
+    const saved = await rosterCard('Fixture roster 01')
+    assert.equal(saved.role, 'EMPLOYEE'); assert.equal(saved.position, 'Fixture clerk')
   })
   await run('browser-primary-branch-assignment', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
     await readyPage('branches'); await button('branchesAssignments').click()
+    // Field agents stay in MTM: the HR branch list does not offer them (#796).
     await page.locator('#branch-employee-search').fill('Fixture field')
     await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
-    const row = page.getByTestId('branch-employee').filter({ hasText: 'Fixture field' })
+    // The response lands before React draws it, and the card is blank meanwhile:
+    // an instant zero proved nothing. Wait for the drawn empty result first.
+    await page.getByTestId('branches-assignments').getByText(t('branchesNoEmployees'), { exact: true }).waitFor()
+    assert.equal(await page.getByTestId('branch-employee').filter({ hasText: 'Fixture field' }).count(), 0)
+    // An office employee no other case touches (00–02 belong to other cases).
+    const office = await rosterCard('Fixture roster 07')
+    await page.locator('#branch-employee-search').fill('Fixture roster 07')
+    await clickResponse(button('branchesFind'), `${apiRoot}/branches/assignments`, 'GET')
+    const row = page.getByTestId('branch-employee').filter({ hasText: 'Fixture roster 07' })
     await row.getByRole('combobox').selectOption(state.branch.id)
-    await clickResponse(row.getByRole('button', { name: t('branchesAssignNamed', { name: 'Fixture field' }) }), `${apiRoot}/branches/assignments`)
-    const directory = await api('admin', '/branches/assignments?search=Fixture%20field')
-    assert.equal(directory.employees.find(employee => employee.id === fixture.agents.field.id).primary.branchId, state.branch.id)
+    await clickResponse(row.getByRole('button', { name: t('branchesAssignNamed', { name: 'Fixture roster 07' }) }), `${apiRoot}/branches/assignments`)
+    const directory = await api('admin', '/branches/assignments?search=Fixture%20roster%2007')
+    assert.equal(directory.employees.find(employee => employee.id === office.id).primary.branchId, state.branch.id)
   })
   await run('browser-risk-dismissal', 'browser-action+synthetic-risk-fixture', async () => {
     assert.ok(state.workdayId)
@@ -901,16 +1117,17 @@ try {
     await readyPage('review')
     await page.locator('#risk-from').fill(today); await page.locator('#risk-to').fill(today)
     await page.locator('#risk-status').selectOption('OPEN')
-    await page.locator('#risk-kind').selectOption('CLOCK_DIFFERENCE')
-    await clickResponse(button('journalApply'), `${apiRoot}/review`, 'GET')
+    await filterResponse(() => page.locator('#risk-kind').selectOption('CLOCK_DIFFERENCE'), `${apiRoot}/review`, { from: today, to: today, status: 'OPEN', kind: 'CLOCK_DIFFERENCE' })
     const row = page.getByTestId('risk-row').filter({ hasText: 'Fixture employee' })
     await button('riskReview', row).click()
     assert.equal(await button('riskDismiss').isEnabled(), false)
     await page.locator('#risk-reason').fill('Fictional clock verified through browser')
     await clickResponse(button('riskDismiss'), `${apiRoot}/review/${risk.id}`)
-    await page.locator('#risk-status').selectOption('DISMISSED')
-    await clickResponse(button('journalApply'), `${apiRoot}/review`, 'GET')
-    assert.ok(await page.getByTestId('risk-row').count() >= 2)
+    await filterResponse(() => page.locator('#risk-status').selectOption('DISMISSED'), `${apiRoot}/review`, { status: 'DISMISSED' })
+    // The response lands before React draws it: run 39450774119 counted the
+    // table too early while its screenshot showed both rows. Wait for the rows.
+    const dismissed = page.getByTestId('risk-row').filter({ hasText: t('riskDismissed') })
+    await poll(async () => await dismissed.count() >= 2 && await dismissed.filter({ hasText: 'Fictional clock verified through browser' }).count() === 1, 'Dismissed risks drawn')
     assert.deepEqual(await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: workday.id } }), workday)
     return { detector: 'Seeded finding; only review/dismissal is browser-tested' }
   })
@@ -928,15 +1145,15 @@ try {
   await run('browser-month-preview-close-blockers', 'browser-action+synthetic-historical-facts', async () => {
     assert.ok(state.closedMonth)
     const month = state.closedMonth.month, workDate = `${month}-15`
-    for (const [role, completed] of [['manager', true], ['field', false]]) {
-      const agentId = fixture.agents[role].id
+    const blocked = await rosterCard('Fixture roster 02')
+    for (const [agentId, completed] of [[fixture.agents.manager.id, true], [blocked.id, false]]) {
       const workday = await fixture.admin.mtmAgentWorkday.create({ data: { organizationId: fixture.organization.id, agentId, workDate: new Date(`${workDate}T00:00:00Z`), status: completed ? 'COMPLETED' : 'STARTED', startedAt: new Date(`${workDate}T05:00:00Z`), completedAt: completed ? new Date(`${workDate}T14:00:00Z`) : null, totalPausedSeconds: 0 } })
       for (const type of completed ? ['START', 'FINISH'] : ['START']) {
         const occurredAt = type === 'START' ? workday.startedAt : workday.completedAt
         await fixture.admin.mtmAgentWorkdayEvent.create({ data: { organizationId: fixture.organization.id, agentId, workdayId: workday.id, clientEventId: randomUUID(), type, occurredAt, appliedAt: occurredAt, claimedAt: occurredAt, serverReceivedAt: occurredAt } })
       }
     }
-    await readyPage('months'); await page.locator('input[type="month"]').fill(month)
+    await readyPage('months'); await chooseMonth(month)
     await page.getByRole('checkbox', { name: /Fixture manager/ }).check()
     const preview = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
     assert.deepEqual(preview.blockers, [])
@@ -944,17 +1161,16 @@ try {
     await page.getByLabel(t('monthCloseConfirm')).check()
     const closed = await clickResponse(button('monthCloseAction'), `${apiRoot}/months`)
     assert.equal(closed.employeeCount, 1)
-    await page.getByRole('checkbox', { name: /Fixture field/ }).check()
-    const blocked = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
-    assert.ok(blocked.blockers.length)
+    await page.getByRole('checkbox', { name: /Fixture roster 02/ }).check()
+    const blockedPreview = await clickResponse(button('monthClosePreview'), `${apiRoot}/months/preview`)
+    assert.ok(blockedPreview.blockers.length)
     await page.getByText(t('monthCloseBlocked'), { exact: true }).waitFor()
     assert.equal(await button('monthCloseAction').count(), 0)
     return { completedEmployeeClosed: true, unfinishedWorkdayBlocksClose: true, historicalFacts: 'DB fixture, not phone claims' }
   })
   await run('browser-sidebar-click-traversal', 'browser-navigation-click', async () => {
     await readyPage('')
-    for (const route of routes.filter(route => route !== 'recordings')) {
-      const href = `/mtm/attendance${route ? `/${route}` : ''}`
+    for (const href of personnelHrefs) {
       const link = page.locator(`aside a[href="${href}"]`)
       await link.scrollIntoViewIfNeeded()
       const bounds = await link.boundingBox()
@@ -966,7 +1182,9 @@ try {
       await page.locator('h1').first().waitFor()
       assert.equal(await link.getAttribute('aria-current'), 'page')
     }
-    return { actualSidebarClicks: 13, proves: 'Navigation only; mutations have separate case records' }
+    // HR work no longer sits among the field-sales links.
+    assert.equal(await page.locator('aside a[href^="/mtm/attendance/"]').count(), personnelHrefs.length - 1)
+    return { actualSidebarClicks: personnelHrefs.length, proves: 'Navigation only; mutations have separate case records' }
   })
   await run('browser-branch-lost-acknowledgement-retry', 'browser-action+real-commit-response-drop', async () => {
     await readyPage('branches'); await button('branchesAdd').click()
@@ -1013,13 +1231,17 @@ try {
       for (const target of [original, concurrent]) {
         page = target
         await page.bringToFront()
-        await readyPage('')
+        // The editor opens with the page and starts its own request; the page
+        // heading does not establish a loaded catalogue. Fail on the real
+        // response before trying controls that render only with valid items.
+        const reading = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}/day-kinds` && response.request().method() === 'GET', { timeout: 120000 })
+        void reading.catch(() => {})
+        await readyPage('day-kinds')
         const kinds = page.getByTestId('attendance-day-kinds')
         manifest.competingTabs.stage = target === original ? 'load-original' : 'load-concurrent'
-        // Opening this panel starts its own request; the page heading does not
-        // establish a loaded catalogue. Fail on the real response before trying
-        // controls that render only when that catalogue has valid items.
-        const catalogue = await clickResponse(button('kindsOpen', kinds), `${apiRoot}/day-kinds`, 'GET')
+        const loaded = await reading
+        assert.equal(loaded.status(), 200)
+        const catalogue = (await loaded.json()).data
         loads.push({ tab: target === original ? 'original' : 'concurrent', version: catalogue.version, items: catalogue.items.length })
         assert.ok(catalogue.items.some(item => item.key === 'REMOTE_WORK' && item.names.en === 'Fixture browser remote'))
         if (loads.length === 2) assert.equal(loads[0].version, catalogue.version)
@@ -1079,7 +1301,8 @@ try {
     assert.equal(own.headers()['content-type'], 'image/jpeg')
     assert.equal((await sharp(sanitizedBytes).metadata()).exif, undefined)
     await api('admin', `/attachments/${selected.id}`, { status: 404 })
-    await mobile('field', `/attachments/${selected.id}`, { status: 404 })
+    // A field agent has no own attendance at all now: refused before any lookup.
+    await mobile('field', `/attachments/${selected.id}`, { status: 403 })
     const submitted = await mobile('employee', '/requests', { method: 'POST', status: 201, body: {
       clientRequestId, kind: 'SICK_LEAVE', unit: 'DAYS', startDate: date(28), endDate: date(28),
       reason: 'Fictional document request for access verification', attachmentIds: [selected.id],
@@ -1106,6 +1329,53 @@ try {
     for await (const chunk of stream) chunks.push(chunk)
     assert.deepEqual(Buffer.concat(chunks), sanitizedBytes)
     return { actualBrowserDocumentDownload: true, draftAndUnselectedHidden: true, deniedRoles: 4, otherEmployeeDenied: true, sameTeamReviewerAllowed: true, exifRemoved: true, invalidFileAndSizeRejected: true, upload: 'Actual mobile multipart HTTP, not APK picker', admissionBackend: 'Application development memory fallback; production Redis gate NOT_RUN' }
+  })
+  await run('browser-existing-crm-phone-hire', 'browser-action+database-backed-http', async () => {
+    const organizationId = fixture.organization.id, name = 'Fixture existing CRM person', phone = '+994550009901'
+    const user = await fixture.admin.user.create({ data: { organizationId, name, phone, email: `existing-${organizationId}@example.invalid`, role: 'sales', passwordHash: fixture.users.employee.passwordHash } })
+    const card = await fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId, userId: user.id } })
+    assert.equal(card.role, 'EMPLOYEE'); assert.equal(card.attendanceParticipant, true)
+    const before = { users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }
+    assert.ok(!(await api('admin', '/employees')).employees.some(row => row.id === card.id))
+    await api('hr', '/employees/phone-match', { method: 'POST', body: { phone }, status: 403 })
+    await api('foreign', '/employees/phone-match', { method: 'POST', body: { phone } }).then(result => assert.deepEqual(result, { kind: 'none' }))
+    await readyPage('employees')
+    await page.getByTestId('attendance-add-employee').click()
+    const form = page.getByTestId('attendance-add-employee-form')
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await form.locator('input[type="date"]').fill(today)
+    // The fixture's actual user quota is full. Existing-person hiring must not
+    // require another seat (owner, 2026-10-29: «пусть добавляется как
+    // сотрудник»): the add form hires that person through their own card.
+    assert.ok(fixture.organization.maxUsers !== -1 && before.users >= fixture.organization.maxUsers)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 201)
+    await form.waitFor({ state: 'detached' })
+    const directory = await api('admin', '/employees')
+    const hired = directory.employees.find(row => row.id === card.id)
+    assert.ok(hired); assert.equal(hired.history[0].kind, 'HIRE'); assert.equal(hired.history[0].date, today)
+    assert.deepEqual({ users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }, before)
+    // Already in the list: a second add is refused and points to their page.
+    await page.getByTestId('attendance-add-employee').click()
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
+    const result = page.getByTestId('attendance-phone-match')
+    await result.waitFor()
+    assert.ok((await result.innerText()).includes(name))
+    assert.ok((await result.innerText()).includes(pt('addEmployeePhoneAlreadyEnrolled')))
+    await page.screenshot({ path: `${output}/existing-crm-phone-match.png`, fullPage: false })
+    await result.getByRole('link', { name: pt('addEmployeePhoneOpenProfile'), exact: true }).click()
+    await page.getByTestId('attendance-employee-back').waitFor()
+    const afterUser = await fixture.admin.user.findUniqueOrThrow({ where: { id: user.id } })
+    const afterCard = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: card.id } })
+    for (const key of ['id', 'phone', 'email', 'role', 'passwordHash', 'hiddenModules']) assert.deepEqual(afterUser[key], user[key])
+    for (const key of ['id', 'userId', 'phone', 'role', 'passwordHash']) assert.equal(afterCard[key], card[key])
+    await page.getByTestId('attendance-employee-back').click()
+    await page.locator('#employee-search').fill(name)
+    await page.getByTestId('employee-row').filter({ hasText: name }).waitFor()
+    await page.screenshot({ path: `${output}/existing-crm-phone-hired.png`, fullPage: false })
+    return { existingIdentityPreserved: true, credentialsUnchanged: true, duplicateAccounts: false, crossTenantHidden: true }
   })
   await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
     for (const locale of ['az', 'ru', 'en']) {

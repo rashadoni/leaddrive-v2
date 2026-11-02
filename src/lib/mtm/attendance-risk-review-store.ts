@@ -1,4 +1,5 @@
 import { currentAttendanceReadActor } from "@/lib/mtm/attendance-read-access"
+import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { createHash, randomUUID } from "node:crypto"
 import { z } from "zod"
 import { Prisma } from "@prisma/client"
@@ -30,7 +31,7 @@ export async function readAttendanceRiskReport(input: ReadInput): Promise<Attend
     // A read-only HR grant must never become write access.
     try { writeActor = await resolveAttendanceReviewerScope(tx, reviewer) }
     catch (e) { if (!(e instanceof AttendanceRequestError) || e.status !== 403) throw e }
-    const directoryRows = await tx.mtmAgent.findMany({ where: { organizationId, ...(scope === null ? {} : { id: { in: scope } }) },
+    const directoryRows = await tx.mtmAgent.findMany({ where: { organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE, ...(scope === null ? {} : { id: { in: scope } }) },
       select: { id: true, name: true, teamId: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 2001 })
     if (directoryRows.length > 2000) return fail("TOO_LARGE", 422)
     const directory = directoryRows.map(row => ({ id: row.id, name: row.name, teamId: row.teamId, teamName: row.team?.name ?? null }))
@@ -45,6 +46,8 @@ export async function readAttendanceRiskReport(input: ReadInput): Promise<Attend
       LEFT JOIN users u ON u."organizationId"=d."organizationId" AND u.id=d."actorUserId"
       LEFT JOIN mtm_attendance_branch_revisions b ON b."organizationId"=c."organizationId" AND b.id=m."branchRevisionId"
       WHERE c."organizationId"=${organizationId} AND (${scope}::text[] IS NULL OR c."agentId"=ANY(${scope}::text[]))
+      -- A field agent's day marks are not HR attendance; earlier cases stay stored but off this review.
+      AND a.role<>'AGENT'
       AND c."workDate">=${query.from}::date AND c."workDate"<=${query.to}::date
       AND (${query.employeeId}='' OR c."agentId"=${query.employeeId}) AND (${query.teamId}='' OR a."teamId"=${query.teamId})
       AND (${query.kind}='ALL' OR c.kind=${query.kind})

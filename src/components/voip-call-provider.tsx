@@ -1,9 +1,10 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { IncomingCallPopup } from "./incoming-call-popup"
 import { selectVoipPopupCall } from "@/lib/voip/active-call-selection"
+import { useShellRefresh } from "./shell-events-provider"
 
 interface ActiveCall {
   id: string
@@ -47,8 +48,6 @@ export function VoipCallProvider({ children }: { children: React.ReactNode }) {
     userId: string
     enabled: boolean
   } | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
-
   const fetchActiveCalls = useCallback(async () => {
     if (!hasSessionUser) return
     try {
@@ -68,17 +67,11 @@ export function VoipCallProvider({ children }: { children: React.ReactNode }) {
     }
   }, [hasSessionUser])
 
-  useEffect(() => {
-    if (!hasSessionUser) return
-
-    const firstPoll = setTimeout(() => void fetchActiveCalls(), 0)
-    intervalRef.current = setInterval(fetchActiveCalls, POLL_INTERVAL)
-
-    return () => {
-      clearTimeout(firstPoll)
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [hasSessionUser, fetchActiveCalls])
+  // Read when the shell's event stream says a call changed (it rang, was
+  // answered or claimed, ended); without the stream, every POLL_INTERVAL as
+  // before. Only a tab on screen reads: the popup is answered by a click, and
+  // nothing here rings. A tab coming back reads at once.
+  useShellRefresh("calls", () => void fetchActiveCalls(), POLL_INTERVAL, hasSessionUser)
 
   useEffect(() => {
     if (!currentUserId) return

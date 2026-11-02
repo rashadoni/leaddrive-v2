@@ -6,6 +6,8 @@ import type {
   DemoJourneySnapshot,
   DemoJourneyStep,
 } from "@/lib/demo-center/journey"
+import type { DemoWhatsAppTicketView } from "@/lib/demo-center/demo-whatsapp-ticket-view"
+import type { DemoSocialInboxView } from "@/lib/demo-center/demo-social"
 
 /**
  * Who is looking at the demo.
@@ -36,4 +38,14 @@ export interface DemoSceneProps {
   hint: (message: string) => void
   /** Opens a section ahead of the story, staging what lies in between (the orientation's «Nədən başlayaq?»). */
   openSection?: (sectionId: string) => void
+  /** Live data the page already reads — scenes still never fetch. */
+  live?: DemoSceneLive
+}
+
+/** What the page reads live for the scenes. */
+export interface DemoSceneLive {
+  /** The real ticket the prospect's own WhatsApp opened in LeadDrive's Service Desk, in its customer's view. */
+  whatsappTicket: DemoWhatsAppTicketView | null
+  /** The prospect's own Facebook Page, once connected: the real Facebook row of the inbox. */
+  social?: DemoSocialInboxView | null
 }

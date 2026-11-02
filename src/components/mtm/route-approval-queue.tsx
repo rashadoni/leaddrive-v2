@@ -1,10 +1,11 @@
 "use client"
 
+import { Hint } from "@/components/hint"
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, Check, ClipboardCheck, HelpCircle, MapPin, X } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/mtm/mtm-badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime } from "@/lib/format-date"
@@ -92,8 +93,8 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
   }
 
   return (
-    <section id="mtm-route-approval-queue" className="border-y border-zinc-200 bg-card dark:border-zinc-700">
-      <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+    <section id="mtm-route-approval-queue" className="border-y border-border bg-card">
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <ClipboardCheck className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">{t("approvalQueue")}</h2>
@@ -108,7 +109,7 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
         </div>
       ) : null}
 
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+      <div className="divide-y divide-border">
         {requests.map((request) => {
           const needsComment = !comments[request.id]?.trim()
           const latestOutcome = request.evidence?.outcomes.at(-1) ?? null
@@ -116,7 +117,7 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
             <article key={request.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.65fr)]">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                  <span className="px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
                     {request.changeType === "REMOVE_STOP" ? t("requestRemoval") : request.changeType === "ADD_STOP" ? t("requestAddition") : request.changeType}
                   </span>
                   <span className="text-xs text-muted-foreground">{formatDateTime(new Date(request.submittedAt), locale)}</span>
@@ -130,7 +131,7 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
                   ) : null}
                 </div>
                 {request.evidence ? (
-                  <div className="mt-3 rounded-md border border-zinc-200 bg-muted/30 p-2 text-xs dark:border-zinc-700">
+                  <div className="mt-3 rounded-md border border-border bg-muted/30 p-2 text-xs">
                     <div className="font-medium text-foreground">{t("changeEvidenceTitle")}</div>
                     <div className="mt-1 grid gap-1 sm:grid-cols-2">
                       <div>
@@ -166,18 +167,24 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
                   rows={2}
                 />
                 <div className="grid grid-cols-3 gap-2">
-                  <Button size="sm" onClick={() => decide(request.id, "APPROVED")} disabled={busyId === request.id}>
-                    <Check className="mr-1 h-4 w-4" />{t("approve")}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busyId === request.id || needsComment}>
-                    <HelpCircle className="mr-1 h-4 w-4" />{t("needsInfo")}
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-destructive" onClick={() => decide(request.id, "REJECTED")} disabled={busyId === request.id || needsComment}>
-                    <X className="mr-1 h-4 w-4" />{t("reject")}
-                  </Button>
+                  <Hint wrap text={t("hint.approve")}>
+                    <Button size="sm" onClick={() => decide(request.id, "APPROVED")} disabled={busyId === request.id}>
+                      <Check className="mr-1 h-4 w-4" />{t("approve")}
+                    </Button>
+                  </Hint>
+                  <Hint wrap text={t("hint.needsInfo")}>
+                    <Button size="sm" variant="outline" onClick={() => decide(request.id, "NEEDS_INFO")} disabled={busyId === request.id || needsComment}>
+                      <HelpCircle className="mr-1 h-4 w-4" />{t("needsInfo")}
+                    </Button>
+                  </Hint>
+                  <Hint wrap text={t("hint.reject")}>
+                    <Button size="sm" variant="outline" className="text-destructive" onClick={() => decide(request.id, "REJECTED")} disabled={busyId === request.id || needsComment}>
+                      <X className="mr-1 h-4 w-4" />{t("reject")}
+                    </Button>
+                  </Hint>
                 </div>
                 {needsComment ? (
-                  <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><AlertCircle className="h-3 w-3" />{t("decisionComment")}</p>
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground"><AlertCircle className="h-3 w-3" />{t("decisionComment")}</p>
                 ) : null}
               </div>
             </article>

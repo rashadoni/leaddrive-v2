@@ -87,6 +87,15 @@ export default function LoginPage() {
       email,
       password,
       ...(organizationSlug ? { organizationSlug } : {}),
+      // Where to land, said outright. Left out, Auth.js takes the address bar
+      // and then reads `error` back out of it as this attempt's result — and
+      // the address bar of a person sent here from another organisation's
+      // session says `?error=cross-tenant` (after a mistyped attempt,
+      // `?error=CredentialsSignin`). A sign-in that succeeded then showed
+      // "wrong email or password". Production 2026-10-27, Zeytun: three
+      // correct passwords in 22 s, none refused by the server, each shown
+      // as wrong.
+      callbackUrl: `${window.location.origin}/`,
       redirect: false,
     })
 

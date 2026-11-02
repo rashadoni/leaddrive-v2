@@ -232,7 +232,7 @@ export function OverheadTab() {
                             <select
                               value={editForm.category || ""}
                               onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
-                              className="h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-xs"
+                              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                             >
                               {OVERHEAD_CATEGORIES.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
@@ -257,7 +257,7 @@ export function OverheadTab() {
                                   else if (v === "annual") setEditForm(prev => ({ ...prev, isAnnual: true, amortMonths: 0 }))
                                   else setEditForm(prev => ({ ...prev, isAnnual: false, amortMonths: prev.amortMonths || 60 }))
                                 }}
-                                className="h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-1 text-xs"
+                                className="h-8 rounded-md border border-input bg-background px-1 text-xs"
                               >
                                 <option value="monthly">Aylıq</option>
                                 <option value="annual">İllik÷12</option>
@@ -290,7 +290,7 @@ export function OverheadTab() {
                                 targetService: e.target.value,
                                 isAdmin: !e.target.value,
                               }))}
-                              className="h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-sm"
+                              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
                             >
                               {SERVICE_OPTIONS.map(opt => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>

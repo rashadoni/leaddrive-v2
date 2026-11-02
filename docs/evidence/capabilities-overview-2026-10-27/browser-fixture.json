@@ -1,0 +1,35 @@
+{
+  "fixture": "Actual MarketplacePage + CapabilitiesOverviewContent + shared UI, with Next Link/locale/help adapters and synthetic GET responses",
+  "passed": [
+    "available native module",
+    "installed apps management retained",
+    "disabled capability has no workspace link",
+    "canonical channel setup",
+    "connection caveat",
+    "light/dark rendering",
+    "HTTP 500 shown as failure",
+    "retry recovers",
+    "HTTP 403 shown as denial",
+    "employee module mask",
+    "English and Azerbaijani copy",
+    "responsive widths"
+  ],
+  "dimensions": [
+    {
+      "width": 1024,
+      "scroll": 1009,
+      "clipped": 0
+    },
+    {
+      "width": 736,
+      "scroll": 721,
+      "clipped": 0
+    },
+    {
+      "width": 320,
+      "scroll": 305,
+      "clipped": 0
+    }
+  ],
+  "runtimeErrors": []
+}

@@ -102,6 +102,26 @@ describe("registering a device for push", () => {
   })
 })
 
+// 2026-10-17: the manager has his own tabs in the app again; his address was
+// refused unless he was himself in attendance, so his card read «not connected».
+describe("a manager's own notification address", () => {
+  beforeEach(() => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: "org-1", agentId: "manager-1", userId: "user-1", role: "MANAGER", tenantCapabilities: { routeField: true, workforceHrm: false } } as never)
+  })
+  it("registers it on his team grant, without attendance enrollment", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "manager-1" } as never)
+    const response = await POST(request("POST", { token: TOKEN }))
+    expect(response.status).toBe(200)
+    expect((vi.mocked(prisma.mtmDeviceToken.upsert).mock.calls[0][0] as any).create.agentId).toBe("manager-1")
+    expect(prisma.mtmSetting.findMany).not.toHaveBeenCalled()
+  })
+  it("refuses it for a card that is no longer active", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+    expect((await POST(request("POST", { token: TOKEN }))).status).toBe(403)
+    expect(prisma.mtmDeviceToken.upsert).not.toHaveBeenCalled()
+  })
+})
+
 describe("signing out of a device", () => {
   /**
    * Deleted, not disabled: the next person to sign in on that phone must not

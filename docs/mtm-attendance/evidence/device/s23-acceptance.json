@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED_WITH_LIMITS",
   "device": {
     "model": "SM-S918B",
     "android": "16"
   },
   "app": {
-    "version": "3.8.5",
-    "versionCode": 1475,
-    "sourceSha": "d8bf95c5b1eb7eae5841ca54c2e43603cfc7163b",
-    "apkSha256": "e5b43d79c8219e3dd994689c93036520f1db497aa89e94826d2a4b025326b0d8"
+    "sourceSha": "41be7fd45c9033062509eee22a6cbf31fcffeb9c",
+    "apkSha256": "fde8f10acfd8a6d0eac99722b953a53cdef1559e27373190be8a814a74407ef5",
+    "version": "3.8.6",
+    "versionCode": 1477
   },
   "cases": [
     {
@@ -1543,6 +1543,290 @@
         },
         "scope": "bounded twenty-minute functional endurance; not an unattended all-night guarantee"
       }
+    },
+    {
+      "at": "2026-10-14T06:18:40.522534+00:00",
+      "name": "physical-official-3.8.6-in-place-install",
+      "status": "PASS",
+      "detail": {
+        "sourceSha": "41be7fd45c9033062509eee22a6cbf31fcffeb9c",
+        "runId": 38520367175,
+        "apkSha256": "fde8f10acfd8a6d0eac99722b953a53cdef1559e27373190be8a814a74407ef5",
+        "bytes": 46743455,
+        "installInPlace": true,
+        "dataClear": false,
+        "fictionalOfficeSessionRetained": true,
+        "completedDayVisible": true,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T06:23:13.693024+00:00",
+      "name": "physical-office-inbox-language-az-3.8.6",
+      "status": "PASS",
+      "detail": {
+        "notificationsChecked": 7,
+        "existingTitlesFollowAppLanguage": true,
+        "storedTitleFallbackNotUsedForKnownMetadata": true,
+        "sameReadStates": true,
+        "noNotificationWrite": true,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T06:28:09.801515+00:00",
+      "name": "physical-office-inbox-language-az-3.8.6",
+      "status": "PASS",
+      "detail": {
+        "notificationsChecked": 7,
+        "existingTitlesFollowAppLanguage": true,
+        "storedTitleFallbackNotUsedForKnownMetadata": true,
+        "sameReadStates": true,
+        "noNotificationWrite": true,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T06:37:19.051595+00:00",
+      "name": "physical-office-inbox-language-ru-3.8.6",
+      "status": "PASS",
+      "detail": {
+        "notificationsChecked": 7,
+        "existingTitlesFollowAppLanguage": true,
+        "storedTitleFallbackNotUsedForKnownMetadata": true,
+        "sameReadStates": true,
+        "noNotificationWrite": true,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T06:40:06.752406+00:00",
+      "name": "physical-office-inbox-language-en-3.8.6",
+      "status": "PASS",
+      "detail": {
+        "notificationsChecked": 7,
+        "existingTitlesFollowAppLanguage": true,
+        "storedTitleFallbackNotUsedForKnownMetadata": true,
+        "sameReadStates": true,
+        "noNotificationWrite": true,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T06:41:57.053292+00:00",
+      "name": "physical-device-quiesced-for-user-requested-handoff",
+      "status": "PASS",
+      "detail": {
+        "fixture": "Fictional office employee",
+        "appLanguage": "az",
+        "completedDayVisible": true,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        },
+        "businessMutation": false,
+        "testSessionStillSignedIn": true,
+        "originalDeviceSettingsNotYetRestored": true,
+        "uiDriverStopped": true
+      }
+    },
+    {
+      "at": "2026-10-14T08:00:37.615852+00:00",
+      "name": "physical-office-inbox-language-az-cold-restart-3.8.6",
+      "status": "PASS",
+      "detail": {
+        "notificationsChecked": 7,
+        "appLanguagePersistedAcrossColdRestart": "az",
+        "sameReadStates": true,
+        "noNotificationWrite": true,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T08:02:10.461881+00:00",
+      "name": "physical-inbox-3.8.6-locale-upgrade-preserves-data",
+      "status": "PASS",
+      "detail": {
+        "sequence": [
+          "az",
+          "ru",
+          "en",
+          "az-switch-back(before handoff)",
+          "cold-restart-az(continuation)"
+        ],
+        "sameSevenStoredNotificationsAndReadStates": true,
+        "canonicalDaysAndRequestsUnchanged": true,
+        "comparisonExcludes": [
+          "at"
+        ],
+        "locationPermissionsStillDenied": true,
+        "originalAppLanguageRestored": "az",
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T08:07:44.898800+00:00",
+      "name": "physical-office-covered-actions-reconciled-before-logout",
+      "status": "PASS",
+      "detail": {
+        "completedCorrectedWorkdayCanonical": true,
+        "recordedRequestCount": 8,
+        "recordedRequestsCanonicalAndVisible": true,
+        "noVisiblePendingOrConflict": true,
+        "fullQueueCount": "NOT_OBSERVABLE",
+        "scope": "covered actions only; OFFICE has no full queue counter"
+      }
+    },
+    {
+      "at": "2026-10-14T08:08:36.496506+00:00",
+      "name": "physical-office-logout-cancel",
+      "status": "PASS",
+      "detail": {
+        "profileRemainsOpen": true,
+        "loginScreenNotShown": true
+      }
+    },
+    {
+      "at": "2026-10-14T08:09:07.249834+00:00",
+      "name": "physical-office-clean-logout",
+      "status": "PASS",
+      "detail": {
+        "fixtureCompanyRetained": true,
+        "loginFormVisible": true,
+        "canonicalCoveredFactsUnchanged": true,
+        "fullQueueCount": "NOT_OBSERVABLE",
+        "noVisiblePendingBeforeLogout": true,
+        "realCompanyTouched": false
+      }
+    },
+    {
+      "at": "2026-10-14T08:09:48.123797+00:00",
+      "name": "physical-final-test-state",
+      "status": "PASS",
+      "detail": {
+        "fixtureSignedOut": true,
+        "savedWifiEnabled": true,
+        "savedMobileDataEnableCommandSucceeded": true,
+        "savedMobileDataSettingVerified": true,
+        "activeDefaultNetwork": true,
+        "airplaneModeUnchanged": true,
+        "locationPermissionsRemainDenied": true,
+        "powerAndLockSettingsUnchangedByRestoration": true,
+        "realCompanyTouched": false,
+        "fullOfficeQueueCount": "NOT_OBSERVABLE"
+      }
+    },
+    {
+      "at": "2026-10-14T08:10:50.070298+00:00",
+      "name": "physical-original-device-settings-restored",
+      "status": "PASS",
+      "detail": {
+        "originalLocationPermissionsRestored": true,
+        "verifiedForAndroidUser": 0,
+        "secondaryProfileUser95Untouched": true,
+        "cameraAndNotificationPermissionsUnchanged": true,
+        "originalStayAwakeWhilePluggedIn": 2,
+        "originalScreenTimeoutMilliseconds": 30000,
+        "powerObserverStopped": true,
+        "powerObserverAlreadyEndedAtDeadline": "2026-10-14T07:10:00Z",
+        "restoreHelperNote": "restore_device_settings.py applied grants and power values, then stopped at its unit-state assertion (missing transient unit reports rc 4); this record re-verifies the applied state",
+        "fixtureSignedOut": true,
+        "pinAndBiometricsUntouched": true,
+        "realCompanyTouched": false,
+        "installedBuild": {
+          "version": "3.8.6",
+          "versionCode": 1477
+        }
+      }
+    },
+    {
+      "at": "2026-10-14T08:10:55.897997Z",
+      "name": "phone-power-observation-summary",
+      "status": "PASS",
+      "detail": {
+        "scope": "sampled power/process observations only; not continuous functional testing",
+        "recognizedSamples": 510,
+        "statusCounts": {
+          "ATTENTION": 15,
+          "FAIL": 0,
+          "NOT_RUN": 0,
+          "PASS": 492,
+          "UNAVAILABLE": 3,
+          "UNKNOWN": 0
+        },
+        "firstRecordedUtc": "2026-10-13T22:08:45.983550Z",
+        "lastRecordedUtc": "2026-10-14T07:09:26.860432Z",
+        "gapsAbove150Seconds": [
+          {
+            "afterUtc": "2026-10-13T23:16:04.326793Z",
+            "beforeUtc": "2026-10-13T23:23:15.052012Z",
+            "seconds": 430.725,
+            "invalidTimestampRecordsBetween": 0
+          },
+          {
+            "afterUtc": "2026-10-14T03:47:20.709577Z",
+            "beforeUtc": "2026-10-14T03:56:38.948539Z",
+            "seconds": 558.239,
+            "invalidTimestampRecordsBetween": 0
+          }
+        ],
+        "notContinuousFunctionalTesting": true
+      }
+    },
+    {
+      "at": "2026-10-14T08:11:08.606Z",
+      "name": "production-attendance-final-release-smoke",
+      "status": "PASS",
+      "detail": {
+        "sourceSha": "0c57db3af92c1c9558c466a59c9403bae5a936d6",
+        "tenant": "mtm-attendance-phone",
+        "ping": 200,
+        "buildInfo": 200,
+        "leaveRead": 200,
+        "leaveReadMilliseconds": 2039,
+        "fictionalEmployeesAutomaticallyIncluded": 3,
+        "mutations": 0
+      }
+    },
+    {
+      "at": "2026-10-14T08:11:27.585Z",
+      "name": "production-risk-date-fix-and-physical-shared-phone-readback",
+      "status": "PASS",
+      "detail": {
+        "sourceSha": "0c57db3af92c1c9558c466a59c9403bae5a936d6",
+        "exactAzerbaijaniDatesAndOriginalReceivedClocks": true,
+        "noRootLocaleMonthLabels": true,
+        "employeeCount": 2,
+        "sharedInstallationCases": 6,
+        "realPhysicalMarks": true,
+        "seededRisks": false,
+        "browserFilter": "SHARED_INSTALLATION",
+        "browserCaseCountMatchesApi": true,
+        "eachRenderedFindingAndRelatedEmployeeVerified": true,
+        "relatedEmployeeVisibleToFictionalHR": true,
+        "installationIdentifierPublished": false
+      }
     }
   ],
   "privacy": {
@@ -1551,9 +1835,10 @@
     "realRequestSubmissions": 0,
     "credentialsPublished": false,
     "personalScreenshotsPublished": false,
-    "testLocationPermissions": "Fine, coarse and background temporarily denied; original grants retained privately for restoration"
+    "testLocationPermissions": "Fine, coarse and background were temporarily denied for the test and restored to the original grants (Android user 0) at 08:10:50 UTC",
+    "originalDeviceSettingsRestored": true
   },
-  "updatedAt": "2026-10-14T05:53:04.044092+00:00",
+  "updatedAt": "2026-10-14T08:11:27.585Z",
   "previousInstalledBuilds": [
     {
       "version": "3.8.2",
@@ -1572,6 +1857,18 @@
       "versionCode": 1473,
       "sourceSha": "2ad9a5077c3dc4c36ce1a562ddbf4a2ad360ded5",
       "apkSha256": "a99aa1c058324886ca9a1e7bfeb5d96ac5e700cf0da246b0c89f77f7c2af0c8d"
+    },
+    {
+      "version": "3.8.5",
+      "versionCode": 1475,
+      "sourceSha": "d8bf95c5b1eb7eae5841ca54c2e43603cfc7163b",
+      "apkSha256": "e5b43d79c8219e3dd994689c93036520f1db497aa89e94826d2a4b025326b0d8"
     }
+  ],
+  "limits": [
+    "OFFICE has no full queue counter: fullQueueCount NOT_OBSERVABLE; covered actions reconciled only",
+    "Functional endurance is the bounded 25-minute 3.8.5 run (05:27:40-05:53:04 UTC), not continuous all-night testing",
+    "Power observation is sampled (510 samples, 22:08-07:09 UTC) with two gaps above 150 s; it is not functional coverage",
+    "NOT_RUN: camera QR/documents, external email/provider/cron delivery, real GPS without approved consent, 300-employee load, full role/network cross-product"
   ]
 }
