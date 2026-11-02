@@ -11,7 +11,7 @@ import { storedVisitEvaluation } from "@/lib/mtm/joint-visit"
  *
  * - coverage — of the doctors each agent is responsible for, how many were seen;
  * - not_visited — who nobody came to in the period, the most important first;
- * - suspicious — visits too short, far from the client, or without a position;
+ * - suspicious — visits too short, too long, far from the client, or without a position;
  * - presentations — what was really shown to clients, and for how long;
  * - field_day — when the day started, the first and the last visit, the hours;
  * - joint_evaluations — how the managers rated their agents on joint visits.
@@ -40,6 +40,13 @@ export interface FieldReport {
 
 /** Shorter than this, a finished visit is hardly a visit. */
 export const SHORT_VISIT_MINUTES = 5
+/**
+ * Longer than this, the agent forgot to press «finish» (prod 2026-11-02: one
+ * visit of 7321 minutes, one of 798). Such a visit is suspicious, and its
+ * minutes do not go into the time spent at clients.
+ */
+export const LONG_VISIT_MINUTES = 180
+const isForgottenVisit = (duration: number | null) => duration !== null && duration > LONG_VISIT_MINUTES
 /** Checked in farther than this from the client, when the client has no zone of its own. */
 export const FAR_CHECK_IN_METERS = 200
 
@@ -196,6 +203,7 @@ async function suspicious(input: FieldReportInput): Promise<FieldReport> {
   const flagged = visits.flatMap((visit) => {
     const reasons: string[] = []
     if (visit.status === "CHECKED_OUT" && visit.duration !== null && visit.duration < SHORT_VISIT_MINUTES) reasons.push("SHORT")
+    if (isForgottenVisit(visit.duration)) reasons.push("LONG")
     let distance: number | null = null
     if (visit.checkInLat === null || visit.checkInLng === null) reasons.push("NO_GPS")
     else if (visit.checkInCustomerLat !== null && visit.checkInCustomerLng !== null) {
@@ -219,6 +227,7 @@ async function suspicious(input: FieldReportInput): Promise<FieldReport> {
       { labelKey: "sum.suspicious", value: flagged.length, kind: "number" },
       { labelKey: "sum.suspiciousShare", value: pct(flagged.length, visits.length), kind: "percent" },
       { labelKey: "sum.shortVisits", value: count("SHORT"), kind: "number" },
+      { labelKey: "sum.longVisits", value: count("LONG"), kind: "number" },
       { labelKey: "sum.farVisits", value: count("FAR"), kind: "number" },
       { labelKey: "sum.noGpsVisits", value: count("NO_GPS"), kind: "number" },
     ],
@@ -295,7 +304,7 @@ async function fieldDay(input: FieldReportInput): Promise<FieldReport> {
       closedLater,
       hours: worked === null ? null : Math.round((worked / 3600) * 10) / 10,
       visits: own.length,
-      atClients: own.reduce((sum, visit) => sum + (visit.duration ?? 0), 0),
+      atClients: own.reduce((sum, visit) => sum + (isForgottenVisit(visit.duration) ? 0 : visit.duration ?? 0), 0),
       firstDelay: own[0] ? Math.max(0, Math.round((own[0].checkInAt.getTime() - day.startedAt.getTime()) / 60000)) : null,
     }
   })

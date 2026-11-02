@@ -21175,7 +21175,8 @@
     "reason": {
       "NO_GPS": "koordinat yoxdur",
       "FAR": "müştəridən uzaqda",
-      "SHORT": "çox qısa"
+      "SHORT": "çox qısa",
+      "LONG": "çox uzun — bitirilməyib"
     },
     "neverVisited": "hələ olmayıb",
     "metersShort": "m",
@@ -21209,11 +21210,11 @@
     "colContacts": "Həkimlər",
     "type_joint_evaluations_desc": "Rəhbərlərin birgə vizitlərdə agentlərə verdiyi qiymətlər: orta bal və ən zəif bənd. Agent bu hesabatı görmür.",
     "type_joint_evaluations": "Birgə vizit qiymətləri",
-    "type_field_day_desc": "Gün başlanğıcı, ilk və son vizit, gün sonu, işlənmiş saat və müştəri yanında keçən vaxt.",
+    "type_field_day_desc": "Gün başlanğıcı, ilk və son vizit, gün sonu, işlənmiş saat və müştəri yanında keçən vaxt (3 saatdan uzun, bitirilməmiş vizitlər sayılmır).",
     "type_field_day": "Sahədə gün",
     "type_presentations_desc": "Hansı məhsul neçə dəfə, neçə müştəriyə göstərilib və nə qədər baxılıb.",
     "type_presentations": "Təqdimatlar",
-    "type_suspicious_desc": "5 dəqiqədən qısa, müştəridən uzaqda başlanan və ya koordinatsız vizitlər.",
+    "type_suspicious_desc": "5 dəqiqədən qısa, 3 saatdan uzun (bitirməyi unudub), müştəridən uzaqda başlanan və ya koordinatsız vizitlər.",
     "type_suspicious": "Şübhəli vizitlər",
     "type_not_visited_desc": "Dövrdə heç kimin gəlmədiyi müştərilər — əvvəlcə VIP və A, sonra ən çox unudulanlar.",
     "type_not_visited": "Ziyarət edilməyən müştərilər",
@@ -21358,6 +21359,7 @@
       "noGpsVisits": "Koordinatsız",
       "farVisits": "Uzaqda",
       "shortVisits": "Çox qısa",
+      "longVisits": "Çox uzun",
       "suspiciousShare": "Vizitlərin payı",
       "suspicious": "Şübhəli vizitlər",
       "notVisitedShare": "Bütün həkimlərdən",

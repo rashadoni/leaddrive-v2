@@ -184,7 +184,7 @@ export default function MtmReportsPage() {
     if (kind === "minutes") return v != null ? `${v} ${t("minShort")}` : "—"
     if (kind === "seconds") return typeof v === "number" ? asMinutesSeconds(v) : "—"
     if (kind === "meters") return typeof v === "number" ? `${v} ${t("metersShort")}` : "—"
-    if (kind === "days") return typeof v === "number" ? String(v) : "—"
+    if (kind === "days" || kind === "hours") return typeof v === "number" ? String(v) : "—"
     if (kind === "lastVisit") return v ? formatDate(new Date(String(v)), locale) : t("neverVisited")
     if (kind === "reasons") return String(v ?? "").split(",").filter(Boolean).map((code) => t(`reason.${code}`)).join(", ")
     if (kind === "percent") return v != null ? `${v}%` : "—"
