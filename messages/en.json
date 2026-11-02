@@ -11758,7 +11758,7 @@
     "visitCloseByAgentOnly": "The agent closes the visit himself in the app. If a visit is stuck open, message the agent."
   },
   "mtmRoutePlanner": {
-    "hours": {"missing": "no hours", "dayOff": "closed that day", "removeStop": "Remove from the route", "closedOnArrival": "closed on arrival — the visit cannot happen", "wait": "wait at the door {minutes} min (lunch or not open yet)"},
+    "hours": {"missing": "no hours", "dayOff": "closed that day", "removeStop": "Remove from the route", "closedOnArrival": "closed on arrival — the visit cannot happen", "wait": "wait at the door {minutes} min (lunch or not open yet)", "moveHint": "Take the place off this day and open, in a new tab, the route of the nearest day it works, with the place on it. This route stays as it is.", "moveTo": {"1": "To Monday", "2": "To Tuesday", "3": "To Wednesday", "4": "To Thursday", "5": "To Friday", "6": "To Saturday", "7": "To Sunday"}},
     "order": {
       "rowInHours": "Within hours",
       "rowWait": "Waiting at a closed door",

@@ -61,6 +61,24 @@ describe("MTM Excel contract", () => {
     }))
   })
 
+  // «Часы приёма»: a time typed into a cell Excel formats as time arrives as a
+  // moment on Excel's day zero; it must be read as the clock, not as a date.
+  it("reads a place's hours from cells formatted as time and from text", async () => {
+    const workbook = buildMtmExcelTemplate("CUSTOMERS", "ru")
+    const sheet = workbook.getWorksheet("customers")!
+    const column = (key: string) => getMtmExcelContract("CUSTOMERS").columns.findIndex((item) => item.key === key) + 1
+    sheet.getRow(2).getCell(column("mon_from")).value = new Date(Date.UTC(1899, 11, 30, 9, 0))
+    sheet.getRow(2).getCell(column("mon_from")).numFmt = "hh:mm"
+    sheet.getRow(2).getCell(column("mon_to")).value = "18:00"
+    const bytes = Buffer.from(await workbook.xlsx.writeBuffer())
+
+    const parsed = await parseMtmExcelWorkbook(bytes, "CUSTOMERS")
+
+    expect(parsed.rows[0].values.mon_from).toBe("09:00")
+    expect(parsed.rows[0].values.mon_to).toBe("18:00")
+    expect(parsed.errors.filter((error) => error.errorCode === "UNKNOWN_HEADER")).toEqual([])
+  })
+
   it("accepts valid SpreadsheetML documents that use namespace-prefixed tags", async () => {
     const workbook = buildMtmExcelTemplate("CUSTOMERS", "en")
     const sheet = workbook.getWorksheet("customers")!

@@ -320,6 +320,8 @@ describe("GET /api/v1/mtm/routes", () => {
       latitude: true,
       longitude: true,
       geofenceRadius: true,
+      // «Часы приёма»: the agent's day list says at each stop whether it is open.
+      workingHours: true,
     })
     // The stop's fact travels as times only: no check-in coordinates and no
     // agent identity in the list payload.
