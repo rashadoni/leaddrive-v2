@@ -31,6 +31,10 @@ set +a
 # point it at a log directory with no "queue exceeded" in it — the exact shape
 # that killed this script on production.
 : "${WAL_LOG_PATH:=/var/log/pgbackrest}"
+: "${WAL_ARTIFACT_PREFIX:=artifacts}"
+: "${WAL_ARTIFACT_GRACE_SECONDS:=1800}"
+: "${WAL_DEPLOY_SHA_FILE:=/opt/leaddrive-v2/.next/standalone/.deploy-sha}"
+: "${AWS_BIN:=aws}"
 : "${WAL_CHECK_STATE_FILE:=/var/lib/leaddrive-wal-archive/check-state.json}"
 : "${WAL_CHECK_LOCK_FILE:=/var/lib/leaddrive-recovery-runner-locks/wal-check.lock}"
 : "${WAL_ALERT_COMMAND:=}"
@@ -162,7 +166,32 @@ if [ "${full_age:--1}" -ge 0 ] && [ "$full_age" -gt $((WAL_FULL_INTERVAL_DAYS * 
   note warn "newest full backup is $((full_age / 86400))d old (interval ${WAL_FULL_INTERVAL_DAYS}d)"
 fi
 
-# 5. End-to-end: pgbackrest check pushes a real segment and reads it back.
+# 5. Can the application be restored at all, or only the database? The release
+# artifact is retained in GitHub for 30 days and nowhere else, and production
+# cannot build itself, so a missing copy in the bucket means a restore stalls
+# on fetching something runnable. A warning, not critical: the data is still
+# safe and the artifact can be rebuilt — slowly.
+if [ -n "$WAL_ARTIFACT_PREFIX" ] && [ -r "$WAL_DEPLOY_SHA_FILE" ] && command -v "$AWS_BIN" >/dev/null 2>&1; then
+  live_sha="$(tr -d ' \t\r\n' <"$WAL_DEPLOY_SHA_FILE")"
+  release_age=$(( $(date -u +%s) - $(stat -c %Y -- "$WAL_DEPLOY_SHA_FILE") ))
+  case "$live_sha" in
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*)
+      # The deploy copies the artifact minutes after the swap, so a release
+      # younger than the grace window has not had its chance yet.
+      if [ "$release_age" -ge "$WAL_ARTIFACT_GRACE_SECONDS" ]; then
+        AWS_ACCESS_KEY_ID="$WAL_REPO_KEY" AWS_SECRET_ACCESS_KEY="$WAL_REPO_KEY_SECRET" \
+        AWS_DEFAULT_REGION="$WAL_REPO_REGION" \
+          "$AWS_BIN" s3api head-object --endpoint-url "https://$WAL_REPO_ENDPOINT" \
+            --region "$WAL_REPO_REGION" --no-cli-pager \
+            --bucket "$WAL_REPO_BUCKET" --key "$WAL_ARTIFACT_PREFIX/$live_sha.tar.gz" >/dev/null 2>&1 \
+          || note warn "no release artifact in the bucket for the live release ${live_sha:0:9}: a restore would need GitHub"
+      fi
+      ;;
+    *) note warn "cannot read the live deploy sha from $WAL_DEPLOY_SHA_FILE" ;;
+  esac
+fi
+
+# 6. End-to-end: pgbackrest check pushes a real segment and reads it back.
 if ! check_output="$(as_pg "pgbackrest --stanza=$WAL_STANZA check")"; then
   note crit "pgbackrest check failed: $(printf '%s' "$check_output" | tail -2 | tr '\n' ' ')"
 fi
