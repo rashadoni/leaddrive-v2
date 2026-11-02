@@ -96,21 +96,27 @@ describe("the price unit of an item 1C counts in «шт»", () => {
     expect(listPrice({ priceAsReported: "1.33", baseUnitAsReported: "упак", nameAz: "Parasetamol /*qutu/*" }, asOf)).toMatchObject({ per: "qutu" })
   })
 
-  it("prices a line the pharmacy counts in boxes or in pieces, and nothing else", async () => {
+  // Owner, 2026-11-02: «тут продажа b2b, там не бывает по ампуле, там всё в коробках».
+  it("prices a line in 1C's units whatever word the pharmacy counted with", async () => {
     const { resolvePhoneOrderLines } = await import("@/lib/voice-agent/pharmacy/phone-orders")
     const bisakodil = { externalId: "362c5642-a1a4-11e2-b536-78acc0fe22c8", itemCode: "00000028688",
       name: "Бисакодил  5 мг № 30 (Таблетки) (Hemopharma) (Югославия)", nameAz: "Bisakodil 5 mq № 30 (Həb)",
-      listPrice: { amount: "0.92", per: "qutu", alsoPer: "ədəd" } }
+      listPrice: { amount: "0.92", per: "qutu" } }
     const catalog = { find: (id: string) => id === bisakodil.externalId ? bisakodil : null } as never
     const line = (unit: string) => ({ spoken: "Bisakodil", externalId: bisakodil.externalId, quantity: 3, unit })
-    const [qutu, piece, flakon] = resolvePhoneOrderLines(catalog, [line("qutu"), line("ədəd"), line("flakon")])
-    expect(qutu.lineTotal?.toFixed(2)).toBe("2.76")
-    expect(piece.lineTotal?.toFixed(2)).toBe("2.76")
-    // A unit the price is not for stays for the manager, never a guessed total.
-    expect(flakon).toMatchObject({ status: "resolved", unitPrice: null, lineTotal: null })
-    // The order writer gets that second word only for 1C's «шт»: five ədəd of a «упак» may be five ampoules.
+    const lines = resolvePhoneOrderLines(catalog, ["qutu", "ədəd", "ampula", "flakon"].map(line))
+    // Three of 1C's units each time, and the pharmacy's own word stays on the line.
+    expect(lines.map(resolved => [resolved.unit, resolved.lineTotal?.toFixed(2)])).toEqual([
+      ["qutu", "2.76"], ["ədəd", "2.76"], ["ampula", "2.76"], ["flakon", "2.76"]])
+    // Without a price in 1C nothing is guessed.
+    const [unpriced] = resolvePhoneOrderLines({ find: () => ({ ...bisakodil, listPrice: null }) } as never, [line("qutu")])
+    expect(unpriced).toMatchObject({ status: "resolved", unitPrice: null, lineTotal: null })
+    // A unit with no spoken word (tube) still has its price for the order, as a box.
     const { orderPrice } = await import("@/lib/voice-agent/pharmacy/zeytun-inbound-pilot")
-    expect(orderPrice({ priceAsReported: "0.92", baseUnitAsReported: "шт " }, "2026-11-02T10:30:52Z")).toEqual({ amount: "0.92", per: "qutu", alsoPer: "ədəd" })
-    expect(orderPrice({ priceAsReported: "9.08", baseUnitAsReported: "упак" }, "2026-11-02T10:30:52Z")).toEqual({ amount: "9.08", per: "qutu" })
+    const asOf = "2026-11-02T10:30:52Z"
+    expect(orderPrice({ priceAsReported: "0.92", baseUnitAsReported: "шт " }, asOf)).toEqual({ amount: "0.92", per: "qutu" })
+    expect(orderPrice({ priceAsReported: "3.20", baseUnitAsReported: "тюб" }, asOf)).toEqual({ amount: "3.20", per: "qutu" })
+    expect(orderPrice({ priceAsReported: "2.78", baseUnitAsReported: "флак" }, asOf)).toEqual({ amount: "2.78", per: "flakon" })
+    expect(orderPrice({ priceAsReported: "0", baseUnitAsReported: "упак" }, asOf)).toBeNull()
   })
 })

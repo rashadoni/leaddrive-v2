@@ -20,15 +20,10 @@ export const phoneOrderLineInputSchema = z.strictObject({
 export type PhoneOrderLineInput = z.infer<typeof phoneOrderLineInputSchema>
 
 /** The catalog item the call's lookup returns for one product id. */
-/** Whether a list price prices a line in `unit`: its own unit, or the other word 1C's unit is said with. */
-export function priceAppliesTo(price: { per: string; alsoPer?: string }, unit: string) {
-  return unit === price.per || unit === price.alsoPer
-}
-
 export type PhoneOrderCatalogItem = {
   externalId: string; itemCode: string; name: string; nameAz: string | null
   /** A list price for one unit, or null when the feed has none for this item. */
-  listPrice: { amount: string; per: string; alsoPer?: string } | null
+  listPrice: { amount: string; per: string } | null
 }
 
 export type PhoneOrderCatalog = {
@@ -74,7 +69,8 @@ type ResolvedLine = {
 /** Each line against the catalog snapshot. A product id the snapshot does not
  * know is a line the caller said but nobody resolved — kept with the words,
  * never dropped and never matched by name here. Prices are the snapshot's,
- * never the model's: a line is priced only in the unit the price is for. */
+ * never the model's. A B2B pharmacy counts in 1C's units whatever word it
+ * uses (orderPrice), so a found product with a price is always priced. */
 export function resolvePhoneOrderLines(catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[]): ResolvedLine[] {
   return lines.map((line, index) => {
     const item = line.externalId ? catalog.find(line.externalId) : null
@@ -83,7 +79,7 @@ export function resolvePhoneOrderLines(catalog: PhoneOrderCatalog, lines: PhoneO
       return { position: index + 1, status: "not_found", externalId: null, itemCode: null, productName: null, sourceName: null,
         spokenText: line.spoken, quantity: line.quantity, unit, unitPrice: null, lineTotal: null }
     }
-    const price = item.listPrice && priceAppliesTo(item.listPrice, unit) ? new Prisma.Decimal(item.listPrice.amount) : null
+    const price = item.listPrice ? new Prisma.Decimal(item.listPrice.amount) : null
     return { position: index + 1, status: "resolved", externalId: item.externalId, itemCode: item.itemCode,
       productName: item.nameAz?.trim() || item.name, sourceName: item.name, spokenText: line.spoken, quantity: line.quantity, unit,
       unitPrice: price, lineTotal: price ? price.mul(line.quantity).toDecimalPlaces(2) : null }
