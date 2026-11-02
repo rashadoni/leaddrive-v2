@@ -20,6 +20,9 @@ import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 
 const CARD = "rounded-2xl border border-border bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+/** Department cards fill the row whatever their number (owner's grid rule, 2026-10-08: a pair or the whole width,
+ * never half a row and emptiness beside it) — seen on prod with two departments on four columns, 2026-11-03. */
+const BOARD_GRID: Record<number, string> = { 2: "", 3: "xl:grid-cols-3", 4: "xl:grid-cols-4" }
 /** Rows drawn before «Show everyone»: the page grows with the list, it never scrolls inside a frame. */
 export const ATTENDANCE_BOARD_ROWS = 12
 const FILTER_LABEL: Record<AttendanceBoardFilter, string> = { all: "filterAll", working: "filterWorking", paused: "filterPaused", late: "filterLate", absent: "filterAbsent", notYet: "filterNotYet", away: "filterAway", left: "filterLeft" }
@@ -79,7 +82,7 @@ export function MtmAttendanceBoard({ rows, today, timezone, loadedAt, canManage,
       <p className="text-xs text-muted-foreground" data-testid="attendance-board-hint">{t(board.groups.length ? "boardHint" : "boardRefreshHint")}</p>
     </div>
 
-    {board.groups.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="attendance-board-groups">
+    {board.groups.length ? <div className={cn("grid gap-4 sm:grid-cols-2", BOARD_GRID[Math.min(board.groups.length, 4)])} data-testid="attendance-board-groups">
       {board.groups.map(item => {
         const active = group?.key === item.key, name = groupName(item)
         const percent = item.expected ? Math.round(item.arrived / item.expected * 100) : null
