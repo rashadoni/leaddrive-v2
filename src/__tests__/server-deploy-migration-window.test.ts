@@ -46,6 +46,35 @@ describe("migration quiet window", () => {
     expect(windowFn).toMatch(/fatal "migration quiet window unavailable/)
   })
 
+  it("counts a lease as live only while something renews it", () => {
+    // The orphan every deploy makes: it stops the scheduler without releasing
+    // what it held, so a job caught mid-run leaves status='running' with an
+    // expiry up to its whole TTL ahead — ten or fifteen minutes for the jobs
+    // that have one. Waiting for that is waiting for a worker that no longer
+    // exists (run 41480027867, five minutes of system=1 with tx=0).
+    // The script escapes its quotes for the shell; compare the SQL itself.
+    const windowSql = windowFn.replace(/\\"/g, '"')
+    expect(windowSql).toContain('"updatedAt" > now() - (("leaseUntil" - "updatedAt") * 0.5)')
+    // And the refusal still stands on the ones that ARE alive.
+    expect(windowFn).toContain('[ "$live_system_jobs" = "0" ]')
+    // Behaviour is proved on a real PostgreSQL, not by this string:
+    // src/__tests__/deploy-migration-window-postgres.test.ts.
+  })
+
+  it("names the lease that is holding the window", () => {
+    // Counts alone cost an hour on 2026-11-02: `system=1` says nothing about
+    // which job, or whether anybody still holds it.
+    expect(windowFn).toMatch(/job leases: \$system_job_detail/)
+    expect(windowFn).toMatch(/'live' ELSE 'abandoned'/)
+    expect(windowFn).toMatch(/stale_system=\$stale_system_jobs/)
+  })
+
+  it("disregards an orphan out loud, never silently", () => {
+    // A gate that quietly stops checking something is the shape of every
+    // green-on-its-own-failure story in this repo.
+    expect(windowFn).toMatch(/abandoned job lease\(s\) disregarded/)
+  })
+
   it("does not print a line every five seconds", () => {
     // Five seconds apart reads as a hang and buries the line that matters.
     expect(windowFn).toMatch(/attempt % 6/)
