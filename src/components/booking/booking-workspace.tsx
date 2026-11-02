@@ -18,6 +18,7 @@ import { BookingDetail, type DayScheduleRow } from "./booking-detail"
 import { type BookingHistoryItem } from "./booking-history"
 import { BookingCreatePanel, type BookingAlternative, type BookingReadiness } from "./booking-create-panel"
 import { BookingCoordinatorsPanel } from "./booking-coordinators-panel"
+import { BookingHostSchedulePanel } from "./booking-host-schedule-panel"
 import { BookingStatus } from "./booking-status"
 import type { DaySlots } from "@/lib/booking/availability"
 import { dateInputValueInTimezone, localDateTimeToUtc } from "@/lib/timezone"
@@ -334,7 +335,7 @@ export function BookingWorkspace() {
     <nav data-crm-tabs="" className="flex flex-wrap gap-1 border-b" aria-label={t("workspaceSections")}>
       {(["meetings", ...(context?.canConfigure ? ["pages", "team"] : [])] as string[]).map((item) => <Button key={item} data-crm-tab="" data-state={tab === item ? "active" : "inactive"} variant={tab === item ? "secondary" : "ghost"} className="min-h-11 rounded-b-none" aria-current={tab === item ? "page" : undefined} onClick={() => navigate({ tab: item === "meetings" ? null : item, booking: null })}>{t(item === "meetings" ? "workspaceMeetings" : item === "pages" ? "workspacePages" : "workspaceTeam")}</Button>)}
     </nav>
-    {tab === "pages" ? context?.canConfigure ? <BookingPagesPanel /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <BookingCoordinatorsPanel /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
+    {tab === "pages" ? context?.canConfigure ? <BookingPagesPanel /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <div className="space-y-10"><BookingHostSchedulePanel /><BookingCoordinatorsPanel /></div> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
       {view === "day" ? null : <section className="flex flex-wrap items-end gap-3" aria-label={t("workspaceFilters")}>
         {searchField}
         {view === "list" ? <div className="space-y-1"><Label htmlFor="meeting-period">{t("workspacePeriod")}</Label><select id="meeting-period" className={`${SELECT} block`} value={period} onChange={(event) => { setPeriod(event.target.value); setDay(null) }}>{["upcoming", "today", "week", "all"].map((value) => <option key={value} value={value}>{t(`period_${value}`)}</option>)}</select></div> : null}

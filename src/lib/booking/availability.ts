@@ -14,7 +14,7 @@
  * page shows and whether a submitted slot is still free, so the two cannot
  * disagree.
  */
-import { dateInputValueInTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
+import { dateInputValueInTimezone, localDateTimeToUnambiguousUtc, localDateTimeToUtc } from "@/lib/timezone"
 
 export const WEEKDAYS = ["0", "1", "2", "3", "4", "5", "6"] as const // 0 = Sunday
 export type Weekday = (typeof WEEKDAYS)[number]
@@ -41,6 +41,14 @@ export interface BusyInterval {
   bufferAfterMinutes?: number
   start: Date
   end: Date
+  /**
+   * "off" is not a meeting or a calendar event — it is the time this host
+   * simply does not work. The slot maths treats it like any other busy
+   * interval, but a screen must not draw it: an evening shown as a grey
+   * «busy» block is noise, while an evening with no slots says the same
+   * thing by itself.
+   */
+  kind?: "off"
 }
 
 export interface Slot {
@@ -88,6 +96,48 @@ function weekdayOf(date: string): Weekday {
 
 function overlaps(a: BusyInterval, start: number, end: number): boolean {
   return a.start.getTime() < end && a.end.getTime() > start
+}
+
+/**
+ * The hours a host does NOT work, as busy intervals — the complement of their
+ * own weekly hours over the window asked for.
+ *
+ * Why a busy interval and not a second set of rules: the booking page says
+ * when a service is offered, the host says when they are there, and the
+ * answer is the intersection. Expressing the host's side as "busy" keeps one
+ * slot loop instead of two sets of hours to keep in step, and a host with no
+ * schedule simply contributes nothing — exactly the behaviour of a system
+ * that never heard of host schedules.
+ *
+ * The window is extended by a day on each side because the caller asks in
+ * UTC: an interval that ends after midnight on the organization's clock still
+ * belongs to the day the caller means.
+ */
+export function offHoursIntervals(weekly: WeeklyHours, timezone: string, from: Date, to: Date): BusyInterval[] {
+  const intervals: BusyInterval[] = []
+  const first = addDays(dateInputValueInTimezone(from, timezone), -1)
+  const last = addDays(dateInputValueInTimezone(to, timezone), 1)
+  for (let date = first; date <= last; date = addDays(date, 1)) {
+    const dayStart = localDateTimeToUtc(`${date}T00:00`, timezone)
+    const dayEnd = localDateTimeToUtc(`${addDays(date, 1)}T00:00`, timezone)
+    const working = (weekly[weekdayOf(date)] ?? [])
+      .map((interval) => ({ from: minutesOfDay(interval.start), to: minutesOfDay(interval.end) }))
+      .filter((interval): interval is { from: number; to: number } => interval.from !== null && interval.to !== null && interval.to > interval.from)
+      .sort((left, right) => left.from - right.from)
+    if (!working.length) {
+      intervals.push({ start: dayStart, end: dayEnd, kind: "off" })
+      continue
+    }
+    let cursor = dayStart
+    for (const interval of working) {
+      const start = localDateTimeToUtc(`${date}T${clock(interval.from)}`, timezone)
+      const end = localDateTimeToUtc(`${date}T${clock(interval.to)}`, timezone)
+      if (start.getTime() > cursor.getTime()) intervals.push({ start: cursor, end: start, kind: "off" })
+      if (end.getTime() > cursor.getTime()) cursor = end
+    }
+    if (cursor.getTime() < dayEnd.getTime()) intervals.push({ start: cursor, end: dayEnd, kind: "off" })
+  }
+  return intervals
 }
 
 export function computeSlots(input: {
