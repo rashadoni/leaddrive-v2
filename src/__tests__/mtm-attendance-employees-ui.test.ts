@@ -31,12 +31,13 @@ const names = () => rows().map(row => row.querySelector("strong")!.textContent)
 beforeEach(() => {
   locale = "ru"; container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   navigation.params = new URLSearchParams("tab=employees"); replace.mockReset(); navigation.replace = replace
-  directory = { timezone: "Asia/Baku", users: [], teams: [{ id: "team-centre", name: "Demo Centre" }, { id: "team-north", name: "Demo North" }],
+  directory = { timezone: "Asia/Baku", users: [], teams: [{ id: "team-centre", name: "Demo Centre", departmentId: "dep-finance" }, { id: "team-north", name: "Demo North", departmentId: null }],
+    departments: [{ id: "dep-finance", name: "Demo Finance" }],
     managers: [{ id: "manager-rauf", name: "Rauf Demo", position: "Руководитель отдела" }], employees: [
-    { id: "employee-aylin", name: "Aylin Demo", role: "EMPLOYEE", teamName: "Demo Centre", position: "Бухгалтер", teamId: "team-centre", managerId: null, phone: "+994501112233", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null,
+    { id: "employee-aylin", name: "Aylin Demo", role: "EMPLOYEE", teamName: "Demo Centre", departmentId: "dep-finance", departmentName: "Demo Finance", position: "Бухгалтер", teamId: "team-centre", managerId: null, phone: "+994501112233", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null,
       todayMark: { status: "STARTED", startedAt: "2026-10-16T04:57:00.000Z", completedAt: null }, history: [{ id: "hire-1", kind: "HIRE", date: "2026-10-01", at: "2026-09-30T20:00:00.000Z", byName: "Rauf Demo" }] },
-    { id: "employee-murad", name: "Murad Demo", role: "EMPLOYEE", teamName: null, position: null, teamId: null, managerId: null, phone: "+994552223344", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, todayMark: null, history: [] },
-    { id: "employee-leyla", name: "Leyla Demo", role: "EMPLOYEE", teamName: "Demo North", position: "Кассир", teamId: "team-north", managerId: null, phone: null, status: "ACTIVE", included: false, participationVersion: "p1", includedFrom: null, todayMark: null,
+    { id: "employee-murad", name: "Murad Demo", role: "EMPLOYEE", teamName: null, departmentId: null, departmentName: null, position: null, teamId: null, managerId: null, phone: "+994552223344", status: "ACTIVE", included: true, participationVersion: null, includedFrom: null, todayMark: null, history: [] },
+    { id: "employee-leyla", name: "Leyla Demo", role: "EMPLOYEE", teamName: "Demo North", departmentId: null, departmentName: null, position: "Кассир", teamId: "team-north", managerId: null, phone: null, status: "ACTIVE", included: false, participationVersion: "p1", includedFrom: null, todayMark: null,
       history: [{ id: "hire-2", kind: "HIRE", date: "2026-09-01", at: "2026-08-31T20:00:00.000Z", byName: null }] },
   ] }
   fetchMock.mockReset(); fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? response({ eventId: "new-event", idempotent: false }) : response(directory)); vi.stubGlobal("fetch", fetchMock)
@@ -45,11 +46,23 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 
 // Owner, 2026-10-16: «просил редактируемыми сделать сотрудников… будет неудобно, когда список будет больше 200».
 describe("Personnel → Employees list", () => {
+  it("does not mix CRM user identities into the employee rows or counters", async () => {
+    directory.users = [{ id: "crm-only", name: "CRM-only administrator", existingRole: "EMPLOYEE", existingTeamId: null, eligible: false }]
+    await render()
+    expect(names()).toEqual(["Aylin Demo", "Murad Demo", "Leyla Demo"])
+    expect(container.textContent).not.toContain("CRM-only administrator")
+    expect(container.textContent).toContain(t("employeesParticipationCounts", { total: 3, included: 2, excluded: 1 }))
+    await edit("employee-search", "CRM-only administrator")
+    expect(rows()).toHaveLength(0)
+  })
+
   it.each(["ru", "az", "en"] as const)("renders %s: who, department, today, and a worded Edit link to the employee's page", async language => {
     await render(language)
     expect(names()).toEqual(["Aylin Demo", "Murad Demo", "Leyla Demo"])
     const [aylin, murad, leyla] = rows()
     expect(aylin.textContent).toContain("Бухгалтер"); expect(aylin.textContent).toContain(pt("todayAt", { time: "08:57" }))
+    expect(aylin.textContent).toContain("Demo Finance"); expect(aylin.textContent).toContain("Demo Centre")
+    expect(container.querySelector("thead")!.textContent).toContain(pt("employeesColUnit"))
     expect(murad.querySelector('[data-testid="employee-missing"]')!.textContent).toBe(pt("employeeMissing", { fields: [pt("employeeMissingPosition"), pt("employeeMissingHire")].join(", ") }))
     expect(murad.textContent).toContain(pt("todayNone")); expect(leyla.textContent).toContain(pt("todayExcluded"))
     const link = aylin.querySelector<HTMLAnchorElement>(`a[aria-label="${pt("employeeEditNamed", { name: "Aylin Demo" })}"]`)!
@@ -61,10 +74,15 @@ describe("Personnel → Employees list", () => {
   })
 
   it("finds people by position or phone digits, filters by department and participation, and keeps it in the address", async () => {
+    // Murad heads the department: in it, without a section.
+    directory.employees[1] = { ...directory.employees[1], departmentId: "dep-finance", departmentName: "Demo Finance" }
     await render()
     await edit("employee-search", "касс"); expect(names()).toEqual(["Leyla Demo"])
     await edit("employee-search", "55 222"); expect(names()).toEqual(["Murad Demo"])
-    await edit("employee-search", ""); await edit("employee-department", "none"); expect(names()).toEqual(["Murad Demo"])
+    await edit("employee-search", ""); await edit("employee-department", "none"); expect(names()).toEqual([])
+    // A department filter takes everyone in it, with a section or without (owner, 2026-10-22).
+    await edit("employee-department", "dep:dep-finance"); expect(names()).toEqual(["Aylin Demo", "Murad Demo"])
+    await edit("employee-search", "finance"); expect(names()).toEqual(["Aylin Demo", "Murad Demo"]); await edit("employee-search", "")
     await edit("employee-department", ""); await edit("employee-participation", "EXCLUDED"); expect(names()).toEqual(["Leyla Demo"])
     expect(replace.mock.calls.at(-1)![0]).toBe("/mtm/attendance/people?tab=employees&show=EXCLUDED")
     // «Back» from the employee returns to exactly this view.
@@ -117,7 +135,7 @@ describe("Add employee", () => {
     await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994 50 111 22 33")
     await send()
     expect(creates()).toHaveLength(1)
-    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994 50 111 22 33", email: null, position: null, teamId: null, hireDate: null })
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994 50 111 22 33", email: null, position: null, departmentId: null, teamId: null, hireDate: null })
     expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toBe(p("addEmployeeDone", { name: "Nigar Demo", phone: "+994 50 111 22 33" }))
     expect(container.querySelector('[data-testid="attendance-add-employee-form"]')).toBeNull()
   })
@@ -129,7 +147,54 @@ describe("Add employee", () => {
     await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994501112233"); await type("addEmployeeEmail", "nigar@example.test")
     await type("employeeCardPosition", "Кассир"); await type("employeeCardHired", "2026-10-01"); await edit("add-employee-department", "team-north")
     await send()
-    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994501112233", email: "nigar@example.test", position: "Кассир", teamId: "team-north", hireDate: "2026-10-01" })
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994501112233", email: "nigar@example.test", position: "Кассир", departmentId: null, teamId: "team-north", hireDate: "2026-10-01" })
+  })
+
+  // Owner, 2026-10-22: «тут есть отдел, но нет департамента».
+  it("asks for the department above the section, and a section names its department", async () => {
+    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ success: true, data: { userId: "u-new", agentId: "a-new" } }), { status: 201 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    const labels = [...form().querySelectorAll("label")].map(node => node.textContent)
+    expect(labels.indexOf(p("employeeCardDepartament"))).toBeGreaterThan(-1)
+    expect(labels.indexOf(p("employeeCardDepartament"))).toBeLessThan(labels.indexOf(p("employeeCardDepartment")))
+    const sections = () => [...field("add-employee-department").querySelectorAll("option")].map(option => option.value)
+    // Under a department: its sections and those outside any; another department's are not offered.
+    await edit("add-employee-department-unit", "dep-finance")
+    expect(sections()).toEqual(["", "team-centre", "team-north", "__new"])
+    directory.teams.push({ id: "team-elsewhere", name: "Demo Elsewhere", departmentId: "dep-other" })
+    // A section of a department picks that department.
+    await edit("add-employee-department-unit", ""); await edit("add-employee-department", "team-centre")
+    expect(field("add-employee-department-unit").value).toBe("dep-finance")
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994501112233")
+    await send()
+    expect(JSON.parse(String(creates()[0][1]!.body))).toMatchObject({ departmentId: "dep-finance", teamId: "team-centre" })
+  })
+
+  it("sends a new department and a new section by name, and a department head without a section", async () => {
+    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ success: true, data: { userId: "u-new", agentId: "a-new" } }), { status: 201 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Rəşad Demo"); await type("addEmployeePhone", "+994501112233")
+    await edit("add-employee-department-unit", "__new")
+    const typed = async (label: string, value: string) => act(async () => { const node = form().querySelector<HTMLInputElement>(`input[aria-label="${p(label)}"]`)!; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(node, value); node.dispatchEvent(new Event("input", { bubbles: true })) })
+    await typed("employeeCardNewDepartamentName", " İT departamenti ")
+    await send()
+    expect(JSON.parse(String(creates()[0][1]!.body))).toMatchObject({ departmentId: null, newDepartmentName: "İT departamenti", teamId: null })
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994501112244")
+    await edit("add-employee-department-unit", "dep-finance"); await edit("add-employee-department", "__new"); await typed("employeeCardNewDepartmentName", "Demo Treasury")
+    await send()
+    expect(JSON.parse(String(creates()[1][1]!.body))).toMatchObject({ departmentId: "dep-finance", teamId: null, newTeamName: "Demo Treasury" })
+  })
+
+  it("names a section that moved to another department in words", async () => {
+    fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ code: "MTM_ATTENDANCE_EMPLOYEE_SECTION_ELSEWHERE" }), { status: 409 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994501112233")
+    await send()
+    expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("employeeSectionElsewhere"))
   })
 
   it("refuses a number without the country code on the spot", async () => {
@@ -144,6 +209,7 @@ describe("Add employee", () => {
   it.each([
     ["MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN", "addEmployeeEmailTaken"],
     ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "addEmployeePhoneTaken"],
+    ["IDENTITY_CANONICAL_PHONE_RESERVED", "addEmployeePhoneTaken"],
   ])("names %s in words and keeps what was typed", async (code, text) => {
     fetchMock.mockImplementation(async (url, options) => String(url).endsWith("/employees/new") ? new Response(JSON.stringify({ code }), { status: 409 }) : options?.method === "POST" ? response({ eventId: "e", idempotent: false }) : response(directory))
     await render()
@@ -154,4 +220,177 @@ describe("Add employee", () => {
     expect(input("addEmployeeEmail").value).toBe("taken@example.test")
     expect(input("addEmployeePhone").value).toBe("+994501112233")
   })
+  it.each(["ru", "az", "en"] as const)("explicitly connects the reviewed person to Time with the entered job details in %s", async language => {
+    const candidate = { kind: "canonical", userId: "existing-person", name: "Existing Person", claimId: "current-phone-claim", accountVersion: 7, timeActorId: null }
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response(candidate)
+      : String(url).endsWith("/identity/time/enroll") ? response({ agentId: "new-time-card", name: candidate.name }, 201)
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(language)
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed Name"); await type("addEmployeePhone", "+994501112233")
+    await type("employeeCardPosition", "Accountant"); await type("employeeCardHired", "2026-10-25")
+    await send()
+    expect(form().querySelector('[data-testid="attendance-canonical-person"]')!.textContent).toContain(candidate.name)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/enroll"))).toBe(false)
+    expect(form().querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true)
+    await act(async () => form().querySelector<HTMLButtonElement>('[data-testid="attendance-canonical-enroll"]')!.click())
+    const write = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/identity/time/enroll"))!
+    expect(JSON.parse(String(write[1]!.body))).toEqual({ userId: candidate.userId, expectedActorId: null, expectedClaimId: candidate.claimId, expectedAccountVersion: 7,
+      requestId: expect.any(String), position: "Accountant", departmentId: null, teamId: null, hireDate: "2026-10-25" })
+    expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toContain(candidate.name)
+  })
+
+  it.each([false, true])("reviews an existing Time card without bypassing its HR restriction: %s", async blocked => {
+    const candidate = { kind: "canonical", userId: "existing-person", name: "Existing Person", claimId: "claim", accountVersion: 7,
+      timeActorId: "owned-time-card", timeEnrolled: false, timeEnrollmentBlocked: blocked }
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response(candidate)
+      : String(url).endsWith("/identity/time/enroll") ? response({ agentId: candidate.timeActorId, name: candidate.name }, 201)
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed Name"); await type("addEmployeePhone", "+994501112233"); await send()
+    const review = form().querySelector('[data-testid="attendance-canonical-person"]')!
+    expect(review.textContent).toContain(p(blocked ? "addEmployeeIdentityTimeBlocked" : "addEmployeeIdentityExistingTimeHint", { name: candidate.name }))
+    if (blocked) {
+      expect(review.querySelector('[data-testid="attendance-canonical-enroll"]')).toBeNull()
+      expect(review.querySelector('a')?.getAttribute('href')).toBe('/mtm/attendance/people/owned-time-card')
+      expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/enroll"))).toBe(false)
+    } else {
+      await act(async () => review.querySelector<HTMLButtonElement>('[data-testid="attendance-canonical-enroll"]')!.click())
+      const write = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/identity/time/enroll"))!
+      expect(JSON.parse(String(write[1]!.body))).toMatchObject({ userId: candidate.userId, expectedActorId: candidate.timeActorId })
+    }
+  })
+
+  it("clears the reviewed identity when the number changes", async () => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response({ kind: "canonical", userId: "existing-person", name: "Existing Person", claimId: "claim", accountVersion: 7, timeActorId: null })
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed Name"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-canonical-person"]')).not.toBeNull()
+    await type("addEmployeePhone", "+994501112234")
+    expect(form().querySelector('[data-testid="attendance-canonical-person"]')).toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/enroll"))).toBe(false)
+  })
+
+  it.each(["ru", "az", "en"] as const)("requires explicit legacy-person review and explains pending first login in %s", async language => {
+    const candidate = { kind: "legacy", userId: "existing-person", name: "Existing Field person", sourceRevision: "a".repeat(64), fieldActorId: "existing-field", fieldRole: "AGENT", crmRole: "viewer" }
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup") ? response(candidate)
+      : String(url).endsWith("/identity/time/onboarding") ? response({ status: "ACTIVE", intentId: "prepared-review", expiresAt: "2026-11-01T12:00:00.000Z" }, 201)
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(language); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Different typed name"); await type("addEmployeePhone", "+994501112233"); await send()
+    const review = form().querySelector('[data-testid="attendance-legacy-person"]')!
+    expect(review.textContent).toContain(p("addEmployeePhoneProfile", { name: candidate.name }))
+    expect(review.textContent).toContain(p("addEmployeeIdentityNoCrm"))
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/onboarding"))).toBe(false)
+    await send(); expect(creates()).toHaveLength(1)
+    await act(async () => review.querySelector<HTMLButtonElement>('[data-testid="attendance-legacy-invite"]')!.click())
+    const sent = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/identity/time/onboarding"))!
+    const data = JSON.parse(String(sent[1]!.body))
+    expect(data).toMatchObject({ userId: candidate.userId, sourceRevision: candidate.sourceRevision, preserveCrm: false, phone: "+994501112233" })
+    expect(data).not.toHaveProperty("name"); expect(data).not.toHaveProperty("email"); expect(data).not.toHaveProperty("applications")
+    expect(form().textContent).toContain(p("addEmployeeIdentityInviteReady"))
+    expect(form().querySelector('[data-testid="attendance-legacy-invite"]')).toBeNull()
+    expect(creates()).toHaveLength(1)
+  })
+
+  it("shows a pending review and cancels it explicitly before offering a fresh review", async () => {
+    let cancelled = false
+    fetchMock.mockImplementation(async url => {
+      if (String(url).endsWith("/cancel")) { cancelled = true; return response({ status: "CANCELLED" }) }
+      if (String(url).endsWith("/identity/time/lookup")) return response(cancelled
+        ? { kind: "legacy", userId: "existing-person", name: "Existing person", sourceRevision: "b".repeat(64), fieldActorId: "field", fieldRole: "AGENT", crmRole: "viewer" }
+        : { kind: "pending", userId: "existing-person", name: "Existing person", intentId: "pending-intent", expiresAt: "2026-11-01T12:00:00.000Z" })
+      return String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory)
+    })
+    await render(); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed name"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-pending-review"]')).not.toBeNull()
+    expect(cancelled).toBe(false)
+    await send(); expect(creates()).toHaveLength(1)
+    await act(async () => form().querySelector<HTMLButtonElement>('[data-testid="attendance-cancel-review"]')!.click())
+    expect(cancelled).toBe(true)
+    expect(form().querySelector('[data-testid="attendance-pending-review"]')).toBeNull()
+    expect(form().querySelector('[data-testid="attendance-legacy-person"]')).not.toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/onboarding"))).toBe(false)
+    expect(input("addEmployeePhone").value).toBe("+994501112233")
+  })
+
+  it("clears legacy review when the number changes and never enrolls its stale candidate", async () => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/identity/time/lookup")
+      ? response({ kind: "legacy", userId: "existing-person", name: "Existing person", sourceRevision: "a".repeat(64), fieldActorId: "field", fieldRole: "AGENT", crmRole: "viewer" })
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render(); await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed name"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-legacy-person"]')).not.toBeNull()
+    await type("addEmployeePhone", "+994501112234")
+    expect(form().querySelector('[data-testid="attendance-legacy-person"]')).toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/identity/time/onboarding"))).toBe(false)
+  })
+
+  it.each((["ru", "az", "en"] as const).flatMap(language => ["MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN", "IDENTITY_CANONICAL_PHONE_RESERVED"].map(code => ({ language, code }))))("opens an existing hidden CRM card after $code in $language without creating or linking again", async ({ language, code }) => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
+      ? response({ kind: "attendance", agentId: "existing-card", name: "Existing CRM person", enrolled: false })
+      : String(url).endsWith("/employees/new") ? response(null, 409, code) : response(directory))
+    await render(language)
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "Typed name"); await type("addEmployeePhone", "+994501112233")
+    await send()
+    const match = form().querySelector('[data-testid="attendance-phone-match"]')!
+    expect(match.textContent).toContain(p("addEmployeePhoneProfile", { name: "Existing CRM person" }))
+    expect(match.textContent).toContain(p("addEmployeePhoneExistingHire"))
+    expect(match.querySelector("a")!.getAttribute("href")).toBe("/mtm/attendance/people/existing-card?back=%2Fmtm%2Fattendance%2Fpeople%3Ftab%3Demployees")
+    expect(creates()).toHaveLength(1)
+    expect(fetchMock.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(3)
+    expect(form().querySelector('[role="alert"]')).toBeNull()
+    expect(input("addEmployeeName").value).toBe("Typed name")
+    await type("addEmployeePhone", "+994501112234")
+    expect(form().querySelector('[data-testid="attendance-phone-match"]')).toBeNull()
+  })
+
+  it.each([{ kind: "other", name: "Field profile" }, { kind: "ambiguous" }])("never offers an attendance card for $kind", async match => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match") ? response(match)
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(form().querySelector('[data-testid="attendance-phone-match"] a')).toBeNull()
+    expect(creates()).toHaveLength(1)
+  })
+
+  it("discards a delayed lookup when the entered number changes", async () => {
+    let finish!: (response: Response) => void
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match") ? new Promise<Response>(resolve => { finish = resolve })
+      : String(url).endsWith("/employees/new") ? response(null, 409, "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    await type("addEmployeePhone", "+994501112234")
+    await act(async () => { finish(response({ kind: "attendance", agentId: "old-result", name: "Old result", enrolled: false })) })
+    expect(form().querySelector('[data-testid="attendance-phone-match"]')).toBeNull()
+    expect(form().querySelector('[role="alert"]')).toBeNull()
+  })
+
+  it.each([true, false])("resolves an existing profile at the seat limit; match=%s", async found => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/phone-match")
+      ? response(found ? { kind: "attendance", agentId: "existing-card", name: "Existing person", enrolled: false } : { kind: "none" })
+      : String(url).endsWith("/employees/new") ? response(null, 403, "MTM_ATTENDANCE_EMPLOYEE_USER_LIMIT") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(creates()).toHaveLength(1)
+    if (found) expect(form().querySelector('[data-testid="attendance-phone-match"] a')).not.toBeNull()
+    else {
+      expect(form().querySelector('[data-testid="attendance-phone-match"]')).toBeNull()
+      expect(form().querySelector('[role="alert"]')!.textContent).toBe(p("addEmployeeUserLimit"))
+    }
+  })
+  it("does not look up a phone after an administrator permission refusal", async () => {
+    fetchMock.mockImplementation(async url => String(url).endsWith("/employees/new") ? response(null, 403, "MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED") : response(directory))
+    await render()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
+    await type("addEmployeeName", "New person"); await type("addEmployeePhone", "+994501112233"); await send()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/phone-match"))).toBe(false)
+  })
+
 })

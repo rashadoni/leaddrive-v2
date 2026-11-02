@@ -17,7 +17,7 @@ import {
 } from "recharts"
 import { Plus, DollarSign, AlertTriangle, Clock, CreditCard, Trash2, ArrowRight, XCircle } from "lucide-react"
 import type { Bill } from "@/lib/finance/types"
-import { getCurrencySymbol } from "@/lib/constants"
+import { useOrgCurrencySymbol } from "@/lib/use-org-default-currency"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 
 type CreateBillMutation = ReturnType<typeof useCreateBill>
@@ -38,6 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function APDashboard() {
   const t = useTranslations("finance.ap")
+  const cur = useOrgCurrencySymbol()
   const locale = useLocale()
   const searchParams = useSearchParams()
   const [dateFrom, setDateFrom] = useState("")
@@ -124,8 +125,8 @@ export function APDashboard() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard title={t("totalPayables")} value={`${fmt(stats?.total || 0)} ${getCurrencySymbol()}`} icon={<CreditCard className="w-5 h-5" />} color="#8b5cf6" />
-        <SummaryCard title={t("overdueTotal")} value={`${fmt(stats?.overdueTotal || 0)} ${getCurrencySymbol()}`} icon={<AlertTriangle className="w-5 h-5" />} color="#ef4444" />
+        <SummaryCard title={t("totalPayables")} value={`${fmt(stats?.total || 0)} ${cur}`} icon={<CreditCard className="w-5 h-5" />} color="#8b5cf6" />
+        <SummaryCard title={t("overdueTotal")} value={`${fmt(stats?.overdueTotal || 0)} ${cur}`} icon={<AlertTriangle className="w-5 h-5" />} color="#ef4444" />
         <SummaryCard title={t("overdueCount")} value={String(stats?.overdueCount || 0)} icon={<Clock className="w-5 h-5" />} color="#f59e0b" />
       </div>
 
@@ -151,7 +152,7 @@ export function APDashboard() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
-                  <Tooltip formatter={(value) => [`${fmt(Number(value ?? 0))} ${getCurrencySymbol()}`, t("tooltipAmount")]} />
+                  <Tooltip formatter={(value) => [`${fmt(Number(value ?? 0))} ${cur}`, t("tooltipAmount")]} />
                   <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                     {stats.aging.map((_, i) => (
                       <Cell key={i} fill={AGING_COLORS[i]} />
@@ -182,7 +183,7 @@ export function APDashboard() {
                         <p className="text-xs text-muted-foreground">{t("billCount", { count: v.billCount })}</p>
                       </div>
                     </div>
-                    <p className="text-sm font-bold tabular-nums">{fmt(v.amount)} {getCurrencySymbol()}</p>
+                    <p className="text-sm font-bold tabular-nums">{fmt(v.amount)} {cur}</p>
                   </div>
                 ))}
               </div>
@@ -233,7 +234,7 @@ export function APDashboard() {
                   <tr className="border-b text-left">
                     <th className="py-2 px-2 w-8">
                       {canSelect && (
-                        <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-zinc-200 dark:border-zinc-700" />
+                        <input type="checkbox" checked={bills.length > 0 && selected.size === bills.length} onChange={toggleAll} className="rounded border-input" />
                       )}
                     </th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("colBillNumber")}</th>
@@ -254,7 +255,7 @@ export function APDashboard() {
                     <tr key={bill.id} className={`border-b last:border-0 hover:bg-muted/50 ${isOverdue ? "bg-red-50/50 dark:bg-red-950/20" : ""} ${selected.has(bill.id) ? "bg-blue-50/50 dark:bg-blue-950/20" : ""} ${isFocused ? "outline outline-1 outline-primary/40" : ""}`}>
                       <td className="py-2 px-2">
                         {canSelect && (
-                          <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-zinc-200 dark:border-zinc-700" />
+                          <input type="checkbox" checked={selected.has(bill.id)} onChange={() => toggleSelect(bill.id)} className="rounded border-input" />
                         )}
                       </td>
                       <td className="py-2 px-2 font-medium">{bill.billNumber}</td>
@@ -382,15 +383,15 @@ function AddPaymentDialog({ billId, onClose, onPay }: { billId: string; onClose:
 }
 
 function SummaryCard({ title, value, icon, color }: { title: string; value: string; icon: React.ReactNode; color: string }) {
+  const signalColor = color === "#ef4444" || color === "#f59e0b" ? color : undefined
   return (
-    <div className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm" style={{ background: `linear-gradient(135deg, ${color}08 0%, ${color}18 100%)`, borderColor: `${color}20` }}>
-      <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ backgroundColor: color }} />
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
       <div className="relative p-4 pt-5 flex justify-between items-center">
         <div>
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
-          <p className="text-xl font-bold mt-1 tabular-nums">{value}</p>
+          <p className="text-xl font-bold mt-1 tabular-nums text-foreground">{value}</p>
         </div>
-        <div className="p-2.5 rounded-xl" style={{ color, backgroundColor: `${color}12` }}>{icon}</div>
+        <div className="p-2.5 rounded-xl bg-muted text-muted-foreground" style={{ color: signalColor }}>{icon}</div>
       </div>
     </div>
   )

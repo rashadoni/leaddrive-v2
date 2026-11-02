@@ -11,6 +11,11 @@ export function formatAttendanceDuration(seconds: number | null): string {
   return `${hours}:${minutes}${remainder ? `:${String(remainder).padStart(2, "0")}` : ""}`
 }
 
+/** The same duration to the minute, as screens show it (owner, 2026-11-01: no seconds on screen); files keep the seconds. */
+export function formatAttendanceMinutes(seconds: number | null): string {
+  return formatAttendanceDuration(seconds).replace(/^(\d+:\d{2}):\d{2}$/, "$1")
+}
+
 export const DEFAULT_ATTENDANCE_DAY_COLUMNS = ["employee", "team", "date", "status", "startedAt", "completedAt", "worked", "paused", "late", "early", "notes"] as const
 export const DEFAULT_ATTENDANCE_JOURNAL_COLUMNS = ["employee", "team", "date", "status", "event", "phoneAt", "serverAt"] as const
 
@@ -56,6 +61,11 @@ export function attendanceCorrectionText(row: MtmAttendanceReportRow, correction
   return t("reportCorrectionEntry", { before: correction.before.kind === "MISSING" ? t("reportCorrectionMissing") : facts(correction.before.facts), after: facts(correction.after),
     reviewer: correction.reviewer.name || t("reportCorrectionReviewer"),
     at: createDateFormatter(locale, { timeZone: row.timezone, dateStyle: "short", timeStyle: "medium" }).format(new Date(correction.occurredAt)) })
+}
+/** The automatic lunch, said truly: with no break pressed, or with breaks shorter than the lunch hour (owner, 2026-11-01). */
+export function attendanceLunchLines(row: MtmAttendanceReportRow, t: AttendanceHistoryText): string[] {
+  if (!row.lunchAutoSeconds) return []
+  return [t((row.pausedSeconds ?? 0) > 0 ? "reportLunchAutoShortBreaks" : "reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })]
 }
 /** Approved periods describe permission; they never manufacture a phone event. */
 export function attendanceApprovedLines(row: MtmAttendanceReportRow, locale: string, t: AttendanceHistoryText): string[] {

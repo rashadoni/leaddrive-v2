@@ -15,6 +15,7 @@ import {
 } from "@/lib/mtm/mobile-document"
 import { pharmacyPromotionHash } from "@/lib/mtm/pharmacy-promotion"
 import { PharmacyPromotionEvidenceMetadataSchema } from "@/lib/mtm/pharmacy-promotion-validators"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -204,7 +205,7 @@ export const POST = withMtmRlsAuth<RouteContext>("mtm", "write", async (req, aut
     const storageKey = createMobileDocumentStorageKey()
     storagePath = resolveMobileDocumentStoragePath(storageKey)
     await mkdir(mobileDocumentStorageRoot(), { recursive: true })
-    await writeFile(storagePath, bytes, { flag: "wx" })
+    await writeFile(storagePath, sealTenantFile(auth.orgId, bytes), { flag: "wx" })
 
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-evidence:${auth.orgId}:${actor.agentId}:${metadata.data.clientEvidenceId}`}, 0))`

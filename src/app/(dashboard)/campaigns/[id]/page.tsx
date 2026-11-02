@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ColorStatCard } from "@/components/color-stat-card"
+import { WhatsAppCampaignDeliveries } from "@/components/whatsapp-campaign-deliveries"
 import { CampaignForm } from "@/components/campaign-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import dynamic from "next/dynamic"
@@ -65,6 +66,7 @@ interface CampaignDetail {
   testPercentage?: number | null
   testDurationHours?: number | null
   winnerCriteria?: string | null
+  whatsappDelivery?: Record<string, number>
   winnerSelectedAt?: string | null
 }
 
@@ -91,6 +93,7 @@ const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
   paused: "bg-orange-100 text-orange-700",
   cancelled: "bg-red-100 text-red-700",
+  failed: "bg-red-100 text-red-700",
   ab_testing: "bg-purple-100 text-purple-700",
 }
 
@@ -112,7 +115,7 @@ export default function CampaignDetailPage() {
   const [composeSchedule, setComposeSchedule] = useState("")
   const orgId = session?.user?.organizationId
 
-  const fetchCampaign = async () => {
+  const fetchCampaign = useCallback(async () => {
     try {
       const res = await fetch(`/api/v1/campaigns/${params.id}`, {
         headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
@@ -130,10 +133,14 @@ export default function CampaignDetailPage() {
         }
       }
     } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+  }, [params.id, orgId])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (params.id) fetchCampaign() }, [params.id, session])
+  useEffect(() => { if (params.id) void fetchCampaign() }, [params.id, fetchCampaign])
+  useEffect(() => {
+    if (campaign?.type !== "whatsapp" || !["sending", "sent", "failed"].includes(campaign.status)) return
+    const timer = setInterval(() => { if (document.visibilityState === "visible") void fetchCampaign() }, 15_000)
+    return () => clearInterval(timer)
+  }, [campaign?.type, campaign?.status, fetchCampaign])
 
   const handleDelete = async () => {
     const res = await fetch(`/api/v1/campaigns/${params.id}`, {
@@ -217,7 +224,8 @@ export default function CampaignDetailPage() {
   const sendConfirmText = `${t("confirmSend")}\n\n${tc("type")}: ${typeLabel}\n${t("recipients")}: ${campaign.totalRecipients ?? 0}${
     campaign.type === "whatsapp" || campaign.type === "telegram" ? `\n\n${t("liveSendProviderHint")}` : ""
   }`
-  const formatSendResult = (data: { sent?: number; total?: number; skipped?: number; errors?: unknown[] } | undefined) => {
+  const formatSendResult = (data: { queued?: number; sent?: number; total?: number; skipped?: number; errors?: unknown[] } | undefined) => {
+    if (typeof data?.queued === "number") return t("queuedRecipients", { count: data.queued })
     const sent = Number(data?.sent || 0)
     const total = Number(data?.total || 0)
     const skipped = Number(data?.skipped || 0)
@@ -279,14 +287,39 @@ export default function CampaignDetailPage() {
               <Mail className="h-3.5 w-3.5 mr-1" /> {t("sendCampaign")}
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          <Button variant="outline" size="sm" disabled={campaign.type === "whatsapp" && !["draft", "scheduled"].includes(campaign.status)} onClick={() => setEditOpen(true)}>
             <Pencil className="h-3.5 w-3.5 mr-1" /> {tc("edit")}
           </Button>
-          <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" onClick={() => setDeleteOpen(true)}>
+          <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600" disabled={campaign.type === "whatsapp" && !["draft", "scheduled"].includes(campaign.status)} onClick={() => setDeleteOpen(true)}>
             <Trash2 className="h-3.5 w-3.5 mr-1" /> {tc("delete")}
           </Button>
         </div>
       </div>
+
+      {campaign.type === "whatsapp" && campaign.whatsappDelivery && Object.keys(campaign.whatsappDelivery).length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">{t("whatsappDeliveryTitle")}</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" aria-live="polite">
+              {(["pending", "sending", "accepted", "delivered", "read", "failed", "unknown", "skipped"] as const).map(status => (
+                <div key={status}><div className="text-xs text-muted-foreground">{t(`delivery_${status}`)}</div><div className="text-xl font-semibold tabular-nums">{campaign.whatsappDelivery?.[status] || 0}</div></div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("whatsappDeliveryHint")}</p>
+            {(campaign.whatsappDelivery.unknown || 0) > 0 && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{t("whatsappUnknownHint")}</p>}
+            {campaign.status === "sending" && <Button variant="outline" disabled={composeSending} onClick={async () => {
+              if (!confirm(t("cancelDispatchConfirm"))) return
+              setComposeSending(true)
+              try {
+                const res = await fetch(`/api/v1/campaigns/${campaign.id}`, { method: "PUT", headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {}) }, body: JSON.stringify({ status: "cancelled" }) })
+                if (!res.ok) throw new Error(tc("failedToSave"))
+                await fetchCampaign()
+              } catch { alert(tc("errorGeneric")) } finally { setComposeSending(false) }
+            }}>{t("cancelPendingMessages")}</Button>}
+            <WhatsAppCampaignDeliveries campaignId={campaign.id} orgId={orgId ? String(orgId) : undefined} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Creatio-style KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

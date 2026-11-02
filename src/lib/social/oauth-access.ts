@@ -31,10 +31,14 @@ import { checkPermission, type Action } from "@/lib/permissions"
  *     scope before, and `settings` is `[]` for manager/sales/support).
  *  3. Entitlement: either module. Skipped for superadmin, mirroring requireAuth,
  *     which never applies the module gate to a superadmin session (api-auth.ts).
+ *     Also skipped for `{ channel: true }` — Facebook/Instagram start and the Page subscribe: connecting a
+ *     messaging channel is Settings → Channels, open to every tenant since 2026-10-26 (owner: «каналы могут
+ *     использоваться в разных модулях»; lib/channels-access). Monitoring-only providers keep the gate.
  */
 export function withSocialConnectAuth(
   action: Action,
   handler: (req: NextRequest, auth: AuthResult) => Promise<Response> | Response,
+  options: { channel?: boolean } = {},
 ) {
   return withRlsAuth(undefined, undefined, async (req: NextRequest, auth: AuthResult) => {
     const session = await getSession(req)
@@ -52,6 +56,7 @@ export function withSocialConnectAuth(
       )
     }
     if (
+      !options.channel &&
       auth.role !== "superadmin" &&
       !(await orgHasModule(auth.orgId, "social")) &&
       !(await orgHasModule(auth.orgId, "omnichannel"))

@@ -84,7 +84,7 @@ export function CardQuickMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Quick actions"
-        className="rounded p-1 text-[#6B778C] hover:bg-black/5"
+        className="rounded p-1 text-muted-foreground hover:bg-muted"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
@@ -92,7 +92,7 @@ export function CardQuickMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-7 z-30 max-h-80 w-56 overflow-y-auto rounded-md border border-[#DFE1E6] bg-white py-1 text-[#172B4D] shadow-lg"
+          className="absolute right-0 top-7 z-30 max-h-80 w-56 overflow-y-auto rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-lg"
         >
           <Section label="Status" />
           {actions.columns.map((c) => (
@@ -136,11 +136,11 @@ export function CardQuickMenu({
 
           <Section label="Assignee" />
           <Item active={!currentAssigneeId} onClick={pick(() => actions.patchTask(taskId, { assignedTo: null }))}>
-            <span className="h-2.5 w-2.5 rounded-full border border-[#DFE1E6]" />
+            <span className="h-2.5 w-2.5 rounded-full border border-border" />
             Unassigned
           </Item>
           {users === null ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#6B778C]"><Loader2 className="h-3 w-3 animate-spin" /> Loading…</div>
+            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Loading…</div>
           ) : (
             users.map((u) => (
               <Item key={u.id} active={u.id === currentAssigneeId} onClick={pick(() => actions.patchTask(taskId, { assignedTo: u.id }))}>
@@ -158,7 +158,7 @@ export function CardQuickMenu({
 }
 
 function Section({ label }: { label: string }) {
-  return <div className="px-3 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#6B778C]">{label}</div>
+  return <div className="px-3 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
 }
 
 function Item({ active, onClick, children }: { active?: boolean; onClick: (e: React.MouseEvent) => void; children: React.ReactNode }) {
@@ -167,7 +167,7 @@ function Item({ active, onClick, children }: { active?: boolean; onClick: (e: Re
       type="button"
       role="menuitem"
       onClick={onClick}
-      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[#F4F5F7]"
+      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
     >
       {children}
       {active && <Check className="ml-auto h-3.5 w-3.5 text-[#00875A]" />}

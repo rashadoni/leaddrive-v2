@@ -864,9 +864,13 @@ describe("the Personnel module", () => {
     const { PERSONNEL_DEMO_EXPLANATION } = await import("@/components/demo-center/journey/scenes/personnel-demo-data")
     await openPersonnel()
     await walkTo("prs-today-approve")
+    const requests = () => textOf('[data-tour-id="prs-today-requests"]')
+    expect(requests()).toContain("Vüsal Hüseynov")
     await act(async () => findDemoTarget("prs-today-approve")!.click())
     await settle()
-    expect(textOf('[data-tour-id="prs-today-requests"]')).toContain(S.personnelApproved)
+    // As the product does it: the decided request leaves the queue, and the page says the decision went out.
+    expect(requests()).not.toContain("Vüsal Hüseynov")
+    expect(textOf('[data-testid="prs-today-message"]')).toBe(messages.personnel.decisionSaved)
     expect(frontier().stepId).toBe("prs-explain-ask")
     // The product asks the late and the absent alike: two late and one absent today, all ticked.
     const attention = () => textOf('[data-tour-id="prs-today-attention"]')

@@ -1,0 +1,50 @@
+{
+  "kind": "fixture-component-browser",
+  "viewport": [
+    1440,
+    390
+  ],
+  "passed": [
+    "detail",
+    "history-cache-privacy-isolation",
+    "follow-up-task",
+    "reschedule",
+    "cancel",
+    "outcome",
+    "manual-create",
+    "pages-tab",
+    "coordinator-grant",
+    "calendar",
+    "light-dark",
+    "keyboard-focus-and-escape",
+    "no-horizontal-overflow",
+    "context-error-retry"
+  ],
+  "mutations": [
+    {
+      "path": "/api/v1/tasks",
+      "operation": "create"
+    },
+    {
+      "path": "/api/v1/bookings/meeting-a/actions",
+      "operation": "reschedule"
+    },
+    {
+      "path": "/api/v1/bookings/meeting-a/actions",
+      "operation": "cancel"
+    },
+    {
+      "path": "/api/v1/bookings/meeting-past/actions",
+      "operation": "outcome"
+    },
+    {
+      "path": "/api/v1/bookings",
+      "operation": "create"
+    },
+    {
+      "path": "/api/v1/bookings/coordinators",
+      "operation": "create"
+    }
+  ],
+  "runtimeErrors": []
+}

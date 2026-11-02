@@ -27,6 +27,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { decryptForTenant } from "@/lib/crypto/tenant-pii-encryption"
+import { preloadTenantDataKeys } from "@/lib/crypto/tenant-data-keys"
 
 // ─── Provider interface ───────────────────────────────────────────────────────
 
@@ -158,7 +159,9 @@ export async function resolveEsignProvider(
     return { provider: null, config: null }
   }
 
-  // Decrypt creds just-in-time — only live on the stack during the call
+  // Decrypt creds just-in-time — only live on the stack during the call.
+  // A v2 config needs the organization's data key, also from a webhook or cron.
+  await preloadTenantDataKeys(orgId)
   let rawCreds: Record<string, string>
   try {
     rawCreds = JSON.parse(decryptForTenant(orgId, configRow.config))

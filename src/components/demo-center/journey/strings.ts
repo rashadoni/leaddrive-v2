@@ -347,13 +347,11 @@ export const DEMO_JOURNEY_STRINGS = {
   // Personnel (Kadr uçotu).
   personnelTabHint: "Bu demoda Kadr uçotu bölmələrini bələdçi açır — onun addımını izləyin.",
   personnelPrivacy: "Biometriya yoxdur: nə üz, nə barmaq izi. Fasilədə yalnız vaxt görünür — əməkdaşın yeri yazılmır. Günü əməkdaş özü bağlayır.",
-  personnelApproved: "Təsdiqləndi",
   personnelCorrectedMark: "müraciətlə düzəliş edilib",
   personnelCloseNote: "Bağlanmış ay olduğu kimi saxlanır: tabel və ixrac eyni qalır, sonrakı düzəlişlər ayrıca görünür.",
   personnelAnswerAt: (time: string) => `Cavab saat ${time}-da gəlib — demoda vaxt irəli çəkilib.`,
   personnelRiskOther: "Bu demoda birinci qeyd yoxlanılır: «Ülvi Cəfərov» sətrində «Yoxlamaq» basın.",
   personnelRiskReasonSample: (name: string) => `Səbəb nümunədir, dəyişə bilərsiniz; jurnalda ${name} adı ilə qalacaq.`,
-  personnelClosedBy: (name: string, time: string) => `${name} · bu gün ${time}`,
   // Service Desk.
   supportTabHint: "Bu demoda Service Desk bölmələrini bələdçi açır — onun addımını izləyin.",
   supportYou: (name: string) => `${name} (siz)`,

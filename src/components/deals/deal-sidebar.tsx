@@ -120,7 +120,7 @@ function AddTeamMemberForm({ dealId, orgId, onDone }: { dealId: string; orgId?: 
             onChange={e => setSearch(e.target.value)}
             className="h-7 text-xs"
           />
-          <div className="max-h-28 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y">
+          <div className="max-h-28 overflow-y-auto border border-border rounded-lg divide-y">
             {filteredUsers.length === 0 ? (
               <p className="text-xs text-muted-foreground p-2">{tc("noResults")}</p>
             ) : (
@@ -229,7 +229,7 @@ function AddContactRoleForm({ dealId, orgId, onDone }: { dealId: string; orgId?:
             onChange={e => setSearch(e.target.value)}
             className="h-7 text-xs"
           />
-          <div className="max-h-28 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y">
+          <div className="max-h-28 overflow-y-auto border border-border rounded-lg divide-y">
             {filteredContacts.length === 0 ? (
               <p className="text-xs text-muted-foreground p-2">{tc("noResults")}</p>
             ) : (
@@ -402,9 +402,9 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
     <MotionCard className="space-y-0">
       {/* ── Contact Hero ── */}
       {deal.contact && (
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-base font-bold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+            <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center text-base font-bold text-foreground flex-shrink-0">
               {deal.contact.fullName.split(" ").map(n => n[0]).join("").slice(0, 2)}
             </div>
             <div className="flex-1 min-w-0">
@@ -444,7 +444,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
 
       {/* ── Deal Value + Stage (hero) ── */}
       {isVisible("valueAmount") && (
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="p-4 border-b border-border">
           <div className="text-2xl font-bold tabular-nums tracking-tight">
             {deal.valueAmount.toLocaleString()} {deal.currency}
           </div>
@@ -457,7 +457,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
       )}
 
       {/* ── Key Info ── */}
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-700 space-y-2.5">
+      <div className="p-4 border-b border-border space-y-2.5">
         {[
           { icon: Building2, label: t("company"), value: deal.company?.name, field: "name" },
           { icon: User, label: t("assignedTo"), value: deal.assignedTo, field: "assignedTo" },
@@ -477,7 +477,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
 
       {/* ── Notes ── */}
       {deal.notes && isVisible("notes") && (
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="p-4 border-b border-border">
           <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("notes")}</p>
           <p className="text-xs leading-relaxed whitespace-pre-wrap">{deal.notes}</p>
           {deal.lostReason && (
@@ -557,7 +557,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
             )}
 
             {showAddMember ? (
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 bg-muted/30">
+              <div className="border border-border rounded-lg p-2 bg-muted/30">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-semibold">{tc("addMember")}</span>
                   <button onClick={() => setShowAddMember(false)} className="p-0.5 rounded hover:bg-muted">
@@ -584,7 +584,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
           <div className="space-y-1.5">
             {deal.contactRoles?.length > 0 ? (
               deal.contactRoles.map(cr => (
-                <div key={cr.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30 p-3 group">
+                <div key={cr.id} className="rounded-lg border border-border bg-muted/30 p-3 group">
                   <div className="flex items-start gap-2.5">
                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5">
                       {(cr.contact.fullName || "?")[0]}
@@ -645,7 +645,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
             )}
 
             {showAddRole ? (
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 bg-muted/30">
+              <div className="border border-border rounded-lg p-2 bg-muted/30">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-semibold">{tc("addContactRole")}</span>
                   <button onClick={() => setShowAddRole(false)} className="p-0.5 rounded hover:bg-muted">
@@ -672,7 +672,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
           <div className="space-y-1.5">
             {competitors.length > 0 ? (
               competitors.map(comp => (
-                <div key={comp.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30 p-3 group">
+                <div key={comp.id} className="rounded-lg border border-border bg-muted/30 p-3 group">
                   <div className="flex items-center gap-2.5">
                     <div className="h-7 w-7 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center text-xs font-semibold text-orange-600 dark:text-orange-400 flex-shrink-0">
                       {comp.name[0]}
@@ -716,7 +716,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
             )}
 
             {showAddCompetitor ? (
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 bg-muted/30">
+              <div className="border border-border rounded-lg p-2 bg-muted/30">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-semibold">{tc("addCompetitor")}</span>
                   <button onClick={() => setShowAddCompetitor(false)} className="p-0.5 rounded hover:bg-muted">

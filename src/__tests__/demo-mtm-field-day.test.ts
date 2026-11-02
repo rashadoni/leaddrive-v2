@@ -12,14 +12,21 @@ import { describe, expect, it } from "vitest"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
 import { isDuringMtmWorkdayPause, mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 import { rosterDistanceToPoint } from "@/lib/mtm/live-map-roster"
-import { isLiveMapAgentPositionVisible } from "@/lib/mtm-types"
+import { isLiveMapAgentPositionVisible, presentMtmDashboardAgent } from "@/lib/mtm-types"
+import { combineMtmDayRoutes, deriveMtmLiveFieldStatus } from "@/lib/mtm/live-field-status"
+import { mtmSpeedMoving } from "@/lib/mtm/gps-speed"
 import {
   MTM_DEMO_AGENTS,
   MTM_DEMO_CLOCK,
   MTM_DEMO_ELVIN_DAY,
+  MTM_DEMO_FRESHNESS,
+  MTM_DEMO_PLACES,
   mtmDemoAt,
+  mtmDemoAttention,
   mtmDemoElvinSteps,
   mtmDemoMapClients,
+  mtmDemoPlaceRequest,
+  mtmDemoPlannerCandidates,
   mtmDemoRosterAgents,
   mtmDemoVisitHistory,
 } from "@/components/demo-center/journey/scenes/mtm-demo-data"
@@ -169,5 +176,90 @@ describe("the live map at noon", () => {
     const measured = rows.filter((row) => row.distance !== null).sort((a, b) => a.distance! - b.distance!)
     expect(measured).toHaveLength(MTM_DEMO_AGENTS.length - 1)
     expect(measured[0].agent.name).toBe("Aysu Kərimli")
+  })
+})
+
+/**
+ * What the demo shows must be something the product could have produced from
+ * the same morning (audit of the intro clip, 2026-10-20): the product's own
+ * rules, run over the demo's own facts.
+ */
+describe("the morning, as the product would have recorded it", () => {
+  const noonMs = Date.parse(mtmDemoAt(TODAY, MTM_DEMO_CLOCK))
+
+  it("has the place request waiting before the visit it covers, as a check-in needs it to be", () => {
+    const request = mtmDemoPlaceRequest(TODAY)
+    const visit = mtmDemoVisitHistory(TODAY).find((candidate) => candidate.agentId === "agent-nermin" && candidate.customer === request.customer)!
+    // `waitingLocationRequestCovers` lets a check-in in, and ties it to the request, only while the request is SUBMITTED.
+    expect(visit.locationRequest).toBe("SUBMITTED")
+    expect(visit.checkInAt).toBe(request.checkedInFromHereAt)
+    expect(Date.parse(request.sentAt)).toBeLessThan(Date.parse(visit.checkInAt))
+    // «Bu gün» waits on it since it was sent.
+    expect(mtmDemoAttention(TODAY).items.find((item) => item.kind === "customerLocationRequests")?.since).toBe(request.sentAt)
+  })
+
+  it("counts the planner's month from every visit checked out by the demo's clock, as its candidates answer does", () => {
+    const visits = mtmDemoVisitHistory(TODAY).filter((visit) => visit.status === "CHECKED_OUT")
+    const placeOf = (name: string) => MTM_DEMO_PLACES.find((place) => place.name === name)!
+    for (const placeApproved of [false, true]) {
+      const candidates = mtmDemoPlannerCandidates(placeApproved)
+      for (const candidate of candidates) {
+        const place = MTM_DEMO_PLACES.find((row) => row.id === candidate.customerId)!
+        const earlier = candidate.contactId ? place.doctors.find((doctor) => doctor.id === candidate.contactId)!.earlierThisMonth : place.earlierThisMonth
+        const today = visits.filter((visit) => placeOf(visit.customer).id === candidate.customerId && (candidate.contactId === null || visit.contactId === candidate.contactId)).length
+        expect(candidate.monthlyVisitCount, candidate.name).toBe(earlier + today)
+      }
+    }
+    // At a clinic a visit is to one of its doctors; at a pharmacy to the pharmacy.
+    for (const visit of visits) {
+      const place = placeOf(visit.customer)
+      if (place.doctors.length) expect(place.doctors.map((doctor) => doctor.id), `${visit.agent} at ${visit.customer}`).toContain(visit.contactId)
+      else expect(visit.contactId).toBeNull()
+    }
+    // Aptek 24, where Nərmin was this morning, is not «not visited this month».
+    expect(mtmDemoPlannerCandidates().find((candidate) => candidate.customerId === "pl-apt24")!.monthlyVisitCount).toBeGreaterThan(0)
+  })
+
+  it("keeps the live map's limits at the product's defaults, as its answer would carry them", () => {
+    // locations/route.ts: onlineSeconds = offlineThresholdSeconds, delayedSeconds = max(that, locationWindowMinutes × 60).
+    expect(MTM_DEMO_FRESHNESS).toEqual({
+      onlineSeconds: MTM_SETTING_DEFAULTS.offlineThresholdSeconds,
+      delayedSeconds: Math.max(MTM_SETTING_DEFAULTS.offlineThresholdSeconds, MTM_SETTING_DEFAULTS.locationWindowMinutes * 60),
+    })
+  })
+
+  it("gives everyone on the live map the status the product derives from their own facts", () => {
+    for (const agent of mtmDemoRosterAgents(TODAY)) {
+      const demo = MTM_DEMO_AGENTS.find((candidate) => candidate.id === agent.agentId)!
+      const derived = deriveMtmLiveFieldStatus({
+        freshness: agent.freshness,
+        isCheckedIn: Boolean(agent.openVisitSince),
+        isOnline: agent.isOnline,
+        isMoving: mtmSpeedMoving(agent.speed),
+        dayRoutes: combineMtmDayRoutes([{ status: demo.visited === 0 ? "PLANNED" : "IN_PROGRESS", totalPoints: demo.total, visitedPoints: demo.visited }]),
+        tenantHour: Number(MTM_DEMO_CLOCK.slice(0, 2)),
+        lateAfterHour: MTM_SETTING_DEFAULTS.lateAfterHour,
+      })
+      expect(agent.fieldStatus, agent.name).toBe(derived)
+      // And the page, presenting the answer at noon with the default limits, changes nothing in it:
+      // nobody is «in the app» who sent the server nothing for minutes (a break stores no points).
+      const presented = presentMtmDashboardAgent(agent, MTM_DEMO_FRESHNESS, noonMs)
+      expect({ isOnline: presented.isOnline, freshness: presented.freshness, fieldStatus: presented.fieldStatus }, agent.name)
+        .toEqual({ isOnline: agent.isOnline, freshness: agent.freshness, fieldStatus: agent.fieldStatus })
+    }
+    // The server hears from the app only through the points it stores: on a break, nothing after the last one.
+    const rauf = mtmDemoRosterAgents(TODAY).find((agent) => agent.agentId === "agent-rauf")!
+    expect(rauf.isOnline).toBe(false)
+    expect(Date.parse(rauf.lastSeenAt!)).toBeLessThanOrEqual(Date.parse(rauf.recordedAt!))
+  })
+})
+
+describe("the demo's scenes in the browser", () => {
+  it("import none of the modules that read the database: their figures come as data, kept equal by these tests", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs")
+    const dir = "src/components/demo-center/journey/scenes"
+    const serverOnly = /from "@\/lib\/(?:prisma|rls-context|mtm-settings|mtm\/workday|mtm\/attendance-risk-detection|mtm\/attendance-risk-policy)"/
+    const found = readdirSync(dir).filter((name) => /\.tsx?$/.test(name) && serverOnly.test(readFileSync(`${dir}/${name}`, "utf8")))
+    expect(found).toEqual([])
   })
 })

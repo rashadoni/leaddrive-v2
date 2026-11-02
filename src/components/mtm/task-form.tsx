@@ -137,7 +137,7 @@ const EMPTY_DRAFT: TaskCreateDraft = {
 
 function SectionLabel({ icon: Icon, title }: { icon: typeof CalendarClock; title: string }) {
   return (
-    <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 dark:border-zinc-700">
+    <div className="flex items-center gap-2 border-b border-border pb-2">
       <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
       <h3 className="text-sm font-semibold">{title}</h3>
     </div>
@@ -457,7 +457,7 @@ export function MtmTaskForm({
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogContent className="space-y-8">
-          {error ? <div className="rounded-lg border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm" role="alert">{error}</div> : null}
+          {error ? <div className="rounded-lg border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm" role="alert">{error}</div> : null}
 
           <section className="space-y-4">
             <SectionLabel icon={UserRound} title={t("overview")} />
@@ -591,7 +591,7 @@ export function MtmTaskForm({
                 {recurrencePreview.occurrences.length ? (
                   <ol className="grid gap-2 sm:grid-cols-2">
                     {recurrencePreview.occurrences.map((occurrence, index) => (
-                      <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 items-center gap-3 rounded-lg border border-zinc-200 px-3 text-sm dark:border-zinc-700">
+                      <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 items-center gap-3 rounded-lg border border-border px-3 text-sm">
                         <span className="tabular-nums text-muted-foreground">{index + 1}</span>
                         <span>{formatInTimezone((occurrence.dueDate ?? occurrence.scheduledStartAt)!, form.recurrenceTimezone || timezone, { dateStyle: "medium", timeStyle: "short" }, locale)}</span>
                         <TaskDstBadge resolution={occurrence.dst} />

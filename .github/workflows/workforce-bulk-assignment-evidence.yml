@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "scripts/workforce-crm-lifecycle-evidence.mjs"
+      - "scripts/ci/verify-github-candidate.mjs"
+      - "src/__tests__/github-candidate-provenance.test.ts"
       - "src/lib/crm-product-availability.ts"
       - '.github/workflows/workforce-bulk-assignment-evidence.yml'
       - 'scripts/workforce-bulk-*.mjs'

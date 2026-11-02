@@ -56,10 +56,9 @@ export type EmbeddedSignupResult =
       created: boolean
       displayPhoneNumber: string | null
       verifiedName: string | null
-      registration: "registered" | "already_connected" | "failed"
-      registrationError?: string
+      registration: "registered" | "already_connected"
     }
-  | { ok: false; step: "config" | "exchange" | "phone" | "ownership" | "conflict" | "subscribe"; error: string }
+  | { ok: false; step: "config" | "exchange" | "phone" | "ownership" | "conflict" | "subscribe" | "register"; error: string }
 
 type GraphJson = Record<string, unknown> & { error?: { message?: string } }
 
@@ -134,8 +133,7 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
   if (!subscribe.ok) return { ok: false, step: "subscribe", error: graphError(subscribe.json, "Meta refused the webhook subscription for this account.") }
 
   // 4. register the number for Cloud API messaging unless it already is.
-  let registration: "registered" | "already_connected" | "failed" = "already_connected"
-  let registrationError: string | undefined
+  let registration: "registered" | "already_connected" = "already_connected"
   let pin: string | null = null
   if (String(phone.status || "").toUpperCase() !== "CONNECTED") {
     pin = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0")
@@ -144,10 +142,20 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
       token,
       body: { messaging_product: "whatsapp", pin },
     })
-    if (register.ok) registration = "registered"
+    if (register.ok && register.json.success === true) registration = "registered"
     else {
-      registration = "failed"
-      registrationError = graphError(register.json, "Meta did not register the number.")
+      // A failed request is not proof that registration succeeded. The number may have become
+      // connected since our first read, so confirm that state rather than interpreting error text.
+      const refreshed = await graph(`/${wabaId}/phone_numbers?fields=id,status&limit=100`, { token }).catch(() => null)
+      const refreshedNumbers = refreshed?.ok && Array.isArray(refreshed.json.data)
+        ? refreshed.json.data as Array<Record<string, unknown>>
+        : []
+      const connected = refreshedNumbers.some((p) => String(p.id) === phoneNumberId && String(p.status).toUpperCase() === "CONNECTED")
+      if (!connected) {
+        // Leave an existing channel and its credentials intact; do not create a sendable channel
+        // for an incomplete onboarding. A fresh signup can retry after the provider issue is fixed.
+        return { ok: false, step: "register", error: graphError(register.json, "Meta did not confirm registration of the number. Complete the number setup in WhatsApp Manager, then connect again.") }
+      }
       pin = null
     }
   }
@@ -211,6 +219,5 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     displayPhoneNumber,
     verifiedName,
     registration,
-    ...(registrationError ? { registrationError } : {}),
   }
 }

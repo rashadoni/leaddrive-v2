@@ -32,6 +32,7 @@ import {
   Smartphone,
   Sparkles,
   Trash2,
+  Unplug,
   Webhook,
 } from "lucide-react"
 
@@ -54,6 +55,7 @@ import {
 } from "@/lib/channels/live-connection"
 import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
 import { isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
+import { channelRemovalKind, type ChannelRemovalKind } from "@/lib/channels/channel-removal"
 
 interface ChannelConfig {
   id: string
@@ -74,6 +76,25 @@ interface ChannelConfig {
   hasAppSecret?: boolean
   /** Another workspace's claim on this pageId wins inbound routing (computed by the channels API). */
   claimedElsewhere?: boolean
+  /** Facebook/Instagram rows of a workspace with Social Monitoring: whether it collects this page
+   *  (lib/channels/meta-monitoring-state). Absent on every other row. */
+  monitoring?: { state: "on" | "off" | "awaiting_meta"; lastPolledAt: string | null }
+}
+
+/** Where a row's «turn on monitoring» goes: the monitoring Facebook login, landing back on this row. */
+function monitoringStartHref(channel: ChannelConfig): string {
+  const params = new URLSearchParams({ from: "channels-monitoring" })
+  if (channel.channelType === "facebook") params.set("channelId", channel.id)
+  return `/api/v1/social/oauth/facebook/start?${params.toString()}`
+}
+
+/** «11:17» today, «26.10 21:54» on another day. */
+function formatPolledAt(iso: string, locale: string): string {
+  const at = new Date(iso)
+  const sameDay = at.toDateString() === new Date().toDateString()
+  return at.toLocaleString(locale, sameDay
+    ? { hour: "2-digit", minute: "2-digit" }
+    : { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
 }
 
 /** `settings.channelClaimedElsewhere.*` from messages — the one state whose copy lives in next-intl. */
@@ -172,6 +193,8 @@ const TILE_VISUALS: Record<string, TileVisual> = {
   "other-email": { bg: "#52525b", icon: lucideGlyph(Mail) },
   "website-chat": { bg: "#f97316", icon: lucideGlyph(MessageCircle) },
 }
+// The employees' bot wears the same Telegram mark; its title says whose it is.
+TILE_VISUALS["telegram-staff"] = TILE_VISUALS.telegram
 const NEUTRAL_TILE_VISUAL: TileVisual = { bg: "#71717a", icon: lucideGlyph(Webhook) }
 
 function whatsappWebhookUrl(orgSlug?: string | null) {
@@ -195,6 +218,21 @@ const copy = {
     comingSoon: "Roadmap",
     edit: "Edit",
     delete: "Delete",
+    disconnect: "Disconnect",
+    disconnecting: "Disconnecting…",
+    disconnectTitle: "Disconnect {name}?",
+    disconnectBody: "The channel stops receiving and sending messages, and LeadDrive's access to Meta for it is removed. All conversations stay in the CRM. You can connect it again from its card in the catalog.",
+    deleteTitle: "Delete {name}?",
+    deleteBody: "The channel's settings are deleted and it stops receiving and sending messages. All conversations stay in the CRM. To connect it again, set it up from its card in the catalog.",
+    messagingOn: "Messaging",
+    monitoringOn: "Monitoring",
+    monitoringPolled: "posts collected {time}",
+    monitoringOff: "Monitoring off",
+    monitoringAwaiting: "Monitoring: waiting for Meta approval",
+    monitoringAwaitingHint: "Posts and comments of this page will be collected once Meta approves reading them for the LeadDrive app. Messaging already works.",
+    monitoringTurnOn: "Turn on monitoring",
+    disconnectBodySocial: "New messages from this page stop arriving in the Inbox, and Social Monitoring stops collecting its posts and comments. All conversations and collected mentions stay in the CRM. You can connect it again from its card in the catalog.",
+    deleteBodySocial: "The channel's settings are deleted: messages from this page stop arriving and Social Monitoring stops collecting its posts and comments. All conversations and collected mentions stay in the CRM. To connect it again, use its card in the catalog.",
     noResults: "No channels match this search.",
     noResultsHint: "Clear the search or switch back to All to see every provider.",
     active: "active",
@@ -351,6 +389,9 @@ const copy = {
       facebook: "Connect Facebook Messenger from your tenant's own Meta app.",
       instagram: "Connect Instagram Direct via Facebook Page or Instagram Login.",
       telegram: "Connect a Telegram Bot for real-time customer support.",
+      telegramClientsTitle: "Telegram · customers",
+      telegramStaffTitle: "Telegram · employees",
+      telegramStaff: "Your own bot where employees ask about tasks and create leads. A separate bot from the customers' one.",
       vk: "Connect VKontakte messages alongside the rest of your inbox.",
       customBusiness: "Use Integrations to register a webhook for channels that are not covered natively, then route inbound events into Inbox.",
       twilioCall: "Cloud telephony for outbound calls, call logs, recordings and insights.",
@@ -383,6 +424,21 @@ const copy = {
     comingSoon: "В разработке",
     edit: "Редактировать",
     delete: "Удалить",
+    disconnect: "Отключить",
+    disconnecting: "Отключаем…",
+    disconnectTitle: "Отключить {name}?",
+    disconnectBody: "Канал перестанет принимать и отправлять сообщения, доступ LeadDrive к Meta для него будет снят. Вся переписка останется в CRM. Подключить его снова можно через карточку в каталоге.",
+    deleteTitle: "Удалить {name}?",
+    deleteBody: "Настройки канала будут удалены, он перестанет принимать и отправлять сообщения. Вся переписка останется в CRM. Чтобы подключить его снова, настройте его через карточку в каталоге.",
+    messagingOn: "Переписка",
+    monitoringOn: "Мониторинг",
+    monitoringPolled: "посты собраны {time}",
+    monitoringOff: "Мониторинг выключен",
+    monitoringAwaiting: "Мониторинг: ждёт разрешения Meta",
+    monitoringAwaitingHint: "Посты и комментарии этой страницы начнут собираться, когда Meta разрешит приложению LeadDrive их читать. Переписка уже работает.",
+    monitoringTurnOn: "Включить мониторинг",
+    disconnectBodySocial: "Новые сообщения с этой страницы перестанут приходить во «Входящие», а «Мониторинг соцсетей» перестанет собирать её посты и комментарии. Вся переписка и уже собранные упоминания останутся в CRM. Подключить страницу снова можно через карточку в каталоге.",
+    deleteBodySocial: "Настройки канала будут удалены: сообщения с этой страницы перестанут приходить, а «Мониторинг соцсетей» перестанет собирать её посты и комментарии. Вся переписка и собранные упоминания останутся в CRM. Подключить снова можно через карточку в каталоге.",
     noResults: "По этому поиску каналов нет.",
     noResultsHint: "Очистите поиск или вернитесь во вкладку «Все», чтобы увидеть всех провайдеров.",
     active: "активных",
@@ -537,6 +593,9 @@ const copy = {
       facebook: "Facebook Messenger через собственное Meta-приложение tenant-а.",
       instagram: "Instagram Direct через Facebook Page или Instagram Login.",
       telegram: "Telegram Bot для realtime-поддержки клиентов.",
+      telegramClientsTitle: "Telegram · клиенты",
+      telegramStaffTitle: "Telegram · сотрудники",
+      telegramStaff: "Свой бот, где сотрудники спрашивают о задачах и создают лидов. Отдельный от бота для клиентов.",
       vk: "Сообщения VKontakte рядом с остальными каналами инбокса.",
       customBusiness: "Используйте Integrations, чтобы зарегистрировать webhook для каналов без нативной интеграции и направлять входящие события в Inbox.",
       twilioCall: "Облачная телефония: исходящие звонки, журнал, записи и инсайты.",
@@ -569,6 +628,21 @@ const copy = {
     comingSoon: "Planlaşdırılır",
     edit: "Redaktə et",
     delete: "Sil",
+    disconnect: "Ayır",
+    disconnecting: "Ayrılır…",
+    disconnectTitle: "{name} ayrılsın?",
+    disconnectBody: "Kanal mesaj qəbul etməyi və göndərməyi dayandıracaq, LeadDrive-ın bu kanal üçün Meta-ya girişi götürüləcək. Bütün yazışmalar CRM-də qalır. Kataloqdakı kartdan onu yenidən qoşa bilərsiniz.",
+    deleteTitle: "{name} silinsin?",
+    deleteBody: "Kanalın ayarları silinəcək və o, mesaj qəbul etməyi və göndərməyi dayandıracaq. Bütün yazışmalar CRM-də qalır. Yenidən qoşmaq üçün onu kataloqdakı kartdan quraşdırın.",
+    messagingOn: "Mesajlaşma",
+    monitoringOn: "Monitorinq",
+    monitoringPolled: "paylaşımlar {time} yığılıb",
+    monitoringOff: "Monitorinq söndürülüb",
+    monitoringAwaiting: "Monitorinq: Meta icazəsi gözlənilir",
+    monitoringAwaitingHint: "Meta LeadDrive tətbiqinə oxumağa icazə verəndə bu səhifənin paylaşımları və şərhləri yığılmağa başlayacaq. Mesajlaşma artıq işləyir.",
+    monitoringTurnOn: "Monitorinqi yandır",
+    disconnectBodySocial: "Bu səhifədən yeni mesajlar «Gələn qutusu»na gəlməyəcək, «Sosial Monitorinq» isə onun paylaşımlarını və şərhlərini yığmağı dayandıracaq. Bütün yazışmalar və artıq yığılmış qeydlər CRM-də qalır. Səhifəni kataloqdakı kartdan yenidən qoşa bilərsiniz.",
+    deleteBodySocial: "Kanalın ayarları silinəcək: bu səhifədən mesajlar gəlməyəcək, «Sosial Monitorinq» isə onun paylaşımlarını və şərhlərini yığmağı dayandıracaq. Bütün yazışmalar və yığılmış qeydlər CRM-də qalır. Yenidən qoşmaq üçün kataloqdakı kartdan istifadə edin.",
     noResults: "Bu axtarışa uyğun kanal yoxdur.",
     noResultsHint: "Axtarışı təmizləyin və ya bütün provayderləri görmək üçün Hamısı bölməsinə qayıdın.",
     active: "aktiv",
@@ -723,6 +797,9 @@ const copy = {
       facebook: "Facebook Messenger tenant-ın öz Meta tətbiqi ilə qoşulur.",
       instagram: "Instagram Direct — Facebook Page və ya Instagram Login ilə.",
       telegram: "Realtime müştəri dəstəyi üçün Telegram Bot qoşun.",
+      telegramClientsTitle: "Telegram · müştərilər",
+      telegramStaffTitle: "Telegram · əməkdaşlar",
+      telegramStaff: "Əməkdaşların tapşırıqlar barədə soruşduğu və lid yaratdığı öz botunuz. Müştəri botundan ayrıdır.",
       vk: "VKontakte mesajları bütün inbox kanalları ilə birlikdə işləyir.",
       customBusiness: "Nativ inteqrasiya olmayan kanallar üçün Integrations bölməsində webhook qeydiyyatdan keçirin və daxil olan hadisələri Inbox-a yönləndirin.",
       twilioCall: "Bulud telefoniyası: gedən zənglər, jurnal, qeydlər və insight-lar.",
@@ -798,12 +875,24 @@ const catalogCards = (c: (typeof copy)[LocaleKey]): CatalogCard[] => [
     id: "telegram",
     tab: "business",
     channelType: "telegram",
-    title: "Telegram",
+    title: c.cards.telegramClientsTitle,
     description: c.cards.telegram,
     icon: Send,
     logo: "✈",
     accent: "from-orange-500/18 via-amber-500/8 to-transparent border-orange-400/20",
     action: { type: "form", channelType: "telegram", presetName: "Telegram Bot" },
+  },
+  {
+    // The employees' bot (lib/telegram-staff) is not a ChannelConfig the form can edit: it has its own screen and
+    // endpoint. Its card sits beside the customers' one so all Telegram lives in one catalog (owner, 2026-10-26).
+    id: "telegram-staff",
+    tab: "business",
+    title: c.cards.telegramStaffTitle,
+    description: c.cards.telegramStaff,
+    icon: Send,
+    logo: "✈",
+    accent: "from-orange-500/18 via-amber-500/8 to-transparent border-orange-400/20",
+    action: { type: "link", href: "/settings/channels/telegram-staff" },
   },
   {
     id: "vkontakte",
@@ -1601,7 +1690,7 @@ function explainWhatsAppTestError(message: string, c: (typeof copy)[LocaleKey]) 
 
 export default function ChannelsPage() {
   return (
-    <Suspense fallback={<div className="force-light min-h-[70vh] rounded-[28px] border bg-white" />}>
+    <Suspense fallback={<div className="min-h-[70vh] rounded-xl border bg-card" />}>
       <ChannelsPageInner />
     </Suspense>
   )
@@ -1635,6 +1724,9 @@ function ChannelsPageInner() {
   const [editData, setEditData] = useState<(Partial<ChannelConfig> & { settings?: Record<string, unknown> }) | undefined>()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState("")
+  const [deleteKind, setDeleteKind] = useState<ChannelRemovalKind>("delete")
+  // Facebook/Instagram rows also feed Social Monitoring; their confirm text says it stops too.
+  const [deleteMonitored, setDeleteMonitored] = useState(false)
   const [testPhone, setTestPhone] = useState("")
   const [testTemplateName, setTestTemplateName] = useState("hello_world")
   const [testLanguageCode, setTestLanguageCode] = useState("en_US")
@@ -1669,6 +1761,24 @@ function ChannelsPageInner() {
   }, [orgId])
 
   useEffect(() => { fetchChannels() }, [fetchChannels])
+
+  // The employees' Telegram bot is not a ChannelConfig the list route returns; its card asks its own endpoint.
+  // Unknown (no answer) stays null, so the card never claims "not connected" for a bot it could not ask about.
+  const [staffBot, setStaffBot] = useState<{ connected: boolean; botUsername: string | null } | null>(null)
+  useEffect(() => {
+    let alive = true
+    fetch("/api/v1/settings/telegram-bot", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { success?: boolean; data?: { connected?: boolean; botUsername?: string | null } } | null) => {
+        if (alive && body?.success && body.data) {
+          setStaffBot({ connected: Boolean(body.data.connected), botUsername: body.data.botUsername ?? null })
+        }
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // The WhatsApp tile starts Meta's Embedded Signup itself (components/channels/whatsapp-embedded-signup).
   const whatsappSignup = useWhatsAppEmbeddedSignup({
@@ -1735,11 +1845,11 @@ function ChannelsPageInner() {
   }
 
   const sendTestWhatsApp = async () => {
-    if (!testPhone) return
+    if (!testPhone || !testChannelId) return
     setTestSending(true)
     setTestResult(null)
     try {
-      const res = await fetch("/api/v1/whatsapp/test", {
+      const res = await fetch("/api/v1/channels/whatsapp/test", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1747,6 +1857,7 @@ function ChannelsPageInner() {
         },
         body: JSON.stringify({
           to: testPhone,
+          channelConfigId: testChannelId,
           templateName: testTemplateName.trim() || "hello_world",
           languageCode: testLanguageCode.trim() || "en_US",
         }),
@@ -1924,7 +2035,8 @@ function ChannelsPageInner() {
     // The tile reads the same state as every other place (lib/channels/live-connection): a saved row is
     // not a connection, and a row Meta does not deliver for never wears "Connected".
     const connectionState = connected ? channelConnectionState(connected) : null
-    const connectionLive = connectionState === "live"
+    const staffBotLive = card.id === "telegram-staff" && staffBot?.connected === true
+    const connectionLive = connectionState === "live" || staffBotLive
     const connectionBroken = Boolean(connected) && !connectionLive
     const brokenBadge = connectionState ? cardBrokenBadge(c, connectionState, claimedCopy) : null
     const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
@@ -1943,6 +2055,8 @@ function ChannelsPageInner() {
           : c.tileConnect
     const subtitle = card.id === "tiktok"
       ? card.description
+      : card.id === "telegram-staff"
+        ? staffBotLive && staffBot?.botUsername ? `@${staffBot.botUsername}` : card.description
       : whatsappWorking
         ? c.esWorking
         : connectionLive
@@ -1955,7 +2069,7 @@ function ChannelsPageInner() {
 
     const inner = (
       <>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ring-1 ring-black/5"
             style={{ background: visual.bg }}
@@ -1966,7 +2080,7 @@ function ChannelsPageInner() {
           {connectionLive ? (
             <span
               data-testid="channel-card-connected-badge"
-              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+              className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
             >
               <CheckCircle2 className="h-3 w-3" />
               {c.connected}
@@ -1974,23 +2088,23 @@ function ChannelsPageInner() {
           ) : connectionBroken && brokenBadge ? (
             <span
               data-testid="channel-card-broken-badge"
-              className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+              className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
             >
               <Clock3 className="h-3 w-3" />
               {brokenBadge}
             </span>
           ) : (
-            <span className="rounded-full border border-orange-200 px-2 py-0.5 text-[10px] font-semibold text-orange-600">
+            <span className="max-w-full min-w-0 break-words rounded-full border border-orange-200 px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--crm-accent-text))] dark:border-orange-800">
               {actionLabel}
             </span>
           )}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-zinc-950">{card.title}</div>
-          <div className={cn("line-clamp-2 text-[11px] leading-4", connectionBroken ? "text-amber-700" : "text-zinc-500")}>
+          <div className="truncate text-sm font-semibold text-foreground">{card.title}</div>
+          <div className={cn("line-clamp-2 text-[11px] leading-4", connectionBroken ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground")}>
             {subtitle}
           </div>
-          {whatsappError && <div className="mt-1 text-[11px] leading-4 text-red-600">{whatsappError}</div>}
+          {whatsappError && <div className="mt-1 text-[11px] leading-4 text-red-600 dark:text-red-300">{whatsappError}</div>}
         </div>
       </>
     )
@@ -2038,8 +2152,8 @@ function ChannelsPageInner() {
         key={card.id}
         data-testid={`channel-card-${card.id}`}
         className={cn(
-          "rounded-xl border bg-white transition hover:-translate-y-0.5 hover:shadow-sm",
-          connectionBroken ? "border-amber-200" : "border-zinc-200 hover:border-zinc-300",
+          "rounded-xl border bg-card transition hover:-translate-y-0.5 hover:shadow-sm",
+          connectionBroken ? "border-amber-200 dark:border-amber-800" : "border-border hover:border-input",
         )}
       >
         {action}
@@ -2065,9 +2179,9 @@ function ChannelsPageInner() {
         data-testid={`channel-row-${channel.id}`}
         data-oauth-result={oauthRow?.id === channel.id ? "true" : undefined}
         className={cn(
-          "flex flex-col gap-3 rounded-xl border bg-white p-3 sm:flex-row sm:items-center",
+          "flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center",
           // The channel Meta's login just wired, so the user sees which row the banner is about.
-          oauthRow?.id === channel.id ? "border-emerald-300 ring-2 ring-emerald-200" : "border-zinc-200",
+          oauthRow?.id === channel.id ? "border-emerald-300 ring-2 ring-emerald-200 dark:border-emerald-800" : "border-border",
         )}
       >
         <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -2080,11 +2194,11 @@ function ChannelsPageInner() {
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="min-w-0 break-words text-sm font-semibold text-zinc-950">{channel.configName}</span>
+              <span className="min-w-0 break-words text-sm font-semibold text-foreground">{channel.configName}</span>
               {rowBrokenBadge ? (
                 <span
                   data-testid="channel-row-broken-badge"
-                  className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
                 >
                   <Clock3 className="h-3 w-3" />
                   {rowBrokenBadge}
@@ -2092,20 +2206,50 @@ function ChannelsPageInner() {
               ) : (
                 <span
                   data-testid="channel-row-connected-badge"
-                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
                 >
                   <CheckCircle2 className="h-3 w-3" />
-                  {c.connected}
+                  {channel.monitoring ? c.messagingOn : c.connected}
                 </span>
               )}
+              {channel.monitoring?.state === "on" ? (
+                <span
+                  data-testid="channel-row-monitoring"
+                  data-state="on"
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                  {channel.monitoring.lastPolledAt
+                    ? `${c.monitoringOn} · ${c.monitoringPolled.replace("{time}", formatPolledAt(channel.monitoring.lastPolledAt, locale))}`
+                    : c.monitoringOn}
+                </span>
+              ) : channel.monitoring?.state === "off" ? (
+                <span
+                  data-testid="channel-row-monitoring"
+                  data-state="off"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                >
+                  {c.monitoringOff}
+                </span>
+              ) : channel.monitoring?.state === "awaiting_meta" ? (
+                <span
+                  data-testid="channel-row-monitoring"
+                  data-state="awaiting_meta"
+                  title={c.monitoringAwaitingHint}
+                  className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                >
+                  <Clock3 className="h-3 w-3" />
+                  {c.monitoringAwaiting}
+                </span>
+              ) : null}
             </div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-muted-foreground">
               {[card?.title || channel.channelType, channelProvider(channel), channel.phoneNumber].filter(Boolean).join(" · ")}
             </div>
             {ownScreenHref ? (
-              <p className="mt-1 text-xs text-zinc-500">{c.cardVoipSettingsHint}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{c.cardVoipSettingsHint}</p>
             ) : rowBrokenBadge && (rowBrokenStatus || rowBrokenHint) ? (
-              <p className="mt-1 text-xs leading-5 text-amber-700">
+              <p className="mt-1 text-xs leading-5 text-amber-700 dark:text-amber-300">
                 {[rowBrokenStatus, rowBrokenHint].filter(Boolean).join(" ")}
               </p>
             ) : null}
@@ -2113,15 +2257,20 @@ function ChannelsPageInner() {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {ownScreenHref ? (
-            <Button asChild size="sm" variant="secondary" className="h-8 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50">
+            <Button asChild size="sm" variant="secondary" className="h-8 border border-border bg-card text-foreground hover:bg-muted">
               <Link href={ownScreenHref} aria-label={`${c.openVoipSettings}: ${channel.configName}`}>{c.openVoipSettings}</Link>
             </Button>
           ) : (
             <>
+              {channel.monitoring?.state === "off" && (
+                <Button asChild size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
+                  <a href={monitoringStartHref(channel)} data-testid="channel-row-monitoring-on">{c.monitoringTurnOn}</a>
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="secondary"
-                className="h-8 gap-1.5 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                className="h-8 gap-1.5 border border-border bg-card text-foreground hover:bg-muted"
                 onClick={() => editExistingChannel(channel)}
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -2131,7 +2280,7 @@ function ChannelsPageInner() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                  className="h-8 w-8 p-0 text-[hsl(var(--crm-accent-text))] hover:bg-muted hover:text-foreground"
                   onClick={() => {
                     setTestChannelId(channel.id)
                     setTestPhone("")
@@ -2147,14 +2296,17 @@ function ChannelsPageInner() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                className="h-8 gap-1.5 px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
                 onClick={() => {
                   setDeleteId(channel.id)
                   setDeleteName(channel.configName)
+                  setDeleteKind(channelRemovalKind(channel.channelType, channel.isActive))
+                  setDeleteMonitored(Boolean(channel.monitoring))
                 }}
-                title={c.delete}
               >
-                <Trash2 className="h-4 w-4" />
+                {channelRemovalKind(channel.channelType, channel.isActive) === "disconnect"
+                  ? <><Unplug className="h-3.5 w-3.5" />{c.disconnect}</>
+                  : <><Trash2 className="h-3.5 w-3.5" />{c.delete}</>}
               </Button>
             </>
           )}
@@ -2164,10 +2316,10 @@ function ChannelsPageInner() {
   }
 
   return (
-    <div className="force-light overflow-hidden rounded-[28px] border border-zinc-200 bg-[#f8fafc] text-zinc-950 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+    <div className="overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-sm">
       {connectCard ? (
         <>
-          <div className="border-b border-zinc-200 bg-white px-6 py-5">
+          <div className="border-b border-border bg-card px-6 py-5">
             <Button
               type="button"
               variant="ghost"
@@ -2175,26 +2327,26 @@ function ChannelsPageInner() {
                 setTutorialOpen(false)
                 setConnectCard(null)
               }}
-              className="mb-4 gap-2 text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+              className="mb-4 gap-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
               {c.backToCatalog}
             </Button>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-orange-600">{c.connectChannel}</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[hsl(var(--crm-accent-text))]">{c.connectChannel}</p>
                 <div className="mt-3 flex items-center gap-4">
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-2xl font-black text-orange-600 shadow-inner">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-2xl font-black text-orange-600 shadow-inner dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
                     {connectCard.logo}
                   </div>
                   <div>
                     <h1 className="text-2xl font-semibold tracking-tight">{connectCard.title}</h1>
-                    <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">{connectCard.description}</p>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{connectCard.description}</p>
                   </div>
                 </div>
               </div>
               {connectCard.badge && (
-                <Badge className="w-fit border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
+                <Badge className="w-fit border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
                   <BadgeCheck className="mr-1 h-3 w-3" />
                   {connectCard.badge}
                 </Badge>
@@ -2204,24 +2356,23 @@ function ChannelsPageInner() {
 
           <div className="grid min-h-[620px] gap-6 px-6 py-6 lg:grid-cols-[360px_minmax(0,1fr)]">
             <aside className="space-y-5">
-              <div className={cn("relative overflow-hidden rounded-3xl border bg-white p-5 shadow-sm", connectCard.accent)}>
-                <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80", connectCard.accent)} />
+              <div className="relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm">
                 <div className="relative flex items-center gap-3">
-                  <div className="grid h-12 w-12 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-xl font-black text-orange-600">
+                  <div className="grid h-12 w-12 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-xl font-black text-orange-600 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
                     {ConnectIcon && <ConnectIcon className="h-6 w-6" />}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">{c.connectHeading}</p>
-                    <p className="text-lg font-semibold text-zinc-950">{connectCard.title}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{c.connectHeading}</p>
+                    <p className="text-lg font-semibold text-foreground">{connectCard.title}</p>
                   </div>
                 </div>
-                <p className="relative mt-4 text-sm leading-6 text-zinc-600">
+                <p className="relative mt-4 text-sm leading-6 text-muted-foreground">
                   {connectCard.action.type === "guide" ? c.callingReadinessHint : c.connectHelp}
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-semibold text-zinc-900">{c.additionalResources}</h2>
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <h2 className="text-sm font-semibold text-foreground">{c.additionalResources}</h2>
                 <div className="mt-4 space-y-2">
                   {connectResources.map((resource) => {
                     const ResourceIcon = resource.icon
@@ -2231,18 +2382,18 @@ function ChannelsPageInner() {
                         type="button"
                         onClick={() => openTutorialAt(resource.stepIndex)}
                         aria-label={`${resource.label}: ${tutorialUi.frame} ${resource.stepIndex + 1}`}
-                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 px-3 py-3 text-left text-sm text-orange-800 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-orange-100 bg-orange-50/60 px-3 py-3 text-left text-sm text-orange-800 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50 dark:hover:text-orange-300"
                       >
                         <span className="flex min-w-0 items-start gap-3">
-                          <ResourceIcon className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
+                          <ResourceIcon className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-300" />
                           <span className="min-w-0">
-                            <span className="block break-words font-medium text-orange-950">{resource.label}</span>
-                            <span className="mt-0.5 block line-clamp-2 break-words text-xs leading-5 text-orange-700">
+                            <span className="block break-words font-medium text-orange-950 dark:text-orange-300">{resource.label}</span>
+                            <span className="mt-0.5 block line-clamp-2 break-words text-xs leading-5 text-orange-700 dark:text-orange-300">
                               {tutorialUi.frame} {resource.stepIndex + 1}: {tutorialSteps[resource.stepIndex] || connectTutorial?.description || tutorialUi.ready}
                             </span>
                           </span>
                         </span>
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-orange-200 bg-white px-2 py-1 text-[11px] font-semibold text-orange-700">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-orange-200 bg-card px-2 py-1 text-[11px] font-semibold text-[hsl(var(--crm-accent-text))] dark:border-orange-800">
                           <PlayCircle className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">{c.watchTutorial}</span>
                         </span>
@@ -2253,16 +2404,16 @@ function ChannelsPageInner() {
               </div>
             </aside>
 
-            <section className="space-y-5 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <div className="rounded-3xl border border-orange-200 bg-orange-50/60 p-4">
+            <section className="space-y-5 rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-zinc-950">{c.connectionPathTitle}</p>
-                    <p className="mt-1 text-xs leading-5 text-zinc-600">
+                    <p className="text-sm font-semibold text-foreground">{c.connectionPathTitle}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {connectCard.action.type === "guide" ? c.callingReadinessHint : c.connectionPathHint}
                     </p>
                   </div>
-                  <Badge className="w-fit border-orange-200 bg-white text-orange-700 hover:bg-white">
+                  <Badge className="w-fit border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] hover:bg-card dark:border-orange-800">
                     {connectTutorial?.duration || tutorialUi.duration}
                   </Badge>
                 </div>
@@ -2274,14 +2425,14 @@ function ChannelsPageInner() {
                         <button
                           type="button"
                           onClick={() => openTutorialAt(stepIndex)}
-                          className="flex h-full w-full items-start gap-3 rounded-2xl border border-orange-100 bg-white p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                          className="flex h-full w-full items-start gap-3 rounded-xl border border-orange-100 bg-card p-3 text-left transition hover:border-input hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-orange-800"
                         >
                           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-orange-500 text-sm font-bold text-white shadow-sm">
                             {index + 1}
                           </span>
                           <span>
-                            <span className="block text-sm font-semibold text-zinc-950">{step.title}</span>
-                            <span className="mt-1 block text-xs leading-5 text-zinc-600">{step.desc}</span>
+                            <span className="block text-sm font-semibold text-foreground">{step.title}</span>
+                            <span className="mt-1 block text-xs leading-5 text-muted-foreground">{step.desc}</span>
                           </span>
                         </button>
                       </li>
@@ -2293,24 +2444,24 @@ function ChannelsPageInner() {
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
                 <div>
                   {connectTutorial && (
-                    <div className="overflow-hidden rounded-3xl border border-orange-200 bg-white shadow-sm">
-                      <div className="relative min-h-[250px] overflow-hidden bg-[radial-gradient(circle_at_18%_18%,rgba(251,146,60,0.26),transparent_32%),linear-gradient(135deg,#fff7ed_0%,#ffffff_45%,#f4f4f5_100%)] p-5">
-                        <div className="absolute right-5 top-5 rounded-full border border-orange-200 bg-white/80 px-3 py-1 text-xs font-semibold text-orange-700 shadow-sm backdrop-blur">
+                    <div className="overflow-hidden rounded-xl border border-orange-200 bg-card shadow-sm dark:border-orange-800">
+                      <div className="relative min-h-[250px] overflow-hidden bg-muted p-5">
+                        <div className="absolute right-5 top-5 rounded-full border border-orange-200 bg-card/80 px-3 py-1 text-xs font-semibold text-[hsl(var(--crm-accent-text))] shadow-sm backdrop-blur dark:border-orange-800">
                           {connectTutorial.duration}
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="grid h-12 w-12 place-items-center rounded-2xl border border-orange-200 bg-white text-orange-600 shadow-sm">
+                          <div className="grid h-12 w-12 place-items-center rounded-xl border border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] shadow-sm dark:border-orange-800">
                             <PlayCircle className="h-7 w-7" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--crm-accent-text))]">
                               {tutorialUi.title}
                             </p>
-                            <p className="mt-1 text-lg font-semibold text-zinc-950">{connectCard.title}</p>
+                            <p className="mt-1 text-lg font-semibold text-foreground">{connectCard.title}</p>
                           </div>
                         </div>
 
-                        <div className="mt-7 grid min-h-[126px] place-items-center rounded-3xl border border-orange-200/70 bg-white/78 px-6 text-center shadow-[0_24px_70px_rgba(249,115,22,0.16)] backdrop-blur">
+                        <div className="mt-7 grid min-h-[126px] place-items-center rounded-xl border border-orange-200/70 bg-card/78 px-6 text-center shadow-sm backdrop-blur dark:border-orange-800">
                           <button
                             type="button"
                             onClick={() => {
@@ -2318,18 +2469,19 @@ function ChannelsPageInner() {
                               setTutorialPlaying(true)
                               setTutorialOpen(true)
                             }}
-                            className="group inline-flex items-center gap-3 rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(249,115,22,0.28)] transition hover:bg-orange-600"
+                            data-crm-button="default"
+                            className="group inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                             aria-label={`${tutorialUi.play} ${connectCard.title}`}
                           >
-                            <span className="grid h-9 w-9 place-items-center rounded-full bg-white/18">
+                            <span className="grid h-9 w-9 place-items-center rounded-full bg-card/18">
                               <PlayCircle className="h-5 w-5" />
                             </span>
                             <span>{c.watchTutorial}</span>
                           </button>
                         </div>
 
-                        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-                          <Badge className="border-orange-200 bg-white text-orange-700 hover:bg-white">
+                        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <Badge className="border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] hover:bg-card dark:border-orange-800">
                             <CheckCircle2 className="mr-1 h-3 w-3" />
                             {tutorialUi.ready}
                           </Badge>
@@ -2337,15 +2489,15 @@ function ChannelsPageInner() {
                         </div>
                       </div>
 
-                      <div className="border-t border-orange-100 bg-white p-5">
-                        <p className="text-sm font-semibold text-zinc-900">{tutorialUi.chapters}</p>
+                      <div className="border-t border-orange-100 bg-card p-5 dark:border-orange-800">
+                        <p className="text-sm font-semibold text-foreground">{tutorialUi.chapters}</p>
                         <ol className="mt-4 grid gap-3 sm:grid-cols-2">
                           {connectTutorial.steps.map((step, index) => (
-                            <li key={step} className="flex gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3">
-                              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">
+                            <li key={step} className="flex gap-3 rounded-xl border border-border bg-muted/80 p-3">
+                              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-orange-100 text-xs font-bold text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
                                 {index + 1}
                               </span>
-                              <span className="text-sm leading-5 text-zinc-700">{step}</span>
+                              <span className="text-sm leading-5 text-foreground">{step}</span>
                             </li>
                           ))}
                         </ol>
@@ -2355,35 +2507,35 @@ function ChannelsPageInner() {
                 </div>
 
                 {connectCard.action.type === "guide" ? (
-                  <div className="rounded-3xl border border-zinc-200 bg-zinc-50/80 p-5">
-                    <p className="text-lg font-semibold text-zinc-900">{c.callingReadinessTitle}</p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-600">{c.callingReadinessHint}</p>
+                  <div className="rounded-xl border border-border bg-muted/80 p-5">
+                    <p className="text-lg font-semibold text-foreground">{c.callingReadinessTitle}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{c.callingReadinessHint}</p>
 
                     <div className="mt-5 space-y-3">
-                      <div className="rounded-2xl border border-orange-200 bg-white p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
+                      <div className="rounded-xl border border-orange-200 bg-card p-4 dark:border-orange-800">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--crm-accent-text))]">
                           {c.callingTestDomain}
                         </p>
-                        <code className="mt-2 block break-all rounded-xl bg-orange-50 px-3 py-2 font-mono text-xs text-orange-800">
+                        <code className="mt-2 block break-all rounded-xl bg-orange-50 px-3 py-2 font-mono text-xs text-orange-800 dark:bg-orange-950/30 dark:text-orange-300">
                           {LEADDRIVE_APP_ORIGIN}
                         </code>
                       </div>
-                      <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                           {c.callingMessageWebhook}
                         </p>
-                        <code className="mt-2 block break-all rounded-xl bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-700">
+                        <code className="mt-2 block break-all rounded-xl bg-muted px-3 py-2 font-mono text-xs text-foreground">
                           {whatsappCallingWebhook}
                         </code>
-                        <p className="mt-2 text-xs leading-5 text-zinc-500">{c.callingMessageWebhookHint}</p>
+                        <p className="mt-2 text-xs leading-5 text-muted-foreground">{c.callingMessageWebhookHint}</p>
                       </div>
                     </div>
 
-                    <div className="mt-5 rounded-2xl border border-zinc-200 bg-white p-4">
+                    <div className="mt-5 rounded-xl border border-border bg-card p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-zinc-900">{c.callingCredentialStatusTitle}</p>
-                          <p className="mt-1 text-xs leading-5 text-zinc-600">
+                          <p className="text-sm font-semibold text-foreground">{c.callingCredentialStatusTitle}</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
                             {whatsappBusinessChannel ? c.callingCredentialStatusHint : c.callingNoMessagingChannel}
                           </p>
                         </div>
@@ -2391,8 +2543,8 @@ function ChannelsPageInner() {
                           <Badge className={cn(
                             "w-fit border text-xs",
                             whatsappCallingCredentialsReady
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-                              : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+                              : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/50"
                           )}>
                             {whatsappCallingCredentialsReady ? c.callingReady : c.callingMissing}
                           </Badge>
@@ -2410,11 +2562,11 @@ function ChannelsPageInner() {
                                   className={cn(
                                     "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium",
                                     check.ready
-                                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                      : "border-amber-200 bg-amber-50 text-amber-900"
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                                      : "border-amber-200 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800"
                                   )}
                                 >
-                                  <StatusIcon className={cn("h-4 w-4 shrink-0", check.ready ? "text-emerald-600" : "text-amber-700")} />
+                                  <StatusIcon className={cn("h-4 w-4 shrink-0", check.ready ? "text-emerald-600 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")} />
                                   <span className="min-w-0 flex-1 break-words">{check.label}</span>
                                   <span className="shrink-0">{check.ready ? c.callingReady : c.callingMissing}</span>
                                 </div>
@@ -2422,13 +2574,13 @@ function ChannelsPageInner() {
                             })}
                           </div>
                           {!whatsappCallingCredentialsReady && (
-                            <p className="mt-3 text-xs leading-5 text-amber-800">{c.callingSignedWebhookBlocked}</p>
+                            <p className="mt-3 text-xs leading-5 text-amber-800 dark:text-amber-300">{c.callingSignedWebhookBlocked}</p>
                           )}
                           <Button
                             type="button"
                             variant="secondary"
                             onClick={() => editExistingChannel(whatsappBusinessChannel)}
-                            className="mt-4 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                            className="mt-4 border border-border bg-card text-foreground hover:bg-muted"
                           >
                             <Pencil className="h-4 w-4" />
                             {c.callingEditMessagingSetup}
@@ -2437,12 +2589,12 @@ function ChannelsPageInner() {
                       )}
                     </div>
 
-                    <div className="mt-5 rounded-2xl border border-zinc-200 bg-white p-4">
-                      <p className="text-sm font-semibold text-zinc-900">{c.callingRequirementsTitle}</p>
+                    <div className="mt-5 rounded-xl border border-border bg-card p-4">
+                      <p className="text-sm font-semibold text-foreground">{c.callingRequirementsTitle}</p>
                       <ol className="mt-3 space-y-2">
                         {c.callingRequirements.map((requirement, index) => (
-                          <li key={requirement} className="flex gap-3 text-sm leading-5 text-zinc-700">
-                            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700">
+                          <li key={requirement} className="flex gap-3 text-sm leading-5 text-foreground">
+                            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
                               {index + 1}
                             </span>
                             <span>{requirement}</span>
@@ -2451,9 +2603,9 @@ function ChannelsPageInner() {
                       </ol>
                     </div>
 
-                    <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                      <p className="text-sm font-semibold text-amber-900">{c.callingBackendTitle}</p>
-                      <p className="mt-2 text-xs leading-5 text-amber-800">{c.callingBackendHint}</p>
+                    <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:bg-amber-950/30 dark:border-amber-800">
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">{c.callingBackendTitle}</p>
+                      <p className="mt-2 text-xs leading-5 text-amber-800 dark:text-amber-300">{c.callingBackendHint}</p>
                     </div>
 
                     <div className="mt-5 flex flex-wrap gap-2">
@@ -2463,7 +2615,7 @@ function ChannelsPageInner() {
                           const whatsappCard = cards.find((card) => card.id === "whatsapp-business")
                           if (whatsappCard) openNewChannel(whatsappCard)
                         }}
-                        className="bg-orange-500 text-white hover:bg-orange-600"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
                       >
                         {c.callingOpenMessagingSetup}
                       </Button>
@@ -2473,16 +2625,16 @@ function ChannelsPageInner() {
                           setTutorialOpen(false)
                           setConnectCard(null)
                         }}
-                        className="border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                        className="border border-border bg-card text-foreground hover:bg-muted"
                       >
                         {c.backToCatalog}
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-3xl border border-zinc-200 bg-zinc-50/80 p-5">
-                    <p className="text-lg font-semibold text-zinc-900">{c.connectHeading} {connectCard.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-600">{c.manualSetupHint}</p>
+                  <div className="rounded-xl border border-border bg-muted/80 p-5">
+                    <p className="text-lg font-semibold text-foreground">{c.connectHeading} {connectCard.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{c.manualSetupHint}</p>
                     <div className="mt-5 space-y-3" role="radiogroup" aria-label={c.connectChannel}>
                       {([
                         ["new", c.optionNewTitle, c.optionNewDesc],
@@ -2495,21 +2647,21 @@ function ChannelsPageInner() {
                             type="button"
                             onClick={() => setConnectMode(value)}
                             className={cn(
-                              "w-full rounded-2xl border p-4 text-left transition",
+                              "w-full rounded-xl border p-4 text-left transition",
                               selected
-                                ? "border-orange-300 bg-orange-50 text-orange-950 shadow-[0_0_0_1px_rgba(251,146,60,0.22)]"
-                                : "border-zinc-200 bg-white text-zinc-700 hover:border-orange-200 hover:bg-zinc-50 hover:text-zinc-950"
+                                ? "border-orange-300 bg-orange-50 text-orange-950 shadow-[0_0_0_1px_rgba(251,146,60,0.22)] dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
+                                : "border-border bg-card text-foreground hover:border-orange-200 hover:bg-muted hover:text-foreground"
                             )}
                             role="radio"
                             aria-checked={selected}
                           >
                             <span className="flex items-start gap-3">
-                              <span className={cn("mt-1 h-3 w-3 rounded-full border", selected ? "border-orange-500 bg-orange-500" : "border-zinc-300")} />
+                              <span className={cn("mt-1 h-3 w-3 rounded-full border", selected ? "border-orange-500 bg-orange-500" : "border-input")} />
                               <span>
                                 <span className="block text-sm font-semibold">{title}</span>
                                 <span className={cn(
                                   "mt-1 block text-xs leading-5",
-                                  selected ? "text-orange-800" : "text-zinc-500",
+                                  selected ? "text-orange-800 dark:text-orange-300" : "text-muted-foreground",
                                 )}>{description}</span>
                               </span>
                             </span>
@@ -2518,7 +2670,7 @@ function ChannelsPageInner() {
                       })}
                     </div>
                     <div className="mt-5 flex flex-wrap gap-2">
-                      <Button onClick={startManualSetup} className="bg-orange-500 text-white hover:bg-orange-600">
+                      <Button onClick={startManualSetup} className="bg-primary text-primary-foreground hover:bg-primary/90">
                         {c.getStarted}
                       </Button>
                       <Button
@@ -2527,12 +2679,12 @@ function ChannelsPageInner() {
                           setTutorialOpen(false)
                           setConnectCard(null)
                         }}
-                        className="border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                        className="border border-border bg-card text-foreground hover:bg-muted"
                       >
                         {c.skip}
                       </Button>
                     </div>
-                    <p className="mt-4 text-xs text-zinc-500">{c.manualSetup}</p>
+                    <p className="mt-4 text-xs text-muted-foreground">{c.manualSetup}</p>
                   </div>
                 )}
               </div>
@@ -2541,7 +2693,7 @@ function ChannelsPageInner() {
         </>
       ) : (
         <>
-      <div className="border-b border-zinc-200 bg-white px-6 py-5">
+      <div className="border-b border-border bg-card px-6 py-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-1 flex items-center gap-3">
@@ -2551,11 +2703,11 @@ function ChannelsPageInner() {
               <TourReplayButton tourId="channels" />
               <HelpButton slug="channels" variant="label" />
             </div>
-            <p className="max-w-2xl text-sm text-zinc-500">{c.tilesHint}</p>
+            <p className="max-w-2xl text-sm text-muted-foreground">{c.tilesHint}</p>
           </div>
           <Badge
             data-testid="channels-active-count"
-            className="w-fit gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+            className="w-fit gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             {activeCount} {c.active}
@@ -2564,7 +2716,7 @@ function ChannelsPageInner() {
       </div>
 
       {(oauthBanner || oauthError) && (
-        <div className="border-b border-zinc-200 bg-white px-6 py-4">
+        <div className="border-b border-border bg-card px-6 py-4">
           {oauthBanner ? (
             <div
               data-testid="oauth-result-banner"
@@ -2572,37 +2724,37 @@ function ChannelsPageInner() {
               className={cn(
                 "flex items-start justify-between gap-3 rounded-xl border p-3",
                 oauthBanner.tone === "success"
-                  ? "border-emerald-200 bg-emerald-50"
+                  ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800"
                   : oauthBanner.tone === "pending" || oauthBanner.tone === "neutral"
-                    ? "border-zinc-200 bg-zinc-50"
-                    : "border-amber-200 bg-amber-50",
+                    ? "border-border bg-muted"
+                    : "border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800",
               )}
             >
               <div className="min-w-0">
                 <p className={cn(
                   "text-sm font-semibold",
-                  oauthBanner.tone === "success" ? "text-emerald-800" : oauthBanner.tone === "warning" ? "text-amber-900" : "text-zinc-800",
+                  oauthBanner.tone === "success" ? "text-emerald-800 dark:text-emerald-300" : oauthBanner.tone === "warning" ? "text-amber-900 dark:text-amber-300" : "text-foreground",
                 )}>
                   {oauthBanner.title}
                 </p>
                 <p className={cn(
                   "mt-0.5 text-sm leading-6",
-                  oauthBanner.tone === "success" ? "text-emerald-700" : oauthBanner.tone === "warning" ? "text-amber-800" : "text-zinc-600",
+                  oauthBanner.tone === "success" ? "text-emerald-700 dark:text-emerald-300" : oauthBanner.tone === "warning" ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground",
                 )}>
                   {oauthBanner.desc}
                 </p>
               </div>
-              <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-xs text-zinc-600" onClick={dismissOAuthResult}>
+              <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-xs text-muted-foreground" onClick={dismissOAuthResult}>
                 {c.dismiss}
               </Button>
             </div>
           ) : (
-            <div data-testid="oauth-error-banner" className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3">
+            <div data-testid="oauth-error-banner" className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 dark:bg-red-950/30 dark:border-red-800">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-red-800">{c.oauthErrorTitle}</p>
-                <p className="mt-0.5 text-sm leading-6 text-red-700">{c.oauthErrorDesc.replace("{code}", oauthError || "")}</p>
+                <p className="text-sm font-semibold text-red-800 dark:text-red-300">{c.oauthErrorTitle}</p>
+                <p className="mt-0.5 text-sm leading-6 text-red-700 dark:text-red-300">{c.oauthErrorDesc.replace("{code}", oauthError || "")}</p>
               </div>
-              <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-xs text-zinc-600" onClick={dismissOAuthResult}>
+              <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-xs text-muted-foreground" onClick={dismissOAuthResult}>
                 {c.dismiss}
               </Button>
             </div>
@@ -2614,22 +2766,22 @@ function ChannelsPageInner() {
         {loading ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
             {Array.from({ length: 12 }, (_, i) => (
-              <div key={i} className="h-[92px] animate-pulse rounded-xl border border-zinc-200 bg-zinc-100" />
+              <div key={i} className="h-[92px] animate-pulse rounded-xl border border-border bg-muted" />
             ))}
           </div>
         ) : (
           <>
             {tileGroups.map(({ group, cards: groupCards }) => (
               <section key={group} className="space-y-2.5">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">{c.groups[group]}</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{c.groups[group]}</h2>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
                   {groupCards.map((card) => renderChannelTile(card))}
                 </div>
               </section>
             ))}
             {listedChannels.length > 0 && (
-              <section className="space-y-2.5 border-t border-zinc-200 pt-6">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">{c.connectedListTitle}</h2>
+              <section className="space-y-2.5 border-t border-border pt-6">
+                <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{c.connectedListTitle}</h2>
                 <div className="space-y-2">
                   {listedChannels.map((channel) => renderConnectedRow(channel))}
                 </div>
@@ -2668,33 +2820,33 @@ function ChannelsPageInner() {
         widthClassName="max-w-4xl"
         maxHeightClassName="max-h-[92vh]"
       >
-        <DialogContent className="force-light border-zinc-200 bg-white p-0 text-zinc-950">
+        <DialogContent className="border-border bg-card p-0 text-foreground">
           <DialogHeader>
             <DialogTitle className="sr-only">
               {tutorialUi.title} — {connectCard?.title}
             </DialogTitle>
           </DialogHeader>
           {connectTutorial && connectCard && currentTutorialScene && (
-            <div className="grid overflow-hidden rounded-3xl bg-white lg:grid-cols-[minmax(0,1.35fr)_320px]">
-              <div className="bg-orange-50/70 p-5 text-zinc-950">
+            <div className="grid overflow-hidden rounded-xl bg-card lg:grid-cols-[minmax(0,1.35fr)_320px]">
+              <div className="bg-background p-5 text-foreground">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="grid h-11 w-11 place-items-center rounded-2xl border border-orange-200 bg-white text-orange-600">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl border border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] dark:border-orange-800">
                       <PlayCircle className="h-6 w-6" />
                     </span>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-700">
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[hsl(var(--crm-accent-text))]">
                         {tutorialUi.title}
                       </p>
-                      <p className="mt-1 text-lg font-semibold text-zinc-950">{connectCard.title}</p>
+                      <p className="mt-1 text-lg font-semibold text-foreground">{connectCard.title}</p>
                     </div>
                   </div>
-                  <Badge className="border-orange-200 bg-white text-orange-700 hover:bg-white">
+                  <Badge className="border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] hover:bg-card dark:border-orange-800">
                     {connectTutorial.duration}
                   </Badge>
                 </div>
 
-                <div className="relative overflow-hidden rounded-[28px] border border-orange-200 bg-[radial-gradient(circle_at_20%_20%,rgba(249,115,22,0.16),transparent_30%),linear-gradient(135deg,#fff7ed_0%,#ffffff_54%,#f4f4f5_100%)] shadow-[0_24px_70px_rgba(249,115,22,0.14)]">
+                <div className="force-light relative overflow-hidden rounded-[28px] border border-orange-200 bg-[radial-gradient(circle_at_20%_20%,rgba(249,115,22,0.16),transparent_30%),linear-gradient(135deg,#fff7ed_0%,#ffffff_54%,#f4f4f5_100%)] shadow-[0_24px_70px_rgba(249,115,22,0.14)]">
                   <div className="absolute left-5 right-5 top-5 flex items-center justify-between rounded-full border border-orange-100 bg-white/82 px-3 py-2 text-[11px] text-zinc-600 shadow-sm backdrop-blur">
                     <span className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-red-400" />
@@ -2787,7 +2939,7 @@ function ChannelsPageInner() {
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-10 gap-2 border border-orange-200 bg-white text-orange-700 hover:bg-orange-50"
+                      className="h-10 gap-2 border border-border bg-card text-foreground hover:bg-muted"
                       onClick={() => setTutorialStepIndex((index) => (index === 0 ? Math.max(tutorialSteps.length - 1, 0) : index - 1))}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -2795,7 +2947,7 @@ function ChannelsPageInner() {
                     </Button>
                     <Button
                       type="button"
-                      className="h-10 gap-2 bg-orange-500 text-white hover:bg-orange-600"
+                      className="h-10 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => setTutorialPlaying((playing) => !playing)}
                     >
                       {tutorialPlaying ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
@@ -2804,7 +2956,7 @@ function ChannelsPageInner() {
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-10 gap-2 border border-orange-200 bg-white text-orange-700 hover:bg-orange-50"
+                      className="h-10 gap-2 border border-border bg-card text-foreground hover:bg-muted"
                       onClick={() => setTutorialStepIndex((index) => (index + 1) % Math.max(tutorialSteps.length, 1))}
                     >
                       {tutorialUi.next}
@@ -2814,7 +2966,7 @@ function ChannelsPageInner() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-10 gap-2 text-zinc-600 hover:bg-orange-100 hover:text-zinc-950"
+                    className="h-10 gap-2 text-muted-foreground hover:bg-orange-100 hover:text-foreground dark:hover:bg-orange-950/50"
                     onClick={() => {
                       setTutorialStepIndex(0)
                       setTutorialPlaying(true)
@@ -2826,12 +2978,12 @@ function ChannelsPageInner() {
                 </div>
               </div>
 
-              <aside className="border-l border-zinc-200 bg-white p-5">
+              <aside className="border-l border-border bg-card p-5">
                 <div className="mb-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[hsl(var(--crm-accent-text))]">
                     {tutorialUi.chapters}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-600">{connectTutorial.description}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{connectTutorial.description}</p>
                 </div>
                 <ol className="space-y-3">
                   {connectTutorial.steps.map((step, index) => {
@@ -2846,10 +2998,10 @@ function ChannelsPageInner() {
                           }}
                           aria-current={selected ? "step" : undefined}
                           className={cn(
-                            "flex w-full gap-3 rounded-2xl border p-3 text-left transition",
+                            "flex w-full gap-3 rounded-xl border p-3 text-left transition",
                             selected
-                              ? "border-orange-300 bg-orange-50 text-orange-950 shadow-[0_0_0_1px_rgba(251,146,60,0.22)]"
-                              : "border-zinc-200 bg-white text-zinc-700 hover:border-orange-200 hover:bg-zinc-50 hover:text-zinc-950"
+                              ? "border-orange-300 bg-orange-50 text-orange-950 shadow-[0_0_0_1px_rgba(251,146,60,0.22)] dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
+                              : "border-border bg-card text-foreground hover:border-orange-200 hover:bg-muted hover:text-foreground"
                           )}
                         >
                           {selected ? (
@@ -2857,7 +3009,7 @@ function ChannelsPageInner() {
                               {index + 1}
                             </span>
                           ) : (
-                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-zinc-100 text-sm font-bold text-zinc-600">
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-bold text-muted-foreground">
                               {index + 1}
                             </span>
                           )}
@@ -2886,17 +3038,17 @@ function ChannelsPageInner() {
         }}
         widthClassName="max-w-md"
       >
-        <DialogContent className="force-light border-zinc-200 bg-white text-zinc-950 sm:max-w-md">
+        <DialogContent className="border-border bg-card text-foreground sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{c.testMessage}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
               <p className="font-semibold">{c.testCaveatTitle}</p>
               <p className="mt-1 leading-5">{c.testCaveatBody}</p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700" htmlFor="whatsapp-test-phone">
+              <label className="text-sm font-medium text-foreground" htmlFor="whatsapp-test-phone">
                 {c.recipientNumber}
               </label>
               <Input
@@ -2904,13 +3056,13 @@ function ChannelsPageInner() {
                 value={testPhone}
                 onChange={(event) => setTestPhone(event.target.value)}
                 placeholder="+994501234567"
-                className="border-zinc-200 bg-white text-zinc-950 placeholder:text-zinc-400 focus-visible:ring-orange-500"
+                className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:ring-orange-500"
               />
-              <p className="text-xs text-zinc-500">{c.phoneFormat}</p>
+              <p className="text-xs text-muted-foreground">{c.phoneFormat}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_104px]">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700" htmlFor="whatsapp-test-template">
+                <label className="text-sm font-medium text-foreground" htmlFor="whatsapp-test-template">
                   {c.templateName}
                 </label>
                 <Input
@@ -2918,11 +3070,11 @@ function ChannelsPageInner() {
                   value={testTemplateName}
                   onChange={(event) => setTestTemplateName(event.target.value)}
                   placeholder="hello_world"
-                  className="border-zinc-200 bg-white font-mono text-sm text-zinc-950 placeholder:text-zinc-400 focus-visible:ring-orange-500"
+                  className="border-input bg-card font-mono text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-orange-500"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700" htmlFor="whatsapp-test-language">
+                <label className="text-sm font-medium text-foreground" htmlFor="whatsapp-test-language">
                   {c.templateLanguage}
                 </label>
                 <Input
@@ -2930,18 +3082,18 @@ function ChannelsPageInner() {
                   value={testLanguageCode}
                   onChange={(event) => setTestLanguageCode(event.target.value)}
                   placeholder="en_US"
-                  className="border-zinc-200 bg-white font-mono text-sm text-zinc-950 placeholder:text-zinc-400 focus-visible:ring-orange-500"
+                  className="border-input bg-card font-mono text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-orange-500"
                 />
               </div>
             </div>
-            <p className="text-xs leading-5 text-zinc-500">{c.templateHint}</p>
+            <p className="text-xs leading-5 text-muted-foreground">{c.templateHint}</p>
             {testResult && (
               <div
                 className={cn(
                   "rounded-xl border px-3 py-2 text-sm",
                   testResult.success
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-red-200 bg-red-50 text-red-700"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                    : "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800"
                 )}
               >
                 {testResult.message}
@@ -2952,11 +3104,11 @@ function ChannelsPageInner() {
             <Button
               variant="secondary"
               onClick={() => setTestChannelId(null)}
-              className="border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              className="border border-border bg-card text-foreground hover:bg-muted"
             >
               {c.cancel}
             </Button>
-            <Button onClick={sendTestWhatsApp} disabled={testSending || !testPhone} className="bg-orange-500 text-white hover:bg-orange-600">
+            <Button onClick={sendTestWhatsApp} disabled={testSending || !testPhone} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {testSending ? c.sending : c.send}
             </Button>
           </DialogFooter>
@@ -2970,8 +3122,12 @@ function ChannelsPageInner() {
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId(null) }}
         onConfirm={handleDelete}
-        title="Delete Channel"
-        itemName={deleteName}
+        title={(deleteKind === "disconnect" ? c.disconnectTitle : c.deleteTitle).replace("{name}", deleteName)}
+        description={deleteMonitored
+          ? (deleteKind === "disconnect" ? c.disconnectBodySocial : c.deleteBodySocial)
+          : (deleteKind === "disconnect" ? c.disconnectBody : c.deleteBody)}
+        confirmLabel={deleteKind === "disconnect" ? c.disconnect : c.delete}
+        loadingLabel={deleteKind === "disconnect" ? c.disconnecting : undefined}
       />
     </div>
   )

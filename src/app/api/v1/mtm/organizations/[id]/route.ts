@@ -98,6 +98,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
         organizationKind: true,
         territoryCode: true,
         polygon: true,
+        workingHours: true,
+        workingHoursUpdatedAt: true,
+        workingHoursUpdatedBy: true,
         latitude: true,
         longitude: true,
         phone: true,
@@ -440,11 +443,19 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
             : { id: "__no_route_scope__" },
       })
     : undefined
+  // «Часы приёма»: who set them, by name — the card says «указал …».
+  const hoursAuthorId = typeof (organization as { workingHoursUpdatedBy?: unknown }).workingHoursUpdatedBy === "string"
+    ? (organization as { workingHoursUpdatedBy: string }).workingHoursUpdatedBy
+    : null
+  const workingHoursAuthor = hoursAuthorId
+    ? (await prisma.user.findFirst({ where: { organizationId: auth.orgId, id: hoursAuthorId }, select: { name: true } }))?.name ?? null
+    : null
 
   return NextResponse.json({
     success: true,
     data: {
       organization,
+      workingHoursAuthor,
       ...(visitSummary ? { visitSummary, longOpenMinutes: settings.autoCheckoutMinutes } : {}),
       asOf: asOf.toISOString().slice(0, 10),
       timezone,

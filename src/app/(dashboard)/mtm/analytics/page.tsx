@@ -4,9 +4,7 @@ import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { BarChart3 } from "lucide-react"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { ExplainableKpiDashboard } from "@/components/mtm/explainable-kpi-dashboard"
 import { MtmTeamResults, teamResultsPreset } from "@/components/mtm/team-results"
 
@@ -30,23 +28,20 @@ export default function MtmAnalyticsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <PageDescription icon={BarChart3} title={ta("title")} />
-        <HelpButton slug="mtm-analytics" variant="label" />
-      </div>
+      <MtmPageHeader title={ta("title")} help="mtm-analytics" />
 
       <MtmTeamResults orgId={orgId} initialPreset={initialPreset} />
 
       <details
         data-testid="mtm-analytics-formulas"
-        className="group rounded-xl border border-zinc-200 bg-card dark:border-zinc-700"
+        className="group rounded-xl border border-border bg-card"
         onToggle={(event) => setFormulasOpen(event.currentTarget.open)}
       >
         <summary className="flex min-h-12 cursor-pointer list-none items-center px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
           {tr("formulasTitle")}
         </summary>
         {/* Mounted only when opened: the registry makes its own heavy request. */}
-        {formulasOpen ? <div className="border-t border-zinc-200 p-2 dark:border-zinc-700"><ExplainableKpiDashboard orgId={orgId} /></div> : null}
+        {formulasOpen ? <div className="border-t border-border p-2"><ExplainableKpiDashboard orgId={orgId} /></div> : null}
       </details>
     </div>
   )

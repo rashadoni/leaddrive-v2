@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireCronAuth } from "@/lib/cron-auth"
+import { runWhatsAppCampaignDispatch } from "@/lib/campaigns/whatsapp-dispatch"
 import { runScheduledCampaignSends } from "@/lib/campaigns/scheduled-send-job"
 
 /**
@@ -19,7 +20,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const summary = await runScheduledCampaignSends()
-    return NextResponse.json({ success: true, data: summary })
+    const whatsapp = await runWhatsAppCampaignDispatch()
+    return NextResponse.json({ success: true, data: { ...summary, whatsapp } })
   } catch (error) {
     console.error("[Campaign Cron] scheduled-send failed:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

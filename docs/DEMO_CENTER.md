@@ -380,18 +380,26 @@ routes 404, no hash handed out, and the private page keeps `microphone=()`):
 - Every Google call sends the key in `x-goog-api-key`, never in the address,
   and every Interactions API call says `store: false` (Google's default keeps
   an interaction, input included, for 55 days).
-- Budget: 10 minutes of voice per demo (spoken answers plus heard clips) and
-  300 minutes a day across demos, claimed in `demo_access_events`
+- Budget: 20 minutes of voice per person who requested a demo (spoken
+  answers plus heard clips; owner, 2026-10-21) and 300 minutes a day across
+  demos as the safety cap. A person is the request's address
+  (`DemoRequest.emailNormalized`): every grant on a request from it — a
+  re-issued demo, a second request from the same address — shares the same
+  20 minutes, so a new link is not a new budget (until 2026-10-21 it was 10
+  minutes per grant, fresh on every re-issue). Claimed in `demo_access_events`
   (`ASSISTANT_VOICED`, `ASSISTANT_HEARD`; metadata is seconds and an outcome,
-  never text or audio) under one advisory lock before Google is called
-  (`src/lib/demo-center/assistant-voice.ts`). A spoken answer's claim is an
+  never text or audio) under one advisory lock before Google is called, the
+  person's sum read inside the lock across all their grants
+  (`src/lib/demo-center/assistant-voice.ts`). Over the person's 20 minutes
+  the refusal is still `demo_budget` (the page reads that code) and says
+  «Sizin üçün 20 dəqiqəlik səs limiti doldu…». A spoken answer's claim is an
   estimate (0.14 s a character); afterwards the row records the audio's real
   length, lower or higher (figures read aloud run longer than prose), because
   that is what Google billed. A failed call keeps its claim. A refusal over
   the budget carries `exhausted` (fewer seconds left than one 15 s question):
   only then does the page drop the button and stop speaking answers;
   otherwise just that answer stays text. It does not carry the seconds left:
-  that figure is the smaller of the demo's and the day's, and the day's pool
+  that figure is the smaller of the person's and the day's, and the day's pool
   is every other prospect's voice. When voice runs
   out mid-clip, the open clip is released, not sent. Proven on a real Postgres in
   `demo-assistant-voice-postgres.test.ts` («Demo assistant voice budget

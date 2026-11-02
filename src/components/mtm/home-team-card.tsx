@@ -44,14 +44,14 @@ export type HomeTeamCardRow = HomeTeamRow & { agentId: string; name: string }
  * figure, not a cell filled red or green (owner-approved colours, 2026-10-18).
  */
 const CELL: Record<HomeCellTone, string> = {
-  full: "border border-zinc-200 text-foreground dark:border-zinc-700",
-  partial: "border border-zinc-200 text-foreground dark:border-zinc-700",
-  missed: "border border-zinc-200 text-foreground dark:border-zinc-700",
+  full: "border border-border text-foreground",
+  partial: "border border-border text-foreground",
+  missed: "border border-border text-foreground",
   pending: "border border-zinc-300 text-foreground dark:border-zinc-600",
-  upcoming: "border border-zinc-200 text-muted-foreground dark:border-zinc-700",
-  visited: "border border-zinc-200 text-foreground dark:border-zinc-700",
+  upcoming: "border border-border text-muted-foreground",
+  visited: "border border-border text-foreground",
   off: "border border-dashed border-zinc-300 text-transparent dark:border-zinc-600",
-  none: "border border-zinc-200 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400",
+  none: "border border-border text-zinc-500 dark:text-zinc-400",
 }
 
 const DOT: Partial<Record<HomeCellTone, string>> = {
@@ -238,12 +238,15 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
           <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={onRetry}>{t("retry")}</Button>
         </p>
       ) : loading && team.length === 0 ? (
-        <p role="status" className="py-4 text-sm text-muted-foreground">{tw("teamLoading")}</p>
+        // Grey rows where the people will be, as the «what waits» card does.
+        <div role="status" aria-label={tw("teamLoading")} className="space-y-3 py-4">
+          {[0, 1].map((key) => <div key={key} className="h-11 animate-pulse rounded-xl bg-muted/60 motion-reduce:animate-none" aria-hidden="true" />)}
+        </div>
       ) : team.length === 0 ? (
         <p className="py-4 text-sm font-semibold">{hasCards ? tw("noFieldStaff") : tw("noEmployeesTitle")}</p>
       ) : (
         <>
-          <div className="hidden items-center gap-3 border-b border-zinc-100 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground dark:border-zinc-800 sm:flex">
+          <div className="hidden items-center gap-3 border-b border-border py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:flex">
             <span className="min-w-0 flex-1 truncate">{t("colAgent")}</span>
             {facts ? (
               <>
@@ -260,7 +263,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
               const agentWeek = facts && today ? buildAgentWeek(row.agentId, today, week, facts) : null
               const text = detail(entry)
               return (
-                <li key={row.agentId} data-testid="mtm-home-team-row" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-100 py-2 dark:border-zinc-800">
+                <li key={row.agentId} data-testid="mtm-home-team-row" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border py-2">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary" aria-hidden="true">{initials(row.name)}</span>
                   <div className="min-w-[9rem] flex-1">
                     <div className="flex min-w-0 items-center gap-2">
@@ -280,7 +283,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                             href={`/mtm/alerts?agentId=${encodeURIComponent(row.agentId)}`}
                             prefetch={false}
                             aria-label={tw("teamRowOpenAlerts", { count: row.openAlerts })}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-full px-1 py-0.5 text-[11px] font-semibold text-amber-700 hover:underline dark:text-amber-300"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full px-1 py-0.5 text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300"
                           >
                             <AlertTriangle className="h-3 w-3" aria-hidden="true" />{row.openAlerts}
                           </Link>
@@ -288,7 +291,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                       ) : null}
                     </div>
                     <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-                      <Hint text={t(STATE_HINT_KEY[state.kind])}><span tabIndex={0} className="inline-flex shrink-0 cursor-help rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40"><HomePill tone={STATE_TONE[state.kind]} className="text-[11px]">{stateIcon(state.kind)}{t(STATE_KEY[state.kind])}</HomePill></span></Hint>
+                      <Hint text={t(STATE_HINT_KEY[state.kind])}><span tabIndex={0} className="inline-flex shrink-0 cursor-help rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40"><HomePill tone={STATE_TONE[state.kind]} className="text-xs">{stateIcon(state.kind)}{t(STATE_KEY[state.kind])}</HomePill></span></Hint>
                       {text ? <span className="min-w-0 truncate text-xs text-muted-foreground" title={text}>{text}</span> : null}
                     </div>
                   </div>
@@ -302,7 +305,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
                               data-tone={cell.tone}
                               aria-label={cellTitle(cell)}
                               className={cn(
-                                "relative flex h-8 w-8 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                                "relative flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                                 CELL[cell.tone],
                                 cell.isToday && "ring-2 ring-primary/70 ring-offset-1 ring-offset-card",
                               )}
@@ -330,10 +333,10 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
           ) : null}
           {recent.length > 0 ? (
             <div data-testid="mtm-home-team-recent">
-              <p className="pb-1 pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("recentTitle")}</p>
+              <p className="pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("recentTitle")}</p>
               <ul>
                 {recent.map((visit) => (
-                  <li key={visit.id} className="flex items-center gap-3 border-b border-zinc-100 py-2 text-sm last:border-b-0 dark:border-zinc-800">
+                  <li key={visit.id} className="flex items-center gap-3 border-b border-border py-2 text-sm last:border-b-0">
                     <span className="w-28 shrink-0 tabular-nums text-muted-foreground">{visitMoment(visit.at)}</span>
                     <span className="min-w-0 flex-1 truncate font-medium">{customer(visit.customerName)}</span>
                     <Hint text={t("hint.recentDuration", { quality: t("qualityTitle") })}><span tabIndex={0} className="inline-flex cursor-help rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40"><HomePill tone={visit.flag ? "amber" : "zinc"}>{duration(visit.durationMinutes)}</HomePill></span></Hint>
@@ -344,7 +347,7 @@ export function HomeTeamCard<Row extends HomeTeamCardRow>({
           ) : null}
           <div className="mt-auto">
             {facts ? (
-              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3 text-[11px] text-muted-foreground" data-testid="mtm-home-team-legend">
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3 text-xs text-muted-foreground" data-testid="mtm-home-team-legend">
                 {LEGEND.map((item) => (
                   <span key={item.key} className="inline-flex items-center gap-1.5"><span className={cn("h-2 w-2 rounded-full", DOT[item.tone] ?? CELL[item.tone])} aria-hidden="true" />{t(item.key)}</span>
                 ))}

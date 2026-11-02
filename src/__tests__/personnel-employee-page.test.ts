@@ -33,9 +33,9 @@ const posts = () => fetchMock.mock.calls.filter(([, options]) => options?.method
 
 beforeEach(() => {
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
-  detail = { timezone: "Asia/Baku", today: "2026-10-16", teams: [{ id: "team-kassa", name: "Касса" }], managers: [{ id: "m-saida", name: "Saida", position: "Главный бухгалтер" }],
+  detail = { timezone: "Asia/Baku", today: "2026-10-16", teams: [{ id: "team-kassa", name: "Касса", departmentId: "dep-finance" }], departments: [{ id: "dep-finance", name: "Финансы" }], managers: [{ id: "m-saida", name: "Saida", position: "Главный бухгалтер" }],
     month: { from: "2026-10-01", to: "2026-10-16", workedDays: 9, workedSeconds: 292800, lateCount: 2, absentCount: 1, leaveDays: 0, sickDays: 0, isComplete: true },
-    employee: { id: "togrul", name: "Togrul", phone: "+994501112233", email: null, role: "EMPLOYEE", status: "ACTIVE", loginEditable: true, position: null, teamId: null, teamName: null, managerId: null,
+    employee: { id: "togrul", name: "Togrul", phone: "+994501112233", email: null, role: "EMPLOYEE", status: "ACTIVE", loginEditable: true, position: null, teamId: null, teamName: null, departmentId: null, departmentName: null, managerId: null,
       included: true, participationVersion: null, history: [], todayMark: { status: "STARTED", startedAt: "2026-10-16T04:57:00.000Z", completedAt: null } } }
   fetchMock.mockReset(); fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? json({ eventId: "e1", idempotent: false }) : json(detail)); vi.stubGlobal("fetch", fetchMock)
 })
@@ -43,6 +43,21 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 
 // Owner, 2026-10-16: «просил редактируемыми сделать сотрудников»; the card under a long list meant scrolling.
 describe("Personnel → employee page", () => {
+  it("shows actual preparation gaps and optional approval without inventing a delivered invitation or arrival", async () => {
+    detail.preparation = { checkedAt: "2026-10-16T06:00:00Z", date: detail.today, login: "CONTACT_MISSING", schedule: "DEFAULT", branch: null, installations: { required: false, approved: 0, pending: 1 } }
+    detail.employee.included = false
+    await render()
+    const preparation = container.querySelector('[data-testid="employee-preparation"]')!
+    expect(preparation.textContent).toContain(p("preparation.loginCONTACT_MISSING"))
+    expect(preparation.textContent).toContain(p("preparation.scheduleDEFAULT"))
+    expect(preparation.textContent).toContain(p("preparation.approvalOptional", { count: 0 }))
+    expect(preparation.textContent).toContain(p("preparation.pending", { count: 1 }))
+    expect(preparation.textContent).toContain(p("preparation.excluded"))
+    expect(preparation.textContent).toContain(p("preparation.invitation"))
+    expect(preparation.querySelector('a[href="#employee-phone"]')).not.toBeNull()
+    expect(container.querySelector('#employee-participation')).not.toBeNull()
+    expect(posts()).toHaveLength(0)
+  })
   it("shows the person, how they sign in, their work, this month and the history, with a way back to the same list", async () => {
     await render()
     expect(container.querySelector('[data-testid="attendance-employee-back"]')!.getAttribute("href")).toBe(BACK)
@@ -60,9 +75,11 @@ describe("Personnel → employee page", () => {
     await render()
     await edit("employee-name", "Togrul Məmmədov"); await edit("employee-phone", "+994 55 000 11 22"); await edit("employee-email", "togrul@example.test")
     await edit("employee-position", "Менеджер"); await edit("employee-department", "team-kassa"); await edit("employee-manager", "m-saida"); await edit("employee-hire-date", "2026-03-02")
+    // The section names its department (owner, 2026-10-22: department above the section).
+    expect(field("employee-department-unit").value).toBe("dep-finance")
     await submit(saveForm)
     expect(String(posts()[0][0])).toBe("/api/v1/mtm/attendance/employees/togrul")
-    expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ name: "Togrul Məmmədov", position: "Менеджер", teamId: "team-kassa", managerId: "m-saida",
+    expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ name: "Togrul Məmmədov", position: "Менеджер", departmentId: "dep-finance", teamId: "team-kassa", managerId: "m-saida",
       phone: "+994 55 000 11 22", email: "togrul@example.test", hireDate: "2026-03-02" })
     expect(container.textContent).toContain(p("employeeSaved"))
   })

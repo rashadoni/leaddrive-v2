@@ -18,6 +18,7 @@ import {
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 export const ATTENDANCE_EXPLANATION_ENTITY = "mtm_attendance_explanation"
 export const ATTENDANCE_EXPLANATION_NOTIFICATION_KIND = "mtm.attendanceExplanation.answered"
@@ -80,7 +81,7 @@ export async function requestAttendanceExplanations(reviewer: AttendanceReviewer
     const actor = await resolveAttendanceReviewerScope(tx, reviewer)
     const agentIds = [...new Set(items.map(item => item.agentId))].sort()
     const targets = await tx.mtmAgent.findMany({ where: { organizationId, id: { in: agentIds }, status: "ACTIVE", ...ATTENDANCE_TRACKED_CARD_WHERE },
-      select: { id: true, userId: true, user: { select: { preferredLanguage: true } } } })
+      select: { id: true, userId: true, ...AGENT_LANGUAGE_SELECT } })
     if (targets.length !== agentIds.length || targets.some(target => target.userId === userId || !canReviewMtmRouteRequest(actor, target.id))) {
       throw new AttendanceExplanationError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
     }
@@ -91,7 +92,7 @@ export async function requestAttendanceExplanations(reviewer: AttendanceReviewer
     const existing = await tx.mtmAttendanceExplanation.findMany({ where: { organizationId, agentId: { in: agentIds },
       workDate: { gte: new Date(`${dates[0]}T00:00:00Z`), lte: new Date(`${dates.at(-1)}T00:00:00Z`) } }, select: { agentId: true, workDate: true, kind: true } })
     const taken = new Set(existing.map(row => key(row.agentId, row.workDate.toISOString().slice(0, 10), row.kind)))
-    const locale = new Map(targets.map(target => [target.id, localeOf(target.user?.preferredLanguage)]))
+    const locale = new Map(targets.map(target => [target.id, localeOf(agentLanguage(target))]))
     let notNeeded = 0, already = 0
     const pushes: { agentId: string; title: string; body: string; id: string }[] = []
     for (const item of items) {
@@ -144,7 +145,7 @@ export async function decideAttendanceExplanation(reviewer: AttendanceReviewer, 
     const actor = await resolveAttendanceReviewerScope(tx, reviewer)
     const row = await tx.mtmAttendanceExplanation.findFirst({ where: { id, organizationId }, select })
     if (!row) throw new AttendanceExplanationError("MTM_ATTENDANCE_EXPLANATION_NOT_FOUND", 404)
-    const agent = await tx.mtmAgent.findFirst({ where: { organizationId, id: row.agentId }, select: { userId: true, user: { select: { preferredLanguage: true } } } })
+    const agent = await tx.mtmAgent.findFirst({ where: { organizationId, id: row.agentId }, select: { userId: true, ...AGENT_LANGUAGE_SELECT } })
     if (!agent || agent.userId === userId || !canReviewMtmRouteRequest(actor, row.agentId)) throw new AttendanceExplanationError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
     const decision = parsed.data.decision
     if (row.status === decision) return { item: (await dtos(tx, organizationId, [row]))[0], idempotent: true }
@@ -152,7 +153,7 @@ export async function decideAttendanceExplanation(reviewer: AttendanceReviewer, 
     const updated = await tx.mtmAttendanceExplanation.update({ where: { id }, data: { status: decision, decidedByUserId: userId, decidedAt: now }, select })
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: userId, agentId: row.agentId, action: "MTM_ATTENDANCE_EXPLANATION_DECIDED",
       entity: ATTENDANCE_EXPLANATION_ENTITY, entityId: id, metadataKind: "mtm_attendance_explanation", oldData: { status: row.status }, newData: { status: decision } } })
-    const locale = localeOf(agent.user?.preferredLanguage), t = MESSAGES[locale]
+    const locale = localeOf(agentLanguage(agent)), t = MESSAGES[locale]
     await tx.mtmNotification.create({ data: { organizationId, agentId: row.agentId, type: decision === "ACCEPTED" ? "info" : "warning",
       title: fill(decision === "ACCEPTED" ? t.explanationAccepted : t.explanationRejected, { date: dayLabel(row.workDate.toISOString().slice(0, 10), locale) }),
       metadata: { domain: "route", attendanceExplanationId: id, status: decision } } })

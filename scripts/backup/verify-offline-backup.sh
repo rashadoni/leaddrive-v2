@@ -983,9 +983,19 @@ database_recovery_contract_sha256="$(sha256sum "$WORK_DIR/database/recovery-db-c
 awk -F '\t' '
   NR == 1 { if ($1 != "SCHEMA" || $2 != "prisma/schema.prisma" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
   NR == 2 { if ($1 != "MIGRATION_LOCK" || $2 != "prisma/migrations/migration_lock.toml" || $3 !~ /^[0-9a-f]{64}$/) bad=1; next }
+  $1 == "LEDGER_EXCEPTION" {
+    if (NF != 4 || !migrations || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ \
+        || $3 !~ /^([0-9a-f]{64}|manual-[0-9]{8,14})$/ \
+        || (previous_exception != "" && previous_exception >= $2)) bad=1
+    else if ($4 == "applied-not-in-code") { if ($2 in contract) bad=1 }
+    else if ($4 == "checksum-differs") { if (!($2 in contract) || contract[$2] == $3) bad=1 }
+    else bad=1
+    previous_exception=$2; next
+  }
+  previous_exception != "" { bad=1; next }
   $1 != "MIGRATION" || $2 !~ /^[0-9]{8,14}_[A-Za-z0-9_]+$/ || $3 !~ /^[0-9a-f]{64}$/ { bad=1; next }
   seen[$2]++ { bad=1 }
-  { if (previous != "" && previous >= $2) bad=1; previous=$2; migrations++ }
+  { if (previous != "" && previous >= $2) bad=1; previous=$2; contract[$2]=$3; migrations++ }
   END { if (NR < 3 || migrations < 1 || bad) exit 1 }
 ' "$WORK_DIR/database/recovery-db-contract.tsv" \
   || fatal "recovery DB contract manifest is malformed"

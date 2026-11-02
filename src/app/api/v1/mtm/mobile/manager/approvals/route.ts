@@ -25,7 +25,8 @@ export const GET = withMobileRls(async (_req, auth) => {
   let attendance: AttendanceReviewItem[] = []
   if (auth.tenantCapabilities?.personnel === true) {
     const reviewer = await mobileAttendanceReviewer(auth)
-    if (reviewer) attendance = await listAttendanceRequestsForReview(reviewer, { status: "PENDING" }).then(page => page.items).catch(() => [])
+    // With two-step approval a request this manager already passed to HR has no button left here.
+    if (reviewer) attendance = await listAttendanceRequestsForReview(reviewer, { status: "PENDING" }).then(page => page.items.filter((item: AttendanceReviewItem) => item.canDecide !== false)).catch(() => [])
   }
   if (!canReadRoutes && !canReadWorkforce && !attendance.length && auth.tenantCapabilities?.personnel !== true) {
     return NextResponse.json({

@@ -113,8 +113,9 @@ export function ColorStatCard({
 
   return (
     <div
+      data-crm-card=""
       className={cn(
-        "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex flex-col gap-2 transition-all duration-200 hover:shadow-md",
+        "rounded-xl border border-border bg-card p-4 flex flex-col gap-2 transition-all duration-200 hover:shadow-md",
         className
       )}
     >
@@ -137,7 +138,7 @@ export function ColorStatCard({
         <span className="text-xs text-muted-foreground">{subValue}</span>
       )}
       {lines && lines.length > 0 && (
-        <div className="mt-1 space-y-0.5 border-t border-zinc-200 dark:border-zinc-700 pt-1.5">
+        <div className="mt-1 space-y-0.5 border-t border-border pt-1.5">
           {lines.map((line, i) => (
             <div key={i} className="flex justify-between text-xs text-muted-foreground">
               <span>{line.label}</span>

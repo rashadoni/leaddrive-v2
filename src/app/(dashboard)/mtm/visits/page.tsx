@@ -30,10 +30,9 @@ import {
 } from "lucide-react"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
-import { HelpButton } from "@/components/help/help-button"
 import { MtmVisitForm } from "@/components/mtm/visit-form"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -57,6 +56,7 @@ import { JointVisitMark } from "@/components/mtm/visit-evaluation-views"
 import { VisitWorkspace } from "./visit-workspace"
 import { RemindAgentButton, useLeftOpenSince, useMinuteClock, useOpenForText } from "./visit-left-open"
 import { isMtmVisitLeftOpen, MTM_VISIT_LONG_OPEN_DEFAULT_MINUTES } from "@/lib/mtm/visit-left-open"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type MtmVisitRow = {
   id: string
@@ -568,6 +568,7 @@ export default function MtmVisitsPage() {
   // Until the viewer is known, an agent's own ?visitId must not flash the office review.
   const focusPending = Boolean(focusedVisitId && !activeResolved && !focusedVisitUnavailable)
   const showReview = Boolean(focusedVisitId && activeResolved && !focusedOwnExecution && !focusedVisitUnavailable)
+  const otherLeftOpenVisits = showReview && focusedVisitId ? leftOpenVisits.filter((visit) => visit.id !== focusedVisitId) : leftOpenVisits
   // The three-step guide teaches how to execute a visit; office users review.
   const subtitle = !activeResolved ? t("subtitleNeutral") : viewer?.role === "AGENT" ? t("subtitleAgent") : t("subtitle")
 
@@ -645,8 +646,8 @@ export default function MtmVisitsPage() {
             tabIndex={0}
             data-testid="mtm-visit-location-request"
             className={request.waiting
-              ? "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300"
-              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"}
+              ? "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300"
+              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"}
           >
             {t(request.key)}
           </span></Hint>
@@ -671,8 +672,8 @@ export default function MtmVisitsPage() {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moreActions")}>
-              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moreActions")}>
+              <MoreHorizontal className="h-5 w-5" aria-hidden="true" /><MtmWord word="more" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -702,7 +703,7 @@ export default function MtmVisitsPage() {
   if (loading && visits.length === 0 && activeVisits.length === 0) {
     return (
       <div className="space-y-6">
-        <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
+        <MtmPageHeader title={t("title")} description={subtitle} help="mtm-visits" />
         <div className="animate-pulse space-y-4 motion-reduce:animate-none">
           <div className="h-24 rounded-2xl bg-muted" />
           <div className="h-80 rounded-2xl bg-muted" />
@@ -713,12 +714,11 @@ export default function MtmVisitsPage() {
 
   return (
     <div className="space-y-6 pb-8" data-testid="mtm-visits-guided-history">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-2">
-          <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
-          <HelpButton slug="mtm-visits" variant="label" />
-        </div>
-        <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+      <MtmPageHeader
+        title={t("title")}
+        description={subtitle}
+        help="mtm-visits"
+        actions={<>
           {returnHref ? (
             <Button asChild variant="outline" className="min-h-11">
               <Link href={returnHref}>
@@ -733,11 +733,11 @@ export default function MtmVisitsPage() {
               {t("add")}
             </Button>
           </Hint>
-        </div>
-      </div>
+        </>}
+      />
 
       {focusedVisitUnavailable && focusedVisitId ? (
-        <div role="status" className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
+        <div role="status" className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
           {t("focusedUnavailable")}
         </div>
       ) : null}
@@ -747,7 +747,7 @@ export default function MtmVisitsPage() {
       ) : null}
 
       {showReview && focusedVisitId ? (
-        <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-3">
           <VisitReviewPanel
             key={focusedVisitId}
             visitId={focusedVisitId}
@@ -757,13 +757,13 @@ export default function MtmVisitsPage() {
             longOpenMinutes={longOpenMinutes}
             orgId={orgId ? String(orgId) : undefined}
           />
-          <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} />
+          <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} collapsed />
         </div>
       ) : null}
 
       {ownActiveVisits.length > 0 && activeVisitId ? (
-        <section className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="active-visit-title">
-          <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <section className="rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="active-visit-title">
+          <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-950" aria-hidden="true" />
@@ -777,7 +777,7 @@ export default function MtmVisitsPage() {
                 <select
                   value={activeVisitId}
                   onChange={(event) => setActiveVisitId(event.target.value)}
-                  className="min-h-11 min-w-64 rounded-lg border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"
+                  className="min-h-11 min-w-64 rounded-lg border border-input bg-background px-3 text-sm"
                 >
                   {ownActiveVisits.map((visit) => (
                     <option key={visit.id} value={visit.id}>
@@ -799,15 +799,15 @@ export default function MtmVisitsPage() {
       ) : null}
 
       {teamActiveVisits.length > 0 ? (
-        <section className="rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="team-active-visits-title">
-          <div className="border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+        <section className="rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="team-active-visits-title">
+          <div className="border-b border-border p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 dark:ring-blue-950" aria-hidden="true" />
               <h2 id="team-active-visits-title" className="font-semibold text-foreground">{t("teamActiveTitle", { count: teamActiveVisits.length })}</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{t("teamActiveHint")}</p>
           </div>
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <ul className="divide-y divide-border">
             {teamActiveVisits.slice(0, TEAM_ACTIVE_PREVIEW_LIMIT).map((visit) => (
               <li key={visit.id}>
                 <Link
@@ -825,7 +825,7 @@ export default function MtmVisitsPage() {
             ))}
           </ul>
           {teamActiveVisits.length > TEAM_ACTIVE_PREVIEW_LIMIT ? (
-            <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-5">
+            <div className="border-t border-border px-4 py-3 sm:px-5">
               <Button
                 variant="ghost"
                 size="sm"
@@ -843,9 +843,10 @@ export default function MtmVisitsPage() {
         </section>
       ) : null}
 
-      {leftOpenVisits.length > 0 ? (
+      {/* The visit open in the card above already says it was left open. */}
+      {otherLeftOpenVisits.length > 0 ? (
         <LeftOpenVisits
-          visits={leftOpenVisits}
+          visits={otherLeftOpenVisits}
           now={now}
           timezone={meta.timezone}
           orgId={orgId ? String(orgId) : undefined}
@@ -856,8 +857,8 @@ export default function MtmVisitsPage() {
         />
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="visit-history-title">
-        <header className="space-y-4 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="visit-history-title">
+        <header className="space-y-4 border-b border-border p-4 sm:p-5">
           <h2 id="visit-history-title" className="text-lg font-semibold text-foreground">{t("historyTitle")}</h2>
           {/* Owner 2026-09-27: filters in one row. The period sat apart as
               a segmented control and four stat tiles stood between it and
@@ -926,7 +927,7 @@ export default function MtmVisitsPage() {
           </div>
         ) : (
           <div className="p-3 sm:p-5">
-            <div className="hidden overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 xl:block">
+            <div className="hidden overflow-hidden rounded-xl border border-border xl:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50 text-left">
@@ -979,7 +980,7 @@ export default function MtmVisitsPage() {
               {filtered.map((visit) => {
                 const isFocused = focusedVisit?.id === visit.id
                 return (
-                  <article key={visit.id} className={`rounded-xl border bg-background p-4 ${isFocused ? "border-primary ring-1 ring-primary/30" : "border-zinc-200 dark:border-zinc-800"}`}>
+                  <article key={visit.id} className={`rounded-xl border bg-background p-4 ${isFocused ? "border-primary ring-1 ring-primary/30" : "border-border"}`}>
                     <Link href={visitHref(visit.id)} className="block" aria-current={isFocused ? "true" : undefined}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -992,7 +993,7 @@ export default function MtmVisitsPage() {
                         {statusBadge(visit)}
                       </div>
 
-                      <dl className="mt-4 grid gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800 sm:grid-cols-2">
+                      <dl className="mt-4 grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
                         <div>
                           <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><UserRound className="h-3.5 w-3.5" aria-hidden="true" />{t("colAgent")}</dt>
                           <dd className="mt-1 text-sm font-medium text-foreground">{visit.agent?.name || t("unknownAgent")}</dd>
@@ -1013,7 +1014,7 @@ export default function MtmVisitsPage() {
                       </dl>
                     </Link>
 
-                    {visit.canMutate === true ? <div className="mt-3 border-t border-zinc-200 pt-2 dark:border-zinc-800">{visitActions(visit, true)}</div> : null}
+                    {visit.canMutate === true ? <div className="mt-3 border-t border-border pt-2">{visitActions(visit, true)}</div> : null}
                   </article>
                 )
               })}
@@ -1021,7 +1022,7 @@ export default function MtmVisitsPage() {
           </div>
         )}
         {!loading && visitsRemaining > 0 ? (
-          <div className="flex justify-center border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <div className="flex justify-center border-t border-border px-4 py-3">
             <Hint wrap text={t("hint.loadMore")}>
               <Button data-testid="mtm-visits-load-more" variant="outline" className="min-h-11" disabled={visitsLoadingMore} onClick={() => void loadMoreVisits()}>
                 {visitsLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
@@ -1068,7 +1069,7 @@ function LeftOpenVisits({ visits, now, timezone, orgId, focusedVisitId, visitHre
   const t = useTranslations("mtmVisitsPage")
   const since = useLeftOpenSince(timezone)
   return (
-    <section data-testid="mtm-visits-left-open" className="rounded-2xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 shadow-sm" aria-labelledby="left-open-visits-title">
+    <section data-testid="mtm-visits-left-open" className="rounded-2xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 shadow-sm" aria-labelledby="left-open-visits-title">
       <div className="border-b border-amber-200 p-4 dark:border-amber-900 sm:p-5">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />

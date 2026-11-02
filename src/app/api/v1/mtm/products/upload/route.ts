@@ -13,6 +13,7 @@ import {
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 export const runtime = "nodejs"
 
@@ -69,7 +70,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
     const storageKey = createMobileDocumentStorageKey()
     storagePath = resolveMobileDocumentStoragePath(storageKey)
     await mkdir(mobileDocumentStorageRoot(), { recursive: true })
-    await writeFile(storagePath, bytes, { flag: "wx" })
+    await writeFile(storagePath, sealTenantFile(auth.orgId, bytes), { flag: "wx" })
     const document = await prisma.mtmDocument.create({
       data: {
         organizationId: auth.orgId,

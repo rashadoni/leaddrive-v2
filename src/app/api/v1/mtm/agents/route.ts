@@ -134,7 +134,8 @@ export const GET = withRls(async (req, auth) => {
   const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50")))
 
   try {
-    const where: Prisma.MtmAgentWhereInput = { organizationId: orgId }
+    const where: Prisma.MtmAgentWhereInput = { organizationId: orgId,
+      ...(searchParams.get("includeEmployees") === "1" ? {} : { fieldDeletedAt: null }) }
     if (Object.values(MtmAgentStatus).includes(status as MtmAgentStatus)) where.status = status as MtmAgentStatus
     if (Object.values(MtmAgentRole).includes(role as MtmAgentRole)) where.role = role as MtmAgentRole
     // Office employees are Personnel, not field staff (owner, 2026-10-15): they

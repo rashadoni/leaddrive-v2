@@ -15,6 +15,7 @@ import {
   mtmTaskVersionConflict,
 } from "@/lib/mtm/task-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { notifyAgentOfAssignedTask } from "@/lib/mtm/task-assigned-notify"
 import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { canApplyMobileTaskTransition, type MobileTaskStatus } from "@/lib/mtm/mobile-task"
 import { hasMobileCapability } from "@/lib/mtm/mobile-capabilities"
@@ -953,6 +954,20 @@ export const PUT = withRouteFieldRlsAuth<RouteContext>("write", async (req, auth
       newData: { ...data, editScope: body.editScope, changedIds },
       req,
     }).catch((error) => console.warn("[MTM/tasks/[id] PUT] audit failed", error))
+
+    // Given to another agent: he hears of it as of a new task.
+    if (agentChanged && body.agentId) {
+      await notifyAgentOfAssignedTask({
+        organizationId: auth.orgId,
+        taskId: id,
+        agentId: body.agentId,
+        taskTitle: typeof body.title === "string" ? body.title : task.title,
+        dueDate: nextDueDate,
+        timezone: settings.timezone,
+        giverAgentId: actor.agentId,
+        giverName: auth.name,
+      }).catch((error) => console.warn("[MTM/tasks/[id] PUT] agent notice failed", error))
+    }
 
     return NextResponse.json({
       success: true,

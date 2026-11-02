@@ -453,7 +453,7 @@ export async function generateChannelAiReply(opts: {
     const budget = await checkAiBudget(orgId)
     if (!budget.allowed) return { reply: null, escalate: false, skipped: "budget" }
   } catch {
-    /* a failing budget check shouldn't block — the single call below is token-bounded anyway */
+    return { reply: null, escalate: false, skipped: "budget_unavailable" }
   }
 
   const sessionKey = `${channel}:${externalId}`

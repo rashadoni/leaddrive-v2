@@ -172,7 +172,7 @@ function CampaignCard({
   }
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card overflow-hidden transition-shadow hover:shadow-sm">
+    <div className="border border-border rounded-lg bg-card overflow-hidden transition-shadow hover:shadow-sm">
       {/* Header — clickable */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -258,7 +258,7 @@ function CampaignCard({
 
           {/* Rate comparison */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <Eye className="h-3 w-3" /> {t("openRate")}
@@ -276,7 +276,7 @@ function CampaignCard({
                 <div className="h-full bg-muted-foreground/30 rounded-full" style={{ width: `${Math.min(avgOpenRate, 100)}%` }} />
               </div>
             </div>
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <MousePointer className="h-3 w-3" /> {t("clickRate")}
@@ -317,7 +317,7 @@ function CampaignCard({
                 <DollarSign className="h-3.5 w-3.5 text-primary" />
                 {tr("linkedDeals")} ({campaign.deals.length})
               </h4>
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+              <div className="rounded-lg border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/50 text-xs text-muted-foreground">
@@ -352,7 +352,7 @@ function CampaignCard({
           )}
 
           {campaign.deals.length === 0 && (
-            <div className="text-center py-3 text-sm text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-muted/20">
+            <div className="text-center py-3 text-sm text-muted-foreground border border-border rounded-lg bg-muted/20">
               {tr("noLinkedDeals")}
             </div>
           )}
@@ -452,7 +452,7 @@ export default function CampaignROIPage() {
       )}
 
       {/* Summary bar */}
-      <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-muted/30 flex items-center gap-8 text-sm">
+      <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-center gap-8 text-sm">
         <div className="flex items-center gap-1.5">
           <Users className="h-4 w-4 text-muted-foreground" />
           <span className="text-muted-foreground">{t("sent")}:</span>

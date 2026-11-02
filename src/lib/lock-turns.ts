@@ -16,8 +16,9 @@ import { runWithTenant } from "@/lib/rls-context"
  * the TikTok Lead Ads webhook had the same form twice over.
  *
  * So the work first takes its key's turn in this process, where waiting costs
- * no connection — production runs one process, so this alone keeps it in
- * order — and then one of the caller's slots: at most `holdersPerProcess` of
+ * no connection — production runs two (the web app and the scheduler's
+ * `leaddrive-v2-jobs`), so the turn orders each one and the callers' own
+ * advisory locks keep the two apart — and then one of the caller's slots: at most `holdersPerProcess` of
  * its lock transactions at a time, each keeping one connection, which leaves
  * the pool a connection for the work. Each caller has its own turns and slots,
  * so a slow one holds up only its own kind, and the slots add up. The callers:

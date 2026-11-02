@@ -26,15 +26,15 @@ vi.mock("@/components/ui/dialog", () => ({
 
 import { MtmAgentForm } from "@/components/mtm/agent-form"
 
-const doctor = (id: string, name: string, extra: Record<string, unknown> = {}) => ({ id, name, specialty: "Terapevt", agents: [], assignedHere: false, ...extra })
+const CLINIC = { institution: { id: "c1", name: "Fictional Clinic" }, address: "Fictional st. 1", city: "Bakı", district: null }
+const doctor = (id: string, name: string, extra: Record<string, unknown> = {}) => ({ id, name, specialty: "Terapevt", category: "B", place: CLINIC, agents: [], assignedHere: false, ...extra })
+const DOCTORS = [doctor("d1", "Fictional Aliyeva"), doctor("d2", "Fictional Babayev", { category: "VIP", agents: [{ id: "x", name: "Fictional Other", primary: true }] }), doctor("d3", "Fictional Cavadova")]
 const PICKER = {
   specialties: [{ value: "terapevt", label: "Terapevt", count: 3 }, { value: "qastroenteroloq", label: "Qastroenteroloq", count: 1 }],
   cities: [{ value: "bakı", label: "Bakı", count: 3 }],
   districts: [{ value: "__none__", label: null, count: 3 }],
-  groups: [{
-    institution: { id: "c1", name: "Fictional Clinic", address: "Fictional st. 1", city: "Bakı", district: null },
-    contacts: [doctor("d1", "Fictional Aliyeva"), doctor("d2", "Fictional Babayev", { agents: [{ id: "x", name: "Fictional Other", primary: true }] }), doctor("d3", "Fictional Cavadova")],
-  }],
+  contacts: DOCTORS,
+  institutions: 1,
   matching: 3,
   assignedHere: 0,
   asOf: "2026-10-16",
@@ -74,7 +74,7 @@ beforeEach(() => {
     const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body })
     if (url.startsWith("/api/v1/mtm/contacts/agent-picker")) {
       const chosen = new URL(url, "http://x").searchParams.getAll("specialty")
-      return json({ success: true, data: chosen.length ? PICKER : { ...PICKER, groups: [], matching: 0 } })
+      return json({ success: true, data: chosen.length ? PICKER : { ...PICKER, contacts: [], institutions: 0, matching: 0 } })
     }
     if (url === "/api/v1/mtm/agents" && method === "POST") return json({ success: true, data: { id: "new-agent" } }, 201)
     if (url.startsWith("/api/v1/mtm/agents/") && method === "PUT") return json({ success: true, data: { id: "a1" } })
@@ -113,14 +113,13 @@ describe("agent card — choosing the agent's doctors", () => {
     await click(terapevt.querySelector("input"))
     expect(calls().some(call => call.url.includes("specialty=terapevt"))).toBe(true)
 
-    // Every doctor found is ticked; the institution opens to take one out.
-    expect(byTestId("agent-clients-group-tick")?.getAttribute("aria-checked")).toBe("true")
-    await click(document.body.querySelector('[data-testid="agent-clients-group"] button[aria-expanded]'))
+    // Every doctor found is on the screen, ticked, without opening anything.
+    expect(all("agent-clients-doctor-tick").map(tick => tick.getAttribute("aria-checked"))).toEqual(["true", "true", "true"])
     const babayev = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Babayev"))!
     // The doctor's other agent is named on the row (the stub translator shows the template).
     expect(babayev.textContent).toContain("уже у:")
     await click(babayev.querySelector('[role="checkbox"]'))
-    expect(byTestId("agent-clients-group-tick")?.getAttribute("aria-checked")).toBe("mixed")
+    expect(babayev.querySelector('[role="checkbox"]')?.getAttribute("aria-checked")).toBe("false")
     expect(byTestId("agent-form-submit")?.textContent).toBe(ru.mtmForms.createAndAssign)
 
     await click(byTestId("agent-form-submit"))
@@ -139,8 +138,8 @@ describe("agent card — choosing the agent's doctors", () => {
       if (String(url).startsWith("/api/v1/mtm/contacts/agent-picker")) {
         expect(new URL(String(url), "http://x").searchParams.get("agentId")).toBe("a1")
         const chosen = new URL(String(url), "http://x").searchParams.getAll("specialty")
-        const groups = [{ ...PICKER.groups[0], contacts: [doctor("d1", "Fictional Aliyeva", { assignedHere: true }), ...PICKER.groups[0].contacts.slice(1)] }]
-        return { ok: true, status: 200, json: async () => ({ success: true, data: { ...PICKER, groups: chosen.length ? groups : [], assignedHere: 1 } }) }
+        const contacts = [doctor("d1", "Fictional Aliyeva", { assignedHere: true }), ...DOCTORS.slice(1)]
+        return { ok: true, status: 200, json: async () => ({ success: true, data: { ...PICKER, contacts: chosen.length ? contacts : [], assignedHere: 1 } }) }
       }
       return original(url, init)
     })
@@ -148,7 +147,6 @@ describe("agent card — choosing the agent's doctors", () => {
     await click(byTestId("agent-form-tab-clients"))
     await click(byTestId("agent-clients-specialty"))
     await click([...document.body.querySelectorAll<HTMLLabelElement>('[data-testid="agent-clients-specialty-options"] label')][0].querySelector("input"))
-    await click(document.body.querySelector('[data-testid="agent-clients-group"] button[aria-expanded]'))
     const aliyeva = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Aliyeva"))!
     expect(aliyeva.textContent).toContain(ru.mtmForms.clientsAlreadyHere)
     expect(aliyeva.querySelector<HTMLButtonElement>('[role="checkbox"]')?.getAttribute("aria-checked")).toBe("true")
@@ -168,8 +166,8 @@ describe("agent card — choosing the agent's doctors", () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (String(url).startsWith("/api/v1/mtm/contacts/agent-picker")) {
         const chosen = new URL(String(url), "http://x").searchParams.getAll("specialty")
-        const contacts = PICKER.groups[0].contacts.map(contact => ({ ...contact, agents: [], assignedHere: true }))
-        return { ok: true, status: 200, json: async () => ({ success: true, data: { ...PICKER, groups: chosen.length ? [{ ...PICKER.groups[0], contacts }] : [], assignedHere: 3 } }) }
+        const contacts = DOCTORS.map(contact => ({ ...contact, agents: [], assignedHere: true }))
+        return { ok: true, status: 200, json: async () => ({ success: true, data: { ...PICKER, contacts: chosen.length ? contacts : [], assignedHere: 3 } }) }
       }
       return original(url, init)
     })
@@ -177,7 +175,6 @@ describe("agent card — choosing the agent's doctors", () => {
     await click(byTestId("agent-form-tab-clients"))
     await click(byTestId("agent-clients-specialty"))
     await click([...document.body.querySelectorAll<HTMLLabelElement>('[data-testid="agent-clients-specialty-options"] label')][0].querySelector("input"))
-    await click(document.body.querySelector('[data-testid="agent-clients-group"] button[aria-expanded]'))
     expect(byTestId("agent-form-submit")?.textContent).toBe(ru.common.update)
 
     const babayev = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Babayev"))!

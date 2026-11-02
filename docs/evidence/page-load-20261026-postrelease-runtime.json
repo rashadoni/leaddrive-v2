@@ -1,0 +1,211 @@
+{
+  "kind": "bounded-runtime-snapshot",
+  "startedAt": "2026-10-26T14:29:00.078990Z",
+  "production": {
+    "host": "13.140.132.245",
+    "appDirectory": "/opt/leaddrive-v2",
+    "processName": "leaddrive-v2"
+  },
+  "hostLogicalCpus": 6,
+  "method": {
+    "ssh": "fresh, ControlMaster=no, ControlPath=none",
+    "mutations": "none; existing process and aggregate system metrics only",
+    "cpuSampleSeconds": 5,
+    "nginxWindowSeconds": 300
+  },
+  "pm2": {
+    "capturedAt": "2026-10-26T14:29:00.409562Z",
+    "processCount": 1,
+    "processes": [
+      {
+        "pid": 244333,
+        "status": "online",
+        "executionMode": "fork_mode",
+        "restartCount": 0,
+        "cpuPercentSnapshot": 0.3,
+        "memoryBytesSnapshot": 778313728,
+        "metrics": {
+          "Used Heap Size": {
+            "value": 455.82,
+            "unit": "MiB"
+          },
+          "Heap Usage": {
+            "value": 95.05,
+            "unit": "%"
+          },
+          "Heap Size": {
+            "value": 479.55,
+            "unit": "MiB"
+          },
+          "Event Loop Latency p95": {
+            "value": 46.05,
+            "unit": "ms"
+          },
+          "Event Loop Latency": {
+            "value": 0.8,
+            "unit": "ms"
+          },
+          "Active handles": {
+            "value": 5.0
+          },
+          "Active requests": {
+            "value": 0.0
+          },
+          "HTTP": {
+            "value": 0.67,
+            "unit": "req/min"
+          },
+          "HTTP P95 Latency": {
+            "value": 1894.599999999999,
+            "unit": "ms"
+          },
+          "HTTP Mean Latency": {
+            "value": 524.0,
+            "unit": "ms"
+          }
+        },
+        "startedAt": "2026-10-26T14:24:50.314000Z",
+        "uptimeSeconds": 250.095
+      }
+    ]
+  },
+  "processCpu": {
+    "startedAt": "2026-10-26T14:29:00.409569Z",
+    "pid": 244333,
+    "intervalSeconds": 1,
+    "sampleCountRequested": 5,
+    "cpuPercentConvention": "percent of one logical CPU; may exceed 100 with process threads",
+    "finishedAt": "2026-10-26T14:29:05.572315Z",
+    "samples": [
+      {
+        "userPercent": 2.0,
+        "systemPercent": 0.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 2.0
+      },
+      {
+        "userPercent": 26.09,
+        "systemPercent": 3.48,
+        "guestPercent": 0.0,
+        "waitPercent": 13.04,
+        "cpuPercent": 29.57
+      },
+      {
+        "userPercent": 109.0,
+        "systemPercent": 20.0,
+        "guestPercent": 0.0,
+        "waitPercent": 17.0,
+        "cpuPercent": 129.0
+      },
+      {
+        "userPercent": 23.0,
+        "systemPercent": 16.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 39.0
+      },
+      {
+        "userPercent": 0.0,
+        "systemPercent": 0.0,
+        "guestPercent": 0.0,
+        "waitPercent": 0.0,
+        "cpuPercent": 0.0
+      }
+    ],
+    "average": {
+      "userPercent": 31.84,
+      "systemPercent": 7.77,
+      "guestPercent": 0.0,
+      "waitPercent": 6.21,
+      "cpuPercent": 39.61
+    },
+    "sampleCountActual": 5
+  },
+  "postgres": {
+    "capturedAt": "2026-10-26T14:29:05.641704Z",
+    "scope": "all client backends across databases on local port 5432, excluding this inspection connection",
+    "counts": {
+      "maxConnections": 100,
+      "clientConnections": 22,
+      "active": 0,
+      "idle": 22,
+      "idleInTransaction": 0,
+      "idleInTransactionAborted": 0,
+      "blocked": 0,
+      "waitingForLock": 0,
+      "databaseCount": 1,
+      "deadlocksCumulative": 0
+    },
+    "caveat": "one snapshot; cumulative deadlocks are not a five-minute measurement; no SQL/connection-wait timing collected"
+  },
+  "nginx": {
+    "windowStart": "2026-10-26T14:24:05.641747Z",
+    "windowEnd": "2026-10-26T14:29:05.641747Z",
+    "windowSeconds": 300,
+    "scope": "parsed standard HTTP request entries in the nginx access log, not filtered by vhost or authentication",
+    "sources": [
+      {
+        "file": "/var/log/nginx/access.log",
+        "tailLinesRead": 20000,
+        "parsedLines": 19997,
+        "tailLimitReached": true
+      }
+    ],
+    "oldestReadRecordBeforeWindow": true,
+    "unparsableTailLines": 3,
+    "requestCount": 169,
+    "requestsPerSecond": 0.5633,
+    "statusClasses": {
+      "2xx": 157,
+      "3xx": 5,
+      "4xx": 6,
+      "5xx": 1
+    },
+    "pathGroups": {
+      "/api/v1/notifications/*": 48,
+      "/api/*": 28,
+      "/api/v1/calls/active": 25,
+      "/api/auth/session": 18,
+      "/api/v1/users/*": 18,
+      "/api/v1/mtm/*": 18,
+      "/api/v1/ping": 5,
+      "/api/v1/public/build-info": 4,
+      "/_next/static/*": 2,
+      "/api/finance/*": 2,
+      "/login": 1
+    },
+    "privacy": "only allowlisted coarse route groups; no addresses, identifiers, query strings, user agents or raw log lines saved"
+  },
+  "loopbackBuildInfo": {
+    "capturedAt": "2026-10-26T14:29:06.186336Z",
+    "httpStatus": 200,
+    "artifactSha": "97e8e959de7c0213b9b378cdb6e2e0e6f16ba217",
+    "sha": "97e8e959de7c",
+    "builtAt": "2026-10-26T13:41:55Z"
+  },
+  "pm2ProcessesAfter": [
+    {
+      "pid": 244333,
+      "status": "online",
+      "startedAtEpochMs": 1793024690314
+    }
+  ],
+  "finishedAt": "2026-10-26T14:29:06.401574Z",
+  "limitations": [
+    "Uncontrolled live traffic; not a controlled latency comparison or capacity test.",
+    "PM2 HTTP/event-loop values are existing rolling metrics; their internal windows are not aligned with the five-second CPU sample.",
+    "PostgreSQL connection/lock state is instantaneous and does not exclude intermittent contention.",
+    "Nginx counts describe preceding wall-clock traffic; unknown routes are grouped and authentication is not determined.",
+    "No authenticated browser page timing, SQL duration, CPU profile, restart or runtime setting change.",
+    "Process age is under five minutes. PM2 rolling percentiles can reflect startup, and the five-minute nginx window crosses that startup."
+  ],
+  "comparability": "startup-confounded; uncontrolled live traffic; not a warmed latency baseline",
+  "publicBuildInfo": {
+    "capturedAt": "2026-10-26T14:29:06.560878Z",
+    "httpStatus": 200,
+    "artifactSha": "97e8e959de7c0213b9b378cdb6e2e0e6f16ba217",
+    "sha": "97e8e959de7c",
+    "builtAt": "2026-10-26T13:41:55Z"
+  }
+}

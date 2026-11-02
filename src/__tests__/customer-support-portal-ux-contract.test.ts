@@ -50,12 +50,14 @@ describe("Customer Support Portal UX contract", () => {
     expect(detail).not.toMatch(/formatDate\([^\n]*timeStyle/)
     expect(closure).not.toMatch(/formatDate\([^\n]*timeStyle/)
     expect(layout).toContain("customer-support-surface")
+    // Public support keeps the AA-safe orange fallback outside the CRM scope.
+    expect(layout).not.toContain("data-crm-workspace")
     expect(closure).toContain("customer-support-surface")
     expect(layout).toContain('data-testid="portal-company-name"')
     expect(layout).not.toMatch(/portal-company-name[^>]*hidden/)
     expect(closure).toContain("<ThemeProvider>")
     expect(globalStyles).toContain('.customer-support-surface :where(button, a, [role="button"]).bg-primary')
-    expect(globalStyles).toContain("background-color: hsl(20 92% 38%) !important")
+    expect(globalStyles).toContain("background-color: hsl(var(--crm-action, 20 92% 38%)) !important")
   })
 
   it("implements recoverable loading, empty, error, offline and mutation states", () => {

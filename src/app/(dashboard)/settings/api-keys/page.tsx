@@ -175,7 +175,7 @@ export default function ApiKeysPage() {
       {loading ? (
         <div className="py-12 text-center text-muted-foreground">{t("loadingKeys")}</div>
       ) : keys.length === 0 ? (
-        <div data-tour-id="api-keys-list" className="border border-zinc-200 dark:border-zinc-700 rounded-lg py-12 text-center">
+        <div data-tour-id="api-keys-list" className="border border-border rounded-lg py-12 text-center">
           <Key className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-lg font-medium">{t("noKeys")}</p>
           <p className="text-sm text-muted-foreground mt-1">
@@ -190,7 +190,7 @@ export default function ApiKeysPage() {
       ) : (
         <div data-tour-id="api-keys-list" className="space-y-3">
           {keys.map((k) => (
-            <div key={k.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 flex items-center gap-4 bg-card">
+            <div key={k.id} className="border border-border rounded-lg p-4 flex items-center gap-4 bg-card">
               <div className="p-2.5 bg-primary/10 rounded-lg">
                 <Key className="w-5 h-5 text-primary" />
               </div>
@@ -293,7 +293,7 @@ export default function ApiKeysPage() {
                 <p className="text-[11px] text-muted-foreground mb-2">
                   {t("scopesHint")}
                 </p>
-                <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 max-h-64 overflow-y-auto space-y-1.5 bg-muted/20">
+                <div className="border border-border rounded-lg p-3 max-h-64 overflow-y-auto space-y-1.5 bg-muted/20">
                   {scopeList.length === 0 ? (
                     <p className="text-xs text-muted-foreground">{t("loadingScopes")}</p>
                   ) : (

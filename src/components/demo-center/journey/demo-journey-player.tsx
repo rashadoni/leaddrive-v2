@@ -537,7 +537,10 @@ export function DemoJourneyPlayer({
               inbox thread was squeezed to 32px and «Göndər» could not be
               pressed (owner's screen, 2026-09-22). */}
           <div className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
+            {/* The scenes are CRM screens, so they are set in the CRM's font
+                (`font-dashboard`, as the dashboard's <main>); the demo
+                routes' layouts define it (`demo-scene-font.ts`). */}
+            <main id="demo-scene" className="font-dashboard min-w-0 overflow-y-auto p-4 sm:p-6">
               {viewSection.intro && manifest.capabilities.video ? (
                 <IntroClip
                   // Its own key: the scene below is keyed by the section too, and

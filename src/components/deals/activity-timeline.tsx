@@ -128,8 +128,8 @@ export function ActivityTimeline({ dealId, orgId }: { dealId: string; orgId?: st
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-2.5 py-1 text-xs rounded-full border border-zinc-200 dark:border-zinc-700 transition-colors ${
-                  filter === f ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                className={`px-2.5 py-1 text-xs rounded-full border border-border transition-colors ${
+                  filter === f ? "crm-choice-selected  " : "bg-background hover:bg-muted"
                 }`}
               >
                 {f === "all" ? tc("actTypeAll") : tc((TYPE_CONFIG[f]?.labelKey || "actTypeNote") as any)} ({count})
@@ -150,7 +150,7 @@ export function ActivityTimeline({ dealId, orgId }: { dealId: string; orgId?: st
 
       {/* Add activity form */}
       {showForm && (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           {/* Заголовок отделяет журнал от панели отправки наверху: там письмо
               уходит клиенту, здесь фиксируется то, что уже произошло. */}
           <p className="text-xs font-semibold text-muted-foreground">{tc("actLogEntry")}</p>
@@ -225,7 +225,7 @@ export function ActivityTimeline({ dealId, orgId }: { dealId: string; orgId?: st
 
                   {/* Content */}
                   <div className="flex-1 pb-4 min-w-0">
-                    <div className="bg-card rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 shadow-sm group-hover:shadow-md transition-shadow">
+                    <div className="bg-card rounded-lg border border-border p-3 shadow-sm group-hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5">{tc((config.labelKey || "actTypeNote") as any)}</Badge>
                         <span className="text-xs text-muted-foreground">

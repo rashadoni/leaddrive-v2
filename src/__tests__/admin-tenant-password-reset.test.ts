@@ -46,10 +46,17 @@ vi.mock("@/lib/rate-limit", () => ({
 
 vi.mock("@/lib/rls-context", () => ({
   runWithRlsBypass: vi.fn(async (callback: () => Promise<unknown>) => callback()),
+  runWithTenant: vi.fn(async (_org: string, callback: () => Promise<unknown>) => callback()),
 }))
 
 vi.mock("@/lib/request-ip", () => ({
   clientIp: vi.fn(() => "203.0.113.9"),
+}))
+
+const credentialFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    credentialFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -105,6 +112,7 @@ function request(body: unknown = {
 }
 
 beforeEach(() => {
+  credentialFence.allowed = true
   state.authAllowed = true
   state.mutationRejected = false
   state.rateLimitAllowed = true
@@ -122,6 +130,15 @@ beforeEach(() => {
 })
 
 describe("POST /api/v1/admin/tenants/[id]/users/[userId]/reset-password", () => {
+  it("refuses legacy target credentials when the migration fence rejects even a platform reset", async () => {
+    credentialFence.allowed = false
+    const response = await POST(request(), params)
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+
   it("rejects non-superadmins before cross-tenant guards or database access", async () => {
     state.authAllowed = false
 
@@ -230,6 +247,7 @@ describe("POST /api/v1/admin/tenants/[id]/users/[userId]/reset-password", () => 
         ipAddress: "203.0.113.9",
         newValue: expect.objectContaining({ sessionsInvalidated: true }),
       }),
+      prisma,
     )
     const auditPayload = JSON.stringify(vi.mocked(logAudit).mock.calls)
     expect(auditPayload).not.toContain("Valid-Test-Pass-2026!")

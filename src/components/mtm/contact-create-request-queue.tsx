@@ -110,19 +110,19 @@ export function ContactCreateRequestQueue({ openOnArrival = false }: { openOnArr
   ].join(" · ")
   return (
     <section data-testid="mtm-contact-create-requests" className="mb-4 space-y-2">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-[13px]">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-[13px]">
         <span className="flex h-6 min-w-6 items-center justify-center rounded-full border border-zinc-300 px-1.5 text-xs font-bold text-foreground dark:border-zinc-600">{rows.length}</span>
         <span className="min-w-0 flex-1">
           <b className="font-semibold">{rows.length === 1 ? copy.waitingOne : copy.waitingMany}</b>
           {" — "}{summary}{rows.length > 1 ? ` ${copy.andMore.replace("{count}", String(rows.length - 1))}` : ""}
         </span>
-        <Button type="button" size="sm" className="min-h-9 bg-amber-900 text-white hover:bg-amber-950" aria-expanded={open} data-testid="mtm-contact-create-requests-toggle" onClick={() => setOpen((current) => !current)}>
+        <Button type="button" size="sm" variant="outline" className="min-h-9" aria-expanded={open} data-testid="mtm-contact-create-requests-toggle" onClick={() => setOpen((current) => !current)}>
           {open ? copy.collapse : copy.review}
         </Button>
       </div>
       {open ? (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-700 sm:p-5">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
             <div>
               <h2 className="flex items-center gap-2 text-base font-semibold"><UserPlus className="h-4 w-4 text-primary" />{copy.title}{rows.length ? <Badge variant="warning">{rows.length}</Badge> : null}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{copy.hint}</p>
@@ -134,13 +134,13 @@ export function ContactCreateRequestQueue({ openOnArrival = false }: { openOnArr
               {rows.map((row) => {
                 const duplicates = Array.isArray(row.duplicateSnapshot) ? row.duplicateSnapshot : []
                 return (
-                  <article key={row.id} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                  <article key={row.id} className="rounded-lg border border-border p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div><h3 className="font-semibold">{row.displayName}</h3><p className="text-sm text-muted-foreground">{[row.specialtyName, row.phone].filter(Boolean).join(" · ") || "—"}</p></div>
                       <Badge variant="outline">{copy.from}: {row.requestedByAgent.name}</Badge>
                     </div>
                     <div className="mt-3 rounded-md bg-muted/40 p-3 text-sm"><div className="font-medium">{row.clinicName}</div>{row.address ? <div className="text-muted-foreground">{row.address}</div> : null}{row.notes ? <div className="mt-2 text-muted-foreground">{row.notes}</div> : null}</div>
-                    {duplicates.length ? <div className="mt-3 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm"><div className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{copy.duplicate}</div><ul className="mt-1 list-inside list-disc">{duplicates.map((item) => <li key={item.id}>{item.displayName}{item.exact ? " — exact" : ""}</li>)}</ul></div> : null}
+                    {duplicates.length ? <div className="mt-3 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm"><div className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{copy.duplicate}</div><ul className="mt-1 list-inside list-disc">{duplicates.map((item) => <li key={item.id}>{item.displayName}{item.exact ? " — exact" : ""}</li>)}</ul></div> : null}
                     <Textarea className="mt-3" rows={2} placeholder={copy.comment} value={comments[row.id] || ""} onChange={(event) => setComments((current) => ({ ...current, [row.id]: event.target.value }))} />
                     <div className="mt-3 flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" onClick={() => void decide(row.id, "REJECTED")} disabled={busy === row.id}><X className="mr-1 h-4 w-4" />{copy.reject}</Button><Button type="button" onClick={() => void decide(row.id, "APPROVED")} disabled={busy === row.id}><Check className="mr-1 h-4 w-4" />{copy.approve}</Button></div>
                   </article>

@@ -269,7 +269,7 @@ export function WorkforceExceptionQueue() {
     return (
       <section className="space-y-6">
         <PageDescription title={t("title")} description={t("subtitle")} />
-        <div className="rounded-lg border border-zinc-200 p-4 text-sm text-muted-foreground dark:border-zinc-700" role="status">
+        <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground" role="status">
           {t("adminOnly")}
         </div>
       </section>
@@ -331,8 +331,8 @@ export function WorkforceExceptionQueue() {
         </div>
       ) : null}
       {items && !loading ? (
-        <section aria-labelledby="workforce-exception-queue-cases" className="rounded-lg border border-zinc-200 dark:border-zinc-700">
-          <div className="border-b border-zinc-200 p-4 dark:border-zinc-700">
+        <section aria-labelledby="workforce-exception-queue-cases" className="rounded-lg border border-border">
+          <div className="border-b border-border p-4">
             <h2 id="workforce-exception-queue-cases" className="font-semibold">{t("casesTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("casesHint", { count: items.length })}</p>
           </div>
@@ -343,7 +343,7 @@ export function WorkforceExceptionQueue() {
             aria-label={t("casesTitle")}
           >
             <table className="min-w-[1320px] text-left text-sm">
-              <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-muted-foreground dark:border-zinc-700">
+              <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">{t("case")}</th>
                   <th className="px-4 py-3 font-medium">{t("employee")}</th>
@@ -357,7 +357,7 @@ export function WorkforceExceptionQueue() {
                   <th className="px-4 py-3 font-medium">{t("nextAction")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tbody className="divide-y divide-border">
                 {items.map((item, itemIndex) => {
                   const actions = safeQueueActions(item)
                   const actionOpen = actions.some((action) => action.actionToken === selectedAction?.actionToken)

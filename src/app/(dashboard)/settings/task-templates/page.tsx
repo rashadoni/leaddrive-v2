@@ -240,7 +240,7 @@ export default function TaskTemplatesSettingsPage() {
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : templates.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-12 text-center" data-tour-id="task-templates-list">
+        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-border p-12 text-center" data-tour-id="task-templates-list">
           <FileText className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-1">{t("emptyTitle")}</p>
           <p className="text-xs text-muted-foreground/70 mb-4">{t("emptyHint")}</p>
@@ -256,7 +256,7 @@ export default function TaskTemplatesSettingsPage() {
               <div
                 key={tpl.id}
                 className={cn(
-                  "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
+                  "rounded-xl border border-border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
                 )}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -346,7 +346,7 @@ export default function TaskTemplatesSettingsPage() {
                 rows={2}
               />
             </div>
-            <hr className="border-zinc-200 dark:border-zinc-700" />
+            <hr className="border-border" />
             <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("taskFieldsHeader")}</div>
             <div>
               <Label>{t("taskTitle")} *</Label>
@@ -387,7 +387,7 @@ export default function TaskTemplatesSettingsPage() {
               </div>
             </div>
 
-            <hr className="border-zinc-200 dark:border-zinc-700" />
+            <hr className="border-border" />
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("checklistHeader")}</div>
               <Button type="button" variant="outline" size="sm" onClick={addChecklistItem} className="gap-1 h-7 text-xs">
@@ -418,7 +418,7 @@ export default function TaskTemplatesSettingsPage() {
               </div>
             )}
 
-            <hr className="border-zinc-200 dark:border-zinc-700" />
+            <hr className="border-border" />
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"

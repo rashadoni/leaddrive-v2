@@ -121,7 +121,7 @@ describe("MTM Panel for a manager", () => {
     expect(ui).toContain('t("routeFallbackName"')
     expect(ui).toContain("renderPoint(point, day, index + 1)")
     expect(ui).not.toContain("{point.order}")
-    expect(ui).toMatch(/\{!managerView \? \(\s*<p className="mt-1 text-\[11px\] text-muted-foreground" title=\{task\.id\}/)
+    expect(ui).toMatch(/\{!managerView \? \(\s*<p className="mt-1 text-xs text-muted-foreground" title=\{task\.id\}/)
     // Owner 2026-09-22: an empty day is one line («Маршрута нет»), not an icon,
     // a title and a sentence per past/future date.
     expect(ui).toContain('t("noRouteThisDay")')

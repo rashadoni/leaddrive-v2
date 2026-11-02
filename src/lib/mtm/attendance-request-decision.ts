@@ -13,6 +13,9 @@ import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
+import { readAttendanceTwoStepApproval } from "@/lib/mtm/attendance-approval-chain"
+import { notifyAttendanceRequestHr } from "@/lib/mtm/attendance-request-notify"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 export const AttendanceDecisionInputSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]), version: z.string().datetime(),
@@ -51,10 +54,10 @@ export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClien
 export async function requireAttendanceReviewer(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, agentId: string, options: { allowInactive?: boolean } = {}) {
   const { organizationId, userId } = reviewer
   const actor = await resolveAttendanceReviewerScope(tx, reviewer)
-  const target = await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId, ...(options.allowInactive ? {} : { status: "ACTIVE" }) }, select: { userId: true, user: { select: { preferredLanguage: true } } } })
+  const target = await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId, ...(options.allowInactive ? {} : { status: "ACTIVE" }) }, select: { userId: true, ...AGENT_LANGUAGE_SELECT } })
   if (!target || !actor || !canReviewMtmRouteRequest(actor, agentId)) throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   if (target.userId === userId) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_SELF_APPROVAL", 403)
-  return { actor, locale: target.user?.preferredLanguage }
+  return { actor, locale: agentLanguage(target) }
 }
 const notificationMessages = { az: az.mtmAttendance, ru: ru.mtmAttendance, en: en.mtmAttendance }
 export async function decideAttendanceRequestInTransaction(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, requestId: string, raw: unknown) {
@@ -70,13 +73,34 @@ export async function decideAttendanceRequestInTransaction(tx: Prisma.Transactio
   await lockMtmWorkdayTransitions(tx, scope)
   await lockAttendanceRequests(tx, scope)
   const access = await requireAttendanceReviewer(tx, reviewer, candidate.agentId)
-  const row = await tx.mtmHrmRequest.findFirst({ where: { id: requestId, organizationId }, select: { ...attendanceRequestSelect, decidedByUserId: true } })
+  const row = await tx.mtmHrmRequest.findFirst({ where: { id: requestId, organizationId }, select: { ...attendanceRequestSelect, decidedByUserId: true, managerApprovedByUserId: true, managerApprovedAt: true, managerApprovalNote: true } })
   if (!row) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_NOT_FOUND", 404)
   const details = AttendanceRequestDetailsSchema.safeParse(row.attendanceDetails)
   if (!details.success) throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_KIND_UNAVAILABLE", 400)
   const { decision, version } = parsed.data
   const note = parsed.data.note || null
   const now = new Date()
+  // Two-step approval (attendance-approval-chain.ts): a manager's approval is
+  // the first half and changes nothing but the request; HR decides the rest.
+  if (row.status === "PENDING" && access.actor.role !== "ADMIN" && await readAttendanceTwoStepApproval(tx, organizationId)) {
+    if (row.managerApprovedAt) {
+      if (decision === "APPROVED" && row.managerApprovedByUserId === userId && row.managerApprovalNote === note) return { request: attendanceRequestDto(row), idempotent: true, passedToHr: true }
+      throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_AWAITING_HR")
+    }
+    if (decision === "APPROVED") {
+      if (row.updatedAt.toISOString() !== version) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
+      const passed = await tx.mtmHrmRequest.updateMany({ where: { id: requestId, organizationId, status: "PENDING", updatedAt: row.updatedAt, managerApprovedAt: null },
+        data: { managerApprovedByUserId: userId, managerApprovedAt: now, managerApprovalNote: note } })
+      if (passed.count !== 1) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
+      await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: userId, agentId: candidate.agentId,
+        action: "MTM_ATTENDANCE_REQUEST_MANAGER_APPROVED", entity: "hrm_request", entityId: requestId, metadataKind: "mtm_attendance_request",
+        oldData: { status: "PENDING" }, newData: { status: "PENDING", managerApprovedBy: userId } } })
+      await notifyAttendanceRequestHr(tx, { organizationId, agentId: candidate.agentId, requestId })
+      const passedOn = await tx.mtmHrmRequest.findFirst({ where: { id: requestId, organizationId }, select: attendanceRequestSelect })
+      if (!passedOn) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
+      return { request: attendanceRequestDto(passedOn), idempotent: false, passedToHr: true }
+    }
+  }
   let idempotent = false
   if (decision === "APPROVED" && details.data.kind === "TIME_CORRECTION") {
     const result = await applyAttendanceTimeCorrectionInTransaction(tx, { organizationId, userId, requestId, expectedVersion: version, decisionNote: note, now })
@@ -102,7 +126,7 @@ export async function decideAttendanceRequestInTransaction(tx: Prisma.Transactio
   }
   const updated = await tx.mtmHrmRequest.findFirst({ where: { id: requestId, organizationId }, select: attendanceRequestSelect })
   if (!updated) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
-  return { request: attendanceRequestDto(updated), idempotent }
+  return { request: attendanceRequestDto(updated), idempotent, passedToHr: false }
 }
 export async function decideAttendanceRequest(reviewer: AttendanceReviewer, requestId: string, raw: unknown) {
   return prisma.$transaction((tx: Prisma.TransactionClient) => decideAttendanceRequestInTransaction(tx, reviewer, requestId, raw), { timeout: 15_000 })

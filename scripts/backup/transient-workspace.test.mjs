@@ -48,12 +48,14 @@ BACKUP_ENV_FILE="$TEST_ROOT/public.env"
 OPERATION=run-owner-backup
 OWNER_RECIPIENT=age1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ACTIVE_TRANSIENT_UNIT=""
+SCRATCH_TEMPLATE="$TEST_TEMPLATE"
 run_transient_backup_unit "$TEST_LABEL" "$TEST_USER" "$TEST_GROUP" /reviewed/public-helper.sh 5 "$TEST_ROOT/journal"
 `
   return spawnSync("bash", ["-c", script, "workspace-test"], {
     env: { ...env, TEST_ROOT: root, TEST_AVAILABLE: options.available ?? "8388608", TEST_SWAP: options.swap ?? "0",
       TEST_LOAD: options.load ?? "not-found", TEST_LABEL: options.label ?? "database", TEST_USER: options.user ?? "nobody",
-      TEST_GROUP: options.group ?? "nogroup", TEST_DENY_WORKSPACE: options.denyWorkspace ? "1" : "0" }, encoding: "utf8", timeout: 5000,
+      TEST_GROUP: options.group ?? "nogroup", TEST_DENY_WORKSPACE: options.denyWorkspace ? "1" : "0",
+      TEST_TEMPLATE: options.template ?? "leaddrive_restore_template_123456789_0123456789ab" }, encoding: "utf8", timeout: 5000,
   })
 }
 
@@ -66,12 +68,22 @@ test("real function gives database a private noexec tmpfs and hard cgroup ceilin
     "--property=MemoryHigh=3221225472", "--property=MemoryMax=4294967296", "--property=MemorySwapMax=0",
     "--property=ProtectSystem=strict", "--property=NoNewPrivileges=yes", "--property=RestrictNamespaces=yes",
     "--owner-operated", "age1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "--scratch-template", "leaddrive_restore_template_123456789_0123456789ab",
   ]) assert(args.includes(value), value)
   assert(!args.includes("--property=RuntimeDirectory=leaddrive-postgres-backup"))
   assert(!args.includes("--property=ReadWritePaths=/run/leaddrive-postgres-backup"))
   assert(!args.some(value => /remount|swapoff/.test(value)))
   assert.equal(readFileSync(join(root, "host-admission"), "utf8"), "/run/leaddrive-postgres-backup\n65534\n65534\n")
 }))
+
+test("database worker refuses missing/unsafe template before launch without weakening workspace admission", () => {
+  for (const template of ["", "template1", "postgres", "leaddrive_restore_template_1_';"]) fixture(root => {
+    const result = execute(root, { template })
+    assert.notEqual(result.status, 0)
+    assert.equal(existsSync(join(root, "argv")), false)
+    assert.match(result.stderr, /requires its admitted native template/)
+  })
+})
 
 test("low/unknown memory or enabled swap refuses before any unit launch", () => {
   for (const options of [{ available: "8388607" }, { available: "" }, { available: "bad" },
@@ -157,6 +169,8 @@ test("actual systemd unit mounts only a private bounded workspace; kernel/cgroup
     writeFileSync(program, `#!/bin/bash
 set -euo pipefail
 trap 'printf "SYNTHETIC_FIXTURE_FAILED_LINE=%s\\n" "$LINENO"' ERR
+[ "${"$"}{1:-}" = --scratch-template ]
+[ "${"$"}{2:-}" = leaddrive_restore_template_${runId}_0123456789ab ]
 work=/run/leaddrive-postgres-backup
 printf 'SYNTHETIC_WORKSPACE_UID=%s MODE=%s TYPE=%s TOTAL=%s\\n' \
   "$(id -u)" "$(stat -c '%u:%g:%a' "$work")" \
@@ -193,6 +207,7 @@ BACKUP_ENV_FILE="$TEST_ENV"
 OPERATION=run-owner-backup
 OWNER_RECIPIENT=age1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ACTIVE_TRANSIENT_UNIT=""
+SCRATCH_TEMPLATE="leaddrive_restore_template_${runId}_0123456789ab"
 run_transient_backup_unit database nobody nogroup "$TEST_PROGRAM" 30 "$TEST_ROOT/journal"
 `], { env: { ...env, TEST_RUN_ID: runId, TEST_ENV: environment, TEST_PROGRAM: program, TEST_ROOT: root },
       encoding: "utf8", timeout: 45000 })

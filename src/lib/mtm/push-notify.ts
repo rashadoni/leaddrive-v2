@@ -78,6 +78,9 @@ export async function notifyAgents(input: NotifyAgentsInput): Promise<NotifyAgen
       organizationId: input.organizationId,
       agentId: { in: agentIds },
       disabledAt: null,
+      // A removed Field actor must not keep receiving lock-screen content.
+      // Independent Time actors remain eligible.
+      agent: { OR: [{ fieldDeletedAt: null }, { role: "EMPLOYEE" }] },
     },
     select: { token: true },
   })

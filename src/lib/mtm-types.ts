@@ -52,9 +52,13 @@ export interface LiveMapAgent {
   longitude: number
   accuracy?: number | null
   speed?: number | null
+  /** The phone's course, degrees clockwise from north; 0 is north. */
+  heading?: number | null
   battery?: number | null
   recordedAt: string
   freshness: MtmCoordinateFreshness
+  /** Since when he has not moved, outside a visit. Only with STOPPED, and only where tracking was unbroken. */
+  stationarySince?: string | null
   workdayState: "ACTIVE" | "PAUSED" | "CLOSED" | "NOT_STARTED"
   teamId?: string | null
   teamName?: string | null

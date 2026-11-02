@@ -20,7 +20,9 @@ import {
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
+import { useShellRefresh } from "@/components/shell-events-provider"
 import { deriveSection } from "@/lib/notifications/taxonomy"
+import { onNotificationPreferencesChanged } from "@/lib/notifications/preferences-changed"
 import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
@@ -80,11 +82,19 @@ function getNotificationUrl(notification: Notification) {
 export function NotificationBell() {
   const t = useTranslations("notifications")
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
   const orgId = session?.user?.organizationId
+  // Who is signed in, not the session object. The object is new on every
+  // session read, and next-auth reads it twice on each page load (its own
+  // broadcast echoes back), every 15 minutes, and whenever a page loads in
+  // another tab of the same browser. Keyed on the object, each read refetched
+  // the preferences and the list in every open tab. null while the first read
+  // is in flight; update() keeps the user, so it does not move the key.
+  const userId = session?.user?.id
+  const identityKey = userId ? `${userId}:${orgId ?? ""}` : status === "loading" ? null : "signed-out"
 
   // De-dup: track seen notification IDs to avoid toasting historical or already-seen ones.
   const seenIds = useRef<Set<string>>(new Set())
@@ -101,7 +111,8 @@ export function NotificationBell() {
   const openFromToast = useRef<(n: Notification, url: string) => void>(() => {})
 
   useEffect(() => {
-    fetch("/api/v1/users/me/notification-preferences")
+    if (identityKey === null) return
+    const load = () => fetch("/api/v1/users/me/notification-preferences")
       .then((r) => readJsonSafely<ApiEnvelope<{ sections: Array<{ key: string; push: boolean; types?: Array<{ key: string; enabled: boolean }> }> }>>(r))
       .then((json) => {
         if (json?.success && json.data) {
@@ -116,7 +127,11 @@ export function NotificationBell() {
         }
       })
       .catch(() => {/* best-effort: keep toasting if fetch fails */})
-  }, [session])
+    void load()
+    // Read once per sign-in, and again when the settings page saves them here
+    // or in another tab of this browser.
+    return onNotificationPreferencesChanged(() => { void load() })
+  }, [identityKey])
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -181,16 +196,14 @@ export function NotificationBell() {
     } catch {}
   }, [orgId, t])
 
-  useEffect(() => {
-    const initialLoad = setTimeout(() => { void fetchNotifications() }, 0)
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") void fetchNotifications()
-    }, 10000) // 10s — snappier toast popups for inbound + participant notifications (was 30s)
-    return () => {
-      clearTimeout(initialLoad)
-      clearInterval(interval)
-    }
-  }, [session, fetchNotifications])
+  // Read when the shell's event stream says a notification arrived for this
+  // person; without the stream, every 10 s (snappier toast popups for inbound +
+  // participant notifications, was 30s). On screen only; a tab coming back
+  // reads at once, so what arrived meanwhile pops up on return.
+  useShellRefresh("notifications", () => void fetchNotifications(), 10000, identityKey !== null, {
+    // Read in another tab lowers the count without an event: catch up when shown.
+    readOnReturnAfterMs: 30_000,
+  })
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     setOpen(nextOpen)
@@ -257,7 +270,7 @@ export function NotificationBell() {
         align="end"
         sideOffset={10}
         collisionPadding={12}
-        className="z-[1000] max-h-96 w-80 overflow-hidden rounded-lg border border-zinc-200 bg-background p-0 shadow-xl dark:border-zinc-700"
+        className="z-[1000] max-h-96 w-80 overflow-hidden rounded-lg border border-border bg-background p-0 shadow-xl"
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h4 className="text-sm font-medium">{t("title")}</h4>

@@ -522,8 +522,10 @@ describe("the wiring of the tools", () => {
     expect(page).not.toContain("replayTrack=")
     // Drawn for people shown on their own; a cluster is a count, not a person.
     expect(map).toMatch(/trails \? markerSelection\.markers\.flatMap\(\(marker\) => \{\s*if \(marker\.kind !== "AGENT"\) return \[\]/)
-    // …and drawn as the segments, so never across a silence.
-    expect(map).toContain("return liveMapTrailSegments(trails.get(marker.agent.agentId) ?? []).map((segment, index) => (")
+    // …and drawn as the segments, so never across a silence — since
+    // 2026-11-01 each in pieces of one way of moving (car, on foot).
+    expect(map).toContain("const tail = trails ? liveMapTrailSegments(trail).flatMap((segment) => {")
+    expect(map).toContain("const tail = movementByAgent.get(marker.agent.agentId)?.tail ?? []")
     // Another organization or viewer starts with no tails, no point, no ruler.
     expect(page).toMatch(/setTrails\(new Map\(\)\)\s*setReferencePoint\(null\)\s*setNearestFirst\(false\)\s*setPickingPoint\(false\)\s*setRulerActive\(false\)\s*setRulerPoints\(\[\]\)/)
   })

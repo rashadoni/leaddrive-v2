@@ -222,17 +222,18 @@ read_unique_value_from() { awk -F= -v key="$2" '$1==key {if(n++)exit 2; print su
 ${fn}
 INCOMING_EVIDENCE_BUNDLE="$1" OFFLINE_ALLOWED_SIGNERS="$2"
 OFFLINE_OPERATOR="${owner}" EVIDENCE_REF=synthetic-fixture EVIDENCE_AT_UTC="$3"
-WORKFLOW_SHA="${mainSha}" EXPECTED_CANDIDATE_SHA256="$4" OPERATION=certify-owner-restore
+WORKFLOW_SHA="${mainSha}" EVIDENCE_MAIN_SHA="\${EVIDENCE_MAIN_SHA_FIXTURE:-${mainSha}}" EXPECTED_CANDIDATE_SHA256="$4" OPERATION=certify-owner-restore
 ARCHIVE_VERIFIER_SHA256="${d}" RESTORE_CANARY_SHA256="${d}" PII_PROOF_SHA256="${d}" CANARY_SQL_SHA256="${d}"
 verify_signed_evidence "$5" "${recipientSha}" "$6"
 # Cleanup is confined to this invocation's synthetic private work tree.
 case "$WORK_DIR" in /var/tmp/leaddrive-backup-evidence.*) rm -rf -- "$WORK_DIR";; *) exit 2;; esac
 `
-  function admission(type = 'owner-archive-restore') {
+  function admission(type = 'owner-archive-restore', evidenceMain = '') {
     // TMPDIR cannot change verifier's fixed /var/tmp prefix; clean known fixture
     // dirs through a trap even for intentionally rejected synthetic receipts.
     const trapped = script.replace('INCOMING_EVIDENCE_BUNDLE="$1"', `trap 'if [ -n "\${WORK_DIR:-}" ]; then case "$WORK_DIR" in /var/tmp/leaddrive-backup-evidence.*) rm -rf -- "$WORK_DIR";; esac; fi' EXIT\nINCOMING_EVIDENCE_BUNDLE="$1"`)
-    return spawnSync('bash', ['-c', trapped, 'fixture', bundle, signers, timestamp, sha(readFileSync(candidate)), type, candidate], { env, encoding: 'utf8', timeout: 15000 })
+    return spawnSync('bash', ['-c', trapped, 'fixture', bundle, signers, timestamp, sha(readFileSync(candidate)), type, candidate],
+      { env: { ...env, EVIDENCE_MAIN_SHA_FIXTURE: evidenceMain }, encoding: 'utf8', timeout: 15000 })
   }
   sign()
   let result = admission(); assert.equal(result.status, 0, result.stderr)
@@ -240,6 +241,13 @@ case "$WORK_DIR" in /var/tmp/leaddrive-backup-evidence.*) rm -rf -- "$WORK_DIR";
   sign({ INDEPENDENT_HUMAN_REVIEW: 'passed' }); assert.notEqual(admission().status, 0)
   sign({ TWO_OFFLINE_MEDIA: 'confirmed' }); assert.notEqual(admission().status, 0)
   sign({ TENANT_CANARY_STATUS: 'failed' }); assert.notEqual(admission().status, 0)
+  // Evidence from an earlier main is admitted only against that exact earlier
+  // SHA, which the workflow has proved to carry byte-identical recovery code.
+  const earlierMain = '4'.repeat(40)
+  sign({ REVIEWED_MAIN_SHA: earlierMain })
+  assert.notEqual(admission().status, 0, 'earlier-main evidence is not admitted as current-main evidence')
+  result = admission('owner-archive-restore', earlierMain); assert.equal(result.status, 0, result.stderr)
+  assert.notEqual(admission('owner-archive-restore', '5'.repeat(40)).status, 0, 'evidence binds one exact earlier main')
   sign({}, 'leaddrive-backup-evidence'); assert.notEqual(admission().status, 0, 'wrong namespace denied')
   sign({ EVIDENCE_TYPE: 'archive-restore', RECOVERY_SCOPE: 'log-genesis-bootstrap-only' }, 'leaddrive-backup-evidence')
   assert.notEqual(admission('archive-restore').status, 0, 'owner candidate scope cannot enter independent admission even with independent-looking signature')

@@ -23,7 +23,7 @@ vi.mock("@/lib/prisma", () => {
     organization: { findUnique: vi.fn() },
     contact: { findFirst: vi.fn() },
     channelConfig: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
-    channelMessage: { findFirst: vi.fn().mockResolvedValue(null) },
+    channelMessage: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn() },
     survey: { findFirst: vi.fn().mockResolvedValue(null) },
     entitlementTicketMilestone: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
     entitlementAuditEvent: { create: vi.fn() },
@@ -109,6 +109,9 @@ function contactLanguage(preferredLanguage: string | null) {
 
 async function whatsAppMessages(count: number): Promise<Array<{ to: string; message: string }>> {
   await vi.waitFor(() => expect(vi.mocked(sendWhatsAppMessage).mock.calls.length).toBe(count))
+  for (const [input] of vi.mocked(sendWhatsAppMessage).mock.calls) {
+    expect(input).toMatchObject({ organizationId: "org-1", channelConfigId: "wa-1" })
+  }
   return vi.mocked(sendWhatsAppMessage).mock.calls.map(([input]) => ({ to: String(input.to), message: String(input.message) }))
 }
 
@@ -126,6 +129,14 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_APP_URL = "https://app.example.test"
   vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "agent-1", role: "admin" } as never)
   vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as never)
+  // These are existing session-text notifications on the number that received
+  // the customer. No saved mapping means legacy fallback, not an explicit off.
+  vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([{ channelConfigId: "wa-1" }] as never)
+  vi.mocked(prisma.channelConfig.findFirst).mockImplementation(async (query: unknown) => {
+    const where = (query as { where: { id?: string; organizationId?: string; isActive?: boolean } }).where
+    return where.id === "wa-1" && where.organizationId === "org-1" && where.isActive
+      ? { id: "wa-1", settings: {} } as never : null
+  })
   vi.mocked(prisma.ticketClosureRequest.updateMany).mockResolvedValue({ count: 0 } as never)
   vi.mocked(prisma.ticketClosureRequest.create).mockImplementation((async (args: { data: { channel: string | null; recipient: string | null } }) => ({
     id: "closure-1",

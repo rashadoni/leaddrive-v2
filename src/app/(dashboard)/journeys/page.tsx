@@ -34,6 +34,9 @@ interface JourneyStep {
   statsCompleted: number
 }
 
+type EditableJourneyStep = Pick<JourneyStep, "stepType" | "config"> &
+  Partial<Pick<JourneyStep, "statsEntered" | "statsCompleted">>
+
 interface Journey {
   id: string
   name: string
@@ -53,7 +56,7 @@ interface Journey {
 }
 
 const statusColors: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700",
+  draft: "bg-muted text-muted-foreground border-border",
   active: "bg-green-100 text-green-700 border-green-200",
   paused: "bg-yellow-100 text-yellow-700 border-yellow-200",
   completed: "bg-blue-100 text-blue-700 border-blue-200",
@@ -67,7 +70,13 @@ function getStepSummary(step: { stepType: string; config: any }, t: (key: string
   const c = step.config || {}
   switch (step.stepType) {
     case "send_email": return c.subject ? t("summarySubject", { subject: c.subject }) : t("summaryNoSubject")
-    case "wait": return t("summaryWait", { days: c.days || 1 })
+    case "wait": {
+      const summaryKey = c.unit === "minutes" ? "summaryWaitMinutes"
+        : c.unit === "hours" ? "summaryWaitHours"
+        : c.unit === "weeks" ? "summaryWaitWeeks"
+        : "summaryWaitDays"
+      return t(summaryKey, { count: c.days || 1 })
+    }
     case "condition": {
       const scenario = conditionScenarios.find(s => s.id === c._scenario)
       if (scenario && scenario.id !== "custom") return t(scenario.labelKey)
@@ -217,7 +226,7 @@ export default function JourneysPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState("")
   const [stepsJourney, setStepsJourney] = useState<Journey | null>(null)
-  const [steps, setSteps] = useState<{ stepType: string; config: any }[]>([])
+  const [steps, setSteps] = useState<EditableJourneyStep[]>([])
   const [savingSteps, setSavingSteps] = useState(false)
   const [addStepOpen, setAddStepOpen] = useState(false)
   const [flowView, setFlowView] = useState(false)
@@ -248,7 +257,7 @@ export default function JourneysPage() {
   }
   const stepTypes = [
     { value: "send_email", label: t("stepEmail"), icon: Mail, color: "bg-blue-500", borderColor: "border-blue-200 bg-blue-50/50 dark:bg-blue-900/10" },
-    { value: "sms", label: t("stepSms"), icon: Smartphone, color: "bg-muted-foreground", borderColor: "border-zinc-200 dark:border-zinc-700 bg-muted/50" },
+    { value: "sms", label: t("stepSms"), icon: Smartphone, color: "bg-muted-foreground", borderColor: "border-border bg-muted/50" },
     { value: "wait", label: t("stepWait"), icon: Clock, color: "bg-yellow-500", borderColor: "border-yellow-200 bg-yellow-50/50 dark:bg-yellow-900/10" },
     { value: "condition", label: t("chainStepCondition"), icon: GitBranch, color: "bg-pink-500", borderColor: "border-pink-200 bg-pink-50/50 dark:bg-pink-900/10" },
     { value: "create_task", label: t("stepTask"), icon: FileText, color: "bg-teal-500", borderColor: "border-teal-200 bg-teal-50/50 dark:bg-teal-900/10" },
@@ -306,9 +315,9 @@ export default function JourneysPage() {
 
   function openSteps(journey: Journey) {
     setStepsJourney(journey)
-    const existingSteps = (journey.steps || [])
+    const existingSteps = [...(journey.steps || [])]
       .sort((a, b) => a.stepOrder - b.stepOrder)
-      .map(s => ({ stepType: s.stepType, config: s.config || {} }))
+      .map(s => ({ stepType: s.stepType, config: s.config || {}, statsEntered: s.statsEntered, statsCompleted: s.statsCompleted }))
     setSteps(existingSteps)
   }
 
@@ -469,11 +478,11 @@ export default function JourneysPage() {
             </Button>
           </div>
         ) : journeys.map(journey => (
-          <div key={journey.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card hover:shadow-md transition-shadow">
+          <div key={journey.id} className="border border-border rounded-lg bg-card hover:shadow-md transition-shadow">
             <div className="p-4 flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={cn("text-xs px-2.5 py-0.5 rounded-full font-medium border border-zinc-200 dark:border-zinc-700", statusColors[journey.status])}>
+                  <span className={cn("text-xs px-2.5 py-0.5 rounded-full font-medium border border-border", statusColors[journey.status])}>
                     {statusLabels[journey.status] || journey.status}
                   </span>
                   <h3 className="font-semibold truncate">{journey.name}</h3>
@@ -553,7 +562,7 @@ export default function JourneysPage() {
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  variant={flowView ? "default" : "outline"}
+                  variant={flowView ? "selected" : "outline"}
                   className="gap-1 text-xs h-7"
                   onClick={() => setFlowView(!flowView)}
                 >
@@ -575,12 +584,12 @@ export default function JourneysPage() {
             {flowView && (
               <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-3 items-start">
                 <div className="space-y-3">
-                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-3.5">
+                  <div className="rounded-xl border border-border bg-card p-3.5">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("panelCampaignInfo")}</p>
                     <div className="space-y-2 text-sm">
                       <div>
                         <p className="text-xs text-muted-foreground">{tc("status")}</p>
-                        <span className={cn("inline-flex mt-0.5 text-xs px-2.5 py-0.5 rounded-full font-medium border border-zinc-200 dark:border-zinc-700", statusColors[stepsJourney.status])}>
+                        <span className={cn("inline-flex mt-0.5 text-xs px-2.5 py-0.5 rounded-full font-medium border border-border", statusColors[stepsJourney.status])}>
                           {statusLabels[stepsJourney.status] || stepsJourney.status}
                         </span>
                       </div>
@@ -596,7 +605,7 @@ export default function JourneysPage() {
                       )}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-3.5">
+                  <div className="rounded-xl border border-border bg-card p-3.5">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("panelWorkflowSettings")}</p>
                     <div className="space-y-2 text-sm">
                       <div>
@@ -611,9 +620,9 @@ export default function JourneysPage() {
                   </div>
 
                   {/* AI launcher — opens the existing Da Vinci assistant with journey context (Creatio campaign-agent rail) */}
-                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-gradient-to-br from-violet-500/10 to-purple-500/5 p-3.5">
+                  <div className="crm-panel p-3.5">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-violet-500" /> {t("aiLauncherTitle")}
+                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" /> {t("aiLauncherTitle")}
                     </p>
                     <p className="text-xs text-muted-foreground mb-2.5">{t("aiLauncherDesc")}</p>
                     <Button
@@ -675,7 +684,7 @@ export default function JourneysPage() {
                     <div className={cn("flex items-center justify-center w-9 h-9 rounded-full text-white shrink-0 mt-1", info.color)}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <div className={cn("flex-1 border border-zinc-200 dark:border-zinc-700 rounded-lg px-4 py-3", info.borderColor)}>
+                    <div className={cn("flex-1 border border-border rounded-lg px-4 py-3", info.borderColor)}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-semibold text-sm">{index + 1}. {info.label}</span>
                         <div className="flex items-center gap-1">
@@ -699,7 +708,7 @@ export default function JourneysPage() {
                       </div>
                       {summary && <p className="text-xs text-muted-foreground">{summary}</p>}
                       <p className="text-[11px] text-muted-foreground mt-1">
-                        {t("entered")}: {(step as any).statsEntered || 0} · {t("passed")}: {(step as any).statsCompleted || 0}
+                        {t("entered")}: {step.statsEntered ?? 0} · {t("passed")}: {step.statsCompleted ?? 0}
                       </p>
                     </div>
                   </div>
@@ -824,6 +833,7 @@ export default function JourneysPage() {
                     onChange={e => setNewStepConfig((c: any) => ({ ...c, unit: e.target.value }))}
                     className="flex-1"
                   >
+                    <option value="minutes">{t("unitMinutes")}</option>
                     <option value="hours">{t("unitHours")}</option>
                     <option value="days">{t("unitDays")}</option>
                     <option value="weeks">{t("unitWeeks")}</option>
@@ -869,7 +879,7 @@ export default function JourneysPage() {
 
                 {/* Custom fields (only show when "custom" scenario selected) */}
                 {newStepConfig._scenario === "custom" && (
-                  <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                  <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <Label className="text-[10px] text-muted-foreground">{t("fieldLabel")}</Label>
@@ -1038,7 +1048,7 @@ export default function JourneysPage() {
               </div>
 
               {/* Leads list */}
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg max-h-[240px] overflow-y-auto">
+              <div className="border border-border rounded-lg max-h-[240px] overflow-y-auto">
                 {leadsLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

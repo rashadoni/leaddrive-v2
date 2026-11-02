@@ -144,7 +144,7 @@ export default function QuotesPage() {
           {STATUS_VALUES.map((v) => (
             <Button
               key={v}
-              variant={statusFilter === v ? "default" : "outline"}
+              variant={statusFilter === v ? "selected" : "outline"}
               size="sm"
               onClick={() => setStatusFilter(v)}
             >

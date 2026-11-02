@@ -5,6 +5,9 @@ import { withJobLease } from "@/lib/cron/job-lease"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { getTenantCapabilityAccess } from "@/lib/tenant-capability-access"
 import { logMtmRouteObservability } from "@/lib/mtm/route-observability"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
+import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
+import { isRouteNoticeEvent, routeNotice, routeNoticeLocale } from "@/lib/mtm/route-notice"
 
 const ROUTE_FIELD_CAPABILITY = "route-field"
 const OUTBOX_LEASE_MS = 60_000
@@ -112,6 +115,32 @@ function oldestQueueAgeMs(candidates: Array<{ createdAt: Date }>, now: Date): nu
  * compare-and-set; the `(organizationId, outboxId)` uniqueness constraint on
  * MtmNotification makes a crash between the upsert and DELIVERED mark safe.
  */
+/**
+ * A route published or changed is told in the agent's own language, with the
+ * day and the number of visits (route-notice.ts), and pushed to his phone.
+ * Any other route notice keeps the words it was queued with, and no push.
+ */
+async function routeNoticeWords(candidate: { organizationId: string; agentId: string; metadata: Prisma.JsonValue | null }) {
+  const metadata = candidate.metadata && typeof candidate.metadata === "object" && !Array.isArray(candidate.metadata)
+    ? candidate.metadata as Record<string, unknown>
+    : null
+  const event = metadata?.event
+  const routeId = metadata?.routeId
+  if (!isRouteNoticeEvent(event) || typeof routeId !== "string") return null
+  const [agent, route] = await Promise.all([
+    prisma.mtmAgent.findFirst({ where: { id: candidate.agentId, organizationId: candidate.organizationId }, select: AGENT_LANGUAGE_SELECT }),
+    prisma.mtmRoute.findFirst({
+      where: { id: routeId, organizationId: candidate.organizationId },
+      select: { date: true, _count: { select: { points: { where: { deletedAt: null } } } } },
+    }),
+  ])
+  if (!route) return null
+  return {
+    routeId,
+    ...routeNotice({ locale: routeNoticeLocale(agentLanguage(agent)), event, routeDate: route.date, visitCount: route._count.points }),
+  }
+}
+
 export async function drainMtmRouteNotificationOutbox(
   options: MtmRouteNotificationOutboxDrainOptions = {},
 ): Promise<MtmRouteNotificationOutboxDrainResult> {
@@ -182,6 +211,7 @@ export async function drainMtmRouteNotificationOutbox(
         continue
       }
 
+      const words = await routeNoticeWords(candidate)
       const delivered = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.mtmNotification.upsert({
           where: {
@@ -194,8 +224,8 @@ export async function drainMtmRouteNotificationOutbox(
             organizationId: candidate.organizationId,
             agentId: candidate.agentId,
             outboxId: candidate.id,
-            title: candidate.title,
-            body: candidate.body,
+            title: words?.title ?? candidate.title,
+            body: words?.body ?? candidate.body,
             type: candidate.type,
             metadata: candidate.metadata === null ? Prisma.JsonNull : candidate.metadata as Prisma.InputJsonValue,
           },
@@ -215,6 +245,18 @@ export async function drainMtmRouteNotificationOutbox(
       })
       if (delivered) result.delivered++
       else result.deferred++
+      if (delivered && words) {
+        // The bell line is written; a push that fails takes nothing back.
+        await notifyAgents({
+          client: prisma,
+          organizationId: candidate.organizationId,
+          agentIds: [candidate.agentId],
+          title: words.title,
+          body: words.body,
+          data: { routeId: words.routeId },
+          channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,
+        }).catch(() => undefined)
+      }
     } catch (error) {
       const attempts = candidate.attempts + 1
       const exhausted = attempts >= OUTBOX_MAX_ATTEMPTS

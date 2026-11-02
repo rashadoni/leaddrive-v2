@@ -172,7 +172,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("search")}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-input bg-card text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
             </div>
 
@@ -182,7 +182,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
               </div>
             )}
 
-            <div className="max-h-[40vh] overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="max-h-[40vh] overflow-y-auto rounded-lg border border-border divide-y divide-border">
               {loading ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin inline mr-2" />
@@ -231,7 +231,7 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
         {result ? (
           <button
             onClick={() => onOpenChange(false)}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90" data-crm-button="default"
           >
             {t("close")}
           </button>
@@ -239,14 +239,14 @@ export function PromoteCompaniesDialog({ open, onOpenChange, onPromoted }: Props
           <>
             <button
               onClick={() => onOpenChange(false)}
-              className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-muted"
+              className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted"
             >
               {t("cancel")}
             </button>
             <button
               onClick={promote}
               disabled={selected.size === 0 || submitting}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2" data-crm-button="default"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t("promoteSelected", { count: selected.size })}

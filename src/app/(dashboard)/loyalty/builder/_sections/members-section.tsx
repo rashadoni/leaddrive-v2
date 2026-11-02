@@ -119,7 +119,7 @@ export function MembersSection() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="w-56 rounded-md border border-zinc-200 py-1.5 pl-8 pr-3 text-sm dark:border-zinc-700"
+            className="w-56 rounded-md border border-input py-1.5 pl-8 pr-3 text-sm"
           />
         </div>
       </header>
@@ -128,7 +128,7 @@ export function MembersSection() {
         <button
           type="button"
           onClick={() => setTierFilter("")}
-          className={`rounded-full border px-2.5 py-1 text-xs ${tierFilter === "" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          className={`rounded-full border px-2.5 py-1 text-xs ${tierFilter === "" ? "crm-choice-selected " : "hover:bg-muted"}`}
         >
           {tc("all")}
         </button>
@@ -137,7 +137,7 @@ export function MembersSection() {
             key={tier}
             type="button"
             onClick={() => setTierFilter(tier)}
-            className={`rounded-full border px-2.5 py-1 text-xs capitalize ${tierFilter === tier ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+            className={`rounded-full border px-2.5 py-1 text-xs capitalize ${tierFilter === tier ? "crm-choice-selected " : "hover:bg-muted"}`}
           >
             {tier}
           </button>
@@ -145,7 +145,7 @@ export function MembersSection() {
         <select
           value={balanceFilter}
           onChange={(e) => setBalanceFilter(e.target.value as "all" | "active")}
-          className="rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700"
+          className="rounded-md border border-input px-2 py-1 text-xs"
         >
           <option value="all">{t("filterAllBalances")}</option>
           <option value="active">{t("filterActiveBalance")}</option>
@@ -153,7 +153,7 @@ export function MembersSection() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as "lifetime" | "balance" | "recent")}
-          className="rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700"
+          className="rounded-md border border-input px-2 py-1 text-xs"
         >
           <option value="lifetime">{t("sortLifetime")}</option>
           <option value="balance">{t("sortBalance")}</option>
@@ -170,20 +170,20 @@ export function MembersSection() {
           <AlertCircle className="h-4 w-4" /> {error}
         </div>
       ) : visibleMembers.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-200 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground dark:border-zinc-800">
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
           <Users className="mx-auto mb-3 h-8 w-8 opacity-45" />
           <p className="font-medium text-foreground">{t("emptyTitle")}</p>
           <p className="mx-auto mt-1 max-w-md text-xs leading-5">{t("noMembers")}</p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <Link
               href="/loyalty/pos"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
             >
               {t("emptyPosCta")}
             </Link>
             <Link
               href="/contacts"
-              className="inline-flex items-center justify-center rounded-md border border-zinc-200 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted dark:border-zinc-700"
+              className="inline-flex items-center justify-center rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
             >
               {t("emptyImportCta")}
             </Link>

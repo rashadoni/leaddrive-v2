@@ -153,7 +153,7 @@ export default function SegmentsPage() {
         <button
           onClick={() => setTypeFilter("all")}
           className={cn(
-            "rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-left transition-all hover:shadow-sm",
+            "rounded-lg border border-border p-4 text-left transition-all hover:shadow-sm",
             typeFilter === "all" ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "bg-card"
           )}
         >
@@ -170,7 +170,7 @@ export default function SegmentsPage() {
         <button
           onClick={() => setTypeFilter(typeFilter === "dynamic" ? "all" : "dynamic")}
           className={cn(
-            "rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-left transition-all hover:shadow-sm",
+            "rounded-lg border border-border p-4 text-left transition-all hover:shadow-sm",
             typeFilter === "dynamic" ? "border-green-500 bg-green-50/50 dark:bg-green-900/10 ring-1 ring-green-500/20" : "bg-card"
           )}
         >
@@ -187,7 +187,7 @@ export default function SegmentsPage() {
         <button
           onClick={() => setTypeFilter(typeFilter === "static" ? "all" : "static")}
           className={cn(
-            "rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-left transition-all hover:shadow-sm",
+            "rounded-lg border border-border p-4 text-left transition-all hover:shadow-sm",
             typeFilter === "static" ? "border-foreground/30 bg-muted/50 ring-1 ring-foreground/10" : "bg-card"
           )}
         >
@@ -247,7 +247,7 @@ export default function SegmentsPage() {
             return (
               <div
                 key={segment.id}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
+                className="rounded-lg border border-border bg-card hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
                 onClick={() => { setEditData(segment); setShowForm(true) }}
               >
                 {/* Top color accent */}

@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "status": "PASS_ISOLATED_ROLE_BROWSER_STAND",
+  "startedAt": "2026-10-25T08:16:20.673Z",
+  "headSha": "39ec68f1d0f7b640e8437d57b74ad7f5c3f06c27",
+  "checkedSha": "50f205317e4d7d4ea155a786586f01c181ed7d60",
+  "environment": "ephemeral hosted PostgreSQL16 / production Next bundle / real credentials and native Chromium",
+  "syntheticDataOnly": true,
+  "productionMutation": false,
+  "authenticationMocked": false,
+  "cases": [
+    {
+      "name": "restricted-database-role-and-forced-tenant-RLS",
+      "status": "PASS"
+    },
+    {
+      "name": "employee-actual-role-populated-scope-and-configuration-denial",
+      "status": "PASS",
+      "role": "sales",
+      "visibleCount": 1
+    },
+    {
+      "name": "actual-production-bundle-matches-checked-source",
+      "status": "PASS"
+    },
+    {
+      "name": "coordinator-actual-role-populated-scope-and-configuration-denial",
+      "status": "PASS",
+      "role": "manager",
+      "visibleCount": 2
+    },
+    {
+      "name": "excluded-actual-role-populated-scope-and-configuration-denial",
+      "status": "PASS",
+      "role": "manager",
+      "visibleCount": 1
+    },
+    {
+      "name": "manager-role-alone-does-not-grant-team-scope",
+      "status": "PASS"
+    },
+    {
+      "name": "sales-menu-opens-meetings",
+      "status": "PASS"
+    },
+    {
+      "name": "populated-list-calendar-day-parity-and-period-preservation",
+      "status": "PASS",
+      "employeeCount": 1,
+      "coordinatorCount": 2
+    },
+    {
+      "name": "meeting-detail-close-preserves-context",
+      "status": "PASS"
+    },
+    {
+      "name": "related-task-shows-authorized-exact-meeting-link",
+      "status": "PASS"
+    },
+    {
+      "name": "task-link-returns-exact-meeting",
+      "status": "PASS"
+    },
+    {
+      "name": "known-existing-foreign-own-team-and-task-reference-boundaries",
+      "status": "PASS"
+    },
+    {
+      "name": "coordinator-my-meetings-filter-and-readonly-team-grant",
+      "status": "PASS"
+    },
+    {
+      "name": "same-browser-session-switch-rechecks-scope-on-navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "business-facts-unchanged-and-no-browser-provider-or-business-mutation-requests",
+      "status": "PASS",
+      "uiPreferenceRequests": 5,
+      "cspDiagnosticRequests": 16
+    }
+  ],
+  "blockedNetwork": [],
+  "blockedPublicFontAssets": 0,
+  "uiPreferenceRequests": 5,
+  "cspDiagnosticRequests": 16,
+  "toursDismissed": 0,
+  "limitations": [
+    "Disposable stand proof, not live production employee/coordinator acceptance",
+    "Login uses real CSRF/credentials callback, not visual login-form testing",
+    "Synthetic pre-cutover Booking rows; read-only UI, not public create/provider delivery acceptance",
+    "Session switch checked after navigation, not cross-tab in-place broadcast invalidation",
+    "No full accessibility, load or disaster-recovery certification; service worker disabled in stand",
+    "External public font assets are blocked; screenshots may use fallback fonts",
+    "Normal synthetic-user navigation preferences/login metadata may update; Booking/Task business facts must remain unchanged"
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/booking/role-browser-evidence.mjs",
+      "sha256": "213b5eea1c9db4d56ab5352a7bec077828162d5ed99df49432a80dfd2841aba0"
+    },
+    {
+      "path": "scripts/booking/role-browser-contract.mjs",
+      "sha256": "a7858904f6fe5883ae69912647024f7b555144c18fdd75d7f5db68d4db8cb07c"
+    },
+    {
+      "path": "scripts/ci/fixtures/booking-role-sandbox.sql",
+      "sha256": "65928079bd4560882c5e57be76aba88743680c3468a69fab0d1713a0bfbfac1e"
+    },
+    {
+      "path": ".github/workflows/booking-role-sandbox.yml",
+      "sha256": "987dbda13a6d5bb754813b833a61e3b3eee0563799a30ca9632ca01a2b3a9a99"
+    },
+    {
+      "path": "src/lib/booking/access.ts",
+      "sha256": "001ad620637ee99ccfbc26f1764870df230b6cfde55264b986c3e08c2db31283"
+    },
+    {
+      "path": "src/lib/booking/queries.ts",
+      "sha256": "af621eae4ba3288193e915cb7274e410c564034d76aacb2c67672a471085a059"
+    },
+    {
+      "path": "src/lib/booking/task-reference.ts",
+      "sha256": "9ff5a8523d458f08ac7f885171962a76d51fc7b0ed541a7b2fb21d64d55dacdc"
+    },
+    {
+      "path": "src/components/booking/booking-workspace.tsx",
+      "sha256": "aee6db28e552da00f787762c30be335a9f79d9f33e4d2e047d18651281bb547e"
+    },
+    {
+      "path": "src/components/tasks/task-meeting-notice.tsx",
+      "sha256": "ec9c8bd2b430cd6d02ed6b5ffa23d7deae9f6c9cb354c884a77277d8a2a0c341"
+    },
+    {
+      "path": "src/components/tasks/task-detail-view.tsx",
+      "sha256": "479ab1291a46a741e646ab510e39c69e133e0b244b74ff7aaa5751d6e027d3ea"
+    },
+    {
+      "path": "src/components/tour/tour-step.tsx",
+      "sha256": "c0c583fba90d4547019e6212921496cdbb61207180dc742dfc8fae905b766957"
+    },
+    {
+      "path": "src/app/api/v1/users/me/preferences/route.ts",
+      "sha256": "01a0cf7f2d0c30dea79be9a8893762eda038e4696ca9f3ac9905fdd5b4c2f98f"
+    },
+    {
+      "path": "src/app/api/v1/public/csp-report/route.ts",
+      "sha256": "1c1aef8d78f4a42cc1c8388b1b18a4c317a43f83f3abf78c646de737153c2848"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "sha256": "0b1e9683e3173ef15690d79201a0c05f5cc78bed7c8d51213ff8e58c1a5820d8"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "sha256": "e4c884a881a382496f57146a070f81540050b521bb2b40edd067e45c18b6e1cc"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "sha256": "5c1a0ca2cd7404302bed33212065809b73a9f1eed9067c90f49a6bc4a459e840"
+    }
+  ],
+  "browserVersion": "145.0.7632.6",
+  "factSnapshot": [
+    {
+      "table": "organizations",
+      "count": 2,
+      "sha256": "9907ffeb17363b09132c4aa2df778434aa13db5f56d48959839e4545278a6339"
+    },
+    {
+      "table": "bookings",
+      "count": 5,
+      "sha256": "ca3e5fc593c6c1b01b34c7f403608f6c39fcc92588631e2a8a3ed99ac4c75839"
+    },
+    {
+      "table": "booking_pages",
+      "count": 2,
+      "sha256": "192bf3616337e82cf2e20845eda25d02feae1a78cff34563f162f6a0567ba22c"
+    },
+    {
+      "table": "booking_coordinator_grants",
+      "count": 1,
+      "sha256": "2f6f5091b20744f0036f3e7ef09ddcbcb5fb4e7e0ba9d6bed89764f81b41a3ea"
+    },
+    {
+      "table": "tasks",
+      "count": 5,
+      "sha256": "fe73ef570474fb5daafb73a1782262c2efa16e1cb041183b7c7f8290fdf57d8e"
+    },
+    {
+      "table": "domain_events",
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "effect_outbox",
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  ],
+  "finishedAt": "2026-10-25T08:16:47.531Z"
+}

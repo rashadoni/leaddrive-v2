@@ -448,7 +448,7 @@ export function SocialMonitoringPdfReportBuilder({ orgId }: Props) {
 
   return (
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="social-pdf-report-title">
-      <div className="flex flex-col gap-4 border-b border-zinc-200 bg-gradient-to-r from-primary/[0.09] via-primary/[0.025] to-transparent px-5 py-5 dark:border-zinc-800 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 border-b border-zinc-200 bg-card px-5 py-5 dark:border-zinc-800 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
             <FileText className="h-5 w-5" aria-hidden="true" />

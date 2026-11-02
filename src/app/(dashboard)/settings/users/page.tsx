@@ -1,7 +1,5 @@
 "use client"
 
-import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
-
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
@@ -27,13 +25,14 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { PageHeader } from "@/components/page-header"
-import { navItems, orgFromSession } from "@/lib/nav-items"
+import { ReviewerAccessPanel } from "@/components/settings/reviewer-access-panel"
+import { orgFromSession } from "@/lib/nav-items"
 import {
   roleIgnoresModuleMask,
   tenantHideableModules,
   USER_HIDEABLE_MODULE_IDS,
-  WORKFORCE_HIDEABLE_ID,
 } from "@/lib/user-module-access"
+import { userModuleOptions } from "@/lib/user-module-options"
 import {
   ASSIGNABLE_FIELD_CARD_ROLES,
   defaultFieldCardRole,
@@ -213,16 +212,12 @@ function UserFormDialog({
   // Not memoized: the session object changes identity on every refetch, so a
   // memo keyed on it would recompute anyway, and the list is a dozen entries.
   const sessionUser = session?.user
-  const moduleOptions = (
+  const moduleOptions = userModuleOptions(
     sessionUser?.role === "superadmin"
       ? USER_HIDEABLE_MODULE_IDS
-      : tenantHideableModules(orgFromSession(sessionUser))
-  ).filter(isCrmCapabilityAvailable).map((id) => {
-    const group = navItems.find((item) =>
-      id === WORKFORCE_HIDEABLE_ID ? item.capability === id : item.module === id,
-    )?.group
-    return { id, label: group ? tn(`groups.${group}` as never) : id }
-  })
+      : tenantHideableModules(orgFromSession(sessionUser)),
+    (key) => tn(key as never),
+  )
   const moduleMaskIgnored = roleIgnoresModuleMask(form.role)
   // Route & Field has a third setting besides the role and the tick: the
   // employee card linked to this login. Without one, a non-admin is refused by
@@ -496,16 +491,16 @@ function UserFormDialog({
               <p className="text-xs text-muted-foreground mt-1">
                 {moduleMaskIgnored ? tu("moduleAccessAdminNote") : tu("moduleAccessHint")}
               </p>
-              <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700" data-testid="user-access-outcome">
-                <div className="border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
+              <div className="mt-3 rounded-lg border border-border" data-testid="user-access-outcome">
+                <div className="border-b border-border px-3 py-2">
                   <p className="text-sm font-medium">{tu("accessResultTitle")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{tu("accessResultHint")}</p>
                 </div>
-                <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <ul className="divide-y divide-border">
                   {moduleOptions.map((option) => {
                     const access = moduleAccessOutcome(form.role, form.hiddenModules, option.id)
                     return (
-                      <li key={option.id} className="px-3 py-2">
+                      <li key={option.id} title={option.pagesText} className="px-3 py-2">
                         <div className="flex items-center justify-between gap-3">
                           {moduleMaskIgnored ? (
                             <span className="text-sm">{option.label}</span>
@@ -520,7 +515,7 @@ function UserFormDialog({
                                     ? f.hiddenModules.filter((id) => id !== option.id)
                                     : [...f.hiddenModules, option.id],
                                 }))}
-                                className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                                className="h-4 w-4 rounded border-input"
                               />
                               {option.label}
                             </label>
@@ -656,7 +651,7 @@ function UserFormDialog({
                 <input
                   type="checkbox" id="isActive" checked={form.isActive}
                   onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))}
-                  className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                  className="h-4 w-4 rounded border-input"
                 />
                 <Label htmlFor="isActive" className="mb-0 cursor-pointer">{tu("fieldIsActive")}</Label>
               </div>
@@ -863,7 +858,7 @@ function ResetPasswordDialog({
               </p>
             )}
 
-            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 text-sm">
               <input
                 type="checkbox"
                 checked={confirmed}
@@ -1129,7 +1124,7 @@ export default function UsersSettingsPage() {
     {
       key: "isAvailable", label: tu("colAvailable"),
       render: (item: User) => (
-        <button
+        <button data-crm-color-role="toggle"
           type="button"
           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
             item.isAvailable ? "bg-green-500" : "bg-muted-foreground/40"
@@ -1154,6 +1149,7 @@ export default function UsersSettingsPage() {
       key: "isActive", label: tu("colStatus"), sortable: true,
       render: (item: User) => (
         <Badge
+          data-crm-color-role="status"
           className={`cursor-pointer ${item.isActive
             ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
             : "bg-muted text-muted-foreground"
@@ -1254,7 +1250,7 @@ export default function UsersSettingsPage() {
               SMS {item.smsAuthEnabled ? "✓" : "—"}
             </button>
             {/* Require 2FA toggle */}
-            <button
+            <button data-crm-color-role="toggle"
               type="button"
               title={tu("require2faTooltip")}
               className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${
@@ -1294,7 +1290,7 @@ export default function UsersSettingsPage() {
           return <span className="text-muted-foreground">—</span>
         }
         return (
-          <button
+          <button data-crm-color-role="toggle"
             type="button"
             title={tu("voiceEnabledTooltip")}
             className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${
@@ -1365,7 +1361,7 @@ export default function UsersSettingsPage() {
           The two numbers are unrelated: that one is the provider's, this one is
           ours. */}
       {canEditVoiceBudget && (
-        <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+        <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-0 flex-1">
               <Label htmlFor="voice-monthly-minutes" className="text-sm font-medium">{tu("voiceBudgetLabel")}</Label>
@@ -1393,7 +1389,7 @@ export default function UsersSettingsPage() {
       )}
 
       {users.length === 0 ? (
-        <div data-tour-id="users-list" className="flex flex-col items-center justify-center rounded-lg border border-zinc-200 py-12 text-center dark:border-zinc-700">
+        <div data-tour-id="users-list" className="flex flex-col items-center justify-center rounded-lg border border-border py-12 text-center">
           <Users className="mb-3 h-9 w-9 text-muted-foreground/40" />
           <p className="font-medium">{tu("noUsers")}</p>
           <p className="mt-1 max-w-lg text-sm text-muted-foreground">{tu("noUsersHint")}</p>
@@ -1406,6 +1402,8 @@ export default function UsersSettingsPage() {
           <DataTable<User> data={users} columns={columns} searchKey="name" searchPlaceholder={tu("searchPlaceholder")} />
         </div>
       )}
+
+      <ReviewerAccessPanel />
 
       <UserFormDialog
         open={showForm}

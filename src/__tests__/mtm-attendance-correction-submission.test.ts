@@ -12,7 +12,7 @@ import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correct
 import { POST } from "@/app/api/v2/mtm/mobile/route-field/attendance/requests/route"
 import { getRlsContext } from "@/lib/rls-context"
 
-const self = { organizationId: "correction-submit-fixture-org", agentId: "correction-submit-fixture-agent", role: "AGENT" }
+const self = { organizationId: "correction-submit-fixture-org", agentId: "correction-submit-fixture-agent", role: "EMPLOYEE" }
 const at = (clock: string) => new Date(`2026-10-12T${clock}:00.000Z`)
 function input() { return { clientRequestId: randomUUID(), kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-12", endDate: "2026-10-12", startTime: "09:00", endTime: "18:00", reason: "Fixture employee forgot the finish" } }
 const request = (body: unknown) => new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/attendance/requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
@@ -30,14 +30,14 @@ function journal(day: ReturnType<typeof workday>) {
 }
 beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-13T15:00:00Z"))
-  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role: "AGENT", tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
+  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
   vi.mocked(prisma.$transaction).mockImplementation((async (callback: (tx: typeof prisma) => unknown) => callback(prisma)) as never)
   vi.mocked(prisma.$queryRaw).mockResolvedValue([])
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }] as never)
   vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
   vi.mocked(prisma.user.findMany).mockResolvedValue([])
-  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId } as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false } as never)
   vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])

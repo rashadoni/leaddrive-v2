@@ -1,0 +1,146 @@
+{
+  "status": "PASS_SCOPED_RENDERED_TIME_PAGE",
+  "reviewedAt": "2026-10-24T13:21:23.490476+00:00",
+  "codeCommit": "3a10d4da326749c4e54f6946b460d0045bf14931",
+  "pageSha256": "6ff42c11c3bc4ae14f598b869e7b68f29f41bf5100d489b2f6a7f72a993fe80e",
+  "cssSourceSha256": "7ab5a052ade58a3be83771ce412d57b801b57145b9d37fe7947d1c803eaeb019",
+  "manifestSha256": "80014877d3ad5668ebc4984fdd95ab10a44c45f731ec7360d381f6a579562664",
+  "harnessSha256": "5d7b242a22d539e4cbcc4c972cb9329eb87605e0294dd5bdac852d427b61d7e1",
+  "browserReceiptSha256": "4c26f4bd0cec244430f740aab511d006a3dccb1b0b674a6bb538d7f21646528a",
+  "scope": "Actual React page with real translations and CSS; mocked release/locale services, not Next production/browser E2E",
+  "cases": [
+    {
+      "locale": "az",
+      "state": "SYNTHETIC_ACCEPTED_NOT_PUBLISHED",
+      "viewportWidth": 320,
+      "horizontalOverflow": false,
+      "downloadCount": 1,
+      "screenshotSha256": "af21494648d6dd50b6c2dab596ce0019a100a46fab617e6afaf474430d3a35f4"
+    },
+    {
+      "locale": "az",
+      "state": "ACTUAL_NULL_MANIFEST",
+      "viewportWidth": 320,
+      "horizontalOverflow": false,
+      "downloadCount": 0,
+      "screenshotSha256": "bde8a18340f9a6624018f1f373c23a1f2570c81d13d9fae450be97148c69b1d3"
+    },
+    {
+      "locale": "en",
+      "state": "SYNTHETIC_ACCEPTED_NOT_PUBLISHED",
+      "viewportWidth": 320,
+      "horizontalOverflow": false,
+      "downloadCount": 1,
+      "screenshotSha256": "df012337b6deba04cf9dc243d9b8606c0b85cc14a566128918c55eb2bf3c6096"
+    },
+    {
+      "locale": "en",
+      "state": "ACTUAL_NULL_MANIFEST",
+      "viewportWidth": 320,
+      "horizontalOverflow": false,
+      "downloadCount": 0,
+      "screenshotSha256": "14df8c2c07f1c63c46acba241497333e5ba12f089742c82c4a21f7b7f7afcc02"
+    },
+    {
+      "locale": "ru",
+      "state": "SYNTHETIC_ACCEPTED_NOT_PUBLISHED",
+      "viewportWidth": 320,
+      "horizontalOverflow": false,
+      "downloadCount": 1,
+      "screenshotSha256": "b2681aea0ffa810605d4afc3f522cb332e3acab66b629b69ae02a858cffe3b40"
+    },
+    {
+      "locale": "ru",
+      "state": "ACTUAL_NULL_MANIFEST",
+      "viewportWidth": 320,
+      "horizontalOverflow": false,
+      "downloadCount": 0,
+      "screenshotSha256": "ef014370324bb994c9d51615849cd6ea47899a3dbf8bff03f4d4e772ad8a9d85"
+    },
+    {
+      "locale": "az",
+      "state": "SYNTHETIC_ACCEPTED_NOT_PUBLISHED",
+      "viewportWidth": 1280,
+      "horizontalOverflow": false,
+      "downloadCount": 1,
+      "screenshotSha256": "8c6dd03d52cdc911e79601e074a90538004bfc501256883d9214d9113ee4f2ba"
+    },
+    {
+      "locale": "az",
+      "state": "ACTUAL_NULL_MANIFEST",
+      "viewportWidth": 1280,
+      "horizontalOverflow": false,
+      "downloadCount": 0,
+      "screenshotSha256": "490c3ea38bf61a00432d09746a4ef9612ea1d979222f7ca7c18b4472d93f557b"
+    },
+    {
+      "locale": "en",
+      "state": "SYNTHETIC_ACCEPTED_NOT_PUBLISHED",
+      "viewportWidth": 1280,
+      "horizontalOverflow": false,
+      "downloadCount": 1,
+      "screenshotSha256": "3321de0d3e8ed84ba7f773c0f88fe10ca1b850fb1c70522e682835db9edbb088"
+    },
+    {
+      "locale": "en",
+      "state": "ACTUAL_NULL_MANIFEST",
+      "viewportWidth": 1280,
+      "horizontalOverflow": false,
+      "downloadCount": 0,
+      "screenshotSha256": "5e9389fae49bcff178f51e3c0547c1cd839249590d2f5679f4ac3685c9b26683"
+    },
+    {
+      "locale": "ru",
+      "state": "SYNTHETIC_ACCEPTED_NOT_PUBLISHED",
+      "viewportWidth": 1280,
+      "horizontalOverflow": false,
+      "downloadCount": 1,
+      "screenshotSha256": "cb6a2e4949a04cf248381a208141ca178cb29f03b8e4889afebc2825ee70375d"
+    },
+    {
+      "locale": "ru",
+      "state": "ACTUAL_NULL_MANIFEST",
+      "viewportWidth": 1280,
+      "horizontalOverflow": false,
+      "downloadCount": 0,
+      "screenshotSha256": "5feb071006eea7d351aa66e7013e1f19187468578aa05c1a4b8ced1ff3a4af76"
+    }
+  ],
+  "manualVisualReview": [
+    {
+      "file": "az-unavailable-320.png",
+      "sha256": "bde8a18340f9a6624018f1f373c23a1f2570c81d13d9fae450be97148c69b1d3",
+      "status": "PASS_READABLE_NO_CLIPPING"
+    },
+    {
+      "file": "ru-accepted-fixture-320.png",
+      "sha256": "b2681aea0ffa810605d4afc3f522cb332e3acab66b629b69ae02a858cffe3b40",
+      "status": "PASS_READABLE_NO_CLIPPING"
+    },
+    {
+      "file": "ru-unavailable-1280.png",
+      "sha256": "5feb071006eea7d351aa66e7013e1f19187468578aa05c1a4b8ced1ff3a4af76",
+      "status": "PASS_READABLE_NO_CLIPPING"
+    },
+    {
+      "file": "en-accepted-fixture-320.png",
+      "sha256": "df012337b6deba04cf9dc243d9b8606c0b85cc14a566128918c55eb2bf3c6096",
+      "status": "PASS_READABLE_NO_CLIPPING"
+    },
+    {
+      "file": "az-accepted-fixture-320.png",
+      "sha256": "af21494648d6dd50b6c2dab596ce0019a100a46fab617e6afaf474430d3a35f4",
+      "status": "PASS_READABLE_NO_CLIPPING"
+    },
+    {
+      "file": "en-unavailable-1280.png",
+      "sha256": "5e9389fae49bcff178f51e3c0547c1cd839249590d2f5679f4ac3685c9b26683",
+      "status": "PASS_READABLE_NO_CLIPPING"
+    }
+  ],
+  "release": null,
+  "published": false,
+  "productionBuild": "NOT_RUN_REQUIRES_HOSTED_CI",
+  "liveNextIntegration": "NOT_RUN",
+  "nativeTimeUpgrade": "NOT_RUN"
+}

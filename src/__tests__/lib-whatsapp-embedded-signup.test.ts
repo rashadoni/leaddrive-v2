@@ -49,7 +49,9 @@ type Call = { url: string; method: string; auth: string | null; body: unknown }
 let calls: Call[] = []
 let phoneStatus = "PENDING"
 let registerOk = true
+let registerConfirmed = true
 let subscribeOk = true
+let phoneStatusAfterRegister: string | null = null
 
 function stubGraph() {
   calls = []
@@ -63,7 +65,10 @@ function stubGraph() {
       return json({ data: [{ id: "444555666", display_phone_number: "+994 50 123 45 67", verified_name: "Acme Rent", status: phoneStatus }] })
     }
     if (url.endsWith("/111222333/subscribed_apps")) return subscribeOk ? json({ success: true }) : json({ error: { message: "(#200) no permission" } }, 400)
-    if (url.endsWith("/444555666/register")) return registerOk ? json({ success: true }) : json({ error: { message: "(#133005) Two step verification PIN mismatch" } }, 400)
+    if (url.endsWith("/444555666/register")) {
+      if (phoneStatusAfterRegister) phoneStatus = phoneStatusAfterRegister
+      return registerOk ? json({ success: registerConfirmed }) : json({ error: { message: "(#133005) Two step verification PIN mismatch" } }, 400)
+    }
     return json({ error: { message: "unexpected" } }, 404)
   }))
 }
@@ -77,7 +82,9 @@ beforeEach(() => {
   db.rows.length = 0
   phoneStatus = "PENDING"
   registerOk = true
+  registerConfirmed = true
   subscribeOk = true
+  phoneStatusAfterRegister = null
   stubGraph()
 })
 
@@ -148,11 +155,33 @@ describe("completeEmbeddedSignup", () => {
     expect(db.rows[0]).toMatchObject({ appSecret: "OWN_SECRET", verifyToken: "OWN_VERIFY", accessToken: "BUSINESS_TOKEN" })
   })
 
-  it("saves the channel but says so when Meta refuses the registration", async () => {
+  it("does not create an active channel when Meta refuses the registration", async () => {
     registerOk = false
     const result = await completeEmbeddedSignup(input)
-    expect(result).toMatchObject({ ok: true, registration: "failed", registrationError: expect.stringContaining("PIN") })
-    expect(db.rows[0].settings).toMatchObject({ registration: "failed" })
+    expect(result).toMatchObject({ ok: false, step: "register", error: expect.stringContaining("PIN") })
+    expect(db.rows).toEqual([])
+  })
+
+  it("leaves the existing connection unchanged when a reconnect registration fails", async () => {
+    registerOk = false
+    const existing = { id: "ours", organizationId: "org_a", channelType: "whatsapp", isActive: true, phoneNumberId: "444555666", accessToken: "OLD", appSecret: "OWN_SECRET", settings: { replyMode: "agent", registration: "registered" } }
+    db.rows.push(structuredClone(existing))
+    expect(await completeEmbeddedSignup(input)).toMatchObject({ ok: false, step: "register" })
+    expect(db.rows).toEqual([existing])
+  })
+
+  it("does not treat an HTTP 200 without registration success as a connected number", async () => {
+    registerConfirmed = false
+    expect(await completeEmbeddedSignup(input)).toMatchObject({ ok: false, step: "register" })
+    expect(db.rows).toEqual([])
+  })
+
+  it("accepts an already registered number only after Meta confirms CONNECTED on a fresh read", async () => {
+    registerOk = false
+    phoneStatusAfterRegister = "CONNECTED"
+    expect(await completeEmbeddedSignup(input)).toMatchObject({ ok: true, registration: "already_connected" })
+    expect(calls.filter((call) => call.url.includes("/phone_numbers"))).toHaveLength(2)
+    expect(db.rows[0]).toMatchObject({ isActive: true, accessToken: "BUSINESS_TOKEN" })
     expect(db.rows[0].settings).not.toHaveProperty("registrationPin")
   })
 

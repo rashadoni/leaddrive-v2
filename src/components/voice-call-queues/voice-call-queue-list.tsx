@@ -182,7 +182,7 @@ export function VoiceCallQueueList({
         <h2 id="voice-call-queue-modes-title" className="sr-only">
           {t("modesTitle")}
         </h2>
-        <div className="rounded-xl border border-zinc-200 bg-card p-5 dark:border-zinc-700">
+        <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <MousePointerClick aria-hidden="true" className="h-5 w-5" />
@@ -209,7 +209,7 @@ export function VoiceCallQueueList({
           </ol>
         </div>
 
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-muted/20 p-5 dark:border-zinc-700">
+        <div className="rounded-xl border border-dashed border-zinc-300 bg-muted/20 p-5 dark:border-border">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <Bot aria-hidden="true" className="h-5 w-5" />
@@ -224,7 +224,7 @@ export function VoiceCallQueueList({
               </p>
             </div>
           </div>
-          <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-zinc-200 bg-background/60 px-3 py-2.5 text-sm dark:border-zinc-700">
+          <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-border bg-background/60 px-3 py-2.5 text-sm">
             <Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="leading-5 text-muted-foreground">{t("automaticSafety")}</p>
           </div>
@@ -260,7 +260,7 @@ export function VoiceCallQueueList({
       ) : null}
 
       {!loading && !error && queues.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 px-5 py-12 text-center dark:border-zinc-700">
+        <div className="rounded-xl border border-dashed border-zinc-300 px-5 py-12 text-center dark:border-border">
           <ListOrdered aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />
           <h2 className="mt-3 text-base font-semibold">{t("listEmptyTitle")}</h2>
           <p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{t("listEmptyDescription")}</p>
@@ -271,7 +271,7 @@ export function VoiceCallQueueList({
       ) : null}
 
       {!loading && !error && queues.length > 0 ? (
-        <ol className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 bg-card dark:divide-zinc-700 dark:border-zinc-700">
+        <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {queues.map((queue) => {
             const queryOwner = queue.ownerUserId ?? ownerUserId
             const href = `/voip/call-queues/${encodeURIComponent(queue.id)}${queryOwner ? `?ownerUserId=${encodeURIComponent(queryOwner)}` : ""}`

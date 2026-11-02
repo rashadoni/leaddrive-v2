@@ -65,6 +65,9 @@ PROVIDER_SUMMARY_RE = re.compile(
 
 BROWSER_CONTEXT = "fanum-inbound-browser"
 TERMINAL_CONTEXT = "fanum-inbound-browser-terminal"
+# The AI talks on this leg so the caller's channel outlives it (handoff to a
+# salesperson's browser, owner 2026-10-27).
+AI_LEG_CONTEXT = "fanum-inbound-ai-leg"
 LOADED_SOURCE = "fanum-inbound-browser.conf"
 
 BROWSER_PRIORITIES = (
@@ -94,26 +97,49 @@ BROWSER_PRIORITIES = (
     ('Hangup()', 37),
     ('Answer()', 40),
     ('Set(__FANUM_INBOUND_TERMINAL_STATE=connected)', 41),
-    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID})', 42),
-    ('Set(CHANNEL(language)=az)', 43),
-    ('Set(DENOISE(rx)=on)', 44),
-    ('Set(AGC(rx)=5000)', 45),
-    ('AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9092)', 46),
-    ('Hangup()', 47),
-    ('Hangup()', 48),
-    ('Set(__FANUM_INBOUND_TERMINAL_STATE=failed)', 49),
-    ('Hangup()', 50),
-    ('Hangup()', 51),
+    ('Set(FANUM_AI_ANSWERED_AT=${EPOCH})', 42),
+    ('MixMonitor(/var/spool/asterisk/fanum-recordings/${FANUM_SAFE_CALL_ID}.wav)', 46),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID})', 47),
+    ('Set(CHANNEL(language)=az)', 48),
+    ('Set(DENOISE(rx)=on)', 49),
+    ('Set(AGC(rx)=5000)', 50),
+    ('Dial(Local/s@fanum-inbound-ai-leg/n,,g)', 54),
+    ('Set(FANUM_HANDOFF=0)', 55),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,handoff,${FANUM_SAFE_CALL_ID})', 56),
+    ('GotoIf($["${FANUM_HANDOFF}" = "1"]?manager-wait:ai-done)', 57),
+    ('Playtones(ring)', 58),
+    ('Set(FANUM_BROWSER_READY=0)', 59),
+    ('Set(FANUM_INBOUND_ROUTE=)', 60),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,manager,${FANUM_SAFE_CALL_ID})', 61),
+    ('StopPlaytones()', 62),
+    ('GotoIf($["${FANUM_BROWSER_READY}" = "1"]?manager-answer)', 63),
+    ('GotoIf($["${FANUM_INBOUND_ROUTE}" = "ai"]?ai-leg:ai-done)', 65),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,answered,${FANUM_SAFE_CALL_ID})', 66),
+    ('AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9093)', 67),
+    ('Hangup()', 68),
+    ('Hangup()', 69),
+    ('Hangup()', 70),
+    ('Set(__FANUM_INBOUND_TERMINAL_STATE=failed)', 71),
+    ('Hangup()', 72),
+    ('Hangup()', 73),
+)
+
+AI_LEG_PRIORITIES = (
+    ('NoOp(Fanum inbound AI leg)', 76),
+    ('Answer()', 77),
+    ('AudioSocket(${FANUM_SAFE_CALL_ID},127.0.0.1:9092)', 78),
+    ('Hangup()', 79),
 )
 
 TERMINAL_PRIORITIES = (
-    ('NoOp(Fanum inbound browser terminal event)', 54),
-    ('ExecIf($["${CDR(answer)}" != ""]?Set(FANUM_INBOUND_TERMINAL_STATE=connected))', 57),
-    ('Set(FANUM_INBOUND_DURATION=0)', 58),
-    ('ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected"]?Set(FANUM_INBOUND_DURATION=${CDR(billsec)}))', 59),
-    ('ExecIf($["${FANUM_INBOUND_DURATION}" = ""]?Set(FANUM_INBOUND_DURATION=0))', 60),
-    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,terminal,${FANUM_SAFE_CALL_ID},${FANUM_INBOUND_TERMINAL_STATE},${FANUM_INBOUND_DURATION})', 61),
-    ('Return()', 62),
+    ('NoOp(Fanum inbound browser terminal event)', 82),
+    ('ExecIf($["${CDR(answer)}" != ""]?Set(FANUM_INBOUND_TERMINAL_STATE=connected))', 85),
+    ('Set(FANUM_INBOUND_DURATION=0)', 86),
+    ('ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected"]?Set(FANUM_INBOUND_DURATION=${CDR(billsec)}))', 87),
+    ('ExecIf($["${FANUM_INBOUND_TERMINAL_STATE}" = "connected" & "${FANUM_AI_ANSWERED_AT}" != ""]?Set(FANUM_INBOUND_DURATION=$[${EPOCH} - ${FANUM_AI_ANSWERED_AT}]))', 89),
+    ('ExecIf($["${FANUM_INBOUND_DURATION}" = ""]?Set(FANUM_INBOUND_DURATION=0))', 90),
+    ('AGI(/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py,terminal,${FANUM_SAFE_CALL_ID},${FANUM_INBOUND_TERMINAL_STATE},${FANUM_INBOUND_DURATION})', 91),
+    ('Return()', 92),
 )
 
 BROWSER_PRIORITY_LABELS = {
@@ -122,9 +148,13 @@ BROWSER_PRIORITY_LABELS = {
     12: 'await-browser',
     17: 'answer',
     25: 'ai-answer',
-    33: 'missed',
-    34: 'registration-failed',
-    36: 'invalid-id',
+    33: 'ai-leg',
+    37: 'manager-wait',
+    44: 'manager-answer',
+    47: 'ai-done',
+    48: 'missed',
+    49: 'registration-failed',
+    51: 'invalid-id',
 }
 
 
@@ -347,8 +377,8 @@ def _loaded_context_sections(report: str) -> dict[str, list[str]]:
                 raise DialplanRefused("loaded browser context registrar is unexpected")
             headers.append((index, match.group(1)))
 
-    required = {BROWSER_CONTEXT, TERMINAL_CONTEXT}
-    if len(headers) != 2 or {name for _index, name in headers} != required:
+    required = {BROWSER_CONTEXT, AI_LEG_CONTEXT, TERMINAL_CONTEXT}
+    if len(headers) != len(required) or {name for _index, name in headers} != required:
         raise DialplanRefused("loaded browser contexts must occur exactly once")
 
     sections: dict[str, list[str]] = {}
@@ -412,13 +442,19 @@ def _verify_loaded_priority_sequence(
 
 
 def verify_loaded_browser_contexts(report: str) -> None:
-    """Prove both effective browser contexts, including priority order and source."""
+    """Prove the effective browser contexts, including priority order and source."""
     sections = _loaded_context_sections(report)
     _verify_loaded_priority_sequence(
         BROWSER_CONTEXT,
         sections[BROWSER_CONTEXT],
         BROWSER_PRIORITIES,
         BROWSER_PRIORITY_LABELS,
+    )
+    _verify_loaded_priority_sequence(
+        AI_LEG_CONTEXT,
+        sections[AI_LEG_CONTEXT],
+        AI_LEG_PRIORITIES,
+        {},
     )
     _verify_loaded_priority_sequence(
         TERMINAL_CONTEXT,

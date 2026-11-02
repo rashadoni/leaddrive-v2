@@ -47,7 +47,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/facebook", () => ({ upsertSocialConversation: vi.fn() }))
 vi.mock("@/lib/notifications", () => ({ createNotification: vi.fn() }))
 
-import { POST } from "@/app/api/v1/webhooks/facebook/route"
+import { GET, POST } from "@/app/api/v1/webhooks/facebook/route"
 import { prisma } from "@/lib/prisma"
 
 const BASE = "https://app.leaddrivecrm.org/api/v1/webhooks/facebook"
@@ -64,6 +64,7 @@ const payload = JSON.stringify({ object: "page", entry: [] })
 const sign = (body: string, secret: string) => "sha256=" + createHmac("sha256", secret).update(body).digest("hex")
 
 beforeEach(() => {
+  for (const key of ["APP_ID", "APP_SECRET", "LOGIN_CONFIG_ID", "VERIFY_TOKEN"]) delete process.env[`FACEBOOK_MESSENGER_${key}`]
   vi.clearAllMocks()
   tenant.orgId = null
   tenant.verifyToken = null
@@ -247,5 +248,38 @@ describe("FB webhook Model B — per-tenant GET verify-token handshake", () => {
     const url = `${BASE}?t=acme&hub.mode=subscribe&hub.verify_token=ENV_VERIFY&hub.challenge=C`
     expect((await GET(getReq(url))).status).toBe(403)
     delete process.env.FACEBOOK_VERIFY_TOKEN
+  })
+})
+
+
+describe("approved shared Messenger webhook", () => {
+  function enableProvider() {
+    process.env.FACEBOOK_MESSENGER_APP_ID = "APP_APPROVED"
+    process.env.FACEBOOK_MESSENGER_APP_SECRET = "PROVIDER_SECRET"
+    process.env.FACEBOOK_MESSENGER_LOGIN_CONFIG_ID = "CONFIG_APPROVED"
+    process.env.FACEBOOK_MESSENGER_VERIFY_TOKEN = "PROVIDER_VERIFY"
+    process.env.FACEBOOK_APP_SECRET = "LEGACY_SECRET"
+  }
+  it("verifies the new provider separately and leaves the legacy callback working", async () => {
+    enableProvider()
+    expect((await POST(reqWith(payload, sign(payload, "PROVIDER_SECRET"), `${BASE}?provider=messenger`))).status).toBe(200)
+    expect((await POST(reqWith(payload, sign(payload, "LEGACY_SECRET"), `${BASE}?provider=messenger`))).status).toBe(403)
+    expect((await POST(reqWith(payload, sign(payload, "LEGACY_SECRET")))).status).toBe(200)
+    expect((await POST(reqWith(payload, sign(payload, "PROVIDER_SECRET")))).status).toBe(403)
+  })
+  it("never turns a shared signature into a tenant-addressed grant", async () => {
+    enableProvider()
+    for (const query of ["provider=messenger&t=acme", "provider=messenger&t=", "provider=unknown"]) {
+      expect((await POST(reqWith(payload, sign(payload, "PROVIDER_SECRET"), `${BASE}?${query}`))).status).toBe(403)
+    }
+    delete process.env.FACEBOOK_MESSENGER_APP_SECRET
+    expect((await POST(reqWith(payload, sign(payload, "LEGACY_SECRET"), `${BASE}?provider=messenger`))).status).toBe(403)
+  })
+  it("confirms only the provider's verification challenge", async () => {
+    enableProvider()
+    const ok = await GET(reqWith("", undefined, `${BASE}?provider=messenger&hub.mode=subscribe&hub.verify_token=PROVIDER_VERIFY&hub.challenge=CHECK`))
+    expect(ok.status).toBe(200)
+    expect(await ok.text()).toBe("CHECK")
+    expect((await GET(reqWith("", undefined, `${BASE}?provider=messenger&hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=CHECK`))).status).toBe(403)
   })
 })

@@ -181,7 +181,9 @@ describe("the day's route on the history page", () => {
     expect(map).toContain("<ResizeAndFit coordinates={focusFrame ?? coordinates}")
     // Prod 2026-09-24: a day without a drive read «on the road 0 min, 0 m».
     const ledger = readFileSync("src/components/mtm/day-trip-ledger.tsx", "utf8")
-    expect(ledger).toContain('summary.movingSeconds > 0 ? t("summaryMoving"')
+    // Since the mockup «MTM: движение на карте» the day is added up in tiles, and only those the day had.
+    expect(ledger).toContain("legs[mode].seconds > 0")
+    expect(ledger).toContain("summary.staySeconds > 0 || summary.visitCount > 0")
     for (const locale of ["az", "ru", "en"]) {
       const trip = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmMap.history.trip
       // Honest about what the line is until the owner picks a road-snapping service.

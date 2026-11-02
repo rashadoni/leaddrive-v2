@@ -37,6 +37,7 @@ vi.mock("@/lib/api-auth", () => ({
 // module refuses to load where a window exists; a web request never has one.
 vi.mock("@/lib/mobile-auth", () => ({ getMobileAuth: () => null }))
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { organizationId: "org-1", role: "admin" } } }) }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 vi.mock("@/components/help/help-button", () => ({ HelpButton: () => null }))
 // The chart library measures a real layout; jsdom has none.
@@ -78,7 +79,7 @@ const visit = (id: string, agentId: string, createdAt: string, deletedAt: string
   const agent = AGENTS.find((a) => a.id === agentId)!
   return {
     id, organizationId: agent.organizationId, agentId, agent, status: "CHECKED_OUT",
-    createdAt: new Date(createdAt), deletedAt: deletedAt ? new Date(deletedAt) : null,
+    createdAt: new Date(createdAt), checkInAt: new Date(createdAt), deletedAt: deletedAt ? new Date(deletedAt) : null,
   }
 }
 const VISITS: Row[] = [
@@ -138,6 +139,7 @@ async function report(query: string) {
 
 let container: HTMLDivElement
 let root: Root
+let reportRequests: Promise<Response>[]
 
 async function settle() {
   for (let turn = 0; turn < 10; turn += 1) await act(async () => { await vi.advanceTimersByTimeAsync(0) })
@@ -149,6 +151,10 @@ async function countUpLands() {
 async function mount(element: ReactElement) {
   const intl: ComponentProps<typeof NextIntlClientProvider> = { locale: "az", timeZone: "Asia/Baku", messages: az, onError: () => {}, children: null }
   await act(async () => root.render(createElement(NextIntlClientProvider, intl, createElement(TooltipProvider, null, element))))
+  await settle()
+  // The first real route call may still be loading its server dependencies.
+  // Advancing fake animation timers alone does not wait for that I/O.
+  await act(async () => { await Promise.all(reportRequests) })
   await settle()
 }
 
@@ -176,9 +182,14 @@ beforeEach(() => {
     toFake: ["Date", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "requestAnimationFrame", "cancelAnimationFrame", "performance"],
   })
   try { window.localStorage.setItem("leaddrive:mtm:reports:type", "agent") } catch { /* first report is the agent one anyway */ }
+  reportRequests = []
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input), "http://localhost:3000")
-    if (url.pathname === "/api/v1/mtm/reports") return GET(new NextRequest(url))
+    if (url.pathname === "/api/v1/mtm/reports") {
+      const request = GET(new NextRequest(url))
+      reportRequests.push(request)
+      return request
+    }
     return new Response(JSON.stringify({ success: true, data: { counts: {} } }), { status: 200 })
   }))
   container = document.createElement("div")

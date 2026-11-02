@@ -500,7 +500,7 @@ pgDescribe("client categories on a real Postgres", () => {
       run(follows)
     }, 120_000)
 
-    it("deletes an employee who has not worked, with the team history the database wrote for them", async () => {
+    it("removes an employee from Field while retaining the team and client history", async () => {
       const agent = await hire("Created by mistake")
       expect(await teamHistory(agent.id)).toBe(1)
       // Clients attached to them are an arrangement, not work history.
@@ -515,29 +515,26 @@ pgDescribe("client categories on a real Postgres", () => {
       const { status, body } = await remove(agent.id)
 
       expect([status, body]).toEqual([200, { success: true }])
-      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id } }))).toBe(0)
-      expect(await teamHistory(agent.id)).toBe(0)
-      expect(await bypass(() => prisma.mtmContactAgentAssignment.count({ where: { agentId: agent.id } }))).toBe(0)
-      // The client is nobody's now, not gone.
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id, fieldDeletedAt: null } }))).toBe(0)
+      expect(await teamHistory(agent.id)).toBe(1)
+      expect(await bypass(() => prisma.mtmContactAgentAssignment.count({ where: { agentId: agent.id } }))).toBe(1)
+      // Client and assignment records are retained for history.
       expect(await bypass(() => prisma.mtmContact.count({ where: { id: client.id } }))).toBe(1)
-      // Who deleted whom stays in the journal. The row cannot point at the
-      // employee — he is gone, and `agentId` is a foreign key — so it names him
-      // by id and keeps his name: written with his id in `agentId`, Postgres
-      // refused the insert and the handler answered 200 with no row at all.
+      // Retained actor and audit stay linked, in the same transaction.
       const journal = await bypass(() => prisma.mtmAuditLog.findMany({
         where: { organizationId: ORG, action: "AGENT_DELETE", entityId: agent.id },
         select: { agentId: true, actorUserId: true, entity: true, metadataKind: true, oldData: true },
       }))
       expect(journal).toEqual([{
-        agentId: null,
+        agentId: agent.id,
         actorUserId: "admin-user",
         entity: "agent",
         metadataKind: "agent_delete",
-        oldData: { id: agent.id, name: "Created by mistake", email: null, role: "AGENT" },
+        oldData: { id: agent.id, name: "Created by mistake", role: "AGENT" },
       }])
     })
 
-    it("keeps an employee who has a visit, and says so instead of naming a constraint", async () => {
+    it("removes Field access for an employee with a visit without deleting the visit", async () => {
       const agent = await hire("Has been in the field")
       const visit = await bypass(async () => {
         const customer = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Mərkəzi Klinika" }, select: { id: true } })
@@ -546,15 +543,38 @@ pgDescribe("client categories on a real Postgres", () => {
 
       const { status, body } = await remove(agent.id)
 
-      expect(status).toBe(409)
-      expect(body.code).toBe("MTM_AGENT_HAS_HISTORY")
-      expect(body.data.kinds).toContain("MtmVisit.agentId")
+      expect(status).toBe(200)
+      expect(body).toEqual({ success: true })
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id, fieldDeletedAt: null } }))).toBe(0)
       expect(JSON.stringify(body)).not.toMatch(/prisma|constraint|fkey/i)
       // Before this check the delete cascaded through the employee's visits.
       expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id } }))).toBe(1)
       expect(await bypass(() => prisma.mtmVisit.count({ where: { id: visit.id } }))).toBe(1)
-      // A refused deletion is not journalled as one.
-      expect(await bypass(() => prisma.mtmAuditLog.count({ where: { action: "AGENT_DELETE", entityId: agent.id } }))).toBe(0)
+      // Removal is recorded while all historical facts remain.
+      expect(await bypass(() => prisma.mtmAuditLog.count({ where: { action: "AGENT_DELETE", entityId: agent.id } }))).toBe(1)
+    })
+
+    it("stops push delivery to a removed Field actor while keeping an independent Time phone reachable", async () => {
+      const { notifyAgents } = await import("@/lib/mtm/push-notify")
+      const { agentsReachableByPush } = await import("@/lib/mtm/agent-task-glance")
+      const field = await hire("Removed push recipient")
+      const person = await bypass(() => prisma.user.create({ data: { organizationId: ORG,
+        email: `time-push-${field.id}@fixture.invalid`, name: "Time push recipient", role: "viewer", passwordHash: "!fixture-no-login" }, select: { id: true } }))
+      const time = await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, userId: person.id,
+        name: "Time push recipient", role: "EMPLOYEE", attendanceParticipant: true }, select: { id: true } }))
+      await bypass(() => prisma.mtmDeviceToken.createMany({ data: [
+        { organizationId: ORG, agentId: field.id, token: `fixture-field-${field.id}` },
+        { organizationId: ORG, agentId: time.id, token: `fixture-time-${time.id}` },
+      ] }))
+      expect((await remove(field.id)).status).toBe(200)
+      const send = vi.fn(async ({ messages }: { messages: Array<{ token: string }> }) =>
+        messages.map(({ token }) => ({ token, ok: true as const })))
+      const sent = await bypass(() => notifyAgents({ client: prisma, organizationId: ORG,
+        agentIds: [field.id, time.id], title: "Synthetic", body: "No provider access", configured: true, send: send as never }))
+      expect(sent).toEqual({ sent: 1, failed: 0, retired: 0 })
+      expect(send.mock.calls[0][0].messages.map(m => m.token)).toEqual([`fixture-time-${time.id}`])
+      expect(await bypass(() => agentsReachableByPush(prisma, ORG, [field.id, time.id], true))).toEqual(new Set([time.id]))
+      expect(await bypass(() => prisma.mtmDeviceToken.count({ where: { agentId: field.id } }))).toBe(1)
     })
 
     it("still refuses to rewrite or erase the team history of an employee who exists", async () => {
@@ -1561,7 +1581,7 @@ pgDescribe("client categories on a real Postgres", () => {
       ])
     })
 
-    it("leaves with its employee: an employee who only ever had links is deleted through the real route, and his links are gone", async () => {
+    it("retains link history when the agent is removed from Field", async () => {
       const { getSession } = await import("@/lib/api-auth")
       vi.mocked(getSession).mockResolvedValue({ orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" } as never)
       const { POST } = await import("@/app/api/v1/mtm/locations/share-links/route")
@@ -1578,8 +1598,8 @@ pgDescribe("client categories on a real Postgres", () => {
       const body = await deleted.json()
       // Not 409 MTM_AGENT_HAS_HISTORY: a link is an arrangement about him, not his work.
       expect(deleted.status, JSON.stringify(body).slice(0, 300)).toBe(200)
-      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: leaving } }))).toBe(0)
-      expect(await linksOf(leaving)).toBe(0)
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: leaving, fieldDeletedAt: null } }))).toBe(0)
+      expect(await linksOf(leaving)).toBe(2)
       // His, and nobody else's.
       expect(await linksOf(shown)).toBe(others)
       expect(await linksOf(elsewhere)).toBe(1)
@@ -2707,8 +2727,9 @@ pgDescribe("client categories on a real Postgres", () => {
   })
 
   // Owner, 2026-10-16: on the agent's card, specialty → city → district, then the
-  // doctors grouped by institution. Asked of the real handler: which doctors it
-  // reads (active, with a current workplace), and which are already the agent's.
+  // doctors — since 2026-10-20 one row each, with his class and his institution.
+  // Asked of the real handler: which doctors it reads (active, with a current
+  // workplace), their class as stored, and which are already the agent's.
   describe("choosing an agent's doctors on his card", () => {
     const picker = async (query: string) => {
       const { GET } = await import("@/app/api/v1/mtm/contacts/agent-picker/route")
@@ -2719,18 +2740,18 @@ pgDescribe("client categories on a real Postgres", () => {
     beforeAll(async () => {
       await bypass(async () => {
         agent = (await prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Fictional Picker Agent", role: "AGENT" }, select: { id: true } })).id
-        const clinic = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Clinic", city: "Bakı", district: "Nəsimi" }, select: { id: true } })
+        const clinic = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Clinic", city: "Bakı", district: "Nəsimi", address: "Fictional küç. 1" }, select: { id: true } })
         const suburb = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Fictional Picker Suburb", locality: "Xırdalan" }, select: { id: true } })
-        const make = async (firstName: string, specialtyName: string, customerId: string | null, status: "ACTIVE" | "INACTIVE" = "ACTIVE", ended = false) => {
+        const make = async (firstName: string, specialtyName: string, customerId: string | null, status: "ACTIVE" | "INACTIVE" = "ACTIVE", ended = false, category?: "VIP") => {
           const contact = await prisma.mtmContact.create({
-            data: { organizationId: ORG, firstName, lastName: "Pickerova", displayName: `Pickerova ${firstName}`, type: "DOCTOR", specialtyName, status },
+            data: { organizationId: ORG, firstName, lastName: "Pickerova", displayName: `Pickerova ${firstName}`, type: "DOCTOR", specialtyName, status, ...(category ? { category } : {}) },
             select: { id: true },
           })
           if (customerId) await prisma.mtmContactWorkplace.create({ data: { organizationId: ORG, contactId: contact.id, customerId, isPrimary: true, ...(ended ? { endedOn: new Date("2026-01-01T00:00:00.000Z") } : {}) } })
           return contact.id
         }
         const ayan = await make("Ayan", "Pickerologist", clinic.id)
-        await make("Bahar", "Pickerologist", clinic.id)
+        await make("Bahar", "Pickerologist", clinic.id, "ACTIVE", false, "VIP")
         await make("Cəmilə", "Pickerologist", suburb.id)
         await make("Dünya", "Pickerologist", clinic.id, "INACTIVE")
         await make("Elmira", "Pickerologist", clinic.id, "ACTIVE", true)
@@ -2739,7 +2760,7 @@ pgDescribe("client categories on a real Postgres", () => {
       })
     })
 
-    it("offers the cities of the chosen specialty, then their districts, and lists the active doctors by institution", async () => {
+    it("offers the cities of the chosen specialty, then their districts, and lists each active doctor with his class and institution", async () => {
       const bySpecialty = await picker(`agentId=${agent}&specialty=Pickerologist`)
       expect(bySpecialty.status, JSON.stringify(bySpecialty.body).slice(0, 300)).toBe(200)
       // Dünya is inactive. Elmira left her workplace: she is a doctor without one.
@@ -2750,11 +2771,37 @@ pgDescribe("client categories on a real Postgres", () => {
       ]))
       const baku = await picker(`agentId=${agent}&specialty=pickerologist&city=Bakı`)
       expect(baku.body.data.districts).toEqual([{ value: "nəsimi", label: "Nəsimi", count: 2 }])
-      const groups = baku.body.data.groups as Array<{ institution: { name: string }; contacts: Array<{ name: string; assignedHere: boolean }> }>
-      expect(groups.map(group => [group.institution.name, group.contacts.map(contact => [contact.name, contact.assignedHere])])).toEqual([
-        ["Fictional Picker Clinic", [["Pickerova Ayan", true], ["Pickerova Bahar", false]]],
+      const contacts = baku.body.data.contacts as Array<{ name: string; category: string; assignedHere: boolean; place: { institution: { name: string } | null; address: string | null; district: string | null } }>
+      // Ayan was never graded: the column's own default, B.
+      expect(contacts.map(contact => [contact.name, contact.category, contact.place.institution?.name, contact.place.district, contact.place.address, contact.assignedHere])).toEqual([
+        ["Pickerova Ayan", "B", "Fictional Picker Clinic", "Nəsimi", "Fictional küç. 1", true],
+        ["Pickerova Bahar", "VIP", "Fictional Picker Clinic", "Nəsimi", "Fictional küç. 1", false],
       ])
+      expect(baku.body.data.institutions).toBe(1)
       expect(baku.body.data.assignedHere).toBe(1)
+    })
+
+    // Owner, 2026-10-21: «я не заметил категории клиентов… нужно добавить в
+    // фильтр». The class step reads the company's own classes and the class as
+    // stored, and narrows the list by it.
+    it("offers every class the company grades with, «0» included, and narrows the doctors by the class chosen", async () => {
+      await bypass(() => prisma.mtmSetting.create({ data: { organizationId: ORG, key: "contactClasses", value: ["A", "B", "C", "VIP"] } }))
+      try {
+        const all = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı`)
+        expect(all.status, JSON.stringify(all.body).slice(0, 300)).toBe(200)
+        expect(all.body.data.classes).toEqual([
+          { value: "A", label: "A", count: 0 },
+          { value: "B", label: "B", count: 1 },
+          { value: "C", label: "C", count: 0 },
+          { value: "VIP", label: "VIP", count: 1 },
+        ])
+        const vip = await picker(`agentId=${agent}&specialty=Pickerologist&city=Bakı&class=VIP`)
+        expect((vip.body.data.contacts as Array<{ name: string }>).map(contact => contact.name)).toEqual(["Pickerova Bahar"])
+        expect(vip.body.data.matching).toBe(1)
+        expect(vip.body.data.assignedHere).toBe(0)
+      } finally {
+        await bypass(() => prisma.mtmSetting.deleteMany({ where: { organizationId: ORG, key: "contactClasses" } }))
+      }
     })
 
     it("refuses an agent of another company", async () => {

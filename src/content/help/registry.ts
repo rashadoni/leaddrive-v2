@@ -2215,11 +2215,11 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
     },
   },
   marketplace: {
-    title: { en: "App Marketplace", ru: "Магазин приложений", az: "Tətbiq Mağazası" },
+    title: { en: "LeadDrive capabilities", ru: "Возможности LeadDrive", az: "LeadDrive imkanları" },
     subtitle: {
-      en: "Install, disable, or uninstall apps from the catalog.",
-      ru: "Устанавливайте, отключайте или удаляйте приложения из каталога.",
-      az: "Kataloqdan tətbiqlər quraşdırın, söndürün və ya silin.",
+      en: "Explore available modules and open their existing settings.",
+      ru: "Посмотрите доступные модули и откройте существующие настройки.",
+      az: "Əlçatan modullara baxın və mövcud parametrləri açın.",
     },
     content: {
       en: lazy(() => import("./marketplace/en")),

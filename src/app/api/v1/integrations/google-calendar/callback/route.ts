@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 // One API, not `import { google } from "googleapis"`: the root entry declares
 // every Google API there is — 165 MB of typings for the type check to hold in
@@ -5,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server"
 // the same `auth` and `calendar`, so the calls below are unchanged.
 import * as google from "googleapis/build/src/apis/calendar"
 import crypto from "node:crypto"
+import { replaceCalendarConnection } from "@/lib/google-calendar-connection"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
@@ -58,41 +60,17 @@ export async function GET(req: NextRequest) {
   try {
     const { tokens } = await oauth2Client.getToken(code)
 
-    // Upsert: update existing or create new Account record for google-calendar
-    const existing = await runWithRlsBypass(() => prisma.account.findFirst({
-      where: { userId, provider: "google-calendar" },
-    }))
-
-    if (existing) {
-      await runWithRlsBypass(() => prisma.account.update({
-        where: { id: existing.id },
-        data: {
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token || existing.refresh_token,
-          expires_at: tokens.expiry_date ? Math.floor(tokens.expiry_date / 1000) : null,
-          token_type: tokens.token_type || "Bearer",
-          scope: tokens.scope || "https://www.googleapis.com/auth/calendar.events",
-        },
-      }))
-    } else {
-      await runWithRlsBypass(() => prisma.account.create({
-        data: {
-          userId,
-          type: "oauth",
-          provider: "google-calendar",
-          providerAccountId: `gcal-${userId}`,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_at: tokens.expiry_date ? Math.floor(tokens.expiry_date / 1000) : null,
-          token_type: tokens.token_type || "Bearer",
-          scope: tokens.scope || "https://www.googleapis.com/auth/calendar.events",
-        },
-      }))
-    }
+    oauth2Client.setCredentials(tokens)
+    const identity = await google.calendar({ version: "v3", auth: oauth2Client }).calendars.get({ calendarId: "primary", fields: "id" }, { timeout: 8000 })
+    if (!identity.data.id) throw new Error("CALENDAR_IDENTITY_MISSING")
+    const calendarId = identity.data.id
+    await runWithRlsBypass(() => prisma.$transaction((tx: Prisma.TransactionClient) =>
+      replaceCalendarConnection(tx, verified.orgId, userId, tokens, calendarId),
+    ))
 
     return NextResponse.redirect(`${appUrl}/settings/integrations?gcal=success`)
-  } catch (err) {
-    console.error("[Google Calendar] OAuth callback error:", err)
+  } catch {
+    console.error("[Google Calendar] OAuth callback failed", { code: "CALENDAR_CONNECT_FAILED" })
     return NextResponse.redirect(`${appUrl}/settings/integrations?gcal=error&reason=token_exchange`)
   }
 }

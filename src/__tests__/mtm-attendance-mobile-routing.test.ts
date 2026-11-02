@@ -22,7 +22,8 @@ const runProxy = proxy as unknown as (req: NextRequest) => Promise<Response>
 const prefix = "/api/v2/mtm/mobile/route-field/attendance"
 const oldPrefix = "/api/v1/mtm/mobile/attendance"
 const fixtureId = "00000000-0000-4000-8000-000000000001"
-const self = { organizationId: "routing-fixture-org", agentId: "routing-fixture-agent", role: "AGENT" }
+// An office employee HR keeps; a field agent has no own requests (owner, 2026-10-20).
+const self = { organizationId: "routing-fixture-org", agentId: "routing-fixture-agent", role: "EMPLOYEE" }
 const endpoints = [
   ["GET", "/requests"], ["POST", "/requests"], ["DELETE", `/requests/${fixtureId}`],
   ["GET", "/request-limits?month=2026-11"], ["POST", "/attachments"], ["GET", `/attachments/${fixtureId}`],
@@ -59,7 +60,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
   vi.mocked(prisma.user.findMany).mockResolvedValue([])
-  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId } as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: self.agentId, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false } as never)
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAttendanceAttachment.count).mockResolvedValue(0)
@@ -104,6 +105,16 @@ describe("attendance uses reachable Route & Field mobile routes", () => {
     expect(prisma.mtmHrmRequest.create).toHaveBeenCalledTimes(1)
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
     expect(prisma.mtmAgentWorkday.update).not.toHaveBeenCalled()
+  })
+
+  it("refuses a field agent after the proxy forwards, with Attendance on, and writes nothing", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: self.organizationId, agentId: self.agentId, role: "AGENT",
+      tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
+    const response = await submitThroughProxy(submission())
+    expect(response.status).toBe(403)
+    expect((await response.json()).code).toBe("MTM_ATTENDANCE_SELF_REQUIRED")
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it.each(["attendance", "capability"])("preserves %s disabled denial after the proxy forwards", async (disabled) => {

@@ -71,7 +71,9 @@ export const GET = withRlsAuth("users", "read", async (_req, authResult) => {
       // как несработавшее удаление. По `id` они по-прежнему разрешаются
       // (GET /users/[id]), потому что журналы соответствия на них ссылаются
       // и должны показывать субъекта, а не пустоту.
-      where: { organizationId: orgId, anonymizedAt: null },
+      // Outside reviewers are not team members: they are listed and managed
+      // in their own panel (/api/v1/reviewer-access), never offered for work.
+      where: { organizationId: orgId, anonymizedAt: null, role: { not: "reviewer" } },
       select: administrative ? USER_ADMIN_SELECT : USER_ROSTER_SELECT,
       orderBy: { name: "asc" },
     })

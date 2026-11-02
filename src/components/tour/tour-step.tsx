@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useCrmAppearance } from "@/components/ui/crm-appearance"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 
@@ -32,6 +33,7 @@ export function TourStep({
   isLast,
   labels,
 }: TourStepProps) {
+  const crmAppearance = useCrmAppearance()
   const [pos, setPos] = useState<{ top: number; left: number; width: number; height: number } | null>(null)
   const [popoverSide, setPopoverSide] = useState<"bottom" | "top">("bottom")
   const [popoverSize, setPopoverSize] = useState<{ width: number; height: number }>({ width: 360, height: 180 })
@@ -181,6 +183,7 @@ export function TourStep({
       {/* Popover */}
       <motion.div
         key="tour-popover"
+        data-crm-workspace={crmAppearance ? "" : undefined}
         ref={popoverRef}
         initial={{ opacity: 0, y: resolvedSide === "bottom" ? -8 : 8 }}
         animate={{ opacity: 1, y: 0 }}

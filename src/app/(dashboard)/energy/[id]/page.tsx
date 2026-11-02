@@ -183,7 +183,7 @@ export default function UtilityCustomerDetailPage({ params }: { params: Promise<
         </Button>
 
         {/* Header Card */}
-        <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-6">
+        <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-yellow-500/10 rounded-full">
               <Flame className="h-7 w-7 text-yellow-500" />
@@ -210,9 +210,9 @@ export default function UtilityCustomerDetailPage({ params }: { params: Promise<
         </div>
 
         {/* Tabs */}
-        <div className="border-b flex gap-1">
+        <div data-crm-tabs="" className="border-b flex gap-1">
           {tabs.map(tab => (
-            <button
+            <button data-crm-tab="" data-state={activeTab === tab.key ? "active" : "inactive"}
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
@@ -240,7 +240,7 @@ export default function UtilityCustomerDetailPage({ params }: { params: Promise<
             {/* Overview Tab */}
             {activeTab === "overview" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 space-y-4">
+                <div className="bg-card border border-border rounded-xl p-5 space-y-4">
                   <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                     <Hash className="h-4 w-4" />
                     {t("detailAccount")}
@@ -258,7 +258,7 @@ export default function UtilityCustomerDetailPage({ params }: { params: Promise<
                   </dl>
                 </div>
 
-                <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 space-y-4">
+                <div className="bg-card border border-border rounded-xl p-5 space-y-4">
                   <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
                     {t("detailServiceAddress")}
@@ -291,7 +291,7 @@ export default function UtilityCustomerDetailPage({ params }: { params: Promise<
                   <p className="text-center text-muted-foreground py-12">{t("noMeters")}</p>
                 ) : (
                   meters.map(m => (
-                    <div key={m.id} className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                    <div key={m.id} className="bg-card border border-border rounded-xl p-4">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                           <Gauge className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -323,7 +323,7 @@ export default function UtilityCustomerDetailPage({ params }: { params: Promise<
                   <p className="text-center text-muted-foreground py-12">{t("noServiceCalls")}</p>
                 ) : (
                   serviceCalls.map(call => (
-                    <div key={call.id} className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                    <div key={call.id} className="bg-card border border-border rounded-xl p-4">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                           <PhoneCall className="h-4 w-4 text-muted-foreground flex-shrink-0" />

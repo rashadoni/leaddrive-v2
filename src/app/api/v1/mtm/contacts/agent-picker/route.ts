@@ -8,6 +8,7 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { activeFieldAssignmentWindow, canManageFieldMasterData, contactDisplayName, contactScopeForActor } from "@/lib/mtm/field-scope"
 import { buildAgentClientPicker, type PickerContactRow, type PickerInstitution } from "@/lib/mtm/agent-client-picker"
+import { coerceMtmContactClasses } from "@/lib/mtm/contact-classes"
 
 /** What the query below selects. */
 type PickerSelectRow = {
@@ -17,6 +18,7 @@ type PickerSelectRow = {
   middleName: string | null
   displayName: string | null
   specialtyName: string | null
+  category: string
   workplaces: Array<{ customer: PickerInstitution }>
   agentAssignments: Array<{ agentId: string; role: string; agent: { name: string } }>
 }
@@ -30,11 +32,12 @@ function values(params: URLSearchParams, name: string): string[] {
 }
 
 /**
- * GET /api/v1/mtm/contacts/agent-picker?agentId=&specialty=…&city=…&district=…
+ * GET /api/v1/mtm/contacts/agent-picker?agentId=&specialty=…&city=…&district=…&class=…
  *
  * The «Клиенты агента» tab of an agent's card (src/lib/mtm/agent-client-picker.ts):
  * the specialties, the cities of those, the districts of those — each with
- * counts — and the active doctors that match, grouped by institution. Only
+ * counts — and the active doctors that match, each with his class and his
+ * institution, those of one institution next to each other. Only
  * doctors the caller may see, and only for someone who may assign them; with
  * `agentId`, the doctors already that agent's are marked.
  */
@@ -70,6 +73,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       middleName: true,
       displayName: true,
       specialtyName: true,
+      category: true,
       workplaces: {
         where: { deletedAt: null, endedOn: null },
         orderBy: [{ isPrimary: "desc" }, { startedOn: "desc" }],
@@ -92,6 +96,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     id: contact.id,
     name: contactDisplayName(contact),
     specialtyName: contact.specialtyName,
+    category: contact.category,
     institution: contact.workplaces[0]?.customer ?? null,
     agents: contact.agentAssignments.map(assignment => ({ agentId: assignment.agentId, role: assignment.role, name: assignment.agent.name })),
   }))
@@ -99,6 +104,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     specialties: values(params, "specialty"),
     cities: values(params, "city"),
     districts: values(params, "district"),
-  }, agentId)
+    classes: values(params, "class"),
+  }, agentId, coerceMtmContactClasses(settings.contactClasses))
   return NextResponse.json({ success: true, data: { ...picker, asOf: asOf.toISOString().slice(0, 10) } }, { headers: { "Cache-Control": "no-store" } })
 })

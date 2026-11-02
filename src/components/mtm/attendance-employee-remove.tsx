@@ -53,11 +53,11 @@ export function MtmAttendanceEmployeeRemove({ detail, back, onDismissed }: { det
       : dismissed ? <p className="max-w-3xl text-sm text-muted-foreground">{p("removeDismissedAlready")}</p>
       : step === "idle" ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="max-w-3xl text-sm text-muted-foreground">{p("removeHint")}</p>
         <Button type="button" variant="outline" className="min-h-11 rounded-full text-rose-700 dark:text-rose-300" onClick={() => { setStep("confirm"); setError(null) }}>{p("removeButton")}</Button></div>
-      : step === "confirm" ? <div className="space-y-3 rounded-xl border border-l-4 border-zinc-200 border-l-rose-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-rose-500 p-4" role="alertdialog" aria-label={p("removeConfirm", { name: employee.name })}>
+      : step === "confirm" ? <div className="space-y-3 rounded-xl border border-l-4 border-border border-l-rose-500 bg-card text-foreground dark:border-l-rose-500 p-4" role="alertdialog" aria-label={p("removeConfirm", { name: employee.name })}>
         <p className="text-sm font-medium">{p("removeConfirm", { name: employee.name })}</p>
         <div className="flex flex-wrap gap-2"><Button type="button" variant="destructive" className="min-h-11 rounded-full" disabled={busy} onClick={() => void remove()}>{p(busy ? "removeBusy" : "removeConfirmButton")}</Button>
           <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={busy} onClick={() => setStep("idle")}>{p("cancel")}</Button></div></div>
-      : <form className="space-y-3 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4" onSubmit={dismiss} aria-label={p("dismissTitle")} data-testid="attendance-employee-dismiss">
+      : <form className="space-y-3 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4" onSubmit={dismiss} aria-label={p("dismissTitle")} data-testid="attendance-employee-dismiss">
         <p className="text-sm">{p("dismissHint", { name: employee.name })}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm font-medium"><span className="block">{p("dismissLastDay")}</span><Input type="date" className="min-h-11" max={detail.today} value={lastDay} onChange={event => setLastDay(event.target.value)} /></label>

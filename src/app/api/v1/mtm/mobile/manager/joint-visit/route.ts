@@ -7,6 +7,7 @@ import { requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { accompaniableAgent, closeManagerJointSessions } from "@/lib/mtm/joint-visit"
 import { jointState, openSession, organizationTimezone } from "@/lib/mtm/joint-visit-manager"
+import { notifyAgentOfJointVisit } from "@/lib/mtm/joint-visit-notify"
 
 /**
  * «Иду на визит с агентом» — the manager's side of a joint visit
@@ -81,6 +82,15 @@ export const POST = withMobileRls(async (req, auth) => {
       }
       throw error
     }
+
+    // The agent hears of it at once (owner, 2026-10-20): a pop-up push and a
+    // line in his bell. Best effort — a lost push never undoes the session.
+    await notifyAgentOfJointVisit({
+      organizationId: auth.orgId,
+      managerAgentId: auth.agentId,
+      agentId: agent.id,
+      sessionId,
+    }).catch((error) => console.warn("[MTM/mobile/manager/joint-visit POST] agent notice failed", error))
 
     await writeMtmAudit({
       organizationId: auth.orgId,

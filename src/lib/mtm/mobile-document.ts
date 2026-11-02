@@ -1,6 +1,7 @@
 import crypto from "node:crypto"
 import path from "node:path"
 import { resolveRuntimePaths } from "@/lib/runtime-paths"
+import { openTenantFileBytes } from "@/lib/crypto/tenant-file-encryption"
 import { MAX_MOBILE_DOCUMENT_BYTES } from "@/lib/mtm/mobile-document-limits"
 
 export { MAX_MOBILE_DOCUMENT_BYTES }
@@ -117,6 +118,25 @@ export function mobileDocumentStorageRoot(): string {
 export function resolveMobileDocumentStoragePath(storageKey: string): string {
   if (!/^[a-f0-9]{48}$/.test(storageKey)) throw new Error("Invalid document storage key")
   return path.join(mobileDocumentStorageRoot(), storageKey)
+}
+
+/**
+ * Plain bytes of a document file read from disk, or null when the file is not
+ * intact: it changed between `stat` and the read, or it is an encrypted
+ * envelope that does not open under this tenant. Legacy plain files pass
+ * through. Callers still compare the result with the recorded plain size.
+ */
+export async function storedMobileDocumentBytes(
+  organizationId: string,
+  file: { isFile: boolean; size: number },
+  stored: Buffer,
+): Promise<Buffer | null> {
+  if (!file.isFile || file.size !== stored.byteLength) return null
+  try {
+    return await openTenantFileBytes(organizationId, stored)
+  } catch {
+    return null
+  }
 }
 
 export function mobileDocumentSha256(bytes: Uint8Array): string {

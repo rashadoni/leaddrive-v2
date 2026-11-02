@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
+import { createHmac } from "node:crypto"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -9,7 +10,10 @@ vi.mock("@/lib/prisma", () => ({
     event: { findMany: vi.fn() },
     activity: { findMany: vi.fn() },
     user: { findFirst: vi.fn(), update: vi.fn() },
-    account: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
+    account: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
+    $executeRaw: vi.fn(),
+    $transaction: vi.fn(async (run: any) => run(prisma)),
+    bookingIntegrationBinding: { updateMany: vi.fn() },
     channelConfig: { findMany: vi.fn(), create: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn(), deleteMany: vi.fn() },
   },
   logAudit: vi.fn(),
@@ -38,6 +42,7 @@ vi.mock("@/lib/slack", () => ({
 vi.mock("googleapis/build/src/apis/calendar", () => {
   const MockOAuth2 = vi.fn().mockImplementation(function (this: any) {
     this.generateAuthUrl = vi.fn().mockReturnValue("https://accounts.google.com/o/oauth2/auth?fake=1")
+    this.setCredentials = vi.fn()
     this.getToken = vi.fn().mockResolvedValue({
       tokens: {
         access_token: "at-123",
@@ -50,6 +55,7 @@ vi.mock("googleapis/build/src/apis/calendar", () => {
   })
   return {
     auth: { OAuth2: MockOAuth2 },
+    calendar: vi.fn(() => ({ calendars: { get: vi.fn().mockResolvedValue({ data: { id: "synthetic-primary" } }) } })),
   }
 })
 
@@ -318,6 +324,28 @@ describe("GET /api/v1/integrations/google-calendar/connect", () => {
 // ─── GET /api/v1/integrations/google-calendar/callback ──────────────
 
 describe("GET /api/v1/integrations/google-calendar/callback", () => {
+  it("verifies the primary calendar and replaces an unproven credential generation under the host lock", async () => {
+    const saved = { NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET, GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET }
+    process.env.NEXTAUTH_SECRET = "synthetic-signed-state-secret"
+    process.env.GOOGLE_CLIENT_ID = "synthetic-client"
+    process.env.GOOGLE_CLIENT_SECRET = "synthetic-client-secret"
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "user-1" } as any)
+    vi.mocked(prisma.account.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.account.findMany).mockResolvedValue([{ id: "old" }] as any)
+    vi.mocked(prisma.account.create).mockResolvedValue({ id: "new" } as any)
+    const payload = Buffer.from(JSON.stringify({ userId: "user-1", orgId: "org-1", exp: Date.now() + 60000, nonce: "synthetic-nonce" })).toString("base64url")
+    const signature = createHmac("sha256", process.env.NEXTAUTH_SECRET).update(payload).digest("base64url")
+    try {
+      const res = await GCAL_CALLBACK(makeReq(`http://localhost:3000/api/v1/integrations/google-calendar/callback?code=synthetic&state=${payload}.${signature}`))
+      expect(res.headers.get("location")).toContain("gcal=success")
+      expect(prisma.account.create).toHaveBeenCalledWith({ data: expect.objectContaining({ provider: "google-calendar", providerAccountId: expect.stringMatching(/^gcal-v2-/), refresh_token: "rt-123" }) })
+      expect(prisma.account.update).not.toHaveBeenCalled()
+      expect(prisma.bookingIntegrationBinding.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { state: "reconciliation_required" } }))
+    } finally {
+      for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete process.env[key]; else process.env[key] = value }
+      vi.mocked(prisma.account.findMany).mockResolvedValue([])
+    }
+  })
   it("redirects with error when error param present", async () => {
     const res = await GCAL_CALLBACK(makeReq("http://localhost:3000/api/v1/integrations/google-calendar/callback?error=access_denied"))
     expect(res.status).toBe(307)
@@ -347,6 +375,7 @@ describe("GET /api/v1/integrations/google-calendar/status", () => {
   })
 
   it("returns connected=true when account has refresh token", async () => {
+    vi.mocked(prisma.account.findMany).mockResolvedValue([{ id: "calendar", userId: "user-1", provider: "google-calendar", scope: "calendar.events" }] as any)
     vi.mocked(prisma.account.findFirst).mockResolvedValue({
       provider: "google-calendar", scope: "calendar.events", expires_at: Math.floor(Date.now() / 1000) - 100, refresh_token: "rt-123",
     } as any)
@@ -358,6 +387,13 @@ describe("GET /api/v1/integrations/google-calendar/status", () => {
     expect(json.data.provider).toBe("google-calendar")
   })
 
+  it("does not report an identity-only Google sign-in as a connected calendar", async () => {
+    vi.mocked(prisma.account.findMany).mockResolvedValue([{ id: "login", userId: "user-1", provider: "google", scope: "openid email profile" }] as any)
+    const res = await GCAL_STATUS(makeReq("http://localhost:3000/api/v1/integrations/google-calendar/status"))
+    expect((await res.json()).data.connected).toBe(false)
+    expect(prisma.account.findFirst).not.toHaveBeenCalled()
+    vi.mocked(prisma.account.findMany).mockResolvedValue([])
+  })
   it("DELETE disconnects google calendar", async () => {
     vi.mocked(prisma.account.deleteMany).mockResolvedValue({ count: 1 } as any)
 

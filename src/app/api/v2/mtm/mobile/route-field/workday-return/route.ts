@@ -43,7 +43,7 @@ export const POST = withMobileRls(async (req, auth) => {
   }
   if (attendanceOnly) {
     try {
-      await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role},"attendanceWorkday")
+      await requireAttendanceSelf(prisma,{organizationId:auth.orgId,agentId:auth.agentId,role:auth.role})
     } catch (error) {
       if (!(error instanceof AttendanceRequestError)) return noStoreJson({error:"Attendance access unavailable"},{status:503})
       return noStoreJson({error:"Forbidden",code:"MTM_WORKDAY_RETURN_FORBIDDEN"},{status:403})

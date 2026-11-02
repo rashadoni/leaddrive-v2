@@ -37,23 +37,22 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); rlsStorage.enterWith(undefined as never) })
 const result = (response: Response) => new URL(response.headers.get("location")!).searchParams.get("result")
 describe("native TikTok OAuth callback", () => {
-  it("enters session tenant RLS before the real grandfather gate and retains it for connection writes", async () => {
+  it("enters session tenant RLS before the real channels gate and retains it for connection writes", async () => {
     const contexts: unknown[] = []
     m.session.mockImplementation(async () => { contexts.push(getRlsContext()); return admin })
     m.consume.mockImplementation(async () => { expect(getRlsContext()).toEqual({ orgId: "org1" }); return true })
     m.save.mockImplementation(async () => { expect(getRlsContext()).toEqual({ orgId: "org1" }); return "config1" })
     expect(result(await GET(callback(createMessagingState("org1", "admin1"))))).toBe("connected")
     expect(contexts).toEqual([{ bypass: true }, { orgId: "org1" }])
-    expect(m.count).toHaveBeenCalledWith({ where: { organizationId: "org1" } })
+    // Channels are Settings for every tenant since 2026-10-26: no row count, no module question.
+    expect(m.count).not.toHaveBeenCalled()
     expect(getRlsContext()).toBeUndefined()
   })
-  it("does not consume state or call TikTok when session, fresh admin or entitlement access is denied", async () => {
+  it("does not consume state or call TikTok when session or fresh admin access is denied", async () => {
     const state = createMessagingState("org1", "admin1")
     m.session.mockResolvedValueOnce(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
     expect((await GET(callback(state))).status).toBe(401)
     m.session.mockResolvedValueOnce(admin).mockResolvedValueOnce({ ...admin, role: "viewer" })
-    expect((await GET(callback(state))).status).toBe(403)
-    m.count.mockResolvedValueOnce(0)
     expect((await GET(callback(state))).status).toBe(403)
     expect(m.consume).not.toHaveBeenCalled(); expect(m.exchange).not.toHaveBeenCalled(); expect(m.save).not.toHaveBeenCalled()
   })

@@ -40,19 +40,30 @@ if [ ! -f .next/standalone/public/sw.js ]; then
 fi
 echo "::notice::Service worker staged ($(wc -c < .next/standalone/public/sw.js) bytes)"
 
-if [ -d video/player ]; then
-  mkdir -p .next/standalone/help-videos/player
-  cp -r video/player/. .next/standalone/help-videos/player/
-  HELP_VIDEO_ASSET_VERSION="$(
-    sed -nE 's/^const HELP_VIDEO_ASSET_VERSION = "([^"]+)"$/\1/p' \
-      src/content/help/video-assets.ts
-  )"
-  [ -n "$HELP_VIDEO_ASSET_VERSION" ] || {
-    echo "::error::Could not read HELP_VIDEO_ASSET_VERSION"
-    exit 1
-  }
-  printf '%s\n' "$HELP_VIDEO_ASSET_VERSION" > .next/standalone/help-videos/asset-version
-fi
+# Help-video masters: see .github/workflows/deploy.yml — the bytes live in
+# object storage since 2026-11-02 and the artifact carries only the manifest,
+# the version and the puller.
+mkdir -p .next/standalone/help-videos .next/standalone/scripts/help-videos
+HELP_VIDEO_ASSET_VERSION="$(
+  sed -nE 's/^const HELP_VIDEO_ASSET_VERSION = "([^"]+)"$/\1/p' \
+    src/content/help/video-assets.ts
+)"
+[ -n "$HELP_VIDEO_ASSET_VERSION" ] || {
+  echo "::error::Could not read HELP_VIDEO_ASSET_VERSION"
+  exit 1
+}
+printf '%s\n' "$HELP_VIDEO_ASSET_VERSION" > .next/standalone/help-videos/asset-version
+cp video/player/masters.sha256 .next/standalone/help-videos/masters.sha256
+cp scripts/help-videos/assets-sync.sh .next/standalone/scripts/help-videos/assets-sync.sh
+chmod +x .next/standalone/scripts/help-videos/assets-sync.sh
+test -x .next/standalone/scripts/help-videos/assets-sync.sh || {
+  echo "::error::the help-video puller is not executable in the artifact"
+  exit 1
+}
+test -s .next/standalone/help-videos/masters.sha256 || {
+  echo "::error::the help-video master manifest is missing from the artifact"
+  exit 1
+}
 
 cp -r prisma .next/standalone/prisma
 

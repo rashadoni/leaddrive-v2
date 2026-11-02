@@ -1,5 +1,4 @@
-import { ATTENDANCE_N1T_COLUMNS, DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
-import { DEFAULT_ATTENDANCE_DAY_COLUMNS } from "@/lib/mtm/attendance-presentation"
+import { ATTENDANCE_DAY_REPORT_COLUMNS, ATTENDANCE_N1T_COLUMNS, DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 
 /**
  * Personnel → Reports (owner, 2026-10-15: "all the reports HR may need"). The
@@ -19,13 +18,13 @@ type TableReport = {
 export type AttendanceReportDefinition = TableReport | { kind: "page"; href: string } | { kind: "component" }
 
 export const ATTENDANCE_REPORTS = {
-  day: { kind: "table", period: "day", mode: "DAY", form: "ALL", columns: DEFAULT_ATTENDANCE_DAY_COLUMNS },
-  absent: { kind: "table", period: "day", mode: "DAY", form: "ABSENCES", columns: DEFAULT_ATTENDANCE_DAY_COLUMNS },
+  day: { kind: "table", period: "day", mode: "DAY", form: "ALL", columns: ATTENDANCE_DAY_REPORT_COLUMNS },
+  absent: { kind: "table", period: "day", mode: "DAY", form: "ABSENCES", columns: ATTENDANCE_DAY_REPORT_COLUMNS },
   timesheet: { kind: "page", href: "/mtm/attendance/timesheet" },
   n1t: { kind: "table", period: "month", mode: "MONTH", form: "ALL", columns: ATTENDANCE_N1T_COLUMNS },
   summary: { kind: "table", period: "range", mode: "SUMMARY", form: "ALL", columns: DEFAULT_ATTENDANCE_VIEW_COLUMNS.SUMMARY },
   balance: { kind: "table", period: "range", mode: "BALANCE", form: "ALL", columns: DEFAULT_ATTENDANCE_VIEW_COLUMNS.BALANCE },
-  late: { kind: "table", period: "range", mode: "DAY", form: "LATE_EARLY", columns: DEFAULT_ATTENDANCE_DAY_COLUMNS },
+  late: { kind: "table", period: "range", mode: "DAY", form: "LATE_EARLY", columns: ATTENDANCE_DAY_REPORT_COLUMNS },
   overtime: { kind: "table", period: "range", mode: "OVERTIME", form: "ALL", columns: DEFAULT_ATTENDANCE_VIEW_COLUMNS.OVERTIME },
   absenceKinds: { kind: "table", period: "range", mode: "ABSENCE_KINDS", form: "ALL", columns: DEFAULT_ATTENDANCE_VIEW_COLUMNS.ABSENCE_KINDS },
   leaveBalances: { kind: "component" },

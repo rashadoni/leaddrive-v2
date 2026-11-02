@@ -368,7 +368,7 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
           onClick={() => setOpen(true)}
           data-testid="ai-assistant-launcher"
           aria-label={uiText.title}
-          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none" data-crm-button="default"
         >
           <Brain className="h-6 w-6" />
         </button>

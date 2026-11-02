@@ -174,14 +174,14 @@ export default function NotificationsPage() {
       {/* Filter tabs */}
       <div className="flex gap-2">
         <Button
-          variant={filter === "all" ? "default" : "outline"}
+          variant={filter === "all" ? "selected" : "outline"}
           size="sm"
           onClick={() => setFilter("all")}
         >
           {t("all") + " (" + total + ")"}
         </Button>
         <Button
-          variant={filter === "unread" ? "default" : "outline"}
+          variant={filter === "unread" ? "selected" : "outline"}
           size="sm"
           onClick={() => setFilter("unread")}
         >

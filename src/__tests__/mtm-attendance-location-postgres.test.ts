@@ -6,6 +6,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { NextRequest } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { buildAttendanceXlsx, buildAttendancePdf } from "@/lib/mtm/attendance-export"
@@ -34,6 +35,10 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
  const self=()=>({organizationId:ORG,agentId:identity.agentId,role:identity.role})
  const evidence=()=>tenant(ORG,()=>prisma.$queryRaw<Evidence[]>`SELECT * FROM mtm_attendance_mark_evidence WHERE "agentId"=${identity.agentId} ORDER BY "claimedAt"`)
  async function employee(){const id=randomUUID();await bypass(async()=>{await prisma.user.create({data:{id,organizationId:ORG,email:`${id}@example.invalid`,name:"Fictional employee",role:"sales",passwordHash:"unusable-fixture"}});await prisma.mtmAgent.create({data:{id,organizationId:ORG,userId:id,name:"Fictional employee",role:"EMPLOYEE",attendanceParticipant:true}})});identity.agentId=id;acceptanceId=null;return id}
+ // These cases are about the code itself: with the place of a mark off (as in
+ // production until the organization switches it on), a good code alone confirms the branch.
+ async function setLocationPolicy(enabled:boolean){const result=await tenant(ORG,()=>store.publishAttendanceLocationPolicy(admin,{requestId:randomUUID(),expectedRevisionId:policyId,enabled,texts,legalReviewConfirmed:true}));policyId=result.policy.id}
+ async function withLocationOff(run:()=>Promise<void>){await setLocationPolicy(false);try{await run()}finally{await setLocationPolicy(true)}}
  async function accept(){const before=await tenant(ORG,()=>store.readOwnAttendanceLocation(self()));const request={requestId:randomUUID(),policyRevisionId:policyId,expectedConsentId:before.consent?.id??null,accepted:true};const result=await tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),request));acceptanceId=result.consent.id;return result}
  function packet(at=new Date()):AttendanceMark{return{version:1,installationId:INSTALLATION,locationState:"AVAILABLE",consentRevisionId:acceptanceId??"fixture-unaccepted",location:{latitude:40.4,longitude:49.85,accuracy:5,capturedAt:at.toISOString(),provider:"GPS",isMock:false}}}
  function operation(action:string,workdayId:string,at:Date,mark?:AttendanceMark,qr?:{version:1;token:string|null}){return{operationId:randomUUID(),entity:"workdays",op:"create",clientTimestamp:Date.now(),data:{action,...(action==="START"?{id:workdayId}:{workdayId}),occurredAt:at.toISOString(),...(mark?{attendanceMark:mark}:{}),...(qr?{attendanceQr:qr}:{})}}}
@@ -43,8 +48,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   sql(adminUrl!,`CREATE DATABASE "${scratch!.name}"`);createdDb=true
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
-  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_qr_evidence; DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_qr_evidence; DROP TABLE mtm_attendance_branch_screens; DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks","20261112090000_mtm_attendance_branch_screens","20261113090000_mtm_attendance_branch_screen_place"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -116,7 +121,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   const results=await Promise.all([0,1].map(()=>tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),request))))
   expect(results[0].consent.id).toBe(results[1].consent.id);acceptanceId=results[0].consent.id
   await expect(tenant(ORG,()=>store.recordOwnAttendanceLocationConsent(self(),{...request,accepted:false}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_LOCATION_REPLAY_MISMATCH"})
-  const at=new Date(Date.now()+1000),op=operation("START",randomUUID(),at,packet(at))
+  const at=new Date(Date.now()+1000),ownDay=randomUUID(),op=operation("START",ownDay,at,packet(at))
   expect((await send(op)).body.results).toMatchObject([{status:"ok"}]);expect((await send(op)).body.results).toMatchObject([{status:"ok"}])
   const rows=await evidence();expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({installationId:INSTALLATION,locationState:"INSIDE",latitude:40.4,longitude:49.85,distanceMeters:0,branchRevisionId,consentId:results[0].consent.id,fixAgeSeconds:0,isMock:false})
   expect(rows[0].claimedAt).toEqual(at);expect(rows[0].serverReceivedAt).toBeInstanceOf(Date)
@@ -124,6 +129,17 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   const before=rows[0].branchRevisionId
   const edited=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId,expectedRevisionId:branchRevisionId,name:"Moved fictional branch",address:"Demo Road 24",latitude:41,longitude:50,radiusMeters:150,active:true}));branchRevisionId=edited.branch.revisionId
   expect((await evidence())[0].branchRevisionId).toBe(before)
+  const { readOwnAttendanceMarks } = await import("@/lib/mtm/attendance-own-marks")
+  const own = await tenant(ORG, () => readOwnAttendanceMarks(self(), ownDay))
+  expect(own.items).toHaveLength(1)
+  expect(own.items[0]).toMatchObject({ eventId: rows[0].eventId, claimedAt: at.toISOString(), serverReceivedAt: rows[0].serverReceivedAt.toISOString(),
+    location: { state: "INSIDE", coordinates: { latitude: 40.4, longitude: 49.85 }, branchName: "Fictional branch", distanceMeters: 0 } })
+  expect(JSON.stringify(own)).not.toMatch(/installationId|consentId|redactedRequestHash|Moved fictional/)
+  await expect(tenant(OTHER, () => readOwnAttendanceMarks({ ...self(), organizationId: OTHER }, ownDay))).rejects.toMatchObject({ status: 403 })
+  const owner = identity.agentId
+  await employee()
+  await expect(tenant(ORG, () => readOwnAttendanceMarks(self(), ownDay))).rejects.toMatchObject({ status: 404 })
+  identity.agentId = owner
   const { readMtmAttendanceReport } = await import("@/lib/mtm/attendance-report-store")
   const workday = await tenant(ORG, () => prisma.mtmAgentWorkday.findFirstOrThrow({where:{agentId:identity.agentId},select:{workDate:true}}))
   const date = workday.workDate.toISOString().slice(0,10)
@@ -496,11 +512,17 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   await expect(tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{...decision,reason:" "}))).rejects.toMatchObject({status:400})
   const outcomes=await Promise.all([0,1].map(()=>tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,decision))))
   expect(outcomes.map(result=>result.idempotent).sort()).toEqual([false,true]);expect(outcomes[0].id).toBe(outcomes[1].id)
+  const { readAttendanceEmployeePreparation } = await import("@/lib/mtm/attendance-employee-preparation")
+  const preparation = () => tenant(ORG, () => prisma.$transaction((tx: Prisma.TransactionClient) => readAttendanceEmployeePreparation(tx,
+    { organizationId: ORG, agentId: identity.agentId, date: new Date().toISOString().slice(0,10) },
+    { status: "ACTIVE", phone: "+994550000000", user: { isActive: true, phone: null } }, new Date())))
+  expect((await preparation()).installations).toMatchObject({ approved: 1, pending: 0 })
   const revoke={requestId:randomUUID(),action:"REVOKE",reason:"Fictional phone replaced"}
   await expect(tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,{...revoke,requestId:decision.requestId}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_INSTALLATION_IDEMPOTENCY_MISMATCH"})
   await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,revoke));expect(await tenant(ORG,()=>installations.decideAttendanceInstallation(admin,id,revoke))).toMatchObject({idempotent:true})
   expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))).toMatchObject({requestId:request.requestId,state:"REVOKED",canRequest:true,revocation:{reason:revoke.reason}})
   const next={requestId:randomUUID()};expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,next))).toMatchObject({requestId:next.requestId,state:"PENDING"})
+  expect((await preparation()).installations).toMatchObject({ approved: 0, pending: 1 })
   expect((await tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),INSTALLATION))).requestId).toBe(next.requestId)
   expect(await tenant(ORG,()=>installations.submitAttendanceInstallation(self(),INSTALLATION,request))).toMatchObject({requestId:request.requestId,state:"REVOKED"})
   expect(await tenant(ORG,()=>prisma.$executeRaw`UPDATE mtm_attendance_installation_decisions SET reason='changed' WHERE id=${outcomes[0].id}`)).toBe(0)
@@ -554,20 +576,28 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   await expect(tenant(ORG,()=>installations.readOwnAttendanceInstallation(self(),INSTALLATION))).rejects.toMatchObject({status:403})
  })
 
- it("QR is opt-in, supports two employees using one code, and preserves accepted replay after expiry and disable",async()=>{
-  const qr=await import("@/lib/mtm/attendance-qr-store"),policy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security")
+ it("QR is opt-in, supports two employees using one code, and preserves accepted replay after expiry and disable",()=>withLocationOff(async()=>{
+  const qr=await import("@/lib/mtm/attendance-qr-store"),policy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security"),screens=await import("@/lib/mtm/attendance-branch-screen-store")
   expect((await tenant(ORG,()=>qr.readAttendanceQrDirectory(admin))).enabled).toBe(false)
-  await expect(tenant(ORG,()=>qr.issueAttendanceBranchQr(admin,{branchId}))).rejects.toMatchObject({status:404})
+  const paired=await screens.pairAttendanceBranchScreen((await tenant(ORG,()=>screens.startAttendanceBranchScreenPairing(admin,{branchId}))).code)
+  // The screen stands at its branch: the branch's own point, a fresh fine fix.
+  const [point]=await tenant(ORG,()=>prisma.$queryRaw<{latitude:number;longitude:number}[]>`SELECT latitude,longitude FROM mtm_attendance_branch_revisions WHERE id=${branchRevisionId}`)
+  const atBranch={...point,accuracy:15,ageMs:2_000}
+  expect(await screens.issueAttendanceScreenQr(paired!.secret,atBranch)).toMatchObject({state:"QR_OFF",branch:{id:branchId}})
   await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
   try {
-   expect((await tenant(ORG,()=>qr.issueAttendanceBranchQr(admin,{branchId}))).dataUrl).toMatch(/^data:image\/png;base64,/)
-   await expect(tenant(ORG,()=>qr.issueAttendanceBranchQr(admin,{branchId:randomUUID()}))).rejects.toMatchObject({status:404})
+   expect(await screens.issueAttendanceScreenQr(paired!.secret,atBranch)).toMatchObject({state:"SHOWING",branch:{id:branchId},dataUrl:expect.stringMatching(/^data:image\/png;base64,/)})
+   await expect(tenant(ORG,()=>screens.startAttendanceBranchScreenPairing(admin,{branchId:randomUUID()}))).rejects.toMatchObject({status:404})
    const at=new Date(),issued=security.issueAttendanceQrToken(ORG,branchId,branchRevisionId,at)
    const owners:string[]=[]
    for(let i=0;i<2;i++){
-    owners.push(await employee());const op=operation("START",randomUUID(),new Date(),undefined,{version:1,token:issued.token})
+    owners.push(await employee());const ownDay=randomUUID(),op=operation("START",ownDay,new Date(),undefined,{version:1,token:issued.token})
     const first=await send(op);expect(first.body.results).toMatchObject([{status:"ok",serverData:{attendanceQr:{state:"VERIFIED",branch:{id:branchId}}}}])
     const receipt=first.body.results[0].serverData.attendanceQr
+    const { readOwnAttendanceMarks } = await import("@/lib/mtm/attendance-own-marks")
+    const personal = await tenant(ORG, () => readOwnAttendanceMarks(self(), ownDay))
+    expect(personal.items[0].qr).toEqual({ state: "VERIFIED", branchName: receipt.branch.name })
+    expect(JSON.stringify(personal)).not.toMatch(/mtmq1\.|nonceFingerprint|installationId/)
     const {readMtmAttendanceReport}=await import("@/lib/mtm/attendance-report-store")
     const day=await tenant(ORG,()=>prisma.mtmAgentWorkday.findFirstOrThrow({where:{agentId:identity.agentId},select:{workDate:true}})),date=day.workDate.toISOString().slice(0,10)
     const report=await tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:date,to:date,form:"ALL",employeeId:identity.agentId},now:new Date()}))
@@ -586,7 +616,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect(await tenant(ORG,()=>prisma.mtmAttendanceQrEvidence.count({where:{organizationId:ORG,agentId:{in:owners},state:"VERIFIED"}}))).toBe(2)
    expect(()=>sql(scratch!.adminDb,`UPDATE mtm_attendance_qr_evidence SET state='INVALID' WHERE "agentId"='${owners[0]}'`)).toThrow()
   } finally {vi.useRealTimers();await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
- })
+ }))
  it("missing, foreign, expired and changed-branch QR preserve time without claiming a branch",async()=>{
   const policy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security")
   await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
@@ -597,7 +627,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    for(const test of cases){await employee();const result=await send(operation("START",randomUUID(),new Date(),undefined,{version:1,token:test.token}));expect(result.body.results).toMatchObject([{status:"ok",serverData:{attendanceQr:{state:test.state,branch:null}}}]);expect(await tenant(ORG,()=>prisma.mtmAgentWorkday.count({where:{agentId:identity.agentId}}))).toBe(1)}
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
  })
- it("ending a paused day never discloses its QR branch, while OFF keeps the old response",async()=>{
+ it("ending a paused day never discloses its QR branch, while OFF keeps the old response",()=>withLocationOff(async()=>{
   const policy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security")
   await employee();let at=new Date(),id=randomUUID()
   const off=await send(operation("START",id,at));expect(off.body.results[0].status).toBe("ok");expect(off.body.results[0].serverData).not.toHaveProperty("attendanceQr")
@@ -610,10 +640,11 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect(finish.body.results).toMatchObject([{status:"ok",serverData:{attendanceQr:{state:"NOT_PROVIDED",branch:null}}}])
    const rows=await tenant(ORG,()=>prisma.mtmAttendanceQrEvidence.findMany({where:{agentId:identity.agentId,action:"FINISH"},select:{branchRevisionId:true,nonceFingerprint:true}}));expect(rows).toEqual([{branchRevisionId:null,nonceFingerprint:null}])
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
- })
+ }))
  it("QR setting audit failure rolls back and current employee or HR role cannot issue codes",async()=>{
   await employee();const policy=await import("@/lib/mtm/attendance-qr-policy"),qr=await import("@/lib/mtm/attendance-qr-store")
-  await expect(tenant(ORG,()=>qr.issueAttendanceBranchQr({...admin,userId:identity.agentId},{branchId}))).rejects.toMatchObject({status:403})
+  const screens=await import("@/lib/mtm/attendance-branch-screen-store")
+  await expect(tenant(ORG,()=>screens.startAttendanceBranchScreenPairing({...admin,userId:identity.agentId},{branchId}))).rejects.toMatchObject({status:403})
   await expect(tenant(ORG,()=>policy.saveAttendanceQrRule({...admin,userId:identity.agentId},true))).rejects.toMatchObject({status:403})
   sql(scratch!.adminDb,"CREATE FUNCTION fixture_qr_audit_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='MTM_ATTENDANCE_QR_RULE_CHANGED' THEN RAISE EXCEPTION 'fictional QR audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fixture_qr_audit_fail BEFORE INSERT ON mtm_audit_logs FOR EACH ROW EXECUTE FUNCTION fixture_qr_audit_fail();")
   try {await expect(tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))).rejects.toThrow()}
@@ -621,7 +652,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   expect((await tenant(ORG,()=>qr.readAttendanceQrDirectory(admin))).enabled).toBe(false)
  })
 
- it("does not recycle a QR for the same employee's next workday across midnight",async()=>{
+ it("does not recycle a QR for the same employee's next workday across midnight",()=>withLocationOff(async()=>{
   const policy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security")
   await employee();await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
   const at=new Date("2026-10-13T19:59:40Z"),id=randomUUID()
@@ -634,7 +665,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    vi.setSystemTime(new Date(at.getTime()+30000))
    expect((await send(operation("START",randomUUID(),new Date(),undefined,{version:1,token}))).body.results).toMatchObject([{status:"ok",serverData:{attendanceQr:{state:"REUSED",branch:null}}}])
   } finally {vi.useRealTimers();await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
- })
+ }))
 
  it("rolls back time and its sync receipt when the QR evidence cannot be saved",async()=>{
   const policy=await import("@/lib/mtm/attendance-qr-policy")
@@ -647,8 +678,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   } finally {sql(scratch!.adminDb,'DROP TRIGGER fixture_qr_fail ON mtm_attendance_qr_evidence; DROP FUNCTION fixture_qr_fail();');await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
  })
 
- it("QR issuer uses current team assignments and never grants issuance to read-only HR",async()=>{
-  const qr=await import("@/lib/mtm/attendance-qr-store"),policy=await import("@/lib/mtm/attendance-qr-policy")
+ it("the QR screens list follows current team assignments; only an administrator pairs a screen; read-only HR sees none",async()=>{
+  const qr=await import("@/lib/mtm/attendance-qr-store"),policy=await import("@/lib/mtm/attendance-qr-policy"),screens=await import("@/lib/mtm/attendance-branch-screen-store")
   await employee();const target=identity.agentId,managerId=randomUUID(),team=randomUUID()
   await bypass(async()=>{
    await prisma.user.create({data:{id:managerId,organizationId:ORG,email:`${managerId}@example.invalid`,name:"Fictional QR manager",role:"manager",passwordHash:"unusable-fixture"}})
@@ -659,12 +690,13 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   const manager={...admin,userId:managerId}
   await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
   try {
-   await expect(tenant(ORG,()=>qr.issueAttendanceBranchQr(manager,{branchId}))).rejects.toMatchObject({status:404})
+   expect((await tenant(ORG,()=>screens.readAttendanceBranchScreens(manager))).branches.map(row=>row.id)).not.toContain(branchId)
    await tenant(ORG,()=>branches.saveAttendancePrimaryBranch(admin,{requestId:randomUUID(),expectedRevisionId:null,agentId:target,branchId}))
    expect((await tenant(ORG,()=>qr.readAttendanceQrDirectory(manager))).branches).toMatchObject([{id:branchId}])
-   expect((await tenant(ORG,()=>qr.issueAttendanceBranchQr(manager,{branchId}))).branch.id).toBe(branchId)
+   expect((await tenant(ORG,()=>screens.readAttendanceBranchScreens(manager))).branches.map(row=>row.id)).toContain(branchId)
+   await expect(tenant(ORG,()=>screens.startAttendanceBranchScreenPairing(manager,{branchId}))).rejects.toMatchObject({status:403})
    await bypass(()=>prisma.mtmAgent.update({where:{id:target},data:{teamId:null}}))
-   await expect(tenant(ORG,()=>qr.issueAttendanceBranchQr(manager,{branchId}))).rejects.toMatchObject({status:404})
+   expect((await tenant(ORG,()=>screens.readAttendanceBranchScreens(manager))).branches.map(row=>row.id)).not.toContain(branchId)
    await bypass(()=>prisma.user.update({where:{id:managerId},data:{role:"viewer",mtmAttendanceAll:true}}))
    await expect(tenant(ORG,()=>qr.readAttendanceQrDirectory(manager))).rejects.toMatchObject({status:403})
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
@@ -771,5 +803,121 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    await prisma.$disconnect()
   }
  },90_000)
+
+ it("only a screen paired to the branch gets its QR: one-time code, revocation, tenant isolation",async()=>{
+  const policy=await import("@/lib/mtm/attendance-qr-policy"),screens=await import("@/lib/mtm/attendance-branch-screen-store"),security=await import("@/lib/mtm/attendance-qr-security")
+  const created=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId:null,expectedRevisionId:null,name:"Fictional screen branch",address:"Demo Road 48",latitude:40.45,longitude:49.9,radiusMeters:150,active:true}))
+  await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
+  try {
+   await employee()
+   // Configuration is the administrator's alone.
+   await expect(tenant(ORG,()=>screens.startAttendanceBranchScreenPairing({...admin,userId:identity.agentId},{branchId:created.branch.id}))).rejects.toMatchObject({status:403})
+   const pairing=await tenant(ORG,()=>screens.startAttendanceBranchScreenPairing(admin,{branchId:created.branch.id}))
+   expect(pairing).toMatchObject({branch:{id:created.branch.id,name:"Fictional screen branch"},code:expect.stringMatching(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/)})
+   // Typed in lower case and without the dash, once; the second tablet gets nothing.
+   const typed=pairing.code.replace("-","").toLowerCase()
+   const [first,second]=await Promise.all([screens.pairAttendanceBranchScreen(typed),screens.pairAttendanceBranchScreen(pairing.code)])
+   expect([first,second].filter(Boolean)).toHaveLength(1)
+   const secret=(first??second)!.secret
+   expect(await screens.pairAttendanceBranchScreen(pairing.code)).toBeNull()
+   expect(await screens.pairAttendanceBranchScreen("ZZZZ-ZZZZ")).toBeNull()
+   // Neither the code nor the secret is stored; the other tenant sees no screen.
+   const rows=await tenant(ORG,()=>prisma.$queryRaw<Record<string,unknown>[]>`SELECT * FROM mtm_attendance_branch_screens WHERE "branchId"=${created.branch.id}`)
+   expect(rows).toHaveLength(1);expect(JSON.stringify(rows)).not.toContain(secret);expect(JSON.stringify(rows)).not.toContain(pairing.code.replace("-",""))
+   expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_branch_screens WHERE "branchId"=${created.branch.id}`)).toEqual([])
+   // The paired screen shows its own branch's live code, which a phone verifies for that branch.
+   const atScreenBranch={latitude:40.45,longitude:49.9,accuracy:20,ageMs:3_000}
+   const shown=await screens.issueAttendanceScreenQr(secret,atScreenBranch)
+   expect(shown).toMatchObject({state:"SHOWING",organizationName:"Fictional attendance tenant",branch:{id:created.branch.id,name:"Fictional screen branch"}})
+   if(shown.state!=="SHOWING")throw new Error("not showing")
+   const life=Date.parse(shown.expiresAt)-Date.parse(shown.serverNow);expect(life).toBeGreaterThan(59_000);expect(life).toBeLessThanOrEqual(60_000)
+   expect(await screens.issueAttendanceScreenQr("mtms1."+"A".repeat(43),atScreenBranch)).toEqual({state:"UNPAIRED"})
+   expect(await screens.issueAttendanceScreenQr(undefined,atScreenBranch)).toEqual({state:"UNPAIRED"})
+   const listed=await tenant(ORG,()=>screens.readAttendanceBranchScreens(admin))
+   expect(listed.branches.find(row=>row.id===created.branch.id)?.screens).toEqual([{id:rows[0].id,pairedAt:expect.any(String),lastSeenAt:expect.any(String),
+    place:{state:"AT_BRANCH",distanceMeters:0,checkedAt:expect.any(String)}}])
+   // Owner, 2026-10-30: the same screen at home (~3.3 km away) gets no code, and
+   // the administrator sees where it went — its verdict, never its coordinates.
+   const home={latitude:40.48,longitude:49.9,accuracy:20,ageMs:3_000}
+   const away=await screens.issueAttendanceScreenQr(secret,home)
+   expect(away).toMatchObject({state:"NOT_AT_BRANCH",reason:"AWAY",branch:{id:created.branch.id}});expect(away).not.toHaveProperty("dataUrl")
+   expect((away as {distanceMeters:number}).distanceMeters).toBeGreaterThan(3000)
+   expect((await tenant(ORG,()=>screens.readAttendanceBranchScreens(admin))).branches.find(row=>row.id===created.branch.id)?.screens[0].place).toMatchObject({state:"AWAY",distanceMeters:(away as {distanceMeters:number}).distanceMeters})
+   const stored=await tenant(ORG,()=>prisma.$queryRaw<Record<string,unknown>[]>`SELECT * FROM mtm_attendance_branch_screens WHERE id=${rows[0].id}`)
+   expect(JSON.stringify(stored)).not.toContain("40.48")
+   // No position, a stale one, or one too coarse to tell: no code either.
+   for(const fix of [null,{...atScreenBranch,ageMs:3*60_000},{...atScreenBranch,accuracy:900}])
+    expect(await screens.issueAttendanceScreenQr(secret,fix)).toMatchObject({state:"NOT_AT_BRANCH",reason:"NO_FIX",distanceMeters:null})
+   // Back at the branch, the code returns.
+   expect(await screens.issueAttendanceScreenQr(secret,atScreenBranch)).toMatchObject({state:"SHOWING"})
+   // Revoked: the next request is UNPAIRED, and the screen leaves the list.
+   expect(await tenant(ORG,()=>screens.revokeAttendanceBranchScreen(admin,String(rows[0].id)))).toEqual({revoked:true})
+   expect(await screens.issueAttendanceScreenQr(secret,atScreenBranch)).toEqual({state:"UNPAIRED"})
+   await expect(tenant(ORG,()=>screens.revokeAttendanceBranchScreen(admin,String(rows[0].id)))).rejects.toMatchObject({status:404})
+   expect((await tenant(ORG,()=>screens.readAttendanceBranchScreens(admin))).branches.find(row=>row.id===created.branch.id)?.screens).toEqual([])
+   // A code older than ten minutes pairs nothing.
+   const stale=await tenant(ORG,()=>screens.startAttendanceBranchScreenPairing(admin,{branchId:created.branch.id}))
+   vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date(Date.now()+10*60_000+1_000))
+   try {expect(await screens.pairAttendanceBranchScreen(stale.code)).toBeNull()} finally {vi.useRealTimers()}
+   // A switched-off branch: the screen says so and shows no code.
+   const again=await screens.pairAttendanceBranchScreen((await tenant(ORG,()=>screens.startAttendanceBranchScreenPairing(admin,{branchId:created.branch.id}))).code)
+   await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId:created.branch.id,expectedRevisionId:created.branch.revisionId,name:"Fictional screen branch",address:"Demo Road 48",latitude:40.45,longitude:49.9,radiusMeters:150,active:false}))
+   expect(await screens.issueAttendanceScreenQr(again!.secret,atScreenBranch)).toEqual({state:"BRANCH_UNAVAILABLE",organizationName:"Fictional attendance tenant"})
+   expect(security.verifyAttendanceQrToken(ORG,"mtmq1.x.y",new Date(),new Date())).toEqual({state:"INVALID"})
+  } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
+ })
+ it("a good QR read where the phone's own fix is plainly outside that branch confirms nothing",async()=>{
+  const policy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security")
+  const {readOwnAttendanceMarks}=await import("@/lib/mtm/attendance-own-marks"),{readMtmAttendanceReport}=await import("@/lib/mtm/attendance-report-store")
+  const {attendanceMarkText}=await import("@/lib/mtm/attendance-location-report")
+  // The packet's fix is at 40.4,49.85 ± 5 m. «Far» is about 35 km from it, «near» is that very point.
+  const far=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId:null,expectedRevisionId:null,name:"Fictional far branch",address:"Demo Road 60",latitude:40.6,longitude:50.2,radiusMeters:150,active:true}))
+  const near=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId:null,expectedRevisionId:null,name:"Fictional near branch",address:"Demo Road 72",latitude:40.4,longitude:49.85,radiusMeters:150,active:true}))
+  await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
+  try {
+   const start=async(branch:typeof far,mark:(at:Date)=>AttendanceMark|undefined)=>{
+    await employee();if(mark(new Date()))await accept()
+    const at=new Date(Date.now()+1000),day=randomUUID(),token=security.issueAttendanceQrToken(ORG,branch.branch.id,branch.branch.revisionId,new Date()).token
+    const result=await send(operation("START",day,at,mark(at),{version:1,token}))
+    expect(result.body.results[0].status).toBe("ok")
+    const [row]=await tenant(ORG,()=>prisma.$queryRaw<{state:string;branchRevisionId:string|null;nonceFingerprint:string|null;awayDistanceMeters:number|null}[]>`SELECT state,"branchRevisionId","nonceFingerprint","awayDistanceMeters" FROM mtm_attendance_qr_evidence WHERE "agentId"=${identity.agentId}`)
+    return {day,row,receipt:result.body.results[0].serverData.attendanceQr}
+   }
+   const away=await start(far,at=>packet(at))
+   expect(away.row).toMatchObject({state:"AWAY_FROM_BRANCH",branchRevisionId:far.branch.revisionId,nonceFingerprint:expect.stringMatching(/^[a-f0-9]{64}$/)})
+   expect(away.row.awayDistanceMeters).toBeGreaterThan(30_000);expect(away.row.awayDistanceMeters).toBeLessThan(40_000)
+   // The released phone app knows six states: it is told the code does not fit.
+   expect(away.receipt).toMatchObject({state:"INVALID",branch:null})
+   expect((await tenant(ORG,()=>readOwnAttendanceMarks(self(),away.day))).items[0].qr).toEqual({state:"INVALID",branchName:null})
+   const workDate=(await tenant(ORG,()=>prisma.mtmAgentWorkday.findUniqueOrThrow({where:{id:away.day},select:{workDate:true}}))).workDate.toISOString().slice(0,10)
+   const report=await tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:workDate,to:workDate,form:"ALL",employeeId:identity.agentId},now:new Date()}))
+   const mark=report.rows[0].locationMarks![0]
+   expect(mark.qr).toEqual({state:"AWAY_FROM_BRANCH",branch:{id:far.branch.id,revisionId:far.branch.revisionId,name:"Fictional far branch"},awayDistanceMeters:away.row.awayDistanceMeters})
+   expect(attendanceMarkText(mark,(key,values)=>`${key}${values?JSON.stringify(values):""}`)).toContain(`Fictional far branch · qrStateAWAY_FROM_BRANCH{"meters":${away.row.awayDistanceMeters}}`)
+   const table=buildAttendanceTable(report,{version:1,mode:"BRANCH",columns:["branch","arrivals"],filters:report.snapshot.query,showTotals:true},"en",key=>key)
+   expect(table.rows.map(row=>row.cells[0])).not.toContain("Fictional far branch")
+   // The same code read at the branch confirms it.
+   expect((await start(near,at=>packet(at))).row).toMatchObject({state:"VERIFIED",awayDistanceMeters:null})
+   // Owner, 2026-10-30: a code shown over a video call reaches a phone anywhere.
+   // While the place of a mark is collected, a code without the phone's fresh,
+   // precise place at that branch confirms nothing — too coarse to say, a mock
+   // fix, or no fix at all. The time is kept, and the code cannot be reused.
+   const coarse=await start(far,at=>{const value=packet(at);return{...value,location:{...value.location!,accuracy:40_000}}})
+   expect(coarse.row).toMatchObject({state:"NO_PHONE_FIX",branchRevisionId:far.branch.revisionId,nonceFingerprint:expect.stringMatching(/^[a-f0-9]{64}$/),awayDistanceMeters:null})
+   expect(coarse.receipt).toMatchObject({state:"INVALID",branch:null})
+   expect((await start(near,at=>{const value=packet(at);return{...value,location:{...value.location!,isMock:true}}})).row).toMatchObject({state:"NO_PHONE_FIX"})
+   const blind=await start(near,()=>undefined)
+   expect(blind.row).toMatchObject({state:"NO_PHONE_FIX",branchRevisionId:near.branch.revisionId})
+   const blindDate=(await tenant(ORG,()=>prisma.mtmAgentWorkday.findUniqueOrThrow({where:{id:blind.day},select:{workDate:true}}))).workDate.toISOString().slice(0,10)
+   const blindMark=(await tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:blindDate,to:blindDate,form:"ALL",employeeId:identity.agentId},now:new Date()}))).rows[0].locationMarks![0]
+   expect(blindMark.qr).toEqual({state:"NO_PHONE_FIX",branch:{id:near.branch.id,revisionId:near.branch.revisionId,name:"Fictional near branch"}})
+   expect(attendanceMarkText(blindMark,key=>key)).toContain("Fictional near branch · qrStateNO_PHONE_FIX")
+   // With the place of a mark off, as in production today, the code alone still confirms it.
+   await withLocationOff(async()=>{expect((await start(far,()=>undefined)).row).toMatchObject({state:"VERIFIED",awayDistanceMeters:null})})
+   // The database refuses an away row without its distance, and a verified one with it.
+   expect(()=>sql(scratch!.adminDb,`ALTER TABLE mtm_attendance_qr_evidence DISABLE TRIGGER mtm_attendance_qr_guard; UPDATE mtm_attendance_qr_evidence SET "awayDistanceMeters"=NULL WHERE state='AWAY_FROM_BRANCH'`)).toThrow()
+   sql(scratch!.adminDb,"ALTER TABLE mtm_attendance_qr_evidence ENABLE TRIGGER mtm_attendance_qr_guard")
+  } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
+ })
 
 })

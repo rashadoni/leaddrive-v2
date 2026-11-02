@@ -31,6 +31,7 @@ import {
   customerMutationScopeForActor,
 } from "@/lib/mtm/field-scope"
 import { mtmAlertMessageForCustomer } from "@/lib/mtm/alert-messages"
+import { recordMtmVisitChange } from "@/lib/mtm/visit-events"
 
 export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const actor = await resolveMtmRouteActor(prisma, {
@@ -493,6 +494,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
         },
       })
 
+      await recordMtmVisitChange(tx, orgId, created.id, null)
       await createVisitRequirementSnapshot(tx, {
         organizationId: orgId,
         visitId: created.id,

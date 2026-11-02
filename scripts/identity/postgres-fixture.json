@@ -1,0 +1,20 @@
+[
+  "CREATE TABLE organizations (id text PRIMARY KEY, slug text UNIQUE NOT NULL)",
+  "CREATE TABLE users (id text PRIMARY KEY, \"organizationId\" text NOT NULL REFERENCES organizations(id), phone text, \"isActive\" boolean NOT NULL, \"anonymizedAt\" timestamp, \"passwordHash\" text)",
+  "CREATE TABLE mtm_agents (id text PRIMARY KEY, \"organizationId\" text NOT NULL REFERENCES organizations(id), \"userId\" text REFERENCES users(id), phone text, role text NOT NULL, status text NOT NULL, \"attendanceParticipant\" boolean NOT NULL, \"passwordHash\" text)",
+  "CREATE ROLE identity_snapshot_reader LOGIN PASSWORD 'identity-contract-reader-only' NOSUPERUSER NOBYPASSRLS",
+  "GRANT USAGE ON SCHEMA public TO identity_snapshot_reader",
+  "GRANT SELECT ON organizations, users, mtm_agents TO identity_snapshot_reader",
+  "ALTER TABLE organizations ENABLE ROW LEVEL SECURITY",
+  "ALTER TABLE organizations FORCE ROW LEVEL SECURITY",
+  "CREATE POLICY identity_tenant_read ON organizations FOR SELECT USING (id = current_setting('app.org_id', true))",
+  "ALTER TABLE users ENABLE ROW LEVEL SECURITY",
+  "ALTER TABLE users FORCE ROW LEVEL SECURITY",
+  "CREATE POLICY identity_tenant_read ON users FOR SELECT USING (\"organizationId\" = current_setting('app.org_id', true))",
+  "ALTER TABLE mtm_agents ENABLE ROW LEVEL SECURITY",
+  "ALTER TABLE mtm_agents FORCE ROW LEVEL SECURITY",
+  "CREATE POLICY identity_tenant_read ON mtm_agents FOR SELECT USING (\"organizationId\" = current_setting('app.org_id', true))",
+  "INSERT INTO organizations VALUES ('identity-company-a','identity-company-a'), ('identity-company-b','identity-company-b')",
+  "INSERT INTO users VALUES ('identity-user-a','identity-company-a','+994550001122',true,null,'!personnel:sign-in-by-whatsapp-code'), ('identity-user-a2','identity-company-a','+994550002233',true,null,null), ('identity-user-b','identity-company-b','+994550001122',true,null,null)",
+  "INSERT INTO mtm_agents VALUES ('identity-agent-a','identity-company-a','identity-user-a','+994550001122','EMPLOYEE','ACTIVE',true,'$2b$12$' || repeat('A',53)), ('identity-agent-a2','identity-company-a','identity-user-a2','+994550002233','EMPLOYEE','INACTIVE',true,null), ('identity-agent-b','identity-company-b','identity-user-b','+994550001122','AGENT','ACTIVE',false,null)"
+]

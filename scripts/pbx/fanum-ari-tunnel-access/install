@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Let the CRM control the Fanum station through the station's own tunnel.
+#
+#   sudo bash install            add loopback to the control site's access list
+#   sudo bash install rollback   take it out again
+#
+# One include line goes into the control server block, right before the include
+# of the one-host source ACL, plus one small file. The source ACL file itself is
+# not touched: fanum-pbx-stage and the cutover wrapper accept it only as exactly
+# one /32 `allow` and `deny all;`.
+#
+# nginx is reloaded, never restarted; Asterisk is not touched. If `nginx -t` or
+# the reload fails, every changed file is restored. Running it again is a no-op.
+set -Eeuo pipefail
+umask 022
+export LC_ALL=C
+
+readonly SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SITE="/etc/nginx/conf.d/fanum-ari-proxy.conf"
+readonly ACCESS_DST="/etc/nginx/fanum-pbx-control/crm-tunnel-access.conf"
+readonly SOURCE_ACL_LINE="    include /etc/nginx/fanum-pbx-control/crm-source-access.conf;"
+readonly INCLUDE_LINE="    include /etc/nginx/fanum-pbx-control/crm-tunnel-access.conf;"
+
+fail() { printf 'fanum-ari-tunnel-access: %s\n' "$1" >&2; exit 1; }
+[[ $EUID -eq 0 ]] || fail "run with sudo"
+mode="${1:-install}"
+[[ $mode == install || $mode == rollback ]] || fail "usage: install [rollback]"
+[[ -f $SITE && ! -L $SITE ]] || fail "control site is missing: $SITE"
+
+included=0
+if grep -qxF "$INCLUDE_LINE" "$SITE"; then included=1; fi
+if [[ $mode == install ]] && (( included )) && cmp -s "$SOURCE_DIR/tunnel-access.conf" "$ACCESS_DST"; then
+  echo "fanum-ari-tunnel-access: already installed"
+  exit 0
+fi
+if [[ $mode == rollback ]] && (( ! included )) && [[ ! -e $ACCESS_DST ]]; then
+  echo "fanum-ari-tunnel-access: not installed"
+  exit 0
+fi
+# The control server block must be the one this was written against: exactly
+# one source ACL include, in the server block that answers the pinned name.
+[[ "$(grep -cxF "$SOURCE_ACL_LINE" "$SITE")" == 1 ]] || fail "control site has no single source ACL include; nothing written"
+grep -q '^    server_name fanum-pbx-control.internal;$' "$SITE" || fail "control site has no fanum-pbx-control.internal server; nothing written"
+
+readonly BACKUP="$(mktemp -d "/var/backups/fanum-ari-tunnel-access-$(date +%Y%m%d%H%M%S)-XXXX")"
+cp -a "$SITE" "$BACKUP/"
+[[ -e $ACCESS_DST ]] && cp -a "$ACCESS_DST" "$BACKUP/"
+restore() {
+  cp -a "$BACKUP/$(basename "$SITE")" "$SITE"
+  if [[ -e "$BACKUP/$(basename "$ACCESS_DST")" ]]; then cp -a "$BACKUP/$(basename "$ACCESS_DST")" "$ACCESS_DST"; else rm -f "$ACCESS_DST"; fi
+  if nginx -t >/dev/null 2>&1; then systemctl reload nginx || true; fi
+  fail "$1 — restored from $BACKUP"
+}
+
+if [[ $mode == install ]]; then
+  install -m 0600 "$SOURCE_DIR/tunnel-access.conf" "$ACCESS_DST"
+  if (( ! included )); then
+    sed -i "s|^$SOURCE_ACL_LINE\$|$INCLUDE_LINE\n$SOURCE_ACL_LINE|" "$SITE"
+  fi
+  [[ "$(grep -cxF "$INCLUDE_LINE" "$SITE")" == 1 ]] || restore "include line was not added"
+  # Order is the whole point: nginx takes the first matching allow/deny, so
+  # loopback has to come before the source ACL's `deny all;`.
+  [[ "$(grep -xF -A1 "$INCLUDE_LINE" "$SITE" | tail -1)" == "$SOURCE_ACL_LINE" ]] || restore "include line is not right before the source ACL"
+else
+  grep -vxF "$INCLUDE_LINE" "$BACKUP/$(basename "$SITE")" > "$SITE"
+  rm -f "$ACCESS_DST"
+  ! grep -qxF "$INCLUDE_LINE" "$SITE" || restore "include line was not removed"
+fi
+nginx -t || restore "nginx -t refused the configuration"
+systemctl reload nginx || restore "nginx reload failed"
+echo "fanum-ari-tunnel-access: $mode done; backup in $BACKUP"

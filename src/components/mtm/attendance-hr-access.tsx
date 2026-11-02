@@ -135,7 +135,7 @@ export function MtmAttendanceHrAccess({ canManage, onAccessLost, accessUnavailab
         {saved ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{saved}</p> : null}
         {!loading && !loadError ? <>
           {hasMore ? <p className="max-w-prose text-sm text-muted-foreground">{t("hrMoreResults")}</p> : null}
-          {users.length ? <ul aria-label={t("hrUsers")} className="divide-y divide-zinc-100 dark:divide-zinc-800">{users.map(user => <li key={user.id} className="space-y-3 py-4" data-testid="attendance-hr-user">
+          {users.length ? <ul aria-label={t("hrUsers")} className="divide-y divide-border">{users.map(user => <li key={user.id} className="space-y-3 py-4" data-testid="attendance-hr-user">
             <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 space-y-2"><h3 className="break-words text-sm font-semibold">{user.name || t("hrUnnamed")}</h3>
               <p className="text-xs text-muted-foreground">{t(ROLE_MESSAGES[user.role] ?? "hrRoleUser")} · {t(user.isActive ? "hrActive" : "hrInactive")}</p>
               <HomePill tone={user.allEmployees ? "blue" : "zinc"}>{t(user.allEmployees ? "hrAllEmployees" : "hrNormalScope")}</HomePill>

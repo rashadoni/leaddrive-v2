@@ -247,7 +247,7 @@ export function MtmAssessmentCreateDialog({
         <DialogContent>
           <div className="grid gap-5">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+            <div className="rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <FileCheck2 className="mr-2 inline h-4 w-4" />
               {t("appendOnlyAssessmentHint")}
             </div>
@@ -280,7 +280,7 @@ export function MtmAssessmentCreateDialog({
                 <Input id="assessment-period-end" type="date" min={form.periodStart} value={form.periodEnd} onChange={(event) => update("periodEnd", event.target.value)} />
               </FormField>
             </div>
-            <div className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 rounded-2xl border border-border p-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormField id="assessment-office" label={t("office")}>
                 <Input id="assessment-office" value={form.office} maxLength={500} onChange={(event) => update("office", event.target.value)} />
               </FormField>
@@ -306,7 +306,7 @@ export function MtmAssessmentCreateDialog({
                 <Input id="assessment-target" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.targetScore} onChange={(event) => update("targetScore", event.target.value)} />
               </FormField>
               <div className="grid content-start gap-3">
-                <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 px-3 dark:border-zinc-700">
+                <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border px-3">
                   <input type="checkbox" checked={form.isKol} onChange={(event) => update("isKol", event.target.checked)} className="h-4 w-4 accent-primary" />
                   <span>{t("kol")}</span>
                 </Label>
@@ -472,7 +472,7 @@ export function MtmPotentialCreateDialog({
         <DialogContent>
           <div className="grid gap-5">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 p-3 text-sm">
+            <div className="rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 p-3 text-sm">
               <Link2 className="mr-2 inline h-4 w-4" />
               {t("appendOnlyPotentialHint")}
             </div>
@@ -514,7 +514,7 @@ export function MtmPotentialCreateDialog({
                 <Input id="potential-product-name" value={form.productName} maxLength={500} onChange={(event) => update("productName", event.target.value)} />
               </FormField>
             </div>
-            <div className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 rounded-2xl border border-border p-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormField id="potential-value" label={t("potentialValue")} required labelHint={t("hint.potentialValue")}>
                 <Input id="potential-value" type="number" min="0" max="1000000000" step="any" inputMode="decimal" value={form.potentialValue} onChange={(event) => update("potentialValue", event.target.value)} required />
               </FormField>
@@ -543,7 +543,7 @@ export function MtmPotentialCreateDialog({
                 <p className="text-xs text-muted-foreground">{t("evidenceVisitSelectionHint")}</p>
               </div>
               {visibleEligibleVisits.length ? (
-                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-2 dark:border-zinc-700">
+                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-border p-2">
                   {visibleEligibleVisits.map((visit) => (
                     <Label key={visit.id} className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:bg-muted/50">
                       <input
@@ -561,7 +561,7 @@ export function MtmPotentialCreateDialog({
                     </Label>
                   ))}
                 </div>
-              ) : <p className="rounded-xl border border-dashed border-zinc-300 p-4 text-sm text-muted-foreground dark:border-zinc-700">{t("eligibleVisitsEmpty")}</p>}
+              ) : <p className="rounded-xl border border-dashed border-zinc-300 p-4 text-sm text-muted-foreground dark:border-border">{t("eligibleVisitsEmpty")}</p>}
             </div>
             <FormField id="potential-evidence-note" label={t("evidenceNote")} hint={t("evidenceNoteHint")}>
               <Textarea id="potential-evidence-note" value={form.evidenceNote} maxLength={1000} rows={3} onChange={(event) => update("evidenceNote", event.target.value)} />
@@ -642,7 +642,7 @@ export function MtmPotentialEndDialog({
         <DialogContent>
           <div className="grid gap-4">
             <ErrorNotice message={error} />
-            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
+            <div className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
               <CalendarClock className="mr-2 inline h-4 w-4" />
               {t("potentialEndAppendOnlyHint")}
             </div>

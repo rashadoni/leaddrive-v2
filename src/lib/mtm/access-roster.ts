@@ -33,6 +33,8 @@ export interface AccessCard {
   createdAt: string
   canPlanOwnRoutes?: boolean | null
   canSelfPublishRoutes?: boolean | null
+  /** The card this one reports to: who is in a manager's team. */
+  managerId?: string | null
 }
 
 export type AccessRow =
@@ -57,7 +59,7 @@ const oldestFirst = (a: AccessCard, b: AccessCard) => a.createdAt.localeCompare(
 export function buildAccessRoster(
   users: readonly AccessUser[],
   cards: readonly AccessCard[],
-): { rows: AccessRow[]; mobileOnly: number } {
+): { rows: AccessRow[]; mobileOnly: number; mobileCards: AccessCard[] } {
   const active = cards.filter((card) => card.status === "ACTIVE")
   const reused = new Set<string>()
   const rows = users
@@ -77,8 +79,19 @@ export function buildAccessRoster(
       if (reusable) reused.add(reusable.id)
       return { kind: "none", user, reusable }
     })
-  const mobileOnly = active.filter((card) => card.userId === null && !reused.has(card.id)).length
-  return { rows, mobileOnly }
+  // Employees who work only in the phone app: in the same list (owner,
+  // 2026-11-01: «не понятно что, для чего и как работает» — the agents, the
+  // people this section is about, were one line under the table).
+  const mobileCards = active.filter((card) => card.userId === null && !reused.has(card.id))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  return { rows, mobileOnly: mobileCards.length, mobileCards }
+}
+
+/** The ACTIVE cards that report to `cardId`: a manager's team, by name. */
+export function accessTeamOf(cardId: string, cards: readonly AccessCard[]): string[] {
+  return cards.filter((card) => card.status === "ACTIVE" && card.managerId === cardId && card.id !== cardId)
+    .map((card) => card.name)
+    .sort((a, b) => a.localeCompare(b))
 }
 
 export function accessChoiceOf(row: AccessRow): AccessChoice | null {

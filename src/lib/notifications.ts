@@ -6,6 +6,7 @@ import { createHash } from "node:crypto"
 import { Prisma, type Notification as NotificationRow } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendPushToUser } from "@/lib/push-send"
+import { sendStaffTelegramNotice } from "@/lib/telegram-staff/notify"
 import { deriveSection } from "@/lib/notifications/taxonomy"
 import { canNotifyEntityType } from "@/lib/notifications/access"
 import { shouldPush, type NotificationPrefs } from "@/lib/notifications/prefs"
@@ -18,12 +19,14 @@ import {
   MTM_LOCATION_REQUEST_NOTIFICATION_URL,
 } from "@/lib/mtm/customer-location-request-notification"
 import { MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY, MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_URL } from "@/lib/mtm/contact-create-request-notification"
+import { PUBLIC_CALENDAR_NOTIFICATION_ENTITY, PUBLIC_CALENDAR_NOTIFICATION_URL } from "@/lib/mtm/az-calendar-notification"
 
 /** Derive a click-through URL from the entity type + id. */
 function deriveNotificationUrl(entityType?: string, entityId?: string): string {
   if (!entityType || !entityId) return "/notifications"
   switch (entityType) {
     // Phase 1 — CRM core entities
+    case "booking": return `/meetings?booking=${encodeURIComponent(entityId)}`
     case "task":    return `/tasks/${entityId}`
     // A link that lands on the notifications page when the notification is
     // ABOUT a lead is a small lie the recipient pays for with a search.
@@ -45,6 +48,7 @@ function deriveNotificationUrl(entityType?: string, entityId?: string): string {
     case MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_URL
     case MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_RISK_NOTIFICATION_URL
     case MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY: return MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL
+    case PUBLIC_CALENDAR_NOTIFICATION_ENTITY: return PUBLIC_CALENDAR_NOTIFICATION_URL
     case MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY: return MTM_LOCATION_REQUEST_NOTIFICATION_URL
     // «Yeni həkim»: decided in the queue above the clients list.
     case MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY: return MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_URL
@@ -135,6 +139,18 @@ export async function deliverNotificationPush({
       kind,
     )
     if (!allowed) return
+    // The same notice in the organization's employee bot, when this person
+    // linked their Telegram. Same gate, no switch of its own.
+    void sendStaffTelegramNotice({
+      organizationId,
+      userId,
+      title,
+      message,
+      entityType,
+      entityId,
+      kind,
+      path: deriveNotificationUrl(entityType, entityId),
+    })
     await sendPushToUser(organizationId, userId, {
       title,
       body: message,

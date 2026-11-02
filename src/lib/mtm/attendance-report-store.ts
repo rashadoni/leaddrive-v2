@@ -60,8 +60,9 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
         ...(authorizedEmployeeIds === null ? {} : { id: { in: [...authorizedEmployeeIds] } }),
         ...(query.employeeId ? { AND: { id: query.employeeId } } : {}),
         ...(query.teamId ? { teamId: query.teamId } : {}),
+        ...(query.departmentId ? { departmentId: query.departmentId } : {}),
       },
-      select: { id: true, name: true, position: true, teamId: true, attendanceIncludedFrom: true },
+      select: { id: true, name: true, position: true, teamId: true, departmentId: true, attendanceIncludedFrom: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: Math.floor(MTM_ATTENDANCE_REPORT_MAX_ROWS / days) + 1,
     })
@@ -70,6 +71,10 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
     if (employees.length * days > MTM_ATTENDANCE_REPORT_MAX_ROWS) throw new Error("MTM_ATTENDANCE_REPORT_TOO_LARGE")
     const agentIds = employees.map((employee) => employee.id)
     const teamIds = [...new Set(employees.flatMap((employee) => employee.teamId ? [employee.teamId] : []))]
+    const departmentIds = [...new Set(employees.flatMap((employee) => employee.departmentId ? [employee.departmentId] : []))]
+    // Department above the team (2026-10-22), shown under the name in reports (owner, 2026-11-01).
+    const departmentNames = new Map((departmentIds.length ? await tx.mtmDepartment.findMany({ where: { organizationId, id: { in: departmentIds } }, select: { id: true, name: true } }) : [])
+      .map((department) => [department.id, department.name]))
     const [teams, workdays, calendar, rules, catalogue] = await Promise.all([
       tx.mtmTeam.findMany({ where: { organizationId, id: { in: teamIds } }, select: { id: true, name: true } }),
       tx.mtmAgentWorkday.findMany({
@@ -118,7 +123,7 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
     const shiftAssignments = await readAttendanceShiftAssignments(tx, organizationId, agentIds, precedingDate, query.to)
     const participation = await readAttendanceParticipationHistory(tx, organizationId, agentIds)
     const calculationInput = {
-      employees: employees.map((employee) => ({ ...employee, attendanceIncludedFrom: employee.attendanceIncludedFrom?.toISOString() ?? null, participationEvents: participation.filter(event => event.agentId === employee.id), employmentEvents: employmentByEmployee.get(employee.id), teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null })),
+      employees: employees.map((employee) => ({ ...employee, attendanceIncludedFrom: employee.attendanceIncludedFrom?.toISOString() ?? null, participationEvents: participation.filter(event => event.agentId === employee.id), employmentEvents: employmentByEmployee.get(employee.id), teamName: employee.teamId ? teamNames.get(employee.teamId) ?? null : null, departmentName: employee.departmentId ? departmentNames.get(employee.departmentId) ?? null : null })),
       approvedRequests, dayKinds: catalogue.items, workdays: workdays.map((day) => ({ ...day, correctionProjection: projectAttendanceCorrectionFacts(day, correctionsByWorkday.get(day.id) ?? [], now) })),
       calendar, rules, shiftAssignments, from: query.from, to: query.to, now,
     }

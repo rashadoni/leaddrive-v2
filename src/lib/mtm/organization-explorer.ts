@@ -1,11 +1,15 @@
 import { MTM_CLIENT_QUICK_FILTERS } from "@/lib/mtm/client-list-quick"
 
+/** The list's chips: the shared quick views and «Без часов приёма», which only places have. */
+export const MTM_ORGANIZATION_QUICK_FILTERS = [...MTM_CLIENT_QUICK_FILTERS, "NO_HOURS"] as const
+
 export const MTM_ORGANIZATION_PAGE_SIZES = [25, 50, 100] as const
 export const MTM_ORGANIZATION_BULK_LIMIT = 500
 export const MTM_ORGANIZATION_COLUMNS = [
   "code",
   "organization",
   "contacts",
+  "hours",
   "type",
   "category",
   "medicalCategory",
@@ -36,6 +40,7 @@ export const MTM_ORGANIZATION_DEFAULT_COLUMN_WIDTHS: Record<OrganizationColumn, 
   code: 120,
   organization: 340,
   contacts: 96,
+  hours: 200,
   type: 220,
   category: 160,
   medicalCategory: 180,
@@ -171,7 +176,7 @@ export function organizationFiltersFromSearchParams(
       continue
     }
     if (key === "quick") {
-      if ((MTM_CLIENT_QUICK_FILTERS as readonly string[]).includes(value)) filters.quick = value
+      if ((MTM_ORGANIZATION_QUICK_FILTERS as readonly string[]).includes(value)) filters.quick = value
       continue
     }
     Object.assign(filters, { [key]: value })

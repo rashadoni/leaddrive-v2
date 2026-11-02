@@ -416,6 +416,7 @@ describe("the live map page, end to end", () => {
 
     // A filter on another column: the chips now count inside it.
     await press(byTestId("live-map-roster-filters-button"))
+    await press(byTestId("live-map-roster-filters-more"))
     await press(byTestId("live-map-roster-filters-value-battery-LOW"))
     await press(byTestId("live-map-roster-filters-done"))
     expect(rowIds()).toEqual(["near"])
@@ -492,7 +493,7 @@ describe("the live map page, end to end", () => {
 
   it("comes back as it was left in this browser: the order of the list and the look of the map", async () => {
     window.localStorage.setItem(ROSTER_VIEW_STORAGE_KEY, JSON.stringify({ width: "wide", sort: { column: "name", direction: "desc" }, groupBy: "none", columns: ["name", "status", "battery"] }))
-    window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: true, trails: false, glide: false }))
+    window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: true, trails: false, glide: false }))
     await open()
     expect(rowIds()).toEqual(["near", "mid", "far", "none"])
     expect(byTestId("roster-column-name")?.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("descending")
@@ -645,29 +646,39 @@ describe("the live map page, end to end", () => {
     // One answer so far: one position each, and nobody without a coordinate.
     expect([...(trails()?.keys() ?? [])].sort()).toEqual(["far", "mid", "near"])
     expect(trails()?.get("far")).toHaveLength(1)
-    expect([mapProp("showLabels"), mapProp("glideMarkers")]).toEqual([false, true])
+    // Names beside the markers from the start (the mockup «MTM: движение на карте»).
+    expect([mapProp("showLabels"), mapProp("glideMarkers")]).toEqual([true, true])
     // Nothing but the roster (and no day's track) was asked of the server.
     expect(requests.filter((request) => !request.startsWith("/api/v1/mtm/locations"))).toEqual([])
 
-    await press(container.querySelector('[data-testid="live-map-layers"] > button'))
+    await press(container.querySelector('[data-testid="live-map-layers-button"]'))
     await press(byTestId("live-map-layer-labels"))
     await press(byTestId("live-map-layer-trails"))
     await press(byTestId("live-map-layer-glide"))
-    expect([mapProp("showLabels"), trails(), mapProp("glideMarkers")]).toEqual([true, null, false])
+    expect([mapProp("showLabels"), trails(), mapProp("glideMarkers")]).toEqual([false, null, false])
     // The look of the map is remembered in the browser.
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toEqual({ labels: true, trails: false, glide: false, clients: false, areas: false, areasList: false, base: "voyager" })
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toEqual({ labels: false, trails: false, glide: false, clients: false, areas: false, areasList: false, base: "voyager" })
+  })
+
+  // Before the mockup the names were off and written with every other choice:
+  // those choices come over, the names start on.
+  it("brings the look of the map over from before the names were on, and turns the names on", async () => {
+    window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: false, glide: false, base: "light" }))
+    await open()
+    expect([mapProp("showLabels"), mapProp("trails"), mapProp("glideMarkers")]).toEqual([true, null, false])
+    expect(mapProp<{ id: string }>("baseMap")).toMatchObject({ id: "light" })
   })
 
   it("switches the map's background from «Слои», remembers it, and comes back with it", async () => {
     await open()
     // The map everybody knows: the map is handed no other background.
     expect(mapProp("baseMap")).toBeNull()
-    await press(document.querySelector('[data-testid="live-map-layers"] > button'))
+    await press(document.querySelector('[data-testid="live-map-layers-button"]'))
     expect([...document.querySelectorAll('[data-testid="live-map-base-maps"] [role="radio"]')].map((choice) => choice.textContent)).toEqual(["Карта", "Светлая"])
     await press(byTestId("live-map-base-map-light"))
     expect(mapProp<{ id: string; url: string }>("baseMap")).toMatchObject({ id: "light", url: expect.stringContaining("/light_all/") })
     expect(byTestId("live-map-base-map-light")?.getAttribute("aria-checked")).toBe("true")
-    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ base: "light" })
+    expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toMatchObject({ base: "light" })
 
     // The page is opened again in this browser.
     await act(async () => { root.unmount() })
@@ -679,7 +690,7 @@ describe("the live map page, end to end", () => {
     for (const gone of ["satellite", "dark"]) {
       await act(async () => { root.unmount() })
       root = createRoot(container)
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ base: gone }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ base: gone }))
       await open()
       expect(mapProp("baseMap"), gone).toBeNull()
     }
@@ -828,7 +839,7 @@ describe("the live map page, end to end", () => {
   })
 
   describe("«Клиенты»: the client base as a layer", () => {
-    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers-button"]')) }
     const clientRequests = () => requests.filter((request) => request.startsWith("/api/v1/mtm/locations/clients")).length
     const hint = () => byTestId("live-map-layer-hint-clients")?.textContent
 
@@ -856,7 +867,7 @@ describe("the live map page, end to end", () => {
       // The employees on the map are who they were: clients take no marker from anybody.
       expect(onMap().sort()).toEqual(["far", "mid", "near"])
       // Remembered in this browser like the other looks of the map.
-      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ clients: true })
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toMatchObject({ clients: true })
       // Off again: the map is given none, and nothing is read.
       await press(byTestId("live-map-layer-clients"))
       expect(mapProp<unknown[]>("clients")).toEqual([])
@@ -927,7 +938,7 @@ describe("the live map page, end to end", () => {
 
   describe("«Свои зоны»: areas the organization draws on the map and names", () => {
     type ZoneOnMap = { id: string; name: string; kind: string; color: string | null; center?: { latitude: number; longitude: number }; radiusMeters?: number; outline?: Array<{ latitude: number; longitude: number }> }
-    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers"] > button')) }
+    const openLayers = async () => { await press(container.querySelector('[data-testid="live-map-layers-button"]')) }
     const hint = () => byTestId("live-map-layer-hint-areas")?.textContent
     const zonesOnMap = () => mapProp<ZoneOnMap[]>("zones")
     // The zones' own card on the page: folded until «Показать список» is pressed.
@@ -936,7 +947,7 @@ describe("the live map page, end to end", () => {
     const fold = () => byTestId("live-map-zones-card-fold")
     const unfoldCard = async () => { await press(fold()) }
     const zoneRows = () => [...document.querySelectorAll<HTMLElement>('[data-testid^="live-map-zone-row-zone-"]')]
-    const look = () => JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}") as Record<string, unknown>
+    const look = () => JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}") as Record<string, unknown>
     const pressMap = async (latitude: number, longitude: number) => {
       await act(async () => { mapProp<(lat: number, lng: number) => void>("onMapPress")(latitude, longitude) })
       await settle()
@@ -1040,7 +1051,7 @@ describe("the live map page, end to end", () => {
 
     it("the card waits for the employees too: while the map itself is still loading there is no «На карте» to press", async () => {
       // A return visit: the layer and its list were left on. The zones answer first, the employees have not yet.
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ areas: true, areasList: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       const employees = gate()
       rosterGate = employees.held
@@ -1131,7 +1142,7 @@ describe("the live map page, end to end", () => {
       vi.spyOn(Storage.prototype, "getItem").mockImplementation(closed)
       vi.spyOn(Storage.prototype, "setItem").mockImplementation(closed)
       try {
-        expect(() => window.localStorage.getItem("leaddrive.mtm.live-map.look.v1")).toThrow()
+        expect(() => window.localStorage.getItem("leaddrive.mtm.live-map.look.v2")).toThrow()
         await open()
         // Nothing remembered: the layer is off, as on a first visit — and the page is all there.
         expect([card(), rowIds().length]).toEqual([null, 4])
@@ -1161,7 +1172,7 @@ describe("the live map page, end to end", () => {
       expect(asked()).toBeNull()
       expect(byTestId("live-map-zone-show-zone-centre")?.textContent).toBe("На карте")
       // «Слои» is still open — the layer has just been switched on in it — and lies over the middle of the map.
-      const layersButton = () => container.querySelector('[data-testid="live-map-layers"] > button')
+      const layersButton = () => container.querySelector('[data-testid="live-map-layers-button"]')
       const layersOpen = () => [document.getElementById("live-map-layers-panel") != null, layersButton()?.getAttribute("aria-expanded")]
       expect(layersOpen()).toEqual([true, "true"])
       await press(byTestId("live-map-zone-show-zone-centre"))
@@ -1371,7 +1382,7 @@ describe("the live map page, end to end", () => {
       }])
       expect([mapProp("pressMode"), mapProp<unknown[]>("rulerPoints").length]).toEqual([null, 0])
       expect(byTestId("live-map-zone-form")).toBeNull()
-      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}")).toMatchObject({ areas: true })
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}")).toMatchObject({ areas: true })
       // What the server answered was drawn: the list was not read a second time for it.
       expect(zoneReads).toBe(1)
       await openLayers()
@@ -1388,7 +1399,7 @@ describe("the live map page, end to end", () => {
       expect(notice()).toBe("В организации уже 500 зон — больше сохранить нельзя. Удалите ненужную.")
       // Nothing changed on the map: no zone, the layer still off, the outline still in hand.
       expect(zonesOnMap()).toEqual([])
-      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v1") ?? "{}").areas ?? false).toBe(false)
+      expect(JSON.parse(window.localStorage.getItem("leaddrive.mtm.live-map.look.v2") ?? "{}").areas ?? false).toBe(false)
       expect([mapProp("pressMode"), mapProp<unknown[]>("rulerPoints").length]).toEqual(["ruler", 3])
       // A supervisor's session, a minute of too many changes, a server that fell over: each in its own words.
       for (const [refusal, words] of [
@@ -2158,7 +2169,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("«Обновить» reads the base again; while it is on its way, and if it fails, the points already on the map stay", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
       expect(count("/api/v1/mtm/locations/clients")).toBe(1)
@@ -2181,7 +2192,7 @@ describe("the live map page, end to end", () => {
       // Never taken off the map: not while the read was out, not when it failed.
       expect(mapProp<unknown[]>("clients")).toHaveLength(2)
       expect([...shown]).not.toContain(0)
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       expect(byTestId("live-map-layer-hint-clients")?.textContent).toMatch(/^на карте 2 .+не удалось обновить$/)
       // A failed read is tried again by itself a minute later, without anybody pressing anything.
       clientBase = { clients: [], total: 0, withoutCoordinates: 0, truncated: false }
@@ -2192,7 +2203,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a remembered layer that fails when the page opens is tried again by itself, a bounded number of times", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
       clientBase = 500
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
@@ -2204,7 +2215,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("the client base is read when its layer is switched on, not on the map's timer", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, clients: true }))
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
       expect(count("/api/v1/mtm/locations/clients")).toBe(1)
@@ -2217,7 +2228,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("the zones are read when their layer is switched on and on «Обновить» — never on the map's timer", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, areas: true }))
       zoneBase = { zones: [CENTRE_CIRCLE], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(2_000)
@@ -2241,7 +2252,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a refresh of the zones that fails takes nothing off the map, says so in «Слои», and is tried again by itself", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)
@@ -2259,7 +2270,7 @@ describe("the live map page, end to end", () => {
       expect([...shown]).not.toContain(0)
       // The zones are on the map, so nothing shouts over it; the layer's own line says the refresh failed.
       expect(byTestId("live-map-areas-alert")).toBeNull()
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       expect(byTestId("live-map-layer-hint-areas")?.textContent).toBe("на карте зон: 2 · не удалось обновить")
       // Who may change them was said by the last answer that did come: the list, in its card, keeps its rows and their buttons.
       expect(byTestId("live-map-zones-card-title")?.textContent).toBe("Свои зоны · 2")
@@ -2273,11 +2284,11 @@ describe("the live map page, end to end", () => {
     })
 
     it("no zones yet and a refresh that failed: the layer's line goes back to the count and says the refresh failed", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ areas: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ areas: true }))
       zoneBase = { zones: [], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)
-      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers"] > button')!.click() })
+      await act(async () => { container.querySelector<HTMLElement>('[data-testid="live-map-layers-button"]')!.click() })
       const line = () => byTestId("live-map-layer-hint-areas")?.textContent
       expect(line()).toBe("Зон пока нет. Чтобы нарисовать первую: «Линейка» → «Сохранить как зону» или «Адрес или точка» → «Зона вокруг точки».")
       zoneBase = 500
@@ -2341,7 +2352,7 @@ describe("the live map page, end to end", () => {
     })
 
     it("a refresh that was on its way while a zone was removed does not bring the zone back", async () => {
-      window.localStorage.setItem("leaddrive.mtm.live-map.look.v1", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
+      window.localStorage.setItem("leaddrive.mtm.live-map.look.v2", JSON.stringify({ labels: false, trails: true, glide: true, areas: true, areasList: true }))
       zoneBase = { zones: [CENTRE_CIRCLE, NORTH_BLOCK], access: { canWrite: true } }
       await act(async () => { root.render(createElement(MtmMapPage)) })
       await forward(18_000)

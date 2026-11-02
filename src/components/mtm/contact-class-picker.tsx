@@ -70,7 +70,7 @@ export function MtmContactClassPicker({
   }
 
   return (
-    <section data-testid="mtm-contact-class" className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+    <section data-testid="mtm-contact-class" className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <h2 className="text-base font-semibold">{t("classTitle")}</h2>
@@ -98,7 +98,7 @@ export function MtmContactClassPicker({
                 "inline-flex min-h-11 min-w-14 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors",
                 selected
                   ? "border-foreground bg-background text-foreground ring-1 ring-inset ring-foreground"
-                  : "border-zinc-200 bg-background text-muted-foreground dark:border-zinc-700",
+                  : "border-border bg-background text-muted-foreground",
                 canManage && !selected && "hover:border-zinc-400",
                 !canManage && !selected && "opacity-60",
               )}

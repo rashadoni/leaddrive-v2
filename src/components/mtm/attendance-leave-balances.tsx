@@ -94,7 +94,7 @@ export function MtmAttendanceLeaveBalances() {
     {pending && <Button type="button" className="min-h-11" disabled={busy} onClick={() => void send(pending)}>{t("leaveRetry")}</Button>}
     {busy && !data && <p role="status">{t("reportLoading")}</p>}
     {data && <>
-      {!data.policy?.value.reviewed && <div className="rounded-xl border border-l-4 border-zinc-200 border-l-orange-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-orange-500 p-5"><h2 className="font-semibold">{t("leaveEmptyPolicy")}</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{t(data.canManage && !data.policy ? "leaveDefaultHint" : "leaveLegalHint")}</p></div>}
+      {!data.policy?.value.reviewed && <div className="rounded-xl border border-l-4 border-border border-l-orange-500 bg-card text-foreground dark:border-l-orange-500 p-5"><h2 className="font-semibold">{t("leaveEmptyPolicy")}</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{t(data.canManage && !data.policy ? "leaveDefaultHint" : "leaveLegalHint")}</p></div>}
       <div className="rounded-xl border bg-card p-4 sm:p-5">
         {!data.rows.length ? <p>{t("leaveNoEmployees")}</p> : <>
           <div className="hidden overflow-x-auto lg:block"><table className="w-full text-left text-sm"><thead><tr>{["leaveEmployee", "leaveCategory", "leaveAllowance", "leaveUsed", "leavePlanned", "leaveRemaining"].map(key => <th key={key} className="border-b px-3 py-4 font-medium text-muted-foreground">{t(key)}</th>)}{data.canManage && <th className="border-b"><span className="sr-only">{t("leaveEdit")}</span></th>}</tr></thead>

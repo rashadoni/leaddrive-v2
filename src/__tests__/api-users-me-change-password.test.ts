@@ -30,7 +30,16 @@ vi.mock("@/lib/api-auth", () => ({
   isAuthError: vi.fn((x: any) => x instanceof NextResponse),
 }))
 
+const credentialFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    credentialFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+}))
+
+vi.mock("@/lib/identity/legacy-crm-boundary", () => ({ readLegacyCrmCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
+
 vi.mock("@/lib/prisma", () => ({
+  logAudit: vi.fn(async () => undefined),
   prisma: {
     user: {
       findFirst: vi.fn(async () => state.user),
@@ -50,6 +59,8 @@ vi.mock("bcryptjs", () => ({
 }))
 
 import { POST } from "@/app/api/v1/users/me/change-password/route"
+import { readLegacyCrmCredentialBoundary } from "@/lib/identity/legacy-crm-boundary"
+import bcrypt from "bcryptjs"
 
 function req(body: any): NextRequest {
   return new NextRequest("https://example.com/api/v1/users/me/change-password", {
@@ -60,15 +71,42 @@ function req(body: any): NextRequest {
 }
 
 beforeEach(() => {
+  credentialFence.allowed = true
+  vi.mocked(readLegacyCrmCredentialBoundary).mockResolvedValue("LEGACY")
   state.authOk = true
   state.currentPassword = "OldPass123!Strong"
   state.lastUpdate = null
   state.updateCount = 1
-  state.user = { id: "u1", organizationId: "org_1", passwordHash: "H(OldPass123!Strong)" }
+  state.user = { id: "u1", organizationId: "org_1", passwordHash: "H(OldPass123!Strong)", passwordChangedAt: null, isActive: true, anonymizedAt: null }
   vi.clearAllMocks()
 })
 
 describe("POST /api/v1/users/me/change-password", () => {
+  it("refuses canonical eligibility before checking the old password", async () => {
+    vi.mocked(readLegacyCrmCredentialBoundary).mockResolvedValue("MIGRATED")
+    const response = await POST(req({ currentPassword: state.currentPassword, newPassword: "BrandNew456!" }))
+    expect(response.status).toBe(409)
+    expect(bcrypt.compare).not.toHaveBeenCalled()
+    expect(state.lastUpdate).toBeNull()
+  })
+
+  it("refuses a cutover that wins the final credential fence", async () => {
+    credentialFence.allowed = false
+    const response = await POST(req({ currentPassword: state.currentPassword, newPassword: "BrandNew456!" }))
+    expect(response.status).toBe(409)
+    expect(state.lastUpdate).toBeNull()
+  })
+
+  it("does not overwrite a credential changed after the current-password comparison", async () => {
+    vi.mocked(bcrypt.hash).mockImplementationOnce(async () => {
+      state.user = { ...state.user, passwordHash: "H(concurrent-credential)" }
+      return "H(BrandNew456!)"
+    })
+    const response = await POST(req({ currentPassword: state.currentPassword, newPassword: "BrandNew456!" }))
+    expect(response.status).toBe(400)
+    expect(state.lastUpdate).toBeNull()
+  })
+
   it("changes the password on the happy path: hashes new + sets passwordChangedAt", async () => {
     const before = Date.now()
     const res = await POST(req({ currentPassword: "OldPass123!Strong", newPassword: "BrandNew456!" }))
@@ -76,7 +114,9 @@ describe("POST /api/v1/users/me/change-password", () => {
     const body = await res.json()
     expect(body).toEqual({ success: true })
 
-    expect(state.lastUpdate.where).toEqual({ id: "u1", organizationId: "org_1" })
+    expect(state.lastUpdate.where).toEqual({ id: "u1", organizationId: "org_1", passwordHash: "H(OldPass123!Strong)", passwordChangedAt: null, isActive: true, anonymizedAt: null })
+    expect(state.lastUpdate.data.resetToken).toBeNull()
+    expect(state.lastUpdate.data.resetTokenExp).toBeNull()
     expect(state.lastUpdate.data.passwordHash).toBe("H(BrandNew456!)")
     expect(state.lastUpdate.data.passwordChangedAt).toBeInstanceOf(Date)
     expect(state.lastUpdate.data.passwordChangedAt.getTime()).toBeGreaterThanOrEqual(before)

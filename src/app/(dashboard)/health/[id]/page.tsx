@@ -193,7 +193,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         </Button>
 
         {/* Patient Header Card */}
-        <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-6">
+        <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-rose-500/10 rounded-full">
               <HeartPulse className="h-7 w-7 text-rose-500" />
@@ -234,9 +234,9 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Tabs */}
-        <div className="border-b flex gap-1">
+        <div data-crm-tabs="" className="border-b flex gap-1">
           {tabs.map(tab => (
-            <button
+            <button data-crm-tab="" data-state={activeTab === tab.key ? "active" : "inactive"}
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
@@ -264,7 +264,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             {/* Overview Tab */}
             {activeTab === "overview" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 space-y-4">
+                <div className="bg-card border border-border rounded-xl p-5 space-y-4">
                   <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Demographics</h3>
                   <dl className="space-y-3">
                     <InfoRow label="MRN" value={patient.mrn} />
@@ -275,7 +275,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     <InfoRow label="Registered" value={fmt(patient.registeredAt || patient.createdAt)} />
                   </dl>
                 </div>
-                <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 space-y-4">
+                <div className="bg-card border border-border rounded-xl p-5 space-y-4">
                   <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Clinical Summary</h3>
                   <dl className="space-y-3">
                     {patient.primaryProviderId && <InfoRow label="Primary Provider ID" value={patient.primaryProviderId} />}
@@ -312,7 +312,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-center text-muted-foreground py-12">{t("noEncounters")}</p>
                 ) : (
                   encounters.map(enc => (
-                    <div key={enc.id} className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                    <div key={enc.id} className="bg-card border border-border rounded-xl p-4">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                           <ClipboardPlus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -341,7 +341,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-center text-muted-foreground py-12">{t("noCarePlans")}</p>
                 ) : (
                   carePlans.map(cp => (
-                    <div key={cp.id} className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                    <div key={cp.id} className="bg-card border border-border rounded-xl p-4">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                           <FileCheck className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -371,7 +371,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-center text-muted-foreground py-12">{t("noMedicalRecords")}</p>
                 ) : (
                   medicalRecords.map(rec => (
-                    <div key={rec.id} className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                    <div key={rec.id} className="bg-card border border-border rounded-xl p-4">
                       <div className="flex items-center gap-3">
                         <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div>

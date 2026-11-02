@@ -941,13 +941,13 @@ function ScopedWorkforceWorkbench({ view, session }: {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 border-b border-zinc-200 pb-5 dark:border-zinc-700 lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <PageDescription icon={Icon} title={title} description={t(`${view}Subtitle`)} />
         <nav className="flex flex-wrap gap-2" aria-label={t("sectionNavigation")}>
           {(["today", "timesheet", "requests"] as WorkforceView[]).map((item) => {
             const href = item === "today" ? "/workforce" : `/workforce/${item}`
             const label = item === "today" ? tNav("workforceToday") : item === "timesheet" ? tNav("workforceTimesheet") : tNav("workforceRequests")
-            return <Button key={item} asChild size="sm" variant={item === view ? "default" : "outline"} className="min-h-12">
+            return <Button key={item} asChild size="sm" variant={item === view ? "selected" : "outline"} className="min-h-12">
               <Link
                 href={href}
                 aria-disabled={approvalRefreshLifecycle.isBusy()}
@@ -965,9 +965,9 @@ function ScopedWorkforceWorkbench({ view, session }: {
         </nav>
       </header>
 
-      {loading && !taggedApprovalRefresh ? <div className="h-48 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={t("loading")} role="status" /> : null}
+      {loading && !taggedApprovalRefresh ? <div className="h-48 animate-pulse border-y border-border bg-muted/40 motion-reduce:animate-none" aria-label={t("loading")} role="status" /> : null}
       {!loading && error ? (
-        <section className="flex flex-col gap-3 border-y border-zinc-200 bg-card py-5 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
+        <section className="flex flex-col gap-3 border-y border-border bg-card py-5 sm:flex-row sm:items-center sm:justify-between" role="alert">
           <div><p className="font-medium">{t("loadFailed")}</p><p className={view === "today" ? "mt-1 text-sm text-zinc-700 dark:text-zinc-300" : "mt-1 text-sm text-muted-foreground"}>{error}</p></div>
           <Button type="button" variant="outline" className="min-h-12" onClick={() => requestReload()}>{t("tryAgain")}</Button>
         </section>
@@ -1043,7 +1043,7 @@ function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutco
         : Square
     const outcome = workdayOutcome ?? today.serverOutcome?.state ?? null
     return <>
-      <section aria-labelledby="workforce-employee-today" className="grid overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]">
+      <section aria-labelledby="workforce-employee-today" className="grid overflow-hidden rounded-xl border border-border bg-card lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]">
         <div className="flex min-h-[22rem] flex-col justify-between gap-8 p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -1080,7 +1080,7 @@ function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutco
           </div>
         </div>
 
-        <div className="border-t border-zinc-200 bg-muted/25 p-6 dark:border-zinc-700 lg:border-l lg:border-t-0 sm:p-8">
+        <div className="border-t border-border bg-muted/25 p-6 lg:border-l lg:border-t-0 sm:p-8">
           <h3 className="text-base font-semibold">{t("employeeAssignmentTitle")}</h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("employeeAssignmentHint")}</p>
           <div className="mt-5 space-y-4">
@@ -1103,7 +1103,7 @@ function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutco
             {today.assignment.segments.length === 0 ? <p className="text-sm text-muted-foreground">{t(`employeeAssignmentState.${today.assignment.state}`)}</p> : null}
           </div>
           {today.assignment.segments.length > 0 ? <p className="mt-5 text-xs leading-5 text-muted-foreground">{t("employeeSegmentBoundary")}</p> : null}
-          <div className="mt-7 border-t border-zinc-200 pt-5 dark:border-zinc-700">
+          <div className="mt-7 border-t border-border pt-5">
             <p className="text-sm font-medium">{t("employeeEvidenceTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               {today.evidence.state === "REQUIRED"
@@ -1164,12 +1164,12 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
       onApprove={onApprove}
       onPreviewApprovedExport={onPreviewApprovedExport}
     />
-    <section className="flex flex-col gap-1 border-y border-zinc-200 py-5 dark:border-zinc-700 sm:flex-row sm:items-end sm:justify-between">
+    <section className="flex flex-col gap-1 rounded-lg border border-border bg-card text-card-foreground p-5 sm:flex-row sm:items-end sm:justify-between">
       <div><h3 className="text-base font-semibold">{t("recordedTime")}</h3><p className="text-sm text-muted-foreground">{data.start} — {data.end} · {data.timezone}</p></div>
       <p className="text-sm text-muted-foreground">{t("totalRecorded", { duration: duration(data.summary.totalWorkedSeconds), count: data.summary.workdayCount })}</p>
     </section>
-    <div className="overflow-x-auto border-y border-zinc-200 dark:border-zinc-700">
-      <table className="min-w-[1180px] text-left text-sm"><thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-muted-foreground dark:border-zinc-700"><tr><th className="px-1 py-3 font-medium">{t("employee")}</th><th className="px-3 py-3 font-medium">{t("date")}</th><th className="px-3 py-3 font-medium">{t("statusLabel")}</th><th className="px-3 py-3 font-medium">{t("planned")}</th><th className="px-3 py-3 text-right font-medium">{t("actual")}</th><th className="px-3 py-3 font-medium">{t("evidenceReview")}</th><th className="px-3 py-3 font-medium">{t("timesheetExceptions")}</th><th className="px-3 py-3 font-medium">{t("deviations")}</th></tr></thead><tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card text-card-foreground">
+      <table className="min-w-[1180px] text-left text-sm"><thead className="border-b border-border bg-muted text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-1 py-3 font-medium">{t("employee")}</th><th className="px-3 py-3 font-medium">{t("date")}</th><th className="px-3 py-3 font-medium">{t("statusLabel")}</th><th className="px-3 py-3 font-medium">{t("planned")}</th><th className="px-3 py-3 text-right font-medium">{t("actual")}</th><th className="px-3 py-3 font-medium">{t("evidenceReview")}</th><th className="px-3 py-3 font-medium">{t("timesheetExceptions")}</th><th className="px-3 py-3 font-medium">{t("deviations")}</th></tr></thead><tbody className="divide-y divide-border">
         {data.rows.map((row) => {
           const calculation = row.calculationStatus === "WORKFORCE_TIMESHEET_CALCULATED" ? row.calculation : null
           const deviations = calculation == null ? [] : [
@@ -1222,10 +1222,10 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
       </tbody></table>
     </div>
     {data.unrecordedWorkdayExceptions.length > 0 ? (
-      <section aria-labelledby="workforce-timesheet-unrecorded-exceptions" className="border-y border-zinc-200 py-5 dark:border-zinc-700">
+      <section aria-labelledby="workforce-timesheet-unrecorded-exceptions" className="rounded-lg border border-border bg-card text-card-foreground p-5">
         <h3 id="workforce-timesheet-unrecorded-exceptions" className="text-base font-semibold">{t("timesheetUnrecordedExceptionsTitle")}</h3>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("timesheetUnrecordedExceptionsHint")}</p>
-        <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-700">
+        <ul className="mt-4 divide-y divide-border">
           {data.unrecordedWorkdayExceptions.map((entry) => (
             <li key={`${entry.agentId}:${entry.workDate}`} className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.5fr)] sm:items-start">
               <span className="font-medium">{names.get(entry.agentId) ?? t("unknownEmployee")}</span>
@@ -1331,7 +1331,7 @@ function TimesheetApprovalPanel({
   }
 
   return (
-    <section aria-labelledby="workforce-timesheet-approval" className="border-y border-zinc-200 py-5 dark:border-zinc-700">
+    <section aria-labelledby="workforce-timesheet-approval" className="rounded-lg border border-border bg-card text-card-foreground p-5">
       <div className="flex flex-col gap-1">
         <h3 id="workforce-timesheet-approval" className="text-base font-semibold">{t("timesheetApprovalTitle")}</h3>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("timesheetApprovalHint")}</p>
@@ -1374,7 +1374,7 @@ function TimesheetApprovalPanel({
       </div>
 
       {!selectedAgent ? <p className="mt-5 text-sm text-muted-foreground">{t("approvalSelectEmployeeHint")}</p> : (
-        <div className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-700">
+        <div className="mt-5 border-t border-border pt-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="font-medium">{selectedAgent.name}</p>
@@ -1384,7 +1384,7 @@ function TimesheetApprovalPanel({
           </div>
           {!approvalReady ? <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{hasApprovalBlockingExceptions ? t("approvalUnresolvedExceptions") : selectedRows.length === 0 ? t("approvalNoWorkdays") : t("approvalIncompleteWorkdays")}</p> : null}
           {!canApproveTimesheet ? <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{t("approvalManagerRequired")}</p> : null}
-          <div className="mt-5 border-y border-zinc-200 py-4 dark:border-zinc-700" aria-labelledby="workforce-timesheet-revisions">
+          <div className="mt-5 border-y border-border py-4" aria-labelledby="workforce-timesheet-revisions">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h4 id="workforce-timesheet-revisions" className="font-medium">{t("timesheetRevisionHistoryTitle")}</h4>
@@ -1441,7 +1441,7 @@ function TimesheetApprovalPanel({
           ) : null}
           {record ? <p className="mt-4 text-sm text-emerald-700 dark:text-emerald-300" role="status">{t(record.recordKind === "CORRECTION" ? "timesheetCorrectionStatus" : "timesheetApprovalStatus", { revision: record.revision })}</p> : null}
           {record ? (
-            <div className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-700">
+            <div className="mt-5 border-t border-border pt-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h4 className="font-medium">{t("timesheetExportPreviewTitle")}</h4>
@@ -1461,7 +1461,7 @@ function TimesheetApprovalPanel({
               <p className="mt-3 text-sm text-muted-foreground">{t("timesheetExportCustodianRequired")}</p>
               {exportPreviewFailure ? <p className="mt-3 text-sm text-destructive" role="alert">{exportPreviewFailure}</p> : null}
               {exportPreview ? (
-                <div className="mt-4 space-y-4 border-y border-zinc-200 py-4 dark:border-zinc-700">
+                <div className="mt-4 space-y-4 border-y border-border py-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-medium">{exportPreview.scope.employee.name}</p>
@@ -1628,7 +1628,7 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
     }
   }
 
-  return <section aria-labelledby="workforce-self-request" className="border-y border-zinc-200 py-5 dark:border-zinc-700">
+  return <section aria-labelledby="workforce-self-request" className="rounded-lg border border-border bg-card text-card-foreground p-5">
     <div className="max-w-3xl">
       <h3 id="workforce-self-request" className="text-base font-semibold">{t("selfRequestTitle")}</h3>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("selfRequestHint")}</p>
@@ -1743,13 +1743,13 @@ function RequestsView({
   })
   return <>
     {data.canSubmitSelf ? <SelfRequestPanel data={data} t={t} submitting={submittingSelfRequest} preselectedCorrectionWorkdayId={preselectedCorrectionWorkdayId} preselectedExceptionCaseId={preselectedExceptionCaseId} onSubmit={onSubmitSelf} /> : null}
-    <section aria-labelledby="workforce-request-list" className="border-y border-zinc-200 dark:border-zinc-700">
+    <section aria-labelledby="workforce-request-list" className="rounded-lg border border-border bg-card text-card-foreground px-5">
     <div className="flex flex-col gap-1 px-1 py-5 sm:flex-row sm:items-baseline sm:justify-between"><div><h3 id="workforce-request-list" className="text-base font-semibold">{data.canSubmitSelf ? t("selfRequestHistory") : t("requestQueue")}</h3><p className="text-sm text-muted-foreground">{data.canSubmitSelf ? t("selfRequestPendingHint") : t("requestQueueHint")}</p></div><span className="text-sm text-muted-foreground">{t("requestCount", { count: data.requests.length })}</span></div>
-    <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+    <div className="divide-y divide-border">
       {data.requests.map((request) => <article key={request.id} className="py-5">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{request.agent.name}</p><Badge variant={statusTone(request.status)}>{t(`requestStatus.${request.status}`)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{t(`requestType.${requestTypeKey(request.type)}`)} · {formatter.format(new Date(`${request.startDate.slice(0, 10)}T12:00:00`))}{request.endDate.slice(0, 10) !== request.startDate.slice(0, 10) ? ` — ${formatter.format(new Date(`${request.endDate.slice(0, 10)}T12:00:00`))}` : ""}</p><p className="mt-3 max-w-3xl text-sm leading-6">{request.reason}</p>{request.type === "TIME_CORRECTION" ? <p className="mt-2 text-sm text-muted-foreground">{t("requestedCorrection", { start: request.requestedStartAt ? dateTimeFormatter.format(new Date(request.requestedStartAt)) : t("unchanged"), end: request.requestedEndAt ? dateTimeFormatter.format(new Date(request.requestedEndAt)) : t("unchanged") })}</p> : null}{request.decisionNote ? <p className="mt-2 text-sm text-muted-foreground">{t("decisionNote")}: {request.decisionNote}</p> : null}</div><span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><UserRound className="h-4 w-4" />{request.agent.role}</span></div>
-        {(request.canDecide ?? canDecide) && request.status === "PENDING" ? <div className="mt-4 grid gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700 lg:grid-cols-[minmax(0,1fr)_auto]"><Textarea aria-label={t("decisionNoteLabel", { name: request.agent.name })} value={notes[request.id] ?? ""} onChange={(event) => onNoteChange(request.id, event.target.value)} placeholder={t("decisionNotePlaceholder")} className="min-h-24" maxLength={1000} /><div className="flex flex-wrap items-start gap-2"><Button type="button" className="min-h-12" disabled={savingId === request.id} onClick={() => onDecide(request, "APPROVED")}><Check />{t("approve")}</Button><Button type="button" variant="outline" className="min-h-12" disabled={savingId === request.id} onClick={() => onDecide(request, "REJECTED")}><X />{t("reject")}</Button></div></div> : null}
-        {(request.canCancelSelf ?? data.canSubmitSelf) && request.status === "PENDING" ? <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-700"><Button type="button" variant="outline" className="min-h-12" disabled={cancellingSelfRequestId === request.id} onClick={() => void onCancelSelf(request)}>{cancellingSelfRequestId === request.id ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <X />}{t("selfRequestCancel")}</Button></div> : null}
+        {(request.canDecide ?? canDecide) && request.status === "PENDING" ? <div className="mt-4 grid gap-3 border-t border-border pt-4 lg:grid-cols-[minmax(0,1fr)_auto]"><Textarea aria-label={t("decisionNoteLabel", { name: request.agent.name })} value={notes[request.id] ?? ""} onChange={(event) => onNoteChange(request.id, event.target.value)} placeholder={t("decisionNotePlaceholder")} className="min-h-24" maxLength={1000} /><div className="flex flex-wrap items-start gap-2"><Button type="button" className="min-h-12" disabled={savingId === request.id} onClick={() => onDecide(request, "APPROVED")}><Check />{t("approve")}</Button><Button type="button" variant="outline" className="min-h-12" disabled={savingId === request.id} onClick={() => onDecide(request, "REJECTED")}><X />{t("reject")}</Button></div></div> : null}
+        {(request.canCancelSelf ?? data.canSubmitSelf) && request.status === "PENDING" ? <div className="mt-4 border-t border-border pt-4"><Button type="button" variant="outline" className="min-h-12" disabled={cancellingSelfRequestId === request.id} onClick={() => void onCancelSelf(request)}>{cancellingSelfRequestId === request.id ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <X />}{t("selfRequestCancel")}</Button></div> : null}
         {conflicts[request.id]?.length ? <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30"><div className="flex gap-3"><TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" /><div className="min-w-0"><p className="font-medium text-amber-950 dark:text-amber-100">{t("routeConflictTitle")}</p><p className="mt-1 text-sm text-amber-900/80 dark:text-amber-100/80">{t("routeConflictHint")}</p><ul className="mt-3 space-y-1 text-sm text-amber-950 dark:text-amber-100">{conflicts[request.id].map((conflict) => <li key={conflict.id}>{conflict.date.slice(0, 10)} · {conflict.name || conflict.id}</li>)}</ul><Button type="button" variant="outline" className="mt-4 min-h-12 border-amber-300 bg-amber-50 hover:bg-amber-100 dark:border-amber-800 dark:bg-transparent dark:hover:bg-amber-900/30" disabled={savingId === request.id} onClick={() => onDecide(request, "APPROVED", true)}>{savingId === request.id ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("approveWithConflicts")}</Button></div></div></div> : null}
       </article>)}
       {data.requests.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">{t("noRequests")}</p> : null}

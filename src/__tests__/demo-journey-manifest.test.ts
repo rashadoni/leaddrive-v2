@@ -5,11 +5,13 @@
  * the real pages, routes must be real sidebar entries inside the four
  * visible groups, every included inventory section must be demonstrated,
  * coverage must meet the 80 % target per product area, the state chain must
- * be walkable, and intro clips marked available must exist on disk.
+ * be walkable, and intro clips marked available must be in the published
+ * master set.
  */
 import { describe, expect, it } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
+import { manifestNames } from "../../scripts/help-video/sync-video-availability.mjs"
 import {
   DEMO_ANCHORS,
   DEMO_BUILT_AREAS,
@@ -34,6 +36,7 @@ import { DEMO_JOURNEY_STRINGS } from "@/components/demo-center/journey/strings"
 import { activeSections } from "@/lib/demo-center/journey"
 
 const ROOT = process.cwd()
+const MASTERS: Set<string> = manifestNames()
 const read = (relative: string) => readFileSync(path.join(ROOT, relative), "utf8")
 
 /** Sidebar group label → group-module id, for the groups the demo shows.
@@ -427,11 +430,13 @@ describe("Guided journey intro clips", () => {
   it("only marks clips available when the Azerbaijani file and poster exist", () => {
     for (const section of manifest.sections) {
       if (!section.intro) continue
-      const video = path.join(ROOT, "video/player", `${section.intro.slug}.az.VOICE.mp4`)
-      const poster = path.join(ROOT, "video/player", `${section.intro.slug}.az.poster.jpg`)
+      // Object storage holds the bytes since 2026-11-02; the committed master
+      // manifest is the list the deploy pulls, so it answers "does it exist".
+      const video = `${section.intro.slug}.az.VOICE.mp4`
+      const poster = `${section.intro.slug}.az.poster.jpg`
       if (section.intro.status === "available") {
-        expect(existsSync(video), `${section.id}: ${video}`).toBe(true)
-        expect(existsSync(poster), `${section.id}: ${poster}`).toBe(true)
+        expect(MASTERS.has(video), `${section.id}: ${video}`).toBe(true)
+        expect(MASTERS.has(poster), `${section.id}: ${poster}`).toBe(true)
       }
       expect(section.intro.caption.trim()).not.toBe("")
     }

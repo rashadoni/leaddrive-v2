@@ -89,7 +89,7 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(component).toContain("md:grid-cols-4")
     expect(component).toContain('role="alert"')
     expect(component).toContain('role="status" aria-live="polite"')
-    expect(component).toContain("divide-y divide-zinc-200")
+    expect(component).toContain("divide-y divide-border")
     expect(component).toContain("motion-reduce:animate-none")
   })
 

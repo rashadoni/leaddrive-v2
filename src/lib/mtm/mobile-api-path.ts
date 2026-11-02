@@ -10,6 +10,7 @@
 const LEGACY_MTM_API_PREFIX = "/api/v1/mtm/"
 const LEGACY_MTM_MOBILE_API_PREFIX = "/api/v1/mtm/mobile/"
 const V2_MTM_MOBILE_EXACT_PATHS = new Set([
+  "/api/v2/mtm/mobile/route-field/attendance/marks",
   "/api/v2/mtm/mobile/location/batch",
   // Attendance belongs to Route & Field. The old /mobile/attendance prefix
   // stays withdrawn with Workforce HRM and cannot serve these handlers.
@@ -43,6 +44,9 @@ const V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/rout
 // organization's pin (and its withdrawal). The same lesson as above — a
 // handler the proxy does not admit answers the app with a redirect to /login.
 const V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/organizations\/[^/%]+\/location-request$/
+// «Часы не те?»: an agent's proposal of a place's real «часы приёма» (and its
+// withdrawal) — the same shape, the same lesson.
+const V2_MTM_MOBILE_ORGANIZATION_HOURS_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/organizations\/[^/%]+\/hours-request$/
 
 function normalizedPathname(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname
@@ -55,6 +59,7 @@ function isApprovedV2MtmMobilePath(pathname: string): boolean {
     || V2_MTM_MOBILE_ATTENDANCE_DETAIL_PATH.test(normalized)
     || V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH.test(normalized)
     || V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH.test(normalized)
+    || V2_MTM_MOBILE_ORGANIZATION_HOURS_REQUEST_PATH.test(normalized)
 }
 
 export function isMtmApiPath(pathname: string): boolean {

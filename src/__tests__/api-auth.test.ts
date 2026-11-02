@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
 
+const credentialFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    credentialFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+}))
+
 vi.mock("@/lib/prisma", () => ({
+  logAudit: vi.fn(async () => undefined),
   prisma: {
     user: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     organization: { findUnique: vi.fn() },
@@ -63,6 +70,7 @@ function resetTokenWhere(args: unknown): ResetTokenWhere {
 }
 
 beforeEach(() => {
+  credentialFence.allowed = true
   vi.clearAllMocks()
   vi.mocked(prisma.user.updateMany).mockResolvedValue({ count: 1 })
 })
@@ -79,6 +87,16 @@ const account = (over: Record<string, unknown> = {}) => ({
 })
 
 describe("POST /api/v1/auth/forgot-password", () => {
+  it("keeps the uniform answer but issues no legacy email capability after cutover", async () => {
+    credentialFence.allowed = false
+    vi.mocked(prisma.user.findMany).mockResolvedValue([account({ email: "canonical@test.com" })] as never)
+    const response = await forgotPOST(makeRequest("/api/v1/auth/forgot-password", { email: "canonical@test.com" }))
+    expect(response.status).toBe(200)
+    expect((await response.json()).success).toBe(true)
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
   // F-28: every exit answers identically, including a malformed address. A 400
   // on bad input would be a cheap oracle for probing which shapes the system
   // reacts to, so "missing email" is no longer distinguishable from "unknown
@@ -102,12 +120,12 @@ describe("POST /api/v1/auth/forgot-password", () => {
   // F-28: the column holds a digest, never the token that travels in the email.
   it("stores a digest of the reset token, not the token", async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([account({ email: "test@test.com" })] as never)
-    vi.mocked(prisma.user.update).mockResolvedValue({} as never)
+    vi.mocked(prisma.user.updateMany).mockResolvedValue({ count: 1 } as never)
 
     const res = await forgotPOST(makeRequest("/api/v1/auth/forgot-password", { email: "test@test.com" }))
     expect((await res.json()).success).toBe(true)
 
-    const stored = vi.mocked(prisma.user.update).mock.calls[0][0].data.resetToken as string
+    const stored = vi.mocked(prisma.user.updateMany).mock.calls[0][0].data.resetToken as string
     expect(stored).toMatch(/^[0-9a-f]{64}$/)
 
     // The link carries the token itself; the digest of that token is what was
@@ -131,11 +149,11 @@ describe("POST /api/v1/auth/forgot-password", () => {
       account({ id: "user-1", email: "multi@test.com", organization: { name: "Acme" } }),
       account({ id: "user-2", email: "multi@test.com", organizationId: "org-2", organization: { name: "Globex" } }),
     ] as never)
-    vi.mocked(prisma.user.update).mockResolvedValue({} as never)
+    vi.mocked(prisma.user.updateMany).mockResolvedValue({ count: 1 } as never)
 
     await forgotPOST(makeRequest("/api/v1/auth/forgot-password", { email: "multi@test.com" }))
 
-    expect(prisma.user.update).toHaveBeenCalledTimes(2)
+    expect(prisma.user.updateMany).toHaveBeenCalledTimes(2)
 
     // One message PER TENANT, not one message carrying both links. sendEmail
     // writes the rendered body into EmailLog, and EmailLog is scoped per
@@ -169,11 +187,11 @@ describe("POST /api/v1/auth/forgot-password", () => {
 
   it("sets resetTokenExp to approximately 1 hour from now", async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([account({ email: "t@t.com" })] as never)
-    vi.mocked(prisma.user.update).mockResolvedValue({} as never)
+    vi.mocked(prisma.user.updateMany).mockResolvedValue({ count: 1 } as never)
 
     await forgotPOST(makeRequest("/api/v1/auth/forgot-password", { email: "t@t.com" }))
 
-    const updateCall = vi.mocked(prisma.user.update).mock.calls[0][0]
+    const updateCall = vi.mocked(prisma.user.updateMany).mock.calls[0][0]
     const exp = updateCall.data.resetTokenExp as Date
     const diffMs = exp.getTime() - Date.now()
     // Should be about 1 hour (3600000 ms), allow 5s tolerance
@@ -186,6 +204,14 @@ describe("POST /api/v1/auth/forgot-password", () => {
 // Reset Password
 // ---------------------------------------------------------------------------
 describe("POST /api/v1/auth/reset-password", () => {
+  it("does not redeem an old email capability when the final migration fence refuses", async () => {
+    credentialFence.allowed = false
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "user-1", organizationId: "org-1", isActive: true } as never)
+    const response = await resetPOST(makeRequest("/api/v1/auth/reset-password", { token: "old-link", password: "NewPass123!Strong" }))
+    expect(response.status).toBe(400)
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
+  })
+
   it("returns 400 when token is missing", async () => {
     const res = await resetPOST(makeRequest("/api/v1/auth/reset-password", { password: "NewPass123!Strong" }))
     expect(res.status).toBe(400)
@@ -224,6 +250,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     // link and in this request.
     vi.mocked(prisma.user.findFirst).mockResolvedValue({
       id: "user-1",
+      organizationId: "org-1",
       isActive: true,
       resetToken: hashOneTimeToken("valid-token"),
       resetTokenExp: new Date(Date.now() + 3600000),
@@ -263,7 +290,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       lookupCount += 1
       if (lookupCount === 2) releaseLookups()
       await bothLookedUp
-      return { id: "user-1", isActive: true, resetToken: hashOneTimeToken("race-token"), resetTokenExp } as never
+      return { id: "user-1", organizationId: "org-1", isActive: true, resetToken: hashOneTimeToken("race-token"), resetTokenExp } as never
     })
 
     // The compare-and-set matches on the digest, so the simulated live value is
@@ -300,7 +327,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     let liveToken: string | null = hashOneTimeToken("single-use-token")
     vi.mocked(prisma.user.findFirst).mockImplementation(async (args) => (
       liveToken === resetTokenWhere(args).resetToken
-        ? { id: "user-1", isActive: true, resetToken: liveToken, resetTokenExp } as never
+        ? { id: "user-1", organizationId: "org-1", isActive: true, resetToken: liveToken, resetTokenExp } as never
         : null
     ))
     vi.mocked(prisma.user.updateMany).mockImplementation(async (args) => {

@@ -378,3 +378,37 @@ describe("DELETE /api/v1/payment-providers/[id]", () => {
     expect(res.status).toBe(409)
   })
 })
+
+/* ─── Kapital Bank stays out of the generic routes ─────────────────── */
+
+// Its password is stored only as tenant-bound ciphertext, written by the
+// invoice settings (/api/v1/settings/online-payment). These routes store
+// credentials as they are sent, so they must not create or edit that row.
+describe("Kapital Bank in the generic provider routes", () => {
+  it("POST refuses to create a kapitalbank provider", async () => {
+    const res = await CreateProvider(
+      makeReq("/api/v1/payment-providers", "POST", {
+        type: "kapitalbank",
+        name: "Kapital",
+        credentials: { login: "TerminalSys/x", password: "plain" },
+      }),
+    )
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe("CONFIGURED_ELSEWHERE")
+    expect(pp().create).not.toHaveBeenCalled()
+  })
+
+  it("PATCH refuses to edit a kapitalbank provider", async () => {
+    pp().findFirst.mockResolvedValue({ type: "kapitalbank", isTestMode: true, credentials: { login: "x", passwordCiphertext: "c" } } as any)
+
+    const res = await UpdateProvider(
+      makeReq("/api/v1/payment-providers/p1", "PATCH", { credentials: { password: "plain" } }),
+      makeParams("p1"),
+    )
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe("CONFIGURED_ELSEWHERE")
+    expect(pp().update).not.toHaveBeenCalled()
+  })
+})

@@ -215,7 +215,7 @@ export default function RolesSettingsPage() {
             {roles.map(role => {
               const Icon = getRoleIcon(role.id)
               return (
-                <div key={role.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+                <div key={role.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
                   <Badge className={`${getColorBg(role.color)} gap-1`}>
                     <Icon className="h-3 w-3" />
                     {role.name}

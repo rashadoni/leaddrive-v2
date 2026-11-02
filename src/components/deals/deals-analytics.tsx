@@ -260,7 +260,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
       {/* ── KPI Row ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 flex flex-col gap-2">
+          <div key={kpi.label} className="bg-card rounded-xl border border-border p-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{kpi.label}</span>
               <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", kpi.iconBg)}>
@@ -280,7 +280,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
       {/* ── Row 1 ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Pipeline Kanban */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold">{t("pipelineKanban")}</h3>
             <span className="text-xs text-muted-foreground">{analytics.totalDeals} {t("deals")}</span>
@@ -331,7 +331,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
         </div>
 
         {/* Revenue Forecast */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold">{t("revenueForecast")}</h3>
             <Sparkles className="w-4 h-4 text-fuchsia-400" />
@@ -368,7 +368,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
         </div>
 
         {/* Win/Loss */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold mb-4">{t("winLoss")}</h3>
           <div className="flex items-center gap-5">
             <MiniDonut segments={donutSegments} size={80} />
@@ -411,7 +411,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
       {/* ── Row 2 ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Contact Activity */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold mb-4">{t("contactActivity")}</h3>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
@@ -453,7 +453,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
         </div>
 
         {/* Da Vinci AI Forecast */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Brain className="w-4 h-4 text-fuchsia-400" />
             <h3 className="text-base font-semibold">{t("aiPredict")}</h3>
@@ -528,7 +528,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
         </div>
 
         {/* Competitor Analysis */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="w-4 h-4 text-orange-400" />
             <h3 className="text-sm font-semibold">{t("competitorAnalysis")}</h3>
@@ -561,7 +561,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
       {/* ── Row 3 ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Deal Velocity */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold">{t("dealVelocity")}</h3>
             <span className="flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full">
@@ -601,7 +601,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
         </div>
 
         {/* Next Steps */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-4 h-4 text-amber-400" />
             <h3 className="text-sm font-semibold">{t("nextSteps")}</h3>
@@ -628,7 +628,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
         </div>
 
         {/* Next Best Offers */}
-        <div className="bg-card rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Package className="w-4 h-4 text-cyan-400" />
             <h3 className="text-sm font-semibold">{t("nextBestOffers")}</h3>

@@ -15,17 +15,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import {
+  Clock3,
   ArrowDownAZ,
   ArrowUpAZ,
   Bookmark,
   Building2,
   CalendarPlus,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
   Download,
   MapPin,
-  MoreHorizontal,
   Navigation,
   Pencil,
   Plus,
@@ -34,7 +35,8 @@ import {
   UserRoundCheck,
   UsersRound,
 } from "lucide-react"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageTitle } from "@/components/mtm/page-header"
+import { openRowOnClick } from "@/lib/client/open-row"
 import {
   MtmFilterGrid,
   MtmFilterMore,
@@ -55,6 +57,9 @@ import {
 import { HelpButton } from "@/components/help/help-button"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { cn } from "@/lib/utils"
+import { companyNow, MtmCustomerHoursDialog, useDayHoursText } from "@/components/mtm/customer-hours"
+import { hoursOfDay, readWorkingHours } from "@/lib/mtm/customer-hours"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -132,6 +137,8 @@ type OrganizationAttributeFact = {
 
 type Organization = {
   id: string
+  /** «Часы приёма» (src/lib/mtm/customer-hours.ts); null = not given. */
+  workingHours?: unknown
   code: string | null
   name: string
   objectType: string
@@ -206,6 +213,8 @@ type OrganizationListPayload = {
   effectiveScope: "ALL" | "MINE"
   /** The chip in force, the month «без визита» is about, and how many each chip holds. */
   quick?: { filter: string | null; month: string; counts: MtmClientQuickCounts | null }
+  /** «Без часов приёма»: in force, and how many places have none. */
+  hours?: { missing: boolean; missingCount: number | null }
   capabilities: {
     canManage: boolean
     canRequestChanges: boolean
@@ -309,6 +318,7 @@ function FieldCheckbox({
 const COLUMN_HINT: Partial<Record<OrganizationColumn, string>> = {
   code: "colCode",
   contacts: "colContacts",
+  hours: "colHours",
   type: "colType",
   category: "colCategory",
   medicalCategory: "colMedicalCategory",
@@ -331,6 +341,7 @@ const QUICK_LABEL = {
   NOT_VISITED: "notVisited",
   NOT_PLANNED: "notPlanned",
   UNASSIGNED: "unassigned",
+  NO_HOURS: "noHours",
 } as const
 
 /** What each chip holds, under the cursor. */
@@ -339,6 +350,7 @@ const QUICK_HINT = {
   NOT_VISITED: "explorer.hint.quickNotVisited",
   NOT_PLANNED: "explorer.hint.quickNotPlanned",
   UNASSIGNED: "explorer.hint.quickUnassigned",
+  NO_HOURS: "explorer.hint.quickNoHours",
 } as const
 
 /** «Seymur Məmmədov» → «Seymur M.»: who was there, in a narrow column. */
@@ -373,6 +385,20 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [hoursOpen, setHoursOpen] = useState(false)
+  const dayHoursText = useDayHoursText()
+  /** Today's hours of a place, in the company's time zone: «09:00–20:00 · обед 13:00–14:00». */
+  const todaysHours = (organization: Organization): string => {
+    const week = readWorkingHours(organization.workingHours)
+    if (!week) return tx("explorer.hoursMissing")
+    const day = hoursOfDay(week, companyNow(data?.timezone ?? "Asia/Baku").weekday)
+    return day === null ? tx("explorer.hoursDayOff") : dayHoursText(day) ?? ""
+  }
+  const todaysHoursKind = (organization: Organization): "set" | "off" | "none" => {
+    const week = readWorkingHours(organization.workingHours)
+    if (!week) return "none"
+    return hoursOfDay(week, companyNow(data?.timezone ?? "Asia/Baku").weekday) === null ? "off" : "set"
+  }
   const [selectingAll, setSelectingAll] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editData, setEditData] = useState<Organization | undefined>()
@@ -833,6 +859,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     switch (column) {
       case "code": return organization.code
       case "contacts": return organization._count.contactWorkplaces
+      case "hours": return todaysHours(organization)
       case "organization": return [organization.name, organization.address].filter(Boolean).join(" — ")
       case "type": return organization.organizationKind || tx(`explorer.objectTypes.${organization.objectType}`)
       case "category": return [organization.category, organization.specialization].filter(Boolean).join(" — ")
@@ -966,7 +993,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const gridWidth = visibleColumns.reduce((sum, column) => sum + columnWidths[column], selectionColumnWidth + actionColumnWidth)
   const organizationStickyLeft = selectionColumnWidth + (visibleColumns.includes("code") ? columnWidths.code : 0)
   const densityCellClass = density === "COMPACT" ? "px-2 py-1.5" : "px-3 py-2"
-  const densitySubtextClass = density === "COMPACT" ? "text-[11px] leading-4" : "text-xs leading-5"
+  const densitySubtextClass = density === "COMPACT" ? "text-xs leading-4" : "text-xs leading-5"
   const columnStyle = (column: OrganizationColumn): CSSProperties => ({
     width: columnWidths[column],
     minWidth: columnWidths[column],
@@ -1004,6 +1031,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     { value: "NOT_VISITED", label: tx("explorer.quick.notVisited", { month: quickMonth }), count: quickCounts?.NOT_VISITED, testId: "organization-quick-not-visited" },
     { value: "NOT_PLANNED", label: tx("explorer.quick.notPlanned"), count: quickCounts?.NOT_PLANNED, testId: "organization-quick-not-planned" },
     // Only for whoever may assign, and only where somebody is unassigned.
+    ...(typeof data?.hours?.missingCount === "number" && (data.hours.missingCount > 0 || filters.quick === "NO_HOURS")
+      ? [{ value: "NO_HOURS", label: tx("explorer.quick.noHours"), count: data.hours.missingCount, testId: "organization-quick-no-hours" }]
+      : []),
     ...(typeof quickCounts?.UNASSIGNED === "number" && (quickCounts.UNASSIGNED > 0 || filters.quick === "UNASSIGNED")
       ? [{ value: "UNASSIGNED", label: tx("explorer.quick.unassigned"), count: quickCounts.UNASSIGNED, testId: "organization-quick-unassigned" }]
       : []),
@@ -1065,13 +1095,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
       className="space-y-4"
     >
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <PageDescription
-            icon={Building2}
-            title={tx("explorer.title")}
-          />
-          <HelpButton slug="mtm-customers" variant="label" />
-        </div>
+        <MtmPageTitle title={tx("explorer.title")} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1">
             <MtmFilterSelect testId="organization-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={tx("explorer.savedViewsPlaceholder")} clearable={false}
@@ -1082,19 +1106,21 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               }}
               options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${tx("explorer.sharedView")}` : ""}` }))} />
             <Hint wrap text={tx("explorer.hint.saveView")}>
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
+              <Button type="button" variant="ghost" size="sm" className="min-h-10 gap-1.5 px-3" aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
                 onClick={() => {
                   setSavedViewName("")
                   setSavedViewDefault(false)
                   setSaveViewOpen(true)
                 }}>
-                <Bookmark className="h-4 w-4" />
+                <Bookmark className="h-4 w-4" aria-hidden="true" />
+                {tx("explorer.saveViewShort")}
               </Button>
             </Hint>
             {activeSavedView?.canDelete ? (
               <Hint wrap text={tx("explorer.hint.deleteView")}>
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                  <Trash2 className="h-4 w-4" />
+                <Button type="button" variant="ghost" size="sm" className="min-h-10 gap-1.5 px-3 text-destructive" aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  {tx("explorer.deleteViewShort")}
                 </Button>
               </Hint>
             ) : null}
@@ -1104,7 +1130,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               <Download className="mr-2 h-4 w-4" />
               {tx("explorer.exportOptions")}
             </summary></Hint>
-            <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 grid w-[min(18rem,calc(100vw-2rem))] gap-2 rounded-xl xl:left-auto xl:right-0 border border-zinc-200 bg-card p-2 shadow-xl dark:border-zinc-700">
+            <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 grid w-[min(18rem,calc(100vw-2rem))] gap-2 rounded-xl xl:left-auto xl:right-0 border border-border bg-card p-2 shadow-xl">
               <Button
                 variant="ghost"
                 size="sm"
@@ -1144,12 +1170,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               </Button>
             </Hint>
           ) : null}
+          <HelpButton slug="mtm-customers" variant="quiet" />
         </div>
       </div>
 
 
       {isRouteOrganizationFlow && routeAssignmentHandoff ? (
-        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-l-4 border-border border-l-primary bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">{tx("explorer.routeFlowTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1299,6 +1326,12 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               </Hint>
             ) : data?.capabilities.canManage ? (
               <>
+                <Hint text={tx("explorer.hint.setHours")}>
+                  <Button data-testid="mtm-organization-hours-open" variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => setHoursOpen(true)}>
+                    <Clock3 className="mr-2 h-4 w-4" />
+                    {tx("explorer.setHours")}
+                  </Button>
+                </Hint>
                 <Hint text={tx("explorer.hint.unassign")}>
                   <Button variant="outline" size="sm" className="min-h-11 md:min-h-9" onClick={() => openAssignment("UNASSIGN")}>
                     {tx("explorer.unassign")}
@@ -1325,12 +1358,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <span>{tx("explorer.asOf", { date: data?.asOf ?? facets?.asOf ?? "—" })}</span>
           <Button
             variant="ghost"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1.5 px-2.5 text-foreground md:min-h-9"
             onClick={() => void Promise.allSettled([loadOrganizations(), loadFacets()])}
             aria-label={tx("explorer.refresh")}
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            {tx("explorer.refreshShort")}
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1349,14 +1383,16 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               ))}
             </Select>
           </label>
+          {/* The word says the order shown now; the label says what a click does. */}
           <Button
             variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1.5 md:min-h-9"
             onClick={() => setFilter("direction", filters.direction === "asc" ? "desc" : "asc")}
             aria-label={filters.direction === "asc" ? tx("explorer.descending") : tx("explorer.ascending")}
           >
-            {filters.direction === "asc" ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowUpAZ className="h-4 w-4" />}
+            {filters.direction === "asc" ? <ArrowDownAZ className="h-4 w-4" aria-hidden="true" /> : <ArrowUpAZ className="h-4 w-4" aria-hidden="true" />}
+            {filters.direction === "asc" ? tx("explorer.ascendingShort") : tx("explorer.descendingShort")}
           </Button>
           <details className="group">
             <summary
@@ -1364,12 +1400,12 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               data-testid="mtm-organization-grid-settings"
             >
               <span>{tx("explorer.configureGrid")}</span>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 {tx(`explorer.densities.${density}`)}
               </span>
             </summary>
-            <div className="absolute right-0 top-full z-30 mt-2 w-[min(24rem,100%)] border border-zinc-200 bg-popover p-3 text-popover-foreground shadow-lg dark:border-zinc-700">
-              <div className="flex items-center justify-between gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+            <div className="absolute right-0 top-full z-30 mt-2 w-[min(24rem,100%)] border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <span className="text-sm font-semibold">{tx("explorer.density")}</span>
                 <div className="flex gap-1" role="group" aria-label={tx("explorer.density")}>
                   {(["COMPACT", "COMFORTABLE"] as OrganizationDensity[]).map((value) => (
@@ -1397,7 +1433,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                   const position = visibleColumns.indexOf(column)
                   const fixedCount = visibleColumns.filter((entry) => entry === "code" || entry === "organization").length
                   return (
-                    <div key={column} className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b border-zinc-100 py-1 last:border-0 dark:border-zinc-800">
+                    <div key={column} className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b border-border py-1 last:border-0">
                       <label className="flex min-w-0 cursor-pointer items-center gap-2 text-sm">
                         <input
                           type="checkbox"
@@ -1414,7 +1450,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                       </div>
                       <div className="flex items-center" aria-label={tx("explorer.columnWidth", { column: columnLabel(column), width: columnWidths[column] })}>
                         <Button type="button" variant="ghost" size="sm" className="min-h-9 min-w-9 px-2" disabled={columnWidths[column] <= MTM_ORGANIZATION_COLUMN_MIN_WIDTH} onClick={() => resizeColumn(column, -24)} aria-label={tx("explorer.narrowColumn", { column: columnLabel(column) })}>−</Button>
-                        <span className="w-12 text-center text-[11px] tabular-nums text-muted-foreground">{columnWidths[column]}</span>
+                        <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">{columnWidths[column]}</span>
                         <Button type="button" variant="ghost" size="sm" className="min-h-9 min-w-9 px-2" disabled={columnWidths[column] >= MTM_ORGANIZATION_COLUMN_MAX_WIDTH} onClick={() => resizeColumn(column, 24)} aria-label={tx("explorer.widenColumn", { column: columnLabel(column) })}>+</Button>
                       </div>
                     </div>
@@ -1438,7 +1474,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           ))}
         </div>
       ) : loadError ? (
-        <div className="grid min-h-52 place-items-center rounded-xl border border-zinc-200 bg-card p-6 text-center dark:border-zinc-700">
+        <div className="grid min-h-52 place-items-center rounded-xl border border-border bg-card p-6 text-center">
           <div className="grid max-w-md gap-3">
             <p className="font-semibold">{tx("explorer.loadFailed")}</p>
             <p className="text-sm text-muted-foreground">{loadError}</p>
@@ -1446,7 +1482,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           </div>
         </div>
       ) : organizations.length === 0 ? (
-        <div className="grid min-h-52 place-items-center rounded-xl border border-zinc-200 bg-card p-6 text-center dark:border-zinc-700">
+        <div className="grid min-h-52 place-items-center rounded-xl border border-border bg-card p-6 text-center">
           <div className="grid max-w-md gap-3">
             <Building2 className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="font-semibold">
@@ -1460,7 +1496,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
             {activeFilterLabels.length > 0 ? (
               <div aria-label={tx("explorer.emptyActiveFilters")} className="flex flex-wrap justify-center gap-1.5">
                 {activeFilterLabels.map((label) => (
-                  <span key={label} className="rounded-full border border-zinc-200 bg-muted/60 px-2 py-1 text-xs text-muted-foreground dark:border-zinc-700">
+                  <span key={label} className="rounded-full border border-border bg-muted/60 px-2 py-1 text-xs text-muted-foreground">
                     {label}
                   </span>
                 ))}
@@ -1483,7 +1519,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 md:block">
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
             {/* No frame with its own scrolling (owner: an inner scroll is a bug):
                 the default columns fit a laptop screen; more, scroll sideways. */}
             <div data-testid="mtm-organization-grid-scroll" className="overflow-x-auto">
@@ -1495,10 +1531,10 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                 data-density={density}
               >
                 <thead className="sticky top-0 z-10 bg-muted">
-                  <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
+                  <tr className="border-b border-border text-left">
                     <th className="sticky left-0 z-20 bg-muted px-1" style={{ width: selectionColumnWidth, minWidth: selectionColumnWidth }}>
                       <div className="flex items-center justify-between gap-1">
-                        <span className="pl-2 text-[10px] font-semibold text-muted-foreground">№</span>
+                        <span className="pl-2 text-xs font-semibold text-muted-foreground">№</span>
                         <FieldCheckbox
                           checked={allPageSelected}
                           indeterminate={selectedOnPage > 0 && !allPageSelected}
@@ -1525,12 +1561,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                     return (
                       <tr
                         key={organization.id}
-                        className="group border-b border-zinc-200 align-middle transition-colors last:border-0 hover:bg-muted/40 dark:border-zinc-700"
+                        className="group cursor-pointer border-b border-border align-middle transition-colors last:border-0 hover:bg-muted/40"
+                        onClick={(event) => openRowOnClick(event, organizationHref(organization.id), (href) => router.push(href))}
                         style={{ contentVisibility: "auto", containIntrinsicSize: density === "COMPACT" ? "44px" : "64px" }}
                       >
                         <td className="sticky left-0 z-20 bg-card px-1 group-hover:bg-muted" style={{ width: selectionColumnWidth, minWidth: selectionColumnWidth }}>
                           <div className="flex items-center justify-between gap-1">
-                            <span className="pl-2 text-[10px] tabular-nums text-muted-foreground">{(page - 1) * limit + rowIndex + 1}</span>
+                            <span className="pl-2 text-xs tabular-nums text-muted-foreground">{(page - 1) * limit + rowIndex + 1}</span>
                             <FieldCheckbox
                               checked={selected.has(organization.id)}
                               testId={`mtm-organization-select-${organization.id}`}
@@ -1558,6 +1595,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                               <span className="font-medium tabular-nums">{organization.code || "—"}</span>
                             ) : column === "contacts" ? (
                               <span className="tabular-nums">{formatNumber.format(organization._count.contactWorkplaces)}</span>
+                            ) : column === "hours" ? (
+                              <span
+                                data-testid={`mtm-organization-hours-${organization.id}`}
+                                className={cn("line-clamp-2", todaysHoursKind(organization) === "none" && "text-muted-foreground", todaysHoursKind(organization) === "off" && "font-semibold text-amber-700 dark:text-amber-400")}
+                              >
+                                {todaysHours(organization)}
+                              </span>
                             ) : column === "organization" ? (
                               <div className="grid min-w-0 gap-0.5">
                                 <Link href={organizationHref(organization.id)} className="truncate font-semibold underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -1616,13 +1660,13 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                                   <span className="font-medium">{visitDay(lastVisit.checkInAt)}</span>
                                   <span className="text-muted-foreground"> · {shortPersonName(lastVisit.agent.name)}</span>
                                 </Link>
-                              ) : <span className="font-semibold text-orange-600 dark:text-orange-400">{tx("explorer.noVisitYet")}</span>
+                              ) : <span className="text-muted-foreground">{tx("explorer.noVisitYet")}</span>
                             ) : column === "nextVisit" ? (
                               nextVisit ? (
                                 <Link href={`/mtm/routes?routeId=${encodeURIComponent(nextVisit.routeId)}&returnTo=${encodeURIComponent(listReturnPath)}`} className="block whitespace-nowrap font-medium tabular-nums hover:text-primary hover:underline">
                                   {visitDay(nextVisit.plannedTime ?? nextVisit.route.date)}
                                 </Link>
-                              ) : <HintValue text={tx("explorer.notPlanned")}><span className="text-muted-foreground">—</span></HintValue>
+                              ) : <span className="text-muted-foreground">{tx("explorer.notPlanned")}</span>
                             ) : (
                               <div className={`${densitySubtextClass} grid gap-0.5 tabular-nums text-muted-foreground`}>
                                 <span>{tx("explorer.contactsCount", { count: organization._count.contactWorkplaces })}</span>
@@ -1649,8 +1693,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                               <DropdownMenu>
                                 <Hint text={tx("explorer.hint.rowMore")}>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="min-h-11 min-w-11 md:min-h-9 md:min-w-9" aria-label={tx("explorer.rowMoreFor", { name: organization.name })} data-testid={`mtm-organization-row-more-${organization.id}`}>
-                                      <MoreHorizontal className="h-4 w-4" />
+                                    <Button variant="outline" size="sm" className="min-h-11 gap-1 px-2.5 md:min-h-9" aria-label={tx("explorer.rowMoreFor", { name: organization.name })} data-testid={`mtm-organization-row-more-${organization.id}`}>
+                                      {tx("explorer.rowMoreShort")}
+                                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                 </Hint>
@@ -1684,7 +1729,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           </div>
 
           <div className="grid gap-2 md:hidden">
-            <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-card px-2 dark:border-zinc-700">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-2">
               <span className="px-2 text-sm font-medium">{tx("explorer.pageSelection")}</span>
               <FieldCheckbox
                 checked={allPageSelected}
@@ -1699,7 +1744,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               const nextVisit = organization.routePoints[0]
               const attributes = organization.attributeFacts[0]
               return (
-                <article key={organization.id} data-testid="mtm-organization-card" className="rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-700">
+                <article key={organization.id} data-testid="mtm-organization-card" className="rounded-xl border border-border bg-card p-3">
                   <div className="flex items-start gap-2">
                     <FieldCheckbox
                       checked={selected.has(organization.id)}
@@ -1732,28 +1777,30 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                       <Button
                         asChild
                         variant="ghost"
-                        size="icon"
-                        className="min-h-11 min-w-11"
+                        size="sm"
+                        className="min-h-11 gap-1.5"
                       >
                         <Link
                           href={organizationHref(organization.id)}
                           aria-label={tx("explorer.openOrganization", { name: organization.name })}
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                          {tx("explorer.rowOpen")}
                         </Link>
                       </Button>
                       {data?.capabilities.canManage ? (
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="min-h-11 min-w-11"
+                          size="sm"
+                          className="min-h-11 gap-1.5"
                           aria-label={tx("explorer.editOrganization", { name: organization.name })}
                           onClick={() => {
                             setEditData(organization)
                             setFormOpen(true)
                           }}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                          {tx("explorer.rowEdit")}
                         </Button>
                       ) : null}
                     </div>
@@ -1828,7 +1875,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                       })}</dd>
                     </div>
                   </dl>
-                  <div className={`mt-3 grid gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700 ${effectiveScope === "MINE" ? "grid-cols-2" : "grid-cols-1"}`}>
+                  <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${effectiveScope === "MINE" ? "grid-cols-2" : "grid-cols-1"}`}>
                     {effectiveScope === "MINE" ? (
                       organization.latitude !== null && organization.longitude !== null ? (
                         <Button asChild variant="outline" className="min-h-11">
@@ -1865,7 +1912,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </>
       )}
 
-      <nav aria-label={tx("explorer.pagination")} className="flex flex-col gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+      <nav aria-label={tx("explorer.pagination")} className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Label htmlFor="organization-page-size" className="text-sm text-muted-foreground">{tx("explorer.rowsPerPage")}</Label>
           <Select
@@ -1888,23 +1935,23 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           </span>
           <Button
             variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1 md:min-h-9"
             disabled={page <= 1}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
-            aria-label={tx("explorer.previousPage")}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            {tx("explorer.previousPage")}
           </Button>
           <Button
             variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11 md:min-h-9 md:min-w-9"
+            size="sm"
+            className="min-h-11 gap-1 md:min-h-9"
             disabled={page >= pageCount}
             onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
-            aria-label={tx("explorer.nextPage")}
           >
-            <ChevronRight className="h-4 w-4" />
+            {tx("explorer.nextPage")}
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </nav>
@@ -1916,6 +1963,14 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         initialData={editData}
         orgId={orgId}
         apiBasePath="/api/v1/mtm/organizations"
+      />
+      <MtmCustomerHoursDialog
+        open={hoursOpen}
+        onOpenChange={setHoursOpen}
+        organizationIds={[...selected]}
+        name={selected.size === 1 ? (data?.organizations.find((row) => selected.has(row.id))?.name ?? null) : null}
+        initial={selected.size === 1 ? data?.organizations.find((row) => selected.has(row.id))?.workingHours ?? null : null}
+        onSaved={() => { setSelected(new Set()); void loadOrganizations() }}
       />
       <DeleteConfirmDialog
         open={deleteOpen}
@@ -1948,7 +2003,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
               placeholder={tx("explorer.savedViewNamePlaceholder")}
             />
           </div>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 px-3 dark:border-zinc-700">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3">
             <input
               type="checkbox"
               checked={savedViewDefault}
@@ -1994,7 +2049,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <div data-testid="mtm-organization-assignment-dialog">
           {assignmentResult ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 divide-x rounded-xl border border-zinc-200 dark:border-zinc-700">
+              <div className="grid grid-cols-3 divide-x rounded-xl border border-border">
                 <div className="grid gap-1 p-3">
                   <span className="text-xs text-muted-foreground">{tx("explorer.changed")}</span>
                   <strong className="text-2xl tabular-nums">{assignmentResult.summary.changed}</strong>
@@ -2024,7 +2079,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
             </div>
           ) : preview ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 divide-x divide-y rounded-xl border border-zinc-200 dark:border-zinc-700 sm:grid-cols-4 sm:divide-y-0">
+              <div className="grid grid-cols-2 divide-x divide-y rounded-xl border border-border sm:grid-cols-4 sm:divide-y-0">
                 {[
                   [tx("explorer.selected"), preview.summary.selected],
                   [tx("explorer.canChange"), preview.summary.assignable],
@@ -2052,7 +2107,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-3 text-sm">
+                <div className="flex items-center gap-3 rounded-lg border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm">
                   <UserRoundCheck className="h-5 w-5 flex-none" />
                   {tx("explorer.noConflicts")}
                 </div>

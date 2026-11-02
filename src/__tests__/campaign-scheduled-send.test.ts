@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
+vi.mock("@/lib/campaigns/whatsapp-dispatch", () => ({ runWhatsAppCampaignDispatch: vi.fn(async () => ({ processed: 0 })), normalizeCampaignPhone: vi.fn(), enqueueWhatsAppCampaign: vi.fn() }))
 
 /**
  * Scheduled campaigns go out at their time — and never twice.

@@ -1,3 +1,4 @@
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 import { VOICE_SECTION_KEYS } from "./sections"
 import type { ModuleId } from "@/lib/modules"
 import type { Module } from "@/lib/permissions"
@@ -195,7 +196,8 @@ export const SECTION_DESCRIPTORS: Record<string, SectionDescriptor> = {
     createdField: "createdAt",
   },
   mtm_customers: { model: "mtmCustomer", permission: "tpm", module: "mtm", createdField: "createdAt" },
-  mtm_products: { model: "mtmProduct", permission: "tpm", module: "mtm", createdField: "createdAt" },
+  // A deleted presentation keeps its row for the visit history; it is not a product any more.
+  mtm_products: { model: "mtmProduct", permission: "tpm", module: "mtm", createdField: "createdAt", baseWhere: { deletedAt: null } },
 }
 
 /**
@@ -282,6 +284,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   campaigns: "bespoke",
   sequences: "pending",
   mtm_promotions: "pending",
+  "pharmacy-orders": "pending",
   mtm_photos: "pending",
   mtm_alerts: "pending",
   mtm_agents: "pending",
@@ -292,12 +295,15 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   settings_territories: "config",
   "settings_lead-rules": "config",
   "settings_web-to-lead": "config",
+  // BookingAccess own/team grants must be applied before voice aggregates.
+  // Navigation and the guide work; the generic tenant-wide reader is not enabled.
+  [BOOKING_WORKSPACE_ENABLED ? "meetings" : "settings_booking"]: "pending",
+  "settings_ad-conversions": "config",
   "settings_intake-forms": "config",
   "settings_approval-rules": "config",
   "settings_approval-delegates": "config",
   settings_snippets: "config",
   "inbox_chatbot-rules": "config",
-  settings_channels: "config",
   "settings_ticket-categories": "config",
   "settings_sla-policies": "config",
   "settings_entitlement-templates": "config",

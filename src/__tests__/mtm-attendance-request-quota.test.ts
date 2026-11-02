@@ -17,13 +17,13 @@ function reservation(startTime: string, endTime: string) {
 }
 beforeEach(() => {
   vi.resetAllMocks()
-  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: ORG, agentId: AGENT, role: "AGENT", tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
+  vi.mocked(resolveMobileAuth).mockResolvedValue({ orgId: ORG, agentId: AGENT, role: "EMPLOYEE", tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } } as never)
   vi.mocked(prisma.$transaction).mockImplementation((async (callback: (tx: typeof prisma) => unknown) => callback(prisma)) as never)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }, { key: "timezone", value: "Asia/Baku" }] as never)
   vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue(null)
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
   vi.mocked(prisma.user.findMany).mockResolvedValue([])
-  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT } as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT, role: "EMPLOYEE", attendanceParticipant: true, attendanceExcluded: false } as never)
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmHrmRequest.create).mockImplementation((async ({ data }: { data: Record<string, unknown> }) => ({ ...data, status: "PENDING", updatedAt: new Date(), decisionNote: null, decidedAt: null, cancelledAt: null })) as never)

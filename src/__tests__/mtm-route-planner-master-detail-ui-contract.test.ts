@@ -15,7 +15,7 @@ describe("MTM route planner master-detail UI contract", () => {
     expect(builder).toContain('md:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]')
     expect(builder).toContain('className="order-2 hidden min-w-0 md:sticky md:top-0 md:block')
     expect(builder).toContain('aria-labelledby="mtm-route-selected-stops-heading"')
-    expect(builder).toContain('<ol className="divide-y divide-zinc-200 dark:divide-zinc-700">')
+    expect(builder).toContain('<ol className="divide-y divide-border">')
     expect(builder).toContain('role="status" aria-live="polite"')
     expect(builder).toContain('onClick={() => removeStop(index)}')
     expect(builder).toContain('className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2"')

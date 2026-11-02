@@ -39,7 +39,7 @@ export interface SignInResult {
 }
 
 export interface SignInOptions {
-  /** Where to land after a successful sign-in. Defaults to the current URL. */
+  /** Where to land after a successful sign-in. Defaults to the current URL, without a previous result. */
   callbackUrl?: string
   /** `false` returns the result instead of navigating. Defaults to `true`. */
   redirect?: boolean
@@ -67,6 +67,24 @@ function notifySessionChanged(): void {
   }
 }
 
+/**
+ * The page's own address, minus what an earlier sign-in left in it. Auth.js
+ * answers a good sign-in with this address and the caller reads `error` back
+ * out of it, so the `?error=cross-tenant` of the redirect that sends a person
+ * here from another organisation's session — or a previous attempt's
+ * `?error=CredentialsSignin` — made a successful sign-in look refused.
+ */
+function currentUrlWithoutSignInResult(): string {
+  try {
+    const url = new URL(window.location.href)
+    url.searchParams.delete("error")
+    url.searchParams.delete("code")
+    return url.toString()
+  } catch {
+    return window.location.href
+  }
+}
+
 export async function getCsrfToken(): Promise<string> {
   const response = await fetch("/api/auth/csrf", { credentials: "same-origin" })
   if (!response.ok) return ""
@@ -82,7 +100,7 @@ export async function signIn(
   if (!endpoint) throw new TypeError(`Unknown sign-in provider "${provider}"`)
 
   const { callbackUrl, redirect = true, ...providerParams } = options
-  const redirectTo = callbackUrl ?? window.location.href
+  const redirectTo = callbackUrl ?? currentUrlWithoutSignInResult()
 
   const body = new URLSearchParams()
   for (const [key, value] of Object.entries(providerParams)) {

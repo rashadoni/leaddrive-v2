@@ -41,7 +41,7 @@ async function requestLock(tx: Prisma.TransactionClient, organizationId: string,
 export async function readOwnAttendanceInstallation(self: AttendanceSelf, rawInstallation: unknown): Promise<AttendanceInstallationOwn> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await lockAttendanceRequests(tx, self)
-    await requireAttendanceSelf(tx, self, "attendanceInstallation")
+    await requireAttendanceSelf(tx, self)
     const installationId = parseAttendanceInstallationId(rawInstallation)
     await lockAttendanceInstallationPolicy(tx, self.organizationId)
     const [row] = await tx.$queryRaw<InstallationRow[]>(Prisma.sql`${rowsSql} WHERE r."organizationId"=${self.organizationId}
@@ -55,7 +55,7 @@ export async function submitAttendanceInstallationInTransaction(tx: Prisma.Trans
   const { requestId } = parsed.data, { organizationId, agentId } = self
   await requestLock(tx, organizationId, requestId)
   await lockAttendanceRequests(tx, self)
-  await requireAttendanceSelf(tx, self, "attendanceInstallation")
+  await requireAttendanceSelf(tx, self)
   const installationId = parseAttendanceInstallationId(rawInstallation)
   await lockAttendanceInstallationPolicy(tx, organizationId)
   const required = await readAttendanceInstallationRule(tx, organizationId)

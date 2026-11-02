@@ -156,7 +156,7 @@ describe("user card — what this person gets", () => {
       "Основная": [false, "Скрыт", null],
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
-      "Маршруты и поле": [true, "Всё, включая удаление", "В поле — Вся организация."],
+      "Маршруты и поле · Персонал": [true, "Всё, включая удаление", "В поле — Вся организация."],
       "Настройки": [null, "Только свои уведомления", "У «Настроек» галочки нет: доступ к ним даёт только роль."],
     })
   })
@@ -176,13 +176,13 @@ describe("user card — what this person gets", () => {
     const role = [...document.querySelectorAll("select")].find((select) => select.value === "manager")
 
     await choose(role, "sales")
-    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Просмотр и правка"])
+    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Просмотр и правка"])
 
     await choose(role, "admin")
     const admin = rows()
     expect([...new Set(Object.values(admin).map(([tick]) => tick))]).toEqual([null])
     expect(admin["Продажи"]).toEqual([null, "Всё, включая удаление", null])
-    expect(admin["Маршруты и поле"]).toEqual([
+    expect(admin["Маршруты и поле · Персонал"]).toEqual([
       null, "Всё, включая удаление", "Администратор видит всё поле без карточки сотрудника.",
     ])
     expect(fieldCard()).toBeNull()
@@ -208,7 +208,7 @@ describe("user card — the employee card behind Route & Field", () => {
     await openCard([spareCard])
     await choose(fieldCard(), "none")
 
-    expect(rows()["Маршруты и поле"]).toEqual([
+    expect(rows()["Маршруты и поле · Персонал"]).toEqual([
       true,
       "Нужна карточка сотрудника",
       "Без карточки сотрудника списки клиентов, маршрутов и визитов ответят отказом: чьи данные видит человек, решает она. Выберите карточку или создайте новую.",
@@ -222,7 +222,7 @@ describe("user card — the employee card behind Route & Field", () => {
     await choose([...document.querySelectorAll("select")].find((select) => select.value === "manager"), "sales")
 
     expect(fieldCard()?.value).toBe("none")
-    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Нужна карточка сотрудника"])
+    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Нужна карточка сотрудника"])
   })
 
   it("offers this person's own card and the unlinked ones, never a colleague's", async () => {
@@ -232,7 +232,7 @@ describe("user card — the employee card behind Route & Field", () => {
     expect([...(fieldCard()?.options ?? [])].map((option) => option.textContent)).toEqual([
       "Нет карточки", "Seymur — Агент", "Field Manager — Админ", "Создать новую карточку",
     ])
-    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
+    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
     expect(document.querySelector('[data-testid="user-field-card"]')?.textContent)
       .toContain("В поле — Админ: своя команда.")
   })
@@ -249,7 +249,7 @@ describe("user card — the employee card behind Route & Field", () => {
     await choose(fieldCard(), "new")
     await choose(document.querySelector<HTMLSelectElement>("#fieldRole"), "MANAGER")
 
-    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
+    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
     await save()
 
     expect(cardWrites()).toEqual([

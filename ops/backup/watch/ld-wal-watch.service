@@ -1,0 +1,11 @@
+# Installed by scripts/backup/install-wal-watch.sh.
+[Unit]
+Description=WAL archive watch: read production's verdict over ssh, tell the owner on Telegram
+OnFailure=ld-wal-watch-failed.service
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@
+# One ssh read (30 s at most) and at most a few Telegram sends.
+TimeoutStartSec=2min
+Nice=5

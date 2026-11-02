@@ -14,6 +14,7 @@ import { cartoBasemapsApiKey } from "@/lib/carto-basemap"
 import { basemapProviderFromEnv } from "@/lib/mtm/basemap-provider"
 import { routeTargetTypesForPlanning } from "@/lib/mtm/route-target-types"
 import { buildMtmMobileCapabilityManifest } from "@/lib/mtm/mobile-capability-manifest"
+import { buildMtmMobileOfflineGrant } from "@/lib/mtm/mobile-offline-grant"
 import {
   MTM_MOBILE_SYNC_V2_ROUTE_STREAM,
   MTM_MOBILE_SYNC_V2_ROUTE_OFFLINE_HORIZON_DAYS,
@@ -394,14 +395,16 @@ export const GET = withMobileRls(async (req, auth) => {
     // policy, requests, timesheets, or team data. When Workforce is enabled
     // its stricter read permission continues to provide the same canonical
     // workday projection.
-    // Own attendance (requests; marks for office staff) is the Personnel
-    // module, sold apart from routes since 2026-10-14. A field agent's day is
-    // still its Route & Field session.
+    // Own attendance (marks and requests, for office staff only) is the
+    // Personnel module, sold apart from routes since 2026-10-14. A field
+    // agent's day is still its Route & Field session.
     const attendanceSelf = auth.tenantCapabilities.personnel === true && mayUseAttendanceSelf(auth.role, settings.attendanceEnabled, agent.attendanceParticipant, agent.attendanceExcluded)
     const fieldSessionEnabled = auth.role === "AGENT" ? routeFieldEnabled : attendanceSelf
-    // A field agent keeps HR requests (leave, sick leave) but its day is not an
-    // HR attendance mark (owner, 2026-10-14): no mark envelope, location
-    // consent, phone approval or branch QR. Its "Start day" is the field session above.
+    // A field agent is outside HR accounting (owner, 2026-10-14; 2026-10-20:
+    // «у полевого агента всё кадровое убрать совсем»): no mark envelope,
+    // location consent, phone approval or branch QR, and no own requests —
+    // mayUseAttendanceSelf already says no to AGENT. Its "Start day" is the
+    // field session above.
     const attendanceMarks = attendanceSelf && auth.role !== "AGENT"
     const workday = fieldSessionEnabled || (workforceEnabled && hasMobilePermission(auth.role, "WORKTIME_SELF_READ"))
       ? await prisma.mtmAgentWorkday.findFirst({
@@ -511,6 +514,10 @@ export const GET = withMobileRls(async (req, auth) => {
           // then answers MTM_AGENT_PERMISSION_DISABLED.
           agentPermissions: {
             ...agentPermissionStates(settings),
+            // Own attendance. Not switches of the matrix: a field agent is
+            // outside HR accounting and is sent false here (2026-10-14,
+            // 2026-10-20). The office shell of the same app opens its
+            // attendance screens from these keys; absent while Attendance is off.
             ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceMarks, attendanceLocation: attendanceMarks, attendanceInstallation: attendanceMarks, ...(settings.attendanceBranchQrEnabled === true ? { attendanceBranchQr: attendanceMarks } : {}) } : {}),
           },
           ...(attendanceMarks ? { attendanceMarkVersion: 1 } : {}),
@@ -554,6 +561,10 @@ export const GET = withMobileRls(async (req, auth) => {
           },
         } : { horizon: "ACTIVE_FIELD_SCOPE", scopeVersion: null, configVersion: null },
         serverTime: now.toISOString(),
+        // Explicit bounded permission to retain this installation's already
+        // admitted field UI/drafts during transport failure. Missing on old
+        // servers means no offline admission; it never authorizes a push.
+        offlineGrant: buildMtmMobileOfflineGrant({ manifest, deviceId, now }),
         // Additive v1 field. Older APKs ignore it; newer APKs use it to avoid
         // disabled endpoints before the corresponding mutation is attempted.
         manifest,

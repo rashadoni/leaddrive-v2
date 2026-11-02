@@ -4,9 +4,14 @@ import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
+import type { PrismaClient } from "@prisma/client"
+
 import { prisma } from "@/lib/prisma"
+import { announceCallOrder } from "@/lib/pharmacy-orders/manager-notice"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { matchCallParty } from "@/lib/calls/party-match"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -57,6 +62,19 @@ const unknownNoRedialLifecycleSchema = z.object({
   occurredAt: occurredAtSchema,
 }).strict()
 
+const TERMINAL_STATES = new Set<string>(terminalLifecycleSchema.shape.state.options)
+/** The AI's last save can still be on its way when the caller hangs up. */
+const ORDER_NOTICE_DELAY_MS = 5_000
+
+/** A phone order the call left is announced to the managers, and sent to the pharmacy, once it is over. */
+function notifyOrderAfterCall(organizationId: string, callId: string) {
+  setTimeout(() => {
+    void announceCallOrder(prisma as unknown as PrismaClient, organizationId, callId)
+      .catch((error: unknown) => console.warn("[asterisk-human-lifecycle] order notice failed",
+        error instanceof Error ? error.name : typeof error))
+  }, ORDER_NOTICE_DELAY_MS).unref?.()
+}
+
 const lifecycleSchema = z.union([
   ringingLifecycleSchema,
   answeredLifecycleSchema,
@@ -102,6 +120,7 @@ type BoundHumanCall = {
   conversationOutcome: string | null
   startedAt: Date | null
   endedAt: Date | null
+  handoffState: string | null
 }
 
 type ApplyResult = "applied" | "existing"
@@ -214,6 +233,7 @@ async function loadBoundCall(
       conversationOutcome: true,
       startedAt: true,
       endedAt: true,
+      handoffState: true,
     },
   })
 }
@@ -360,6 +380,12 @@ async function applyLifecycleEvent(params: {
         // CallLog. It is still journaled so an exact retry is a no-op.
         return "existing"
       }
+      if (call.handoffState === "ringing") {
+        // The AI handed this call to the browsers and it is ringing them
+        // again: the AI leg's late answer must not take the ringing away
+        // from the popup. The station reports the browser's answer itself.
+        return "existing"
+      }
 
       const updated = await tx.callLog.updateMany({
         where: {
@@ -371,6 +397,7 @@ async function applyLifecycleEvent(params: {
           callSid: params.input.callId,
           providerOutcome: null,
           endedAt: null,
+          AND: [{ OR: [{ handoffState: null }, { handoffState: { in: ["requested", "connected", "returned"] } }] }],
         },
         data: {
           status: "in-progress",
@@ -385,6 +412,7 @@ async function applyLifecycleEvent(params: {
         && (
           refreshed.providerOutcome !== null
           || refreshed.endedAt !== null
+          || refreshed.handoffState === "ringing"
           || (
             refreshed.status === "in-progress"
             && refreshed.wasAnswered
@@ -500,7 +528,8 @@ async function applyLifecycleEvent(params: {
         providerOutcome: state,
         // The AI's own result (customer spoke or not) may already be stored;
         // the telephony outcome must not erase it.
-        ...(call.callMode === "ai" ? {} : { conversationOutcome: null }),
+        // So may the AI's part of a call it handed to a salesperson.
+        ...(call.callMode === "ai" || call.handoffState ? {} : { conversationOutcome: null }),
         duration: durationSeconds,
         endedAt: occurredAt,
         browserAnswerClaimToken: null,
@@ -562,6 +591,7 @@ async function existingReplayResult(params: {
         conversationOutcome: true,
         startedAt: true,
         endedAt: true,
+        handoffState: true,
       },
     })
     if (!call || !ringingIdentityMatches(call, params.input)) {
@@ -609,15 +639,10 @@ async function applyWithUniqueReplay(params: {
  * event may establish bounded party-number identity; every later event remains
  * the zero-customer-data transition contract used by outbound calls.
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID?.trim()
-  if (!organizationId) {
-    return NextResponse.json({ error: "Call lifecycle is not configured" }, { status: 503 })
-  }
-
   const bodyText = await request.text()
   if (Buffer.byteLength(bodyText, "utf8") > MAX_BODY_BYTES) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 })
@@ -634,6 +659,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid lifecycle event" }, { status: 400 })
   }
 
+  // The call's own organization; for the first event of an inbound call, the
+  // holder of the number dialled; otherwise the installation default.
+  const owner = await voiceOrganizationFor({ callId: parsed.data.callId,
+    dialled: parsed.data.state === "ringing" ? parsed.data.toNumber : null })
+  if (!owner) {
+    return NextResponse.json({ error: "Call lifecycle is not configured" }, { status: 503 })
+  }
+  const organizationId = owner.organizationId
+
   const payload = safeEventPayload(parsed.data)
   try {
     const result = await runWithTenant(organizationId, async () => {
@@ -644,6 +678,7 @@ export async function POST(request: NextRequest) {
         now: new Date(),
       })
     })
+    if (TERMINAL_STATES.has(parsed.data.state)) notifyOrderAfterCall(organizationId, parsed.data.callId)
     return NextResponse.json({ success: true, result })
   } catch (error) {
     if (error instanceof LifecycleCallNotFoundError) {
@@ -661,3 +696,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export const POST = withStationTiming("call-lifecycle", handlePost)

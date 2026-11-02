@@ -9,25 +9,26 @@ import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime, formatTime } from "@/lib/format-date"
 import { mtmWorkdayBreakSummary } from "@/lib/mtm/workday-break-summary"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { agentDeletionReasons } from "@/lib/mtm/agent-deletion-reasons"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { useMtmFeature } from "@/hooks/use-mtm-org-settings"
 import { MTM_AGENT_APP_ACTIVE_WINDOW_MS } from "@/lib/mtm/agent-card-activity"
 import { buildMtmAgentHierarchy, flattenMtmAgentTeam, isMtmLeaderRole, mtmAgentMatchesSearch, type MtmAgentTeam } from "@/lib/mtm/agent-hierarchy"
-import { PageDescription } from "@/components/page-description"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { HelpButton } from "@/components/help/help-button"
 import { MtmAgentForm } from "@/components/mtm/agent-form"
 import { ConfirmDialog, DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
+import { Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
 import { mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const roleColors: Record<string, string> = {
-  ADMIN: "text-violet-700 dark:text-violet-300",
-  MANAGER: "text-sky-700 dark:text-sky-300",
-  SUPERVISOR: "text-violet-700 dark:text-violet-300",
-  AGENT: "text-sky-700 dark:text-sky-300",
+  ADMIN: "text-foreground",
+  MANAGER: "text-muted-foreground",
+  SUPERVISOR: "text-foreground",
+  AGENT: "text-muted-foreground",
 }
 const statusColors: Record<string, string> = {
   ACTIVE: "text-emerald-700 dark:text-emerald-300",
@@ -67,6 +68,7 @@ export default function MtmAgentsPage() {
   // An employee with work history cannot be deleted; the refusal turns into
   // the offer that does what the manager came for — take them out of work.
   const [keptItem, setKeptItem] = useState<{ id: string; name: string; status: string } | null>(null)
+  const [keptReasons, setKeptReasons] = useState<string[]>([])
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("activity")
@@ -214,12 +216,13 @@ export default function MtmAgentsPage() {
     if (!deleteItem) return
     const res = await fetch(`/api/v1/mtm/agents/${deleteItem.id}`, { method: "DELETE", headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
     if (!res.ok) {
-      const body = await res.json().catch(() => null) as { code?: string } | null
+      const body = await res.json().catch(() => null) as { code?: string; data?: { kinds?: unknown } } | null
       // Prod 2026-10-06: the dialog printed «Invalid `prisma.mtmAgent.deleteMany()`
       // invocation: Foreign key constraint violated…». A refusal is shown in
       // the reader's words; «has history» is not an error to read and close but
       // a different action to offer.
-      if (res.status === 409 && (body?.code === "MTM_AGENT_HAS_HISTORY" || body?.code === "WORKFORCE_RETENTION_BLOCKED")) {
+      if (res.status === 409 && ["MTM_AGENT_HAS_HISTORY", "WORKFORCE_RETENTION_BLOCKED", "MTM_AGENT_DELETE_DEPENDENCY"].includes(body?.code ?? "")) {
+        setKeptReasons(agentDeletionReasons(body?.code, body?.data?.kinds))
         setKeptItem(deleteItem)
         return
       }
@@ -229,7 +232,14 @@ export default function MtmAgentsPage() {
   }
 
   async function confirmDeactivate() {
-    if (!keptItem || keptItem.status !== "ACTIVE") return
+    if (!keptItem) return
+    if (keptItem.status !== "ACTIVE") {
+      // Keep the complete card, including its current number. Opening the
+      // editor must never clear a phone or reactivate the employee itself.
+      const card = agents.find(agent => agent.id === keptItem.id)
+      if (card) { setEditData(card); setFormOpen(true) }
+      return
+    }
     const res = await fetch(`/api/v1/mtm/agents/${keptItem.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {}) },
@@ -241,7 +251,7 @@ export default function MtmAgentsPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={UserCog} title={t("title")} description={t("subtitle")} />
+      <MtmPageHeader title={t("title")} description={t("subtitle")} help="mtm-agents" />
       <div className="animate-pulse space-y-4">
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-muted rounded-lg" />)}</div>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-32 bg-muted rounded-lg" />)}</div>
@@ -258,13 +268,13 @@ export default function MtmAgentsPage() {
   // Edit + "⋯" — the same controls on a card and on a list row.
   const renderActions = (agent: any) => (
     <div className="flex gap-1 shrink-0">
-      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t("edit")} onClick={() => { setEditData(agent); setFormOpen(true) }}><Pencil className="h-3.5 w-3.5" /></Button>
+      <Button variant="ghost" size="sm" className="h-7 gap-1.5" aria-label={t("edit")} onClick={() => { setEditData(agent); setFormOpen(true) }}><Pencil className="h-3.5 w-3.5" /><MtmWord word="edit" /></Button>
       {/* C14: удаление уезжает в «⋯». Рядом с «изменить» оно стояло на
           расстоянии промаха от ежедневного действия, а отменить его
           нельзя. Тот же приём уже применён на «Визитах». */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t("moreActions")}><MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" /></Button>
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5" aria-label={t("moreActions")}><MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" /><MtmWord word="more" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setFocusAgent(agent.id)}>
@@ -304,7 +314,7 @@ export default function MtmAgentsPage() {
   }
   const appBadge = (app: { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined) => app ? (
     <Hint text={app.lastSignalAt ? `${t("appLastSignal", { time: formatDateTime(app.lastSignalAt, locale) })}. ${t("hint.appState")}` : t("hint.appState")}><span
-      className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap ${app.state === "active" ? "text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}
+      className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap ${app.state === "active" ? "text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}
       tabIndex={0}
       data-testid="mtm-agent-app-state"
     >
@@ -326,7 +336,7 @@ export default function MtmAgentsPage() {
       <div
         key={agent.id}
         data-testid={leads ? "mtm-agent-leader-card" : "mtm-agent-card"}
-        className={`h-full rounded-lg border bg-card p-4 flex flex-col gap-3 ${leads ? "border-blue-300 dark:border-blue-800 ring-1 ring-blue-100 dark:ring-blue-900/40 shadow-sm" : "border-zinc-200 dark:border-zinc-700"}`}
+        className={`h-full rounded-lg border bg-card p-4 flex flex-col gap-3 ${leads ? "border-foreground/25 shadow-sm" : "border-border"}`}
       >
         <div className="flex items-start gap-3 min-h-[2.75rem]">
           <div className="relative h-10 w-10 shrink-0">
@@ -339,11 +349,11 @@ export default function MtmAgentsPage() {
               // The segments, not just the state: two twenty-minute breaks and
               // one two-hour break read the same as "on a break" and are very
               // different days (A7 tail).
-              <div className="text-[10px] text-muted-foreground" data-testid="mtm-agent-breaks">
+              <div className="text-xs text-muted-foreground" data-testid="mtm-agent-breaks">
                 <HintValue text={t("hint.breaks")}>{t("breaksSummary", { count: breaks.count, minutes: breaks.minutes })}</HintValue>
               </div>
             ) : null}
-            <div className={`text-[11px] truncate ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</div>
+            <div className={`text-xs truncate ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</div>
           </div>
           {renderActions(agent)}
         </div>
@@ -363,12 +373,12 @@ export default function MtmAgentsPage() {
 
         {/* Badges: role · status · app — one wrapping row with a reserved height */}
         <div className="flex flex-1 flex-wrap content-start items-start gap-1.5 min-h-[2.75rem]">
-          <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${leads ? "font-semibold " : ""}${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
-          {leads && team ? <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap text-sky-700 dark:text-sky-300" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${leads ? "font-semibold " : ""}${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
+          {leads && team ? <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap text-muted-foreground" data-testid="mtm-agent-team-size">{t("teamSize", { count: team.size - 1 })}</span> : null}
+          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
           {appBadge(app)}
           {app && !app.notificationsConnected ? (
-            <Hint text={t("hint.notificationsOff")}><span tabIndex={0} className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap bg-muted text-muted-foreground">
+            <Hint text={t("hint.notificationsOff")}><span tabIndex={0} className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1 whitespace-nowrap bg-muted text-muted-foreground">
               <BellOff className="h-2.5 w-2.5" />{t("notificationsOff")}
             </span></Hint>
           ) : null}
@@ -377,7 +387,7 @@ export default function MtmAgentsPage() {
         {/* The way into the employee's section, in words: their clients, with the count when the server gave one. */}
         {clientSections ? (
           <Hint text={t("hint.clients")}>
-            <Link href={agentHref(agent)} data-testid="mtm-agent-clients-link" className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 text-sm font-medium hover:bg-muted dark:border-zinc-700">
+            <Link href={agentHref(agent)} data-testid="mtm-agent-clients-link" className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-muted">
               <span className="inline-flex min-w-0 items-center gap-1.5"><UsersRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="truncate">{typeof agent.clients === "number" ? t("clientsCount", { count: agent.clients }) : t("clients")}</span></span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>
@@ -385,8 +395,8 @@ export default function MtmAgentsPage() {
         ) : null}
 
         {/* Contact + quick actions — a fixed-height footer at the bottom */}
-        <div className="mt-auto flex h-8 items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-2">
-          <span className="text-[11px] text-muted-foreground truncate">{agent.phone || agent.email || agent.userEmail || "—"}</span>
+        <div className="mt-auto flex h-8 items-center justify-between gap-2 border-t border-border pt-2">
+          <span className="text-xs text-muted-foreground truncate">{agent.phone || agent.email || agent.userEmail || "—"}</span>
           {renderContactLinks(agent)}
         </div>
       </div>
@@ -399,8 +409,8 @@ export default function MtmAgentsPage() {
     <div className="flex items-center gap-2 mb-2 min-w-0">
       <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <h3 className={`truncate text-xs font-semibold uppercase tracking-wide ${nested ? "text-muted-foreground" : "text-foreground/80"}`}>{label}</h3>
-      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{count}</span>
-      {hint ? <span className="truncate text-[10px] text-muted-foreground">{hint}</span> : null}
+      <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{count}</span>
+      {hint ? <span className="truncate text-xs text-muted-foreground">{hint}</span> : null}
     </div>
   )
 
@@ -409,7 +419,7 @@ export default function MtmAgentsPage() {
   const renderTeam = (team: MtmAgentTeam<any>, depth: number): ReactNode => {
     const cards = [...(team.leader ? [team.leader] : []), ...team.members]
     return (
-      <section key={team.key} data-testid="mtm-agent-team" className={depth > 0 ? "border-l-2 border-blue-200 pl-3 dark:border-blue-900" : ""}>
+      <section key={team.key} data-testid="mtm-agent-team" className={depth > 0 ? "border-l-2 border-border pl-3" : ""}>
         {teamHeader(team.label, team.size, team.leader ? undefined : t("leaderNotListed"), depth > 0)}
         {cards.length ? <div className={cardGrid}>{cards.map(agent => renderCard(agent, team))}</div> : null}
         {team.subteams.length ? <div className={`space-y-4 ${cards.length ? "mt-4" : ""}`}>{team.subteams.map(sub => renderTeam(sub, depth + 1))}</div> : null}
@@ -440,15 +450,15 @@ export default function MtmAgentsPage() {
     const activity = agent.activity as { visits: number; planFulfillment: number | null } | null | undefined
     const app = agent.app as { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined
     return (
-      <tr key={agent.id} data-testid="mtm-agent-row" className={`border-t border-zinc-100 dark:border-zinc-800 ${leads ? "font-medium" : ""}`}>
+      <tr key={agent.id} data-testid="mtm-agent-row" className={`border-t border-border ${leads ? "font-medium" : ""}`}>
         <td className="py-2 pr-2" style={{ paddingLeft: `${0.75 + Math.min(depth, 4) * 1.25}rem` }}>
           <div className="flex items-center gap-2 min-w-0">
             <div className="relative h-8 w-8 shrink-0">{avatar(agent, "sm")}{presenceDot(agent, presence)}</div>
             <div className="min-w-0">
               <Hint text={agentHrefTitle}><Link href={agentHref(agent)} className={`block truncate hover:underline ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link></Hint>
               <div className="flex flex-wrap items-center gap-1">
-                <span className={`text-[10px] px-1.5 rounded-full ${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
-                {leads && team ? <span className="text-[10px] text-muted-foreground">{t("teamSize", { count: team.size - 1 })}</span> : null}
+                <span className={`text-xs px-1.5 rounded-full ${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
+                {leads && team ? <span className="text-xs text-muted-foreground">{t("teamSize", { count: team.size - 1 })}</span> : null}
               </div>
             </div>
           </div>
@@ -465,7 +475,7 @@ export default function MtmAgentsPage() {
         <td className="hidden xl:table-cell py-2 pr-2">{appBadge(app)}</td>
         <td className="hidden sm:table-cell py-2 pr-2">
           <div className="flex items-center gap-1 min-w-0">
-            <span className="hidden xl:inline truncate text-[11px] text-muted-foreground max-w-[12rem]">{agent.phone || agent.email || agent.userEmail || "—"}</span>
+            <span className="hidden xl:inline truncate text-xs text-muted-foreground max-w-[12rem]">{agent.phone || agent.email || agent.userEmail || "—"}</span>
             {renderContactLinks(agent)}
           </div>
         </td>
@@ -474,21 +484,21 @@ export default function MtmAgentsPage() {
     )
   }
   const groupRow = (key: string, label: string, count: number, hint?: string) => (
-    <tr key={`group-${key}`} className="border-t border-zinc-200 dark:border-zinc-700 bg-muted/40">
+    <tr key={`group-${key}`} className="border-t border-border bg-muted/40">
       <td colSpan={clientSections ? 9 : 8} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label} <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-normal">{count}</span>
-        {hint ? <span className="ml-2 text-[10px] font-normal normal-case">{hint}</span> : null}
+        {label} <span className="ml-1 rounded-full bg-muted px-1.5 text-xs font-normal">{count}</span>
+        {hint ? <span className="ml-2 text-xs font-normal normal-case">{hint}</span> : null}
       </td>
     </tr>
   )
   const renderList = () => (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card" data-testid="mtm-agents-list">
+    <div className="rounded-lg border border-border bg-card" data-testid="mtm-agents-list">
       {/* Horizontal only, per the MTM table rule; columns already drop out on
           narrow screens, and there is no vertical frame — one page scroll. */}
       <div className="overflow-x-auto">
       <table className="w-full table-fixed text-sm">
         <thead>
-          <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+          <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
             <th className="px-3 py-2 font-medium w-[45%] md:w-[28%]">{t("colName")}</th>
             <th className="hidden lg:table-cell py-2 pr-2 font-medium">{t("colManager")}</th>
             <th className="py-2 pr-2 font-medium">{t("colToday")}</th>
@@ -519,23 +529,22 @@ export default function MtmAgentsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={UserCog} title={`${t("title")} (${filtered.length})`} description={t("subtitle")} />
-          <HelpButton slug="mtm-agents" variant="label" />
-        </div>
-        <div className="flex gap-2">
+      <MtmPageHeader
+        title={`${t("title")} (${filtered.length})`}
+        description={t("subtitle")}
+        help="mtm-agents"
+        actions={<>
           <Hint text={t("hint.export")}><Button variant="outline" size="sm" onClick={() => {
             const csv = ["Name,Email,Phone,Role,Status,LastSeen", ...filtered.map(a => `${a.name || ""},${a.email || ""},${a.phone || ""},${a.role || ""},${a.status || ""},${a.lastSeenAt || ""}`)].join("\n")
             const blob = new Blob([csv], { type: "text/csv" })
             const el = document.createElement("a"); el.href = URL.createObjectURL(blob); el.download = "field-agents.csv"; el.click()
           }}><Download className="h-4 w-4 mr-1" /> {t("export")}</Button></Hint>
           <Hint text={t("hint.add")}><Button onClick={() => { setEditData(undefined); setFormOpen(true) }}><Plus className="h-4 w-4 mr-1" /> {t("add")}</Button></Hint>
-        </div>
-      </div>
+        </>}
+      />
 
       {loadError ? (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{loadError}</span>
         </div>
       ) : null}
@@ -565,7 +574,7 @@ export default function MtmAgentsPage() {
               aria-describedby="mtm-agents-managers-tile-hint"
               data-testid="mtm-agents-managers-tile"
               onClick={toggleManagers}
-              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-foreground font-semibold text-foreground" : "border-zinc-200 bg-card text-muted-foreground hover:bg-muted dark:border-zinc-700"}`}
+              className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "crm-choice-selected text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
             >
               <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
               {t("statManagers")} ({totalManagers})
@@ -585,7 +594,7 @@ export default function MtmAgentsPage() {
               ]}
               onChange={setSortBy} />
           </Hint>
-          <span className="inline-flex border-b border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
+          <span className="inline-flex border-b border-border" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
             <Hint text={t("hint.viewCards")}><Button variant="ghost" size="sm" className={mtmTabClass(view === "cards")} aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button></Hint>
             <Hint text={t("hint.viewList")}><Button variant="ghost" size="sm" className={mtmTabClass(view === "list")} aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button></Hint>
           </span>
@@ -593,7 +602,7 @@ export default function MtmAgentsPage() {
       </MtmFilterBar>
 
       {filtered.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{loadError ? loadError : agents.length === 0 ? t("empty") : t("noResults")}</div>
+        <div className="h-48 flex items-center justify-center text-muted-foreground border border-border rounded-lg bg-card">{loadError ? loadError : agents.length === 0 ? t("empty") : t("noResults")}</div>
       ) : view === "list" ? renderList() : (
         <div className="flex flex-wrap gap-x-3 gap-y-5">
           {hierarchy.teams.map(teamSlot)}
@@ -614,8 +623,12 @@ export default function MtmAgentsPage() {
         onOpenChange={(open) => { if (!open) setKeptItem(null) }}
         onConfirm={confirmDeactivate}
         title={t("deleteKeptTitle")}
-        description={keptItem ? t(keptItem.status === "ACTIVE" ? "deleteKeptBody" : "deleteKeptAlreadyInactive", { name: keptItem.name }) : undefined}
-        confirmLabel={t(keptItem?.status === "ACTIVE" ? "deleteKeptAction" : "deleteKeptClose")}
+        description={keptItem ? [
+          t(keptReasons.includes("dependency") ? "deleteLinkedBody" : keptItem.status === "ACTIVE" ? "deleteKeptBody" : "deleteKeptAlreadyInactive", { name: keptItem.name }),
+          t("deleteKeptReasons", { reasons: keptReasons.map(reason => t(`deleteReason.${reason}`)).join(", ") }),
+          ...(keptItem.status !== "ACTIVE" ? [t("deleteKeptPhoneHelp")] : []),
+        ].join(" ") : undefined}
+        confirmLabel={t(keptItem?.status === "ACTIVE" ? "deleteKeptAction" : "deleteKeptEdit")}
         confirmVariant="default"
       />
     </div>

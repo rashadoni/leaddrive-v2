@@ -7,7 +7,7 @@
  *   tile, cell or square under an icon;
  * - warnings and notices are white with a coloured left edge;
  * - inside a page a chosen tab is dark text over an orange line and a chosen
- *   chip is outlined dark — the orange fill is the page's one main button.
+ *   chip uses the shared neutral selection — primary actions use common CRM tokens.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest"
 import { MTM_TAB_ROW, mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
 import { Badge } from "@/components/mtm/mtm-badge"
 
-const ROOTS = ["src/components/mtm", "src/app/(dashboard)/mtm"]
+const ROOTS = ["src/components/mtm", "src/app/(dashboard)/mtm", "src/lib/mtm"]
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -47,7 +47,7 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
     expect(found).toEqual([])
   })
 
-  it("never fills a tab or a chip because it is the chosen one", () => {
+  it("never gives a chosen tab or chip the primary action variant", () => {
     const found = files.flatMap((path) =>
       readFileSync(path, "utf8").split("\n").flatMap((line, index) => (FILLED_WHEN_CHOSEN.test(line) ? [`${path}:${index + 1}`] : [])),
     )
@@ -63,10 +63,10 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
     expect(MTM_TAB_ROW).toContain("border-b")
   })
 
-  it("outlines a chosen chip in dark and keeps a status chip in its own colour", () => {
-    expect(mtmChipClass(true)).toBe("border-foreground font-semibold text-foreground")
+  it("uses the shared neutral selected chip and preserves semantic status text", () => {
+    expect(mtmChipClass(true)).toBe("crm-choice-selected border-foreground font-semibold text-foreground")
     expect(mtmChipClass(false)).toBe("text-muted-foreground")
-    expect(mtmChipClass(true, "text-red-600")).toBe("border-foreground font-semibold text-red-600")
+    expect(mtmChipClass(true, "text-red-600")).toBe("crm-choice-selected border-foreground font-semibold crm-choice-semantic text-red-600")
     expect(mtmChipClass(false, "text-red-600")).toBe("text-red-600")
   })
 
@@ -78,12 +78,53 @@ describe("MTM calm colours (owner, 2026-10-18)", () => {
     expect(warning).toContain("Gözləyir")
 
     const outline = renderToStaticMarkup(createElement(Badge, { variant: "outline" }, "A"))
-    expect(outline).toContain("border-zinc-200")
+    expect(outline).toContain("border-border")
     expect(outline).not.toMatch(/\bbg-/)
   })
 
   it("gives every MTM page the calm Badge, not the shared tinted one", () => {
     const shared = files.filter((path) => !path.endsWith("mtm-badge.tsx") && /import \{ Badge \} from "@\/components\/ui\/badge"/.test(readFileSync(path, "utf8")))
     expect(shared).toEqual([])
+  })
+})
+
+/**
+ * The demo draws the MTM pages again (its scenes), and the intro clips are
+ * filmed on those scenes. Filmed in the colours from before 2026-10-18, the
+ * clips showed the owner a module the CRM no longer looks like, and he had
+ * them re-filmed (2026-10-20). The scenes keep to the same rules.
+ */
+const DEMO_SCENES = [
+  "src/components/demo-center/journey/scenes/mtm-scene.tsx",
+  "src/components/demo-center/journey/scenes/personnel-scene.tsx",
+]
+
+/** A class that fills in only for the chosen one: `active ? "bg-primary …" : …`. */
+const FILLS_WHEN_CHOSEN = /\?\s*"[^"]*\b(?:bg-primary|bg-foreground|bg-orange-500|bg-zinc-900|bg-emerald-600|bg-blue-600)\b/
+/** A pressed or selected Button with no variant is the filled default one (the scenes write a Button on one line). */
+const pressedDefaultButton = (line: string) => /<Button\b/.test(line) && /\baria-(?:selected|pressed)\b/.test(line) && !/\bvariant=/.test(line)
+
+describe("the demo's MTM and Personnel screens in the calm colours (owner, 2026-10-20)", () => {
+  const lines = DEMO_SCENES.flatMap((path) => readFileSync(path, "utf8").split("\n").map((line, index) => ({ at: `${path}:${index + 1}`, line })))
+
+  it("paint no pale fill, and fill no tab, chip or button because it is the chosen one", () => {
+    expect(lines.filter(({ line }) => PALE_FILL.test(line)).map(({ at }) => at)).toEqual([])
+    expect(lines.filter(({ line }) => FILLED_WHEN_CHOSEN.test(line) || FILLS_WHEN_CHOSEN.test(line) || pressedDefaultButton(line)).map(({ at }) => at)).toEqual([])
+  })
+
+  it("draw the tabs inside a page with the module's own classes, and no shared tinted Badge", () => {
+    for (const path of DEMO_SCENES) {
+      const source = readFileSync(path, "utf8")
+      expect(source, path).toContain("MTM_TAB_ROW")
+      expect(source, path).toContain("mtmTabClass(")
+      expect(source, path).not.toMatch(/from "@\/components\/ui\/badge"/)
+    }
+  })
+
+  it("draw «Kömək» as the CRM's own help button, class for class", async () => {
+    const { DEMO_HELP_BUTTON_CLASSES } = await import("@/components/demo-center/journey/scenes/demo-help-button")
+    const product = readFileSync("src/components/help/help-button.tsx", "utf8")
+    expect(product).toContain(DEMO_HELP_BUTTON_CLASSES.label)
+    expect(product).toContain(DEMO_HELP_BUTTON_CLASSES.icon)
   })
 })

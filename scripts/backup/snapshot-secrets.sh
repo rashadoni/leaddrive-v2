@@ -53,6 +53,10 @@ SECRET_FILES=(
   /etc/leaddrive/app.env
   /etc/leaddrive/backup.env
   /etc/leaddrive/migration.env
+  # The pgBackRest repository passphrase. The WAL archive is encrypted with it
+  # and the only copy lives on the host the archive exists to replace, so it
+  # must travel with the other recovery secrets.
+  /etc/leaddrive/wal-archive.env
 )
 
 log()   { echo "[$(date '+%H:%M:%S')] $1"; }
@@ -106,6 +110,7 @@ assert_secret_source() {
   [ "$owner" = "root" ] || fatal "required recovery file must be root-owned: $file"
   case "$file:$group:$mode" in
     /etc/leaddrive/app.env:root:600|/etc/leaddrive/migration.env:root:600) ;;
+    /etc/leaddrive/wal-archive.env:root:600) ;;
     /etc/leaddrive/backup.env:root:600|/etc/leaddrive/backup.env:leaddrive-backup:640) ;;
     *) fatal "required recovery file ownership or mode is unsafe: $file" ;;
   esac

@@ -320,9 +320,9 @@ export function VoiceCallQueuePreview({
   return (
     <section
       aria-labelledby="voice-call-queue-preview-title"
-      className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700"
+      className="rounded-xl border border-border bg-card"
     >
-      <header className="flex items-start justify-between gap-4 border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 sm:px-5">
+      <header className="flex items-start justify-between gap-4 border-b border-border px-4 py-4 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <ListOrdered aria-hidden="true" className="h-4 w-4" />
@@ -385,7 +385,7 @@ export function VoiceCallQueuePreview({
 
         {(phase === "ready" || phase === "creating") && preview ? (
           <div className="space-y-5">
-            <div className="grid grid-cols-3 divide-x divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+            <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border">
               <div className="px-3 py-3 sm:px-4">
                 <p className="text-lg font-semibold tabular-nums">{preview.requestedCount}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{t("selectedCount")}</p>
@@ -420,7 +420,7 @@ export function VoiceCallQueuePreview({
                   <Clock3 aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </div>
                 {visibleOrder.length > 0 ? (
-                  <ol className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                  <ol className="divide-y divide-border rounded-lg border border-border">
                     {visibleOrder.map((item) => {
                       const lead = leadById.get(item.leadId)
                       return (
@@ -442,7 +442,7 @@ export function VoiceCallQueuePreview({
                     ) : null}
                   </ol>
                 ) : (
-                  <div className="rounded-lg border border-dashed border-zinc-300 px-4 py-6 text-center dark:border-zinc-700">
+                  <div className="rounded-lg border border-dashed border-zinc-300 px-4 py-6 text-center dark:border-border">
                     <p className="text-sm font-medium">{t("noneEligibleTitle")}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("noneEligibleDescription")}</p>
                   </div>
@@ -473,7 +473,7 @@ export function VoiceCallQueuePreview({
 
             <label
               htmlFor={consentId}
-              className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 transition-colors hover:bg-muted/30 dark:border-zinc-700"
+              className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/30"
             >
               <input
                 id={consentId}
@@ -490,7 +490,7 @@ export function VoiceCallQueuePreview({
               </span>
             </label>
 
-            <footer className="flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+            <footer className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-xs leading-5 text-muted-foreground">
                 {t("eligibilityRecheck")}
               </p>

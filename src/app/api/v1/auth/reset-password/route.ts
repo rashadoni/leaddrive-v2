@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { logAudit, prisma } from "@/lib/prisma"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
 import bcrypt from "bcryptjs"
-import { runWithRlsBypass } from "@/lib/rls-context"
+import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { hashOneTimeToken } from "@/lib/one-time-token"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
         resetTokenExp: { gt: new Date() },
         isActive: true,
       },
-      select: { id: true },
+      select: { id: true, organizationId: true, passwordChangedAt: true },
     })
 
     if (!user) {
@@ -51,28 +52,25 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
-    const passwordChangedAt = new Date()
-
-    // Consume the credential and change the password in one compare-and-set.
-    // The preliminary lookup is only an optimization/user-id resolver; it does
-    // not grant success. If another request consumed the token while bcrypt was
-    // running (or it expired in the meantime), this predicate matches zero rows.
-    const consumed = await prisma.user.updateMany({
-      where: {
-        id: user.id,
-        resetToken: tokenHash,
-        resetTokenExp: { gt: passwordChangedAt },
-        isActive: true,
-      },
-      data: {
-        passwordHash,
-        passwordChangedAt,
-        resetToken: null,
-        resetTokenExp: null,
-      },
-    })
-
-    if (consumed.count !== 1) {
+    const consumed = await runWithTenant(user.organizationId, () => withLegacyCredentialMaintenance(prisma, user.organizationId,
+      [{ kind: "USER", userId: user.id }], async tx => {
+        const passwordChangedAt = new Date()
+        // The email capability and canonical authority are checked at the
+        // actual mutation, after bcrypt, under the common tenant fence.
+        const changed = await tx.user.updateMany({
+          where: { id: user.id, organizationId: user.organizationId, resetToken: tokenHash,
+            resetTokenExp: { gt: passwordChangedAt }, isActive: true, anonymizedAt: null },
+          data: { passwordHash, passwordChangedAt, resetToken: null, resetTokenExp: null },
+        })
+        if (changed.count !== 1) return false
+        await logAudit(user.organizationId, "password_reset_by_email", "user", user.id, undefined, {
+          userId: user.id,
+          oldValue: { passwordChangedAt: user.passwordChangedAt },
+          newValue: { passwordChangedAt, sessionsInvalidated: true, recoveryMethod: "email" },
+        }, tx)
+        return true
+      }))
+    if (!consumed.allowed || !consumed.value) {
       return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 })
     }
 

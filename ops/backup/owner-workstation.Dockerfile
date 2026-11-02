@@ -17,7 +17,11 @@ FROM postgres:16.15-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d0
 COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 COPY --from=vector-build /out/usr/lib/postgresql/16/lib/vector.so /usr/lib/postgresql/16/lib/vector.so
 COPY --from=vector-build /out/usr/share/postgresql/16/extension/vector* /usr/share/postgresql/16/extension/
-RUN apt-get update && apt-get install -y --no-install-recommends bash coreutils findutils util-linux tar grep sed openssh-client curl ca-certificates \
+# gawk, not bookworm's default mawk 1.3.4-20200120: that mawk has no interval
+# expressions, so every `[0-9a-f]{64}` check in the verifiers silently never
+# matched and the first real restore (2026-10-22) refused a valid archive.
+RUN apt-get update && apt-get install -y --no-install-recommends bash coreutils findutils util-linux tar grep sed gawk openssh-client curl ca-certificates \
+ && update-alternatives --set awk /usr/bin/gawk \
  && rm -rf /var/lib/apt/lists \
  && case "$(uname -m)" in \
       x86_64) arch=amd64; digest=cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10 ;; \

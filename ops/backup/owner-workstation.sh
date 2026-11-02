@@ -14,6 +14,10 @@ assert_swap_disabled /sys/fs/cgroup/memory.swap.max
 [ "$(id -u)" = 0 ] || fatal 'container root required for private mount ownership'
 [ "$(find /sys/class/net -mindepth 1 -maxdepth 1 -printf '%f\n')" = lo ] \
   || fatal 'requires Docker --network none'
+# The verifiers rely on POSIX interval expressions ({64}); an awk without them
+# rejects every valid archive, so refuse before any key or archive is read.
+[ "$(printf '%s\n' aaaa | awk '/^a{4}$/ { print "ok" }')" = ok ] \
+  || fatal 'awk lacks interval expressions; the image must use gawk'
 for mount in /scratch /database; do
   [ "$(findmnt -n -T "$mount" -o FSTYPE)" = tmpfs ] || fatal 'private scratch and database must be tmpfs'
   [ -z "$(find "$mount" -mindepth 1 -maxdepth 1 -print -quit)" ] || fatal 'private mounts must be empty; never acquire prior data'

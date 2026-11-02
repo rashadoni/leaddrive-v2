@@ -1304,7 +1304,7 @@ describe("POST /api/v1/mtm/locations", () => {
     expect(prisma.mtmAgentLatestLocation.findUnique).not.toHaveBeenCalled()
 
     const updateArgs = vi.mocked(prisma.mtmAgent.updateMany).mock.calls[0][0] as any
-    expect(updateArgs.where).toEqual({ id: "agent-1", organizationId: ORG, status: "ACTIVE" })
+    expect(updateArgs.where).toEqual({ id: "agent-1", organizationId: ORG, status: "ACTIVE", fieldDeletedAt: null })
     expect(updateArgs.data.isOnline).toBe(true)
     expect(updateArgs.data.lastSeenAt).toBeInstanceOf(Date)
     expect(prisma.$transaction).toHaveBeenCalledTimes(1)
@@ -1495,7 +1495,7 @@ describe("POST /api/v1/mtm/locations", () => {
 
     expect(res.status).toBe(404)
     expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: "agent-from-other-org", organizationId: ORG, status: "ACTIVE" },
+      where: { id: "agent-from-other-org", organizationId: ORG, status: "ACTIVE", fieldDeletedAt: null },
     }))
     expect(prisma.mtmAgentLocation.create).not.toHaveBeenCalled()
   })

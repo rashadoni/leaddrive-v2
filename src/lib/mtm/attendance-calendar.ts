@@ -5,7 +5,8 @@ import { currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { attendanceRuleForDate, MTM_ATTENDANCE_BASELINE_RULE } from "@/lib/mtm/attendance-rules"
 import { readAttendanceRules } from "@/lib/mtm/attendance-rule-store"
 import { lockWorkforceCalendarConfigurationDates } from "@/lib/workforce/calendar-configuration"
-import { azOfficialCalendar } from "@/lib/mtm/az-official-calendar"
+import { azCalendarDecided, azOfficialCalendar } from "@/lib/mtm/az-official-calendar"
+import { azFindingDays, readAzCalendarFinding } from "@/lib/mtm/az-calendar-watch"
 
 export const AttendanceCalendarInputSchema = z.object({
   date: z.string().refine(isDateKey),
@@ -99,18 +100,66 @@ export async function saveAttendanceCalendar(input: {
   })
 }
 
+/** An admin's "wrong, don't add" for a found calendar: per organization, per year, for exactly those days. */
+const DISMISSED_KEY = "attendancePublicCalendarDismissed"
+async function dismissedFingerprints(organizationId: string): Promise<Record<string, string>> {
+  const row = await prisma.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: DISMISSED_KEY } }, select: { value: true } })
+  const value = row?.value
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => /^\d{4}$/.test(entry[0]) && typeof entry[1] === "string")) : {}
+}
+async function saturdayWorks(organizationId: string, year: number) {
+  const rules = await readAttendanceRules(organizationId)
+  return !attendanceRuleForDate(rules, `${year}-06-01`).weekendDays.includes(6)
+}
+
+/**
+ * What Settings → Holidays offers for a year: the decision written in code;
+ * else the calendar the watch read from the press (to review, then add or
+ * dismiss); else the fixed holidays alone, with when the watch last looked.
+ */
+export async function attendanceOfficialCalendarView(organizationId: string, year: number) {
+  if (azCalendarDecided(year)) return { year, state: "DECIDED" as const, source: azOfficialCalendar(year).source }
+  const row = await readAzCalendarFinding(year)
+  const checkedAt = row?.checkedAt.toISOString() ?? null
+  const found = azFindingDays(row)
+  if (found && (await dismissedFingerprints(organizationId))[String(year)] !== found.fingerprint) {
+    const calendar = azOfficialCalendar(year, await saturdayWorks(organizationId, year), found)
+    return { year, state: "FOUND" as const, checkedAt, fingerprint: found.fingerprint, decision: row!.decision, sourceUrl: row!.sourceUrl,
+      publishedOn: row!.publishedOn, entries: calendar.entries }
+  }
+  if (found) return { year, state: "DISMISSED" as const, checkedAt }
+  if (row?.state === "UNREADABLE") return { year, state: "UNREADABLE" as const, checkedAt, sourceUrl: row.sourceUrl }
+  return { year, state: "NOT_YET" as const, checkedAt }
+}
+
+export async function dismissAzFoundCalendar(input: { organizationId: string; year: number; fingerprint: string }) {
+  const found = azFindingDays(await readAzCalendarFinding(input.year))
+  if (!found || found.fingerprint !== input.fingerprint) throw new AttendanceCalendarError("MTM_ATTENDANCE_CALENDAR_FOUND_CHANGED", 409)
+  const value = { ...await dismissedFingerprints(input.organizationId), [String(input.year)]: input.fingerprint }
+  await prisma.mtmSetting.upsert({ where: { organizationId_key: { organizationId: input.organizationId, key: DISMISSED_KEY } },
+    create: { organizationId: input.organizationId, key: DISMISSED_KEY, value }, update: { value } })
+}
+
 /**
  * Adds Azerbaijan's official days for a year, one date at a time through the
  * same guarded writer: past dates and dates that already have an entry are
- * skipped (and counted), never overwritten.
+ * skipped (and counted), never overwritten. For a year this code has no
+ * decision for, `fingerprint` names the found calendar the admin reviewed;
+ * if the watch has read different days since, nothing is added.
  */
-export async function addAzOfficialCalendar(input: { organizationId: string; userId: string; timezone: string; year: number }) {
-  const rules = await readAttendanceRules(input.organizationId)
-  const saturdayWorks = !attendanceRuleForDate(rules, `${input.year}-06-01`).weekendDays.includes(6)
-  const official = azOfficialCalendar(input.year, saturdayWorks)
+export async function addAzOfficialCalendar(input: { organizationId: string; userId: string; timezone: string; year: number; fingerprint?: string }) {
+  const sixDay = await saturdayWorks(input.organizationId, input.year)
+  let found: ReturnType<typeof azFindingDays> = null
+  if (input.fingerprint !== undefined && !azCalendarDecided(input.year)) {
+    found = azFindingDays(await readAzCalendarFinding(input.year))
+    if (!found || found.fingerprint !== input.fingerprint) throw new AttendanceCalendarError("MTM_ATTENDANCE_CALENDAR_FOUND_CHANGED", 409)
+  }
+  const official = azOfficialCalendar(input.year, sixDay, found ?? undefined)
+  const writer = { organizationId: input.organizationId, userId: input.userId, timezone: input.timezone }
   let added = 0, past = 0, existing = 0
   for (const entry of official.entries) {
-    try { await saveAttendanceCalendar({ ...input, value: entry }); added += 1 }
+    try { await saveAttendanceCalendar({ ...writer, value: entry }); added += 1 }
     catch (error) {
       if (!(error instanceof AttendanceCalendarError)) throw error
       if (error.code === "MTM_ATTENDANCE_CALENDAR_PAST") past += 1

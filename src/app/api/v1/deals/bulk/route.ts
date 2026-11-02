@@ -8,6 +8,7 @@ import { fireWebhooks } from "@/lib/webhooks"
 import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
 import { createRestActorContext } from "@/lib/crm-commands/actor-context"
 import { CrmCommandError } from "@/lib/crm-commands/errors"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 /**
  * Bulk-actions endpoint for the deals list page.
@@ -88,7 +89,7 @@ export const POST = withRlsAuth("deals", "write", async (req: NextRequest, authR
             { status: 403 },
           )
         }
-        const result = await prisma.deal.deleteMany({ where })
+        const result = await withDealEvents(prisma, orgId, ids, async (tx) => ({ value: await tx.deal.deleteMany({ where }) }))
         logAudit(orgId, "bulk_delete", "deal", ids.join(","), `Deleted ${result.count} deals`)
         fireWebhooks(orgId, "deal.deleted", { ids, count: result.count }).catch(() => {})
         await clearTaskRelationsMany(orgId, "deal", ids)

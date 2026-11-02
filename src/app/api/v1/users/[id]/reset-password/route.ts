@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { logAudit, prisma } from "@/lib/prisma"
+import { runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
@@ -57,40 +59,36 @@ export const POST = withRlsSessionAuth(
         return NextResponse.json({ error: "User not found" }, { status: 404 })
       }
 
-      const changedAt = new Date()
       const passwordHash = await bcrypt.hash(parsed.data.password, 12)
-      await prisma.user.update({
-        where: { id: target.id },
-        data: {
-          passwordHash,
-          passwordChangedAt: changedAt,
-          resetToken: null,
-          resetTokenExp: null,
-        },
-      })
-
-      // Never put a password or hash in the audit payload. passwordChangedAt
-      // doubles as the session-valid-after cutoff, so this also documents why
-      // every existing session for the target account was invalidated.
-      await logAudit(auth.orgId, "password_reset", "user", target.id, target.email, {
-        userId: auth.userId,
-        oldValue: {
-          passwordChangedAt: target.passwordChangedAt,
-          isActive: target.isActive,
-        },
-        newValue: {
-          passwordChangedAt: changedAt,
-          sessionsInvalidated: true,
-          isActive: target.isActive,
-        },
-      })
+      const result = await runWithTenant(auth.orgId, () => withLegacyCredentialMaintenance(prisma, auth.orgId,
+        [{ kind: "USER", userId: target.id }], async tx => {
+          const fresh = await tx.user.findFirst({
+            where: { id: target.id, organizationId: auth.orgId },
+            select: { id: true, email: true, isActive: true, passwordChangedAt: true },
+          })
+          if (!fresh) return null
+          const changedAt = new Date()
+          await tx.user.update({
+            where: { id: fresh.id },
+            data: { passwordHash, passwordChangedAt: changedAt, resetToken: null, resetTokenExp: null },
+          })
+          await logAudit(auth.orgId, "password_reset", "user", fresh.id, fresh.email, {
+            userId: auth.userId,
+            oldValue: { passwordChangedAt: fresh.passwordChangedAt, isActive: fresh.isActive },
+            newValue: { passwordChangedAt: changedAt, sessionsInvalidated: true, isActive: fresh.isActive },
+          }, tx)
+          return { userId: fresh.id, changedAt, isActive: fresh.isActive }
+        }))
+      if (!result.allowed) return NextResponse.json({ error: "Use the current credential management flow for this account", code: "IDENTITY_CREDENTIAL_FLOW_REQUIRED" }, { status: 409 })
+      if (!result.value) return NextResponse.json({ error: "User not found" }, { status: 404 })
+      const changedAt = result.value.changedAt
 
       return NextResponse.json({
         success: true,
         data: {
           userId: target.id,
           passwordChangedAt: changedAt,
-          isActive: target.isActive,
+          isActive: result.value.isActive,
         },
       })
     } catch (error) {

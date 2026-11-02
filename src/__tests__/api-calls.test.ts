@@ -1900,9 +1900,12 @@ describe("GET /api/v1/calls/active", () => {
     expect(prisma.callLog.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         organizationId: "org1",
-        AND: [accessibleCallWhere("admin", "admin-1")],
         status: { in: ["ringing", "answering", "in-progress", "initiated"] },
-        startedAt: { gte: expect.any(Date) },
+        AND: [
+          accessibleCallWhere("admin", "admin-1"),
+          // A call the AI handed to a person rings from the handoff.
+          { OR: [{ startedAt: { gte: expect.any(Date) } }, { handoffRequestedAt: { gte: expect.any(Date) } }] },
+        ],
       }),
       select: expect.objectContaining({
         id: true,
@@ -1941,7 +1944,7 @@ describe("GET /api/v1/calls/active", () => {
     expect(json.data[0]).toMatchObject({ leadId: null, lead: null })
     expect(prisma.lead.findMany).not.toHaveBeenCalled()
     const activeQuery = vi.mocked(prisma.callLog.findMany).mock.calls[0]?.[0]
-    expect(activeQuery?.where?.AND).toEqual([accessibleCallWhere("support", "support-1")])
+    expect((activeQuery?.where?.AND as unknown[] | undefined)?.[0]).toEqual(accessibleCallWhere("support", "support-1"))
   })
 
   it("shows a fresh inbound browser claim only to its owner and releases an expired ringing row", async () => {

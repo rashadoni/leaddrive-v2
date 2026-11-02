@@ -12,6 +12,8 @@ import { rosterExportTable } from "@/lib/mtm/live-map-roster-export"
 import { printRosterHtml, rosterPrintHtml } from "@/lib/mtm/live-map-roster-print"
 import { liveMapDuration } from "@/lib/mtm/live-map-state-since"
 import { mtmSpeedKmh } from "@/lib/mtm/gps-speed"
+import type { MtmLiveMovement } from "@/lib/mtm/movement-mode"
+import { MovementBadge } from "@/components/mtm/movement-badge"
 import {
   activeRosterFilterColumns,
   availableRosterColumns,
@@ -98,7 +100,9 @@ const NARROW_TRACKS_WITH_POINT = `${TICK_TRACK} minmax(0,1.4fr) minmax(0,1fr) 6.
 const ROW_GRID = "grid items-center [grid-template-columns:var(--roster-narrow)] @2xl:[grid-template-columns:var(--roster-wide)]"
 const TICK_BOX = "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded hover:bg-muted [@media(pointer:coarse)]:h-11"
 const TICK_INPUT = "h-4 w-4 cursor-pointer accent-[hsl(var(--primary))]"
-const TOOL_BUTTON = "inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-zinc-200 px-2 text-xs font-medium hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11"
+/** The filters a manager reaches for first, in this order; the rest wait under «Ещё фильтры». */
+const ROSTER_PRIMARY_FILTERS: RosterColumnId[] = ["status", "team", "manager", "app", "signal"]
+const TOOL_BUTTON = "inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md border border-border px-2 text-xs font-medium hover:bg-muted [@media(pointer:coarse)]:min-h-11"
 const MENU_ROW = "flex min-h-9 cursor-pointer items-center gap-2 rounded px-1 text-sm hover:bg-muted/60 [@media(pointer:coarse)]:min-h-11"
 /**
  * A row is one line, and a card can carry ten labels: the cell draws the
@@ -135,6 +139,12 @@ export interface LiveMapRosterProps {
   renderDetail: (agent: MtmDashboardAgent) => ReactNode
   /** The clock the freshness is judged by (anchored to the server's answer). */
   nowMs: number
+  /**
+   * How each employee is moving now, as the map reads it (movement-mode.ts):
+   * a row «в пути» says car or on foot, with its badge, and a row «стоит»
+   * the badge of standing — the mockup «MTM: движение на карте».
+   */
+  movements?: ReadonlyMap<string, MtmLiveMovement | null>
   workforceEnabled: boolean
   formatClock: (value: string | null | undefined) => string
   /** «22:14», or with the date when it was on an earlier day. */
@@ -209,7 +219,7 @@ function bringListBackFromBehindItsHeading(aside: HTMLElement | null, heading: H
 export function LiveMapRoster({
   agents, rows, searchSlot, filters, onFiltersChange, view, onViewChange, onHide, hiddenOnWide = false,
   hiddenAgentIds, onToggleAgentOnMap, onSetAgentsOnMap, selectedAgentId, onSelect, selectedDetailRef,
-  renderDetail, nowMs, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
+  renderDetail, nowMs, movements, workforceEnabled, formatClock, formatVisitOpened, isEarlierDay,
   formatDistance = (meters) => `${Math.round(meters)} m`, exportFileName, printTitle, printNote,
 }: LiveMapRosterProps) {
   const tMap = useTranslations("mtmMap")
@@ -219,6 +229,7 @@ export function LiveMapRoster({
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set())
   const [exporting, setExporting] = useState<"idle" | "busy" | "failed">("idle")
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
   const asideRef = useRef<HTMLElement | null>(null)
   const headingRef = useRef<HTMLDivElement | null>(null)
 
@@ -426,62 +437,95 @@ export function LiveMapRoster({
       data-testid="live-map-roster-filters-button"
       aria-expanded={filtersOpen}
       onClick={filtersFloat ? undefined : () => setFiltersOpen((open) => !open)}
-      className={cn(TOOL_BUTTON, (filteredColumns.length > 0 || filtersOpen) && "border-foreground font-semibold")}
+      className={cn(TOOL_BUTTON, (filteredColumns.length > 0 || filtersOpen) && "crm-choice-selected")}
     >
       <Filter className={cn("h-3.5 w-3.5", filteredColumns.length > 0 && "fill-current")} aria-hidden="true" />{tMap("roster.filters")}
       {filteredColumns.length > 0 ? <span className="tabular-nums">· {filteredColumns.length}</span> : null}
     </button>
   )
-  /** The panel of «Фильтры»: the same in the floating menu and in the list itself. */
-  const filtersPanel = (gridClass: string, bodyClass: string) => (
+  /**
+   * The panel of «Фильтры»: the same in the floating menu and in the list itself.
+   *
+   * Owner, 2026-11-01: «фильтр хаотично построен». Eight groups stood in two
+   * columns of uneven height, the eye jumping between them. Now one group a
+   * row — its name on the left, its values on the right — the ones a manager
+   * uses first, the rest folded under «Ещё фильтры» until asked for (or until
+   * one of them filters), and «Сбросить» and «Готово» at the foot.
+   */
+  const primaryColumns = available.filter((column) => ROSTER_PRIMARY_FILTERS.includes(column))
+    .sort((left, right) => ROSTER_PRIMARY_FILTERS.indexOf(left) - ROSTER_PRIMARY_FILTERS.indexOf(right))
+  const moreColumns = available.filter((column) => column !== "name" && !ROSTER_PRIMARY_FILTERS.includes(column))
+  const moreShown = moreFiltersOpen || moreColumns.some((column) => filters[column])
+  const closeFilters = (floating: boolean) => {
+    if (floating) holdSteady(false)
+    else closedByDoneRef.current = true
+    setFiltersOpen(false)
+  }
+  const filterRow = (column: RosterColumnId) => (
+    <div key={column} role="group" aria-label={columnLabel(column)} className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-start gap-3 border-t border-border py-2.5 first:border-t-0" data-testid={`live-map-roster-filters-group-${column}`}>
+      <div className={cn("pt-1.5 text-xs font-semibold uppercase tracking-wide", filters[column] ? ROSTER_ACTION_TEXT : "text-muted-foreground")} data-testid={`live-map-roster-filters-title-${column}`}>{columnLabel(column)}</div>
+      <div className="flex min-w-0 flex-wrap gap-1.5">
+        {(options[column] ?? []).map((option) => {
+          const on = rosterFilterTicked(filters[column], option.value)
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setFilter(column, tickRosterFilterValue(filters[column], option.value))}
+              data-testid={`live-map-roster-filters-value-${column}-${option.value}`}
+              className={cn(
+                "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors [@media(pointer:coarse)]:min-h-11",
+                on ? "crm-choice-selected text-foreground" : "border-border hover:bg-muted",
+                option.count === 0 && !on && "text-muted-foreground",
+              )}
+            >
+              {on
+                ? <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                : option.dotClass ? <span className={cn("h-2 w-2 shrink-0 rounded-full", option.dotClass)} aria-hidden="true" /> : null}
+              <span className="min-w-0 truncate">{option.label}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">{option.count}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+  const filtersPanel = (floating: boolean, bodyClass: string) => (
     <>
-      {/* As tall with «Сбросить фильтры» in it as without: a value pressed must
-          not move the values under the cursor. */}
-      <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700 [@media(pointer:coarse)]:min-h-[3.75rem]">
+      <div className="flex min-h-12 shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border px-4 py-2.5">
         <span className="text-sm font-semibold">{tMap("roster.filters")}</span>
         <span role="status" className="text-xs tabular-nums text-muted-foreground" data-testid="live-map-roster-filters-count">
           {tMap("roster.shownCount", { shown: rows.length, total: agents.length })}
         </span>
+        <span className="text-xs text-muted-foreground">{tMap("roster.filter.hint")}</span>
+      </div>
+      <div className={cn("px-4", bodyClass)}>
+        {primaryColumns.map(filterRow)}
+        {moreColumns.length > 0 ? (
+          moreShown ? moreColumns.map(filterRow) : (
+            <div className="border-t border-border py-2">
+              <button type="button" onClick={() => setMoreFiltersOpen(true)} data-testid="live-map-roster-filters-more" className={cn("inline-flex min-h-8 items-center gap-1 text-xs font-semibold [@media(pointer:coarse)]:min-h-11", ROSTER_ACTION_TEXT)}>
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                {tMap("roster.filter.moreFilters", { names: moreColumns.map(columnLabel).join(", ").toLocaleLowerCase(locale) })}
+              </button>
+            </div>
+          )
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-2.5">
         {filteredColumns.length > 0 ? (
           <Hint text={tMap("hint.resetFilters")}>
-            <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-menu-reset" className="ml-auto inline-flex min-h-8 items-center rounded-md border border-zinc-200 px-2 text-xs font-semibold hover:bg-muted dark:border-zinc-700 [@media(pointer:coarse)]:min-h-11">
+            <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-menu-reset" className="inline-flex min-h-9 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-muted [@media(pointer:coarse)]:min-h-11">
               {tMap("roster.filter.resetAll")}
             </button>
           </Hint>
-        ) : null}
-      </div>
-      <p className="shrink-0 px-3 pt-2 text-[11px] text-muted-foreground">{tMap("roster.filter.hint")}</p>
-      <div className={cn("grid gap-x-5 px-3 pb-3", gridClass, bodyClass)}>
-        {available.filter((column) => column !== "name").map((column) => (
-          <div key={column} role="group" aria-label={columnLabel(column)} className="min-w-0 pt-2.5" data-testid={`live-map-roster-filters-group-${column}`}>
-            <div className={cn("text-[11px] font-semibold uppercase tracking-wide", filters[column] ? ROSTER_ACTION_TEXT : "text-muted-foreground")} data-testid={`live-map-roster-filters-title-${column}`}>{columnLabel(column)}</div>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {(options[column] ?? []).map((option) => {
-                const on = rosterFilterTicked(filters[column], option.value)
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setFilter(column, tickRosterFilterValue(filters[column], option.value))}
-                    data-testid={`live-map-roster-filters-value-${column}-${option.value}`}
-                    className={cn(
-                      "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors [@media(pointer:coarse)]:min-h-11",
-                      on ? "border-foreground font-semibold text-foreground" : "border-zinc-300 hover:bg-muted dark:border-zinc-600",
-                      option.count === 0 && !on && "text-muted-foreground",
-                    )}
-                  >
-                    {on
-                      ? <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-                      : option.dotClass ? <span className={cn("h-2 w-2 shrink-0 rounded-full", option.dotClass)} aria-hidden="true" /> : null}
-                    <span className="min-w-0 truncate">{option.label}</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">{option.count}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
+        ) : <span />}
+        <Hint text={tMap("hint.filterDone")}>
+          <button type="button" onClick={() => closeFilters(floating)} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11" data-crm-button="default">
+            {tMap("roster.filter.done", { shown: rows.length, total: agents.length })}
+          </button>
+        </Hint>
       </div>
     </>
   )
@@ -605,7 +649,14 @@ export function LiveMapRoster({
         // A visit left open since an earlier day is the anomaly a dispatcher
         // has to see on the row itself, even where the time does not fit.
         const stale = openedAt != null && isEarlierDay(openedAt)
-        const label = valueLabel("status", status)
+        // «в пути» says how: «Едет · 34 км/ч», «Пешком · 5 км/ч»; «стоит» has its badge.
+        const movement = movements?.get(agent.agentId) ?? null
+        const moving = status === "ON_ROAD" && movement && movement.mode !== "STAY" ? movement.mode : null
+        const badge = moving ?? (status === "STOPPED" && movement ? "STAY" : null)
+        const movingKmh = moving ? mtmSpeedKmh(rosterSpeed(agent)) : null
+        const label = moving
+          ? `${tMap(`roster.moving.${moving}`)}${movingKmh != null ? ` · ${tMap("roster.kmh", { value: movingKmh })}` : ""}`
+          : valueLabel("status", status)
         // «Стоит · 40 мин»: how long, not since when — the question a
         // dispatcher asks of somebody standing («давно он там?»).
         const standing = status === "STOPPED" ? liveMapDuration(agent.stationarySince, nowMs) : null
@@ -617,7 +668,9 @@ export function LiveMapRoster({
             : label
         return (
           <span className="flex min-w-0 items-center gap-1.5" data-testid={`live-map-agent-status-${agent.agentId}`} title={title}>
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", ROSTER_STATUS_DOT_CLASS[status])} aria-hidden="true" />
+            {badge
+              ? <MovementBadge mode={badge} size={18} testId={`live-map-agent-movement-${agent.agentId}`} />
+              : <span className={cn("h-2 w-2 shrink-0 rounded-full", ROSTER_STATUS_DOT_CLASS[status])} aria-hidden="true" />}
             <span className="min-w-0 truncate">{label}{since ? <span className="hidden text-muted-foreground @2xl:inline"> · {since}</span> : null}{standingText ? <span className="hidden text-muted-foreground @2xl:inline" data-testid={`live-map-agent-standing-${agent.agentId}`}> · {standingText}</span> : null}</span>
             {stale ? (
               <span className="shrink-0 @2xl:hidden" data-testid={`live-map-agent-visit-stale-${agent.agentId}`}>
@@ -650,11 +703,11 @@ export function LiveMapRoster({
         return (
           <span className="flex min-w-0 items-center gap-1" title={labels.join(", ")} data-testid={`live-map-agent-tags-${agent.agentId}`}>
             {labels.slice(0, LABELS_IN_A_CELL).map((label) => (
-              <span key={label} className="min-w-0 truncate rounded border border-zinc-300 px-1 text-[11px] leading-[1.125rem] dark:border-zinc-600">{label}</span>
+              <span key={label} className="min-w-0 truncate rounded border border-border px-1 text-xs leading-[1.125rem]">{label}</span>
             ))}
             {rest.length > 0 ? (
               <>
-                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground" aria-hidden="true">+{rest.length}</span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground" aria-hidden="true">+{rest.length}</span>
                 {/* What a sighted person finds in the tooltip is read out in full. */}
                 <span className="sr-only">, {rest.join(", ")}</span>
               </>
@@ -719,7 +772,7 @@ export function LiveMapRoster({
       data-testid="live-map-roster"
       data-width={view.width}
       style={trackStyle}
-      className={cn("@container order-2 min-w-0 scroll-mt-3 rounded-lg border border-zinc-200 bg-card text-[13px] sm:scroll-mt-4 lg:scroll-mt-8 dark:border-zinc-700", hiddenOnWide && "lg:hidden")}
+      className={cn("@container order-2 min-w-0 scroll-mt-3 rounded-lg border border-border bg-card text-[13px] sm:scroll-mt-4 lg:scroll-mt-8", hiddenOnWide && "lg:hidden")}
     >
       <div ref={tableRef} role="table" aria-label={tMap("agents")} data-testid="live-map-roster-table" style={steadyHeight ? { minHeight: steadyHeight, overflowAnchor: "none" } : undefined}>
       {/* The heading follows the screen while the page scrolls: with a hundred
@@ -729,7 +782,7 @@ export function LiveMapRoster({
           would show through the band above it. Not on a screen too short to
           spare the room. */}
       <div ref={headingRef} role="none" data-testid="live-map-roster-heading" className={cn(
-          "-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",
+          "-top-3 z-20 rounded-t-lg border-b border-border bg-card sm:-top-4 lg:-top-8",
           // With the filters open in it the heading can be taller than the screen: then it stays in its place.
           !filtersInList && "[@media(min-height:600px)]:sticky",
         )}>
@@ -818,7 +871,7 @@ export function LiveMapRoster({
                 className="flex max-h-[var(--radix-popover-content-available-height)] w-[34rem] max-w-[min(calc(100vw-2rem),var(--radix-popover-content-available-width))] flex-col p-0"
                 data-testid="live-map-roster-filters-menu"
               >
-                {filtersPanel("grid-cols-2", "min-h-0 flex-1 overflow-y-auto")}
+                {filtersPanel(true, "min-h-0 flex-1 overflow-y-auto")}
               </PopoverContent>
             </Popover>
           ) : <Hint text={tMap("hint.filters")}>{filtersButton}</Hint>}
@@ -831,8 +884,8 @@ export function LiveMapRoster({
               </PopoverTrigger>
             </Hint>
             <PopoverContent align="end" collisionPadding={8} aria-label={tMap("roster.view")} className="max-h-[var(--radix-popover-content-available-height)] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto p-0" data-testid="live-map-roster-view-menu">
-              <fieldset className="border-b border-zinc-200 p-2 dark:border-zinc-700">
-                <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.groupBy")}</legend>
+              <fieldset className="border-b border-border p-2">
+                <legend className="px-1 text-xs font-semibold uppercase text-muted-foreground">{tMap("roster.groupBy")}</legend>
                 {ROSTER_GROUPINGS.filter((option) => option === "none" || available.includes(option)).map((option) => (
                   <label key={option} className={MENU_ROW}>
                     <input
@@ -849,14 +902,14 @@ export function LiveMapRoster({
               </fieldset>
               {/* The order of the list — by any column, also the ones this width
                   has no room to draw a heading for. */}
-              <fieldset className="border-b border-zinc-200 p-2 dark:border-zinc-700">
-                <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.sortBy")}</legend>
+              <fieldset className="border-b border-border p-2">
+                <legend className="px-1 text-xs font-semibold uppercase text-muted-foreground">{tMap("roster.sortBy")}</legend>
                 <select
                   value={view.sort.column}
                   onChange={(event) => onViewChange({ ...view, sort: { column: event.target.value as RosterColumnId, direction: view.sort.direction } })}
                   aria-label={tMap("roster.sortBy")}
                   data-testid="live-map-roster-sort-column"
-                  className="mt-1 h-9 w-full rounded-md border border-zinc-200 bg-background px-2 text-sm dark:border-zinc-700 [@media(pointer:coarse)]:h-11"
+                  className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm [@media(pointer:coarse)]:h-11"
                 >
                   {(available.includes(view.sort.column) ? available : [view.sort.column, ...available]).map((column) => (
                     <option key={column} value={column}>{columnLabel(column)}</option>
@@ -872,7 +925,7 @@ export function LiveMapRoster({
                       data-testid={`live-map-roster-sort-${direction}`}
                       className={cn(
                         "inline-flex min-h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                        view.sort.direction === direction ? "border-foreground font-semibold" : "border-zinc-200 hover:bg-muted dark:border-zinc-700",
+                        view.sort.direction === direction ? "crm-choice-selected" : "border-border hover:bg-muted",
                       )}
                     >
                       {tMap(`roster.sort.${SORT_KIND[view.sort.column]}.${direction}`)}
@@ -880,9 +933,9 @@ export function LiveMapRoster({
                   ))}
                 </div>
               </fieldset>
-              <fieldset className="border-b border-zinc-200 p-2 dark:border-zinc-700">
-                <legend className="px-1 text-[11px] font-semibold uppercase text-muted-foreground">{tMap("roster.columnsTitle")}</legend>
-                <p className="px-1 pb-1 text-[11px] text-muted-foreground">{tMap("roster.columnsHint")}</p>
+              <fieldset className="border-b border-border p-2">
+                <legend className="px-1 text-xs font-semibold uppercase text-muted-foreground">{tMap("roster.columnsTitle")}</legend>
+                <p className="px-1 pb-1 text-xs text-muted-foreground">{tMap("roster.columnsHint")}</p>
                 <div className="grid grid-cols-2 gap-x-2">
                 {available.filter((column) => column !== "distance").map((column) => (
                   <label key={column} className={MENU_ROW}>
@@ -905,7 +958,7 @@ export function LiveMapRoster({
               {/* Putting the list away gives the map its width — only where they stand side by side. */}
               <div className="hidden p-2 lg:block">
                 <Hint text={tMap("hint.hideRoster")}>
-                  <button type="button" onClick={onHide} data-testid="live-map-roster-hide" className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md border border-zinc-200 text-xs font-semibold hover:bg-muted dark:border-zinc-700">
+                  <button type="button" onClick={onHide} data-testid="live-map-roster-hide" className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border text-xs font-semibold hover:bg-muted">
                     <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />{tMap("roster.hide")}
                   </button>
                 </Hint>
@@ -917,19 +970,12 @@ export function LiveMapRoster({
             instead of being covered, and the page scrolls as one — no frame
             with a scrollbar of its own. */}
         {filtersInList ? (
-          <div role="region" aria-label={tMap("roster.filters")} className="mx-3 mt-2 rounded-lg border border-zinc-200 bg-muted/30 dark:border-zinc-700" data-testid="live-map-roster-filters-menu">
-            {filtersPanel("grid-cols-1 @md:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-4", "")}
-            <div className="border-t border-zinc-200 p-2 dark:border-zinc-700">
-              <Hint text={tMap("hint.filterDone")}>
-                <button type="button" onClick={() => { closedByDoneRef.current = true; setFiltersOpen(false) }} data-testid="live-map-roster-filters-done" className="inline-flex min-h-9 w-full items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 [@media(pointer:coarse)]:min-h-11">
-                  {tMap("roster.filter.done", { shown: rows.length, total: agents.length })}
-                </button>
-              </Hint>
-            </div>
+          <div role="region" aria-label={tMap("roster.filters")} className="mx-3 mt-2 rounded-lg border border-border bg-muted/30" data-testid="live-map-roster-filters-menu">
+            {filtersPanel(false, "")}
           </div>
         ) : null}
         {/* Who is on the map: all of the list, nobody, or the ones ticked below. */}
-        <div className="flex flex-wrap items-center gap-x-3 px-3 pt-1 text-[11px]" data-testid="live-map-on-map-bar">
+        <div className="flex flex-wrap items-center gap-x-3 px-3 pt-1 text-xs" data-testid="live-map-on-map-bar">
           <span className="text-muted-foreground">{tMap("layers.onMapCount", { shown: tick.onMap, total: tick.total })}</span>
           <Hint text={tMap("hint.selectAll")}>
             <button type="button" data-testid="live-map-on-map-all" onClick={() => onSetAgentsOnMap(rowIds, true)} className={cn("inline-flex min-h-8 items-center font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
@@ -946,7 +992,7 @@ export function LiveMapRoster({
         {filteredColumns.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1 px-3 pb-1" data-testid="live-map-roster-filters">
             {filteredColumns.map((column) => (
-              <span key={column} className="inline-flex max-w-full items-center gap-1 rounded-full border border-foreground py-0.5 pl-2 pr-0.5 text-[11px] font-medium" data-testid={`live-map-roster-filter-chip-${column}`}>
+              <span key={column} className="inline-flex max-w-full items-center gap-1 rounded-full border border-foreground py-0.5 pl-2 pr-0.5 text-xs font-medium" data-testid={`live-map-roster-filter-chip-${column}`}>
                 <span className="min-w-0 truncate">{filterSummary(column)}</span>
                 <button type="button" onClick={() => setFilter(column, undefined)} aria-label={tMap("roster.filter.remove", { column: columnLabel(column) })} className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full hover:bg-primary/15 [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)]:w-9">
                   <X className="h-3 w-3" aria-hidden="true" />
@@ -954,14 +1000,14 @@ export function LiveMapRoster({
               </span>
             ))}
             <Hint text={tMap("hint.resetFilters")}>
-              <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-reset" className={cn("inline-flex min-h-7 items-center px-1 text-[11px] font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
+              <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-filters-reset" className={cn("inline-flex min-h-7 items-center px-1 text-xs font-semibold underline-offset-2 hover:underline", ROSTER_ACTION_TEXT)}>
                 {tMap("roster.filter.resetAll")}
               </button>
             </Hint>
           </div>
         ) : null}
         </div>
-        <div role="row" className={cn(ROW_GRID, "border-t border-zinc-200 bg-muted/40 dark:border-zinc-700")}>
+        <div role="row" className={cn(ROW_GRID, "border-t border-border bg-muted/40")}>
           <div role="columnheader" className="flex justify-center">
             <Hint text={tMap("roster.masterTick")}>
               <label className={TICK_BOX}>
@@ -997,7 +1043,7 @@ export function LiveMapRoster({
             <div>{tMap("noAgentsMatch")}</div>
             {filteredColumns.length > 0 ? (
               <Hint text={tMap("hint.resetFilters")}>
-                <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-empty-reset" className="mt-2 inline-flex min-h-9 items-center rounded-md border border-zinc-300 px-3 font-semibold text-foreground hover:bg-muted dark:border-zinc-600">
+                <button type="button" onClick={() => onFiltersChange({})} data-testid="live-map-roster-empty-reset" className="mt-2 inline-flex min-h-9 items-center rounded-md border border-border px-3 font-semibold text-foreground hover:bg-muted">
                   {tMap("roster.filter.resetAll")}
                 </button>
               </Hint>
@@ -1014,7 +1060,7 @@ export function LiveMapRoster({
           return (
             <Fragment key={groupId}>
               {grouped && groupTick ? (
-                <div role="row" data-testid={`live-map-roster-group-row-${group.key}`} className="border-b border-zinc-200 bg-muted/60 text-xs font-semibold dark:border-zinc-700">
+                <div role="row" data-testid={`live-map-roster-group-row-${group.key}`} className="border-b border-border bg-muted/60 text-xs font-semibold">
                   <div role="cell" className="flex items-center">
                   <Hint text={tMap("roster.groupTick", { name: label })}>
                     <label className={cn(TICK_BOX, "shrink-0")}>
@@ -1056,7 +1102,7 @@ export function LiveMapRoster({
                       onClick={() => onSelect(agent.agentId)}
                       className={cn(
                         ROW_GRID,
-                        "min-h-9 cursor-pointer border-b border-zinc-100 transition-colors hover:bg-muted/50 dark:border-zinc-800 [@media(pointer:coarse)]:min-h-11",
+                        "min-h-9 cursor-pointer border-b border-border transition-colors hover:bg-muted/50 [@media(pointer:coarse)]:min-h-11",
                         // Rows far off the screen are not laid out until they come near (a row is 36 px + its line, 44 px on touch).
                         !isSelected && "[contain-intrinsic-size:auto_37px] [content-visibility:auto] [@media(pointer:coarse)]:[contain-intrinsic-size:auto_45px]",
                         isSelected && "bg-muted/60 shadow-[inset_3px_0_0_hsl(var(--primary))] hover:bg-muted/60",
@@ -1085,7 +1131,7 @@ export function LiveMapRoster({
                     {isSelected ? (
                       // Brought into view together with the row above it: the
                       // margin is the heading plus that one row.
-                      <div ref={selectedDetailRef} role="row" data-testid="live-map-roster-detail-row" className="scroll-mb-2 scroll-mt-[calc(var(--roster-head,11rem)+3rem)] border-b border-zinc-200 bg-card shadow-[inset_3px_0_0_hsl(var(--primary))] dark:border-zinc-700">
+                      <div ref={selectedDetailRef} role="row" data-testid="live-map-roster-detail-row" className="scroll-mb-2 scroll-mt-[calc(var(--roster-head,11rem)+3rem)] border-b border-border bg-card shadow-[inset_3px_0_0_hsl(var(--primary))]">
                         <div role="cell" className="p-2">{renderDetail(agent)}</div>
                       </div>
                     ) : null}

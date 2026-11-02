@@ -287,7 +287,7 @@ describe("speaking an answer", () => {
       expect(refused.status).toBe(429)
       expect(await refused.json(), `${secondsLeft} s left`).toEqual({ success: false, code: "demo_budget", error: DEMO_VOICE_REFUSAL_TEXT.demo_budget, exhausted })
     }
-    // The seconds left are the smaller of this demo's and the day's, and the
+    // The seconds left are the smaller of the person's and the day's, and the
     // day's pool is every other prospect's voice: the page is not told them.
     mocks.claim.mockResolvedValueOnce({ ok: false, refusal: "day_budget", secondsLeft: 40 })
     const day = await (await speak(valid())).json()

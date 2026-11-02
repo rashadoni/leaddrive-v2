@@ -297,6 +297,13 @@ jobs:
           APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
           OPERATOR="$NODE_DIR/scripts/operator/voice-provider-registry-cutover.mjs"
           PM2_PROCESS="leaddrive-v2"
+          # The scheduler's own server process runs voice-call-queues, the job
+          # these gates exist to stop, with its own copy of the environment.
+          # Every gate below is restarted into and asserted on both processes.
+          JOBS_PM2_PROCESS="leaddrive-v2-jobs"
+          # The phone station's process answers call results and lifecycle
+          # events, which read the same gates; restarted and asserted too.
+          LINE_PM2_PROCESSES="leaddrive-v2-line-a leaddrive-v2-line-b"
           HEALTH_URL="http://127.0.0.1:3001/api/v1/ping"
           LOCK_FILE=""
           # The deploy pipeline writes this marker inside the standalone bundle
@@ -449,6 +456,19 @@ jobs:
             *) echo "FATAL: existing outbound dispatch pause is invalid"; exit 1 ;;
           esac
 
+          # The web process always; the jobs process when this host runs one.
+          voice_runtime_processes() {
+            printf '%s\n' "$PM2_PROCESS"
+            if pm2 describe "$JOBS_PM2_PROCESS" >/dev/null 2>&1; then
+              printf '%s\n' "$JOBS_PM2_PROCESS"
+            fi
+            for line_app in $LINE_PM2_PROCESSES; do
+              if pm2 describe "$line_app" >/dev/null 2>&1; then
+                printf '%s\n' "$line_app"
+              fi
+            done
+          }
+
           assert_automation_off() {
             local queue finality
             queue="$(read_flag "$ENV_FILE" VOICE_CALL_QUEUE_EXECUTION_ENABLED)" || return 1
@@ -456,13 +476,15 @@ jobs:
             case "${queue,,}" in true|1|yes|on) return 1 ;; esac
             case "${finality,,}" in true|1|yes|on) return 1 ;; esac
 
-            local pid
-            pid="$(pm2 pid "$PM2_PROCESS" 2>/dev/null | tail -1)"
-            [[ "$pid" =~ ^[0-9]+$ ]] && [ "$pid" -gt 0 ] && [ -r "/proc/$pid/environ" ] || return 1
-            if tr '\0' '\n' < "/proc/$pid/environ" \
-              | grep -Eq '^VOICE_(CALL_QUEUE_EXECUTION_ENABLED|PROVIDER_FINALITY_RECONCILIATION_ENABLED)=(true|1|yes|on)$'; then
-              return 1
-            fi
+            local name pid
+            while IFS= read -r name; do
+              pid="$(pm2 pid "$name" 2>/dev/null | tail -1)"
+              [[ "$pid" =~ ^[0-9]+$ ]] && [ "$pid" -gt 0 ] && [ -r "/proc/$pid/environ" ] || return 1
+              if tr '\0' '\n' < "/proc/$pid/environ" \
+                | grep -Eq '^VOICE_(CALL_QUEUE_EXECUTION_ENABLED|PROVIDER_FINALITY_RECONCILIATION_ENABLED)=(true|1|yes|on)$'; then
+                return 1
+              fi
+            done < <(voice_runtime_processes)
           }
 
           read_process_flag() {
@@ -481,22 +503,25 @@ jobs:
           }
 
           assert_runtime_flags() {
-            local expected_provider="$1" expected_pause="$2" pids pid provider pause queue finality count=0
-            mapfile -t pids < <(pm2 pid "$PM2_PROCESS" 2>/dev/null | grep -E '^[0-9]+$' || true)
-            [ "${#pids[@]}" -eq 1 ] || return 1
-            for pid in "${pids[@]}"; do
-              [ "$pid" -gt 0 ] && [ -r "/proc/$pid/environ" ] || return 1
-              provider="$(read_process_flag "$pid" VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED)" || return 1
-              pause="$(read_process_flag "$pid" VOICE_OUTBOUND_CALL_DISPATCH_PAUSED)" || return 1
-              queue="$(read_process_flag "$pid" VOICE_CALL_QUEUE_EXECUTION_ENABLED)" || return 1
-              finality="$(read_process_flag "$pid" VOICE_PROVIDER_FINALITY_RECONCILIATION_ENABLED)" || return 1
-              [ "$provider" = "$expected_provider" ] || return 1
-              [ "$pause" = "$expected_pause" ] || return 1
-              [ "$queue" = false ] || return 1
-              [ "$finality" = false ] || return 1
-              count=$((count + 1))
+            local expected_provider="$1" expected_pause="$2" names name pids pid provider pause queue finality count=0
+            mapfile -t names < <(voice_runtime_processes)
+            for name in "${names[@]}"; do
+              mapfile -t pids < <(pm2 pid "$name" 2>/dev/null | grep -E '^[0-9]+$' || true)
+              [ "${#pids[@]}" -eq 1 ] || return 1
+              for pid in "${pids[@]}"; do
+                [ "$pid" -gt 0 ] && [ -r "/proc/$pid/environ" ] || return 1
+                provider="$(read_process_flag "$pid" VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED)" || return 1
+                pause="$(read_process_flag "$pid" VOICE_OUTBOUND_CALL_DISPATCH_PAUSED)" || return 1
+                queue="$(read_process_flag "$pid" VOICE_CALL_QUEUE_EXECUTION_ENABLED)" || return 1
+                finality="$(read_process_flag "$pid" VOICE_PROVIDER_FINALITY_RECONCILIATION_ENABLED)" || return 1
+                [ "$provider" = "$expected_provider" ] || return 1
+                [ "$pause" = "$expected_pause" ] || return 1
+                [ "$queue" = false ] || return 1
+                [ "$finality" = false ] || return 1
+                count=$((count + 1))
+              done
             done
-            [ "$count" -eq 1 ]
+            [ "$count" -eq "${#names[@]}" ]
           }
 
           # An absent gate is the pre-cutover state and means false, exactly as
@@ -563,6 +588,14 @@ jobs:
             export VOICE_CALL_QUEUE_EXECUTION_ENABLED=false
             export VOICE_PROVIDER_FINALITY_RECONCILIATION_ENABLED=false
             pm2 restart "$PM2_PROCESS" --update-env >/dev/null
+            if pm2 describe "$JOBS_PM2_PROCESS" >/dev/null 2>&1; then
+              pm2 restart "$JOBS_PM2_PROCESS" --update-env >/dev/null
+            fi
+            for line_app in $LINE_PM2_PROCESSES; do
+              if pm2 describe "$line_app" >/dev/null 2>&1; then
+                pm2 restart "$line_app" --update-env >/dev/null
+              fi
+            done
             health_check
             if ! assert_runtime_flags "$provider_flag" "$pause_flag"; then
               echo "FATAL: PM2 runtime voice gates do not match the requested safe state"

@@ -227,7 +227,7 @@ export function MtmContactDuplicateReportDialog({
                     aria-checked={active}
                     className={cn(
                       "grid min-h-11 w-full gap-1 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active ? "border-foreground ring-1 ring-inset ring-foreground" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700",
+                      active ? "border-foreground ring-1 ring-inset ring-foreground" : "border-border hover:bg-muted/60",
                     )}
                     onClick={() => { setSelected(candidate); setError(""); submission.current = null }}
                   >
@@ -245,7 +245,7 @@ export function MtmContactDuplicateReportDialog({
           ) : null}
 
           {selected ? (
-            <div className="rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
+            <div className="rounded-xl border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
               <p className="font-medium">{t("duplicateSelected", { name: selected.displayName })}</p>
               <p className="mt-1 text-xs leading-5">{t("duplicateApprovalHint")}</p>
             </div>
@@ -356,7 +356,7 @@ export function MtmContactDuplicateDecisionDialog({
           </div>
         ) : null}
         {request?.duplicateTarget ? (
-          <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+          <div className="rounded-xl border border-border p-3">
             <p className="text-xs font-medium text-muted-foreground">{t("duplicateCanonicalContact")}</p>
             <Hint text={t("hint.dupOpenMain")} align="start">
               <Link className="mt-1 inline-flex min-h-11 items-center font-semibold text-primary hover:underline" href={`/mtm/contacts/${request.duplicateTarget.id}`} target="_blank">

@@ -7,8 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { ConfirmDialog, DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MtmFilterBar, MtmFilterDate, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
@@ -20,6 +19,7 @@ import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-erro
 import { formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import type { MtmAlertDayGroup, MtmAlertDayItem } from "@/lib/mtm/alert-day-groups"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
+import { MtmWord } from "@/components/mtm/button-word"
 
 /**
  * Office alert list (prod 2026-09-14).
@@ -39,7 +39,9 @@ import { addDateKeyDays } from "@/lib/mtm/mobile-week"
  * the filter shows that one day as before.
  */
 
-const categoryColors: Record<string, string> = { CRITICAL: "text-red-700 border-zinc-200", WARNING: "text-amber-700 border-zinc-200", INFO: "text-sky-700 border-zinc-200" }
+// Importance is the colour of the icon only; the row reads as plain text
+// (owner 2026-10-31: 215 orange rows hid the one that mattered).
+const categoryColors: Record<string, string> = { CRITICAL: "text-red-700 dark:text-red-400", WARNING: "text-amber-700 dark:text-amber-400", INFO: "text-sky-700 dark:text-sky-400" }
 
 // Per-type friendly icon (human label + "what to do" hint come from i18n:
 // typeLabel_<TYPE> / typeHint_<TYPE>). Unknown types fall back to AlertTriangle.
@@ -327,12 +329,7 @@ export default function MtmAlertsPage() {
   )
 
   const header = (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <PageDescription icon={AlertTriangle} title={t("title")} description={t("subtitle")} />
-        <HelpButton slug="mtm-alerts" variant="label" />
-      </div>
-    </div>
+    <MtmPageHeader title={t("title")} description={t("subtitle")} help="mtm-alerts" />
   )
 
   if (errorKey) {
@@ -343,7 +340,7 @@ export default function MtmAlertsPage() {
       <div className="space-y-4">
         {header}
         {errorKey === "agentOutOfScope" && filters}
-        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
           <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1">{tt(`accessError.${errorKey}`)}</p>
           {errorKey === "loadFailed" && (
@@ -370,7 +367,7 @@ export default function MtmAlertsPage() {
       ...(detail ? [detail] : []),
     ]
     return (
-      <div key={group.key} className={`rounded-lg border ${cat}`}>
+      <div key={group.key} className="rounded-lg border border-border bg-card text-foreground">
         <div className="flex flex-wrap items-start gap-2.5 p-2.5">
           <button
             type="button"
@@ -379,26 +376,26 @@ export default function MtmAlertsPage() {
             className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
           >
             <ChevronDown className={`mt-1.5 h-4 w-4 shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`} aria-hidden="true" />
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/60 dark:bg-black/25"><TypeIcon className="h-4 w-4" aria-hidden="true" /></span>
+            <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted ${cat}`}><TypeIcon className="h-4 w-4" aria-hidden="true" /></span>
             <span className="min-w-0 flex-1">
               <span className="block break-words text-sm font-semibold">{parts.join(" · ")}</span>
               {group.openCount > 0 && group.openCount !== group.count && (
-                <span className="mt-0.5 block text-[11px] opacity-80">{t("statusOpen")}: {group.openCount}</span>
+                <span className="mt-0.5 block text-xs opacity-80">{t("statusOpen")}: {group.openCount}</span>
               )}
             </span>
           </button>
           <div className="flex flex-wrap items-center gap-1.5">
-            <Button asChild size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20">
+            <Button asChild size="sm" variant="outline" className="h-7 text-xs">
               <Link href={group.historyHref}><Hint text={t("hint.openOnMap")}><MapPin className="mr-1 h-3.5 w-3.5" aria-hidden="true" /></Hint>{t("openOnMap")}</Link>
             </Button>
             {group.visitId && (
-              <Button asChild size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20">
+              <Button asChild size="sm" variant="outline" className="h-7 text-xs">
                 <Link href={`/mtm/visits?visitId=${encodeURIComponent(group.visitId)}`}><Hint text={t("hint.openVisit")}><ExternalLink className="mr-1 h-3.5 w-3.5" aria-hidden="true" /></Hint>{t("openVisit")}</Link>
               </Button>
             )}
             {data?.canResolve && group.openIds.length > 0 && (
               <Hint wrap text={t("hint.resolveGroup")}>
-                <Button size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20" disabled={busyGroup === group.key} onClick={() => (group.openIds.length > 1 ? setGroupConfirm({ key: group.key, ids: group.openIds }) : resolveIds(group.openIds, group.key))}>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busyGroup === group.key} onClick={() => (group.openIds.length > 1 ? setGroupConfirm({ key: group.key, ids: group.openIds }) : resolveIds(group.openIds, group.key))}>
                   <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{t("resolveGroup")}
                 </Button>
               </Hint>
@@ -408,7 +405,7 @@ export default function MtmAlertsPage() {
         {isOpen && (
           <div className="space-y-1.5 px-2.5 pb-2.5">
             {hint && group.openCount > 0 && (
-              <div className="flex items-start gap-1 text-[11px] opacity-90">
+              <div className="flex items-start gap-1 text-xs opacity-90">
                 <Lightbulb className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                 <span><span className="font-medium">{t("actionLabel")}</span> {hint}</span>
               </div>
@@ -438,13 +435,13 @@ export default function MtmAlertsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {item.visitId && (
-              <Link className="text-[11px] font-medium underline-offset-2 hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(item.visitId)}`}>{t("openVisit")}</Link>
+              <Link className="text-xs font-medium underline-offset-2 hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(item.visitId)}`}>{t("openVisit")}</Link>
             )}
             {item.isResolved
-              ? <span className="rounded px-1.5 py-0.5 text-[10px] text-emerald-700">{t("resolved")}</span>
+              ? <span className="rounded px-1.5 py-0.5 text-xs text-emerald-700">{t("resolved")}</span>
               : data?.canResolve && (
                   <Hint wrap text={t("hint.resolve")}>
-                    <Button size="sm" variant="outline" className="h-6 bg-white/50 text-[10px] hover:bg-white/80" onClick={() => resolveIds([item.id], item.id)} disabled={busyGroup === item.id}>
+                    <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => resolveIds([item.id], item.id)} disabled={busyGroup === item.id}>
                       <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" /> {t("resolve")}
                     </Button>
                   </Hint>
@@ -454,7 +451,7 @@ export default function MtmAlertsPage() {
               // «решено», которую жмут каждый день.
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={t("moreActions")}><MoreHorizontal className="h-3 w-3" aria-hidden="true" /></Button>
+                  <Button variant="ghost" size="sm" className="h-6 gap-1.5" aria-label={t("moreActions")}><MoreHorizontal className="h-3 w-3" aria-hidden="true" /><MtmWord word="more" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => { setDeleteItem(item); setDeleteOpen(true) }}>
@@ -480,7 +477,7 @@ export default function MtmAlertsPage() {
         <div className="animate-pulse space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-lg bg-muted" />)}</div>
       ) : openMode ? (
         days.length === 0 ? (
-          <div data-testid="mtm-alerts-none-open" className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-zinc-200 bg-card px-4 py-10 text-center dark:border-zinc-700">
+          <div data-testid="mtm-alerts-none-open" className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-10 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" aria-hidden="true" />
             <p className="text-sm font-semibold">{t("noneOpen")}</p>
             <Hint text={t("hint.showResolvedToday")}>
@@ -509,7 +506,7 @@ export default function MtmAlertsPage() {
           </div>
         )
       ) : groups.length === 0 ? (
-        <div className="flex h-32 items-center justify-center rounded-lg border border-zinc-200 bg-card text-muted-foreground dark:border-zinc-700">{t("emptyDay")}</div>
+        <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">{t("emptyDay")}</div>
       ) : (
         <div className="space-y-2">
           {data?.truncated && <p className="text-xs text-muted-foreground">{t("truncated")}</p>}
@@ -518,7 +515,7 @@ export default function MtmAlertsPage() {
       )}
 
       {data && !openMode && data.stale.total > 0 && (
-        <section className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
+        <section className="rounded-lg border border-border bg-card">
           <div className="flex flex-wrap items-center gap-2 p-3">
             <button type="button" onClick={() => setStaleOpen((open) => !open)} aria-expanded={staleOpen} className="flex min-w-0 flex-1 items-start gap-2 text-left">
               <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 transition-transform ${staleOpen ? "" : "-rotate-90"}`} aria-hidden="true" />

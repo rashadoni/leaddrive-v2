@@ -82,7 +82,8 @@ describe("GET /api/v1/mtm/products/:id/presentation", () => {
     expect(response.headers.get("Content-Disposition")).toContain("attachment;")
     expect(response.headers.get("Content-Disposition")).toContain("Forlaks%20prezentasiya.pdf")
     expect(prisma.mtmProduct.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: "product-1", organizationId: "org-1" },
+      // A deleted presentation left the catalog: its file is not offered here either.
+      where: { id: "product-1", organizationId: "org-1", deletedAt: null },
     }))
   })
 

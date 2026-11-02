@@ -41,6 +41,7 @@ import {
 } from "@/lib/mtm/task-recurrence"
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
 import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
+import { recordMtmVisitChange } from "@/lib/mtm/visit-events"
 
 // Mirror the mobile engine's coordinate helper (local there, not exported);
 // the geofence radius clamp is shared: @/lib/mtm/check-in-geofence.
@@ -382,6 +383,7 @@ async function applyOp(
           },
           select: { id: true, status: true, checkInAt: true, customerId: true },
         })
+        await recordMtmVisitChange(tx, orgId, visit.id, null)
         await createVisitRequirementSnapshot(tx, { organizationId: orgId, visitId: visit.id, agentId: fieldAgentId, customerId: resolvedCustomerId, visitType: typeof d.visitType === "string" ? d.visitType : undefined, at: checkInAt })
 
         // Route-point visit: fan out participants (other assigned agents) + advance the route.

@@ -5,14 +5,20 @@
  *
  * Every spoken answer and every heard question is a paid Google call. Its
  * seconds are claimed in `demo_access_events` before Google is asked, decided
- * one at a time under an advisory lock against two ceilings — ten minutes per
- * demo, 300 a day across demos (src/lib/demo-center/assistant-voice.ts). What
- * a mocked Prisma cannot show, and this does:
+ * one at a time under an advisory lock against two ceilings — twenty minutes
+ * per person who requested a demo, 300 a day across demos
+ * (src/lib/demo-center/assistant-voice.ts; owner, 2026-10-21: «под каждого
+ * пользователя который запросил демо. максимально 20 минут»). What a mocked
+ * Prisma cannot show, and this does:
  *
  *   - that requests arriving together cannot all see the same room: eight at
- *     once against room for three send exactly three requests to Google;
- *   - that the sum really sees the rows — the table is under FORCE RLS, and a
- *     count outside the bypass is 0, which would read as «nothing spent»;
+ *     once against room for three send exactly three requests to Google —
+ *     also when they come from two demos of one person, while another
+ *     person's requests in the same burst draw on their own twenty minutes;
+ *   - that a person is the request's address: a re-issued grant and a second
+ *     request from the same address start from what the first demo spent;
+ *   - that the sums really see the rows — the tables are under FORCE RLS, and
+ *     a count outside the bypass is 0, which would read as «nothing spent»;
  *   - that the day's window is the column's own UTC time while the session
  *     runs in Europe/Berlin, as production's does;
  *   - that what is stored is seconds and an outcome, and nothing of the clip,
@@ -45,9 +51,9 @@ import path from "node:path"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { demoSessionCookieName, hashCredential } from "@/lib/demo-center/security"
+import { demoSessionCookieName, hashCredential, normalizeEmail } from "@/lib/demo-center/security"
 import { hashOneTimeToken } from "@/lib/one-time-token"
-import { DEMO_ASSISTANT_VOICE_SECONDS_PER_DAY, DEMO_ASSISTANT_VOICE_SECONDS_PER_DEMO, speechSecondsUpperBound } from "@/lib/demo-center/assistant/voice-policy"
+import { DEMO_ASSISTANT_VOICE_SECONDS_PER_DAY, DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON, speechSecondsUpperBound } from "@/lib/demo-center/assistant/voice-policy"
 
 const adminUrl = process.env.DEMO_ASSISTANT_VOICE_TEST_DATABASE_URL
 if (!adminUrl && process.env.DEMO_ASSISTANT_VOICE_DB_GATE === "required") {
@@ -243,28 +249,48 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
     speakStatus = 200
   })
 
-  /** A prospect in a live, granted session: its own request (one open grant per request), token and browser cookie. */
-  async function session() {
+  /**
+   * A prospect in a live, granted session, with its token and browser cookie.
+   * By default a new person: their own request from an address nobody else
+   * used. `email` makes a new request from that address (the form validates
+   * and stores it normalized, as here); `requestId` re-issues a demo on an
+   * existing request — revoking its open grant first, as issuing does
+   * (issue-grant.ts; one open grant per request is a unique index).
+   */
+  async function session(options: { email?: string; requestId?: string } = {}) {
     seq += 1
     const token = randomBytes(32).toString("hex")
     const cookie = randomBytes(32).toString("hex")
-    const request = await admin.demoRequest.create({
+    const email = options.email ?? `nigar${seq}@example.az`
+    if (options.requestId) {
+      await admin.demoGrant.updateMany({
+        where: { requestId: options.requestId, status: { in: ["ISSUING", "SENT", "OTP_SENT", "OTP_VERIFIED", "ACTIVE"] } },
+        data: { status: "REVOKED", revokedAt: new Date(), revokedBy: "user-admin", revocationReason: "Superseded by a newly issued demo" },
+      })
+    }
+    const requestId = options.requestId ?? (await admin.demoRequest.create({
       data: {
-        name: "Nigar Əliyeva", company: "Xəzər Logistika MMC", email: `nigar${seq}@example.az`, emailNormalized: `nigar${seq}@example.az`,
+        name: "Nigar Əliyeva", company: "Xəzər Logistika MMC", email: normalizeEmail(email), emailNormalized: normalizeEmail(email),
         emailDomain: "example.az", locale: "az", consentAt: hoursAgo(2),
       },
-    })
+    })).id
     const grant = await admin.demoGrant.create({
       data: {
-        requestId: request.id, tokenHash: hashOneTimeToken(token), tokenHint: token.slice(-6), moduleIds: [],
+        requestId, tokenHash: hashOneTimeToken(token), tokenHint: token.slice(-6), moduleIds: [],
         scenarioId: "prospect-to-closed-won", scenarioVersion: 1, locale: "az", watermark: "ci",
         linkExpiresAt: new Date(Date.now() + 7 * 86_400_000), createdBy: "user-admin",
         status: "ACTIVE", sessionHash: hashCredential(cookie), sessionStartedAt: hoursAgo(1), sessionLastSeenAt: new Date(Date.now() - 60_000),
         sessionExpiresAt: new Date(Date.now() + 60 * 60_000), inactivityMinutes: 30, verifiedAt: hoursAgo(1.1),
       },
     })
-    return { token, cookie: `${demoSessionCookieName(token)}=${cookie}`, grantId: grant.id }
+    return { token, cookie: `${demoSessionCookieName(token)}=${cookie}`, grantId: grant.id, requestId }
   }
+
+  /** An address no other test used: one new person. */
+  const someone = () => `aysel.${randomBytes(4).toString("hex")}@example.az`
+
+  const secondsIn = (rows: Array<{ metadata: Prisma.JsonValue }>) =>
+    rows.reduce((sum, row) => sum + Number((row.metadata as { seconds: number }).seconds), 0)
 
   type Session = Awaited<ReturnType<typeof session>>
 
@@ -309,21 +335,86 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
     }
   }
 
-  it("the application's role reads no voice rows without the bypass — a sum taken there would be «nothing spent»", async () => {
-    const who = await session()
-    await admin.demoAccessEvent.create({ data: { grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: 590, outcome: "voiced" } } })
-    const raw = await app.$queryRaw<{ count: bigint }[]>`SELECT count(*)::bigint AS count FROM demo_access_events`
-    expect(Number(raw[0].count)).toBe(0)
-    // The claim takes its sum inside the bypass, sees the 590 seconds, and refuses 15 more.
+  it("the application's role reads no voice rows, grants or requests without the bypass — a sum taken there would be «nothing spent»", async () => {
+    const first = await session()
+    const who = await session({ requestId: first.requestId })
+    // The person spent their time on the first demo; the claim is the re-issued one's.
+    await admin.demoAccessEvent.create({ data: { grantId: first.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON - 10, outcome: "voiced" } } })
+    const [seen]: Array<{ events: bigint; grants: bigint; requests: bigint }> = await app.$queryRaw`
+      SELECT (SELECT count(*) FROM demo_access_events)::bigint AS events,
+             (SELECT count(*) FROM demo_grants)::bigint AS grants,
+             (SELECT count(*) FROM demo_requests)::bigint AS requests`
+    expect([seen.events, seen.grants, seen.requests].map(Number)).toEqual([0, 0, 0])
+    // The claim finds the person and takes the sum inside the bypass, sees the spend, and refuses 15 more.
     expect(await voice.claimDemoVoiceSeconds({ grantId: who.grantId, kind: "hear", seconds: 15 })).toEqual({ ok: false, refusal: "demo_budget", secondsLeft: 10 })
     expect(await voice.claimDemoVoiceSeconds({ grantId: who.grantId, kind: "hear", seconds: 10 })).toMatchObject({ ok: true, seconds: 10 })
+  })
+
+  it("twenty minutes per person: a re-issued demo and a second request from the same address share them; another address has its own", async () => {
+    const email = someone()
+    const first = await session({ email })
+    const reissued = await session({ requestId: first.requestId })
+    // The same person asked again, typing the address differently; the form stores it normalized.
+    const again = await session({ email: `  ${email.toUpperCase()} ` })
+    const stranger = await session({ email: someone() })
+    expect(reissued.requestId).toBe(first.requestId)
+    expect(again.requestId).not.toBe(first.requestId)
+
+    // The first demo used all but twenty seconds of the person's twenty
+    // minutes, thirty hours ago: they are the person's, not a daily allowance.
+    await admin.demoAccessEvent.create({
+      data: { grantId: first.grantId, eventType: "ASSISTANT_HEARD", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON - 20, outcome: "heard" }, occurredAt: hoursAgo(30) },
+    })
+    // The re-issued demo starts from there, not from twenty fresh minutes: one question fits.
+    expect((await hear(reissued, wavClip(15))).status).toBe(200)
+    // Five seconds are left for the person — in the demo they requested a second time too.
+    const refused = await hear(again, wavClip(15))
+    expect(refused.status).toBe(429)
+    expect(await refused.json()).toEqual({
+      success: false,
+      code: "demo_budget",
+      error: "Sizin üçün 20 dəqiqəlik səs limiti doldu. Sualları yazın — cavablar mətnlə davam edir.",
+      exhausted: true,
+    })
+    expect((await speak(reissued, "answer-person", answerText(1))).status).toBe(429)
+    // Someone else, asking just as much, is not touched by it.
+    for (let index = 0; index < 3; index += 1) expect((await hear(stranger, wavClip(15))).status).toBe(200)
+    expect(googleCalls.map((call) => call.kind)).toEqual(["hear", "hear", "hear", "hear"])
+    expect(secondsIn(await voiceRows(stranger.grantId))).toBe(45)
+    expect(secondsIn([...(await voiceRows(first.grantId)), ...(await voiceRows(reissued.grantId)), ...(await voiceRows(again.grantId))]))
+      .toBe(DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON - 5)
+  })
+
+  it("eight questions at once across two demos of one person against room for three: exactly three go to Google, and another person's four in the same burst all do", async () => {
+    const email = someone()
+    const one = await session({ email })
+    const two = await session({ email })
+    const other = await session({ email: someone() })
+    await admin.demoAccessEvent.create({
+      data: { grantId: one.grantId, eventType: "ASSISTANT_HEARD", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON - 3 * 5, outcome: "heard" } },
+    })
+    googleDelayMs = 150
+
+    const mine = Array.from({ length: 8 }, (_, index) => hear(index % 2 ? two : one, wavClip(5)))
+    const theirs = Array.from({ length: 4 }, () => hear(other, wavClip(5)))
+    const [personResponses, otherResponses] = await Promise.all([settled(mine), settled(theirs)])
+
+    expect(googleCalls.filter((call) => call.kind === "hear")).toHaveLength(3 + 4)
+    const bodies = await Promise.all(personResponses.map(async (response) => ({ status: response.status, body: await response.json() })))
+    expect(bodies.filter((entry) => entry.status === 200)).toHaveLength(3)
+    expect(bodies.filter((entry) => entry.status === 429).map((entry) => entry.body.code)).toEqual(Array(5).fill("demo_budget"))
+    expect(otherResponses.map((response) => response.status)).toEqual([200, 200, 200, 200])
+    // The person's two demos together hold exactly the twenty minutes, never more.
+    expect(secondsIn([...(await voiceRows(one.grantId)), ...(await voiceRows(two.grantId))])).toBe(DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON)
+    expect(secondsIn(await voiceRows(other.grantId))).toBe(20)
+    expectKeyOnlyInHeader()
   })
 
   it("eight answers at once against one demo's room for three: exactly three go to Google", async () => {
     const who = await session()
     expect(answerText(7)).toHaveLength(50)
     await admin.demoAccessEvent.create({
-      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_DEMO - 3 * CLAIM, outcome: "voiced" } },
+      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON - 3 * CLAIM, outcome: "voiced" } },
     })
     googleDelayMs = 150
 
@@ -343,7 +434,7 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
     }
     const rows = await voiceRows(who.grantId)
     expect(rows).toHaveLength(4)
-    expect(rows.reduce((sum, row) => sum + Number((row.metadata as { seconds: number }).seconds), 0)).toBe(DEMO_ASSISTANT_VOICE_SECONDS_PER_DEMO)
+    expect(secondsIn(rows)).toBe(DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON)
     expectKeyOnlyInHeader()
   })
 
@@ -411,7 +502,7 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
     const who = await session()
     // Room for this answer's estimate and ten seconds more.
     await admin.demoAccessEvent.create({
-      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_DEMO - CLAIM - 10, outcome: "voiced" } },
+      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON - CLAIM - 10, outcome: "voiced" } },
     })
     // Figures read aloud: the audio runs past the 0.14 s a character.
     speechSeconds = CLAIM + 7.4
@@ -447,7 +538,7 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
   it("a long answer refused over the budget says a question still fits — and the question then goes through", async () => {
     const who = await session()
     await admin.demoAccessEvent.create({
-      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_DEMO - 20, outcome: "voiced" } },
+      data: { id: "voiced_seed", grantId: who.grantId, eventType: "ASSISTANT_VOICED", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_PERSON - 20, outcome: "voiced" } },
     })
     const long = "Bu ekran lidin mənbəyini, marağını və balını göstərir. ".repeat(6)
     expect(speechSecondsUpperBound(long)).toBeGreaterThan(20)
@@ -464,7 +555,7 @@ describe.skipIf(!scratch)("the guide's voice budget on a real Postgres under row
   it("a refusal from the day's pool tells this prospect nothing of what the other demos used", async () => {
     const who = await session()
     const others = await session()
-    // Other prospects left today's pool forty seconds; this demo has its whole ten minutes.
+    // Other prospects left today's pool forty seconds; this person has their whole twenty minutes.
     await admin.demoAccessEvent.create({
       data: { grantId: others.grantId, eventType: "ASSISTANT_HEARD", metadata: { seconds: DEMO_ASSISTANT_VOICE_SECONDS_PER_DAY - 40, outcome: "heard" }, occurredAt: hoursAgo(2) },
     })

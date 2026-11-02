@@ -6,12 +6,14 @@
  * no other extension) and what the demo is allowed to ask for at all.
  */
 import { describe, expect, it } from "vitest"
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import path from "node:path"
 import { HELP_VIDEO_FILE_PATTERN, parseHelpVideoFile } from "@/lib/help-videos/serve"
 import { PROSPECT_TO_CLOSED_WON, demoJourneyClipSlugs } from "@/lib/demo-center/journey"
+import { manifestNames } from "../../scripts/help-video/sync-video-availability.mjs"
 
 const ROOT = process.cwd()
+const MASTERS: Set<string> = manifestNames()
 const ROUTE = "src/app/api/v1/public/demo-access/[token]/video/[file]/route.ts"
 
 describe("Help-video filename contract", () => {
@@ -51,8 +53,12 @@ describe("Demo clip allowlist", () => {
   })
 
   it("never offers a clip the pipeline has no Azerbaijani file for", () => {
+    // The bytes left the repository on 2026-11-02 and ride in object storage,
+    // so the committed master manifest is what says a file exists. It is the
+    // same list the deploy pulls against, which makes this an assertion about
+    // what production will actually hold, not about one working tree.
     for (const slug of demoJourneyClipSlugs()) {
-      expect(existsSync(path.join(ROOT, "video/player", `${slug}.az.VOICE.mp4`)), slug).toBe(true)
+      expect(MASTERS.has(`${slug}.az.VOICE.mp4`), slug).toBe(true)
     }
   })
 })

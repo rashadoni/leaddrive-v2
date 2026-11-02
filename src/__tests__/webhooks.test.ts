@@ -62,6 +62,7 @@ interface ApiKeyRow {
   organizationId: string
   isActive: boolean
   expiresAt: Date | null
+  scopes?: string[]
 }
 
 function mockApiKeyDatabase(row: ApiKeyRow | null) {
@@ -73,7 +74,7 @@ function mockApiKeyDatabase(row: ApiKeyRow | null) {
 
     const expiryCutoff = where.OR?.[1]?.expiresAt?.gt as Date | undefined
     const unexpired = !expiryCutoff || row.expiresAt === null || row.expiresAt > expiryCutoff
-    return unexpired ? ({ id: row.id } as any) : null
+    return unexpired ? ({ id: row.id, scopes: row.scopes } as any) : null
   })
 }
 
@@ -290,8 +291,17 @@ describe("webhooks", () => {
           { expiresAt: { gt: expect.any(Date) } },
         ],
       },
-      select: { id: true },
+      select: { id: true, scopes: true },
     })
+  })
+
+  it.each([
+    [[], 0], [["read:deals"], 0], [["read:inbox"], 1], [["write:inbox"], 1],
+  ] as Array<[string[], number]>)("rechecks Inbox scope for WhatsApp subscription %j", async (scopes, expectedCalls) => {
+    mockApiKeyDatabase({ id: "key-1", organizationId: "org1", isActive: true, expiresAt: null, scopes })
+    vi.mocked(prisma.webhook.findMany).mockResolvedValue([{ ...zapierWebhook(), events: ["whatsapp.message_received"] }] as never)
+    await fireWebhooks("org1", "whatsapp.message_received", { id: "wamid:received" }, { awaitDelivery: true })
+    expect(mockRequestOutboundWebhook).toHaveBeenCalledTimes(expectedCalls)
   })
 
   it.each(

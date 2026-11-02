@@ -7,6 +7,9 @@ import { NextRequest } from "next/server"
 vi.mock("@/lib/prisma", () => ({
   logAudit: vi.fn(),
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     activity: { findMany: vi.fn() },
     deal: { findMany: vi.fn(), create: vi.fn() },
     ticket: { findMany: vi.fn() },
@@ -514,6 +517,9 @@ describe("Lead Convert", () => {
         update: vi.fn(),
       },
       deal: { create: dealCreate },
+      // The deal's event reads rows by raw SQL (src/lib/deals/deal-events.ts); none here.
+      $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+      $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     }
     vi.mocked(prisma.$transaction).mockImplementationOnce(async (fn: any) => fn(tx))
     return { tx, dealCreate }

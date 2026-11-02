@@ -2,6 +2,7 @@ export type WhatsAppTemplateConfig = {
   name: string
   languageCode?: string
   variables?: Record<string, string> | string[]
+  headerValue?: string
 }
 
 export function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -45,5 +46,6 @@ export function parseWhatsAppTemplateConfig(flowData: unknown): WhatsAppTemplate
       getTruthyString(flowData.languageCode) ||
       undefined,
     variables,
+    headerValue: getTruthyString(nested?.headerValue) || undefined,
   }
 }

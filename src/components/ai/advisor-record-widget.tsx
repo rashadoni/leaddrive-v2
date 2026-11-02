@@ -15,6 +15,12 @@ interface AdvisorRecordWidgetProps {
   entityId: string
   orgId?: string
   title?: string
+  /**
+   * One line until opened, and nothing while there is nothing to say: the
+   * visit card already says what the usual note says (owner, 2026-10-31: the
+   * page ran three screens and repeated «not closed» six times).
+   */
+  collapsed?: boolean
 }
 
 const COPY = {
@@ -24,6 +30,8 @@ const COPY = {
     queueFailed: "Could not queue advisor action",
     checkFailed: "Advisor could not check this record right now.",
     noRisk: "No active Advisor risk for this record.",
+    show: "Show",
+    hide: "Hide",
     queuedForApproval: "Queued for approval",
     openAdvisorCenter: "Open Advisor center",
     whyFlagged: "Why Advisor flagged it",
@@ -159,6 +167,8 @@ const COPY = {
     queueFailed: "Не удалось добавить действие Advisor",
     checkFailed: "Advisor не смог проверить эту запись сейчас.",
     noRisk: "Активных рисков Advisor по этой записи нет.",
+    show: "Показать",
+    hide: "Скрыть",
     queuedForApproval: "В очереди согласования",
     openAdvisorCenter: "Открыть центр Advisor",
     whyFlagged: "Почему Advisor отметил риск",
@@ -294,6 +304,8 @@ const COPY = {
     queueFailed: "Advisor əməliyyatını növbəyə əlavə etmək olmadı",
     checkFailed: "Advisor bu qeydi indi yoxlaya bilmədi.",
     noRisk: "Bu qeyd üzrə aktiv Advisor riski yoxdur.",
+    show: "Göstər",
+    hide: "Gizlət",
     queuedForApproval: "Təsdiq növbəsində",
     openAdvisorCenter: "Advisor mərkəzini aç",
     whyFlagged: "Advisor niyə risk kimi göstərdi",
@@ -425,6 +437,9 @@ const COPY = {
   },
 }
 
+/** The widget's own words, for a screen that draws its quiet state without asking the server (the demo's visit page). */
+export const ADVISOR_RECORD_COPY = COPY
+
 function domainLabelFor(copy: (typeof COPY)["en"], key: AdvisorDomainKey, fallback?: string) {
   return copy.domains[key] || fallback || key
 }
@@ -523,7 +538,8 @@ function previewValueFor(copy: (typeof COPY)["en"], label: string, value: string
   return `${entityType}: ${match[2]}`
 }
 
-export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da Vinci Advisor" }: AdvisorRecordWidgetProps) {
+export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da Vinci Advisor", collapsed = false }: AdvisorRecordWidgetProps) {
+  const [expanded, setExpanded] = useState(false)
   const locale = useLocale()
   const copy = COPY[(locale as keyof typeof COPY) in COPY ? (locale as keyof typeof COPY) : "en"]
   const [payload, setPayload] = useState<AdvisorPayload | null>(null)
@@ -581,18 +597,41 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
 
   const displayTitle = title === "Advisor risk" || title === "Da Vinci Advisor" ? copy.title : title
 
+  if (collapsed && (loading || failed || signals.length === 0)) return null
+  if (collapsed && !expanded) {
+    return (
+      <section className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5" data-testid="advisor-record-collapsed">
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <h3 className="truncate font-semibold">{displayTitle}</h3>
+          <span className="text-muted-foreground">· {signals.length}</span>
+        </div>
+        <Button variant="ghost" size="sm" className="min-h-9 shrink-0 font-semibold text-primary" aria-expanded={false} onClick={() => setExpanded(true)}>
+          {copy.show}
+        </Button>
+      </section>
+    )
+  }
+
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+    <section className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="truncate text-sm font-semibold">{displayTitle}</h3>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 px-2" title={copy.openAdvisorCenter} aria-label={copy.openAdvisorCenter} asChild>
-          <Link href={advisorHref}>
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          {collapsed ? (
+            <Button variant="ghost" size="sm" className="h-7 px-2 font-semibold text-primary" aria-expanded onClick={() => setExpanded(false)}>
+              {copy.hide}
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="sm" className="h-7 px-2" title={copy.openAdvisorCenter} aria-label={copy.openAdvisorCenter} asChild>
+            <Link href={advisorHref}>
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -612,7 +651,7 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
           {copy.noRisk}
         </div>
       ) : (
-        <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <div className="divide-y divide-border">
           {signals.slice(0, 2).map((signal) => (
             <RecordSignalRisk
               key={signal.id}
@@ -693,7 +732,7 @@ function RecordSignalRisk({
         </div>
       ) : null}
       {primaryAction && preview.length > 0 ? (
-        <div className="mt-3 rounded-lg border border-zinc-200 bg-background px-3 py-2 dark:border-zinc-700">
+        <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2">
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
@@ -739,5 +778,5 @@ function RecordSignalRisk({
 function severityClass(severity: AdvisorSignal["severity"]) {
   if (severity === "critical") return "border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
   if (severity === "high") return "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
-  return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  return "border-border bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
 }

@@ -1,0 +1,15 @@
+# Installed by scripts/backup/install-wal-watch.sh.
+[Unit]
+Description=Run the WAL archive watch every ten minutes
+
+[Timer]
+# Production checks every five minutes; reading its verdict twice as often as
+# it changes buys nothing, and the staleness alarm allows 20 minutes.
+OnCalendar=*:0/10
+AccuracySec=15s
+RandomizedDelaySec=30s
+Persistent=false
+Unit=ld-wal-watch.service
+
+[Install]
+WantedBy=timers.target

@@ -20,7 +20,7 @@ const TYPE_OPTIONS = [
   { value: "workshop", icon: Wrench, color: "bg-amber-100 text-amber-600 border-amber-300" },
   { value: "meetup", icon: Coffee, color: "bg-green-100 text-green-600 border-green-300" },
   { value: "exhibition", icon: Building2, color: "bg-pink-100 text-pink-600 border-pink-300" },
-  { value: "other", icon: HelpCircle, color: "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700" },
+  { value: "other", icon: HelpCircle, color: "bg-muted text-muted-foreground border-border" },
 ]
 
 interface EventFormProps {
@@ -136,7 +136,7 @@ export function EventForm({ open, onOpenChange, onSaved, orgId, initialData }: E
               key={s.n}
               onClick={() => setStep(s.n)}
               className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                step === s.n ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                step === s.n ? "crm-choice-selected " : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
               {s.label}
@@ -184,7 +184,7 @@ export function EventForm({ open, onOpenChange, onSaved, orgId, initialData }: E
 
               <div>
                 <Label>{tc("status")}</Label>
-                <select className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded-md px-3 text-sm mt-1" value={form.status} onChange={e => set("status", e.target.value)}>
+                <select className="w-full h-9 border border-input rounded-md px-3 text-sm mt-1" value={form.status} onChange={e => set("status", e.target.value)}>
                   <option value="planned">{t("statusPlanned")}</option>
                   <option value="registration_open">{t("statusRegistrationOpen")}</option>
                   <option value="in_progress">{t("statusInProgress")}</option>

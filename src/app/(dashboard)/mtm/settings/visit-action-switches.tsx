@@ -35,7 +35,7 @@ const CLIENT_KINDS = ["PHARMACY", "CLINIC", "DOCTOR", "STORE", "OTHER"] as const
 
 type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "failed"; message: string }
 
-const fieldClass = "h-9 w-full rounded-md border border-zinc-200 bg-background px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700"
+const fieldClass = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
 
 function Switch({ on, tone, disabled, label, onToggle }: {
   on: boolean
@@ -177,7 +177,7 @@ export function VisitActionSwitches({
 
   return (
     <div
-      className={cn("h-full", embedded ? "" : "rounded-lg border border-zinc-200 bg-card p-4 dark:border-zinc-700")}
+      className={cn("h-full", embedded ? "" : "rounded-lg border border-border bg-card p-4")}
       data-testid={testId}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -194,7 +194,7 @@ export function VisitActionSwitches({
       {scope ? <p className="mt-0.5 text-sm text-muted-foreground">{scope}</p> : null}
 
       {status.kind === "failed" ? (
-        <p role="alert" className="mt-2 flex items-start gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-sm">
+        <p role="alert" className="mt-2 flex items-start gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{status.message}</span>
         </p>
       ) : null}
@@ -219,7 +219,7 @@ export function VisitActionSwitches({
           const name = t(`actions.${actionKey}`)
           const narrowed = refinedText(actionKey, detail, state.required)
           return (
-            <div key={actionKey} className="col-span-4 grid grid-cols-subgrid items-center border-t border-zinc-200 py-1 dark:border-zinc-800" data-testid={`${testId}-row-${actionKey}`}>
+            <div key={actionKey} className="col-span-4 grid grid-cols-subgrid items-center border-t border-border py-1" data-testid={`${testId}-row-${actionKey}`}>
               <div className={cn("min-w-0 py-1.5", !state.shown && "opacity-60")}>
                 <p className="flex items-center gap-2 text-sm font-medium">
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{name}
@@ -317,7 +317,7 @@ export function VisitActionSwitches({
         })}
 
         {companyWide ? (
-          <div className="col-span-4 grid grid-cols-subgrid items-center border-t border-zinc-200 py-1 dark:border-zinc-800">
+          <div className="col-span-4 grid grid-cols-subgrid items-center border-t border-border py-1">
             <div className="min-w-0 py-1.5">
               <p className="flex items-center gap-2 text-sm font-medium">
                 <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("simpleTasks")}
@@ -332,7 +332,7 @@ export function VisitActionSwitches({
       </div>
 
       {companyWide ? (
-        <p className="mt-2 border-t border-zinc-200 pt-2 text-xs text-muted-foreground dark:border-zinc-800">{t("simpleRequiredHint")}</p>
+        <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">{t("simpleRequiredHint")}</p>
       ) : null}
     </div>
   )

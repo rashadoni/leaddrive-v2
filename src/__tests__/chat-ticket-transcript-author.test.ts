@@ -290,6 +290,7 @@ import { POST as whatsappWebhook } from "@/app/api/v1/webhooks/whatsapp/route"
 import { POST as portalChat } from "@/app/api/v1/public/portal-chat/route"
 import { GET as agentTicket } from "@/app/api/v1/tickets/[id]/route"
 import { parseChatDescription, parseCommentSender } from "@/lib/ticketing/chat-transcript"
+import { sendWhatsAppMessage } from "@/lib/whatsapp"
 
 const ORG = "org-1"
 const WA_PHONE = "994501112233"
@@ -370,6 +371,17 @@ describe("a WhatsApp chat that opens a ticket", () => {
   }
 
   beforeEach(() => {
+    // The inbox upsert above returns this persisted, unassigned conversation.
+    // Keep the real AI ownership/budget guard and its lease updates in the path.
+    db.table("socialConversation").push({
+      id: "conversation-1",
+      organizationId: ORG,
+      assignedTo: null,
+      status: "open",
+      aiReplyClaimedAt: null,
+      aiReplyClaimToken: null,
+      aiReplyClaimedUntil: null,
+    })
     db.table("channelConfig").push({
       id: "cfg-wa",
       organizationId: ORG,
@@ -413,6 +425,40 @@ describe("a WhatsApp chat that opens a ticket", () => {
     expect(seen.commentBubbles).toEqual([
       { sender: "customer", name: "Клиент", body: CUSTOMER_TEXT },
       { sender: "bot", name: "Da Vinci", body: reply },
+    ])
+    expect(db.table("ticketComment").filter((comment) => comment.ticketId === "ticket-earlier")
+      .some((comment) => parseCommentSender(String(comment.comment))?.sender === "bot")).toBe(false)
+  })
+
+  it("keeps a failed AI send out of the new ticket's transcript and comments", async () => {
+    vi.mocked(sendWhatsAppMessage).mockResolvedValueOnce({ success: false, error: "provider_send_failed" })
+
+    await customerWritesOnWhatsApp(CUSTOMER_TEXT)
+
+    const seen = await agentSees(String(ticketOpenedFromChat().id))
+    expect(seen.chatCard).toEqual([{ sender: "customer", label: "Клиент", text: CUSTOMER_TEXT }])
+    expect(seen.commentBubbles).toEqual([{ sender: "customer", name: "Клиент", body: CUSTOMER_TEXT }])
+    expect(db.table("aiChatMessage").filter((message) => message.role === "assistant")).toEqual([])
+  })
+
+  it("keeps an operator's concurrent description edit and records the accepted reply once", async () => {
+    const operatorDescription = "Operator investigation notes"
+    vi.mocked(sendWhatsAppMessage).mockImplementationOnce(async () => {
+      const ticket = ticketOpenedFromChat()
+      // Sending happens after creation but before the provider accepts the first AI reply.
+      expect(parseChatDescription(String(ticket.description))?.messages).toHaveLength(1)
+      ticket.description = operatorDescription
+      return { success: true, messageId: "wamid.out" }
+    })
+
+    await customerWritesOnWhatsApp(CUSTOMER_TEXT)
+
+    const ticket = ticketOpenedFromChat()
+    const seen = await agentSees(String(ticket.id))
+    expect(ticket.description).toBe(operatorDescription)
+    expect(seen.commentBubbles).toEqual([
+      { sender: "customer", name: "Клиент", body: CUSTOMER_TEXT },
+      { sender: "bot", name: "Da Vinci", body: storedAssistantReply() },
     ])
   })
 

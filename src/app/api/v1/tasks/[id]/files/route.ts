@@ -7,6 +7,7 @@ import path from "path"
 import crypto from "crypto"
 import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 // Task file attachments — mirrors the ContractFile route's security model
 // (src/app/api/v1/contracts/[id]/files/route.ts). Stored on disk as
@@ -77,7 +78,7 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
     const buffer = Buffer.from(await file.arrayBuffer())
     const contentError = validateUploadBytes(mimeType, buffer)
     if (contentError) return NextResponse.json({ error: contentError }, { status: 400 })
-    await writeFile(path.join(uploadDir, uniqueName), buffer)
+    await writeFile(path.join(uploadDir, uniqueName), sealTenantFile(auth.orgId, buffer))
 
     const record = await prisma.taskAttachment.create({
       data: {

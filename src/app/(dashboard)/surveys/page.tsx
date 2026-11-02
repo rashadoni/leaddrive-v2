@@ -223,7 +223,7 @@ export default function SurveysPage() {
             const npsColor =
               nps == null ? "text-muted-foreground" : nps >= 50 ? "text-green-600" : nps >= 0 ? "text-amber-600" : "text-red-600"
             return (
-              <div key={s.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3">
+              <div key={s.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <a href={`/surveys/${s.id}`} className="min-w-0 flex-1 hover:opacity-80">
                     <div className="flex items-center gap-2 flex-wrap">

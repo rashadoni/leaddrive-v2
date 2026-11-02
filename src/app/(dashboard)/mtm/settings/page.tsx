@@ -7,8 +7,7 @@ import { useSession } from "next-auth/react"
 import { notifyMtmSettingsChanged, type MtmNavOrgSettings } from "@/hooks/use-mtm-org-settings"
 import { NAV_ORG_SETTING_KEYS } from "@/lib/nav-items"
 import { toast } from "sonner"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import {
   Settings, Save, Satellite, Lock, Wrench, MapPin, Camera, BellRing, Route, Clock3, LifeBuoy, LayoutGrid, Radar, UserCog,
   AlertTriangle, RotateCcw, ChevronDown,
@@ -22,8 +21,10 @@ import { ContactCardSettings } from "./contact-card-settings"
 import { ContactDictionarySettings } from "./contact-dictionary-settings"
 import { OrganizationAttributePackageSettings } from "./organization-attribute-package-settings"
 import { RouteTargetTypeSettings } from "./route-target-type-settings"
+import { VisitEvaluationQuestionSettings } from "./visit-evaluation-question-settings"
 import { COMMON_TIMEZONES } from "@/lib/timezone"
 import type { MtmRouteTargetType } from "@/lib/mtm/route-target-types"
+import type { MtmVisitEvaluationQuestion } from "@/lib/mtm/visit-evaluation-questions"
 import { CoveragePolicyAdmin } from "@/components/mtm/coverage-policy-admin"
 import { KpiPolicyAdmin } from "@/components/mtm/kpi-policy-admin"
 import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
@@ -36,7 +37,7 @@ import {
   type MtmSettingFieldError,
 } from "@/lib/mtm/settings-validation"
 
-type SettingValue = string | number | boolean | string[] | MtmRouteTargetType[] | null | undefined
+type SettingValue = string | number | boolean | string[] | MtmRouteTargetType[] | MtmVisitEvaluationQuestion[] | null | undefined
 type SettingsMap = Record<string, SettingValue>
 type UnitKey = "unitSeconds" | "unitMinutes" | "unitMeters" | "unitHour" | "unitPhotos"
 
@@ -519,7 +520,7 @@ export default function MtmSettingsPage() {
   // Which tab holds a setting. A change or a mistake in a tab that is not
   // open must not be invisible: its tab carries a mark, and a refused save
   // opens the tab with the first mistake instead of pointing at nothing.
-  const tabByKey = new Map<string, SettingsTab>([["routeTargetTypes", "routes"]])
+  const tabByKey = new Map<string, SettingsTab>([["routeTargetTypes", "routes"], ["visitEvaluationQuestions", "visit"]])
   for (const group of [...settingGroups, { ...advancedGroup, tab: "admin" as const }]) {
     if (!group.tab) continue
     for (const item of group.items) {
@@ -555,7 +556,7 @@ export default function MtmSettingsPage() {
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `mtm-setting-error-${key}` : undefined}
           onChange={(e) => updateNumber(key, e.target.value)}
-          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`}
+          className={`w-24 rounded-md border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-input"}`}
         />
         {/* The unit used to live only in the screen-reader label and in a
             «(м)» glued to some titles; a number without it is a guess. */}
@@ -567,7 +568,7 @@ export default function MtmSettingsPage() {
   }
 
   const renderSwitch = (item: SettingItem, disabled: boolean) => (
-    <button
+    <button data-crm-color-role="toggle"
       type="button"
       role="switch"
       aria-checked={!!settings[item.key]}
@@ -642,7 +643,7 @@ export default function MtmSettingsPage() {
           )}
         </div>
         {item.key === "maxPhotosPerVisit" && typeof settings.maxPhotosPerVisit === "number" && policyPhotoMinimum > settings.maxPhotosPerVisit ? (
-          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-2 text-xs">
+          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-2 text-xs">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{ts("maxPhotosBelowPolicyMinimum")}</span>
           </div>
@@ -667,7 +668,7 @@ export default function MtmSettingsPage() {
     )
   }
 
-  const cardClass = "rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4"
+  const cardClass = "rounded-lg border border-border bg-card p-4"
 
   // Every tab is one grid of two equal columns (owner, 2026-10-08, shown a
   // half-width card with nothing beside it: «симметрично делай… половинчатые
@@ -695,25 +696,22 @@ export default function MtmSettingsPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={Settings} title={t("mtmSettings")} description={ts("subtitle")} />
+      <MtmPageHeader title={t("mtmSettings")} description={ts("subtitle")} help="mtm-settings" />
       <div className="animate-pulse grid gap-3 md:grid-cols-2">{[1, 2, 3, 4].map(i => <div key={i} className="h-56 bg-muted rounded-lg" />)}</div>
     </div>
   )
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <PageDescription icon={Settings} title={t("mtmSettings")} description={ts("subtitle")} />
-        <HelpButton slug="mtm-settings" variant="label" />
-      </div>
+      <MtmPageHeader title={t("mtmSettings")} description={ts("subtitle")} help="mtm-settings" />
 
       {/* Six tabs instead of one ten-screen page (owner, 2026-10-08: «сделай
           компактнее… сама структура какая-то непонятная»). Every panel stays
           mounted and is only hidden, so an unsaved change in one tab is still
           there after a look at another. */}
-      <div role="tablist" aria-label={ts("tabsLabel")} className={MTM_TAB_ROW} data-testid="mtm-settings-tabs">
+      <div data-crm-tabs="" role="tablist" aria-label={ts("tabsLabel")} className={MTM_TAB_ROW} data-testid="mtm-settings-tabs">
         {SETTINGS_TABS.map((name) => (
-          <button
+          <button data-crm-tab="" data-state={tab === name ? "active" : "inactive"}
             key={name}
             type="button"
             role="tab"
@@ -756,6 +754,16 @@ export default function MtmSettingsPage() {
             />
           ) : null}
 
+          {/* What a manager rates on a joint visit (owner, 2026-10-21): the
+              whole width under the visit rules, saved with «Сохранить». */}
+          {name === "visit" ? (
+            <VisitEvaluationQuestionSettings
+              value={settings.visitEvaluationQuestions}
+              saved={loaded.visitEvaluationQuestions}
+              onChange={(value) => updateSetting("visitEvaluationQuestions", value)}
+            />
+          ) : null}
+
           {name === "routes" ? (
             <RouteTargetTypeSettings
               value={settings.routeTargetTypes}
@@ -790,7 +798,7 @@ export default function MtmSettingsPage() {
 
           {name === "admin" ? (
             <>
-              <details data-settings-group="groupAdvanced" className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+              <details data-settings-group="groupAdvanced" className="group rounded-lg border border-border bg-card">
                 <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
                   <Satellite className="h-4 w-4 text-muted-foreground" /> {ts(advancedGroup.titleKey)}
                   <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -811,7 +819,7 @@ export default function MtmSettingsPage() {
                 <details
                   data-settings-group="groupImplementerTools"
                   data-testid="mtm-settings-implementer-tools"
-                  className="group rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card"
+                  className="group rounded-lg border border-border bg-card"
                   onToggle={(event) => { if ((event.currentTarget as HTMLDetailsElement).open) setImplementerToolsOpened(true) }}
                 >
                   <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold">
@@ -845,7 +853,7 @@ export default function MtmSettingsPage() {
       <div
         data-testid="mtm-settings-save-bar"
         hidden={!dirty && !saving}
-        className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card/95 px-4 py-2 shadow-sm backdrop-blur dark:border-zinc-700"
+        className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card/95 px-4 py-2 shadow-sm backdrop-blur"
       >
         <span role="status" aria-live="polite" className={`text-sm ${dirty ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
           {dirty ? ts("dirtyIndicator") : ts("noChanges")}

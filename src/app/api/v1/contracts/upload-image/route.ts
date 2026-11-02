@@ -5,6 +5,7 @@ import path from "path"
 import crypto from "crypto"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
+import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB — a contract logo/stamp, not a photo album
 // NO svg — image/svg+xml renders inline via the F-41 gate and SVG can carry
@@ -54,7 +55,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, ctx) => 
       return NextResponse.json({ success: false, error: "Storage unavailable" }, { status: 500 })
     }
     await mkdir(uploadDir, { recursive: true })
-    await writeFile(path.join(uploadDir, filename), buffer)
+    await writeFile(path.join(uploadDir, filename), sealTenantFile(auth.orgId, buffer))
 
     return NextResponse.json({ success: true, url: `/${path.posix.join("uploads", "contract-images", auth.orgId, filename)}` })
   } catch (error) {

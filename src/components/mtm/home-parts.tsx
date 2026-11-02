@@ -57,7 +57,7 @@ const HOME_VALUE: Record<HomeTone, string> = {
   orange: "",
 }
 
-const CARD = "rounded-2xl border border-zinc-200 bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)] dark:border-zinc-700"
+const CARD = "rounded-2xl border border-border bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
 
 export function HomePill({ tone, children, className }: { tone: HomeTone; children: ReactNode; className?: string }) {
   return <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs font-semibold", HOME_CHIP[tone], className)}>{children}</span>
@@ -75,6 +75,7 @@ export function HomeKpi({
   progress,
   sub,
   hint,
+  loading,
 }: {
   testId: string
   label: string
@@ -89,15 +90,19 @@ export function HomeKpi({
   /** 0–100; omitted when the figure has no bar. */
   progress?: number | null
   sub?: string | null
+  /** The number has not arrived yet: a grey bar, because a dash reads as «none»
+   * (owner-approved mockup, 2026-11-01). The dash stays for a real «unknown». */
+  loading?: boolean
 }) {
+  const pending = loading && value === null
   return (
-    <div data-testid={testId} className={cn(CARD, "flex min-w-0 flex-col p-4")}>
+    <div data-testid={testId} aria-busy={pending || undefined} className={cn(CARD, "flex min-w-0 flex-col p-4")}>
       <div className="flex items-center justify-between gap-2">
         <HintValue className="truncate text-[13px] font-medium text-muted-foreground" text={hint}>{label}</HintValue>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground">{icon}</span>
       </div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span data-testid={`${testId}-value`} className={cn("text-[34px] font-bold leading-none tracking-tight tabular-nums", HOME_VALUE[tone])}>{value ?? "—"}</span>
+        <span data-testid={`${testId}-value`} className={cn("text-[34px] font-bold leading-none tracking-tight tabular-nums", HOME_VALUE[tone])}>{value ?? (pending ? <span data-testid={`${testId}-loading`} className="block h-[34px] w-16 animate-pulse rounded-md bg-muted motion-reduce:animate-none" aria-hidden="true" /> : "—")}</span>
         {unit ? <span className="text-sm font-medium text-muted-foreground">{unit}</span> : null}
         {pill ? <HomePill tone={tone} className="ml-auto">{pill}</HomePill> : null}
       </div>
@@ -130,12 +135,12 @@ export function HomeCard({
 }) {
   return (
     <section data-testid={testId} aria-labelledby={titleId} className={cn(CARD, "flex min-w-0 flex-col")}>
-      <header className="flex items-center gap-3 border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
+      <header className="flex items-center gap-3 border-b border-border px-5 py-3.5">
         <span className="flex h-8 w-6 shrink-0 items-center justify-center text-muted-foreground">{icon}</span>
         <h3 id={titleId} className="min-w-0 truncate text-[15px] font-semibold">{title}</h3>
-        {badge ? <span className="inline-flex shrink-0 items-center rounded-full border border-zinc-200 px-2 text-xs font-semibold leading-5 text-muted-foreground dark:border-zinc-700">{badge}</span> : null}
+        {badge ? <span className="inline-flex shrink-0 items-center rounded-full border border-border px-2 text-xs font-semibold leading-5 text-muted-foreground">{badge}</span> : null}
         {action ? (
-          <Hint text={action.hint}><Link href={action.href} prefetch={false} className="ml-auto inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-zinc-200 px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700">
+          <Hint text={action.hint}><Link href={action.href} prefetch={false} className="ml-auto inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-border px-3 text-xs font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
             {action.label}<ArrowUpRight className="h-3 w-3" aria-hidden="true" />
           </Link></Hint>
         ) : null}
@@ -148,7 +153,7 @@ export function HomeCard({
 /** The grey strip at the bottom of a card: one fact and where to read more. */
 export function HomeCardFoot({ text, href, link, textHint, linkHint }: { text: string; href: string; link: string; textHint?: string; linkHint?: string }) {
   return (
-    <div className="mb-3 mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs dark:border-zinc-800">
+    <div className="mb-3 mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2.5 text-xs">
       <HintValue className="font-medium" text={textHint}>{text}</HintValue>
       <Hint text={linkHint}><Link href={href} prefetch={false} className="ml-auto inline-flex min-h-9 items-center gap-1 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0">
         {link}<ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />

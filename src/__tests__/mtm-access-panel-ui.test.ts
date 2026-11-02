@@ -52,7 +52,7 @@ const users = [
 ]
 type Card = {
   id: string; name: string; email: string | null; role: string; status: string; userId: string | null
-  createdAt: string; canPlanOwnRoutes?: boolean; canSelfPublishRoutes?: boolean
+  createdAt: string; canPlanOwnRoutes?: boolean; canSelfPublishRoutes?: boolean; managerId?: string | null
 }
 let cards: Card[] = []
 let writes: { url: string; method: string; body: unknown }[] = []
@@ -122,19 +122,42 @@ describe("Access & permissions — who works in the field and as what", () => {
   it("lists every active login with the scope it has today", async () => {
     await open([
       card({ id: "card-lead", name: "Leyla", role: "MANAGER", userId: "u-lead" }),
-      card({ id: "card-mobile", name: "Rep without a login", email: "other@example.az" }),
-      card({ id: "card-mobile-2", name: "Another rep" }),
+      card({ id: "card-mobile", name: "Rep without a login", email: "other@example.az", managerId: "card-lead" }),
+      card({ id: "card-mobile-2", name: "Another rep", managerId: "card-lead", canPlanOwnRoutes: false }),
     ])
 
-    expect(row("u-admin").textContent).toContain("Вся организация — администратор CRM")
+    // Owner, 2026-11-01: «не понятно что, для чего и как работает» — the three
+    // levels are said in words above the list that uses them.
+    expect(document.querySelector('[data-testid="mtm-access-levels"]')?.textContent)
+      .toBe("ВсехАдминистратор: все агенты, клиенты и маршрутыСвою командуРуководитель: агенты его команды и их клиентыТолько своёАгент: свои клиенты, маршруты и визиты")
+    expect(row("u-admin").textContent).toContain("Всех — администратор CRM")
+    expect(row("u-admin").textContent).toContain("CRM: ")
     expect(row("u-admin").querySelector("select")).toBeNull()
     expect(select("u-saida")?.value).toBe("none")
     expect(row("u-saida").textContent).toContain("Без доступа раздел у сотрудника не откроется.")
     expect(select("u-lead")?.value).toBe("MANAGER")
-    expect(row("u-lead").textContent).toContain("Карточка: Leyla")
-    expect(row("u-office").textContent).toContain("Модуль скрыт от этого сотрудника")
+    expect([...select("u-lead")!.options].map((option) => option.textContent))
+      .toEqual(["Нет доступа", "Всех — вся организация", "Свою территорию и подчинённых", "Свою команду", "Только своё"])
+    // A manager's row says who is in the team.
+    expect(row("u-lead").querySelector('[data-testid="mtm-access-team"]')?.textContent).toBe("Команда: Another rep, Rep without a login")
+    // The section hidden in the user card: «no access», and a worded way to give it.
+    expect(row("u-office").textContent).toContain("Нет доступа")
+    expect(document.querySelector('[data-testid="mtm-access-give-u-office"]')?.textContent).toBe("Дать доступ")
+    expect(document.querySelector('[data-testid="mtm-access-give-u-office"]')?.getAttribute("href")).toBe("/settings/users")
     expect(row("u-gone")).toBeNull()
-    expect(document.body.textContent).toContain("Ещё 2 сотрудника работают только в мобильном приложении")
+    // The agents who work only in the phone are in the same list, not one line under it.
+    const mobile = document.querySelector('[data-testid="mtm-access-card-card-mobile-2"]') as HTMLElement
+    expect(mobile.textContent).toContain("Телефон")
+    expect(mobile.textContent).toContain("Только своё")
+    expect(mobile.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false)
+  })
+
+  it("lets an agent who has no CRM login be allowed to plan routes, from the same list", async () => {
+    await open([card({ id: "card-mobile", name: "Rep without a login", canPlanOwnRoutes: false })])
+    const box = document.querySelector('[data-testid="mtm-access-card-card-mobile"] input[type="checkbox"]') as HTMLInputElement
+    await act(async () => { box.click() })
+    await settle()
+    expect(writes).toEqual([{ url: "/api/v1/mtm/agents/card-mobile", method: "PUT", body: { canPlanOwnRoutes: true } }])
   })
 
   it("giving a manager the whole organization creates a card linked to the login", async () => {
