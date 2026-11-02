@@ -59,6 +59,9 @@ export default function CustomerLocationRequestMap({ previous, proposed, agentFi
     <MapContainer
       center={[proposed.latitude, proposed.longitude]}
       zoom={16}
+      // A decided card unmounts immediately. Leaflet's delayed zoom completion
+      // can otherwise access its already removed map pane.
+      zoomAnimation={false}
       attributionControl={false}
       scrollWheelZoom={false}
       style={{ position: "absolute", inset: 0 }}

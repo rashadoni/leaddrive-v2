@@ -97,20 +97,22 @@ const SPOKEN_UNITS: Record<string, string> = {
  * of Zeytun's pharmacies and it is final ("это цена для аптек конечная"), so it
  * may be read to the caller. It is a list price, never a total or an offer. */
 export function listPrice(item: { priceAsReported?: unknown; baseUnitAsReported?: unknown; nameAz?: unknown }, asOf: string) {
-  const amount = item.priceAsReported
-  if (typeof amount !== "string" || !/^\d{1,7}(?:\.\d{1,4})?$/.test(amount) || !/[1-9]/.test(amount)) return null
+  const amount = feedAmount(item)
   const per = spokenUnit(item)
-  return per ? { amount, currency: "AZN", per, asOf } : null
+  return amount && per ? { amount, currency: "AZN", per, asOf } : null
 }
-/** The price an order line is written at. A pack 1C keeps in «шт» is also
- * what a pharmacy counts in pieces: «3 ədəd» of it went to 1C as three before
- * «шт» became a box, and still does (owner, 2026-11-02: qutu and ədəd alike).
- * A pack 1C keeps in «упак» is not: five ədəd of it may be five ampoules. */
+function feedAmount(item: { priceAsReported?: unknown }) {
+  const amount = item.priceAsReported
+  return typeof amount === "string" && /^\d{1,7}(?:\.\d{1,4})?$/.test(amount) && /[1-9]/.test(amount) ? amount : null
+}
+/** The price an order line is written at: 1C's price for one of its units,
+ * whatever word the pharmacy counted them with. Owner, 2026-11-02: «тут
+ * продажа b2b, там не бывает по ампуле, там всё в коробках» — «5 ədəd» or
+ * «5 ampula» is five of 1C's units, and 1C receives five. A unit we have no
+ * spoken word for (tube, ...) is still a box here, never an unpriced line. */
 export function orderPrice(item: { priceAsReported?: unknown; baseUnitAsReported?: unknown }, asOf: string) {
-  const price = listPrice(item, asOf)
-  if (!price) return null
-  const pieces = typeof item.baseUnitAsReported === "string" && item.baseUnitAsReported.trim().toLowerCase() === "шт"
-  return { amount: price.amount, per: price.per, ...(pieces ? { alsoPer: "ədəd" } : {}) }
+  const amount = feedAmount(item)
+  return amount ? { amount, per: listPrice(item, asOf)?.per ?? "qutu" } : null
 }
 /** The item's 1C base unit as the caller says it, or null for one we have no word for. */
 function spokenUnit(item: { baseUnitAsReported?: unknown }): string | null {

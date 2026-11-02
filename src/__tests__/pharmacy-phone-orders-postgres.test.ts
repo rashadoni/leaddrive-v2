@@ -106,8 +106,9 @@ const CATALOG = {
   source: "zeytun-feed", scopeKey: "a".repeat(64), version: "b".repeat(64), observedAt: "2026-10-23T15:34:38.270Z",
   find: (externalId: string) => ({
     [NOSPA]: { externalId: NOSPA, itemCode: "00000009322", name: "Но-шпа 2мл 40 мг № 25", nameAz: "No-şpa 2ml 40 mq № 25", listPrice: { amount: "12.5", per: "qutu" } },
-    [KETONAL]: { externalId: KETONAL, itemCode: "00000006612", name: "Кетонал 2 мл № 10", nameAz: null, listPrice: { amount: "9.08", per: "qutu" } },
-  } as Record<string, { externalId: string; itemCode: string; name: string; nameAz: string | null; listPrice: { amount: string; per: string } }>)[externalId] ?? null,
+    // 1C gives no price for it: found, but nothing to price it with.
+    [KETONAL]: { externalId: KETONAL, itemCode: "00000006612", name: "Кетонал 2 мл № 10", nameAz: null, listPrice: null },
+  } as Record<string, { externalId: string; itemCode: string; name: string; nameAz: string | null; listPrice: { amount: string; per: string } | null }>)[externalId] ?? null,
 }
 
 const json = (method: string, url: string, body?: unknown) => new NextRequest(`http://localhost:3000${url}`, {
@@ -192,7 +193,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     return card.PATCH(json("PATCH", `/api/v1/pharmacy-orders/${id}`, body), params(id))
   }
 
-  it("keeps the caller's words, prices only in the price's unit, and stores the number encrypted", async () => {
+  it("keeps the caller's words, prices only from 1C's price, and stores the number encrypted", async () => {
     const saved = await saveCall(1, LIST)
     expect(saved).toMatchObject({ status: "saved", number: 1001, created: true, total: "125.00",
       unpriced: ["ketanol beş ədəd"], notFound: ["fluimusil altı yüz, üç qutu"] })
@@ -201,7 +202,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(row.callerPhone).not.toContain("501234567")
     expect(row.lines.map(line => [line.status, line.productName, line.quantity, line.unit, line.unitPrice?.toFixed(2) ?? null, line.lineTotal?.toFixed(2) ?? null])).toEqual([
       ["resolved", "No-şpa 2ml 40 mq № 25", 10, "qutu", "12.50", "125.00"],
-      // The price is per box; five pieces are not priced by a guess.
+      // No price in 1C: not priced by a guess.
       ["resolved", "Кетонал 2 мл № 10", 5, "ədəd", null, null],
       ["not_found", null, 3, "qutu", null, null],
     ])

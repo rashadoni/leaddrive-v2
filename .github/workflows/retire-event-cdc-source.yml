@@ -49,7 +49,7 @@ jobs:
           MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
-          case "$MODE" in inspect|restore) ;; *) echo "::error::mode must be inspect or restore; apply runs only by hand, see CLAUDE.md «Kafka остаётся»"; exit 1 ;; esac
+          case "$MODE" in inspect|restore) ;; *) echo "::error::mode must be inspect or restore; apply runs only by hand, see CLAUDE.md «Kafka снята»"; exit 1 ;; esac
           bash -n scripts/event-platform/retire-cdc-source.sh
 
       - name: Setup pinned production SSH
