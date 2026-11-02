@@ -13,7 +13,7 @@ import { MtmFilterBar, MtmFilterSelect, MtmResultLine } from "@/components/mtm/f
 import { Button } from "@/components/ui/button"
 import {
   actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref, kindKey,
-  relativeTime, dayKeyOf, dayLabel, activityActorName, activityDataSummary, type ActivitySubject,
+  relativeTime, dayKeyOf, dayLabel, activityActorName, activityDataSummary, activitySubjectName,
 } from "@/lib/mtm/activity-actions"
 import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
 import { formatDate, formatTime } from "@/lib/format-date"
@@ -132,15 +132,8 @@ export default function MtmActivityPage() {
   /**
    * Owner, 2026-11-01: «журнал активности — мало информации». A row reads as a
    * sentence: who did what, to whom or what, with the facts of the change.
-   * «Kimə / nəyə» is the client the API resolved, or the employee the row is
-   * about when somebody else acted on him.
    */
-  const subjectOf = (l: any): string | null => {
-    const subject = l.subject as ActivitySubject | undefined
-    if (subject?.customerName) return subject.customerName
-    const about = typeof l.agent?.name === "string" && l.agent.name.trim() ? l.agent.name.trim() : null
-    return about && about !== activityActorName(l, t) ? about : null
-  }
+  const subjectOf = (l: any): string | null => activitySubjectName(l, t)
   // C12: строка читалась как «mtm_pharmacy_promotion_execution · 4f2a9c» —
   // имя таблицы и шесть символов идентификатора. Полный id — в подсказке.
   // 2026-11-01: «Запись» в каждой строке тоже ничего не говорила — нет фактов,

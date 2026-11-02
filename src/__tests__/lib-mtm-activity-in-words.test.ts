@@ -13,6 +13,7 @@ import {
   actionLabelKey,
   activityActorName,
   activityDataSummary,
+  activitySubjectName,
   canonicalAction,
 } from "@/lib/mtm/activity-actions"
 
@@ -68,6 +69,26 @@ describe("the activity journal in words", () => {
     expect(activityActorName({ actor: { userId: "u", name: "Rashad" }, agent: { name: "Anar" } }, t)).toBe("Rashad")
     expect(activityActorName({ actor: null, agent: { name: "Anar" } }, t)).toBe("Anar")
     expect(activityActorName({ actor: null, agent: null }, t)).toBe("Кто — не записано")
+  })
+
+  it("says whom a row is about: the client, else the employee — and him after his card is gone", () => {
+    const t = (key: string) => key
+    const admin = { userId: "u", name: "Rashad" }
+    // The card stays since #1100: the API joins it, removed or not.
+    expect(activitySubjectName({ action: "AGENT_DELETE", actor: admin, agent: { name: "Anar Məmmədov" } }, t)).toBe("Anar Məmmədov")
+    // Removed before #1100: the link to him is null, his name is in the row.
+    expect(activitySubjectName({ action: "AGENT_DELETE", actor: admin, agent: null, oldData: { id: "a1", name: " Anar Məmmədov ", role: "AGENT" } }, t)).toBe("Anar Məmmədov")
+    expect(activitySubjectName({ action: "AGENT_CREATE", actor: admin, agent: null, newData: { name: "Leyla" } }, t)).toBe("Leyla")
+    expect(activitySubjectName({ action: "AGENT_UPDATE", actor: admin, agent: null, oldData: { name: "Old" }, newData: { name: "New" } }, t)).toBe("New")
+    expect(activitySubjectName({ action: "AGENT_UPDATE", actor: admin, agent: null, oldData: { name: "Same", tags: ["note"] }, newData: { phone: "+994" } }, t)).toBe("Same")
+    // No name in the row: nobody, as before — and never a label or the colour.
+    expect(activitySubjectName({ action: "AGENT_UPDATE", actor: admin, agent: null, oldData: { tags: ["slow"], mapColor: "#f00" } }, t)).toBeNull()
+    // Another kind of row does not borrow a name from its data.
+    expect(activitySubjectName({ action: "MAP_ZONE_DELETE", actor: admin, agent: null, oldData: { name: "Zone" } }, t)).toBeNull()
+    // The client wins; the actor is not his own subject.
+    expect(activitySubjectName({ action: "CHECK_IN", actor: null, agent: { name: "Anar" }, subject: { customerName: "Aptek 5" } as never }, t)).toBe("Aptek 5")
+    expect(activitySubjectName({ action: "CHECK_IN", actor: null, agent: { name: "Anar" } }, t)).toBeNull()
+    expect(readFileSync("src/app/(dashboard)/mtm/activity/page.tsx", "utf8")).toContain("activitySubjectName(l, t)")
   })
 
   it("summarizes a broadcast, a bulk assignment and an upload by their own facts", () => {

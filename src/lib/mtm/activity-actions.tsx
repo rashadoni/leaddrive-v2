@@ -267,6 +267,45 @@ export function activityActorName(
   return log.actor?.name || log.agent?.name || t("actorNotRecorded")
 }
 
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+function snapshotName(value: unknown): string | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? textOrNull((value as Record<string, unknown>).name)
+    : null
+}
+
+/**
+ * «Kimə / nəyə»: the client the API resolved, or the employee the row is about
+ * when somebody else acted on him (owner, 2026-11-01).
+ *
+ * A row about an employee card names him from its own snapshot when the card
+ * is gone: before #1100 (2026-10-26) a removal deleted the card, and the
+ * journal's link to him went with it, so those rows had nobody to name. Only
+ * the name — the snapshot's labels and map colour stay where the card keeps
+ * them.
+ */
+export function activitySubjectName(
+  log: {
+    action: string
+    agent?: { name?: string | null } | null
+    actor?: ActivityActor | null
+    subject?: ActivitySubject | null
+    newData?: unknown
+    oldData?: unknown
+  },
+  t: (key: string) => string,
+): string | null {
+  if (log.subject?.customerName) return log.subject.customerName
+  const card = ["AGENT_CREATE", "AGENT_UPDATE", "AGENT_DELETE"].includes(canonicalAction(log.action))
+    ? snapshotName(log.newData) ?? snapshotName(log.oldData)
+    : null
+  const about = textOrNull(log.agent?.name) ?? card
+  return about && about !== activityActorName(log, t) ? about : null
+}
+
 function numberOrLength(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value
   if (Array.isArray(value)) return value.length
