@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
@@ -166,6 +166,42 @@ describe("the line watch", () => {
     expect(await watch.ask("https://x.test", fetchOk, () => 0)).toEqual({ status: 200, body: ready.body, ms: 0 })
     const timeout = vi.fn(async () => { throw Object.assign(new Error("t"), { name: "TimeoutError" }) })
     expect(await watch.ask("https://x.test", timeout)).toEqual({ error: "нет ответа за 10 с" })
+  })
+
+  it("finds the backup host in the operator inventory, and stays quiet about it when it cannot", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ld-line-watch-inv-"))
+    try {
+      const inventory = join(dir, "inventory.json")
+      const write = (value: unknown) => writeFileSync(inventory, typeof value === "string" ? value : JSON.stringify(value))
+      write({ hosts: { "kafka-p-broker-gra": { publicAddress: "198.51.100.7" }, "kafka-p-ctrl-gra": { publicAddress: "203.0.113.9" } } })
+      expect(watch.backupWatchAddress(inventory)).toBe("198.51.100.7")
+      // Every way the inventory can fail ends the same: no heartbeat, and the
+      // line is still watched. The backup then calls this watch silent, which
+      // is the truth — a watch that cannot reach its backup is half blind.
+      expect(watch.backupWatchAddress(join(dir, "gone.json"))).toBeNull()
+      write({ hosts: { "kafka-p-ctrl-gra": { publicAddress: "203.0.113.9" } } })
+      expect(watch.backupWatchAddress(inventory)).toBeNull()
+      write({ hosts: { "kafka-p-broker-gra": {} } })
+      expect(watch.backupWatchAddress(inventory)).toBeNull()
+      write("{ half written")
+      expect(watch.backupWatchAddress(inventory)).toBeNull()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("leaves the heartbeat with the forced command alone, host key pinned", () => {
+    const args = watch.heartbeatArgs("198.51.100.7", { key: "/k/id", knownHosts: "/k/known_hosts" })
+    // The host answers nothing else, so the command is the whole payload.
+    expect(args.at(-1)).toBe("heartbeat")
+    expect(args.at(-2)).toBe("root@198.51.100.7")
+    expect(args).toContain("StrictHostKeyChecking=yes")
+    expect(args).toContain("UserKnownHostsFile=/k/known_hosts")
+    expect(args).toContain("BatchMode=yes")
+    // The name lives here, the address in the inventory: this repository is
+    // public and must not learn where the host is.
+    expect(watch.BACKUP_WATCH_HOST).toBe("kafka-p-broker-gra")
+    expect(readFileSync(join(process.cwd(), "scripts/zeytun-line/watch.mjs"), "utf8")).not.toMatch(/\b\d{1,3}(\.\d{1,3}){3}\b/)
   })
 
   it("runs every minute and tells its own failure", () => {

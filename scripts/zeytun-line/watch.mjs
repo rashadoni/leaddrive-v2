@@ -14,10 +14,16 @@
 // The answer also carries the PBX station's own once-a-minute report
 // (scripts/pbx/fanum-station-heartbeat.py): silent, no trunk, no voice program.
 //
-// A second copy runs on the Kafka backup watch host (OVH Gravelines, outside
+// A second copy runs on the backup watch host (OVH Gravelines, outside
 // Contabo) with LD_LINE_WATCH_ROLE=backup. It stands by while the workstation
-// is alive — the heartbeat the Kafka watch leaves there every 5 minutes — and
-// watches the line itself, every message marked, when that heartbeat is old.
+// is alive — the heartbeat this watch leaves there at the end of every pass —
+// and watches the line itself, every message marked, when that heartbeat is
+// old. Until 2026-11-02 the heartbeat came from the Kafka watch; the owner
+// retired the Kafka fleet that day («давай лишние серверы уберем»), that host
+// survived it for these two backup watches alone, and the heartbeat moved
+// here, to the only pass that still runs on the workstation. Nothing else
+// leaves it: stop this watch without stopping the backup and the backup will
+// correctly say the workstation went silent.
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -29,9 +35,16 @@ export const REMIND_MS = { critical: 3600_000, warning: 24 * 3600_000 }
 // The station waits 4 s for a lookup and 5 s for the answered mark.
 export const SLOW_MS = 3000
 export const TIMEOUT_MS = 10_000
-// Same as the Kafka backup: passes every 5 minutes, one missed is not silence.
+// This watch passes every minute and leaves a heartbeat each time, so twelve
+// minutes is many missed passes, not one. Kept at the Kafka backup's figure:
+// the window is about how long a dead workstation may go unnoticed, and that
+// answer did not change with the pass rate.
 export const PRIMARY_SILENT_MS = 12 * 60_000
 export const BACKUP_PREFIX = '[запасной сторож] '
+// The backup watch host, named as the operator inventory names it. It is the
+// last host of the retired Kafka fleet; its address lives in that inventory,
+// outside Git on purpose, so this file carries the name and never an address.
+export const BACKUP_WATCH_HOST = 'kafka-p-broker-gra'
 
 const STATION = {
   silent: { id: 'station-silent', title: 'Станция Fanum не выходит на связь',
@@ -164,6 +177,25 @@ function sh(cmd, args, timeout) {
   })
 }
 
+// Where to leave the heartbeat. Returns null — no heartbeat, said in the log —
+// when the inventory is gone, unreadable or does not know that host: a watch
+// that cannot reach its backup must still watch the line.
+export function backupWatchAddress(inventoryFile) {
+  try {
+    const inventory = JSON.parse(readFileSync(inventoryFile, 'utf8'))
+    const address = inventory?.hosts?.[BACKUP_WATCH_HOST]?.publicAddress
+    return typeof address === 'string' && address.length > 0 ? address : null
+  } catch {
+    return null
+  }
+}
+
+export function heartbeatArgs(address, { key, knownHosts }) {
+  return ['-i', key, '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes', '-o', 'ControlMaster=no',
+    '-o', 'ControlPath=none', '-o', `UserKnownHostsFile=${knownHosts}`, '-o', 'StrictHostKeyChecking=yes',
+    '-o', 'ConnectTimeout=10', `root@${address}`, 'heartbeat']
+}
+
 async function main() {
   const stateDir = process.env.LD_LINE_WATCH_STATE ?? path.join(process.env.HOME, '.local/state/ld-line-watch')
   const notify = process.env.LD_LINE_WATCH_NOTIFY ?? path.join(process.env.HOME, 'bin/notify-telegram')
@@ -173,6 +205,10 @@ async function main() {
   const url = process.env.LD_LINE_WATCH_URL ?? HEALTH_URL
   const backup = process.env.LD_LINE_WATCH_ROLE === 'backup'
   const heartbeatFile = process.env.LD_LINE_WATCH_HEARTBEAT ?? '/var/lib/ld-kafka-watch/primary-heartbeat'
+  const opState = process.env.LD_LINE_WATCH_OPSTATE ?? path.join(process.env.HOME, '.leaddrive-kafka')
+  const inventoryFile = path.join(opState, 'inventory.json')
+  const knownHosts = path.join(opState, 'known_hosts')
+  const heartbeatKey = process.env.LD_LINE_WATCH_KEY ?? path.join(process.env.HOME, '.ssh/leaddrive_kafka_watch')
   mkdirSync(stateDir, { recursive: true, mode: 0o700 })
 
   if (process.argv.includes('--notify-failure')) {
@@ -222,6 +258,18 @@ async function main() {
   const tmp = `${stateFile}.tmp`
   writeFileSync(tmp, JSON.stringify({ incidents: next.incidents, lastWeekly, week, lastPass: now }, null, 1), { mode: 0o600 })
   renameSync(tmp, stateFile)
+
+  // The pass is over: tell the backup this workstation is alive. It is the
+  // last thing done, so a heartbeat means a pass that actually finished. The
+  // host answers only the forced command, which writes the stamp and nothing
+  // else; a host not set up for it refuses, and the backup then calls this
+  // watch silent — which is the truth.
+  if (!backup) {
+    const address = backupWatchAddress(inventoryFile)
+    if (!address) { console.log(`no ${BACKUP_WATCH_HOST} in ${inventoryFile}; heartbeat not left`); return }
+    const code = await sh('ssh', heartbeatArgs(address, { key: heartbeatKey, knownHosts }), 30_000)
+    if (code !== 0) console.log(`heartbeat to the backup watch failed (exit ${code})`)
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
