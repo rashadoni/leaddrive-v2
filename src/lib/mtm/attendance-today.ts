@@ -181,3 +181,112 @@ export function attendanceNow(rows: readonly MtmAttendanceReportRow[], today: st
   now.notYet.sort((a, b) => Number(Boolean(a.dayKind)) - Number(Boolean(b.dayKind)) || a.name.localeCompare(b.name))
   return now
 }
+
+export const ATTENDANCE_BOARD_FILTERS = ["all", "working", "paused", "late", "absent", "notYet", "away", "left"] as const
+export type AttendanceBoardFilter = typeof ATTENDANCE_BOARD_FILTERS[number]
+export type AttendanceBoardStatus = "working" | "paused" | "left" | "absent" | "notYet" | "away" | "check"
+export type AttendanceBoardCounts = Record<AttendanceBoardFilter, number>
+export type AttendanceBoardPerson = {
+  employeeId: string; name: string; position: string | null
+  departmentName: string | null; teamName: string | null; groupKey: string
+  status: AttendanceBoardStatus
+  /** When the status began: the start for «at work», the pause for «on a break», the finish for «gone». */
+  since: string | null
+  late: boolean
+  row: MtmAttendanceReportRow
+}
+export type AttendanceBoardSection = { key: string; name: string | null; arrived: number; expected: number }
+export type AttendanceBoardGroup = {
+  key: string; name: string | null
+  /** Everyone of the group concerned today: expected, away on a request, or come anyway. */
+  total: number; expected: number; arrived: number; late: number; absent: number; away: number; notYet: number
+  sections: AttendanceBoardSection[]
+  counts: AttendanceBoardCounts
+}
+export type AttendanceBoard = { grouping: "department" | "team" | "none"; groups: AttendanceBoardGroup[]; people: AttendanceBoardPerson[]; counts: AttendanceBoardCounts }
+
+const NONE_KEY = "none"
+const emptyCounts = (): AttendanceBoardCounts => ({ all: 0, working: 0, paused: 0, late: 0, absent: 0, notYet: 0, away: 0, left: 0 })
+function countPerson(counts: AttendanceBoardCounts, person: AttendanceBoardPerson) {
+  counts.all++
+  if (person.status !== "check") counts[person.status]++
+  if (person.late) counts.late++
+}
+const ATTENTION_ORDER: Record<AttendanceBoardStatus, number> = { absent: 0, check: 2, notYet: 3, working: 4, paused: 4, left: 4, away: 4 }
+const byName = (a: { name: string | null }, b: { name: string | null }) => a.name === null ? (b.name === null ? 0 : 1) : b.name === null ? -1 : a.name.localeCompare(b.name)
+
+/**
+ * Personnel → Today → the live board (owner, 2026-11-02, approved mockup after
+ * the HRSS clip «Kim işdədir? Canlı baxın»): today by department, a filter per
+ * status, everyone of the day in one list.
+ *
+ * Group figures use the summary's own predicates over today's rows, so the
+ * departments add up to the tiles above them. Departments come from employee
+ * cards; a company that has none is grouped by section, and one group only
+ * gives no strip at all. A person's status reads the latest row of the day, as
+ * «Now» did: gone, on a break, at work, then away on a request, absent, not yet.
+ */
+export function attendanceBoard(rows: readonly MtmAttendanceReportRow[], today: string): AttendanceBoard {
+  const todayRows = rows.filter(row => row.date === today)
+  const grouping: AttendanceBoard["grouping"] = todayRows.some(row => row.departmentId) ? "department" : todayRows.some(row => row.teamId) ? "team" : "none"
+  const groupOf = (row: MtmAttendanceReportRow) => grouping === "department" ? { key: row.departmentId ?? NONE_KEY, name: row.departmentId ? row.departmentName ?? null : null }
+    : grouping === "team" ? { key: row.teamId ?? NONE_KEY, name: row.teamId ? row.teamName : null } : { key: NONE_KEY, name: null }
+
+  const latest = new Map<string, MtmAttendanceReportRow>()
+  for (const row of todayRows) latest.set(row.employeeId, row)
+  const people: AttendanceBoardPerson[] = []
+  for (const row of latest.values()) {
+    const concerned = row.startedAt !== null || (row.kind !== "NOT_EMPLOYED" && (row.expectedWorkSeconds > 0 || ["APPROVED_REQUEST", "ABSENT", "INVALID_FACTS"].includes(row.kind)))
+    if (!concerned) continue
+    let status: AttendanceBoardStatus, since: string | null = null
+    if (row.factsState === "INVALID") status = "check"
+    else if (row.completedAt) { status = "left"; since = row.completedAt }
+    else if (row.startedAt) {
+      const last = row.events.filter(event => event.type === "PAUSE" || event.type === "RESUME").sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)).at(-1)
+      if (last?.type === "PAUSE") { status = "paused"; since = last.occurredAt } else { status = "working"; since = row.startedAt }
+    } else if (row.kind === "APPROVED_REQUEST") status = "away"
+    else if (row.kind === "ABSENT") status = "absent"
+    else status = "notYet"
+    people.push({ employeeId: row.employeeId, name: row.employeeName, position: row.employeePosition ?? null, departmentName: row.departmentName ?? null, teamName: row.teamName,
+      groupKey: groupOf(row).key, status, since, late: lateOn(row) && row.startedAt !== null, row })
+  }
+  people.sort((a, b) => {
+    const rank = (person: AttendanceBoardPerson) => person.status === "absent" ? 0 : person.late ? 1 : ATTENTION_ORDER[person.status]
+    return rank(a) - rank(b) || (a.late && b.late ? (b.row.lateSeconds ?? 0) - (a.row.lateSeconds ?? 0) : 0) || a.name.localeCompare(b.name)
+  })
+
+  const groups = new Map<string, AttendanceBoardGroup>()
+  const sections = new Map<string, Map<string, AttendanceBoardSection>>()
+  for (const row of todayRows) {
+    const { key, name } = groupOf(row)
+    const group = groups.get(key) ?? { key, name, total: 0, expected: 0, arrived: 0, late: 0, absent: 0, away: 0, notYet: 0, sections: [], counts: emptyCounts() }
+    groups.set(key, group)
+    const expected = expectedOn(row), present = presentOn(row)
+    if (expected) group.expected++
+    if (present) group.arrived++
+    if (lateOn(row)) group.late++
+    if (row.kind === "ABSENT") group.absent++
+    if (awayOn(row)) group.away++
+    if (grouping === "department" && (expected || present)) {
+      const bySection = sections.get(key) ?? new Map<string, AttendanceBoardSection>()
+      sections.set(key, bySection)
+      const sectionKey = row.teamId ?? NONE_KEY
+      const section = bySection.get(sectionKey) ?? { key: sectionKey, name: row.teamId ? row.teamName : null, arrived: 0, expected: 0 }
+      bySection.set(sectionKey, section)
+      if (expected) section.expected++
+      if (present) section.arrived++
+    }
+  }
+  const counts = emptyCounts()
+  for (const person of people) {
+    countPerson(counts, person)
+    const group = groups.get(person.groupKey)
+    if (!group) continue
+    group.total++
+    if (person.status === "notYet") group.notYet++
+    countPerson(group.counts, person)
+  }
+  for (const group of groups.values()) group.sections = [...(sections.get(group.key)?.values() ?? [])].sort(byName)
+  const listed = grouping === "none" ? [] : [...groups.values()].filter(group => group.total > 0 || group.arrived > 0).sort(byName)
+  return { grouping, groups: listed.length > 1 ? listed : [], people, counts }
+}

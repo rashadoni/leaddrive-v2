@@ -112,15 +112,88 @@ describe("Personnel → Today", () => {
     expect(items[3].textContent).toContain("Эльвин")
   })
 
-  // Owner, 2026-10-16 (approved mockup): who is at work, on a break, gone and not yet in.
-  it("shows who is at work now, and a name opens the employee for an administrator", async () => {
+  // Owner, 2026-11-02 (approved mockup after the HRSS clip): everyone of the day in one table, a row opens the day.
+  it("lists everyone of the day with a status, the absent and late first, and a row opens the day card", async () => {
     await render()
-    const now = byTestId("attendance-today-now")!
-    const names = (key: string) => [...now.querySelectorAll(`[data-testid="attendance-now-${key}"] li a`)].map(link => link.textContent)
-    expect(names("working")).toEqual(["Айсель", "Эльвин", "Нигяр"])
-    expect(names("notYet")).toEqual(["Рашад"])
-    expect(byTestId("attendance-now-working")!.textContent).toContain(p("nowSince").replace("{time}", "08:55"))
-    expect(now.querySelector("li a")!.getAttribute("href")).toBe(`/mtm/attendance/people/${encodeURIComponent("id-Айсель")}`)
+    const rows = [...container.querySelectorAll<HTMLElement>('[data-testid="attendance-board-row"]')]
+    expect(rows.map(row => row.dataset.employee)).toEqual(["id-Рашад", "id-Нигяр", "id-Айсель", "id-Эльвин"])
+    expect(rows.map(row => row.querySelector('[data-testid="attendance-board-status"]')!.getAttribute("data-status"))).toEqual(["absent", "working", "working", "working"])
+    expect(rows[2].textContent).toContain(p("statusWorking").replace("{time}", "08:55"))
+    expect(rows[1].textContent).toContain("25 мин")
+    // No departments and no sections: no strip of cards, and the hint does not talk about cards.
+    expect(byTestId("attendance-board-groups")).toBeNull()
+    expect(byTestId("attendance-board-hint")!.textContent).toBe(p("boardRefreshHint"))
+    expect(byTestId("attendance-board-filter-all")!.textContent).toBe(`${p("filterAll")}4`)
+    expect(byTestId("attendance-board-filter-late")!.textContent).toBe(`${p("filterLate")}1`)
+    expect(byTestId("attendance-board-filter-absent")!.textContent).toBe(`${p("filterAbsent")}1`)
+
+    await act(async () => rows[1].click())
+    const card = document.body.querySelector<HTMLElement>('[data-testid="attendance-board-card"]')!
+    expect(card.textContent).toContain("Нигяр")
+    expect(card.querySelector('[data-testid="attendance-board-deviations"]')!.textContent).toContain("25 мин")
+    expect([...card.querySelectorAll("a")].map(link => link.getAttribute("href"))).toEqual([
+      `/mtm/attendance/timesheet?date=${today}&employeeId=${encodeURIComponent("id-Нигяр")}`, `/mtm/attendance/people/${encodeURIComponent("id-Нигяр")}`])
+    // Without the right to ask (the explanations route refuses) the card asks nothing.
+    expect(card.querySelector('[data-testid="attendance-board-ask"]')).toBeNull()
+    const tab = [...card.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(item => item.textContent === p("drawerTabMarks"))!
+    await act(async () => tab.click())
+    expect(card.querySelector('[data-testid="attendance-board-tab-marks"]')!.textContent).toContain("09:25")
+  })
+
+  it("adds the departments up, and a department card keeps only its people in the table and in the filters", async () => {
+    const people = [["Айсель", "d-sales", "Продажи", "t-baku", "Баку"], ["Нигяр", "d-sales", "Продажи", "t-regions", "Регионы"], ["Рашад", "d-stock", "Склад", null, null], ["Эльвин", "d-stock", "Склад", null, null]] as const
+    currentReport = buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-14T08:00:00Z", rules: [], calendar: [], dayKinds: kinds,
+      employees: people.map(([name, departmentId, departmentName, teamId, teamName]) => ({ id: `id-${name}`, name, departmentId, departmentName, teamId, teamName })),
+      workdays: [day("id-Айсель", today, "08:55"), day("id-Нигяр", today, "09:25"), day("id-Эльвин", today, "09:00")] })
+    await render()
+    const cards = [...container.querySelectorAll<HTMLButtonElement>('[data-testid="attendance-board-group"]')]
+    expect(cards.map(card => card.textContent!.split(p("boardShow"))[0])).toEqual([p("boardDepartment").replace("{name}", "Продажи"), p("boardDepartment").replace("{name}", "Склад")])
+    expect(cards.map(card => card.querySelector('[data-testid="attendance-board-percent"]')!.textContent)).toEqual(["100%", "50%"])
+    expect(cards[1].querySelector('[data-testid="attendance-board-facts"]')!.textContent).toContain(p("boardAbsent").replace("{count}", "1"))
+    expect(cards[0].textContent).toContain("Регионы")
+    // The tiles above count the same people.
+    expect(byTestId("attendance-today-arrived-value")!.textContent).toBe("3")
+    expect(byTestId("attendance-board-hint")!.textContent).toBe(p("boardHint"))
+
+    await act(async () => cards[1].click())
+    expect(cards[1].getAttribute("aria-pressed")).toBe("true")
+    expect([...container.querySelectorAll<HTMLElement>('[data-testid="attendance-board-row"]')].map(row => row.dataset.employee)).toEqual(["id-Рашад", "id-Эльвин"])
+    expect(byTestId("attendance-board-filter-all")!.textContent).toBe(`${p("filterAll")}2`)
+    expect(byTestId("attendance-board-filter-late")!.textContent).toBe(`${p("filterLate")}0`)
+    await act(async () => cards[1].click())
+    expect(container.querySelectorAll('[data-testid="attendance-board-row"]')).toHaveLength(4)
+  })
+
+  it("filters by status and finds by name", async () => {
+    await render()
+    await act(async () => byTestId("attendance-board-filter-late")!.click())
+    expect([...container.querySelectorAll<HTMLElement>('[data-testid="attendance-board-row"]')].map(row => row.dataset.employee)).toEqual(["id-Нигяр"])
+    await act(async () => byTestId("attendance-board-filter-all")!.click())
+    await type(byTestId("attendance-board-people")!.querySelector("input")!, "айс")
+    expect([...container.querySelectorAll<HTMLElement>('[data-testid="attendance-board-row"]')].map(row => row.dataset.employee)).toEqual(["id-Айсель"])
+    await type(byTestId("attendance-board-people")!.querySelector("input")!, "никто")
+    expect(byTestId("attendance-board-people")!.textContent).toContain(p("peopleNobody"))
+  })
+
+  it("asks the absent for an explanation from the day card", async () => {
+    explanations = []
+    await render()
+    await act(async () => container.querySelector<HTMLElement>(`[data-testid="attendance-board-row"][data-employee="id-Рашад"]`)!.click())
+    const card = document.body.querySelector<HTMLElement>('[data-testid="attendance-board-card"]')!
+    expect(card.querySelector('[data-testid="attendance-board-explanation"]')!.textContent).toContain(p("explainNotAsked"))
+    await act(async () => card.querySelector<HTMLButtonElement>('[data-testid="attendance-board-ask"]')!.click())
+    const sent = fetchMock.mock.calls.find(([url, init]) => String(url) === "/api/v1/mtm/attendance/explanations" && init?.method === "POST")!
+    expect(JSON.parse(String(sent[1]!.body))).toEqual({ items: [{ agentId: "id-Рашад", date: today, kind: "ABSENT" }] })
+  })
+
+  it("draws twelve people, then everyone on request, without a frame of its own", async () => {
+    currentReport = reportOf(Array.from({ length: 11 }, (_, index) => ({ name: `Сотрудник ${String(index + 1).padStart(2, "0")}`, start: "08:50" })))
+    await render()
+    expect(container.querySelectorAll('[data-testid="attendance-board-row"]')).toHaveLength(12)
+    const more = buttonIn(byTestId("attendance-board-people"), p("peopleShowAll").replace("{count}", "15"))!
+    await act(async () => more.click())
+    expect(container.querySelectorAll('[data-testid="attendance-board-row"]')).toHaveLength(15)
+    expect(byTestId("attendance-board-people")!.innerHTML).not.toMatch(/overflow-(y-)?(auto|scroll)/)
   })
 
   // Owner, 2026-10-20: the «Kadr uçotu» clip says it under «Now», and so does the product.
