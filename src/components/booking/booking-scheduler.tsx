@@ -13,6 +13,7 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { CalendarCheck, CalendarClock, Clock, Loader2, MapPin, Phone, User, Video, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Hint } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -95,17 +96,25 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
 }
 
 export function BookingScheduler({
-  page, days, onBook, staff = false,
+  page, days, onBook, staff = false, initialStartsAt = null, onStartChange,
 }: {
   page: PublicBookingPage
   days: DaySlots[]
   staff?: boolean
   onBook: (request: BookingRequest) => Promise<BookResult>
+  /** A time already chosen elsewhere — a free window on the day's rail. */
+  initialStartsAt?: string | null
+  /** Lets the screen around the form draw the time being taken. */
+  onStartChange?: (startsAt: string | null) => void
 }) {
   const t = useTranslations("booking")
   const format = useBookingFormat(page.timezone)
   const [date, setDate] = useState<string | null>(days[0]?.date ?? null)
-  const [startsAt, setStartsAt] = useState<string | null>(null)
+  const [startsAt, setStartsAt] = useState<string | null>(initialStartsAt)
+  const chooseStart = (next: string | null) => {
+    setStartsAt(next)
+    onStartChange?.(next)
+  }
   const [form, setForm] = useState({ name: "", phone: "", email: "", note: "" })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -125,7 +134,7 @@ export function BookingScheduler({
       return
     }
     setError(result.reason === "calendar" ? t("calendarUnavailable") : result.reason === "expired" ? t("confirmationExpired") : result.reason === "taken" ? t("errTaken") : result.reason === "invalid" ? t("errInvalid") : t("errGeneric"))
-    if (result.reason === "taken") setStartsAt(null)
+    if (result.reason === "taken") chooseStart(null)
   }
 
   if (confirmed) return <BookingConfirmed page={page} booking={confirmed} />
@@ -142,7 +151,7 @@ export function BookingScheduler({
           </div>
         ) : startsAt ? (
           <div className="space-y-4">
-            <button type="button" className="flex items-center gap-1 text-sm font-medium text-primary" onClick={() => setStartsAt(null)}>
+            <button type="button" className="flex items-center gap-1 text-sm font-medium text-primary" onClick={() => chooseStart(null)}>
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("changeTime")}
             </button>
             <div className="rounded-lg border p-3">
@@ -169,10 +178,12 @@ export function BookingScheduler({
               </div>
             </div>
             {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
-            <Button className="min-h-11 w-full sm:w-auto" onClick={() => void submit()} disabled={!canSubmit}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CalendarCheck className="h-4 w-4" aria-hidden="true" />}
-              {t(staff ? "bookForClient" : "book", { time: format.time(startsAt) })}
-            </Button>
+            <Hint text={staff && !canSubmit && !busy ? t("bookDisabledHint") : ""} wrap>
+              <Button className="min-h-11 w-full sm:w-auto" onClick={() => void submit()} disabled={!canSubmit}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CalendarCheck className="h-4 w-4" aria-hidden="true" />}
+                {t(staff ? "bookForClient" : "book", { time: format.time(startsAt) })}
+              </Button>
+            </Hint>
           </div>
         ) : (
           <>
@@ -202,7 +213,7 @@ export function BookingScheduler({
                     <button
                       key={slot.startsAt}
                       type="button"
-                      onClick={() => setStartsAt(slot.startsAt)}
+                      onClick={() => chooseStart(slot.startsAt)}
                       className="rounded-lg border px-2 py-2.5 text-sm font-medium tabular-nums hover:border-primary hover:text-primary"
                     >
                       {format.time(slot.startsAt)}
