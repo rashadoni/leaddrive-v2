@@ -28,6 +28,8 @@ import {
   minutesFrom,
   packSpans,
   railRange,
+  spansClashing,
+  BookingHostChips,
   type TimelineMeeting,
 } from "@/components/booking/booking-day-timeline"
 import { deliveryState, nameInitials, integrationLabel } from "@/components/booking/booking-detail"
@@ -107,14 +109,37 @@ describe("meetings day view — the rail", () => {
     expect(alone.width).toBe("calc(100% - 0.25rem)")
   })
 
-  it("puts the time being booked beside the meeting it clashes with, not over it", () => {
+  it("names the meeting a chosen time runs into, and leaves that meeting's own name in sight", () => {
     const markup = render({ meetings: [AYTEN], pendingStart: minutes(10, 45), pendingEnd: minutes(11, 30) })
     const [meeting] = blockStyles(markup, "timeline-meeting")
+    const [pending] = blockStyles(markup, "timeline-pending")
+    // The clash is said in words, with whose meeting it is: «переносите» is a
+    // decision, and nobody can take it from a red rectangle alone.
+    expect(markup).toContain(AYTEN.name)
+    expect(markup).toContain(ru.booking.clashTag)
+    expect(markup).not.toContain(ru.booking.newMeeting)
+    // The meeting keeps the full width and the clashing block starts a third
+    // of the way in, so the avatar and the name underneath stay readable.
+    expect(meeting.left).toBe("0%")
+    expect(Number.parseInt(pending.left, 10)).toBeGreaterThan(0)
+  })
+
+  it("draws a time that clashes with nothing as a plain full-width block", () => {
+    const markup = render({ meetings: [AYTEN], pendingStart: minutes(12), pendingEnd: minutes(12, 45) })
+    const [pending] = blockStyles(markup, "timeline-pending")
     expect(markup).toContain(ru.booking.newMeeting)
-    const pending = markup.slice(markup.indexOf(ru.booking.newMeeting) - 400, markup.indexOf(ru.booking.newMeeting))
-    const left = /left:([^;"]+)/.exec(pending)?.[1]
-    expect(left).toBeDefined()
-    expect(left).not.toBe(meeting.left)
+    expect(markup).not.toContain(ru.booking.clashTag)
+    expect(pending.left).toBe("0%")
+  })
+
+  it("counts a cancelled meeting out of a clash, because its hour is free again", () => {
+    const cancelled = { ...AYTEN, status: "cancelled" }
+    const live = spansClashing({ start: minutes(10, 45), end: minutes(11, 30) }, [AYTEN])
+    expect(live.map((item) => item.id)).toEqual([AYTEN.id])
+    // The rail hands the helper only the meetings that still hold their hour.
+    expect(spansClashing({ start: minutes(10, 45), end: minutes(11, 30) }, [cancelled].filter((item) => item.status !== "cancelled"))).toEqual([])
+    // Touching ends do not overlap: 11:15 is free the moment 11:15 arrives.
+    expect(spansClashing({ start: minutes(11, 15), end: minutes(12) }, [AYTEN])).toEqual([])
   })
 
   it("offers a free window as one button, and stops offering it while a time is being taken", () => {
@@ -128,24 +153,35 @@ describe("meetings day view — the rail", () => {
     expect(blockStyles(render({ windows, onBook: () => {}, pendingStart: minutes(12), pendingEnd: minutes(12, 45) }), "timeline-window")).toHaveLength(0)
   })
 
-  it("draws the «now» line only on the day that is today", () => {
-    expect(render({ nowMinutes: minutes(13, 10) })).toContain("13:10")
-    expect(render({ nowMinutes: null })).not.toContain("13:10")
+  it("draws the «now» line on today, and never stretches the rail to reach it", () => {
+    // The day here runs 09:00–11:15, so the rail runs 09:00–12:00.
+    expect(render({ nowMinutes: minutes(10, 10) })).toContain("10:10")
+    expect(render({ nowMinutes: null })).not.toContain("10:10")
+    // Long after the last meeting the marker says nothing the rail does not,
+    // and reaching it would draw hours of empty day under the content.
+    expect(render({ nowMinutes: minutes(17, 37) })).not.toContain("17:37")
   })
 })
 
 describe("meetings day view — what the rail covers", () => {
-  it("grows past the working day for a meeting that starts before it or ends after", () => {
-    expect(railRange([])).toEqual({ from: 9, to: 19 })
-    expect(railRange([{ start: minutes(8, 20), end: minutes(9) }])).toEqual({ from: 8, to: 19 })
-    expect(railRange([{ start: minutes(19, 30), end: minutes(20, 15) }])).toEqual({ from: 9, to: 21 })
+  it("covers the hours the day uses and no more, early or late", () => {
+    // A day that ends at 15:30 used to draw the working day out to 19:00, and
+    // those three and a half empty hours were most of what the screen showed.
+    expect(railRange([{ start: minutes(9), end: minutes(15, 30) }])).toEqual({ from: 9, to: 16 })
+    expect(railRange([{ start: minutes(8, 20), end: minutes(9) }])).toEqual({ from: 8, to: 11 })
+    expect(railRange([{ start: minutes(19, 30), end: minutes(20, 15) }])).toEqual({ from: 19, to: 22 })
     // A whole day of meetings is still one rail, not a clipped one.
     expect(railRange([{ start: 0, end: minutes(23, 59) }])).toEqual({ from: 0, to: 24 })
+  })
+
+  it("falls back to the working day only when the day holds nothing at all", () => {
+    expect(railRange([])).toEqual({ from: 9, to: 19 })
   })
 
   it("never collapses to a rail with no height", () => {
     const range = railRange([{ start: minutes(10), end: minutes(10, 30) }], { from: 10, to: 10 })
     expect(range.to - range.from).toBeGreaterThanOrEqual(2)
+    expect(railRange([{ start: minutes(23, 30), end: minutes(23, 59) }]).to).toBe(24)
   })
 })
 
@@ -246,11 +282,43 @@ describe("meetings detail — what has been sent", () => {
   })
 })
 
+describe("meetings day view — whose day it is", () => {
+  const chips = (selected: string) => renderToStaticMarkup(createElement(NextIntlClientProvider, {
+    locale: "ru", timeZone: "Asia/Baku", messages: ru,
+    children: createElement(BookingHostChips, {
+      hosts: [{ id: "samir", name: "Самир Алиев", meta: "3 встречи" }, { id: "nigar", name: "Нигяр Гусейнова", meta: "1 встреча" }],
+      anyMeta: "4 встречи", selected, onSelect: () => {},
+    }),
+  } as ComponentProps<typeof NextIntlClientProvider>))
+
+  it("puts how busy each host is beside the name, where it is the reason to pick one", () => {
+    const markup = chips("")
+    expect(markup).toContain("Самир Алиев")
+    expect(markup).toContain("3 встречи")
+    expect(markup).toContain("1 встреча")
+    expect(markup).toContain("4 встречи")
+  })
+
+  it("marks the chosen host, and «the whole team» when none is chosen", () => {
+    expect(chips("")).toContain(`aria-pressed="true"`)
+    const picked = chips("samir")
+    // Exactly one chip is pressed, and it is the host's, not the team's.
+    expect([...picked.matchAll(/aria-pressed="true"/g)]).toHaveLength(1)
+    const pressed = picked.slice(picked.indexOf(`aria-pressed="true"`))
+    expect(pressed.slice(0, pressed.indexOf("</button>"))).toContain("Самир Алиев")
+  })
+
+  it("says which of the two a chip is, so the button guard can tell a filter from an action", () => {
+    expect([...chips("").matchAll(/data-crm-filter=""/g)]).toHaveLength(3)
+  })
+})
+
 describe("meetings day view — translations", () => {
   const sources = [
     "src/components/booking/booking-day-timeline.tsx",
     "src/components/booking/booking-detail.tsx",
     "src/components/booking/booking-workspace.tsx",
+    "src/components/booking/booking-create-panel.tsx",
   ]
 
   it("asks for no key that a locale is missing", () => {

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useQuery } from "@tanstack/react-query"
-import { TriangleAlert } from "lucide-react"
+import { CheckCircle2, Clock3, TriangleAlert } from "lucide-react"
 import { CrmSection } from "@/components/ui/crm-section"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,9 +11,28 @@ import { BookingScheduler, type BookResult, type BookingRequest, type PublicBook
 import { BOOKING_ERROR_KEYS } from "./booking-meeting-actions"
 import { bookingRequestIdentity, completeBookingRequest } from "@/lib/booking/client-identity"
 import { dateInputValueInTimezone } from "@/lib/timezone"
+import { cn } from "@/lib/utils"
 import type { DaySlots } from "@/lib/booking/availability"
 
-export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, onStartChange }: {
+const FIELD = "min-h-11 w-full rounded-[10px] border border-input bg-card px-3.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+const FIELD_LABEL = "text-xs font-semibold text-muted-foreground"
+
+/** A free time offered instead of one that clashes. */
+export interface BookingAlternative {
+  startsAt: string
+  time: string
+  meta: string
+}
+
+/** One line of «before you book» — a fact the screen already knows. */
+export interface BookingReadiness {
+  key: string
+  label: string
+  meta: string
+  waiting?: boolean
+}
+
+export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, onStartChange, clash, alternatives, onPickAlternative, checks }: {
   pages: { id: string; title: string; hostIds: string[] }[]
   hosts: { id: string; name: string }[]
   timezone: string
@@ -22,6 +41,11 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
   initial?: { pageId?: string; hostId?: string; day?: string; startsAt?: string }
   /** Lets the day's rail draw the time being taken while the form is filled. */
   onStartChange?: (startsAt: string | null) => void
+  /** The meeting the chosen time lands on, when it lands on one. */
+  clash?: { name: string; from: string; to: string; minutes: number } | null
+  alternatives?: BookingAlternative[]
+  onPickAlternative?: (startsAt: string) => void
+  checks?: BookingReadiness[]
 }) {
   const t = useTranslations("booking"), locale = useLocale()
   const presetPage = initial?.pageId
@@ -54,14 +78,53 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
       return { ok: true, booking: body.data }
     } catch { setError(t("commandUnconfirmed")); return { ok: false, reason: "error" } }
   }
-  return <div className="space-y-5">
-    <p className="text-sm text-muted-foreground">{t("createMeetingHint")}</p>
-    {!pages.length ? <p>{t("noAvailablePages")}</p> : <>
-      <div className="space-y-1"><Label htmlFor="create-meeting-page">{t("colPage")}</Label><select id="create-meeting-page" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" value={pageId} onChange={(event) => { setPageId(event.target.value); setHostId(""); onStartChange?.(null) }}>{pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select></div>
-      <div className="space-y-1"><Label htmlFor="create-meeting-host">{t("colHosts")}</Label><select id="create-meeting-host" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" value={hostId} onChange={(event) => { setHostId(event.target.value); onStartChange?.(null) }}><option value="">{t("automaticHost")}</option>{hosts.filter((host) => pages.find((page) => page.id === pageId)?.hostIds.includes(host.id)).map((host) => <option key={host.id} value={host.id}>{host.name}</option>)}</select></div>
-      <div className="space-y-1"><Label htmlFor="create-meeting-day">{t("chooseDay")}</Label><Input type="date" id="create-meeting-day" value={day} onChange={(event) => { if (event.target.value) { setDay(event.target.value); onStartChange?.(null) } }} /></div>
+  return <div className="space-y-4">
+    {!pages.length ? <p className="text-sm">{t("noAvailablePages")}</p> : <>
+      <div className="space-y-1.5"><Label className={FIELD_LABEL} htmlFor="create-meeting-page">{t("colPage")}</Label><select id="create-meeting-page" className={FIELD} value={pageId} onChange={(event) => { setPageId(event.target.value); setHostId(""); onStartChange?.(null) }}>{pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select></div>
+      <div className="space-y-1.5"><Label className={FIELD_LABEL} htmlFor="create-meeting-host">{t("colHosts")}</Label><select id="create-meeting-host" className={FIELD} value={hostId} onChange={(event) => { setHostId(event.target.value); onStartChange?.(null) }}><option value="">{t("automaticHost")}</option>{hosts.filter((host) => pages.find((page) => page.id === pageId)?.hostIds.includes(host.id)).map((host) => <option key={host.id} value={host.id}>{host.name}</option>)}</select></div>
+      <div className="space-y-1.5"><Label className={FIELD_LABEL} htmlFor="create-meeting-day">{t("chooseDay")}</Label><Input type="date" id="create-meeting-day" className={cn(FIELD, clash ? "border-destructive ring-2 ring-destructive/20" : "")} value={day} onChange={(event) => { if (event.target.value) { setDay(event.target.value); onStartChange?.(null) } }} /></div>
+
+      {/* The clash and the way out of it, together: a warning with no free time
+          beside it leaves the person to hunt the rail for one. */}
+      {clash ? <div className="rounded-xl bg-destructive/[0.06] p-4">
+        <p className="flex items-start gap-2.5">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <span className="min-w-0">
+            <span className="block break-words text-sm font-bold text-destructive">{t("clashTitle", { name: clash.name, time: clash.from })}</span>
+            <span className="mt-1 block text-[13px] text-muted-foreground">{t("clashHint", { minutes: clash.minutes })}</span>
+          </span>
+        </p>
+        {alternatives?.length ? <>
+          <p className="mb-2 mt-3 text-[13px] font-semibold text-muted-foreground">{t("clashOpenTimes")}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {alternatives.slice(0, 3).map((item) => <button
+              key={item.startsAt}
+              type="button"
+              onClick={() => onPickAlternative?.(item.startsAt)}
+              className="min-h-11 rounded-[10px] border border-border bg-card px-1 py-2 text-center transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="block text-sm font-bold tabular-nums">{item.time}</span>
+              <span className="block text-[11px] text-muted-foreground">{item.meta}</span>
+            </button>)}
+          </div>
+        </> : null}
+      </div> : null}
+
+      {checks?.length ? <div>
+        <p className="mb-2 mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{t("beforeBooking")}</p>
+        <ul className="space-y-1.5">
+          {checks.map((check) => <li key={check.key} className="flex items-center gap-2.5 text-sm">
+            {check.waiting
+              ? <Clock3 aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-amber-600 dark:text-amber-400" />
+              : <CheckCircle2 aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-emerald-600 dark:text-emerald-400" />}
+            <span className="min-w-0 flex-1 break-words font-semibold">{check.label}</span>
+            <span className="shrink-0 text-right text-xs text-muted-foreground">{check.meta}</span>
+          </li>)}
+        </ul>
+      </div> : null}
+
       {error ? <CrmSection role="alert" tone="destructive"><p className="flex items-start gap-2.5 text-sm"><TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />{error}</p></CrmSection> : null}
-      {available.isFetching ? <p role="status">{t("checkingSlots")}</p> : available.isError ? <p role="alert">{t(BOOKING_ERROR_KEYS[available.error.message] ?? "errLoad")}</p> : available.data ? <BookingScheduler key={`${pageId}:${day}:${hostId}`} page={available.data.page} days={available.data.days} onBook={book} staff initialStartsAt={initial?.startsAt ?? null} onStartChange={onStartChange} /> : null}
+      {available.isFetching ? <p role="status" className="text-sm text-muted-foreground">{t("checkingSlots")}</p> : available.isError ? <p role="alert" className="text-sm text-destructive">{t(BOOKING_ERROR_KEYS[available.error.message] ?? "errLoad")}</p> : available.data ? <BookingScheduler key={`${pageId}:${day}:${hostId}`} page={available.data.page} days={available.data.days} onBook={book} staff initialStartsAt={initial?.startsAt ?? null} onStartChange={onStartChange} /> : null}
     </>}
   </div>
 }

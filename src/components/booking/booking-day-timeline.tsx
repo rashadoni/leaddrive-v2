@@ -1,9 +1,10 @@
 "use client"
 
 /**
- * The day a meeting actually sits in: a week strip to choose the day, then the
- * day itself on an hour rail — each meeting a block as long as it lasts, the
- * free windows dashed between them, and a line where "now" is.
+ * The day a meeting actually sits in: a week strip to choose the day, chips to
+ * choose whose day it is, then the day itself on an hour rail — each meeting a
+ * block as long as it lasts, the free windows dashed between them, and a line
+ * where "now" is.
  *
  * Why a rail and not a third list: the list answers "what is next", the month
  * grid answers "which day". Neither answers "is there room at 14:00", and that
@@ -12,18 +13,23 @@
  * Geometry is in minutes from the day's midnight on the organization's clock,
  * so a meeting's block starts where its time starts and not where its string
  * sorts. Overlapping blocks stand side by side, the way a calendar shows two
- * colleagues busy at once — the alternative hides one of them.
+ * colleagues busy at once — the alternative hides one of them. The one block
+ * drawn over another is the time being taken when it clashes: it is offset to
+ * the right so the name underneath it stays readable, because that name is
+ * exactly what the person has to read before deciding.
  */
 import { useTranslations } from "next-intl"
-import { CalendarPlus, Clock3 } from "lucide-react"
+import { CalendarPlus, Clock3, TriangleAlert, Users } from "lucide-react"
 import { Hint, HintValue } from "@/components/hint"
 import { cn } from "@/lib/utils"
 
 export const PIXELS_PER_HOUR = 96
-const RAIL_WIDTH = "3.5rem"
+const RAIL_WIDTH = "4rem"
 const MINUTE_MS = 60_000
 /** Below this a block has room for one line only, so the time moves beside the name and who meets is dropped. */
 const COMPACT_BLOCK_PX = 60
+/** A clashing block starts here, so the name of what it clashes with stays visible. */
+const CLASH_OFFSET = "34%"
 
 export interface TimelineSpan {
   start: number
@@ -41,15 +47,38 @@ export interface TimelineWindow extends TimelineSpan {
   startsAt: string
 }
 
-const BLOCK_TONES: Record<string, string> = {
-  confirmed: "border-l-sky-600 bg-sky-50 dark:border-l-sky-400 dark:bg-sky-950/50",
-  completed: "border-l-emerald-600 bg-emerald-50 dark:border-l-emerald-400 dark:bg-emerald-950/50",
-  no_show: "border-l-amber-600 bg-amber-50 dark:border-l-amber-400 dark:bg-amber-950/50",
-  cancelled: "border-l-slate-400 bg-muted dark:border-l-slate-500",
+/** White text sits on each of these at 4.5:1 or better. */
+const AVATAR_TONES = ["bg-violet-600", "bg-sky-700", "bg-emerald-700", "bg-rose-600", "bg-indigo-600", "bg-teal-700"]
+
+export function avatarTone(seed: string): string {
+  let sum = 0
+  for (const character of seed) sum = (sum + (character.codePointAt(0) ?? 0)) % 9973
+  return AVATAR_TONES[sum % AVATAR_TONES.length]
+}
+
+export function nameInitials(name: string): string {
+  const letters = name.trim().split(/\s+/).slice(0, 2).map((word) => [...word][0] ?? "").join("")
+  return letters ? letters.toLocaleUpperCase() : "?"
+}
+
+export function BookingAvatar({ name, seed, className }: { name: string; seed?: string; className?: string }) {
+  return <span aria-hidden="true" className={cn("flex shrink-0 items-center justify-center rounded-full font-bold text-white", avatarTone(seed ?? name), className ?? "h-7 w-7 text-[11px]")}>{nameInitials(name)}</span>
+}
+
+const BLOCK_TONES: Record<string, { fill: string; bar: string }> = {
+  confirmed: { fill: "bg-primary/[0.07] dark:bg-primary/15", bar: "bg-primary" },
+  completed: { fill: "bg-emerald-50 dark:bg-emerald-950/50", bar: "bg-emerald-600 dark:bg-emerald-400" },
+  no_show: { fill: "bg-amber-50 dark:bg-amber-950/50", bar: "bg-amber-500 dark:bg-amber-400" },
+  cancelled: { fill: "bg-muted", bar: "bg-slate-300 dark:bg-slate-600" },
+}
+
+function blockTone(status: string) {
+  return BLOCK_TONES[status] ?? { fill: "bg-muted", bar: "bg-border" }
 }
 
 export function timelineBlockTone(status: string): string {
-  return BLOCK_TONES[status] ?? "border-l-border bg-muted"
+  const tone = blockTone(status)
+  return `${tone.fill} ${tone.bar}`
 }
 
 /** Minutes from the start of the day the rail draws. */
@@ -104,19 +133,33 @@ export function packSpans<T extends TimelineSpan>(items: T[]): { item: T; column
   return placed
 }
 
+/** The meetings a span would land on top of. */
+export function spansClashing<T extends TimelineSpan>(span: TimelineSpan | null, items: T[]): T[] {
+  if (!span) return []
+  return items.filter((item) => item.start < span.end && span.start < item.end)
+}
+
 /**
- * The hours the rail draws: the working day plus whatever sits outside it. A
- * fixed 09:00–19:00 rail would simply not show an 08:00 meeting.
+ * The hours the rail draws: exactly the ones the day uses, rounded out to the
+ * hour. It hugs the content rather than filling a fixed 09:00–19:00 working
+ * day — a day that ends at 15:30 drew three and a half empty hours under
+ * itself, and that empty tail is most of what the screen showed.
+ *
+ * The fallback is for a day with nothing at all, which the screen replaces
+ * with an empty state anyway.
  */
+const MIN_RAIL_HOURS = 3
+
 export function railRange(spans: TimelineSpan[], fallback: { from: number; to: number } = { from: 9, to: 19 }): { from: number; to: number } {
-  let from = fallback.from * 60
-  let to = fallback.to * 60
+  if (!spans.length) return fallback
+  let from = Infinity
+  let to = -Infinity
   for (const span of spans) {
     from = Math.min(from, Math.floor(span.start / 60) * 60)
     to = Math.max(to, Math.ceil(span.end / 60) * 60)
   }
-  const low = Math.max(0, Math.min(from, to - 120))
-  const high = Math.min(24 * 60, Math.max(to, low + 120))
+  const low = Math.max(0, Math.min(from, 24 * 60 - MIN_RAIL_HOURS * 60))
+  const high = Math.min(24 * 60, Math.max(to, low + MIN_RAIL_HOURS * 60))
   return { from: low / 60, to: high / 60 }
 }
 
@@ -140,6 +183,7 @@ export function BookingWeekStrip({ days, counts, selectedDay, today, loading, on
       const chosen = day === selectedDay
       const count = counts[day] ?? 0
       const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())
+      const quiet = weekend && !count && !loading
       return <button
         type="button"
         key={day}
@@ -150,22 +194,56 @@ export function BookingWeekStrip({ days, counts, selectedDay, today, loading, on
         // native control to say which of the two it is.
         data-crm-filter=""
         className={cn(
-          "min-h-20 rounded-xl border px-1 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-24 sm:px-2",
-          chosen ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-card hover:border-primary/50",
+          "min-h-20 rounded-xl border px-1 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[5.5rem] sm:px-2",
+          chosen ? "border-primary bg-primary text-primary-foreground shadow-[0_8px_18px_-10px_hsl(var(--primary))]"
+            : quiet ? "border-border/70 bg-transparent" : "border-border bg-card hover:border-primary/50",
         )}
       >
-        <span className={cn("block text-[10px] font-medium uppercase tracking-wide sm:text-[11px]", chosen ? "text-primary-foreground/80" : weekend ? "text-muted-foreground/60" : "text-muted-foreground")}>{weekdayLabel(day)}</span>
-        <span className="mt-0.5 block text-lg font-semibold tabular-nums sm:text-xl">{dayNumber(day)}</span>
-        {day === today ? <span className={cn("block text-[10px] font-medium sm:text-[11px]", chosen ? "text-primary-foreground/80" : "text-primary")}>{t("dayToday")}</span> : null}
-        <span className="mt-1 flex min-h-3 items-center justify-center gap-1" aria-hidden="true">
+        <span className={cn("block text-[10px] font-semibold uppercase tracking-wide sm:text-[11px]", chosen ? "text-primary-foreground/85" : quiet ? "text-muted-foreground/60" : "text-muted-foreground")}>{weekdayLabel(day)}</span>
+        <span className={cn("mt-0.5 block text-lg font-bold tabular-nums sm:text-xl", quiet ? "text-muted-foreground/60" : "")}>{dayNumber(day)}</span>
+        {quiet ? <span className="mt-1 block text-[10px] text-muted-foreground/60">{t("dayOff")}</span> : <span className="mt-1.5 flex min-h-2 items-center justify-center gap-[3px]" aria-hidden="true">
           {/* Three dots and a number: a phone gives each day about 44 px, and a
               fourth dot squeezes the row until the dots are drawn as slivers. */}
-          {loading ? <span className={cn("text-[11px]", chosen ? "text-primary-foreground/70" : "text-muted-foreground")}>…</span> : Array.from({ length: Math.min(count, 3) }, (_, index) => <span key={index} className={cn("h-1.5 w-1.5 shrink-0 rounded-full", chosen ? "bg-primary-foreground/80" : "bg-primary")} />)}
-          {!loading && count > 3 ? <span className={cn("shrink-0 text-[10px] font-medium tabular-nums", chosen ? "text-primary-foreground/80" : "text-primary")}>+{count - 3}</span> : null}
-        </span>
-        <span className="sr-only">{count ? t("dayCount", { count }) : t("dayEmpty")}</span>
+          {loading ? <span className={cn("text-[11px] leading-none", chosen ? "text-primary-foreground/70" : "text-muted-foreground")}>…</span> : Array.from({ length: Math.min(count, 3) }, (_, index) => <span key={index} className={cn("h-1 w-1 shrink-0 rounded-full", chosen ? "bg-primary-foreground" : "bg-primary")} />)}
+          {!loading && count > 3 ? <span className={cn("shrink-0 text-[10px] font-semibold leading-none tabular-nums", chosen ? "text-primary-foreground" : "text-primary")}>+{count - 3}</span> : null}
+        </span>}
+        {day === today && !chosen ? <span className="mt-0.5 block text-[10px] font-semibold text-primary">{t("dayToday")}</span> : null}
+        <span className="sr-only">{count ? t("dayCount", { count }) : t("dayEmpty")}{day === today ? ` · ${t("dayToday")}` : ""}</span>
       </button>
     })}
+  </div>
+}
+
+export interface HostChip {
+  id: string
+  name: string
+  meta: string
+}
+
+/**
+ * Whose day the rail shows. A chip instead of a select because the count beside
+ * each name is the reason to pick one, and a closed select hides every count.
+ */
+export function BookingHostChips({ hosts, anyMeta, selected, onSelect }: {
+  hosts: HostChip[]
+  anyMeta: string
+  selected: string
+  onSelect: (id: string) => void
+}) {
+  const t = useTranslations("booking")
+  const chip = (active: boolean) => cn(
+    "flex min-h-11 max-w-full items-center gap-2.5 rounded-full border py-1 pl-1.5 pr-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    active ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary" : "border-border bg-card hover:border-primary/50",
+  )
+  return <div className="flex flex-wrap gap-2" role="group" aria-label={t("colHosts")}>
+    <button type="button" data-crm-filter="" aria-pressed={!selected} onClick={() => onSelect("")} className={chip(!selected)}>
+      <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Users className="h-4 w-4" /></span>
+      <span className="min-w-0 truncate text-sm"><span className="font-semibold">{t("availableTeam")}</span>{anyMeta ? <span className="ml-1.5 text-muted-foreground">{anyMeta}</span> : null}</span>
+    </button>
+    {hosts.map((host) => <button type="button" key={host.id} data-crm-filter="" aria-pressed={selected === host.id} onClick={() => onSelect(host.id)} className={chip(selected === host.id)}>
+      <BookingAvatar name={host.name} className="h-8 w-8 text-xs" />
+      <span className="min-w-0 truncate text-sm"><span className="font-semibold">{host.name}</span>{host.meta ? <span className="ml-1.5 text-muted-foreground">{host.meta}</span> : null}</span>
+    </button>)}
   </div>
 }
 
@@ -184,21 +262,16 @@ export function BookingDayTimeline({ meetings, windows, nowMinutes, selectedId, 
   duration: (minutes: number) => string
 }) {
   const t = useTranslations("booking")
-  // One packing for meetings and the proposed time together: a block that only
-  // knows about its own kind would be drawn on top of the meeting it clashes
-  // with instead of beside it.
-  const blocks: ({ start: number; end: number } & ({ kind: "meeting"; meeting: TimelineMeeting } | { kind: "pending" }))[] = [
-    ...meetings.map((meeting) => ({ start: meeting.start, end: meeting.end, kind: "meeting" as const, meeting })),
-    ...(pendingStart !== null && pendingEnd !== null ? [{ start: pendingStart, end: pendingEnd, kind: "pending" as const }] : []),
-  ]
-  const rail = railRange([...blocks, ...windows])
-  const hours = Array.from({ length: rail.to - rail.from + 1 }, (_, index) => rail.from + index)
-  const placed = packSpans(blocks)
+  const pending = pendingStart !== null && pendingEnd !== null ? { start: pendingStart, end: pendingEnd } : null
+  const clashes = spansClashing(pending, meetings.filter((meeting) => meeting.status !== "cancelled"))
+  const rail = railRange([...meetings, ...(pending ? [pending] : []), ...windows])
+  const marks = Array.from({ length: (rail.to - rail.from) * 2 + 1 }, (_, index) => rail.from * 60 + index * 30)
+  const placed = packSpans(meetings)
 
   return <div className="relative" style={{ height: (rail.to - rail.from) * PIXELS_PER_HOUR + 24 }} aria-label={t("chooseTime")}>
-    {hours.map((hour) => <div key={hour} className="absolute inset-x-0 flex items-start" style={{ top: (hour - rail.from) * PIXELS_PER_HOUR }}>
-      <span className="-mt-2 shrink-0 pr-3 text-right text-xs tabular-nums text-muted-foreground" style={{ width: RAIL_WIDTH }}>{time(hour * 60)}</span>
-      <span aria-hidden="true" className="mt-0 h-px flex-1 bg-border" />
+    {marks.map((minute) => <div key={minute} className="absolute inset-x-0 flex items-start" style={{ top: offsetStyle(minute, rail.from) }}>
+      <span className="-mt-2 shrink-0 pr-3 text-right text-[11px] tabular-nums text-muted-foreground" style={{ width: RAIL_WIDTH }}>{time(minute)}</span>
+      <span aria-hidden="true" className={cn("mt-0 h-px flex-1", minute % 60 === 0 ? "bg-border" : "bg-border/50")} />
     </div>)}
     <div className="absolute inset-y-0 right-0" style={{ left: RAIL_WIDTH }}>
       {windows.map((window) => {
@@ -206,29 +279,31 @@ export function BookingDayTimeline({ meetings, windows, nowMinutes, selectedId, 
         // window is 44 px tall, and a button that still met the page’s own
         // 44 px minimum would not fit inside one.
         const height = Math.max(((window.end - window.start) / 60) * PIXELS_PER_HOUR - 4, 26)
-        const compact = height < COMPACT_BLOCK_PX
         const frame = { top: offsetStyle(window.start, rail.from), height, minHeight: height, minWidth: 0 }
         // While a time inside this window is being taken, the proposed block
         // is drawn over it and carries the times; two labels in one place read
         // as one garbled line.
         const covered = pendingStart !== null && pendingStart >= window.start && pendingStart < window.end
-        const inside = <span className={cn("flex h-full min-w-0 gap-x-2", compact ? "flex-row items-center justify-between" : "flex-col items-start gap-1")}>
-          {covered ? null : <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">
-            <span className="tabular-nums">{time(window.start)}–{time(window.end)}</span>
-            <span className="ml-2 text-muted-foreground/80">{duration(window.end - window.start)}</span>
+        // A native button centres its content; a tall window would then put
+        // its one line in the middle, behind whatever block sits there.
+        const inside = <span className="flex w-full min-w-0 items-center justify-between gap-x-3">
+          {covered ? null : <span className="min-w-0 truncate text-xs font-semibold text-primary">
+            {t("freeWindow")}
+            <span className="ml-2 font-medium tabular-nums text-muted-foreground">{time(window.start)}–{time(window.end)}</span>
+            <span className="ml-2 font-normal text-muted-foreground">{duration(window.end - window.start)}</span>
           </span>}
           {onBook && pendingStart === null ? <span className="flex shrink-0 items-center gap-1 truncate text-xs font-semibold text-primary">
             <CalendarPlus aria-hidden="true" className="h-4 w-4 shrink-0" />{t("createMeeting")}
           </span> : null}
         </span>
-        const shell = "absolute left-0 right-1 overflow-hidden rounded-lg border border-dashed border-primary/50 bg-primary/5 px-3 py-1.5 text-left"
+        const shell = "absolute left-0 right-1 flex items-start overflow-hidden rounded-xl border-[1.5px] border-dashed border-primary/45 px-3.5 py-2 text-left"
         if (!onBook || pendingStart !== null) return <div key={`free:${window.startsAt}`} className={shell} style={frame}>{inside}</div>
         return <Hint key={`free:${window.startsAt}`} text={t("bookForClient", { time: time(window.start) })}>
           <button
             type="button"
             data-testid="timeline-window"
             onClick={() => onBook(window.startsAt)}
-            className={cn(shell, "transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+            className={cn(shell, "transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}
             style={frame}
           >
             {inside}
@@ -242,43 +317,70 @@ export function BookingDayTimeline({ meetings, windows, nowMinutes, selectedId, 
         // its meeting is long, so the minimum is pinned inline where it cannot
         // stretch a quarter-hour into three quarters.
         const frame = { top: offsetStyle(item.start, rail.from), height, minHeight: height, minWidth: 0, left: `${(column / columns) * 100}%`, width: `calc(${(1 / columns) * 100}% - 0.25rem)` }
-        if (item.kind === "pending") return <div
-          key="pending"
-          role="status"
-          className="absolute flex flex-col justify-center overflow-hidden rounded-lg border-2 border-dashed border-primary bg-primary/10 px-3 py-1.5"
-          style={frame}
-        >
-          <p className="truncate text-sm font-semibold text-primary">{t("newMeeting")}</p>
-          <p className="truncate text-xs tabular-nums text-primary/80">{time(item.start)}–{time(item.end)}</p>
-        </div>
-        const meeting = item.meeting
-        const chosen = meeting.id === selectedId
+        const chosen = item.id === selectedId
+        const tone = blockTone(item.status)
         return <button
           type="button"
-          key={meeting.id}
-          onClick={() => onSelect(meeting.id)}
+          key={item.id}
+          onClick={() => onSelect(item.id)}
           aria-pressed={chosen}
+          // Picking a block says which meeting the column shows; it is a
+          // selection, not the screen's action, and the filled state marks the
+          // chosen one. The guard in scripts/check-crm-button-hierarchy.mjs
+          // asks a filled native control to say which of the two it is.
+          data-crm-filter=""
           data-testid="timeline-meeting"
           className={cn(
-            "absolute overflow-hidden rounded-lg border border-border border-l-4 px-3 py-1.5 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            timelineBlockTone(meeting.status),
-            chosen ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : "",
+            "absolute overflow-hidden rounded-xl pl-3.5 pr-3 py-2 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            chosen ? "bg-primary text-primary-foreground shadow-[0_10px_24px_-12px_hsl(var(--primary))]" : tone.fill,
           )}
           style={frame}
         >
-          <span className={cn("flex h-full min-w-0 gap-x-2", compact ? "flex-row items-center justify-between" : "flex-col justify-between")}>
+          {chosen ? null : <span aria-hidden="true" className={cn("absolute inset-y-1.5 left-0 w-[3px] rounded-full", tone.bar)} />}
+          <span className={cn("flex h-full min-w-0 items-start gap-2.5", compact ? "flex-row items-center" : "")}>
+            {compact ? null : <BookingAvatar name={item.name} seed={item.id} className={cn("mt-0.5 h-[26px] w-[26px] text-[10px]", chosen ? "ring-2 ring-primary-foreground/30" : "")} />}
             <span className="min-w-0 flex-1">
-              <span className={cn("block truncate text-sm font-semibold", meeting.status === "cancelled" ? "text-muted-foreground line-through" : "")}>{meeting.name}</span>
-              {compact ? null : <span className="mt-0.5 block truncate text-xs text-muted-foreground">{meeting.subtitle}</span>}
+              <span className={cn("block truncate text-sm font-semibold", item.status === "cancelled" && !chosen ? "text-muted-foreground line-through" : "")}>{item.name}</span>
+              {compact ? null : <span className={cn("mt-0.5 block truncate text-xs", chosen ? "text-primary-foreground/85" : "text-muted-foreground")}>
+                <span className="tabular-nums">{time(item.start)}–{time(item.end)}</span>, {item.subtitle}
+              </span>}
             </span>
-            <span className={cn("shrink-0 text-xs tabular-nums text-muted-foreground", compact ? "" : "mt-auto")}>{time(meeting.start)}–{time(meeting.end)}</span>
+            {compact ? <span className={cn("shrink-0 text-xs tabular-nums", chosen ? "text-primary-foreground/85" : "text-muted-foreground")}>{time(item.start)}–{time(item.end)}</span> : null}
           </span>
-          <span className="sr-only">{statusLabel(meeting.status)}</span>
+          <span className="sr-only">{statusLabel(item.status)}</span>
         </button>
       })}
-      {nowMinutes !== null && nowMinutes >= rail.from * 60 && nowMinutes <= rail.to * 60 ? <div className="pointer-events-none absolute inset-x-0 flex items-center" style={{ top: offsetStyle(nowMinutes, rail.from) }}>
-        <span aria-hidden="true" className="h-0.5 flex-1 bg-primary" />
-        <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-foreground">{time(nowMinutes)}</span>
+      {pending ? (() => {
+        const height = Math.max(((pending.end - pending.start) / 60) * PIXELS_PER_HOUR - 4, 26)
+        // Offset only when it clashes: there it is drawn over the meeting, and
+        // the left third keeps that meeting's avatar and name in sight.
+        const frame = { top: offsetStyle(pending.start, rail.from), height, minHeight: height, minWidth: 0, left: clashes.length ? CLASH_OFFSET : "0%", right: "0.25rem", zIndex: 4 }
+        return <div
+          key="pending"
+          role="status"
+          data-testid="timeline-pending"
+          className={cn(
+            "absolute flex flex-col justify-center overflow-hidden rounded-xl border-[1.5px] border-dashed px-3.5 py-2",
+            clashes.length ? "border-destructive bg-destructive/5" : "border-primary bg-primary/10",
+          )}
+          style={frame}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className={cn("min-w-0 flex-1 truncate text-sm font-semibold", clashes.length ? "text-destructive" : "text-primary")}>
+              {clashes.length ? t("clashRequested", { from: time(pending.start), to: time(pending.end) }) : t("newMeeting")}
+            </span>
+            {clashes.length ? <span className="flex shrink-0 items-center gap-1 rounded-full border border-destructive/40 bg-card px-2 py-0.5 text-[11px] font-bold text-destructive">
+              <TriangleAlert aria-hidden="true" className="h-3 w-3" />{t("clashTag")}
+            </span> : null}
+          </span>
+          <span className={cn("mt-0.5 truncate text-xs", clashes.length ? "text-destructive/85" : "text-primary/80")}>
+            {clashes.length ? t("clashWith", { name: clashes[0].name }) : <span className="tabular-nums">{time(pending.start)}–{time(pending.end)}</span>}
+          </span>
+        </div>
+      })() : null}
+      {nowMinutes !== null && nowMinutes >= rail.from * 60 && nowMinutes <= rail.to * 60 ? <div className="pointer-events-none absolute inset-x-0 flex items-center" style={{ top: offsetStyle(nowMinutes, rail.from), zIndex: 5 }}>
+        <span aria-hidden="true" className="h-px flex-1 border-t border-dashed border-primary" />
+        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">{time(nowMinutes)}</span>
         <span className="sr-only">{t("nowAt", { time: time(nowMinutes) })}</span>
       </div> : null}
     </div>
@@ -289,7 +391,7 @@ export function BookingDayLegend({ statuses, statusLabel }: { statuses: string[]
   const t = useTranslations("booking")
   return <ul className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label={t("workspaceStatus")}>
     {statuses.map((status) => <li key={status} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-sm border-l-4", timelineBlockTone(status))} />
+      <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-sm", blockTone(status).bar)} />
       {statusLabel(status)}
     </li>)}
   </ul>
