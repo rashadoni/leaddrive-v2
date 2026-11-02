@@ -5,11 +5,18 @@ BACKUP COMMISSIONING; ENTERPRISE PITR/SECOND-REGION/FULL-AUTHORITY GATES OPEN;
 KAFKA TRANSPORT PREPARED BUT NOT ACTIVATED**
 Date: 2026-09-05
 
-> **2026-10-25: Kafka остаётся.** Владелец вечером отменил дневное решение
-> свернуть Kafka. Прод снова CDC-источник: слот, публикация и вход роли CDC
-> восстановлены после ошибочного запуска `retire-event-cdc-source.yml apply`.
-> Workflow теперь умеет только `inspect` и `restore`. См. раздел «Kafka
-> остаётся» в корневом `CLAUDE.md`.
+> **2026-11-02: Kafka снята.** Владелец: «тогда давай лишние серверы уберем.
+> он по карману бьет», «Да, семь». Семь хостов из восьми отменены, прод снят с
+> роли CDC-источника (`retire-cdc-source.sh apply`): слота, публикации и входа
+> роли CDC больше нет — это целевое состояние, а не авария. События остаются в
+> `event_outbox` в проде, оттуда лента и догоняется, если её поднимут заново.
+> Восьмой хост (OVH Гравлин) живёт ради запасного сторожа телефонной линии.
+> Workflow умеет только `inspect` и `restore`; `restore` — по слову владельца.
+> См. раздел «Kafka снята» в корневом `CLAUDE.md`.
+>
+> (2026-10-25, для истории: владелец тогда отменил дневное решение свернуть
+> Kafka, и прод вернули в источники CDC после ошибочного запуска
+> `retire-event-cdc-source.yml apply` другой сессией.)
 
 LeadDrive uses this program to make calculation, consumer, and projection bugs
 recoverable without rolling the whole shared multi-tenant database back in
