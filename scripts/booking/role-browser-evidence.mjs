@@ -295,7 +295,10 @@ try {
   await api(employee.context, `/api/v1/bookings/${fixture.meetings.employee.id}`);
   await rows(employee.page).filter({ hasText: fixture.meetings.employee.name }).click();
   const dialog = employee.page.getByRole('dialog');
-  await dialog.getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
+  // The sheet's own header also carries the client's name; the card inside it
+  // is where the meeting itself is read, so assert there.
+  await dialog.getByRole('region', { name: copy.workspaceDetails, exact: true })
+    .getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
   await dialog.getByRole('button', { name: copy.close, exact: true }).click();
   assert.equal(await employee.page.locator('#meeting-period').inputValue(), 'all');
   pass('meeting-detail-close-preserves-context');
@@ -313,9 +316,11 @@ try {
   // column, and the rail stands on the meeting's own day, not on today.
   const card = employee.page.getByRole('region', { name: copy.workspaceDetails, exact: true });
   await card.getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
-  const meetingDate = String(new Date(`${day}T12:00:00Z`).getUTCDate());
-  await employee.page.getByRole('region', { name: copy.viewDay, exact: true })
-    .locator('button[aria-pressed="true"]').filter({ hasText: new RegExp(`\\b${meetingDate}\\b`) }).first().waitFor();
+  // Only the week strip's days carry data-crm-filter, so exactly one button
+  // matches; a meeting block is also aria-pressed and its times hold digits.
+  const chosenDay = employee.page.locator('button[data-crm-filter][aria-pressed="true"]');
+  await chosenDay.waitFor();
+  assert.match(await chosenDay.innerText(), new RegExp(`\\b${new Date(`${day}T12:00:00Z`).getUTCDate()}\\b`));
   pass('task-link-returns-exact-meeting-on-its-own-day');
   stage = 'negative-controls';
   for (const key of ['assigned', 'excluded', 'foreign']) {
