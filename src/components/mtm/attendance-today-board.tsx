@@ -136,7 +136,8 @@ export function MtmAttendanceBoard({ rows, today, timezone, loadedAt, canManage,
       </div>
 
       {chosen.length === 0 ? <p className="px-5 py-6 text-sm text-muted-foreground">{t("peopleNobody")}</p> : <>
-        <table className="hidden w-full text-sm md:table" data-testid="attendance-board-table">
+        <div className="hidden overflow-x-auto md:block">
+        <table className="w-full text-sm" data-testid="attendance-board-table">
           <thead><tr className="text-left text-xs font-semibold text-muted-foreground">
             <th scope="col" className="py-2.5 pl-5 pr-3 font-semibold">{t("colEmployee")}</th>
             <th scope="col" className="hidden px-3 py-2.5 font-semibold xl:table-cell">{t("colSection")}</th>
@@ -169,6 +170,7 @@ export function MtmAttendanceBoard({ rows, today, timezone, loadedAt, canManage,
             </tr>
           })}</tbody>
         </table>
+        </div>
         <ul className="md:hidden" data-testid="attendance-board-list">{shown.map(person => <li key={person.employeeId} className="border-t border-border">
           <button type="button" className="block w-full px-4 py-3 text-left" onClick={() => setOpenId(person.employeeId)}>
             <span className="flex items-baseline justify-between gap-2"><span className="font-semibold">{person.name}</span>

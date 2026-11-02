@@ -193,7 +193,7 @@ describe("Personnel → Today", () => {
     const more = buttonIn(byTestId("attendance-board-people"), p("peopleShowAll").replace("{count}", "15"))!
     await act(async () => more.click())
     expect(container.querySelectorAll('[data-testid="attendance-board-row"]')).toHaveLength(15)
-    expect(byTestId("attendance-board-people")!.innerHTML).not.toMatch(/overflow-(y-)?(auto|scroll)/)
+    expect(byTestId("attendance-board-people")!.innerHTML).not.toMatch(/overflow-y-(auto|scroll)|overflow-(auto|scroll)\b/)
   })
 
   // Owner, 2026-10-20: the «Kadr uçotu» clip says it under «Now», and so does the product.
