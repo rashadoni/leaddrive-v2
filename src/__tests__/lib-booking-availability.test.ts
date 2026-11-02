@@ -2,7 +2,7 @@
  * Free time on a booking page: which slots a customer is offered.
  */
 import { describe, expect, it } from "vitest"
-import { computeSlots, defaultWeeklyHours, findSlot, parseWeeklyHours, type BookingRules } from "@/lib/booking/availability"
+import { computeSlots, defaultWeeklyHours, findSlot, offHoursIntervals, parseWeeklyHours, type BookingRules, type WeeklyHours } from "@/lib/booking/availability"
 
 const baku = (over: Partial<BookingRules> = {}): BookingRules => ({
   timezone: "Asia/Baku",
@@ -13,6 +13,8 @@ const baku = (over: Partial<BookingRules> = {}): BookingRules => ({
   weekly: defaultWeeklyHours(),
   ...over,
 })
+
+const baseRules = () => baku()
 
 // Friday 23 October 2026, 09:00 in Baku (UTC+4).
 const FRIDAY_9 = new Date("2026-10-23T05:00:00Z")
@@ -71,5 +73,47 @@ describe("parseWeeklyHours", () => {
     expect(parseWeeklyHours({ "1": [{ start: "09:00", end: "13:00" }, { start: "12:00", end: "15:00" }] })).toBeNull()
     expect(parseWeeklyHours({ "1": [{ start: "9", end: "13:00" }] })).toBeNull()
     expect(parseWeeklyHours([])).toBeNull()
+  })
+})
+
+describe("a host's own working days", () => {
+  /** In Baku (UTC+4, no daylight saving) this clock time is that instant. */
+  const at = (iso: string) => new Date(`${iso}:00+04:00`).toISOString()
+  const everyDay = (start: string, end: string): WeeklyHours =>
+    Object.fromEntries(["0", "1", "2", "3", "4", "5", "6"].map((day) => [day, [{ start, end }]])) as WeeklyHours
+
+  it("turns the hours a host does not work into busy time, and nothing else", () => {
+    const off = offHoursIntervals(everyDay("10:00", "11:00"), "Asia/Baku",
+      new Date(at("2026-10-23T00:00")), new Date(at("2026-10-23T23:59")))
+    const friday = off.filter((item) => item.start >= new Date(at("2026-10-23T00:00")) && item.end <= new Date(at("2026-10-24T00:00")))
+    expect(friday.map((item) => [item.start.toISOString(), item.end.toISOString()])).toEqual([
+      [at("2026-10-23T00:00"), at("2026-10-23T10:00")],
+      [at("2026-10-23T11:00"), at("2026-10-24T00:00")],
+    ])
+    // Every interval says it is absence, not a meeting: a screen must be able
+    // to tell them apart, or it draws the whole evening as a grey block.
+    expect(off.every((item) => item.kind === "off")).toBe(true)
+  })
+
+  it("marks a whole day off, and a host with no hours at all", () => {
+    const weekly = { ...everyDay("09:00", "18:00"), "5": [] } as WeeklyHours
+    const off = offHoursIntervals(weekly, "Asia/Baku", new Date(at("2026-10-23T08:00")), new Date(at("2026-10-23T20:00")))
+    expect(off.some((item) => item.start.toISOString() === at("2026-10-23T00:00") && item.end.toISOString() === at("2026-10-24T00:00"))).toBe(true)
+  })
+
+  it("leaves the page's own hours alone when the host has no schedule", () => {
+    const rules = baseRules()
+    const open = computeSlots({ rules, hostIds: ["leyla"], busyByHost: new Map([["leyla", []]]), now: FRIDAY_9 })
+    const withSchedule = computeSlots({
+      rules, hostIds: ["leyla"], now: FRIDAY_9,
+      busyByHost: new Map([["leyla", offHoursIntervals(everyDay("10:00", "11:00"), "Asia/Baku", FRIDAY_9, new Date(FRIDAY_9.getTime() + 7 * 86400_000))]]),
+    })
+    const times = (days: ReturnType<typeof computeSlots>) => days.flatMap((day) => day.slots.map((slot) => slot.startsAt))
+    expect(times(open).length).toBeGreaterThan(times(withSchedule).length)
+    // What is left is only the hour the host actually works.
+    for (const startsAt of times(withSchedule)) {
+      expect(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Baku" }).format(new Date(startsAt))).toMatch(/^10:(00|30)$/)
+    }
+    expect(times(withSchedule).length).toBeGreaterThan(0)
   })
 })

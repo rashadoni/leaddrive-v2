@@ -75,6 +75,7 @@ model Organization {
   bookingBindings BookingIntegrationBinding[]
   bookingCoordinatorGrants BookingCoordinatorGrant[]
   bookingPages          BookingPage[]
+  bookingHostSchedules  BookingHostSchedule[]
   adConversionDestinations AdConversionDestination[]
   adConversionEvents       AdConversionEvent[]
   telegramStaffBot         TelegramStaffBot?
@@ -861,6 +862,7 @@ model User {
 
   @@unique([organizationId, email])
   @@unique([organizationId, id])
+  bookingHostSchedules BookingHostSchedule[]
   @@map("users")
 }
 
@@ -23526,6 +23528,26 @@ model BookingPage {
 /// One meeting a customer booked. Two confirmed bookings of one host never
 /// start at the same moment (partial unique index in the migration), and the
 /// booking transaction holds a per-host lock while it checks for overlap.
+/// When a host actually works, when that differs from the booking page's own
+/// hours. One row per host; no row means the page's hours, so an organization
+/// that never opens this screen keeps the behaviour it had.
+model BookingHostSchedule {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// { "0".."6": [{ start: "HH:mm", end: "HH:mm" }] } on the organization's clock, 0 = Sunday.
+  weekly         Json
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@map("booking_host_schedules")
+}
+
 model Booking {
   version Int @default(0)
   snapshot Json?

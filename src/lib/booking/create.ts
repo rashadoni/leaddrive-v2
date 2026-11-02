@@ -51,7 +51,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   if (!permitted.length) return { ok: false, reason: "taken" }
   const from = now, to = new Date(now.getTime() + (page.maxDaysAhead + 2) * 86400_000)
   const checkedAt = Date.now()
-  const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to)
+  const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to, org.timezone)
   const slot = findSlot(computeSlots({ rules: bookingRules(page, org.timezone), hostIds: permitted.map((host) => host.id), busyByHost: busy, now }), input.startsAt)
   if (!slot) {
     if (busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
