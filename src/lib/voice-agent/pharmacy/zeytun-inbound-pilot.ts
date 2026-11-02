@@ -86,8 +86,11 @@ export type InboundPilotCatalog = {
 }
 // 1C base units as the caller would say them. A unit missing here (tube,
 // kilogram, ...) gets no spoken price rather than a guessed word for it.
+// Zeytun's 1C counts a medicine in "шт" by the PACK: Бисакодил 5 мг №30 is
+// "шт" at 0.92, the box of thirty (2026-11-02 snapshot: 6 452 of 9 059 items
+// are "шт"). Owner, 2026-11-02 («Да, делай»): "шт" is a box, priced per qutu.
 const SPOKEN_UNITS: Record<string, string> = {
-  "шт": "ədəd", "ədəd": "ədəd", "упак": "qutu", "флак": "flakon", "ампула": "ampula",
+  "шт": "qutu", "ədəd": "ədəd", "упак": "qutu", "флак": "flakon", "ампула": "ampula",
   "blister": "blister", "şpris": "şpris", "пара": "cüt",
 }
 /** The feed's price for one base unit. Owner, 2026-10-23: one price for all
@@ -99,15 +102,22 @@ export function listPrice(item: { priceAsReported?: unknown; baseUnitAsReported?
   const per = spokenUnit(item)
   return per ? { amount, currency: "AZN", per, asOf } : null
 }
+/** The price an order line is written at. A pack 1C keeps in «шт» is also
+ * what a pharmacy counts in pieces: «3 ədəd» of it went to 1C as three before
+ * «шт» became a box, and still does (owner, 2026-11-02: qutu and ədəd alike).
+ * A pack 1C keeps in «упак» is not: five ədəd of it may be five ampoules. */
+export function orderPrice(item: { priceAsReported?: unknown; baseUnitAsReported?: unknown }, asOf: string) {
+  const price = listPrice(item, asOf)
+  if (!price) return null
+  const pieces = typeof item.baseUnitAsReported === "string" && item.baseUnitAsReported.trim().toLowerCase() === "шт"
+  return { amount: price.amount, per: price.per, ...(pieces ? { alsoPer: "ədəd" } : {}) }
+}
 /** The item's 1C base unit as the caller says it, or null for one we have no word for. */
-function spokenUnit(item: { baseUnitAsReported?: unknown; nameAz?: unknown }): string | null {
+function spokenUnit(item: { baseUnitAsReported?: unknown }): string | null {
+  // 2026-10-26 call: A.S.S. long 600 №10 ("шт", 5.54 the box) read per piece
+  // left three boxes unpriced; TS-1010 (2026-11-02) did the same to Bisakodil.
   const unit = item.baseUnitAsReported
-  // 2026-10-26 call: A.S.S. long 600 №10 is "шт" in 1C and "/*qutu/*" in its
-  // Azerbaijani name; its 5.54 is the box (73 items like it). Read per piece,
-  // three boxes could not be priced. A generic "шт" defers to that mark.
-  const boxed = typeof unit === "string" && unit.trim().toLowerCase() === "шт" &&
-    typeof item.nameAz === "string" && /\/\*\s*qutu\s*\/\*/iu.test(item.nameAz)
-  return boxed ? "qutu" : typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] ?? null : null
+  return typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] ?? null : null
 }
 /** 1C shows at most this many: 100 in the feed means "100 or more" (2026-10-23 snapshot: 2 935 of 8 834 at exactly 100). */
 const STOCK_SHOWN_MAX = 100
@@ -146,9 +156,8 @@ function phoneOrderCatalog(catalog: InboundPilotCatalog): PhoneOrderCatalog {
     find(externalId) {
       const item = catalog.search({ externalId }).candidates.find(candidate => candidate.externalId === externalId)
       if (!item) return null
-      const price = listPrice(item, catalog.observedAt)
       return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
-        listPrice: price ? { amount: price.amount, per: price.per } : null }
+        listPrice: orderPrice(item, catalog.observedAt) }
     },
   }
 }

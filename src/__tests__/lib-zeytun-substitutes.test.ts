@@ -80,16 +80,37 @@ describe("substitutes on the phone line: same substance, same strength, same for
   })
 })
 
-describe("the price unit of an item 1C counts in pieces but names as a box", () => {
-  it("prices per box when the Azerbaijani name marks the box over a generic «шт»", async () => {
+describe("the price unit of an item 1C counts in «шт»", () => {
+  it("prices «шт» per box, with or without the box mark in its name", async () => {
     const { listPrice } = await import("@/lib/voice-agent/pharmacy/zeytun-inbound-pilot")
     const asOf = "2026-10-26T12:00:00Z"
     // A.S.S. long 600 №10: «шт» in 1C, «/*qutu/*» in its name, 5.54 the box (2026-10-26 call).
     expect(listPrice({ priceAsReported: "5.54", baseUnitAsReported: "шт ", nameAz: "Asetilsistein 600 mq №10 (fışıldayan tablet) /*qutu/* \\*Salutas\\*" }, asOf))
       .toMatchObject({ amount: "5.54", per: "qutu" })
-    // No mark, or a unit that is not the generic piece: as before.
-    expect(listPrice({ priceAsReported: "5.67", baseUnitAsReported: "шт", nameAz: "Aspirator" }, asOf)).toMatchObject({ per: "ədəd" })
+    // TS-1010 (2026-11-02): Bisakodil 5 mq №30 is «шт» at 0.92 with no mark — the box of thirty.
+    expect(listPrice({ priceAsReported: "0.92", baseUnitAsReported: "шт ", nameAz: "Bisakodil 5 mq № 30 (Həb) (Hemopharma) (Yuqoslaviya)" }, asOf))
+      .toMatchObject({ amount: "0.92", per: "qutu" })
+    // The words 1C already gives keep their own unit.
+    expect(listPrice({ priceAsReported: "5.67", baseUnitAsReported: "ədəd", nameAz: "Aspirator" }, asOf)).toMatchObject({ per: "ədəd" })
     expect(listPrice({ priceAsReported: "2.78", baseUnitAsReported: "флак", nameAz: "Almagel /*qutu/*" }, asOf)).toMatchObject({ per: "flakon" })
     expect(listPrice({ priceAsReported: "1.33", baseUnitAsReported: "упак", nameAz: "Parasetamol /*qutu/*" }, asOf)).toMatchObject({ per: "qutu" })
+  })
+
+  it("prices a line the pharmacy counts in boxes or in pieces, and nothing else", async () => {
+    const { resolvePhoneOrderLines } = await import("@/lib/voice-agent/pharmacy/phone-orders")
+    const bisakodil = { externalId: "362c5642-a1a4-11e2-b536-78acc0fe22c8", itemCode: "00000028688",
+      name: "Бисакодил  5 мг № 30 (Таблетки) (Hemopharma) (Югославия)", nameAz: "Bisakodil 5 mq № 30 (Həb)",
+      listPrice: { amount: "0.92", per: "qutu", alsoPer: "ədəd" } }
+    const catalog = { find: (id: string) => id === bisakodil.externalId ? bisakodil : null } as never
+    const line = (unit: string) => ({ spoken: "Bisakodil", externalId: bisakodil.externalId, quantity: 3, unit })
+    const [qutu, piece, flakon] = resolvePhoneOrderLines(catalog, [line("qutu"), line("ədəd"), line("flakon")])
+    expect(qutu.lineTotal?.toFixed(2)).toBe("2.76")
+    expect(piece.lineTotal?.toFixed(2)).toBe("2.76")
+    // A unit the price is not for stays for the manager, never a guessed total.
+    expect(flakon).toMatchObject({ status: "resolved", unitPrice: null, lineTotal: null })
+    // The order writer gets that second word only for 1C's «шт»: five ədəd of a «упак» may be five ampoules.
+    const { orderPrice } = await import("@/lib/voice-agent/pharmacy/zeytun-inbound-pilot")
+    expect(orderPrice({ priceAsReported: "0.92", baseUnitAsReported: "шт " }, "2026-11-02T10:30:52Z")).toEqual({ amount: "0.92", per: "qutu", alsoPer: "ədəd" })
+    expect(orderPrice({ priceAsReported: "9.08", baseUnitAsReported: "упак" }, "2026-11-02T10:30:52Z")).toEqual({ amount: "9.08", per: "qutu" })
   })
 })

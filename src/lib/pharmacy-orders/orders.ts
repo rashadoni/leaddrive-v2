@@ -11,9 +11,9 @@ import { notifyPharmacyOfDecision } from "@/lib/pharmacy-orders/manager-notice"
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
-import { PHONE_ORDERS_TABLE, PHONE_ORDER_MAX_LINES, phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
+import { PHONE_ORDERS_TABLE, PHONE_ORDER_MAX_LINES, phoneOrderLabel, priceAppliesTo } from "@/lib/voice-agent/pharmacy/phone-orders"
 import { ZeytunAvailableBalances } from "@/lib/voice-agent/pharmacy/zeytun-available-balances"
-import { listPrice } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { orderPrice } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
 
 /** Organization feature flag (Organization.features) that opens phone orders. */
@@ -128,13 +128,12 @@ async function orderCatalog(source: string, scopeKey: string): Promise<CatalogHa
   return value
 }
 
-type PickedItem = { externalId: string; itemCode: string; name: string; sourceName: string; price: { amount: string; per: string } | null }
+type PickedItem = { externalId: string; itemCode: string; name: string; sourceName: string; price: { amount: string; per: string; alsoPer?: string } | null }
 
 function project(catalog: CatalogHandle, item: { externalId: string; itemCode: string; name: string; nameAz: string | null
   priceAsReported?: unknown; baseUnitAsReported?: unknown }): PickedItem {
-  const price = listPrice(item, catalog.observedAt)
   return { externalId: item.externalId, itemCode: item.itemCode, name: item.nameAz?.trim() || item.name, sourceName: item.name,
-    price: price ? { amount: price.amount, per: price.per } : null }
+    price: orderPrice(item, catalog.observedAt) }
 }
 
 export async function searchPhoneOrderCatalog(orgId: string, id: string, text: string) {
@@ -170,7 +169,7 @@ export const phoneOrderActionSchema = z.discriminatedUnion("action", [
 export type PhoneOrderAction = z.infer<typeof phoneOrderActionSchema>
 
 function priced(item: PickedItem, quantity: number, lineUnit: string) {
-  const price = item.price && item.price.per === lineUnit ? new Prisma.Decimal(item.price.amount) : null
+  const price = item.price && priceAppliesTo(item.price, lineUnit) ? new Prisma.Decimal(item.price.amount) : null
   return { unitPrice: price, lineTotal: price ? price.mul(quantity).toDecimalPlaces(2) : null }
 }
 
