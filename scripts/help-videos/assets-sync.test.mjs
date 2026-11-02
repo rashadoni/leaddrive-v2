@@ -393,6 +393,42 @@ test('the committed master manifest is the shape both sides read', () => {
   }
 });
 
+test('the SUMMARY line names the state, not just the direction', () => {
+  // The first deploy of stage two reported help-videos=none while storage held
+  // nothing at all: "none" also means "storage and disk agree", and the two are
+  // not the same thing. The extraction is taken out of server-deploy.sh and run
+  // against the script's real output, so the two cannot drift apart.
+  const deploy = readFileSync('scripts/server-deploy.sh', 'utf8');
+  const programs = [...deploy.matchAll(/sed -nE '([^']+)'/g)]
+    .map((m) => m[1])
+    .filter((program) => /(reason|action)=/.test(program));
+  assert.equal(programs.length, 2, `expected the reason and action programs, got ${programs.length}`);
+  const reported = (line) => {
+    for (const program of programs) {
+      const out = execFileSync('sed', ['-nE', program], { encoding: 'utf8', input: line }).trim();
+      if (out) return out;
+    }
+    return 'unreported';
+  };
+
+  const w = world();
+  try {
+    seedLocal(w);
+    const empty = run(w, ['--pull-only']).stdout.split('\n').find((l) => l.startsWith('SUMMARY '));
+    assert.equal(reported(empty), 'no-manifest', `read "${empty}" as the wrong state`);
+
+    assert.equal(run(w).status, 0);
+    for (const n of NAMES) rmSync(join(w.local, n));
+    const pulled = run(w, ['--pull-only']).stdout.split('\n').find((l) => l.startsWith('SUMMARY '));
+    assert.equal(reported(pulled), 'pull');
+
+    const agreed = run(w, ['--pull-only']).stdout.split('\n').find((l) => l.startsWith('SUMMARY '));
+    assert.equal(reported(agreed), 'none');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
 test('the deploy pulls before the handoff and publishes after the health checks', () => {
   // Stage two (2026-11-02): the artifact carries no videos, so the masters
   // arrive from storage while the old release is still answering — the 265 MB
