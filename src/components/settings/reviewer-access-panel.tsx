@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
-import { navItems, orgFromSession } from "@/lib/nav-items"
-import { tenantHideableModules, USER_HIDEABLE_MODULE_IDS, WORKFORCE_HIDEABLE_ID } from "@/lib/user-module-access"
+import { orgFromSession } from "@/lib/nav-items"
+import { tenantHideableModules, USER_HIDEABLE_MODULE_IDS } from "@/lib/user-module-access"
+import { userModuleOptions } from "@/lib/user-module-options"
 import { REVIEWER_MAX_DAYS } from "@/lib/reviewer-access"
 
 /**
@@ -77,16 +77,12 @@ export function ReviewerAccessPanel() {
   const [journal, setJournal] = useState<JournalRow[] | null>(null)
   const [closing, setClosing] = useState<string | null>(null)
 
-  const moduleOptions = (
+  const moduleOptions = userModuleOptions(
     sessionUser?.role === "superadmin"
       ? USER_HIDEABLE_MODULE_IDS
-      : tenantHideableModules(orgFromSession(sessionUser))
-  ).filter(isCrmCapabilityAvailable).map((id) => {
-    const group = navItems.find((item) =>
-      id === WORKFORCE_HIDEABLE_ID ? item.capability === id : item.module === id,
-    )?.group
-    return { id, label: group ? tn(`groups.${group}` as never) : id }
-  })
+      : tenantHideableModules(orgFromSession(sessionUser)),
+    (key) => tn(key as never),
+  )
   const moduleLabel = (id: string) => moduleOptions.find((option) => option.id === id)?.label ?? id
 
   const load = useCallback(async () => {
@@ -149,7 +145,7 @@ export function ReviewerAccessPanel() {
   const kindLabel = (kind: string) => kind === "record" ? t("kindRecord") : kind === "file" ? t("kindFile") : t("kindList")
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700" data-testid="reviewer-access-panel">
+    <section className="rounded-xl border border-border bg-card p-4" data-testid="reviewer-access-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -167,7 +163,7 @@ export function ReviewerAccessPanel() {
       ) : grants.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <ul className="mt-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+        <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
           {grants.map((grant) => {
             const state = status(grant)
             return (
@@ -209,7 +205,7 @@ export function ReviewerAccessPanel() {
                         </thead>
                         <tbody>
                           {journal.map((row) => (
-                            <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-700">
+                            <tr key={row.id} className="border-t border-border">
                               <td className="py-1 pr-3 whitespace-nowrap">{formatTime(row.occurredAt)}</td>
                               <td className="py-1 pr-3">
                                 {t.has(`scopes.${row.section}` as never) ? t(`scopes.${row.section}` as never) : row.section} · {kindLabel(row.kind)}
@@ -283,7 +279,7 @@ function GrantDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  moduleOptions: { id: string; label: string }[]
+  moduleOptions: { id: string; label: string; pagesText: string }[]
   onCreated: (result: { email: string; password: string }) => void
 }) {
   const t = useTranslations("reviewerAccess")
@@ -358,14 +354,14 @@ function GrantDialog({
               <p className="text-xs text-muted-foreground">{t("fieldSectionsHint")}</p>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {moduleOptions.map((option) => (
-                  <label key={option.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                  <label key={option.id} title={option.pagesText} className="flex cursor-pointer items-center gap-2 text-sm">
                     <input
                       type="checkbox"
                       checked={modules.includes(option.id)}
                       onChange={(e) => setModules((current) => e.target.checked
                         ? [...current, option.id]
                         : current.filter((id) => id !== option.id))}
-                      className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                      className="h-4 w-4 rounded border-input"
                     />
                     {option.label}
                   </label>

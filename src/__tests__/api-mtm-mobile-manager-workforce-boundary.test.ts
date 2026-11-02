@@ -50,7 +50,10 @@ beforeEach(() => {
 })
 
 describe("mobile manager mixed workforce boundaries", () => {
-  it("does not select active workdays for a Routes-only manager", async () => {
+  // Owner's phone, 2026-11-01: Zeytun has Routes and no HRM module, and the
+  // manager read «İş günü başlamayıb» under agents whose day was running.
+  // The day's status is Route & Field data; nothing of HRM comes with it.
+  it("tells a Routes-only manager whether each agent's day is on", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH,
       tenantCapabilities: { routeField: true, workforceHrm: false },
@@ -63,15 +66,87 @@ describe("mobile manager mixed workforce boundaries", () => {
       teamId: "team-1",
       isOnline: true,
       lastSeenAt: null,
+      workdays: [{ id: "workday-1", status: "STARTED", startedAt: new Date("2026-11-01T08:57:00Z"), pausedAt: null, completedAt: null }],
     }] as never)
 
     const response = await teamGet(request("team"))
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.data.agents[0].workday).toBeNull()
+    expect(body.data.agents[0].workday).toMatchObject({ id: "workday-1", status: "STARTED" })
     const query = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any
-    expect(query.select.workdays).toBeUndefined()
+    // The status and times of the day only — no schedule, no HRM request.
+    expect(query.select.workdays.select).toEqual({ id: true, status: true, startedAt: true, pausedAt: true, completedAt: true })
+  })
+
+  // Owner, 2026-11-02: «Кольцо дня» — where each agent's day went.
+  it("tells the manager where each agent's day of today went", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({
+      ...AUTH,
+      tenantCapabilities: { routeField: true, workforceHrm: false },
+    } as never)
+    // Fake clock at noon: «today» must not cross midnight in the company's zone.
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-11-02T08:00:00.000Z"))
+    const started = new Date("2026-11-02T05:00:00.000Z")
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+      id: "agent-1", name: "Agent", role: "AGENT", status: "ACTIVE", teamId: "team-1", isOnline: true, lastSeenAt: null,
+      workdays: [{ id: "workday-1", status: "STARTED", startedAt: started, pausedAt: null, completedAt: null }],
+    }] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([
+      { agentId: "agent-1", checkInAt: new Date(started.getTime() + 30 * 60_000), checkOutAt: new Date(started.getTime() + 90 * 60_000) },
+    ] as never)
+
+    const body = await (await teamGet(request("team"))).json()
+
+    vi.useRealTimers()
+    expect(body.data.agents[0].dayTime).toMatchObject({ totalMinutes: 180, visitMinutes: 60, breakMinutes: 0, travelMinutes: 120 })
+  })
+
+  it("gives a manager with neither module's team permission no workday", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({
+      ...AUTH,
+      role: "AGENT",
+      tenantCapabilities: { routeField: true, workforceHrm: false },
+    } as never)
+    const response = await teamGet(request("team"))
+    expect(response.status).toBe(403)
+    expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
+  })
+
+  // Owner, 2026-11-01: the card reads like a parcel in a tracking app —
+  // whom he began with, who is next, whom he is with now.
+  it("tells the manager whom the agent began with, who is next and whom he is with now", async () => {
+    vi.mocked(resolveMobileAuth).mockResolvedValue({
+      ...AUTH,
+      tenantCapabilities: { routeField: true, workforceHrm: false },
+    } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Agent", role: "AGENT", status: "ACTIVE", teamId: "team-1", isOnline: true, lastSeenAt: null },
+    ] as never)
+    const now = new Date()
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([{
+      agentId: "agent-1",
+      points: [
+        { id: "p1", orderIndex: 0, status: "VISITED", plannedTime: null, visitedAt: new Date(now.getTime() - 3 * 3600_000), customer: { name: "Аптека «Шафа»" }, contact: null },
+        { id: "p2", orderIndex: 1, status: "PENDING", plannedTime: null, visitedAt: null, customer: { name: "Аптека 24" }, contact: null },
+        { id: "p3", orderIndex: 2, status: "PENDING", plannedTime: null, visitedAt: null, customer: { name: "Клиника" }, contact: { displayName: "Др. Алиева" } },
+      ],
+    }] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([
+      { agentId: "agent-1", checkInAt: now, routePointId: "p2", customer: { name: "Аптека 24" }, contact: null },
+    ] as never)
+
+    const body = await (await teamGet(request("team"))).json()
+
+    expect(body.data.agents[0].routeToday).toEqual({ planned: 3, visited: 1, skipped: 0 })
+    expect(body.data.agents[0].routeDay).toMatchObject({
+      first: { name: "Аптека «Шафа»" },
+      next: { name: "Др. Алиева", plannedTime: null },
+      visiting: { name: "Аптека 24", since: now.toISOString() },
+    })
+    // Opened today: not the «left open on an earlier day» warning.
+    expect(body.data.agents[0].openVisitSince).toBeNull()
   })
 
   it("returns active workdays for an HRM-only manager without route entitlement", async () => {
@@ -98,6 +173,7 @@ describe("mobile manager mixed workforce boundaries", () => {
     // No route data for a manager without Routes.
     expect(body.data.agents[0]).not.toHaveProperty("routeToday")
     expect(body.data.agents[0]).not.toHaveProperty("openVisitSince")
+    expect(body.data.agents[0]).not.toHaveProperty("routeDay")
     expect(prisma.mtmVisit.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmRoute.findMany).not.toHaveBeenCalled()
   })

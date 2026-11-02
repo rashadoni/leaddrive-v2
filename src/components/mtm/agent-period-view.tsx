@@ -184,14 +184,14 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
                 )
               }
               return (
-                <li key={day.date} className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+                <li key={day.date} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="text-base font-semibold text-foreground">{dayTitle(day.date)}</h3>
                     <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${STATUS_TONE[day.status]}`}>{t(`statuses.${day.status}`, { count: day.remaining })}</span>
                   </div>
                   {facts.length ? <p className="mt-1 text-sm text-muted-foreground">{facts.join(" · ")}</p> : null}
                   {day.visitList.length ? (
-                    <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800">
+                    <ul className="mt-3 divide-y divide-border">
                       {day.visitList.map((visit) => (
                         <li key={visit.id}>
                           <Link href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`} className="grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-baseline gap-3 rounded-md px-1 py-2 hover:bg-muted/50">

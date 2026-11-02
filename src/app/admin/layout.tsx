@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { isSuperAdminSession } from "@/lib/superadmin-guard"
 import Link from "next/link"
+import { CrmAppearanceProvider } from "@/components/ui/crm-appearance"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const isSuperAdmin = await isSuperAdminSession()
@@ -9,9 +10,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <CrmAppearanceProvider enabled>
+    <div data-crm-workspace="" className="min-h-screen bg-background">
       {/* Top nav */}
-      <header className="border-b bg-white dark:bg-zinc-900 px-6 py-3 flex items-center justify-between">
+      <header className="border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/admin" className="text-lg font-bold text-primary">
             LeadDrive Admin
@@ -40,5 +42,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {children}
       </main>
     </div>
+    </CrmAppearanceProvider>
   )
 }

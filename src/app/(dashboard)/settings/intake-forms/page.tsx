@@ -311,7 +311,7 @@ export default function IntakeFormsPage() {
                 <select
                   value={formContractType}
                   onChange={(e) => setFormContractType(e.target.value)}
-                  className="flex h-10 w-full rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"
                 >
                   <option value="">{t("anyType")}</option>
                   {CONTRACT_TYPES.map((ct) => (
@@ -338,7 +338,7 @@ export default function IntakeFormsPage() {
                 </Button>
               </div>
               {questions.length === 0 && (
-                <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-5 text-sm text-muted-foreground dark:border-zinc-700">
+                <div className="rounded-lg border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">{t("noQuestions")}</p>
                   <p className="mt-1 leading-6">{t("noQuestionsHint")}</p>
                   <Button variant="outline" size="sm" onClick={addQuestion} className="mt-3">
@@ -366,7 +366,7 @@ export default function IntakeFormsPage() {
                           <select
                             value={q.type}
                             onChange={(e) => updateQuestion(idx, { type: e.target.value as QuestionType })}
-                            className="flex h-8 w-full rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-sm"
+                            className="flex h-8 w-full rounded-lg border border-input bg-card px-2 text-sm"
                           >
                             {QUESTION_TYPES.map((qt) => (
                               <option key={qt} value={qt}>{qt}</option>
@@ -385,7 +385,7 @@ export default function IntakeFormsPage() {
                                 return copy
                               })
                             }
-                            className="flex h-8 w-full rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-sm"
+                            className="flex h-8 w-full rounded-lg border border-input bg-card px-2 text-sm"
                           >
                             <option value="">{t("noMapping")}</option>
                             {MAPPABLE_FIELDS.map((f) => (
@@ -456,7 +456,7 @@ export default function IntakeFormsPage() {
                     onChange={(e) =>
                       setDefaultStages((s) => s.map((st, i) => i === idx ? { ...st, assigneeRole: e.target.value } : st))
                     }
-                    className="h-8 rounded-lg border border-zinc-200/70 dark:border-zinc-700/70 bg-card px-2 text-sm"
+                    className="h-8 rounded-lg border border-input bg-card px-2 text-sm"
                   >
                     {["admin", "manager", "member"].map((r) => (
                       <option key={r} value={r}>{r}</option>

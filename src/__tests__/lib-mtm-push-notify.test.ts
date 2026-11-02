@@ -29,7 +29,8 @@ describe("delivering to the agents' phones", () => {
 
     expect(result).toEqual({ sent: 2, failed: 0, retired: 0 })
     expect(db.mtmDeviceToken.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { organizationId: "org-1", agentId: { in: ["agent-1", "agent-2"] }, disabledAt: null },
+      where: { organizationId: "org-1", agentId: { in: ["agent-1", "agent-2"] }, disabledAt: null,
+        agent: { OR: [{ fieldDeletedAt: null }, { role: "EMPLOYEE" }] } },
     }))
   })
 

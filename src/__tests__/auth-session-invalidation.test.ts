@@ -1,9 +1,14 @@
+import { readLegacyCrmCredentialBoundary } from "@/lib/identity/legacy-crm-boundary"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const authCapture = vi.hoisted(() => ({ config: null as any }))
 const prismaMock = vi.hoisted(() => ({
-  user: { findUnique: vi.fn() },
+  user: { findUnique: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+  organization: { findUnique: vi.fn() },
 }))
+
+vi.mock("@/lib/identity/legacy-crm-boundary", () => ({ readLegacyCrmCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
+vi.mock("bcryptjs", () => ({ default: { compare: vi.fn().mockResolvedValue(true) } }))
 
 vi.mock("next-auth", () => ({
   default: vi.fn((config: unknown) => {
@@ -40,6 +45,7 @@ vi.mock("@/lib/rate-limit", () => ({
 }))
 
 import "@/lib/auth"
+import bcrypt from "bcryptjs"
 import { createSessionFingerprint } from "@/lib/session-invalidation"
 
 const AUTH_SECRET = process.env.NEXTAUTH_SECRET!
@@ -88,10 +94,37 @@ function authorizedFingerprint(user = USER) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(readLegacyCrmCredentialBoundary).mockResolvedValue("LEGACY")
   prismaMock.user.findUnique.mockResolvedValue(USER)
+  prismaMock.user.findMany.mockResolvedValue([USER])
+  prismaMock.user.update.mockResolvedValue(USER)
+  prismaMock.organization.findUnique.mockResolvedValue({ ...USER.organization, id: USER.organizationId })
 })
 
 describe("Auth.js password-session invalidation", () => {
+  it.each(["MIGRATED", "UNAVAILABLE"] as const)("refuses %s credentials before bcrypt and last-login writes", async boundary => {
+    vi.mocked(readLegacyCrmCredentialBoundary).mockResolvedValue(boundary)
+    const user = await authCapture.config.providers[0].authorize({ email: USER.email, password: "Fictional-Crm-Pass-2026!" })
+    expect(user).toBeNull()
+    expect(readLegacyCrmCredentialBoundary).toHaveBeenCalledWith(prismaMock, USER.organizationId, USER.id)
+    expect(bcrypt.compare).not.toHaveBeenCalled()
+    expect(prismaMock.user.update).not.toHaveBeenCalled()
+  })
+
+  it("keeps unconverted credentials on the existing password and MFA flow", async () => {
+    const user = await authCapture.config.providers[0].authorize({ email: USER.email, password: "Fictional-Crm-Pass-2026!" })
+    expect(user).toMatchObject({ id: USER.id, role: USER.role })
+    expect(bcrypt.compare).toHaveBeenCalledWith("Fictional-Crm-Pass-2026!", USER.passwordHash)
+  })
+
+  it.each(["MIGRATED", "UNAVAILABLE"] as const)("refuses %s initial and existing browser JWTs despite unchanged old fingerprints", async boundary => {
+    vi.mocked(readLegacyCrmCredentialBoundary).mockResolvedValue(boundary)
+    expect(await jwtCallback()({ token: { sub: USER.id },
+      user: { id: USER.id, sessionFingerprint: authorizedFingerprint() }, account: { provider: "credentials" } })).toBeNull()
+    expect(await jwtCallback()({ token: { sub: USER.id, role: "superadmin", organizationId: USER.organizationId,
+      sessionFingerprint: authorizedFingerprint() }, user: undefined })).toBeNull()
+  })
+
   it("rejects initial JWT issuance for an inactive user", async () => {
     prismaMock.user.findUnique.mockResolvedValue({ ...USER, isActive: false })
 
@@ -307,11 +340,13 @@ describe("Auth.js password-session invalidation", () => {
     const session = await sessionCallback()({
       session: {
         sessionFingerprint: fingerprint,
+        identityCrm: { credentialEpoch: 9 },
         passwordHash: USER.passwordHash,
         user: {
           email: USER.email,
           name: USER.name,
           sessionFingerprint: fingerprint,
+          identityCrm: { credentialEpoch: 9 },
           passwordHash: USER.passwordHash,
         },
       },
@@ -325,6 +360,7 @@ describe("Auth.js password-session invalidation", () => {
         organizationName: USER.organization.name,
         plan: USER.organization.plan,
         sessionFingerprint: fingerprint,
+        identityCrm: { credentialEpoch: 9 },
       },
     })
     const serialized = JSON.stringify(session)
@@ -332,6 +368,9 @@ describe("Auth.js password-session invalidation", () => {
     expect(session.sessionFingerprint).toBeUndefined()
     expect(session.user.sessionFingerprint).toBeUndefined()
     expect(session.user.passwordHash).toBeUndefined()
+    expect(session.identityCrm).toBeUndefined()
+    expect(session.user.identityCrm).toBeUndefined()
+    expect(serialized).not.toContain("credentialEpoch")
     expect(serialized).not.toContain(fingerprint)
     expect(serialized).not.toContain(USER.passwordHash)
   })

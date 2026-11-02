@@ -573,7 +573,7 @@ function isWorkforceRetentionTriggerError(error: unknown): boolean {
 /** Upload subdirectories a tenant's own files can live in. Deliberately a fixed
  *  list rather than "everything under uploads": avatars and shared assets are
  *  not tenant content, and a purge must never be able to walk outside these. */
-const TENANT_UPLOAD_DIRS = ["contracts", "contract-images", "tasks", "mtm-photos", "inbox"] as const
+const TENANT_UPLOAD_DIRS = ["contracts", "contract-images", "tasks", "mtm-photos", "inbox", "e-qaime"] as const
 
 /**
  * File names owned by one tenant, gathered under the Organization row lock and
@@ -583,15 +583,16 @@ const TENANT_UPLOAD_DIRS = ["contracts", "contract-images", "tasks", "mtm-photos
  */
 async function collectTenantFileNames(
   orgId: string,
-  client: Pick<Prisma.TransactionClient, "contractFile" | "taskAttachment" | "mtmDocument">,
+  client: Pick<Prisma.TransactionClient, "contractFile" | "taskAttachment" | "mtmDocument" | "eQaimeInvoice">,
 ): Promise<string[]> {
-  const [contractFiles, taskAttachments, mtmDocuments] = await Promise.all([
+  const [contractFiles, taskAttachments, mtmDocuments, eQaimePdfs] = await Promise.all([
     client.contractFile.findMany({ where: { organizationId: orgId }, select: { fileName: true } }),
     client.taskAttachment.findMany({ where: { organizationId: orgId }, select: { fileName: true } }),
     client.mtmDocument.findMany({ where: { organizationId: orgId }, select: { fileName: true } }),
+    client.eQaimeInvoice.findMany({ where: { organizationId: orgId, pdfFile: { not: null } }, select: { pdfFile: true } }),
   ])
   return [...new Set(
-    [...contractFiles, ...taskAttachments, ...mtmDocuments]
+    [...contractFiles, ...taskAttachments, ...mtmDocuments, ...eQaimePdfs.map((row) => ({ fileName: row.pdfFile }))]
       .map((row) => row.fileName)
       .filter((name): name is string => Boolean(name)),
   )]

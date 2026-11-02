@@ -7,6 +7,7 @@ vi.hoisted(() => {
 })
 
 // ── Mocks ──
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({ readLegacyCredentialBoundary: vi.fn().mockResolvedValue("LEGACY"), readLegacyPhoneCredentialBoundary: vi.fn().mockResolvedValue("LEGACY") }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {

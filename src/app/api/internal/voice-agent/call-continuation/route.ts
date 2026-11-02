@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
 import {
   buildDemoCallContext,
@@ -16,6 +17,7 @@ import {
 import { CALLBACK_FRESHNESS_MS } from "@/lib/voice-agent/callback-decision"
 import { inboundCallContext } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerPolicy } from "@/lib/voip/inbound-answer-config"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -151,16 +153,17 @@ export async function leadConversation(params: {
   return lines.length > 0 ? lines.join("\n") : null
 }
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID
-  if (!organizationId) {
-    return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
-  }
-
   const callId = request.nextUrl.searchParams.get("callId")?.trim()
   if (!callId || !/^[0-9a-fA-F-]{36}$/.test(callId)) {
     return NextResponse.json({ error: "callId is required" }, { status: 400 })
+  }
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId }))?.organizationId
+  if (!organizationId) {
+    return NextResponse.json({ error: "Voice agent is not configured" }, { status: 503 })
   }
 
   const now = new Date()
@@ -273,3 +276,5 @@ async function continuationFor(
     return trimTranscriptTail(original.transcription) || null
   }
 }
+
+export const GET = withStationTiming("call-continuation", handleGet)

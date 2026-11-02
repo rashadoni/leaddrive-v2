@@ -25,7 +25,7 @@ export function AccordionItem({
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className={cn("border-b border-zinc-200 dark:border-zinc-700 last:border-0", className)}>
+    <div className={cn("border-b border-border last:border-0", className)}>
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-2.5 py-3 px-1 text-left hover:bg-muted/30 rounded-lg transition-colors group"

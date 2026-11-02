@@ -219,14 +219,14 @@ export function MtmContactWorkplaceDialog({
             <MtmOrganizationPicker id="workplace-organization" labelId="workplace-organization-label" value={organization} onChange={(next) => { setOrganization(next); setError("") }} orgId={orgId} disabled={saving} />
           </section>
 
-          <section className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700 sm:grid-cols-2">
+          <section className="grid gap-4 rounded-2xl border border-border p-4 sm:grid-cols-2">
             <div className="grid gap-1.5"><Label htmlFor="workplace-job-title">{t("jobTitle")}</Label><Input id="workplace-job-title" value={form.jobTitle} onChange={(event) => update("jobTitle", event.target.value)} maxLength={500} /></div>
             <div className="grid gap-1.5"><Label htmlFor="workplace-department">{t("department")}</Label><Input id="workplace-department" value={form.department} onChange={(event) => update("department", event.target.value)} maxLength={500} /></div>
             <div className="grid gap-1.5"><Label htmlFor="workplace-room">{t("room")}</Label><Input id="workplace-room" value={form.room} onChange={(event) => update("room", event.target.value)} maxLength={500} /></div>
             <div className="grid gap-1.5"><Label htmlFor="workplace-phone">{t("phone")}</Label><Input id="workplace-phone" type="tel" value={form.phone} onChange={(event) => update("phone", event.target.value)} maxLength={500} /></div>
             <div className="grid gap-1.5"><Label htmlFor="workplace-started-on">{t("startedOn")}</Label><Input id="workplace-started-on" type="date" value={form.startedOn} onChange={(event) => update("startedOn", event.target.value)} /></div>
             <div className="grid gap-1.5"><Label htmlFor="workplace-ended-on">{t("endedOn")}</Label><Input id="workplace-ended-on" type="date" value={form.endedOn} onChange={(event) => { update("endedOn", event.target.value); if (event.target.value) update("isPrimary", false) }} /></div>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 px-3 text-sm font-medium dark:border-zinc-700 sm:col-span-2">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border px-3 text-sm font-medium sm:col-span-2">
               <input type="checkbox" className="h-4 w-4 accent-primary" checked={form.isPrimary} disabled={Boolean(form.endedOn)} onChange={(event) => update("isPrimary", event.target.checked)} />
               <HintValue text={form.endedOn ? t("hint.workplacePrimaryEnded") : t("hint.workplacePrimary")}>{t("primary")}</HintValue>
             </label>
@@ -350,7 +350,7 @@ export function MtmContactWorkplaceEndDialog({
       </DialogHeader>
       <DialogContent className="space-y-4">
         {error ? <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><CircleAlert className="mt-0.5 h-4 w-4 flex-none" /><span>{error}</span></div> : null}
-        <div className="rounded-xl border border-zinc-200 bg-muted/35 p-4 dark:border-zinc-700">
+        <div className="rounded-xl border border-border bg-muted/35 p-4">
           <p className="font-medium">{workplace?.customer.name}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t("endDate", { date: endedOn })}</p>
         </div>

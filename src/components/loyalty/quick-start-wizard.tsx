@@ -127,7 +127,7 @@ export function QuickStartWizard({ tiersCount, onApplied }: Props) {
                 <button
                   onClick={() => apply(tpl)}
                   disabled={busy}
-                  className="mt-auto inline-flex items-center justify-center gap-1.5 self-start rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                  className="mt-auto inline-flex items-center justify-center gap-1.5 self-start rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60" data-crm-button="default"
                 >
                   {busy ? (
                     <>

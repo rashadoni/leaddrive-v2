@@ -114,8 +114,9 @@ export async function withCustomerPhonePrivacy(
   const response = await handler()
   if (response.status === 204) return response
   if (response.status === 304) return NextResponse.json({ error: "Reload customer data after a privacy policy change" }, { status: 409, headers: { "cache-control": "private, no-store" } })
-  // The inbox stream only sends refresh/count signals; the JSON refresh remains guarded.
-  if (path === "/api/v1/inbox/stream" && response.headers.get("content-type")?.includes("text/event-stream")) return response
+  // The inbox and shell streams only send refresh/count signals; the JSON
+  // refresh each of them triggers remains guarded.
+  if ((path === "/api/v1/inbox/stream" || path === "/api/v1/shell/events") && response.headers.get("content-type")?.includes("text/event-stream")) return response
   if (!response.headers.get("content-type")?.includes("application/json")) {
     await response.body?.cancel().catch(() => {})
     return NextResponse.json({ error: "This response is unavailable while customer phone privacy is enabled" }, { status: 403 })

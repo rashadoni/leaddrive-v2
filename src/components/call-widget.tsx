@@ -293,7 +293,7 @@ export function CallWidget({ callLogId, phoneNumber, contactName, onClose }: Cal
             </label>
             <select
               id={`call-widget-disposition-${callLogId}`}
-              className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded-md p-1.5 bg-background"
+              className="w-full text-sm border border-input rounded-md p-1.5 bg-background"
               value={disposition}
               disabled={dispositionSaving}
               onChange={(event) => {

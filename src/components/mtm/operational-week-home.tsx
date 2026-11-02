@@ -82,6 +82,7 @@ import {
   WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
   type WorkforceWorkdayManagerActionBlockedReason,
 } from "@/lib/workforce/workday-reopen-contract"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
@@ -2199,7 +2200,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
       && phase === "ready"
       && !cachedSnapshot
     return (
-      <article key={point.id} className="border-t border-zinc-200 py-3 first:border-t-0 dark:border-zinc-700">
+      <article key={point.id} className="border-t border-border py-3 first:border-t-0">
         <div className="flex items-start gap-2.5">
           {/* Prod 2026-09-14: orderIndex is 0-based and cards read «0», «1». */}
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums">
@@ -2233,7 +2234,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                     <span className="truncate">{point.contactName}</span>
                   </Link>
                 ) : null}
-                {subjectMeta.length ? <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subjectMeta.join(" · ")}</p> : null}
+                {subjectMeta.length ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{subjectMeta.join(" · ")}</p> : null}
               </div>
               <Badge variant={presentation.badge} className="shrink-0 gap-1 whitespace-nowrap">
                 <PointIcon className="h-3 w-3" />{presentation.label}
@@ -2324,9 +2325,9 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
       <section
         key={day.date}
         aria-label={formatCalendarDay(day.date, locale, { weekday: "long", day: "numeric", month: "long" })}
-        className={cn("min-w-0 bg-card", compact ? "border-y border-zinc-200 dark:border-zinc-700" : "border-r border-zinc-200 last:border-r-0 dark:border-zinc-700")}
+        className={cn("min-w-0 bg-card", compact ? "border-y border-border" : "border-r border-border last:border-r-0")}
       >
-        <header className="border-b border-zinc-200 bg-muted/35 px-3 py-3 dark:border-zinc-700">
+        <header className="border-b border-border bg-muted/35 px-3 py-3">
           <div className="flex items-start justify-between gap-2">
             <button
               type="button"
@@ -2342,17 +2343,17 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           <div className="mt-2 grid gap-1.5 text-xs">
             {facts.workdayCapability.enabled ? <span className={cn("inline-flex items-center gap-1.5", workday.className)}><WorkdayIcon className="h-3.5 w-3.5" />{workday.label}</span> : null}
           </div>
-          {dayHasCounts ? <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
+          {dayHasCounts ? <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground">
             <span className="inline-flex items-center gap-1" aria-label={t("plannedCount", { count: day.summary.planned })}><Clock3 className="h-3 w-3" />{t("plannedShort")} {day.summary.planned}</span>
             <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300" aria-label={t("actualCount", { count: day.summary.actual })}><CheckCircle2 className="h-3 w-3" />{t("actualShort")} {day.summary.actual}</span>
             <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-300" aria-label={t("cancelledCount", { count: day.summary.cancelled })}><XCircle className="h-3 w-3" />{t("cancelledShort")} {day.summary.cancelled}</span>
           </div> : null}
-          {facts.workdayCapability.enabled && day.workday.startedAt ? <p className="mt-2 text-[11px] text-muted-foreground">{t("dayStarted", { time: formatTenantTimestamp(day.workday.startedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
-          {facts.workdayCapability.enabled && day.workday.finishedAt ? <p className="mt-1 text-[11px] text-muted-foreground">{t("dayFinished", { time: formatTenantTimestamp(day.workday.finishedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
+          {facts.workdayCapability.enabled && day.workday.startedAt ? <p className="mt-2 text-xs text-muted-foreground">{t("dayStarted", { time: formatTenantTimestamp(day.workday.startedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
+          {facts.workdayCapability.enabled && day.workday.finishedAt ? <p className="mt-1 text-xs text-muted-foreground">{t("dayFinished", { time: formatTenantTimestamp(day.workday.finishedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
         </header>
         <div className="px-3">
           {dayAlertGroups.length ? (
-            <div className="border-b border-zinc-200 py-2 dark:border-zinc-700" data-testid="mtm-week-day-alerts">
+            <div className="border-b border-border py-2" data-testid="mtm-week-day-alerts">
               <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-3.5 w-3.5" />{t("dayAlerts", { count: dayAlertGroups.reduce((total, group) => total + group.count, 0) })}</p>
               <ul>{dayAlertGroups.slice(0, 4).map((group) => renderAlertGroup(group, true))}</ul>
               <Hint text={t("hint.openAlerts")}>
@@ -2367,7 +2368,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             const routeLabel = route.name || t("routeFallbackName", { date: formatCalendarDay(day.date, locale, { day: "numeric", month: "short" }) })
             return (
               <section key={route.id} aria-label={routeLabel}>
-                <div className="flex items-center justify-between gap-2 border-b border-zinc-200 py-2 text-xs dark:border-zinc-700">
+                <div className="flex items-center justify-between gap-2 border-b border-border py-2 text-xs">
                   <Link href={withReturnTo(`/mtm/routes?routeId=${encodeURIComponent(route.id)}`, context)} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 font-medium hover:text-primary hover:underline md:min-h-0">
                     <RouteIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{routeLabel}</span>
                   </Link>
@@ -2390,13 +2391,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             )
           )}
           {day.unplannedVisits.length ? (
-            <div className="border-t border-zinc-200 py-2 dark:border-zinc-700">
+            <div className="border-t border-border py-2">
               <p className="pb-1 text-xs font-semibold text-muted-foreground">{t("unplannedVisits")}</p>
               {day.unplannedVisits.map((visit, index) => renderPoint(visit, day, index + 1))}
             </div>
           ) : null}
           {day.tasks.length ? (
-            <div className="border-t border-zinc-200 py-2 text-xs text-muted-foreground dark:border-zinc-700">
+            <div className="border-t border-border py-2 text-xs text-muted-foreground">
               <ClipboardList className="mr-1 inline h-3.5 w-3.5" />{t("dayTasks", { count: day.tasks.length })}
             </div>
           ) : null}
@@ -2458,7 +2459,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
         {change.decisionComment ? <p className="mt-2 text-muted-foreground">{t("decisionComment", { comment: change.decisionComment })}</p> : null}
         {change.resolution === "RESCHEDULE" && change.rescheduleDate ? <p className="mt-2 font-medium text-emerald-700 dark:text-emerald-300">{t("rescheduledFor", { date: formatCalendarDay(change.rescheduleDate, locale, { dateStyle: "medium" }) })}</p> : null}
         {change.type === "REMOVE_STOP" && change.canReview && ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"].includes(change.status) ? (
-          <div className="mt-3 space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+          <div className="mt-3 space-y-2 border-t border-border pt-3">
             <Label htmlFor={decisionFieldId} className="text-xs">{t("managerComment")}</Label>
             <Textarea
               id={decisionFieldId}
@@ -2631,7 +2632,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           {/* The base coverage block is shown only with numbers: «formula not
               signed by the administrator» is a setup fact, not the agent's. */}
           {baseCoveragePhase === "ready" && baseCoverage?.available && baseCoverage.totals && !cachedSnapshot ? (
-          <section className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-700" data-testid="mtm-base-coverage">
+          <section className="mt-5 border-t border-border pt-5" data-testid="mtm-base-coverage">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><Building2 className="h-4 w-4 text-primary" />{t("baseCoverageTitle")}</h4>
@@ -2651,9 +2652,9 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             ) : cachedSnapshot || phase === "offline" || phase === "snapshot" ? (
               <div className="mt-4 bg-muted/50 px-3 py-3 text-xs leading-5 text-muted-foreground"><CloudOff className="mr-1.5 inline h-4 w-4" />{t("baseCoverageOffline")}</div>
             ) : baseCoveragePhase === "error" ? (
-              <div className="mt-4 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-3 py-3 text-xs leading-5" role="status"><WifiOff className="mr-1.5 inline h-4 w-4" />{t("baseCoverageLoadFailed")}</div>
+              <div className="mt-4 border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 px-3 py-3 text-xs leading-5" role="status"><WifiOff className="mr-1.5 inline h-4 w-4" />{t("baseCoverageLoadFailed")}</div>
             ) : baseCoveragePhase === "unavailable" && baseCoverage ? (
-              <div className="mt-4 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-3 py-3 text-xs leading-5" role="status">
+              <div className="mt-4 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-3 py-3 text-xs leading-5" role="status">
                 <AlertTriangle className="mr-1.5 inline h-4 w-4" />
                 {t(baseCoverage.state === "UNSIGNED_COVERAGE_POLICY"
                   ? "baseCoverageUnsigned"
@@ -2672,16 +2673,16 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                   const rows = isExpanded && baseCoverageRows?.groupKey === group.key ? baseCoverageRows.rows : []
                   const coverageRowsId = `base-coverage-rows-${railId}-${group.key}`
                   return (
-                    <article key={group.key} className="border border-zinc-200 bg-muted/20 px-3 py-3 dark:border-zinc-700">
+                    <article key={group.key} className="border border-border bg-muted/20 px-3 py-3">
                       <div className="flex items-center justify-between gap-2">
                         <h5 className="text-xs font-semibold">{group.labels?.[baseCoverageLabelLocale] || group.label}</h5>
                         <Badge variant="outline">{t("baseCoverageObjects", { count: group.populationCount })}</Badge>
                       </div>
                       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 2xl:grid-cols-4">
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.requiredCoverage)}</dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(group.target)})</span></dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualCoverage)}</dd></div>
-                        <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(group.uncoveredMoi)}</dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.requiredCoverage)}</dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(group.target)})</span></dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(group.actualCoverage)}</dd></div>
+                        <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(group.uncoveredMoi)}</dd></div>
                       </dl>
                       <Button
                         type="button"
@@ -2696,19 +2697,19 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                         <ChevronDown className={cn("h-4 w-4 transition-transform motion-reduce:transition-none", isExpanded && "rotate-180")} />
                       </Button>
                       {isExpanded ? (
-                        <div id={coverageRowsId} className="mt-2 border-t border-zinc-200 pt-3 dark:border-zinc-700" data-testid={`mtm-base-coverage-rows-${railId}-${group.key}`}>
+                        <div id={coverageRowsId} className="mt-2 border-t border-border pt-3" data-testid={`mtm-base-coverage-rows-${railId}-${group.key}`}>
                           {baseCoverageRowsPhase === "loading" ? (
                             <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{t("baseCoverageRowsLoading")}</div>
                           ) : null}
                           {baseCoverageRowsPhase === "error" ? (
-                            <div className="border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-3 py-2 text-xs" role="status">
+                            <div className="border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 px-3 py-2 text-xs" role="status">
                               <p>{t("baseCoverageRowsFailed")}</p>
                               <Button type="button" size="sm" variant="outline" className="mt-2 min-h-9" onClick={() => void loadBaseCoverageRows(group.key, baseCoverageRows ? baseCoverageRows.page + 1 : 1, Boolean(baseCoverageRows))}>{t("baseCoverageRowsRetry")}</Button>
                             </div>
                           ) : null}
                           {baseCoverageRowsPhase !== "loading" && !rows.length && baseCoverageRowsPhase !== "error" ? <p className="py-2 text-xs text-muted-foreground">{t("baseCoverageRowsEmpty")}</p> : null}
                           {rows.length ? (
-                            <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                            <ul className="divide-y divide-border">
                               {rows.map((row) => {
                                 const detailPath = row.subjectType === "DOCTOR"
                                   ? (fieldContactsEnabled ? `/mtm/contacts/${encodeURIComponent(row.subjectId)}` : null)
@@ -2726,11 +2727,11 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="min-w-0">
                                         <p className="truncate text-xs font-semibold">{row.subjectName}</p>
-                                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{[row.customerName, row.specialtyName || row.categoryLabel].filter(Boolean).join(" · ") || "—"}</p>
+                                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{[row.customerName, row.specialtyName || row.categoryLabel].filter(Boolean).join(" · ") || "—"}</p>
                                       </div>
                                       <span className="shrink-0 text-xs font-semibold tabular-nums text-amber-800 dark:text-amber-300">{t("baseCoverageRowUncovered", { value: baseCoverageNumber(row.uncoveredMoi) })}</span>
                                     </div>
-                                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{row.explanation.summary[baseCoverageLabelLocale]}</p>
+                                    <p className="mt-2 text-xs leading-4 text-muted-foreground">{row.explanation.summary[baseCoverageLabelLocale]}</p>
                                     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                                       {detailPath ? <Link className="inline-flex min-h-9 items-center gap-1 font-medium text-primary hover:underline" href={withReturnTo(detailPath, baseCoverageReturnTo)}>{t("baseCoverageOpenObject")}<ArrowUpRight className="h-3 w-3" /></Link> : null}
                                       {planningPath ? <Link className="inline-flex min-h-9 items-center gap-1 font-medium text-primary hover:underline" href={withReturnTo(planningPath, baseCoverageReturnTo)}>{t("baseCoveragePlanVisit")}<ArrowUpRight className="h-3 w-3" /></Link> : null}
@@ -2746,7 +2747,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                               {t("baseCoverageLoadMore", { count: Math.max(0, baseCoverageRows.total - baseCoverageRows.rows.length) })}
                             </Button>
                           ) : null}
-                          {baseCoverageRows && baseCoverageRows.total > 0 ? <p className="mt-2 text-[10px] text-muted-foreground">{t("baseCoverageRowsCount", { shown: baseCoverageRows.rows.length, total: baseCoverageRows.total })}</p> : null}
+                          {baseCoverageRows && baseCoverageRows.total > 0 ? <p className="mt-2 text-xs text-muted-foreground">{t("baseCoverageRowsCount", { shown: baseCoverageRows.rows.length, total: baseCoverageRows.total })}</p> : null}
                         </div>
                       ) : null}
                     </article>
@@ -2755,13 +2756,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 <div className="border-t-2 border-zinc-300 px-3 pt-3 dark:border-zinc-600">
                   <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{t("baseCoverageTotal")}</span><span className="text-xs font-semibold tabular-nums">{t("baseCoverageObjects", { count: baseCoverage.totals.overall.populationCount })}</span></div>
                   <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 2xl:grid-cols-4">
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.requiredCoverage)}</dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(baseCoverage.totals.overall.target)})</span></dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualCoverage)}</dd></div>
-                    <div><dt className="text-[10px] leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(baseCoverage.totals.overall.uncoveredMoi)}</dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageRequired")}>{t("baseCoverageRequired")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.requiredCoverage)}</dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActualMoi")}>{t("baseCoverageActualMoi")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualMoi)} <span className="font-normal text-muted-foreground">({baseCoverageNumber(baseCoverage.totals.overall.target)})</span></dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageActual")}>{t("baseCoverageActual")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums">{baseCoverageNumber(baseCoverage.totals.overall.actualCoverage)}</dd></div>
+                    <div><dt className="text-xs leading-4 text-muted-foreground"><HintValue text={t("hint.coverageUncovered")}>{t("baseCoverageUncovered")}</HintValue></dt><dd className="mt-0.5 text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">{baseCoverageNumber(baseCoverage.totals.overall.uncoveredMoi)}</dd></div>
                   </dl>
                 </div>
-                <p className="text-[11px] leading-4 text-muted-foreground">
+                <p className="text-xs leading-4 text-muted-foreground">
                   {baseCoverage.snapshot?.frozenAt
                     ? t("baseCoverageFrozenAt", { date: formatTenantTimestamp(baseCoverage.snapshot.frozenAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) })
                     : null}
@@ -2773,7 +2774,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           ) : null}
         </div>
 
-        <section className="border-t border-zinc-200 px-4 py-5 dark:border-zinc-700 md:border-l md:border-t-0 min-[100rem]:border-l-0 min-[100rem]:border-t min-[100rem]:px-5">
+        <section className="border-t border-border px-4 py-5 md:border-l md:border-t-0 min-[100rem]:border-l-0 min-[100rem]:border-t min-[100rem]:px-5">
           <h3 className="text-base font-semibold">{t("needsAttention")}</h3>
           {/* Owner 2026-09-22: sections with a zero and a sentence explaining the
               zero («Оповещения 0 — нерешённых нет») are gone; only what has
@@ -2794,22 +2795,22 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
               return (
                 <section data-testid={`mtm-week-alerts-${railId}`}>
                   <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><BellRing className="h-4 w-4 text-amber-600 dark:text-amber-400" />{t(todayInPeriod ? "alertsToday" : "alertsInPeriod")}</h4><Badge variant={total ? "warning" : "outline"}>{total}{facts.alertsTruncated ? "+" : ""}</Badge></div>
-                  <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">{groups.slice(0, 6).map((group) => renderAlertGroup(group, false))}</ul>
+                  <ul className="mt-1 divide-y divide-border">{groups.slice(0, 6).map((group) => renderAlertGroup(group, false))}</ul>
                   <Link href={alertsHref} className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline">
                     {groups.length > 6 ? t("moreAlertGroups", { count: groups.length - 6 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3 shrink-0" />
                   </Link>
                 </section>
               )
             })()}
-            {attentionHasPlanChanges ? <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+            {attentionHasPlanChanges ? <section className="border-t border-border pt-4">
               {pendingCancellations.length ? <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-800 dark:text-red-200"><XCircle className="h-4 w-4" />{t("pendingCancellations")}</h4><Badge variant="destructive">{pendingCancellations.length}</Badge></div> : null}
               {pendingCancellations.length ? (
                 <>
-                  <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
+                  <ul className="mt-2 divide-y divide-border">
                     {pendingCancellations.slice(0, cancellationsExpanded ? pendingCancellations.length : 5).map((change) => renderPlanChange(change, railId))}
                   </ul>
                   {pendingCancellations.length > 5 ? (
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-700">
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
                       <p className="text-xs text-muted-foreground">
                         {t("pendingCancellationsShown", {
                           shown: cancellationsExpanded ? pendingCancellations.length : 5,
@@ -2832,21 +2833,21 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 </>
               ) : null}
               {pendingOtherPlanChanges.length ? (
-                <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                <div className="mt-4 border-t border-border pt-3">
                   <div className="flex items-center justify-between gap-2"><h5 className="text-xs font-semibold text-muted-foreground">{t("pendingPlanChanges")}</h5><Badge variant="warning">{pendingOtherPlanChanges.length}</Badge></div>
-                  <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">{pendingOtherPlanChanges.slice(0, 3).map((change) => renderPlanChange(change, railId))}</ul>
+                  <ul className="mt-1 divide-y divide-border">{pendingOtherPlanChanges.slice(0, 3).map((change) => renderPlanChange(change, railId))}</ul>
                 </div>
               ) : null}
               {facts.planChanges.some((change) => !facts.pendingPlanChanges.some((pending) => pending.id === change.id)) ? (
-                <div className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                <div className="mt-3 border-t border-border pt-3">
                   <h5 className="text-xs font-semibold text-muted-foreground">{t("recentPlanChanges")}</h5>
-                  <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">
+                  <ul className="mt-1 divide-y divide-border">
                     {facts.planChanges.filter((change) => !facts.pendingPlanChanges.some((pending) => pending.id === change.id)).slice(0, 3).map((change) => renderPlanChange(change, railId))}
                   </ul>
                 </div>
               ) : null}
             </section> : null}
-            {activeTasks.length ? <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+            {activeTasks.length ? <section className="border-t border-border pt-4">
               <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><ClipboardList className="h-4 w-4 text-primary" />{t("activeTasks")}</h4><Badge variant={activeTasks.length ? "info" : "outline"}>{activeTasks.length}</Badge></div>
               {activeTasks.length ? (
                 <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label={t("taskAttentionSummary", { overdue: overdueTaskCount, returned: returnedTaskCount })}>
@@ -2856,7 +2857,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
               ) : null}
               {activeTasks.length ? (
                 <>
-                  <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
+                  <ul className="mt-2 divide-y divide-border">
                     {activeTasks.slice(0, 5).map((task) => {
                       const attention = taskAttentionPresentation(task.attention)
                       return (
@@ -2875,7 +2876,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                           </div>
                           {/* Prod 2026-09-14: «ID cmqm7j…p468 · versiya 1» means nothing to a manager. */}
                           {!managerView ? (
-                            <p className="mt-1 text-[11px] text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
+                            <p className="mt-1 text-xs text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
                               {t("taskId", { id: task.id.length > 12 ? `${task.id.slice(0, 6)}…${task.id.slice(-4)}` : task.id })}
                               {task.version === null ? null : <span> · {t("taskVersion", { version: task.version })}</span>}
                             </p>
@@ -2890,12 +2891,12 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                               {task.dueAt ? <div><dt className="text-muted-foreground">{t("taskDue")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.dueAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div> : null}
                             </dl>
                           ) : null}
-                          {task.returnReason ? <p className="mt-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-2.5 py-2 text-xs leading-5">{t("taskReturnedReason", { reason: task.returnReason })}</p> : null}
+                          {task.returnReason ? <p className="mt-2 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-2.5 py-2 text-xs leading-5">{t("taskReturnedReason", { reason: task.returnReason })}</p> : null}
                         </li>
                       )
                     })}
                   </ul>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-700">
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
                     <p className="text-xs text-muted-foreground">{t("activeTasksShown", { shown: shownActiveTaskCount, total: activeTasks.length })}</p>
                     <Hint text={t("hint.viewAllTasks")}>
                       <Link href={taskListHref} className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
@@ -2960,13 +2961,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
         <Button
           type="button"
           variant="outline"
-          size="icon"
-          className="h-11 w-11"
+          size="sm"
+          className="h-11 gap-1.5"
           onClick={() => !inFlightRef.current && setRefreshToken((value) => value + 1)}
           disabled={!query || phase === "loading" || phase === "refreshing" || Boolean(mutatingAction)}
           aria-label={t("refresh")}
         >
-          <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} />
+          <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} /><MtmWord word="refresh" />
         </Button>
       </Hint>
     )
@@ -2984,7 +2985,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
       // A team view that could not load its scope (no permission, employee
       // unavailable): the filters stand above the refusal.
       return (
-        <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:px-5">
+        <div className="border-t border-border px-4 py-3 lg:px-5">
           <MtmFilterBar testId="mtm-week-filters">
             {regionField}
             {teamField}
@@ -3028,7 +3029,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                     type="button"
                     aria-pressed={query?.days === days}
                     disabled={Boolean(mutatingAction)}
-                    className={cn("h-10 min-w-11 rounded-full border border-zinc-200 px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700", mtmChipClass(query?.days === days))}
+                    className={cn("h-10 min-w-11 rounded-full border border-border px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", mtmChipClass(query?.days === days))}
                     onClick={() => query && updateQuery({ ...query, days, day: query.date })}
                   >
                     {t("days", { count: days })}
@@ -3042,11 +3043,11 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             </Hint>
             <span className="ml-auto flex items-center gap-1">
               <Hint wrap text={t("hint.previousPeriod")}>
-                <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button type="button" variant="outline" size="sm" className="h-10 rounded-full gap-1.5" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /><MtmWord word="previous" /></Button>
               </Hint>
               <span className="min-w-36 text-center text-sm font-medium tabular-nums">{periodLabel}</span>
               <Hint wrap text={t("hint.nextPeriod")}>
-                <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><ChevronRight className="h-4 w-4" /></Button>
+                <Button type="button" variant="outline" size="sm" className="h-10 rounded-full gap-1.5" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><MtmWord word="next" /><ChevronRight className="h-4 w-4" /></Button>
               </Hint>
             </span>
           </MtmFilterBar>
@@ -3076,7 +3077,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           teamLoading={teamPhase === "loading" || teamPhase === "idle"}
           teamFailed={teamPhase === "error"}
           refreshToken={refreshToken}
-          controls={<><HelpButton slug="mtm-overview" variant="label" />{renderScopeControls("team")}</>}
+          controls={<><HelpButton slug="mtm-overview" variant="quiet" />{renderScopeControls("team")}</>}
           onRetry={() => setRefreshToken((value) => value + 1)}
           onOpenAgent={(agentId, day) => {
             if (!query) return
@@ -3085,12 +3086,12 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           }}
         />
       ) : null}
-      <div className={homeLayout ? "overflow-hidden rounded-2xl border border-zinc-200 bg-card empty:hidden dark:border-zinc-700 [&>*:first-child]:border-t-0" : "border-y border-zinc-200 bg-card dark:border-zinc-700"}>
+      <div className={homeLayout ? "overflow-hidden rounded-2xl border border-border bg-card empty:hidden [&>*:first-child]:border-t-0" : "border-y border-border bg-card"}>
       {homeLayout ? null : teamLayout ? <h2 id="operational-week-title" className="sr-only">{t("title")}</h2> : null}
       {homeLayout ? null : renderScopeControls(teamLayout)}
 
       {(phase === "offline" || phase === "snapshot") && cachedSnapshot ? (
-        <div className={cn("flex flex-col gap-2 border-l-4 border-t border-zinc-200 bg-card px-4 py-3 text-sm text-foreground dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between", snapshotExpired ? "border-l-red-500 dark:border-l-red-500" : "border-l-amber-500 dark:border-l-amber-500")} role="status">
+        <div className={cn("flex flex-col gap-2 border-l-4 border-t border-border bg-card px-4 py-3 text-sm text-foreground sm:flex-row sm:items-center sm:justify-between", snapshotExpired ? "border-l-red-500 dark:border-l-red-500" : "border-l-amber-500 dark:border-l-amber-500")} role="status">
           <span className="inline-flex items-center gap-2 font-medium">{phase === "snapshot" ? <AlertTriangle className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}{snapshotExpired ? t("expiredSnapshot") : phase === "snapshot" ? t("savedSnapshot") : t("offlineSnapshot")}</span>
           <span className="grid gap-0.5 text-xs sm:text-right">
             <span>{t("savedAt", { date: formatTenantTimestamp(cachedSnapshot.cachedAt, locale, facts?.timezone || "UTC", { dateStyle: "medium", timeStyle: "short" }) })}</span>
@@ -3099,38 +3100,38 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
         </div>
       ) : null}
       {facts && cacheWriteFailed && phase !== "offline" ? (
-        <div className="flex flex-col gap-1 border-t border-zinc-200 bg-muted/35 px-4 py-3 text-sm dark:border-zinc-700" role="status">
+        <div className="flex flex-col gap-1 border-t border-border bg-muted/35 px-4 py-3 text-sm" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><CloudOff className="h-4 w-4 text-muted-foreground" />{t("offlineCopyNotSaved")}</span>
           <span className="text-xs text-muted-foreground">{t("offlineCopyNotSavedHint")}</span>
         </div>
       ) : null}
       {facts && facts.contract.completeness !== "COMPLETE" ? (
-        <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
+        <div className="border-t border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" />{t("partialData")}</span>
           <p className="mt-1 text-xs">{t("partialDataHint")}</p>
         </div>
       ) : null}
       {facts && phase === "rateLimited" ? (
-        <div className="flex flex-col gap-2 border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
+        <div className="flex flex-col gap-2 border-t border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><Clock3 className="h-4 w-4" />{t("rateLimitedTitle")}</span>
           <span className="text-xs">{t("rateLimitedHint")}</span>
         </div>
       ) : null}
       {facts && phase === "error" ? (
-        <div className="flex flex-col gap-2 border-t border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
+        <div className="flex flex-col gap-2 border-t border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><WifiOff className="h-4 w-4" />{t("refreshFailedSnapshot")}</span>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
         </div>
       ) : null}
       {!facts && bootstrapPartial ? (
-        <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
+        <div className="border-t border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
           <span className="inline-flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" />{t("scopeListLimited")}</span>
         </div>
       ) : null}
 
       {facts ? (
         <>
-          <div className={cn("grid border-t border-zinc-200 dark:border-zinc-700", facts.workdayCapability.enabled && "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,auto)]")}>
+          <div className={cn("grid border-t border-border", facts.workdayCapability.enabled && "lg:grid-cols-[minmax(0,1fr)_minmax(18rem,auto)]")}>
             <div className="flex min-w-0 items-center gap-3 px-4 py-3 lg:px-5">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{facts.selectedAgent.name.slice(0, 1).toUpperCase()}</span>
               <div className="min-w-0">
@@ -3138,7 +3139,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 <p className="truncate text-xs text-muted-foreground">{[facts.selectedAgent.teamName, facts.selectedAgent.regionName].filter(Boolean).join(" · ")}</p>
               </div>
             </div>
-            {facts.workdayCapability.enabled ? <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5">
+            {facts.workdayCapability.enabled ? <div className="border-t border-border px-4 py-3 lg:border-l lg:border-t-0 lg:px-5">
               <div className="flex flex-wrap items-center gap-2">
                 {facts.workdayCapability.canMutateSelf && facts.workdayCapability.availableActions.length ? facts.workdayCapability.availableActions.map((action) => (
                   <Hint key={action} wrap text={t(WORKDAY_ACTION_HINT[action])}><Button type="button" variant={action === "FINISH" ? "outline" : "default"} className="min-h-11" disabled={Boolean(mutatingAction) || !workdayMutationLive || (action === "FINISH" && confirmingFinish)} aria-expanded={action === "FINISH" ? confirmingFinish : undefined} onClick={() => action === "FINISH" ? setConfirmingFinish(true) : void runWorkdayAction(action)}>
@@ -3148,7 +3149,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
                 )) : renderManagerWorkdayControls() ?? <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" />{facts.workdayCapability.canMutateSelf ? t("workdayNoActions") : t("workdayReadOnly")}</span>}
               </div>
               {confirmingFinish ? (
-                <div className="mt-3 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm" role="alert">
+                <div className="mt-3 border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm" role="alert">
                   <p className="font-semibold">{t("finishConfirmTitle")}</p>
                   <p className="mt-1 text-xs leading-5">{t("finishConfirmHint")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -3163,13 +3164,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           </div>
 
           {facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf ? (
-            <div className="border-t border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 px-4 py-3 text-sm" role="status" data-testid="mtm-week-workday-left-open">
+            <div className="border-t border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 px-4 py-3 text-sm" role="status" data-testid="mtm-week-workday-left-open">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{leftOpenLabel(leftOpenWorkday, facts.timezone)}</p>
             </div>
           ) : null}
           {/* The close/continue instruction is for the agent who can act on it. */}
           {facts.workdayCapability.enabled && facts.workdayCapability.canMutateSelf && facts.workdayCapability.requiresPriorDayClosure ? (
-            <div className="border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
+            <div className="border-t border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-3 text-sm" role="status">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{t("priorWorkdayTitle")}</p>
               <p className="mt-1 text-xs leading-5">{t("priorWorkdayHint", {
                 date: facts.workdayCapability.date ? formatCalendarDay(facts.workdayCapability.date, locale, { dateStyle: "medium" }) : "—",
@@ -3190,7 +3191,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             const seenAt = facts.gps.recordedAt ? formatTenantTimestamp(facts.gps.recordedAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) : null
             const gpsText = seenAt && "seen" in gps ? t(gps.seen ? "gpsSeenAt" : "gpsSilentSince", { time: seenAt }) : gps.label
             return (
-              <div data-testid="mtm-week-status-line" className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-zinc-200 bg-muted/20 px-4 py-2.5 text-sm dark:border-zinc-700 lg:px-5">
+              <div data-testid="mtm-week-status-line" className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-border bg-muted/20 px-4 py-2.5 text-sm lg:px-5">
                 {workday && WorkdayIcon ? <span className={cn("inline-flex items-center gap-1.5 font-medium", workday.className)}><WorkdayIcon className="h-4 w-4" />{workday.label}</span> : null}
                 <HintValue className={cn("inline-flex items-center gap-1.5 font-medium", gps.className)} text={t("hint.gpsState")}><GpsIcon className="h-4 w-4" />{gpsText}</HintValue>
                 {gpsReasonLabel(facts.gps.reason) ? <span className="text-xs text-muted-foreground">{gpsReasonLabel(facts.gps.reason)}</span> : null}
@@ -3203,7 +3204,7 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
 
           {gpsNeedsRecovery && facts ? (
             <section
-              className="flex flex-col gap-3 border-t border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 px-4 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-5"
+              className="flex flex-col gap-3 border-t border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 px-4 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-5"
               role="status"
               data-testid="mtm-operational-week-gps-recovery"
             >
@@ -3235,17 +3236,17 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             </section>
           ) : null}
 
-          <div className="grid border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="grid border-t border-border min-[100rem]:grid-cols-[minmax(0,1fr)_20rem]">
             <aside className="md:max-[100rem]:grid md:max-[100rem]:grid-cols-2 min-[100rem]:hidden" aria-label={t("needsAttention") }>
               {renderAttentionRailContent("compact")}
             </aside>
 
-            <div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:border-t-0">
+            <div className="min-w-0 border-t border-border min-[100rem]:border-t-0">
               {compactWeekProjection ? <div>
-                <div className="flex gap-1 overflow-x-auto border-b border-zinc-200 px-3 pt-2 dark:border-zinc-700" role="group" aria-label={t("chooseDay") }>
+                <div className="flex gap-1 overflow-x-auto border-b border-border px-3 pt-2" role="group" aria-label={t("chooseDay") }>
                   {facts.days.map((day) => (
                     <button key={day.date} type="button" aria-pressed={selectedDay?.date === day.date} onClick={() => chooseDay(day.date)} className={cn("-mb-px min-h-11 min-w-[4.5rem] shrink-0 border-b-2 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", selectedDay?.date === day.date ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-                      <span className="block text-[11px] uppercase">{formatCalendarDay(day.date, locale, { weekday: "short" })}</span>
+                      <span className="block text-xs uppercase">{formatCalendarDay(day.date, locale, { weekday: "short" })}</span>
                       <span className="block tabular-nums">{formatCalendarDay(day.date, locale, { day: "numeric", month: "short" })}</span>
                     </button>
                   ))}
@@ -3270,33 +3271,33 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           </div>
         </>
       ) : (phase === "loading" || phase === "idle") && !teamLayout ? (
-        <div className="border-t border-zinc-200 px-4 py-8 dark:border-zinc-700" role="status" aria-live="polite">
+        <div className="border-t border-border px-4 py-8" role="status" aria-live="polite">
           <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
             {Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-44 animate-pulse bg-muted/60 motion-reduce:animate-none" />)}
           </div>
           <p className="mt-3 text-center text-sm text-muted-foreground">{query?.agentId ? t("loadingWeek") : t("loadingScope")}</p>
         </div>
       ) : phase === "permission" ? (
-        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="alert">
+        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-border px-4 py-8 text-center" role="alert">
           <ShieldAlert className="h-7 w-7 text-red-600" /><h3 className="text-base font-semibold">{t("permissionTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{t("permissionHint")}</p>
         </div>
       ) : phase === "notFound" ? (
-        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="alert">
+        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-border px-4 py-8 text-center" role="alert">
           <UserRound className="h-7 w-7 text-muted-foreground" /><h3 className="text-base font-semibold">{t("employeeUnavailableTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{t("employeeUnavailableHint")}</p>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => query && updateQuery({ ...query, agentId: "" })}>{t("chooseAnotherEmployee")}</Button>
         </div>
       ) : phase === "rateLimited" ? (
-        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="alert">
+        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-border px-4 py-8 text-center" role="alert">
           <Clock3 className="h-7 w-7 text-amber-600" /><h3 className="text-base font-semibold">{t("rateLimitedTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{t("rateLimitedHint")}</p>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
         </div>
       ) : phase === "error" ? (
-        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="alert">
+        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-border px-4 py-8 text-center" role="alert">
           <WifiOff className="h-7 w-7 text-red-600" /><h3 className="text-base font-semibold">{t("loadFailedTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{t("loadFailedHint")}</p>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
         </div>
       ) : !teamLayout ? (
-        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="status">
+        <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-border px-4 py-8 text-center" role="status">
           <UserRound className="h-7 w-7 text-muted-foreground" /><h3 className="text-base font-semibold">{displayedAgentOptions.length ? t("chooseEmployeeTitle") : t("noEmployeesTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{displayedAgentOptions.length ? t("chooseEmployeeHint") : t("noEmployeesHint")}</p>
         </div>
       ) : null}

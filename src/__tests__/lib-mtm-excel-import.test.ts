@@ -71,6 +71,69 @@ describe("MTM Excel import validation", () => {
   })
 })
 
+// «Часы приёма» in the places' file (owner, 2026-11-02, mockup «MTM: часы приёма клиентов»).
+describe("MTM Excel import of a place's hours", () => {
+  const day = (open: string, close: string) => ({ open, close })
+  const week = { 1: { ...day("09:00", "18:00"), breakFrom: "13:00", breakTo: "14:00" }, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null }
+  const existing = (workingHours: unknown) => ({
+    id: "customer-1", code: "0001", objectType: "PHARMACY", name: "Aptek", status: "ACTIVE", category: "B",
+    address: null, city: null, district: null, territoryCode: null, latitude: null, longitude: null, contactPerson: null, phone: null, workingHours,
+  })
+  const validate = async (workingHours: unknown, values: Record<string, unknown>) => {
+    const db = { mtmCustomer: { findMany: vi.fn().mockResolvedValue([existing(workingHours)]) }, mtmRegion: { findMany: vi.fn().mockResolvedValue([]) } }
+    const parsed = customerWorkbook([{ rowNumber: 2, values: { external_code: "0001", object_type: "pharmacy", name: "Aptek", ...values } }])
+    return validateMtmExcelImport({ db: db as never, organizationId: "org-1", parsed, checksum: "checksum", actor, timezone: "Asia/Baku" })
+  }
+  const monday = { mon_from: "09:00", mon_to: "18:00", lunch_from: "13:00", lunch_to: "14:00" }
+
+  it("changes a place whose file hours differ, and leaves alone one whose hours are the same", async () => {
+    const changed = await validate(null, monday)
+    expect(changed.snapshot.rows[0]).toMatchObject({ operation: "UPDATE", data: { workingHours: week } })
+    const same = await validate(week, monday)
+    expect(same.snapshot.rows[0].operation).toBe("UNCHANGED")
+  })
+
+  it("keeps the place's hours when the row has none, and refuses a half-filled day at its cell", async () => {
+    const silent = await validate(week, {})
+    expect(silent.snapshot.rows[0].operation).toBe("UNCHANGED")
+    expect(silent.snapshot.rows[0].data).not.toHaveProperty("workingHours")
+    const broken = await validate(null, { mon_from: "09:00" })
+    expect(broken.snapshot.rows).toHaveLength(0)
+    expect(broken.errors).toContainEqual(expect.objectContaining({ rowNumber: 2, columnName: "mon_to", errorCode: "INVALID_VALUE" }))
+  })
+
+  it("writes the hours with who and when on apply, and nothing about hours for a row without them", async () => {
+    const base = { code: "0002", objectType: "PHARMACY", name: "Aptek", status: "ACTIVE", category: "B", address: null, city: null, district: null, territoryCode: null, latitude: null, longitude: null, contactPerson: null, phone: null }
+    const snapshotWith: MtmValidatedExcelSnapshot = {
+      snapshotVersion: 1, templateVersion: "1.0", type: "CUSTOMERS", checksum: "checksum", validatedAt: new Date().toISOString(),
+      summary: { totalRows: 2, createRows: 2, updateRows: 0, unchangedRows: 0, skippedRows: 0, errorRows: 0, warningRows: 0, requiresConflictOverride: false },
+      rows: [
+        { rowNumber: 2, operation: "CREATE", data: { ...base, workingHours: week } },
+        { rowNumber: 3, operation: "CREATE", data: { ...base, code: "0003" } },
+      ],
+    }
+    const tx = {
+      mtmImportJob: {
+        findFirst: vi.fn().mockResolvedValue({ id: "job-1", status: "READY", fileChecksum: "checksum", validatedSnapshot: snapshotWith }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      mtmCustomer: { upsert: vi.fn().mockResolvedValue({ id: "customer-2" }) },
+      mtmAuditLog: { create: vi.fn().mockResolvedValue({}) },
+    }
+    const db = { $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)) }
+
+    await applyMtmExcelImportJob({ db: db as never, organizationId: "org-1", jobId: "job-1", requestedBy: "user-1", allowConflictOverride: false })
+
+    const [withHours, without] = tx.mtmCustomer.upsert.mock.calls.map(([args]) => args as { create: Record<string, unknown>; update: Record<string, unknown> })
+    expect(withHours.update).toMatchObject({ workingHours: week, workingHoursUpdatedBy: "user-1" })
+    expect(withHours.create).toMatchObject({ workingHours: week, workingHoursUpdatedBy: "user-1" })
+    expect(withHours.update.workingHoursUpdatedAt).toBeInstanceOf(Date)
+    expect(without.update).not.toHaveProperty("workingHours")
+    expect(without.update).not.toHaveProperty("workingHoursUpdatedBy")
+  })
+})
+
 describe("MTM Excel import apply", () => {
   const snapshot: MtmValidatedExcelSnapshot = {
     snapshotVersion: 1,

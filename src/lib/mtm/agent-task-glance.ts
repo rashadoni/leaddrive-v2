@@ -37,7 +37,8 @@ export async function agentsReachableByPush(
 ): Promise<Set<string>> {
   if (!configured || agentIds.length === 0) return new Set()
   const rows = await client.mtmDeviceToken.findMany({
-    where: { organizationId, agentId: { in: [...agentIds] }, disabledAt: null },
+    where: { organizationId, agentId: { in: [...agentIds] }, disabledAt: null,
+      agent: { OR: [{ fieldDeletedAt: null }, { role: "EMPLOYEE" }] } },
     select: { agentId: true },
     distinct: ["agentId"],
   })

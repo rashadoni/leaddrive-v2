@@ -623,6 +623,88 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     await expect(tenant(organizationId, () => store.readAttendanceEmployee(admin, created.agentId))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND" })
   })
 
+  it("serializes legacy profile phone and metadata saves, rolls both records back on audit failure and locks canonical login fields", async () => {
+    const org = "identity-hr-profile-maintenance", oldPhone = "+994507772411", newPhone = "+994507772412", claimedPhone = "+994507772413"
+    const fixture = await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, slug: org, name: "Fictional identity HR profile", modules: { personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      const actor = await prisma.user.create({ data: { organizationId: org, name: "Fictional HR administrator", email: "admin@hr-identity.invalid", role: "admin", passwordHash: "!fixture" } })
+      const target = await prisma.user.create({ data: { organizationId: org, name: "Fictional HR subject", email: "subject@hr-identity.invalid", role: "viewer", passwordHash: "!fixture", phone: oldPhone } })
+      const owner = await prisma.user.create({ data: { organizationId: org, name: "Fictional canonical other person", email: "owner@hr-identity.invalid", role: "viewer", passwordHash: "!fixture" } })
+      await prisma.identityAccount.create({ data: { organizationId: org, userId: owner.id, cutoverAt: new Date(), passwordHash: "!fixture-canonical" } })
+      await prisma.identityPhoneClaim.create({ data: { organizationId: org, userId: owner.id, normalizedPhone: claimedPhone, verifiedAt: new Date(), accountVersion: 1 } })
+      return { actorId: actor.id, userId: target.id, cardId: (await prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: org, userId: target.id }, select: { id: true } })).id }
+    })
+    const reviewer = { organizationId: org, userId: fixture.actorId, principalType: "session" as const }
+    const page = { name: "Renamed fictional HR subject", position: null, teamId: null, departmentId: null, managerId: null }
+    const state = () => tenant(org, async () => ({
+      user: await prisma.user.findUniqueOrThrow({ where: { id: fixture.userId }, select: { name: true, phone: true, isActive: true, role: true, updatedAt: true } }),
+      card: await prisma.mtmAgent.findUniqueOrThrow({ where: { id: fixture.cardId }, select: { name: true, phone: true, status: true, userId: true, updatedAt: true } }),
+      audit: await prisma.mtmAuditLog.count({ where: { organizationId: org, action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED" } }),
+      generalAudit: await prisma.auditLog.count({ where: { organizationId: org, action: "user_updated" } }),
+    }))
+    const before = await state()
+    await expect(tenant(org, () => store.updateAttendanceEmployee({ ...reviewer, userId: fixture.userId }, "missing-profile-card", { ...page, phone: newPhone })))
+      .rejects.toMatchObject({ status: 403 })
+    for (const [table, action] of [["mtm_audit_logs", "MTM_ATTENDANCE_EMPLOYEE_UPDATED"], ["audit_logs", "user_updated"]]) {
+      sql(scratch!.adminDb, `ALTER TABLE ${table} ADD CONSTRAINT identity_hr_profile_audit_failure CHECK ("organizationId" <> 'identity-hr-profile-maintenance' OR action <> '${action}') NOT VALID`)
+      try {
+        await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: newPhone }))).rejects.toBeDefined()
+        expect(await state()).toEqual(before)
+      } finally { sql(scratch!.adminDb, `ALTER TABLE ${table} DROP CONSTRAINT identity_hr_profile_audit_failure`) }
+    }
+    await tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: newPhone }))
+    const maintained = await state()
+    expect(maintained.user).toMatchObject({ phone: newPhone, name: page.name, role: "viewer", isActive: true })
+    expect(maintained.card).toMatchObject({ phone: newPhone, name: page.name, userId: fixture.userId, status: "ACTIVE" })
+    expect(maintained.audit).toBe(1)
+    expect(maintained.generalAudit).toBe(1)
+    await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, phone: claimedPhone })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", status: 409 })
+    expect(await state()).toEqual(maintained)
+
+    // A real credential writer holds User first. Metadata must wait on the
+    // shared advisory lock before taking actor, rather than deadlocking it.
+    let release!: () => void, ready!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    const started = new Promise<void>(resolve => { ready = resolve })
+    let writerPid = 0
+    const writer = tenant(org, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'identity-registry:' + org}, 0))`
+      writerPid = (await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`)[0].pid
+      await tx.$queryRaw`SELECT id FROM users WHERE id=${fixture.userId} AND "organizationId"=${org} FOR UPDATE`
+      ready()
+      await held
+      await tx.$queryRaw`SELECT id FROM mtm_agents WHERE id=${fixture.cardId} AND "organizationId"=${org} FOR UPDATE`
+    }, { timeout: 15_000 }))
+    await Promise.race([started, writer])
+    const metadata = tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, name: "Serialized metadata" }))
+    try {
+      let waiting = false
+      const deadline = Date.now() + 1500
+      while (!waiting && Date.now() < deadline) {
+        waiting = await tenant(org, async () => ((await prisma.$queryRaw`
+          SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE usename=current_user AND pid<>${writerPid}
+            AND wait_event_type='Lock' AND wait_event='advisory') AS waiting`) as Array<{ waiting: boolean }>)[0].waiting)
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      expect(waiting).toBe(true)
+    } finally { release(); await Promise.all([writer, metadata]) }
+    expect((await state()).user).toMatchObject({ name: "Serialized metadata", phone: newPhone })
+    await bypass(() => prisma.identityAccount.create({ data: { organizationId: org, userId: fixture.userId, cutoverAt: new Date(), passwordHash: "!fixture-authoritative" } }))
+    const detail = await tenant(org, () => store.readAttendanceEmployee(reviewer, fixture.cardId))
+    expect(detail.employee.loginEditable).toBe(false)
+    expect(JSON.stringify(detail)).not.toContain("cutoverAt")
+    const canonical = await state()
+    for (const body of [{ ...page, phone: newPhone }, { ...page, email: "changed@hr-identity.invalid" }]) {
+      await expect(tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, body)))
+        .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", status: 409 })
+    }
+    expect(await state()).toEqual(canonical)
+    await tenant(org, () => store.updateAttendanceEmployee(reviewer, fixture.cardId, { ...page, name: "Canonical metadata" }))
+    expect((await state()).user).toMatchObject({ name: "Canonical metadata", phone: newPhone })
+  }, 20_000)
+
   // Owner, 2026-10-16: «где удаление сотрудников» — by his rule for agents: delete without history, dismiss with it.
   it("deletes an office employee added by mistake, dismisses one with history, and leaves CRM users to Settings", async () => {
     const create = await import("@/lib/mtm/attendance-employee-create")
@@ -787,4 +869,58 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       name: "Fictional branch", address: "Fictional address", latitude: 40.4, longitude: 49.8, radiusMeters: 150, active: false, createdBy: "setup-admin" } }))
     expect((await done()).branches).toBe(false)
   })
+  it("adds a hidden CRM profile from the add form through its existing card without duplicating identity", async () => {
+    const { readAttendancePhoneMatch } = await import("@/lib/mtm/attendance-phone-match")
+    const { createAttendanceEmployee } = await import("@/lib/mtm/attendance-employee-create")
+    const org = "employee-pg-phone-match", phone = "+994550009901"
+    const actor = { organizationId: org, userId: "phone-match-admin", principalType: "session" as const }
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional phone match", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      for (const [id, role, userPhone] of [[actor.userId, "admin", null], ["phone-match-person", "sales", phone]] as const) {
+        await prisma.user.create({ data: { id, organizationId: org, name: id, email: `${id}@example.invalid`, role, phone: userPhone, passwordHash: "unusable-fixture-hash" } })
+      }
+    })
+    await tenant(org, async () => {
+      const card = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: "phone-match-person" } })
+      expect(card).toMatchObject({ role: "EMPLOYEE", attendanceParticipant: true })
+      // Exercise the linked User.phone fallback even if provisioning later copies phones.
+      await prisma.mtmAgent.update({ where: { id: card.id }, data: { phone: null } })
+      const snapshot = async () => ({
+        user: await prisma.user.findUniqueOrThrow({ where: { id: "phone-match-person" } }),
+        card: await prisma.mtmAgent.findUniqueOrThrow({ where: { id: card.id } }),
+        users: await prisma.user.count(), cards: await prisma.mtmAgent.count(), audits: await prisma.mtmAuditLog.count(),
+      })
+      const before = await snapshot()
+      expect((await store.readAttendanceEmployees(actor)).employees.map(row => row.id)).not.toContain(card.id)
+      const match = { kind: "attendance", agentId: card.id, name: card.name, enrolled: false }
+      expect(await readAttendancePhoneMatch(actor, { phone: "+994 (55) 000-99-01" })).toEqual(match)
+      expect(await snapshot()).toEqual(before)
+      await expect(readAttendancePhoneMatch({ ...actor, userId: "phone-match-person" }, { phone })).rejects.toMatchObject({ status: 403 })
+      await expect(readAttendancePhoneMatch({ ...actor, principalType: "api_key" }, { phone })).rejects.toMatchObject({ status: 403 })
+      await expect(readAttendancePhoneMatch(actor, { phone, organizationId: "employee-pg-b" })).rejects.toMatchObject({ status: 400 })
+      expect(await readAttendancePhoneMatch(actor, { phone: "+994550009909" })).toEqual({ kind: "none" })
+      expect((await store.readAttendanceEmployee(actor, card.id)).employee.id).toBe(card.id)
+      // Owner, 2026-10-29: «пусть добавляется как сотрудник». The add form with
+      // an existing CRM user's number adds that person through their own card.
+      const added = await createAttendanceEmployee(actor, { name: "Fictional new form", phone: "+994 (55) 000-99-01", position: "Fictional head", hireDate: "2026-10-25" })
+      expect(added).toMatchObject({ userId: "phone-match-person", agentId: card.id, name: card.name, existing: true })
+      expect(await readAttendancePhoneMatch(actor, { phone })).toEqual({ ...match, enrolled: true })
+      const hired = (await store.readAttendanceEmployees(actor)).employees.find(row => row.id === card.id)!
+      expect(hired).toMatchObject({ position: "Fictional head", history: [{ kind: "HIRE", date: "2026-10-25" }] })
+      // Now in the list: a second add is refused, the form points to the page.
+      await expect(createAttendanceEmployee(actor, { name: "Fictional new form", phone })).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN" })
+      const after = await snapshot()
+      expect(after.users).toBe(before.users); expect(after.cards).toBe(before.cards)
+      for (const key of ["id", "passwordHash", "role", "phone", "email", "hiddenModules", "isActive"] as const) expect(after.user[key]).toEqual(before.user[key])
+      for (const key of ["id", "userId", "passwordHash", "role", "phone", "attendanceParticipant"] as const) expect(after.card[key]).toEqual(before.card[key])
+      const field = await prisma.mtmAgent.create({ data: { organizationId: org, name: "Fictional field", role: "AGENT", phone: "+994550009902" } })
+      expect(await readAttendancePhoneMatch(actor, { phone: field.phone })).toEqual({ kind: "other", name: field.name })
+      await prisma.mtmAgent.create({ data: { organizationId: org, name: "Fictional ambiguous", role: "AGENT", phone } })
+      expect(await readAttendancePhoneMatch(actor, { phone })).toEqual({ kind: "ambiguous" })
+    })
+    expect(await tenant(organizationId, () => readAttendancePhoneMatch(admin, { phone }))).toEqual({ kind: "none" })
+    await expect(tenant("employee-pg-b", () => readAttendancePhoneMatch(actor, { phone }))).rejects.toThrow()
+  })
+
 })

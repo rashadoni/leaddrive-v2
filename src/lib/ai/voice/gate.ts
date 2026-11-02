@@ -1,6 +1,13 @@
 /**
- * The voice pilot gate. Fail-closed by construction, because the gates this
- * codebase already has are not:
+ * Who gets the voice assistant: the person whose «Голос» switch an admin
+ * turned on in Settings → Users. That switch is the grant (owner, 2026-10-26:
+ * «голос должен активироваться в разделе пользователи»). Until then an env
+ * allowlist (VOICE_PILOT_ORG_ID / VOICE_PILOT_USER_IDS) sat in front of it and
+ * named a single organisation, so in every other tenant the switch was on
+ * screen, ticked, and did nothing — Zeytun Pharma's admin ticked it and still
+ * had no microphone.
+ *
+ * Still fail-closed, because the gates this codebase already has are not:
  *
  *  - `orgHasModule` returns TRUE when the DB throws (api-auth.ts, "Fail-OPEN"),
  *    so a database blip would grant voice rather than deny it.
@@ -10,9 +17,9 @@
  *    query throws, and superadmin sessions never load an org context at all —
  *    so a superadmin passes any module check by default.
  *
- * Hence the env allowlist runs FIRST and unconditionally. `hasModule` is the
- * last of the four checks, not the first, and it is `hasModule` (pure) rather
- * than `orgHasModule` (fail-open).
+ * Hence every read that fails denies, `hasModule` (pure) is used rather than
+ * `orgHasModule` (fail-open), and the provider env stays the host-wide kill
+ * switch.
  */
 import { hasModule } from "@/lib/modules"
 import { getOrgModuleContext } from "@/lib/api-auth"
@@ -37,60 +44,42 @@ export async function checkVoicePilotAccess(auth: {
 }): Promise<VoiceGateResult> {
   const cfg = readVoicePilotConfig()
 
-  // Unconfigured means off. An empty org must never read as "everyone".
-  if (!cfg.orgId) {
-    return { ok: false, reason: "voice_pilot_not_configured" }
-  }
-
-  // Gate on the ORGANISATION, not just the user: a superadmin can act inside
-  // any tenant, and without this their session would carry voice — and the
-  // tenant's data — into the pilot org's voice session. This stays in
-  // env while the pilot runs: it is the ceiling, and moving it into the DB
-  // would put the ceiling in the same place as the grant.
-  if (auth.orgId !== cfg.orgId) {
-    return { ok: false, reason: "voice_pilot_org_not_enrolled" }
-  }
-
   // Which roles MAY be granted. Voice reads the whole organisation aloud, so
   // the answer is the people who already see it on screen. Checked before the
-  // per-user flag so a mis-ticked box on a viewer cannot open anything.
+  // per-user switch so a mis-ticked box on a viewer cannot open anything.
   if (!VOICE_ELIGIBLE_ROLES.has(auth.role)) {
     return { ok: false, reason: "voice_pilot_role_denied" }
   }
 
-  // Superadmin bypasses the per-user flag — they are not a member of the
-  // tenant and have no row an admin could tick.
-  if (auth.role !== "superadmin") {
-    // Env still wins while it is populated: it is the pilot kill-switch, and a
-    // switch that a DB write can override is not a switch.
-    if (cfg.userIds.length > 0 && !cfg.userIds.includes(auth.userId)) {
-      return { ok: false, reason: "voice_pilot_user_not_enrolled" }
-    }
-
-    let enabled = false
-    try {
-      // MUST run inside the tenant scope. RLS is fail-closed: the same query
-      // without a context returns zero rows silently, so the flag would read as
-      // false for everyone and voice would refuse the whole pilot without a
-      // single error in the logs. The gate is called from routes that do not
-      // all open a scope of their own (the access probe is a bare GET), so the
-      // scope is opened here rather than left to each caller to remember.
-      const row = (await runWithTenant(auth.orgId, () =>
-        prisma.user.findFirst({
-          where: { id: auth.userId, organizationId: auth.orgId },
-          select: { voiceEnabled: true },
-        }),
-      )) as { voiceEnabled: boolean } | null
-      enabled = row?.voiceEnabled === true
-    } catch {
-      // A failed read denies. Same rule as the module lookup below: this gate
-      // guards a paid third-party session over the org's data, so "we could not
-      // check" must never resolve to "allowed".
-      return { ok: false, reason: "voice_grant_check_failed" }
-    }
-    if (!enabled) {
-      return { ok: false, reason: "voice_not_granted" }
-    }
+  // The switch, for every role — superadmin included. The row is looked up in
+  // the organisation the session acts in, so a superadmin working inside
+  // another tenant has no row there and gets no voice: their session can name
+  // any organisation, and voice would read that tenant aloud. The switch is
+  // written only by an admin of the organisation (PUT /api/v1/users/[id],
+  // "settings"/"write"), never by its holder through preferences.
+  let enabled = false
+  try {
+    // MUST run inside the tenant scope. RLS is fail-closed: the same query
+    // without a context returns zero rows silently, so the flag would read as
+    // false for everyone and voice would refuse every user without a single
+    // error in the logs. The gate is called from routes that do not all open a
+    // scope of their own (the access probe is a bare GET), so the scope is
+    // opened here rather than left to each caller to remember.
+    const row = (await runWithTenant(auth.orgId, () =>
+      prisma.user.findFirst({
+        where: { id: auth.userId, organizationId: auth.orgId },
+        select: { voiceEnabled: true },
+      }),
+    )) as { voiceEnabled: boolean } | null
+    enabled = row?.voiceEnabled === true
+  } catch {
+    // A failed read denies. Same rule as the module lookup below: this gate
+    // guards a paid third-party session over the org's data, so "we could not
+    // check" must never resolve to "allowed".
+    return { ok: false, reason: "voice_grant_check_failed" }
+  }
+  if (!enabled) {
+    return { ok: false, reason: "voice_not_granted" }
   }
 
   // Reads can still throw; treat any failure as denial rather than letting the

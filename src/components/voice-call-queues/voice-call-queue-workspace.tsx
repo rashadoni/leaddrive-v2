@@ -662,7 +662,7 @@ export function VoiceCallQueueWorkspace({
         </div>
       ) : null}
 
-      <section aria-labelledby="queue-progress-title" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+      <section aria-labelledby="queue-progress-title" className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 id="queue-progress-title" className="text-sm font-semibold">{t("progressTitle")}</h2>
@@ -678,7 +678,7 @@ export function VoiceCallQueueWorkspace({
           className="mt-3 h-2.5"
           aria-label={t("progressCount", { completed: finishedCount, total: totalItems })}
         />
-        <dl className="mt-4 grid grid-cols-3 divide-x divide-zinc-200 rounded-lg bg-muted/50 py-3 dark:divide-zinc-700">
+        <dl className="mt-4 grid grid-cols-3 divide-x divide-border rounded-lg bg-muted/50 py-3">
           <div className="px-3 text-center">
             <dt className="text-xs text-muted-foreground">{t("currentCount")}</dt>
             <dd className="mt-1 text-lg font-semibold tabular-nums">{currentItem ? 1 : 0}</dd>
@@ -694,7 +694,7 @@ export function VoiceCallQueueWorkspace({
         </dl>
       </section>
 
-      <section aria-label={t("controlsTitle")} className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+      <section aria-label={t("controlsTitle")} className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-center gap-2">
           {canStart ? (
             <Button type="button" onClick={() => void runQueueAction("start")} disabled={pendingAction !== null || queueDisabled}>
@@ -761,7 +761,7 @@ export function VoiceCallQueueWorkspace({
                 id="voice-queue-skip-reason"
                 value={skipReason}
                 onChange={(event) => setSkipReason(event.target.value)}
-                className="mt-1.5 min-h-11 w-full rounded-lg border border-zinc-300 bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:border-zinc-700"
+                className="mt-1.5 min-h-11 w-full rounded-lg border border-zinc-300 bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 dark:border-input"
               >
                 <option value="seller_skipped">{t("skipReasonManual")}</option>
                 <option value="not_relevant">{t("skipReasonNotRelevant")}</option>
@@ -814,8 +814,8 @@ export function VoiceCallQueueWorkspace({
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
         <div className="space-y-5">
-          <section aria-labelledby="current-call-title" className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-            <header className="border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-700">
+          <section aria-labelledby="current-call-title" className="rounded-xl border border-border bg-card">
+            <header className="border-b border-border px-4 py-3.5">
               <div className="flex items-center justify-between gap-3">
                 <h2 id="current-call-title" className="text-sm font-semibold">{t("currentCallTitle")}</h2>
                 <span className="text-xs text-muted-foreground">{t("oneAtATime")}</span>
@@ -851,13 +851,13 @@ export function VoiceCallQueueWorkspace({
             )}
           </section>
 
-          <section aria-labelledby="remaining-calls-title" className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-            <header className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-700">
+          <section aria-labelledby="remaining-calls-title" className="rounded-xl border border-border bg-card">
+            <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
               <h2 id="remaining-calls-title" className="text-sm font-semibold">{t("remainingTitle")}</h2>
               <span className="text-xs font-medium tabular-nums text-muted-foreground">{remainingItems.length}</span>
             </header>
             {remainingItems.length > 0 ? (
-              <ol className="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <ol className="divide-y divide-border">
                 {remainingItems.map((item, index) => (
                   <li key={item.id} className="flex min-h-14 items-center gap-3 px-4 py-3">
                     <span className={cn(
@@ -891,13 +891,13 @@ export function VoiceCallQueueWorkspace({
           </section>
         </div>
 
-        <section aria-labelledby="queue-history-title" className="h-fit rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-          <header className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3.5 dark:border-zinc-700">
+        <section aria-labelledby="queue-history-title" className="h-fit rounded-xl border border-border bg-card">
+          <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
             <h2 id="queue-history-title" className="text-sm font-semibold">{t("historyTitle")}</h2>
             <ListOrdered aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
           </header>
           {historyItems.length > 0 ? (
-            <ol className="divide-y divide-zinc-200 dark:divide-zinc-700">
+            <ol className="divide-y divide-border">
               {[...historyItems].reverse().map((item) => (
                 <li key={item.id} className="flex items-start gap-3 px-4 py-3">
                   <span className={cn(

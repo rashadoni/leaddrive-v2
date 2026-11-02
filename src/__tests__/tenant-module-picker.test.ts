@@ -9,6 +9,8 @@ import { TENANT_MODULE_CONTROLS } from "@/lib/admin-sidebar-catalog"
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "tenant-a" }), useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("next/link", () => ({ default: ({ children, href }: { children?: ReactNode; href: string }) => createElement("a", { href }, children) }))
+// The phone numbers panel loads its own list; this suite counts the tenant page's own requests.
+vi.mock("@/components/admin/voice-numbers-panel", () => ({ VoiceNumbersPanel: () => null }))
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const IntlProvider = NextIntlClientProvider as FunctionComponent<Omit<ComponentProps<typeof NextIntlClientProvider>, "children"> & { children?: ReactNode }>
 let container: HTMLDivElement
@@ -47,6 +49,7 @@ function button(label: string) {
   return Array.from(container.querySelectorAll("button")).find((element) => element.textContent?.trim() === label)!
 }
 function capability(id: string) { return container.querySelector(`[data-tenant-capability="${id}"] [role="switch"]`) }
+function pageFeature(id: string) { return container.querySelector(`[data-page-feature="${id}"] [role="switch"]`) }
 function hiddenCategory(label: string) {
   return Array.from(container.querySelectorAll("button[aria-label]")).find((element) => element.textContent?.includes(label))!
 }
@@ -89,21 +92,34 @@ describe("unified tenant module picker", () => {
   })
 
   it("preserves an unrelated draft edit made while a save is in flight", async () => {
-    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "personnel"])))
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "support", "personnel"])))
     await render()
     let finish!: (result: Response) => void
     fetchMock.mockReturnValueOnce(new Promise<Response>(resolve => { finish = resolve }))
     await click(button(messages("en").admin.tenants.save))
-    const extraLabel = Array.from(container.querySelectorAll("div"))
-      .find(element => element.textContent === "Complaints Register")!
-    const extraToggle = extraLabel.parentElement!.parentElement!.querySelector("button")!
+    const extraToggle = pageFeature("complaints_register")!
     await click(extraToggle)
-    expect(extraToggle.textContent).toBe("on")
-    await act(async () => finish(response({ ...tenant(["crm", "personnel"]), modules: { crm: true, personnel: true } })))
-    expect(extraToggle.textContent).toBe("on")
-    fetchMock.mockResolvedValueOnce(response({ ...tenant(["crm", "personnel", "complaints_register"]), modules: { crm: true, personnel: true } }))
+    expect(extraToggle.getAttribute("aria-checked")).toBe("true")
+    await act(async () => finish(response({ ...tenant(["crm", "support", "personnel"]), modules: { crm: true, support: true, personnel: true } })))
+    expect(pageFeature("complaints_register")?.getAttribute("aria-checked")).toBe("true")
+    fetchMock.mockResolvedValueOnce(response({ ...tenant(["crm", "support", "personnel", "complaints_register"]), modules: { crm: true, support: true, personnel: true } }))
     await click(button(messages("en").admin.tenants.save))
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).features).toContain("complaints_register")
+  })
+
+  it("switches a flagged page on its own row, inside its group", async () => {
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "sales"], { crm: true, sales: true })))
+    await render("az")
+    const row = container.querySelector('[data-page-feature="pharmacy_phone_orders"]')!
+    // Phone orders are a sales page (owner, 2026-10-26).
+    expect(row.closest("[data-module-group]")?.getAttribute("data-module-group")).toBe("Sales")
+    expect(row.textContent).toContain(messages("az").nav.pharmacyPhoneOrders)
+    expect(row.className).toContain("line-through")
+    await click(pageFeature("pharmacy_phone_orders"))
+    expect(row.className).not.toContain("line-through")
+    fetchMock.mockResolvedValueOnce(response(tenant(["crm", "sales", "pharmacy_phone_orders"], { crm: true, sales: true })))
+    await click(button(messages("az").admin.tenants.save))
+    expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).features).toContain("pharmacy_phone_orders")
   })
 
   it("includes both independent capabilities in bulk actions and preserves unrelated flags", async () => {

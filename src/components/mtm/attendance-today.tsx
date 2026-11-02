@@ -14,7 +14,7 @@ import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { attendanceAskableExplanations, attendanceExplanationKey, attendanceNewlyAskable, attendanceNow, attendanceRowExplanation, attendanceTodayRange, summarizeAttendanceToday, type AttendanceNow, type AttendanceNowPerson, type AttendanceTodayAttention, type AttendanceTodaySummary } from "@/lib/mtm/attendance-today"
 import { ATTENDANCE_RISK_MESSAGES, type AttendanceRiskItem } from "@/lib/mtm/attendance-risk-contract"
 import type { AttendanceReviewItem } from "@/lib/mtm/attendance-request-review"
-import type { AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
+import { ATTENDANCE_EXPLANATION_LOOKBACK_DAYS, type AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
 import type { MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { MtmAttendanceSetupChecklist } from "@/components/mtm/attendance-setup-checklist"
@@ -75,6 +75,9 @@ async function readJson(response: Response) { return response.json().catch(() =>
 export function MtmAttendanceToday() {
   const t = useTranslations("personnel")
   const a = useTranslations("mtmAttendance")
+  // A day nobody was due (weekend, holiday): «0 nəfərdən» under someone who
+  // came anyway read as "1 of 0" (owner's Sunday check, 2026-11-01).
+  const ofExpected = (total: number) => total === 0 ? t("kpiDayOff") : t("kpiOf", { total })
   const format = useFormatter()
   const locale = useLocale()
   const [data, setData] = useState<Loaded | null>(null)
@@ -108,7 +111,7 @@ export function MtmAttendanceToday() {
         fetch(`/api/v1/mtm/attendance/report?${new URLSearchParams({ from: range.from, to: range.to, form: "ALL" })}`, { cache: "no-store", signal: controller.signal }),
         fetch("/api/v1/mtm/attendance/requests?status=PENDING", { cache: "no-store", signal: controller.signal }),
         fetch(`/api/v1/mtm/attendance/review?${new URLSearchParams({ from: addDateKeyDays(today, -6), to: today, status: "OPEN" })}`, { cache: "no-store", signal: controller.signal }),
-        fetch(`/api/v1/mtm/attendance/explanations?${new URLSearchParams({ from: today, to: today })}`, { cache: "no-store", signal: controller.signal }),
+        fetch(`/api/v1/mtm/attendance/explanations?${new URLSearchParams({ from: addDateKeyDays(today, -ATTENDANCE_EXPLANATION_LOOKBACK_DAYS), to: today })}`, { cache: "no-store", signal: controller.signal }),
       ])
       const [reportBody, requestsBody, risksBody, explanationsBody] = await Promise.all([readJson(report), readJson(requests), readJson(risks), readJson(explanations)])
       if (controller.signal.aborted) return
@@ -240,7 +243,7 @@ export function MtmAttendanceToday() {
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {([
-        { id: "arrived", label: t("kpiArrived"), icon: <LogIn className="h-4 w-4" />, tone: "green", value: summary?.arrived, unit: summary ? t("kpiOf", { total: summary.expected }) : null,
+        { id: "arrived", label: t("kpiArrived"), icon: <LogIn className="h-4 w-4" />, tone: "green", value: summary?.arrived, unit: summary ? ofExpected(summary.expected) : null,
           progress: summary?.expected ? summary.arrived / summary.expected * 100 : 0, href: "/mtm/attendance/reports?report=day", link: t("kpiArrivedLink") },
         { id: "late", label: t("kpiLate"), icon: <Clock3 className="h-4 w-4" />, tone: "amber", value: summary?.late, unit: null,
           progress: summary?.expected ? summary.late / summary.expected * 100 : 0, href: `/mtm/attendance/reports?report=late${data ? `&date=${data.today}` : ""}`, link: t("kpiLateLink") },
@@ -249,7 +252,7 @@ export function MtmAttendanceToday() {
         { id: "missing-finish", label: t("kpiMissing"), icon: <LogOut className="h-4 w-4" />, tone: "blue", value: summary?.missingFinish, unit: null,
           progress: summary?.people ? summary.missingFinish / summary.people * 100 : 0, href: "/mtm/attendance/timesheet?filter=missing-finish", link: t("kpiMissingLink") },
       ] as const).map(card => <div key={card.id} className="relative">
-        <HomeKpi testId={`attendance-today-${card.id}`} label={card.label} icon={card.icon} tone={card.tone} value={card.value === undefined ? null : format.number(card.value)} unit={card.unit} progress={card.progress} sub={null} />
+        <HomeKpi testId={`attendance-today-${card.id}`} label={card.label} icon={card.icon} tone={card.tone} value={card.value === undefined ? null : format.number(card.value)} unit={card.unit} progress={card.progress} sub={null} loading={!data} />
         <Link href={card.href} prefetch={false} className="absolute bottom-3 left-4 text-xs font-semibold text-primary hover:underline">{card.link} →</Link>
       </div>)}
     </div>
@@ -290,7 +293,7 @@ export function MtmAttendanceToday() {
 
       <HomeCard testId="attendance-today-attention" titleId="attendance-today-attention-title" icon={<ShieldAlert className="h-4 w-4" aria-hidden="true" />} tone="amber"
         title={t("attentionTitle")} badge={attentionCount ? String(attentionCount) : null} action={risks.length ? { href: "/mtm/attendance/review", label: t("allRisks", { count: risks.length }) } : undefined}>
-        {!data ? <p role="status" className="py-6 text-sm text-muted-foreground">{a("reportLoading")}</p>
+        {!data ? <div role="status" aria-label={a("reportLoading")} className="space-y-3 py-4">{[0, 1].map((key) => <div key={key} className="h-10 animate-pulse rounded-xl bg-muted/60 motion-reduce:animate-none" aria-hidden="true" />)}</div>
           : attentionCount === 0 ? <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />{t("attentionEmpty")}</p>
           : <>{askable.length ? <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5" data-testid="attendance-explain-bar">
               <label className="inline-flex min-h-9 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={picked.length === askable.length}
@@ -304,7 +307,7 @@ export function MtmAttendanceToday() {
               const explainId = explainKey(item), explanation = explanationOf(item)
               // What the explanation is about, said when the row does not say it: its own row, or a row of the other kind.
               const about = explanation && (item.type === "explanation" || explanation.kind !== (item.type === "late" ? "LATE" : "ABSENT"))
-                ? t(explanation.kind === "LATE" ? "explainForLate" : "explainForAbsent") : null
+                ? `${t(explanation.kind === "LATE" ? "explainForLate" : "explainForAbsent")}${data && item.date !== data.today ? ` · ${dateLabel(item.date)}` : ""}` : null
               return <li key={key} className="py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}><div className="flex flex-wrap items-center gap-3">
               {explainId && data?.explanations ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={!!explanation}
                 checked={!explanation && selected.has(explainId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(explainId); else next.delete(explainId); return next })} /> : null}
@@ -345,7 +348,7 @@ export function MtmAttendanceToday() {
           return <Link key={day.date} prefetch={false} href={`/mtm/attendance/timesheet?date=${day.date}`} data-testid="attendance-today-day"
             className={`rounded-xl p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${isToday ? "border border-primary" : day.future ? "border border-dashed" : "border hover:bg-muted/50"}`}>
             <p className={`text-xs font-semibold first-letter:uppercase ${isToday ? "text-primary" : "text-muted-foreground"}`}>{dateLabel(day.date, { weekday: "short", day: "numeric" })}{isToday ? ` · ${t("weekToday")}` : ""}</p>
-            <p className="mt-1 text-sm"><span className="text-base font-bold tabular-nums">{day.future ? "—" : day.present}</span> <span className="text-xs text-muted-foreground">{day.future ? t("weekPlan", { total: day.expected }) : t("kpiOf", { total: day.expected })}</span></p>
+            <p className="mt-1 text-sm"><span className="text-base font-bold tabular-nums">{day.future ? "—" : day.present}</span> <span className="text-xs text-muted-foreground">{day.future ? t("weekPlan", { total: day.expected }) : ofExpected(day.expected)}</span></p>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {day.late ? <HomePill tone="amber">{t("chipLate", { count: day.late })}</HomePill> : null}
               {day.away ? <HomePill tone="blue">{t("chipAway", { count: day.away })}</HomePill> : null}

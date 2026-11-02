@@ -29,9 +29,16 @@ function newPrismaClient(options) {
   return /** @type {any} */ (new PrismaClient(options))
 }
 
-/** @param {{ orgId?: string }} [opts] */
-export async function makeScriptPrisma({ orgId } = {}) {
-  const url = new URL(process.env.DATABASE_URL)
+/**
+ * An explicit database override is only available with a tenant scope; it must
+ * never accidentally inherit the cross-tenant default used by maintenance scripts.
+ * @param {{ orgId?: string, databaseUrl?: string }} [opts]
+ */
+export async function makeScriptPrisma({ orgId, databaseUrl } = {}) {
+  if (databaseUrl !== undefined && (typeof orgId !== "string" || !orgId.trim())) {
+    throw new Error("An explicit script database requires an organization scope")
+  }
+  const url = new URL(databaseUrl ?? process.env.DATABASE_URL)
   url.searchParams.set("connection_limit", "1")
   const prisma = newPrismaClient({ datasourceUrl: url.toString() })
   if (orgId) {

@@ -46,6 +46,9 @@ test('every broker and controller gets mTLS, a deny-by-default authorizer and it
     const props = parse(files[`${host.name}/server.properties`])
     assert.equal(props['node.id'], String(ids.get(host.name)))
     assert.equal(props['controller.quorum.voters'], voters)
+    // Every quorum member and observer tolerates a few seconds of WAN stall.
+    assert.equal(props['controller.quorum.request.timeout.ms'], '5000')
+    assert.equal(props['controller.quorum.fetch.timeout.ms'], '6000')
     assert.equal(props['allow.everyone.if.no.acl.found'], 'false')
     assert.equal(props['authorizer.class.name'], 'org.apache.kafka.metadata.authorizer.StandardAuthorizer')
     assert.equal(props['ssl.enabled.protocols'], 'TLSv1.3')

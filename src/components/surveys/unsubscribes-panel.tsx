@@ -69,7 +69,7 @@ export function SurveyUnsubscribesPanel({ surveyId, orgId }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div>
         <h3 className="text-sm font-semibold">{t("unsubscribesTitle")}</h3>
         <p className="text-xs text-muted-foreground mt-0.5">{t("unsubscribesHint")}</p>
@@ -86,7 +86,7 @@ export function SurveyUnsubscribesPanel({ surveyId, orgId }: Props) {
         </div>
         <div className="space-y-1">
           <label className="text-[11px] font-medium text-muted-foreground">{t("scope")}</label>
-          <select value={scope} onChange={e => setScope(e.target.value as any)} className="h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-xs">
+          <select value={scope} onChange={e => setScope(e.target.value as any)} className="h-8 rounded-md border border-input bg-background px-2 text-xs">
             <option value="survey">{t("scopeSurvey")}</option>
             <option value="org">{t("scopeOrg")}</option>
           </select>

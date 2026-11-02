@@ -6,6 +6,9 @@ import { NextResponse } from "next/server"
 // can stay consistent across entities. See Roadmap #19 Phase B.
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     deal: {
       findMany: vi.fn().mockResolvedValue([]),
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),

@@ -7,6 +7,7 @@ import { requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { pharmacyPromotionHash } from "@/lib/mtm/pharmacy-promotion"
 import { preparePharmacyPromotionReview } from "@/lib/mtm/pharmacy-promotion-review"
 import { PharmacyPromotionReviewSchema } from "@/lib/mtm/pharmacy-promotion-validators"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -287,9 +288,9 @@ export const POST = withMtmRlsAuth<RouteContext>("mtm", "write", async (req, aut
       })
       const recipient = await tx.mtmAgent.findFirst({
         where: { id: execution.agentId, organizationId: auth.orgId },
-        select: { user: { select: { preferredLanguage: true } } },
+        select: AGENT_LANGUAGE_SELECT,
       })
-      const notificationCopy = reviewNotificationCopy(recipient?.user?.preferredLanguage, body.level, body.decision)
+      const notificationCopy = reviewNotificationCopy(agentLanguage(recipient), body.level, body.decision)
       await tx.mtmNotification.create({
         data: {
           organizationId: auth.orgId,

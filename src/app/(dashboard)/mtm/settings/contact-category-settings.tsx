@@ -24,6 +24,7 @@ import {
   type ContactCategoryOption,
 } from "@/lib/mtm/contact-category-editor"
 import { cn } from "@/lib/utils"
+import { MtmWord } from "@/components/mtm/button-word"
 
 /**
  * Editor rows carry a `uid` so React keeps an input mounted while its row is
@@ -265,7 +266,7 @@ export function ContactCategorySettings({
   }
   if (loadError && !loaded) {
     return (
-      <section className="rounded-2xl border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm">
+      <section className="rounded-2xl border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-4 text-sm">
         <p>{loadError}</p>
         <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void load()}>{t("retry")}</Button>
       </section>
@@ -278,7 +279,7 @@ export function ContactCategorySettings({
   }
 
   return (
-    <section data-testid="mtm-contact-category-settings" className={embedded ? undefined : "rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5"} aria-labelledby={embedded ? undefined : "contact-category-settings-title"}>
+    <section data-testid="mtm-contact-category-settings" className={embedded ? undefined : "rounded-2xl border border-border bg-card p-4 sm:p-5"} aria-labelledby={embedded ? undefined : "contact-category-settings-title"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid max-w-3xl gap-1">
           {embedded ? null : (
@@ -309,7 +310,7 @@ export function ContactCategorySettings({
             && issue.categoryIndex === categoryIndex
           ))
           return (
-            <article key={category.uid} data-testid="mtm-contact-category" className="rounded-xl border border-zinc-200 bg-muted/20 p-3 dark:border-zinc-700 sm:p-4">
+            <article key={category.uid} data-testid="mtm-contact-category" className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4">
               <div className="flex flex-wrap items-end gap-2">
                 <label className="grid min-w-0 flex-1 basis-56 gap-1 text-xs">
                   <span className="text-muted-foreground">{t("categoryName")}</span>
@@ -333,13 +334,13 @@ export function ContactCategorySettings({
                 </span>
                 <div className="flex items-center gap-1">
                   <Hint text={categoryIndex === 0 ? null : t("hint.categoryMoveUp")}>
-                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={categoryIndex === 0} onClick={() => setCategories((current) => move(current, categoryIndex, -1))}>
-                      <ArrowUp className="h-4 w-4" />
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveUp")} disabled={categoryIndex === 0} onClick={() => setCategories((current) => move(current, categoryIndex, -1))}>
+                      <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
                     </Button>
                   </Hint>
                   <Hint text={categoryIndex === categories.length - 1 ? null : t("hint.categoryMoveDown")}>
-                    <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={categoryIndex === categories.length - 1} onClick={() => setCategories((current) => move(current, categoryIndex, 1))}>
-                      <ArrowDown className="h-4 w-4" />
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveDown")} disabled={categoryIndex === categories.length - 1} onClick={() => setCategories((current) => move(current, categoryIndex, 1))}>
+                      <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
                     </Button>
                   </Hint>
                   <Hint text={t("hint.categoryRemove")}>
@@ -352,7 +353,7 @@ export function ContactCategorySettings({
 
               {category.code && standardNote?.(category)}
 
-              <div className="mt-4 grid gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+              <div className="mt-4 grid gap-3 border-t border-border pt-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("fieldsTitle")}</p>
                 {category.fields.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("noFields")}</p>
@@ -370,7 +371,7 @@ export function ContactCategorySettings({
                   // changing it underneath them would make them unreadable.
                   const typeLocked = Boolean(field.key)
                   return (
-                    <div key={field.uid} data-testid="mtm-contact-category-field" className="grid gap-3 rounded-lg border border-zinc-200 bg-background p-3 dark:border-zinc-700">
+                    <div key={field.uid} data-testid="mtm-contact-category-field" className="grid gap-3 rounded-lg border border-border bg-background p-3">
                       <div className="flex flex-wrap items-end gap-2">
                         <label className="grid min-w-0 flex-1 basis-56 gap-1 text-xs">
                           <span className="text-muted-foreground">{t("fieldName")}</span>
@@ -426,25 +427,25 @@ export function ContactCategorySettings({
                         </Hint>
                         <div className="flex items-center gap-1">
                           <Hint text={fieldIndex === 0 ? null : t("hint.categoryFieldMoveUp")}>
-                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveUp")} disabled={fieldIndex === 0} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, -1) }))}>
-                              <ArrowUp className="h-4 w-4" />
+                            <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveUp")} disabled={fieldIndex === 0} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, -1) }))}>
+                              <ArrowUp className="h-4 w-4" /><MtmWord word="up" />
                             </Button>
                           </Hint>
                           <Hint text={fieldIndex === category.fields.length - 1 ? null : t("hint.categoryFieldMoveDown")}>
-                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("moveDown")} disabled={fieldIndex === category.fields.length - 1} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, 1) }))}>
-                              <ArrowDown className="h-4 w-4" />
+                            <Button type="button" variant="ghost" size="sm" className="min-h-11 gap-1.5" aria-label={t("moveDown")} disabled={fieldIndex === category.fields.length - 1} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: move(current.fields, fieldIndex, 1) }))}>
+                              <ArrowDown className="h-4 w-4" /><MtmWord word="down" />
                             </Button>
                           </Hint>
                           <Hint text={t("hint.categoryFieldRemove")}>
-                            <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeField")} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: current.fields.filter((candidate) => candidate.uid !== field.uid) }))}>
-                              <Trash2 className="h-4 w-4" />
+                            <Button type="button" variant="ghost" size="sm" className="min-h-11 text-destructive gap-1.5" aria-label={t("removeField")} onClick={() => updateCategory(category.uid, (current) => ({ ...current, fields: current.fields.filter((candidate) => candidate.uid !== field.uid) }))}>
+                              <Trash2 className="h-4 w-4" /><MtmWord word="delete" />
                             </Button>
                           </Hint>
                         </div>
                       </div>
 
                       {field.type === "SELECT" ? (
-                        <div className="grid gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                        <div className="grid gap-2 border-t border-border pt-3">
                           <p className={cn("text-xs font-medium", optionsInvalid ? "text-destructive" : "text-muted-foreground")}>{t("options")}</p>
                           <div className="flex flex-wrap gap-2">
                             {(field.options ?? []).map((option) => (
@@ -464,8 +465,8 @@ export function ContactCategorySettings({
                                   }))}
                                 />
                                 <Hint text={t("hint.categoryOptionRemove")}>
-                                  <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" aria-label={t("removeOption")} onClick={() => updateField(category.uid, field.uid, (current) => ({ ...current, options: (current.options ?? []).filter((candidate) => candidate.uid !== option.uid) }))}>
-                                    <Trash2 className="h-4 w-4" />
+                                  <Button type="button" variant="ghost" size="sm" className="min-h-11 text-destructive gap-1.5" aria-label={t("removeOption")} onClick={() => updateField(category.uid, field.uid, (current) => ({ ...current, options: (current.options ?? []).filter((candidate) => candidate.uid !== option.uid) }))}>
+                                    <Trash2 className="h-4 w-4" /><MtmWord word="delete" />
                                   </Button>
                                 </Hint>
                               </span>
@@ -510,7 +511,7 @@ export function ContactCategorySettings({
       </p>
 
       {removedFields.length > 0 ? (
-        <p role="status" className="mt-3 flex items-start gap-2 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
+        <p role="status" className="mt-3 flex items-start gap-2 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
           <CircleAlert className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true" />
           <span>{t("removedFields", { fields: removedFields.join(", ") })}</span>
         </p>
@@ -521,7 +522,7 @@ export function ContactCategorySettings({
         </ul>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
         <span role="status" aria-live="polite" className={cn("text-sm", dirty ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground")}>
           {dirty ? t("dirty") : t("noChanges")}
         </span>

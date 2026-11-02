@@ -72,7 +72,7 @@ state. It resolves the DB URL from `$DBURL` / `$DATABASE_URL` / the app `.env`.
 ```bash
 cd /opt/leaddrive-v2
 bash scripts/rls/enable-one.sh quotes          # canary first
-# watch ~a day: pm2 logs leaddrive-v2 | grep RLS-GUARD  + error rate
+# watch ~a day: pm2 logs leaddrive-v2 leaddrive-v2-jobs | grep RLS-GUARD  + error rate
 bash scripts/rls/enable-one.sh companies        # then medium, one at a time
 bash scripts/rls/enable-one.sh leads
 bash scripts/rls/enable-one.sh tickets
@@ -114,7 +114,7 @@ RLS_WAIT_SECONDS=3600 bash scripts/rls/enable-rest.sh contacts deals invoices  #
 2. **Enable** on the server: `bash scripts/rls/enable-one.sh <table>` (or apply the
    table's `migration.sql` via psql).
 3. **Monitor ~a day:**
-   - `[RLS-GUARD]` in server logs (`pm2 logs leaddrive-v2 | grep RLS-GUARD`) — any
+   - `[RLS-GUARD]` in server logs (`pm2 logs leaddrive-v2 leaddrive-v2-jobs | grep RLS-GUARD`) — any
      hit is an un-wrapped path now fail-closing; roll back that table and wrap it.
    - error rate + support signals for empty-list / 0-row anomalies.
 4. **Only then** move to the next table.

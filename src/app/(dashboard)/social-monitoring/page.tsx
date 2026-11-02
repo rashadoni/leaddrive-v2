@@ -472,7 +472,7 @@ function SocialMonitoringNavigation({
                     onClick={() => onChange(item.value)}
                     className={`flex min-h-11 min-w-0 items-center justify-start gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm ${
                       active
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? "crm-choice-selected  shadow-sm"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
@@ -518,6 +518,9 @@ const CONNECT_CHANNELS: Array<{ key: string; label: string; bg: string; icon: Re
     icon: <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px]"><path d="M17.5 3h3l-6.6 7.5L21.7 21h-5.9l-4.2-5.5L6.5 21H3.4l7-8L2.6 3h6l3.8 5zM16.4 19.2h1.6L7.6 4.7H5.9z"/></svg> },
 ]
 
+/** Connected in Settings → Channels, not here (see ConnectChannelTiles). */
+const META_CHANNEL_KEYS: ReadonlySet<string> = new Set(["facebook", "instagram"])
+
 function ConnectChannelTiles({ accounts, connectedPages, headers }: { accounts: Account[]; connectedPages: ConnectedPage[]; headers: Record<string, string> }) {
   const t = useTranslations("socialMonitoring")
   // Which providers' OAuth is actually configured (tenant app or env) — tiles for
@@ -535,9 +538,26 @@ function ConnectChannelTiles({ accounts, connectedPages, headers }: { accounts: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headers["x-organization-id"]])
 
+  // Facebook and Instagram are connected once, in Settings → Channels, for the Inbox and monitoring alike
+  // (owner, 2026-10-27: «нужна чтоб один канал был»); their row there says whether the page is collected.
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-      {CONNECT_CHANNELS.map(c => {
+    <div className="space-y-2.5">
+    <div data-testid="monitoring-meta-in-channels" className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3 sm:flex-row sm:items-center">
+      <div className="flex shrink-0 -space-x-1.5" aria-hidden="true">
+        {CONNECT_CHANNELS.filter(c => META_CHANNEL_KEYS.has(c.key)).map(c => (
+          <span key={c.key} className="flex h-9 w-9 items-center justify-center rounded-lg text-white ring-2 ring-card" style={{ background: c.bg }}>{c.icon}</span>
+        ))}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold">{t("metaInChannelsTitle")}</div>
+        <div className="text-[11px] text-muted-foreground">{t("metaInChannelsDesc")}</div>
+      </div>
+      <Button asChild size="sm" className="h-8 shrink-0">
+        <a href="/settings/channels">{t("openChannels")}</a>
+      </Button>
+    </div>
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      {CONNECT_CHANNELS.filter(c => !META_CHANNEL_KEYS.has(c.key)).map(c => {
         const count = accounts.filter(a => a.platform === c.key && a.isActive && Boolean(a.accessToken)).length
           + connectedPages.filter(page => page.platform === c.key && page.connected).length
         const connected = count > 0
@@ -575,7 +595,7 @@ function ConnectChannelTiles({ accounts, connectedPages, headers }: { accounts: 
           </>
         )
         const tileClass =
-          "group flex flex-col gap-2.5 rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-700"
+          "group flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
         return isConfigured ? (
           <a
             key={c.key}
@@ -590,6 +610,7 @@ function ConnectChannelTiles({ accounts, connectedPages, headers }: { accounts: 
           </div>
         )
       })}
+    </div>
     </div>
   )
 }
@@ -2090,7 +2111,7 @@ export default function SocialMonitoringPage() {
       label: t("sourceReadiness.activeAccounts"),
       value: activeAccountCount,
       detail: t("sourceReadiness.activeAccountsDetail", { total: accountCount }),
-      tone: "border-zinc-200 bg-muted/30 dark:border-zinc-700",
+      tone: "border-border bg-muted/30",
     },
     {
       key: "connectedMeta",
@@ -2106,7 +2127,7 @@ export default function SocialMonitoringPage() {
       label: t("sourceReadiness.keywordRules"),
       value: t("sourceReadiness.externalKeywordsValue"),
       detail: t("sourceReadiness.keywordRulesDetail"),
-      tone: "border-zinc-200 bg-muted/30 dark:border-zinc-700",
+      tone: "border-border bg-muted/30",
     },
     {
       key: "sendPolicy",
@@ -2505,7 +2526,7 @@ export default function SocialMonitoringPage() {
       ? pagination.total
       : Math.min(pagination.total, pagination.page * pageSize)
     return (
-      <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 text-xs text-muted-foreground dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 border-t border-border pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span>{t("paginationInfo", { from, to, total: pagination.total })}</span>
         {pagination.pageSize !== "all" && pagination.totalPages > 1 && (
           <div className="flex items-center gap-2">
@@ -2623,7 +2644,7 @@ export default function SocialMonitoringPage() {
                     setSourcesTab("pages")
                     openAllBrandsView("sources")
                   }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <LinkIcon className="h-3 w-3 text-primary" />
                     {t("ownedPageCount", { count: accountCount })}
@@ -2635,7 +2656,7 @@ export default function SocialMonitoringPage() {
                     setSourcesTab("pages")
                     openAllBrandsView("sources")
                   }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-emerald-400/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-emerald-400/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
                     {t("connectedIdentityCount", { count: connectedAccountCount })}
@@ -2831,7 +2852,7 @@ export default function SocialMonitoringPage() {
       )}
 
       {activeView === "settings" && (
-      <div className="rounded-xl border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-700">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -2851,19 +2872,19 @@ export default function SocialMonitoringPage() {
           </Button>
         </div>
         <div className="mt-4 grid gap-2 md:grid-cols-3">
-          <div className="rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+          <div className="rounded-md border border-border px-3 py-2">
             <div className="text-xs font-medium">{t("settingsCards.aiTitle")}</div>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               {aiReplySettings ? t("settingsCards.aiDesc", { mode: t(`aiReplyModes.${aiReplySettings.mode}`) }) : t("settingsCards.aiDescFallback")}
             </p>
           </div>
-          <div className="rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+          <div className="rounded-md border border-border px-3 py-2">
             <div className="text-xs font-medium">{t("settingsCards.inboxTitle")}</div>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               {t("settingsCards.inboxDesc", { count: connectedMetaAccountCount })}
             </p>
           </div>
-          <div className="rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+          <div className="rounded-md border border-border px-3 py-2">
             <div className="text-xs font-medium">{t("settingsCards.sendTitle")}</div>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("settingsCards.sendDesc")}</p>
           </div>
@@ -2872,7 +2893,7 @@ export default function SocialMonitoringPage() {
       )}
 
       {activeView === "settings" && (
-      <div className="rounded-xl border border-zinc-200 bg-card px-4 py-3 shadow-sm dark:border-zinc-700">
+      <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -2895,7 +2916,7 @@ export default function SocialMonitoringPage() {
       )}
 
       {activeView === "settings" && (
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card px-4 py-3 shadow-sm">
+      <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="uppercase text-[10px]">TikTok</Badge>
           <span className="text-sm font-semibold">{t("tiktokSetupTitle")}</span>
@@ -2934,11 +2955,11 @@ export default function SocialMonitoringPage() {
       <Link
         data-tour-id="social-ai"
         href="/settings/ai-automation"
-        className="group flex items-center justify-between rounded-xl border border-violet-200 dark:border-violet-900/60 bg-gradient-to-br from-violet-50/60 to-pink-50/40 dark:from-violet-950/20 dark:to-pink-950/10 px-4 py-3 transition-all duration-200 hover:border-violet-300 hover:shadow-sm dark:hover:border-violet-800"
+        className="group crm-panel flex items-center justify-between px-4 py-3 transition-colors hover:border-foreground/25"
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-            <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
           </div>
           <div>
             <p className="text-sm font-medium">{t("aiAutopilotTitle")}</p>
@@ -2949,7 +2970,7 @@ export default function SocialMonitoringPage() {
       </Link>
 
       {aiReplySettings && (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card px-4 py-3 shadow-sm">
+        <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
             <Sparkles className="h-4 w-4 text-violet-500 dark:text-violet-300" />
             <span className="text-sm font-semibold">{t("aiReplySettingsTitle")}</span>
@@ -2972,7 +2993,7 @@ export default function SocialMonitoringPage() {
                     type="button"
                     onClick={() => toggleAiReplyFeature(row.key, row.enabled)}
                     disabled={togglingAiReply !== null}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-left transition-colors hover:border-violet-300 disabled:opacity-60"
+                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-left transition-colors hover:border-violet-300 disabled:opacity-60"
                   >
                     <div className="min-w-0">
                       <div className="text-xs font-medium text-foreground">{t(row.label)}</div>
@@ -3003,10 +3024,10 @@ export default function SocialMonitoringPage() {
 
       {activeView === "agent" && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-violet-200 dark:border-violet-900/60 bg-gradient-to-br from-violet-50/60 to-pink-50/40 dark:from-violet-950/20 dark:to-pink-950/10 px-4 py-3">
+          <div className="crm-panel px-4 py-3">
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-                <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
                 <span className="text-sm font-semibold">{t("agentTabTitle")}</span>
@@ -3020,7 +3041,7 @@ export default function SocialMonitoringPage() {
       )}
 
       {activeView === "settings" && (
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card px-4 py-3 shadow-sm">
+      <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
             <ShieldCheck className="h-4 w-4" />
@@ -3031,7 +3052,7 @@ export default function SocialMonitoringPage() {
         <p className="mt-2 text-xs text-muted-foreground">{t("deliveryMatrixDesc")}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]">
           {deliveryGuardrails.map((row) => (
-            <div key={row.key} className="rounded-lg border border-zinc-200 px-3 py-2 text-xs transition-shadow duration-200 hover:shadow-sm dark:border-zinc-700">
+            <div key={row.key} className="rounded-lg border border-border px-3 py-2 text-xs transition-shadow duration-200 hover:shadow-sm">
               <div className="font-medium text-foreground">{t(`deliveryMatrix.${row.key}`)}</div>
               <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${row.tone}`}>
                 {t(`deliveryStates.${row.state}`)}
@@ -3046,7 +3067,7 @@ export default function SocialMonitoringPage() {
       {activeView === "overview" && !stats && loading && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex animate-pulse flex-col gap-3 rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+            <div key={i} className="flex animate-pulse flex-col gap-3 rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="h-3 w-20 rounded bg-muted" />
                 <div className="h-7 w-7 rounded-lg bg-muted" />
@@ -3093,7 +3114,7 @@ export default function SocialMonitoringPage() {
         <div
           role="group"
           aria-label={t("sourcesTabs.label")}
-          className="grid min-w-0 gap-1 rounded-xl border border-zinc-200 bg-muted/40 p-1 sm:grid-cols-3 dark:border-zinc-700"
+          className="grid min-w-0 gap-1 rounded-xl border border-border bg-muted/40 p-1 sm:grid-cols-3"
         >
           {([
             { key: "status" as const, icon: Activity, count: undefined as number | undefined },
@@ -3129,7 +3150,7 @@ export default function SocialMonitoringPage() {
       </div>
 
       {sourcesTab === "status" && (
-      <section className="animate-fade-in-up rounded-xl border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-700">
+      <section className="animate-fade-in-up rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -3159,7 +3180,7 @@ export default function SocialMonitoringPage() {
           <button
             type="button"
             onClick={() => setSourcesTab("monitoring")}
-            className="group rounded-xl border border-zinc-200 px-3 py-3 text-left transition-all duration-200 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
+            className="group rounded-xl border border-border px-3 py-3 text-left transition-all duration-200 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <div className="flex items-start gap-2.5">
               <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">1</div>
@@ -3175,7 +3196,7 @@ export default function SocialMonitoringPage() {
           <button
             type="button"
             onClick={() => setSourcesTab("pages")}
-            className="group rounded-xl border border-zinc-200 px-3 py-3 text-left transition-all duration-200 hover:border-emerald-400/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
+            className="group rounded-xl border border-border px-3 py-3 text-left transition-all duration-200 hover:border-emerald-400/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <div className="flex items-start gap-2.5">
               <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">2</div>
@@ -3196,7 +3217,7 @@ export default function SocialMonitoringPage() {
 
       {sourcesTab === "pages" && (
       <>
-      <div data-tour-id="social-accounts" className="animate-fade-in-up rounded-xl border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-700">
+      <div data-tour-id="social-accounts" className="animate-fade-in-up rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -3248,7 +3269,7 @@ export default function SocialMonitoringPage() {
         </div>}
 
         {accounts.length === 0 && connectedPages.length === 0 ? (
-          <div className="mt-4 rounded-xl border border-dashed border-zinc-300 px-4 py-10 text-center dark:border-zinc-700">
+          <div className="mt-4 rounded-xl border border-dashed border-zinc-300 px-4 py-10 text-center dark:border-border">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <MessageSquare className="h-5 w-5" />
             </div>
@@ -3264,7 +3285,7 @@ export default function SocialMonitoringPage() {
             {connectedPages.map(page => {
               const channel = CONNECT_CHANNELS.find(item => item.key === page.platform)
               return (
-                <div key={`channel-${page.id}`} className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 lg:flex-row lg:items-center">
+                <div key={`channel-${page.id}`} className="flex flex-col gap-3 rounded-xl border border-border p-3 lg:flex-row lg:items-center">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     {channel ? (
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ring-1 ring-black/5 dark:ring-white/10" style={{ background: channel.bg }} aria-hidden="true">
@@ -3300,7 +3321,7 @@ export default function SocialMonitoringPage() {
               return (
                 <div
                   key={a.id}
-                  className="group flex flex-col gap-3 rounded-xl border border-zinc-200 p-3 transition-all duration-200 hover:border-primary/30 hover:shadow-sm dark:border-zinc-700 lg:flex-row lg:items-center"
+                  className="group flex flex-col gap-3 rounded-xl border border-border p-3 transition-all duration-200 hover:border-primary/30 hover:shadow-sm lg:flex-row lg:items-center"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="relative shrink-0">
@@ -3423,7 +3444,7 @@ export default function SocialMonitoringPage() {
       )}
 
       {activeView === "settings" && (
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -3471,8 +3492,8 @@ export default function SocialMonitoringPage() {
 
       {showMentionWorklist && (
       <>
-      <section className="rounded-xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-700">
-        <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:flex-row lg:items-center lg:justify-between">
+      <section className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
@@ -3515,7 +3536,7 @@ export default function SocialMonitoringPage() {
                     className={`relative flex items-start gap-3 rounded-xl border px-3 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       selected
                         ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                        : "border-zinc-200 bg-background hover:border-zinc-300 hover:bg-muted/50 dark:border-zinc-700 dark:hover:border-zinc-600"
+                        : "border-border bg-background hover:border-zinc-300 hover:bg-muted/50 dark:hover:border-zinc-600"
                     }`}
                   >
                     <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
@@ -3553,7 +3574,7 @@ export default function SocialMonitoringPage() {
             ]
             return (
               <div className="min-w-0">
-                <div className="grid min-w-0 grid-cols-2 gap-1 rounded-lg border border-zinc-200 bg-muted/40 p-1 sm:grid-cols-3 lg:grid-cols-5 dark:border-zinc-700" role="group" aria-label={t("surfaceFilters.label")}>
+                <div className="grid min-w-0 grid-cols-2 gap-1 rounded-lg border border-border bg-muted/40 p-1 sm:grid-cols-3 lg:grid-cols-5" role="group" aria-label={t("surfaceFilters.label")}>
                   {segments.map(segment => {
                     const selected = segment.value
                       ? surfaceFilters.includes(segment.value)
@@ -3678,7 +3699,7 @@ export default function SocialMonitoringPage() {
                 className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   showFilterPanel || panelFilterCount > 0
                     ? "border-primary/35 bg-primary/[0.06] text-foreground"
-                    : "border-zinc-200 bg-background text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700 dark:hover:border-zinc-600"
+                    : "border-border bg-background text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:hover:border-zinc-600"
                 }`}
               >
                 <Filter className="h-3.5 w-3.5" aria-hidden="true" />
@@ -3714,12 +3735,12 @@ export default function SocialMonitoringPage() {
           {showFilterPanel && (
             <div
               id="social-monitoring-filter-panel"
-              className="animate-fade-in-up space-y-3 rounded-xl border border-zinc-200 bg-muted/20 p-3 dark:border-zinc-700"
+              className="animate-fade-in-up space-y-3 rounded-xl border border-border bg-muted/20 p-3"
             >
               <p className="text-[11px] leading-4 text-muted-foreground">{t("filtersHint")}</p>
 
               {mentionStream === "search" && !effectiveMentionSubjectFilter && (
-                <div className="space-y-2 border-b border-zinc-200 pb-3 dark:border-zinc-700">
+                <div className="space-y-2 border-b border-border pb-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-foreground">{t("scenarioFilterTitle")}</p>
@@ -3773,7 +3794,7 @@ export default function SocialMonitoringPage() {
                             className={`inline-flex max-w-[18rem] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                               selected
                                 ? "border-primary/40 bg-primary/10 font-medium text-primary"
-                                : "border-zinc-200 bg-background text-muted-foreground hover:border-zinc-300 hover:bg-muted/60 hover:text-foreground dark:border-zinc-700 dark:hover:border-zinc-600"
+                                : "border-border bg-background text-muted-foreground hover:border-zinc-300 hover:bg-muted/60 hover:text-foreground dark:hover:border-zinc-600"
                             }`}
                             title={`${option.scenarioName} · ${t(`scenarioFilterTypes.${option.type}`)}`}
                           >
@@ -3887,13 +3908,13 @@ export default function SocialMonitoringPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   onClick={() => setShowAdvancedFilters(open => !open)}
                   aria-expanded={showAdvancedFilters}
                   aria-controls="social-monitoring-advanced-filters"
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-zinc-200 bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-zinc-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700 dark:hover:border-zinc-600"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-zinc-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-zinc-600"
                 >
                   <Settings2 className="h-3 w-3" />
                   {t("advancedFilters")}
@@ -3922,7 +3943,7 @@ export default function SocialMonitoringPage() {
                 </div>
               </div>
               {showAdvancedFilters && (
-                <div id="social-monitoring-advanced-filters" className="animate-fade-in-up grid gap-3 rounded-lg border border-zinc-200 bg-background/60 p-3 sm:grid-cols-2 xl:grid-cols-5 dark:border-zinc-700">
+                <div id="social-monitoring-advanced-filters" className="animate-fade-in-up grid gap-3 rounded-lg border border-border bg-background/60 p-3 sm:grid-cols-2 xl:grid-cols-5">
                   <Select
                     label={t("sourceTypeFilterLabel")}
                     value={effectiveSourceTypeFilter}
@@ -3970,7 +3991,7 @@ export default function SocialMonitoringPage() {
           )}
 
           {(platformFilters.includes("tiktok") || hasTikTokAccount) && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
               <span className="text-xs font-medium text-muted-foreground">{t("tiktokEventFilters.label")}</span>
               {tiktokEventFilters.map(item => {
                 const isActive = activeTikTokEventFilter === item.value
@@ -4012,7 +4033,7 @@ export default function SocialMonitoringPage() {
           </div>
           <p className="text-xs leading-5 text-muted-foreground">{t("reviewQueue.description")}</p>
           {reviewQueue.map(envelope => (
-            <div key={envelope.id} className="rounded-lg border border-zinc-200 bg-card p-3 space-y-2 dark:border-zinc-700">
+            <div key={envelope.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge data-testid="social-mention-material-type" variant="info" className="gap-1 text-[10px] font-semibold">
                   {t("materialTypeBadge", { type: t(`materialTypes.${reviewEnvelopeMaterialType(envelope)}`) })}
@@ -4099,7 +4120,7 @@ export default function SocialMonitoringPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
+            <div key={i} className="animate-pulse rounded-xl border border-border bg-card p-4">
               <div className="flex items-start gap-3">
                 <div className="h-9 w-9 shrink-0 rounded-full bg-muted" />
                 <div className="min-w-0 flex-1 space-y-2">
@@ -4111,7 +4132,7 @@ export default function SocialMonitoringPage() {
                   <div className="h-3 w-1/2 rounded bg-muted" />
                 </div>
               </div>
-              <div className="mt-3 flex gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+              <div className="mt-3 flex gap-2 border-t border-border pt-3">
                 <div className="h-8 w-24 rounded-full bg-muted" />
                 <div className="h-8 w-20 rounded-full bg-muted" />
                 <div className="ml-auto h-8 w-8 rounded-full bg-muted" />
@@ -4120,7 +4141,7 @@ export default function SocialMonitoringPage() {
           ))}
         </div>
       ) : mentions.length === 0 ? (
-        <div className="animate-fade-in-up rounded-xl border border-dashed border-zinc-300 bg-muted/20 px-4 py-12 text-center dark:border-zinc-700">
+        <div className="animate-fade-in-up rounded-xl border border-dashed border-zinc-300 bg-muted/20 px-4 py-12 text-center dark:border-border">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-background shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700">
             {activeFilterCount > 0 ? (
               <Filter className="h-5 w-5 text-muted-foreground" />
@@ -4258,7 +4279,7 @@ export default function SocialMonitoringPage() {
             return (
             <div
               key={m.id}
-              className="group relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-2 transition-all duration-200 hover:border-zinc-300 hover:shadow-md dark:hover:border-zinc-600"
+              className="group relative overflow-hidden rounded-xl border border-border bg-card p-4 space-y-2 transition-all duration-200 hover:border-zinc-300 hover:shadow-md dark:hover:border-zinc-600"
               style={m.depth > 0 ? { marginInlineStart: `${Math.min(m.depth, 3) * 16}px` } : undefined}
             >
               {accentBar && <span className={`absolute inset-y-0 left-0 w-1 ${accentBar}`} aria-hidden="true" />}
@@ -4334,7 +4355,7 @@ export default function SocialMonitoringPage() {
                             href={parentUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground dark:border-zinc-700"
+                            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
                           >
                             <ExternalLink className="h-2.5 w-2.5" />
                             {t("commentParentLink")}
@@ -4409,7 +4430,7 @@ export default function SocialMonitoringPage() {
                           href={m.url ?? newsImageUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="overflow-hidden rounded-lg border border-zinc-200 bg-muted dark:border-zinc-700"
+                          className="overflow-hidden rounded-lg border border-border bg-muted"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -4445,7 +4466,7 @@ export default function SocialMonitoringPage() {
                     <p className="mt-1.5 text-xs text-muted-foreground">{t("threadMediaRepeat")}</p>
                   )}
                   {embedUrl && (
-                    <div className="mt-2 max-w-xl overflow-hidden rounded-md border border-zinc-200 bg-black dark:border-zinc-700">
+                    <div className="mt-2 max-w-xl overflow-hidden rounded-md border border-border bg-black">
                       <div className="relative aspect-video">
                         <iframe
                           src={embedUrl}
@@ -4472,14 +4493,14 @@ export default function SocialMonitoringPage() {
                           controls
                           preload="metadata"
                           aria-label={t("attachmentPreviewAlt")}
-                          className="max-h-72 max-w-full rounded-md border border-zinc-200 bg-black dark:border-zinc-700"
+                          className="max-h-72 max-w-full rounded-md border border-border bg-black"
                         />
                       ) : (
                         <a
                           href={attachment.mediaUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground dark:border-zinc-700"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
                         >
                           <Paperclip className="h-3.5 w-3.5" />
                           {t("openAttachment")}
@@ -4764,11 +4785,11 @@ export default function SocialMonitoringPage() {
                 const canDryRunSend = latestDraft?.status === "approved" && !draftIsDirty
                 const canEnqueueLive = latestDraft?.status === "approved" && !draftIsDirty && liveReplyAllowed
                 return (
-                  <div className="animate-fade-in-up mt-2 space-y-3 rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/50 to-transparent p-3 dark:border-violet-900/50 dark:from-violet-950/20">
+                  <div className="crm-panel animate-fade-in-up mt-2 space-y-3 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 dark:bg-violet-900/40">
-                          <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-300" />
+                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+                          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                         </span>
                         <span className="text-sm font-semibold">{t("aiDraftTitle")}</span>
                         {latestDraft && (
@@ -5034,17 +5055,17 @@ export default function SocialMonitoringPage() {
               // Public-search platforms: any handle/keyword works.
               // OAuth-gated platforms (Meta/TikTok): can only track owned accounts — require sign-in.
               const OAUTH_PLATFORMS: Record<string, { label: string; start: string | null; note: string }> = {
+                // Facebook and Instagram are connected in Settings → Channels — one connection for the Inbox and
+                // monitoring (see ConnectChannelTiles).
                 facebook: {
-                  label: t("connectFacebookPage"),
-                  start: "/api/v1/social/oauth/facebook/start",
-                  note: t("oauthNoteFacebook"),
+                  label: t("openChannels"),
+                  start: "/settings/channels",
+                  note: t("metaInChannelsNote"),
                 },
                 instagram: {
-                  label: t("connectInstagramBusiness"),
-                  // Instagram Direct uses the Instagram-Login API (separate flow), NOT the Facebook
-                  // page-token path — Meta retired FB-Login IG messaging (it returns "(#3)").
-                  start: "/api/v1/social/oauth/instagram/start",
-                  note: t("oauthNoteInstagram"),
+                  label: t("openChannels"),
+                  start: "/settings/channels",
+                  note: t("metaInChannelsNote"),
                 },
                 tiktok: {
                   label: t("connectTikTok"),
@@ -5164,7 +5185,7 @@ export default function SocialMonitoringPage() {
               </div>
             )}
             {(evidenceMention?.evidences ?? []).map((evidence) => (
-              <div key={evidence.id} className="rounded-md border border-zinc-200 p-3 text-xs dark:border-zinc-700">
+              <div key={evidence.id} className="rounded-md border border-border p-3 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="text-[10px]">{evidence.sourceTrustTier}</Badge>
                   {evidence.source && (
@@ -5211,7 +5232,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label
     purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
   }
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md dark:border-zinc-700">
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md">
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
         <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${colorClass[color] || colorClass.primary}`}>

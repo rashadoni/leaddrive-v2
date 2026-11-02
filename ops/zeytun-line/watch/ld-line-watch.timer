@@ -1,0 +1,12 @@
+# Installed by scripts/zeytun-line/install-watch.sh.
+[Unit]
+Description=Run the Zeytun line watch every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:20
+AccuracySec=5s
+Persistent=false
+Unit=ld-line-watch.service
+
+[Install]
+WantedBy=timers.target

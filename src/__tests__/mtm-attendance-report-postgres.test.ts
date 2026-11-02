@@ -270,6 +270,49 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     expect(moved.rows.length).toBeGreaterThan(0)
     expect(moved.rows.every(row => row.kind === "WEEKEND" && row.calendarKind === "WEEKEND" && row.expectedWorkSeconds === 0)).toBe(true)
   })
+  // Owner, 2026-11-01: next year's calendar is read from report.az and reaches a timesheet only through its admin.
+  it("reads next year's calendar from the press, tells the admin, and adds exactly the reviewed days", async () => {
+    const watch = await import("@/lib/mtm/az-calendar-watch")
+    const year = Number(currentDateKey(new Date(), "Asia/Baku").slice(0, 4)) + 1
+    const org = "attendance-report-found"
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional found calendar", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.user.create({ data: { id: "fixture-found-admin", organizationId: org, email: "found-admin@example.test", name: "Fixture found admin", role: "admin", passwordHash: "fixture-unusable-hash" } })
+    })
+    await tenant(org, () => prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } }))
+    // The 2026 article's lines, moved to next year: the watch only reads years this code has no decision for.
+    const article = readFileSync("src/__tests__/fixtures/report-az-calendar-2026.html", "utf8").replaceAll("2026", String(year)).replaceAll("2025", String(year - 1))
+    const pages: Record<string, string> = { [`https://report.az/sosial-mudafie/${year}-ci-il-ucun-is-vaxti-normasi-ve-istehsalat-teqvimi-tesdiq-edilib`]: article }
+    const now = new Date(Date.UTC(year - 1, 11, 5, 6))
+    const first = await bypass(() => watch.executeAzCalendarWatch(now, async (url) => pages[url] ?? null))
+    expect(first).toMatchObject({ years: [year], found: 1 })
+    const row = await bypass(() => prisma.publicCalendarFinding.findUnique({ where: { country_year: { country: "AZ", year } } }))
+    expect(row).toMatchObject({ state: "PARSED", decision: `Nazirlər Kabinetinin 02.12.${year - 1} tarixli 362 nömrəli qərarı` })
+    const bell = () => tenant(org, () => prisma.notification.count({ where: { organizationId: org, userId: "fixture-found-admin", entityType: "mtm_attendance_public_calendar" } }))
+    expect(await bell()).toBe(1)
+    // Read: nothing more is fetched or said.
+    const again = await bypass(() => watch.executeAzCalendarWatch(new Date(now.getTime() + 3600_000), async () => { throw new Error("no fetch once read") }))
+    expect(again).toMatchObject({ years: [] })
+    expect(await bell()).toBe(1)
+
+    const view = await tenant(org, () => calendar.attendanceOfficialCalendarView(org, year))
+    expect(view.state).toBe("FOUND")
+    const found = view as Extract<typeof view, { state: "FOUND" }>
+    expect(found.entries.map(entry => entry.date.slice(5))).toEqual(["01-01", "01-02", "01-20", "03-08", "03-09", "03-20", "03-21", "03-22", "03-23", "03-24", "03-25", "03-26", "03-27", "03-30",
+      "05-09", "05-11", "05-27", "05-28", "05-29", "06-15", "06-26", "11-08", "11-09", "11-10", "12-31"])
+    const add = (fingerprint: string) => tenant(org, () => calendar.addAzOfficialCalendar({ organizationId: org, userId: "fixture-found-admin", timezone: "Asia/Baku", year, fingerprint }))
+    await expect(add("0".repeat(24))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_CALENDAR_FOUND_CHANGED" })
+    expect(await tenant(org, () => prisma.mtmWorkCalendarDay.count({ where: { organizationId: org } }))).toBe(0)
+    expect(await add(found.fingerprint)).toMatchObject({ added: found.entries.length, existing: 0, past: 0, complete: true })
+    const days = await tenant(org, () => calendar.readAttendanceCalendar(org, `${year}-01-01`, `${year}-12-31`))
+    expect(days.find(day => day.date === `${year}-11-10`)).toMatchObject({ kind: "WEEKEND", name: "Köçürülmüş istirahət günü" })
+    expect(days.find(day => day.date === `${year}-03-20`)).toMatchObject({ kind: "PUBLIC_HOLIDAY", name: "Novruz bayramı, Ramazan bayramı" })
+
+    await tenant(org, () => calendar.dismissAzFoundCalendar({ organizationId: org, year, fingerprint: found.fingerprint }))
+    expect((await tenant(org, () => calendar.attendanceOfficialCalendarView(org, year))).state).toBe("DISMISSED")
+    // Another organization still sees the list.
+    expect((await tenant(ORG, () => calendar.attendanceOfficialCalendarView(ORG, year))).state).toBe("FOUND")
+  })
   it("serializes calendar editors and refuses past changes without altering saved rows", async () => {
     const date = addDateKeyDays(monday, 15)
     const results = await Promise.allSettled(["One", "Two"].map((name) => tenant(ORG, () => calendar.saveAttendanceCalendar({

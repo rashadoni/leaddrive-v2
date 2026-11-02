@@ -75,19 +75,32 @@ function constraintsSql(): string {
   const sql = readFileSync(path.join(ROOT, "prisma/migrations/20261102090000_ad_conversions/migration.sql"), "utf8")
   const checks = [...sql.matchAll(/CONSTRAINT "(ad_conversion_(destinations|events)_\w+_check)" CHECK (\(.*\))/g)]
   if (checks.length < 6) throw new Error("ad conversion CHECKs not found in the migration")
+  // GA4 widened the platform CHECK in a later migration; its ALTERs run as written.
+  const ga4 = readFileSync(path.join(ROOT, "prisma/migrations/20261106100000_ad_conversions_ga4/migration.sql"), "utf8")
   return checks
     .map(([, name, table, body]) => `ALTER TABLE "ad_conversion_${table}" ADD CONSTRAINT "${name}" CHECK ${body.replace(/,$/, "")};`)
-    .join("\n")
+    .join("\n") + "\n" + ga4
 }
 
 /* ─── Meta, stood in ─────────────────────────────────────────────────── */
 
 const meta = vi.hoisted(() => ({ batches: [] as Record<string, unknown>[][], fail: null as string | null, testCodes: [] as unknown[] }))
+const ga = vi.hoisted(() => ({ posts: [] as { path: string; id: string | null; secret: string | null; body: Record<string, unknown> }[] }))
 
 async function fakeMeta(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url)
-  if (url.hostname !== "graph.facebook.com") throw new Error(`unexpected fetch ${url.href}`)
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
+  if (url.hostname === "www.google-analytics.com") {
+    // Google's Measurement Protocol: collect answers 2xx whatever the secret;
+    // the validation server names what it would refuse and records nothing.
+    const body = JSON.parse(String(init?.body))
+    ga.posts.push({ path: url.pathname, id: url.searchParams.get("measurement_id"), secret: url.searchParams.get("api_secret"), body })
+    if (url.pathname === "/debug/mp/collect") {
+      return json(200, { validationMessages: url.searchParams.get("measurement_id") === "G-NOSUCH1" ? [{ description: "Unable to find the measurement_id" }] : [] })
+    }
+    return new Response(null, { status: 204 })
+  }
+  if (url.hostname !== "graph.facebook.com") throw new Error(`unexpected fetch ${url.href}`)
   const denied = json(400, { error: { message: "Invalid OAuth access token - Cannot parse access token", code: 190 } })
   if ((init?.method ?? "GET") === "GET") {
     return url.searchParams.get("access_token") === TOKEN ? json(400, { error: { message: "(#100) Missing Permission", code: 100 } }) : denied
@@ -120,6 +133,7 @@ pgDescribe("ad conversions to Meta on a real Postgres", () => {
   let prisma!: Prisma
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let saveMeta!: typeof import("@/app/api/v1/ad-conversions/meta/route").PUT
+  let saveGa4!: typeof import("@/app/api/v1/ad-conversions/ga4/route").PUT
   let readPage!: typeof import("@/app/api/v1/ad-conversions/route").GET
   let publicLead!: typeof import("@/app/api/v1/public/leads/route").POST
   let convert!: typeof import("@/app/api/v1/leads/[id]/convert/route").POST
@@ -134,6 +148,7 @@ pgDescribe("ad conversions to Meta on a real Postgres", () => {
     prisma = (await import("@/lib/prisma")).prisma
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     saveMeta = (await import("@/app/api/v1/ad-conversions/meta/route")).PUT
+    saveGa4 = (await import("@/app/api/v1/ad-conversions/ga4/route")).PUT
     readPage = (await import("@/app/api/v1/ad-conversions/route")).GET
     publicLead = (await import("@/app/api/v1/public/leads/route")).POST
     convert = (await import("@/app/api/v1/leads/[id]/convert/route")).POST
@@ -158,6 +173,7 @@ pgDescribe("ad conversions to Meta on a real Postgres", () => {
 
   beforeEach(() => {
     meta.batches = []
+    ga.posts = []
     meta.fail = null
     meta.testCodes = []
     vi.stubGlobal("fetch", vi.fn(fakeMeta))
@@ -168,7 +184,7 @@ pgDescribe("ad conversions to Meta on a real Postgres", () => {
     vi.unstubAllGlobals()
   })
 
-  const destination = () => bypass(() => prisma.adConversionDestination.findFirst({ where: { organizationId: ORG } }))
+  const destination = () => bypass(() => prisma.adConversionDestination.findFirst({ where: { organizationId: ORG, platform: "meta" } }))
   const eventsFor = (entityId: string) => bypass(() => prisma.adConversionEvent.findMany({ where: { entityId } }))
   const sentEvents = () => meta.batches.flat()
 
@@ -323,5 +339,65 @@ pgDescribe("ad conversions to Meta on a real Postgres", () => {
 
     expect(await eventsFor(lead.id)).toHaveLength(0)
     expect(meta.batches).toHaveLength(0)
+  })
+
+  /* ─── Google Analytics 4 ─── */
+
+  const ga4Destination = () => bypass(() => prisma.adConversionDestination.findFirst({ where: { organizationId: ORG, platform: "ga4" } }))
+  const ga4Events = async (entityId: string) => {
+    const row = await ga4Destination()
+    return bypass(() => prisma.adConversionEvent.findMany({ where: { entityId, destinationId: row!.id } }))
+  }
+  const collected = () => ga.posts.filter((post) => post.path === "/mp/collect").map((post) => post.body)
+  const connectGa4 = (body: Record<string, unknown> = {}) => saveGa4(json("PUT", "/api/v1/ad-conversions/ga4", {
+    publicId: "G-7XK2P9QL4M", secret: "ga-api-secret", sendLeads: true, sendWins: true, isActive: true, consent: true, ...body,
+  }))
+
+  it("connects GA4 only with a measurement id, consent and an event Google's validator accepts — recording nothing", async () => {
+    const badId = await connectGa4({ publicId: "UA-1234-1" })
+    const noConsent = await connectGa4({ consent: false })
+    const refused = await connectGa4({ publicId: "G-NOSUCH1" })
+    expect([badId.status, (await badId.json()).code]).toEqual([400, "INVALID_MEASUREMENT_ID"])
+    expect([noConsent.status, (await noConsent.json()).code]).toEqual([400, "CONSENT_REQUIRED"])
+    expect([refused.status, (await refused.json()).code]).toEqual([400, "INVALID_KEY"])
+    expect(await ga4Destination()).toBeNull()
+
+    const ok = await connectGa4({ publicId: "g-7xk2p9ql4m" })
+    expect(ok.status, await ok.clone().text()).toBe(200)
+    expect(await ga4Destination()).toMatchObject({ publicId: "G-7XK2P9QL4M", isActive: true })
+    expect(collected()).toEqual([])
+  })
+
+  it("sends a website lead to GA4 as generate_lead with the visit's client id, and a won deal as close_convert_lead with its amount", async () => {
+    const lead = await websiteLead("Leyla", { attribution: { gaClientId: "111.222", utmSource: "google", pageUrl: "https://shop.az/x" } })
+    await run()
+
+    const leadPost = collected().find((body) => (body.events as { name: string }[])[0].name === "generate_lead")
+    expect(leadPost).toMatchObject({ client_id: "111.222", events: [{ name: "generate_lead", params: { source: "google" } }] })
+    expect(JSON.stringify(leadPost)).not.toMatch(/leyla|994/i)
+    expect((await ga4Events(lead.id))[0]).toMatchObject({ status: "sent" })
+
+    const converted = await convert(json("POST", `/api/v1/leads/${lead.id}/convert`, { dealTitle: "Leyla — illik", dealValue: 1200 }), { params: Promise.resolve({ id: lead.id }) })
+    expect(converted.status).toBe(201)
+    const deal = await bypass(() => prisma.deal.findFirstOrThrow({ where: { organizationId: ORG, name: "Leyla — illik" } }))
+    await bypass(() => prisma.deal.update({ where: { id: deal.id }, data: { stage: "Qazanıldı", stageChangedAt: new Date() } }))
+    await run()
+
+    expect(collected().find((body) => (body.events as { name: string }[])[0].name === "close_convert_lead")).toMatchObject({
+      client_id: "111.222",
+      events: [{ name: "close_convert_lead", params: { value: 1200, currency: "AZN" } }],
+    })
+    expect(ga.posts.filter((post) => post.path === "/mp/collect").every((post) => post.id === "G-7XK2P9QL4M" && post.secret === "ga-api-secret")).toBe(true)
+  })
+
+  it("skips for GA4 what is older than its 72 hours", async () => {
+    const old = await bypass(() => prisma.lead.create({ data: { organizationId: ORG, contactName: "Dörd gün", source: "website", status: "new" } }))
+    const row = await ga4Destination()
+    await bypass(() => prisma.adConversionEvent.create({
+      data: { organizationId: ORG, destinationId: row!.id, eventName: "lead", entityType: "lead", entityId: old.id, eventTime: new Date(Date.now() - 4 * 24 * 3600_000), recordLabel: "Dörd gün" },
+    }))
+    await run()
+    expect((await ga4Events(old.id))[0]).toMatchObject({ status: "skipped", reason: "skip_too_old" })
+    expect(collected()).toEqual([])
   })
 })

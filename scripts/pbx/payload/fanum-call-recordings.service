@@ -1,0 +1,23 @@
+[Unit]
+Description=Send the line's finished call recordings to the CRM
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/lib/fanum-voice/fanum-call-recordings.py
+
+[Service]
+Type=oneshot
+User=asterisk
+Group=asterisk
+UMask=0077
+ExecStart=/usr/local/lib/fanum-voice/fanum-call-recordings.py
+TimeoutStartSec=15min
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/spool/asterisk/fanum-recordings
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=yes

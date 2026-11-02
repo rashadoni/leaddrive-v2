@@ -1,0 +1,8 @@
+{
+  "name": "leaddrive-fund-shadow-runner",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pinned build inputs of the Fund shadow pilot runner bundle (scripts/event-platform/fund-shadow).",
+  "dependencies": { "pg": "8.23.1", "zod": "4.4.3" },
+  "devDependencies": { "esbuild": "0.28.2" }
+}

@@ -5,17 +5,15 @@ import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
-import {
-  MTM_VISIT_EVALUATION_CRITERIA,
-  readVisitEvaluationScores,
-  visitEvaluationAverage,
-} from "@/lib/mtm/joint-visit"
+import { storedVisitEvaluation } from "@/lib/mtm/joint-visit"
+import type { MtmVisitEvaluationQuestion } from "@/lib/mtm/visit-evaluation-questions"
 
 const DAYS = 30
 const RECENT = 10
 
 type EvaluationRow = {
   scores: unknown
+  questions: unknown
   comment: string | null
   updatedAt: Date
   evaluator: { id: string; name: string }
@@ -34,8 +32,12 @@ function roundOne(value: number): number {
 /**
  * GET /api/v1/mtm/agents/:id/evaluations — «Оценки руководителя» on the
  * agent's page (owner-approved mockup, 2026-10-20): the managers' ratings of
- * this agent's joint visits over the last 30 days, per criterion, and the
+ * this agent's joint visits over the last 30 days, per question, and the
  * latest ones with their visits.
+ *
+ * Per question by its id, read off each rating's own list: a question renamed
+ * since stays one line, in today's words; one the company no longer asks shows
+ * while a rating in the period has a score for it, in the words it was rated by.
  *
  * For the office only. An agent never reads ratings — not his own either
  * («агент оценку не видит»): a field login is refused before anything is read.
@@ -73,6 +75,7 @@ export const GET = withRouteFieldRlsAuth("read", async (
         take: 500,
         select: {
           scores: true,
+          questions: true,
           comment: true,
           updatedAt: true,
           evaluator: { select: { id: true, name: true } },
@@ -96,15 +99,23 @@ export const GET = withRouteFieldRlsAuth("read", async (
       }),
     ])
 
-    const evaluations = rows.map((row: EvaluationRow) => {
-      const scores = readVisitEvaluationScores(row.scores)
-      return { ...row, scores, average: visitEvaluationAverage(scores) }
-    })
+    const evaluations = rows.map((row: EvaluationRow) => ({ ...row, ...storedVisitEvaluation(row) }))
     const rated = evaluations.filter((evaluation) => evaluation.average !== null)
-    const criteria = MTM_VISIT_EVALUATION_CRITERIA.map((key) => {
-      const values = evaluations.map((evaluation) => evaluation.scores[key]).filter((score): score is number => typeof score === "number")
+    // Today's questions first, in the company's order; then the ones it no
+    // longer asks, newest rating first (rows come newest first).
+    const asked = new Set(settings.visitEvaluationQuestions.map((question) => question.id))
+    const lines = new Map<string, MtmVisitEvaluationQuestion>(settings.visitEvaluationQuestions.map((question) => [question.id, question]))
+    for (const evaluation of evaluations) {
+      for (const question of evaluation.questions) {
+        if (!lines.has(question.id) && typeof evaluation.scores[question.id] === "number") lines.set(question.id, question)
+      }
+    }
+    const criteria = [...lines.values()].map((question) => {
+      const values = evaluations.map((evaluation) => evaluation.scores[question.id]).filter((score): score is number => typeof score === "number")
       return {
-        key,
+        key: question.id,
+        labels: question.labels,
+        asked: asked.has(question.id),
         count: values.length,
         average: values.length ? roundOne(values.reduce((sum, score) => sum + score, 0) / values.length) : null,
       }

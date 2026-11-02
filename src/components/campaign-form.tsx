@@ -111,7 +111,7 @@ interface CampaignVariantDraft {
 }
 
 const statusColors: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700",
+  draft: "bg-muted text-muted-foreground border-border",
   scheduled: "bg-amber-50 text-amber-600 border-amber-200",
   sending: "bg-blue-50 text-blue-600 border-blue-200",
   sent: "bg-green-50 text-green-600 border-green-200",
@@ -618,7 +618,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg">{form.name || t("title")}</DialogTitle>
             <div className="flex items-center gap-2">
-              <span className={cn("text-xs px-2.5 py-1 rounded-full border border-zinc-200 dark:border-zinc-700 font-medium", statusColors[form.status])}>
+              <span className={cn("text-xs px-2.5 py-1 rounded-full border border-border font-medium", statusColors[form.status])}>
                 {statusLabels[form.status] || form.status}
               </span>
             </div>
@@ -696,7 +696,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
               {tc("edit")}
             </Button>
             {onSend && !lockedWhatsApp && (
-              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={onSend}>
+              <Button type="button" className="gap-1" onClick={onSend}>
                 <Send className="h-3.5 w-3.5" /> {t("sendCampaign")}
               </Button>
             )}
@@ -714,7 +714,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
           <DialogTitle>{isEdit ? tf("editCampaign") : tf("newCampaign")}</DialogTitle>
           <div className="flex items-center gap-2">
             {isEdit && (
-              <span className={cn("text-xs px-2.5 py-1 rounded-full border border-zinc-200 dark:border-zinc-700 font-medium", statusColors[form.status])}>
+              <span className={cn("text-xs px-2.5 py-1 rounded-full border border-border font-medium", statusColors[form.status])}>
                 {statusLabels[form.status] || form.status}
               </span>
             )}
@@ -802,7 +802,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
             </div>
 
             {form.type === "whatsapp" && selectedWhatsAppTemplate && (
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 space-y-3">
+              <div className="border border-border rounded-lg p-3 space-y-3">
                 <div>
                   <div className="text-sm font-medium">{selectedWhatsAppTemplate.name}</div>
                   {selectedWhatsAppTemplate.bodyText && (
@@ -854,7 +854,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
 
             {/* A/B Test Section */}
             {form.type === "email" && (
-            <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
+            <div className="border border-border rounded-lg p-3">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={isAbTest} onChange={e => setIsAbTest(e.target.checked)} className="rounded" />
                 <span className="text-sm font-medium">{tab("enableAbTest")}</span>
@@ -897,7 +897,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
                   {/* Variants */}
                   <div className="space-y-2">
                     {variants.map((v, i) => (
-                      <div key={i} className="border border-zinc-200 dark:border-zinc-700 rounded p-2 bg-muted/30">
+                      <div key={i} className="border border-border rounded p-2 bg-muted/30">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs font-semibold">{v.name}</span>
                           <span className="text-xs text-muted-foreground">{v.percentage}%</span>
@@ -1019,7 +1019,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
                     <Button type="button" size="sm" variant="default" className="h-8 text-xs px-2" onClick={selectAll}>{tc("selectAll")}</Button>
                     <Button type="button" size="sm" variant="outline" className="h-8 text-xs px-2" onClick={selectNone}>{tc("clearAll")}</Button>
                   </div>
-                  <div className="max-h-40 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded bg-background">
+                  <div className="max-h-40 overflow-y-auto border border-border rounded bg-background">
                     {searchFilteredContacts.length === 0 ? (
                       <div className="p-3 text-sm text-muted-foreground text-center">{tc("noData")}</div>
                     ) : searchFilteredContacts.map(c => (
@@ -1041,7 +1041,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
             </div>
 
             {isSocialChannel && (
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 space-y-3 bg-muted/20">
+              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/20">
                 <div className="flex items-start gap-2">
                   <MessageCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1">
@@ -1054,7 +1054,7 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
                 {socialPreview ? (
                   <>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-md bg-background border border-zinc-200 dark:border-zinc-700 p-2">
+                      <div className="rounded-md bg-background border border-border p-2">
                         <div className="text-lg font-semibold tabular-nums">{socialPreview.totalAudience}</div>
                         <div className="text-[11px] text-muted-foreground">{t("socialPreviewAudience")}</div>
                       </div>
@@ -1126,12 +1126,12 @@ export function CampaignForm({ open, onOpenChange, onSaved, initialData, orgId, 
               {saving ? "..." : isEdit ? tc("save") : tc("create")}
             </Button>
             {isEdit && onSend && (
-              <Button type="button" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={onSend}>
+              <Button type="button" size="sm" className="gap-1" onClick={onSend}>
                 <Send className="h-3.5 w-3.5" /> {t("sendCampaign")}
               </Button>
             )}
             {!isEdit && onCreatedAndSend && (
-              <Button type="submit" size="sm" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+              <Button type="submit" size="sm" disabled={saving} className="gap-1"
                 onClick={() => setSendAfterSave(true)}>
                 <Send className="h-3.5 w-3.5" /> {t("sendCampaign")}
               </Button>

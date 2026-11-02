@@ -1,0 +1,12 @@
+# Installed by scripts/event-platform/cluster/provision.sh install-watch.
+[Unit]
+Description=Run the Kafka platform watch every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=10s
+Persistent=false
+Unit=ld-kafka-watch.service
+
+[Install]
+WantedBy=timers.target

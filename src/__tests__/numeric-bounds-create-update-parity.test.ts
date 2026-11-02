@@ -160,13 +160,18 @@ describe("create and update schemas agree on numeric bounds", () => {
     expect(isBounded(expr as string), `${field} is unbounded: \`${expr}\``).toBe(true)
   })
 
-  it("the deal product line is validated at all", () => {
+  it("the deal product line is validated, and its price is not taken from the request", () => {
     // This route destructured `price` straight out of the JSON body and pushed
     // it into deal.metadata.products[] — no schema, so -99999, "abc", {} and
-    // 1e308 all persisted and were read back by GET.
+    // 1e308 all persisted and were read back by GET. Since 2026-10-26 it adds a
+    // deal line priced from the catalog (src/lib/deals/line-items.ts): the
+    // request names the product only, and lines are bounded where they are parsed.
     const source = readFileSync("src/app/api/v1/deals/[id]/products/route.ts", "utf8")
     expect(source).toMatch(/safeParse/)
-    expect(headerFields(source).get("price")).toBe("nonNegativeFinancialAmountSchema")
+    expect(source).not.toMatch(/\bprice\b\s*:/)
+    const lines = readFileSync("src/lib/deals/line-items.ts", "utf8")
+    expect(lines).toMatch(/const money = z\.number\(\)\.finite\(\)\.min\(0\)\.max\(/)
+    expect(lines).toMatch(/discountPct: z\.number\(\)\.finite\(\)\.min\(0\)\.max\(100\)/)
   })
 
   // The discount check needs the subtotal, and on update it must run whether or

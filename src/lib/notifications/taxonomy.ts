@@ -39,6 +39,7 @@ import { navItems, NAV_GROUP_ORDER } from "@/lib/nav-items"
 // the group catalog narrowed ModuleId, but this map deliberately keeps the
 // legacy vocabulary; see the moduleToSection comment below).
 export const ENTITY_TO_MODULE: Record<string, string> = {
+  booking: "bookings",
   task:           "tasks",
   deal:           "deals",       // → sales group (LEGACY_MODULE_MAP deals→sales)
   lead:           "leads",       // → sales group (LEGACY_MODULE_MAP leads→sales)
@@ -67,6 +68,7 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   mtm_attendance_risk: "mtm",
   mtm_attendance_reminder: "mtm",
   mtm_attendance_installation: "mtm",
+  mtm_attendance_public_calendar: "mtm",
   survey:         "campaigns",   // Survey response — gated by campaigns module (Marketing group)
   loyalty:        "loyalty",     // Loyalty tier/redeem — gated by loyalty module (Loyalty Program group)
   // Phase 2d — Industry Cloud emitters (one notable gated kind per vertical)
@@ -152,6 +154,8 @@ export interface NotificationKind {
  */
 export const NOTIFICATION_KINDS: NotificationKind[] = (
   [
+    { kind: "booking.created", entityType: "booking" },
+    { kind: "booking.cancelled", entityType: "booking" },
     { kind: "task.created",     entityType: "task" },
     { kind: "task.completed",   entityType: "task" },
     { kind: "deal.created",     entityType: "deal" },
@@ -197,6 +201,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     { kind: "mtm.attendanceInstallation.requested", entityType: "mtm_attendance_installation" },
     { kind: "mtm.attendanceRisk.detected", entityType: "mtm_attendance_risk" },
     { kind: "mtm.attendanceReminder.detected", entityType: "mtm_attendance_reminder" },
+    { kind: "mtm.attendancePublicCalendar.found", entityType: "mtm_attendance_public_calendar" },
     // Phase 2c — Marketing: survey response (gated by campaigns module)
     { kind: "survey.response",     entityType: "survey" },
     // Phase 2c — Loyalty Program: notable low-volume loyalty events only (NOT per-earn spam)

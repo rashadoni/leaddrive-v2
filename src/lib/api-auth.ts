@@ -450,6 +450,64 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
 }
 
 /**
+ * The module half of requireAuth, for a person already authenticated: may this
+ * role do `action` on `module`, has the tenant got the module, and has an admin
+ * hidden it from this person. Returns the 403 requireAuth would answer, or null.
+ * `orgContext` null skips the tenant-module gate, as requireAuth does for a
+ * superadmin. One request that serves several modules (the shell's event
+ * stream) asks this once per module instead of re-running requireAuth.
+ */
+export function moduleAccessDenial(
+  session: Pick<AuthResult, "role" | "hiddenModules">,
+  orgContext: { plan: string; addons: string[]; modules: Record<string, boolean> } | null,
+  module: Module | string,
+  action: Action,
+  options?: RequireAuthOptions,
+): NextResponse | null {
+  const allowed = checkPermission(session.role, module, action)
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        error: "Forbidden",
+        message: `Role "${session.role}" cannot "${action}" on "${module}"`,
+      },
+      { status: 403 }
+    )
+  }
+
+  // Check if the module is enabled for this organization. Bridge the
+  // permissions name → ModuleId first so renamed modules (kb→knowledge-base,
+  // inbox→omnichannel, energy-utilities→energy) are gated, not skipped.
+  const gateModule = PERMISSION_MODULE_TO_MODULE_ID[module] ?? module
+  const deferLegacyMtmGate =
+    options?.deferLegacyModuleGate === "mtm" &&
+    module === "mtm" &&
+    gateModule === "mtm"
+  if (orgContext && gateModule in MODULE_REGISTRY && !deferLegacyMtmGate) {
+    if (!hasModule(orgContext, gateModule as ModuleId)) {
+      return NextResponse.json(
+        { error: "Forbidden", message: `Module "${gateModule}" is not enabled for your organization.` },
+        { status: 403 }
+      )
+    }
+  }
+
+  // The tenant has the module; has an admin hidden it from this person? The
+  // proxy already refuses these by URL from the masked JWT record, but a route
+  // can name a module its path does not resolve to, and `orgContext` above is
+  // read fresh from the organization row — it knows nothing about the user.
+  //
+  // The MTM deferral applies here too, for the same reason it exists: the
+  // `mtm` scope is a container for two capabilities, and only the wrapper
+  // that asked for the deferral knows which one this route belongs to. It
+  // makes the per-user check itself, off `session.hiddenModules`.
+  if (!deferLegacyMtmGate && session.hiddenModules?.includes(hideableIdForGateModule(gateModule))) {
+    return userModuleHiddenResponse(gateModule)
+  }
+  return null
+}
+
+/**
  * Require authentication + permission check.
  *
  * Usage in API routes:
@@ -584,46 +642,8 @@ export async function requireAuth(
 
   // Check permission if we could resolve a module
   if (resolvedModule) {
-    const allowed = checkPermission(session.role, resolvedModule, resolvedAction)
-    if (!allowed) {
-      return NextResponse.json(
-        {
-          error: "Forbidden",
-          message: `Role "${session.role}" cannot "${resolvedAction}" on "${resolvedModule}"`,
-        },
-        { status: 403 }
-      )
-    }
-
-    // Check if the module is enabled for this organization. Bridge the
-    // permissions name → ModuleId first so renamed modules (kb→knowledge-base,
-    // inbox→omnichannel, energy-utilities→energy) are gated, not skipped.
-    const gateModule = PERMISSION_MODULE_TO_MODULE_ID[resolvedModule] ?? resolvedModule
-    const deferLegacyMtmGate =
-      options?.deferLegacyModuleGate === "mtm" &&
-      resolvedModule === "mtm" &&
-      gateModule === "mtm"
-    if (orgContext && gateModule in MODULE_REGISTRY && !deferLegacyMtmGate) {
-      if (!hasModule(orgContext, gateModule as ModuleId)) {
-        return NextResponse.json(
-          { error: "Forbidden", message: `Module "${gateModule}" is not enabled for your organization.` },
-          { status: 403 }
-        )
-      }
-    }
-
-    // The tenant has the module; has an admin hidden it from this person? The
-    // proxy already refuses these by URL from the masked JWT record, but a route
-    // can name a module its path does not resolve to, and `orgContext` above is
-    // read fresh from the organization row — it knows nothing about the user.
-    //
-    // The MTM deferral applies here too, for the same reason it exists: the
-    // `mtm` scope is a container for two capabilities, and only the wrapper
-    // that asked for the deferral knows which one this route belongs to. It
-    // makes the per-user check itself, off `session.hiddenModules`.
-    if (!deferLegacyMtmGate && session.hiddenModules?.includes(hideableIdForGateModule(gateModule))) {
-      return userModuleHiddenResponse(gateModule)
-    }
+    const denied = moduleAccessDenial(session, orgContext, resolvedModule, resolvedAction, options)
+    if (denied) return denied
   }
 
   // RLS: bind tenant context to the remainder of this request. MUST stay the

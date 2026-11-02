@@ -109,7 +109,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
   const toggle = (value: string) => onChange(selected.includes(value) ? selected.filter(item => item !== value) : [...selected, value])
   return (
     <div className="min-w-0 flex-1">
-      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{step}. {label}</div>
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{step}. {label}</div>
       <Popover>
         {/* The hint sits on a full-width block: a disabled button gets no
             pointer, and Hint's own inline wrapper shrank the field. */}
@@ -121,7 +121,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
               data-testid={testId}
               className={cn(
                 "flex h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                selected.length > 0 || every?.chosen ? "border-foreground font-semibold" : "border-input bg-background",
+                selected.length > 0 || every?.chosen ? "crm-choice-selected" : "border-input bg-background",
               )}
             >
               <span className={cn("truncate", selected.length === 0 && !everyChosen && "text-muted-foreground")}>{summary}</span>
@@ -351,12 +351,12 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                   </div>
                   <div className="col-start-2 min-w-0 sm:col-start-auto">
                   {contact.assignedHere && off ? (
-                    <span className="text-[11px] font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
+                    <span className="text-xs font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
                   ) : contact.assignedHere ? (
-                    <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
+                    <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
                   ) : contact.agents.length > 0 ? (
                     <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
-                      <span tabIndex={0} className="block truncate text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                      <span tabIndex={0} className="block truncate text-xs font-semibold text-violet-700 dark:text-violet-300">
                         {t("clientsAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
                       </span>
                     </Hint>
@@ -378,7 +378,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             </button>
           ) : null}
 
-          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-sky-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
+          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               {t("clientsNote", { count: chosen.length })}

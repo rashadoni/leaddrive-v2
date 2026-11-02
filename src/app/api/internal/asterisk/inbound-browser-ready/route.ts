@@ -6,9 +6,12 @@ import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { INBOUND_BROWSER_CLAIM_LEASE_MS } from "@/lib/voip/browser-softphone"
+import { HANDOFF_CONNECTED } from "@/lib/voip/inbound-handoff"
 import { shouldAiAnswer } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerSelection } from "@/lib/voip/inbound-answer-config"
+import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
 
@@ -109,13 +112,10 @@ async function routeToAi(params: {
  * inbound answer setting: `{ ready: false, route: "ai" }` tells the station to
  * answer and connect the caller to the AI voice agent instead.
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-
-  const organizationId = process.env.VOICE_AGENT_ORGANIZATION_ID?.trim()
-  if (!organizationId) return NextResponse.json({ ready: false })
 
   const raw = await request.text()
   if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
@@ -131,6 +131,10 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
+  // The call's own organization (number -> client); the installation default
+  // for a call it does not know yet.
+  const organizationId = (await voiceOrganizationFor({ callId: parsed.data.callId }))?.organizationId
+  if (!organizationId) return NextResponse.json({ ready: false })
 
   const now = new Date()
   try {
@@ -156,9 +160,13 @@ export async function POST(request: NextRequest) {
         userId: true,
         browserAnswerClaimToken: true,
         browserAnswerClaimExpiresAt: true,
+        handoffState: true,
       },
     }))
     if (!call?.providerCallId) return NextResponse.json({ ready: false })
+    // The AI handed this call to a person: it rings the browsers until the
+    // station gives it back, never the AI again through the answer setting.
+    const handedOff = call.handoffState === "ringing"
 
     // A repeated poll after the AI took the call must keep saying so; a bare
     // "not ready" would let the station time out and hang up on the caller.
@@ -176,7 +184,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (!hasLiveBrowserClaim) {
-      if (call.status !== "ringing") return NextResponse.json({ ready: false })
+      if (call.status !== "ringing" || handedOff) return NextResponse.json({ ready: false })
       const { policy, channelConfigId } = await runWithTenant(organizationId, () => loadInboundAnswerSelection(organizationId))
       const aiNow = shouldAiAnswer({
         policy,
@@ -235,12 +243,14 @@ export async function POST(request: NextRequest) {
         userId: call.userId,
         browserAnswerClaimToken: call.browserAnswerClaimToken,
         browserAnswerClaimExpiresAt: { gt: reservedAt },
+        handoffState: call.handoffState,
       },
       data: {
         status: "answering",
         browserAnswerClaimExpiresAt: new Date(
           reservedAt.getTime() + INBOUND_BROWSER_CLAIM_LEASE_MS,
         ),
+        ...(handedOff ? HANDOFF_CONNECTED : {}),
       },
     }))
     return NextResponse.json({ ready: reserved.count === 1 })
@@ -248,3 +258,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ready: false })
   }
 }
+
+export const POST = withStationTiming("inbound-browser-ready", handlePost)

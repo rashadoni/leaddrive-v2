@@ -22,7 +22,7 @@ export function RisksBanner({ risks }: { risks: DashboardRisk[] }) {
   return (
     <section
       aria-label={t("risksBanner")}
-      className="dashboard-bento-card rounded-lg border border-zinc-200 bg-card p-3 shadow-sm dark:border-zinc-700"
+      className="dashboard-bento-card rounded-lg border border-border bg-card p-3 shadow-sm"
     >
       <div className="mb-2 flex items-center gap-1.5">
         <AlertTriangle className="h-4 w-4 text-amber-500" />

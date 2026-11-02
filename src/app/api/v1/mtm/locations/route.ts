@@ -262,6 +262,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         where: {
           organizationId: orgId,
           status: "ACTIVE",
+        fieldDeletedAt: null,
           ...(scopedAgentIds ? { id: { in: scopedAgentIds } } : {}),
           ...(teamId ? { teamId } : {}),
           tags: { isEmpty: false },
@@ -288,6 +289,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       where: {
         organizationId: orgId,
         status: "ACTIVE",
+        fieldDeletedAt: null,
         ...(scopedAgentIds ? { id: { in: scopedAgentIds } } : {}),
         ...(teamId ? { teamId } : {}),
         ...searchWhere,
@@ -761,6 +763,7 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
           id: requestedAgentId,
           organizationId: auth.orgId,
           status: "ACTIVE",
+        fieldDeletedAt: null,
         },
         data: { isOnline: true, lastSeenAt: now },
       })

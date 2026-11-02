@@ -44,8 +44,9 @@ const lateOn = (row: MtmAttendanceReportRow) => (row.lateSeconds ?? 0) > 0
  * Counting rules are the report's own (`summarizeMtmAttendanceRows`): arrived
  * means a valid recorded start, absent means the report's ABSENT kind (no
  * approved reason), missing finish is the report's MISSING_FINISH kind.
- * `explanations` are today's (the explanations API): one that no late or
- * absent row shows and HR has not decided becomes a row of its own.
+ * `explanations` are the explanations API's for the past month: one that no
+ * late or absent row of today shows and HR has not decided becomes a row of
+ * its own, dated when it is about an earlier day.
  */
 export function summarizeAttendanceToday(rows: readonly MtmAttendanceReportRow[], today: string, explanations: readonly AttendanceTodayExplanation[] = []) {
   const { weekStart } = attendanceTodayRange(today)
@@ -62,8 +63,9 @@ export function summarizeAttendanceToday(rows: readonly MtmAttendanceReportRow[]
   const teamOf = new Map(todayRows.map(row => [row.employeeId, row.teamName]))
   const attention: AttendanceTodayAttention[] = [
     ...lateOrAbsent,
-    ...explanations.filter(item => item.date === today && !shownOnRows.has(item) && (item.status === "REQUESTED" || item.status === "ANSWERED"))
-      .sort((a, b) => a.employeeName.localeCompare(b.employeeName) || a.kind.localeCompare(b.kind))
+    // An explanation asked about an earlier day (from a report, owner 2026-11-01) is decided here as well.
+    ...explanations.filter(item => item.date <= today && !shownOnRows.has(item) && (item.status === "REQUESTED" || item.status === "ANSWERED"))
+      .sort((a, b) => b.date.localeCompare(a.date) || a.employeeName.localeCompare(b.employeeName) || a.kind.localeCompare(b.kind))
       .map(item => ({ type: "explanation" as const, employeeId: item.employeeId, employeeName: item.employeeName, teamName: teamOf.get(item.employeeId) ?? null, date: item.date, kind: item.kind })),
     ...missing.sort((a, b) => b.date.localeCompare(a.date)).map(row => ({ type: "missing-finish" as const, employeeId: row.employeeId, employeeName: row.employeeName, teamName: row.teamName, date: row.date })),
   ]

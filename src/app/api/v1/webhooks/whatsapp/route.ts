@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import type { Prisma } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import { publishWhatsAppIntegrationEvent } from "@/lib/integrations/whatsapp-events"
 import { prisma } from "@/lib/prisma"
 import { alreadyIngested, isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
@@ -2049,7 +2049,7 @@ async function handleAiAutoReply(
 
 // Handle delivery status updates (sent → delivered → read)
 async function handleStatusUpdate(
-  status: { id?: unknown; status?: unknown; biz_opaque_callback_data?: unknown; errors?: Array<{ title?: unknown }> },
+  status: { id?: unknown; status?: unknown; biz_opaque_callback_data?: unknown; errors?: Array<{ title?: unknown; code?: unknown }> },
   organizationId: string,
 ) {
   const waMessageId = asStringOrNull(status.id)
@@ -2106,5 +2106,9 @@ async function handleStatusUpdate(
   if (newStatus === "failed") {
     const errorInfo = status.errors?.[0]
     console.error(`[WA Webhook] Message ${sanitizeLog(String(waMessageId))} failed:`, sanitizeLog(String(errorInfo?.title || "unknown error")))
+    // A phone order's notice that Meta accepted and then refused (TS-1005, 2026-10-29).
+    const { recordPhoneOrderMessageFailure } = await import("@/lib/pharmacy-orders/manager-notice")
+    await recordPhoneOrderMessageFailure(prisma as unknown as PrismaClient, organizationId, waMessageId, errorInfo?.code)
+      .catch((error: unknown) => console.warn("[WA Webhook] phone order notice status failed", error instanceof Error ? error.name : typeof error))
   }
 }

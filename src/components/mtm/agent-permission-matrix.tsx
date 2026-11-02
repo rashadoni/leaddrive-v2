@@ -116,8 +116,9 @@ export function MtmAgentPermissionMatrix({
   return (
     <section className="space-y-3" aria-labelledby="mtm-agent-matrix-title" data-testid="mtm-agent-permission-matrix">
       <div>
-        <h2 id="mtm-agent-matrix-title" className="text-lg font-semibold">{t("matrixTitle")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("matrixDescription")}</p>
+        {/* The tab above already says it; the heading stays for screen readers. */}
+        <h2 id="mtm-agent-matrix-title" className="sr-only">{t("matrixTitle")}</h2>
+        <p className="text-sm text-muted-foreground">{t("matrixDescription")}</p>
       </div>
 
       {loadFailed ? (
@@ -127,13 +128,15 @@ export function MtmAgentPermissionMatrix({
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />
         </div>
       ) : (
-        <div className="space-y-4">
+        // Groups side by side, rows one line each: 5.5 screens became 2.4
+        // (owner 2026-10-31). What a row means is under the cursor on its name.
+        <div className="grid gap-4 lg:grid-cols-2">
           {AGENT_PERMISSION_GROUPS.map((group) => (
-            <div key={group} className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-              <h3 className="border-b border-zinc-200 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground dark:border-zinc-700">
+            <div key={group} className="rounded-xl border border-border bg-card">
+              <h3 className="border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {t(`permGroup_${group}` as never)}
               </h3>
-              <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <ul className="divide-y divide-border">
                 {AGENT_PERMISSION_ROWS.filter((row) => row.group === group && (!["attendanceRequests", "attendanceWorkday", "attendanceLocation", "attendanceInstallation", "attendanceBranchQr"].includes(row.id) || settings.attendanceEnabled === true)).map((row) => (
                   <MatrixRow
                     key={row.id}
@@ -174,6 +177,10 @@ function MatrixRow({
 }) {
   const t = useTranslations("mtmAccess")
   const name = title(row.id)
+  const explanation = [
+    t(`perm_${row.id}_hint` as never),
+    row.kind === "switch" ? t(`surface_${row.surfaces.join("_")}` as never) : "",
+  ].filter(Boolean).join(" ")
   // A switch that depends on another shows "may not" and cannot be pressed
   // while the other is off; its own stored value comes back with it.
   const requiredRow = row.kind === "switch" && row.requires
@@ -191,15 +198,13 @@ function MatrixRow({
 
   return (
     <li
-      className="grid gap-2 px-4 py-3 md:grid-cols-[minmax(0,1fr)_14rem] md:items-start md:gap-6"
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-2"
       data-testid={`mtm-agent-permission-${row.id}`}
     >
       <div className="min-w-0">
-        <p className="text-sm font-medium">{name}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t(`perm_${row.id}_hint` as never)}</p>
-        {row.kind === "switch" && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{t(`surface_${row.surfaces.join("_")}` as never)}</p>
-        )}
+        <p className="text-sm font-medium"><HintValue text={explanation}>{name}</HintValue></p>
+        {/* Read aloud; on screen it is the hint on the name. */}
+        <span className="sr-only">{explanation}</span>
         {blocked && requiredRow && (
           <p className="mt-0.5 text-xs text-muted-foreground">{t("requiresHint", { name: title(requiredRow.id) })}</p>
         )}
@@ -212,7 +217,7 @@ function MatrixRow({
                 <label key={card.id} className="flex min-h-9 cursor-pointer items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                    className="h-4 w-4 rounded border-input"
                     checked={granted(card)}
                     disabled={cardBusy}
                     onChange={(event) => onGrant(card.id, cardFlag, event.target.checked)}
@@ -235,7 +240,7 @@ function MatrixRow({
             aria-label={name}
             disabled={busy || blocked}
             onClick={() => onToggle(row.setting, !on)}
-            className="inline-flex min-h-11 items-center gap-3 rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-9 items-center gap-3 rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span
               aria-hidden="true"
@@ -252,7 +257,7 @@ function MatrixRow({
             </p>
           </>
         ) : (
-          <>
+          <div className="flex items-center gap-2">
             <p
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
@@ -266,11 +271,11 @@ function MatrixRow({
                 : <X className="h-3.5 w-3.5" aria-hidden="true" />}
               {t(row.kind === "always" ? "stateAlways" : "stateNever")}
             </p>
-            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <HintValue text={t("fixedRule")} className="text-muted-foreground">
               <Lock className="h-3 w-3" aria-hidden="true" />
-              {t("fixedRule")}
-            </p>
-          </>
+              <span className="sr-only">{t("fixedRule")}</span>
+            </HintValue>
+          </div>
         )}
       </div>
     </li>

@@ -93,7 +93,9 @@ describe("MTM attendance organization calendar UI", () => {
     expect(container.textContent).toContain("No special dates have been entered for 2026")
     expect(container.querySelectorAll('[data-testid="attendance-calendar-day"]')).toHaveLength(0)
     await edit("year", "2027")
-    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(`${ENDPOINT}?from=2027-01-01&to=2027-12-31`)
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith(`${ENDPOINT}?`)).at(-1)?.[0]).toBe(`${ENDPOINT}?from=2027-01-01&to=2027-12-31`)
+    // The admin also asks what the watch has for that year.
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(`${ENDPOINT}/official?year=2027`)
     expect(container.textContent).toContain("No special dates have been entered for 2027")
   })
 
@@ -204,5 +206,63 @@ describe("MTM attendance organization calendar UI", () => {
     expect(container.textContent).not.toContain("PRIVATE_SERVER_ERROR")
     await click("Refresh calendar")
     expect(input("date").value).toBe("2026-10-14")
+  })
+
+  // Owner, 2026-11-01 («Давай» to the mockup): next year's calendar read from report.az waits for the admin.
+  describe("the calendar found by the watch", () => {
+    const found = { year: 2027, state: "FOUND", checkedAt: "2026-12-06T06:00:00.000Z", fingerprint: "0123456789abcdef01234567",
+      decision: "Nazirlər Kabinetinin 05.12.2026 tarixli 401 nömrəli qərarı", sourceUrl: "https://report.az/sosial-mudafie/x", publishedOn: "2026-12-06",
+      entries: [{ date: "2027-01-01", kind: "PUBLIC_HOLIDAY", name: "Yeni il bayramı" }, { date: "2027-01-02", kind: "PUBLIC_HOLIDAY", name: "Yeni il bayramı" },
+        { date: "2027-03-10", kind: "PUBLIC_HOLIDAY", name: "Ramazan bayramı" }, { date: "2027-03-12", kind: "WEEKEND", name: "Köçürülmüş istirahət günü" }] }
+    const route = (view: unknown, onPost?: (body: unknown) => Response) => fetchMock.mockImplementation(async (url, options) => {
+      const target = String(url)
+      if (target.startsWith(`${ENDPOINT}/official?year=`)) return response(target.endsWith("2027") ? view : { year: 2026, state: "DECIDED", source: "x" })
+      if (target === `${ENDPOINT}/official` && onPost) return onPost(JSON.parse(String(options!.body)))
+      return response(data())
+    })
+
+    it("shows the found days with their source, adds exactly the reviewed list, and can dismiss it", async () => {
+      const posts: unknown[] = []
+      route(found, (body) => { posts.push(body); return response((body as { dismiss?: boolean }).dismiss ? { dismissed: true } : { year: 2027, added: 4, existing: 0, past: 0, complete: true, source: "x" }) })
+      await render("az")
+      const az = messages("az").mtmAttendance
+      await edit("year", "2027")
+      const block = container.querySelector('[data-testid="attendance-calendar-found"]')!
+      expect(block.textContent).toContain(az.calendarFoundTitle.replace("{year}", "2027"))
+      expect(block.textContent).toContain("401 nömrəli")
+      expect(block.querySelector("a")!.getAttribute("href")).toBe("https://report.az/sosial-mudafie/x")
+      expect(block.querySelectorAll('[data-testid="attendance-calendar-found-day"]')).toHaveLength(3)
+      await click(az.calendarFoundShowAll)
+      expect(container.querySelectorAll('[data-testid="attendance-calendar-found-day"]')).toHaveLength(4)
+      expect(container.querySelector('[data-testid="attendance-calendar-official"]')).toBeNull()
+      await click(az.calendarFoundAdd)
+      expect(posts.at(-1)).toEqual({ year: 2027, fingerprint: found.fingerprint })
+      await click(az.calendarFoundDismiss)
+      expect(posts.at(-1)).toEqual({ year: 2027, fingerprint: found.fingerprint, dismiss: true })
+    })
+
+    it("reloads instead of adding when the source changed after the admin looked", async () => {
+      route(found, () => response(null, 409, "MTM_ATTENDANCE_CALENDAR_FOUND_CHANGED"))
+      await render("ru")
+      await edit("year", "2027")
+      await click(messages("ru").mtmAttendance.calendarFoundAdd)
+      expect(container.querySelector('[role="alert"]')!.textContent).toBe(messages("ru").mtmAttendance.calendarFoundChanged)
+    })
+
+    it.each([
+      ["NOT_YET", { year: 2027, state: "NOT_YET", checkedAt: "2026-12-02T05:00:00.000Z" }, "calendarNotYet"],
+      ["UNREADABLE", { year: 2027, state: "UNREADABLE", checkedAt: null, sourceUrl: "https://report.az/a" }, "calendarUnreadable"],
+      ["DISMISSED", { year: 2027, state: "DISMISSED", checkedAt: null }, "calendarFoundDismissed"],
+    ])("%s: says so under the fixed-holidays button, which still works", async (_state, view, key) => {
+      route(view)
+      await render("en")
+      const en = messages("en").mtmAttendance
+      await edit("year", "2027")
+      const line = container.querySelector('[data-testid="attendance-calendar-watch"]')!
+      expect(line.textContent).toContain(en[key].replace("{year}", "2027"))
+      expect(container.querySelector('[data-testid="attendance-calendar-found"]')).toBeNull()
+      expect(button(en.calendarOfficialAdd.replace("{year}", "2027"))).toBeTruthy()
+      if (key === "calendarNotYet") expect(line.textContent).toContain(en.calendarLastChecked.replace("{time}", ""))
+    })
   })
 })

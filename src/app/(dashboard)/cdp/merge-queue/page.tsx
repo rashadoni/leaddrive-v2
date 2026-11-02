@@ -105,13 +105,13 @@ function ProfileCard({
 }) {
   if (!p) {
     return (
-      <div className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-muted-foreground">
+      <div className="p-3 border border-border rounded-lg text-xs text-muted-foreground">
         {labels.missing}
       </div>
     )
   }
   return (
-    <div className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-1.5">
+    <div className="p-3 border border-border rounded-lg space-y-1.5">
       <div className="flex items-center justify-between gap-2 mb-1">
         <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
           {side}
@@ -291,7 +291,7 @@ export default function IdentityMergeQueuePage() {
         {!loading && data && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">{t("kpiPending")}</p>
                 <p
                   className={`text-2xl font-bold mt-0.5 ${
@@ -301,13 +301,13 @@ export default function IdentityMergeQueuePage() {
                   {data.totalPending}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">{t("kpiTotalFlagged")}</p>
                 <p className="text-2xl font-bold mt-0.5">
                   {Object.values(data.statusCounts).reduce((a, b) => a + b, 0)}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   {t("kpiManuallyMerged")}
                 </p>
@@ -315,7 +315,7 @@ export default function IdentityMergeQueuePage() {
                   {data.statusCounts.manually_merged ?? 0}
                 </p>
               </MotionCard>
-              <MotionCard className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+              <MotionCard className="p-3 border border-border rounded-lg">
                 <p className="text-xs text-muted-foreground">{t("kpiRejected")}</p>
                 <p className="text-2xl font-bold mt-0.5">
                   {data.statusCounts.rejected ?? 0}
@@ -339,7 +339,7 @@ export default function IdentityMergeQueuePage() {
                 {data.items.map((c) => {
                   const tier = TIER_BADGES[c.tier]
                   return (
-                    <MotionCard key={c.id} className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                    <MotionCard key={c.id} className="p-4 border border-border rounded-lg">
                       <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
                         <div className="flex items-center gap-3">
                           <div className="text-3xl font-bold font-mono">

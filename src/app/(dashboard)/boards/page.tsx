@@ -349,7 +349,7 @@ export default function BoardsIndexPage() {
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
           >
             <Plus className="h-4 w-4" /> {t("createBoard")}
           </button>
@@ -368,7 +368,7 @@ export default function BoardsIndexPage() {
           {canManage && (
             <button
               onClick={() => setShowCreate(true)}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90" data-crm-button="default"
             >
               <Plus className="h-4 w-4" /> {t("createBoard")}
             </button>
@@ -433,8 +433,8 @@ function TypeParentFields({
     <div className="mb-3">
       <label className="mb-1 block text-sm font-medium">{t("boardType")}</label>
       <div className="mb-1 inline-flex rounded-md border p-0.5">
-        <button type="button" onClick={() => setIsDepartment(false)} className={`rounded px-3 py-1 text-sm ${!isDepartment ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t("typeSection")}</button>
-        <button type="button" onClick={() => setIsDepartment(true)} className={`rounded px-3 py-1 text-sm ${isDepartment ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t("typeDepartment")}</button>
+        <button type="button" onClick={() => setIsDepartment(false)} className={`rounded px-3 py-1 text-sm ${!isDepartment ? "crm-choice-selected " : "text-muted-foreground"}`}>{t("typeSection")}</button>
+        <button type="button" onClick={() => setIsDepartment(true)} className={`rounded px-3 py-1 text-sm ${isDepartment ? "crm-choice-selected " : "text-muted-foreground"}`}>{t("typeDepartment")}</button>
       </div>
       <p className="mb-2 text-xs text-muted-foreground">{isDepartment ? t("typeDepartmentHint") : t("typeSectionHint")}</p>
       {!isDepartment && (
@@ -531,13 +531,13 @@ function CreateBoardDialog({ departments, onClose, onCreated }: { departments: D
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-background shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b px-6 pb-3 pt-6">
+      <div data-crm-dialog="" className="mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div data-crm-dialog-header="" className="flex items-center justify-between border-b border-border px-6 pb-3 pt-6">
           <h2 className="text-lg font-bold">{t("createBoard")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div data-crm-dialog-content="" className="flex-1 overflow-y-auto px-6 py-4">
         <label className="mb-1 block text-sm font-medium">{t("boardKey")}</label>
         <input
           value={key}
@@ -582,12 +582,12 @@ function CreateBoardDialog({ departments, onClose, onCreated }: { departments: D
         {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
         </div>
 
-        <div className="flex flex-shrink-0 justify-end gap-2 border-t px-6 py-4">
+        <div data-crm-dialog-footer="" className="flex flex-shrink-0 justify-end gap-2 border-t border-border px-6 py-4">
           <button onClick={onClose} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">{t("cancel")}</button>
           <button
             onClick={submit}
             disabled={!valid || saving}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" data-crm-button="default"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {saving ? t("creating") : t("create")}
@@ -761,13 +761,13 @@ function EditBoardDialog({ division, departments, onClose, onSaved }: { division
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="mx-4 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-background shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b px-6 pb-3 pt-6">
+      <div data-crm-dialog="" className="mx-4 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div data-crm-dialog-header="" className="flex items-center justify-between border-b border-border px-6 pb-3 pt-6">
           <h2 className="text-lg font-bold">{t("editBoard")} · {division.key}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div data-crm-dialog-content="" className="flex-1 overflow-y-auto px-6 py-4">
         <label className="mb-1 block text-sm font-medium">{t("boardName")}</label>
         <input
           value={name}
@@ -823,7 +823,7 @@ function EditBoardDialog({ division, departments, onClose, onSaved }: { division
         {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
         </div>
 
-        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-t px-6 py-4">
+        <div data-crm-dialog-footer="" className="flex flex-shrink-0 items-center justify-between gap-2 border-t border-border px-6 py-4">
           <button
             onClick={archive}
             disabled={archiving}
@@ -836,7 +836,7 @@ function EditBoardDialog({ division, departments, onClose, onSaved }: { division
             <button
               onClick={save}
               disabled={!valid || saving}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" data-crm-button="default"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? t("saving") : t("save")}

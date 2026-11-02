@@ -34,6 +34,9 @@ describe("WhatsApp Embedded Signup registration result", () => {
     root = createRoot(container)
     loginCallback = undefined
     onConnected.mockClear()
+    // These cases run the dialog in place, as on the app host; tenant hosts are covered in
+    // whatsapp-signup-window-ui.test.ts.
+    process.env.NEXT_PUBLIC_APP_URL = window.location.origin
     window.FB = {
       init: vi.fn(),
       login: vi.fn((callback) => { loginCallback = callback }),
@@ -44,6 +47,7 @@ describe("WhatsApp Embedded Signup registration result", () => {
     await act(async () => root.unmount())
     container.remove()
     delete window.FB
+    delete process.env.NEXT_PUBLIC_APP_URL
     vi.unstubAllGlobals()
   })
 

@@ -11,6 +11,17 @@ import en from "../../../messages/en.json"
 
 const messages = { az: az.mtmAttendance, ru: ru.mtmAttendance, en: en.mtmAttendance }
 /**
+ * Whose request it is — the reviewer otherwise had to open the queue to find
+ * out (owner, 2026-11-01). Only the name: the kind of request stays out of
+ * the bell, its pop-up and the push on a locked screen, where «sick leave»
+ * would be read by whoever holds the phone.
+ */
+async function employeeName(tx: Prisma.TransactionClient, organizationId: string, agentId: string): Promise<string | null> {
+  const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId }, select: { name: true } })
+  return card?.name?.trim() || null
+}
+const named = (template: string, name: string) => template.replace("{name}", name)
+/**
  * Who decides this employee's request: an active CRM login with write on MTM,
  * MTM not hidden from it, and the employee in its scope — an admin, or a
  * manager card linked to the login. Never the employee's own login. The bell
@@ -58,10 +69,12 @@ export async function attendanceRequestFirstReviewers(tx: Prisma.TransactionClie
  * no external transport runs while this transaction holds employee locks. */
 export async function notifyAttendanceRequestReviewers(tx: Prisma.TransactionClient, input: { organizationId: string; agentId: string; requestId: string }) {
   const { organizationId, requestId } = input
-  for (const user of await attendanceRequestFirstReviewers(tx, input)) {
+  const reviewers = await attendanceRequestFirstReviewers(tx, input)
+  const name = reviewers.length ? await employeeName(tx, organizationId, input.agentId) : null
+  for (const user of reviewers) {
     const t = messages[user.preferredLanguage === "ru" || user.preferredLanguage === "en" ? user.preferredLanguage : "az"]
     const row = await createNotification({ organizationId, userId: user.id, type: "warning",
-      title: t.requestNotificationTitle, message: t.requestNotificationBody,
+      title: t.requestNotificationTitle, message: name ? named(t.requestNotificationBodyNamed, name) : t.requestNotificationBody,
       entityType: MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, entityId: requestId, kind: MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
       idempotencyKey: `mtm-attendance-submitted:${requestId}`, client: tx,
     })
@@ -72,10 +85,12 @@ export async function notifyAttendanceRequestReviewers(tx: Prisma.TransactionCli
 /** Two-step approval: a manager approved, HR (the administrators) decides. Commits with that approval. */
 export async function notifyAttendanceRequestHr(tx: Prisma.TransactionClient, input: { organizationId: string; agentId: string; requestId: string }) {
   const { organizationId, requestId } = input
-  for (const user of (await attendanceRequestReviewers(tx, input)).filter((reviewer) => reviewer.hr)) {
+  const hr = (await attendanceRequestReviewers(tx, input)).filter((reviewer) => reviewer.hr)
+  const name = hr.length ? await employeeName(tx, organizationId, input.agentId) : null
+  for (const user of hr) {
     const t = messages[user.preferredLanguage === "ru" || user.preferredLanguage === "en" ? user.preferredLanguage : "az"]
     const row = await createNotification({ organizationId, userId: user.id, type: "warning",
-      title: t.requestHrNotificationTitle, message: t.requestHrNotificationBody,
+      title: t.requestHrNotificationTitle, message: name ? named(t.requestHrNotificationBodyNamed, name) : t.requestHrNotificationBody,
       entityType: MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, entityId: requestId, kind: MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
       idempotencyKey: `mtm-attendance-manager-approved:${requestId}`, client: tx,
     })

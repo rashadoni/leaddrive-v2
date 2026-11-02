@@ -52,7 +52,9 @@ export async function readAttendanceLocationPolicy(reviewer: AttendanceReviewer)
   return prisma.$transaction(async tx => {
     await requireAdministrator(tx,reviewer)
     const row = await currentPolicy(tx,reviewer.organizationId)
-    return { policy:row ? policyDto(row):null }
+    // The name fills the draft agreement of an organization that has none yet.
+    const organization = await tx.organization.findUnique({ where:{ id:reviewer.organizationId },select:{ name:true } })
+    return { policy:row ? policyDto(row):null,organizationName:organization?.name ?? null }
   },{ isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead })
 }
 export async function publishAttendanceLocationPolicy(reviewer: AttendanceReviewer, raw: unknown) {

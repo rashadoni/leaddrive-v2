@@ -149,6 +149,9 @@ export const AGENT_PERMISSION_ROWS = [
     id: "customerLocationRequest", group: "clients", kind: "switch", setting: "agentCustomerLocationRequests",
     surfaces: ["app"],
   },
+  // «Часы не те?» (owner, 2026-11-02): the real «часы приёма» from the spot,
+  // a manager accepts them — src/lib/mtm/customer-hours-request.ts.
+  { id: "customerHoursRequest", group: "clients", kind: "always" },
   { id: "masterDataEdit", group: "clients", kind: "never" },
   { id: "clientTransfer", group: "clients", kind: "never" },
 

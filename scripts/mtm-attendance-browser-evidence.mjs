@@ -22,6 +22,8 @@ const english = JSON.parse(await readFile('messages/en.json', 'utf8'))
 const messages = english.mtmAttendance
 /** Personnel labels (`personnel.*`), for the screens rebuilt on 2026-10-14. */
 const pt = key => { const value = key.split('.').reduce((node, part) => node?.[part], english.personnel); assert.equal(typeof value, 'string', `Missing label personnel.${key}`); return value }
+/** The branch screen's own labels (`attendanceBranchScreen.*`). */
+const st = key => { const value = english.attendanceBranchScreen?.[key]; assert.equal(typeof value, 'string', `Missing label attendanceBranchScreen.${key}`); return value }
 const t = (key, vars = {}) => {
   assert.equal(typeof messages[key], 'string', `Missing label ${key}`)
   return messages[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
@@ -38,9 +40,9 @@ const destinations = {
   'day-kinds': ['settings?tab=day-kinds', 'settings'], 'request-limits': ['settings?tab=requests', 'settings'], 'hr-access': ['settings?tab=access', 'settings'],
 }
 const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/reports', '/mtm/attendance/settings']
-const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-toggle-refresh-hide', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
+const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-branch-screen-pair-show-revoke', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
 caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
-caseNames.push('employee-explanations-authentication')
+caseNames.push('employee-explanations-authentication', 'browser-existing-crm-phone-hire')
 const manifest = {
   version: 1, status: 'RUNNING', headSha: head, workflowSha: process.env.GITHUB_SHA,
   runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -530,7 +532,7 @@ try {
     assert.equal((await fixture.admin.mtmAgentWorkday.findUniqueOrThrow({ where: { id: state.workdayId } })).status, 'COMPLETED')
     return { detector: 'synthetic seeded case; detector logic NOT_RUN here', reviewPreservesWorkday: true }
   })
-  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-qr', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
+  const pageEndpoints = { '': '/report', timesheet: '/report', settings: '/rules', requests: '/requests', decisions: '/decisions', employees: '/employees', branches: '/branches', 'branches/report': '/report', shifts: '/shifts', 'leave-balances': '/leave-balances', months: '/months', installations: '/installations', 'branch-qr': '/branch-screens', review: '/review', 'location-settings': '/location-policy', recordings: '/recordings' }
   for (const route of routes) await run(`page:${route || 'report'}`, 'browser-navigation', async () => {
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === `${apiRoot}${pageEndpoints[route]}` && response.request().method() === 'GET', { timeout: 120000 })
     void loaded.catch(() => {})
@@ -727,62 +729,112 @@ try {
     assert.equal(correctionResult.decisionNote, 'Fictional correction rejected with context')
     return { correctionComparison: true, correctionDecisionReturnedToEmployee: true }
   })
-  await run('browser-qr-toggle-refresh-hide', 'browser-action+database-backed-http', async () => {
+  await run('browser-qr-branch-screen-pair-show-revoke', 'browser-action+database-backed-http', async () => {
     assert.ok(state.branch)
     await readyPage('branch-qr')
     const toggle = page.getByRole('switch', { name: t('qrRule') })
     assert.equal(await toggle.getAttribute('aria-checked'), 'false')
-    let visibilitySession, windowId
+    let kioskContext, visibilitySession, windowId
     try {
       // The component aborts the old PUT response while loading its new state.
       // Prove the real status and resulting state without reading a discarded body.
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'true', 'QR enabled')
       assert.equal((await api('admin', '/branch-qr')).enabled, true)
-      const qr = page.getByRole('img', { name: t('qrImageAlt') })
+      // A signed-in browser shows no code and cannot mint one (owner, 2026-10-29).
+      assert.equal(await page.locator('main img').count(), 0)
+      await api('admin', '/branch-qr', { method: 'POST', body: { branchId: state.branch.id }, status: 410 })
+      const row = page.getByTestId('attendance-qr-branch').filter({ hasText: state.branch.name })
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 120000 })
+      const pairing = await clickResponse(button('qrScreenPair', row), `${apiRoot}/branch-screens`)
+      assert.equal(await row.getByTestId('attendance-qr-pairing-code').textContent(), pairing.code)
+      // The tablet at the branch: a browser with no CRM session at all, standing
+      // at the branch's current point (owner, 2026-10-30: a screen elsewhere gets no code).
+      const point = await fixture.admin.mtmAttendanceBranchRevision.findFirst({ where: { branchId: state.branch.id }, orderBy: { version: 'desc' }, select: { latitude: true, longitude: true } })
+      const atBranch = { latitude: point.latitude, longitude: point.longitude, accuracy: 15 }
+      kioskContext = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1024, height: 768 }, locale: 'en-US', permissions: ['geolocation'], geolocation: atBranch })
+      await kioskContext.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort())
+      const kiosk = await kioskContext.newPage()
+      await kiosk.goto('/screen?lang=en', { waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      await kiosk.locator('#branch-screen-code').fill(pairing.code.toLowerCase())
+      const paired = kiosk.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/public/attendance-screen/pair', { timeout: 120000 })
+      void paired.catch(() => {})
+      await kiosk.getByRole('button', { name: st('pairButton'), exact: true }).click()
+      assert.equal((await paired).status(), 200)
+      const qr = kiosk.getByRole('img', { name: st('qrAlt') })
       await qr.waitFor({ timeout: 120000 })
       assert.ok((await qr.getAttribute('src')).startsWith('data:image/png;base64,'))
-      await button('qrRefresh').click()
-      await qr.waitFor({ timeout: 120000 })
+      assert.equal(await kiosk.getByTestId('branch-screen-branch').textContent(), state.branch.name)
+      // The secret is an httpOnly cookie of the screen's own routes: no script reads it.
+      assert.equal(await kiosk.evaluate(() => document.cookie.includes('ld_branch_screen')), false)
+      const [cookie] = (await kioskContext.cookies()).filter(item => item.name === 'ld_branch_screen')
+      assert.equal(cookie?.httpOnly, true); assert.equal(cookie?.path, '/api/v1/public/attendance-screen')
+      await row.getByText(t('qrScreenJustPaired'), { exact: true }).waitFor({ timeout: 30000 })
+      await kiosk.screenshot({ path: `${output}/branch-screen-qr.png`, fullPage: false })
       // Release Playwright's own per-session capture handle before minimizing
       // the native window. A separate CDP session cannot undo that override.
       // Never assign document.visibilityState or dispatch synthetic events.
-      visibilitySession = playwrightFocusSession(page)
+      visibilitySession = playwrightFocusSession(kiosk)
       await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
       ;({ windowId } = await visibilitySession.send('Browser.getWindowForTarget'))
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } })
       await poll(async () => (await visibilitySession.send('Browser.getWindowBounds', { windowId })).bounds.windowState === 'minimized', 'Native Chromium window minimized')
       await poll(async () => {
-        const visibilityState = await page.evaluate(() => document.visibilityState)
-        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session' }
+        const visibilityState = await kiosk.evaluate(() => document.visibilityState)
+        manifest.qrLifecycle = { nativeWindowState: 'minimized', visibilityState, focusOverrideSession: 'Playwright original main-frame session', page: 'branch screen' }
         return visibilityState === 'hidden'
       }, 'QR native window background visibility')
       await poll(async () => await qr.count() === 0, 'QR hidden in background')
       manifest.qrLifecycle.qrAbsentWhileHidden = true
       await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-      await page.bringToFront()
-      await poll(async () => await page.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
+      await kiosk.bringToFront()
+      await poll(async () => await kiosk.evaluate(() => document.visibilityState) === 'visible', 'QR native window foreground visibility')
       await qr.waitFor({ timeout: 120000 })
       manifest.qrLifecycle.qrRestoredInForeground = true
+      // Carried ~3 km away: at its next refresh the screen shows no code and
+      // says why; the administrator's list marks it; back at the branch the code returns.
+      await kioskContext.setGeolocation({ ...atBranch, latitude: atBranch.latitude + 0.03 })
+      await kiosk.getByTestId('branch-screen-away').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      assert.ok((await kiosk.getByTestId('branch-screen-away').textContent()).includes(st('notAtBranchTitle')))
+      const awayPlace = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens[0].place
+      assert.equal(awayPlace.state, 'AWAY'); assert.ok(awayPlace.distanceMeters > 3000)
+      await kiosk.screenshot({ path: `${output}/branch-screen-away.png`, fullPage: false })
+      await kioskContext.setGeolocation(atBranch)
+      await qr.waitFor({ timeout: 120000 })
+      manifest.qrLifecycle.qrWithheldAwayFromBranch = true
+      // Disconnected: the screen's next request is refused and it asks for a code again.
+      const [screen] = (await api('admin', '/branch-screens')).branches.find(item => item.id === state.branch.id).screens
+      await button('qrScreenRevoke', row).click()
+      await clickResponse(button('qrScreenRevokeYes', row), `${apiRoot}/branch-screens/${screen.id}/revoke`)
+      await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 30000 })
+      await kiosk.reload({ waitUntil: 'domcontentloaded', timeout: 120000 })
+      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      assert.equal(await qr.count(), 0)
+      await page.bringToFront()
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
-      assert.equal(await qr.count(), 0)
     } finally {
       // Failed lifecycle assertions must still leave the disposable policy OFF.
       try {
         await request(sessions.admin, '/api/v1/mtm/settings', { method: 'PUT', body: { attendanceBranchQrEnabled: false } })
       } finally {
-        if (visibilitySession) {
-          try {
-            if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
-            await page.bringToFront()
-          } finally {
-            await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+        try {
+          if (visibilitySession) {
+            try {
+              if (windowId !== undefined) await visibilitySession.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } })
+            } finally {
+              await visibilitySession.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+            }
           }
+        } finally {
+          await kioskContext?.close()
+          await page.bringToFront()
         }
       }
     }
-    return { enabledThenDisabled: true, refresh: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, playwrightFocusOverrideDisabled: true, cameraScan: 'NOT_RUN' }
+    return { enabledThenDisabled: true, signedInBrowserGetsNoCode: true, pairedWithoutSignIn: true, secretHttpOnly: true, hidesInBackground: true, nativeWindowMinimizeAndRestore: true, revokedScreenUnpaired: true, cameraScan: 'NOT_RUN' }
   })
   await run('browser-settings-hr-catalogue-quotas', 'browser-action+database-backed-http', async () => {
     await readyPage('request-limits')
@@ -891,7 +943,8 @@ try {
     await readyPage('location-settings')
     const editor = page.getByTestId('geo-policy-editor')
     await editor.locator('#geo-text-en').fill('')
-    assert.equal(await editor.getByLabel(t('geoPolicyEnable')).isEnabled(), false)
+    // The double check is chosen above the agreement; it waits for all three texts.
+    assert.equal(await page.getByTestId('geo-policy-status').getByLabel(t('geoPolicyEnable')).isEnabled(), false)
     await clickResponse(button('geoPolicySave', editor), `${apiRoot}/location-policy`)
     assert.equal((await api('admin', '/location-policy')).policy.enabled, false)
     await readyPage('branches/report')
@@ -1276,6 +1329,53 @@ try {
     for await (const chunk of stream) chunks.push(chunk)
     assert.deepEqual(Buffer.concat(chunks), sanitizedBytes)
     return { actualBrowserDocumentDownload: true, draftAndUnselectedHidden: true, deniedRoles: 4, otherEmployeeDenied: true, sameTeamReviewerAllowed: true, exifRemoved: true, invalidFileAndSizeRejected: true, upload: 'Actual mobile multipart HTTP, not APK picker', admissionBackend: 'Application development memory fallback; production Redis gate NOT_RUN' }
+  })
+  await run('browser-existing-crm-phone-hire', 'browser-action+database-backed-http', async () => {
+    const organizationId = fixture.organization.id, name = 'Fixture existing CRM person', phone = '+994550009901'
+    const user = await fixture.admin.user.create({ data: { organizationId, name, phone, email: `existing-${organizationId}@example.invalid`, role: 'sales', passwordHash: fixture.users.employee.passwordHash } })
+    const card = await fixture.admin.mtmAgent.findFirstOrThrow({ where: { organizationId, userId: user.id } })
+    assert.equal(card.role, 'EMPLOYEE'); assert.equal(card.attendanceParticipant, true)
+    const before = { users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }
+    assert.ok(!(await api('admin', '/employees')).employees.some(row => row.id === card.id))
+    await api('hr', '/employees/phone-match', { method: 'POST', body: { phone }, status: 403 })
+    await api('foreign', '/employees/phone-match', { method: 'POST', body: { phone } }).then(result => assert.deepEqual(result, { kind: 'none' }))
+    await readyPage('employees')
+    await page.getByTestId('attendance-add-employee').click()
+    const form = page.getByTestId('attendance-add-employee-form')
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await form.locator('input[type="date"]').fill(today)
+    // The fixture's actual user quota is full. Existing-person hiring must not
+    // require another seat (owner, 2026-10-29: «пусть добавляется как
+    // сотрудник»): the add form hires that person through their own card.
+    assert.ok(fixture.organization.maxUsers !== -1 && before.users >= fixture.organization.maxUsers)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 201)
+    await form.waitFor({ state: 'detached' })
+    const directory = await api('admin', '/employees')
+    const hired = directory.employees.find(row => row.id === card.id)
+    assert.ok(hired); assert.equal(hired.history[0].kind, 'HIRE'); assert.equal(hired.history[0].date, today)
+    assert.deepEqual({ users: await fixture.admin.user.count({ where: { organizationId } }), cards: await fixture.admin.mtmAgent.count({ where: { organizationId } }) }, before)
+    // Already in the list: a second add is refused and points to their page.
+    await page.getByTestId('attendance-add-employee').click()
+    await form.getByLabel(pt('addEmployeeName'), { exact: true }).fill(name)
+    await form.getByTestId('attendance-add-employee-phone').fill(phone)
+    await clickResponse(form.getByRole('button', { name: pt('addEmployeeSubmit'), exact: true }), `${apiRoot}/employees/new`, 'POST', 409)
+    const result = page.getByTestId('attendance-phone-match')
+    await result.waitFor()
+    assert.ok((await result.innerText()).includes(name))
+    assert.ok((await result.innerText()).includes(pt('addEmployeePhoneAlreadyEnrolled')))
+    await page.screenshot({ path: `${output}/existing-crm-phone-match.png`, fullPage: false })
+    await result.getByRole('link', { name: pt('addEmployeePhoneOpenProfile'), exact: true }).click()
+    await page.getByTestId('attendance-employee-back').waitFor()
+    const afterUser = await fixture.admin.user.findUniqueOrThrow({ where: { id: user.id } })
+    const afterCard = await fixture.admin.mtmAgent.findUniqueOrThrow({ where: { id: card.id } })
+    for (const key of ['id', 'phone', 'email', 'role', 'passwordHash', 'hiddenModules']) assert.deepEqual(afterUser[key], user[key])
+    for (const key of ['id', 'userId', 'phone', 'role', 'passwordHash']) assert.equal(afterCard[key], card[key])
+    await page.getByTestId('attendance-employee-back').click()
+    await page.locator('#employee-search').fill(name)
+    await page.getByTestId('employee-row').filter({ hasText: name }).waitFor()
+    await page.screenshot({ path: `${output}/existing-crm-phone-hired.png`, fullPage: false })
+    return { existingIdentityPreserved: true, credentialsUnchanged: true, duplicateAccounts: false, crossTenantHidden: true }
   })
   await run('browser-locales-mobile-width', 'browser-navigation+layout', async () => {
     for (const locale of ['az', 'ru', 'en']) {

@@ -9,6 +9,7 @@ import { type ZeytunCallDatabase } from "@/lib/voice-agent/pharmacy/zeytun-call-
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
 import { getRlsContext, runWithRlsBypass } from "@/lib/rls-context"
 import { payload } from "./fixtures/zeytun-balances"
+import { clientRow, clientsXml } from "./fixtures/zeytun-clients"
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
@@ -71,6 +72,80 @@ describe("private inbound pilot host", () => {
     expect(writes[0].values).not.toContain(f.config.testPhoneE164)
     const persisted = await readFile(join(f.root, `inbound-${f.config.id}.claim`), "utf8")
     expect(persisted).not.toContain(f.config.testPhoneE164)
+  })
+  it("on the line claims every call by itself and reads the newest snapshot", async () => {
+    const f = await fixture()
+    const line: InboundPilotConfig = { version: 1, enabled: true, purpose: "zeytun_line", id: "dddddddd-1111-4111-8111-111111111111",
+      organizationId: f.config.organizationId, channelConfigId: f.config.channelConfigId, issuedAt: f.config.issuedAt,
+      expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
+      approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey } }
+    const other = { ...f.call, id: "other-call", providerCallId: "cccccccc-1111-4111-8111-111111111111" }
+    f.state.writes = [{ id: f.call.id }, { id: other.id }]
+    expect(await Promise.all([f.host.claim(line, f.call), f.host.claim(line, other)])).toEqual([true, true])
+    expect(await f.host.isClaimed(line, other)).toBe(true)
+    await readFile(join(f.root, `line-${line.id}-${other.providerCallId}.claim`), "utf8")
+    // No version in the grant: the snapshot on disk is taken as it is.
+    const catalog = await f.host.loadCatalog(line)
+    expect(catalog.version).toMatch(/^[a-f0-9]{64}$/)
+  })
+  it("runs the line in the organization that holds its number, and the rehearsal only in the default one", async () => {
+    const f = await fixture()
+    // Owner, 2026-10-26: «переноси линию Зейтуна в его организацию».
+    const line: InboundPilotConfig = { version: 1, enabled: true, purpose: "zeytun_line", id: "dddddddd-1111-4111-8111-111111111111",
+      organizationId: "org-zeytun", channelConfigId: "channel-zeytun", issuedAt: f.config.issuedAt,
+      expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
+      approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey } }
+    const call = { ...f.call, organizationId: "org-zeytun", channelConfigId: "channel-zeytun" }
+    // Without a number of its own the other organization's grant reads and claims nothing.
+    expect(await f.host.loadCall(line, call.providerCallId)).toBeNull()
+    expect(await f.host.claim(line, call)).toBe(false)
+    const asked: string[] = []
+    const holdsLine = async (organizationId: string, channelConfigId: string) => {
+      asked.push(`${organizationId}/${channelConfigId}`)
+      return organizationId === "org-zeytun" && channelConfigId === "channel-zeytun"
+    }
+    const host = createInboundPilotHost({ ...f.options, holdsLine })
+    f.state.rows = [{ ...call, startedAt: new Date(call.startedAt) }]
+    expect(await host.loadCall(line, call.providerCallId)).toMatchObject({ organizationId: "org-zeytun", channelConfigId: "channel-zeytun" })
+    // The call is read under its own organization's context, not the default one.
+    expect(f.state.queries.at(-1)?.rls).toEqual({ orgId: "org-zeytun" })
+    expect(await host.claim(line, call)).toBe(true)
+    expect(asked).toContain("org-zeytun/channel-zeytun")
+    // A number routed to another channel does not open this one.
+    expect(await host.loadCall({ ...line, channelConfigId: "channel-other" }, call.providerCallId)).toBeNull()
+    // The rehearsal never moves: another organization's rehearsal grant is refused even with a number.
+    expect(await host.loadCall({ ...f.config, organizationId: "org-zeytun", channelConfigId: "channel-zeytun" }, call.providerCallId)).toBeNull()
+  })
+  it("finds the pharmacies 1C lists for the caller's number, and none from a stale or absent list", async () => {
+    const f = await fixture()
+    const pharmacySource = { organizationId: "clients-test", scopeKey: "c".repeat(64) }
+    const line: InboundPilotConfig = { version: 1, enabled: true, purpose: "zeytun_line", id: "dddddddd-1111-4111-8111-111111111111",
+      organizationId: f.config.organizationId, channelConfigId: f.config.channelConfigId, issuedAt: f.config.issuedAt,
+      expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
+      approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey }, pharmacySource }
+    expect(await f.host.findPharmacies!(line, "+994500000001")).toEqual([])
+    const xml = clientsXml([
+      clientRow(),
+      clientRow({ GUIDE: "55555555-6666-4777-8888-999999999999", Name: "Nur Aptek", Phone: "994500000002" }),
+      clientRow({ GUIDE: "66666666-6666-4777-8888-999999999999", Name: "Səfa", Phone: "994500000002" }),
+    ])
+    await new ZeytunSnapshotStore(join(f.root, "catalog"), pharmacySource.organizationId, pharmacySource.scopeKey).save({
+      payload: xml, version: createHash("sha256").update(xml).digest("hex"),
+      context: { organizationId: pharmacySource.organizationId, observedAt: new Date().toISOString(), source: "live" } })
+    const host = createInboundPilotHost(f.options)
+    expect(await host.findPharmacies!(line, "+994500000001")).toEqual([
+      { guid: "33333333-4444-4555-8666-777777777777", name: "Sınaq aptek", address: "Synthetic address" }])
+    expect((await host.findPharmacies!(line, "+994500000002")).map((p) => p.name).sort()).toEqual(["Nur Aptek", "Səfa"])
+    expect(await host.findPharmacies!(line, "+994500000009")).toEqual([])
+    // The rehearsal grant has no pharmacy list.
+    expect(await host.findPharmacies!(f.config, "+994500000001")).toEqual([])
+  })
+  it("reads only the snapshot header to learn whether it changed", async () => {
+    const f = await fixture()
+    const store = new ZeytunSnapshotStore(join(f.root, "catalog"), f.config.approvedSource.organizationId, f.config.approvedSource.scopeKey)
+    expect(await store.peek()).toEqual({ version: (f.config as { approvedSource: { catalogVersion: string } }).approvedSource.catalogVersion,
+      observedAt: f.config.issuedAt })
+    expect(await new ZeytunSnapshotStore(join(f.root, "catalog"), f.config.approvedSource.organizationId, "b".repeat(64)).peek()).toBeNull()
   })
   it("refuses to open a session when the durable test marker cannot be written", async () => {
     const f = await fixture(); f.state.writes = []

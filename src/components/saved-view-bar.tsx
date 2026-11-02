@@ -199,7 +199,7 @@ export function SavedViewBar({ entityType, currentFilters, onApply, onDefaultLoa
               "group/chip inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full border text-xs transition-colors",
               isActive
                 ? "border-primary bg-primary/10 text-primary"
-                : "border-zinc-200 dark:border-zinc-700 bg-card hover:bg-muted",
+                : "border-border bg-card hover:bg-muted",
             )}
             title={view.isShared ? t("sharedBy", { name: view.user?.name || "—" }) : undefined}
           >

@@ -1,0 +1,24 @@
+# Installed by scripts/zeytun-line/install-backup-watch.sh on the Kafka backup
+# watch host (OVH Gravelines), as root, beside ld-kafka-backup-watch.
+[Unit]
+Description=Backup Zeytun line watch: speaks when the dev box is silent
+OnFailure=ld-line-backup-watch-failed.service
+
+[Service]
+Type=oneshot
+Environment=LD_LINE_WATCH_ROLE=backup
+Environment=LD_LINE_WATCH_STATE=/var/lib/ld-line-watch
+# Left by the dev box's Kafka watch every 5 minutes: the workstation is alive.
+Environment=LD_LINE_WATCH_HEARTBEAT=/var/lib/ld-kafka-watch/primary-heartbeat
+Environment=LD_LINE_WATCH_NOTIFY=/usr/local/sbin/ld-kafka-notify
+ExecStart=/usr/bin/node /opt/ld-line-watch/watch.mjs
+TimeoutStartSec=2min
+Nice=10
+# It shares the host with a broker: small and out of the way.
+MemoryMax=128M
+CPUQuota=25%
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/ld-line-watch

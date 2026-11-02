@@ -61,6 +61,7 @@ import {
 } from "@/lib/mtm/pharmacy-promotion-columns"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
+import { MtmWord } from "@/components/mtm/button-word"
 
 type LocalizedName = { nameRu: string; nameAz: string; nameEn: string }
 
@@ -537,7 +538,7 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
       </DialogHeader>
       <DialogContent data-testid="mtm-pharmacy-review-dialog" className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
-          <div data-testid="mtm-pharmacy-review-step" className="rounded-lg border border-zinc-200/70 bg-muted/30 px-3 py-2 dark:border-zinc-800">
+          <div data-testid="mtm-pharmacy-review-step" className="rounded-lg border border-border bg-muted/30 px-3 py-2">
             <p className="text-xs text-muted-foreground">{t("reviewLevel")}</p>
             <p className="mt-1 font-semibold">{inferredStep ? <HintValue text={t("hint.reviewLevel")}>{inferredStep}</HintValue> : t("unknownStatus")}</p>
           </div>
@@ -547,12 +548,12 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
             <option value="RETURNED">{t("decision.RETURNED")}</option>
             <option value="REJECTED">{t("decision.REJECTED")}</option>
           </Select>
-          <div className="rounded-lg border border-zinc-200/70 bg-muted/30 px-3 py-2 dark:border-zinc-800">
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
             <p className="text-xs text-muted-foreground">{t("selected")}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{rows.length}</p>
           </div>
         </div>
-        <div className="rounded-lg border border-zinc-200/70 bg-background px-3 py-3 dark:border-zinc-800">
+        <div className="rounded-lg border border-border bg-background px-3 py-3">
           <p className="text-xs font-medium text-muted-foreground">{t("selectedPharmacies")}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {rows.slice(0, 6).map((row) => <Badge key={row.id} variant="outline">{row.target.customerName}</Badge>)}
@@ -572,13 +573,13 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
           />
         </div>
         {error ? (
-          <div role="alert" className="flex gap-2 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-3 text-sm">
+          <div role="alert" className="flex gap-2 border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-3 text-sm">
             <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         ) : null}
         {preview ? (
-          <section className="border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4">
+          <section className="border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-4">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
               <div>
@@ -1071,7 +1072,7 @@ export function PharmacyPromotionWorkspace() {
 
   const advancedFilterFields = (
     <>
-      <fieldset data-testid="mtm-pharmacy-filter-group-scope" className="rounded-lg border border-zinc-200/70 bg-background/80 p-3 dark:border-zinc-800">
+      <fieldset data-testid="mtm-pharmacy-filter-group-scope" className="rounded-lg border border-border bg-background/80 p-3">
         <legend className="px-1 text-sm font-semibold">{t("filterGroup.scope")}</legend>
         <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Select label={t("region")} value={draft.regionId ?? ""} onChange={(event) => setDraft((current) => ({ ...current, regionId: event.target.value }))}><option value="">{t("allRegions")}</option>{(data?.filters.regions ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>
@@ -1083,7 +1084,7 @@ export function PharmacyPromotionWorkspace() {
         </div>
       </fieldset>
 
-      <fieldset data-testid="mtm-pharmacy-filter-group-workflow" className="rounded-lg border border-zinc-200/70 bg-background/80 p-3 dark:border-zinc-800">
+      <fieldset data-testid="mtm-pharmacy-filter-group-workflow" className="rounded-lg border border-border bg-background/80 p-3">
         <legend className="px-1 text-sm font-semibold">{t("filterGroup.workflow")}</legend>
         <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Select label={t("promotion")} value={draft.promotionId ?? ""} onChange={(event) => setDraft((current) => ({ ...current, promotionId: event.target.value }))}><option value="">{t("allPromotions")}</option>{promotionOptions.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</Select>
@@ -1097,7 +1098,7 @@ export function PharmacyPromotionWorkspace() {
         </div>
       </fieldset>
 
-      <fieldset data-testid="mtm-pharmacy-filter-group-period-points" className="rounded-lg border border-zinc-200/70 bg-background/80 p-3 dark:border-zinc-800">
+      <fieldset data-testid="mtm-pharmacy-filter-group-period-points" className="rounded-lg border border-border bg-background/80 p-3">
         <legend className="px-1 text-sm font-semibold">{t("filterGroup.periodPoints")}</legend>
         <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
           <Select label={t("dateField")} value={draft.dateMode || "NONE"} onChange={(event) => setDraft((current) => ({ ...current, dateMode: event.target.value }))}><option value="NONE">{t("notSet")}</option><option value="CREATED_AT">{t("createdAt")}</option><option value="CONNECTED_AT">{t("connectedAt")}</option><option value="CLOSED_AT">{t("closedAt")}</option></Select>
@@ -1120,7 +1121,7 @@ export function PharmacyPromotionWorkspace() {
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"><FileBadge className="h-3.5 w-3.5" />{t("eyebrow")}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("title")}</h1>
-            <HelpButton slug="mtm-promotions" variant="label" className="h-11" />
+            <HelpButton slug="mtm-promotions" variant="quiet" className="h-11" />
           </div>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("description")}</p>
         </div>
@@ -1134,11 +1135,11 @@ export function PharmacyPromotionWorkspace() {
         </div>
       </header>
 
-      <nav aria-label={t("viewsLabel")} className={cn("grid border-b border-zinc-200 dark:border-zinc-800 sm:inline-grid", availableViews.length === 1 && "grid-cols-1 sm:min-w-[220px]", availableViews.length === 2 && "grid-cols-2 sm:min-w-[340px]", availableViews.length === 3 && "grid-cols-3 sm:min-w-[430px]") }>
+      <nav aria-label={t("viewsLabel")} className={cn("grid border-b border-border sm:inline-grid", availableViews.length === 1 && "grid-cols-1 sm:min-w-[220px]", availableViews.length === 2 && "grid-cols-2 sm:min-w-[340px]", availableViews.length === 3 && "grid-cols-3 sm:min-w-[430px]") }>
         {availableViews.map((candidate) => (
           <Hint key={candidate} text={t(VIEW_HINT[candidate])}>
             <button type="button" onClick={() => { setSelectedSavedViewId(""); replaceParams({ view: candidate, page: null, ready: candidate === "review" ? draft.ready || null : null }) }} className={cn("-mb-px min-h-11 border-b-2 px-3 text-sm font-medium transition-colors lg:min-h-10", view === candidate ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-              {t(`view.${candidate}`)}{candidate === "review" && data ? <span className="ml-2 text-[10px] tabular-nums text-muted-foreground">{data.summary.readyL1 + data.summary.readyL2}</span> : null}
+              {t(`view.${candidate}`)}{candidate === "review" && data ? <span className="ml-2 text-xs tabular-nums text-muted-foreground">{data.summary.readyL1 + data.summary.readyL2}</span> : null}
             </button>
           </Hint>
         ))}
@@ -1148,7 +1149,7 @@ export function PharmacyPromotionWorkspace() {
           filters; the view tabs and the row say what to do. */}
 
       {data && !data.capabilities.postingEnabled && view !== "campaigns" ? (
-        <div className="flex gap-3 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-sm">
+        <div className="flex gap-3 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-sm">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="min-w-0 flex-1">
             <span className="font-semibold">{t("postingBlockedTitle")}</span>{" "}
@@ -1182,12 +1183,12 @@ export function PharmacyPromotionWorkspace() {
                 <MtmFilterSelect testId="mtm-pharmacy-saved-view" label={tFilters("view")} value={selectedSavedViewId} allLabel={savedViewsLoading ? t("savedViewsLoading") : t("savedViewsNoneSelected")} clearable={false} disabled={savedViewsLoading}
                   options={savedViews.map((savedView) => ({ value: savedView.id, label: `${savedView.name}${savedView.isDefault ? ` · ${t("defaultView")}` : ""}` }))}
                   onChange={(value) => applySavedView(value)} />
-                <Hint text={t("hint.saveView")}><Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" aria-label={t("saveView")} aria-expanded={showSaveView} onClick={() => setShowSaveView((value) => !value)}><Bookmark className="h-4 w-4" /></Button></Hint>
-                {selectedSavedViewId ? <Hint wrap text={deletingView ? null : t("hint.deleteView")}><Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" aria-label={t("deleteSavedView")} disabled={deletingView} onClick={deleteSelectedView}><Trash2 className="h-4 w-4" /></Button></Hint> : null}
+                <Hint text={t("hint.saveView")}><Button type="button" variant="ghost" size="sm" className="h-10 rounded-full gap-1.5" aria-label={t("saveView")} aria-expanded={showSaveView} onClick={() => setShowSaveView((value) => !value)}><Bookmark className="h-4 w-4" /><MtmWord word="save" /></Button></Hint>
+                {selectedSavedViewId ? <Hint wrap text={deletingView ? null : t("hint.deleteView")}><Button type="button" variant="ghost" size="sm" className="h-10 rounded-full text-destructive gap-1.5" aria-label={t("deleteSavedView")} disabled={deletingView} onClick={deleteSelectedView}><Trash2 className="h-4 w-4" /><MtmWord word="delete" /></Button></Hint> : null}
               </span>
             </MtmFilterBar>
             {showSaveView ? (
-              <div className="grid gap-3 rounded-lg border border-zinc-200/70 bg-card p-3 dark:border-zinc-800 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+              <div className="grid gap-3 rounded-lg border border-border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                 <LabeledInput label={t("savedViewName")} value={savedViewName} maxLength={80} placeholder={t("savedViewNamePlaceholder")} className="min-h-11 lg:min-h-10" onChange={(event) => setSavedViewName(event.target.value)} />
                 <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"><input className="h-5 w-5" type="checkbox" checked={savedViewDefault} onChange={(event) => setSavedViewDefault(event.target.checked)} />{t("makeDefaultView")}</label>
                 <div className="flex flex-wrap gap-2"><Button className="min-h-11 lg:min-h-9" variant="ghost" onClick={() => { setShowSaveView(false); setSavedViewName(""); setSavedViewDefault(false) }} disabled={savingView}>{t("cancel")}</Button><Button className="min-h-11 lg:min-h-9" onClick={saveCurrentView} disabled={savingView || !data || !savedViewName.trim()}>{savingView ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="mr-2 h-4 w-4" />}{t("save")}</Button></div>
@@ -1214,7 +1215,7 @@ export function PharmacyPromotionWorkspace() {
               </div>
             ) : null}
             {advanced && !compactFilterLayout ? (
-              <div className="space-y-3 rounded-lg border border-zinc-200/70 bg-muted/20 p-3 dark:border-zinc-800 [&_input]:min-h-11 [&_select]:min-h-11 lg:[&_input]:min-h-10 lg:[&_select]:min-h-10">
+              <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3 [&_input]:min-h-11 [&_select]:min-h-11 lg:[&_input]:min-h-10 lg:[&_select]:min-h-10">
                 {advancedFilterFields}
                 <div className="flex justify-end gap-2"><Button variant="ghost" onClick={resetFilters} className="min-h-11 lg:min-h-9"><XCircle className="mr-2 h-4 w-4" />{t("resetFilters")}</Button><Button onClick={applyFilters} className="min-h-11 lg:min-h-9"><Filter className="mr-2 h-4 w-4" />{t("showResults")}</Button></div>
               </div>
@@ -1241,7 +1242,7 @@ export function PharmacyPromotionWorkspace() {
             </SheetContent>
           </Sheet>
 
-          {loadError ? <div role="alert" className="flex items-start justify-between gap-3 border border-l-4 border-zinc-200 border-l-red-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-red-500 p-4 text-sm"><span className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{loadError}</span><Button className="min-h-11 lg:min-h-8" variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>{t("retry")}</Button></div> : null}
+          {loadError ? <div role="alert" className="flex items-start justify-between gap-3 border border-l-4 border-border border-l-red-500 bg-card text-foreground dark:border-l-red-500 p-4 text-sm"><span className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{loadError}</span><Button className="min-h-11 lg:min-h-8" variant="outline" size="sm" onClick={() => setRefreshKey((value) => value + 1)}>{t("retry")}</Button></div> : null}
 
           {data?.capabilities.canBulkReview && selected.size > 0 ? (
             <div className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border border-primary/30 bg-background/95 p-3 shadow-lg backdrop-blur">
@@ -1250,7 +1251,7 @@ export function PharmacyPromotionWorkspace() {
             </div>
           ) : null}
 
-          <section className="border border-zinc-200/70 bg-card dark:border-zinc-800">
+          <section className="border border-border bg-card">
             {showColumnControls && data ? (
               <div data-testid="mtm-pharmacy-column-toolbar" className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-3 py-2.5">
                 <div className="min-w-0">
@@ -1325,12 +1326,12 @@ export function PharmacyPromotionWorkspace() {
                             <td className={cn("sticky z-10 max-w-[240px] px-3 shadow-[8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, data?.capabilities.canBulkReview ? "left-10" : "left-0", selected.has(row.id) ? "bg-primary/5" : "bg-card")}><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`} className="font-semibold hover:text-primary hover:underline">{row.target.customerName}</Link><p className="mt-0.5 truncate text-muted-foreground">{registrationLabel(row)}</p><p className="truncate text-muted-foreground">{row.target.address || row.target.locality || "—"}</p></td>
                             {visibleColumns.has("promotion") ? <td className={cn("max-w-[230px] px-3", cellPadding)}><p className="font-medium">{localizedName(row.promotion, locale)}</p><p className="text-muted-foreground">{row.promotion.code} · {row.promotion.type.code} · v{row.promotion.revision}</p></td> : null}
                             {visibleColumns.has("employee") ? <td className={cn("max-w-[200px] px-3", cellPadding)}><p className="font-medium">{row.employee.name}</p><p className="truncate text-muted-foreground">{t("userGroupValue", { value: row.employee.userGroups?.map((group) => group.name).join(", ") || row.employee.team?.name || "—" })}</p><p className="truncate text-muted-foreground">{t("managerValue", { value: row.employee.manager?.name || "—" })}</p></td> : null}
-                            {visibleColumns.has("planFact") ? <td className={cn("px-3 text-right tabular-nums", cellPadding)}><p>{formatPoints(row.target.planQuantity, locale)} / <span className="font-semibold">{formatPoints(row.factQuantity, locale)}</span></p><p className="text-[10px] text-muted-foreground">{row.target.unit}</p></td> : null}
+                            {visibleColumns.has("planFact") ? <td className={cn("px-3 text-right tabular-nums", cellPadding)}><p>{formatPoints(row.target.planQuantity, locale)} / <span className="font-semibold">{formatPoints(row.factQuantity, locale)}</span></p><p className="text-xs text-muted-foreground">{row.target.unit}</p></td> : null}
                             {visibleColumns.has("factPoints") ? <td className={cn("px-3 text-right font-semibold tabular-nums", cellPadding)}>{formatPoints(points.factPoints, locale)}</td> : null}
                             {visibleColumns.has("rewardPoints") ? <td className={cn("px-3 text-right font-semibold tabular-nums", cellPadding)}>{formatPoints(points.rewardPoints, locale)}</td> : null}
                             {visibleColumns.has("difference") ? <td className={cn("px-3 text-right font-semibold tabular-nums", cellPadding)}>{formatPoints(points.difference, locale)}</td> : null}
-                            {visibleColumns.has("review") ? <td className={cn("px-3", cellPadding)}><div className="flex gap-1"><PromotionStatusBadge status={row.l1State} label={`L1 ${stateLabel(row.l1State)}`} hint={levelHint(row.l1State)} /><PromotionStatusBadge status={row.l2State} label={`L2 ${stateLabel(row.l2State)}`} hint={levelHint(row.l2State)} /></div>{row.eligibility.overridden ? <HintValue text={overrideHint(row)}><Badge className="mt-1" variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}<p className="mt-1 text-[10px] text-muted-foreground">{nextResponsibleLabel(row.nextResponsible)}</p>{!row.policy.ready ? <p className="mt-1 max-w-[210px] truncate text-[10px] text-amber-700 dark:text-amber-300" title={row.policy.blockers.map(blockerLabel).join(", ")}>{row.policy.blockers.map(blockerLabel).join(" · ")}</p> : null}</td> : null}
-                            {visibleColumns.has("source") ? <td className={cn("px-3", cellPadding)}><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /><p className="mt-1 text-[10px] text-muted-foreground">{formatDate(row.source.observedAt, locale, true)}</p>{row.source.freshness.ageMinutes !== null ? <p className="text-[10px] text-muted-foreground">{t("freshnessAge", { minutes: row.source.freshness.ageMinutes })}</p> : null}</td> : null}
+                            {visibleColumns.has("review") ? <td className={cn("px-3", cellPadding)}><div className="flex gap-1"><PromotionStatusBadge status={row.l1State} label={`L1 ${stateLabel(row.l1State)}`} hint={levelHint(row.l1State)} /><PromotionStatusBadge status={row.l2State} label={`L2 ${stateLabel(row.l2State)}`} hint={levelHint(row.l2State)} /></div>{row.eligibility.overridden ? <HintValue text={overrideHint(row)}><Badge className="mt-1" variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}<p className="mt-1 text-xs text-muted-foreground">{nextResponsibleLabel(row.nextResponsible)}</p>{!row.policy.ready ? <p className="mt-1 max-w-[210px] truncate text-xs text-amber-700 dark:text-amber-300" title={row.policy.blockers.map(blockerLabel).join(", ")}>{row.policy.blockers.map(blockerLabel).join(" · ")}</p> : null}</td> : null}
+                            {visibleColumns.has("source") ? <td className={cn("px-3", cellPadding)}><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /><p className="mt-1 text-xs text-muted-foreground">{formatDate(row.source.observedAt, locale, true)}</p>{row.source.freshness.ageMinutes !== null ? <p className="text-xs text-muted-foreground">{t("freshnessAge", { minutes: row.source.freshness.ageMinutes })}</p> : null}</td> : null}
                             <td className={cn("sticky right-0 z-10 px-3 shadow-[-8px_0_12px_-12px_rgba(0,0,0,.45)] group-hover:bg-muted", cellPadding, selected.has(row.id) ? "bg-primary/5" : "bg-card")}><div className="flex gap-1"><Button asChild variant="ghost" size="sm"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("open")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} size="sm" variant="outline" onClick={() => setReviewRows([row])}>{t("review")}</Button></Hint> : null}</div></td>
                           </tr>
                         )
@@ -1406,10 +1407,10 @@ export function PharmacyPromotionWorkspace() {
 
                       {(visibleColumns.has("planFact") || visibleColumns.has("factPoints") || visibleColumns.has("rewardPoints") || visibleColumns.has("difference")) ? (
                         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {visibleColumns.has("planFact") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.planFact")}>{t("planFact")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedRow.target.planQuantity, locale)} / {formatPoints(focusedRow.factQuantity, locale)}</p></div> : null}
-                          {visibleColumns.has("factPoints") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.factPoints")}>{t("summary.fact")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.factPoints, locale)}</p></div> : null}
-                          {visibleColumns.has("rewardPoints") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.rewardPoints")}>{t("summary.reward")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.rewardPoints, locale)}</p></div> : null}
-                          {visibleColumns.has("difference") ? <div className="border bg-muted/20 p-2"><p className="text-[10px] uppercase text-muted-foreground"><HintValue text={t("hint.difference")}>{t("summary.difference")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.difference, locale)}</p></div> : null}
+                          {visibleColumns.has("planFact") ? <div className="border bg-muted/20 p-2"><p className="text-xs uppercase text-muted-foreground"><HintValue text={t("hint.planFact")}>{t("planFact")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedRow.target.planQuantity, locale)} / {formatPoints(focusedRow.factQuantity, locale)}</p></div> : null}
+                          {visibleColumns.has("factPoints") ? <div className="border bg-muted/20 p-2"><p className="text-xs uppercase text-muted-foreground"><HintValue text={t("hint.factPoints")}>{t("summary.fact")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.factPoints, locale)}</p></div> : null}
+                          {visibleColumns.has("rewardPoints") ? <div className="border bg-muted/20 p-2"><p className="text-xs uppercase text-muted-foreground"><HintValue text={t("hint.rewardPoints")}>{t("summary.reward")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.rewardPoints, locale)}</p></div> : null}
+                          {visibleColumns.has("difference") ? <div className="border bg-muted/20 p-2"><p className="text-xs uppercase text-muted-foreground"><HintValue text={t("hint.difference")}>{t("summary.difference")}</HintValue></p><p className="mt-1 font-semibold tabular-nums">{formatPoints(focusedPoints.difference, locale)}</p></div> : null}
                         </div>
                       ) : null}
 
@@ -1420,7 +1421,7 @@ export function PharmacyPromotionWorkspace() {
                         {visibleColumns.has("source") ? <><dt className="text-muted-foreground">{t("evidence")}</dt><dd className="text-right">{t("evidenceCount", { count: focusedRow.evidenceCount })}</dd><dt className="text-muted-foreground">{t("sourceObservedAt")}</dt><dd className="text-right">{formatDate(focusedRow.source.observedAt, locale, true)}</dd></> : null}
                       </dl>
 
-                      {!focusedRow.policy.ready ? <div className="mt-4 flex gap-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-3 text-xs"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{focusedRow.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
+                      {!focusedRow.policy.ready ? <div className="mt-4 flex gap-2 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-3 text-xs"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{focusedRow.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
 
                       <div className={cn("mt-4 grid gap-2", data?.capabilities.canReview && focusedRow.currentStep ? "grid-cols-2" : "grid-cols-1")}>
                         <Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${focusedRow.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>
@@ -1434,12 +1435,12 @@ export function PharmacyPromotionWorkspace() {
                   {rows.map((row) => {
                     const points = row.ledger.posted ? row.ledger : row.preview
                     return (
-                      <article data-testid={`mtm-pharmacy-promotion-${row.id}`} key={row.id} aria-labelledby={`promotion-execution-${row.id}`} className={cn("border border-zinc-200/70 p-3 dark:border-zinc-800", selected.has(row.id) && "border-primary bg-primary/5", row.source.freshness.state === "STALE" && "border-dashed opacity-80")}>
+                      <article data-testid={`mtm-pharmacy-promotion-${row.id}`} key={row.id} aria-labelledby={`promotion-execution-${row.id}`} className={cn("border border-border p-3", selected.has(row.id) && "border-primary bg-primary/5", row.source.freshness.state === "STALE" && "border-dashed opacity-80")}>
                         <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 id={`promotion-execution-${row.id}`}><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`} className="block break-words font-semibold hover:text-primary hover:underline">{row.target.customerName}</Link></h2><p className="mt-0.5 truncate text-xs text-muted-foreground">{registrationLabel(row)} · {row.target.locality || "—"}</p></div>{data?.capabilities.canBulkReview && row.currentStep ? <label className="grid min-h-11 min-w-11 shrink-0 cursor-pointer place-items-center"><span className="sr-only">{t("selectRow", { name: row.target.customerName })}</span><input type="checkbox" aria-label={t("selectRow", { name: row.target.customerName })} checked={selected.has(row.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next })} className="h-5 w-5" /></label> : null}</div>
                         <div className="mt-3 flex flex-wrap gap-1"><PromotionStatusBadge status={row.status} label={stateLabel(row.status)} hint={statusHint(row.status)} /><PromotionStatusBadge status={row.source.freshness.state} label={freshnessLabel(row.source.freshness.state)} hint={freshnessHint(row.source.freshness.state)} /><Badge variant="outline">{row.promotion.code}</Badge>{row.eligibility.overridden ? <HintValue text={overrideHint(row)}><Badge variant="warning">{t("eligibilityOverrideActive")}</Badge></HintValue> : null}</div>
-                        <div className="mt-3 grid grid-cols-3 gap-2 border-y py-3 text-center"><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.fact")}</p><p className="font-semibold tabular-nums">{formatPoints(points.factPoints, locale)}</p></div><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.reward")}</p><p className="font-semibold tabular-nums">{formatPoints(points.rewardPoints, locale)}</p></div><div><p className="text-[10px] uppercase text-muted-foreground">{t("summary.difference")}</p><p className="font-semibold tabular-nums">{formatPoints(points.difference, locale)}</p></div></div>
+                        <div className="mt-3 grid grid-cols-3 gap-2 border-y py-3 text-center"><div><p className="text-xs uppercase text-muted-foreground">{t("summary.fact")}</p><p className="font-semibold tabular-nums">{formatPoints(points.factPoints, locale)}</p></div><div><p className="text-xs uppercase text-muted-foreground">{t("summary.reward")}</p><p className="font-semibold tabular-nums">{formatPoints(points.rewardPoints, locale)}</p></div><div><p className="text-xs uppercase text-muted-foreground">{t("summary.difference")}</p><p className="font-semibold tabular-nums">{formatPoints(points.difference, locale)}</p></div></div>
                         <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs"><dt className="text-muted-foreground">{t("promotion")}</dt><dd className="truncate text-right">{localizedName(row.promotion, locale)} · v{row.promotion.revision}</dd><dt className="text-muted-foreground">{t("employee")}</dt><dd className="truncate text-right">{row.employee.name}</dd><dt className="text-muted-foreground">{t("userGroup")}</dt><dd className="truncate text-right">{row.employee.userGroups?.map((group) => group.name).join(", ") || row.employee.team?.name || "—"}</dd><dt className="text-muted-foreground">{t("manager")}</dt><dd className="truncate text-right">{row.employee.manager?.name || "—"}</dd><dt className="text-muted-foreground">{t("planFact")}</dt><dd className="text-right tabular-nums">{formatPoints(row.target.planQuantity, locale)} / <strong>{formatPoints(row.factQuantity, locale)}</strong> {row.target.unit}</dd><dt className="text-muted-foreground">{t("evidence")}</dt><dd className="text-right">{t("evidenceCount", { count: row.evidenceCount })} · {formatDate(row.source.observedAt, locale, true)}</dd><dt className="text-muted-foreground">L1 / L2</dt><dd className="text-right">{stateLabel(row.l1State)} / {stateLabel(row.l2State)}</dd><dt className="text-muted-foreground">{t("nextResponsibleLabel")}</dt><dd className="text-right">{nextResponsibleLabel(row.nextResponsible)}</dd></dl>
-                        {!row.policy.ready ? <div className="mt-3 flex gap-2 border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-2 text-xs"><AlertTriangle className="h-4 w-4 shrink-0" /><span>{row.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
+                        {!row.policy.ready ? <div className="mt-3 flex gap-2 border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-2 text-xs"><AlertTriangle className="h-4 w-4 shrink-0" /><span>{row.policy.blockers.map(blockerLabel).join(" · ")}</span></div> : null}
                         <div className={cn("mt-3 grid gap-2", data?.capabilities.canReview && row.currentStep ? "grid-cols-2" : "grid-cols-1")}><Button className="min-h-11" asChild variant="outline"><Link href={`/mtm/promotions/${row.id}?returnTo=${encodeURIComponent(`${pathname}?${searchKey}`)}`}>{t("details")}</Link></Button>{data?.capabilities.canReview && row.currentStep ? <Hint text={t("hint.reviewOne")}><Button data-testid={`mtm-pharmacy-review-${row.id}`} className="min-h-11" variant="outline" onClick={() => setReviewRows([row])}>{t("reviewStep", { step: row.currentStep })}</Button></Hint> : null}</div>
                       </article>
                     )
@@ -1447,7 +1448,7 @@ export function PharmacyPromotionWorkspace() {
                 </div> : null}
               </>
             )}
-            {data ? <footer className="flex flex-col gap-3 border-t px-3 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><div>{t("pageInfo", { from: data.pageInfo.total ? (data.pageInfo.page - 1) * data.pageInfo.pageSize + 1 : 0, to: Math.min(data.pageInfo.page * data.pageInfo.pageSize, data.pageInfo.total), total: data.pageInfo.total })} · {t("timezone", { value: data.timezone })}</div><div className="flex items-center gap-2"><Select aria-label={t("pageSize")} value={String(data.pageInfo.pageSize)} onChange={(event) => replaceParams({ pageSize: event.target.value, page: null })} className="min-h-11 min-w-20 xl:min-h-9"><option value="25">25</option><option value="50">50</option><option value="100">100</option></Select><Hint wrap text={data.pageInfo.page <= 1 ? null : t("previousPage")}><Button className="min-h-11 min-w-11 xl:min-h-9 xl:min-w-9" aria-label={t("previousPage")} variant="outline" size="icon" disabled={data.pageInfo.page <= 1} onClick={() => replaceParams({ page: data.pageInfo.page - 1 })}><ChevronLeft className="h-4 w-4" /></Button></Hint><span className="min-w-16 text-center" aria-label={t("currentPage", { page: data.pageInfo.page, totalPages: data.pageInfo.totalPages })}>{data.pageInfo.page} / {data.pageInfo.totalPages}</span><Hint wrap text={data.pageInfo.page >= data.pageInfo.totalPages ? null : t("nextPage")}><Button className="min-h-11 min-w-11 xl:min-h-9 xl:min-w-9" aria-label={t("nextPage")} variant="outline" size="icon" disabled={data.pageInfo.page >= data.pageInfo.totalPages} onClick={() => replaceParams({ page: data.pageInfo.page + 1 })}><ChevronRight className="h-4 w-4" /></Button></Hint></div></footer> : null}
+            {data ? <footer className="flex flex-col gap-3 border-t px-3 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><div>{t("pageInfo", { from: data.pageInfo.total ? (data.pageInfo.page - 1) * data.pageInfo.pageSize + 1 : 0, to: Math.min(data.pageInfo.page * data.pageInfo.pageSize, data.pageInfo.total), total: data.pageInfo.total })} · {t("timezone", { value: data.timezone })}</div><div className="flex items-center gap-2"><Select aria-label={t("pageSize")} value={String(data.pageInfo.pageSize)} onChange={(event) => replaceParams({ pageSize: event.target.value, page: null })} className="min-h-11 min-w-20 xl:min-h-9"><option value="25">25</option><option value="50">50</option><option value="100">100</option></Select><Hint wrap text={data.pageInfo.page <= 1 ? null : t("previousPage")}><Button className="min-h-11 xl:min-h-9 xl:min-w-9 gap-1.5" aria-label={t("previousPage")} variant="outline" size="sm" disabled={data.pageInfo.page <= 1} onClick={() => replaceParams({ page: data.pageInfo.page - 1 })}><ChevronLeft className="h-4 w-4" /><MtmWord word="previous" /></Button></Hint><span className="min-w-16 text-center" aria-label={t("currentPage", { page: data.pageInfo.page, totalPages: data.pageInfo.totalPages })}>{data.pageInfo.page} / {data.pageInfo.totalPages}</span><Hint wrap text={data.pageInfo.page >= data.pageInfo.totalPages ? null : t("nextPage")}><Button className="min-h-11 xl:min-h-9 xl:min-w-9 gap-1.5" aria-label={t("nextPage")} variant="outline" size="sm" disabled={data.pageInfo.page >= data.pageInfo.totalPages} onClick={() => replaceParams({ page: data.pageInfo.page + 1 })}><MtmWord word="next" /><ChevronRight className="h-4 w-4" /></Button></Hint></div></footer> : null}
           </section>
         </>
       ) : data?.capabilities.canConfigure ? (

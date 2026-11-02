@@ -12,6 +12,9 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    // Deal events read rows by raw SQL (src/lib/deals/deal-events.ts); none here, so no events.
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     deal: { groupBy: vi.fn().mockResolvedValue([]), findFirst: vi.fn(), updateMany: vi.fn() },
     pipelineStage: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn() },
     attributionModel: { updateMany: vi.fn() },

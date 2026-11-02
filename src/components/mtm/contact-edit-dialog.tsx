@@ -241,7 +241,7 @@ function FormSection({
   children: React.ReactNode
 }) {
   return (
-    <fieldset className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
+    <fieldset className="grid gap-4 rounded-2xl border border-border p-4">
       <legend className="px-2 text-sm font-semibold">{title}</legend>
       <p className="-mt-2 text-xs text-muted-foreground">{description}</p>
       <div className="grid gap-4 md:grid-cols-2">{children}</div>
@@ -636,7 +636,7 @@ export function MtmContactEditDialog({
           </FormSection>
 
           {requestMode ? (
-            <div className="grid gap-1.5 rounded-2xl border border-l-4 border-zinc-200 border-l-primary bg-card dark:border-zinc-700 p-4">
+            <div className="grid gap-1.5 rounded-2xl border border-l-4 border-border border-l-primary bg-card p-4">
               <Label htmlFor="contact-change-reason">
                 {t("reason")}
                 <span className="ml-1 text-destructive" aria-hidden="true">*</span>

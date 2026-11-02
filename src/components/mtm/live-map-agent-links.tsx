@@ -63,7 +63,7 @@ export function LiveMapAgentLinks({ links, agentName }: {
               href={link.href}
               aria-label={general || !agentName.trim() ? undefined : tMap("links.forEmployee", { label, name: agentName })}
               data-testid={`live-map-agent-link-${link.id}`}
-              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-zinc-300 px-2.5 text-xs font-medium text-foreground hover:bg-muted dark:border-zinc-600 [@media(pointer:coarse)]:min-h-11"
             >
               <Icon className="h-3 w-3" aria-hidden="true" />{label}
             </Link>

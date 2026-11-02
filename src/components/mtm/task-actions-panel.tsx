@@ -72,6 +72,7 @@ export function MtmTaskActionsPanel({
   onOpenTask: (taskId: string) => void
 }) {
   const t = useTranslations("mtmTaskWorkspace")
+  const tc = useTranslations("common")
   const locale = useLocale()
   const flushRef = useRef(false)
   const [online, setOnline] = useState(true)
@@ -93,6 +94,9 @@ export function MtmTaskActionsPanel({
   const [duplicateReady, setDuplicateReady] = useState(false)
   const [duplicatePhase, setDuplicatePhase] = useState<MutationPhase>("idle")
   const [duplicateMessage, setDuplicateMessage] = useState("")
+  // The copy form is two date fields and a paragraph nobody needs until they
+  // copy: it opens on the button, and stays open while a copy is unsettled.
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
 
   const flushExecution = useCallback(async (entryOverride?: QueuedTaskExecution) => {
     if (flushRef.current || (typeof navigator !== "undefined" && !navigator.onLine)) return
@@ -371,11 +375,11 @@ export function MtmTaskActionsPanel({
   return (
     <>
       {canExecute || execution ? (
-        <section id="execution-actions" className="scroll-mt-24 space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
+        <section id="execution-actions" className="scroll-mt-24 space-y-3 border-b border-border pb-4">
           <PanelHeading title={t("executionActions")} hint={t("executionActionsHint")} />
           {!online ? <div className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0" />{t("executionOfflineHint")}</div> : null}
           {execution ? (
-            <div className="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700" role="status" aria-live="polite">
+            <div className="space-y-3 rounded-lg border border-border p-3" role="status" aria-live="polite">
               <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-medium">{t("offlineOperation")}</span><Badge variant={execution.status === "conflict" ? "warning" : execution.status === "error" ? "destructive" : "info"}>{t(`executionQueueStatuses.${execution.status}` as never)}</Badge></div>
               <p className="text-xs leading-5 text-muted-foreground">{executionMessage || t(execution.status === "conflict" ? "executionConflictHint" : execution.status === "error" ? "executionSyncFailed" : online ? "executionSyncing" : "executionQueuedOffline")}</p>
               <div className="flex flex-wrap gap-2">
@@ -389,7 +393,7 @@ export function MtmTaskActionsPanel({
             <div className="flex items-center justify-between gap-3"><Label htmlFor="task-progress"><HintValue text={t("hint.progress")}>{t("progress")}</HintValue></Label><span className="text-sm font-semibold tabular-nums">{progress}%</span></div>
             <input id="task-progress" type="range" min={0} max={100} step={5} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="min-h-11 w-full accent-primary" disabled={!canComplete || executionLocked} />
           </div>
-          <div className="space-y-1.5"><Label htmlFor="task-result">{t("result")}</Label><Textarea id="task-result" value={result} onChange={(event) => setResult(event.target.value)} rows={4} maxLength={5000} disabled={!canComplete || executionLocked} placeholder={t("resultPlaceholder")} /></div>
+          <div className="space-y-1.5"><Label htmlFor="task-result">{t("result")}</Label><Textarea id="task-result" value={result} onChange={(event) => setResult(event.target.value)} rows={3} maxLength={5000} disabled={!canComplete || executionLocked} placeholder={t("resultPlaceholder")} /></div>
           <div className="grid gap-2">
             {canStart ? <Hint wrap text={t("hint.startTask")}><Button type="button" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ status: "IN_PROGRESS", progress: Math.max(1, progress) })}><Play className="h-4 w-4" />{t("startTask")}</Button></Hint> : null}
             {canComplete ? <><Hint wrap text={t("hint.saveProgress")}><Button type="button" variant="outline" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ progress, result: result.trim() || null })}><Save className="h-4 w-4" />{t("saveProgress")}</Button></Hint><Hint wrap text={t("hint.completeTask")}><Button type="button" className="min-h-11" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ status: "COMPLETED", progress: 100, result: result.trim() || null })}><CheckCircle2 className="h-4 w-4" />{t("completeTask")}</Button></Hint></> : null}
@@ -399,7 +403,7 @@ export function MtmTaskActionsPanel({
       ) : null}
 
       {canReview ? (
-        <section id="review-actions" className="scroll-mt-24 space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
+        <section id="review-actions" className="scroll-mt-24 space-y-3 border-b border-border pb-4">
           <PanelHeading title={t("reviewTask")} hint={t("reviewTaskHint")} />
           <div className="space-y-1.5"><Label htmlFor="task-review-comment">{t("reviewComment")}</Label><Textarea id="task-review-comment" value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} rows={3} maxLength={2000} /></div>
           <div className="space-y-1.5"><Label htmlFor="task-return-reason">{t("returnReason")}</Label><Textarea id="task-return-reason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} rows={3} maxLength={2000} placeholder={t("returnReasonPlaceholder")} /></div>
@@ -408,8 +412,12 @@ export function MtmTaskActionsPanel({
         </section>
       ) : null}
 
-      {canDuplicate ? (
-        <section className="space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
+      {canDuplicate && !duplicateOpen && !duplicate.locked && duplicatePhase !== "saving" ? (
+        <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => setDuplicateOpen(true)}><ClipboardCopy className="h-4 w-4" />{t("duplicateTask")}</Button>
+      ) : null}
+
+      {canDuplicate && (duplicateOpen || duplicate.locked || duplicatePhase === "saving") ? (
+        <section className="space-y-3 border-b border-border pb-4">
           <PanelHeading title={t("duplicateTask")} hint={t("duplicateTaskHint")} />
           <div className="space-y-1.5"><Label htmlFor="duplicate-due">{t("targetDueDate")} *</Label><Input id="duplicate-due" type="datetime-local" className="min-w-0 max-w-full" value={duplicate.targetDueDate} onChange={(event) => setDuplicate((current) => ({ ...current, targetDueDate: event.target.value }))} disabled={duplicate.locked} required aria-required="true" /></div>
           <div className="space-y-1.5"><Label htmlFor="duplicate-start">{t("targetScheduledStart")}</Label><Input id="duplicate-start" type="datetime-local" className="min-w-0 max-w-full" value={duplicate.targetScheduledStartAt} onChange={(event) => setDuplicate((current) => ({ ...current, targetScheduledStartAt: event.target.value }))} disabled={duplicate.locked} /></div>
@@ -419,13 +427,13 @@ export function MtmTaskActionsPanel({
           {duplicateMessage ? <p className={`text-xs leading-5 ${duplicatePhase === "error" || duplicatePhase === "conflict" ? "text-red-700 dark:text-red-300" : "text-muted-foreground"}`} role="status">{duplicateMessage}</p> : null}
           <div className="grid gap-2">
             <Button type="button" variant="outline" className="min-h-11 w-full" disabled={duplicatePhase === "saving"} onClick={() => void duplicateTask()}><ClipboardCopy className="h-4 w-4" />{duplicate.locked ? t("retryDuplicateExact") : t("createDuplicate")}</Button>
-            {duplicate.locked ? <Button type="button" variant="ghost" className="min-h-11 w-full" disabled={duplicatePhase === "saving"} onClick={startNewDuplicate}>{t("startNewDuplicate")}</Button> : null}
+            {duplicate.locked ? <Button type="button" variant="ghost" className="min-h-11 w-full" disabled={duplicatePhase === "saving"} onClick={startNewDuplicate}>{t("startNewDuplicate")}</Button> : <Button type="button" variant="ghost" className="min-h-11 w-full" disabled={duplicatePhase === "saving"} onClick={() => setDuplicateOpen(false)}>{tc("cancel")}</Button>}
           </div>
         </section>
       ) : null}
 
       {mobilePrimary || canReview ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm print:hidden lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm print:hidden lg:hidden">
           <div className="mx-auto flex max-w-xl gap-2">
             {canComplete ? <Button type="button" variant="outline" className="min-h-12 flex-1" disabled={busyExecution || executionLocked} onClick={() => void queueExecution({ progress, result: result.trim() || null })}><Save className="h-4 w-4" />{t("saveProgress")}</Button> : null}
             {mobilePrimary ? <Button type="button" className="min-h-12 flex-1" disabled={busyExecution || executionLocked} onClick={mobilePrimary}>{canStart ? <Play className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}{canStart ? t("startTask") : t("completeTask")}</Button> : null}

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents, pushBody } from "@/lib/mtm/push-notify"
 import { mtmTaskDueHasMeaningfulTime } from "@/lib/mtm/task-due"
 import { dateInputValueInTimezone, formatInTimezone, isValidTimezone } from "@/lib/timezone"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 /**
  * The agent learns at once that someone gave him a task (owner, 2026-10-20:
@@ -113,7 +114,7 @@ export async function notifyAgentOfAssignedTask(input: {
   const [agent, giver] = await Promise.all([
     prisma.mtmAgent.findFirst({
       where: { id: input.agentId, organizationId: input.organizationId },
-      select: { user: { select: { preferredLanguage: true } } },
+      select: AGENT_LANGUAGE_SELECT,
     }),
     input.giverAgentId
       ? prisma.mtmAgent.findFirst({ where: { id: input.giverAgentId, organizationId: input.organizationId }, select: { name: true } })
@@ -121,7 +122,7 @@ export async function notifyAgentOfAssignedTask(input: {
   ])
   if (!agent) return
   const giverName = giver?.name?.trim() || input.giverName?.trim()
-  const locale = taskNoticeLocale(agent.user?.preferredLanguage)
+  const locale = taskNoticeLocale(agentLanguage(agent))
   const notice = taskAssignedNotice({
     locale,
     giverName: giverName || { az: "Rəhbər", ru: "руководителя", en: "your manager" }[locale],

@@ -147,9 +147,22 @@ describe("a visit left open on the visits page", () => {
     nav.params = new URLSearchParams("visitId=visit-stale")
     await mount()
 
-    expect(byTestId("mtm-visit-left-open-status").textContent).toBe(T.statusLeftOpen)
-    expect(byTestId("mtm-visit-review-facts").textContent).toContain("с 12 окт., 21:21 → не закрыт агентом · 2 дня")
+    expect(byTestId("mtm-visit-left-open-status").textContent).toBe("Не закрыт агентом · 2 дня")
+    expect(byTestId("mtm-visit-left-open-note").textContent).toContain("открыт с 12 окт., 21:21. Закрыть визит может только сам агент.")
     expect(byTestId("mtm-visit-left-open-note").textContent).toContain(T.remindAgent)
     expect(container.textContent).not.toMatch(/Закрыть визит(?! может)/)
+  })
+
+  it("says it once: the open card is not listed again below, nor its time on a second strip (owner, 2026-10-31)", async () => {
+    nav.params = new URLSearchParams("visitId=visit-stale")
+    await mount()
+
+    const card = byTestId("mtm-visit-review")
+    expect(card.textContent!.split("Не закрыт агентом")).toHaveLength(2)
+    expect(card.querySelector('[data-testid="mtm-visit-review-facts"]')).toBeNull()
+    // It was the only visit left open, so the list of them has nothing to add.
+    expect(container.querySelector('[data-testid="mtm-visits-left-open"]')).toBeNull()
+    // The history row still says what it is.
+    expect(container.querySelector('[data-testid="mtm-visit-row-left-open"]')?.textContent).toBe(T.statusLeftOpen)
   })
 })

@@ -666,7 +666,7 @@ export default function WhatsAppSettingsPage() {
         ) : loadError ? (
           <p className="text-sm text-red-700 dark:text-red-300">{loadError}</p>
         ) : templates.length === 0 ? (
-          <div className="text-center py-10 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+          <div className="text-center py-10 border border-border rounded-lg">
             <p className="text-sm font-medium">{tw(syncMessage?.permissionDenied ? "templatesNotLoaded" : "noTemplates")}</p>
             <p className="text-xs text-muted-foreground mt-1">
               {tw(syncMessage?.permissionDenied ? "templatesAccessNextStep" : meta?.hasConfig ? "createTemplatesHint" : "autoNotifNoConfig")}
@@ -677,7 +677,7 @@ export default function WhatsAppSettingsPage() {
             {templates.map((t) => {
               const isOpen = expanded === t.id
               return (
-                <div key={t.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-muted/30 transition-colors">
+                <div key={t.id} className="border border-border rounded-lg hover:bg-muted/30 transition-colors">
                   <button
                     type="button"
                     aria-expanded={isOpen}
@@ -739,7 +739,7 @@ export default function WhatsAppSettingsPage() {
                       {t.buttons !== null && t.buttons !== undefined && (
                         <details>
                           <summary className="cursor-pointer text-xs text-muted-foreground mt-2">{tw("templateButtonsLabel")} · {tw("technicalDetails")}</summary>
-                          <pre className="text-xs bg-background border border-zinc-200 dark:border-zinc-700 rounded p-2 overflow-auto">{JSON.stringify(t.buttons, null, 2) ?? ""}</pre>
+                          <pre className="text-xs bg-background border border-border rounded p-2 overflow-auto">{JSON.stringify(t.buttons, null, 2) ?? ""}</pre>
                         </details>
                       )}
                       <p className="text-xs text-muted-foreground pt-2 border-t">

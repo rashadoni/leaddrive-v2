@@ -35,11 +35,12 @@ describe("the history track", () => {
     const map = readFileSync("src/components/mtm/location-history-map.tsx", "utf8")
     expect(panel).toContain('data-testid="mtm-history-map-legend"')
     for (const key of Object.keys(HISTORY_MAP_COLORS)) expect(panel).toContain(`HISTORY_MAP_COLORS.${key}`)
-    expect(map).toContain("splitHistoryPathAtGaps(visiblePoints, gaps)")
+    // Broken at the same gaps; since 2026-11-01 also coloured by the way he moved.
+    expect(map).toContain("historyReplayCuts(points, gaps)")
     expect(map).not.toMatch(/color: "#2563eb"|color: "#dc2626"|color: "#7c3aed"/)
     for (const locale of ["az", "ru", "en"]) {
       const history = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmMap.history
-      for (const key of ["legendTrack", "legendGap", "legendPlan", "legendStop", "legendVisit", "legendCurrent"]) {
+      for (const key of ["legendDrive", "legendWalk", "legendTrack", "legendGap", "legendPlan", "legendStop", "legendVisit", "legendCurrent"]) {
         expect(typeof history[key]).toBe("string")
       }
     }

@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
     contractFile: { findMany: vi.fn() },
     taskAttachment: { findMany: vi.fn() },
     mtmDocument: { findMany: vi.fn() },
+    eQaimeInvoice: { findMany: vi.fn() },
     $executeRaw: vi.fn(),
     $executeRawUnsafe: vi.fn(),
     $transaction: vi.fn(),
@@ -53,6 +54,7 @@ type RetentionPrisma = {
   contractFile: { findMany: ReturnType<typeof vi.fn> }
   taskAttachment: { findMany: ReturnType<typeof vi.fn> }
   mtmDocument: { findMany: ReturnType<typeof vi.fn> }
+  eQaimeInvoice: { findMany: ReturnType<typeof vi.fn> }
   $executeRaw: ReturnType<typeof vi.fn>
   $executeRawUnsafe: ReturnType<typeof vi.fn>
   $transaction: ReturnType<typeof vi.fn>
@@ -85,6 +87,7 @@ beforeEach(() => {
   db.contractFile.findMany.mockResolvedValue([])
   db.taskAttachment.findMany.mockResolvedValue([])
   db.mtmDocument.findMany.mockResolvedValue([])
+  db.eQaimeInvoice.findMany.mockResolvedValue([])
   db.$transaction.mockImplementation(async (callback: (tx: RetentionPrisma) => unknown) => callback(db))
 })
 

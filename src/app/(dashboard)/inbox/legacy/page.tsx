@@ -511,7 +511,7 @@ export default function InboxPage() {
             className={cn(
               "px-3 py-1.5 text-sm rounded-md transition-colors",
               channelFilter === ch
-                ? "bg-primary text-primary-foreground"
+                ? "crm-choice-selected "
                 : "text-muted-foreground hover:bg-muted"
             )}
           >
@@ -534,7 +534,7 @@ export default function InboxPage() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1 border border-zinc-200 dark:border-zinc-700 rounded-lg p-1.5">
+          <div className="flex-1 overflow-y-auto space-y-1 border border-border rounded-lg p-1.5">
             {filtered.length > 0 ? (
               filtered.map((convo, idx) => (
                 <div
@@ -627,7 +627,7 @@ export default function InboxPage() {
         </div>
 
         {/* -- Right: message thread -- */}
-        <div data-tour-id="inbox-thread" className="flex-1 flex flex-col border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden bg-card">
+        <div data-tour-id="inbox-thread" className="flex-1 flex flex-col border border-border rounded-lg overflow-hidden bg-card">
           {selectedConvo ? (
             <>
               {/* Thread header */}

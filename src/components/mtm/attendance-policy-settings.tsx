@@ -123,7 +123,7 @@ export function MtmAttendancePolicySettings({ card, canChange }: { card: Attenda
                       const value = Number(text)
                       if (text.trim() !== "" && Number.isInteger(value)) setDraft((previous) => ({ ...previous, [item.key]: value }))
                     }}
-                    className={`h-11 w-28 rounded-md border bg-background px-2 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-zinc-200 dark:border-zinc-700"}`} />
+                    className={`h-11 w-28 rounded-md border bg-background px-2 text-right text-sm disabled:cursor-not-allowed disabled:opacity-50 ${error ? "border-destructive" : "border-input"}`} />
                   <span aria-hidden="true" className="min-w-8 text-xs text-muted-foreground">{ts(`${item.unitKey}Short`)}</span>
                 </div>
                 {error ? <span role="alert" className="max-w-[14rem] text-right text-xs text-destructive">{error}</span> : null}

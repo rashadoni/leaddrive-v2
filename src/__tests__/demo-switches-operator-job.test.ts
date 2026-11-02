@@ -150,6 +150,8 @@ case "$1" in
     echo "│ id │ name │ status │"
     ;;
   pid) cat "$SIM_DIR/pm2.pid" 2>/dev/null || echo 0 ;;
+  # This simulated host runs the web app alone: no scheduler process to restart.
+  describe) exit 1 ;;
 esac`)
   // The job waits for the app between its pings; the test does not have to.
   stub("sleep", "exit 0")

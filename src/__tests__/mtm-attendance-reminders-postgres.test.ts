@@ -206,4 +206,28 @@ const now = new Date("2026-10-12T06:00:00Z"), date = "2026-10-12"
     expect(await tenant(ORG, () => policy.readAttendanceReminderPolicy(prisma, ORG))).toMatchObject({ employee: true })
     sql(scratch!.adminDb, "DROP TRIGGER reminder_audit_fail ON mtm_audit_logs; DROP FUNCTION reminder_audit_fail()")
   })
+  // Last on purpose: the cron route binds RLS bypass to the calling context.
+  it("answers every consecutive cron tick with 200 and swaps the cursor only from the value it read", async () => {
+    // Production 2026-10-13..26: the first tick stored v1:0, every later tick
+    // failed MTM_ATTENDANCE_REMINDER_CURSOR_CHANGED and answered 500.
+    process.env.CRON_SECRET = "reminder-fixture-cron"
+    const cron = await import("@/app/api/cron/mtm-attendance-reminders/route")
+    const { ATTENDANCE_REMINDER_JOB: job } = await import("@/lib/cron/mtm-attendance-reminder-job")
+    const tick = () => cron.POST(new NextRequest("http://localhost/api/cron/mtm-attendance-reminders", { method: "POST", headers: { "x-cron-secret": "reminder-fixture-cron" } }))
+    for (let n = 1; n <= 3; n++) {
+      const response = await tick()
+      expect({ tick: n, status: response.status }).toEqual({ tick: n, status: 200 })
+      expect((await response.json()).success).toBe(true)
+    }
+    const lease = await bypass(() => prisma.$queryRaw<{ completed: number; failed: number }[]>`SELECT "completedCount"::int AS completed,"failedCount"::int AS failed FROM system_job_leases WHERE name=${job}`)
+    expect(lease).toEqual([{ completed: 3, failed: 0 }])
+    const stored = () => bypass(() => prisma.$queryRaw<{ cursor: string; version: number }[]>`SELECT "cursor",version FROM system_job_cursors WHERE name=${job}`)
+    expect(await stored()).toEqual([{ cursor: "v1:0", version: 3 }])
+    const cursors = (await import("@/lib/cron/job-cursor")).prismaJobCursorStore()
+    expect(await bypass(() => cursors.compareAndSet(job, "v1:7", "v1:8"))).toBe(false)
+    expect(await bypass(() => cursors.compareAndSet(job, null, "v1:8"))).toBe(false)
+    expect(await stored()).toEqual([{ cursor: "v1:0", version: 3 }])
+    expect(await bypass(() => cursors.compareAndSet(job, "v1:0", "v1:5"))).toBe(true)
+    expect(await stored()).toEqual([{ cursor: "v1:5", version: 4 }])
+  }, 120000)
 })

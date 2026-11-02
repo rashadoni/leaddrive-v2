@@ -95,7 +95,7 @@ export function ContactSpecialtySettings({
       ) : (
         <ul className="mt-2 flex flex-wrap gap-2">
           {specialties.map((name) => (
-            <li key={name} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-zinc-200 bg-background pl-3 pr-1 text-sm dark:border-zinc-700">
+            <li key={name} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-border bg-background pl-3 pr-1 text-sm">
               <span>{name}</span>
               <button
                 type="button"

@@ -2,6 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 // This route only uses the transaction enum; its DB boundary is mocked below.
+// The number -> organization lookup is its own suite (voice-line-numbers-postgres);
+// here every call belongs to the installation's default organization, as before it.
+vi.mock("@/lib/voip/line-numbers", () => ({
+  voiceOrganizationFor: async () => process.env.VOICE_AGENT_ORGANIZATION_ID
+    ? { organizationId: process.env.VOICE_AGENT_ORGANIZATION_ID, channelConfigId: null } : null,
+}))
 vi.mock("@prisma/client", () => ({ Prisma: { TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" } } }))
 
 const mocks = vi.hoisted(() => ({
@@ -147,6 +153,7 @@ describe("PBX inbound browser readiness", () => {
         userId: true,
         browserAnswerClaimToken: true,
         browserAnswerClaimExpiresAt: true,
+        handoffState: true,
       },
     })
     expect(fetch).toHaveBeenCalledWith(
@@ -325,6 +332,26 @@ describe("PBX inbound browser readiness", () => {
 
     await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false })
     expect(mocks.callEventCreate).not.toHaveBeenCalled()
+  })
+
+  it("rings a call the AI handed off for the browsers only, never back to the AI by the answer setting", async () => {
+    // Owner, 2026-10-27: the AI hands a call to Zeytun's managers in the CRM browser.
+    stationLine({ inboundAnswerMode: "ai" })
+    mocks.callLogFindFirst.mockResolvedValue(unclaimedCall(10 * 60_000, { handoffState: "ringing" }))
+    const { POST } = await import("@/app/api/internal/asterisk/inbound-browser-ready/route")
+
+    await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: false })
+    expect(mocks.transaction).not.toHaveBeenCalled()
+    expect(mocks.callLogUpdateMany).not.toHaveBeenCalled()
+
+    // A manager's parked browser takes it, and the call is marked as connected by the handoff.
+    mocks.callLogFindFirst.mockResolvedValue(claimedCall({ handoffState: "ringing" }))
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ ready: true }), { status: 200 }))
+    await expect((await POST(request({ callId }))).json()).resolves.toEqual({ ready: true })
+    expect(mocks.callLogUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "call-log-1", callMode: "human", handoffState: "ringing" }),
+      data: expect.objectContaining({ status: "answering", handoffState: "connected" }),
+    })
   })
 
   it("rejects invalid identity and authorization before a database read", async () => {

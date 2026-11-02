@@ -10,6 +10,7 @@ import {
   preparePharmacyPromotionBulkReview,
 } from "@/lib/mtm/pharmacy-promotion-bulk-review"
 import { PharmacyPromotionBulkReviewApplySchema } from "@/lib/mtm/pharmacy-promotion-validators"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 function notificationCopy(locale: string | null | undefined, level: string, decision: string) {
   const language = locale === "az" || locale === "en" ? locale : "ru"
@@ -315,9 +316,9 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
           organizationId: auth.orgId,
           id: { in: [...new Set(executions.map((execution) => execution.agentId))] },
         },
-        select: { id: true, user: { select: { preferredLanguage: true } } },
+        select: { id: true, ...AGENT_LANGUAGE_SELECT },
       })
-      const localeByAgentId = new Map(recipients.map((recipient) => [recipient.id, recipient.user?.preferredLanguage]))
+      const localeByAgentId = new Map(recipients.map((recipient) => [recipient.id, agentLanguage(recipient)]))
       const results = []
       for (const entry of prepared.entries) {
         const execution = executionById.get(entry.executionId)

@@ -14,7 +14,7 @@ import { HomeCard, HomeKpi, HomePill, type HomeTone } from "@/components/mtm/hom
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { attendanceDayKindLabel } from "@/lib/mtm/attendance-day-kinds"
 import { filterMtmAttendanceRows, summarizeMtmAttendanceRows, type MtmAttendanceReport, type MtmAttendanceReportRow } from "@/lib/mtm/attendance-report"
-import { formatAttendanceDuration, attendanceStatusText, attendanceMonthCell, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
+import { formatAttendanceDuration, formatAttendanceMinutes, attendanceStatusText, attendanceMonthCell, attendanceMonthCellGroup, attendanceCatalogueLegend, attendanceCorrectionLines, attendanceApprovedLines, attendanceLunchLines, attendanceJournalEntries } from "@/lib/mtm/attendance-presentation"
 import { DEFAULT_ATTENDANCE_VIEW_COLUMNS, type AttendanceViewConfig } from "@/lib/mtm/attendance-view-contract"
 import { buildAttendanceTable } from "@/lib/mtm/attendance-table"
 import { attendanceCountedOvertimeSeconds, attendanceOvertimeRows } from "@/lib/mtm/attendance-overtime"
@@ -28,6 +28,7 @@ import { MtmAttendanceDayKinds } from "@/components/mtm/attendance-day-kinds"
 import { MtmAttendanceRequestLimits } from "@/components/mtm/attendance-request-limits"
 import type { AttendanceReportSnapshot } from "@/lib/mtm/attendance-query"
 import { mtmChipClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 export type AttendanceReportForm = "DAY" | "MONTH" | "LATE_EARLY" | "ABSENCES" | "JOURNAL" | "BRANCH" | "OVERTIME"
 const ISSUE_LABELS: Record<TimesheetIssue, string> = { late: "kpiLate", absent: "kpiAbsent", "missing-finish": "kpiMissing", overtime: "tabs.overtime" }
@@ -38,11 +39,15 @@ const FORMS: Form[] = ["DAY", "MONTH", "LATE_EARLY", "ABSENCES", "OVERTIME", "JO
 const FORM_MESSAGES: Record<Form, string> = { DAY: "reportDay", MONTH: "reportMonth", LATE_EARLY: "reportLateEarly", ABSENCES: "reportAbsences", JOURNAL: "reportJournal", BRANCH: "branchReportTitle", OVERTIME: "overtimeTitle" }
 const REASON_MESSAGES: Record<string, string> = { DUPLICATE_WORKDAY: "reportReasonDuplicate", SCHEDULE_INVALID: "reportReasonSchedule", TIMESTAMP_INVALID: "reportReasonTimestamp",
   EVENT_TYPE_INVALID: "reportReasonEvent", JOURNAL_INCOMPLETE: "reportReasonJournal", PAUSE_TOTAL_MISMATCH: "reportReasonPause", WORKDAY_INCONSISTENT: "reportReasonFacts" }
-const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700"
-const CELL = "border-b border-zinc-100 px-3 py-3 align-top dark:border-zinc-800"
+const SELECT_CLASS = "min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+const CELL = "border-b border-border px-3 py-3 align-top"
 const HEADER = "px-3 py-3 text-left text-xs font-medium text-muted-foreground"
 const PAGE_SIZE = 50
 
+/** Under a name: position, department, team — whichever are set, never a «no team» placeholder (owner, 2026-11-01). */
+function employeeDetails(row: Pick<MtmAttendanceReportRow, "employeePosition" | "departmentName" | "teamName">) {
+  return [row.employeePosition, row.departmentName, row.teamName].filter((part): part is string => Boolean(part?.trim())).join(" · ")
+}
 function monthRange(month: string): Range {
   const [year, number] = month.split("-").map(Number)
   return { from: `${month}-01`, to: new Date(Date.UTC(year, number, 0, 12)).toISOString().slice(0, 10) }
@@ -195,9 +200,9 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
   const journal = useMemo(() => form === "JOURNAL" ? rows.flatMap((row) => attendanceJournalEntries(row, locale, t).map((entry) => ({ row, entry }))) : [], [rows, form, locale, t])
   const monthEmployees = useMemo(() => {
     if (form !== "MONTH") return []
-    const people = new Map<string, { name: string; team: string | null; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow[]> }>()
+    const people = new Map<string, { name: string; details: string; rows: MtmAttendanceReportRow[]; dates: Map<string, MtmAttendanceReportRow[]> }>()
     for (const row of rows) {
-      if (!people.has(row.employeeId)) people.set(row.employeeId, { name: row.employeeName, team: row.teamName, rows: [], dates: new Map() })
+      if (!people.has(row.employeeId)) people.set(row.employeeId, { name: row.employeeName, details: employeeDetails(row), rows: [], dates: new Map() })
       const employee = people.get(row.employeeId)!
       employee.rows.push(row)
       employee.dates.set(row.date, [...(employee.dates.get(row.date) ?? []), row])
@@ -230,7 +235,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
       : row.kind === "ABSENT" ? t("reportAbsenceReasonPending") : row.flags.includes("WORKED_OUTSIDE_EMPLOYMENT") ? t("reportWorkOutsideEmployment") : row.flags.includes("WORKED_ON_APPROVED_ABSENCE") ? t("reportWorkOnLeave") : row.flags.includes("WORKED_ON_DAY_OFF") ? t("reportWorkOnDayOff") : row.calendarName ?? "—"
 
   // The same note as the exported table (attendance-table.ts): the screen and the file say one thing.
-  const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...(row.lunchAutoSeconds ? [t("reportLunchAuto", { time: formatAttendanceDuration(row.lunchAutoSeconds) })] : []),
+  const rowNotes = (row: MtmAttendanceReportRow) => [baseRowNotes(row), ...attendanceLunchLines(row, t),
     ...(row.explanations ?? []).map(item => t(`reportExplanation${item.status}`, { answer: item.answer ?? "" })), ...attendanceApprovedLines(row, locale, t), ...attendanceCorrectionLines(row, locale, t)].filter((line) => line !== "—").join(" · ") || "—"
 
   function chooseForm(next: Form) {
@@ -312,11 +317,11 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                 {monthDates.map((date) => <th key={date} scope="col" className={`${HEADER} min-w-14 text-center`}><time dateTime={date} title={dateLabel(date)}>{Number(date.slice(-2))}</time></th>)}
                 <th scope="col" className={`${HEADER} min-w-24`}>{t("reportWorked")}</th><th scope="col" className={HEADER}>{t("reportLateCount")}</th><th scope="col" className={HEADER}>{t("reportAbsentCount")}</th></tr></thead>
               <tbody>{monthEmployees.slice(pageStart, pageStart + PAGE_SIZE).map((person) => <tr key={person.id} data-testid="attendance-month-person"><th scope="row" className={`${CELL} sticky left-0 z-10 bg-card text-left font-semibold`}>
-                {person.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
+                {person.name}{person.details ? <span className="mt-1 block text-xs font-normal text-muted-foreground" data-testid="attendance-employee-details">{person.details}</span> : null}</th>
                 {monthDates.map((date) => { const entries = person.dates.get(date); return <td key={date} className={`${CELL} text-center`}><div className="flex flex-col items-center gap-2">
                   {entries?.length ? entries.map(row => <span key={row.sourceDate ?? row.date} title={`${dateLabel(row.sourceDate ?? date)} · ${attendanceStatusText(row, locale, t)} · ${rowNotes(row)}`}>
                     <HomePill tone={rowTone(row)} className="min-w-10 justify-center rounded-md px-1.5 py-1 tabular-nums">{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceMonthCellGroup([row], locale, t)}</HomePill></span>) : "—"}</div></td> })}
-                <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatAttendanceDuration(person.totals.workedSeconds)}{!person.totals.isComplete ? <span className="block text-xs text-amber-700 dark:text-amber-300">{t("reportPartial")}</span> : null}</td>
+                <td className={`${CELL} whitespace-nowrap tabular-nums`}>{formatAttendanceMinutes(person.totals.workedSeconds)}{!person.totals.isComplete ? <span className="block text-xs text-amber-700 dark:text-amber-300">{t("reportPartial")}</span> : null}</td>
                 <td className={`${CELL} tabular-nums`}>{person.totals.lateCount}</td><td className={`${CELL} tabular-nums`}>{person.totals.absentCount}</td></tr>)}</tbody>
             </table></div>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")}>{catalogueLegend.length ? catalogueLegend.map(label => <span key={label}>{label}</span>) : [
@@ -327,14 +332,14 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
           </> : form === "JOURNAL" ? <div className="overflow-x-auto" role="region" aria-label={t("reportJournal")} tabIndex={0}><table className="w-full min-w-[780px] text-sm" data-testid="attendance-journal-table">
             <thead><tr>{["reportEmployee", "reportDate", "reportStatus", "reportEvent", "reportPhoneTime", "reportServerTime"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
             <tbody>{journal.slice(pageStart, pageStart + PAGE_SIZE).map(({ row, entry }) => <tr key={`${row.employeeId}:${row.date}:${entry.id}`} data-testid="attendance-journal-event">
-              <th scope="row" className={`${CELL} text-left font-semibold`}>{row.employeeName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{row.teamName ?? t("reportNoTeam")}</span></th>
+              <th scope="row" className={`${CELL} text-left font-semibold`}>{row.employeeName}{employeeDetails(row) ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{employeeDetails(row)}</span> : null}</th>
               <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}<span className="block text-xs text-muted-foreground">{row.timezone}</span></td>
               <td className={CELL}><span className="inline-flex items-center gap-1.5">{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceStatusText(row, locale, t)}</span></td><td className={CELL}>{entry.description}</td><td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(entry.phoneAt, row.timezone, true)}</td>
               <td className={`${CELL} whitespace-nowrap tabular-nums`}>{timeLabel(entry.serverAt, row.timezone, true)}</td></tr>)}</tbody>
           </table></div> : <div className="overflow-x-auto" role="region" aria-label={t(FORM_MESSAGES[form])} tabIndex={0}><table className="w-full min-w-[1180px] text-sm" data-testid="attendance-day-table">
             <thead><tr>{["reportEmployee", "reportDate", "reportStatus", "reportStarted", "reportFinished", "reportWorked", "reportPaused", "reportLate", "reportEarly", "reportNotes"].map((key) => <th key={key} scope="col" className={HEADER}>{t(key)}</th>)}</tr></thead>
             <tbody>{rows.slice(pageStart, pageStart + PAGE_SIZE).map((row) => <tr key={`${row.employeeId}:${row.date}`} data-testid="attendance-day-row">
-              <th scope="row" className={`${CELL} min-w-40 text-left font-semibold`}>{row.employeeName}<span className="mt-1 block text-xs font-normal text-muted-foreground">{row.teamName ?? t("reportNoTeam")}</span></th>
+              <th scope="row" className={`${CELL} min-w-40 text-left font-semibold`}>{row.employeeName}{employeeDetails(row) ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{employeeDetails(row)}</span> : null}</th>
               <td className={`${CELL} whitespace-nowrap`}>{dateLabel(row.date)}</td><td className={CELL}><HomePill tone={rowTone(row)}>{row.dayKind ? <span aria-hidden="true" data-testid="attendance-kind-color" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.dayKind.color }} /> : null}{attendanceStatusText(row, locale, t)}</HomePill></td>
               <td className={`${CELL} whitespace-nowrap tabular-nums`} title={row.timezone}>{timeLabel(row.startedAt, row.timezone)}</td><td className={`${CELL} whitespace-nowrap tabular-nums`} title={row.timezone}>{timeLabel(row.completedAt, row.timezone)}</td>
               <td className={`${CELL} tabular-nums`}>{formatAttendanceDuration(row.workedSeconds)}{row.kind === "OPEN" ? <span className="block text-xs text-blue-700 dark:text-blue-300">{t("reportProvisionalShort")}</span> : null}</td>
@@ -403,9 +408,9 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{p("timesheetTitle")}</h1>
           <div className="inline-flex items-center gap-1 rounded-xl border bg-card p-1" data-testid="attendance-month-switcher">
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("previousMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("previousMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" aria-hidden="true" /><MtmWord word="previous" /></Button>
             <span className="min-w-36 px-2 text-center text-sm font-semibold capitalize">{monthLabel}</span>
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("nextMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(1)}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("nextMonth")} disabled={!range.from || loading} onClick={() => shiftMonth(1)}><MtmWord word="next" /><ChevronRight className="h-4 w-4" aria-hidden="true" /></Button>
           </div>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -429,7 +434,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         <span className="flex-1" />
         <label className="relative"><span className="sr-only">{p("searchEmployee")}</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input type="search" className="min-h-10 w-56 pl-9" placeholder={p("searchEmployee")} value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} /></label>
-        <select aria-label={t("reportTeam")} className="min-h-10 min-w-44 rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:border-zinc-700" value={teamId} disabled={!report} onChange={event => changeScope(event.target.value, "")}>
+        <select aria-label={t("reportTeam")} className="min-h-10 min-w-44 rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" value={teamId} disabled={!report} onChange={event => changeScope(event.target.value, "")}>
           <option value="">{t("reportAllTeams")}</option>{directory.teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
         {employeeId ? <span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-foreground px-3 text-sm font-semibold text-foreground">{p("onlyEmployee", { name: pinned?.name ?? t("viewsUnavailableEmployee") })}
           <button type="button" className="rounded-full p-0.5 hover:bg-muted" aria-label={p("showEveryone")} onClick={() => changeScope(teamId, "")}><X className="h-3.5 w-3.5" aria-hidden="true" /></button></span> : null}
@@ -441,15 +446,15 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
         {report && people.length ? <div className="overflow-x-auto" role="region" aria-label={t("reportMonth")} tabIndex={0}><table className="w-full border-collapse text-xs" data-testid="attendance-month-grid">
           <thead><tr><th scope="col" className="sticky left-0 z-10 w-40 min-w-40 bg-card px-2 py-2 text-left text-xs font-medium text-muted-foreground">{t("reportEmployee")}</th>
             {monthDates.map(date => <th key={date} scope="col" className={`px-px py-1.5 text-center font-semibold ${date === today ? "font-bold text-primary" : dateKinds.get(date) === false ? "text-muted-foreground/60" : ""}`}>
-              <time dateTime={date} title={dateLabel(date)} className="block text-[11px]">{Number(date.slice(-2))}</time>
-              <span className="block text-[9.5px] font-medium opacity-70">{formatDate(`${date}T12:00:00.000Z`, locale, { weekday: "short", timeZone: "UTC" })}</span></th>)}
-            {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-[11px] font-semibold text-muted-foreground"><HintValue text={p(`${key}Hint`)}>{p(key)}</HintValue></th>)}</tr></thead>
+              <time dateTime={date} title={dateLabel(date)} className="block text-xs">{Number(date.slice(-2))}</time>
+              <span className="block text-xs font-medium opacity-70">{formatDate(`${date}T12:00:00.000Z`, locale, { weekday: "short", timeZone: "UTC" })}</span></th>)}
+            {(["colDays", "colHours", "colLeave", "colSick", "colMissed"] as const).map(key => <th key={key} scope="col" className="w-11 px-1 py-2 text-center text-xs font-semibold text-muted-foreground"><HintValue text={p(`${key}Hint`)}>{p(key)}</HintValue></th>)}</tr></thead>
           <tbody>{people.slice(pageStart, pageStart + PAGE_SIZE).map(person => {
             const worked = person.rows.filter(row => row.startedAt !== null).length
             const sick = person.rows.filter(row => row.dayKind?.key === "SICK_LEAVE" || row.dayKind?.key === "UNPAID_SICK").length
             const missed = person.totals.absentCount + person.totals.missingFinishCount
-            return <tr key={person.id} data-testid="attendance-month-person" className="border-t border-zinc-100 dark:border-zinc-800">
-              <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left"><span className="block truncate text-[13px] font-semibold">{person.name}</span><span className="block text-[11px] font-normal text-muted-foreground">{person.team ?? t("reportNoTeam")}</span></th>
+            return <tr key={person.id} data-testid="attendance-month-person" className="border-t border-border">
+              <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left"><span className="block truncate text-[13px] font-semibold">{person.name}</span>{person.details ? <span className="block max-w-[14rem] truncate text-xs font-normal text-muted-foreground" title={person.details} data-testid="attendance-employee-details">{person.details}</span> : null}</th>
               {monthDates.map(date => {
                 const entries = person.dates.get(date) ?? []
                 const row = entries[0]
@@ -458,7 +463,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                 const corrected = entries.some(entry => entry.corrections?.length)
                 return <td key={date} className="px-px py-1 text-center">
                   {row ? <Popover open={openCell === cellKey} onOpenChange={open => setOpenCell(open ? cellKey : null)}><PopoverTrigger asChild><button type="button" data-testid="attendance-month-cell" data-dimmed={dimmed || undefined} aria-label={`${person.name} · ${dateLabel(date)} · ${attendanceStatusText(row, locale, t)}${corrected ? ` · ${p("legendCorrected")}` : ""}`}
-                    className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-[11px] font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""} ${row.kind === "NOT_EMPLOYED" && !row.dayKind ? "opacity-40" : ""}`}
+                    className={`flex h-7 w-full min-w-[22px] items-center justify-center rounded-md text-xs font-bold outline-none ring-offset-1 focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:ring-2 data-[state=open]:ring-primary ${dimmed ? "opacity-25" : ""} ${row.kind === "NOT_EMPLOYED" && !row.dayKind ? "opacity-40" : ""}`}
                     style={row.dayKind && row.kind !== "UPCOMING" ? { color: row.dayKind.color } : { color: "var(--muted-foreground, #8a94a3)" }}>{cellCode(row)}{corrected ? <span aria-hidden="true" data-testid="attendance-corrected-mark" className="ml-px text-[13px] leading-none text-primary">*</span> : null}{entries.length > 1 ? "+" : ""}</button></PopoverTrigger>
                     <PopoverContent align="center" className="w-80 space-y-3 p-4" data-testid="attendance-day-popover">
                       {entries.map(entry => {
@@ -466,10 +471,10 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
                         return <div key={entry.sourceDate ?? entry.date} className="space-y-3">
                           <div><p className="text-sm font-bold">{person.name} · {dateLabel(entry.sourceDate ?? date)}</p><p className="text-xs text-muted-foreground">{attendanceStatusText(entry, locale, t)}</p></div>
                           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
-                            <dt className="text-muted-foreground">{p("dayStarted")}</dt><dd className="font-semibold tabular-nums">{shortTime(entry.startedAt, entry.timezone)}{(entry.lateSeconds ?? 0) > 0 ? <span className="ml-1 text-amber-700 dark:text-amber-300">(+{formatAttendanceDuration(entry.lateSeconds)})</span> : null}</dd>
+                            <dt className="text-muted-foreground">{p("dayStarted")}</dt><dd className="font-semibold tabular-nums">{shortTime(entry.startedAt, entry.timezone)}{(entry.lateSeconds ?? 0) > 0 ? <span className="ml-1 text-amber-700 dark:text-amber-300">(+{formatAttendanceMinutes(entry.lateSeconds)})</span> : null}</dd>
                             <dt className="text-muted-foreground">{p("dayFinished")}</dt><dd className="font-semibold tabular-nums">{shortTime(entry.completedAt, entry.timezone)}</dd>
-                            <dt className="text-muted-foreground">{p("dayWorked")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceDuration(entry.workedSeconds)}</dd>
-                            <dt className="text-muted-foreground">{p("dayPause")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceDuration(entry.pausedSeconds)}</dd>
+                            <dt className="text-muted-foreground">{p("dayWorked")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceMinutes(entry.workedSeconds)}</dd>
+                            <dt className="text-muted-foreground">{p("dayPause")}</dt><dd className="font-semibold tabular-nums">{formatAttendanceMinutes(entry.pausedSeconds)}</dd>
                           </dl>
                           {rowNotes(entry) !== "—" ? <p className="text-xs leading-relaxed text-muted-foreground">{rowNotes(entry)}</p> : null}
                           {marks.length ? <div className="space-y-1" data-testid="attendance-day-marks"><p className="text-xs font-semibold text-muted-foreground">{p("dayMarks")}</p>
@@ -482,8 +487,8 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
               })}
               <td className="px-1 text-center text-[13px] font-bold tabular-nums">{worked}</td>
               <td className="whitespace-nowrap px-1 text-center text-[13px] font-bold tabular-nums">{person.totals.unknownWorkedCount > 0
-                ? <HintValue text={p("partialTotalHint", { count: person.totals.unknownWorkedCount })}><span data-testid="attendance-partial-total">≥{formatAttendanceDuration(person.totals.workedSeconds)}</span></HintValue>
-                : formatAttendanceDuration(person.totals.workedSeconds)}</td>
+                ? <HintValue text={p("partialTotalHint", { count: person.totals.unknownWorkedCount })}><span data-testid="attendance-partial-total">≥{formatAttendanceMinutes(person.totals.workedSeconds)}</span></HintValue>
+                : formatAttendanceMinutes(person.totals.workedSeconds)}</td>
               <td className="px-1 text-center text-[13px] font-bold tabular-nums">{person.totals.annualLeaveDays || "—"}</td>
               <td className="px-1 text-center text-[13px] font-bold tabular-nums">{sick || "—"}</td>
               <td className={`px-1 text-center text-[13px] font-bold tabular-nums ${missed ? "text-rose-700 dark:text-rose-300" : ""}`}>{missed || "—"}</td>
@@ -494,14 +499,14 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
           <span>{t("reportPage", { current: currentPage + 1, total: Math.ceil(people.length / PAGE_SIZE) })}</span><Button type="button" variant="outline" className="min-h-10" disabled={pageStart + PAGE_SIZE >= people.length} onClick={() => setPage(currentPage + 1)}>{t("reportNext")}</Button></div> : null}
       </div>}
       {!customView && (legend.length || anyCorrected || anyPartial) ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t("reportLegend")} data-testid="attendance-timesheet-legend">
-        {legend.map(kind => <span key={kind.key} className="inline-flex items-center gap-1.5"><span className="inline-flex h-5 min-w-6 items-center justify-center rounded px-1 text-[10.5px] font-bold" style={{ color: kind.color, backgroundColor: `${kind.color}1a` }}>{kind.code}</span>{attendanceDayKindLabel(kind, locale)}</span>)}
+        {legend.map(kind => <span key={kind.key} className="inline-flex items-center gap-1.5"><span className="inline-flex h-5 min-w-6 items-center justify-center rounded px-1 text-xs font-bold" style={{ color: kind.color, backgroundColor: `${kind.color}1a` }}>{kind.code}</span>{attendanceDayKindLabel(kind, locale)}</span>)}
         {anyCorrected ? <span className="inline-flex items-center gap-1.5" data-testid="attendance-legend-corrected"><span className="inline-flex h-5 min-w-6 items-center justify-center text-[13px] font-bold text-primary">*</span>{p("legendCorrected")}</span> : null}
         {anyPartial ? <span className="inline-flex items-center gap-1.5" data-testid="attendance-legend-partial"><span className="inline-flex h-5 min-w-6 items-center justify-center text-[13px] font-bold text-foreground">≥</span>{p("legendPartialTotal")}</span> : null}
         <span className="ml-auto">{p("cellHint")}</span>
       </div> : null}
       {showExtras ? <section className="space-y-5 rounded-2xl border bg-card p-5" data-testid="attendance-timesheet-extras" aria-label={p("customFormAndDelivery")}>
         <div className="flex items-center justify-between gap-3"><h2 className="text-base font-semibold">{p("customFormAndDelivery")}</h2>
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={p("close")} onClick={() => setShowExtras(false)}><X className="h-4 w-4" aria-hidden="true" /></Button></div>
+          <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("close")} onClick={() => setShowExtras(false)}><X className="h-4 w-4" aria-hidden="true" /><MtmWord word="close" /></Button></div>
         <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
         <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
       </section> : null}

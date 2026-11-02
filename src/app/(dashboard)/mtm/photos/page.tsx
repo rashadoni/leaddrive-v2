@@ -14,14 +14,14 @@ import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { mtmPhotoThumbnailUrl, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 import { PhotoThumbnailImg } from "@/components/mtm/photo-thumbnail-img"
 import { MtmFilterBar, MtmFilterSelect } from "@/components/mtm/filter-bar"
-import { PageDescription } from "@/components/page-description"
-import { HelpButton } from "@/components/help/help-button"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
 import { Camera, Check, X, Trash2, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
 import { MTM_TAB_ROW, mtmChipClass, mtmTabClass } from "@/components/mtm/calm-classes"
+import { MtmWord } from "@/components/mtm/button-word"
 
 const statusColors: Record<string, string> = { PENDING: "text-amber-700", APPROVED: "text-emerald-700", REJECTED: "text-red-700" }
 
@@ -64,7 +64,7 @@ function PhotoImage({ photo, className, missingLabel, onMissing, missing, thumbn
     return (
       <span data-testid="mtm-photo-missing" className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
         {photo.url ? <ImageOff className="h-7 w-7" aria-hidden="true" /> : <Camera className="h-7 w-7" aria-hidden="true" />}
-        {photo.url ? <span className="px-2 text-center text-[11px]">{missingLabel}</span> : null}
+        {photo.url ? <span className="px-2 text-center text-xs">{missingLabel}</span> : null}
       </span>
     )
   }
@@ -255,19 +255,17 @@ export default function MtmPhotosPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={Camera} title={t("title")} />
+      <MtmPageHeader title={t("title")} help="mtm-photos" />
       <div className="animate-pulse space-y-4"><div className="grid gap-3 grid-cols-2 sm:grid-cols-4">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted rounded-lg" />)}</div><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="aspect-square bg-muted rounded-lg" />)}</div></div>
     </div>
   )
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={Camera} title={t("title")} />
-          <HelpButton slug="mtm-photos" variant="label" />
-        </div>
-        <div className="flex gap-2">
+      <MtmPageHeader
+        title={t("title")}
+        help="mtm-photos"
+        actions={<>
           {/* Audit 2026-09-26: three bare icons nobody could read, and an
               «Export» button with no handler at all. */}
           <div data-testid="mtm-photos-modes" className={MTM_TAB_ROW} role="group" aria-label={t("viewModes")}>
@@ -275,8 +273,8 @@ export default function MtmPhotosPage() {
             <Hint text={t("hint.modeCompare")}><Button aria-pressed={viewMode === "compare"} variant="ghost" size="sm" className={mtmTabClass(viewMode === "compare")} onClick={() => setViewMode("compare")}><Columns className="mr-1.5 h-4 w-4" />{t("modeCompare")}</Button></Hint>
             <Hint text={t("hint.modeBatch")}><Button aria-pressed={viewMode === "batch"} variant="ghost" size="sm" className={mtmTabClass(viewMode === "batch")} onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="mr-1.5 h-4 w-4" />{t("modeBatch")}</Button></Hint>
           </div>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* Owner 2026-09-27: filters in one row. Four stat cards repeated the
           counts the status chips already carry; period, employee and order
@@ -323,7 +321,7 @@ export default function MtmPhotosPage() {
 
       {/* Batch action bar */}
       {viewMode === "batch" && selectedPhotos.size > 0 && (
-        <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card">
+        <div className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card">
           <span className="text-xs font-medium">{t("batchSelected", { n: selectedPhotos.size })}</span>
           <Hint text={t("hint.approveAll")}>
             <Button size="sm" variant="outline" className="h-6 text-xs text-green-600" onClick={() => { selectedPhotos.forEach(id => { if (!missingFiles.has(id)) updatePhotoStatus(id, "APPROVED") }); setSelectedPhotos(new Set()) }}>
@@ -341,7 +339,7 @@ export default function MtmPhotosPage() {
 
       {/* Compare view */}
       {viewMode === "compare" && (
-        <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4">
           {[{ photo: compareLeft, label: t("compareLeft") }, { photo: compareRight, label: t("compareRight") }].map(({ photo, label }) => (
             <div key={label}>
               <div className="text-xs font-medium text-muted-foreground mb-2">{label} — {photo ? `${photo.agent?.name} (${mtmStatusLabel(ts, "photo", photo.status)})` : t("comparePickHint")}</div>
@@ -354,14 +352,14 @@ export default function MtmPhotosPage() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="h-48 flex items-center justify-center px-4 text-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{period !== "all" && periodTotal === 0 ? t("periodEmpty") : activeFilter !== "all" && periodTotal > 0 ? t("noResults") : t("empty")}</div>
+        <div className="h-48 flex items-center justify-center px-4 text-center text-muted-foreground border border-border rounded-lg bg-card">{period !== "all" && periodTotal === 0 ? t("periodEmpty") : activeFilter !== "all" && periodTotal > 0 ? t("noResults") : t("empty")}</div>
       ) : (
         <div className={`grid gap-4 ${focusedPhoto ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {filtered.map((photo) => {
               const isFocused = focusedPhoto?.id === photo.id
               return (
-                <div key={photo.id} className={`rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden cursor-pointer transition-all ${selectedPhotos.has(photo.id) ? "ring-2 ring-primary" : ""} ${isFocused ? "outline outline-1 outline-primary/50" : ""}`}
+                <div key={photo.id} className={`rounded-lg border border-border bg-card overflow-hidden cursor-pointer transition-all ${selectedPhotos.has(photo.id) ? "ring-2 ring-primary" : ""} ${isFocused ? "outline outline-1 outline-primary/50" : ""}`}
                   onClick={() => {
                     if (viewMode === "batch") {
                       setSelectedPhotos(prev => {
@@ -397,8 +395,8 @@ export default function MtmPhotosPage() {
                   </div>
                   <div className="p-2">
                     <div className="text-xs font-medium truncate">{photo.agent?.name}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{photo.visit?.customer?.name || "—"}</div>
-                    <div className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
+                    <div className="text-xs text-muted-foreground truncate">{photo.visit?.customer?.name || "—"}</div>
+                    <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
                       <time dateTime={photo.createdAt} className="truncate tabular-nums">{t("capturedAt", { time: formatDateTime(photo.createdAt, locale, { dateStyle: "short", timeStyle: "short" }) })}</time>
                       {photo.visit?.id ? (
                         <Hint text={t("hint.openVisit")}>
@@ -413,13 +411,13 @@ export default function MtmPhotosPage() {
                       ) : null}
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-1">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
-                      <Hint text={t("hint.delete")}><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /></Button></Hint>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
+                      <Hint text={t("hint.delete")}><Button variant="ghost" size="sm" className="h-7 text-destructive gap-1.5" aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /><MtmWord word="delete" /></Button></Hint>
                     </div>
                     {photo.status === "PENDING" && (!photo.url || missingFiles.has(photo.id)) ? (
                       // Audit 2026-09-26: «Approve» under «File not found» —
                       // approving a photo nobody can see is not a review.
-                      <p data-testid="mtm-photo-review-unavailable" className="mt-2 text-[11px] text-muted-foreground">{t("reviewUnavailable")}</p>
+                      <p data-testid="mtm-photo-review-unavailable" className="mt-2 text-xs text-muted-foreground">{t("reviewUnavailable")}</p>
                     ) : photo.status === "PENDING" ? (
                       <div className="mt-2 grid grid-cols-2 gap-1">
                         <Hint text={t("hint.approve")}><Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-emerald-700 hover:bg-muted" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "APPROVED") }}><Check className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("approve")}</span></Button></Hint>
@@ -452,7 +450,7 @@ export default function MtmPhotosPage() {
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <time dateTime={lightboxPhoto.createdAt}>{formatDateTime(lightboxPhoto.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time>
-              <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusColors[lightboxPhoto.status] || ""}`}>{mtmStatusLabel(ts, "photo", lightboxPhoto.status)}</span>
+              <span className={`rounded px-1.5 py-0.5 text-xs ${statusColors[lightboxPhoto.status] || ""}`}>{mtmStatusLabel(ts, "photo", lightboxPhoto.status)}</span>
               {lightboxPhoto.visit?.id ? (
                 <Hint text={t("hint.openVisit")}>
                   <Link href={`/mtm/visits?visitId=${encodeURIComponent(lightboxPhoto.visit.id)}`} className="inline-flex items-center gap-1 text-primary hover:underline">

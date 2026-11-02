@@ -1,0 +1,27 @@
+{
+  "source": "d895e7e665f6c8914c5fad0dfef018c8273d1d94",
+  "run": 40206495481,
+  "job": 121208590616,
+  "conclusion": "failure",
+  "result": "28 passed / 3 failed (31): original 27 plus new UTC pass; only three new non-UTC worker cases fail",
+  "cases": [
+    "2026-10-25T15:31:25.7971801Z  ❯ src/__tests__/online-booking-postgres.test.ts (31 tests | 3 failed) 48401ms",
+    "2026-10-25T15:31:25.7986246Z      ✓ projects the booked meeting when the database default timezone is UTC  2742ms",
+    "2026-10-25T15:31:25.7988240Z      × projects the booked meeting when the database default timezone is Europe/Berlin 3115ms",
+    "2026-10-25T15:31:25.7990196Z      × projects the booked meeting when the database default timezone is Asia/Baku 3102ms",
+    "2026-10-25T15:31:25.7991271Z      × projects the booked meeting when the database default timezone is America/New_York 2658ms",
+    "2026-10-25T15:31:25.8032774Z  FAIL  src/__tests__/online-booking-postgres.test.ts > online booking on a real Postgres > projects the booked meeting when the database default timezone is Europe/Berlin",
+    "2026-10-25T15:31:25.8042731Z +     \"lastError\": \"LOCAL_FAILURE_20\",",
+    "2026-10-25T15:31:25.8260042Z  FAIL  src/__tests__/online-booking-postgres.test.ts > online booking on a real Postgres > projects the booked meeting when the database default timezone is Asia/Baku",
+    "2026-10-25T15:31:25.8263527Z  FAIL  src/__tests__/online-booking-postgres.test.ts > online booking on a real Postgres > projects the booked meeting when the database default timezone is America/New_York",
+    "2026-10-25T15:31:25.8284921Z       Tests  3 failed | 28 passed (31)",
+    "+     \"lastError\": \"LOCAL_FAILURE_20\","
+  ],
+  "postgresError": "invalid effect lease acquisition",
+  "guard": "effect_outbox_state_machine_fn, actual unchanged foundation migration",
+  "postgresEvidence": "2026-10-25T15:31:27.3487198Z  2026-10-25 15:31:07.699 UTC [1610] ERROR:  invalid effect lease acquisition (id=85bff23c-ec79-4fec-a539-0f28ab628a9b)",
+  "positiveOffset": "pending / LOCAL_FAILURE_20; acquisition rejected repeatedly",
+  "negativeOffset": "pending / lastError null; due work remains invisible",
+  "sourceChanges": "regression and journal only; production worker unchanged",
+  "testDatabase": "new disposable scratch only; original default restored in finally; outgoing providers stubbed"
+}

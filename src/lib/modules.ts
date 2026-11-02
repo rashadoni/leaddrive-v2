@@ -88,6 +88,7 @@ export const LEGACY_MODULE_MAP: Record<string, GroupModuleId> = {
   // (PERMISSION_MODULE_TO_MODULE_ID → middleware + requireAuth), so changing the
   // target here re-gates /deals, /leads, /quotes, /sequences, /territories,
   // /sales-quotas (and their sub-routes) onto `sales` in lock-step with the nav.
+  bookings: "sales",
   core: "crm", deals: "sales", leads: "sales", tasks: "crm", quotes: "sales",
   offers: "sales", projects: "crm", companies: "crm", contacts: "crm",
   campaigns: "marketing", events: "marketing", journeys: "marketing",

@@ -1,13 +1,16 @@
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
+import { readLegacyPhoneAssignmentBoundaryInTransaction } from "@/lib/identity/legacy-credential-boundary"
+import { IdentityRegistryError } from "@/lib/identity/contract"
 import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { withRls } from "@/lib/with-rls"
 import { getMobileAuth } from "@/lib/mobile-auth"
 import bcrypt from "bcryptjs"
 import { AgentUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
-import { agentHistory } from "@/lib/mtm/agent-deletion"
 import { resolveAgentScope, isValidMtmAgentRole, resolveTerritoryTeamIds } from "@/lib/mtm/territory-scope"
 import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
 import {
@@ -77,26 +80,6 @@ async function isCardInManagerTerritory(
 /** A scoped manager reaches only cards inside their field scope; others look missing. */
 function scopedAgentIdFilter(administration: MtmAgentAdministration, id: string): string | { equals: string; in: string[] } {
   return administration.kind === "scoped" ? { equals: id, in: administration.agentIds } : id
-}
-
-function workforceRetentionBlocked() {
-  return NextResponse.json({
-    error: "This employee has Workforce time history and must be archived instead of permanently deleted.",
-    code: "WORKFORCE_RETENTION_BLOCKED",
-  }, { status: 409 })
-}
-
-/**
- * An employee with work history is deactivated, not deleted (owner,
- * 2026-10-06). `kinds` names the tables that hold the history — model names,
- * not their content — so the screen can say what stands in the way.
- */
-function agentHasHistory(kinds: string[] = []) {
-  return NextResponse.json({
-    error: "This employee has work history and cannot be permanently deleted. Deactivate them instead.",
-    code: "MTM_AGENT_HAS_HISTORY",
-    data: { kinds },
-  }, { status: 409 })
 }
 
 async function mobileVisibleAgentIds(req: Parameters<typeof getMobileAuth>[0], orgId: string) {
@@ -205,7 +188,7 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     // Scope first, existence second: a manager probing ids outside their scope
     // gets the same 404/403 whether the linked user or manager exists or not.
     const before = await prisma.mtmAgent.findFirst({
-      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
+      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId, fieldDeletedAt: null },
       select: {
         id: true,
         name: true,
@@ -310,10 +293,54 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
       data.passwordHash = await bcrypt.hash(body.password, 12)
     }
 
-    const write = (externalCode?: string) => prisma.mtmAgent.updateMany({
-      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
-      data: externalCode === undefined ? data : { ...data, externalCode },
-    })
+    const changesCredentials = Boolean(body.password) || body.userId !== undefined || body.phone !== undefined
+    const audit = (newData: Prisma.MtmAgentUncheckedUpdateManyInput, tx?: Prisma.TransactionClient) => {
+      const event = {
+        organizationId: orgId, agentId: id, action: "AGENT_UPDATE", entity: "agent", entityId: id,
+        metadataKind: "agent_update" as const, oldData: before,
+        newData: { ...newData, passwordHash: newData.passwordHash ? "[redacted]" : undefined }, req,
+      }
+      return tx ? writeMtmAudit(event, tx) : writeMtmAudit(event)
+    }
+    const write = async (externalCode?: string): Promise<Prisma.BatchPayload> => {
+      const update = externalCode === undefined ? data : { ...data, externalCode }
+      const where = { id: scopedAgentIdFilter(administration, id), organizationId: orgId, fieldDeletedAt: null }
+      if (!changesCredentials) return prisma.mtmAgent.updateMany({ where, data: update })
+      const principals = [{ kind: "ACTOR" as const, actorId: id },
+        ...(body.userId ? [{ kind: "USER" as const, userId: body.userId }] : [])]
+      const result = await runWithTenant(orgId, () => withLegacyCredentialMaintenance(prisma, orgId, principals, async tx => {
+        const fresh = await tx.mtmAgent.findFirst({ where, select: {
+          role: true, status: true, userId: true, teamId: true, managerId: true, phone: true,
+        } })
+        if (!fresh) return { count: 0 }
+        // The permission decision above belongs to this exact card/scope.
+        // Do not reset or relink after a concurrent privilege/territory move.
+        if (fresh.role !== before.role || fresh.status !== before.status || fresh.userId !== before.userId
+          || fresh.teamId !== before.teamId || fresh.managerId !== before.managerId
+          || (body.phone !== undefined && fresh.phone !== before.phone)) {
+          throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+        }
+        if (body.userId && !await tx.user.findFirst({ where: {
+          id: body.userId, organizationId: orgId, isActive: true, anonymizedAt: null,
+        }, select: { id: true } })) throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+        if (body.phone) {
+          if (await readLegacyPhoneAssignmentBoundaryInTransaction(tx, orgId, body.phone) !== "LEGACY") {
+            throw new IdentityRegistryError("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+          }
+          // Repeat a changed number's uniqueness under the canonical lock.
+          // An unchanged historical national spelling keeps its old behavior.
+          if (body.phone.replace(/[\s\-()]/g, "") !== (before.phone ?? "").replace(/[\s\-()]/g, "")) {
+            const phone = await checkSignInPhone(tx, orgId, body.phone, before.id)
+            if (!phone.ok) throw new IdentityRegistryError("IDENTITY_LEGACY_CARD_STATE_CHANGED")
+          }
+        }
+        const changed = await tx.mtmAgent.updateMany({ where, data: update })
+        if (changed.count === 1) await audit(update, tx)
+        return changed
+      }))
+      if (!result.allowed) throw new IdentityRegistryError("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      return result.value
+    }
     let agent: Prisma.BatchPayload
     if (body.externalCode === undefined) {
       agent = await write()
@@ -328,20 +355,14 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     }
     if (agent.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    await writeMtmAudit({
-      organizationId: orgId,
-      agentId: id,
-      action: "AGENT_UPDATE",
-      entity: "agent",
-      entityId: id,
-      metadataKind: "agent_update",
-      oldData: before,
-      newData: { ...data, passwordHash: data.passwordHash ? "[redacted]" : undefined },
-      req,
-    }).catch((e) => console.warn("[MTM/agents/[id] PUT] audit failed", e))
+    if (!changesCredentials) await audit(data).catch((e) => console.warn("[MTM/agents/[id] PUT] audit failed", e))
 
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
+    if (e instanceof IdentityRegistryError && ["IDENTITY_CREDENTIAL_FLOW_REQUIRED", "IDENTITY_LEGACY_CARD_STATE_CHANGED"].includes(e.code)) {
+      return NextResponse.json({ code: e.code, error: e.code === "IDENTITY_CREDENTIAL_FLOW_REQUIRED"
+        ? "Use the current credential management flow for this account" : "The card changed; refresh it and retry" }, { status: 409 })
+    }
     const conflict = attendanceIdentityConflictResponse(e)
     if (conflict) return conflict
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to update" }, { status: 400 })
@@ -351,123 +372,40 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
 export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { orgId } = auth
   const { id } = await params
-
   try {
     const administration = await resolveMtmAgentAdministration(prisma, auth)
     if (administration.kind === "denied") return administration.response
-
-    const deletion = await prisma.$transaction(async (tx) => {
-      // Child HRM/GPS inserts take a KEY SHARE lock on the employee. Keep the
-      // parent row locked from the final retention count through deletion so
-      // a new retained fact cannot slip into a cascading delete.
-      await tx.$executeRaw`
-        SELECT 1 FROM "mtm_agents"
-        WHERE "id" = ${id} AND "organizationId" = ${orgId}
-        FOR UPDATE
-      `
+    return await prisma.$transaction(async tx => {
+      // Same tenant lock as enrollment/cutover: a legacy phone cannot be
+      // cleared concurrently with adoption by a canonical identity.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'identity-registry:' + orgId}, 0))`
+      await tx.$executeRaw`SELECT 1 FROM "mtm_agents" WHERE id = ${id} AND "organizationId" = ${orgId} FOR UPDATE`
       const before = await tx.mtmAgent.findFirst({
         where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
-        select: { id: true, name: true, email: true, role: true },
+        select: { id: true, name: true, role: true, userId: true, attendanceParticipant: true,
+          fieldDeletedAt: true, identityActorBinding: { select: { actorId: true } } },
       })
-      if (!before) return { kind: "not_found" as const }
-      if (administration.kind === "scoped" && !MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(before.role)) {
-        return { kind: "role_forbidden" as const }
-      }
-
-      // Time history is governed by a separate retention contract. Check it
-      // before the FK cascade reaches the database fact guard, so admins
-      // receive a clear archive/deactivate action rather than an opaque error.
-      const retentionCounts = await Promise.all([
-        tx.mtmAgentWorkday.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmAgentWorkdayEvent.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmAgentLocation.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmHrmRequest.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmWorkCalendarDay.count({
-          where: {
-            organizationId: orgId,
-            agentId: id,
-            source: { in: ["HRM", "WORKFORCE_LEAVE", "WORKFORCE_ABSENCE"] },
-          },
-        }),
-        tx.mtmAuditLog.count({
-          where: {
-            organizationId: orgId,
-            agentId: id,
-            OR: [
-              { metadataKind: { in: ["workday_transition", "hrm_request_decision", "workforce_time_correction"] } },
-              { action: { in: [
-                "WORKDAY_START",
-                "WORKDAY_PAUSE",
-                "WORKDAY_RESUME",
-                "WORKDAY_FINISH",
-                "HRM_REQUEST_DECISION",
-                "WORKFORCE_TIME_CORRECTION_APPLIED",
-              ] } },
-            ],
-          },
-        }),
-        tx.workforceShiftAssignment.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforcePolicySnapshot.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceShiftSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceWorkdayScheduleSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceAttendanceException.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceTimeCorrection.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.workforceTimesheetApproval.count({ where: { organizationId: orgId, agentId: id } }),
-      ])
-      if (retentionCounts.some((count) => count > 0)) {
-        return { kind: "retention_blocked" as const }
-      }
-      // Visits, routes, tasks, photos, promotions… — whatever else points at
-      // the employee. Without this the delete cascaded through their visits
-      // and routes, or stopped at a foreign key with the constraint's name
-      // for an answer.
-      const history = await agentHistory(tx, orgId, id)
-      if (history.length > 0) return { kind: "has_history" as const, history }
-
-      const deleted = await tx.mtmAgent.deleteMany({
-        where: { id, organizationId: orgId },
-      })
-      if (deleted.count === 0) return { kind: "not_found" as const }
-      return { kind: "deleted" as const, before }
-    })
-    if (deletion.kind === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })
-    if (deletion.kind === "retention_blocked") return workforceRetentionBlocked()
-    if (deletion.kind === "has_history") return agentHasHistory(deletion.history)
-    if (deletion.kind === "role_forbidden") return mtmScopedAgentRoleForbidden()
-
-    // `agentId` is a foreign key to the employee, and he no longer exists: a
-    // row naming him there was refused by Postgres (P2003), the catch below
-    // swallowed it, and the deletion left no trace of who did it. He is named
-    // by `entityId` and by his name and role in `oldData` — the same shape the
-    // key's own SET NULL has just given every earlier row about him.
-    await writeMtmAudit({
-      organizationId: orgId,
-      agentId: null,
-      action: "AGENT_DELETE",
-      entity: "agent",
-      entityId: id,
-      metadataKind: "agent_delete",
-      oldData: deletion.before,
-      req,
-    }).catch((e) => console.warn("[MTM/agents/[id] DELETE] audit failed", e))
-
-    return NextResponse.json({ success: true })
-  } catch (e: unknown) {
-    const conflict = attendanceIdentityConflictResponse(e)
-    if (conflict) return conflict
-    if (e instanceof Error && /Workforce workday facts cannot be deleted/i.test(e.message)) {
-      return workforceRetentionBlocked()
-    }
-    // The database refused: a row this handler does not know about still
-    // points at the employee, or an append-only table would lose a fact. That
-    // is history too — and never the constraint's name on the user's screen.
-    if (
-      (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2003" || e.code === "P2014"))
-      || (e instanceof Error && /foreign key constraint|is immutable|cannot be deleted/i.test(e.message))
-    ) {
-      console.warn("[MTM/agents/[id] DELETE] refused by the database", e)
-      return agentHasHistory()
-    }
+      if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
+      if (administration.kind === "scoped" && !MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(before.role)) return mtmScopedAgentRoleForbidden()
+      if (before.role === "EMPLOYEE") return NextResponse.json({ error: "Manage this employee in Personnel", code: "MTM_AGENT_NOT_FIELD" }, { status: 409 })
+      if (before.fieldDeletedAt) return NextResponse.json({ success: true })
+      // A standalone Field credential may be retired. Linked or reviewed
+      // people and Time participants retain their number and other access.
+      const releaseLegacyPhone = !before.userId && !before.identityActorBinding && before.attendanceParticipant === false
+      const fieldDeletedAt = new Date()
+      await tx.mtmAgent.updateMany({ where: { id, organizationId: orgId, fieldDeletedAt: null }, data: {
+        fieldDeletedAt,
+        ...(releaseLegacyPhone ? { phone: null, passwordHash: null } : {}),
+      } })
+      // Audit and removal commit together; a failure must roll both back.
+      await writeMtmAudit({ organizationId: orgId, agentId: id, action: "AGENT_DELETE", entity: "agent",
+        entityId: id, metadataKind: "agent_delete", actorUserId: auth.session?.userId,
+        oldData: { id, name: before.name, role: before.role },
+        newData: { fieldDeletedAt: fieldDeletedAt.toISOString(), historyRetained: true, legacyPhoneReleased: releaseLegacyPhone }, req,
+      }, tx)
+      return NextResponse.json({ success: true })
+    }, { isolationLevel: "ReadCommitted", timeout: 15_000, maxWait: 5_000 })
+  } catch (e) {
     console.error("[MTM/agents/[id] DELETE]", e)
     return NextResponse.json({ error: "Failed to delete", code: "MTM_AGENT_DELETE_FAILED" }, { status: 500 })
   }

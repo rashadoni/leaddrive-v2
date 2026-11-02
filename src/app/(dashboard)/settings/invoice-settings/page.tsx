@@ -630,7 +630,7 @@ export default function InvoiceSettingsPage() {
             </p>
             {settings.companyStampUrl ? (
               <div className="flex items-start gap-4 mt-1">
-                <div className="relative border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 bg-muted/30">
+                <div className="relative border border-border rounded-lg p-2 bg-muted/30">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={settings.companyStampUrl}
@@ -648,7 +648,7 @@ export default function InvoiceSettingsPage() {
                 <div className="flex-1">
                   <p className="text-sm text-green-600 font-medium mb-2">✓ {c.stampUploaded}</p>
                   <label className="cursor-pointer">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-md px-3 py-2 hover:bg-muted/50 w-fit">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground border border-border rounded-md px-3 py-2 hover:bg-muted/50 w-fit">
                       <Upload className="h-4 w-4" />
                       {c.replace}
                     </div>
@@ -708,7 +708,7 @@ export default function InvoiceSettingsPage() {
               </p>
               {settings.actSignerSignatureUrl ? (
                 <div className="flex items-start gap-4 mt-1">
-                  <div className="relative border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 bg-muted/30">
+                  <div className="relative border border-border rounded-lg p-2 bg-muted/30">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={settings.actSignerSignatureUrl}
@@ -726,7 +726,7 @@ export default function InvoiceSettingsPage() {
                   <div className="flex-1">
                     <p className="text-sm text-green-600 font-medium mb-2">✓ {c.signatureUploaded}</p>
                     <label className="cursor-pointer">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-md px-3 py-2 hover:bg-muted/50 w-fit">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground border border-border rounded-md px-3 py-2 hover:bg-muted/50 w-fit">
                         <Upload className="h-4 w-4" />
                         {c.replace}
                       </div>

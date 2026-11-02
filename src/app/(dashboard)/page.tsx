@@ -38,10 +38,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [widgets, setWidgets] = useState<Record<string, boolean>>({})
   const [widgetsLoaded, setWidgetsLoaded] = useState(false)
+  // Keyed on these strings, not on the session object: next-auth hands out a
+  // new object on every read — twice per page load, every 15 minutes, and
+  // whenever a page loads in another tab — and each one refetched both
+  // requests below, the executive summary included, in every open dashboard.
+  const orgId = session?.user?.organizationId
+  const userRole = (session?.user as { role?: string } | undefined)?.role || "viewer"
 
   useEffect(() => {
-    const orgId = session?.user?.organizationId
-    const userRole = (session?.user as any)?.role || "viewer"
     if (!orgId) return
     fetch("/api/v1/dashboard/widget-config", {
       headers: { "x-organization-id": String(orgId) },
@@ -63,7 +67,7 @@ export default function DashboardPage() {
         setWidgetsLoaded(true)
       })
       .catch(() => { setWidgetsLoaded(true) })
-  }, [session])
+  }, [orgId, userRole])
 
   function timeAgo(d: string): string {
     const diff = Date.now() - new Date(d).getTime()
@@ -84,7 +88,6 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const orgId = session?.user?.organizationId
         const res = await fetch("/api/v1/dashboard/executive", {
           headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
         })
@@ -93,7 +96,7 @@ export default function DashboardPage() {
       } catch (err) { console.error(err) } finally { setLoading(false) }
     }
     load()
-  }, [session])
+  }, [orgId])
 
   if (loading) {
     return (
@@ -206,7 +209,7 @@ export default function DashboardPage() {
         {widgets.churnRisk && <ChurnRiskWidget />}
         {/* Engagement Overview */}
         {data && (
-          <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 bg-card">
+          <div className="border border-border rounded-xl p-4 bg-card">
             <h3 className="text-sm font-semibold mb-3">{te("title")}</h3>
             {(() => {
               const hot = data.engagementHot ?? 0

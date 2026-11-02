@@ -136,7 +136,7 @@ export class ZeytunBalanceCache {
   private async restoreSnapshot(): Promise<void> {
     const stored = await this.store.load()
     if (!stored || (stored.version === this.summary?.version && stored.context.observedAt === this.summary?.observedAt && stored.context.source === this.summary?.source)) return
-    const next = new ZeytunAvailableBalances(stored.payload, stored.context)
+    const next = await ZeytunAvailableBalances.build(stored.payload, stored.context)
     this.summary = next.summary(this.config.organizationId)
     this.feed = next
   }

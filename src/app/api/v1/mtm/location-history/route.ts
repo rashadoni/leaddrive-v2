@@ -27,6 +27,7 @@ import {
 import { buildDayTrip } from "@/lib/mtm/day-trip"
 import { MTM_WORKDAY_PAUSE_EVENT_TYPES, mtmWorkdayPauses, type MtmWorkdayPauseEvent } from "@/lib/mtm/workday-pauses"
 import { matchRoads } from "@/lib/mtm/map-matching"
+import { dayTripLegMode, historyPointMovement } from "@/lib/mtm/history-replay"
 import { distanceBasis, drivingDistanceMeters } from "@/lib/mtm/road-distance"
 
 const TIME = /^\d{2}:\d{2}$/
@@ -440,7 +441,15 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     workday: workday ? { startedAt: workday.startedAt, completedAt: workday.completedAt } : null,
     roadSteps: road?.stepMeters,
   })
+  // Car, on foot or standing at each fix, and which way: read on the whole
+  // accepted day, never across a break or a lost signal (history-replay.ts).
+  const movement = historyPointMovement(prepared.points, gaps)
+  // Each leg of the day's list says car or on foot.
+  const legs = trip
+    ? { ...trip, entries: trip.entries.map((entry) => entry.kind === "MOVE" ? { ...entry, mode: dayTripLegMode(prepared.points, movement, entry.startedAt, entry.endedAt) } : entry) }
+    : null
   const points = downsampleHistoryPoints(prepared.points, outputLimit)
+    .map((point) => ({ ...point, mode: movement.get(point.id)?.mode ?? "STAY", course: movement.get(point.id)?.course ?? null }))
   const exportCsv = searchParams.get("format") === "csv"
 
   await writeMtmAudit({
@@ -546,7 +555,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         })),
       })),
       timeline,
-      trip,
+      trip: legs,
       visits: (visits as HistoryVisit[]).map((visit) => ({
         ...visit,
         confirmed: true,

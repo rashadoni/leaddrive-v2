@@ -1,0 +1,106 @@
+{
+  "status": "PASS_PUBLIC_APK_HASH",
+  "sourceSha": "32fe203d256d2928a67bd5f4a596ac58a2149775",
+  "versionCode": 1048,
+  "versionName": "1.0.0",
+  "apkSha256": "2b372cb69fdbcbc1e61986efabbd3aadad6fb40e0d2e6759f121c1a3a9abe0fe",
+  "signingCertificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+  "tag": "time-v1.0.0-1048",
+  "apkUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1048/leaddrive-time-1.0.0-1048.apk",
+  "releaseUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/tag/time-v1.0.0-1048",
+  "releaseId": 423300599,
+  "publishedAt": "2026-10-25T09:59:38Z",
+  "immutable": false,
+  "publicRedownloadHashVerified": true,
+  "ownerWaivedFullDayWait": true,
+  "fullDayAcceptance": false,
+  "physicalUpgradeReceiptSha256": "4626a80122de3f370ef2b8a38f04b1035ab1e63c014133f8ddc059f0759b11c1",
+  "buildRun": 40181407750,
+  "buildArtifact": 12594800870,
+  "buildJob": 121133074424,
+  "hostedTests": {
+    "suitesPassed": 292,
+    "testsPassed": 2664,
+    "testsTodo": 1,
+    "typeScript": "PASS"
+  },
+  "physicalUpgrade": {
+    "status": "PASS_OFFLINE_QUEUE_SIGNED_UPGRADE",
+    "startedAt": "2026-10-25T09:50:25.008631+00:00",
+    "sourceSha": "32fe203d256d2928a67bd5f4a596ac58a2149775",
+    "full24hAcceptance": false,
+    "publicReleaseAccepted": false,
+    "permissionWrites": false,
+    "radioWrites": false,
+    "fromVersion": 1047,
+    "toVersion": 1048,
+    "phase": "RESTORE_AND_REPLAY",
+    "updatedAt": "2026-10-25T09:56:55.709185+00:00",
+    "testSource": "6f66e77ca7d03bf4f366138fac38c12681600547",
+    "generatedPythonCachesExcludedFromSourceGate": 5,
+    "offlineAt": "2026-10-25T09:51:25+00:00",
+    "capture": {
+      "exit": 0,
+      "flowSha256": "1da96b4de3992919eec42819f167914da2fcf5b11d9c0cede65b0d0116452dac",
+      "permissionsWritten": false,
+      "launchAppUsed": false,
+      "tests": [
+        {
+          "name": "Queue three offline claims with the existing Android permissions",
+          "seconds": "173.594",
+          "status": "PASS"
+        }
+      ]
+    },
+    "beforeUpgradeQueue": {
+      "kind": "probe",
+      "passed": true,
+      "pendingVisible": true,
+      "pendingFullyVisible": true,
+      "epoch": 1792922122
+    },
+    "afterUpgradeQueue": {
+      "kind": "probe",
+      "passed": true,
+      "pendingVisible": true,
+      "pendingFullyVisible": true,
+      "epoch": 1792922201
+    },
+    "deviceSamples": 21,
+    "pendingSurvivedSignedUpgrade": true,
+    "reconnectAt": "2026-10-25T09:56:55.709871+00:00",
+    "deviceWatchdogRestoration": {
+      "reason": "HOST_RELEASE",
+      "networkAllowed": true,
+      "epoch": 1792922216
+    },
+    "replay": {
+      "priorEventsUnchanged": 153,
+      "newOriginalClaims": 3,
+      "totalEvents": 156,
+      "types": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "dayFacts": "VALID"
+    },
+    "originalClaimTimesPreserved": true,
+    "noDuplicatesAfterColdRestart": true,
+    "queueNoticeAbsent": true,
+    "otherHistoryUnchanged": true,
+    "cleanup": {
+      "networkAndRadiosExact": true,
+      "displayExact": true,
+      "fieldAllProfilesExact": true,
+      "timeProfilesAndUidExact": true
+    },
+    "finishedAt": "2026-10-25T09:59:14.572377+00:00"
+  },
+  "visualReview": "Before/after pending queue screenshots inspected; same fictional employee and original pending times preserved",
+  "limits": {
+    "uninterrupted24h": "NOT_COMPLETE_OWNER_WAIVED_WAIT",
+    "actualNativeUpdateOffer": "NOT_RUN_PUBLIC_MANIFEST_NOT_YET_ACTIVE; updater behavior covered by hosted tests",
+    "releaseImmutability": "GitHub reports immutable=false; versioned asset receipt and public byte hash retained; do not overwrite"
+  }
+}

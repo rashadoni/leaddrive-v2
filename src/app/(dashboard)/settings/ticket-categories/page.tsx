@@ -412,7 +412,7 @@ export default function TicketCategoriesPage() {
           <Button variant="outline" asChild className="min-h-11 w-full px-4 sm:w-auto">
             <Link href="/tickets?view=reports#ticketing-report"><BarChart3 />{t("viewServiceDesk")}</Link>
           </Button>
-          {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 w-full bg-orange-700 px-4 text-white hover:bg-orange-800 sm:w-auto" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+          {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 w-full px-4 sm:w-auto" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
         </div>}
     >
 
@@ -479,7 +479,7 @@ export default function TicketCategoriesPage() {
             <p className="mt-1 max-w-md text-sm text-muted-foreground">{hasFilters ? t("noResultsDescription") : t("noCategoriesHint")}</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {hasFilters && <Button data-testid="ticket-categories-clear-filters" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
-              {canWrite && <Button data-testid="ticket-categories-empty-create" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+              {canWrite && <Button data-testid="ticket-categories-empty-create" className="min-h-11" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
             </div>
           </div>
         ) : (
@@ -683,7 +683,7 @@ export default function TicketCategoriesPage() {
 
           <SheetFooter className="shrink-0 gap-2 border-t bg-background px-5 py-4 sm:space-x-0">
             <Button variant="outline" className="min-h-11" onClick={requestEditorClose} disabled={saving}>{tc("cancel")}</Button>
-            <Button data-testid="ticket-category-save" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={() => void saveCategory()} disabled={saving || !form.name.trim()}>
+            <Button data-testid="ticket-category-save" className="min-h-11" onClick={() => void saveCategory()} disabled={saving || !form.name.trim()}>
               <Check />{saving ? tc("saving") : editingId ? t("saveCategory") : t("createCategory")}
             </Button>
           </SheetFooter>

@@ -43,7 +43,6 @@ import { getMtmAttendanceAccess } from "@/lib/mtm/attendance-access"
 import { getRlsContext } from "@/lib/rls-context"
 import type { Role } from "@/lib/permissions"
 import { accessibleNavItems, isNavOrgSettingOn } from "@/lib/nav-items"
-import { visibleMtmToolGroups } from "@/lib/mtm/navigation"
 import { GET as readAttendance } from "@/app/api/v1/mtm/attendance/route"
 import { PUT as updateSettings } from "@/app/api/v1/mtm/settings/route"
 import AttendanceLayout from "@/app/(dashboard)/mtm/attendance/layout"
@@ -95,17 +94,13 @@ describe("attendance is an explicit organization opt-in", () => {
     }
   })
 
-  it.each([undefined, false, true])("shows the destination in both menus only after an explicit true (%s)", (value) => {
+  it.each([undefined, false, true])("shows the destination in the menu only after an explicit true (%s)", (value) => {
     const orgSettings = value === undefined ? {} : { attendanceEnabled: value }
     const org = { plan: "enterprise", role: "admin", modules: { mtm: true, "route-field": true }, orgSettings }
     const shell = accessibleNavItems(org).map((item) => item.href)
-    const tools = visibleMtmToolGroups(orgSettings, "admin").flatMap((group) => group.items.map((item) => item.href))
     expect(shell.includes("/mtm/attendance")).toBe(value === true)
-    expect(tools.includes("/mtm/attendance")).toBe(value === true)
-    for (const hrefs of [shell, tools]) {
-      expect(hrefs).toContain("/mtm/contacts")
-      expect(hrefs).toContain("/mtm/promotions")
-    }
+    expect(shell).toContain("/mtm/contacts")
+    expect(shell).toContain("/mtm/promotions")
   })
 
   it.each([undefined, false])("does not resolve an employee scope while the feature is off (%s)", async (value) => {

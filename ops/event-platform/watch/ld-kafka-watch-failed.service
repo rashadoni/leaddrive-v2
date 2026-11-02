@@ -1,0 +1,9 @@
+# Installed by scripts/event-platform/cluster/provision.sh install-watch.
+# A watch that crashes must not look like a quiet cluster: watch.mjs
+# --notify-failure tells the owner, at most once every six hours.
+[Unit]
+Description=Tell the owner the Kafka watch itself failed
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@ --notify-failure

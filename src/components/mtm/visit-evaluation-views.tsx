@@ -6,12 +6,22 @@ import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, UsersRound } from "lucide-react"
 import { Hint } from "@/components/hint"
 import { formatDateTime } from "@/lib/format-date"
-import { MTM_VISIT_EVALUATION_CRITERIA, type MtmVisitEvaluationScores } from "@/lib/mtm/visit-evaluation-criteria"
+import {
+  MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS,
+  visitEvaluationQuestionLabel,
+  type MtmVisitEvaluationQuestion,
+  type MtmVisitEvaluationQuestionLabels,
+  type MtmVisitEvaluationScores,
+} from "@/lib/mtm/visit-evaluation-questions"
 
 /*
  * Joint visit in the office's MTM (owner-approved mockup, 2026-10-20): the
  * manager's rating on a visit card, and «Оценки руководителя» on the agent's
  * page. Both are for the office; an agent never reads a rating.
+ *
+ * A rating is shown by the questions it was given against (its own list, in
+ * its own words), never by the company's list of today: renaming or deleting
+ * a question in «Parametrlər» changes no rating already given.
  */
 
 type Translator = (key: string, values?: Record<string, string | number>) => string
@@ -20,6 +30,8 @@ export interface JointVisitReview {
   manager: { id: string; name: string | null }
   evaluations: Array<{
     evaluator: { id: string; name: string }
+    /** The questions this rating was given against; absent from a server older than the lists. */
+    questions?: MtmVisitEvaluationQuestion[]
     scores: MtmVisitEvaluationScores
     average: number | null
     comment: string | null
@@ -34,7 +46,14 @@ export interface AgentEvaluationsSummary {
   jointVisits: number
   evaluated: number
   average: number | null
-  criteria: Array<{ key: string; count: number; average: number | null }>
+  criteria: Array<{
+    key: string
+    labels?: MtmVisitEvaluationQuestionLabels
+    /** False for a question the company no longer asks, shown while a rating in the period has it. */
+    asked?: boolean
+    count: number
+    average: number | null
+  }>
   recent: Array<{
     visitId: string
     checkInAt: string
@@ -100,7 +119,7 @@ export function JointVisitReviewBlock({ jointVisit, timezone }: { jointVisit: Jo
   const when = (value: string) => formatDateTime(value, locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: timezone }) || "—"
 
   return (
-    <section className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-5" data-testid="mtm-visit-joint-block">
+    <section className="border-b border-border px-4 py-3 sm:px-5" data-testid="mtm-visit-joint-block">
       {jointVisit.evaluations.length === 0 ? (
         <div className="flex items-start gap-2">
           <UsersRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -121,11 +140,11 @@ export function JointVisitReviewBlock({ jointVisit, timezone }: { jointVisit: Jo
             <BigScore value={evaluation.average} t={t} />
           </div>
           <dl className="mt-2">
-            {MTM_VISIT_EVALUATION_CRITERIA.map((key) => {
-              const score = evaluation.scores[key]
+            {(evaluation.questions?.length ? evaluation.questions : MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS).map((question) => {
+              const score = evaluation.scores[question.id]
               return (
-                <div key={key} className="grid grid-cols-[1fr_auto_1.75rem] items-center gap-3 py-1 text-sm">
-                  <dt className="text-foreground">{t(`criteria.${key}`)}</dt>
+                <div key={question.id} className="grid grid-cols-[1fr_auto_1.75rem] items-center gap-3 py-1 text-sm" data-testid={`mtm-visit-evaluation-question-${question.id}`}>
+                  <dt className="text-foreground">{visitEvaluationQuestionLabel(question, locale)}</dt>
                   {typeof score === "number" ? (
                     <>
                       <dd><ScoreDots value={score} label={t("scoreLabel", { score: scoreText(score) })} /></dd>
@@ -181,7 +200,7 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
   }
   if (state.error || !state.data) {
     return (
-      <div role="alert" className="flex items-start gap-2 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card p-4 text-sm text-foreground dark:border-zinc-700 dark:border-l-amber-500">
+      <div role="alert" className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card p-4 text-sm text-foreground dark:border-l-amber-500">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>{state.error === "forbidden" ? t("forbidden") : t("loadError")}</span>
       </div>
@@ -194,10 +213,15 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
   const lowest = rated.length >= 2 ? Math.min(...rated.map((criterion) => criterion.average ?? 5)) : null
   const weakest = lowest !== null && rated.filter((criterion) => criterion.average === lowest).length === 1 ? lowest : null
   const day = (value: string) => formatDateTime(value, locale, { day: "numeric", month: "short", timeZone: data.timezone }) || "—"
+  // A server older than the lists sends bare ids: those are the original six.
+  const criterionLabel = (criterion: AgentEvaluationsSummary["criteria"][number]) => {
+    const labels = criterion.labels ?? MTM_VISIT_EVALUATION_ORIGINAL_QUESTIONS.find((question) => question.id === criterion.key)?.labels
+    return labels ? visitEvaluationQuestionLabel({ labels }, locale) : criterion.key
+  }
 
   if (data.evaluated === 0) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-card p-4 text-sm dark:border-zinc-700" data-testid="mtm-agent-evaluations">
+      <div className="rounded-xl border border-border bg-card p-4 text-sm" data-testid="mtm-agent-evaluations">
         <h2 className="font-semibold text-foreground">{t("periodTitle", { days: data.days })}</h2>
         <p className="mt-1 text-muted-foreground">{t("periodJoint", { count: data.jointVisits })}</p>
         <p className="mt-2 text-muted-foreground">{t("empty")}</p>
@@ -206,8 +230,8 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700" data-testid="mtm-agent-evaluations">
-      <div className="border-b border-zinc-200 p-4 dark:border-zinc-700">
+    <div className="rounded-xl border border-border bg-card" data-testid="mtm-agent-evaluations">
+      <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-semibold text-foreground">{t("periodTitle", { days: data.days })}</h2>
@@ -220,10 +244,16 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
         <dl className="mt-3 grid gap-x-8 lg:grid-cols-2">
           {data.criteria.map((criterion) => {
             const isWeakest = weakest !== null && criterion.average === weakest
+            const label = criterionLabel(criterion)
             return (
               <div key={criterion.key} className="grid grid-cols-[1fr_auto_2.25rem] items-center gap-3 py-1.5 text-sm" data-testid={`mtm-agent-evaluation-${criterion.key}`}>
                 <dt className={isWeakest ? "font-semibold text-amber-700 dark:text-amber-300" : "text-foreground"}>
-                  {isWeakest ? t("weakest", { label: t(`criteria.${criterion.key}`) }) : t(`criteria.${criterion.key}`)}
+                  {isWeakest ? t("weakest", { label }) : label}
+                  {criterion.asked === false ? (
+                    <Hint text={t("noLongerAskedHint")}>
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">· {t("noLongerAsked")}</span>
+                    </Hint>
+                  ) : null}
                 </dt>
                 {criterion.average !== null ? (
                   <>
@@ -240,7 +270,7 @@ export function MtmAgentEvaluations({ state }: { state: ReturnType<typeof useAge
       </div>
       <div className="p-4">
         <h3 className="text-sm font-semibold text-foreground">{t("recentTitle")}</h3>
-        <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
+        <ul className="mt-2 divide-y divide-border">
           {data.recent.map((item) => (
             <li key={item.visitId} className="grid grid-cols-[4.5rem_1fr_auto_auto] items-center gap-3 py-2 text-sm">
               <span className="text-muted-foreground">{day(item.checkInAt)}</span>

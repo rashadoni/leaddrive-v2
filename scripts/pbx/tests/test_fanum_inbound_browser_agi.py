@@ -28,11 +28,17 @@ DID = "994125550100"
 
 
 class FakeClient:
-    def __init__(self, *, lifecycle_results=None, ready_results=None):
+    def __init__(self, *, lifecycle_results=None, ready_results=None, handoff_results=None):
         self.lifecycle_results = list(lifecycle_results or [agi.SendResult.SENT])
         self.ready_results = list(ready_results or [False])
+        self.handoff_results = dict(handoff_results or {})
         self.lifecycle_payloads = []
         self.ready_call_ids = []
+        self.handoffs = []
+
+    def handoff(self, call_id, action):
+        self.handoffs.append((call_id, action))
+        return self.handoff_results.get(action, False)
 
     def send_lifecycle(self, payload):
         self.lifecycle_payloads.append(payload)
@@ -86,6 +92,13 @@ class FakeHttpHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if type(self).response_mode in {"handoff-true", "returned-true"} and self.path == agi.HANDOFF_PATH:
+            body = {"handoff-true": b'{"handoff":true}', "returned-true": b'{"returned":true}'}[type(self).response_mode]
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if type(self).response_mode == "redirect":
             self.send_response(307)
             self.send_header("location", "/login")
@@ -112,6 +125,7 @@ class InboundBrowserAgiTest(unittest.TestCase):
             lifecycle_url=f"http://127.0.0.1:{port}{agi.LIFECYCLE_PATH}",
             readiness_url=f"http://127.0.0.1:{port}{agi.READINESS_PATH}",
             runtime_token="t" * 48,
+            handoff_url=f"http://127.0.0.1:{port}{agi.HANDOFF_PATH}",
         )
         return server, agi.HttpLifecycleClient(config)
 
@@ -176,6 +190,22 @@ class InboundBrowserAgiTest(unittest.TestCase):
         self.assertEqual(payload["fromNumber"], CALLER)
         self.assertEqual(payload["toNumber"], DID)
         uuid.UUID(payload["eventId"])
+
+    def test_ringing_names_the_number_dialled_when_the_channel_has_one(self):
+        for dnid, expected in [("994995111103", "994995111103"), ("+994125553065", "+994125553065"),
+                               ("unknown", DID), ("", DID), ("12; DROP", DID)]:
+            client = FakeClient()
+            with tempfile.TemporaryDirectory() as spool:
+                result = agi.run_mode(
+                    mode="ringing",
+                    arguments=[CALL_ID, DID],
+                    agi_variables={"agi_callerid": CALLER, "agi_extension": "s", "agi_dnid": dnid},
+                    client=client,
+                    spool_dir=Path(spool),
+                    output=io.StringIO(),
+                )
+            self.assertEqual(result, 0, dnid)
+            self.assertEqual(client.lifecycle_payloads[0]["toNumber"], expected, dnid)
 
     def test_identify_generates_a_canonical_uuid_without_asterisk_func_uuid(self):
         client = FakeClient()
@@ -267,6 +297,48 @@ class InboundBrowserAgiTest(unittest.TestCase):
         self.assertEqual(client.ready_call_ids, [CALL_ID, CALL_ID, CALL_ID])
         self.assertEqual(sleeps, [agi.READY_POLL_SECONDS, agi.READY_POLL_SECONDS])
 
+    def run_agi(self, mode, client, ticks=(0.0, 0.1, 0.2, 0.3)):
+        output = io.StringIO()
+        clock = iter(ticks)
+        result = agi.run_mode(mode=mode, arguments=[CALL_ID], agi_variables={}, client=client,
+                              spool_dir=Path("/unused"), output=output, monotonic=lambda: next(clock),
+                              sleep=lambda seconds: None)
+        return result, output.getvalue()
+
+    def test_after_the_ai_leg_the_station_asks_whether_the_ai_handed_the_call_over(self):
+        handed = FakeClient(handoff_results={"start": True})
+        self.assertEqual(self.run_agi("handoff", handed), (0, 'SET VARIABLE FANUM_HANDOFF "1"\n'))
+        self.assertEqual(handed.handoffs, [(CALL_ID, "start")])
+        # No transfer, or the CRM cannot be reached: the call ends as before.
+        self.assertEqual(self.run_agi("handoff", FakeClient()), (0, 'SET VARIABLE FANUM_HANDOFF "0"\n'))
+
+    def test_a_manager_browser_takes_the_handed_off_call(self):
+        client = FakeClient(ready_results=[False, True], handoff_results={"return": True})
+        self.assertEqual(self.run_agi("manager", client), (0, 'SET VARIABLE FANUM_BROWSER_READY "1"\n'))
+        self.assertEqual(client.handoffs, [])
+
+    def test_nobody_answers_in_time_and_the_call_goes_back_to_the_ai(self):
+        client = FakeClient(ready_results=[False] * 5, handoff_results={"return": True})
+        result, output = self.run_agi("manager", client, ticks=(0.0, 10.0, 20.0, agi.MANAGER_WAIT_SECONDS + 1))
+        self.assertEqual(result, 0)
+        self.assertEqual(output, 'SET VARIABLE FANUM_BROWSER_READY "0"\nSET VARIABLE FANUM_INBOUND_ROUTE "ai"\n')
+        self.assertEqual(client.handoffs, [(CALL_ID, "return")])
+        # The CRM refused the return (the call ended, a browser was reserved): no AI route.
+        refused = FakeClient(ready_results=[False] * 5)
+        _, output = self.run_agi("manager", refused, ticks=(0.0, agi.MANAGER_WAIT_SECONDS + 1))
+        self.assertEqual(output, 'SET VARIABLE FANUM_BROWSER_READY "0"\n')
+
+    def test_http_handoff_reads_only_its_own_true_answer(self):
+        for kind, action, expected in [("handoff-true", "start", True), ("handoff-true", "return", False),
+                                       ("returned-true", "return", True), ("html", "start", False)]:
+            server, client = self._http_client(kind)
+            try:
+                self.assertEqual(client.handoff(CALL_ID, action), expected, (kind, action))
+                self.assertFalse(client.handoff(CALL_ID, "other"))
+            finally:
+                server.shutdown()
+                server.server_close()
+
     def test_lifecycle_rejects_a_200_html_login_page(self):
         server, client = self._http_client("html")
         try:
@@ -298,8 +370,52 @@ class InboundBrowserAgiTest(unittest.TestCase):
 
         self.assertTrue(result)
 
+    def test_a_slow_crm_gets_ringing_again_within_the_budget_instead_of_a_hang_up(self):
+        # 2026-10-28: one 2 s timeout at the top of the minute hung up a call.
+        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY, agi.SendResult.RETRY, agi.SendResult.SENT])
+        output = io.StringIO()
+        now = [0.0]
+        with tempfile.TemporaryDirectory() as temporary, \
+                mock.patch.object(agi, "_clock", lambda: now[0]), \
+                mock.patch.object(agi, "_sleep", lambda seconds: now.__setitem__(0, now[0] + seconds + agi.HTTP_TIMEOUT_SECONDS)):
+            result = agi.run_mode(
+                mode="ringing",
+                arguments=[CALL_ID, DID],
+                agi_variables={"agi_callerid": CALLER},
+                client=client,
+                spool_dir=Path(temporary),
+                output=output,
+            )
+            self.assertEqual(list(Path(temporary).glob("*.json")), [])
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue(), 'SET VARIABLE FANUM_INBOUND_EVENT_OK "1"\n')
+        # The same event each time: the CRM takes a repeat as the same call.
+        self.assertEqual(len(client.lifecycle_payloads), 3)
+        self.assertEqual({payload["eventId"] for payload in client.lifecycle_payloads},
+                         {client.lifecycle_payloads[0]["eventId"]})
+
+    def test_ringing_stops_retrying_at_its_budget(self):
+        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        now = [0.0]
+        with tempfile.TemporaryDirectory() as temporary, \
+                mock.patch.object(agi, "_clock", lambda: now[0]), \
+                mock.patch.object(agi, "_sleep", lambda seconds: now.__setitem__(0, now[0] + seconds + agi.HTTP_TIMEOUT_SECONDS)):
+            result = agi.run_mode(
+                mode="ringing",
+                arguments=[CALL_ID, DID],
+                agi_variables={"agi_callerid": CALLER},
+                client=client,
+                spool_dir=Path(temporary),
+                output=io.StringIO(),
+            )
+        self.assertEqual(result, 1)
+        # The fake counts each try's 2 s inside the pause before it: tries at
+        # 0, 2.25, 4.5 and 6.75 s; a fifth could not finish inside 8 s.
+        self.assertEqual(len(client.lifecycle_payloads), 4)
+
     def test_retryable_ringing_is_spooled_locally_before_the_call_is_rejected(self):
-        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY])
+        client = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        self.enterContext(mock.patch.object(agi, "RINGING_DELIVERY_SECONDS", 0.0))
         output = io.StringIO()
         with tempfile.TemporaryDirectory() as temporary:
             spool = Path(temporary)
@@ -324,7 +440,8 @@ class InboundBrowserAgiTest(unittest.TestCase):
             self.assertNotIn("runtime-token", queued[0].read_text(encoding="utf-8"))
 
     def test_spool_delivers_ringing_before_its_terminal_missed_call(self):
-        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY])
+        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        self.enterContext(mock.patch.object(agi, "RINGING_DELIVERY_SECONDS", 0.0))
         succeeding = FakeClient(
             lifecycle_results=[agi.SendResult.SENT, agi.SendResult.SENT],
         )
@@ -354,7 +471,8 @@ class InboundBrowserAgiTest(unittest.TestCase):
             )
 
     def test_spool_order_does_not_depend_on_wall_clock(self):
-        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY])
+        failing = FakeClient(lifecycle_results=[agi.SendResult.RETRY] * 50)
+        self.enterContext(mock.patch.object(agi, "RINGING_DELIVERY_SECONDS", 0.0))
         succeeding = FakeClient(
             lifecycle_results=[agi.SendResult.SENT, agi.SendResult.SENT],
         )

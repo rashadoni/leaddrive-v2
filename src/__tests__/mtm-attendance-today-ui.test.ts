@@ -43,12 +43,13 @@ const risk = { id: "risk-1", employeeId: "id-Рашад", employeeName: "Кам�
   usualName: null, usualDays: null, observedDays: null, deltaSeconds: null, thresholdSeconds: null, branchName: null, distanceMeters: null, dismissal: null } as AttendanceRiskItem
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
+let rulesToday = today
 let requests: AttendanceReviewItem[] = [], requestsStatus = 200, decisionStatus = 200, passedToHr = false
 // Null: this user may not ask for explanations (the route refuses).
 let explanations: unknown[] | null = null
 const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
   const url = String(input)
-  if (url.startsWith("/api/v1/mtm/attendance/rules")) return json({ success: true, data: { today, canManageRules: true } })
+  if (url.startsWith("/api/v1/mtm/attendance/rules")) return json({ success: true, data: { today: rulesToday, canManageRules: true } })
   if (url.startsWith("/api/v1/mtm/attendance/report")) return json({ success: true, data: currentReport })
   if (url.startsWith("/api/v1/mtm/attendance/explanations") && init?.method === "POST" && !url.includes("/decision")) return json({ success: true, data: { created: 2, already: 0, notNeeded: 0 } }, 201)
   if (url.startsWith("/api/v1/mtm/attendance/explanations") && !init?.method) return explanations ? json({ success: true, data: { items: explanations } }) : json({ error: "Forbidden" }, 403)
@@ -77,6 +78,7 @@ async function type(field: HTMLInputElement, value: string) {
 }
 
 beforeEach(() => {
+  rulesToday = today
   requests = [leaveRequest("r1", "Айсель Мамедова"), leaveRequest("r2", "Мурад Гасанов")]; requestsStatus = 200; decisionStatus = 200; passedToHr = false; explanations = null; currentReport = report
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock)
@@ -445,6 +447,19 @@ describe("Personnel → Today", () => {
     await act(async () => buttonIn(byTestId("attendance-explain-answer"), p("explainAccept"))!.click())
     const decision = fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/mtm/attendance/explanations/e1/decision")!
     expect(JSON.parse(String(decision[1]!.body))).toEqual({ decision: "ACCEPTED" })
+  })
+
+  // Owner's Sunday check, 2026-11-01: someone came on a day off and the card
+  // read «Gəlib 1 · 0 nəfərdən» — one of nobody.
+  it("on a day nobody was due says «day off» under whoever came, not «of 0»", async () => {
+    const sunday = "2026-10-18"
+    rulesToday = sunday
+    currentReport = buildMtmAttendanceReport({ from: range.from, to: range.to, now: "2026-10-18T08:00:00Z", rules: [], calendar: [], dayKinds: kinds, approvedRequests: [],
+      employees: ["Айсель", "Нигяр"].map(name => ({ id: `id-${name}`, name, teamId: null, teamName: null })), workdays: [day("id-Айсель", sunday, "10:00")] })
+    await render()
+    expect(byTestId("attendance-today-arrived-value")?.textContent).toBe("1")
+    expect(byTestId("attendance-today-arrived")?.textContent).toContain(p("kpiDayOff"))
+    expect(byTestId("attendance-today-arrived")?.textContent).not.toContain("из 0")
   })
 
   it("without the right to ask draws no ticks and no button", async () => {

@@ -73,7 +73,7 @@ const actionBgColors: Record<string, string> = {
   create_task: "bg-teal-50 text-teal-700 border-teal-200",
   update_field: "bg-purple-50 text-purple-700 border-purple-200",
   send_notification: "bg-orange-50 text-orange-700 border-orange-200", notify: "bg-orange-50 text-orange-700 border-orange-200",
-  webhook: "bg-muted/50 text-foreground/70 border-zinc-200 dark:border-zinc-700",
+  webhook: "bg-muted/50 text-foreground/70 border-border",
   auto_assign: "bg-indigo-50 text-indigo-700 border-indigo-200", assign_to: "bg-indigo-50 text-indigo-700 border-indigo-200",
 }
 
@@ -253,28 +253,28 @@ export default function WorkflowsPage() {
 
       {/* First-visit onboarding — points users at the templates gallery */}
       {showOnboarding && (
-        <div className="relative rounded-lg border border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 p-4 dark:border-violet-900 dark:from-violet-950/40 dark:to-purple-950/40">
+        <div className="relative rounded-lg border border-border bg-card text-card-foreground p-4">
           <button
             onClick={dismissOnboarding}
-            className="absolute top-3 right-3 text-violet-600/60 hover:text-violet-700 dark:text-violet-300/60 dark:hover:text-violet-200"
+            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
             aria-label={t("onboardingDismiss")}
           >
             <X className="h-4 w-4" />
           </button>
           <div className="flex items-start gap-3 pr-6">
-            <div className="rounded-md bg-gradient-to-br from-violet-500 to-purple-600 p-2 text-white shadow-sm shrink-0">
+            <div className="rounded-md bg-muted p-2 text-muted-foreground shrink-0">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="flex-1">
-              <h3 className="font-medium text-sm text-violet-900 dark:text-violet-100">
+              <h3 className="font-medium text-sm text-foreground">
                 {t("onboardingTitle")}
               </h3>
-              <p className="text-xs text-violet-800/80 dark:text-violet-200/70 mt-1 leading-relaxed">
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                 {t("onboardingBody")}
               </p>
               <div className="mt-3 flex items-center gap-2">
                 <Link href="/settings/workflows/templates">
-                  <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5">
+                  <Button size="sm" className="gap-1.5">
                     <Sparkles className="h-3.5 w-3.5" />
                     {t("onboardingCta")}
                   </Button>
@@ -322,7 +322,7 @@ export default function WorkflowsPage() {
           const conditionsSummary = getConditionsSummary(wf.conditions)
           return (
             <div key={wf.id} className={cn(
-              "border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card hover:shadow-md transition-shadow",
+              "border border-border rounded-lg bg-card hover:shadow-md transition-shadow",
               !wf.isActive && "opacity-60"
             )}>
               <div className="p-4">
@@ -331,10 +331,10 @@ export default function WorkflowsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={cn(
-                        "text-xs px-2.5 py-0.5 rounded-full font-medium border border-zinc-200 dark:border-zinc-700",
+                        "text-xs px-2.5 py-0.5 rounded-full font-medium border border-border",
                         wf.isActive
                           ? "bg-green-100 text-green-700 border-green-200"
-                          : "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700"
+                          : "bg-muted text-muted-foreground border-border"
                       )}>
                         {wf.isActive ? t("statActive") : t("statInactive")}
                       </span>
@@ -415,8 +415,8 @@ export default function WorkflowsPage() {
                         <div
                           key={i}
                           className={cn(
-                            "inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700",
-                            actionBgColors[action.actionType] || "bg-muted text-muted-foreground border-zinc-200 dark:border-zinc-700"
+                            "inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-border",
+                            actionBgColors[action.actionType] || "bg-muted text-muted-foreground border-border"
                           )}
                         >
                           <AIcon className="h-3 w-3 shrink-0" />

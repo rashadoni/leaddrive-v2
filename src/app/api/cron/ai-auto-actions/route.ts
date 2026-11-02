@@ -32,6 +32,7 @@ import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { isSupportAiEnabled } from "@/lib/ai/support-feature"
 import { enrollContactInJourney } from "@/lib/journey-enroll"
 import { systemTicketComment } from "@/lib/ticketing/chat-transcript"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 const SUPPORT_AUTOMATION_FEATURES = new Set([
   "ai_auto_acknowledge",
@@ -1369,12 +1370,14 @@ async function executeApprovedShadowActions(now: Date): Promise<number> {
           })
           if (!dealRow) break
           const advancing = dealRow.stage !== payload.suggestedStage
-          await prisma.deal.updateMany({
-            where: { id: action.entityId, organizationId: action.organizationId },
-            // Gate stageChangedAt on a real change — no-op must not reset
-            // velocity duration (parity with REST / bulk / sandbox / AI-tool).
-            data: { stage: payload.suggestedStage, ...(advancing && { stageChangedAt: now }) },
-          })
+          await withDealEvents(prisma, action.organizationId, [action.entityId], async (tx) => ({
+            value: await tx.deal.updateMany({
+              where: { id: action.entityId, organizationId: action.organizationId },
+              // Gate stageChangedAt on a real change — no-op must not reset
+              // velocity duration (parity with REST / bulk / sandbox / AI-tool).
+              data: { stage: payload.suggestedStage, ...(advancing && { stageChangedAt: now }) },
+            }),
+          }))
           // A12 — cron-driven stage advance lands in the pipeline waterfall too.
           if (advancing) {
             const amount = decimalToNumber(dealRow.valueAmount)
@@ -1499,19 +1502,22 @@ async function executeApprovedShadowActions(now: Date): Promise<number> {
             },
           })
           if (!existingDeal) {
-            await prisma.deal.create({
-              data: {
-                organizationId: action.organizationId,
-                companyId: payload.companyId || null,
-                contactId: payload.contactId || null,
-                name: `Renewal — ${payload.companyName || payload.contractNumber || "contract"}`,
-                stage: "PROPOSAL",
-                valueAmount: Number(payload.proposedValue) || 0,
-                currency: payload.currency || "USD",
-                probability: 60,
-                expectedClose: payload.endDate ? new Date(payload.endDate) : null,
-                notes: `Auto-created from AI renewal proposal. Reasoning: ${payload.reasoning || ""}`,
-              },
+            await withDealEvents(prisma, action.organizationId, [], async (tx) => {
+              const created = await tx.deal.create({
+                data: {
+                  organizationId: action.organizationId,
+                  companyId: payload.companyId || null,
+                  contactId: payload.contactId || null,
+                  name: `Renewal — ${payload.companyName || payload.contractNumber || "contract"}`,
+                  stage: "PROPOSAL",
+                  valueAmount: Number(payload.proposedValue) || 0,
+                  currency: payload.currency || "USD",
+                  probability: 60,
+                  expectedClose: payload.endDate ? new Date(payload.endDate) : null,
+                  notes: `Auto-created from AI renewal proposal. Reasoning: ${payload.reasoning || ""}`,
+                },
+              })
+              return { value: created, createdIds: [created.id] }
             })
           }
           break

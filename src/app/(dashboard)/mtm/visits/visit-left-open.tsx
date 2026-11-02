@@ -83,7 +83,7 @@ export function RemindAgentButton({ agentId, customerName, checkInAt, timezone, 
         data-testid={testId}
         disabled={state !== "idle"}
         onClick={(event) => { event.preventDefault(); event.stopPropagation(); void send() }}
-        className="min-h-9 shrink-0 border-zinc-200 bg-white text-amber-700 hover:bg-muted dark:border-zinc-700 dark:bg-transparent dark:text-amber-300"
+        className="min-h-9 shrink-0 border-border bg-white text-amber-700 hover:bg-muted dark:bg-transparent dark:text-amber-300"
       >
         {state === "sending" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : state === "sent" ? <Check aria-hidden="true" /> : <BellRing aria-hidden="true" />}
         {state === "sent" ? t("reminded") : t("remindAgent")}

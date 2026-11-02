@@ -71,7 +71,10 @@ const routeInclude = {
         // stops for today from this very list, and without them it silently
         // drew nothing — selecting an agent only zoomed to the marker (prod
         // audit 2026-09-14). The detail route already sent the pair.
-        select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true },
+        //
+        // «Часы приёма» (owner 2026-11-02, mockup «MTM: часы приёма клиентов»):
+        // the agent's list of the day says at each stop whether it is open.
+        select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true, workingHours: true },
       },
       // The fact behind each stop — when the agent checked in and out. Times
       // only: no coordinates or agent identity, so a scoped reader of a shared

@@ -60,7 +60,7 @@ export function ProjectMilestonesTab({ projectId, milestones, allTasks, headers,
       </div>
 
       {showForm && (
-        <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{editingId ? t("edit") : t("addMilestone")}</h3>
             <button onClick={() => setShowForm(false)} className="p-1 hover:bg-muted rounded transition-colors"><X className="h-4 w-4" /></button>
@@ -69,7 +69,7 @@ export function ProjectMilestonesTab({ projectId, milestones, allTasks, headers,
           <div className="grid grid-cols-2 gap-3">
             <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="rounded-lg border border-input bg-background px-3 py-2 text-sm" />
             <div className="flex items-center gap-2">
-              <input type="color" value={color} onChange={e => setColor(e.target.value)} className="h-9 w-10 rounded border border-zinc-200 dark:border-zinc-700 cursor-pointer" />
+              <input type="color" value={color} onChange={e => setColor(e.target.value)} className="h-9 w-10 rounded border border-input cursor-pointer" />
               <span className="text-xs text-muted-foreground font-mono">{color}</span>
             </div>
           </div>
@@ -89,7 +89,7 @@ export function ProjectMilestonesTab({ projectId, milestones, allTasks, headers,
             const isOverdue = m.dueDate && new Date(m.dueDate) < new Date() && m.status !== "completed"
             return (
               <MotionItem key={m.id}>
-                <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 bg-card p-4 hover:shadow-md transition-all duration-200 border-l-4"
+                <div className="rounded-xl border border-border bg-card p-4 hover:shadow-md transition-all duration-200 border-l-4"
                   style={{ borderLeftColor: m.color }}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2.5">

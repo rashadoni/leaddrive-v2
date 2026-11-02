@@ -26,6 +26,7 @@ vi.mock("next-intl", () => ({
 }))
 
 import type { MtmDashboardAgent } from "@/lib/mtm-types"
+import type { MtmLiveMovement } from "@/lib/mtm/movement-mode"
 import { parseMtmLiveMapContract, presentMtmDashboardAgent } from "@/lib/mtm-types"
 import { MTM_AGENT_MAP_COLOR_KEYS } from "@/lib/mtm/agent-tags"
 import {
@@ -591,6 +592,7 @@ describe("the list on the page", () => {
   let state: { filters: RosterFilters; view: RosterView; hidden: Set<string>; selected: string | null; hiddenList: boolean }
   let agents: MtmDashboardAgent[]
   let workforceEnabled: boolean
+  let movements: Map<string, MtmLiveMovement | null> | undefined
 
   function Harness() {
     const [, rerender] = useState(0)
@@ -622,6 +624,7 @@ describe("the list on the page", () => {
       onSelect: (agentId: string) => update(() => { state.selected = state.selected === agentId ? null : agentId }),
       renderDetail: (agent: MtmDashboardAgent) => createElement("div", { "data-testid": "detail" }, `день: ${agent.name}`),
       nowMs: NOW,
+      movements,
       workforceEnabled,
       formatClock: (value: string | null | undefined) => value ? new Date(value).toISOString().slice(11, 16) : "",
       formatVisitOpened: (value: string) => earlierDay(value) ? `${value.slice(8, 10)}.${value.slice(5, 7)}, ${value.slice(11, 16)}` : new Date(value).toISOString().slice(11, 16),
@@ -667,6 +670,7 @@ describe("the list on the page", () => {
     state = { filters: {}, view: { ...ROSTER_DEFAULT_VIEW, columns: [...ROSTER_DEFAULT_VIEW.columns] }, hidden: new Set(), selected: null, hiddenList: false }
     agents = TEAM
     workforceEnabled = true
+    movements = undefined
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -1038,6 +1042,34 @@ describe("the list on the page", () => {
     expect(byTestId("live-map-agent-standing-s3")).toBeNull()
   })
 
+  // Owner, 2026-11-01, of the mockup «MTM: движение на карте»: the row says
+  // car or on foot with the marker's badge, and standing has its badge too.
+  it("says car or on foot for whoever is on the road, with the marker's badge", async () => {
+    agents = [
+      person("car", "Едет машиной", { speed: 34 }),
+      person("foot", "Идёт", { speed: 5 }),
+      person("still", "Стоит", { fieldStatus: "STOPPED", stationarySince: minutesAgo(18) }),
+      person("visit", "У клиента", { fieldStatus: "CHECKED_IN" }),
+      person("old", "Без способа", { speed: 20 }),
+    ]
+    movements = new Map([
+      ["car", { mode: "DRIVE", heading: 90 }],
+      ["foot", { mode: "WALK", heading: null }],
+      ["still", { mode: "STAY", heading: null }],
+      ["visit", { mode: "STAY", heading: null }],
+      ["old", null],
+    ])
+    await draw()
+    expect(visibleText(cell("car", "status"))).toBe("Едет · 34 км/ч")
+    expect(visibleText(cell("foot", "status"))).toBe("Пешком · 5 км/ч")
+    expect(visibleText(cell("still", "status"))).toBe("Стоит")
+    const badge = (agentId: string) => byTestId(`live-map-agent-movement-${agentId}`)?.getAttribute("data-mode") ?? null
+    expect(["car", "foot", "still", "visit", "old"].map(badge)).toEqual(["DRIVE", "WALK", "STAY", null, null])
+    // At a client and without a reading: the status word and its dot, as before.
+    expect(visibleText(cell("visit", "status"))).toBe("На точке")
+    expect(visibleText(cell("old", "status"))).toBe("В пути")
+  })
+
   it("does not group by a column this roster does not have, whatever layout was remembered", async () => {
     // Remembered in another organization, where there were teams.
     agents = TEAM.map((agent) => ({ ...agent, teamId: null, teamName: null }))
@@ -1054,10 +1086,15 @@ describe("the list on the page", () => {
     expect(byTestId("live-map-roster-filters-button")?.textContent).toBe("Фильтры")
     await press(byTestId("live-map-roster-filters-button"))
     const panel = byTestId("live-map-roster-filters-menu")!
+    const titles = () => [...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent)
+    // Owner, 2026-11-01 («фильтр хаотично построен»): one group a row, the ones
+    // a manager uses first; the rest under «Ещё фильтры» until asked for.
+    expect(titles()).toEqual(["Статус", "Отдел", "Приложение", "Сигнал"])
+    expect(byTestId("live-map-roster-filters-more")?.textContent).toBe("Ещё фильтры: рабочий день, маршрут, скорость, батарея")
+    await press(byTestId("live-map-roster-filters-more"))
     // Every column of this roster at once, also the ones the narrow list does
     // not draw. Particular people are picked from the search and the name column.
-    expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
-      .toEqual(["Статус", "Сигнал", "Отдел", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+    expect(titles()).toEqual(["Статус", "Отдел", "Приложение", "Сигнал", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
     // The values are on the panel already: one press from «Фильтры» to a filter.
     expect([...byTestId("live-map-roster-filters-group-battery")!.querySelectorAll("button")].map((value) => value.textContent))
       .toEqual(["Ниже 20%1", "20–50%1", "Выше 50%2", "Нет данных2"])
@@ -1172,8 +1209,8 @@ describe("the list on the page", () => {
       await settle()
       expect(floating()).toBe(true)
       expect(placed("live-map-roster-filters-menu")).toEqual(BESIDE_THE_LIST)
-      // A floating panel is closed by Escape or a press outside: it needs no «Готово».
-      expect(byTestId("live-map-roster-filters-done")).toBeNull()
+      // Closed by Escape, a press outside — or «Готово» at its foot, which says what is shown.
+      expect(byTestId("live-map-roster-filters-done")?.textContent).toBe("Готово · показано 6 из 6")
       expect(byTestId("live-map-roster-heading")?.className).toContain("sticky")
       // It is bounded by the room to the left of the list, so it is never cut by the edge of the screen.
       expect(byTestId("live-map-roster-filters-menu")?.className).toContain("var(--radix-popover-content-available-width)")
@@ -1437,9 +1474,10 @@ describe("the list on the page", () => {
       await draw()
       await press(byTestId("live-map-roster-filters-button"))
       const panel = byTestId("live-map-roster-filters-menu")!
-      // Nobody here has a team or a manager; the labels stand where the table has them.
+      await press(byTestId("live-map-roster-filters-more"))
+      // Nobody here has a team or a manager; the labels wait under «Ещё фильтры».
       expect([...panel.querySelectorAll('[data-testid^="live-map-roster-filters-title-"]')].map((title) => title.textContent))
-        .toEqual(["Статус", "Сигнал", "Метки", "Приложение", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
+        .toEqual(["Статус", "Приложение", "Сигнал", "Метки", "Рабочий день", "Маршрут", "Скорость", "Батарея"])
       expect([...byTestId("live-map-roster-filters-group-tags")!.querySelectorAll("button")].map((value) => value.textContent))
         .toEqual(["аптеки1", "наставник1", "ночная смена1", "резерв2", "север1", "стажёр3", "Без меток2"])
 
@@ -1593,7 +1631,7 @@ describe("the page behind the list", () => {
     expect(rows).toBeGreaterThan(-1)
     expect(roster.slice(rows)).not.toMatch(/overflow-(y-)?(auto|scroll)|max-h-/)
     // The offsets are <main>'s own padding; without them rows show through above the heading.
-    expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-zinc-200 bg-card sm:-top-4 lg:-top-8 dark:border-zinc-700",')
+    expect(roster).toContain('"-top-3 z-20 rounded-t-lg border-b border-border bg-card sm:-top-4 lg:-top-8",')
     // It follows the screen — except while it holds the open filters under the map, when it can be taller than the screen.
     expect(roster).toContain('!filtersInList && "[@media(min-height:600px)]:sticky",')
     expect(readFileSync("src/app/(dashboard)/layout.tsx", "utf8")).toMatch(/<main className=\{`[^`]*overflow-y-auto[^`]* p-3 sm:p-4 lg:p-8 /)

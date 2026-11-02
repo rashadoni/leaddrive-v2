@@ -900,7 +900,7 @@ function severityClasses(severity: AdvisorSignal["severity"]) {
   if (severity === "critical") return "border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
   if (severity === "high") return "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
   if (severity === "medium") return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300"
-  return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+  return "border-border bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
 }
 
 function formatMoney(value: number, currency = "AZN") {
@@ -2082,7 +2082,7 @@ export default function AiActionsPage() {
 
   return (
     <div className="space-y-5" data-advisor-loaded={loading ? "false" : "true"}>
-      <section className="overflow-hidden rounded-2xl border border-orange-100/80 bg-[radial-gradient(circle_at_top_left,rgba(244,81,8,0.14),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.98),rgba(255,247,237,0.76),rgba(255,255,255,0.98))] p-4 shadow-sm dark:border-orange-900/40 dark:bg-card sm:p-5" data-tour-id="ai-actions-header">
+      <section className="overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5" data-tour-id="ai-actions-header">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -2094,7 +2094,7 @@ export default function AiActionsPage() {
                 <ShieldCheck className="h-3.5 w-3.5" />
                 {copy.approvalRequired}
               </Badge>
-              <Badge variant="outline" className="border-zinc-200 bg-white/70 text-muted-foreground dark:border-zinc-800 dark:bg-zinc-950/40">
+              <Badge variant="outline" className="border-border bg-card text-muted-foreground">
                 <Inbox className="h-3.5 w-3.5" />
                 {advisor?.overview.pendingActions ?? pending.length} {copy.pendingActions.toLowerCase()}
               </Badge>
@@ -2107,7 +2107,7 @@ export default function AiActionsPage() {
             </h1>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-muted-foreground">{copy.subtitle}</p>
           </div>
-          <div className="w-full rounded-xl border border-white/70 bg-white/90 p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/45 sm:w-auto sm:min-w-[230px]">
+          <div className="w-full rounded-xl border border-border bg-card p-3 text-card-foreground shadow-sm sm:w-auto sm:min-w-[230px]">
             <div className="flex flex-wrap items-center justify-between gap-3 sm:block">
               <div className="text-xs text-muted-foreground">
                 <p>{copy.lastUpdated}</p>
@@ -2155,7 +2155,7 @@ export default function AiActionsPage() {
       />
 
       <Tabs ref={advisorTabsRef} value={activeTab} onValueChange={(value) => setActiveTab(parseAdvisorTab(value))} className="scroll-mt-4 space-y-4">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-full border border-zinc-200 bg-white/90 p-1 shadow-sm dark:border-zinc-800 dark:bg-card" data-tour-id="ai-actions-tabs">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-full border border-border bg-card p-1 shadow-sm" data-tour-id="ai-actions-tabs">
           <TabsTrigger value="today" className="rounded-full px-4 data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:shadow-sm">{copy.today}</TabsTrigger>
           <TabsTrigger value="detail" className="rounded-full px-4 data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:shadow-sm md:hidden">{copy.detail}</TabsTrigger>
           <TabsTrigger value="ask" className="rounded-full px-4 data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:shadow-sm">{copy.ask}</TabsTrigger>

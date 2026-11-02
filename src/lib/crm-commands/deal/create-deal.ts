@@ -12,6 +12,7 @@ import { validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { createDealCommandSchema, type CreateDealCommandInput } from "../schemas/deal"
 import { dispatchDealCreatedEffects } from "./effects"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 export type CreatedDealEntity = Omit<Deal, "valueAmount"> & {
   valueAmount: number
@@ -151,27 +152,30 @@ export async function createDealCommand(
   }
 
   const duplicateCandidates = await findDuplicateCandidates(db, orgId, input)
-  const deal = await db.deal.create({
-    data: {
-      organizationId: orgId,
-      name: input.name,
-      companyId: input.companyId ?? null,
-      contactId: input.contactId ?? null,
-      campaignId: input.campaignId ?? null,
-      pipelineId,
-      stage,
-      valueAmount: input.valueAmount ?? 0,
-      currency: input.currency || DEFAULT_CURRENCY,
-      probability: probability ?? 10,
-      expectedClose: input.expectedClose ? new Date(input.expectedClose) : null,
-      assignedTo: input.assignedTo || userId,
-      notes: input.notes,
-      tags: input.tags ?? [],
-    },
-    include: {
-      company: { select: { id: true, name: true } },
-      campaign: { select: { id: true, name: true } },
-    },
+  const deal = await withDealEvents(db, orgId, [], async (tx) => {
+    const created = await tx.deal.create({
+      data: {
+        organizationId: orgId,
+        name: input.name,
+        companyId: input.companyId ?? null,
+        contactId: input.contactId ?? null,
+        campaignId: input.campaignId ?? null,
+        pipelineId,
+        stage,
+        valueAmount: input.valueAmount ?? 0,
+        currency: input.currency || DEFAULT_CURRENCY,
+        probability: probability ?? 10,
+        expectedClose: input.expectedClose ? new Date(input.expectedClose) : null,
+        assignedTo: input.assignedTo || userId,
+        notes: input.notes,
+        tags: input.tags ?? [],
+      },
+      include: {
+        company: { select: { id: true, name: true } },
+        campaign: { select: { id: true, name: true } },
+      },
+    })
+    return { value: created, createdIds: [created.id] }
   })
 
   const dealValue = decimalToNumber(deal.valueAmount)

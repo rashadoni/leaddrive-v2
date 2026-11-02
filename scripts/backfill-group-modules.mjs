@@ -34,6 +34,8 @@ export const BACKFILL_VERSION = "v2"
 const MAP = {
   // crm (shared relationship core) + sales (deals/leads/quotes/offers carved out)
   core: "crm", deals: "sales", leads: "sales", tasks: "crm", quotes: "sales",
+  // New session permission alias; no historical feature/backfill version change.
+  bookings: "sales",
   offers: "sales", projects: "crm", companies: "crm", contacts: "crm",
   // marketing + loyalty
   campaigns: "marketing", events: "marketing", journeys: "marketing",

@@ -109,6 +109,8 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
   const comparison = totals && !regionOnly ? weekComparison(totals, week.previous) : { kind: "unknown" as const }
   const card = today ? planCard({ today, plan, nextWorkday: attention.data?.nextWorkday ?? null }) : { kind: "none" as const }
   const waiting = attentionRowCount(attention.data)
+  // Until the first team list arrives every figure is still on its way.
+  const teamPending = !team && !teamFailed
   // The lower row: read once a day per filters, never polled.
   const insights = useHomeInsights({ organizationId, viewerId, regionId, teamId, today })
 
@@ -227,8 +229,9 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
           unit={team ? t("kpiInFieldUnit", { total: now.total }) : null}
           pill={now.atCustomer > 0 ? t("pillAtCustomer", { count: now.atCustomer }) : null}
           sub={fieldSub}
+          loading={teamPending}
         />
-        <HomeKpi testId="mtm-home-kpi-plan" {...planKpi} />
+        <HomeKpi testId="mtm-home-kpi-plan" {...planKpi} loading={teamPending} />
         <HomeKpi
           testId="mtm-home-kpi-week"
           label={t("kpiWeekPlan")}
@@ -240,6 +243,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
           pill={weekPercent !== null ? `${weekPercent}%` : null}
           progress={weekPercent}
           sub={weekSub}
+          loading={teamPending}
         />
         <HomeKpi
           testId="mtm-home-kpi-attention"
@@ -250,6 +254,7 @@ export function MtmHomeDashboard<Row extends HomeTeamCardRow>({
           value={waiting === null ? null : String(waiting)}
           unit={waiting ? t("issuesUnit", { count: waiting }) : null}
           sub={waiting === null ? (attention.failed ? t("attentionLoadFailed") : null) : waiting === 0 ? t("attentionClear") : waitingParts}
+          loading={waiting === null && !attention.failed}
         />
       </div>
 

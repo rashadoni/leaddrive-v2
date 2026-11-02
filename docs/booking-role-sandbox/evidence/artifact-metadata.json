@@ -1,0 +1,32 @@
+{
+  "artifactId": 12592510296,
+  "name": "booking-role-sandbox-50f205317e4d7d4ea155a786586f01c181ed7d60-1",
+  "runId": 40175047313,
+  "jobId": 121113793512,
+  "runUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/40175047313",
+  "sizeBytes": 226458,
+  "zipSha256": "67c75099f503bd6eb2a864d26d8cfd1b29813dcf68c1d555032b2e7e1940ed33",
+  "zipDigestVerified": true,
+  "sourceBindingsVerifiedAgainstCandidateAndWorkingFiles": 16,
+  "createdAt": "2026-10-25T08:16:48Z",
+  "expiresAt": "2026-11-08T08:16:47Z",
+  "downloadedTransientSignedUrlRetained": false,
+  "localFiles": [
+    {
+      "path": "coordinator-calendar.png",
+      "sha256": "41e3552c0c1dbe0197c8e20c05679c11556e496b8632dd0318783fb20b03cc96"
+    },
+    {
+      "path": "employee-task-link.png",
+      "sha256": "126300de75a7ef08aff98361f1d1a79ff3bf979caef30aad85a6f3772bb2a35c"
+    },
+    {
+      "path": "result.json",
+      "sha256": "0df6c5ac8c44283ae87b6d701c84fcdb3737cde5d55866d17084e2a1406d57fb"
+    },
+    {
+      "path": "workflow-context.json",
+      "sha256": "085504aebea2b94ac3fa322f197770cead55cb2c423b9db0d6667cab8ca04e60"
+    }
+  ]
+}

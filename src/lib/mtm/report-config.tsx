@@ -14,23 +14,60 @@ import { Users, MapPin, Route, Camera, ClipboardCheck, CalendarClock, ChartNoAxe
 import { TONE_CLASSES, type Tone } from "@/lib/mtm/activity-actions"
 
 export type ReportType = "agent" | "visit" | "route" | "photo" | "route_execution" | "action_compliance" | "promises" | "sales"
+  | "coverage" | "not_visited" | "suspicious" | "presentations" | "field_day" | "joint_evaluations"
 export const MANAGEMENT_REPORT_TYPES: ReportType[] = ["route_execution", "action_compliance", "promises", "sales"]
+/** Served by /api/v1/mtm/field-reports (src/lib/mtm/field-reports.ts). */
+export const FIELD_REPORT_TYPES: ReportType[] = ["coverage", "not_visited", "suspicious", "presentations", "field_day", "joint_evaluations"]
+
+/** Which API answers a report. */
+export function reportEndpoint(type: ReportType): "reports" | "management-reports" | "field-reports" {
+  if (MANAGEMENT_REPORT_TYPES.includes(type)) return "management-reports"
+  if (FIELD_REPORT_TYPES.includes(type)) return "field-reports"
+  return "reports"
+}
 /**
  * The cards on /mtm/reports. «route» is not one of them any more (owner
  * 2026-09-26: «убери дублирования»): «План и выполнение маршрутов»
  * (route_execution) answers the same question better — by the route's own
  * date, with team and region. The type stays for a tab opened before.
  */
-export const REPORT_TYPES: ReportType[] = ["agent", "visit", "photo", ...MANAGEMENT_REPORT_TYPES]
+export const REPORT_TYPES: ReportType[] = ["agent", "visit", "photo", ...MANAGEMENT_REPORT_TYPES, ...FIELD_REPORT_TYPES]
 
-export type ColKind = "text" | "status" | "role" | "number" | "percent" | "minutes" | "date"
+/**
+ * The reports by what a manager asks of them (owner-approved mockup,
+ * 2026-11-01): the team, the clients, control, sales. Every type of
+ * REPORT_TYPES is in exactly one group.
+ */
+export const REPORT_GROUPS: ReadonlyArray<{ id: "team" | "clients" | "control" | "sales"; types: ReportType[] }> = [
+  { id: "team", types: ["agent", "route_execution", "field_day", "joint_evaluations"] },
+  { id: "clients", types: ["coverage", "not_visited", "visit", "presentations", "promises"] },
+  { id: "control", types: ["suspicious", "photo", "action_compliance"] },
+  { id: "sales", types: ["sales"] },
+]
+
+/** Where a row of a report leads: the visit, the route, the employee — or nowhere. */
+export function reportRowHref(type: ReportType, row: Record<string, unknown>): string | null {
+  const id = typeof row.id === "string" && row.id ? encodeURIComponent(row.id) : null
+  if (!id) return null
+  if (type === "visit" || type === "promises" || type === "suspicious") return `/mtm/visits?visitId=${id}`
+  if (type === "route" || type === "route_execution") return `/mtm/routes?routeId=${id}`
+  if (type === "agent" || type === "coverage" || type === "joint_evaluations") return `/mtm/agents/${id}`
+  if (type === "not_visited") return `/mtm/contacts/${id}`
+  if (type === "field_day") return typeof row.agentId === "string" && row.agentId ? `/mtm/agents/${encodeURIComponent(row.agentId)}` : null
+  return null
+}
+
+/** `day` is a calendar day stored as a date; `action` is a visit action's code, said in words. */
+export type ColKind = "text" | "status" | "role" | "number" | "percent" | "minutes" | "date" | "day" | "action"
+  /** Seconds as m:ss; metres; the reasons a visit is suspicious; a last visit that may be «never»; whole days; hours, a dash when not counted. */
+  | "seconds" | "meters" | "reasons" | "lastVisit" | "days" | "hours"
 export interface ReportColumn { key: string; labelKey: string; kind: ColKind }
 export interface ReportDef { icon: LucideIcon; iconClass: string; columns: ReportColumn[] }
 
 export const REPORTS: Record<ReportType, ReportDef> = {
   agent: {
     icon: Users,
-    iconClass: "text-blue-500 bg-blue-50 dark:bg-blue-950/30",
+    iconClass: "text-blue-500",
     columns: [
       { key: "name", labelKey: "colAgent", kind: "text" },
       { key: "role", labelKey: "colRole", kind: "role" },
@@ -41,7 +78,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   visit: {
     icon: MapPin,
-    iconClass: "text-red-500 bg-red-50 dark:bg-red-950/30",
+    iconClass: "text-red-500",
     columns: [
       { key: "date", labelKey: "colDate", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -52,7 +89,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   route: {
     icon: Route,
-    iconClass: "text-purple-500 bg-purple-50 dark:bg-purple-950/30",
+    iconClass: "text-purple-500",
     columns: [
       { key: "date", labelKey: "colDate", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -63,7 +100,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   photo: {
     icon: Camera,
-    iconClass: "text-green-500 bg-green-50 dark:bg-green-950/30",
+    iconClass: "text-green-500",
     columns: [
       { key: "date", labelKey: "colUploaded", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -73,9 +110,9 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   route_execution: {
     icon: ChartNoAxesCombined,
-    iconClass: "text-cyan-700 bg-cyan-50 dark:bg-cyan-950/30",
+    iconClass: "text-cyan-700",
     columns: [
-      { key: "date", labelKey: "colDate", kind: "date" },
+      { key: "date", labelKey: "colDate", kind: "day" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
       { key: "team", labelKey: "colTeam", kind: "text" },
       { key: "region", labelKey: "colRegion", kind: "text" },
@@ -87,10 +124,10 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   action_compliance: {
     icon: ClipboardCheck,
-    iconClass: "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30",
+    iconClass: "text-emerald-700",
     columns: [
       { key: "team", labelKey: "colTeam", kind: "text" },
-      { key: "action", labelKey: "colAction", kind: "text" },
+      { key: "action", labelKey: "colAction", kind: "action" },
       { key: "required", labelKey: "colRequired", kind: "number" },
       { key: "compliant", labelKey: "colCompliant", kind: "number" },
       { key: "compliance", labelKey: "colCompliance", kind: "percent" },
@@ -98,7 +135,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   promises: {
     icon: CalendarClock,
-    iconClass: "text-amber-700 bg-amber-50 dark:bg-amber-950/30",
+    iconClass: "text-amber-700",
     columns: [
       { key: "dueAt", labelKey: "colDueAt", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -110,7 +147,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
   },
   sales: {
     icon: ChartNoAxesCombined,
-    iconClass: "text-indigo-700 bg-indigo-50 dark:bg-indigo-950/30",
+    iconClass: "text-indigo-700",
     columns: [
       { key: "customer", labelKey: "colCustomer", kind: "text" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
@@ -119,6 +156,79 @@ export const REPORTS: Record<ReportType, ReportDef> = {
       { key: "actualAmount", labelKey: "colFact", kind: "number" },
       { key: "amountVariance", labelKey: "colVariance", kind: "number" },
       { key: "attainment", labelKey: "colAttainment", kind: "percent" },
+    ],
+  },
+  coverage: {
+    icon: Users,
+    iconClass: "text-sky-700",
+    columns: [
+      { key: "agent", labelKey: "colAgent", kind: "text" },
+      { key: "contacts", labelKey: "colContacts", kind: "number" },
+      { key: "visited", labelKey: "colVisitedContacts", kind: "number" },
+      { key: "coverage", labelKey: "colCoverage", kind: "percent" },
+      { key: "coverageA", labelKey: "colCoverageA", kind: "percent" },
+      { key: "coverageB", labelKey: "colCoverageB", kind: "percent" },
+      { key: "coverageC", labelKey: "colCoverageC", kind: "percent" },
+    ],
+  },
+  not_visited: {
+    icon: Users,
+    iconClass: "text-amber-700",
+    columns: [
+      { key: "contact", labelKey: "colContact", kind: "text" },
+      { key: "category", labelKey: "colCategory", kind: "text" },
+      { key: "agent", labelKey: "colResponsible", kind: "text" },
+      { key: "lastVisit", labelKey: "colLastVisit", kind: "lastVisit" },
+      { key: "daysSince", labelKey: "colDaysSince", kind: "days" },
+    ],
+  },
+  suspicious: {
+    icon: MapPin,
+    iconClass: "text-red-700",
+    columns: [
+      { key: "date", labelKey: "colDate", kind: "date" },
+      { key: "agent", labelKey: "colAgent", kind: "text" },
+      { key: "customer", labelKey: "colCustomer", kind: "text" },
+      { key: "duration", labelKey: "colDuration", kind: "minutes" },
+      { key: "distance", labelKey: "colDistance", kind: "meters" },
+      { key: "reasons", labelKey: "colReasons", kind: "reasons" },
+    ],
+  },
+  presentations: {
+    icon: ChartNoAxesCombined,
+    iconClass: "text-purple-700",
+    columns: [
+      { key: "product", labelKey: "colProduct", kind: "text" },
+      { key: "shows", labelKey: "colShows", kind: "number" },
+      { key: "clients", labelKey: "colClientsShown", kind: "number" },
+      { key: "avgSeconds", labelKey: "colAvgShow", kind: "seconds" },
+      { key: "avgPages", labelKey: "colAvgPages", kind: "number" },
+    ],
+  },
+  field_day: {
+    icon: CalendarClock,
+    iconClass: "text-teal-700",
+    columns: [
+      { key: "date", labelKey: "colDate", kind: "day" },
+      { key: "agent", labelKey: "colAgent", kind: "text" },
+      { key: "start", labelKey: "colDayStart", kind: "text" },
+      { key: "firstVisit", labelKey: "colFirstVisit", kind: "text" },
+      { key: "lastVisit", labelKey: "colLastVisitTime", kind: "text" },
+      { key: "end", labelKey: "colDayEnd", kind: "text" },
+      { key: "hours", labelKey: "colHours", kind: "hours" },
+      { key: "visits", labelKey: "colVisits", kind: "number" },
+      { key: "atClients", labelKey: "colAtClients", kind: "minutes" },
+    ],
+  },
+  joint_evaluations: {
+    icon: Users,
+    iconClass: "text-violet-700",
+    columns: [
+      { key: "agent", labelKey: "colAgent", kind: "text" },
+      { key: "evaluations", labelKey: "colEvaluations", kind: "number" },
+      { key: "average", labelKey: "colAvgScore", kind: "number" },
+      { key: "weakest", labelKey: "colWeakest", kind: "text" },
+      { key: "lastEvaluation", labelKey: "colLastEvaluation", kind: "date" },
     ],
   },
 }
@@ -132,6 +242,8 @@ const STATUS_TONE: Record<string, Tone> = {
   // missed on purpose, and part of the plan may well have been done.
   INCOMPLETE: "amber",
   OPEN: "amber",
+  // A promise somebody came back for (management-reports «promises»).
+  DONE: "green",
 }
 
 export function statusClass(status: string): string {

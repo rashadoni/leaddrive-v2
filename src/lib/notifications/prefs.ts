@@ -11,6 +11,7 @@ import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-r
  */
 import { MTM_LOCATION_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/customer-location-request-notification"
 import { MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/contact-create-request-notification"
+import { PUBLIC_CALENDAR_NOTIFICATION_KIND } from "@/lib/mtm/az-calendar-notification"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,6 +82,8 @@ export const KINDS_ON_UNLESS_SWITCHED_OFF: ReadonlySet<string> = new Set([
   MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
   MTM_ATTENDANCE_RISK_NOTIFICATION_KIND,
   MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND,
+  // Once a year: next year's official holidays are waiting for an admin to add them.
+  PUBLIC_CALENDAR_NOTIFICATION_KIND,
 ])
 
 // ---------------------------------------------------------------------------

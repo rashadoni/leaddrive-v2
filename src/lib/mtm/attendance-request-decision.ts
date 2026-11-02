@@ -15,6 +15,7 @@ import en from "../../../messages/en.json"
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 import { readAttendanceTwoStepApproval } from "@/lib/mtm/attendance-approval-chain"
 import { notifyAttendanceRequestHr } from "@/lib/mtm/attendance-request-notify"
+import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 
 export const AttendanceDecisionInputSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]), version: z.string().datetime(),
@@ -53,10 +54,10 @@ export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClien
 export async function requireAttendanceReviewer(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, agentId: string, options: { allowInactive?: boolean } = {}) {
   const { organizationId, userId } = reviewer
   const actor = await resolveAttendanceReviewerScope(tx, reviewer)
-  const target = await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId, ...(options.allowInactive ? {} : { status: "ACTIVE" }) }, select: { userId: true, user: { select: { preferredLanguage: true } } } })
+  const target = await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId, ...(options.allowInactive ? {} : { status: "ACTIVE" }) }, select: { userId: true, ...AGENT_LANGUAGE_SELECT } })
   if (!target || !actor || !canReviewMtmRouteRequest(actor, agentId)) throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   if (target.userId === userId) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_SELF_APPROVAL", 403)
-  return { actor, locale: target.user?.preferredLanguage }
+  return { actor, locale: agentLanguage(target) }
 }
 const notificationMessages = { az: az.mtmAttendance, ru: ru.mtmAttendance, en: en.mtmAttendance }
 export async function decideAttendanceRequestInTransaction(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer, requestId: string, raw: unknown) {

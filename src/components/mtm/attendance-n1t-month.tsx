@@ -123,7 +123,7 @@ export function AttendanceN1tClosePanel({ month }: { month: AttendanceN1tMonth }
       <AttendanceReportTotals period={state.preview.details[0] ?? null} totals={state.preview.totals} />
     </div>
     <Card className="space-y-4 p-4 sm:p-6">
-      {state.blockers.length ? <div className="space-y-2 rounded-xl border border-l-4 border-zinc-200 border-l-amber-500 bg-card p-4 text-sm dark:border-zinc-700 dark:border-l-amber-500" role="alert" data-testid="attendance-n1t-blockers">
+      {state.blockers.length ? <div className="space-y-2 rounded-xl border border-l-4 border-border border-l-amber-500 bg-card p-4 text-sm dark:border-l-amber-500" role="alert" data-testid="attendance-n1t-blockers">
         <p className="font-medium">{t("monthCloseN1tBlocked")}</p>
         <ul className="space-y-1">{state.blockers.map(blocker => <li key={`${blocker.employeeId}:${blocker.date}`} className="flex flex-wrap items-center gap-x-2" data-testid="attendance-n1t-blocker">
           <span>{blocker.employeeName || "—"} · {day(blocker.date)} · <span className="text-amber-700 dark:text-amber-400">{t(BLOCKER_TEXT[blocker.kind] ?? "reportInvalidFacts")}</span></span>

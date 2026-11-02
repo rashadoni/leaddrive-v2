@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { logAudit, prisma } from "@/lib/prisma"
+import { runWithTenant } from "@/lib/rls-context"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
+import { readLegacyPhoneAssignmentBoundaryInTransaction } from "@/lib/identity/legacy-credential-boundary"
+import { IdentityRegistryError } from "@/lib/identity/contract"
 import { attendanceIdentityConflictResponse } from "@/lib/mtm/attendance-identity-error"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { getAssignableRoleIds } from "@/lib/org-roles"
@@ -203,56 +207,82 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
     // this flag says "switched on", not "allowed".
     if (parsed.data.voiceEnabled !== undefined) updateData.voiceEnabled = parsed.data.voiceEnabled
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true,
-        phone: true, department: true, isActive: true, totpEnabled: true, require2fa: true,
-        smsAuthEnabled: true, verifiedPhone: true,
-        skills: true, maxTickets: true, isAvailable: true, preferredLanguage: true, createdAt: true,
-      },
-    })
+    const save = async (client: Pick<Prisma.TransactionClient, "user">, before: typeof existing, tx?: Prisma.TransactionClient) => {
+      const user = await client.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true,
+          phone: true, department: true, isActive: true, totpEnabled: true, require2fa: true,
+          smsAuthEnabled: true, verifiedPhone: true,
+          skills: true, maxTickets: true, isAvailable: true, preferredLanguage: true, createdAt: true,
+        },
+      })
 
-    const auditableFields = [
-      "name", "email", "role", "phone", "department", "isActive",
-      "require2fa", "skills", "maxTickets", "isAvailable", "preferredLanguage",
-    ] as const
-    const oldValue: Record<string, unknown> = {}
-    const newValue: Record<string, unknown> = {}
-    for (const field of auditableFields) {
-      if (parsed.data[field] !== undefined) {
-        oldValue[field] = existing[field]
-        newValue[field] = parsed.data[field]
+      const auditableFields = [
+        "name", "email", "role", "phone", "department", "isActive",
+        "require2fa", "skills", "maxTickets", "isAvailable", "preferredLanguage",
+      ] as const
+      const oldValue: Record<string, unknown> = {}
+      const newValue: Record<string, unknown> = {}
+      for (const field of auditableFields) {
+        if (parsed.data[field] !== undefined) {
+          oldValue[field] = before[field]
+          newValue[field] = parsed.data[field]
+        }
       }
-    }
-    if (parsed.data.resetTotp === true) {
-      oldValue.totpEnabled = existing.totpEnabled
-      newValue.totpEnabled = false
-    }
-    if (parsed.data.resetSms === true) {
-      oldValue.smsAuthEnabled = existing.smsAuthEnabled
-      newValue.smsAuthEnabled = false
-    }
-    if (updateData.hiddenModules !== undefined) {
-      oldValue.hiddenModules = existing.hiddenModules
-      newValue.hiddenModules = user.hiddenModules
-    }
-    if (securityStateChanged) newValue.sessionsInvalidated = true
+      if (parsed.data.resetTotp === true) {
+        oldValue.totpEnabled = before.totpEnabled
+        newValue.totpEnabled = false
+      }
+      if (parsed.data.resetSms === true) {
+        oldValue.smsAuthEnabled = before.smsAuthEnabled
+        newValue.smsAuthEnabled = false
+      }
+      if (updateData.hiddenModules !== undefined) {
+        oldValue.hiddenModules = before.hiddenModules
+        newValue.hiddenModules = user.hiddenModules
+      }
+      if (securityStateChanged) newValue.sessionsInvalidated = true
 
-    const activityChanged = parsed.data.isActive !== undefined
-      && parsed.data.isActive !== existing.isActive
-    const auditAction = activityChanged
-      ? (parsed.data.isActive ? "user_activated" : "user_deactivated")
-      : "user_updated"
-    await logAudit(orgId, auditAction, "user", user.id, user.email, {
-      userId: authResult.userId,
-      oldValue,
-      newValue,
-    })
+      const activityChanged = parsed.data.isActive !== undefined
+        && parsed.data.isActive !== before.isActive
+      const auditAction = activityChanged
+        ? (parsed.data.isActive ? "user_activated" : "user_deactivated")
+        : "user_updated"
+      const detail = { userId: authResult.userId, oldValue, newValue }
+      if (tx) await logAudit(orgId, auditAction, "user", user.id, user.email, detail, tx)
+      else await logAudit(orgId, auditAction, "user", user.id, user.email, detail)
+      return user
+    }
+    let user: Awaited<ReturnType<typeof save>>
+    if (parsed.data.phone === undefined) user = await save(prisma, existing)
+    else {
+      const result = await runWithTenant(orgId, () => withLegacyCredentialMaintenance(prisma, orgId,
+        [{ kind: "USER", userId: id }], async tx => {
+          const fresh = await tx.user.findFirst({ where: { id, organizationId: orgId } })
+          if (!fresh) throw new IdentityRegistryError("IDENTITY_LEGACY_CONTACT_CHANGED")
+          // A concurrent role/phone or ordinary ORM update needs a new admin
+          // decision, rather than applying the stale form to another state.
+          if (fresh.role !== existing.role || fresh.phone !== existing.phone || fresh.isActive !== existing.isActive
+            || fresh.updatedAt?.getTime() !== existing.updatedAt?.getTime()) {
+            throw new IdentityRegistryError("IDENTITY_LEGACY_CONTACT_CHANGED")
+          }
+          if (parsed.data.phone && await readLegacyPhoneAssignmentBoundaryInTransaction(tx, orgId, parsed.data.phone) !== "LEGACY") {
+            throw new IdentityRegistryError("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+          }
+          return save(tx, fresh, tx)
+        }))
+      if (!result.allowed) throw new IdentityRegistryError("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+      user = result.value
+    }
 
     return NextResponse.json({ success: true, data: user })
   } catch (e) {
+    if (e instanceof IdentityRegistryError && ["IDENTITY_CREDENTIAL_FLOW_REQUIRED", "IDENTITY_LEGACY_CONTACT_CHANGED"].includes(e.code)) {
+      return NextResponse.json({ code: e.code, error: e.code === "IDENTITY_CREDENTIAL_FLOW_REQUIRED"
+        ? "Use the current credential management flow for this account" : "The user changed; refresh and retry" }, { status: 409 })
+    }
     const conflict = attendanceIdentityConflictResponse(e)
     if (conflict) return conflict
     console.error("Users API error:", e)

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { expandCatalog, loadCatalog, loadTopology } from './render.mjs'
 import { readFileSync } from 'node:fs'
-import { PRINCIPALS, aclBindings, connectSecretEnv, infraTopics, registrySecretEnv, renderServiceHost, renderSourceConnector } from './services.mjs'
+import { PRINCIPALS, aclBindings, connectSecretEnv, heartbeatTopic, infraTopics, registrySecretEnv, renderServiceHost, renderSourceConnector } from './services.mjs'
 
 const topology = loadTopology()
 const topics = expandCatalog(loadCatalog(), 'prod')
@@ -19,6 +19,22 @@ test('each service identity gets only the access its job needs', () => {
   const fund = grantsFor(PRINCIPALS.fundWorker)
   assert.deepEqual(fund.filter((g) => g.includes('--topic')).map((g) => g.match(/--topic (\S+)/)[1]), ['ld.prod.finance.events.v1'])
   assert.ok(!fund.some((g) => /--operation (Write|IdempotentWrite)/.test(g)), 'the fund worker only reads')
+  // Every admin call the bridge makes at start must be granted, or it never
+  // reaches READY on an ACL-enforcing cluster (the CI stack has no ACLs).
+  const bridge = readFileSync(new URL('../../../ops/event-platform/driver/KafkaPartitionBridge.java', import.meta.url), 'utf8')
+  const financeGrant = fund.find((g) => g.includes('--topic ld.prod.finance.events.v1'))
+  for (const [call, operation] of [['describeTopics', 'Describe'], ['describeConfigs', 'DescribeConfigs']]) {
+    if (bridge.includes(`admin.${call}(`)) assert.match(financeGrant, new RegExp(`--operation ${operation}\\b`), `bridge calls ${call}`)
+  }
+
+  // The worker plan's group pattern must sit under the granted group prefix.
+  const admission = readFileSync(new URL('../../../src/lib/event-platform/worker-admission.ts', import.meta.url), 'utf8')
+  const pattern = admission.match(/new RegExp\(`\^(ld\\\\\.\$\{environment\}[^`]*?)v\$\{projectionVersion\}/)
+  assert.ok(pattern, 'worker plan group pattern found')
+  const planPrefix = pattern[1].replaceAll('\\\\', '').replace('${environment}', 'prod')
+  const groupGrant = fund.find((g) => g.includes('--group'))
+  assert.match(groupGrant, /--resource-pattern-type prefixed/)
+  assert.ok(planPrefix.startsWith(groupGrant.match(/--group (\S+)/)[1]), `group ACL covers ${planPrefix}`)
 
   const registry = grantsFor(PRINCIPALS.registry)
   for (const g of registry.filter((g) => g.includes('--topic'))) {
@@ -80,4 +96,21 @@ test('Connect reaches the source by its certificate name over the overlay and ke
   assert.equal(connector.config['database.password'], '${file:/etc/kafka/secrets/cdc.properties:password}')
   assert.equal(connector.config['slot.name'], 'leaddrive_event_outbox_prod')
   assert.equal(connector.config['transforms.outbox.route.topic.replacement'], 'ld.prod.$1.events.v1')
+  // Heartbeats keep the slot moving while the outbox is quiet; their topic is
+  // a platform topic under the prefix Connect may write, never an events topic.
+  assert.equal(connector.config['heartbeat.interval.ms'], '60000')
+  const beat = `${connector.config['topic.heartbeat.prefix']}.${connector.config['topic.prefix']}`
+  assert.equal(beat, heartbeatTopic('prod'))
+  assert.ok(infraTopics('prod').some((t) => t.name === beat))
+  assert.ok(grantsFor(PRINCIPALS.connect).some((g) => /--operation Write .*--topic ld\.prod\.connect\. --resource-pattern-type prefixed/.test(g)) && beat.startsWith('ld.prod.connect.'))
+  assert.doesNotMatch(beat, /\.events\.v1$/)
+  // The heartbeat's own WAL message is consumed, never emitted as a record.
+  assert.match(connector.config['heartbeat.action.query'], /^SELECT pg_logical_emit_message\(false, '([a-z-]+)', ''\)$/)
+  // Allow-list that admits nothing: neither the heartbeat nor any foreign
+  // prefix is emitted, so no message can hit the unwritable .message topic.
+  const prefix = connector.config['heartbeat.action.query'].match(/'([a-z-]+)'/)[1]
+  assert.equal(connector.config['message.prefix.exclude.list'], undefined)
+  const allowed = connector.config['message.prefix.include.list'].split(',')
+  assert.ok(allowed.length === 1 && !new RegExp(`^(?:${allowed[0]})$`).test(prefix), 'the heartbeat prefix is not emitted')
+  for (const foreign of ['drill-foreign-prefix', 'pgaudit', 'wal2json', '']) assert.ok(!new RegExp(`^(?:${allowed[0]})$`).test(foreign))
 })

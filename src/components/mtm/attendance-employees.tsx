@@ -101,7 +101,7 @@ export function MtmAttendanceEmployees() {
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <div className="flex flex-wrap items-start gap-2">
       <MtmAttendanceAddEmployee disabled={loading || !directory} teams={directory?.teams ?? []} departments={directory?.departments ?? []} onAdded={(name, phone) => { void load().then(() => setAdded({ name, phone })) }} />
       <Button variant="outline" className="min-h-11 rounded-full" disabled={loading} onClick={() => void load()}>{t("employeesRefresh")}</Button></div>}</div>
-    {added && <p role="status" className="max-w-prose rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-emerald-500 p-4 text-sm" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
+    {added && <p role="status" className="max-w-prose rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-4 text-sm" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
     {loading && !directory && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}
     {error && <p role="alert" className="max-w-prose text-sm text-destructive">{t(error)}</p>}
     {directory && !denied && <section className="space-y-4 rounded-2xl border bg-card p-5" data-testid="employees-roster" aria-label={t("employeesRoster")}>

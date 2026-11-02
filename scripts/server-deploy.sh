@@ -25,13 +25,41 @@ DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-/run/lock/leaddrive-deploy.lock}"
 MIGRATION_ENV_FILE="${MIGRATION_ENV_FILE:-/etc/leaddrive/migration.env}"
 HEALTH_URL="http://localhost:3001"
 PM2_PROCESS="leaddrive-v2"
+# The scheduler's own server process (ecosystem.config.cjs): the same bundle on
+# loopback :3002, so scheduled jobs never hold the web process's thread.
+JOBS_PM2_PROCESS="leaddrive-v2-jobs"
+JOBS_HEALTH_URL="http://localhost:3002"
+# The phone station's own process (ecosystem.config.cjs). It runs from a copy of
+# its release under $APP_DIR/line-releases, in slot a (:3004) or b (:3005), and
+# a deploy replaces it without a gap (Step 7c). nginx sends the station's routes
+# to the active slot, the web app is its fallback
+# (ops/nginx/leaddrive-station-*.conf). LINE_PM2_PROCESS/LINE_PORT name the
+# first form of it (PR #1160: standalone, :3003), retired by the first Step 7c.
+LINE_PM2_PROCESS="leaddrive-v2-line"
+LINE_SLOT_A_PROCESS="leaddrive-v2-line-a"
+LINE_SLOT_B_PROCESS="leaddrive-v2-line-b"
+LINE_SLOT_A_PORT=3004
+LINE_SLOT_B_PORT=3005
+LINE_RELEASES_DIR="$APP_DIR/line-releases"
+# The web app and the scheduler run from a copy of their release too (Step 4):
+# Step 2 unpacks the next build over .next/standalone minutes before Step 4
+# stops them, and a process reading that tree served the new build's files for
+# every page it had not opened yet — "Internal Server Error" (2026-11-02).
+WEB_RELEASES_DIR="$APP_DIR/web-releases"
+WEB_RELEASE_NEW_DIR=""
+LINE_ACTIVE_PORT_FILE="/var/lib/leaddrive-v2/line-active-port"
+LINE_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-station-upstream.conf"
+# People's pages fall back to the line's live slot while the web restarts.
+WEB_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-web-upstream.conf"
 PM2_HOME="/root/.pm2"
 # Production health and the PM2 fence are bound to one canonical name/port.
 # Never let an ambient CI variable rename the process or move it off the port
 # that the handoff proves. App dotenv files are denied these keys below too.
-unset PM2_NAME
+unset PM2_NAME PM2_JOBS_NAME PM2_LINE_NAME
 APP_PORT=3001
-export PM2_HOME APP_PORT
+JOBS_PORT=3002
+LINE_PORT=3003
+export PM2_HOME APP_PORT JOBS_PORT LINE_PORT
 MAX_BACKUPS=5
 DEFAULT_RUNTIME_DIR="/var/lib/leaddrive-v2"
 DEFAULT_LOG_DIR="/var/lib/leaddrive-v2-logs"
@@ -50,7 +78,7 @@ OPS_ACTIVATION_JOURNAL="$OPS_ROOT/activation.journal"
 SYSTEMD_UNIT_DIR="/etc/systemd/system"
 LOGROTATE_DIR="/etc/logrotate.d"
 HELP_VIDEO_PUBLIC_BASE_URL_DEFAULT="https://app.leaddrivecrm.org/api/help-videos"
-HELP_VIDEO_ASSETS_COPIED=false
+HELP_VIDEO_PULL_ACTION="unknown"
 LEGACY_HELP_VIDEO_PATH_RECOGNIZED=false
 STANDALONE_REPLACED=false
 RUNTIME_CUTOVER_APPLIED=false
@@ -68,6 +96,12 @@ RUNTIME_STATE_CUTOVER_FINALIZED=false
 HANDOFF_STARTED=false
 HANDOFF_RECOVERY_COMPLETE=false
 EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED=false
+IDENTITY_RELEASE_CONTROLLER=""
+IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=false
+BOOKING_RELEASE_CONTROLLER=""
+BOOKING_RELEASE_CANDIDATE_FILE=""
+BOOKING_RELEASE_FIRST_EXPANSION=false
+BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=false
 OPS_CURRENT_PREVIOUS_TARGET=""
 OPS_CURRENT_NEW_TARGET=""
 OPS_CURRENT_SWITCHED=false
@@ -146,7 +180,7 @@ BACKUP_AWS_PROVENANCE="$BACKUP_AWS_ROOT/LEADDRIVE_PROVENANCE"
 BACKUP_CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
 BACKUP_ARCHIVE_VERIFIER_SHA256="028d52f8c22c7690a3523ea9db960d5d001ac478bc634063d6065d46c78b4abf"
 BACKUP_POSTGRES_SCRIPT_SHA256="cb1ca4edf130be15ae1d3e76ec431b20fe8ab19d2e1686468d554d027c6802f5"
-BACKUP_SECRETS_SCRIPT_SHA256="c43f3d14fcd68c95b56585ae3844fb8db21db4aefac06b5f210861fd3e2b3907"
+BACKUP_SECRETS_SCRIPT_SHA256="2efda4aa77c291fe014a6e9795a709ed776f1d217c954ba617abf017743f77e5"
 BACKUP_RUNTIME_FILES_SCRIPT_SHA256="e32fa4fdab76e4ad162d7c1463916a3847824c3d438a972051b095da4b4e8330"
 BACKUP_RESTORE_CANARY_SHA256="fc028191f18ee58233ab6fdbaa0a450789d47ca7c9b81567a99fb62161f66355"
 BACKUP_PII_PROOF_SHA256="e83f3fc65c56e0dc8db7eb26e47780c0901917908c05d7aa6552792a37f99e18"
@@ -224,6 +258,11 @@ assert_dotenv_key_allowed() {
     APP_DIR|APP_ENV_FILE|APP_ENV_LOCK_FILE|APP_ENV_SOURCE_FILE|\
     DEPLOY_TAR|DEPLOY_LOCK_FILE|DEPLOY_PREFLIGHT_ONLY|DEPLOY_MODE|EXPECTED_DEPLOY_SHA_ARG|DEPLOY_SHA|DEPLOY_SHA_FILE|\
     ARTIFACT_DEPLOY_SHA|BACKUP_DIR|BACKUP_PATH|MAX_BACKUPS|HEALTH_URL|PM2_PROCESS|PM2_HOME|PM2_NAME|APP_PORT|\
+    JOBS_PM2_PROCESS|JOBS_HEALTH_URL|PM2_JOBS_NAME|JOBS_PORT|\
+    LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|LINE_SLOT|LINE_RELEASE_DIR|\
+    LINE_SLOT_A_PROCESS|LINE_SLOT_B_PROCESS|LINE_SLOT_A_PORT|LINE_SLOT_B_PORT|\
+    LINE_RELEASES_DIR|LINE_ACTIVE_PORT_FILE|LINE_NGINX_UPSTREAM|WEB_NGINX_UPSTREAM|\
+    WEB_RELEASES_DIR|WEB_RELEASE_NEW_DIR|WEB_RELEASE_DIR|\
     DEFAULT_RUNTIME_DIR|DEFAULT_LOG_DIR|RUNTIME_DIR|RUNTIME_UPLOADS_DIR|\
     RUNTIME_STATE_DIR|RUNTIME_ARCHIVE_DIR|LOG_DIR|HELP_VIDEO_ASSET_DIR_DEFAULT|\
     HELP_VIDEO_RUNTIME_ROOT|VOICE_OPERATOR_STATE_DIR_RESOLVED|OPS_ROOT|\
@@ -238,7 +277,7 @@ assert_dotenv_key_allowed() {
     OPERATIONS_ACTIVATION_STARTED|GENESIS_ACTIVATION_DURABLE|OPERATIONS_CRONTAB_INTENT|OPERATIONS_SYSTEMD_UNITS|OPERATIONS_TIMERS|\
     OPERATIONS_BACKUP_LOCK_FD|OPERATIONS_SECRETS_LOCK_FD|\
     OPERATIONS_RUNTIME_FILES_LOCK_FD|OPERATIONS_LOG_LOCK_FD|\
-    OPERATIONS_LOGROTATE_FILES|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
+    OPERATIONS_LOGROTATE_FILES|BOOKING_RELEASE_*|booking_control_file|IDENTITY_RELEASE_*|identity_control_file|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
     REVIEWED_LOG_CURSOR_AWK_RE|BACKUP_EVIDENCE_ROOT|BACKUP_CUSTODY_MARKER|\
     BACKUP_OFFLINE_RESTORE_MARKER|BACKUP_BOOTSTRAP_RESTORE_MARKER|BACKUP_OFFLINE_ALLOWED_SIGNERS|BACKUP_SIGNED_EVIDENCE_DIR|\
     EXPECTED_SHARED_SERVER_IP|\
@@ -1701,7 +1740,13 @@ persist_event_platform_pm2_stop_fence() {
     rm -f -- "$live_state"
     fatal_after_standalone_replacement "cannot inspect live PM2 state before the Fund fence"
   }
-  protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay \
+  # The phone line's slots (leaddrive-v2-line-a/-b, :3004/:3005) are left
+  # running on purpose: they run from their own release copy, not from the tree
+  # this deploy replaces, write no Fund or booking state, and keep answering
+  # the station until Step 7c hands it to the new release (owner, 2026-10-28:
+  # «обновление без перерыва»; the 2026-10-28 deploy that stopped them here cost
+  # the station 8 s of 502s). Only the first, standalone form of the line is fenced.
+  protected_ids=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1714,7 +1759,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => String((env.env && env.env.PORT) ?? env.PORT ?? "") === "3001"
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 for (const item of processes) {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   if (protectedNames.has(item.name || env.name)
@@ -1743,9 +1788,19 @@ NODE
   done <<< "$protected_ids"
   pm2 delete "$PM2_PROCESS" 2>/dev/null || true
   pm2 delete softphone-relay 2>/dev/null || true
+  pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
   fuser -k 3001/tcp 2>/dev/null || true
+  fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
   if fuser 3001/tcp >/dev/null 2>&1; then
     fatal_after_standalone_replacement "a process still owns the protected web port after the Fund fence"
+  fi
+  if fuser "$JOBS_PORT/tcp" >/dev/null 2>&1; then
+    fatal_after_standalone_replacement "a process still owns the jobs port after the Fund fence"
+  fi
+  if fuser "$LINE_PORT/tcp" >/dev/null 2>&1; then
+    fatal_after_standalone_replacement "a process still owns the line port after the Fund fence"
   fi
 
   live_state=$(mktemp /tmp/leaddrive-event-platform-pm2-live.XXXXXX) || \
@@ -1754,7 +1809,7 @@ NODE
     rm -f -- "$live_state"
     fatal_after_standalone_replacement "cannot inspect live PM2 state after the Fund fence"
   }
-  live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay \
+  live_processes=$(node - "$live_state" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1767,7 +1822,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => String((env.env && env.env.PORT) ?? env.PORT ?? "") === "3001"
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -1789,7 +1844,7 @@ NODE
     fatal_after_standalone_replacement "cannot persist the stopped PM2 state before replacing standalone"
   harden_pm2_reboot_dump || \
     fatal_after_standalone_replacement "cannot harden the stopped PM2 reboot fence"
-  saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay \
+  saved_processes=$(node - "$saved_dump" "$PM2_PROCESS" softphone-relay "$JOBS_PM2_PROCESS" "$LINE_PM2_PROCESS" \
     "$APP_DIR/.next/standalone" <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
@@ -1802,7 +1857,7 @@ const underStandalone = (value) => {
   const resolved = path.resolve(value)
   return resolved === standaloneRoot || resolved.startsWith(`${standaloneRoot}${path.sep}`)
 }
-const usesProtectedPort = (env) => String((env.env && env.env.PORT) ?? env.PORT ?? "") === "3001"
+const usesProtectedPort = (env) => ["3001", "3002", "3003"].includes(String((env.env && env.env.PORT) ?? env.PORT ?? ""))
 process.stdout.write(String(processes.filter((item) => {
   const env = item && item.pm2_env ? item.pm2_env : (item || {})
   return protectedNames.has(item.name || env.name)
@@ -5341,7 +5396,7 @@ backup_runtime_directory() {
 validate_release_owned_operations_artifact() {
   local artifact_root="$1"
   local script helper unit rotate manifest name
-  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
+  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh release-artifact-restore.sh release-artifact-upload.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
   local -a backup_helpers=(
     bootstrap-backup-role.sql canary.sql migration-ledger.sql prove-restored-pii.mjs
     recovery-db-contract.tsv
@@ -5379,6 +5434,21 @@ validate_release_owned_operations_artifact() {
     && [ -f "$artifact_root/ops/backup/recovery-program-set.files" ] \
     && [ ! -L "$artifact_root/ops/backup/recovery-program-set.files" ] || \
     fatal "release artifact is missing the recovery-program contract"
+
+  # The help-video masters are not in the artifact any more (2026-11-02): the
+  # release pulls them from object storage, so the puller, the version it pulls
+  # and the exact set it must match are part of the release — like the backup
+  # scripts above. Stage one shipped the puller nowhere and reported it in a
+  # WARNING at the very end of the deploy, which is why it went unnoticed for a
+  # day while every deploy quietly published nothing.
+  [ -x "$artifact_root/scripts/help-videos/assets-sync.sh" ] \
+    && [ ! -L "$artifact_root/scripts/help-videos/assets-sync.sh" ] || \
+    fatal "release artifact is missing executable help-video sync script"
+  [ -s "$artifact_root/help-videos/masters.sha256" ] \
+    && [ ! -L "$artifact_root/help-videos/masters.sha256" ] || \
+    fatal "release artifact is missing the help-video master manifest"
+  [ -s "$artifact_root/help-videos/asset-version" ] || \
+    fatal "release artifact is missing the help-video asset version"
 
   manifest="$artifact_root/scripts/release-cron-script-manifest.txt"
   [ -s "$manifest" ] || fatal "release artifact is missing its cron-script manifest"
@@ -5463,7 +5533,7 @@ validate_installed_release_operations() {
   local artifact_root="$2"
   local script helper unit rotate manifest name expected_program_set_sha installed_program_set_sha
   local expected_db_contract_sha installed_db_contract_sha
-  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
+  local -a backup_scripts=(hash-recovery-db-contract.sh hash-recovery-program-set.sh postgres-backup.sh postgres-restore-canary.sh prove-source-database.sh release-artifact-restore.sh release-artifact-upload.sh ship-logs.sh snapshot-runtime-files.sh snapshot-secrets.sh)
   local -a backup_helpers=(
     bootstrap-backup-role.sql canary.sql migration-ledger.sql prove-restored-pii.mjs
     recovery-db-contract.tsv
@@ -7961,8 +8031,52 @@ else
   log "No existing standalone directory (first deploy)"
 fi
 
+# Acquire the migration connection only inside a child scope. Admission runs
+# after the preflight unset, and activation/recovery may run after migrations
+# unset it again. Never retain or export this credential to backfills or PM2.
+with_booking_release_database() {
+  (
+    load_dotenv_file "$MIGRATION_ENV_FILE" migration || return
+    require_env MIGRATION_DATABASE_URL || return
+    require_env MIGRATION_EXPECTED_DB_ROLE || return
+    IDENTITY_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" BOOKING_RELEASE_DB_URL="$MIGRATION_DATABASE_URL" DATABASE_URL="$MIGRATION_DATABASE_URL" "$@"
+  )
+}
+
+# Identity has its own retained cutover floor, independent of booking state.
+ensure_identity_rollback_compatible() {
+  local target="$1"
+  [ -n "$IDENTITY_RELEASE_CONTROLLER" ] || return 0
+  IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=true
+  persist_event_platform_pm2_stop_fence || return 1
+  if ! with_booking_release_database node "$IDENTITY_RELEASE_CONTROLLER" --check-rollback "$target" true; then
+    log "FATAL: identity rollback is incompatible; preserve the candidate and keep the old process stopped"
+    return 1
+  fi
+  IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED=false
+}
+
+# Drain before counting so a customer request cannot race rollback admission.
+# This also persists an empty reboot target before any legacy restart.
+ensure_booking_rollback_compatible() {
+  local target="$1" quiesced=false
+  [ -n "$BOOKING_RELEASE_CONTROLLER" ] || return 0
+  BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=true
+  if ! persist_event_platform_pm2_stop_fence; then return 1; fi
+  quiesced=true
+  if ! with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+    --check-rollback "$target" "$BOOKING_RELEASE_CANDIDATE_FILE" "$EXPECTED_DEPLOY_SHA_ARG" \
+    "$BOOKING_RELEASE_FIRST_EXPANSION" "$quiesced"; then
+    log "FATAL: refusing an unproven booking rollback; preserve the candidate and canonical database"
+    return 1
+  fi
+  BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED=false
+}
+
 restore_standalone_before_pm2() {
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_identity_rollback_compatible "$rollback_source" || return 1
+  ensure_booking_rollback_compatible "$rollback_source" || return 1
   if [ -d "$rollback_source" ]; then
     safe_remove_tree "$APP_DIR/.next/standalone"
     cp -a -- "$rollback_source" "$APP_DIR/.next/standalone"
@@ -7976,6 +8090,10 @@ restore_standalone_before_pm2() {
 fatal_after_standalone_replacement() {
   local message="$1"
   log "FATAL: $message"
+  if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ] || [ "$IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+    log "Application recovery is fail-closed; the previous artifact will not be restored."
+    exit 1
+  fi
   if [ "$STANDALONE_REPLACED" = "true" ] \
      || [ "$HANDOFF_STARTED" = "true" ] \
      || [ "$EVENT_PLATFORM_CUTOVER_STATE" = "migration_applied" ]; then
@@ -7989,6 +8107,8 @@ fatal_after_standalone_replacement() {
 recover_application_handoff() {
   local rollback_config rollback_code rollback_ping_code
   local rollback_source="${EVENT_PLATFORM_PREVIOUS_STANDALONE_PATH:-$BACKUP_PATH/standalone}"
+  ensure_identity_rollback_compatible "$rollback_source" || return 1
+  ensure_booking_rollback_compatible "$rollback_source" || return 1
 
   if [ "$RUNTIME_STATE_CUTOVER_FINALIZED" != "true" ]; then
     log "Reverting incomplete runtime state cutover before restarting the previous artifact..."
@@ -8023,6 +8143,15 @@ recover_application_handoff() {
   load_dotenv_file "$APP_ENV_FILE"
   pm2 delete "$PM2_PROCESS" 2>/dev/null || true
   pm2 delete softphone-relay 2>/dev/null || true
+  # The failed release's jobs process would otherwise keep running its code
+  # from a tree that is about to be replaced, and an older artifact has no
+  # entry for it at all. Without it the schedule falls back to the web port.
+  pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  # The same for the line's process; an older artifact without it leaves the
+  # station on the web port, where nginx falls back.
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$LINE_PORT/tcp" 2>/dev/null || true
   rollback_config="$APP_DIR/.next/standalone/ecosystem.config.cjs"
   if [ ! -f "$rollback_config" ]; then
     log "FATAL: rollback PM2 configuration is missing from standalone backup"
@@ -8080,7 +8209,9 @@ rollback_replaced_standalone_on_exit() {
     status=1
   fi
   if [ "$status" -ne 0 ] && [ "$HANDOFF_STARTED" = "true" ] && [ "$HANDOFF_RECOVERY_COMPLETE" != "true" ]; then
-    if [ "$EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+    if [ "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ] || [ "$IDENTITY_RELEASE_AUTO_RECOVERY_BLOCKED" = "true" ]; then
+      log "FATAL: application rollback is not proven; keep PM2 stopped and preserve the canonical candidate for reviewed recovery"
+    elif [ "$EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED" = "true" ]; then
       log "FATAL: previous PM2 artifact remains stopped because the Fund pilot committed without a proven rollback-client path"
       log "FATAL: preserve the database and recovery-point evidence for reviewed operator recovery: ${EVENT_PLATFORM_PILOT_BACKUP_EVIDENCE:-unavailable}"
     else
@@ -8155,6 +8286,44 @@ for K in ESIGN_SECRET CRON_SECRET BROWSER_SOFTPHONE_TICKET_SECRET SOFTPHONE_RELA
 done
 load_dotenv_file "$APP_ENV_FILE"
 verify_runtime_cutover_preflight
+
+# Stage the reviewed controller outside the live tree, where it survives a
+# failed handoff or refused rollback. Credentials stay in child environment.
+BOOKING_RELEASE_CONTROL_DIR="$BACKUP_PATH/booking-release-controller"
+mkdir -p "$BOOKING_RELEASE_CONTROL_DIR/scripts/booking" "$BOOKING_RELEASE_CONTROL_DIR/scripts/event-platform"
+chmod 700 "$BOOKING_RELEASE_CONTROL_DIR"
+for booking_control_file in scripts/booking/release-contract.mjs scripts/booking/release-state.sql scripts/booking/activate-workspace.sql scripts/event-platform/inspect-production.sh; do
+  tar -xOzf "$DEPLOY_TAR" "./$booking_control_file" > "$BOOKING_RELEASE_CONTROL_DIR/$booking_control_file" \
+    || fatal_after_standalone_replacement "booking controller is missing from the immutable artifact"
+done
+tar -xOzf "$DEPLOY_TAR" ./.booking-backend-contract.json > "$BOOKING_RELEASE_CONTROL_DIR/candidate.json" \
+  || fatal_after_standalone_replacement "immutable artifact has no booking backend contract"
+BOOKING_RELEASE_CONTROLLER="$BOOKING_RELEASE_CONTROL_DIR/scripts/booking/release-contract.mjs"
+BOOKING_RELEASE_CANDIDATE_FILE="$BOOKING_RELEASE_CONTROL_DIR/candidate.json"
+BOOKING_RELEASE_ADMISSION=$(with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+  --check-admission "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" "$APP_DIR/.next/standalone") \
+  || fatal_after_standalone_replacement "booking predecessor is not compatible with this artifact"
+case "$BOOKING_RELEASE_ADMISSION" in
+  first-expansion) BOOKING_RELEASE_FIRST_EXPANSION=true ;;
+  compatible) BOOKING_RELEASE_FIRST_EXPANSION=false ;;
+  *) fatal_after_standalone_replacement "invalid booking artifact admission result" ;;
+esac
+
+# Keep the identity controller outside the live artifact so failure recovery
+# uses the reviewed candidate's guard before replacing or restarting any bytes.
+IDENTITY_RELEASE_CONTROL_DIR="$BACKUP_PATH/identity-release-controller"
+mkdir -p "$IDENTITY_RELEASE_CONTROL_DIR/scripts/identity" "$IDENTITY_RELEASE_CONTROL_DIR/scripts/event-platform"
+chmod 700 "$IDENTITY_RELEASE_CONTROL_DIR"
+for identity_control_file in scripts/identity/release-contract.mjs scripts/identity/release-state.sql scripts/event-platform/inspect-production.sh; do
+  tar -xOzf "$DEPLOY_TAR" "./$identity_control_file" > "$IDENTITY_RELEASE_CONTROL_DIR/$identity_control_file" \
+    || fatal_after_standalone_replacement "identity controller is missing from the immutable artifact"
+done
+tar -xOzf "$DEPLOY_TAR" ./.identity-backend-contract.json > "$IDENTITY_RELEASE_CONTROL_DIR/candidate.json" \
+  || fatal_after_standalone_replacement "immutable artifact has no identity backend contract"
+IDENTITY_RELEASE_CONTROLLER="$IDENTITY_RELEASE_CONTROL_DIR/scripts/identity/release-contract.mjs"
+with_booking_release_database node "$IDENTITY_RELEASE_CONTROLLER" --check-admission \
+  "$IDENTITY_RELEASE_CONTROL_DIR/candidate.json" "$ARTIFACT_DEPLOY_SHA" \
+  || fatal_after_standalone_replacement "identity artifact admission failed"
 
 # Resolve the durable database gate and persist the exact previous client
 # before the generic standalone path is touched. On the first cutover the old
@@ -8268,7 +8437,10 @@ log "Prisma engine verified: $(ls $PRISMA_ENGINE_PATTERN | head -1 | xargs basen
 # Source code now reads the external runtime root directly. The final move is
 # deliberately later, during the existing process handoff: copying while the
 # old artifact is still dual-writing would create a last-write-loss race.
-BUNDLED_HELP_VIDEO_DIR="$APP_DIR/.next/standalone/help-videos/player"
+#
+# The help-video masters are no longer part of that move: they are not in the
+# artifact at all since 2026-11-02 and arrive from object storage before the
+# handoff starts.
 
 # ── Step 3: Prisma migrate deploy ──────────────────────────
 log "Running Prisma migrations..."
@@ -8948,7 +9120,112 @@ if [ -f "$APP_CATALOG_SCRIPT_STANDALONE" ]; then
   node "$APP_CATALOG_SCRIPT_STANDALONE" --execute 2>&1 || log "WARNING: app catalog seed returned non-zero (non-fatal)"
 fi
 
+# Only B activates the already-proven A contract. The mode cannot be reset
+# by rollback, and no new schema/profile is introduced by this transition.
+node "$BOOKING_RELEASE_CONTROLLER" --activation-sql "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" \
+  > "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
+  || fatal_after_standalone_replacement "cannot prepare artifact-bound booking activation"
+if [ -s "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" ]; then
+  with_booking_release_database npx prisma db execute --schema="$SCHEMA_TO_USE" --stdin \
+    < "$BOOKING_RELEASE_CONTROL_DIR/activation.sql" \
+    || fatal_after_standalone_replacement "booking workspace activation failed"
+  with_booking_release_database node "$BOOKING_RELEASE_CONTROLLER" \
+    --assert-activated "$BOOKING_RELEASE_CANDIDATE_FILE" "$ARTIFACT_DEPLOY_SHA" \
+    || fatal_after_standalone_replacement "booking workspace activation was not proven"
+fi
+
 # ── Step 4: Stop old process, cut over runtime, restart PM2 ─────────
+# Everything from the web process's stop to the new one listening is 502 for
+# every caller, the phone station's calls for Zeytun's line among them.
+# Measured on the deploy of 2026-10-28 10:30 UTC: 23 s, of which 10.6 s pm2
+# waiting for the old process to exit, 1.3 s stopping the relay and the jobs
+# process after it, 2 s of a fixed sleep and ~5 s of the Fund fence below, most
+# of that its fsync of a disk full of the artifact just unpacked. So: the disk
+# is flushed while the old release still answers, the two processes nobody
+# browses to go first, and the web process last.
+sync || true
+
+# The new release's own copy for the web app and the scheduler, made while the
+# old process still answers: hard links, a few seconds, outside the 502 window.
+# They run from it (ecosystem.config.cjs, WEB_RELEASE_DIR), so the next deploy's
+# Step 2 replaces .next/standalone under nobody — the old web process keeps
+# reading the files of the build it started with until Step 4 stops it. Before
+# this, it was reading the new build's for 4 minutes (2026-11-02: extract
+# 10:10:19, stop 10:14:36) and answered "Internal Server Error" on every page it
+# had not loaded yet. The name is unique, so redeploying the running SHA never
+# removes the tree the live process runs from.
+WEB_RELEASE_NEW_DIR="$WEB_RELEASES_DIR/${DEPLOY_SHA:-unknown}-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p -- "$WEB_RELEASES_DIR" && chmod 0750 -- "$WEB_RELEASES_DIR" \
+  || fatal_after_standalone_replacement "cannot create $WEB_RELEASES_DIR"
+cp -al -- "$APP_DIR/.next/standalone" "$WEB_RELEASE_NEW_DIR" \
+  || fatal_after_standalone_replacement "cannot make the web process's release copy"
+test -f "$WEB_RELEASE_NEW_DIR/server.js" \
+  || fatal_after_standalone_replacement "the web process's release copy has no server.js"
+log "Web release copy: $WEB_RELEASE_NEW_DIR"
+
+# ── Pull the help-video masters while the old release still answers ─
+# The videos left the artifact on 2026-11-02: 265 MB in every tarball, twice on
+# the production disk, and copied once more on every deploy with PM2 already
+# stopped. Object storage holds them now, and this is where they arrive — the
+# old process is still serving, so the transfer costs no downtime at all.
+#
+# No staging directory, deliberately: the puller installs each file under its
+# final name only after its sha256 matches the manifest, and that install is an
+# atomic rename inside the one directory. A reader that already opened the old
+# file keeps reading it. A staging copy would mean a second 265 MB on the same
+# disk to buy nothing.
+#
+# --expect pins the set: the manifest in the bucket must equal the one this
+# release was built against, or nothing is fetched. The per-file sha256 check
+# cannot see that — it only proves the bytes match the manifest it was handed.
+#
+# Skipped while the checkout still owns $APP_DIR/help-videos as a real
+# directory: the runtime cutover further down refuses an implicit merge when
+# both the source and the target exist, and creating the target here would be
+# exactly that. Such a host gets its masters from the publish after the health
+# checks instead.
+#
+# A failure here is a WARNING, not a fatal: the release is healthy without it
+# and the help library keeps serving whatever is already on disk. It is not
+# silent either — it lands in the SUMMARY line as help-videos=failed.
+HELP_VIDEO_SYNC_SCRIPT="$APP_DIR/.next/standalone/scripts/help-videos/assets-sync.sh"
+HELP_VIDEO_MASTERS_MANIFEST="$APP_DIR/.next/standalone/help-videos/masters.sha256"
+HELP_VIDEO_VERSION_FILE="$APP_DIR/.next/standalone/help-videos/asset-version"
+HELP_VIDEO_ASSET_VERSION="$(tr -d '\r\n' < "$HELP_VIDEO_VERSION_FILE")"
+if [ ! -f "/etc/leaddrive/wal-archive.env" ]; then
+  HELP_VIDEO_PULL_ACTION="no-storage-config"
+  log "No object-storage configuration; the help-video masters were not pulled"
+elif [ -e "$APP_DIR/help-videos" ] && [ ! -L "$APP_DIR/help-videos" ]; then
+  HELP_VIDEO_PULL_ACTION="deferred-pre-cutover"
+  log "Help-video runtime cutover has not happened yet; deferring to the post-health publish"
+else
+  HELP_VIDEO_SYNC_RC=0
+  HELP_VIDEO_SYNC_OUTPUT="$(
+    "$HELP_VIDEO_SYNC_SCRIPT" --pull-only \
+      --version "$HELP_VIDEO_ASSET_VERSION" \
+      --dir "$HELP_VIDEO_ASSET_DIR_DEFAULT" \
+      --expect "$HELP_VIDEO_MASTERS_MANIFEST" 2>&1
+  )" || HELP_VIDEO_SYNC_RC=$?
+  while IFS= read -r help_video_line; do
+    [ -n "$help_video_line" ] && log "$help_video_line"
+  done <<<"$HELP_VIDEO_SYNC_OUTPUT"
+  if [ "$HELP_VIDEO_SYNC_RC" -ne 0 ]; then
+    HELP_VIDEO_PULL_ACTION="failed"
+    log "WARNING: pulling the help-video masters failed; the release goes on and the help library serves what is already on disk"
+  else
+    HELP_VIDEO_SYNC_SUMMARY="$(grep -E '^SUMMARY help-video-sync ' <<<"$HELP_VIDEO_SYNC_OUTPUT" | tail -1)"
+    # The reason, where the script gives one, IS the state worth reporting.
+    # Otherwise "none" means "storage and disk agree", and an empty bucket is
+    # not agreement: on 2026-11-02 the first deploy of this change reported
+    # help-videos=none while storage held nothing at all. One line is how a
+    # deploy gets read, so those two states must not share a word.
+    HELP_VIDEO_PULL_ACTION="$(sed -nE 's/.* reason=([a-z-]+).*/\1/p' <<<"$HELP_VIDEO_SYNC_SUMMARY")"
+    [ -n "$HELP_VIDEO_PULL_ACTION" ] || \
+      HELP_VIDEO_PULL_ACTION="$(sed -nE 's/.* action=([a-z-]+).*/\1/p' <<<"$HELP_VIDEO_SYNC_SUMMARY")"
+    [ -n "$HELP_VIDEO_PULL_ACTION" ] || HELP_VIDEO_PULL_ACTION="unreported"
+  fi
+fi
+
 log "Stopping old processes..."
 cd "$APP_DIR"
 
@@ -8956,9 +9233,6 @@ cd "$APP_DIR"
 # state. Any implicit failure must restore the previous artifact and restart
 # it; do not leave production without a PM2 process after a failed handoff.
 HANDOFF_STARTED=true
-
-# Delete existing PM2 process (ignore errors if not found)
-pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 
 # The softphone relay is a SECOND app in the same ecosystem file, present only
 # when the server holds its secrets. Two reasons this line exists:
@@ -8970,9 +9244,28 @@ pm2 delete "$PM2_PROCESS" 2>/dev/null || true
 # drops in-flight web requests. Harmless when the app is absent.
 pm2 delete softphone-relay 2>/dev/null || true
 
+# The scheduler's server process is the third app in the same file, and the
+# same `pm2 start` refusal applies to it. While the web process is down for the
+# next seconds, cron-trigger.sh finds 3002 closed and sends the schedule to 3001.
+pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+# The phone line's process is NOT stopped here: it keeps answering the station
+# until Step 7c has its successor warm and checked (owner, 2026-10-28:
+# «обновление без перерыва»).
+
+# Delete the web process last (ignore errors if not found). It now exits about
+# two seconds after SIGINT (src/lib/server-shutdown-deadline.ts) instead of
+# being SIGKILLed at pm2's kill_timeout.
+pm2 delete "$PM2_PROCESS" 2>/dev/null || true
+
 # Kill ANY process holding port 3001 (orphan from previous deploys)
 fuser -k 3001/tcp 2>/dev/null || true
-sleep 2
+fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+# A killed process releases its port within milliseconds; wait for that rather
+# than a fixed two seconds, and no longer than the fixed wait used to be.
+for _ in $(seq 1 20); do
+  ss -tln | grep -qE ":(3001|$JOBS_PORT) " || break
+  sleep 0.1
+done
 
 # Double-check port is free
 if ss -tlnp | grep -q ":3001 "; then
@@ -8981,18 +9274,20 @@ if ss -tlnp | grep -q ":3001 "; then
   sleep 2
 fi
 
+# A crash between first canonical process start and pm2 save must not resurrect
+# the legacy writer. Save/verify the stopped state before opening the new app.
+if [ -n "$BOOKING_RELEASE_CONTROLLER" ]; then persist_event_platform_pm2_stop_fence; fi
+
 log "Starting PM2..."
 
 # The old process is stopped. This is the only safe point to move the final
 # bytes without a dual-write/fallback race. Old artifacts remain compatible
 # through source-path symlinks if health rollback becomes necessary.
 finalize_runtime_data_cutover
+# The directory is created, never filled, here: the masters arrived from object
+# storage before the handoff, and the 265 MB copy that used to happen on this
+# line — with PM2 stopped — is gone.
 mkdir -p "$HELP_VIDEO_ASSET_DIR_DEFAULT"
-if [ -d "$BUNDLED_HELP_VIDEO_DIR" ]; then
-  cp -a "$BUNDLED_HELP_VIDEO_DIR/." "$HELP_VIDEO_ASSET_DIR_DEFAULT/"
-  HELP_VIDEO_ASSETS_COPIED=true
-  log "Bundled help video assets copied → $HELP_VIDEO_ASSET_DIR_DEFAULT"
-fi
 
 PM2_CONFIG="$APP_DIR/.next/standalone/ecosystem.config.cjs"
 [ -f "$PM2_CONFIG" ] || fatal "PM2 configuration is missing from the standalone artifact"
@@ -9005,6 +9300,9 @@ TENANT_PII_MASTER_KEY_FILE="$(realpath -e -- "$APP_ENV_FILE")" \
   || fatal "cannot resolve the env file that holds TENANT_PII_MASTER_KEY"
 export TENANT_PII_MASTER_KEY_FILE
 unset TENANT_PII_MASTER_KEY
+# Inline, never exported: a rollback's `pm2 start` must run the restored
+# .next/standalone, not this release's copy.
+WEB_RELEASE_DIR="$WEB_RELEASE_NEW_DIR" \
 pm2 start "$PM2_CONFIG" 2>/dev/null || {
   log "FATAL: PM2 start failed"
   exit 1
@@ -9016,11 +9314,36 @@ harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
 
 # ── Step 6: Health check (5 retries, longer warmup) ──────
 log "Health check (waiting for startup)..."
-sleep 15
-
-# Warm up the app — first requests to Next.js 16 standalone can 500
-curl -s -o /dev/null --max-time 10 "$HEALTH_URL/login" 2>/dev/null || true
-sleep 5
+# nginx sends traffic to the new process the moment it listens, so the first
+# requests after the restart are real calls, not this check. Wait for the port
+# (it opened ~2 s after `pm2 start` on 2026-10-28), then load the modules of the
+# routes the phone station calls in the middle of a call, so the first of those
+# does not pay for loading them. Unauthenticated: each answers 401 before it
+# reads anything. The old fixed 15 + 5 s wait stays as the outer bound.
+for _ in $(seq 1 80); do
+  ss -tln | grep -q ":3001 " && break
+  sleep 0.25
+done
+WARM_PIDS=()
+for warm_route in \
+  "POST /api/internal/asterisk/call-lifecycle" \
+  "POST /api/internal/asterisk/inbound-handoff" \
+  "POST /api/internal/asterisk/inbound-browser-ready" \
+  "POST /api/internal/asterisk/station-heartbeat" \
+  "POST /api/internal/asterisk/call-recording" \
+  "POST /api/internal/voice-agent/pharmacy-inbound" \
+  "POST /api/internal/voice-agent/call-result" \
+  "GET /api/internal/voice-agent/runtime-config" \
+  "GET /api/internal/voice-agent/call-source" \
+  "GET /api/internal/voice-agent/call-continuation" \
+  "GET /api/v1/ping" \
+  "GET /login"; do
+  curl -s -o /dev/null --max-time 20 -X "${warm_route%% *}" "$HEALTH_URL${warm_route#* }" 2>/dev/null &
+  WARM_PIDS+=("$!")
+done
+# Only these: a Fund cutover keeps its own lock holder in the background.
+wait "${WARM_PIDS[@]}" || true
+log "Warmed the phone station's routes on the new process"
 
 HEALTHY=false
 for i in 1 2 3 4 5; do
@@ -9112,6 +9435,153 @@ HANDOFF_STARTED=false
 HANDOFF_RECOVERY_COMPLETE=true
 STANDALONE_REPLACED=false
 
+# The web app and the scheduler run from this release's copy now; earlier
+# copies are links nobody uses (a failed deploy's, too: its rollback runs the
+# restored .next/standalone).
+for dir in "$WEB_RELEASES_DIR"/*; do
+  [ -d "$dir" ] && [ "$dir" != "$WEB_RELEASE_NEW_DIR" ] && rm -rf -- "$dir"
+done
+
+# ── Step 7b: The scheduler's own process ───────────────────
+# Checked after the web handoff and never as part of it: a jobs process that
+# fails must not roll back a healthy CRM. It is taken out instead, and
+# scripts/cron-trigger.sh then runs the schedule on the web process exactly as
+# before this process existed — slower for people, but no job stops. The key
+# probe matters as much here as on the web: most jobs read encrypted fields.
+JOBS_STATUS="down"
+JOBS_PING_CODE="000"
+JOBS_KEY_STATUS=""
+for i in 1 2 3 4 5 6; do
+  JOBS_PING_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$JOBS_HEALTH_URL/api/v1/ping" 2>/dev/null || echo "000")
+  if [ "$JOBS_PING_CODE" = "200" ]; then
+    JOBS_KEY_STATUS="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" \
+      "$JOBS_HEALTH_URL/api/cron/pii-key-check" 2>/dev/null || true)"
+    if [ "$JOBS_KEY_STATUS" = '{"ok":true,"source":"file"}' ]; then
+      JOBS_STATUS="ok"
+    fi
+    break
+  fi
+  [ "$i" -lt 6 ] && sleep 5
+done
+if [ "$JOBS_STATUS" = "ok" ]; then
+  log "Jobs process: healthy on $JOBS_HEALTH_URL (ping 200, PII master key from its env file)"
+else
+  log "WARNING: jobs process unhealthy (ping=$JOBS_PING_CODE, key=${JOBS_KEY_STATUS:-no response}); removing it so the schedule runs on the web process"
+  pm2 delete "$JOBS_PM2_PROCESS" 2>/dev/null || true
+  fuser -k "$JOBS_PORT/tcp" 2>/dev/null || true
+  pm2 save --force 2>/dev/null || fatal "cannot persist PM2 application state without the jobs process"
+  harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
+  JOBS_STATUS="fallback-to-web"
+fi
+
+# ── Step 7c: The phone line's own process, replaced without a gap ──
+# Owner, 2026-10-28: «обновление без перерыва». The line is never stopped first.
+# The new release gets its own copy (hard links: the next deploy removes
+# .next/standalone, never this), starts in the free slot, is checked like the
+# web app, parses Zeytun's catalog, and only then does nginx send the station
+# there; the old slot answers until that moment and gets a drain period after.
+# Checked after the web handoff and never part of it: whatever fails here keeps
+# the line that was answering, and never rolls the web app back.
+line_port_of() { case "$1" in "$LINE_SLOT_A_PROCESS") echo "$LINE_SLOT_A_PORT" ;; "$LINE_SLOT_B_PROCESS") echo "$LINE_SLOT_B_PORT" ;; *) echo "$LINE_PORT" ;; esac; }
+
+line_ready() {
+  local url="$1" ping key warm
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    ping=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url/api/v1/ping" 2>/dev/null || echo "000")
+    [ "$ping" = "200" ] && break
+    sleep 5
+  done
+  [ "$ping" = "200" ] || { log "WARNING: new line slot at $url never answered ping"; return 1; }
+  key="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/pii-key-check" 2>/dev/null || true)"
+  [ "$key" = '{"ok":true,"source":"file"}' ] || { log "WARNING: new line slot at $url: PII key check said ${key:-nothing}"; return 1; }
+  # The catalog must be in memory before the first call reaches this slot.
+  warm="$(curl -s --max-time 180 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/zeytun-line-warm" 2>/dev/null || true)"
+  printf '%s\n' "$warm" | grep -Eq '"outcome":"(warm|not_configured)"' \
+    || { log "WARNING: new line slot at $url did not load the catalog: ${warm:-no response}"; return 1; }
+  log "Line slot at $url: ping 200, PII key from its env file, catalog $warm"
+}
+
+# Point nginx's station upstream at a port. Only where the station routes are
+# installed (scripts/nginx-install-station-routes.sh); elsewhere the station is
+# answered by the web app and there is nothing to switch.
+line_point_nginx() {
+  local port="$1" backup web_backup=""
+  [ -f "$LINE_NGINX_UPSTREAM" ] || return 0
+  grep -Eq '^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$' "$LINE_NGINX_UPSTREAM" \
+    || { log "WARNING: $LINE_NGINX_UPSTREAM has no primary server line to switch"; return 1; }
+  backup="$(mktemp /tmp/leaddrive-station-upstream.XXXXXX)" || return 1
+  cp -p "$LINE_NGINX_UPSTREAM" "$backup"
+  sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ max_fails=1 fail_timeout=5s;$|    server 127.0.0.1:${port} max_fails=1 fail_timeout=5s;|" "$LINE_NGINX_UPSTREAM"
+  # The web's backup follows the same slot: the old one is deleted below.
+  if [ -n "${WEB_NGINX_UPSTREAM:-}" ] && [ -f "$WEB_NGINX_UPSTREAM" ]; then
+    web_backup="$(mktemp /tmp/leaddrive-web-upstream.XXXXXX)" || { cp -p "$backup" "$LINE_NGINX_UPSTREAM"; rm -f "$backup"; return 1; }
+    cp -p "$WEB_NGINX_UPSTREAM" "$web_backup"
+    sed -i -E "s|^    server 127\.0\.0\.1:[0-9]+ backup; # line slot$|    server 127.0.0.1:${port} backup; # line slot|" "$WEB_NGINX_UPSTREAM"
+  fi
+  if ! nginx -t >/dev/null 2>&1; then
+    cp -p "$backup" "$LINE_NGINX_UPSTREAM"; rm -f "$backup"
+    if [ -n "$web_backup" ]; then cp -p "$web_backup" "$WEB_NGINX_UPSTREAM"; rm -f "$web_backup"; fi
+    log "WARNING: nginx -t refused the station upstream on :$port; restored"
+    return 1
+  fi
+  rm -f "$backup" ${web_backup:+"$web_backup"}
+  # A reload is graceful: old workers finish the requests they hold.
+  systemctl reload nginx || { log "WARNING: nginx reload failed"; return 1; }
+}
+
+LINE_STATUS="kept-previous"
+LINE_OLD_PROCESS=""
+for candidate in "$LINE_SLOT_A_PROCESS" "$LINE_SLOT_B_PROCESS" "$LINE_PM2_PROCESS"; do
+  if pm2 describe "$candidate" 2>/dev/null | grep -q "status.*online"; then
+    active_port="$(cat "$LINE_ACTIVE_PORT_FILE" 2>/dev/null || true)"
+    # Two slots online after an interrupted deploy: the one in the state file.
+    if [ -z "$LINE_OLD_PROCESS" ] || [ "$(line_port_of "$candidate")" = "$active_port" ]; then
+      LINE_OLD_PROCESS="$candidate"
+    fi
+  fi
+done
+if [ "$LINE_OLD_PROCESS" = "$LINE_SLOT_A_PROCESS" ]; then LINE_NEW_SLOT=b; else LINE_NEW_SLOT=a; fi
+LINE_NEW_PROCESS="leaddrive-v2-line-$LINE_NEW_SLOT"
+LINE_NEW_PORT="$(line_port_of "$LINE_NEW_PROCESS")"
+LINE_NEW_DIR="$LINE_RELEASES_DIR/${DEPLOY_SHA:-unknown}-$LINE_NEW_SLOT"
+log "Line: replacing ${LINE_OLD_PROCESS:-nothing} with $LINE_NEW_PROCESS on :$LINE_NEW_PORT"
+
+# A leftover in the free slot (an interrupted deploy) is not answering anyone.
+pm2 delete "$LINE_NEW_PROCESS" 2>/dev/null || true
+fuser -k "$LINE_NEW_PORT/tcp" 2>/dev/null || true
+mkdir -p "$LINE_RELEASES_DIR" && chmod 0750 "$LINE_RELEASES_DIR"
+rm -rf -- "$LINE_NEW_DIR"
+if cp -al -- "$APP_DIR/.next/standalone" "$LINE_NEW_DIR" \
+   && LINE_RELEASE_DIR="$LINE_NEW_DIR" LINE_SLOT="$LINE_NEW_SLOT" \
+      pm2 start "$PM2_CONFIG" --only "$LINE_NEW_PROCESS" >/dev/null 2>&1 \
+   && line_ready "http://127.0.0.1:$LINE_NEW_PORT" \
+   && line_point_nginx "$LINE_NEW_PORT"; then
+  printf '%s\n' "$LINE_NEW_PORT" > "$LINE_ACTIVE_PORT_FILE.tmp" && mv -f "$LINE_ACTIVE_PORT_FILE.tmp" "$LINE_ACTIVE_PORT_FILE"
+  if [ -n "$LINE_OLD_PROCESS" ]; then
+    # Requests the old slot already holds finish there; nginx sends nothing new.
+    sleep 20
+    pm2 delete "$LINE_OLD_PROCESS" 2>/dev/null || true
+  fi
+  # The first form of the line (standalone, :3003) may also be running beside a
+  # slot — an older artifact's rollback starts it — answering nobody.
+  pm2 delete "$LINE_PM2_PROCESS" 2>/dev/null || true
+  LINE_STATUS="ok"
+  log "Line process: $LINE_NEW_PROCESS on :$LINE_NEW_PORT answers the station"
+  # Only the new release runs now; earlier copies are links nobody uses.
+  for dir in "$LINE_RELEASES_DIR"/*; do
+    [ -d "$dir" ] && [ "$dir" != "$LINE_NEW_DIR" ] && rm -rf -- "$dir"
+  done
+else
+  log "WARNING: new line release not admitted; ${LINE_OLD_PROCESS:-the web app (nothing else)} keeps answering the station"
+  pm2 delete "$LINE_NEW_PROCESS" 2>/dev/null || true
+  fuser -k "$LINE_NEW_PORT/tcp" 2>/dev/null || true
+  # The answering slot runs from its own, earlier copy: only this one goes.
+  rm -rf -- "$LINE_NEW_DIR"
+  [ -n "$LINE_OLD_PROCESS" ] || LINE_STATUS="fallback-to-web"
+fi
+pm2 save --force 2>/dev/null || fatal "cannot persist PM2 application state after the line handover"
+harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
+
 # ── Step 8: Install external singleton/outbox schedules ─────
 RESILIENCE_CRON_INSTALLER="$APP_DIR/.next/standalone/scripts/install-resilience-crons.sh"
 [ -x "$RESILIENCE_CRON_INSTALLER" ] || fatal "Resilience cron installer is missing or not executable"
@@ -9147,18 +9617,20 @@ fi
 finalize_operations_activation_after_genesis
 
 # ── Step 9: Purge replaced help-video assets at Cloudflare ─
-if [ "$HELP_VIDEO_ASSETS_COPIED" = true ]; then
+# Only when the pull actually replaced bytes. That is the one case Cloudflare
+# cannot see for itself: the URL carries ?v=<version>, so new bytes under a new
+# version are a new URL, but a re-published master under the SAME version keeps
+# the URL and changes the body. Until 2026-11-02 this ran on every deploy,
+# because the artifact copied the same 132 files into place every time.
+if [ "$HELP_VIDEO_PULL_ACTION" = "pull" ]; then
   HELP_VIDEO_PURGE_SCRIPT="$APP_DIR/.next/standalone/scripts/cf-purge-help-videos.mjs"
-  HELP_VIDEO_VERSION_FILE="$APP_DIR/.next/standalone/help-videos/asset-version"
 
   [ -f "$HELP_VIDEO_PURGE_SCRIPT" ] || fatal "Help-video purge helper is missing from the standalone bundle"
-  [ -s "$HELP_VIDEO_VERSION_FILE" ] || fatal "Help-video asset version is missing from the standalone bundle"
   require_env CLOUDFLARE_ZONE_ID
   require_env CLOUDFLARE_API_TOKEN
 
-  HELP_VIDEO_ASSET_VERSION="$(tr -d '\r\n' < "$HELP_VIDEO_VERSION_FILE")"
   mapfile -d '' -t HELP_VIDEO_FILES < <(
-    find "$BUNDLED_HELP_VIDEO_DIR" -maxdepth 1 -type f \
+    find "$HELP_VIDEO_ASSET_DIR_DEFAULT" -maxdepth 1 -type f \
       \( -name '*.VOICE.mp4' -o -name '*.poster.jpg' \) \
       -printf '%f\0' | sort -z
   )
@@ -9175,8 +9647,59 @@ if [ "$HELP_VIDEO_ASSETS_COPIED" = true ]; then
       log "WARNING: Cloudflare help-video purge failed after the app became healthy; continuing the deploy because the application and database health checks passed"
     fi
   else
-    log "No bundled help-video assets matched the purge patterns"
+    log "No help-video assets matched the purge patterns"
   fi
+fi
+
+# ── Step 9b: Keep a runnable artifact outside GitHub ──────
+# The build artifact lives only in GitHub Actions for 30 days. Thirty-one days
+# after the last deploy a full restore had nothing runnable, because production
+# cannot build itself by design. This copies the tarball production just
+# accepted into the WAL archive bucket — after every health, database and
+# PII-key check passed, so the backup holds the artifact that actually served
+# traffic. It must stay before Step 10, which deletes $DEPLOY_TAR.
+#
+# A failed upload does NOT fail the deploy: the release is healthy and this is
+# a backup copy. It is not allowed to pass silently either — the WAL watch
+# checks that the bucket holds an artifact for the live deploy SHA, so the
+# outcome is judged by state, not by this step reporting on itself.
+ARTIFACT_UPLOAD_SCRIPT="$OPS_CURRENT_LINK/backup/release-artifact-upload.sh"
+if [ ! -f "/etc/leaddrive/wal-archive.env" ]; then
+  log "No WAL archive configuration; skipping the release-artifact backup copy"
+elif [ ! -x "$ARTIFACT_UPLOAD_SCRIPT" ]; then
+  log "WARNING: $ARTIFACT_UPLOAD_SCRIPT is missing; the release artifact was NOT copied to object storage"
+elif [ ! -f "$DEPLOY_TAR" ]; then
+  log "WARNING: $DEPLOY_TAR is gone; the release artifact was NOT copied to object storage"
+elif "$ARTIFACT_UPLOAD_SCRIPT" --tarball "$DEPLOY_TAR" --sha "$DEPLOY_SHA"; then
+  log "Release artifact copied to object storage"
+else
+  log "WARNING: copying the release artifact to object storage failed; the deploy stands, the WAL watch will report the gap"
+fi
+
+# ── Step 9c: Publish the help-video masters to object storage ─
+# Stage one of taking 266 MB out of every artifact and out of git history: the
+# masters go to storage from the copy production is already serving. Serving
+# itself is untouched — the application keeps streaming from disk behind
+# requireAuth, so no file becomes a bearer link (owner's decision 2026-11-01).
+#
+# Deliberately HERE and not where the artifact's videos are copied into the
+# runtime directory: that copy happens with PM2 stopped, and moving 266 MB in
+# that window would add minutes of downtime to every deploy. By this point the
+# release is healthy and nothing is waiting on us.
+#
+# The pull direction is written and tested in the same script but is NOT on the
+# deploy path yet. It belongs before PM2 stops, with a staged directory and a
+# cheap rename at cutover, so a fresh host does not serve 404 while 266 MB
+# arrive. That is stage two.
+if [ ! -f "/etc/leaddrive/wal-archive.env" ]; then
+  log "No object-storage configuration; skipping the help-video master publish"
+elif "$HELP_VIDEO_SYNC_SCRIPT" \
+  --version "$HELP_VIDEO_ASSET_VERSION" \
+  --dir "$HELP_VIDEO_ASSET_DIR_DEFAULT" \
+  --expect "$HELP_VIDEO_MASTERS_MANIFEST"; then
+  log "Help-video masters are in object storage"
+else
+  log "WARNING: publishing the help-video masters failed; the deploy stands and serving is unaffected"
 fi
 
 # ── Step 10: Cleanup ──────────────────────────────────────
@@ -9188,5 +9711,5 @@ rm -f "$DEPLOY_TAR" /tmp/server-deploy.sh
 # ── Step 11: Deploy summary (greppable single-line audit row) ──
 COMMIT_SHORT="${DEPLOY_SHA:0:7}"
 PRISMA_ENGINE_NAME=$(ls $PRISMA_ENGINE_PATTERN 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "missing")
-log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE"
+log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS line=$LINE_STATUS help-videos=$HELP_VIDEO_PULL_ACTION"
 log "Deploy complete! App running on $HEALTH_URL"

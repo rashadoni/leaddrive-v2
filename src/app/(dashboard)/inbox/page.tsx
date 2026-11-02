@@ -2048,7 +2048,7 @@ export default function InboxV2Page() {
                   </div>
                   {/* Whelp-style bulk select: the avatar turns into a check circle on hover /
                       while a selection is active. stopPropagation keeps the row from opening. */}
-                  <button
+                  <button data-crm-color-role="toggle"
                     type="button"
                     aria-label={t("bulkSelectAria")}
                     aria-pressed={isChecked}
@@ -2950,7 +2950,7 @@ export default function InboxV2Page() {
                     <div className="flex-1" />
                     <Button
                       size="icon"
-                      className={cn("h-9 w-9 shrink-0", composerTab === "note" && "bg-amber-500 hover:bg-amber-600 text-white")}
+                      className="h-9 w-9 shrink-0"
                       onClick={() => (composerTab === "note" ? addNote(replyText) : handleSend())}
                       disabled={composerTab === "note" ? (noteSaving || !replyText.trim()) : (sending || sendDeliveryUnknown || (replyChannel === "whatsapp" && selectedConvo.whatsappReplyBlocked) || (!replyText.trim() && !attachment))}
                     >

@@ -841,7 +841,7 @@ describe("POST /api/v1/mtm/locations", () => {
     expect(res.status).toBe(201)
     expect(await res.json()).toMatchObject({ success: true, data: { id: "loc-new" } })
     expect(prisma.mtmAgent.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: "a1", organizationId: ORG, status: "ACTIVE" },
+      where: { id: "a1", organizationId: ORG, status: "ACTIVE", fieldDeletedAt: null },
     }))
   })
 })

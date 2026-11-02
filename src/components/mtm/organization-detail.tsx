@@ -37,6 +37,7 @@ import { hasCommercialFacts, organizationReferenceRows } from "@/lib/mtm/organiz
 import { MtmClientVisitList, MtmClientVisitStrip } from "@/components/mtm/client-visit-strip"
 import type { MtmClientVisitLine, MtmClientVisitSummary } from "@/lib/mtm/client-visit-summary"
 import { mtmRoutePlanPageHref } from "@/lib/mtm/route-links"
+import { MtmCustomerHoursDialog, MtmCustomerHoursSection, MtmCustomerOpenBadge } from "@/components/mtm/customer-hours"
 
 type Agent = {
   id: string
@@ -57,6 +58,9 @@ type Assignment = {
 
 type OrganizationSummary = {
   id: string
+  /** «Часы приёма» (src/lib/mtm/customer-hours.ts); null = not given. */
+  workingHours?: unknown
+  workingHoursUpdatedAt?: string | null
   code: string | null
   name: string
   objectType: string
@@ -217,6 +221,7 @@ type ApiPayload<T> = {
     organization: T
     asOf: string
     timezone: string
+    workingHoursAuthor?: string | null
     capabilities: {
       canManage: boolean
       canRequestChanges: boolean
@@ -249,7 +254,7 @@ function DefinitionRow({
   hint?: string | null
 }) {
   return (
-    <div className={cn("grid gap-1 border-b border-zinc-200 py-3 last:border-0 dark:border-zinc-700 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4", className)}>
+    <div className={cn("grid gap-0.5 border-b border-border py-2 last:border-0 sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4", className)}>
       <dt className="text-xs font-medium text-muted-foreground"><HintValue text={hint}>{label}</HintValue></dt>
       <dd className="min-w-0 text-sm">{value || "—"}</dd>
     </div>
@@ -306,6 +311,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const [error, setError] = useState("")
   const [sectionError, setSectionError] = useState("")
   const [editOpen, setEditOpen] = useState(false)
+  const [hoursOpen, setHoursOpen] = useState(false)
+  const [hoursAuthor, setHoursAuthor] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [coordinateSource, setCoordinateSource] = useState("")
   const [coordinateReference, setCoordinateReference] = useState("")
@@ -359,6 +366,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       setVisitSummary(payload.data.visitSummary ?? null)
       setLongOpenMinutes(payload.data.longOpenMinutes ?? 120)
       setTimezone(payload.data.timezone || "Asia/Baku")
+      setHoursAuthor(payload.data.workingHoursAuthor ?? null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("detail.loadError"))
     } finally {
@@ -486,7 +494,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const planHref = mtmRoutePlanPageHref({ customerId: organizationId, agentId: owners[0]?.agent.id })
 
   return (
-    <div data-testid="mtm-organization-detail" className="space-y-5">
+    <div data-testid="mtm-organization-detail" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm" className="min-h-11 md:min-h-9">
           <Link href={returnHref}>
@@ -501,9 +509,9 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         ) : null}
       </div>
 
-      <header className="overflow-hidden rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
-        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
-          <div className="grid min-w-0 gap-4">
+      <header className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-5">
+          <div className="grid min-w-0 gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <StateBadge tone={summary.status === "ACTIVE" ? "positive" : "warning"} hint={hintFor(STATUS_HINT, summary.status)}>
                 {explorer(`statuses.${summary.status}`)}
@@ -513,7 +521,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               {summary.code ? <StateBadge hint={t("detail.hint.code")}>{t("detail.etalonId")}: {summary.code}</StateBadge> : null}
             </div>
             <div className="grid gap-2">
-              <h1 className="max-w-4xl text-2xl font-semibold tracking-tight md:text-3xl">{summary.name}</h1>
+              <h1 className="max-w-4xl text-2xl font-semibold tracking-tight">{summary.name}</h1>
+              <MtmCustomerOpenBadge hours={summary.workingHours} timezone={timezone} />
               <p className="flex max-w-3xl items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="mt-0.5 h-4 w-4 flex-none" />
                 <span>{summary.address || locationLine || t("detail.addressMissing")}</span>
@@ -621,7 +630,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
 
         <TabsContent value="details">
           <div className={cn("grid gap-5", referenceRows.length || coordinateVerification ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]" : null)}>
-            <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
               <h2 className="text-base font-semibold">{t("detail.contactDetails")}</h2>
               <dl className="mt-2">
                 <DefinitionRow label={t("detail.contactPerson")} value={summary.contactPerson} />
@@ -637,8 +646,18 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               </dl>
             </section>
 
+            <MtmCustomerHoursSection
+              hours={summary.workingHours}
+              author={hoursAuthor}
+              updatedAt={summary.workingHoursUpdatedAt ?? null}
+              timezone={timezone}
+              canManage={canManage}
+              onEdit={() => setHoursOpen(true)}
+              formatDate={(value) => dateFormatter.format(new Date(value))}
+            />
+
             {referenceRows.length || coordinateVerification ? <div className="grid content-start gap-5">
-              {referenceRows.length ? <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+              {referenceRows.length ? <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
                 <h2 className="text-base font-semibold">{t("detail.additionalDetails")}</h2>
                 <dl className="mt-2">
                   {referenceRows.map((row) => (
@@ -647,7 +666,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                 </dl>
               </section> : null}
 
-              {coordinateVerification ? <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+              {coordinateVerification ? <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-base font-semibold">{t("detail.coordinateQuality")}</h2>
@@ -681,7 +700,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                   </Hint>
                 ) : null}
                 {canManage && hasCoordinates ? (
-                  <div className="mt-4 grid gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                  <div className="mt-4 grid gap-2 border-t border-border pt-4">
                     <input
                       value={coordinateSource}
                       onChange={(event) => setCoordinateSource(event.target.value)}
@@ -707,7 +726,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               </section> : null}
             </div> : null}
           </div>
-          {showCommercial ? <section className="mt-5 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+          {showCommercial ? <section className="mt-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold">{t("detail.commercialTitle")}</h2>
@@ -730,7 +749,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
           <SectionFrame title={t("detail.contactsTitle")} description={t("detail.contactsDescription")}>
             <SectionState loading={sectionLoading === "contacts"} error={sectionError} retry={() => void loadDetailSection("contacts")} t={t}>
               {contacts?.length ? (
-                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div className="divide-y divide-border">
                   {contacts.map((workplace) => (
                     <article key={workplace.id} className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,0.55fr)]">
                       <div className="grid gap-1">
@@ -789,7 +808,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
             <SectionFrame title={t("detail.assignmentHistory")} description={t("detail.assignmentHistoryDescription")}>
               <SectionState loading={sectionLoading === "staff"} error={sectionError} retry={() => void loadDetailSection("staff")} t={t}>
                 {canManage ? (
-                  <div className="mb-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-4 dark:border-zinc-700">
+                  <div className="mb-4 flex flex-wrap gap-2 border-b border-border pb-4">
                     <Hint text={t("detail.hint.assign")}>
                       <Button asChild size="sm">
                         <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=ASSIGN`}><UserPlus className="h-4 w-4" />{explorer("assign")}</Link>
@@ -803,7 +822,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                   </div>
                 ) : null}
                 {staff?.agentAssignments.length ? (
-                  <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                  <div className="divide-y divide-border">
                     {staff.agentAssignments.map((assignment) => (
                       <article key={assignment.id} className="grid gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
                         <div>
@@ -850,6 +869,14 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         orgId={orgId ? String(orgId) : undefined}
         apiBasePath="/api/v1/mtm/organizations"
       />
+      <MtmCustomerHoursDialog
+        open={hoursOpen}
+        onOpenChange={setHoursOpen}
+        organizationIds={[organizationId]}
+        name={summary.name}
+        initial={summary.workingHours}
+        onSaved={() => void loadSummary()}
+      />
     </div>
   )
 }
@@ -864,10 +891,10 @@ function SectionFrame({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
-      <div className="mb-5 grid gap-1">
+    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 grid gap-0.5">
         <h2 className="text-base font-semibold">{title}</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+        <p className="max-w-3xl text-xs text-muted-foreground">{description}</p>
       </div>
       {children}
     </section>

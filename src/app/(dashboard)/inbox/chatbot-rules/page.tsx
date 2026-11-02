@@ -413,7 +413,7 @@ export default function ChatbotRulesPage() {
               <button
                 key={ch} onClick={() => toggleChannel(ch)} type="button"
                 className={cn("px-2.5 py-1 rounded-full text-[11px] border transition-colors",
-                  channelTypes.includes(ch) ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground hover:bg-muted")}
+                  channelTypes.includes(ch) ? "crm-choice-selected  " : "text-muted-foreground hover:bg-muted")}
               >
                 {channelLabel(ch)}
               </button>

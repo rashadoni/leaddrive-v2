@@ -233,7 +233,7 @@ export function DealHistory({ dealId, orgId, deal }: { dealId: string; orgId?: s
                 <Icon className={`h-4 w-4 ${item.iconText}`} />
               </div>
               <div className="flex-1 pb-3">
-                <div className="bg-card rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 shadow-sm">
+                <div className="bg-card rounded-lg border border-border p-3 shadow-sm">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium">{item.title}</p>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(item.date)}</span>

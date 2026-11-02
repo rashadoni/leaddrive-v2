@@ -2,7 +2,7 @@
 
 /**
  * Settings → «Reklam konversiyaları»: where new leads and won deals are sent
- * (Google Analytics 4, Meta), and what was sent lately.
+ * (Meta, Google Analytics 4), and what was sent lately.
  */
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
@@ -12,11 +12,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { MetaDestinationCard, type DestinationSave, type DestinationView } from "@/components/ad-conversions/destination-card"
+import { Ga4DestinationCard, type Ga4Save } from "@/components/ad-conversions/ga4-destination-card"
 import { formatDateTime } from "@/lib/format-date"
 
 export interface RecentEvent {
   id: string
-  platform: "meta"
+  platform: "meta" | "ga4"
   eventName: "lead" | "purchase"
   recordLabel: string
   status: "sent" | "pending" | "failed" | "skipped"
@@ -25,7 +26,7 @@ export interface RecentEvent {
 }
 
 interface AdConversionsData {
-  destinations: { meta: DestinationView | null }
+  destinations: { meta: DestinationView | null; ga4: DestinationView | null }
   recent: RecentEvent[]
 }
 
@@ -47,7 +48,7 @@ export default function AdConversionsPage() {
   const [data, setData] = useState<AdConversionsData | null>(null)
 
   const load = useCallback(() => {
-    void fetchAdConversions().then((result) => setData(result ?? { destinations: { meta: null }, recent: [] }))
+    void fetchAdConversions().then((result) => setData(result ?? { destinations: { meta: null, ga4: null }, recent: [] }))
   }, [])
 
   useEffect(load, [load])
@@ -61,6 +62,23 @@ export default function AdConversionsPage() {
     const body = await response?.json().catch(() => null)
     if (!response?.ok || !body?.success) return { ok: false as const, code: body?.code as string | undefined, reason: body?.reason as string | undefined }
     return { ok: true as const, view: body.data as DestinationView }
+  }
+
+  async function saveGa4(input: Ga4Save) {
+    const response = await fetch("/api/v1/ad-conversions/ga4", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }).catch(() => null)
+    const body = await response?.json().catch(() => null)
+    if (!response?.ok || !body?.success) return { ok: false as const, code: body?.code as string | undefined, reason: body?.reason as string | undefined }
+    return { ok: true as const, view: body.data as DestinationView }
+  }
+
+  async function testGa4() {
+    const response = await fetch("/api/v1/ad-conversions/ga4/test", { method: "POST" }).catch(() => null)
+    const body = await response?.json().catch(() => null)
+    return { ok: Boolean(response?.ok && body?.success), reason: body?.reason as string | undefined }
   }
 
   async function test() {
@@ -80,6 +98,7 @@ export default function AdConversionsPage() {
       </div>
 
       {data ? <MetaDestinationCard view={data.destinations.meta} onSave={save} onTest={test} /> : null}
+      {data ? <Ga4DestinationCard view={data.destinations.ga4} onSave={saveGa4} onTest={testGa4} /> : null}
 
       <Card>
         <CardHeader>
@@ -128,7 +147,7 @@ function RecentTable({ rows }: { rows: RecentEvent[] }) {
               <td className="py-2 pr-3 tabular-nums text-muted-foreground">{formatDateTime(row.at, locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
               <td className="py-2 pr-3">{t(`event_${row.eventName}`)}</td>
               <td className="py-2 pr-3">{row.recordLabel}</td>
-              <td className="py-2 pr-3">Meta</td>
+              <td className="py-2 pr-3">{row.platform === "ga4" ? "GA4" : "Meta"}</td>
               <td className={`py-2 font-medium ${STATUS_TONE[row.status]}`}>
                 {row.reason ? (
                   <Hint text={row.reason.startsWith("skip_") ? t(row.reason) : row.reason}>

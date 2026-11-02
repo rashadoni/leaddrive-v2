@@ -7,7 +7,7 @@ import { mtmTaskScopeWhere } from "@/lib/mtm/task-access"
 import { canViewMtmVisitAtCheckIn, historicalVisitCandidateWhere } from "@/lib/mtm/visit-scope"
 import { effectiveGeofenceRadius, isOwnVisitExecution } from "@/lib/mtm/visit-review"
 import { isValidTimezone } from "@/lib/timezone"
-import { jointManagerOf, readVisitEvaluationScores, visitEvaluationAverage } from "@/lib/mtm/joint-visit"
+import { jointManagerOf, storedVisitEvaluation } from "@/lib/mtm/joint-visit"
 
 const OPEN_TASK_STATUSES = ["PENDING", "IN_PROGRESS", "OVERDUE"] as const
 const REVIEW_PHOTO_LIMIT = 30
@@ -83,6 +83,7 @@ export const GET = withRouteFieldRlsAuth("read", async (
           orderBy: { updatedAt: "desc" },
           select: {
             scores: true,
+            questions: true,
             comment: true,
             createdAt: true,
             updatedAt: true,
@@ -168,12 +169,14 @@ export const GET = withRouteFieldRlsAuth("read", async (
           manager: jointManager,
           evaluations: actor.role === "AGENT"
             ? []
-            : (evaluations ?? []).map((evaluation: { scores: unknown; comment: string | null; createdAt: Date; updatedAt: Date; evaluator: { id: string; name: string } }) => {
-                const scores = readVisitEvaluationScores(evaluation.scores)
+            : (evaluations ?? []).map((evaluation: { scores: unknown; questions: unknown; comment: string | null; createdAt: Date; updatedAt: Date; evaluator: { id: string; name: string } }) => {
+                // The questions this rating was given against, not today's list.
+                const stored = storedVisitEvaluation(evaluation)
                 return {
                   evaluator: evaluation.evaluator,
-                  scores,
-                  average: visitEvaluationAverage(scores),
+                  questions: stored.questions,
+                  scores: stored.scores,
+                  average: stored.average,
                   comment: evaluation.comment,
                   createdAt: evaluation.createdAt,
                   updatedAt: evaluation.updatedAt,

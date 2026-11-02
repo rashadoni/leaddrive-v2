@@ -125,6 +125,12 @@ export class ZeytunClientsDirectory {
     return item ? structuredClone(item) : null
   }
 
+  /** Every pharmacy, for the CRM's company cards (never for a prompt). */
+  all(organizationId: string): Client[] {
+    this.assertTenant(organizationId)
+    return [...this.clients.values()].map((item) => structuredClone(item))
+  }
+
   /** Display candidates for a human review; even one match is not a CRM binding. */
   findByPhone(organizationId: string, phone: string) {
     this.assertTenant(organizationId)

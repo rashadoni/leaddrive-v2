@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { logOperationalFailure } from "./telemetry/operational-failure"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -289,27 +290,32 @@ export async function logAudit(
     ipAddress?: string
     userAgent?: string
   },
+  transaction?: Pick<Prisma.TransactionClient, "auditLog">,
 ) {
   // Self-wrap in tenant context so the org-scoped auditLog INSERT commits under RLS
   // even when called from a context-less route (e.g. superadmin admin/plans). orgId is
   // always a real org id here. Security-sensitive callers await this promise;
   // legacy fire-and-forget callers remain compatible because async execution
   // begins immediately.
+  const write = (db: Pick<Prisma.TransactionClient, "auditLog">) => db.auditLog.create({
+    data: {
+      organizationId: orgId,
+      action,
+      entityType,
+      entityId,
+      entityName: entityName || undefined,
+      oldValue: extra?.oldValue || undefined,
+      newValue: extra?.newValue || undefined,
+      userId: extra?.userId || undefined,
+      ipAddress: extra?.ipAddress || undefined,
+      userAgent: extra?.userAgent || undefined,
+    },
+  })
+  // Credential callers supply their transaction: audit failure must abort it.
+  // Existing informational callers retain the finite warning/default behavior.
+  if (transaction) { await write(transaction); return }
   try {
-    await runWithTenant(orgId, () => prisma.auditLog.create({
-      data: {
-        organizationId: orgId,
-        action,
-        entityType,
-        entityId,
-        entityName: entityName || undefined,
-        oldValue: extra?.oldValue || undefined,
-        newValue: extra?.newValue || undefined,
-        userId: extra?.userId || undefined,
-        ipAddress: extra?.ipAddress || undefined,
-        userAgent: extra?.userAgent || undefined,
-      },
-    }))
+    await runWithTenant(orgId, () => write(prisma))
   } catch {
     logOperationalFailure("audit-persist")
   }

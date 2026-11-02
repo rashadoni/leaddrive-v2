@@ -1,4 +1,5 @@
 import { resolveWhatsAppConfig, type WhatsAppConfig } from "@/lib/whatsapp"
+import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
 /**
@@ -60,12 +61,43 @@ export function resetLoginCodeAvailability(): void {
   unavailableUntil = 0
 }
 
-export async function loginCodeSender(): Promise<WhatsAppConfig | null> {
-  const organizationId = loginCodeSenderOrganizationId()
+type Env = Partial<Record<string, string | undefined>>
+
+/**
+ * Which of that organization's WhatsApp numbers sends the codes — Meta's phone
+ * number id, named, not «the first active channel». On 2026-10-29 LeadDrive
+ * Inc. had two active WhatsApp channels (…30 65 and …80 49) and Postgres
+ * handed back the one whose account has no `leaddrive_login_code`: every code
+ * failed as template_missing. Owner, 2026-10-29: «Коды входа — с +994 10 531
+ * 30 65 (Lead Drive CRM)».
+ */
+const SENDER_PHONE_NUMBER_ID = "984538588084578" // +994 10 531 30 65, «Lead Drive CRM»
+
+export function loginCodeSenderPhoneNumberId(env: Env = process.env): string {
+  return env.MTM_LOGIN_CODE_SENDER_PHONE_NUMBER_ID?.trim() || SENDER_PHONE_NUMBER_ID
+}
+
+export async function loginCodeSender(env: Env = process.env): Promise<WhatsAppConfig | null> {
+  const organizationId = loginCodeSenderOrganizationId(env)
   if (!organizationId) return null
+  const phoneNumberId = loginCodeSenderPhoneNumberId(env)
   // channel_configs is a tenant table; the sender is read by server
   // configuration alone, never from a request.
-  return await runWithRlsBypass(() => resolveWhatsAppConfig(organizationId))
+  return await runWithRlsBypass(async () => {
+    const rows = await prisma.channelConfig.findMany({
+      where: { organizationId, channelType: "whatsapp", isActive: true, OR: [{ phoneNumberId }, { phoneNumber: phoneNumberId }] },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    })
+    for (const row of rows) {
+      const sender = await resolveWhatsAppConfig(organizationId, { channelConfigId: row.id })
+      if (sender?.phoneNumberId === phoneNumberId) return sender
+    }
+    // No other channel stands in: a number without the template would only
+    // turn «not configured» into a code that never arrives.
+    console.warn("[MTM login code] the configured sender number has no active WhatsApp channel", { organizationId, phoneNumberId })
+    return null
+  })
 }
 
 export type LoginCodeDelivery =
@@ -78,7 +110,7 @@ type Fetch = typeof fetch
 export async function sendLoginCodeToWhatsApp(
   sender: WhatsAppConfig,
   input: { to: string; code: string; language: string | null | undefined },
-  deps: { fetch?: Fetch; now?: () => number; templateName?: string } = {},
+  deps: { fetch?: Fetch; now?: () => number; templateName?: string; signal?: AbortSignal } = {},
 ): Promise<LoginCodeDelivery> {
   const doFetch = deps.fetch ?? fetch
   const now = deps.now ?? Date.now
@@ -87,6 +119,7 @@ export async function sendLoginCodeToWhatsApp(
   let missing = 0
   const languages = templateLanguages(input.language)
   for (const language of languages) {
+    if (deps.signal?.aborted) return { status: "failed", reason: "timeout" }
     let response: Response
     try {
       response = await doFetch(`${GRAPH_API_BASE}/${sender.phoneNumberId}/messages`, {
@@ -105,7 +138,7 @@ export async function sendLoginCodeToWhatsApp(
             ],
           },
         }),
-        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+        signal: deps.signal ? AbortSignal.any([deps.signal, AbortSignal.timeout(SEND_TIMEOUT_MS)]) : AbortSignal.timeout(SEND_TIMEOUT_MS),
       })
     } catch (error) {
       return { status: "failed", reason: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network" }

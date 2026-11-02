@@ -1,6 +1,8 @@
 /**
- * The organization's Meta destination: pixel id, access token (ciphertext
- * bound to organization + column), what to send, and the consent statement.
+ * The organization's ad destinations — Meta (pixel id + access token) and
+ * Google Analytics 4 (measurement id + Measurement Protocol API secret):
+ * public id, secret (ciphertext bound to organization + column), what to
+ * send, and the consent statement.
  * Nothing is sent while `isActive` is false; `isActive` cannot be true
  * without `consentConfirmedAt` (CHECK in the migration and the save below).
  */
@@ -33,16 +35,20 @@ export interface DestinationInput {
   consent: boolean
 }
 
-export async function findMetaDestination(orgId: string) {
-  return prisma.adConversionDestination.findFirst({ where: { organizationId: orgId, platform: "meta" } })
+export type AdPlatform = "meta" | "ga4"
+
+export async function findDestination(orgId: string, platform: AdPlatform) {
+  return prisma.adConversionDestination.findFirst({ where: { organizationId: orgId, platform } })
 }
+
+export const findMetaDestination = (orgId: string) => findDestination(orgId, "meta")
 
 export function decryptDestinationSecret(orgId: string, ciphertext: string): string {
   return decryptForTenantBound(orgId, AAD_TABLE, AAD_COLUMN, ciphertext)
 }
 
-export async function metaDestinationView(orgId: string): Promise<DestinationView | null> {
-  const row = await findMetaDestination(orgId)
+export async function destinationView(orgId: string, platform: AdPlatform): Promise<DestinationView | null> {
+  const row = await findDestination(orgId, platform)
   if (!row) return null
   const since = new Date(Date.now() - 7 * 24 * 3600_000)
   const [last, failures] = await Promise.all([
@@ -67,18 +73,20 @@ export async function metaDestinationView(orgId: string): Promise<DestinationVie
   }
 }
 
+export const metaDestinationView = (orgId: string) => destinationView(orgId, "meta")
+
 /**
- * Save the destination. The caller has checked the token with Meta when it
- * turns sending on. Turning on keeps the first activation moment, so a
+ * Save the destination. The caller has checked the key with the platform
+ * when it turns sending on. Turning on keeps the first activation moment, so a
  * re-save does not resend history; turning on again after "off" starts from
  * now.
  */
-export async function saveMetaDestination(orgId: string, userId: string | null, input: DestinationInput, now = new Date()): Promise<void> {
-  const existing = await findMetaDestination(orgId)
+export async function saveDestination(orgId: string, userId: string | null, platform: AdPlatform, input: DestinationInput, now = new Date()): Promise<void> {
+  const existing = await findDestination(orgId, platform)
   const secretCiphertext = input.secret
     ? encryptForTenantBound(orgId, AAD_TABLE, AAD_COLUMN, input.secret)
     : existing?.secretCiphertext
-  if (!secretCiphertext) throw new Error("Meta access token is required")
+  if (!secretCiphertext) throw new Error(`${platform} secret is required`)
   const consentConfirmedAt = input.consent ? existing?.consentConfirmedAt ?? now : null
   const activatedAt = input.isActive
     ? (existing?.isActive && existing.activatedAt ? existing.activatedAt : now)
@@ -98,5 +106,8 @@ export async function saveMetaDestination(orgId: string, userId: string | null, 
     await prisma.adConversionDestination.updateMany({ where: { id: existing.id, organizationId: orgId }, data })
     return
   }
-  await prisma.adConversionDestination.create({ data: { ...data, organizationId: orgId, platform: "meta" } })
+  await prisma.adConversionDestination.create({ data: { ...data, organizationId: orgId, platform } })
 }
+
+export const saveMetaDestination = (orgId: string, userId: string | null, input: DestinationInput, now = new Date()) =>
+  saveDestination(orgId, userId, "meta", input, now)

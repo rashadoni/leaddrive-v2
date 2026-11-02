@@ -120,7 +120,7 @@ export function AttendanceClosedMonth({ view, tableFirst = false, primary = true
       </div>
     </div>
     {/* A notice is white with a coloured edge (MTM colours, 2026-10-18). */}
-    <p className="rounded-xl border border-l-4 border-zinc-200 border-l-emerald-500 bg-card p-4 text-sm text-foreground dark:border-zinc-700 dark:border-l-emerald-500">{t("monthCloseFrozen")}</p>
+    <p className="rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card p-4 text-sm text-foreground dark:border-l-emerald-500">{t("monthCloseFrozen")}</p>
     {view.form === "MONTH" ? <p className="text-sm text-muted-foreground" data-testid="attendance-closed-month-legacy">{t("monthCloseLegacyForm")}</p> : null}
     {failed ? <p role="alert" className="text-sm text-destructive">{t("monthCloseExportError")}</p> : null}
     <section className="space-y-3 border-t pt-4" data-testid="attendance-closed-month-corrections" aria-label={t("monthCloseJournal")}>

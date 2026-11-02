@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireAttendanceSelf, type AttendanceSelf } from "@/lib/mtm/attendance-self-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
+import { attendanceQrPhoneState } from "@/lib/mtm/attendance-qr-contract"
 
 const LOCATION_STATES = ["INSIDE", "OUTSIDE", "UNCERTAIN", "UNCONFIGURED", "UNAVAILABLE", "NO_CONSENT"] as const
 export type OwnAttendanceMarkRow = {
@@ -21,7 +22,8 @@ export function ownAttendanceMark(row: OwnAttendanceMarkRow) {
     ? { latitude: row.latitude, longitude: row.longitude } : null
   const number = (value: number | null) => value !== null && Number.isFinite(value) && value >= 0 ? value : null
   const branchName = measured ? row.branchName : null
-  const qrState = endpoint && ["VERIFIED", "NOT_PROVIDED", "EXPIRED", "INVALID", "BRANCH_CHANGED", "REUSED"].includes(row.qrState ?? "") ? row.qrState : null
+  // The phone validates the six states it was built with (attendanceQrPhoneState).
+  const qrState = endpoint ? attendanceQrPhoneState(row.qrState) : null
   return {
     eventId: row.eventId, action: row.action, claimedAt: row.claimedAt.toISOString(), serverReceivedAt: row.serverReceivedAt?.toISOString() ?? null,
     location: { state, coordinates, accuracyMeters: coordinates ? number(row.accuracy) : null,

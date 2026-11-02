@@ -3,12 +3,13 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { guardInteractiveJsonMutation } from "@/lib/social/review-apply-request"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
-import { runWithRlsBypass } from "@/lib/rls-context"
+import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { clientIp } from "@/lib/request-ip"
 import { logAudit, prisma } from "@/lib/prisma"
+import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
 
 const MAX_BODY_BYTES = 8 * 1024
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -111,53 +112,41 @@ export async function POST(
         return NextResponse.json({ error: "Tenant administrator not found" }, { status: 404 })
       }
 
-      const changedAt = new Date()
       const passwordHash = await bcrypt.hash(parsed.data.password, 12)
-      const updated = await prisma.user.updateMany({
-        where: { id: userId, organizationId: tenantId, role: "admin" },
-        data: {
-          passwordHash,
-          passwordChangedAt: changedAt,
-          resetToken: null,
-          resetTokenExp: null,
-        },
-      })
-      if (updated.count !== 1) {
-        return NextResponse.json({ error: "Tenant administrator not found" }, { status: 404 })
-      }
-
-      // Never persist the plaintext or hash. passwordChangedAt documents the
-      // exact credential epoch that invalidated every existing session.
-      await logAudit(
-        tenantId,
-        "superadmin_password_reset",
-        "user",
-        target.id,
-        target.email,
-        {
-          userId: auth.userId,
-          ipAddress: clientIp(req),
-          userAgent: req.headers.get("user-agent")?.slice(0, 512),
-          oldValue: {
-            passwordChangedAt: target.passwordChangedAt,
-            isActive: target.isActive,
-          },
-          newValue: {
-            passwordChangedAt: changedAt,
-            sessionsInvalidated: true,
-            isActive: target.isActive,
-            tenantActive: tenant.isActive,
-          },
-        },
-      )
+      const result = await runWithTenant(tenantId, () => withLegacyCredentialMaintenance(prisma, tenantId,
+        [{ kind: "USER", userId: target.id }], async tx => {
+          const freshTenant = await tx.organization.findUnique({ where: { id: tenantId }, select: { isActive: true } })
+          const fresh = await tx.user.findFirst({
+            where: { id: userId, organizationId: tenantId, role: "admin" },
+            select: { id: true, email: true, isActive: true, passwordChangedAt: true },
+          })
+          if (!freshTenant || !fresh) return null
+          const changedAt = new Date()
+          const updated = await tx.user.updateMany({
+            where: { id: userId, organizationId: tenantId, role: "admin" },
+            data: { passwordHash, passwordChangedAt: changedAt, resetToken: null, resetTokenExp: null },
+          })
+          if (updated.count !== 1) return null
+          await logAudit(tenantId, "superadmin_password_reset", "user", fresh.id, fresh.email, {
+            userId: auth.userId,
+            ipAddress: clientIp(req),
+            userAgent: req.headers.get("user-agent")?.slice(0, 512),
+            oldValue: { passwordChangedAt: fresh.passwordChangedAt, isActive: fresh.isActive },
+            newValue: { passwordChangedAt: changedAt, sessionsInvalidated: true, isActive: fresh.isActive, tenantActive: freshTenant.isActive },
+          }, tx)
+          return { changedAt, isActive: fresh.isActive, tenantActive: freshTenant.isActive }
+        }))
+      if (!result.allowed) return NextResponse.json({ error: "Use the current credential management flow for this account", code: "IDENTITY_CREDENTIAL_FLOW_REQUIRED" }, { status: 409 })
+      if (!result.value) return NextResponse.json({ error: "Tenant administrator not found" }, { status: 404 })
+      const changedAt = result.value.changedAt
 
       return NextResponse.json({
         success: true,
         data: {
           userId: target.id,
           passwordChangedAt: changedAt,
-          isActive: target.isActive,
-          tenantActive: tenant.isActive,
+          isActive: result.value.isActive,
+          tenantActive: result.value.tenantActive,
           sessionsInvalidated: true,
         },
       })

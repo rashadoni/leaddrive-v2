@@ -37,6 +37,7 @@ vi.mock("@/lib/api-auth", () => ({
 // module refuses to load where a window exists; a web request never has one.
 vi.mock("@/lib/mobile-auth", () => ({ getMobileAuth: () => null }))
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { organizationId: "org-1", role: "admin" } } }) }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 vi.mock("@/components/help/help-button", () => ({ HelpButton: () => null }))
 // The chart library measures a real layout; jsdom has none.
@@ -78,7 +79,7 @@ const visit = (id: string, agentId: string, createdAt: string, deletedAt: string
   const agent = AGENTS.find((a) => a.id === agentId)!
   return {
     id, organizationId: agent.organizationId, agentId, agent, status: "CHECKED_OUT",
-    createdAt: new Date(createdAt), deletedAt: deletedAt ? new Date(deletedAt) : null,
+    createdAt: new Date(createdAt), checkInAt: new Date(createdAt), deletedAt: deletedAt ? new Date(deletedAt) : null,
   }
 }
 const VISITS: Row[] = [

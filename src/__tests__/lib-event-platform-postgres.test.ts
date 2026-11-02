@@ -26,24 +26,31 @@ postgresDescribe("event-platform PostgreSQL optimistic append", () => {
     aggregateId: string,
     expectedVersion: number | undefined,
     probe: string,
+    options: { timezone?: string; occurredAt?: Date } = {},
   ) {
-    return prisma.$transaction((tx) => appendDomainEvent(
-      tx as unknown as EventPlatformTransaction,
-      {
-        organizationId: "org-b",
-        domain: "finance",
-        aggregateType: "sdk-probe",
-        aggregateId,
-        expectedVersion,
-        eventType: "finance.sdk-probe.v1",
-        source: "urn:leaddrive:event-platform-ci",
-        dataSchema: "urn:leaddrive:schema:finance.sdk-probe:v1",
-        classification: "internal",
-        producer: "event-platform-postgres-ci",
-        producerVersion: "integration-v1",
-        data: { probe },
-      },
-    ))
+    return prisma.$transaction(async (tx) => {
+      if (options.timezone) {
+        await tx.$queryRawUnsafe("SELECT set_config('TimeZone', $1, true)", options.timezone)
+      }
+      return appendDomainEvent(
+        tx as unknown as EventPlatformTransaction,
+        {
+          organizationId: "org-b",
+          domain: "finance",
+          aggregateType: "sdk-probe",
+          aggregateId,
+          expectedVersion,
+          eventType: "finance.sdk-probe.v1",
+          source: "urn:leaddrive:event-platform-ci",
+          dataSchema: "urn:leaddrive:schema:finance.sdk-probe:v1",
+          classification: "internal",
+          producer: "event-platform-postgres-ci",
+          producerVersion: "integration-v1",
+          data: { probe },
+          occurredAt: options.occurredAt,
+        },
+      )
+    })
   }
 
   it("supports create, positive expected update, stale rejection and one concurrent winner", async () => {
@@ -101,6 +108,48 @@ postgresDescribe("event-platform PostgreSQL optimistic append", () => {
       version_count: 3n,
     })
   })
+
+  it.each(["UTC", "Europe/Berlin", "Asia/Baku", "America/New_York"])(
+    "keeps head, event and outbox timestamps coherent in PostgreSQL timezone %s",
+    async (timezone) => {
+      const aggregateId = `sdk-timezone-${randomUUID()}`
+      // Include milliseconds: the deferred production invariant compares exact
+      // TIMESTAMP(3) values, not only the date or aggregate version.
+      const times = [
+        new Date("2026-10-25T12:06:19.123Z"),
+        new Date("2026-10-25T12:07:47.456Z"),
+        new Date("2026-07-01T08:00:00.789Z"),
+      ]
+      // Exercise optimistic create, optimistic update and blind update. Each
+      // transaction must commit with the actual foundation guards enabled.
+      for (const [index, expectedVersion] of [0, 1, undefined].entries()) {
+        const result = await append(aggregateId, expectedVersion, `timezone-${index}`, {
+          timezone,
+          occurredAt: times[index],
+        })
+        expect(result.aggregateVersion).toBe(BigInt(index + 1))
+        const [stored] = await prisma.$queryRawUnsafe<Array<{
+          head_at: Date
+          event_at: Date
+          envelope_time: string
+        }>>(`
+          SELECT h."lastEventAt" AS head_at,
+                 e."occurredAt" AS event_at,
+                 o."envelope"->>'time' AS envelope_time
+            FROM "event_aggregate_heads" h
+            JOIN "domain_events" e
+              ON e."organizationId" = h."organizationId" AND e.id = h."lastEventId"
+            JOIN "event_outbox" o
+              ON o."organizationId" = e."organizationId" AND o."eventId" = e.id
+           WHERE h."organizationId" = 'org-b'
+             AND h."aggregateType" = 'sdk-probe' AND h."aggregateId" = $1
+        `, aggregateId)
+        expect(stored.head_at.toISOString()).toBe(times[index].toISOString())
+        expect(stored.event_at.toISOString()).toBe(times[index].toISOString())
+        expect(stored.envelope_time).toBe(times[index].toISOString())
+      }
+    },
+  )
 
   it("keeps blind append create-or-increment semantics", async () => {
     const aggregateId = `sdk-blind-${randomUUID()}`

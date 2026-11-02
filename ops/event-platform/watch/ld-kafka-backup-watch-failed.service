@@ -1,0 +1,10 @@
+# Installed by scripts/event-platform/cluster/provision.sh install-backup-watch.
+[Unit]
+Description=Tell the owner the backup Kafka watch itself failed
+
+[Service]
+Type=oneshot
+Environment=LD_KAFKA_WATCH_STATE=/var/lib/ld-kafka-watch/state
+Environment=LD_KAFKA_WATCH_NOTIFY=/usr/local/sbin/ld-kafka-notify
+Environment="LD_KAFKA_WATCH_PREFIX=[запасной сторож] "
+ExecStart=/usr/bin/node /opt/ld-kafka-watch/scripts/event-platform/cluster/watch.mjs --notify-failure

@@ -55,7 +55,7 @@ describe("the layers control on the map", () => {
       }))
     })
   }
-  const opener = () => container.querySelector('[data-testid="live-map-layers"] > button') as HTMLButtonElement
+  const opener = () => container.querySelector('[data-testid="live-map-layers-button"]') as HTMLButtonElement
   const panel = () => container.querySelector("#live-map-layers-panel") as HTMLElement | null
   const layerSwitch = (testId: string) => container.querySelector(`[data-testid="${testId}"]`) as HTMLButtonElement
   const press = async (element: Element | null) => { await act(async () => { (element as HTMLElement).click() }); await draw() }
@@ -75,6 +75,30 @@ describe("the layers control on the map", () => {
   afterEach(() => {
     act(() => root.unmount())
     container.remove()
+  })
+
+  it("puts the layers a manager switches all day on the map itself, worded, with how many each draws", async () => {
+    // Owner, 2026-11-01: «не нашёл на карте, как убрать клиентов, чтобы
+    // оставить только агентов» — the switch was one of ten in a closed panel.
+    await act(async () => {
+      root.render(createElement(LiveMapLayersControl, {
+        layers: layers().map((layer) => layer.id === "agents" ? { ...layer, count: 6 } : layer),
+        quick: ["agents", "heat", "nothing-like-this"], hiddenAgentCount: 0, onShowAllAgents: () => {},
+      }))
+    })
+    const quick = container.querySelector('[data-testid="live-map-quick-layers"]') as HTMLElement
+    expect([...quick.querySelectorAll('[role="switch"]')].map((button) => [button.textContent, button.getAttribute("aria-checked")]))
+      .toEqual([["Сотрудники6", "true"], ["Тепловая карта", "false"]])
+    // Seen without opening «Слои», and only on a map wide enough to hold them.
+    expect(panel()).toBeNull()
+    expect(quick.className).toContain("@xl:flex")
+    await act(async () => { (container.querySelector('[data-testid="live-map-quick-agents"]') as HTMLElement).click() })
+    expect(state.agents).toBe(false)
+  })
+
+  it("the live map offers employees, clients and its own zones as such buttons", () => {
+    const page = readFileSync("src/app/(dashboard)/mtm/map/page.tsx", "utf8")
+    expect(page).toContain('quick={["agents", "clients", "areas"]}')
   })
 
   it("stays inside the map's frame however many layers there are: the open panel scrolls, the button does not shrink", async () => {

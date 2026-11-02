@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import {
-  accessibleNavItems, navItems, matchNavItem, activeNavBase, groupLauncherStyle, GROUP_LAUNCHER_STYLE, NAV_GROUP_ORDER,
+  accessibleNavItems, navItemMatchesSearch, navItems, matchNavItem, activeNavBase, groupLauncherStyle, GROUP_LAUNCHER_STYLE, NAV_GROUP_ORDER,
 } from "@/lib/nav-items"
 import { SIDEBAR_SECTIONS, TOGGLEABLE_MODULES, countEnabledModules, enableAllModules, clearAllModules } from "@/lib/admin-sidebar-catalog"
 import { MODULE_REGISTRY, type ModuleId } from "@/lib/modules"
 import { canAccessModule } from "@/lib/plan-config"
+import { BOOKING_WORKSPACE_ENABLED } from "@/lib/booking/release-phase"
 
 // Pure permission-gate logic shared by the sidebar, App Launcher, Cmd+K
 // palette, and dashboard Quick Access strip. No mocks — exercises the real
@@ -615,10 +616,38 @@ describe("navDesc coverage (every launcher tile has a hint)", () => {
     expect(missing).toEqual([])
   })
 
-  it("has no orphan descriptions (every navDesc key maps to a nav item)", () => {
+  it("reserves exactly the inactive booking phase description and has no other orphans", () => {
+    // The same translation bundle ships with both immutable release phases.
+    // Exactly one booking destination is live, while both need their copy.
+    const active = BOOKING_WORKSPACE_ENABLED ? "bookingWorkspace" : "onlineBooking"
+    const inactive = BOOKING_WORKSPACE_ENABLED ? "onlineBooking" : "bookingWorkspace"
+    expect(navItems.filter((item) => [active, inactive].includes(item.tKey)).map((item) => item.tKey)).toEqual([active])
     const tKeys = new Set(navItems.map((i) => i.tKey))
     const orphans = Object.keys(en.navDesc ?? {}).filter((k) => !tKeys.has(k))
-    expect(orphans).toEqual([])
+    expect(orphans).toEqual([inactive])
+  })
+})
+
+describe("booking menu discovery across the staged release", () => {
+  const expected = BOOKING_WORKSPACE_ENABLED ? "/meetings" : "/settings/booking"
+  for (const locale of ["az", "ru", "en"]) {
+    it(`${locale}: finds one authorized destination by both the old and new name`, () => {
+      const labels = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav as Record<string, string>
+      const visible = accessibleNavItems({ plan: "enterprise", role: "admin" })
+      for (const name of [labels.onlineBooking, labels.bookingWorkspace]) {
+        const found = visible.filter((item) => navItemMatchesSearch(item, ` ${name} `, (key) => labels[key]))
+        expect(found.filter((item) => item.permissionScope === "bookings").map((item) => item.href)).toEqual([expected])
+      }
+    })
+  }
+  it("search aliases cannot expose meetings to a role without booking access", () => {
+    const labels = JSON.parse(readFileSync("messages/ru.json", "utf8")).nav as Record<string, string>
+    for (const role of ["viewer", "reviewer"]) {
+      const visible = accessibleNavItems({ plan: "enterprise", role })
+      for (const name of ["ОНЛАЙН-ЗАПИСЬ", "ВСТРЕЧИ И ЗАПИСЬ"]) {
+        expect(visible.filter((item) => item.permissionScope === "bookings" && navItemMatchesSearch(item, name, (key) => labels[key]))).toEqual([])
+      }
+    }
   })
 })
 

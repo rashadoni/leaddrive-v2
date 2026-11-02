@@ -29,6 +29,9 @@ export function infraTopics(env) {
     { name: `ld.${env}.connect.config`, partitions: 1, replicationFactor: 3, config: compact },
     { name: `ld.${env}.connect.offset`, partitions: 3, replicationFactor: 3, config: compact },
     { name: `ld.${env}.connect.status`, partitions: 1, replicationFactor: 3, config: compact },
+    // Debezium heartbeats (see slotHeartbeat); only the latest one matters.
+    { name: heartbeatTopic(env), partitions: 1, replicationFactor: 3,
+      config: { 'cleanup.policy': 'delete', 'retention.ms': '86400000', 'min.insync.replicas': '2', 'unclean.leader.election.enable': 'false' } },
     { name: `ld.${env}.registry.journal`, partitions: 1, replicationFactor: 3, config: forever },
     { name: `ld.${env}.registry.snapshots`, partitions: 1, replicationFactor: 3, config: forever },
     // Change notifications the registry publishes (artifact created, etc.).
@@ -57,9 +60,13 @@ export function aclBindings(env, catalogTopics) {
     allow(PRINCIPALS.registry, ['Read', 'Write', 'Describe', 'DescribeConfigs'], ['--topic', `ld.${env}.registry.`], 'prefixed'),
     allow(PRINCIPALS.registry, ['IdempotentWrite'], ['--cluster']),
     allow(PRINCIPALS.registry, ['Read'], ['--group', '*']),
-    // The Fund shadow worker only consumes Finance events.
-    allow(PRINCIPALS.fundWorker, ['Read', 'Describe'], ['--topic', financeEvents]),
-    allow(PRINCIPALS.fundWorker, ['Read'], ['--group', `ld.${env}.fund-shadow.`], 'prefixed'),
+    // The Fund shadow worker only consumes Finance events. DescribeConfigs:
+    // the bridge refuses to start unless the topic's cleanup.policy is delete
+    // (verifyTopic). Without it the worker never reaches READY on the real
+    // cluster — found by the 2026-10-25 drill (fund-drill.ts).
+    allow(PRINCIPALS.fundWorker, ['Read', 'Describe', 'DescribeConfigs'], ['--topic', financeEvents]),
+    // validateKafkaWorkerPlan admits only ld.<env>.finance.fund-shadow.v<N>.<name>.
+    allow(PRINCIPALS.fundWorker, ['Read'], ['--group', `ld.${env}.finance.fund-shadow.`], 'prefixed'),
   ]
 }
 
@@ -181,6 +188,36 @@ ${source ? `      - /etc/leaddrive-kafka/tls/source-postgres.pem:/etc/kafka/tls/
   return { 'connect.env': connect, 'registry.env': registry, 'compose.yml': compose }
 }
 
+// The outbox is quiet most of the time while the rest of the database writes
+// ~0.3 GB of WAL a day. Debezium confirms to the slot only positions of events
+// it emitted, so the slot kept every byte since the last outbox row
+// (production, 2026-10-23). Heartbeat records alone do not move it (drill run
+// 40024551361), and lsn.flush.mode=connector_and_driver lets the driver
+// confirm past the stored offset, which on restart either refuses to start or
+// skips the gap. Instead each heartbeat writes a logical-decoding message the
+// slot must deliver; Debezium consumes it without emitting it (excluded
+// prefix), advances its offset, and the next heartbeat commits that offset.
+// The heartbeat topic sits under the connect prefix ld-connect may write.
+export const SLOT_MESSAGE_PREFIX = 'ld-slot-heartbeat'
+// Matches no prefix ever written: Debezium compares the whole prefix.
+export const MESSAGE_PREFIX_NONE = 'ld-cdc-emits-no-logical-messages'
+export function heartbeatTopic(env) { return `ld.${env}.connect.heartbeat.ld.${env}.cdc-source` }
+export function slotHeartbeat(env) {
+  return {
+    'heartbeat.interval.ms': '60000',
+    // Read by the default topic naming strategy; "heartbeat.topics.prefix" is ignored
+    // (drill run 40193162960 wrote to __debezium-heartbeat.* with it).
+    'topic.heartbeat.prefix': `ld.${env}.connect.heartbeat`,
+    'heartbeat.action.query': `SELECT pg_logical_emit_message(false, '${SLOT_MESSAGE_PREFIX}', '')`,
+    // Allow-list, not deny-list: no logical-decoding message is ever emitted.
+    // With only the heartbeat excluded, any other prefix (a manual check, an
+    // extension) was routed to ld.<env>.cdc-source.message, which ld-connect
+    // may not write, and killed the task (production, 2026-10-25 13:04 UTC).
+    // The heartbeat is still consumed and advances the offset (drill.sh step).
+    'message.prefix.include.list': MESSAGE_PREFIX_NONE,
+  }
+}
+
 // Debezium outbox connector for one environment, from the reviewed template.
 // The password stays a FileConfigProvider reference.
 export function renderSourceConnector({ template, envName, source }) {
@@ -195,6 +232,7 @@ export function renderSourceConnector({ template, envName, source }) {
   for (const [token, value] of Object.entries(replacements)) text = text.replaceAll(token, value)
   if (/__[A-Z_]+__/.test(text)) throw new Error('unresolved placeholder in connector template')
   const connector = JSON.parse(text)
+  Object.assign(connector.config, slotHeartbeat(envName))
   if (connector.config['database.sslmode'] !== 'verify-full') throw new Error('connector must use sslmode=verify-full')
   return connector
 }

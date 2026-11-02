@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { BookingSummary, useBookingFormat, type PublicBookingPage } from "@/components/booking/booking-scheduler"
 
 interface CancelView {
-  status: "confirmed" | "cancelled"
+  status: "confirmed" | "cancelled" | "completed" | "no_show"
   startsAt: string
   endsAt: string
   hostName: string

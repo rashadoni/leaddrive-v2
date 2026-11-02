@@ -74,7 +74,7 @@ function AdjSlider({ value, onChange, label, count, datePicker, dateValue, onDat
           type="date"
           value={dateValue || ""}
           onChange={(e) => onDateChange?.(e.target.value)}
-          className="w-full h-8 px-2 text-xs border border-zinc-200 dark:border-zinc-700 rounded mt-1"
+          className="w-full h-8 px-2 text-xs border border-input rounded mt-1"
           placeholder="dd.mm.yyyy"
         />
       )}
@@ -90,7 +90,7 @@ function CollapsibleSection({ title, defaultOpen, children }: {
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false)
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg">
+    <div className="border border-border rounded-lg">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-3 hover:bg-muted/50 text-sm font-medium"
@@ -398,23 +398,23 @@ export default function PricingPage() {
           <h1 data-tour-id="pricing-header" className="text-2xl font-bold tracking-tight flex items-center gap-2">{tp("title")} <TourReplayButton tourId="pricing" /><HelpButton slug="pricing" variant="label" /></h1>
           <PageDescription text={tp("pageDescription")} />
         </div>
-        <div data-tour-id="pricing-tabs" className="flex gap-2">
-          <Button
-            variant={activeTab === "model" ? "default" : "outline"}
+        <div data-crm-tabs="" data-tour-id="pricing-tabs" className="flex gap-2">
+          <Button data-crm-tab="" data-state={activeTab === "model" ? "active" : "inactive"}
+            variant={activeTab === "model" ? "selected" : "outline"}
             onClick={() => setActiveTab("model")}
             className="gap-1"
           >
             {tp("tabModel")} <InfoHint text={tp("hintTabPricing")} size={12} />
           </Button>
-          <Button
-            variant={activeTab === "edit" ? "default" : "outline"}
+          <Button data-crm-tab="" data-state={activeTab === "edit" ? "active" : "inactive"}
+            variant={activeTab === "edit" ? "selected" : "outline"}
             onClick={() => setActiveTab("edit")}
             className="gap-1"
           >
             {tp("tabEdit")} <InfoHint text={tp("hintTabEdit")} size={12} />
           </Button>
-          <Button
-            variant={activeTab === "sales" ? "default" : "outline"}
+          <Button data-crm-tab="" data-state={activeTab === "sales" ? "active" : "inactive"}
+            variant={activeTab === "sales" ? "selected" : "outline"}
             onClick={() => setActiveTab("sales")}
             className="gap-1"
           >
@@ -425,13 +425,13 @@ export default function PricingPage() {
               <Download className="h-4 w-4 mr-1" /> {tp("tabExport")}
             </Button>
             {exportOpen && (
-              <div className="absolute right-0 top-full mt-2 z-50 bg-card border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg p-4 w-72 space-y-3">
+              <div className="absolute right-0 top-full mt-2 z-50 bg-card border border-border rounded-lg shadow-lg p-4 w-72 space-y-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">{tp("templateLabel")}</label>
                   <select
                     value={exportTemplate}
                     onChange={(e) => setExportTemplate(e.target.value)}
-                    className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                    className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                   >
                     <option value="1">Template 1 — SALES</option>
                     <option value="2">Template 2 — CFO Report</option>
@@ -444,7 +444,7 @@ export default function PricingPage() {
                     type="date"
                     value={exportDate}
                     onChange={(e) => setExportDate(e.target.value)}
-                    className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                    className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                   />
                 </div>
                 <Button onClick={handleExport} disabled={exportLoading} className="w-full">
@@ -779,7 +779,7 @@ export default function PricingPage() {
                   className="pl-8 h-9"
                 />
               </div>
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg max-h-[calc(100vh-250px)] overflow-y-auto">
+              <div className="border border-border rounded-lg max-h-[calc(100vh-250px)] overflow-y-auto">
                 {GROUP_ORDER.map((group) => {
                   const comps = Object.entries(pricingData)
                     .filter(([, info]) => info.group === group)
@@ -817,7 +817,7 @@ export default function PricingPage() {
             {/* Company editor */}
             <div>
               {!selectedCompany ? (
-                <div className="flex items-center justify-center h-64 text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                <div className="flex items-center justify-center h-64 text-muted-foreground border border-border rounded-lg">
                   {tp("selectCompanyToEdit")}
                 </div>
               ) : (
@@ -856,7 +856,7 @@ export default function PricingPage() {
               <select
                 value={salesFilter.type}
                 onChange={(e) => setSalesFilter({ ...salesFilter, type: e.target.value })}
-                className="h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm"
+                className="h-9 border border-input rounded px-2 text-sm"
               >
                 <option value="all">{tp("allTypes")}</option>
                 <option value="recurring">{tp("monthlyMRRFilter")}</option>
@@ -865,7 +865,7 @@ export default function PricingPage() {
               <select
                 value={salesFilter.status}
                 onChange={(e) => setSalesFilter({ ...salesFilter, status: e.target.value })}
-                className="h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm"
+                className="h-9 border border-input rounded px-2 text-sm"
               >
                 <option value="all">{tp("allStatuses")}</option>
                 <option value="active">{tp("statusActive")}</option>
@@ -889,7 +889,7 @@ export default function PricingPage() {
                     <select
                       value={newSale.profileId}
                       onChange={(e) => setNewSale({ ...newSale, profileId: e.target.value })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                     >
                       <option value="">{tp("selectPlaceholder")}</option>
                       {profilesList.map((p: any) => (
@@ -904,7 +904,7 @@ export default function PricingPage() {
                     <select
                       value={newSale.type}
                       onChange={(e) => setNewSale({ ...newSale, type: e.target.value })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                     >
                       <option value="recurring">{tp("monthlyMRR")}</option>
                       <option value="one_time">{tp("oneTime")}</option>
@@ -916,7 +916,7 @@ export default function PricingPage() {
                       type="text"
                       value={newSale.name}
                       onChange={(e) => setNewSale({ ...newSale, name: e.target.value })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                       placeholder={tp("saleDescription")}
                     />
                   </div>
@@ -926,7 +926,7 @@ export default function PricingPage() {
                       type="text"
                       value={newSale.categoryName}
                       onChange={(e) => setNewSale({ ...newSale, categoryName: e.target.value })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                       placeholder={tp("optional")}
                     />
                   </div>
@@ -935,7 +935,7 @@ export default function PricingPage() {
                     <select
                       value={newSale.unit}
                       onChange={(e) => setNewSale({ ...newSale, unit: e.target.value })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                     >
                       {UNIT_TYPES.map((u) => <option key={u} value={u}>{u}</option>)}
                     </select>
@@ -946,7 +946,7 @@ export default function PricingPage() {
                       type="number"
                       value={newSale.qty}
                       onChange={(e) => setNewSale({ ...newSale, qty: parseInt(e.target.value) || 0 })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                     />
                   </div>
                   <div>
@@ -956,7 +956,7 @@ export default function PricingPage() {
                       step="0.01"
                       value={newSale.price}
                       onChange={(e) => setNewSale({ ...newSale, price: parseFloat(e.target.value) || 0 })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                     />
                   </div>
                   <div>
@@ -965,7 +965,7 @@ export default function PricingPage() {
                       type="date"
                       value={newSale.effectiveDate}
                       onChange={(e) => setNewSale({ ...newSale, effectiveDate: e.target.value })}
-                      className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded px-2 text-sm mt-1"
+                      className="w-full h-9 border border-input rounded px-2 text-sm mt-1"
                     />
                   </div>
                 </div>
@@ -1175,7 +1175,7 @@ export default function PricingPage() {
                             <td className="py-2 pr-4">
                               {sale.status === "active" && <Badge variant="outline" className="text-green-600 border-green-300">{tp("statusActive")}</Badge>}
                               {sale.status === "cancelled" && <Badge variant="outline" className="text-red-600 border-red-300">{tp("statusCancelled")}</Badge>}
-                              {sale.status === "completed" && <Badge variant="outline" className="text-muted-foreground border-zinc-200 dark:border-zinc-700">{tp("statusCompleted")}</Badge>}
+                              {sale.status === "completed" && <Badge variant="outline" className="text-muted-foreground border-border">{tp("statusCompleted")}</Badge>}
                             </td>
                             <td className="py-2">
                               <button
@@ -1380,7 +1380,7 @@ function CompanyEditor({ code, data, onSave, onDelete, saving, expandedCats, set
           const hasServices = typeof val === "object" && "services" in val && val.services.length > 0
 
           return (
-            <div key={cat} className="border border-zinc-200 dark:border-zinc-700 rounded-lg">
+            <div key={cat} className="border border-border rounded-lg">
               <div className="flex items-center justify-between p-3 hover:bg-muted/50">
                 <button
                   onClick={() => toggleCat(cat)}
@@ -1434,7 +1434,7 @@ function CompanyEditor({ code, data, onSave, onDelete, saving, expandedCats, set
                                 type="number"
                                 value={svc.qty}
                                 onChange={(e) => updateService(cat, si, "qty", parseFloat(e.target.value) || 0)}
-                                className="w-16 h-7 text-center border border-zinc-200 dark:border-zinc-700 rounded text-sm mx-auto block"
+                                className="w-16 h-7 text-center border border-input rounded text-sm mx-auto block"
                               />
                             </td>
                             <td className="py-1.5">
@@ -1443,7 +1443,7 @@ function CompanyEditor({ code, data, onSave, onDelete, saving, expandedCats, set
                                 step="0.01"
                                 value={svc.price}
                                 onChange={(e) => updateService(cat, si, "price", parseFloat(e.target.value) || 0)}
-                                className="w-20 h-7 text-center border border-zinc-200 dark:border-zinc-700 rounded text-sm mx-auto block"
+                                className="w-20 h-7 text-center border border-input rounded text-sm mx-auto block"
                               />
                             </td>
                             <td className="py-1.5 text-right font-mono">
@@ -1474,12 +1474,12 @@ function CompanyEditor({ code, data, onSave, onDelete, saving, expandedCats, set
                           placeholder={tp("serviceName")}
                           value={newSvc.name}
                           onChange={(e) => setNewSvc({ ...newSvc, name: e.target.value })}
-                          className="h-8 px-2 border border-zinc-200 dark:border-zinc-700 rounded text-sm"
+                          className="h-8 px-2 border border-input rounded text-sm"
                         />
                         <select
                           value={newSvc.unit}
                           onChange={(e) => setNewSvc({ ...newSvc, unit: e.target.value })}
-                          className="h-8 px-1 border border-zinc-200 dark:border-zinc-700 rounded text-xs"
+                          className="h-8 px-1 border border-input rounded text-xs"
                         >
                           {UNIT_TYPES.map((u) => <option key={u} value={u}>{u}</option>)}
                         </select>
@@ -1488,7 +1488,7 @@ function CompanyEditor({ code, data, onSave, onDelete, saving, expandedCats, set
                           placeholder={tp("quantity")}
                           value={newSvc.qty}
                           onChange={(e) => setNewSvc({ ...newSvc, qty: parseInt(e.target.value) || 0 })}
-                          className="h-8 px-2 border border-zinc-200 dark:border-zinc-700 rounded text-sm text-center"
+                          className="h-8 px-2 border border-input rounded text-sm text-center"
                         />
                         <input
                           type="number"
@@ -1496,7 +1496,7 @@ function CompanyEditor({ code, data, onSave, onDelete, saving, expandedCats, set
                           placeholder={tp("price")}
                           value={newSvc.price}
                           onChange={(e) => setNewSvc({ ...newSvc, price: parseFloat(e.target.value) || 0 })}
-                          className="h-8 px-2 border border-zinc-200 dark:border-zinc-700 rounded text-sm text-center"
+                          className="h-8 px-2 border border-input rounded text-sm text-center"
                         />
                       </div>
                       <div className="flex gap-2">
@@ -1535,7 +1535,7 @@ function CompanyEditor({ code, data, onSave, onDelete, saving, expandedCats, set
               placeholder={tp("categoryName")}
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
-              className="flex-1 h-8 px-2 border border-zinc-200 dark:border-zinc-700 rounded text-sm"
+              className="flex-1 h-8 px-2 border border-input rounded text-sm"
               onKeyDown={(e) => e.key === "Enter" && addCategory()}
             />
             <Button size="sm" onClick={addCategory} disabled={!newCatName.trim()}>

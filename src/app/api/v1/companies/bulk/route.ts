@@ -57,7 +57,8 @@ export const POST = withRlsAuth("companies", "write", async (req: NextRequest, a
             { status: 403 },
           )
         }
-        const result = await prisma.company.deleteMany({ where })
+        // A pharmacy from 1C is not deleted here: the next load would bring it back.
+        const result = await prisma.company.deleteMany({ where: { ...where, externalSource: null } })
         logAudit(orgId, "bulk_delete", "company", ids.join(","), `Deleted ${result.count} companies`)
         await clearTaskRelationsMany(orgId, "company", ids)
         break

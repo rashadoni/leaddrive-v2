@@ -361,7 +361,7 @@ export default function ProductDetailPage() {
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {product.features.map((f: string, i: number) => (
-                      <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-green-50/30">
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-green-50/30">
                         <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                           <Check className="h-4 w-4 text-green-600" />
                         </div>

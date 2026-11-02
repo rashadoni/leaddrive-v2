@@ -6,18 +6,17 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
-import { mtmActivityEntityText } from "@/lib/mtm/activity-entity"
-import { Activity, ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
-import { PageDescription } from "@/components/page-description"
+import { mtmActivityEntityKey, mtmActivityEntityText } from "@/lib/mtm/activity-entity"
+import { ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
+import { MtmPageHeader } from "@/components/mtm/page-header"
 import { MtmFilterBar, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
-import { HelpButton } from "@/components/help/help-button"
 import {
   actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref, kindKey,
   relativeTime, dayKeyOf, dayLabel, activityActorName, activityDataSummary, type ActivitySubject,
 } from "@/lib/mtm/activity-actions"
 import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, formatTime } from "@/lib/format-date"
 import { dateInputValueInTimezone } from "@/lib/timezone"
 
 type Period = "today" | "7d" | "30d" | "all"
@@ -49,7 +48,11 @@ export default function MtmActivityPage() {
   // filter uses on the server — not the browser's.
   const [timezone, setTimezone] = useState<string | null>(null)
 
-  const [period, setPeriod] = useState<Period>("7d")
+  // Opens on today (owner 2026-10-31: seven days were 58 rows, 5.5 screens).
+  // An empty today widens itself to seven days once and says so.
+  const [period, setPeriod] = useState<Period>("today")
+  const [periodChosen, setPeriodChosen] = useState(false)
+  const [widenedFrom, setWidenedFrom] = useState<Period | null>(null)
   const [agentId, setAgentId] = useState("")
   const [type, setType] = useState("")
   const [violations, setViolations] = useState(false)
@@ -96,15 +99,23 @@ export default function MtmActivityPage() {
   // Reset to page 1 whenever a filter changes.
   useEffect(() => { if (orgId) load(1, false) }, [orgId, period, agentId, type, violations, load])
 
+  useEffect(() => {
+    if (loading || errorKey || periodChosen || widenedFrom || period !== "today") return
+    if (total !== 0 || agentId || type || violations) return
+    setWidenedFrom("today")
+    setPeriod("7d")
+  }, [loading, errorKey, periodChosen, widenedFrom, period, total, agentId, type, violations])
+
   const toggleViolations = () => { setViolations(v => !v); setType("") }
 
   const exportCsv = () => {
     if (logs.length === 0) { toast.info(t("exportEmpty")); return }
-    const head = [t("colTime"), t("colAgent"), t("colAction"), t("colDetails")]
+    const head = [t("colTime"), t("colWho"), t("colAction"), t("colSubject"), t("colDetails")]
     const rows = logs.map(l => [
       new Date(l.createdAt).toISOString(),
       activityActorName(l, t),
       t(actionLabelKey(l.action)),
+      subjectOf(l) ?? "",
       detailsOf(l).label,
     ])
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`
@@ -118,42 +129,57 @@ export default function MtmActivityPage() {
   // C12: строка читалась как «mtm_pharmacy_promotion_execution · 4f2a9c» —
   // имя таблицы и шесть символов идентификатора. Ни то, ни другое не язык, а
   // по обрывку id ничего и не найти. Полный id уехал в подсказку.
-  const detailsOf = (l: any): { label: string; title: string | null } => {
-    // 2026-09-14: the row used to read «Əməliyyat · Sistem · Əməkdaş». What a
-    // manager needs is WHERE — the customer's name, resolved by the API.
+  /**
+   * Owner, 2026-11-01: «журнал активности — мало информации». A row reads as a
+   * sentence: who did what, to whom or what, with the facts of the change.
+   * «Kimə / nəyə» is the client the API resolved, or the employee the row is
+   * about when somebody else acted on him.
+   */
+  const subjectOf = (l: any): string | null => {
     const subject = l.subject as ActivitySubject | undefined
-    if (subject?.customerName) return { label: subject.customerName, title: l.entityId ?? null }
-    // Audit 2026-09-21: «Запись» said nothing about a broadcast or a bulk
-    // assignment; the row's own facts do.
-    const summary = activityDataSummary(l, tt)
+    if (subject?.customerName) return subject.customerName
+    const about = typeof l.agent?.name === "string" && l.agent.name.trim() ? l.agent.name.trim() : null
+    return about && about !== activityActorName(l, t) ? about : null
+  }
+  // C12: строка читалась как «mtm_pharmacy_promotion_execution · 4f2a9c» —
+  // имя таблицы и шесть символов идентификатора. Полный id — в подсказке.
+  // 2026-11-01: «Запись» в каждой строке тоже ничего не говорила — нет фактов,
+  // нет и подписи; известный вид записи («Визит», «Маршрут») остаётся.
+  const detailsOf = (l: any): { label: string; title: string | null } => {
+    const summary = activityDataSummary(l, tt, locale)
     if (summary) return { label: summary, title: l.entityId ?? null }
     const k = kindKey(l.metadataKind)
     if (k) return { label: t(k), title: null }
-    return mtmActivityEntityText(l, t)
+    if (mtmActivityEntityKey(l.entity)) return mtmActivityEntityText(l, t)
+    return { label: "", title: null }
   }
+  // formatTime, not formatDate: in Azerbaijani formatDate draws the date
+  // alone and drops the hours — the column stood empty on prod (2026-11-01).
+  const timeOf = (iso: string) => formatTime(iso, locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", ...(timezone ? { timeZone: timezone } : {}) })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <PageDescription icon={Activity} title={t("title")} description={t("description")} />
-          <HelpButton slug="mtm-activity" variant="label" />
-        </div>
-        <Hint text={t("hint.export")}>
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download className="h-4 w-4 mr-1" /> {t("export")}
-          </Button>
-        </Hint>
-      </div>
+      <MtmPageHeader
+        title={t("title")}
+        description={t("description")}
+        help="mtm-activity"
+        actions={(
+          <Hint text={t("hint.export")}>
+            <Button variant="outline" size="sm" onClick={exportCsv}>
+              <Download className="h-4 w-4 mr-1" /> {t("export")}
+            </Button>
+          </Hint>
+        )}
+      />
 
       {/* Owner 2026-09-27: filters in one row. Five stat cards stood above a
           card of period buttons and two selects; the «Violations» card was a
           hidden toggle. Now it is a visible pill, the counts one line. */}
       <div className="space-y-2">
         <MtmFilterBar testId="mtm-activity-filters">
-          <MtmFilterSelect testId="mtm-activity-period" label={tf("period")} value={period} emptyValue="7d" showValue allLabel={t(PERIOD_KEY["7d"])}
+          <MtmFilterSelect testId="mtm-activity-period" label={tf("period")} value={period} emptyValue="today" showValue allLabel={t(PERIOD_KEY.today)}
             options={PERIODS.map((p) => ({ value: p, label: t(PERIOD_KEY[p]) }))}
-            onChange={(value) => setPeriod(value as Period)} />
+            onChange={(value) => { setPeriodChosen(true); setWidenedFrom(null); setPeriod(value as Period) }} />
           <MtmFilterSelect testId="mtm-activity-agent" label={tf("employee")} value={agentId} allLabel={t("allAgents")}
             options={agents.map((a) => ({ value: a.id, label: a.name }))}
             onChange={setAgentId} />
@@ -169,19 +195,24 @@ export default function MtmActivityPage() {
             onChange={(value) => { setType(value); setViolations(false) }} />
           <Hint text={t("hint.violations")}>
             <button type="button" data-testid="mtm-activity-violations" aria-pressed={violations} onClick={toggleViolations}
-              className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 text-red-700 dark:border-red-500/50 dark:text-red-300" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}>
+              className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 text-red-700 dark:border-red-500/50 dark:text-red-300" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}>
               <ShieldAlert className="h-4 w-4" aria-hidden="true" />
               {t("violations")} ({kpi.totalViolations})
             </button>
           </Hint>
         </MtmFilterBar>
+        {widenedFrom ? (
+          <p role="status" data-testid="mtm-activity-widened" className="text-sm text-muted-foreground">
+            {t("widenedNotice", { from: t(PERIOD_KEY[widenedFrom]), to: t(PERIOD_KEY[period]) })}
+          </p>
+        ) : null}
         <MtmResultLine aside={t("statsPeriodNote")}>
           <span className="font-medium text-foreground">{t("totalActivity")}: {kpi.totalActivities}</span> · {t("checkIn")}: {kpi.totalCheckIns} · {t("checkOut")}: {kpi.totalCheckOuts} · {t("photoUpload")}: {kpi.totalPhotos}
         </MtmResultLine>
       </div>
 
       {errorKey ? (
-        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-zinc-200 border-l-amber-500 bg-card text-foreground dark:border-zinc-700 dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-l-4 border-border border-l-amber-500 bg-card text-foreground dark:border-l-amber-500 p-4 text-sm sm:flex-row sm:items-center">
           <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1">{tt(`accessError.${errorKey}`)}</p>
           {errorKey === "loadFailed" && (
@@ -191,13 +222,13 @@ export default function MtmActivityPage() {
       ) : loading ? (
         <div className="animate-pulse space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="h-14 bg-muted rounded-lg" />)}</div>
       ) : logs.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">
+        <div className="h-48 flex items-center justify-center text-muted-foreground border border-border rounded-lg bg-card">
           {t("noActivity")}
         </div>
       ) : (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card overflow-hidden">
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
           {renderTimeline()}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs text-muted-foreground">
             <span>{t("showingOf", { shown: logs.length, total })}</span>
             {logs.length < total && (
               <Button size="sm" variant="outline" onClick={() => load(page + 1, true)} disabled={loadingMore}>
@@ -233,7 +264,14 @@ export default function MtmActivityPage() {
       }
       out.push(<ActivityRow key={log.id} log={log} />)
     }
-    return <div>{out}</div>
+    return (
+      <div>
+        <div aria-hidden="true" className={`hidden border-b border-border bg-muted/60 px-4 py-2 text-xs text-muted-foreground sm:grid ${ROW_GRID}`}>
+          <span>{t("colTime")}</span><span>{t("colWho")}</span><span>{t("colAction")}</span><span>{t("colSubject")}</span><span>{t("colDetails")}</span>
+        </div>
+        {out}
+      </div>
+    )
   }
 
   function ActivityRow({ log }: { log: any }) {
@@ -241,42 +279,30 @@ export default function MtmActivityPage() {
     const Icon = meta.icon
     const href = activityRowHref(log)
     const clickable = !!href
+    const subject = subjectOf(log)
+    const details = detailsOf(log)
     return (
       <div
         onClick={clickable ? () => router.push(href!) : undefined}
-        className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-0 border-zinc-100 dark:border-zinc-800 ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
+        data-testid="mtm-activity-row"
+        className={`grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 border-b border-border px-4 py-2.5 last:border-0 sm:min-h-12 ${ROW_GRID} ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
       >
-        {/* agent avatar / initials */}
-        <Avatar name={log.actor?.name ?? log.agent?.name} avatar={log.actor ? null : log.agent?.avatar} />
-        {/* action icon + label */}
-        {/* min-w-0 + truncate below sm: long localized actions ("Xəbərdarlıq
-            yenidən açıldı") used to push the row past the right edge. */}
-        <span title={t(actionLabelKey(log.action))} className={`inline-flex min-w-0 max-w-[45%] items-center gap-1.5 text-xs px-2 py-1 rounded-full font-medium sm:max-w-none sm:shrink-0 ${TONE_CLASSES[meta.tone]}`}>
-          <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="row-span-4 self-start text-sm tabular-nums text-muted-foreground sm:row-span-1 sm:self-center" title={relativeTime(log.createdAt, tt)} data-testid="mtm-activity-time">{timeOf(log.createdAt)}</span>
+        <span className="truncate text-sm font-medium" data-testid="mtm-activity-who">{activityActorName(log, t)}</span>
+        {/* The words of the action keep their colour; no pill under them. */}
+        <span title={t(actionLabelKey(log.action))} className={`col-start-2 inline-flex min-w-0 items-center gap-1.5 text-sm sm:col-start-auto ${TONE_CLASSES[meta.tone]}`} data-testid="mtm-activity-action">
+          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="truncate">{t(actionLabelKey(log.action))}</span>
         </span>
-        {/* agent name + details */}
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{activityActorName(log, t)}</div>
-          {(() => {
-            const details = detailsOf(log)
-            return <div className="text-xs text-muted-foreground truncate" title={details.title ?? undefined}>{details.label}</div>
-          })()}
-        </div>
-        {/* time + drill-down chevron */}
-        <span className="text-xs text-muted-foreground whitespace-nowrap">{relativeTime(log.createdAt, tt)}</span>
-        {clickable && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+        <span className={`col-start-2 truncate text-sm sm:col-start-auto ${subject ? "text-foreground" : "hidden text-muted-foreground sm:block"}`} data-testid="mtm-activity-subject">{subject ?? "—"}</span>
+        <span className="col-start-2 flex min-w-0 items-center gap-2 sm:col-start-auto" data-testid="mtm-activity-details">
+          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={details.title ?? undefined}>{details.label}</span>
+          {clickable && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+        </span>
       </div>
     )
   }
 }
 
-function Avatar({ name, avatar }: { name?: string; avatar?: string | null }) {
-  const initials = (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("")
-  if (avatar) return <img src={avatar} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
-  return (
-    <span className="h-8 w-8 rounded-full bg-muted shrink-0 flex items-center justify-center text-[11px] font-semibold text-muted-foreground">
-      {initials}
-    </span>
-  )
-}
+/** The journal's columns: time, who, what, to whom or what, the facts. */
+const ROW_GRID = "sm:grid-cols-[3.5rem_minmax(0,9rem)_minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,1.1fr)]"

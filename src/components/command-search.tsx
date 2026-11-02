@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { Search, Building2, Users, Handshake, UserPlus, CheckSquare, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { accessibleNavItems } from "@/lib/nav-items"
+import { accessibleNavItems, navItemMatchesSearch } from "@/lib/nav-items"
 import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 
 interface SearchItem {
@@ -85,7 +85,7 @@ export function CommandSearch() {
       .filter((it) => {
         const aliases = PAGE_SEARCH_ALIASES[it.href] ?? []
         return (
-          tNav(it.tKey).toLowerCase().includes(q) ||
+          navItemMatchesSearch(it, q, tNav) ||
           tNav(`groups.${it.group}`).toLowerCase().includes(q) ||
           aliases.some((alias) => alias.toLowerCase().includes(q))
         )

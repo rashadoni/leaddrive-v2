@@ -4,7 +4,7 @@
  * compute free time from.
  */
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
+import { bookingDb as prisma } from "./db"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { parseWeeklyHours } from "./availability"
 

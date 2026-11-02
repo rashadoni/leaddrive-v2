@@ -49,6 +49,10 @@ vi.mock("@/lib/constants", () => ({
   getCurrencySymbol: vi.fn((code?: string) => code ?? "₼"),
 }))
 
+// The organisation's currency is read from its settings (org-default-currency.test.ts
+// covers how); here it is simply AZN.
+vi.mock("@/lib/org-default-currency", () => ({ resolveOrgDefaultCurrency: vi.fn(async () => "AZN") }))
+
 import { prisma } from "@/lib/prisma"
 import { getOrgId } from "@/lib/api-auth"
 import { NextRequest } from "next/server"

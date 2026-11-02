@@ -258,7 +258,7 @@ export function MtmTaskQuickAdd({
                 aria-expanded={open}
                 aria-label={t("who")}
                 onClick={() => setOpen(true)}
-                className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-zinc-200/70 bg-card px-3 text-left text-sm dark:border-zinc-700/70"
+                className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-border bg-card px-3 text-left text-sm"
                 data-testid="mtm-task-quick-who"
               >
                 {selected ? (
@@ -328,7 +328,7 @@ export function MtmTaskQuickAdd({
                 </div>
               ))}
             </div>
-            <p className="mt-1 border-t border-zinc-200/70 px-2 pt-2 text-xs text-muted-foreground dark:border-zinc-700/70">{t("keys")}</p>
+            <p className="mt-1 border-t border-border px-2 pt-2 text-xs text-muted-foreground">{t("keys")}</p>
           </PopoverContent>
         </Popover>
 

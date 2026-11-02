@@ -135,6 +135,14 @@ export function renderCluster({ topology, catalog, clusterName, inventory, heapS
       ['node.id', ids.get(host.name)],
       ['controller.quorum.voters', voters],
       ['controller.listener.names', 'CONTROLLER'],
+      // The quorum spans Contabo EU/UK and OVH Gravelines. With the 2 s
+      // defaults a 2-3 s stall of one link already counts as a lost leader:
+      // on 2026-10-25 at 19:17 UTC one such stall moved the quorum leader and
+      // left 491 partitions short of a copy for 10 minutes, and the UK
+      // controller still logs 1-2 s fetch timeouts several times an hour.
+      // A lost node is still noticed within seconds; a blip no longer is.
+      ['controller.quorum.request.timeout.ms', '5000'],
+      ['controller.quorum.fetch.timeout.ms', '6000'],
       ['log.dirs', '/var/lib/kafka/data'],
       ...commonSecurity(superUsers),
     ]

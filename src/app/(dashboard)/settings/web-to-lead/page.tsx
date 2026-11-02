@@ -237,21 +237,27 @@ async function submitLeadDriveForm(e) {
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="default">{c.name} *</Badge>
                   <Badge variant="default">{c.email} *</Badge>
-                  <Badge
-                    variant={showPhone ? "default" : "outline"}
-                    className="cursor-pointer"
+                  <Button
+                    type="button"
+                    size="sm"
+                    aria-pressed={showPhone}
+                    variant={showPhone ? "selected" : "outline"}
                     onClick={() => setShowPhone(!showPhone)}
-                  >{c.phone}</Badge>
-                  <Badge
-                    variant={showCompany ? "default" : "outline"}
-                    className="cursor-pointer"
+                  >{c.phone}</Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    aria-pressed={showCompany}
+                    variant={showCompany ? "selected" : "outline"}
                     onClick={() => setShowCompany(!showCompany)}
-                  >{c.company}</Badge>
-                  <Badge
-                    variant={showMessage ? "default" : "outline"}
-                    className="cursor-pointer"
+                  >{c.company}</Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    aria-pressed={showMessage}
+                    variant={showMessage ? "selected" : "outline"}
                     onClick={() => setShowMessage(!showMessage)}
-                  >{c.message}</Badge>
+                  >{c.message}</Button>
                 </div>
                 <p className="text-xs text-muted-foreground">{c.fieldsHint}</p>
               </div>
@@ -301,7 +307,7 @@ async function submitLeadDriveForm(e) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-background">
+              <div className="border border-border rounded-lg p-4 bg-background">
                 <h3 className="text-lg font-semibold mb-3">{formTitle}</h3>
                 <div className="space-y-3">
                   <div>
@@ -327,7 +333,7 @@ async function submitLeadDriveForm(e) {
                   {showMessage && (
                     <div>
                       <label className="text-sm font-medium">{c.message}</label>
-                      <textarea className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-3 py-2 text-sm" placeholder={c.messagePlaceholder} rows={3} disabled />
+                      <textarea className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder={c.messagePlaceholder} rows={3} disabled />
                     </div>
                   )}
                   <Button disabled className="w-full">{submitText}</Button>

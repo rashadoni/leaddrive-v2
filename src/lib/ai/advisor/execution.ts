@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
 import { z } from "zod"
+import { withDealEvents } from "@/lib/deals/deal-events"
 
 type AdvisorExecutionPayload = {
   priority?: unknown
@@ -478,10 +479,9 @@ async function findAdvisorTaskOwner(organizationId: string, roles: string[], exp
 async function updateAdvisorOwnerAssignment(organizationId: string, entityType: string, entityId: string, assignedTo: string): Promise<boolean> {
   switch (entityType) {
     case "deal":
-      await prisma.deal.updateMany({
-        where: { id: entityId, organizationId },
-        data: { assignedTo },
-      })
+      await withDealEvents(prisma, organizationId, [entityId], async (tx) => ({
+        value: await tx.deal.updateMany({ where: { id: entityId, organizationId }, data: { assignedTo } }),
+      }))
       return true
     case "lead":
       await prisma.lead.updateMany({

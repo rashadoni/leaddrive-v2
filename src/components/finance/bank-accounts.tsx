@@ -215,7 +215,7 @@ function BankAccountDialog({ open, onClose, onSave, isPending, isEdit, initial }
             </div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} className="rounded border-zinc-200 dark:border-zinc-700" />
+            <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} className="rounded border-input" />
             <span className="text-sm">{t("isDefault")}</span>
           </label>
         </div>

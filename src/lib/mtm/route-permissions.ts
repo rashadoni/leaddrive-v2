@@ -182,6 +182,7 @@ export async function resolveMtmRouteActor(
     organizationId: params.organizationId,
     ...(params.agentId ? { id: params.agentId } : { userId: params.userId }),
     status: "ACTIVE" as const,
+    fieldDeletedAt: null,
   }
   // One web user may be linked to more than one ACTIVE card (there is no unique
   // index yet). Without an order Postgres may return either row, so the same

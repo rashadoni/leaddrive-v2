@@ -526,15 +526,22 @@ describe("when something does not load", () => {
     expect(text("mtm-home-team")).not.toContain("Данные недели не загрузились")
   })
 
-  it("shows dashes while the team list has not arrived, and its own failure with a retry", async () => {
+  it("shows grey bars while the team list has not arrived, and its own failure with a retry", async () => {
     serve(ZEYTUN)
     await render("ru", ZEYTUN, { team: null, teamLoading: true })
-    expect(kpi("field").value).toBe("—")
-    expect(text("mtm-home-team")).toContain("Загружаем")
+    // A dash reads as «none»; until the list arrives the figures are grey bars
+    // (owner-approved mockup, 2026-11-01), and so are the team's rows.
+    for (const name of ["field", "plan", "week"]) {
+      expect(kpi(name).value).toBe("")
+      expect(container.querySelector(`[data-testid='mtm-home-kpi-${name}-loading']`)).not.toBeNull()
+    }
+    expect(container.querySelector("[data-testid='mtm-home-team'] [role='status']")?.getAttribute("aria-label")).toContain("Загружаем")
     await act(async () => { root?.unmount() })
 
     serve(ZEYTUN)
     await render("ru", ZEYTUN, { team: null, teamLoading: false, teamFailed: true })
+    // A list that failed is not on its way: the figures say «unknown», not «loading».
+    expect(kpi("field").value).toBe("—")
     const retry = Array.from(container.querySelectorAll<HTMLButtonElement>("[data-testid='mtm-home-team'] button")).find((button) => button.textContent === "Повторить")
     await act(async () => { retry?.dispatchEvent(new MouseEvent("click", { bubbles: true })) })
     expect(retried).toHaveBeenCalledTimes(1)

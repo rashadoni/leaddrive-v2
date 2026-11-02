@@ -151,7 +151,7 @@ export function QuickActionBar({ dealId, orgId, contacts = [], onActivityAdded, 
   const emailDisabled = !selectedContact?.email || !emailSubject.trim() || !emailBody.trim()
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-3 space-y-2.5">
+    <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
       {/* Панель делает ровно одно, поэтому вкладок больше нет — заголовок
           называет действие глаголом: перепутать отправку письма живому
           человеку с отметкой «письмо было» в ленте теперь негде. */}
@@ -180,7 +180,7 @@ export function QuickActionBar({ dealId, orgId, contacts = [], onActivityAdded, 
                 <div className="relative">
                   <button
                     onClick={() => setShowContactPicker(!showContactPicker)}
-                    className="w-full flex items-center gap-2 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 bg-background hover:bg-muted/50 transition-colors"
+                    className="w-full flex items-center gap-2 text-xs border border-border rounded-lg px-3 py-2 bg-background hover:bg-muted/50 transition-colors"
                   >
                     <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
                     <span className="text-muted-foreground">{t("qabTo")}:</span>
@@ -194,7 +194,7 @@ export function QuickActionBar({ dealId, orgId, contacts = [], onActivityAdded, 
 
                   {/* Dropdown */}
                   {showContactPicker && emailContacts.length > 1 && (
-                    <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-popover border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1">
+                    <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-popover border border-border rounded-lg shadow-lg py-1">
                       {emailContacts.map(c => (
                         <button
                           key={c.id}
@@ -215,7 +215,7 @@ export function QuickActionBar({ dealId, orgId, contacts = [], onActivityAdded, 
 
                 {/* Subject */}
                 <input
-                  className="w-full h-9 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring/30 placeholder:text-muted-foreground/60"
+                  className="w-full h-9 border border-input rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring/30 placeholder:text-muted-foreground/60"
                   placeholder={t("qabSubjectPlaceholder")}
                   value={emailSubject}
                   onChange={e => setEmailSubject(e.target.value)}
@@ -223,7 +223,7 @@ export function QuickActionBar({ dealId, orgId, contacts = [], onActivityAdded, 
 
                 {/* Body */}
                 <textarea
-                  className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring/30 placeholder:text-muted-foreground/60 resize-none min-h-[80px]"
+                  className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring/30 placeholder:text-muted-foreground/60 resize-none min-h-[80px]"
                   placeholder={t("qabBodyPlaceholder")}
                   rows={3}
                   value={emailBody}

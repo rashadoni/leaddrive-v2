@@ -7,6 +7,7 @@ import { routeNewCompanyToTerritories } from "@/lib/territory-routing"
 import { getFieldPermissions, filterEntityFields, filterWritableFields } from "@/lib/field-filter"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
+import { voenInput } from "@/lib/companies/az-taxpayer-registry"
 
 const createCompanySchema = z.object({
   name: z.string().min(1).max(200),
@@ -22,6 +23,8 @@ const createCompanySchema = z.object({
   slaPolicyId: z.string().nullable().optional(),
   creditLimit: nonNegativeFinancialAmountSchema.nullable().optional(),
   creditCurrency: z.string().max(10).nullable().optional(),
+  voen: z.string().max(40).nullable().optional(),
+  director: z.string().max(200).nullable().optional(),
 })
 
 export const GET = withRlsAuth("companies", "read", async (req, auth) => {
@@ -88,11 +91,13 @@ export const POST = withRlsAuth("companies", "write", async (req, { orgId, role 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
+  const voen = voenInput(parsed.data.voen)
+  if (!voen.ok) return NextResponse.json({ error: "VÖEN is ten digits", code: "INVALID_VOEN" }, { status: 400 })
 
   try {
     // Filter writable fields
     const fieldPerms = await getFieldPermissions(orgId, role, "company")
-    const allowedData = filterWritableFields(parsed.data, fieldPerms, role)
+    const allowedData = filterWritableFields({ ...parsed.data, voen: voen.value, director: parsed.data.director?.trim() || null }, fieldPerms, role)
 
     const company = await prisma.company.create({
       data: { organizationId: orgId, ...allowedData },

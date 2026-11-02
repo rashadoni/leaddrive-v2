@@ -479,7 +479,7 @@ export default function InvoiceDetailPage() {
 
   const chainStepTypes = [
     { value: "send_email", label: t("chainStepEmail"), icon: Mail, color: "bg-blue-500", borderColor: "border-blue-200 bg-blue-50/50 dark:bg-blue-900/10" },
-    { value: "sms", label: t("chainStepSms"), icon: Smartphone, color: "bg-muted-foreground", borderColor: "border-zinc-200 dark:border-zinc-700 bg-muted/50" },
+    { value: "sms", label: t("chainStepSms"), icon: Smartphone, color: "bg-muted-foreground", borderColor: "border-border bg-muted/50" },
     { value: "wait", label: t("chainStepWait"), icon: Clock, color: "bg-yellow-500", borderColor: "border-yellow-200 bg-yellow-50/50 dark:bg-yellow-900/10" },
     { value: "send_telegram", label: t("chainStepTelegram"), icon: Send, color: "bg-sky-500", borderColor: "border-sky-200 bg-sky-50/50 dark:bg-sky-900/10" },
     { value: "send_whatsapp", label: t("chainStepWhatsapp"), icon: Heart, color: "bg-green-500", borderColor: "border-green-200 bg-green-50/50 dark:bg-green-900/10" },
@@ -1551,7 +1551,7 @@ export default function InvoiceDetailPage() {
                           }`}>
                             <Icon className="h-4 w-4" />
                           </div>
-                          <div className={`flex-1 border border-zinc-200 dark:border-zinc-700 rounded-lg px-4 py-3 ${isRunning && !isCompleted && !isCurrent ? "opacity-50" : ""} ${info.borderColor}`}>
+                          <div className={`flex-1 border border-border rounded-lg px-4 py-3 ${isRunning && !isCompleted && !isCurrent ? "opacity-50" : ""} ${info.borderColor}`}>
                             <div className="flex items-center justify-between mb-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-semibold text-sm">{index + 1}. {info.label}</span>
@@ -1754,7 +1754,7 @@ export default function InvoiceDetailPage() {
             <CardContent className="pt-4">
               <iframe
                 src={`/api/v1/invoices/${invoiceId}/pdf?format=html`}
-                className="w-full min-h-[600px] border border-zinc-200 dark:border-zinc-700 rounded-md"
+                className="w-full min-h-[600px] border border-border rounded-md"
                 title={t("pdfPreview")}
               />
             </CardContent>

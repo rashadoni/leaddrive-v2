@@ -1,0 +1,26 @@
+# Installed by scripts/event-platform/cluster/provision.sh install-backup-watch
+# on the backup watch host (watch.mjs BACKUP_WATCH_HOST), as root.
+[Unit]
+Description=Backup Kafka watch: speaks when the main watch on the dev box is silent
+OnFailure=ld-kafka-backup-watch-failed.service
+
+[Service]
+Type=oneshot
+Environment=LD_KAFKA_WATCH_ROLE=backup
+Environment=LD_KAFKA_WATCH_STATE=/var/lib/ld-kafka-watch/state
+Environment=LD_KAFKA_WATCH_HEARTBEAT=/var/lib/ld-kafka-watch/primary-heartbeat
+Environment=LD_KAFKA_STATE=/etc/leaddrive-kafka/watch
+Environment=LD_KAFKA_WATCH_KEY=/etc/leaddrive-kafka/watch/key
+Environment=LD_KAFKA_WATCH_NOTIFY=/usr/local/sbin/ld-kafka-notify
+Environment="LD_KAFKA_WATCH_PREFIX=[запасной сторож] "
+ExecStart=/usr/bin/node /opt/ld-kafka-watch/scripts/event-platform/cluster/watch.mjs
+TimeoutStartSec=6min
+Nice=10
+# It shares the host with a broker: small and out of the way.
+MemoryMax=256M
+CPUQuota=50%
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/ld-kafka-watch

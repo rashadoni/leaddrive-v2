@@ -21,6 +21,15 @@ const state: { authOk: boolean; user: any; lastUpdate: any; lastCreate: any } = 
   authOk: true, user: null, lastUpdate: null, lastCreate: null,
 }
 
+const phoneFence = vi.hoisted(() => ({ allowed: true }))
+vi.mock("@/lib/identity/legacy-credential-write", () => ({
+  withLegacyCredentialMaintenance: vi.fn(async (client: any, _org: string, _principals: unknown, work: (tx: any) => Promise<unknown>) =>
+    phoneFence.allowed ? { allowed: true, value: await work(client) } : { allowed: false }),
+}))
+vi.mock("@/lib/identity/legacy-credential-boundary", () => ({
+  readLegacyPhoneAssignmentBoundaryInTransaction: vi.fn(async () => "LEGACY"),
+}))
+
 vi.mock("@/lib/api-auth", () => ({
   getOrgId: vi.fn(async () => (state.authOk ? "org_1" : null)),
   getSession: vi.fn(async () =>
@@ -65,6 +74,7 @@ vi.mock("bcryptjs", () => ({ default: { hash: vi.fn(async (p: string) => `H(${p}
 import { PUT } from "@/app/api/v1/users/[id]/route"
 import { POST } from "@/app/api/v1/users/route"
 import { logAudit, prisma } from "@/lib/prisma"
+import { readLegacyPhoneAssignmentBoundaryInTransaction } from "@/lib/identity/legacy-credential-boundary"
 
 function putReq(body: any): NextRequest {
   return new NextRequest("https://example.com/api/v1/users/u1", {
@@ -79,6 +89,7 @@ function postReq(body: any): NextRequest {
 const params = { params: Promise.resolve({ id: "u1" }) }
 
 beforeEach(() => {
+  phoneFence.allowed = true
   state.authOk = true
   state.lastUpdate = null
   state.lastCreate = null
@@ -89,6 +100,34 @@ beforeEach(() => {
 })
 
 describe("PUT /api/v1/users/[id] — role validation", () => {
+  it("refuses phone clearing when canonical ownership wins the final writer fence", async () => {
+    phoneFence.allowed = false
+    const res = await PUT(putReq({ phone: null, name: "Renamed" }), params)
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+    expect(state.lastUpdate).toBeNull()
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+
+  it("refuses another canonical person's number before any user or audit write", async () => {
+    vi.mocked(readLegacyPhoneAssignmentBoundaryInTransaction).mockResolvedValueOnce("MIGRATED")
+    const res = await PUT(putReq({ phone: "+994501234567" }), params)
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("IDENTITY_CREDENTIAL_FLOW_REQUIRED")
+    expect(state.lastUpdate).toBeNull()
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+
+  it("refuses a stale phone form after another user update", async () => {
+    const before = { ...state.user, phone: "+994501234567", updatedAt: new Date("2026-10-25T00:00:00Z") }
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(before).mockResolvedValueOnce({ ...before, updatedAt: new Date("2026-10-25T00:00:01Z") })
+    const res = await PUT(putReq({ phone: "+994501234568" }), params)
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("IDENTITY_LEGACY_CONTACT_CHANGED")
+    expect(state.lastUpdate).toBeNull()
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+
   it("rejects password changes through the general edit endpoint", async () => {
     const res = await PUT(putReq({ name: "Mehriban", password: "Valid-Test-Pass-2026!" }), params)
     const json = await res.json()
