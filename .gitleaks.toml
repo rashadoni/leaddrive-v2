@@ -114,3 +114,10 @@ condition = "AND"
 paths = ['''^scripts/identity/README\.md$''']
 regexTarget = "secret"
 regexes = ['''^failed/mutating$''']
+
+[[rules.allowlists]]
+description = "Idempotency key fixture of the «Часы не те?» route test (a request's dedup id the app makes up); not an authentication credential"
+condition = "AND"
+paths = ['''^src/__tests__/api-mtm-customer-hours-request\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^key-12345678$''']
