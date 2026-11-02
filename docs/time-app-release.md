@@ -134,3 +134,12 @@ versioned APK and public-redownload hash are recorded in
 Android installation confirmation; release availability does not prove a device
 has installed it. The owner must confirm their own WhatsApp code and password
 on the site when explicitly converting their account.
+
+## Release 1054 — 2026-11-02
+
+Owner in chat: «Да, публикуй». Reviewed main `fb426d8` built as 1054 (hosted Jest 297 suites,
+TypeScript, package/permissions/pinned certificate), certificate re-checked from the APK's v2
+signing block, published as `time-v1.0.0-1054`, public redownload hash verified. Physical
+in-place upgrade of this exact build: NOT RUN (device bridge closed); the same package and key
+were upgraded in place on the owner's S23 on 2026-11-01 (QA 1052) keeping session and open day.
+Evidence: `docs/evidence/time-public-release-1054.json`.
