@@ -35,7 +35,7 @@ const internationalPhone = (value: string) => /^\+[1-9]\d{6,14}$/.test(value.rep
  * WhatsApp and sets their own (owner: «чтоб сами назначали, а кадровик не
  * занимался этой рутиной»). In the CRM they see nothing (every module hidden).
  */
-export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded }: { disabled: boolean; teams: ReadonlyArray<AttendanceSection>; departments: ReadonlyArray<AttendanceDepartment>; onAdded: (name: string, phone: string) => void }) {
+export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded, onUnitRenamed }: { disabled: boolean; teams: ReadonlyArray<AttendanceSection>; departments: ReadonlyArray<AttendanceDepartment>; onAdded: (name: string, phone: string) => void; onUnitRenamed?: () => void }) {
   const p = useTranslations("personnel")
   const [open, setOpen] = useState(false), [form, setForm] = useState<Form>(empty)
   const [saving, setSaving] = useState(false), [error, setError] = useState<string | null>(null)
@@ -195,7 +195,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
     <div className="grid gap-4 md:grid-cols-2">
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeName")}</span><Input required maxLength={200} className="min-h-11" autoComplete="off" value={form.name} onChange={event => set("name")(event.target.value)} /></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeePhone")}</span><Input required type="tel" inputMode="tel" placeholder="+994501234567" maxLength={24} className="min-h-11" autoComplete="off" value={form.phone} onChange={event => set("phone")(event.target.value)} data-testid="attendance-add-employee-phone" /></label>
-      <MtmAttendanceDepartmentField id="add-employee-department" teams={teams} departments={departments} value={form.department} onChange={set("department")} />
+      <MtmAttendanceDepartmentField id="add-employee-department" teams={teams} departments={departments} value={form.department} onChange={set("department")} onRenamed={onUnitRenamed ? () => onUnitRenamed() : undefined} />
       <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardPosition")}</span><Input maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" autoComplete="off" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardHired")}</span><Input type="date" className="min-h-11" value={form.hireDate} onChange={event => set("hireDate")(event.target.value)} />
         <span className="block text-xs font-normal text-muted-foreground">{p("addEmployeeHireHint")}</span></label>

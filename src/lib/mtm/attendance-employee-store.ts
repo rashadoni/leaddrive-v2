@@ -248,6 +248,10 @@ export async function updateAttendanceEmployeeCard(actor: AttendanceReviewer, ra
   }, { timeout: 15_000 })
 }
 
+/** One lock per organization for unit names: creating a unit by name and renaming one (attendance-unit-rename.ts) take it, so neither makes namesakes. */
+export async function lockAttendanceUnitNames(tx: Prisma.TransactionClient, organizationId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-unit-names:${organizationId}`}, 0))`
+}
 /**
  * Where a card sits (owner, 2026-10-22: «тут есть отдел, но нет департамента»):
  * a department and a section (şöbə, an MTM team) in it, each an existing one or
@@ -258,6 +262,8 @@ export async function updateAttendanceEmployeeCard(actor: AttendanceReviewer, ra
  */
 export async function resolveAttendanceUnit(tx: Prisma.TransactionClient, organizationId: string, input: AttendanceUnitInput, current: string | null = null) {
   const named = input.newDepartmentName !== undefined || input.departmentId !== undefined
+  // A name looked up and created here must not race a rename to the same name.
+  if (input.newDepartmentName || input.newTeamName) await lockAttendanceUnitNames(tx, organizationId)
   let departmentId: string | null
   if (input.newDepartmentName) {
     // A department typed again by name is the same department.
