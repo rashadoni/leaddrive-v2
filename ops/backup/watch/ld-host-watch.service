@@ -1,0 +1,11 @@
+# Installed by scripts/backup/install-host-watch.sh.
+[Unit]
+Description=Production housekeeping watch: the login page from outside, last night's backups, free disk
+OnFailure=ld-host-watch-failed.service
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@
+# One HTTPS fetch, one ssh read (30 s at most) and at most a few Telegram sends.
+TimeoutStartSec=2min
+Nice=5

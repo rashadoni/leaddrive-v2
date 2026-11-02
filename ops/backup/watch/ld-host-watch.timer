@@ -1,0 +1,16 @@
+# Installed by scripts/backup/install-host-watch.sh.
+[Unit]
+Description=Run the production housekeeping watch every five minutes
+
+[Timer]
+# Every verdict waits for a second pass, so five minutes means an outage of the
+# login page is spoken about within about ten. Backups and disk change far more
+# slowly; they ride along because the pass is one fetch and one ssh read.
+OnCalendar=*:0/5
+AccuracySec=15s
+RandomizedDelaySec=30s
+Persistent=false
+Unit=ld-host-watch.service
+
+[Install]
+WantedBy=timers.target

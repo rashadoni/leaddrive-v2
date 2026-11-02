@@ -12,9 +12,9 @@
 // itself: that it went silent. Two drivers for one check would race for the
 // script's lock, and a run that loses the lock exits 0, which this would have
 // read as health.
-import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { REMIND_MS, decide as decideDelivery, isBoxOffline, run } from './watch-delivery.mjs'
 
 const PROD_HOST = process.env.LD_WAL_WATCH_HOST ?? 'root@13.140.132.245'
 const PROD_KEY = process.env.LD_WAL_WATCH_KEY ?? path.join(process.env.HOME, '.ssh/leaddrive_prod_2026_09_09')
@@ -22,21 +22,12 @@ const STATE_PATH = process.env.LD_WAL_WATCH_REMOTE_STATE ?? '/var/lib/leaddrive-
 // Production checks every 5 minutes, so four missed runs is a stopped timer,
 // not a slow one.
 const STALE_MS = Number(process.env.LD_WAL_WATCH_STALE_MS ?? 20 * 60_000)
-const REMIND_MS = 3600_000
 const SSH_TIMEOUT_MS = 30_000
 
 // Keys this host decides by itself. Production already waited two runs before
 // setting shouldAlert, so an archive problem is forwarded on sight; a problem
 // seen from here waits two runs of its own, so one bad network minute is quiet.
 const LOCAL_KEYS = new Set(['unreachable', 'state-unreadable', 'watch-silent'])
-
-function run(cmd, args, timeout) {
-  return new Promise((resolve) => {
-    execFile(cmd, args, { timeout, killSignal: 'SIGKILL', encoding: 'utf8' }, (error, stdout, stderr) =>
-      resolve({ code: error ? (error.code ?? 1) : 0, stdout: stdout ?? '', stderr: stderr ?? '' }),
-    )
-  })
-}
 
 async function readRemoteState() {
   const override = process.env.LD_WAL_WATCH_STATE_CMD
@@ -93,53 +84,14 @@ export function stripSubject(text) {
   return text.replace(/^WAL-архив:\s*/u, '')
 }
 
+// Delivery is shared with the host health watch (watch-delivery.mjs). The one
+// thing that stays here is WHICH verdicts this box reached by itself: a verdict
+// production already held for two of its own runs is forwarded on sight.
 export function decide(problems, state, now) {
-  const incidents = { ...(state.incidents ?? {}) }
-  const sends = []
-  // Why a problem produced no message. The journal is read when something is
-  // already wrong, so "waiting for a second check" must not stand in for
-  // "already told you, holding the hourly reminder".
-  const held = []
-  const seen = new Set()
-
-  for (const problem of problems) {
-    seen.add(problem.key)
-    const previous = incidents[problem.key]
-    const streak = (previous?.streak ?? 0) + 1
-    const needsTwo = LOCAL_KEYS.has(problem.key)
-    let reported = previous?.reported ?? false
-    let lastSent = previous?.lastSent ?? 0
-    const ripe = !needsTwo || streak >= 2
-    const due = !reported || (problem.critical && now - lastSent >= REMIND_MS)
-    if (ripe && due) {
-      sends.push({ critical: problem.critical, text: problem.text, repeat: reported })
-      reported = true
-      lastSent = now
-    } else if (!ripe) {
-      held.push({ key: problem.key, reason: 'streak', detail: `прогон ${streak} из 2` })
-    } else if (problem.critical) {
-      // Only an alarm is repeated, and only once an hour.
-      const wait = Math.max(0, REMIND_MS - (now - lastSent))
-      held.push({
-        key: problem.key,
-        reason: 'reminder',
-        detail: `уже сообщено, напоминание через ${Math.round(wait / 60_000)} мин`,
-      })
-    } else {
-      held.push({
-        key: problem.key,
-        reason: 'said-once',
-        detail: 'уже сообщено; предупреждение не повторяется, пока не станет аварией',
-      })
-    }
-    incidents[problem.key] = { streak, reported, lastSent, critical: problem.critical }
-  }
-
-  const resolved = Object.entries(incidents).filter(([key, value]) => !seen.has(key) && value.reported)
-  for (const [key] of resolved) delete incidents[key]
-  for (const key of Object.keys(incidents)) if (!seen.has(key)) delete incidents[key]
-
-  return { incidents, sends, held, recovered: resolved.length > 0 && problems.length === 0 }
+  return decideDelivery(problems, state, now, {
+    needsTwoRuns: (key) => LOCAL_KEYS.has(key),
+    remindMs: REMIND_MS,
+  })
 }
 
 async function main() {
@@ -166,13 +118,9 @@ async function main() {
   const read = await readRemoteState()
 
   // When this box has no network every probe fails; that is not an incident.
-  if (read.error === 'unreachable') {
-    const online = await run('ssh', ['-V'], 5_000)
-    const reachable = await run('getent', ['hosts', 'api.telegram.org'], 5_000)
-    if (online.code !== 0 || reachable.code !== 0) {
-      console.log('this box is offline; pass not counted')
-      return
-    }
+  if (read.error === 'unreachable' && (await isBoxOffline())) {
+    console.log('this box is offline; pass not counted')
+    return
   }
 
   const now = Date.now()
@@ -195,7 +143,7 @@ async function main() {
     if (!problems.length) {
       console.log('WAL-архив в порядке')
     } else {
-      for (const h of held) console.log(`${h.key}: ${h.detail}`)
+      for (const h of held) console.log(`${h.key}: ${h.detail} — ${h.text}`)
     }
   }
 
