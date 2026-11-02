@@ -41,7 +41,8 @@ const bindings = ['scripts/booking/role-browser-evidence.mjs', 'scripts/booking/
   'src/app/api/v1/booking-pages/route.ts', 'src/app/api/v1/bookings/coordinators/route.ts',
   'scripts/ci/fixtures/booking-role-sandbox.sql', '.github/workflows/booking-role-sandbox.yml',
   'src/lib/booking/access.ts', 'src/lib/booking/queries.ts', 'src/lib/booking/task-reference.ts',
-  'src/components/booking/booking-workspace.tsx', 'src/components/tasks/task-meeting-notice.tsx',
+  'src/components/booking/booking-workspace.tsx', 'src/components/booking/booking-day-timeline.tsx',
+  'src/components/booking/booking-detail.tsx', 'src/components/tasks/task-meeting-notice.tsx',
   'src/components/tasks/task-detail-view.tsx', 'src/components/tour/tour-step.tsx',
   'src/app/api/v1/users/me/preferences/route.ts', 'src/app/api/v1/public/csp-report/route.ts',
   'src/lib/auth.ts', 'src/lib/with-rls.ts', 'prisma/schema.prisma'];
@@ -52,6 +53,11 @@ let stage = 'seed';
 const contexts = [];
 const pass = (name, evidence = {}) => receipt.cases.push({ name, status: 'PASS', ...evidence });
 const rows = page => page.getByRole('region', { name: copy.workspaceMeetings, exact: true }).locator(':scope > button');
+/** The section opens on the day view; every check below reads the list. */
+async function openListView(page) {
+  await page.getByRole('button', { name: copy.viewList, exact: true }).click();
+  await page.locator('#meeting-period').selectOption('all');
+}
 async function waitRows(page, count) {
   await page.waitForFunction(({ label, count }) => {
     const region = [...document.querySelectorAll('section[aria-label]')].find(el => el.getAttribute('aria-label') === label);
@@ -205,7 +211,8 @@ async function view(user) {
   });
   await page.goto('/meetings', { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: copy.workspaceTitle, exact: true }).waitFor();
-  await page.locator('#meeting-period').selectOption('all');
+  await page.getByRole('region', { name: copy.viewDay, exact: true }).waitFor();
+  await openListView(page);
   return { context, page };
 }
 async function scopeCase(fixture, key, expectedKeys) {
@@ -234,7 +241,7 @@ async function scopeCase(fixture, key, expectedKeys) {
   }
   pass(`${key}-actual-administrative-HTTP-GET-denial-without-protected-data`);
   await v.page.goto('/meetings');
-  await v.page.locator('#meeting-period').selectOption('all');
+  await openListView(v.page);
   await rows(v.page).first().waitFor();
   pass(`${key}-actual-role-populated-scope-and-configuration-denial`, { role: user.role, visibleCount: expected.length });
   return v;
@@ -260,7 +267,7 @@ try {
   if (await sales.getAttribute('aria-expanded') !== 'true') await sales.click();
   await menu.click();
   await employee.page.waitForURL(url => url.pathname === '/meetings');
-  await employee.page.locator('#meeting-period').selectOption('all');
+  await openListView(employee.page);
   await waitRows(employee.page, 1);
   pass('sales-menu-opens-meetings');
   stage = 'populated-parity';
@@ -288,7 +295,10 @@ try {
   await api(employee.context, `/api/v1/bookings/${fixture.meetings.employee.id}`);
   await rows(employee.page).filter({ hasText: fixture.meetings.employee.name }).click();
   const dialog = employee.page.getByRole('dialog');
-  await dialog.getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
+  // The sheet's own header also carries the client's name; the card inside it
+  // is where the meeting itself is read, so assert there.
+  await dialog.getByRole('region', { name: copy.workspaceDetails, exact: true })
+    .getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
   await dialog.getByRole('button', { name: copy.close, exact: true }).click();
   assert.equal(await employee.page.locator('#meeting-period').inputValue(), 'all');
   pass('meeting-detail-close-preserves-context');
@@ -302,8 +312,16 @@ try {
   await employee.page.screenshot({ path: `${output}/employee-task-link.png` });
   stage = 'task-return-link';
   await open.click();
-  await employee.page.getByRole('dialog').getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
-  pass('task-link-returns-exact-meeting');
+  // Followed cold, the link lands on the day view: the card is the right
+  // column, and the rail stands on the meeting's own day, not on today.
+  const card = employee.page.getByRole('region', { name: copy.workspaceDetails, exact: true });
+  await card.getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
+  // Only the week strip's days carry data-crm-filter, so exactly one button
+  // matches; a meeting block is also aria-pressed and its times hold digits.
+  const chosenDay = employee.page.locator('button[data-crm-filter][aria-pressed="true"]');
+  await chosenDay.waitFor();
+  assert.match(await chosenDay.innerText(), new RegExp(`\\b${new Date(`${day}T12:00:00Z`).getUTCDate()}\\b`));
+  pass('task-link-returns-exact-meeting-on-its-own-day');
   stage = 'negative-controls';
   for (const key of ['assigned', 'excluded', 'foreign']) {
     await api(employee.context, `/api/v1/bookings/${fixture.meetings[key].id}`, 404);

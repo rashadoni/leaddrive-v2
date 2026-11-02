@@ -25,14 +25,19 @@ export function BookingHistory({ booking, timezone, cacheScope }: { booking: Wor
       return body.data
     }, getNextPageParam: (last) => last.nextCursor ?? undefined, retry: false, staleTime: 30_000, refetchOnWindowFocus: false,
   })
+  const events = history.data.pages.flatMap((page) => page.items)
+  // The booking's own creation is an event like any other. Synthesise a line
+  // for it only where none was loaded — a booking imported before history was
+  // kept, or one so long that its first event is past the loaded page.
+  const recordedStart = events.some((event) => event.type === "sales.booking-created.v1" || event.type === "sales.booking-imported.v1")
   return <CrmSection title={t("workspaceHistory")} icon={<History aria-hidden="true" className="h-4 w-4" />}>
     <ol className="ml-1 space-y-4 border-l border-border pl-4">
-      <li className="relative space-y-1 text-sm">
+      {recordedStart ? null : <li className="relative space-y-1 text-sm">
         <span aria-hidden="true" className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-muted-foreground ring-4 ring-card" />
         <p className="font-medium">{t("bookingCreated")}</p>
         <p className="text-xs text-muted-foreground">{formatDate(booking.createdAt, locale, { day: "numeric", month: "long", year: "numeric", timeZone: timezone })}</p>
-      </li>
-      {history.data.pages.flatMap((page) => page.items).map((event) => <li key={event.id} className="relative space-y-1 text-sm">
+      </li>}
+      {events.map((event) => <li key={event.id} className="relative space-y-1 text-sm">
         <span aria-hidden="true" className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-muted-foreground ring-4 ring-card" />
         <p className="font-medium">{t(LABELS[event.type] ?? "historyChanged")}</p>
         <p className="break-words text-xs text-muted-foreground">{event.actorName || t(`actor_${["employee", "customer", "import"].includes(event.actorType ?? "") ? event.actorType : "unknown"}`)}</p>
