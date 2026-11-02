@@ -116,3 +116,30 @@ describe("the day along the roads", () => {
     expect(response.status).toBe(429)
   })
 })
+
+describe("«часы приёма» on the day (owner 2026-11-02)", () => {
+  it("counts the lunch wait and moves a clinic that closes at 10:30 before it closes", async () => {
+    deps.roadTable.mockResolvedValue(lineTable([0, 2, 4]))
+    const stops = [
+      stop("a", 0, "09:00"),
+      { ...stop("b", 2, "10:00"), hours: { open: "09:00", close: "20:00", breakFrom: "13:00", breakTo: "14:00" } },
+      { ...stop("c", 4, "11:00"), hours: { open: "08:00", close: "10:30" } },
+    ]
+    const response = await POST(request({ stops }), { params: Promise.resolve({}) } as never)
+    expect(response.status).toBe(200)
+    const { data } = await response.json()
+    expect(data.current).toMatchObject({ closed: [false, false, true], hoursKnown: 2, inHours: 1 })
+    expect(data.proposed.closed).toEqual([false, false, false])
+    expect(data.proposed.order.indexOf("c")).toBeLessThan(2)
+    expect(data.reason).toEqual({ kind: "CLOSED_FIXED", stop: "c" })
+  })
+
+  it("keeps a place that does not work that day closed in every order and ignores a day that reads backwards", async () => {
+    deps.roadTable.mockResolvedValue(lineTable([0, 1, 2]))
+    const stops = [stop("a", 0, "09:00"), { ...stop("b", 1, "10:00"), hours: null }, { ...stop("c", 2, "11:00"), hours: { open: "18:00", close: "09:00" } }]
+    const { data } = await (await POST(request({ stops }), { params: Promise.resolve({}) } as never)).json()
+    expect(data.current.closed).toEqual([false, true, false])
+    expect(data.current.hoursKnown).toBe(1)
+  })
+})
+

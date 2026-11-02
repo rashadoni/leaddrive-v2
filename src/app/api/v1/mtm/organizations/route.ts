@@ -80,6 +80,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const assignmentState = params.get("assignmentState")
   const quick = mtmClientQuickFilter(params.get("quick"))
   const withCounts = params.get("withCounts") === "1"
+  // «Без часов приёма» (customer-hours.ts): its own chip, beside the quick views.
+  const hoursMissing = params.get("hours") === "missing" || params.get("quick") === "NO_HOURS"
   const sort = params.get("sort")
   const direction = params.get("direction") === "desc" ? "desc" : "asc"
   const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1)
@@ -201,7 +203,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     } : {}),
     ...(and.length + extra.length > 0 ? { AND: [...and, ...extra] } : {}),
   })
-  const quickExtra = quick ? [quickWhere[quick]] : []
+  const noHoursWhere: Prisma.MtmCustomerWhereInput = { workingHours: { equals: Prisma.AnyNull } }
+  const quickExtra = [...(quick ? [quickWhere[quick]] : []), ...(hoursMissing ? [noHoursWhere] : [])]
   const where = organizationWhere(quickExtra)
 
   // How many each chip holds — asked for by the Institutions page only.
@@ -222,7 +225,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       }))
     : Promise.resolve(null)
 
-  const [organizations, total, quickCounts] = await Promise.all([
+  const hoursMissingCountRead: Promise<number | null> = withCounts
+    ? prisma.mtmCustomer.count({ where: organizationWhere([noHoursWhere]) })
+    : Promise.resolve(null)
+
+  const [organizations, total, quickCounts, hoursMissingCount] = await Promise.all([
     prisma.mtmCustomer.findMany({
       where,
       skip: (page - 1) * limit,
@@ -313,6 +320,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }),
     prisma.mtmCustomer.count({ where }),
     quickCountsRead,
+    hoursMissingCountRead,
   ])
 
   return NextResponse.json({
@@ -326,6 +334,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       timezone,
       effectiveScope,
       quick: { filter: quick, month: visitMonth.key, counts: quickCounts },
+      hours: { missing: hoursMissing, missingCount: hoursMissingCount },
       capabilities: {
         canManage: canManageFieldMasterData(actor),
         canRequestChanges: actor.agentId !== null,

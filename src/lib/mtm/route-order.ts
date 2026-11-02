@@ -13,8 +13,14 @@
  * table, road-router.ts); the start is wherever the order begins and the day
  * ends at the last visit — where the agent sleeps is not known.
  *
+ * A place's «часы приёма» (customer-hours.ts) bind too, when the planner
+ * knows them: before opening or in the lunch the agent waits for the door, and
+ * a place closed by then — or not working that day — cannot be visited. Both
+ * weigh in the choice of order; a place nobody gave hours for binds nothing.
+ *
  * Pure: no network, no clock.
  */
+import { arrivalVerdict, type MtmDayHours } from "@/lib/mtm/customer-hours"
 
 /** How long a visit lasts when the planner says nothing else. */
 export const MTM_ROUTE_ORDER_VISIT_MINUTES = 30
@@ -24,6 +30,12 @@ export const MTM_ROUTE_ORDER_LATE_AFTER_MINUTES = 10
 const EXACT_UP_TO = 8
 /** A minute late weighs as much as this many minutes at the wheel. */
 const LATE_WEIGHT = 10
+/** A minute waiting at a closed door weighs as much as a minute at the wheel. */
+const WAIT_WEIGHT = 1
+/** A visit that cannot happen — the place is closed — weighs as a long detour. */
+const CLOSED_WEIGHT = 600
+/** Less waiting worth showing an order for, when nothing else changes. */
+const WAIT_SAVED_WORTH = 15
 
 export interface RouteOrderRoads {
   /** seconds[from][to] along the roads; null where no road joins them. */
@@ -38,6 +50,14 @@ export interface RouteOrderReading {
   arrivals: number[]
   /** Minutes late at each position, 0 when on time. */
   lateMinutes: number[]
+  /** Minutes waiting for the door (before opening, the lunch) at each position. */
+  waitMinutes: number[]
+  /** Whether the place at each position is closed by then or that day. */
+  closed: boolean[]
+  /** How many of the stops have hours at all. */
+  hoursKnown: number
+  /** Stops with hours visited without waiting and not closed. */
+  inHours: number
   driveSeconds: number
   metres: number
   onTime: number
@@ -69,9 +89,14 @@ export function readRouteOrder(
   times: readonly number[],
   roads: RouteOrderRoads,
   visitMinutes = MTM_ROUTE_ORDER_VISIT_MINUTES,
+  hours?: ReadonlyArray<MtmDayHours | null | undefined>,
 ): RouteOrderReading | null {
   const arrivals: number[] = []
   const lateMinutes: number[] = []
+  const waitMinutes: number[] = []
+  const closed: boolean[] = []
+  let hoursKnown = 0
+  let inHours = 0
   let driveSeconds = 0
   let metres = 0
   let free = times[0] ?? 0
@@ -89,22 +114,54 @@ export function readRouteOrder(
     arrivals.push(arrival)
     const late = arrival - time
     lateMinutes.push(late > MTM_ROUTE_ORDER_LATE_AFTER_MINUTES ? Math.round(late) : 0)
-    free = Math.max(arrival, time) + visitMinutes
+    const ready = Math.max(arrival, time)
+    const day = hours?.[order[position]]
+    if (day !== undefined) hoursKnown += 1
+    const verdict = arrivalVerdict(day, ready)
+    if (verdict.kind === "closed") {
+      // No visit: he moves on from the closed door.
+      waitMinutes.push(0)
+      closed.push(true)
+      free = ready
+      continue
+    }
+    const wait = verdict.kind === "wait" ? verdict.waitMinutes : 0
+    if (verdict.kind === "ok") inHours += 1
+    waitMinutes.push(wait)
+    closed.push(false)
+    free = verdict.start + visitMinutes
   }
   return {
     order: [...order],
     arrivals,
     lateMinutes,
+    waitMinutes,
+    closed,
+    hoursKnown,
+    inHours,
     driveSeconds,
     metres,
-    onTime: lateMinutes.filter((late) => late === 0).length,
+    onTime: lateMinutes.filter((late, position) => late === 0 && !closed[position]).length,
     endMinutes: free,
   }
 }
 
 function cost(reading: RouteOrderReading | null): number {
   if (!reading) return Number.POSITIVE_INFINITY
-  return reading.driveSeconds / 60 + LATE_WEIGHT * reading.lateMinutes.reduce((sum, late) => sum + late, 0)
+  return reading.driveSeconds / 60
+    + LATE_WEIGHT * reading.lateMinutes.reduce((sum, late) => sum + late, 0)
+    + WAIT_WEIGHT * totalWait(reading)
+    + CLOSED_WEIGHT * closedCount(reading)
+}
+
+/** Minutes waiting at closed doors over the whole day. */
+export function totalWait(reading: RouteOrderReading): number {
+  return reading.waitMinutes.reduce((sum, wait) => sum + wait, 0)
+}
+
+/** Visits that cannot happen: closed by then or that day. */
+export function closedCount(reading: RouteOrderReading): number {
+  return reading.closed.filter(Boolean).length
 }
 
 function permutations(count: number, visit: (order: number[]) => void) {
@@ -171,11 +228,17 @@ function localSearch(count: number, judge: (order: number[]) => number, roads: R
  * keep the order the planner already has, so a route that cannot be bettered
  * is offered nothing.
  */
-export function bestRouteOrder(times: readonly number[], roads: RouteOrderRoads, visitMinutes = MTM_ROUTE_ORDER_VISIT_MINUTES): number[] {
+export function bestRouteOrder(
+  times: readonly number[],
+  roads: RouteOrderRoads,
+  visitMinutes = MTM_ROUTE_ORDER_VISIT_MINUTES,
+  hours?: ReadonlyArray<MtmDayHours | null | undefined>,
+): number[] {
   const count = times.length
   const identity = Array.from({ length: count }, (_, index) => index)
-  if (count < 3) return identity
-  const judge = (order: number[]) => cost(readRouteOrder(order, times, roads, visitMinutes))
+  // Two stops have an order worth weighing only when a door binds them.
+  if (count < (hours?.some((day) => day !== undefined) ? 2 : 3)) return identity
+  const judge = (order: number[]) => cost(readRouteOrder(order, times, roads, visitMinutes, hours))
   let best = identity
   let bestCost = judge(identity)
   const consider = (order: number[]) => {
@@ -193,8 +256,12 @@ export function bestRouteOrder(times: readonly number[], roads: RouteOrderRoads,
  * minute is noise in a manager's day.
  */
 export function routeOrderIsBetter(current: RouteOrderReading, proposed: RouteOrderReading): boolean {
+  if (closedCount(proposed) < closedCount(current)) return true
+  if (closedCount(proposed) > closedCount(current)) return false
   if (proposed.onTime > current.onTime) return true
   if (proposed.onTime < current.onTime) return false
+  if (totalWait(current) - totalWait(proposed) >= WAIT_SAVED_WORTH) return true
+  if (totalWait(proposed) > totalWait(current)) return false
   const saved = current.driveSeconds - proposed.driveSeconds
   return saved >= 180 && saved >= current.driveSeconds * 0.05
 }
@@ -206,7 +273,21 @@ export function routeOrderIsBetter(current: RouteOrderReading, proposed: RouteOr
 export function routeOrderReason(
   current: RouteOrderReading,
   proposed: RouteOrderReading,
-): { kind: "LATE_FIXED"; stop: number; lateMinutes: number } | { kind: "SHORTER"; metres: number; seconds: number } {
+):
+  | { kind: "CLOSED_FIXED"; stop: number }
+  | { kind: "WAIT_FIXED"; stop: number; waitMinutes: number }
+  | { kind: "LATE_FIXED"; stop: number; lateMinutes: number }
+  | { kind: "SHORTER"; metres: number; seconds: number } {
+  const proposedAt = (stop: number) => proposed.order.indexOf(stop)
+  for (let position = 0; position < current.order.length; position += 1) {
+    const stop = current.order[position]
+    if (current.closed[position] && !proposed.closed[proposedAt(stop)]) return { kind: "CLOSED_FIXED", stop }
+  }
+  for (let position = 0; position < current.order.length; position += 1) {
+    const stop = current.order[position]
+    const wait = current.waitMinutes[position]
+    if (wait >= WAIT_SAVED_WORTH && proposed.waitMinutes[proposedAt(stop)] === 0) return { kind: "WAIT_FIXED", stop, waitMinutes: wait }
+  }
   for (let position = 0; position < current.order.length; position += 1) {
     const stop = current.order[position]
     const late = current.lateMinutes[position]

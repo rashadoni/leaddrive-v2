@@ -37,6 +37,7 @@ import { hasCommercialFacts, organizationReferenceRows } from "@/lib/mtm/organiz
 import { MtmClientVisitList, MtmClientVisitStrip } from "@/components/mtm/client-visit-strip"
 import type { MtmClientVisitLine, MtmClientVisitSummary } from "@/lib/mtm/client-visit-summary"
 import { mtmRoutePlanPageHref } from "@/lib/mtm/route-links"
+import { MtmCustomerHoursDialog, MtmCustomerHoursSection, MtmCustomerOpenBadge } from "@/components/mtm/customer-hours"
 
 type Agent = {
   id: string
@@ -57,6 +58,9 @@ type Assignment = {
 
 type OrganizationSummary = {
   id: string
+  /** «Часы приёма» (src/lib/mtm/customer-hours.ts); null = not given. */
+  workingHours?: unknown
+  workingHoursUpdatedAt?: string | null
   code: string | null
   name: string
   objectType: string
@@ -217,6 +221,7 @@ type ApiPayload<T> = {
     organization: T
     asOf: string
     timezone: string
+    workingHoursAuthor?: string | null
     capabilities: {
       canManage: boolean
       canRequestChanges: boolean
@@ -306,6 +311,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const [error, setError] = useState("")
   const [sectionError, setSectionError] = useState("")
   const [editOpen, setEditOpen] = useState(false)
+  const [hoursOpen, setHoursOpen] = useState(false)
+  const [hoursAuthor, setHoursAuthor] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [coordinateSource, setCoordinateSource] = useState("")
   const [coordinateReference, setCoordinateReference] = useState("")
@@ -359,6 +366,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       setVisitSummary(payload.data.visitSummary ?? null)
       setLongOpenMinutes(payload.data.longOpenMinutes ?? 120)
       setTimezone(payload.data.timezone || "Asia/Baku")
+      setHoursAuthor(payload.data.workingHoursAuthor ?? null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("detail.loadError"))
     } finally {
@@ -514,6 +522,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
             </div>
             <div className="grid gap-2">
               <h1 className="max-w-4xl text-2xl font-semibold tracking-tight">{summary.name}</h1>
+              <MtmCustomerOpenBadge hours={summary.workingHours} timezone={timezone} />
               <p className="flex max-w-3xl items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="mt-0.5 h-4 w-4 flex-none" />
                 <span>{summary.address || locationLine || t("detail.addressMissing")}</span>
@@ -636,6 +645,16 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                 {summary.notes ? <DefinitionRow label={t("detail.notes")} value={summary.notes} /> : null}
               </dl>
             </section>
+
+            <MtmCustomerHoursSection
+              hours={summary.workingHours}
+              author={hoursAuthor}
+              updatedAt={summary.workingHoursUpdatedAt ?? null}
+              timezone={timezone}
+              canManage={canManage}
+              onEdit={() => setHoursOpen(true)}
+              formatDate={(value) => dateFormatter.format(new Date(value))}
+            />
 
             {referenceRows.length || coordinateVerification ? <div className="grid content-start gap-5">
               {referenceRows.length ? <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
@@ -849,6 +868,14 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         initialData={summary}
         orgId={orgId ? String(orgId) : undefined}
         apiBasePath="/api/v1/mtm/organizations"
+      />
+      <MtmCustomerHoursDialog
+        open={hoursOpen}
+        onOpenChange={setHoursOpen}
+        organizationIds={[organizationId]}
+        name={summary.name}
+        initial={summary.workingHours}
+        onSaved={() => void loadSummary()}
       />
     </div>
   )

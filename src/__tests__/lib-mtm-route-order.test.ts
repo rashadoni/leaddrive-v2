@@ -15,6 +15,9 @@ import {
   type RouteOrderRoads,
 } from "@/lib/mtm/route-order"
 
+/** A day where no place has «часы приёма». */
+const noHours = { waitMinutes: [0, 0, 0], closed: [false, false, false], hoursKnown: 0, inHours: 0 }
+
 /** Stops on a line, a kilometre apart, driven at 30 km/h: two minutes a kilometre. */
 function lineRoads(positions: number[]): RouteOrderRoads {
   const metres = positions.map((from) => positions.map((to) => Math.abs(from - to) * 1_000))
@@ -93,8 +96,8 @@ describe("the best order", () => {
   })
 
   it("names the visit that becomes on time before the road saved", () => {
-    const current = { order: [0, 1, 2], arrivals: [570, 640, 745], lateMinutes: [0, 0, 25], driveSeconds: 2_700, metres: 12_400, onTime: 2, endMinutes: 760 }
-    const proposed = { order: [2, 0, 1], arrivals: [570, 625, 690], lateMinutes: [0, 0, 0], driveSeconds: 1_500, metres: 7_200, onTime: 3, endMinutes: 705 }
+    const current = { order: [0, 1, 2], arrivals: [570, 640, 745], lateMinutes: [0, 0, 25], driveSeconds: 2_700, metres: 12_400, onTime: 2, endMinutes: 760, ...noHours }
+    const proposed = { order: [2, 0, 1], arrivals: [570, 625, 690], lateMinutes: [0, 0, 0], driveSeconds: 1_500, metres: 7_200, onTime: 3, endMinutes: 705, ...noHours }
     expect(routeOrderReason(current, proposed)).toEqual({ kind: "LATE_FIXED", stop: 2, lateMinutes: 25 })
   })
 })
