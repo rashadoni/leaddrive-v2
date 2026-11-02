@@ -63,7 +63,7 @@ export function BookingDetail({ booking, context, identity, onSaved, onClose }: 
   const statusLabel = t(({ confirmed: "meetingConfirmed", cancelled: "meetingCancelled", completed: "meetingCompleted", no_show: "meetingNoShow" } as Record<string, string>)[booking.status] ?? "meetingUnknownStatus")
   const locationType = ["office", "phone", "online"].includes(booking.bookingPage.locationType) ? booking.bookingPage.locationType : "office"
 
-  return <div className="space-y-4">
+  return <div className="space-y-4" role="region" aria-label={t("workspaceDetails")}>
     <CrmSection tone={bookingStatusTone(booking.status)} aria-label={t("meetingSummary")}>
       <div className="flex flex-wrap items-start gap-4">
         <p className="flex min-w-16 shrink-0 flex-col items-center rounded-xl bg-primary px-3 py-2 text-center font-semibold text-primary-foreground">

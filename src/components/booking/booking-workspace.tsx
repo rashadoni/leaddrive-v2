@@ -121,7 +121,17 @@ export function BookingWorkspace() {
   const month = selectedMonth ?? today.slice(0, 7)
   const [day, setDay] = useState<string | null>(null)
   const contextReady = Boolean(context)
-  const selectedDay = day ?? (view === "day" ? today : `${month}-01`)
+  const detailQuery = useQuery({
+    queryKey: ["booking-detail", identity, selectedId, revision],
+    queryFn: ({ signal }) => readBookingData<WorkspaceBooking>(`/api/v1/bookings/${encodeURIComponent(selectedId!)}`, signal),
+    enabled: Boolean(selectedId) && contextReady, retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
+  })
+  const detail = detailQuery.isError ? null : detailQuery.data
+  const detailError = detailQuery.isError ? t("meetingUnavailable") : ""
+  // Opened straight on a meeting — from a task, or from a link someone sent —
+  // the day shown is the meeting's own, until the week strip says otherwise.
+  const detailDay = detail ? dateInputValueInTimezone(detail.startsAt, detail.bookingPage.timezone || timezone) : null
+  const selectedDay = day ?? (view === "day" ? detailDay ?? today : `${month}-01`)
   const grid = calendarWindow(month)
   const week = weekWindow(selectedDay)
   const atMidnight = (value: string) => localDateTimeToUtc(`${value}T00:00`, timezone).toISOString()
@@ -137,6 +147,9 @@ export function BookingWorkspace() {
   function openMeeting(id: string) {
     setCreating(false)
     setPendingStart(null)
+    // Pin the day on screen: without it the rail would jump to today while
+    // the newly chosen card is still loading.
+    setDay(selectedDay)
     navigate({ booking: id })
   }
   function closePanel() {
@@ -177,11 +190,6 @@ export function BookingWorkspace() {
     queryFn: ({ signal }) => readBookingData<{ days: { day: string; count: number }[] }>(`/api/v1/bookings/calendar?${calendarRequest}`, signal),
     enabled: contextReady && tab === "meetings" && view !== "list", retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
   })
-  const detailQuery = useQuery({
-    queryKey: ["booking-detail", identity, selectedId, revision],
-    queryFn: ({ signal }) => readBookingData<WorkspaceBooking>(`/api/v1/bookings/${encodeURIComponent(selectedId!)}`, signal),
-    enabled: Boolean(selectedId) && contextReady, retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
-  })
   // Free time belongs to one booking page: pages differ in length, hours and
   // who meets. The filter decides which one; with none chosen, the first page
   // a client could actually book, and the day card says which it is.
@@ -201,8 +209,6 @@ export function BookingWorkspace() {
   const calendarLoading = calendarQuery.isFetching
   const calendarError = calendarQuery.isError
   const counts: Record<string, number> = Object.fromEntries((calendarQuery.data?.days ?? []).map((row) => [row.day, row.count]))
-  const detail = detailQuery.isError ? null : detailQuery.data
-  const detailError = detailQuery.isError ? t("meetingUnavailable") : ""
 
   const date = (value: string) => formatDate(value, locale, { day: "numeric", month: "long", year: "numeric", timeZone: timezone })
   const time = (value: string) => formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: timezone })
@@ -276,7 +282,7 @@ export function BookingWorkspace() {
           {selectedDay === today ? null : <Button variant="outline" onClick={() => { setDay(today); setPendingStart(null) }}>{t("jumpToday")}</Button>}
         </div>
         {error ? <CrmSection role="alert" tone="destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }}>{t("retry")}</Button></CrmSection> : <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)]">
-          <CrmSection aria-label={t("viewDay")} aria-busy={loading}>
+          <CrmSection aria-busy={loading}>
             <div className="mb-4 space-y-2 border-b border-border pb-4">
               <h2 className="text-lg font-semibold first-letter:uppercase">{formatDate(atMidnight(selectedDay), locale, { weekday: "long", day: "numeric", month: "long", timeZone: timezone })}</h2>
               <BookingDaySummary meetings={dayMeetings} windows={freeWindows} duration={duration} busyHint={t("busyHint")} windowsHint={freePage ? t("windowsHint", { page: freePage.title }) : ""} />
@@ -299,7 +305,7 @@ export function BookingWorkspace() {
                 pendingStart={pendingOnDay}
                 pendingEnd={pendingOnDay === null ? null : pendingOnDay + slotMinutes}
                 onSelect={openMeeting}
-                onBook={canBook ? (startsAt) => { setPendingStart(startsAt); navigate({ booking: null }); setCreating(true) } : null}
+                onBook={canBook ? (startsAt) => { setPendingStart(startsAt); setDay(selectedDay); navigate({ booking: null }); setCreating(true) } : null}
                 time={railTime}
                 statusLabel={state}
                 duration={duration}
