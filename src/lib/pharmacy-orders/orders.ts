@@ -11,7 +11,7 @@ import { notifyPharmacyOfDecision } from "@/lib/pharmacy-orders/manager-notice"
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
-import { PHONE_ORDERS_TABLE, PHONE_ORDER_MAX_LINES, phoneOrderLabel, priceAppliesTo } from "@/lib/voice-agent/pharmacy/phone-orders"
+import { PHONE_ORDERS_TABLE, PHONE_ORDER_MAX_LINES, phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
 import { ZeytunAvailableBalances } from "@/lib/voice-agent/pharmacy/zeytun-available-balances"
 import { orderPrice } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
@@ -128,7 +128,7 @@ async function orderCatalog(source: string, scopeKey: string): Promise<CatalogHa
   return value
 }
 
-type PickedItem = { externalId: string; itemCode: string; name: string; sourceName: string; price: { amount: string; per: string; alsoPer?: string } | null }
+type PickedItem = { externalId: string; itemCode: string; name: string; sourceName: string; price: { amount: string; per: string } | null }
 
 function project(catalog: CatalogHandle, item: { externalId: string; itemCode: string; name: string; nameAz: string | null
   priceAsReported?: unknown; baseUnitAsReported?: unknown }): PickedItem {
@@ -168,8 +168,9 @@ export const phoneOrderActionSchema = z.discriminatedUnion("action", [
 ])
 export type PhoneOrderAction = z.infer<typeof phoneOrderActionSchema>
 
-function priced(item: PickedItem, quantity: number, lineUnit: string) {
-  const price = item.price && priceAppliesTo(item.price, lineUnit) ? new Prisma.Decimal(item.price.amount) : null
+function priced(item: PickedItem, quantity: number) {
+  // B2B: whatever word the line's unit is, it counts 1C's units (orderPrice).
+  const price = item.price ? new Prisma.Decimal(item.price.amount) : null
   return { unitPrice: price, lineTotal: price ? price.mul(quantity).toDecimalPlaces(2) : null }
 }
 
@@ -323,7 +324,7 @@ export async function applyPhoneOrderAction(orgId: string, userId: string, id: s
       }
       case "pick_product":
         await tx.pharmacyPhoneOrderLine.update({ where: { id: line!.id }, data: { status: "resolved", externalId: item!.externalId,
-          itemCode: item!.itemCode, productName: item!.name, sourceName: item!.sourceName, ...priced(item!, line!.quantity, line!.unit) } })
+          itemCode: item!.itemCode, productName: item!.name, sourceName: item!.sourceName, ...priced(item!, line!.quantity) } })
         made = edit({ action: "pick_product", position: line!.position, from: line!.externalId, to: item!.externalId })
         break
       case "add_line": {
@@ -331,7 +332,7 @@ export async function applyPhoneOrderAction(orgId: string, userId: string, id: s
         const position = (lines.at(-1)?.position ?? 0) + 1
         await tx.pharmacyPhoneOrderLine.create({ data: { organizationId: orgId, orderId: id, position, status: "resolved",
           externalId: item!.externalId, itemCode: item!.itemCode, productName: item!.name, sourceName: item!.sourceName, spokenText: "—",
-          quantity: action.quantity, unit: action.unit, ...priced(item!, action.quantity, action.unit) } })
+          quantity: action.quantity, unit: action.unit, ...priced(item!, action.quantity) } })
         made = edit({ action: "add_line", position, to: item!.externalId, quantity: action.quantity })
         break
       }
