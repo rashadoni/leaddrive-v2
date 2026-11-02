@@ -145,6 +145,10 @@ export function BookingWeekStrip({ days, counts, selectedDay, today, loading, on
         key={day}
         onClick={() => onSelect(day)}
         aria-pressed={chosen}
+        // Choosing the day filters the screen; it is not the screen's action.
+        // The guard in scripts/check-crm-button-hierarchy.mjs asks a filled
+        // native control to say which of the two it is.
+        data-crm-filter=""
         className={cn(
           "min-h-20 rounded-xl border px-1 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-24 sm:px-2",
           chosen ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-card hover:border-primary/50",
