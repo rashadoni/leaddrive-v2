@@ -16,6 +16,11 @@ key="${LD_WAL_WATCH_KEY:-$HOME/.ssh/leaddrive_prod_2026_09_09}"
 [ -r "$key" ] || { echo "install-wal-watch: no production key at $key" >&2; exit 1; }
 node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' || { echo "install-wal-watch: Node.js 18+ needed" >&2; exit 1; }
 dest="$HOME/.local/share/ld-wal-watch"
+# The delivery half (streaks, hourly reminders, the offline check) is shared
+# with the host health watch and imported as ./watch-delivery.mjs, so it has to
+# land beside the copy — an installed watch that cannot import crashes on every
+# pass, and a crashing watch is exactly what OnFailure exists for.
+install -D -m 0644 "$repo/scripts/backup/watch-delivery.mjs" "$dest/watch-delivery.mjs"
 install -D -m 0644 "$repo/scripts/backup/wal-archive-watch.mjs" "$dest/watch.mjs"
 units="$HOME/.config/systemd/user"; mkdir -p "$units"
 for unit in ld-wal-watch.service ld-wal-watch.timer ld-wal-watch-failed.service; do
