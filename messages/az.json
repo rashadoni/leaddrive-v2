@@ -11580,6 +11580,8 @@
     "domainHint": "Alt domen istifadə edin, məsələn landing.sirketiniz.com və ya pages.sirketiniz.com"
   },
   "mtmAccess": {
+    "perm_customerHoursRequest": "Qəbul saatlarının başqa olduğunu yerindən bildirmək",
+    "perm_customerHoursRequest_hint": "Agent yerində həqiqi iş saatlarını göndərir. Saatlar rəhbər təsdiqlədikdən sonra dəyişir.",
     "matrixNote": "Agentin telefonda nə edə biləcəyi — «Agent nə edə bilər» vərəqində.",
     "teamEmpty": "Komandada hələ heç kim yoxdur",
     "teamOf": "Komandası: {names}",
@@ -13845,6 +13847,22 @@
     "openOnMap": "Günün marşrutunu xəritədə aç"
   },
   "mtmRoutesPage": {
+    "hoursTitle": "Qəbul saatları: agentlərin təklifləri · {count}",
+    "hoursDescription": "Agent yerində başqa iş saatları görüb və onları göndərib. Qəbul edin ki, yerin saatları belə olsun, ya da əvvəlki kimi saxlayın.",
+    "hoursLoadFailed": "Saat təkliflərini yükləmək alınmadı",
+    "hoursFrom": "{name} · {when}",
+    "hoursChanged": "Agent göndərdikdən sonra bu yerin saatları dəyişdirilib.",
+    "hoursConfirmChanged": "Agentin sorğusundan sonra yerin saatları artıq dəyişdirilib. Yenə də agentin saatları ilə əvəz edilsin?",
+    "hoursNow": "İndi",
+    "hoursProposed": "Agent təklif edir",
+    "hoursNone": "göstərilməyib",
+    "hoursApprove": "Saatları qəbul et",
+    "hoursApproveHint": "Yerin saatları agentin göndərdiyi kimi olacaq; agent bildiriş alacaq.",
+    "hoursReject": "Əvvəlki kimi saxla",
+    "hoursRejectComment": "Niyə saxlayırsınız (agent görəcək)",
+    "hoursApproved": "Yerin saatları dəyişdirildi",
+    "hoursRejected": "Saatlar əvvəlki kimi saxlanıldı",
+    "hoursDecisionFailed": "Qərarı yadda saxlamaq alınmadı",
     "locationMovedConfirm": "Bəli, köçür",
     "locationMovedConfirmBody": "Agent sorğu göndərdikdən sonra kimsə müştərinin nöqtəsini artıq düzəldib. Yenə də onu agentin dayandığı yerə köçürək?",
     "locationMovedConfirmTitle": "Nöqtə sorğudan sonra artıq dəyişdirilib",

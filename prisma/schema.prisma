@@ -204,6 +204,7 @@ model Organization {
   mtmMapZones                            MtmMapZone[]
   mtmLocationShareLinks                  MtmLocationShareLink[]
   mtmCustomerLocationRequests            MtmCustomerLocationRequest[]
+  mtmCustomerHoursRequests               MtmCustomerHoursRequest[]
   mtmJointFieldSessions                  MtmJointFieldSession[]
   mtmJointVisitPlans                     MtmJointVisitPlan[]
   mtmVisitEvaluations                    MtmVisitEvaluation[]
@@ -6363,6 +6364,7 @@ model MtmAgent {
   deviceTokens                         MtmDeviceToken[]
   locationShareLinks                   MtmLocationShareLink[]
   customerLocationRequests             MtmCustomerLocationRequest[]
+  customerHoursRequests                MtmCustomerHoursRequest[]
   jointSessionsLed                     MtmJointFieldSession[]       @relation("MtmJointFieldSessionManager")
   jointSessionsJoined                  MtmJointFieldSession[]       @relation("MtmJointFieldSessionAgent")
   jointVisitPlansLed                   MtmJointVisitPlan[]          @relation("MtmJointVisitPlanManager")
@@ -6598,6 +6600,7 @@ model MtmCustomer {
   presentationSessions          MtmPresentationSession[]
 
   locationRequests       MtmCustomerLocationRequest[]
+  hoursRequests          MtmCustomerHoursRequest[]
   @@unique([organizationId, code])
   @@unique([organizationId, id])
   @@index([organizationId])
@@ -6952,6 +6955,38 @@ model MtmDoctorAssessment {
 // place he stands at as evidence. The agent never changes a customer himself
 // (owner, 2026-10-02); a manager accepts the new place or leaves the old one.
 // Asked for by the owner on 2026-10-12.
+/// «Часы не те?» (owner, 2026-11-02, mockup «MTM: часы приёма клиентов»): an
+/// agent at a place whose «часы приёма» are wrong proposes the real ones; a
+/// manager accepts them or leaves the old ones. Agents never edit a place.
+model MtmCustomerHoursRequest {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerId         String
+  customer           MtmCustomer       @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Cascade)
+  requestedByAgentId String
+  requestedByAgent   MtmAgent          @relation(fields: [organizationId, requestedByAgentId], references: [organizationId, id], onDelete: Cascade)
+  status             MtmApprovalStatus @default(SUBMITTED)
+  idempotencyKey     String
+  /// The place's week when the agent asked (customer-hours.ts); null = none given.
+  previousHours      Json?
+  /// The week the agent proposes.
+  proposedHours      Json
+  comment            String?
+  reviewedBy         String?
+  decisionComment    String?
+  submittedAt        DateTime          @default(now())
+  reviewedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, submittedAt])
+  @@index([organizationId, customerId, submittedAt])
+  @@index([organizationId, requestedByAgentId, submittedAt])
+  @@map("mtm_customer_hours_requests")
+}
+
 model MtmCustomerLocationRequest {
   id                    String            @id @default(cuid())
   organizationId        String
