@@ -1,7 +1,9 @@
+import { spawnSync } from "node:child_process"
 import { EventEmitter } from "node:events"
-import { readdirSync, readFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createServer, request, type Server } from "node:http"
 import type { AddressInfo } from "node:net"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
@@ -142,5 +144,123 @@ describe("the deploy's stop and start", () => {
     // Waited on by pid: a bare `wait` would also wait for a Fund cutover's
     // background lock holder, up to 180 s.
     expect(step6).toContain('wait "${WARM_PIDS[@]}"')
+  })
+})
+
+function loadApps(env: Record<string, string | undefined>) {
+  const saved: Record<string, string | undefined> = {}
+  for (const [key, value] of Object.entries(env)) {
+    saved[key] = process.env[key]
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  try {
+    const source = readFileSync(join(ROOT, "ecosystem.config.cjs"), "utf8")
+    const module_ = { exports: {} as { apps: Array<Record<string, any>> } }
+    new Function("module", "process", "require", source)(module_, process, () => ({}))
+    return module_.exports.apps
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
+}
+
+/**
+ * Owner, 2026-11-02: /mtm/access answered a bare "Internal Server Error". The
+ * deploy of #1248 had unpacked its build over .next/standalone at 10:10:19 and
+ * stopped the old web process at 10:14:36; for those four minutes the old
+ * process, running from that tree, loaded the NEW build's files for every page
+ * it had not opened yet. The web app and the scheduler now run from a copy of
+ * their own release, the way the phone line already did.
+ */
+describe("the old web process keeps its own build until it is stopped", () => {
+  it("pm2 runs the web app and the scheduler from the release copy the deploy names", () => {
+    const apps = loadApps({ WEB_RELEASE_DIR: "/opt/leaddrive-v2/web-releases/abc-20261102T101000Z", APP_DIR: undefined })
+    for (const name of ["leaddrive-v2", "leaddrive-v2-jobs"]) {
+      const app = apps.find((a) => a.name === name)!
+      expect(app.script).toBe("/opt/leaddrive-v2/web-releases/abc-20261102T101000Z/server.js")
+      expect(app.cwd).toBe("/opt/leaddrive-v2/web-releases/abc-20261102T101000Z")
+      // A copy cannot infer the checkout root from its cwd; it is told.
+      expect(app.env.APP_DIR).toBe("/opt/leaddrive-v2")
+    }
+    // The relay is not a page server and stays where it was.
+    expect(apps.find((a) => a.name === "softphone-relay")?.cwd ?? "/.next/standalone").toContain("/.next/standalone")
+  })
+
+  it("without one — an operator's `pm2 start`, a rollback — they run from .next/standalone as before", () => {
+    const apps = loadApps({ WEB_RELEASE_DIR: undefined, APP_DIR: undefined })
+    expect(apps.find((a) => a.name === "leaddrive-v2")!.script).toBe("/opt/leaddrive-v2/.next/standalone/server.js")
+    expect(apps.find((a) => a.name === "leaddrive-v2-jobs")!.script).toBe("/opt/leaddrive-v2/.next/standalone/server.js")
+  })
+
+  const step4 = deploy.slice(deploy.indexOf("# ── Step 4:"), deploy.indexOf("# ── Step 6:"))
+  const copyBlock = step4.slice(step4.indexOf("WEB_RELEASE_NEW_DIR=\""), step4.indexOf('log "Web release copy:'))
+  const pruneBlock = deploy.slice(deploy.indexOf('for dir in "$WEB_RELEASES_DIR"/*; do'), deploy.indexOf("# ── Step 7b:"))
+  const rollback = deploy.slice(deploy.indexOf("recover_application_handoff() {"), deploy.indexOf("rollback_replaced_standalone_on_exit() {"))
+
+  it("copies before the old process stops, and starts the new one from that copy only", () => {
+    expect(copyBlock).toContain('cp -al -- "$APP_DIR/.next/standalone" "$WEB_RELEASE_NEW_DIR"')
+    expect(step4.indexOf("cp -al --")).toBeLessThan(step4.indexOf('log "Stopping old processes..."'))
+    expect(step4).toMatch(/^WEB_RELEASE_DIR="\$WEB_RELEASE_NEW_DIR" \\\npm2 start "\$PM2_CONFIG"/m)
+    // Never exported: the rollback below must start the restored tree.
+    expect(deploy).not.toMatch(/export[^\n]*WEB_RELEASE_DIR/)
+    expect(rollback).not.toContain("WEB_RELEASE")
+    // An app env file cannot steer it either.
+    expect(deploy).toContain("WEB_RELEASES_DIR|WEB_RELEASE_NEW_DIR|WEB_RELEASE_DIR|")
+  })
+
+  it("removes earlier copies only after the new web process passed its health gate", () => {
+    expect(pruneBlock).toContain('[ "$dir" != "$WEB_RELEASE_NEW_DIR" ] && rm -rf -- "$dir"')
+    const prune = deploy.indexOf('for dir in "$WEB_RELEASES_DIR"/*; do')
+    expect(prune).toBeGreaterThan(deploy.indexOf('if [ "$HEALTHY" = false ]; then'))
+    expect(prune).toBeGreaterThan(deploy.indexOf("HANDOFF_STARTED=false\nHANDOFF_RECOVERY_COMPLETE=true"))
+  })
+
+  const dirs: string[] = []
+  afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }) })
+
+  /** Step 4's copy as written, then the next deploy's Step 2 and its prune. */
+  function run(script: string, app: string, sha: string) {
+    const out = spawnSync("bash", ["-c", [
+      "set -euo pipefail",
+      `log() { echo "LOG $*"; }`, `fatal_after_standalone_replacement() { echo "FATAL $*"; exit 1; }`,
+      `APP_DIR="${app}"`, `WEB_RELEASES_DIR="${app}/web-releases"`, `DEPLOY_SHA=${sha}`,
+      script,
+      'echo "DIR $WEB_RELEASE_NEW_DIR"',
+    ].join("\n")], { encoding: "utf8" })
+    expect(out.status, out.stdout + out.stderr).toBe(0)
+    return /^DIR (.+)$/m.exec(out.stdout)![1]
+  }
+
+  it.skipIf(spawnSync("bash", ["--version"]).status !== 0)("a page the old process opens late still gets its own build", () => {
+    const app = mkdtempSync(join(tmpdir(), "web-release-"))
+    dirs.push(app)
+    const standalone = join(app, ".next/standalone")
+    const page = ".next/server/app/mtm/access/page.js"
+    mkdirSync(join(standalone, ".next/server/app/mtm/access"), { recursive: true })
+    writeFileSync(join(standalone, "server.js"), "")
+    writeFileSync(join(standalone, page), "build A")
+
+    const first = run(copyBlock, app, "aaa")
+    // The next deploy's Step 2: the tree is removed and the new build unpacked.
+    rmSync(standalone, { recursive: true })
+    mkdirSync(join(standalone, ".next/server/app/mtm/access"), { recursive: true })
+    writeFileSync(join(standalone, "server.js"), "")
+    writeFileSync(join(standalone, page), "build B")
+    expect(readFileSync(join(first, page), "utf8")).toBe("build A")
+
+    // Redeploying the same SHA makes a new copy and never touches the live one.
+    spawnSync("sleep", ["1"])
+    const second = run(copyBlock, app, "aaa")
+    expect(second).not.toBe(first)
+    expect(readFileSync(join(first, page), "utf8")).toBe("build A")
+    expect(readFileSync(join(second, page), "utf8")).toBe("build B")
+
+    // Once the new process is healthy only its copy stays.
+    run(`WEB_RELEASE_NEW_DIR="${second}"\n${pruneBlock}`, app, "aaa")
+    expect(existsSync(first)).toBe(false)
+    expect(readdirSync(join(app, "web-releases"))).toEqual([second.split("/").pop()])
   })
 })

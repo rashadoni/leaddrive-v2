@@ -6,6 +6,14 @@ const JOBS_PORT = process.env.JOBS_PORT || 3002
 const LINE_RELEASE_DIR = process.env.LINE_RELEASE_DIR || ""
 const LINE_SLOT = process.env.LINE_SLOT || ""
 const LINE_SLOT_PORTS = { a: 3004, b: 3005 }
+// The web app and the scheduler run from their release's own copy too
+// ($APP_DIR/web-releases/<sha>, Step 4 of scripts/server-deploy.sh). The next
+// deploy unpacks its build over .next/standalone minutes before it stops them,
+// and a process reading that tree loaded the new build's files for every page
+// it had not opened yet: plain "Internal Server Error" (owner, 2026-11-02,
+// /mtm/access during the deploy of #1248). Without the variable — an operator's
+// `pm2 start`, a rollback — they run from .next/standalone as before.
+const WEB_RELEASE_DIR = process.env.WEB_RELEASE_DIR || ""
 const APP_ENV_FILE = process.env.APP_ENV_FILE || "/etc/leaddrive/app.env"
 const RUNTIME_DIR = process.env.LEADDRIVE_RUNTIME_DIR || "/var/lib/leaddrive-v2"
 const LOG_DIR = process.env.LEADDRIVE_LOG_DIR || "/var/lib/leaddrive-v2-logs"
@@ -22,7 +30,8 @@ const MTM_DOCUMENT_STORAGE_DIR = process.env.MTM_DOCUMENT_STORAGE_DIR || `${RUNT
 // while /api/v1/ping went from 0.1 s to 7 s and a dashboard's requests waited
 // 4–11 s each. Jobs coordinate through SystemJobLease in PostgreSQL, not
 // through process memory, so where they run changes nothing about what they do.
-const serverApp = ({ name, role, port, hostname, errorFile, outFile, maxMemory, root = `${APP_DIR}/.next/standalone` }) => ({
+const STANDALONE_DIR = `${APP_DIR}/.next/standalone`
+const serverApp = ({ name, role, port, hostname, errorFile, outFile, maxMemory, root = STANDALONE_DIR }) => ({
   name,
   script: `${root}/server.js`,
   cwd: root,
@@ -43,6 +52,9 @@ const serverApp = ({ name, role, port, hostname, errorFile, outFile, maxMemory, 
     PORT: port,
     HOSTNAME: hostname,
     APP_ENV_FILE,
+    // The checkout root, which a release copy cannot infer from its cwd the
+    // way .next/standalone could (admin tenant seeding resolves scripts from it).
+    APP_DIR,
     LEADDRIVE_RUNTIME_DIR: RUNTIME_DIR,
     LEADDRIVE_LOG_DIR: LOG_DIR,
     HELP_VIDEO_ASSET_DIR,
@@ -70,6 +82,7 @@ module.exports = {
       name: process.env.PM2_NAME || "leaddrive-v2",
       role: "web",
       port: APP_PORT,
+      root: WEB_RELEASE_DIR || STANDALONE_DIR,
       hostname: process.env.APP_HOSTNAME || "127.0.0.1",
       errorFile: `${LOG_DIR}/error.log`,
       outFile: `${LOG_DIR}/out.log`,
@@ -90,6 +103,7 @@ module.exports = {
       name: process.env.PM2_JOBS_NAME || "leaddrive-v2-jobs",
       role: "jobs",
       port: JOBS_PORT,
+      root: WEB_RELEASE_DIR || STANDALONE_DIR,
       // Never behind nginx and never on another interface, whatever the web
       // app's own bind is set to: only this box's crontab talks to it.
       hostname: "127.0.0.1",
