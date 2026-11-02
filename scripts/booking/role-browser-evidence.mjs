@@ -315,7 +315,10 @@ try {
   // Followed cold, the link lands on the day view: the card is the right
   // column, and the rail stands on the meeting's own day, not on today.
   const card = employee.page.getByRole('region', { name: copy.workspaceDetails, exact: true });
-  await card.getByText(fixture.meetings.employee.name, { exact: true }).waitFor();
+  // The name is in the card twice on purpose: once as the client, once as the
+  // row for this meeting in the host's day beside it.
+  await card.getByText(fixture.meetings.employee.name, { exact: true }).first().waitFor();
+  assert.ok(await card.getByText(fixture.meetings.employee.name, { exact: true }).count() >= 1);
   // Scoped to the week strip itself: the host chips are also pressed filters,
   // and a meeting block is aria-pressed too, with digits in its times.
   const chosenDay = employee.page.getByRole('group', { name: copy.chooseDay, exact: true }).locator('button[aria-pressed="true"]');
