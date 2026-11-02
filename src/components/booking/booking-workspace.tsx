@@ -5,17 +5,17 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
-import { CalendarCheck, CalendarDays, CalendarPlus, CalendarRange, ChevronLeft, ChevronRight, List, RefreshCw, Search } from "lucide-react"
+import { CalendarCheck, CalendarDays, CalendarPlus, CalendarRange, CheckCircle2, ChevronLeft, ChevronRight, List, RefreshCw, Search, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CrmSection } from "@/components/ui/crm-section"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { BookingPagesPanel } from "./booking-pages-panel"
-import { BookingDayLegend, BookingDaySummary, BookingDayTimeline, BookingWeekStrip, mergeFreeWindows, minutesFrom, type TimelineMeeting } from "./booking-day-timeline"
-import { BookingDetail } from "./booking-detail"
+import { BookingDayLegend, BookingDaySummary, BookingDayTimeline, BookingHostChips, BookingWeekStrip, mergeFreeWindows, minutesFrom, spansClashing, type TimelineMeeting, type TimelineWindow } from "./booking-day-timeline"
+import { BookingDetail, type DayScheduleRow } from "./booking-detail"
 import { type BookingHistoryItem } from "./booking-history"
-import { BookingCreatePanel } from "./booking-create-panel"
+import { BookingCreatePanel, type BookingAlternative, type BookingReadiness } from "./booking-create-panel"
 import { BookingCoordinatorsPanel } from "./booking-coordinators-panel"
 import { BookingStatus } from "./booking-status"
 import type { DaySlots } from "@/lib/booking/availability"
@@ -113,6 +113,8 @@ export function BookingWorkspace() {
   const [query, setQuery] = useState("")
   /** The time a new meeting is being booked at, so the day's rail can show it. */
   const [pendingStart, setPendingStart] = useState<string | null>(null)
+  /** The meeting just created, shown as a confirmation over the day. */
+  const [justBooked, setJustBooked] = useState<string | null>(null)
   const [instant, setInstant] = useState(() => new Date().toISOString())
   useEffect(() => { const timer = window.setInterval(() => setInstant(new Date().toISOString()), 60_000); return () => window.clearInterval(timer) }, [])
   const timezone = context?.timezone ?? "Asia/Baku"
@@ -157,6 +159,12 @@ export function BookingWorkspace() {
     setPendingStart(null)
     navigate({ booking: null })
   }
+  function startBooking(startsAt: string | null) {
+    setPendingStart(startsAt)
+    setDay(selectedDay)
+    navigate({ booking: null })
+    setCreating(true)
+  }
 
   useEffect(() => { const timer = window.setTimeout(() => setQuery(search.trim()), 300); return () => window.clearTimeout(timer) }, [search])
 
@@ -168,7 +176,10 @@ export function BookingWorkspace() {
   const paginationKey = [period, status, host, page, query, selectedDay, view, timezone].join("|")
   const cursor = pagination.key === paginationKey ? pagination.cursor : null
   const setCursor = (next: string | null) => setPagination({ key: paginationKey, cursor: next })
+  // The day view asks for every host's meetings and filters them here, so the
+  // chips can say how busy each host is without one request per host.
   const request = new URLSearchParams(filters)
+  if (view === "day") request.delete("host")
   if (view === "calendar" || view === "day") {
     request.set("from", atMidnight(selectedDay)); request.set("to", atMidnight(addDays(selectedDay, 1)))
   } else if (period === "today" || period === "week") {
@@ -201,7 +212,8 @@ export function BookingWorkspace() {
     queryFn: ({ signal }) => readBookingData<{ page: { durationMinutes: number }; days: DaySlots[] }>(`/api/v1/bookings/availability?${slotsRequest}`, signal),
     enabled: contextReady && tab === "meetings" && view === "day" && Boolean(slotsRequest), retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
   })
-  const items = listQuery.isError ? [] : listQuery.data?.items ?? []
+  const loaded = listQuery.isError ? [] : listQuery.data?.items ?? []
+  const items = view === "day" && host ? loaded.filter((item) => item.hostUserId === host) : loaded
   const nextCursor = listQuery.data?.nextCursor ?? null
   const loading = contextQuery.isPending || (tab === "meetings" && listQuery.isFetching)
   const failure = contextQuery.error ?? listQuery.error
@@ -237,26 +249,64 @@ export function BookingWorkspace() {
   const slotMinutes = slotsQuery.data?.page.durationMinutes ?? 30
   const pendingMinutes = pendingStart ? minutesFrom(dayStartMs, pendingStart) : null
   const pendingOnDay = pendingMinutes !== null && pendingMinutes >= 0 && pendingMinutes < 24 * 60 ? pendingMinutes : null
+  const pendingSpan = pendingOnDay === null ? null : { start: pendingOnDay, end: pendingOnDay + slotMinutes }
   const canBook = Boolean(freePage)
   const dayStatuses = Object.keys(STATUS_KEYS).filter((value) => dayMeetings.some((meeting) => meeting.status === value))
+  const hostsBooking = context?.hosts.filter((item) => item.isActive && item.canReceiveBookings) ?? []
+  const hostChips = hostsBooking.map((item) => ({
+    id: item.id,
+    name: item.name,
+    meta: t("dayCount", { count: loaded.filter((row) => row.hostUserId === item.id && row.status !== "cancelled").length }),
+  }))
+
+  // What the chosen time lands on, and the free windows that would not.
+  const clashing = spansClashing(pendingSpan, dayMeetings.filter((meeting) => meeting.status !== "cancelled"))
+  const clash = pendingSpan && clashing.length ? {
+    name: clashing[0].name,
+    from: railTime(clashing[0].start),
+    to: railTime(clashing[0].end),
+    minutes: Math.max(1, Math.min(pendingSpan.end, clashing[0].end) - Math.max(pendingSpan.start, clashing[0].start)),
+  } : null
+  const alternatives: BookingAlternative[] = freeWindows
+    .filter((window: TimelineWindow) => !spansClashing({ start: window.start, end: window.start + slotMinutes }, dayMeetings.filter((meeting) => meeting.status !== "cancelled")).length)
+    .slice(0, 3)
+    .map((window: TimelineWindow) => ({ startsAt: window.startsAt, time: railTime(window.start), meta: duration(window.end - window.start) }))
+  const checks: BookingReadiness[] = freePage ? [
+    { key: "page", label: t("checkPage"), meta: freePage.title },
+    { key: "host", label: t("checkHost"), meta: host ? hostsBooking.find((item) => item.id === host)?.name ?? t("automaticHost") : t("automaticHost") },
+    { key: "notify", label: t("checkNotify"), meta: t("afterBooking"), waiting: true },
+  ] : []
+
+  // The host's whole day beside the meeting that is open, free time included:
+  // the question after "who is this" is "what else is on that day".
+  const scheduleHost = detail?.hostUserId
+  const schedule: (DayScheduleRow & { start: number })[] = detail && detailDay === selectedDay ? [
+    ...loaded.filter((item) => item.hostUserId === scheduleHost && item.status !== "cancelled")
+      .map((item) => ({ id: item.id, start: Date.parse(item.startsAt), time: time(item.startsAt), name: item.name, subtitle: `${item.bookingPage.title} · ${duration(Math.round((Date.parse(item.endsAt) - Date.parse(item.startsAt)) / 60_000))}`, current: item.id === detail.id })),
+    ...freeWindows.map((window) => ({ id: null, start: dayStartMs + window.start * 60_000, time: railTime(window.start), name: t("freeWindow"), subtitle: duration(window.end - window.start), current: false })),
+  ].sort((left, right) => left.start - right.start) : []
 
   const createPanel = context ? <BookingCreatePanel
     pages={bookablePages}
-    hosts={context.hosts.filter((item) => item.isActive && item.canReceiveBookings)}
+    hosts={hostsBooking}
     timezone={timezone}
     initial={{ pageId: freePage?.id, hostId: host || undefined, day: view === "day" ? selectedDay : undefined, startsAt: pendingStart ?? undefined }}
     onStartChange={view === "day" ? setPendingStart : undefined}
-    onSaved={(id) => { setCreating(false); setPendingStart(null); navigate({ booking: id }); setRevision((value) => value + 1) }}
+    clash={view === "day" ? clash : null}
+    alternatives={view === "day" ? alternatives : undefined}
+    onPickAlternative={view === "day" ? setPendingStart : undefined}
+    checks={view === "day" ? checks : undefined}
+    onSaved={(id) => { setCreating(false); setPendingStart(null); navigate({ booking: id }); setRevision((value) => value + 1); if (view === "day") setJustBooked(id) }}
   /> : null
-  const detailPanel = (onClose?: () => void) => detailError
+  const detailPanel = (onClose?: () => void, rows?: DayScheduleRow[]) => detailError
     ? <CrmSection role="alert" tone="destructive">{detailError}</CrmSection>
     : !detail ? <p role="status" className="text-muted-foreground">{t("workspaceLoading")}</p>
-      : context ? <BookingDetail booking={detail} context={context} identity={identity} onSaved={() => setRevision((value) => value + 1)} onClose={onClose} /> : null
+      : context ? <BookingDetail booking={detail} context={context} identity={identity} schedule={rows} onSaved={() => setRevision((value) => value + 1)} onClose={onClose} onOpenMeeting={openMeeting} /> : null
 
   return <main className="space-y-5 [&_button]:min-h-11 [&_button]:min-w-11 [&_select]:min-h-11" data-testid="booking-workspace">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-2xl font-semibold tracking-tight">{t("workspaceTitle")}</h1><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("workspaceHint")}</p></div>
-      <div className="flex flex-wrap gap-2">{bookablePages.length && !creating ? <Button onClick={() => { navigate({ booking: null }); setPendingStart(null); setCreating(true) }}><CalendarPlus aria-hidden="true" className="h-4 w-4" />{t("createMeeting")}</Button> : null}<Button variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} disabled={loading} aria-label={t("refresh")}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{t("refresh")}</Button></div>
+      <div className="flex flex-wrap gap-2">{bookablePages.length && !creating ? <Button onClick={() => startBooking(null)}><CalendarPlus aria-hidden="true" className="h-4 w-4" />{t("createMeeting")}</Button> : null}<Button variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} disabled={loading} aria-label={t("refresh")}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{t("refresh")}</Button></div>
     </header>
     <nav data-crm-tabs="" className="flex flex-wrap gap-1 border-b" aria-label={t("workspaceSections")}>
       {(["meetings", ...(context?.canConfigure ? ["pages", "team"] : [])] as string[]).map((item) => <Button key={item} data-crm-tab="" data-state={tab === item ? "active" : "inactive"} variant={tab === item ? "secondary" : "ghost"} className="min-h-11 rounded-b-none" aria-current={tab === item ? "page" : undefined} onClick={() => navigate({ tab: item === "meetings" ? null : item, booking: null })}>{t(item === "meetings" ? "workspaceMeetings" : item === "pages" ? "workspacePages" : "workspaceTeam")}</Button>)}
@@ -266,30 +316,35 @@ export function BookingWorkspace() {
         <div className="min-w-44 flex-1 space-y-1"><Label htmlFor="meeting-search">{t("workspaceSearch")}</Label><div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="meeting-search" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" placeholder={t("workspaceSearchHint")} /></div></div>
         {view === "list" ? <div className="space-y-1"><Label htmlFor="meeting-period">{t("workspacePeriod")}</Label><select id="meeting-period" className={`${SELECT} block`} value={period} onChange={(event) => { setPeriod(event.target.value); setDay(null) }}>{["upcoming", "today", "week", "all"].map((value) => <option key={value} value={value}>{t(`period_${value}`)}</option>)}</select></div> : null}
         <div className="space-y-1"><Label htmlFor="meeting-state">{t("workspaceStatus")}</Label><select id="meeting-state" className={`${SELECT} block`} value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">{t("allStatuses")}</option>{Object.keys(STATUS_KEYS).map((value) => <option key={value} value={value}>{state(value)}</option>)}</select></div>
-        {context?.canCoordinate ? <div className="space-y-1"><Label htmlFor="meeting-host">{t("colHosts")}</Label><select id="meeting-host" className={`${SELECT} block max-w-60`} value={host} onChange={(event) => setHost(event.target.value)}><option value="">{t("availableTeam")}</option><option value={context.userId}>{t("myMeetings")}</option>{context.hosts.filter((item) => item.id !== context.userId).map((item) => <option key={item.id} value={item.id}>{item.name}{!item.isActive ? ` · ${t("hostInactive")}` : ""}</option>)}</select></div> : <p className="pb-3 text-sm text-muted-foreground">{t("myMeetings")}</p>}
+        {/* In the day view the hosts are chips inside the day card: the number
+            of meetings beside each name is the reason to pick one, and a
+            closed select hides every number. */}
+        {context?.canCoordinate && view !== "day" ? <div className="space-y-1"><Label htmlFor="meeting-host">{t("colHosts")}</Label><select id="meeting-host" className={`${SELECT} block max-w-60`} value={host} onChange={(event) => setHost(event.target.value)}><option value="">{t("availableTeam")}</option><option value={context.userId}>{t("myMeetings")}</option>{context.hosts.filter((item) => item.id !== context.userId).map((item) => <option key={item.id} value={item.id}>{item.name}{!item.isActive ? ` · ${t("hostInactive")}` : ""}</option>)}</select></div> : view !== "day" ? <p className="pb-3 text-sm text-muted-foreground">{t("myMeetings")}</p> : null}
         {context && context.pages.length > 1 ? <div className="space-y-1"><Label htmlFor="meeting-page">{t("colPage")}</Label><select id="meeting-page" className={`${SELECT} block max-w-60`} value={page} onChange={(event) => setPage(event.target.value)}><option value="">{t("allPages")}</option>{context.pages.map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select></div> : null}
         <div data-crm-tabs="" className="flex gap-1 border-b" role="group" aria-label={t("workspaceView")}>
           {([["day", t("viewDay"), CalendarRange], ["list", t("viewList"), List], ["calendar", t("viewCalendar"), CalendarDays]] as const).map(([value, label, Icon]) => <Button key={value} data-crm-tab="" data-state={view === value ? "active" : "inactive"} variant={view === value ? "secondary" : "ghost"} aria-pressed={view === value} onClick={() => { setView(value); setPendingStart(null); setDay(value === "list" ? null : today) }}><Icon className="h-4 w-4" />{label}</Button>)}
         </div>
       </section>
       <p className="text-xs text-muted-foreground">{t("timezoneNote", { zone: timezone })}</p>
-      {view === "day" ? <section className="space-y-4" aria-label={t("viewDay")}>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="icon" className="shrink-0" onClick={() => setDay(addDays(selectedDay, -7))} aria-label={t("previousWeek")}><ChevronLeft className="h-4 w-4" /></Button>
-          {/* On a phone the arrows and «today» keep one row and the week takes the next; from sm up it is one line with the week between the arrows. */}
-          <div className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1"><BookingWeekStrip days={week.days} counts={counts} selectedDay={selectedDay} today={today} loading={calendarLoading && !calendarError} onSelect={(value) => { setDay(value); setPendingStart(null); setCursor(null) }} weekdayLabel={(value) => formatDate(`${value}T12:00:00Z`, locale, { weekday: "short", timeZone: "UTC" })} dayNumber={(value) => String(Number(value.slice(-2)))} /></div>
-          <Button variant="outline" size="icon" className="shrink-0" onClick={() => setDay(addDays(selectedDay, 7))} aria-label={t("nextWeek")}><ChevronRight className="h-4 w-4" /></Button>
-          {selectedDay === today ? null : <Button variant="outline" onClick={() => { setDay(today); setPendingStart(null) }}>{t("jumpToday")}</Button>}
-        </div>
-        {error ? <CrmSection role="alert" tone="destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }}>{t("retry")}</Button></CrmSection> : <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)]">
+      {view === "day" ? <section aria-label={t("viewDay")}>
+        {error ? <CrmSection role="alert" tone="destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }}>{t("retry")}</Button></CrmSection> : <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)]">
           <CrmSection aria-busy={loading}>
-            <div className="mb-4 space-y-2 border-b border-border pb-4">
-              <h2 className="text-lg font-semibold first-letter:uppercase">{formatDate(atMidnight(selectedDay), locale, { weekday: "long", day: "numeric", month: "long", timeZone: timezone })}</h2>
-              <BookingDaySummary meetings={dayMeetings} windows={freeWindows} duration={duration} busyHint={t("busyHint")} windowsHint={freePage ? t("windowsHint", { page: freePage.title }) : ""} />
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <BookingDayLegend statuses={dayStatuses} statusLabel={state} />
-                {slotsQuery.isError ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("bookingLoadError")}</p> : freePage && bookablePages.length > 1 ? <p className="text-xs text-muted-foreground">{t("freeWindowFor", { page: freePage.title })}</p> : null}
+            <div className="flex flex-wrap items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold first-letter:uppercase">{formatDate(atMidnight(selectedDay), locale, { weekday: "long", day: "numeric", month: "long", timeZone: timezone })}</h2>
+                <BookingDaySummary meetings={dayMeetings} windows={freeWindows} duration={duration} busyHint={t("busyHint")} windowsHint={freePage ? t("windowsHint", { page: freePage.title }) : ""} />
               </div>
+              {selectedDay === today ? null : <Button variant="outline" size="sm" className="shrink-0" onClick={() => { setDay(today); setPendingStart(null) }}>{t("jumpToday")}</Button>}
+            </div>
+            <div className="mt-4 flex items-stretch gap-2">
+              <Button variant="outline" size="icon" className="h-auto shrink-0" onClick={() => setDay(addDays(selectedDay, -7))} aria-label={t("previousWeek")}><ChevronLeft className="h-4 w-4" /></Button>
+              <div className="min-w-0 flex-1"><BookingWeekStrip days={week.days} counts={counts} selectedDay={selectedDay} today={today} loading={calendarLoading && !calendarError} onSelect={(value) => { setDay(value); setPendingStart(null); setCursor(null) }} weekdayLabel={(value) => formatDate(`${value}T12:00:00Z`, locale, { weekday: "short", timeZone: "UTC" })} dayNumber={(value) => String(Number(value.slice(-2)))} /></div>
+              <Button variant="outline" size="icon" className="h-auto shrink-0" onClick={() => setDay(addDays(selectedDay, 7))} aria-label={t("nextWeek")}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+            {context?.canCoordinate && hostChips.length > 1 ? <div className="mt-3.5"><BookingHostChips hosts={hostChips} anyMeta={t("dayCount", { count: loaded.filter((row) => row.status !== "cancelled").length })} selected={host} onSelect={(value) => { setHost(value); setPendingStart(null); setCursor(null) }} /></div> : null}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-4">
+              <BookingDayLegend statuses={dayStatuses} statusLabel={state} />
+              {slotsQuery.isError ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("bookingLoadError")}</p> : freePage && bookablePages.length > 1 ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />{t("freeWindowFor", { page: freePage.title })}</p> : null}
             </div>
             {loading && !items.length ? <p role="status" className="py-12 text-center text-muted-foreground">{t("workspaceLoading")}</p>
               : !dayMeetings.length && !freeWindows.length ? <div className="py-12 text-center">
@@ -297,23 +352,32 @@ export function BookingWorkspace() {
                 <h3 className="font-medium">{t("dayEmpty")}</h3>
                 <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t(query || host || page || status !== "all" ? "meetingsEmptyFilters" : canBook ? "dayEmptyHint" : "meetingsEmptyHint")}</p>
               </div>
-              : <BookingDayTimeline
+              : <div className="mt-2"><BookingDayTimeline
                 meetings={dayMeetings}
                 windows={freeWindows}
                 nowMinutes={selectedDay === today ? minutesFrom(dayStartMs, instant) : null}
                 selectedId={selectedId}
-                pendingStart={pendingOnDay}
-                pendingEnd={pendingOnDay === null ? null : pendingOnDay + slotMinutes}
+                pendingStart={pendingSpan?.start ?? null}
+                pendingEnd={pendingSpan?.end ?? null}
                 onSelect={openMeeting}
-                onBook={canBook ? (startsAt) => { setPendingStart(startsAt); setDay(selectedDay); navigate({ booking: null }); setCreating(true) } : null}
+                onBook={canBook ? (startsAt) => startBooking(startsAt) : null}
                 time={railTime}
                 statusLabel={state}
                 duration={duration}
-              />}
+              /></div>}
           </CrmSection>
-          <div className="space-y-4">
-            {creating ? <CrmSection title={<span className="flex flex-1 items-center justify-between gap-2">{t("createMeeting")}<Button variant="ghost" size="sm" className="-mr-2 -my-1 font-normal" onClick={closePanel}>{t("cancel")}</Button></span>} icon={<CalendarPlus aria-hidden="true" className="h-4 w-4" />}>{createPanel}</CrmSection>
-              : selectedId ? detailPanel(closePanel) : <CrmSection className="py-10 text-center">
+          <div>
+            {creating ? <CrmSection>
+              <div className="mb-4 flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base font-semibold">{t("createMeeting")}</h2>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{t("notBookedYet")}</p>
+                </div>
+                <Button variant="ghost" size="sm" className="-mr-2 -mt-1 shrink-0" onClick={closePanel}>{t("cancel")}</Button>
+              </div>
+              {createPanel}
+            </CrmSection>
+              : selectedId ? <CrmSection>{detailPanel(closePanel, schedule)}</CrmSection> : <CrmSection className="py-10 text-center">
               <CalendarRange aria-hidden="true" className="mx-auto mb-3 h-7 w-7 text-muted-foreground" />
               <h3 className="font-medium">{t("chooseMeeting")}</h3>
               <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">{t(canBook ? "chooseMeetingHint" : "chooseMeetingHintReadOnly")}</p>
@@ -339,6 +403,24 @@ export function BookingWorkspace() {
     <Sheet open={view !== "day" && (creating || Boolean(selectedId))} onOpenChange={(open) => { if (!open) closePanel() }}><SheetContent closeLabel={t("close")} surface={creating ? undefined : "canvas"} className="w-full overflow-y-auto sm:max-w-xl [&_button]:min-h-11 [&_button]:min-w-11 [&_input:not([type=checkbox]):not([type=radio])]:min-h-11 [&_select]:min-h-11">
       <SheetHeader className={creating ? undefined : "-mx-6 -mt-6 border-b border-border bg-card p-6 pr-12 text-left"}><SheetTitle className="break-words">{creating ? t("createMeeting") : detail?.name ?? t("workspaceDetails")}</SheetTitle><SheetDescription className="break-words">{creating ? t("createMeetingHint") : detail?.bookingPage.title ?? t("workspaceDetailsHint")}</SheetDescription></SheetHeader>
       <div className="mt-5">{creating ? createPanel : detailPanel()}</div>
+    </SheetContent></Sheet>
+    {/* The meeting is booked: what went out to the client and what else is on
+        that host's day, before the screen goes back to the rail. */}
+    <Sheet open={Boolean(justBooked) && detail?.id === justBooked} onOpenChange={(open) => { if (!open) setJustBooked(null) }}><SheetContent closeLabel={t("close")} className="w-full overflow-y-auto sm:max-w-xl [&_button]:min-h-11 [&_button]:min-w-11 [&_input:not([type=checkbox]):not([type=radio])]:min-h-11 [&_select]:min-h-11">
+      <SheetHeader className="text-left">
+        <div className="flex items-start gap-3">
+          <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"><CheckCircle2 className="h-5 w-5" /></span>
+          <div className="min-w-0">
+            <SheetTitle className="break-words text-xl">{t("bookedTitle")}</SheetTitle>
+            <SheetDescription className="break-words">{detail ? t("bookedHint", { name: detail.name }) : ""}</SheetDescription>
+          </div>
+        </div>
+      </SheetHeader>
+      <div className="mt-5">{detailPanel(undefined, schedule)}</div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Button variant="outline" className="flex-1" onClick={() => { setJustBooked(null); startBooking(null) }}><CalendarPlus aria-hidden="true" className="h-4 w-4" />{t("bookAnother")}</Button>
+        <Button className="flex-1" onClick={() => setJustBooked(null)}><CheckCircle2 aria-hidden="true" className="h-4 w-4" />{t("bookedDone")}</Button>
+      </div>
     </SheetContent></Sheet>
   </main>
 }

@@ -141,7 +141,9 @@ export function BookingScheduler({
 
   return (
     <div className={staff ? "space-y-5" : "grid gap-6 md:grid-cols-[260px_1fr]"}>
-      <BookingSummary page={page} />
+      {/* The staff panel already names the page, the host and the length in
+          its own fields; repeating them here was the same four lines twice. */}
+      {staff ? null : <BookingSummary page={page} />}
       <section className="min-w-0 space-y-5" aria-label={t("chooseTime")}>
         {days.length === 0 ? (
           <div className="rounded-lg border p-6 text-center">
