@@ -320,7 +320,7 @@ describe("the route planner", () => {
       expect(byTestId("mtm-route-planner-better-drive").textContent).toBe("В дороге45 мин25 мин−20 мин")
       expect(byTestId("mtm-route-planner-better-onTime").textContent).toBe("Визиты вовремя2 из 33 из 3+1")
       expect(byTestId("mtm-route-planner-better-end").textContent).toBe("Последний визит до12:4011:45−55 мин")
-      expect(byTestId("mtm-route-planner-better-reason").textContent).toBe("Сейчас «Clinic c2» опаздывает на 25 мин. В новом порядке агент успевает ко времени визита.")
+      expect(byTestId("mtm-route-planner-better-reason").textContent).toBe("Сейчас Clinic c2 опаздывает на 25 мин. В новом порядке агент успевает ко времени визита.")
       // Each stop says when he gets there, and the late one says by how much.
       expect(byTestId("mtm-route-planner-eta-3").textContent).toBe("приезд 12:25опоздает на 25 мин")
       expect(byTestId("mtm-route-planner-summary").textContent).toContain("12,4 км по дорогам")
