@@ -29,6 +29,7 @@ import {
   packSpans,
   railRange,
   spansClashing,
+  subtractSpans,
   BookingHostChips,
   type TimelineMeeting,
 } from "@/components/booking/booking-day-timeline"
@@ -52,6 +53,7 @@ function render(props: Partial<ComponentProps<typeof BookingDayTimeline>> = {}) 
   const element = createElement(BookingDayTimeline, {
     meetings: [SAMIR, AYTEN],
     windows: [],
+    busy: [],
     nowMinutes: null,
     selectedId: null,
     pendingStart: null,
@@ -282,6 +284,53 @@ describe("meetings detail — what has been sent", () => {
   })
 })
 
+
+describe("meetings day view — time taken by something that is not a meeting", () => {
+  it("cuts the meetings out of a busy span and keeps what is still taken", () => {
+    const meeting = { start: minutes(10), end: minutes(11) }
+    // Wholly covered by the meeting: nothing to draw a second time.
+    expect(subtractSpans({ start: minutes(10), end: minutes(11) }, [meeting])).toEqual([])
+    // Half covered: the free-looking half must still read as taken.
+    expect(subtractSpans({ start: minutes(9, 30), end: minutes(11, 30) }, [meeting]))
+      .toEqual([{ start: minutes(9, 30), end: minutes(10) }, { start: minutes(11), end: minutes(11, 30) }])
+    // Untouched, and a span with no blocks at all.
+    expect(subtractSpans({ start: minutes(13), end: minutes(14) }, [meeting])).toEqual([{ start: minutes(13), end: minutes(14) }])
+    expect(subtractSpans({ start: minutes(13), end: minutes(14) }, [])).toEqual([{ start: minutes(13), end: minutes(14) }])
+  })
+
+  it("draws a busy span grey, with its hours and no name", () => {
+    const markup = render({ meetings: [], busy: [{ start: minutes(12, 30), end: minutes(13, 30) }] })
+    expect(blockStyles(markup, "timeline-busy")).toHaveLength(1)
+    expect(markup).toContain(ru.booking.busyBlock)
+    expect(markup).toContain("12:30–13:30")
+  })
+
+  it("stretches the rail to cover a busy hour outside the meetings", () => {
+    expect(railRange([{ start: minutes(9), end: minutes(10) }, { start: minutes(17), end: minutes(18) }]))
+      .toEqual({ from: 9, to: 18 })
+  })
+})
+
+describe("meetings day view — the shared control styles", () => {
+  it("keeps the day and the meeting out of the filter look, which paints every control white", () => {
+    // crm-workspace.css gives [data-crm-filter] a white background, grey text
+    // and a smaller radius. On the day cell and the meeting block that erased
+    // the chosen state and the status tint — the two things the rail is for.
+    const markup = render({ meetings: [AYTEN], selectedId: AYTEN.id })
+    expect(markup).not.toContain("data-crm-filter")
+    expect(markup).toContain('data-crm-color-role="toggle"')
+    const strip = renderToStaticMarkup(createElement(NextIntlClientProvider, {
+      locale: "ru", timeZone: "Asia/Baku", messages: ru,
+      children: createElement(BookingWeekStrip, {
+        days: ["2026-11-02"], counts: {}, selectedDay: "2026-11-02", today: "2026-11-02", loading: false,
+        onSelect: () => {}, weekdayLabel: () => "Пн", dayNumber: () => "2",
+      }),
+    } as ComponentProps<typeof NextIntlClientProvider>))
+    expect(strip).not.toContain("data-crm-filter")
+    expect(strip).toContain('data-crm-color-role="toggle"')
+  })
+})
+
 describe("meetings day view — whose day it is", () => {
   const chips = (selected: string) => renderToStaticMarkup(createElement(NextIntlClientProvider, {
     locale: "ru", timeZone: "Asia/Baku", messages: ru,
@@ -310,6 +359,12 @@ describe("meetings day view — whose day it is", () => {
 
   it("says which of the two a chip is, so the button guard can tell a filter from an action", () => {
     expect([...chips("").matchAll(/data-crm-filter=""/g)]).toHaveLength(3)
+  })
+
+  it("marks the selected chip with data-state, which is what the shared filter style reads", () => {
+    const picked = chips("samir")
+    expect([...picked.matchAll(/data-state="active"/g)]).toHaveLength(1)
+    expect([...picked.matchAll(/data-state="inactive"/g)]).toHaveLength(2)
   })
 })
 

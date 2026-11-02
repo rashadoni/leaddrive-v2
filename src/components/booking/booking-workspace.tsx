@@ -6,13 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { CalendarCheck, CalendarDays, CalendarPlus, CalendarRange, CheckCircle2, ChevronLeft, ChevronRight, List, RefreshCw, Search, SlidersHorizontal } from "lucide-react"
+import { Hint } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { CrmSection } from "@/components/ui/crm-section"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { BookingPagesPanel } from "./booking-pages-panel"
-import { BookingDayLegend, BookingDaySummary, BookingDayTimeline, BookingHostChips, BookingWeekStrip, mergeFreeWindows, minutesFrom, spansClashing, type TimelineMeeting, type TimelineWindow } from "./booking-day-timeline"
+import { BookingDayLegend, BookingDaySummary, BookingDayTimeline, BookingHostChips, BookingWeekStrip, mergeFreeWindows, minutesFrom, spansClashing, subtractSpans, type TimelineBusy, type TimelineMeeting, type TimelineWindow } from "./booking-day-timeline"
 import { BookingDetail, type DayScheduleRow } from "./booking-detail"
 import { type BookingHistoryItem } from "./booking-history"
 import { BookingCreatePanel, type BookingAlternative, type BookingReadiness } from "./booking-create-panel"
@@ -113,6 +114,8 @@ export function BookingWorkspace() {
   const [query, setQuery] = useState("")
   /** The time a new meeting is being booked at, so the day's rail can show it. */
   const [pendingStart, setPendingStart] = useState<string | null>(null)
+  /** Search and status live behind the day card's settings button. */
+  const [dayFilters, setDayFilters] = useState(false)
   /** The meeting just created, shown as a confirmation over the day. */
   const [justBooked, setJustBooked] = useState<string | null>(null)
   const [instant, setInstant] = useState(() => new Date().toISOString())
@@ -209,7 +212,7 @@ export function BookingWorkspace() {
   const slotsRequest = freePage ? new URLSearchParams({ pageId: freePage.id, day: selectedDay, ...(host ? { hostId: host } : {}) }).toString() : ""
   const slotsQuery = useQuery({
     queryKey: ["booking-day-slots", identity, slotsRequest, revision],
-    queryFn: ({ signal }) => readBookingData<{ page: { durationMinutes: number }; days: DaySlots[] }>(`/api/v1/bookings/availability?${slotsRequest}`, signal),
+    queryFn: ({ signal }) => readBookingData<{ page: { durationMinutes: number }; days: DaySlots[]; busy: { hostId: string; intervals: { start: string; end: string }[] }[] }>(`/api/v1/bookings/availability?${slotsRequest}`, signal),
     enabled: contextReady && tab === "meetings" && view === "day" && Boolean(slotsRequest), retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
   })
   const loaded = listQuery.isError ? [] : listQuery.data?.items ?? []
@@ -253,6 +256,15 @@ export function BookingWorkspace() {
   const canBook = Boolean(freePage)
   const dayStatuses = Object.keys(STATUS_KEYS).filter((value) => dayMeetings.some((meeting) => meeting.status === value))
   const hostsBooking = context?.hosts.filter((item) => item.isActive && item.canReceiveBookings) ?? []
+  // Grey «busy» blocks name one person's time, so they are drawn only where
+  // the rail shows one person: a host was chosen, or the team is one host.
+  const soleHost = host || (hostsBooking.length === 1 ? hostsBooking[0].id : "")
+  const busySpans: TimelineBusy[] = soleHost ? (slotsQuery.data?.busy.find((row) => row.hostId === soleHost)?.intervals ?? [])
+    .flatMap((interval) => subtractSpans(
+      { start: Math.max(0, minutesFrom(dayStartMs, interval.start)), end: Math.min(24 * 60, minutesFrom(dayStartMs, interval.end)) },
+      dayMeetings.filter((meeting) => meeting.status !== "cancelled"),
+    ))
+    .filter((span) => span.end - span.start >= 15) : []
   const hostChips = hostsBooking.map((item) => ({
     id: item.id,
     name: item.name,
@@ -303,39 +315,61 @@ export function BookingWorkspace() {
     : !detail ? <p role="status" className="text-muted-foreground">{t("workspaceLoading")}</p>
       : context ? <BookingDetail booking={detail} context={context} identity={identity} schedule={rows} onSaved={() => setRevision((value) => value + 1)} onClose={onClose} onOpenMeeting={openMeeting} /> : null
 
+  const viewSwitch = <div data-crm-tabs="" className="flex gap-1 border-b" role="group" aria-label={t("workspaceView")}>
+    {([["day", t("viewDay"), CalendarRange], ["list", t("viewList"), List], ["calendar", t("viewCalendar"), CalendarDays]] as const).map(([value, label, Icon]) => <Button key={value} data-crm-tab="" data-state={view === value ? "active" : "inactive"} variant={view === value ? "secondary" : "ghost"} aria-pressed={view === value} onClick={() => { setView(value); setPendingStart(null); setDayFilters(false); setDay(value === "list" ? null : today) }}><Icon className="h-4 w-4" />{label}</Button>)}
+  </div>
+  const searchField = <div className="min-w-44 flex-1 space-y-1"><Label htmlFor="meeting-search">{t("workspaceSearch")}</Label><div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="meeting-search" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" placeholder={t("workspaceSearchHint")} /></div></div>
+  const statusField = <div className="space-y-1"><Label htmlFor="meeting-state">{t("workspaceStatus")}</Label><select id="meeting-state" className={`${SELECT} block`} value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">{t("allStatuses")}</option>{Object.keys(STATUS_KEYS).map((value) => <option key={value} value={value}>{state(value)}</option>)}</select></div>
+  const pageField = context && context.pages.length > 1 ? <div className="space-y-1"><Label htmlFor="meeting-page">{t("colPage")}</Label><select id="meeting-page" className={`${SELECT} block max-w-60`} value={page} onChange={(event) => setPage(event.target.value)}><option value="">{t("allPages")}</option>{context.pages.map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select></div> : null
+
   return <main className="space-y-5 [&_button]:min-h-11 [&_button]:min-w-11 [&_select]:min-h-11" data-testid="booking-workspace">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-2xl font-semibold tracking-tight">{t("workspaceTitle")}</h1><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("workspaceHint")}</p></div>
-      <div className="flex flex-wrap gap-2">{bookablePages.length && !creating ? <Button onClick={() => startBooking(null)}><CalendarPlus aria-hidden="true" className="h-4 w-4" />{t("createMeeting")}</Button> : null}<Button variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} disabled={loading} aria-label={t("refresh")}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{t("refresh")}</Button></div>
+      <div className="flex flex-wrap items-center gap-2">
+        {tab === "meetings" ? viewSwitch : null}
+        {bookablePages.length && !creating ? <Button onClick={() => startBooking(null)}><CalendarPlus aria-hidden="true" className="h-4 w-4" />{t("createMeeting")}</Button> : null}
+        <Button variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} disabled={loading} aria-label={t("refresh")}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{t("refresh")}</Button>
+      </div>
     </header>
     <nav data-crm-tabs="" className="flex flex-wrap gap-1 border-b" aria-label={t("workspaceSections")}>
       {(["meetings", ...(context?.canConfigure ? ["pages", "team"] : [])] as string[]).map((item) => <Button key={item} data-crm-tab="" data-state={tab === item ? "active" : "inactive"} variant={tab === item ? "secondary" : "ghost"} className="min-h-11 rounded-b-none" aria-current={tab === item ? "page" : undefined} onClick={() => navigate({ tab: item === "meetings" ? null : item, booking: null })}>{t(item === "meetings" ? "workspaceMeetings" : item === "pages" ? "workspacePages" : "workspaceTeam")}</Button>)}
     </nav>
     {tab === "pages" ? context?.canConfigure ? <BookingPagesPanel /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <BookingCoordinatorsPanel /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
-      <section className="flex flex-wrap items-end gap-3" aria-label={t("workspaceFilters")}>
-        <div className="min-w-44 flex-1 space-y-1"><Label htmlFor="meeting-search">{t("workspaceSearch")}</Label><div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="meeting-search" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" placeholder={t("workspaceSearchHint")} /></div></div>
+      {view === "day" ? null : <section className="flex flex-wrap items-end gap-3" aria-label={t("workspaceFilters")}>
+        {searchField}
         {view === "list" ? <div className="space-y-1"><Label htmlFor="meeting-period">{t("workspacePeriod")}</Label><select id="meeting-period" className={`${SELECT} block`} value={period} onChange={(event) => { setPeriod(event.target.value); setDay(null) }}>{["upcoming", "today", "week", "all"].map((value) => <option key={value} value={value}>{t(`period_${value}`)}</option>)}</select></div> : null}
-        <div className="space-y-1"><Label htmlFor="meeting-state">{t("workspaceStatus")}</Label><select id="meeting-state" className={`${SELECT} block`} value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">{t("allStatuses")}</option>{Object.keys(STATUS_KEYS).map((value) => <option key={value} value={value}>{state(value)}</option>)}</select></div>
+        {statusField}
         {/* In the day view the hosts are chips inside the day card: the number
             of meetings beside each name is the reason to pick one, and a
             closed select hides every number. */}
-        {context?.canCoordinate && view !== "day" ? <div className="space-y-1"><Label htmlFor="meeting-host">{t("colHosts")}</Label><select id="meeting-host" className={`${SELECT} block max-w-60`} value={host} onChange={(event) => setHost(event.target.value)}><option value="">{t("availableTeam")}</option><option value={context.userId}>{t("myMeetings")}</option>{context.hosts.filter((item) => item.id !== context.userId).map((item) => <option key={item.id} value={item.id}>{item.name}{!item.isActive ? ` · ${t("hostInactive")}` : ""}</option>)}</select></div> : view !== "day" ? <p className="pb-3 text-sm text-muted-foreground">{t("myMeetings")}</p> : null}
-        {context && context.pages.length > 1 ? <div className="space-y-1"><Label htmlFor="meeting-page">{t("colPage")}</Label><select id="meeting-page" className={`${SELECT} block max-w-60`} value={page} onChange={(event) => setPage(event.target.value)}><option value="">{t("allPages")}</option>{context.pages.map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select></div> : null}
-        <div data-crm-tabs="" className="flex gap-1 border-b" role="group" aria-label={t("workspaceView")}>
-          {([["day", t("viewDay"), CalendarRange], ["list", t("viewList"), List], ["calendar", t("viewCalendar"), CalendarDays]] as const).map(([value, label, Icon]) => <Button key={value} data-crm-tab="" data-state={view === value ? "active" : "inactive"} variant={view === value ? "secondary" : "ghost"} aria-pressed={view === value} onClick={() => { setView(value); setPendingStart(null); setDay(value === "list" ? null : today) }}><Icon className="h-4 w-4" />{label}</Button>)}
-        </div>
-      </section>
-      <p className="text-xs text-muted-foreground">{t("timezoneNote", { zone: timezone })}</p>
+        {context?.canCoordinate ? <div className="space-y-1"><Label htmlFor="meeting-host">{t("colHosts")}</Label><select id="meeting-host" className={`${SELECT} block max-w-60`} value={host} onChange={(event) => setHost(event.target.value)}><option value="">{t("availableTeam")}</option><option value={context.userId}>{t("myMeetings")}</option>{context.hosts.filter((item) => item.id !== context.userId).map((item) => <option key={item.id} value={item.id}>{item.name}{!item.isActive ? ` · ${t("hostInactive")}` : ""}</option>)}</select></div> : <p className="pb-3 text-sm text-muted-foreground">{t("myMeetings")}</p>}
+        {pageField}
+      </section>}
+      {view === "day" ? null : <p className="text-xs text-muted-foreground">{t("timezoneNote", { zone: timezone })}</p>}
       {view === "day" ? <section aria-label={t("viewDay")}>
         {error ? <CrmSection role="alert" tone="destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }}>{t("retry")}</Button></CrmSection> : <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)]">
           <CrmSection aria-busy={loading}>
-            <div className="flex flex-wrap items-start gap-3">
+            {/* The card carries its own controls, so the two columns start
+                right under the page title instead of a third of the way down
+                behind a row of filters. */}
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-semibold first-letter:uppercase">{formatDate(atMidnight(selectedDay), locale, { weekday: "long", day: "numeric", month: "long", timeZone: timezone })}</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">{freePage ? t("dayPageLine", { page: freePage.title, minutes: slotMinutes, zone: timezone }) : t("timezoneNote", { zone: timezone })}</p>
                 <BookingDaySummary meetings={dayMeetings} windows={freeWindows} duration={duration} busyHint={t("busyHint")} windowsHint={freePage ? t("windowsHint", { page: freePage.title }) : ""} />
               </div>
-              {selectedDay === today ? null : <Button variant="outline" size="sm" className="shrink-0" onClick={() => { setDay(today); setPendingStart(null) }}>{t("jumpToday")}</Button>}
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {selectedDay === today ? null : <Button variant="outline" size="sm" onClick={() => { setDay(today); setPendingStart(null) }}>{t("jumpToday")}</Button>}
+                <Hint text={t("dayFiltersHint")}>
+                  <Button variant="outline" size="icon" aria-expanded={dayFilters} aria-label={t("workspaceFilters")} onClick={() => setDayFilters((open) => !open)}><SlidersHorizontal className="h-4 w-4" /></Button>
+                </Hint>
+              </div>
             </div>
+            {dayFilters ? <section className="mt-4 flex flex-wrap items-end gap-3 rounded-xl bg-muted/50 p-3" aria-label={t("workspaceFilters")}>
+              {searchField}
+              {statusField}
+              {pageField}
+            </section> : null}
             <div className="mt-4 flex items-stretch gap-2">
               <Button variant="outline" size="icon" className="h-auto shrink-0" onClick={() => setDay(addDays(selectedDay, -7))} aria-label={t("previousWeek")}><ChevronLeft className="h-4 w-4" /></Button>
               <div className="min-w-0 flex-1"><BookingWeekStrip days={week.days} counts={counts} selectedDay={selectedDay} today={today} loading={calendarLoading && !calendarError} onSelect={(value) => { setDay(value); setPendingStart(null); setCursor(null) }} weekdayLabel={(value) => formatDate(`${value}T12:00:00Z`, locale, { weekday: "short", timeZone: "UTC" })} dayNumber={(value) => String(Number(value.slice(-2)))} /></div>
@@ -344,7 +378,7 @@ export function BookingWorkspace() {
             {context?.canCoordinate && hostChips.length > 1 ? <div className="mt-3.5"><BookingHostChips hosts={hostChips} anyMeta={t("dayCount", { count: loaded.filter((row) => row.status !== "cancelled").length })} selected={host} onSelect={(value) => { setHost(value); setPendingStart(null); setCursor(null) }} /></div> : null}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-4">
               <BookingDayLegend statuses={dayStatuses} statusLabel={state} />
-              {slotsQuery.isError ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("bookingLoadError")}</p> : freePage && bookablePages.length > 1 ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />{t("freeWindowFor", { page: freePage.title })}</p> : null}
+              {slotsQuery.isError ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("bookingLoadError")}</p> : null}
             </div>
             {loading && !items.length ? <p role="status" className="py-12 text-center text-muted-foreground">{t("workspaceLoading")}</p>
               : !dayMeetings.length && !freeWindows.length ? <div className="py-12 text-center">
@@ -355,6 +389,7 @@ export function BookingWorkspace() {
               : <div className="mt-2"><BookingDayTimeline
                 meetings={dayMeetings}
                 windows={freeWindows}
+                busy={busySpans}
                 nowMinutes={selectedDay === today ? minutesFrom(dayStartMs, instant) : null}
                 selectedId={selectedId}
                 pendingStart={pendingSpan?.start ?? null}

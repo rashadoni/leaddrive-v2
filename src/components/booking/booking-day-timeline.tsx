@@ -27,7 +27,7 @@ export const PIXELS_PER_HOUR = 96
 const RAIL_WIDTH = "4rem"
 const MINUTE_MS = 60_000
 /** Below this a block has room for one line only, so the time moves beside the name and who meets is dropped. */
-const COMPACT_BLOCK_PX = 60
+const COMPACT_BLOCK_PX = 44
 /** A clashing block starts here, so the name of what it clashes with stays visible. */
 const CLASH_OFFSET = "34%"
 
@@ -46,6 +46,14 @@ export interface TimelineMeeting extends TimelineSpan {
 export interface TimelineWindow extends TimelineSpan {
   startsAt: string
 }
+
+/**
+ * Time the host is taken by something that is not a meeting of this section:
+ * a CRM task given a time, or their connected calendar. The rail draws it
+ * grey, the way a calendar shows a block it cannot open — without it the hour
+ * looks free on screen while the booking form keeps refusing it.
+ */
+export type TimelineBusy = TimelineSpan
 
 /** White text sits on each of these at 4.5:1 or better. */
 const AVATAR_TONES = ["bg-violet-600", "bg-sky-700", "bg-emerald-700", "bg-rose-600", "bg-indigo-600", "bg-teal-700"]
@@ -133,6 +141,25 @@ export function packSpans<T extends TimelineSpan>(items: T[]): { item: T; column
   return placed
 }
 
+/**
+ * What is left of a span once the blocks drawn over it are cut out. A busy
+ * hour that a meeting already fills needs no second block; an hour half
+ * covered still has to show the half that is taken.
+ */
+export function subtractSpans<T extends TimelineSpan>(span: TimelineSpan, blocks: T[]): TimelineSpan[] {
+  let parts: TimelineSpan[] = [{ ...span }]
+  for (const block of [...blocks].sort((left, right) => left.start - right.start)) {
+    const next: TimelineSpan[] = []
+    for (const part of parts) {
+      if (block.end <= part.start || block.start >= part.end) { next.push(part); continue }
+      if (block.start > part.start) next.push({ start: part.start, end: block.start })
+      if (block.end < part.end) next.push({ start: block.end, end: part.end })
+    }
+    parts = next
+  }
+  return parts.filter((part) => part.end > part.start)
+}
+
 /** The meetings a span would land on top of. */
 export function spansClashing<T extends TimelineSpan>(span: TimelineSpan | null, items: T[]): T[] {
   if (!span) return []
@@ -189,10 +216,13 @@ export function BookingWeekStrip({ days, counts, selectedDay, today, loading, on
         key={day}
         onClick={() => onSelect(day)}
         aria-pressed={chosen}
-        // Choosing the day filters the screen; it is not the screen's action.
-        // The guard in scripts/check-crm-button-hierarchy.mjs asks a filled
-        // native control to say which of the two it is.
-        data-crm-filter=""
+        // The chosen day is filled on purpose — it is the one thing the eye
+        // looks for in the strip. `data-crm-filter` would answer the button
+        // guard too, but it carries the shared white-chip look
+        // ([data-crm-filter] in crm-workspace.css) and would strip the fill,
+        // the radius and the shadow. A colour role says the same thing to the
+        // guard and leaves the paint alone.
+        data-crm-color-role="toggle"
         className={cn(
           "min-h-20 rounded-xl border px-1 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[5.5rem] sm:px-2",
           chosen ? "border-primary bg-primary text-primary-foreground shadow-[0_8px_18px_-10px_hsl(var(--primary))]"
@@ -236,20 +266,22 @@ export function BookingHostChips({ hosts, anyMeta, selected, onSelect }: {
     active ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary" : "border-border bg-card hover:border-primary/50",
   )
   return <div className="flex flex-wrap gap-2" role="group" aria-label={t("colHosts")}>
-    <button type="button" data-crm-filter="" aria-pressed={!selected} onClick={() => onSelect("")} className={chip(!selected)}>
+    <button type="button" data-crm-filter="" data-state={selected ? "inactive" : "active"} aria-pressed={!selected} onClick={() => onSelect("")} className={chip(!selected)}>
       <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Users className="h-4 w-4" /></span>
       <span className="min-w-0 truncate text-sm"><span className="font-semibold">{t("availableTeam")}</span>{anyMeta ? <span className="ml-1.5 text-muted-foreground">{anyMeta}</span> : null}</span>
     </button>
-    {hosts.map((host) => <button type="button" key={host.id} data-crm-filter="" aria-pressed={selected === host.id} onClick={() => onSelect(host.id)} className={chip(selected === host.id)}>
+    {hosts.map((host) => <button type="button" key={host.id} data-crm-filter="" data-state={selected === host.id ? "active" : "inactive"} aria-pressed={selected === host.id} onClick={() => onSelect(host.id)} className={chip(selected === host.id)}>
       <BookingAvatar name={host.name} className="h-8 w-8 text-xs" />
       <span className="min-w-0 truncate text-sm"><span className="font-semibold">{host.name}</span>{host.meta ? <span className="ml-1.5 text-muted-foreground">{host.meta}</span> : null}</span>
     </button>)}
   </div>
 }
 
-export function BookingDayTimeline({ meetings, windows, nowMinutes, selectedId, pendingStart, pendingEnd, onSelect, onBook, time, statusLabel, duration }: {
+export function BookingDayTimeline({ meetings, windows, busy, nowMinutes, selectedId, pendingStart, pendingEnd, onSelect, onBook, time, statusLabel, duration }: {
   meetings: TimelineMeeting[]
   windows: TimelineWindow[]
+  /** Already stripped of the spans the meetings above cover. */
+  busy: TimelineBusy[]
   /** Minutes from midnight when the shown day is today, otherwise null. */
   nowMinutes: number | null
   selectedId: string | null
@@ -264,7 +296,7 @@ export function BookingDayTimeline({ meetings, windows, nowMinutes, selectedId, 
   const t = useTranslations("booking")
   const pending = pendingStart !== null && pendingEnd !== null ? { start: pendingStart, end: pendingEnd } : null
   const clashes = spansClashing(pending, meetings.filter((meeting) => meeting.status !== "cancelled"))
-  const rail = railRange([...meetings, ...(pending ? [pending] : []), ...windows])
+  const rail = railRange([...meetings, ...(pending ? [pending] : []), ...windows, ...busy])
   const marks = Array.from({ length: (rail.to - rail.from) * 2 + 1 }, (_, index) => rail.from * 60 + index * 30)
   const placed = packSpans(meetings)
 
@@ -310,6 +342,20 @@ export function BookingDayTimeline({ meetings, windows, nowMinutes, selectedId, 
           </button>
         </Hint>
       })}
+      {busy.map((span) => {
+        const height = Math.max(((span.end - span.start) / 60) * PIXELS_PER_HOUR - 4, 26)
+        return <div
+          key={`busy:${span.start}`}
+          data-testid="timeline-busy"
+          className="absolute left-0 right-1 flex items-start overflow-hidden rounded-xl bg-muted px-3.5 py-2"
+          style={{ top: offsetStyle(span.start, rail.from), height, minHeight: height }}
+        >
+          <span className="flex w-full min-w-0 items-center justify-between gap-x-3">
+            <span className="truncate text-sm font-semibold text-muted-foreground">{t("busyBlock")}</span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{time(span.start)}–{time(span.end)}</span>
+          </span>
+        </div>
+      })}
       {placed.map(({ item, column, columns }) => {
         const height = Math.max(((item.end - item.start) / 60) * PIXELS_PER_HOUR - 4, 26)
         const compact = height < COMPACT_BLOCK_PX
@@ -324,11 +370,10 @@ export function BookingDayTimeline({ meetings, windows, nowMinutes, selectedId, 
           key={item.id}
           onClick={() => onSelect(item.id)}
           aria-pressed={chosen}
-          // Picking a block says which meeting the column shows; it is a
-          // selection, not the screen's action, and the filled state marks the
-          // chosen one. The guard in scripts/check-crm-button-hierarchy.mjs
-          // asks a filled native control to say which of the two it is.
-          data-crm-filter=""
+          // Same as the day cell: the status tint and the filled chosen state
+          // are the point of the block, so it declares a colour role rather
+          // than taking the shared filter look.
+          data-crm-color-role="toggle"
           data-testid="timeline-meeting"
           className={cn(
             "absolute overflow-hidden rounded-xl pl-3.5 pr-3 py-2 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
