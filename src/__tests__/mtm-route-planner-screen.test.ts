@@ -283,6 +283,41 @@ describe("the route planner", () => {
     expect(nav.replace).not.toHaveBeenCalledWith("/mtm/routes/plan?agentId=agent-1&date=2026-10-16", { scroll: false })
   })
 
+  // Owner 2026-11-02, mockup «MTM: часы приёма клиентов»: a place that does
+  // not work on the route's day goes to the nearest day it does.
+  it("moves a place that rests on the route's day to the nearest day it works, in a tab of its own", async () => {
+    const day = { open: "09:00", close: "18:00" }
+    // 2026-10-16 is a Friday: closed Friday and Saturday, open on Monday.
+    const hours = { 1: day, 2: day, 3: day, 4: day, 5: null, 6: null, 7: null }
+    const place = ORGANIZATIONS[1].customer as Record<string, unknown>
+    place.workingHours = hours
+    const open = vi.fn()
+    vi.stubGlobal("open", open)
+    try {
+      nav.params = new URLSearchParams("agentId=agent-1&date=2026-10-16&customerId=c2")
+      await mount()
+      expect(stopNames()).toEqual(["Clinic c2"])
+      expect(byTestId("mtm-route-planner-dayoff-1").textContent).toContain(T.hours.dayOff)
+      const move = byTestId("mtm-route-planner-move-1")
+      expect(move.textContent).toBe(T.hours.moveTo["1"])
+
+      await click(move)
+
+      expect(stopNames()).toEqual([])
+      expect(open).toHaveBeenCalledWith("/mtm/routes/plan?agentId=agent-1&date=2026-10-19&customerId=c2", "_blank", "noopener")
+    } finally {
+      delete place.workingHours
+    }
+  })
+
+  it("offers no other day for a place whose hours say nothing", async () => {
+    nav.params = new URLSearchParams("agentId=agent-1&date=2026-10-16&customerId=c2")
+    await mount()
+    expect(stopNames()).toEqual(["Clinic c2"])
+    expect(container.querySelector('[data-testid="mtm-route-planner-move-1"]')).toBeNull()
+    expect(container.querySelector('[data-testid="mtm-route-planner-dayoff-1"]')).toBeNull()
+  })
+
   // Owner 2026-11-01, mockup «MTM: порядок объезда лучше»: the day read along
   // the roads, and an order that drives less offered with what it saves.
   describe("along the roads", () => {

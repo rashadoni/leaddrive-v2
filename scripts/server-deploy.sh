@@ -41,6 +41,12 @@ LINE_SLOT_B_PROCESS="leaddrive-v2-line-b"
 LINE_SLOT_A_PORT=3004
 LINE_SLOT_B_PORT=3005
 LINE_RELEASES_DIR="$APP_DIR/line-releases"
+# The web app and the scheduler run from a copy of their release too (Step 4):
+# Step 2 unpacks the next build over .next/standalone minutes before Step 4
+# stops them, and a process reading that tree served the new build's files for
+# every page it had not opened yet — "Internal Server Error" (2026-11-02).
+WEB_RELEASES_DIR="$APP_DIR/web-releases"
+WEB_RELEASE_NEW_DIR=""
 LINE_ACTIVE_PORT_FILE="/var/lib/leaddrive-v2/line-active-port"
 LINE_NGINX_UPSTREAM="/etc/nginx/conf.d/leaddrive-station-upstream.conf"
 # People's pages fall back to the line's live slot while the web restarts.
@@ -256,6 +262,7 @@ assert_dotenv_key_allowed() {
     LINE_PM2_PROCESS|LINE_HEALTH_URL|PM2_LINE_NAME|LINE_PORT|LINE_SLOT|LINE_RELEASE_DIR|\
     LINE_SLOT_A_PROCESS|LINE_SLOT_B_PROCESS|LINE_SLOT_A_PORT|LINE_SLOT_B_PORT|\
     LINE_RELEASES_DIR|LINE_ACTIVE_PORT_FILE|LINE_NGINX_UPSTREAM|WEB_NGINX_UPSTREAM|\
+    WEB_RELEASES_DIR|WEB_RELEASE_NEW_DIR|WEB_RELEASE_DIR|\
     DEFAULT_RUNTIME_DIR|DEFAULT_LOG_DIR|RUNTIME_DIR|RUNTIME_UPLOADS_DIR|\
     RUNTIME_STATE_DIR|RUNTIME_ARCHIVE_DIR|LOG_DIR|HELP_VIDEO_ASSET_DIR_DEFAULT|\
     HELP_VIDEO_RUNTIME_ROOT|VOICE_OPERATOR_STATE_DIR_RESOLVED|OPS_ROOT|\
@@ -9138,6 +9145,24 @@ fi
 # browses to go first, and the web process last.
 sync || true
 
+# The new release's own copy for the web app and the scheduler, made while the
+# old process still answers: hard links, a few seconds, outside the 502 window.
+# They run from it (ecosystem.config.cjs, WEB_RELEASE_DIR), so the next deploy's
+# Step 2 replaces .next/standalone under nobody — the old web process keeps
+# reading the files of the build it started with until Step 4 stops it. Before
+# this, it was reading the new build's for 4 minutes (2026-11-02: extract
+# 10:10:19, stop 10:14:36) and answered "Internal Server Error" on every page it
+# had not loaded yet. The name is unique, so redeploying the running SHA never
+# removes the tree the live process runs from.
+WEB_RELEASE_NEW_DIR="$WEB_RELEASES_DIR/${DEPLOY_SHA:-unknown}-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p -- "$WEB_RELEASES_DIR" && chmod 0750 -- "$WEB_RELEASES_DIR" \
+  || fatal_after_standalone_replacement "cannot create $WEB_RELEASES_DIR"
+cp -al -- "$APP_DIR/.next/standalone" "$WEB_RELEASE_NEW_DIR" \
+  || fatal_after_standalone_replacement "cannot make the web process's release copy"
+test -f "$WEB_RELEASE_NEW_DIR/server.js" \
+  || fatal_after_standalone_replacement "the web process's release copy has no server.js"
+log "Web release copy: $WEB_RELEASE_NEW_DIR"
+
 # ── Pull the help-video masters while the old release still answers ─
 # The videos left the artifact on 2026-11-02: 265 MB in every tarball, twice on
 # the production disk, and copied once more on every deploy with PM2 already
@@ -9269,6 +9294,9 @@ TENANT_PII_MASTER_KEY_FILE="$(realpath -e -- "$APP_ENV_FILE")" \
   || fatal "cannot resolve the env file that holds TENANT_PII_MASTER_KEY"
 export TENANT_PII_MASTER_KEY_FILE
 unset TENANT_PII_MASTER_KEY
+# Inline, never exported: a rollback's `pm2 start` must run the restored
+# .next/standalone, not this release's copy.
+WEB_RELEASE_DIR="$WEB_RELEASE_NEW_DIR" \
 pm2 start "$PM2_CONFIG" 2>/dev/null || {
   log "FATAL: PM2 start failed"
   exit 1
@@ -9400,6 +9428,13 @@ fi
 HANDOFF_STARTED=false
 HANDOFF_RECOVERY_COMPLETE=true
 STANDALONE_REPLACED=false
+
+# The web app and the scheduler run from this release's copy now; earlier
+# copies are links nobody uses (a failed deploy's, too: its rollback runs the
+# restored .next/standalone).
+for dir in "$WEB_RELEASES_DIR"/*; do
+  [ -d "$dir" ] && [ "$dir" != "$WEB_RELEASE_NEW_DIR" ] && rm -rf -- "$dir"
+done
 
 # ── Step 7b: The scheduler's own process ───────────────────
 # Checked after the web handoff and never as part of it: a jobs process that

@@ -316,6 +316,16 @@ export function MtmRoutePlanner() {
     : null), [stopDay, stops])
   // A tenant that never gave hours sees no «часы не указаны» on every stop.
   const anyStopHours = stops.some((stop) => stopDay(stop) !== undefined)
+  /** The first day after this one on which the place works — «На четверг» for a place that rests on the route's day. */
+  const nextWorkingDate = (stop: Stop): string | null => {
+    const week = readWorkingHours(stop.workingHours)
+    if (!week || !DATE_KEY.test(date)) return null
+    for (let step = 1; step <= 7; step += 1) {
+      const next = addDateKeyDays(date, step)
+      if (hoursOfDay(week, weekdayOfDateKey(next))) return next
+    }
+    return null
+  }
   const roadSignature = roadStops ? JSON.stringify(roadStops.map((stop) => [stop.key, stop.plannedTime, stop.hours ?? null])) : ""
   useEffect(() => {
     if (!roadStops) return
@@ -365,6 +375,14 @@ export function MtmRoutePlanner() {
   }
 
   const removeStop = (key: string) => setStops((current) => retime(current.filter((stop) => stop.key !== key), current.filter((stop) => stop.key !== key).map((stop) => stop.plannedTime)))
+  // The place leaves this day and opens on the day it works, in a tab of its own:
+  // what is planned here and not yet saved stays as it is.
+  const moveStopToDay = (stop: Stop, day: string) => {
+    const params = new URLSearchParams({ agentId, date: day, customerId: stop.customerId })
+    if (stop.contactId) params.set("contactId", stop.contactId)
+    removeStop(stop.key)
+    window.open(`/mtm/routes/plan?${params.toString()}`, "_blank", "noopener")
+  }
   const moveStop = (from: number, to: number) => setStops((current) => {
     if (from === to || from < 0 || to < 0 || from >= current.length || to >= current.length) return current
     const order = [...current]
@@ -732,6 +750,16 @@ export function MtmRoutePlanner() {
                       <span className="flex flex-wrap items-center gap-2 text-xs font-semibold text-red-700 dark:text-red-400" data-testid={`mtm-route-planner-dayoff-${index + 1}`}>
                         {t("hours.dayOff")}
                         <button type="button" className="underline" onClick={() => removeStop(stop.key)}>{t("hours.removeStop")}</button>
+                        {(() => {
+                          const day = nextWorkingDate(stop)
+                          return day ? (
+                            <Hint text={t("hours.moveHint")}>
+                              <button type="button" className="underline" onClick={() => moveStopToDay(stop, day)} data-testid={`mtm-route-planner-move-${index + 1}`}>
+                                {t(`hours.moveTo.${weekdayOfDateKey(day)}`)}
+                              </button>
+                            </Hint>
+                          ) : null
+                        })()}
                       </span>
                     ) : road?.current.closed?.[index] ? (
                       <span className="block text-xs font-semibold text-red-700 dark:text-red-400" data-testid={`mtm-route-planner-closed-${index + 1}`}>{t("hours.closedOnArrival")}</span>
