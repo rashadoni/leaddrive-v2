@@ -1,0 +1,27 @@
+{
+  "sourceSha": "fb426d87890faa04ee96f5a3f5ca180393353e23",
+  "sourceBranch": "main",
+  "packageName": "com.leaddrive.attendance",
+  "versionName": "1.0.0",
+  "versionCode": 1054,
+  "apkSha256": "496f17c99860c29a8f164d9ef0940d2e79b6a309c71763d18400664c440823c5",
+  "apkBytes": 46299663,
+  "signingCertificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+  "buildRun": 41464815621,
+  "hostedTests": {
+    "suitesPassed": 297,
+    "testsPassed": 2736,
+    "testsTodo": 1,
+    "typeScript": "PASS"
+  },
+  "hostedApksignerAaptPackageCertificatePermissions": "PASS",
+  "independentV2CertificateFingerprint": "PASS",
+  "previousPublicVersionCode": 1050,
+  "physicalMaestro": "NOT_RUN_NO_DEVICE_BRIDGE",
+  "physicalInPlaceUpgrade": "NOT_RUN_FOR_1054; QA 1052 (same package and key) was installed in place on the owner's S23 on 2026-11-01 and kept the session and open workday",
+  "publicationAuthorization": "Owner in chat, 2026-11-02: «Да, публикуй»",
+  "tag": "time-v1.0.0-1054",
+  "apkUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1054/leaddrive-time-1.0.0-1054.apk",
+  "publishedAt": "2026-11-02T14:59:57Z",
+  "publicRedownloadHashVerified": true
+}
