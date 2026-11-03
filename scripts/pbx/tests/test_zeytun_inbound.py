@@ -1213,6 +1213,39 @@ class SpeechRelayTests(unittest.TestCase):
         time.sleep(0.2)
         self.assertEqual(bridge_module.ZEYTUN_OPENING_AUDIO, {})
 
+    def test_a_reply_in_english_is_never_voiced_and_is_asked_again_once(self):
+        # Owner, 2026-11-03: «только чтоб говорил на азербайджанском».
+        tts, asked, logs = FakeTts(), [], []
+        relay = self.relay(tts)
+        relay.ask = lambda payload: asked.append(payload) or True
+        relay.log = lambda status, **fields: logs.append((status, fields))
+        relay.SILENCE_LIMIT_SECONDS = 0.05
+        relay.filter(self.content("Ketonal gel, ten boxes. ", audio=True))
+        relay.filter(self.content("Anything else you would like? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        time.sleep(0.1)
+        # Nothing of it reached the caller: not the TTS, not the model's own English audio.
+        self.assertEqual(tts.texts, [])
+        self.assertFalse([e for e in self.injected if "modelTurn" in e.get("serverContent", {})])
+        self.assertEqual(len(asked), 1)
+        self.assertIn("Azerbaijani only", asked[0]["clientContent"]["turns"][0]["parts"][0]["text"])
+        self.assertEqual([status for status, _ in logs if status == "foreign_dropped"], ["foreign_dropped", "foreign_dropped"])
+        # Its answer in Azerbaijani is voiced as usual.
+        relay.filter(self.content("Ketonal geli on qutu. Daha nə əlavə edək? ", audio=True))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: sum(1 for e in events if e["serverContent"].get("turnComplete")) >= 2))
+        self.assertEqual(" ".join(tts.texts), "Ketonal geli on qutu. Daha nə əlavə edək?")
+        self.assertEqual(len(asked), 1)
+
+    def test_english_is_told_from_azerbaijani_with_latin_names(self):
+        english = bridge_module.zeytun_is_english
+        self.assertTrue(english("What else would you like to order?"))
+        self.assertTrue(english("Thank you, your order is accepted."))
+        for text in ("Ketonal geli on qutu.", "Adefa 30 tablet, Pharmex.", "Okay.", "Noşpa Forte, səkkiz qutu.",
+                     "Amoksiklav 625, on qutu. Daha nə lazımdır?", "Нурофен"):
+            self.assertFalse(english(text), text)
+
     def test_amounts_are_read_as_manat_and_qepik(self):
         self.assertEqual(bridge_module.zeytun_speakable_text("Qiyməti 1.33 manatdır."), "Qiyməti bir manat otuz üç qəpikdir.")
         self.assertEqual(bridge_module.zeytun_speakable_text("Cəmi 264.79 manat."), "Cəmi iki yüz altmış dörd manat yetmiş doqquz qəpik.")

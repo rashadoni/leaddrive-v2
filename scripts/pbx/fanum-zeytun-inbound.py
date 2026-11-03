@@ -216,9 +216,17 @@ class ZeytunSpeechRelay:
     PROGRESS_EVERY_SECONDS = 0.5
     FILLER_EVERY_SECONDS = 8.0
 
+    # Owner, 2026-11-03: «только чтоб говорил на азербайджанском». A reply the
+    # model wrote in English (2026-10-31 call: two turns) is never voiced; the
+    # model is asked once, for that turn, to say it again in Azerbaijani.
+    FOREIGN_RETRY = ("Station note, never read it aloud: your last reply was in English and the caller did not "
+                     "hear it. Say it again now, in Azerbaijani only.")
+
     def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic,
-                 progress=None, recovering=None):
+                 progress=None, recovering=None, ask=None):
         self.tts, self.inject, self.speakable, self.alive = tts, inject, speakable, alive
+        # Set by the core: sends a client turn to the current Live session.
+        self.ask = ask or (lambda payload: False)
         self.progress = progress or (lambda: None)
         # While the core waits for a replacement session's first audio (2.5 s),
         # a TTS delay would fail the recovery: such a turn keeps the model voice.
@@ -490,6 +498,22 @@ class ZeytunSpeechRelay:
             if piece is self.FALLBACK:
                 self._fallback(turn, "tts_wait_timeout")
                 return
+            if zeytun_is_english(piece):
+                with self.lock:
+                    # Counted as said: the model's own English audio must not
+                    # stand in for it (the fallback after SILENCE_LIMIT_SECONDS).
+                    turn["spoken"] = True
+                    first, turn["foreign"] = not turn.get("foreign"), True
+                self.log("foreign_dropped", chars=len(piece))
+                if first:
+                    try:
+                        self.ask({"clientContent": {"turns": [{"role": "user", "parts": [{"text": self.FOREIGN_RETRY}]}],
+                                                    "turnComplete": True}})
+                    except Exception:
+                        pass
+                if turn["final_taken"]:
+                    break
+                continue
             heard = [False]
             asked = time.monotonic()
             if not turn["spoken"]:
@@ -606,6 +630,26 @@ def zeytun_retryable(error):
 
 def zeytun_failure(error):
     return "http_%d" % error.code if isinstance(error, urllib.error.HTTPError) else type(error).__name__
+
+
+# Words an English reply cannot do without and an Azerbaijani one never uses.
+ZEYTUN_ENGLISH_WORDS = frozenset((
+    "the", "and", "you", "your", "is", "are", "please", "would", "like", "anything", "else", "boxes", "box",
+    "how", "many", "what", "can", "we", "have", "will", "this", "that", "of", "to", "for", "with", "order",
+    "okay", "thank", "thanks", "sorry", "which", "one", "do", "need", "it", "has", "pieces", "price",
+    # Numbers as an English voice says them: a short reply carries little else.
+    "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "fifteen",
+    "twenty", "thirty", "forty", "fifty", "hundred", "thousand", "manats",
+))
+
+
+def zeytun_is_english(text):
+    """True for a reply in English: no Azerbaijani or Cyrillic letter and two
+    distinct English function words. "Ketonal geli on qutu" is not."""
+    if zeytun_script(text) != "latin":
+        return False
+    words = set(re.findall(r"[a-z']+", text.lower()))
+    return len(words & ZEYTUN_ENGLISH_WORDS) >= 2
 
 
 def zeytun_script(text):
@@ -1136,14 +1180,14 @@ class ZeytunInboundBridge:
         return self.voice
 
     def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None,
-                     progress=None, recovering=None):
+                     progress=None, recovering=None, ask=None):
         """The call's TTS relay, created once; None while the model speaks itself."""
         if self.tts_model is None:
             return None
         if self.relay is None:
             engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style)
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
-                                           progress=progress, recovering=recovering)
+                                           progress=progress, recovering=recovering, ask=ask)
             self.relay.prefetch_filler()
         return self.relay
 
