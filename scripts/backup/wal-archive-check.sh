@@ -35,7 +35,9 @@ set +a
 : "${WAL_ARTIFACT_GRACE_SECONDS:=1800}"
 # How full the bucket may get before this says so, and how often it is worth
 # asking. The account's cap is set in the provider's console and no API reports
-# it, so the threshold lives here: below the cap, far enough to leave a day.
+# it, so the threshold lives here. The owner keeps the daily storage cap at
+# $0.00 — the 10 GB free allowance, 9.31 GiB — so the default 7 GiB is roughly
+# three quarters of a hard stop that silences archiving, not of a bill.
 : "${WAL_USAGE_WARN_GIB:=7}"
 : "${WAL_USAGE_INTERVAL_SECONDS:=3600}"
 case "$WAL_USAGE_WARN_GIB" in '' | *[!0-9]*) WAL_USAGE_WARN_GIB=7 ;; esac
