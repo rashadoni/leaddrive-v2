@@ -38,7 +38,7 @@ describe("a service's price", () => {
 
 describe("services by group", () => {
   it("keeps one plain list for a salon that never filed its services", () => {
-    const rows = [{ title: "Saç kəsimi" }, { title: "Manikür" }]
+    const rows = [{ title: "Saç kəsimi", category: null }, { title: "Manikür", category: null }]
     expect(groupByCategory(rows)).toEqual([{ category: null, items: rows }])
   })
 

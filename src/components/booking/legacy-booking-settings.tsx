@@ -13,10 +13,13 @@ import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
 
-interface PageRow extends Omit<BookingPageDraft, "description" | "locationText"> {
+interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays"> {
   id: string
   description: string | null
   locationText: string | null
+  price: string | null
+  category: string | null
+  repeatCycleDays: number | null
   url: string
   upcoming: number
 }
@@ -37,6 +40,9 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     locationText: "",
     hostIds,
     weekly: defaultWeeklyHours(),
+    price: "",
+    category: "",
+    repeatCycleDays: 0,
     bufferMinutes: 0,
     minNoticeMinutes: 120,
     maxDaysAhead: 14,
@@ -78,11 +84,20 @@ export default function BookingSettingsPage() {
     if (!draft) return
     setSaving(true)
     setError("")
-    const { id, ...body } = draft
+    const { id, price, category, repeatCycleDays, ...body } = draft
+    // An empty field is «no price», and a typed comma is a decimal point here.
+    const amount = price.trim() ? Number(price.trim().replace(",", ".")) : null
     const response = await fetch(id ? `/api/v1/booking-pages/${id}` : "/api/v1/booking-pages", {
       method: id ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, description: body.description || null, locationText: body.locationText || null }),
+      body: JSON.stringify({
+        ...body,
+        description: body.description || null,
+        locationText: body.locationText || null,
+        price: amount !== null && Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null,
+        category: category.trim() || null,
+        repeatCycleDays: repeatCycleDays || null,
+      }),
     }).catch(() => null)
     const result = await response?.json().catch(() => null)
     setSaving(false)
@@ -116,6 +131,9 @@ export default function BookingSettingsPage() {
       locationText: page.locationText ?? "",
       hostIds: page.hostIds,
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
+      price: page.price ?? "",
+      category: page.category ?? "",
+      repeatCycleDays: page.repeatCycleDays ?? 0,
       bufferMinutes: page.bufferMinutes,
       minNoticeMinutes: page.minNoticeMinutes,
       maxDaysAhead: page.maxDaysAhead,
@@ -150,6 +168,7 @@ export default function BookingSettingsPage() {
             <BookingPageEditor
               draft={draft}
               hosts={users}
+              categories={[...new Set(pages.map((page) => page.category?.trim()).filter((name): name is string => Boolean(name)))].sort()}
               linkBase={linkBase}
               saving={saving}
               error={error}
