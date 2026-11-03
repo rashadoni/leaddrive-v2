@@ -1,8 +1,9 @@
 /**
  * Free time on a booking page — the slots a customer may pick.
  *
- * A slot is a start time on the organization's clock, every `durationMinutes`
- * from the start of a working-hours interval, that
+ * A slot is a start time on the organization's clock — every `durationMinutes`
+ * from the start of a working-hours interval, and one right after each busy
+ * block inside it — that
  *   - ends inside that interval,
  *   - is at least `minNoticeMinutes` away,
  *   - lies within `maxDaysAhead` days (today counts as day 0),
@@ -14,7 +15,7 @@
  * page shows and whether a submitted slot is still free, so the two cannot
  * disagree.
  */
-import { dateInputValueInTimezone, localDateTimeToUnambiguousUtc, localDateTimeToUtc } from "@/lib/timezone"
+import { dateInputValueInTimezone, getOffsetMinutes, localDateTimeToUnambiguousUtc, localDateTimeToUtc } from "@/lib/timezone"
 
 export const WEEKDAYS = ["0", "1", "2", "3", "4", "5", "6"] as const // 0 = Sunday
 export type Weekday = (typeof WEEKDAYS)[number]
@@ -98,6 +99,54 @@ function overlaps(a: BusyInterval, start: number, end: number): boolean {
   return a.start.getTime() < end && a.end.getTime() > start
 }
 
+/** The minute of the day an instant falls on, on the organization's clock. */
+function minuteOfDayIn(at: Date, timezone: string): number {
+  const local = new Date(at.getTime() + getOffsetMinutes(timezone, at) * 60_000)
+  return local.getUTCHours() * 60 + local.getUTCMinutes()
+}
+
+/**
+ * Where a slot may start inside one working interval: the regular ladder from
+ * the interval's start, plus one start right after each busy block that ends
+ * inside it.
+ *
+ * Why the second kind. The ladder is anchored to the interval's start, so a
+ * service whose length does not divide the day leaves gaps the ladder cannot
+ * reach. A 90-minute service booked at 09:00 on a 09:00–18:00 day loses the
+ * 10:30 rung to its own buffer, and the next rung is 12:00 — ninety free
+ * minutes nobody can book. For a salon that gap is an empty chair, which is the
+ * one loss this screen exists to prevent. Adding a candidate takes nothing
+ * away: each one still has to pass the same freeness check below, so a start
+ * that would overlap anything never becomes a slot.
+ *
+ * The hours a host does not work are busy blocks too, so the end of a lunch
+ * break is a candidate on the same footing — and carries the same buffer the
+ * freeness check applies to it.
+ */
+function candidateStarts(input: {
+  from: number
+  to: number
+  date: string
+  rules: BookingRules
+  hostIds: string[]
+  busyByHost: Map<string, BusyInterval[]>
+}): number[] {
+  const { from, to, date, rules, hostIds, busyByHost } = input
+  const starts = new Set<number>()
+  for (let minute = from; minute + rules.durationMinutes <= to; minute += rules.durationMinutes) starts.add(minute)
+  for (const hostId of hostIds) {
+    for (const busy of busyByHost.get(hostId) ?? []) {
+      const after = new Date(busy.end.getTime() + Math.max(rules.bufferMinutes, busy.bufferAfterMinutes ?? 0) * 60_000)
+      // An instant on another day is another day's candidate, whatever minute
+      // of the clock it lands on.
+      if (dateInputValueInTimezone(after, rules.timezone) !== date) continue
+      const minute = minuteOfDayIn(after, rules.timezone)
+      if (minute > from && minute + rules.durationMinutes <= to) starts.add(minute)
+    }
+  }
+  return [...starts].sort((left, right) => left - right)
+}
+
 /**
  * The hours a host does NOT work, as busy intervals — the complement of their
  * own weekly hours over the window asked for.
@@ -160,7 +209,7 @@ export function computeSlots(input: {
       const from = minutesOfDay(interval.start)
       const to = minutesOfDay(interval.end)
       if (from === null || to === null) continue
-      for (let minute = from; minute + rules.durationMinutes <= to; minute += rules.durationMinutes) {
+      for (const minute of candidateStarts({ from, to, date, rules, hostIds, busyByHost })) {
         let start: Date
         try {
           // A clock time that does not exist that day (a DST gap) or exists
