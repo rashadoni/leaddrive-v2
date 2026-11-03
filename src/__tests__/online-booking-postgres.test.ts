@@ -950,9 +950,9 @@ pgDescribe("online booking on a real Postgres", () => {
     return { messages: { create } } as unknown as Parameters<typeof bookingTurn>[0]["client"] & { messages: { create: typeof create } }
   }
 
-  async function withWhatsAppBooking(run: () => Promise<void>) {
+  async function withWhatsAppBooking(run: () => Promise<void>, extra: Record<string, unknown> = {}) {
     const before = await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: ORG }, select: { settings: true } }))
-    await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { ...(before.settings as Record<string, unknown>), bookingWhatsApp: { mode: "book", channelConfigId: null } } } }))
+    await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { ...(before.settings as Record<string, unknown>), ...extra, bookingWhatsApp: { mode: "book", channelConfigId: null } } } }))
     try {
       await run()
     } finally {
@@ -980,10 +980,12 @@ pgDescribe("online booking on a real Postgres", () => {
   })
 
   it("WhatsApp: the client's words become three held times, and one tap books exactly one of them", async () => {
-    const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 45, price: 25 })
-    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
-    const before = await offeredTimes(slug)
+    // The salon works in manats, so the service is created inside the block
+    // that sets the currency — the page stamps it when it is saved.
     await withWhatsAppBooking(async () => {
+      const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 45, price: 25 })
+      const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+      const before = await offeredTimes(slug)
       const conversation = `conv-${randomUUID()}`
       expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })).toEqual({ handled: true })
 
@@ -1044,7 +1046,7 @@ pgDescribe("online booking on a real Postgres", () => {
         offered: offers.map((offer) => offer.startsAt.toISOString()),
         chosen: tapped.startsAt.toISOString(),
       })
-    })
+    }, { invoice: { defaultCurrency: "AZN" } })
   })
 
   it("WhatsApp: a held time is never offered to a second conversation, and is free again once the hold runs out", async () => {
