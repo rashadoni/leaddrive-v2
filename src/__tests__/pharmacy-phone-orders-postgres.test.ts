@@ -531,7 +531,11 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     const { announceCallOrder } = await import("@/lib/pharmacy-orders/manager-notice")
     await saveCall(41, LIST.slice(0, 1))
     await saveCall(41, LIST)
+    // The caller confirmed the order: the agent's last save is final (the same lines).
+    await save(app as unknown as PrismaClient, { organizationId: ZEYTUN, providerCallId: callId(41), callStartedAt: "2026-10-24T06:42:00.000Z",
+      callerPhoneE164: PHONE, identification: "test_call", catalog: CATALOG, lines: LIST, final: true })
     const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(41) } })
+    expect(order.finishedOnCallAt).not.toBeNull()
     const call = await admin.callLog.create({ data: { organizationId: ZEYTUN, direction: "inbound", fromNumber: PHONE, toNumber: "+994125550000",
       provider: "asterisk", providerCallId: callId(41), callMode: "ai", status: "in-progress", wasAnswered: true, startedAt: new Date() } })
 
@@ -575,6 +579,38 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(done.status).toBe(200)
     await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
     await admin.callLog.deleteMany({})
+  })
+
+  // Owner's call 2026-11-03: he hung up mid-order, annoyed, and the pharmacy got
+  // "your order is received" on WhatsApp as if he had ordered.
+  it("sends the pharmacy nothing for a call that broke off, and its list once the final save arrives", async () => {
+    const { announceCallOrder } = await import("@/lib/pharmacy-orders/manager-notice")
+    const send = (seq: number, extra: { final?: boolean; afterCall?: boolean } = {}) => save(app as unknown as PrismaClient, {
+      organizationId: ZEYTUN, providerCallId: callId(61), callStartedAt: "2026-10-24T06:42:00.000Z",
+      callerPhoneE164: PHONE, identification: "test_call", catalog: CATALOG, lines: LIST.slice(0, 2), seq, ...extra })
+    await send(1)
+    await send(2)
+    const sender = async () => ({ id: "ch", organizationId: ZEYTUN, accessToken: "token", phoneNumberId: "pn1",
+      businessAccountId: null, verifyToken: null, appSecret: null, displayName: null })
+    const sent: Array<{ to: string; template: { name: string } }> = []
+    const fetchOk = (async (_url: string, init: { body: string }) => {
+      sent.push(JSON.parse(init.body))
+      return new Response(JSON.stringify({ messages: [{ id: `wamid.${sent.length}` }] }), { status: 200 })
+    }) as unknown as typeof fetch
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: { pharmacyPhoneOrders: { managerWhatsApp: ["+994501112233"] } } } })
+    const announce = () => announceCallOrder(app as unknown as PrismaClient, ZEYTUN, callId(61), { fetch: fetchOk, sender })
+    // The call broke off: the managers have the list to look at, the pharmacy hears nothing.
+    expect(await announce()).toEqual({ manager: expect.objectContaining({ status: "sent" }), pharmacy: null })
+    expect(sent.map(message => message.template.name)).toEqual(["phone_order_new"])
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(61) } })
+    expect([order.finishedOnCallAt, order.pharmacyReceipt]).toEqual([null, null])
+    // The final save the station still held arrives after the call, behind a later seq: the order is finished then.
+    await send(4)
+    expect(await send(3, { final: true, afterCall: true })).toMatchObject({ status: "saved", changed: false })
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).finishedOnCallAt).not.toBeNull()
+    expect((await announce())?.pharmacy).toMatchObject({ status: "sent" })
+    expect(sent.map(message => message.template.name)).toEqual(["phone_order_new", "phone_order_received"])
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
   })
 
   // Owner's call 2026-10-31: asked to cancel, the agent said goodbye and the order went to the managers.

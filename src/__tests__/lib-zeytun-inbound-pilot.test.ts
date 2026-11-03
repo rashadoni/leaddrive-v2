@@ -527,6 +527,17 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect((f.saveOrder.mock.calls[0] as unknown[])[4]).toBe("Zəfər Aptek")
   })
 
+  // Owner's call 2026-11-03: he hung up mid-order and the pharmacy got its list anyway.
+  it("passes on the agent's final save, and refuses any other value for it", async () => {
+    const f = lineFixture()
+    const lines = [{ quantity: 2, unit: "qutu", spoken: "iki qutu" }]
+    expect((await f.handle(request({ action: "order", callId: call.providerCallId, lines, seq: 5, final: true }))).status).toBe(200)
+    expect((f.saveOrder.mock.calls[0] as unknown[])[5]).toEqual({ seq: 5, afterCall: false, final: true })
+    for (const final of [false, "yes", 1]) {
+      expect((await f.handle(request({ action: "order", callId: call.providerCallId, lines, final }))).status).toBe(400)
+    }
+  })
+
   // Owner, 2026-10-28: «станция досылает заказ, если CRM не ответила».
   describe("a list the station delivers after the call", () => {
     const lines = [{ quantity: 2, unit: "qutu", spoken: "iki qutu" }]

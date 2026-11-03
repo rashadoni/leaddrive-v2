@@ -49,6 +49,8 @@ export type PhoneOrderSaveInput = {
   seq?: number
   /** The call had ended: the station is delivering a save the CRM did not answer in time. */
   afterCall?: boolean
+  /** The agent's last save, after the caller confirmed the whole order on the call. */
+  final?: boolean
 }
 
 export type PhoneOrderSaveResult =
@@ -128,6 +130,8 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       notFound: lines.filter(line => line.status === "not_found").map(line => line.spokenText),
     }
     const seq = input.seq ?? null
+    // Once finished, an order stays finished: a later save only changes its lines.
+    const finished = input.final ? { finishedOnCallAt: new Date() } : {}
     if (existing) {
       if (existing.status !== "pending_review") return { status: "already_reviewed" as const, number: existing.number }
       // A manager pressed «Подтвердить» and 1C has, may have, or refused these
@@ -135,6 +139,8 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
       if (existing.erpState !== null) return { status: "already_reviewed" as const, number: existing.number }
       if (input.afterCall && existing.revision !== existing.stationRevision) return { status: "already_reviewed" as const, number: existing.number }
       if (seq !== null && existing.stationSeq !== null && seq <= existing.stationSeq) {
+        // The final save may arrive behind a later one (the station's spool).
+        if (input.final && !existing.finishedOnCallAt) await tx.pharmacyPhoneOrder.update({ where: { id: existing.id }, data: finished })
         const held = existing.lines
         return { status: "saved" as const, orderId: existing.id, number: existing.number, revision: existing.revision,
           created: false, changed: false, total: existing.totalAmount.toFixed(2), currency: "AZN" as const,
@@ -143,7 +149,10 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
           notFound: held.filter(line => line.status === "not_found").map(line => line.spokenText) }
       }
       if (sameLines(existing.lines.map(line => ({ ...line, status: line.status as ResolvedLine["status"] })), lines)) {
-        if (seq !== null) await tx.pharmacyPhoneOrder.update({ where: { id: existing.id }, data: { stationSeq: seq } })
+        if (seq !== null || input.final) {
+          await tx.pharmacyPhoneOrder.update({ where: { id: existing.id },
+            data: { ...(seq !== null ? { stationSeq: seq } : {}), ...(existing.finishedOnCallAt ? {} : finished) } })
+        }
         return { status: "saved" as const, orderId: existing.id, number: existing.number, revision: existing.revision,
           created: false, changed: false, ...summary }
       }
@@ -155,7 +164,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
             pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null, companyId: company?.id ?? null } : {}),
           totalAmount: total, revision: { increment: 1 }, catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey,
           catalogVersion: input.catalog.version, catalogObservedAt: new Date(input.catalog.observedAt),
-          stationSeq: seq, stationRevision: existing.revision + 1,
+          stationSeq: seq, stationRevision: existing.revision + 1, ...(existing.finishedOnCallAt ? {} : finished),
           ...(input.afterCall ? { managerNotice: Prisma.DbNull, pharmacyReceipt: Prisma.DbNull } : {}) },
       })
       if (bumped.count !== 1) return { status: "already_reviewed" as const, number: existing.number }
@@ -174,7 +183,7 @@ export async function savePhoneOrderFromCall(db: PrismaClient, input: PhoneOrder
         pharmacyGuid: input.pharmacyGuid ?? null, pharmacyAddress: input.pharmacyAddress ?? null, companyId: company?.id ?? null,
         catalogSource: input.catalog.source, catalogScopeKey: input.catalog.scopeKey, catalogVersion: input.catalog.version,
         catalogObservedAt: new Date(input.catalog.observedAt), totalAmount: total,
-        stationSeq: seq, stationRevision: 1,
+        stationSeq: seq, stationRevision: 1, ...finished,
         lines: { create: lineRows },
       },
     })

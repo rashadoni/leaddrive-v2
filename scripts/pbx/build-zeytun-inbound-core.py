@@ -135,7 +135,9 @@ def build(source, bridge):
             progress=lambda: ((self._pause_resume_progress_for_speech(), self._resume_progress_after_speech())
                               if self.resume_progress_pending and not self.resume_progress_waiting_for_speech else None),
             recovering=lambda: bool(self.reconnecting or self.fresh_recovery_waiting_for_audio
-                                    or self.fresh_recovery_input_fenced))
+                                    or self.fresh_recovery_input_fenced),
+            # A reply in English is asked again in Azerbaijani (ZeytunSpeechRelay.FOREIGN_RETRY).
+            ask=lambda payload: self._send_pharmacy_result(self.ws, self.gemini_ws_epoch, payload))
 
     def _pharmacy_wait_filler(self):
         # The relay logs it (zeytun_tts status=wait_filler) when it plays.
