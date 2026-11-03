@@ -248,6 +248,21 @@ printf ':%s' "$BOOKING_RELEASE_AUTO_RECOVERY_BLOCKED"
   }
 });
 
+test('the production controller is staged with every file the contract reads beside it', () => {
+  // The controller runs on production from a copy staged out of the artifact by
+  // an explicit file list. A file read through import.meta.url but left out of
+  // that list fails closed on production and nowhere earlier — which is how the
+  // lineage was missed on the first release that needed it.
+  const contract = readFileSync('scripts/booking/release-contract.mjs','utf8');
+  const needed = [...contract.matchAll(/new URL\('\.\/([^']+)', import\.meta\.url\)/g)].map(match=>match[1]);
+  assert.ok(needed.includes('schema-lineage.json'),'the lineage is read beside the controller');
+  assert.ok(needed.includes('release-state.sql'));
+  const deploy = readFileSync('scripts/server-deploy.sh','utf8');
+  const staged = deploy.slice(deploy.indexOf('for booking_control_file in'));
+  const list = staged.slice(0,staged.indexOf('; do'));
+  for (const file of needed) assert.ok(list.includes(`scripts/booking/${file}`),`${file} must be staged with the controller`);
+});
+
 test('actual booking deploy commands reload credentials after unset without leaking to app children', () => {
   const source = readFileSync('scripts/server-deploy.sh','utf8');
   for (const command of ['--check-admission','--check-rollback','--assert-activated']) {

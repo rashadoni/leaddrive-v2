@@ -8342,7 +8342,9 @@ verify_runtime_cutover_preflight
 BOOKING_RELEASE_CONTROL_DIR="$BACKUP_PATH/booking-release-controller"
 mkdir -p "$BOOKING_RELEASE_CONTROL_DIR/scripts/booking" "$BOOKING_RELEASE_CONTROL_DIR/scripts/event-platform"
 chmod 700 "$BOOKING_RELEASE_CONTROL_DIR"
-for booking_control_file in scripts/booking/release-contract.mjs scripts/booking/release-state.sql scripts/booking/activate-workspace.sql scripts/event-platform/inspect-production.sh; do
+for booking_control_file in scripts/booking/release-contract.mjs scripts/booking/release-state.sql \
+  scripts/booking/activate-workspace.sql scripts/booking/schema-lineage.json \
+  scripts/event-platform/inspect-production.sh; do
   tar -xOzf "$DEPLOY_TAR" "./$booking_control_file" > "$BOOKING_RELEASE_CONTROL_DIR/$booking_control_file" \
     || fatal_after_standalone_replacement "booking controller is missing from the immutable artifact"
 done
