@@ -247,6 +247,14 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(bridge.open()["cancel"], self.CANCEL_PHRASE)
         return bridge, requests
 
+    @staticmethod
+    def answer_cancel(bridge, *heard, asked="Sifarişi ləğv edək?"):
+        """The agent asks the cancel question and the caller answers it."""
+        bridge.handle({"serverContent": {"outputTranscription": {"text": asked}}}, lambda body: None, lambda: True)
+        bridge.handle({"serverContent": {"turnComplete": True}}, lambda body: None, lambda: True)
+        for text in heard:
+            bridge.handle({"serverContent": {"inputTranscription": {"text": text}}}, lambda body: None, lambda: True)
+
     def cancel(self, bridge, args=None, key="cancel-1"):
         self.finished.clear()
         call = {"id": key, "name": "cancel_order"}
@@ -270,6 +278,7 @@ class TransportTests(unittest.TestCase):
     def test_a_cancel_the_crm_took_stops_every_later_save_of_the_call(self):
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
         self.assertEqual(bridge.save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
+        self.answer_cancel(bridge, "Bəli.")
         self.assertEqual(self.cancel(bridge, {}), {"status": "cancelled", "say": self.CANCEL_PHRASE})
         # Numbered after the saves: the CRM ignores any older save that arrives late.
         self.assertEqual(requests[-1], {"action": "cancel", "callId": CALL, "seq": 2})
@@ -282,12 +291,55 @@ class TransportTests(unittest.TestCase):
         for reply in [lambda body: {"status": "not_cancelled"}, lambda body: {"status": "cancelled", "say": "Başqa söz"},
                       lambda body: {"status": "cancelled"}, lambda body: None, boom]:
             bridge, requests = self.cancel_bridge(reply)
+            self.answer_cancel(bridge, "Hə, ləğv edin.")
             self.assertEqual(self.cancel(bridge, key="c-%d" % len(self.sent)), {"status": "not_cancelled"})
             self.assertEqual(bridge.save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
         # Arguments the tool does not take never reach the CRM.
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
         self.assertEqual(self.cancel(bridge, {"reason": "x"}), {"status": "not_cancelled"})
         self.assertEqual([r["action"] for r in requests], ["session"])
+
+    def test_only_a_plain_yes_to_the_question_cancels(self):
+        # Owner's call 2026-11-03: «я говорю подтверждаю, а он говорит да, я
+        # понял, отменяю». Heard "Tərtiblə", the model cancelled the order.
+        bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        logged = []
+        bridge.log = lambda status, **fields: logged.append((status, fields))
+        # Not asked at all: nothing to read as a yes.
+        self.assertEqual(self.cancel(bridge, key="c-0"), {"status": "not_confirmed"})
+        for key, heard in enumerate([("Tərtiblə.",), ("Yox, sifarişi təsdiqlə.",), ("Təsdiq edirəm",),
+                                     ("Bəli,", " yox, saxlayın"), ("Нет, подтверждаю",), ()], 1):
+            self.answer_cancel(bridge, *heard)
+            self.assertEqual(self.cancel(bridge, key="c-%d" % key), {"status": "not_confirmed"}, heard)
+        self.assertEqual([r["action"] for r in requests], ["session"])
+        self.assertEqual(logged[0], ("not_confirmed", {"asked": False}))
+        self.assertEqual(logged[1], ("not_confirmed", {"asked": True}))
+        # The caller's words never reach the journal.
+        self.assertNotIn("Tərtiblə", repr(logged))
+        # An answer is used once: the next cancel needs the question again.
+        self.answer_cancel(bridge, "Bəli", ", ləğv edin.")
+        self.assertEqual(self.cancel(bridge, key="c-yes"), {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        self.assertEqual([r["action"] for r in requests], ["session", "cancel"])
+
+    def test_the_question_is_followed_across_pieces_and_tool_waits_for_late_words(self):
+        bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        bridge.handle({"serverContent": {"outputTranscription": {"text": "Sifarişi ləğv"}}}, lambda body: None, lambda: True)
+        bridge.handle({"serverContent": {"outputTranscription": {"text": " edək?"}}}, lambda body: None, lambda: True)
+        bridge.handle({"serverContent": {"turnComplete": True}}, lambda body: None, lambda: True)
+        later = threading.Timer(0.3, lambda: bridge.handle(
+            {"serverContent": {"inputTranscription": {"text": "Hə."}}}, lambda body: None, lambda: True))
+        later.start()
+        self.assertEqual(self.cancel(bridge), {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        later.join()
+
+    def test_yes_and_no_words(self):
+        yes = ["Bəli", "hə", "Hə, ləğv edin", "ok", "Да", "ləğv olsun", "Bəli, bəli."]
+        no = ["Tərtiblə", "yox", "Xeyr", "təsdiqlə", "Bəli, amma saxlayın", "Hə, lazımdır", "нет", "", None,
+              "Sifariş", "beləcə"]
+        for text in yes:
+            self.assertTrue(bridge_module.ZeytunInboundBridge.cancel_confirmed(text), text)
+        for text in no:
+            self.assertFalse(bridge_module.ZeytunInboundBridge.cancel_confirmed(text), text)
 
     def test_the_spoken_reply_logs_its_script_never_its_words(self):
         self.assertEqual(bridge_module.zeytun_script("Adefa, 5 qutu. Daha?"), "latin")
@@ -685,6 +737,7 @@ class OrderSpoolTests(unittest.TestCase):
         self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "queued"})
         self.assertEqual(self.kept(), [CALL + ".json"])
         self.crm = lambda body: {"status": "cancelled", "say": "Sifarişiniz ləğv olundu."}
+        TransportTests.answer_cancel(self.bridge, "Bəli")
         self.assertEqual(self.bridge.cancel_order()["status"], "cancelled")
         self.assertEqual(self.kept(), [])
         self.now += 11
@@ -695,6 +748,7 @@ class OrderSpoolTests(unittest.TestCase):
         self.bridge.cancel_phrase = "Sifarişiniz ləğv olundu."
         self.crm = self.silent
         self.bridge.save_order({"lines": self.LINE})
+        TransportTests.answer_cancel(self.bridge, "Bəli")
         self.assertEqual(self.bridge.cancel_order(), {"status": "not_cancelled"})
         self.assertEqual(self.kept(), [CALL + ".json"])
 

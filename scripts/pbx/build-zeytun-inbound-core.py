@@ -38,6 +38,7 @@ def build(source, bridge):
             try:
                 self.pharmacy_bridge = ZeytunInboundBridge(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, self.call_id,
                     spool=zeytun_order_spool(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, latency))
+                self.pharmacy_bridge.log = lambda status, **fields: latency("zeytun_cancel", self.call_id, status=status, **fields)
                 pilot = self.pharmacy_bridge.open()
             except Exception:
                 self._pharmacy_drop_early(early)
