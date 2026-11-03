@@ -26,6 +26,11 @@
 #     the same file pgBackRest, the release artifact and the help-video masters
 #     use. No ceremony, no second bucket, no new key.
 #
+# It walks the whole tree anyway, so it also answers the one question no code
+# gate can: is a client's file sitting PLAIN on this disk (plain_unexpected)?
+# tenant-file-readers-guard.test.ts proves the code seals what it writes; only
+# the disk shows what was written before it, or by a path nobody added there.
+#
 # It never deletes anything in the bucket: a file deleted on production (a
 # retention cron, a user) stays in the copy, because that is what a backup is.
 #
@@ -54,6 +59,14 @@ LOCK_FILE="$STATE_ROOT/mirror.lock"
 # Its own 90-day retention; see the header.
 SKIP_PATHS=(call-recordings)
 
+# Top-level directories whose files are public by design and so plain on disk:
+# they are served without a login, so the application never seals them
+# (src/lib/crypto/tenant-file-locations.ts leaves them out on the writing side,
+# and tenant-file-readers-guard.test.ts names each one with its reason). They
+# are copied like everything else — this list only keeps them out of the count
+# of plain files that should NOT be plain.
+PLAIN_BY_DESIGN=(logos email-images social-logos social-media-previews)
+
 MODE=""
 RECIPIENT="${UPLOADS_OFFSITE_AGE_RECIPIENT:-}"
 MAX_BYTES="${UPLOADS_OFFSITE_MAX_BYTES:-2147483648}"
@@ -61,6 +74,23 @@ MAX_SECONDS="${UPLOADS_OFFSITE_MAX_SECONDS:-1800}"
 
 log() { printf '[uploads-offsite] %s\n' "$*"; }
 fatal() { log "FATAL: $*" >&2; exit 1; }
+
+# "LDFE" — the first four bytes the application writes on a sealed file
+# (src/lib/crypto/tenant-file-encryption.ts). A builtin read rather than
+# `head -c 4`: this runs once per file in the tree, and the tree only grows.
+is_sealed() {
+  local magic=''
+  read -r -N 4 magic <"$1" 2>/dev/null || true
+  [ "$magic" = LDFE ]
+}
+
+plain_by_design() {
+  local top="${1%%/*}" name
+  for name in "${PLAIN_BY_DESIGN[@]}"; do
+    if [ "$top" = "$name" ]; then return 0; fi
+  done
+  return 1
+}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -114,7 +144,10 @@ pending_files=0
 pending_bytes=0
 known_files=0
 known_bytes=0
-unsealed=0
+plain_public=0
+plain_empty=0
+plain_unexpected=0
+declare -A PLAIN_DIRS=()
 PENDING_LIST="$(mktemp)"
 trap 'rm -f "$PENDING_LIST"' EXIT
 
@@ -129,6 +162,24 @@ while IFS=$'\t' read -r rel size mtime; do
   mtime="${mtime%%.*}"
   known_files=$((known_files + 1))
   known_bytes=$((known_bytes + size))
+  # Is a client's file sitting plain on this disk? Counted over the WHOLE tree,
+  # and not over what is left to copy: a count of the copy queue reads 0 the
+  # day after the first run, so it would say "all sealed" about a tree of plain
+  # files. That is exactly how 36 by-design-plain files were read on
+  # 2026-11-02 as a backfill that had stopped half way.
+  if is_sealed "$SOURCE_ROOT/$rel"; then
+    :
+  elif [ "$size" = 0 ]; then
+    # A placeholder (.gitkeep) or a failed upload: no bytes either way.
+    plain_empty=$((plain_empty + 1))
+  elif plain_by_design "$rel"; then
+    plain_public=$((plain_public + 1))
+  else
+    plain_unexpected=$((plain_unexpected + 1))
+    directory="${rel%/*}"
+    [ "$directory" != "$rel" ] || directory=.
+    PLAIN_DIRS["$directory"]=$(( ${PLAIN_DIRS["$directory"]:-0} + 1 ))
+  fi
   if [ "${COPIED[$rel]:-}" = "$size:$mtime" ]; then
     continue
   fi
@@ -137,21 +188,31 @@ while IFS=$'\t' read -r rel size mtime; do
   printf '%s\t%s\t%s\n' "$rel" "$size" "$mtime" >>"$PENDING_LIST"
 done < <(find "${find_args[@]}")
 
+# A plain client file is worth naming, and its directory names the upload path
+# that wrote it. File names are not printed: the directory and the count are
+# enough to act on, and this goes to the journal.
+report_plain() {
+  [ "$plain_unexpected" -gt 0 ] || return 0
+  log "WARNING: незашифрованных файлов клиентов на диске: $plain_unexpected"
+  while IFS= read -r directory; do
+    log "  $directory — ${PLAIN_DIRS[$directory]}"
+  done < <(printf '%s\n' "${!PLAIN_DIRS[@]}" | sort)
+}
+
 if [ "$MODE" = plan ]; then
-  # How many of the pending files are already sealed on disk by the application
-  # (src/lib/crypto/tenant-file-encryption.ts, since 2026-10-22). It changes
-  # nothing here — everything is age-encrypted on the way out either way — but
-  # it answers how much of the tree the backfill cron has still to do.
-  while IFS=$'\t' read -r rel _ _; do
-    # The envelope's first four bytes, as src/lib/crypto/tenant-file-encryption.ts
-    # writes them (MAGIC = "LDFE").
-    [ "$(head -c 4 -- "$SOURCE_ROOT/$rel" 2>/dev/null)" = LDFE ] || unsealed=$((unsealed + 1))
-  done <"$PENDING_LIST"
-  printf 'SUMMARY uploads-offsite mode=plan files=%s bytes=%s pending_files=%s pending_bytes=%s pending_unsealed=%s skipped=%s recipient=%s\n' \
-    "$known_files" "$known_bytes" "$pending_files" "$pending_bytes" "$unsealed" "${SKIP_PATHS[*]}" \
+  # Three kinds of plain file, because one number could not tell them apart:
+  # public by design (PLAIN_BY_DESIGN), empty, and the one that matters —
+  # a client's file that some upload path wrote without sealing it. The code
+  # side cannot see that: tenant-file-readers-guard.test.ts reads code, this
+  # reads the disk. Sealing changes nothing here either way: everything is
+  # age-encrypted on the way out.
+  printf 'SUMMARY uploads-offsite mode=plan files=%s bytes=%s pending_files=%s pending_bytes=%s plain_public=%s plain_empty=%s plain_unexpected=%s skipped=%s recipient=%s\n' \
+    "$known_files" "$known_bytes" "$pending_files" "$pending_bytes" \
+    "$plain_public" "$plain_empty" "$plain_unexpected" "${SKIP_PATHS[*]}" \
     "$([ -n "$RECIPIENT" ] && printf 'set' || printf 'MISSING')"
   log "каталог: $(numfmt --to=iec "$known_bytes" 2>/dev/null || printf '%s B' "$known_bytes") в $known_files файлах"
   log "к отправке: $(numfmt --to=iec "$pending_bytes" 2>/dev/null || printf '%s B' "$pending_bytes") в $pending_files файлах"
+  report_plain
   exit 0
 fi
 
@@ -230,12 +291,14 @@ fi
   printf 'offsite_bytes=%s\n' "$known_bytes"
   printf 'offsite_stopped=%s\n' "${stopped:-no}"
   printf 'offsite_failures=%s\n' "$failures"
+  printf 'offsite_plain_unexpected=%s\n' "$plain_unexpected"
 } >"$STATE_FILE.new"
 chmod 0640 "$STATE_FILE.new"
 # Replaced in one step: a watch that caught a half-written file would read a
 # missing age and call it an incident.
 mv -- "$STATE_FILE.new" "$STATE_FILE"
 
-printf 'SUMMARY uploads-offsite mode=run status=%s sent_files=%s sent_bytes=%s pending_files=%s stopped=%s failures=%s\n' \
-  "$status" "$sent_files" "$sent_bytes" "$left_files" "${stopped:-no}" "$failures"
+report_plain
+printf 'SUMMARY uploads-offsite mode=run status=%s sent_files=%s sent_bytes=%s pending_files=%s stopped=%s failures=%s plain_unexpected=%s\n' \
+  "$status" "$sent_files" "$sent_bytes" "$left_files" "${stopped:-no}" "$failures" "$plain_unexpected"
 [ "$status" != crit ] || exit 1

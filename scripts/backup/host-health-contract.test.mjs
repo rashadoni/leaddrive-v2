@@ -245,6 +245,27 @@ test('an offsite copy that stopped is an alarm', () => {
   assert.equal(broken[0].critical, true);
 });
 
+test('a client file lying plain on the disk is a warning of its own', () => {
+  // The only check anywhere that looks at the disk: the code-side guard
+  // (tenant-file-readers-guard.test.ts) proves the code seals what it writes,
+  // and says nothing about what is already lying there.
+  const fresh = (extra) => assessUploadsOffsite(
+    probe({ offsite: { offsite_ran_at: agoHours(1), offsite_status: 'ok', offsite_pending: 0, ...extra } }),
+  );
+  assert.deepEqual(fresh({}), [], 'a state file from before this count must stay silent');
+  assert.deepEqual(fresh({ offsite_plain_unexpected: 0 }), []);
+  const plain = fresh({ offsite_plain_unexpected: 9 });
+  assert.equal(plain.length, 1);
+  assert.equal(plain[0].critical, false);
+  assert.match(plain[0].text, /9 незашифрованных файл/);
+
+  // It is not the copy's verdict, so both can be said at once.
+  const both = assessUploadsOffsite(
+    probe({ offsite: { offsite_ran_at: agoHours(60), offsite_status: 'ok', offsite_plain_unexpected: 2 } }),
+  );
+  assert.deepEqual(both.map((p) => [p.key, p.critical]), [['offsite', true], ['uploads-plain', false]]);
+});
+
 test('the probe reads the offsite state only if it is there', () => {
   const program = probeProgram();
   assert.match(program, /if \[ -f \/var\/lib\/leaddrive-uploads-offsite\/state \]; then cat/);
