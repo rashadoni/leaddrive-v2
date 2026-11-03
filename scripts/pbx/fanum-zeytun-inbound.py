@@ -818,6 +818,16 @@ class ZeytunInboundBridge:
     # order went to the managers. The CRM marks the call's order cancelled;
     # offered only when the CRM names the phrase, like the transfer.
     CANCEL_NAME = "cancel_order"
+    # Owner's call 2026-11-03: «я говорю подтверждаю, а он говорит да, я понял,
+    # отменяю». To "Sifarişi ləğv edək?" recognition heard "Tərtiblə" and the
+    # model cancelled anyway. A cancel cannot be undone on the call, so the
+    # station itself reads the caller's answer to that question: only a plain
+    # yes cancels; "təsdiq", "yox" or anything unclear leaves the order.
+    CANCEL_QUESTION = "ləğv edək"
+    CANCEL_YES = ("bəli", "beli", "hə", "he", "həə", "hee", "ha", "hı", "ok", "okey", "olsun", "razıyam",
+                  "düzdür", "əlbəttə", "да", "ага", "конечно")
+    CANCEL_NO = ("yox", "xeyr", "təsdiq", "saxla", "dayan", "gözlə", "lazımdır", "нет", "не", "подтвер", "оставь")
+    CANCEL_ANSWER_WAIT_SECONDS = 1.5
     # Owner, 2026-10-27: a long order must not be lost. The CRM allows a call
     # up to 15 minutes (the core's own ceiling is 900 s) and the agent saves
     # the list after every line, so the per-call tool budget and the prompt
@@ -860,6 +870,9 @@ class ZeytunInboundBridge:
         "мазь", "гель", "крем", "спрей", "саше", "флакон", "упаковка", "коробка", "штук",
         # 2026-10-31 live call: "ləğv edin" came back as "Çox sağ olun".
         "ləğv", "ləğv edin", "sifarişi ləğv edin", "отмените", "отменить заказ",
+        # 2026-11-03 live call: with only the cancel phrase hinted, "Sifarişi
+        # təsdiq edin" came back as "Sifarişi ləğv edin". Hint both alike.
+        "təsdiq", "təsdiq edin", "sifarişi təsdiq edin", "təsdiqləyirəm", "подтверждаю", "подтвердите",
     )
 
     @staticmethod
@@ -905,8 +918,15 @@ class ZeytunInboundBridge:
         self.cancel_phrase = None
         # Once the CRM cancelled the call's order, no list of it is sent again.
         self.cancelled = False
+        # What the caller said since the agent last asked CANCEL_QUESTION
+        # (None: not asked, or the answer was already used).
+        self.cancel_answer = None
+        self.model_turn_text = ""
+        self.cancel_asked_this_turn = False
         # Set by the core: called with the phrase once the CRM took the transfer.
         self.on_transfer = None
+        # Set by the core: the station journal (zeytun_cancel status=...).
+        self.log = lambda status, **fields: None
         # Set by the core: called when a lookup has run FILLER_AFTER_SECONDS.
         self.on_wait = None
 
@@ -1042,7 +1062,7 @@ class ZeytunInboundBridge:
              "description": "Hand this call to a Zeytun manager in the CRM. Call it only when the caller asks for a person. If it returns transferring, say exactly its say text and nothing after it: the line then rings the managers. If it returns unavailable, say that no manager can answer right now and keep taking the order yourself.",
              "parameters": {"type": "OBJECT", "properties": {}}}] if self.transfer_phrase else []) + ([
             {"name": self.CANCEL_NAME,
-             "description": "Cancel this call's whole order: the manager gets nothing. Call it only after the caller clearly confirmed they want the whole order cancelled. If it returns cancelled, say exactly its say text and then the closing sentence. If it returns not_cancelled, say the order is already with the manager and cannot be cancelled on this call.",
+             "description": "Cancel this call's whole order: the manager gets nothing. Only for a caller who asked to cancel (ləğv, отмена); təsdiq or подтверждаю confirms the order: finish it, never ask about cancelling. Call it only after the caller clearly confirmed they want the whole order cancelled. If it returns cancelled, say exactly its say text and then the closing sentence. If it returns not_confirmed, the caller did not clearly say yes to \"Sifarişi ləğv edək?\": the order stays; say so and go on. If it returns not_cancelled, say the order is already with the manager and cannot be cancelled on this call.",
              "parameters": {"type": "OBJECT", "properties": {}}}] if self.cancel_phrase else [])}]
 
     def transcription(self):
@@ -1307,10 +1327,62 @@ class ZeytunInboundBridge:
                 self.order_number = result["orderNumber"]
         return result
 
+    @classmethod
+    def cancel_confirmed(cls, answer):
+        """A plain yes, and nothing that says keep it."""
+        words = re.findall(r"\w+", (answer or "").lower())
+        if any(word.startswith(no) if len(no) > 3 else word == no for word in words for no in cls.CANCEL_NO):
+            return False
+        joined = " ".join(words)
+        return any(word in cls.CANCEL_YES for word in words) or "ləğv edin" in joined or "ləğv olsun" in joined
+
+    def note_content(self, content):
+        """Follow the agent's words and the caller's answer to CANCEL_QUESTION."""
+        spoken = []
+        output = content.get("outputTranscription")
+        if isinstance(output, dict) and isinstance(output.get("text"), str):
+            spoken.append(output["text"])
+        model_turn = content.get("modelTurn")
+        if isinstance(model_turn, dict):
+            for part in model_turn.get("parts") or []:
+                if isinstance(part, dict) and isinstance(part.get("text"), str) and not part.get("thought"):
+                    spoken.append(part["text"])
+        heard = content.get("inputTranscription")
+        with self.lock:
+            if spoken:
+                # Pieces carry their own spaces and may split a word.
+                self.model_turn_text = (self.model_turn_text + "".join(spoken))[-2000:]
+                said = " ".join(self.model_turn_text.lower().split())
+                if not self.cancel_asked_this_turn and self.CANCEL_QUESTION in said:
+                    self.cancel_asked_this_turn = True
+                    self.cancel_answer = ""
+            if isinstance(heard, dict) and isinstance(heard.get("text"), str) and self.cancel_answer is not None:
+                self.cancel_answer = (self.cancel_answer + " " + heard["text"])[-500:]
+            if content.get("turnComplete") is True or content.get("interrupted") is True:
+                self.model_turn_text = ""
+                self.cancel_asked_this_turn = False
+
+    def caller_answer_to_cancel(self):
+        """The caller's answer to CANCEL_QUESTION, waiting briefly for recognition to catch up."""
+        deadline = time.monotonic() + self.CANCEL_ANSWER_WAIT_SECONDS
+        while True:
+            with self.lock:
+                answer = self.cancel_answer
+            if answer is None or answer.strip() or time.monotonic() >= deadline:
+                break
+            time.sleep(0.1)
+        with self.lock:
+            self.cancel_answer = None
+        return answer
+
     def cancel_order(self):
         """The CRM cancels the call's order; the station then keeps and sends no
         list of it. A CRM that does not answer leaves the order as it is: the
         agent says so, and the kept list still reaches the manager."""
+        answer = self.caller_answer_to_cancel()
+        if not self.cancel_confirmed(answer):
+            self.log("not_confirmed", asked=answer is not None)
+            return {"status": "not_confirmed"}
         with self.lock:
             self.order_seq += 1
             seq = self.order_seq
@@ -1346,6 +1418,8 @@ class ZeytunInboundBridge:
                         self.pending.pop(key, None)
             return True
         content = event.get("serverContent")
+        if isinstance(content, dict):
+            self.note_content(content)
         if isinstance(content, dict) and content.get("interrupted") is True:
             with self.lock:
                 self.pending.clear()

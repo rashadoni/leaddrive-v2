@@ -253,7 +253,7 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
   // есть, и акции «купи/получи» из 1С».
   ["Stock, delivery, payment: say once that this test call cannot confirm them and continue.",
-    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply, in a few words (buy N, get M free, until the date), never skip it; if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Delivery, payment: say once that you cannot confirm them on this call and continue."],
+    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply, in a few words (buy N, get M free, until the date), for each such product, also several at once; if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Never say how free goods are added or billed; if asked, the manager confirms it. Delivery, payment: say once that you cannot confirm them on this call and continue."],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it, in its base form without case endings (Zəfər aptek, not Zəfər aptekinin)."],
   // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
   // повторял заказы, а просто принимает и говорит номер заказа и обработки».
@@ -310,7 +310,8 @@ export const ZEYTUN_LINE_PROMPT = [
   ["No medical advice, substitution or dosage.",
     "No medical advice or dosage. If the caller asks for a person, call transfer_to_manager. " +
     // Owner's call 2026-10-31: asked to cancel, the agent said goodbye and the order went on.
-    "If the caller wants the whole order cancelled, ask once \"Sifarişi ləğv edək?\" and only after a clear yes call cancel_order."],
+    // Owner's call 2026-11-03: "Tərtiblə" was taken for a yes; the station now checks the answer itself.
+    "To cancel the whole order ask \"Sifarişi ləğv edək?\"; call cancel_order only after a plain yes (bəli, hə), anything else keeps it."],
   ["Totals: when the caller asks for a line or order total, call calculate_order_total with the resolved lines (externalId and the quantity in that listPrice unit) and read back exactly what it returns, never your own arithmetic.",
     "Totals: when asked, call calculate_order_total with the resolved lines (externalId, quantity in the listPrice unit) and read back exactly what it returns, never your own arithmetic."],
   ["If the lookup returns only one matching item, do not ask about other manufacturers.",

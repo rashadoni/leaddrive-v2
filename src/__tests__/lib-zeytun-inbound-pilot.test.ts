@@ -350,7 +350,11 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("Always speak Azerbaijani, also right after a tool result")
     expect(ZEYTUN_LINE_PROMPT).toContain("Every product the caller named stays open until it is saved or the caller drops it.")
     expect(ZEYTUN_LINE_PROMPT).toContain("if a named product is still unsaved, name it and ask once")
-    expect(ZEYTUN_LINE_PROMPT).toContain('ask once "Sifarişi ləğv edək?" and only after a clear yes call cancel_order')
+    // Owner's call 2026-11-03: "Tərtiblə" taken for a yes; the station checks the answer too.
+    expect(ZEYTUN_LINE_PROMPT).toContain('ask "Sifarişi ləğv edək?"; call cancel_order only after a plain yes (bəli, hə), anything else keeps it.')
+    // The same call: Acikold's promotion went unsaid and the agent invented how free goods are added.
+    expect(ZEYTUN_LINE_PROMPT).toContain("for each such product, also several at once")
+    expect(ZEYTUN_LINE_PROMPT).toContain("Never say how free goods are added or billed")
     // Owner's call 2026-10-29 (TS-1005): the promotion went unsaid, "numero dos" passed for yes,
     // ampoules were written after "cream", prices came unasked, the pharmacy kept its case ending.
     expect(ZEYTUN_LINE_PROMPT).toContain("say the offer in that same reply")
