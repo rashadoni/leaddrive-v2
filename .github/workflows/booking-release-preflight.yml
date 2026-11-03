@@ -9,6 +9,7 @@ on:
       - scripts/booking/release-contract.*
       - scripts/booking/release-state.sql
       - scripts/booking/activate-workspace.sql
+      - scripts/booking/schema-lineage.json
       - src/lib/booking/release-phase.json
       - prisma/migrations/20261102100000_booking_commands/migration.sql
       - scripts/server-deploy.sh
