@@ -141,7 +141,11 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
     // one of them, sees those times as free.
     const holds = await prisma.bookingOffer.findMany({
       where: {
-        organizationId: orgId, hostUserId: { in: hostIds }, status: "offered", expiresAt: { gt: new Date() },
+        organizationId: orgId, hostUserId: { in: hostIds },
+        // A time waiting for the salon's confirmation is held just as firmly
+        // as one still on the client's buttons — otherwise «we are holding it
+        // for you» is a promise the next booking breaks.
+        status: { in: ["offered", "pending"] }, expiresAt: { gt: new Date() },
         endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) },
         ...(options.holds.exceptConversationId ? { conversationId: { not: options.holds.exceptConversationId } } : {}),
       },
