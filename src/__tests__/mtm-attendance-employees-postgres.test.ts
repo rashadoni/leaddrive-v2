@@ -255,8 +255,13 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
 
   it("keeps 300 CRM identities out of Personnel except explicitly enrolled staff, without rewriting facts", async () => {
     await tenant(automaticOrg, async () => {
-      const before = [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]
+      // Opening the list issues the personnel number its employees lack
+      // (owner, 2026-11-03) and writes nothing else.
+      const issuedNumber = { action: "MTM_ATTENDANCE_PERSONNEL_NUMBER_ISSUED" }
+      const counts = async () => [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count({ where: { NOT: issuedNumber } }), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]
+      const before = await counts()
       const directory = await store.readAttendanceEmployees(automaticAdmin)
+      expect((await prisma.mtmAuditLog.findMany({ where: issuedNumber, select: { agentId: true } })).map(row => row.agentId)).toEqual(["automatic-manual"])
       // The existing field agent keeps its card but is not HR attendance: its
       // day belongs to the field manager (owner, 2026-10-14).
       expect(directory.employees.map(employee => employee.id)).toEqual(["automatic-manual"])
@@ -264,7 +269,7 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       expect(directory.users.every(user => !user.eligible)).toBe(true)
       expect(directory.employees.find(employee => employee.id === automaticAgentId)).toBeUndefined()
       expect(JSON.stringify(directory)).not.toMatch(/@example\.invalid|fixture-only|retained-.*-password/)
-      expect([await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count(), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]).toEqual(before)
+      expect(await counts()).toEqual(before)
       const projection = await report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null }, query: { from: "2020-01-01", to: "2020-01-02", employeeId: automaticAgentId, form: "ALL" } })
       expect(projection.rows).toEqual([])
     })
@@ -791,57 +796,72 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     expect(result.rows.map(row => row.employeePosition)).toEqual(["Fictional senior cashier"])
   })
 
-  // Owner, 2026-11-02 (HRSS clip: «Tabel №» next to every name): the card keeps a
-  // personnel number, one person's within the organization, and the timesheet
-  // and «Forma N-1t» print it.
-  it("keeps a personnel number unique per organization and prints it on the report and N-1t", async () => {
+  // Owner, 2026-11-02 (HRSS clip: «Tabel №» next to every name), and 2026-11-03:
+  // «нужно чтоб автоматически присваивался уникальный номер… будут ошибаться и
+  // в последовательности и в повторении». The number is issued in order, never
+  // typed, never repeated, and the timesheet and «Forma N-1t» print it.
+  it("issues personnel numbers in order without repeats and prints them on the report and N-1t", async () => {
     const create = await import("@/lib/mtm/attendance-employee-create")
     const { attendanceN1tConfig, attendanceTableText } = await import("@/lib/mtm/attendance-month-snapshot")
     const { buildAttendanceTable } = await import("@/lib/mtm/attendance-table")
-    const first = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional numbered clerk", phone: "+994550007721" }))
-    const second = await tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name: "Fictional second numbered", phone: "+994550007722" }))
-    // Another organization's T-07 is not this one's.
-    await bypass(() => prisma.mtmAgent.create({ data: { organizationId, name: "Fictional foreign numbered", personnelNumber: "T-07" } }))
-    const page = (name: string, personnelNumber?: string | null) => ({ name, position: null, teamId: null, managerId: null, ...(personnelNumber === undefined ? {} : { personnelNumber }) })
     const number = (agentId: string) => tenant(automaticOrg, async () => (await prisma.mtmAgent.findUniqueOrThrow({ where: { id: agentId }, select: { personnelNumber: true } })).personnelNumber)
+    const add = (name: string, phone: string) => tenant(automaticOrg, () => create.createAttendanceEmployee(automaticAdmin, { name, phone }))
+    // Another organization's numbers are not this one's sequence.
+    await bypass(() => prisma.mtmAgent.create({ data: { organizationId, name: "Fictional foreign numbered", personnelNumber: "9000" } }))
 
-    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "  T-07 ")))
-    expect(await number(first.agentId)).toBe("T-07")
-    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, first.agentId))).employee.personnelNumber).toBe("T-07")
-    expect((await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))).employees.find(row => row.id === first.agentId)).toMatchObject({ personnelNumber: "T-07" })
+    const first = await add("Fictional numbered clerk", "+994550007721")
+    const second = await add("Fictional second numbered", "+994550007722")
+    const firstNumber = await number(first.agentId)
+    expect(firstNumber).toMatch(/^\d{4}$/)
+    expect(Number(firstNumber)).toBeLessThan(9000)
+    expect(await number(second.agentId)).toBe(String(Number(firstNumber) + 1).padStart(4, "0"))
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(automaticAdmin, second.agentId))).employee.personnelNumber).toBe(await number(second.agentId))
 
-    // The same number in another case is the same number: refused, nothing written.
-    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, second.agentId, page("Fictional second numbered renamed", "t-07"))))
-      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN", status: 409 })
-    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: second.agentId }, select: { name: true, personnelNumber: true } })))
-      .toEqual({ name: "Fictional second numbered", personnelNumber: null })
-    // The database refuses it too, whatever writes it.
-    await expect(bypass(() => prisma.mtmAgent.update({ where: { id: second.agentId }, data: { personnelNumber: "t-07" } }))).rejects.toMatchObject({ code: "P2002" })
-    // Its own number in another case, a tab without the field (keeps it), and clearing it.
-    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "t-07")))
-    expect(await number(first.agentId)).toBe("t-07")
-    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk")))
-    expect(await number(first.agentId)).toBe("t-07")
-    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, second.agentId, page("Fictional second numbered", "T-08")))
-    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "")))
-    expect(await number(first.agentId)).toBeNull()
-    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, first.agentId, page("Fictional numbered clerk", "x".repeat(33)))))
-      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_INVALID" })
-    const journal = await tenant(automaticOrg, () => prisma.mtmAuditLog.findMany({ where: { action: "MTM_ATTENDANCE_EMPLOYEE_UPDATED", agentId: second.agentId }, select: { oldData: true, newData: true } }))
-    expect(journal).toHaveLength(1)
-    expect(journal[0]).toMatchObject({ oldData: { personnelNumber: null }, newData: { personnelNumber: "T-08" } })
+    // HR cannot type one: a tab opened before 2026-11-03 still sends the field, and nothing changes.
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, second.agentId, { name: "Fictional second numbered", position: "Fictional clerk", teamId: null, managerId: null, personnelNumber: "T-08" }))
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: second.agentId }, select: { position: true, personnelNumber: true } })))
+      .toEqual({ position: "Fictional clerk", personnelNumber: await number(second.agentId) })
+    expect(await number(second.agentId)).not.toBe("T-08")
+    // The database refuses a repeat, whatever writes it.
+    await expect(bypass(() => prisma.mtmAgent.update({ where: { id: second.agentId }, data: { personnelNumber: firstNumber } }))).rejects.toMatchObject({ code: "P2002" })
+
+    // Two HR officers saving at once get two numbers, one after the other.
+    const pair = await Promise.all([add("Fictional parallel one", "+994550007723"), add("Fictional parallel two", "+994550007724")])
+    const pairNumbers = (await Promise.all(pair.map(person => number(person.agentId)))).map(Number).sort((a, b) => a - b)
+    expect(pairNumbers).toEqual([Number(firstNumber) + 2, Number(firstNumber) + 3])
+
+    // A card deleted by mistake does not hand its number to the next person.
+    const mistake = await add("Fictional numbered mistake", "+994550007725")
+    expect(await number(mistake.agentId)).toBe(String(Number(firstNumber) + 4).padStart(4, "0"))
+    await tenant(automaticOrg, () => store.removeAttendanceEmployee(automaticAdmin, mistake.agentId, { mode: "DELETE" }))
+    const after = await add("Fictional numbered after mistake", "+994550007726")
+    expect(await number(after.agentId)).toBe(String(Number(firstNumber) + 5).padStart(4, "0"))
+
+    // Someone in the list without a number (added before numbers were issued)
+    // gets the next one when the list is opened, once, and the journal says so.
+    await bypass(() => prisma.mtmAgent.update({ where: { id: first.agentId }, data: { personnelNumber: null } }))
+    const listed = await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))
+    const reissued = String(Number(firstNumber) + 6).padStart(4, "0")
+    expect(listed.employees.find(row => row.id === first.agentId)).toMatchObject({ personnelNumber: reissued })
+    expect(listed.employees.every(row => row.personnelNumber)).toBe(true)
+    expect(new Set(listed.employees.map(row => row.personnelNumber)).size).toBe(listed.employees.length)
+    await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))
+    expect(await number(first.agentId)).toBe(reissued)
+    const journal = await tenant(automaticOrg, () => prisma.mtmAuditLog.findMany({ where: { action: "MTM_ATTENDANCE_PERSONNEL_NUMBER_ISSUED", agentId: first.agentId }, select: { actorUserId: true, newData: true }, orderBy: { createdAt: "asc" } }))
+    expect(journal.map(row => row.newData)).toEqual([{ personnelNumber: firstNumber }, { personnelNumber: reissued }])
+    expect(journal.every(row => row.actorUserId === automaticAdmin.userId)).toBe(true)
 
     // The timesheet rows and the N-1t carry the number next to the name.
     const today = (await import("@/lib/mtm/mobile-week")).currentDateKey(new Date(), "Asia/Baku")
     const result = await tenant(automaticOrg, () => report.readMtmAttendanceReport({ organizationId: automaticOrg, actor: { role: "ADMIN", agentId: null, scopedAgentIds: null },
       query: { from: today, to: today, employeeId: second.agentId, form: "ALL" } }))
-    expect(result.rows.map(row => row.employeePersonnelNumber)).toEqual(["T-08"])
+    expect(result.rows.map(row => row.employeePersonnelNumber)).toEqual([await number(second.agentId)])
     // The N-1t is a whole calendar month; today's row falls inside it.
     const monthEnd = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10)
     const table = buildAttendanceTable(result, attendanceN1tConfig(`${today.slice(0, 7)}-01`, monthEnd), "ru", attendanceTableText("ru"))
     expect(table.columns.slice(0, 3).map(column => column.key)).toEqual(["index", "personnelNumber", "employee"])
     expect(table.columns[1].label).toBe(attendanceTableText("ru")("reportPersonnelNumber"))
-    expect(table.rows.map(row => row.cells.slice(0, 3))).toEqual([[1, "T-08", "Fictional second numbered"]])
+    expect(table.rows.map(row => row.cells.slice(0, 3))).toEqual([[1, await number(second.agentId), "Fictional second numbered"]])
   })
 
   // Owner, 2026-10-22: «тут есть отдел, но нет департамента». A department sits

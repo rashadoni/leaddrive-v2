@@ -71,15 +71,15 @@ describe("Personnel → employee page", () => {
     expect(container.querySelector('[data-testid="employees-history"]')!.textContent).toContain(t("employeesNoHistory"))
   })
 
-  it("saves name, phone, email, job, personnel number and the first hire date in one request, then says so", async () => {
+  it("saves name, phone, email, job and the first hire date in one request, then says so", async () => {
     await render()
     await edit("employee-name", "Togrul Məmmədov"); await edit("employee-phone", "+994 55 000 11 22"); await edit("employee-email", "togrul@example.test")
-    await edit("employee-position", "Менеджер"); await edit("employee-personnel-number", " T-07 "); await edit("employee-department", "team-kassa"); await edit("employee-manager", "m-saida"); await edit("employee-hire-date", "2026-03-02")
+    await edit("employee-position", "Менеджер"); await edit("employee-department", "team-kassa"); await edit("employee-manager", "m-saida"); await edit("employee-hire-date", "2026-03-02")
     // The section names its department (owner, 2026-10-22: department above the section).
     expect(field("employee-department-unit").value).toBe("dep-finance")
     await submit(saveForm)
     expect(String(posts()[0][0])).toBe("/api/v1/mtm/attendance/employees/togrul")
-    expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ name: "Togrul Məmmədov", position: "Менеджер", personnelNumber: "T-07", departmentId: "dep-finance", teamId: "team-kassa", managerId: "m-saida",
+    expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ name: "Togrul Məmmədov", position: "Менеджер", departmentId: "dep-finance", teamId: "team-kassa", managerId: "m-saida",
       phone: "+994 55 000 11 22", email: "togrul@example.test", hireDate: "2026-03-02" })
     expect(container.textContent).toContain(p("employeeSaved"))
   })
@@ -161,20 +161,21 @@ describe("Personnel → employee page", () => {
     expect([...container.querySelectorAll("button")].some(item => item.textContent === p("removeButton"))).toBe(false)
   })
 
-  // Owner, 2026-11-02 (HRSS clip): «Tabel №» on the card; a number another person holds is refused in words.
-  it("shows the saved personnel number and says when another employee has it", async () => {
-    detail.employee = { ...detail.employee, personnelNumber: "T-07" }
-    fetchMock.mockImplementation(async (_url, options) => options?.method === "POST" ? json(null, 409, "MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN") : json(detail))
+  // Owner, 2026-11-03: «нужно чтоб автоматически присваивался уникальный номер».
+  // The card shows the issued number as text: there is nothing to type, and the save does not send one.
+  it("shows the issued personnel number as text and never sends one", async () => {
+    detail.employee = { ...detail.employee, personnelNumber: "0007" }
     await render()
-    expect((field("employee-personnel-number") as HTMLInputElement).value).toBe("T-07")
-    await edit("employee-personnel-number", "T-08")
-    await submit(saveForm)
-    expect(JSON.parse(String(posts()[0][1]!.body))).toMatchObject({ personnelNumber: "T-08" })
-    expect(container.querySelector('[role="alert"]')!.textContent).toBe(p("employeeNumberTaken"))
-    // Cleared, the number is sent as none.
-    await edit("employee-personnel-number", "  ")
-    await submit(saveForm)
-    expect(JSON.parse(String(posts()[1][1]!.body))).toMatchObject({ personnelNumber: null })
+    const block = container.querySelector('[data-testid="employee-personnel-number"]')!
+    expect(block.querySelector("input")).toBeNull()
+    expect(block.textContent).toBe(p("employeeCardPersonnelNumber") + "0007" + p("employeeCardPersonnelNumberHint"))
+    await edit("employee-position", "Кассир"); await submit(saveForm)
+    expect(JSON.parse(String(posts()[0][1]!.body))).not.toHaveProperty("personnelNumber")
+  })
+
+  it("says the number is on its way for someone who has none yet", async () => {
+    await render()
+    expect(container.querySelector('[data-testid="employee-personnel-number"]')!.textContent).toBe(p("employeeCardPersonnelNumber") + "—" + p("employeeCardPersonnelNumberPending"))
   })
 
   // Owner, 2026-11-02: «нет редактирования названия который уже был создан». The
