@@ -118,6 +118,7 @@ pgDescribe("online booking on a real Postgres", () => {
   let cancelPost!: typeof import("@/app/api/v1/public/booking/cancel/[token]/route").POST
   let settingsGet!: typeof import("@/app/api/v1/booking-pages/route").GET
   let settingsPost!: typeof import("@/app/api/v1/booking-pages/route").POST
+  let settingsPatch!: typeof import("@/app/api/v1/booking-pages/[id]/route").PATCH
   let meetingsGet!: typeof import("@/app/api/v1/bookings/route").GET
   let meetingGet!: typeof import("@/app/api/v1/bookings/[id]/route").GET
   let taskLinkGet!: typeof import("@/app/api/v1/bookings/task-link/route").GET
@@ -148,7 +149,7 @@ pgDescribe("online booking on a real Postgres", () => {
     // Only in this newly created scratch DB: replace the empty booking subset
     // with its original schema, then apply both actual forward migrations.
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
-    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands"]) {
+    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category"]) {
       prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, readFileSync(path.join(ROOT, `prisma/migrations/${migration}/migration.sql`), "utf8"))
       if (migration === "20261101090000_online_booking") {
         prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `
@@ -220,6 +221,7 @@ pgDescribe("online booking on a real Postgres", () => {
     const settings = await import("@/app/api/v1/booking-pages/route")
     settingsGet = settings.GET
     settingsPost = settings.POST
+    settingsPatch = (await import("@/app/api/v1/booking-pages/[id]/route")).PATCH
     meetingsGet = (await import("@/app/api/v1/bookings/route")).GET
     meetingGet = (await import("@/app/api/v1/bookings/[id]/route")).GET
     taskLinkGet = (await import("@/app/api/v1/bookings/task-link/route")).GET
@@ -547,6 +549,51 @@ pgDescribe("online booking on a real Postgres", () => {
     await bypass(() => prisma.bookingHostSchedule.deleteMany({ where: { organizationId: ORG, userId: HOST_A } }))
     const restored = (await view(slug)).body.data.days.flatMap((day: { slots: { startsAt: string }[] }) => day.slots)
     expect(restored.length).toBeGreaterThan(limited.length)
+  })
+
+  it("a service carries a price, a group and a cycle, and the meeting keeps the price the client agreed to", async () => {
+    // The currency is the organization's own and the form never sends one:
+    // «25» typed in a salon that works in manats must not become dollars.
+    await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { timezone: "Asia/Baku", invoice: { defaultCurrency: "AZN" } } } }))
+    try {
+      const slug = await newPage({ price: 25.5, category: " Saç ", repeatCycleDays: 28 })
+      const body = (over: Record<string, unknown> = {}) => ({
+        title: "Tanışlıq", slug, description: null, durationMinutes: 30, bufferMinutes: 0, minNoticeMinutes: 60,
+        maxDaysAhead: 3, locationType: "online", locationText: null, hostIds: [HOST_A], weekly: ALL_DAY, isActive: true, ...over,
+      })
+      const list = await (await settingsGet(json("GET", "/api/v1/booking-pages"))).json()
+      const row = list.data.pages.find((page: { slug: string }) => page.slug === slug)
+      // A string, because Decimal is not JSON — and trimmed, because « Saç »
+      // and «Saç» must not become two groups.
+      expect(typeof row.price).toBe("string")
+      expect([Number(row.price), row.priceCurrency, row.category, row.repeatCycleDays]).toEqual([25.5, "AZN", "Saç", 28])
+
+      // The customer reads the price before agreeing to it.
+      const offered = (await view(slug)).body.data.page
+      expect([Number(offered.price), offered.priceCurrency]).toEqual([25.5, "AZN"])
+
+      const startsAt = await someSlot(slug, 9)
+      const created = await book(slug, startsAt)
+      expect(created.status, await created.clone().text()).toBe(201)
+      const id = (await created.json()).data.id
+
+      // The salon raises the price. The meeting already made still says what
+      // the client agreed to, and still carries its cycle.
+      const raised = await settingsPatch(json("PATCH", `/api/v1/booking-pages/${row.id}`, body({ price: 40, category: "Saç", repeatCycleDays: 28 })), { params: Promise.resolve({ id: row.id }) })
+      expect(raised.status, await raised.clone().text()).toBe(200)
+      const card = (await (await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).json()).data
+      expect([Number(card.bookingPage.price), card.bookingPage.priceCurrency, card.bookingPage.repeatCycleDays]).toEqual([25.5, "AZN", 28])
+
+      // A cleared price leaves no currency behind, and a nonsense cycle is refused.
+      const cleared = await settingsPatch(json("PATCH", `/api/v1/booking-pages/${row.id}`, body({ price: null, category: null, repeatCycleDays: null })), { params: Promise.resolve({ id: row.id }) })
+      expect(cleared.status, await cleared.clone().text()).toBe(200)
+      const after = await bypass(() => prisma.bookingPage.findFirst({ where: { id: row.id }, select: { price: true, priceCurrency: true, category: true, repeatCycleDays: true } }))
+      expect([after!.price, after!.priceCurrency, after!.category, after!.repeatCycleDays]).toEqual([null, null, null, null])
+      const silly = await settingsPatch(json("PATCH", `/api/v1/booking-pages/${row.id}`, body({ repeatCycleDays: 4000 })), { params: Promise.resolve({ id: row.id }) })
+      expect(silly.status).toBe(400)
+    } finally {
+      await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { timezone: "Asia/Baku" } } }))
+    }
   })
 
   it("a closed page and an unknown link are not found", async () => {

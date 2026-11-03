@@ -84,7 +84,10 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
           cancelTokenHash: hashBookingToken(token), secretId,
           source: access ? "staff" : "public_link", createdBy: access?.userId ?? null,
           bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes,
-          snapshot: { orgName: org.name, description: currentPage.description, locale: input.locale ?? "az", slug: currentPage.slug, title: currentPage.title, locationType: currentPage.locationType, locationText: currentPage.locationText, timezone: org.timezone, legacyDerived: false },
+          snapshot: { orgName: org.name, description: currentPage.description, locale: input.locale ?? "az", slug: currentPage.slug, title: currentPage.title, locationType: currentPage.locationType, locationText: currentPage.locationText, timezone: org.timezone, legacyDerived: false,
+            // The price as it stood when the client agreed to it: a salon that
+            // raises a service tomorrow must not rewrite what yesterday cost.
+            price: currentPage.price === null ? null : String(currentPage.price), priceCurrency: currentPage.priceCurrency, repeatCycleDays: currentPage.repeatCycleDays },
           adAttribution: input.attribution ? input.attribution as Prisma.InputJsonValue : undefined,
         } })
         const event = await appendBookingEvent(tx, row, "created", access?.userId ?? null)

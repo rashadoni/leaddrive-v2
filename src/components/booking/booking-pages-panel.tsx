@@ -4,19 +4,24 @@
  * Settings → «Onlayn yazılış»: booking pages and their links. A page is
  * edited in place of the list — one screen, no dialog over a dialog.
  */
-import { useCallback, useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { CalendarCheck, Check, Copy, Pencil, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
+import { groupByCategory, servicePriceLabel } from "@/lib/booking/service"
 
-interface PageRow extends Omit<BookingPageDraft, "description" | "locationText"> {
+interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays"> {
   id: string
   description: string | null
   locationText: string | null
+  price: string | null
+  priceCurrency: string | null
+  category: string | null
+  repeatCycleDays: number | null
   url: string
   upcoming: number
 }
@@ -37,6 +42,9 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     locationText: "",
     hostIds,
     weekly: defaultWeeklyHours(),
+    price: "",
+    category: "",
+    repeatCycleDays: 0,
     bufferMinutes: 0,
     minNoticeMinutes: 120,
     maxDaysAhead: 14,
@@ -52,6 +60,7 @@ async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHo
 
 export function BookingPagesPanel() {
   const t = useTranslations("booking")
+  const locale = useLocale()
   const [pages, setPages] = useState<PageRow[]>([])
   const [users, setUsers] = useState<BookingHostOption[]>([])
   const [linkBase, setLinkBase] = useState("")
@@ -81,11 +90,20 @@ export function BookingPagesPanel() {
     if (!draft) return
     setSaving(true)
     setError("")
-    const { id, ...body } = draft
+    const { id, price, category, repeatCycleDays, ...body } = draft
+    // An empty field is «no price», and a typed comma is a decimal point here.
+    const amount = price.trim() ? Number(price.trim().replace(",", ".")) : null
     const response = await fetch(id ? `/api/v1/booking-pages/${id}` : "/api/v1/booking-pages", {
       method: id ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, description: body.description || null, locationText: body.locationText || null }),
+      body: JSON.stringify({
+        ...body,
+        description: body.description || null,
+        locationText: body.locationText || null,
+        price: amount !== null && Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null,
+        category: category.trim() || null,
+        repeatCycleDays: repeatCycleDays || null,
+      }),
     }).catch(() => null)
     const result = await response?.json().catch(() => null)
     setSaving(false)
@@ -119,6 +137,9 @@ export function BookingPagesPanel() {
       locationText: page.locationText ?? "",
       hostIds: page.hostIds,
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
+      price: page.price ?? "",
+      category: page.category ?? "",
+      repeatCycleDays: page.repeatCycleDays ?? 0,
       bufferMinutes: page.bufferMinutes,
       minNoticeMinutes: page.minNoticeMinutes,
       maxDaysAhead: page.maxDaysAhead,
@@ -127,6 +148,11 @@ export function BookingPagesPanel() {
   }
 
   const hostNames = (ids: string[]) => ids.map((id) => users.find((user) => user.id === id)?.name).filter(Boolean).join(", ")
+  const categories = useMemo(() => [...new Set(pages.map((page) => page.category?.trim()).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, locale)), [pages, locale])
+  // A salon that never filed its services keeps one plain list: a lone
+  // «Without a group» heading would be noise.
+  const grouped = useMemo(() => groupByCategory(pages, locale), [pages, locale])
+  const showGroups = grouped.length > 1 || grouped[0]?.category !== null
 
   return (
     <div className="space-y-6">
@@ -154,6 +180,7 @@ export function BookingPagesPanel() {
             <BookingPageEditor
               draft={draft}
               hosts={users}
+              categories={categories}
               linkBase={linkBase}
               saving={saving}
               error={error}
@@ -168,8 +195,12 @@ export function BookingPagesPanel() {
           <CardContent className="py-10 text-center text-sm text-muted-foreground">{t("emptyList")}</CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 md:[&>*:last-child:nth-child(odd)]:col-span-2">
-          {pages.map((page) => (
+        <div className="space-y-8">
+          {grouped.map((group) => (
+          <section key={group.category ?? "__none"} className="space-y-3">
+            {showGroups ? <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-muted-foreground">{group.category ?? t("categoryNone")}</h2> : null}
+            <div className="grid gap-4 md:grid-cols-2 md:[&>*:last-child:nth-child(odd)]:col-span-2">
+          {group.items.map((page) => (
             <Card key={page.id}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
@@ -184,8 +215,10 @@ export function BookingPagesPanel() {
               <CardContent className="space-y-3">
                 <dl className="grid grid-cols-3 gap-2 text-sm">
                   <div><dt className="text-muted-foreground">{t("fieldDuration")}</dt><dd className="font-medium">{t("minutes", { count: page.durationMinutes })}</dd></div>
-                  <div className="col-span-2"><dt className="text-muted-foreground">{t("colHosts")}</dt><dd className="font-medium">{hostNames(page.hostIds) || "—"}</dd></div>
+                  <div><dt className="text-muted-foreground">{t("fieldPrice")}</dt><dd className="font-medium tabular-nums">{servicePriceLabel(page, locale) ?? "—"}</dd></div>
                   <div><dt className="text-muted-foreground">{t("colUpcoming")}</dt><dd className="font-medium tabular-nums">{page.upcoming}</dd></div>
+                  <div className="col-span-2"><dt className="text-muted-foreground">{t("colHosts")}</dt><dd className="font-medium">{hostNames(page.hostIds) || "—"}</dd></div>
+                  <div><dt className="text-muted-foreground">{t("fieldCycle")}</dt><dd className="font-medium">{page.repeatCycleDays ? t("cycleEvery", { count: page.repeatCycleDays }) : "—"}</dd></div>
                 </dl>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => void copy(page.url)}>
@@ -201,6 +234,9 @@ export function BookingPagesPanel() {
                 </div>
               </CardContent>
             </Card>
+          ))}
+            </div>
+          </section>
           ))}
         </div>
       )}

@@ -22,7 +22,7 @@ const columns = {
   id: true, bookingPageId: true, hostUserId: true, startsAt: true, endsAt: true,
   name: true, phone: true, email: true, note: true, status: true, createdAt: true,
   cancelledAt: true, googleEventId: true, updatedAt: true, version: true, snapshot: true, outcomeNote: true, cancellationReason: true,
-  bookingPage: { select: { title: true, locationType: true, locationText: true, slug: true } },
+  bookingPage: { select: { title: true, locationType: true, locationText: true, slug: true, price: true, priceCurrency: true, repeatCycleDays: true } },
 } satisfies Prisma.BookingSelect
 
 export function queryWhere(access: BookingAccess, filters: BookingFilters): Prisma.BookingWhereInput {
@@ -51,7 +51,7 @@ export async function bookingContext(access: BookingAccess) {
   const [org, hosts, pages] = await Promise.all([
     prisma.organization.findUnique({ where: { id: access.orgId }, select: { settings: true } }),
     prisma.user.findMany({ where: { organizationId: access.orgId, ...(access.hostIds === null ? {} : { id: { in: access.hostIds } }) }, select: { id: true, name: true, isActive: true, role: true, hiddenModules: true }, orderBy: { name: "asc" } }),
-    prisma.bookingPage.findMany({ where: { organizationId: access.orgId, ...(access.hostIds === null ? {} : { hostIds: { hasSome: access.hostIds } }) }, select: { id: true, title: true, hostIds: true, isActive: true }, orderBy: { title: "asc" } }),
+    prisma.bookingPage.findMany({ where: { organizationId: access.orgId, ...(access.hostIds === null ? {} : { hostIds: { hasSome: access.hostIds } }) }, select: { id: true, title: true, hostIds: true, isActive: true, category: true }, orderBy: { title: "asc" } }),
   ])
   const timezone = organizationTimezone(org?.settings)
   return { writableHostIds: access.writableHostIds, timezone: isValidTimezone(timezone) ? timezone : "Asia/Baku", hosts: hosts.map(({ role, hiddenModules, ...host }) => ({ ...host, canReceiveBookings: isBookingOperator(role) && (["admin", "superadmin"].includes(role) || !hiddenModules.includes("sales")) })), pages: pages.map((page) => ({ ...page, hostIds: page.hostIds.filter((id) => access.writableHostIds === null || access.writableHostIds.includes(id)) })), canConfigure: access.administrator, canCoordinate: access.hostIds === null || access.hostIds.length > 1, userId: access.userId }
@@ -89,9 +89,14 @@ export async function bookingDetail(access: BookingAccess, id: string, role: Rol
 }
 
 
-function snapshotView(snapshot: Prisma.JsonValue | null, fallback: { title: string; locationType: string; locationText: string | null; slug: string }) {
+function snapshotView(snapshot: Prisma.JsonValue | null, fallback: { title: string; locationType: string; locationText: string | null; slug: string; price: Prisma.Decimal | null; priceCurrency: string | null; repeatCycleDays: number | null }) {
   const value = snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) ? snapshot : null
-  return { ...fallback, title: typeof value?.title === "string" ? value.title : fallback.title, locationType: typeof value?.locationType === "string" ? value.locationType : fallback.locationType, locationText: typeof value?.locationText === "string" ? value.locationText : value?.locationText === null ? null : fallback.locationText, timezone: typeof value?.timezone === "string" ? value.timezone : null }
+  return { ...fallback, title: typeof value?.title === "string" ? value.title : fallback.title, locationType: typeof value?.locationType === "string" ? value.locationType : fallback.locationType, locationText: typeof value?.locationText === "string" ? value.locationText : value?.locationText === null ? null : fallback.locationText, timezone: typeof value?.timezone === "string" ? value.timezone : null,
+    // A meeting booked before the price existed has none in its snapshot: then
+    // the service's price today is the best the card can say.
+    price: typeof value?.price === "string" ? value.price : fallback.price === null ? null : String(fallback.price),
+    priceCurrency: typeof value?.priceCurrency === "string" ? value.priceCurrency : fallback.priceCurrency,
+    repeatCycleDays: typeof value?.repeatCycleDays === "number" ? value.repeatCycleDays : fallback.repeatCycleDays }
 }
 
 

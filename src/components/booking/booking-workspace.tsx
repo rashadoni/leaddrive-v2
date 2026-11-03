@@ -52,7 +52,7 @@ export interface WorkspaceBooking {
   cancelledAt: string | null
   hostName: string | null
   calendarLinked: boolean
-  bookingPage: { title: string; locationType: string; locationText: string | null; timezone?: string | null }
+  bookingPage: { title: string; locationType: string; locationText: string | null; timezone?: string | null; price?: string | null; priceCurrency?: string | null; repeatCycleDays?: number | null }
   leadId?: string | null
   taskId?: string | null
 }
@@ -63,7 +63,7 @@ interface Context {
   canConfigure: boolean
   canCoordinate: boolean
   hosts: { id: string; name: string; isActive: boolean; canReceiveBookings: boolean }[]
-  pages: { id: string; title: string; hostIds: string[]; isActive: boolean }[]
+  pages: { id: string; title: string; hostIds: string[]; isActive: boolean; category: string | null }[]
 }
 interface BookingList { items: WorkspaceBooking[]; nextCursor: string | null }
 async function readBookingData<T>(url: string, signal: AbortSignal): Promise<T> {
