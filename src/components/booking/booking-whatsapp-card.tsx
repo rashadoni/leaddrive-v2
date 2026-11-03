@@ -13,13 +13,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { cn } from "@/lib/utils"
 import { OFFER_HOLD_MINUTES, type WhatsAppBookingMode, type WhatsAppBookingSetting } from "@/lib/booking/whatsapp-setting"
+import { BookingWhatsAppRules, type RuleService } from "./booking-whatsapp-rules"
 
 interface Channel {
   id: string
   name: string
 }
 
-export function BookingWhatsAppCard() {
+export function BookingWhatsAppCard({ services, hosts }: { services: RuleService[]; hosts: { id: string; name: string }[] }) {
   const t = useTranslations("booking")
   const [setting, setSetting] = useState<WhatsAppBookingSetting | null>(null)
   const [channels, setChannels] = useState<Channel[]>([])
@@ -124,6 +125,15 @@ export function BookingWhatsAppCard() {
         )}
 
         <p className="mt-3 text-xs text-muted-foreground">{t("waBookingHint", { minutes: OFFER_HOLD_MINUTES })}</p>
+
+        {/* The rules only matter once the agent is on. */}
+        {setting.mode === "book" ? <BookingWhatsAppRules
+          rules={setting.rules}
+          services={services}
+          hosts={hosts}
+          disabled={saving}
+          onChange={(rules) => void save({ ...setting, rules })}
+        /> : null}
         {error ? <p role="alert" className="mt-2 text-sm text-destructive">{error}</p> : null}
       </CardContent>
     </Card>

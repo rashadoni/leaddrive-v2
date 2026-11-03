@@ -3,12 +3,19 @@
  * one key in organizations.settings. Read here, apart from the agent, so the
  * settings screen does not load the model client to show a switch.
  */
+import { OPEN_RULES, readAutonomyRules, type AutonomyRules } from "./whatsapp-rules"
+
 export type WhatsAppBookingMode = "off" | "book"
 
 export interface WhatsAppBookingSetting {
   mode: WhatsAppBookingMode
   /** The number that takes bookings; null = every WhatsApp number of the organization. */
   channelConfigId: string | null
+  /**
+   * What the agent may book by itself. Everything outside becomes a request
+   * the salon confirms, with the time held meanwhile — see whatsapp-rules.ts.
+   */
+  rules: AutonomyRules
 }
 
 /**
@@ -26,5 +33,8 @@ export function readWhatsAppBookingSetting(settings: unknown): WhatsAppBookingSe
   return {
     mode: value.mode === "book" ? "book" : "off",
     channelConfigId: typeof value.channelConfigId === "string" && value.channelConfigId ? value.channelConfigId : null,
+    // No rules recorded means no narrowing: the agent books whatever it could
+    // book before this screen existed.
+    rules: "rules" in value ? readAutonomyRules(value.rules) : OPEN_RULES,
   }
 }
