@@ -39,6 +39,7 @@ def build(source, bridge):
                 self.pharmacy_bridge = ZeytunInboundBridge(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, self.call_id,
                     spool=zeytun_order_spool(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, latency))
                 self.pharmacy_bridge.log = lambda status, **fields: latency("zeytun_cancel", self.call_id, status=status, **fields)
+                self.pharmacy_bridge.log_event = lambda event, **fields: latency(event, self.call_id, **fields)
                 pilot = self.pharmacy_bridge.open()
             except Exception:
                 self._pharmacy_drop_early(early)
@@ -177,6 +178,13 @@ def build(source, bridge):
     replace('    def _setup_event(self, resume_handle=None):\n', method + '    def _setup_event(self, resume_handle=None):\n')
     anchor = '        self._accept_resumption_update(event)\n        if "goAway" in event:'
     replacement = '''        if self.pharmacy_preview:
+            # Owner's call 2026-11-03 (ac5ccd37): the Live session dropped at
+            # 299 s and its recovery 5 s later, the first call past 5 minutes.
+            # Whether the provider warned first, and with what, is the question.
+            if "goAway" in event:
+                notice = event.get("goAway")
+                latency("zeytun_goaway", self.call_id, time_left=str((notice or {}).get("timeLeft"))[:16]
+                        if isinstance(notice, dict) else None, resumable=bool(self.resumption_currently_available))
             epoch = self.gemini_ws_epoch
             current = lambda: (not self.closed and not self.hangup_started
                 and self.ws is active_ws and self.gemini_ws_epoch == epoch)

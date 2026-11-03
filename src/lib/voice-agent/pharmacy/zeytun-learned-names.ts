@@ -15,10 +15,15 @@ export interface LearnedNames {
   ordered(limit: number): string[]
 }
 
-export function learnNames(lines: ConfirmedLine[]): LearnedNames {
+/**
+ * `written`: every product the line wrote, confirmed or not (owner's call
+ * 2026-11-03: with no confirmed order yet the recognizer had no hint at all,
+ * and Ketonal came back as "etanol"). Only confirmed lines teach wordings.
+ */
+export function learnNames(lines: ConfirmedLine[], written: string[] = lines.map((line) => line.externalId)): LearnedNames {
   const byKey = new Map<string, Set<string>>(), counts = new Map<string, number>()
+  for (const id of written) counts.set(id, (counts.get(id) ?? 0) + 1)
   for (const line of lines) {
-    counts.set(line.externalId, (counts.get(line.externalId) ?? 0) + 1)
     const key = spokenNameKey(line.spoken)
     // "—" is a line the manager added himself: nobody said it.
     if (!key) continue

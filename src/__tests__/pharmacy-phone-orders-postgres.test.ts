@@ -312,6 +312,13 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(await confirmedPhoneOrderLines(app as unknown as PrismaClient,
       { organizationId: ZEYTUN, catalogScopeKey: "c".repeat(64), since: new Date(0), limit: 100 })).toEqual([])
     expect(await read(OTHER)).toEqual([])
+    // Hints: every resolved line the line wrote, confirmed or not (owner's call 2026-11-03).
+    const { orderedPhoneOrderProducts } = await import("@/lib/voice-agent/pharmacy/phone-orders")
+    const ordered = await orderedPhoneOrderProducts(app as unknown as PrismaClient,
+      { organizationId: ZEYTUN, catalogScopeKey: CATALOG.scopeKey, since: new Date("2026-01-01T00:00:00Z"), limit: 100 })
+    expect([...ordered].sort()).toEqual([KETONAL, NOSPA, NOSPA, NOSPA].sort())
+    expect(await orderedPhoneOrderProducts(app as unknown as PrismaClient,
+      { organizationId: OTHER, catalogScopeKey: CATALOG.scopeKey, since: new Date(0), limit: 100 })).toEqual([])
   })
 
   it("keeps the 1C pharmacy a number named, and refuses an identification it does not know", async () => {
@@ -602,6 +609,9 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     // The call broke off: the managers have the list to look at, the pharmacy hears nothing.
     expect(await announce()).toEqual({ manager: expect.objectContaining({ status: "sent" }), pharmacy: null })
     expect(sent.map(message => message.template.name)).toEqual(["phone_order_new"])
+    // «Слать с пометкой»: the managers read that the call broke off before a confirmation.
+    const notice = sent[0] as unknown as { template: { components: Array<{ parameters: Array<{ text: string }> }> } }
+    expect(notice.template.components[0].parameters[0].text).toBe("TS-1001 (zəng yarımçıq qaldı, sifariş təsdiqlənməyib)")
     const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(61) } })
     expect([order.finishedOnCallAt, order.pharmacyReceipt]).toEqual([null, null])
     // The final save the station still held arrives after the call, behind a later seq: the order is finished then.

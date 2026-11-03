@@ -19,6 +19,12 @@ import { resolveWhatsAppConfig, type WhatsAppConfig } from "@/lib/whatsapp"
  */
 
 export const PHONE_ORDER_NOTICE_TEMPLATE = "phone_order_new"
+/**
+ * Owner, 2026-11-03 («Слать с пометкой»): the call broke off before the
+ * pharmacy confirmed the order. The managers still hear of it, to call back,
+ * with this after the order number — the template itself is Meta's to approve.
+ */
+export const UNFINISHED_ORDER_MARK = "zəng yarımçıq qaldı, sifariş təsdiqlənməyib"
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
 const SEND_TIMEOUT_MS = 8_000
 const MAX_RECIPIENTS = 5
@@ -189,7 +195,8 @@ function logPdfSkipped(orderId: string, template: string, reason: string) {
  * saves of one call never send twice; a failure is recorded, not retried.
  */
 export async function notifyManagersOfPhoneOrder(db: PrismaClient, orgId: string, orderId: string,
-  deps: { fetch?: Fetch; now?: () => Date; sender?: (orgId: string) => Promise<WhatsAppConfig | null> } = {}): Promise<ManagerNotice | null> {
+  deps: { fetch?: Fetch; now?: () => Date; sender?: (orgId: string) => Promise<WhatsAppConfig | null> } = {},
+  options: { unfinished?: boolean } = {}): Promise<ManagerNotice | null> {
   const now = deps.now ?? (() => new Date())
   return runWithTenant(orgId, async () => {
     const claimed = await db.pharmacyPhoneOrder.updateMany({
@@ -212,7 +219,8 @@ export async function notifyManagersOfPhoneOrder(db: PrismaClient, orgId: string
     if (!phones.length) return record({ status: "no_recipient", at: at() })
     const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
     if (!sender) return record({ status: "not_connected", at: at() })
-    const values = { label: phoneOrderLabel(order.number), pharmacy: order.company?.name ?? order.pharmacyName ?? "—",
+    const label = phoneOrderLabel(order.number)
+    const values = { label: options.unfinished ? `${label} (${UNFINISHED_ORDER_MARK})` : label, pharmacy: order.company?.name ?? order.pharmacyName ?? "—",
       total: order.totalAmount.toFixed(2), orderId }
     const ids: string[] = []
     let sent = 0, error: string | null = null
@@ -241,10 +249,11 @@ export async function announceCallOrder(db: PrismaClient, orgId: string, provide
   // An order the pharmacy cancelled on the call (owner's call 2026-10-31) is
   // nobody's to process: neither the managers nor the pharmacy hear of it.
   if (!order || order.status !== "pending_review") return null
-  const manager = await notifyManagersOfPhoneOrder(db, orgId, order.id, deps)
   // Owner's call 2026-11-03: he hung up mid-order and got "your order is
   // received". The pharmacy hears of an order only once it finished it on the
-  // call; a call that broke off leaves the list to the managers alone.
+  // call; a call that broke off leaves the list to the managers alone, marked
+  // as not confirmed («Слать с пометкой»).
+  const manager = await notifyManagersOfPhoneOrder(db, orgId, order.id, deps, { unfinished: !order.finishedOnCallAt })
   const pharmacy = order.finishedOnCallAt ? await sendPharmacyReceipt(db, orgId, order.id, deps) : null
   return { manager, pharmacy }
 }
