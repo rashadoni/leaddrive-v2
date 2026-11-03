@@ -27,6 +27,25 @@ class ZeytunNoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+ZEYTUN_ONES = ("", "bir", "iki", "üç", "dörd", "beş", "altı", "yeddi", "səkkiz", "doqquz")
+ZEYTUN_TENS = ("", "on", "iyirmi", "otuz", "qırx", "əlli", "altmış", "yetmiş", "səksən", "doxsan")
+
+
+def zeytun_number_words(number):
+    """A whole number below a million in Azerbaijani words: 115 is "yüz on beş", 2000 "iki min"."""
+    if number == 0:
+        return "sıfır"
+
+    def below_thousand(n):
+        hundreds, rest = divmod(n, 100)
+        words = ([] if hundreds == 0 else ["yüz"] if hundreds == 1 else [ZEYTUN_ONES[hundreds], "yüz"])
+        tens, ones = divmod(rest, 10)
+        return words + [w for w in (ZEYTUN_TENS[tens], ZEYTUN_ONES[ones]) if w]
+    thousands, rest = divmod(number, 1000)
+    words = ([] if thousands == 0 else ["min"] if thousands == 1 else below_thousand(thousands) + ["min"])
+    return " ".join(words + below_thousand(rest))
+
+
 def zeytun_speakable_text(text):
     """What the TTS reads: "1.33 manatdır" as "1 manat 33 qəpikdir".
 
@@ -43,6 +62,19 @@ def zeytun_speakable_text(text):
             return whole + " manat" + suffix
         return whole + " manat " + str(int(cents)) + " qəpik" + ("dir" if suffix else "")
     text = re.sub(r"\b(\d+)[.,](\d{1,2})\s*(?:manat|AZN)(\w*)", money, text)
+    # Owner's call 2026-11-03: «переходит на английский». "Ketonal geli 10
+    # qutu." has no Azerbaijani letter, and the TTS voiced it as English ("ten").
+    # Whole numbers, "№", mq and ml are written out in Azerbaijani words; a
+    # suffix after a hyphen joins its word ("5-dən" is "beşdən"). A decimal
+    # (2,5%) and an ordinal are left as written.
+    text = re.sub(r"№\s*", "nömrə ", text)
+    text = re.sub(r"(?<=\d)\s*(mq|ml)\b|\b(mq|ml)\b",
+                  lambda m: (" " if m.group(1) else "") + ("milliqram" if (m.group(1) or m.group(2)).lower() == "mq" else "millilitr"),
+                  text, flags=re.IGNORECASE)
+    # An ordinal ("2025-ci", "3-cü") changes the word itself: left as written.
+    text = re.sub(r"(?<![\d.,])(\d{1,6})(?:-(\w+))?(?![\d]|[.,]\d)",
+                  lambda m: m.group(0) if m.group(2) and re.fullmatch(r"[iıuü]?n?c[iıuü]", m.group(2).lower())
+                  else zeytun_number_words(int(m.group(1))) + (m.group(2) or ""), text)
     # Owner, 2026-10-30, of the sample with a breath and a "Hmm…" («C»): the
     # 3.8 TTS voices these angle-bracket events instead of reading them.
     text = re.sub(r"^Salam!\s+", "Salam! <breath> ", text)
@@ -1080,7 +1112,8 @@ class ZeytunInboundBridge:
                                 "unit": {"type": "STRING", "description": "The caller's unit: qutu, ədəd, flakon, ampula, ..."},
                                 "spoken": {"type": "STRING", "description": "The caller's own words for this line, at most 160 characters."}},
                  "required": ["quantity", "unit", "spoken"]}},
-                 "pharmacy": {"type": "STRING", "description": "The pharmacy as the caller named it, at most 120 characters; omit when not named."}},
+                 "pharmacy": {"type": "STRING", "description": "The pharmacy as the caller named it, at most 120 characters; omit when not named."},
+                 "final": {"type": "BOOLEAN", "description": "true only on the save after the caller confirmed the whole order (təsdiq edin, bu qədər, hamısı budur); never on the saves after each line. Only a final order is sent to the pharmacy on WhatsApp."}},
                  "required": ["lines"]}}] + ([
             {"name": self.TRANSFER_NAME,
              "description": "Hand this call to a Zeytun manager in the CRM. Call it only when the caller asks for a person. If it returns transferring, say exactly its say text and nothing after it: the line then rings the managers. If it returns unavailable, say that no manager can answer right now and keep taking the order yourself.",
@@ -1249,14 +1282,20 @@ class ZeytunInboundBridge:
 
     @staticmethod
     def order_request(args):
-        """The save call as the CRM accepts it ({"lines", "pharmacy"?}), or None."""
-        if not isinstance(args, dict) or not {"lines"} <= set(args) <= {"lines", "pharmacy"}:
+        """The save call as the CRM accepts it ({"lines", "pharmacy"?, "final"?}), or None.
+
+        final: the save after the caller confirmed the whole order (owner's
+        call 2026-11-03: he hung up mid-order and still got the list on
+        WhatsApp). Only true is sent; false or absent is an ordinary save.
+        """
+        if not isinstance(args, dict) or not {"lines"} <= set(args) <= {"lines", "pharmacy", "final"}:
             return None
         lines = ZeytunInboundBridge.order_lines({"lines": args["lines"]})
-        pharmacy = args.get("pharmacy")
-        if lines is None or (pharmacy is not None and (not isinstance(pharmacy, str) or not 1 <= len(pharmacy.strip()) <= 120)):
+        pharmacy, final = args.get("pharmacy"), args.get("final")
+        if (lines is None or (pharmacy is not None and (not isinstance(pharmacy, str) or not 1 <= len(pharmacy.strip()) <= 120))
+                or (final is not None and not isinstance(final, bool))):
             return None
-        return {"lines": lines, **({"pharmacy": pharmacy.strip()} if pharmacy is not None else {})}
+        return {"lines": lines, **({"pharmacy": pharmacy.strip()} if pharmacy is not None else {}), **({"final": True} if final else {})}
 
     @staticmethod
     def order_lines(args):

@@ -196,7 +196,7 @@ export type InboundPilotDependencies = {
   /** Saves the call's list to config.orderOrganizationId's phone orders. */
   saveOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotOrderCall,
     catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[], pharmacy?: string,
-    delivery?: { seq?: number; afterCall: boolean }) => Promise<PhoneOrderSaveResult>
+    delivery?: { seq?: number; afterCall: boolean; final?: boolean }) => Promise<PhoneOrderSaveResult>
   /** The order organization's own line speech (zeytun-line-speech.ts); empty fields are the code's texts. */
   loadLineSpeech?: (config: LineGrant) => Promise<LineSpeech>
   /** What its managers' confirmed orders taught the line (zeytun-learned-names.ts); null until read. Never waits. */
@@ -229,8 +229,12 @@ export const ZEYTUN_INBOUND_VOICE: { voice: string | null; pinSpeechLanguage: bo
 // breath after the greeting and a "Hmm…" before a clarifying question (the
 // station voices those). The voice itself stays Sulafat («не трогай»). A
 // station without style support ignores the field.
+// Owner's call 2026-11-03: «переходит на английский». The agent wrote
+// Azerbaijani, but a piece without Azerbaijani letters ("Ketonal geli 10
+// qutu.") was voiced as English. The TTS takes no language code; the delivery
+// says it, before the manner the owner chose («C», unchanged).
 export const ZEYTUN_INBOUND_SPEECH = { engine: "tts", model: "gemini-3.8-flash-tts", voice: "Sulafat",
-  style: "relaxed, friendly phone conversation; warm and smiling, natural unhurried pace with small natural pauses; a real order-desk operator talking to a regular customer, not a narrator reading a script" } as const
+  style: "always Azerbaijani as spoken in Baku: every word, number and medicine name read the Azerbaijani way, never English; relaxed, friendly phone conversation; warm and smiling, natural unhurried pace with small natural pauses; a real order-desk operator talking to a regular customer, not a narrator reading a script" } as const
 /** Said once the CRM has taken the transfer; the station ends the AI's part
  * after it and rings the managers (closing_keys, as for the goodbye). */
 export const ZEYTUN_TRANSFER_PHRASE = "Sizi menecerə qoşuram, xətdə qalın."
@@ -393,7 +397,9 @@ const bodySchema = z.discriminatedUnion("action", [
     lines: z.array(phoneOrderLineInputSchema).min(1).max(PHONE_ORDER_MAX_LINES),
     pharmacy: z.string().trim().min(1).max(120).optional(),
     /** The station's number for this save of the call; it resends only with one. */
-    seq: z.number().int().min(1).max(1_000_000).optional() }),
+    seq: z.number().int().min(1).max(1_000_000).optional(),
+    /** The agent's last save, after the caller confirmed the order (owner's call 2026-11-03). */
+    final: z.literal(true).optional() }),
 ])
 const denied = () => searchResponse({ enabled: false, status: "pilot_not_authorized", candidates: [], ...searchRestrictions }, 403)
 function active(config: InboundPilotConfig, now: number) {
@@ -582,7 +588,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         const orderOrganizationId = config.orderOrganizationId
         if (!orderOrganizationId || !dependencies.saveOrder) return searchResponse({ status: "orders_disabled" })
         const saved = await dependencies.saveOrder({ ...config, orderOrganizationId }, finalCall, phoneOrderCatalog(catalog), input.lines,
-          input.pharmacy, { seq: input.seq, afterCall: finalCall.endedAt !== null })
+          input.pharmacy, { seq: input.seq, afterCall: finalCall.endedAt !== null, final: input.final })
         if (saved.status === "already_reviewed") return searchResponse({ status: "already_reviewed", orderNumber: phoneOrderLabel(saved.number) })
         return searchResponse({ status: "saved", orderNumber: phoneOrderLabel(saved.number), changed: saved.changed,
           total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced })

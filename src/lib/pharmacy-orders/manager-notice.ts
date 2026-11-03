@@ -237,12 +237,15 @@ export async function notifyManagersOfPhoneOrder(db: PrismaClient, orgId: string
 export async function announceCallOrder(db: PrismaClient, orgId: string, providerCallId: string,
   deps: Parameters<typeof notifyManagersOfPhoneOrder>[3] = {}): Promise<{ manager: ManagerNotice | null; pharmacy: PharmacyReceipt | null } | null> {
   const order = await runWithTenant(orgId, () => db.pharmacyPhoneOrder.findFirst({
-    where: { organizationId: orgId, providerCallId }, select: { id: true, status: true } }))
+    where: { organizationId: orgId, providerCallId }, select: { id: true, status: true, finishedOnCallAt: true } }))
   // An order the pharmacy cancelled on the call (owner's call 2026-10-31) is
   // nobody's to process: neither the managers nor the pharmacy hear of it.
   if (!order || order.status !== "pending_review") return null
   const manager = await notifyManagersOfPhoneOrder(db, orgId, order.id, deps)
-  const pharmacy = await sendPharmacyReceipt(db, orgId, order.id, deps)
+  // Owner's call 2026-11-03: he hung up mid-order and got "your order is
+  // received". The pharmacy hears of an order only once it finished it on the
+  // call; a call that broke off leaves the list to the managers alone.
+  const pharmacy = order.finishedOnCallAt ? await sendPharmacyReceipt(db, orgId, order.id, deps) : null
   return { manager, pharmacy }
 }
 

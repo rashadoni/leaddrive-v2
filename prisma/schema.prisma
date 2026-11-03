@@ -23759,6 +23759,10 @@ model PharmacyPhoneOrder {
   pharmacyNotice         Json?
   /// Delivery state of the pharmacy's WhatsApp list sent when the call ends: { status, at, messageId?, error? }.
   pharmacyReceipt        Json?
+  /// When the caller finished the order on the call (the agent's final save
+  /// after «təsdiq»); null for a call that broke off. Only a finished order
+  /// sends the pharmacy its list (owner's call 2026-11-03).
+  finishedOnCallAt       DateTime?
   /// The order in Zeytun's 1C: sending | created | refused | unknown (no clear answer: 1C is asked before anything is sent again).
   erpState               String?
   /// When the current or last send to 1C began; a send older than two minutes is treated as unknown.

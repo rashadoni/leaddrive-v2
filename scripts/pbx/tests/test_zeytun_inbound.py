@@ -130,6 +130,24 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(self.finished.wait(2))
         return self.sent[-1]["toolResponse"]["functionResponses"][0]
 
+    def test_the_final_save_is_marked_and_nothing_else_is(self):
+        # Owner's call 2026-11-03: he hung up mid-order and the pharmacy still got the list.
+        declaration = [d for d in self.bridge.tools()[0]["functionDeclarations"] if d["name"] == "save_order_list"][0]
+        self.assertEqual(declaration["parameters"]["properties"]["final"]["type"], "BOOLEAN")
+        self.assertNotIn("final", declaration["parameters"]["required"])
+        line = {"quantity": 2, "unit": "qutu", "spoken": "Azirag iki qutu"}
+        request = bridge_module.ZeytunInboundBridge.order_request
+        self.assertEqual(request({"lines": [line], "final": True}), {"lines": [line], "final": True})
+        self.assertEqual(request({"lines": [line], "final": False}), {"lines": [line]})
+        self.assertIsNone(request({"lines": [line], "final": "yes"}))
+        self.save([line], key="save-final-1")
+        self.assertNotIn("final", self.requests[-1])
+        self.finished.clear()
+        self.handle({"toolCall": {"functionCalls": [{"id": "save-final-2", "name": "save_order_list",
+                                                     "args": {"lines": [line], "final": True}}]}})
+        self.assertTrue(self.finished.wait(2))
+        self.assertIs(self.requests[-1]["final"], True)
+
     def test_save_sends_the_agreed_lines_and_reads_back_only_the_receipt(self):
         names = [d["name"] for d in self.bridge.tools()[0]["functionDeclarations"]]
         self.assertEqual(names, ["search_pharmacy_catalog", "calculate_order_total", "save_order_list"])
@@ -955,8 +973,8 @@ class SpeechRelayTests(unittest.TestCase):
         relay.filter(self.content(turnComplete=True))
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
         # Still two TTS requests for the reply at most: the first clause, then the rest.
-        # (Money is read out in words: "1,33 manat" is "1 manat 33 qəpik".)
-        self.assertEqual(tts.texts, ["Parasetamolun qutusu 1 manat 33 qəpikdir,", "Sopharma istehsalıdır. Başqa nə lazımdır?"])
+        # (Money is read out in words: "1,33 manat" is "bir manat otuz üç qəpik".)
+        self.assertEqual(tts.texts, ["Parasetamolun qutusu bir manat otuz üç qəpikdir,", "Sopharma istehsalıdır. Başqa nə lazımdır?"])
 
     def test_caller_input_and_other_fields_still_reach_the_core_at_once(self):
         relay = self.relay(FakeTts())
@@ -1046,7 +1064,7 @@ class SpeechRelayTests(unittest.TestCase):
         relay.filter(self.content("Seftriakson otuz ədəd Rotexmedica. Başqa nə əlavə edək?", audio=True))
         relay.filter(self.content(turnComplete=True))
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
-        self.assertEqual(tts.texts, ["Siyahınızda on beş qutu Parasetamol 500 mq Sopharma var.",
+        self.assertEqual(tts.texts, ["Siyahınızda on beş qutu Parasetamol beş yüz milliqram Sopharma var.",
             "Qiyməti bir qutu üçün bir manat otuz üç qəpikdir. Seftriakson otuz ədəd Rotexmedica. Başqa nə əlavə edək?"])
 
     def test_each_clip_gets_air_before_and_after_and_a_soft_start(self):
@@ -1196,10 +1214,25 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertEqual(bridge_module.ZEYTUN_OPENING_AUDIO, {})
 
     def test_amounts_are_read_as_manat_and_qepik(self):
-        self.assertEqual(bridge_module.zeytun_speakable_text("Qiyməti 1.33 manatdır."), "Qiyməti 1 manat 33 qəpikdir.")
-        self.assertEqual(bridge_module.zeytun_speakable_text("Cəmi 264.79 manat."), "Cəmi 264 manat 79 qəpik.")
-        self.assertEqual(bridge_module.zeytun_speakable_text("12.5 manat"), "12 manat 50 qəpik")
+        self.assertEqual(bridge_module.zeytun_speakable_text("Qiyməti 1.33 manatdır."), "Qiyməti bir manat otuz üç qəpikdir.")
+        self.assertEqual(bridge_module.zeytun_speakable_text("Cəmi 264.79 manat."), "Cəmi iki yüz altmış dörd manat yetmiş doqquz qəpik.")
+        self.assertEqual(bridge_module.zeytun_speakable_text("12.5 manat"), "on iki manat əlli qəpik")
         self.assertEqual(bridge_module.zeytun_speakable_text("1,3 manatdan"), "1,3 manatdan")
+
+    def test_numbers_and_units_are_azerbaijani_words(self):
+        # Owner's call 2026-11-03: «переходит на английский» — "Ketonal geli 10 qutu."
+        # has no Azerbaijani letter and was voiced as English ("ten").
+        speak = bridge_module.zeytun_speakable_text
+        self.assertEqual(speak("Ketonal geli 10 qutu."), "Ketonal geli on qutu.")
+        self.assertEqual(speak("Ketonal geli, 1 qutu."), "Ketonal geli, bir qutu.")
+        self.assertEqual(speak("Adefa № 30, 5-dən az"), "Adefa nömrə otuz, beşdən az")
+        self.assertEqual(speak("Azirag 500 mq, sirop 150 ml"), "Azirag beş yüz milliqram, sirop yüz əlli millilitr")
+        # A decimal and an ordinal change the word itself: left as written.
+        self.assertEqual(speak("2,5% gel, 2026-cı ilədək, 3-cü"), "2,5% gel, 2026-cı ilədək, 3-cü")
+        words = bridge_module.zeytun_number_words
+        self.assertEqual([words(n) for n in (0, 7, 10, 21, 100, 115, 999, 1000, 2025, 21000, 999999)],
+                         ["sıfır", "yeddi", "on", "iyirmi bir", "yüz", "yüz on beş", "doqquz yüz doxsan doqquz", "min",
+                          "iki min iyirmi beş", "iyirmi bir min", "doqquz yüz doxsan doqquz min doqquz yüz doxsan doqquz"])
 
     def test_the_wait_filler_plays_only_when_ready_idle_and_not_too_often(self):
         bridge_module.ZEYTUN_FILLER_AUDIO.clear()

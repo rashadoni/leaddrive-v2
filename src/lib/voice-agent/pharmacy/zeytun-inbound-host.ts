@@ -213,11 +213,12 @@ export function createInboundPilotHost(options: {
     ...(options.orders ? {
       saveOrder: async (config, call, catalog, lines, pharmacy, delivery) => {
         const base = { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
-          callStartedAt: call.startedAt, catalog, lines, seq: delivery?.seq, afterCall: delivery?.afterCall === true }
+          callStartedAt: call.startedAt, catalog, lines, seq: delivery?.seq, afterCall: delivery?.afterCall === true, final: delivery?.final === true }
         const saved = await saveFromCall(config, call, base, pharmacy)
         // The end of the call announced the order as it was then (or found
-        // none): a list delivered later is announced again, as it now is.
-        if (base.afterCall && saved.status === "saved" && saved.changed && options.announceOrder) {
+        // none): a list delivered later is announced again, as it now is; so
+        // is a late final save, which only now lets the pharmacy hear of it.
+        if (base.afterCall && saved.status === "saved" && (saved.changed || base.final) && options.announceOrder) {
           void options.announceOrder(config.orderOrganizationId, call.providerCallId)
             .catch((error: unknown) => console.warn("[zeytun-line] late order notice failed", error instanceof Error ? error.name : typeof error))
         }
