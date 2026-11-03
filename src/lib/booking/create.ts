@@ -51,7 +51,10 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   if (!permitted.length) return { ok: false, reason: "taken" }
   const from = now, to = new Date(now.getTime() + (page.maxDaysAhead + 2) * 86400_000)
   const checkedAt = Date.now()
-  const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to, org.timezone)
+  // A customer-facing booking respects the holds of other conversations; a
+  // staff one does not (see BusyOptions).
+  const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to, org.timezone,
+    access ? {} : { holds: { exceptConversationId: input.whatsapp?.conversationId ?? null } })
   const slot = findSlot(computeSlots({ rules: bookingRules(page, org.timezone), hostIds: permitted.map((host) => host.id), busyByHost: busy, now }), input.startsAt)
   if (!slot) {
     if (busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
@@ -82,7 +85,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
           organizationId: orgId, bookingPageId: pageId, hostUserId: hostId, startsAt, endsAt,
           name: input.name, phone: input.phone, email: input.email || null, note: input.note || null,
           cancelTokenHash: hashBookingToken(token), secretId,
-          source: access ? "staff" : "public_link", createdBy: access?.userId ?? null,
+          source: access ? "staff" : input.whatsapp ? "whatsapp" : "public_link", createdBy: access?.userId ?? null,
           bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes,
           snapshot: { orgName: org.name, description: currentPage.description, locale: input.locale ?? "az", slug: currentPage.slug, title: currentPage.title, locationType: currentPage.locationType, locationText: currentPage.locationText, timezone: org.timezone, legacyDerived: false,
             // The price as it stood when the client agreed to it: a salon that

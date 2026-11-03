@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
+import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
 import { groupByCategory, servicePriceLabel } from "@/lib/booking/service"
 
@@ -170,6 +171,8 @@ export function BookingPagesPanel() {
           </Button>
         ) : null}
       </div>
+
+      {!draft ? <BookingWhatsAppCard /> : null}
 
       {draft ? (
         <Card>
