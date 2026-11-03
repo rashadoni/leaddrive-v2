@@ -8,11 +8,12 @@ import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies,
   type InboundPilotOrderCall } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
-import { cancelPhoneOrderFromCall, savePhoneOrderFromCall } from "./phone-orders"
+import { cancelPhoneOrderFromCall, confirmedPhoneOrderLines, savePhoneOrderFromCall } from "./phone-orders"
 import { requestAiHandoff } from "../../voip/inbound-handoff"
 import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import { readLineSpeech } from "./zeytun-line-speech"
+import { learnNames, type LearnedNames } from "./zeytun-learned-names"
 import type { PrismaClient } from "@prisma/client"
 
 // 2026-10-25 live call: the session request got 503 and the station ended the
@@ -27,6 +28,8 @@ function callerNumber(value: string) {
   const digits = compact.startsWith("+") ? compact.slice(1) : compact
   return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : value.slice(0, 64)
 }
+/** How far back confirmed orders teach the line, and how long one reading of them is used. */
+const LEARNED_SINCE_MS = 365 * 24 * 60 * 60_000, LEARNED_FOR_MS = 10 * 60_000, LEARNED_MAX_LINES = 20_000
 /** A directory older than this is not used to name a caller: 1C stopped answering. */
 const PHARMACY_DIRECTORY_MAX_AGE_MS = 7 * 24 * 60 * 60_000
 
@@ -52,6 +55,7 @@ export function createInboundPilotHost(options: {
   const allowedOrganization = async (config: InboundPilotConfig) => config.organizationId === options.runtimeOrganizationId
     || (isLineGrant(config) && Boolean(options.holdsLine) && await options.holdsLine!(config.organizationId, config.channelConfigId))
   let catalog: { key: string; at: number; value: ReturnType<InboundPilotDependencies["loadCatalog"]>; next?: Promise<void> } | null = null
+  const learned = new Map<string, { at: number; value: LearnedNames | null; loading: boolean }>()
   // The pharmacy list is small (~1 200 rows, ~0.1 s to parse): re-read when
   // its header changes, looked at no more than once a minute.
   let pharmacies: { key: string; version: string; at: number; directory: ZeytunClientsDirectory } | null = null
@@ -227,6 +231,28 @@ export function createInboundPilotHost(options: {
         return result.status
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder" | "cancelOrder"> : {}),
+    ...(options.orders ? {
+      // Owner, 2026-11-03 («товаров 9к»): the line learns from the orders its
+      // managers confirmed. Read in the background, never on a spoken request:
+      // until the first reading is there, the line searches as before.
+      learnedNames: (config) => {
+        const orgId = config.orderOrganizationId
+        if (!orgId) return null
+        const key = `${orgId}:${config.approvedSource.scopeKey}`
+        const known = learned.get(key)
+        if (!known || (!known.loading && Date.now() - known.at >= LEARNED_FOR_MS)) {
+          const entry = known ?? { at: 0, value: null as LearnedNames | null, loading: false }
+          entry.loading = true
+          learned.set(key, entry)
+          void confirmedPhoneOrderLines(options.orders!, { organizationId: orgId, catalogScopeKey: config.approvedSource.scopeKey,
+            since: new Date(Date.now() - LEARNED_SINCE_MS), limit: LEARNED_MAX_LINES }).then((lines) => {
+            entry.value = learnNames(lines)
+            console.log("[zeytun-line] learned", JSON.stringify({ lines: lines.length }))
+          }).catch(() => undefined).finally(() => { entry.at = Date.now(); entry.loading = false })
+        }
+        return known?.value ?? null
+      },
+    } satisfies Pick<InboundPilotDependencies, "learnedNames"> : {}),
     ...(options.orders && options.transferAvailable ? {
       // Owner, 2026-10-27: the caller asks for a person, the managers' browsers
       // ring. Only where someone can take a browser call; once per call.

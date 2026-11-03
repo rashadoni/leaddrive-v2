@@ -437,3 +437,13 @@ function pharmacyWords(name: string): string[] {
   for (const joined of name.match(/[\p{L}\p{M}]+(?:-[\p{L}\p{M}]+)+/gu) ?? []) result.push(joined.replace(/-/gu, ""))
   return result
 }
+
+/**
+ * A spoken request reduced to its product words, folded (alphabets, digraphs,
+ * «г» as "q") and without quantity words: "Adexa beş qutu" and "adexa" are the
+ * same key. Used to recognize a wording a manager has already confirmed.
+ */
+export function spokenNameKey(text: string): string {
+  return [...new Set(pharmacyWords(normalizePharmacyLabel(text)))]
+    .filter((word) => !QUANTITY_WORDS.has(word)).map((word) => foldSpelling(word).join("")).join(" ")
+}
