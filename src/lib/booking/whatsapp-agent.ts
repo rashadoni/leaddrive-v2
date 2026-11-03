@@ -204,7 +204,8 @@ interface ServiceContext {
   maxDaysAhead: number
   weekly: unknown
   hostIds: string[]
-  price: unknown
+  /** A Decimal would read as NaN, so it is a string by the time it gets here. */
+  price: string | null
   priceCurrency: string | null
   category: string | null
   locationText: string | null
@@ -398,6 +399,11 @@ async function findChoices(input: BookingTurnInput, service: ServiceContext, req
   return { choices: [], exact: false }
 }
 
+/** A page row as the agent uses it: the Decimal price spelled out. */
+function asService(page: { price: unknown } & Omit<ServiceContext, "price">): ServiceContext {
+  return { ...page, price: page.price === null || page.price === undefined ? null : String(page.price) }
+}
+
 const SERVICE_SELECT = { id: true, title: true, durationMinutes: true, bufferMinutes: true, minNoticeMinutes: true, maxDaysAhead: true, weekly: true, hostIds: true, price: true, priceCurrency: true, category: true, locationText: true } as const
 
 async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string }, now: Date): Promise<boolean> {
@@ -457,7 +463,7 @@ async function loadContext(input: BookingTurnInput, now: Date): Promise<(Decisio
   ])
   const hosts = await activeHosts(input.organizationId, [...new Set(pages.flatMap((page) => page.hostIds))])
   const services = pages
-    .map((page) => ({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }))
+    .map((page) => asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }))
     .filter((page) => page.hostIds.length > 0)
   if (!services.length) return null
   const today = dateInputValueInTimezone(now, timezone)
@@ -556,7 +562,7 @@ async function bookOffer(input: BookingTurnInput, offerId: string, now: Date): P
     const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: offer.bookingPageId, isActive: true }, select: SERVICE_SELECT })
     if (!page || !request) return false
     const hosts = await activeHosts(input.organizationId, page.hostIds)
-    return sendOffers(input, { ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }, request, { timezone, hosts, greet: false, prefix: words.taken }, now)
+    return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request, { timezone, hosts, greet: false, prefix: words.taken }, now)
   }
   // Only the tap that moved the offer to «booked» confirms: a racing second
   // tap replays the same booking and stays quiet.

@@ -990,7 +990,8 @@ pgDescribe("online booking on a real Postgres", () => {
       // Three buttons, each one a held time of this conversation.
       const message = whatsapp.buttons.at(-1)!
       expect(message.conversationId).toBe(conversation)
-      expect(message.body).toMatch(/Saç kəsimi, 45 dəq/)
+      // The price too: a Decimal handed straight to the label reads as nothing.
+      expect(message.body).toMatch(/Saç kəsimi, 45 dəq, 25 ₼/)
       expect(message.footer).toBe("Vaxt 15 dəqiqə sizin üçün saxlanılır")
       expect(message.buttons).toHaveLength(3)
       for (const button of message.buttons) {
