@@ -4,9 +4,11 @@ import type { Prisma } from "@prisma/client"
  * Personnel numbers are issued, not typed (owner, 2026-11-03: «нужно чтоб
  * автоматически присваивался уникальный номер… 500 сотрудников будут
  * заполнять разные кадровики, там будут ошибаться и в последовательности и в
- * повторении»; mockup approved with «Давай, делай»). Everyone in HR's list
- * gets the next number of the organization once, in the order they were
- * added, and keeps it — dismissed too. HR cannot change it.
+ * повторении»; mockup approved with «Давай, делай»). Everyone the timesheet
+ * lists — HR's list and the CRM users it tracks automatically (owner,
+ * 2026-11-03: «Да, всем в табеле») — gets the next number of the organization
+ * once, in the order they were added, and keeps it, dismissed too. HR cannot
+ * change it.
  *
  * Numbers are four digits with leading zeros and simply grow past 9999. The
  * next one follows the largest all-digit number the organization has or has
@@ -45,12 +47,13 @@ export async function issueAttendancePersonnelNumbers(tx: Prisma.TransactionClie
         AND "metadataKind" = 'mtm_attendance_employee_card' AND action = ${ISSUED}
     ) numbers WHERE number ~ '^[0-9]{1,15}$'`
   let next = Number(last ?? 0)
-  for (const card of cards) {
-    const personnelNumber = formatAttendancePersonnelNumber(++next)
-    await tx.mtmAgent.update({ where: { organizationId, id: card.id }, data: { personnelNumber } })
-    await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: input.actorUserId, agentId: card.id, entity: "agent", entityId: card.id,
-      action: ISSUED, metadataKind: "mtm_attendance_employee_card", oldData: { personnelNumber: null }, newData: { personnelNumber } } })
-    issued.set(card.id, personnelNumber)
-  }
+  for (const card of cards) issued.set(card.id, formatAttendancePersonnelNumber(++next))
+  // Two statements whatever the count: a first opening may number hundreds.
+  const ids = [...issued.keys()], numbers = [...issued.values()]
+  await tx.$executeRaw`UPDATE mtm_agents AS card SET "personnelNumber" = issued.number
+    FROM unnest(${ids}::text[], ${numbers}::text[]) AS issued(id, number)
+    WHERE card."organizationId" = ${organizationId} AND card.id = issued.id AND card."personnelNumber" IS NULL`
+  await tx.mtmAuditLog.createMany({ data: ids.map(id => ({ organizationId, actorUserId: input.actorUserId, agentId: id, entity: "agent", entityId: id,
+    action: ISSUED, metadataKind: "mtm_attendance_employee_card", oldData: { personnelNumber: null }, newData: { personnelNumber: issued.get(id)! } })) })
   return issued
 }

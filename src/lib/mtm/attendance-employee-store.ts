@@ -81,9 +81,12 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
     // Neither the user's CRM role nor a missing job title proves membership.
     const tracked = cards.filter(card => isAttendanceTrackedCard(card)
       && (card.attendanceIncludedFrom === null || card.auditLogs.length > 0))
-    // Everyone in this list has a number: whoever reached it by a path that
-    // issues none (or before numbers were issued) gets theirs here, once.
-    const issued = await issueAttendancePersonnelNumbers(tx, { organizationId, actorUserId: actor.userId, agentIds: tracked.filter(card => !card.personnelNumber).map(card => card.id) })
+    // Everyone the timesheet lists has a number (owner, 2026-11-03: «Да, всем
+    // в табеле»), this list and the CRM users tracked automatically alike:
+    // whoever got there by a path that issues none — a CRM user's card comes
+    // from a database trigger — gets theirs here, once.
+    const timesheet = cards.filter(card => isAttendanceTrackedCard(card) && !card.personnelNumber).map(card => card.id)
+    const issued = await issueAttendancePersonnelNumbers(tx, { organizationId, actorUserId: actor.userId, agentIds: timesheet })
     for (const card of tracked) card.personnelNumber ??= issued.get(card.id) ?? null
     const events = await history(tx, organizationId, tracked.map(card => card.id))
     const participation = await readAttendanceParticipationHistory(tx, organizationId, tracked.map(card => card.id))

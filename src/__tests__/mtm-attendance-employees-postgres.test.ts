@@ -255,13 +255,18 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
 
   it("keeps 300 CRM identities out of Personnel except explicitly enrolled staff, without rewriting facts", async () => {
     await tenant(automaticOrg, async () => {
-      // Opening the list issues the personnel number its employees lack
-      // (owner, 2026-11-03) and writes nothing else.
+      // Opening the list issues the personnel number everyone in the timesheet
+      // lacks — the 300 CRM users tracked automatically too (owner, 2026-11-03:
+      // «Да, всем в табеле») — and writes nothing else.
       const issuedNumber = { action: "MTM_ATTENDANCE_PERSONNEL_NUMBER_ISSUED" }
       const counts = async () => [await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count({ where: { NOT: issuedNumber } }), await prisma.mtmAttendanceParticipationEvent.count(), await prisma.user.count()]
       const before = await counts()
       const directory = await store.readAttendanceEmployees(automaticAdmin)
-      expect((await prisma.mtmAuditLog.findMany({ where: issuedNumber, select: { agentId: true } })).map(row => row.agentId)).toEqual(["automatic-manual"])
+      const timesheet = await prisma.mtmAgent.findMany({ where: { attendanceParticipant: true, role: { not: "AGENT" } }, select: { id: true, personnelNumber: true } })
+      expect(timesheet.map(card => card.id)).toContain("automatic-manual"); expect(timesheet.length).toBeGreaterThan(250)
+      expect((await prisma.mtmAuditLog.findMany({ where: issuedNumber, select: { agentId: true } })).map(row => row.agentId).sort()).toEqual(timesheet.map(card => card.id).sort())
+      expect(timesheet.every(card => /^\d{4}$/.test(card.personnelNumber ?? ""))).toBe(true)
+      expect(new Set(timesheet.map(card => card.personnelNumber)).size).toBe(timesheet.length)
       // The existing field agent keeps its card but is not HR attendance: its
       // day belongs to the field manager (owner, 2026-10-14).
       expect(directory.employees.map(employee => employee.id)).toEqual(["automatic-manual"])
@@ -837,14 +842,21 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     const after = await add("Fictional numbered after mistake", "+994550007726")
     expect(await number(after.agentId)).toBe(String(Number(firstNumber) + 5).padStart(4, "0"))
 
-    // Someone in the list without a number (added before numbers were issued)
-    // gets the next one when the list is opened, once, and the journal says so.
+    // Someone in the list without a number (added before numbers were issued),
+    // and a CRM user the timesheet tracks without HR adding them, get the next
+    // numbers when the list is opened, once, and the journal says so.
     await bypass(() => prisma.mtmAgent.update({ where: { id: first.agentId }, data: { personnelNumber: null } }))
+    const crmUser = await bypass(() => prisma.mtmAgent.create({ data: { organizationId: automaticOrg, name: "Fictional tracked CRM user", role: "EMPLOYEE", status: "ACTIVE",
+      attendanceParticipant: true, attendanceIncludedFrom: new Date() }, select: { id: true } }))
     const listed = await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))
-    const reissued = String(Number(firstNumber) + 6).padStart(4, "0")
+    expect(listed.employees.find(row => row.id === crmUser.id)).toBeUndefined()
+    const reissued = await number(first.agentId), crmNumber = await number(crmUser.id)
     expect(listed.employees.find(row => row.id === first.agentId)).toMatchObject({ personnelNumber: reissued })
-    expect(listed.employees.every(row => row.personnelNumber)).toBe(true)
-    expect(new Set(listed.employees.map(row => row.personnelNumber)).size).toBe(listed.employees.length)
+    // The deleted card's and every earlier number stay used: these come after them.
+    expect(Number(reissued)).toBeGreaterThan(Number(firstNumber) + 5); expect(Number(crmNumber)).toBeGreaterThan(Number(firstNumber) + 5)
+    const timesheet = await tenant(automaticOrg, () => prisma.mtmAgent.findMany({ where: { attendanceParticipant: true, role: { not: "AGENT" } }, select: { personnelNumber: true } }))
+    expect(timesheet.every(card => /^\d{4}$/.test(card.personnelNumber ?? ""))).toBe(true)
+    expect(new Set(timesheet.map(card => card.personnelNumber)).size).toBe(timesheet.length)
     await tenant(automaticOrg, () => store.readAttendanceEmployees(automaticAdmin))
     expect(await number(first.agentId)).toBe(reissued)
     const journal = await tenant(automaticOrg, () => prisma.mtmAuditLog.findMany({ where: { action: "MTM_ATTENDANCE_PERSONNEL_NUMBER_ISSUED", agentId: first.agentId }, select: { actorUserId: true, newData: true }, orderBy: { createdAt: "asc" } }))
@@ -1022,8 +1034,10 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
         card: await prisma.mtmAgent.findUniqueOrThrow({ where: { id: card.id } }),
         users: await prisma.user.count(), cards: await prisma.mtmAgent.count(), audits: await prisma.mtmAuditLog.count(),
       })
-      const before = await snapshot()
+      // Not in HR's list, but in the timesheet: opening the list gives the card its number (owner, 2026-11-03).
       expect((await store.readAttendanceEmployees(actor)).employees.map(row => row.id)).not.toContain(card.id)
+      expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: card.id } })).personnelNumber).toMatch(/^\d{4}$/)
+      const before = await snapshot()
       const match = { kind: "attendance", agentId: card.id, name: card.name, enrolled: false }
       expect(await readAttendancePhoneMatch(actor, { phone: "+994 (55) 000-99-01" })).toEqual(match)
       expect(await snapshot()).toEqual(before)
