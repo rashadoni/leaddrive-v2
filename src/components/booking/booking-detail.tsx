@@ -10,12 +10,13 @@
  * bottom — the one thing someone checks before phoning a client to ask why
  * they never got the confirmation.
  */
-import { CalendarDays, CheckCircle2, Clock3, MapPin, Phone, Send, Tag, TriangleAlert, UserRound } from "lucide-react"
+import { CalendarDays, CheckCircle2, Clock3, MapPin, Phone, Send, Tag, TriangleAlert, UserRound, Wallet } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CrmSection } from "@/components/ui/crm-section"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
+import { servicePriceLabel } from "@/lib/booking/service"
 import { BookingAvatar, avatarTone, nameInitials } from "./booking-day-timeline"
 import { BookingFollowUp } from "./booking-follow-up"
 import { BookingHistory } from "./booking-history"
@@ -67,10 +68,14 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
   const time = (value: string) => formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: timezone })
   const statusLabel = t(({ confirmed: "meetingConfirmed", cancelled: "meetingCancelled", completed: "meetingCompleted", no_show: "meetingNoShow" } as Record<string, string>)[booking.status] ?? "meetingUnknownStatus")
   const locationType = ["office", "phone", "online"].includes(booking.bookingPage.locationType) ? booking.bookingPage.locationType : "office"
+  const price = servicePriceLabel(booking.bookingPage, locale)
   const rows: [React.ReactNode, string, string][] = [
     [<UserRound key="h" aria-hidden="true" className="h-4 w-4" />, t("colHosts"), booking.hostName ?? t("hostUnknown")],
     [<MapPin key="l" aria-hidden="true" className="h-4 w-4" />, t("fieldLocation"), booking.bookingPage.locationText || t(`location_${locationType}`)],
     [<CalendarDays key="p" aria-hidden="true" className="h-4 w-4" />, t("colPage"), booking.bookingPage.title],
+    // The price the client was told when they agreed, not today's: the card
+    // reads it from the meeting's own snapshot.
+    ...(price ? [[<Wallet key="m" aria-hidden="true" className="h-4 w-4" />, t("fieldPrice"), price] as [React.ReactNode, string, string]] : []),
     [<Tag key="c" aria-hidden="true" className="h-4 w-4" />, t("fieldCreated"), `${day(booking.createdAt)}, ${time(booking.createdAt)}`],
   ]
 
@@ -174,7 +179,7 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
     {booking.outcomeNote ? <CrmSection className="mt-4" title={t("outcomeNote")}><p className="whitespace-pre-wrap break-words text-sm">{booking.outcomeNote}</p></CrmSection> : null}
     {booking.cancellationReason ? <CrmSection className="mt-4" title={t("changeReason")} tone="destructive"><p className="whitespace-pre-wrap break-words text-sm">{booking.cancellationReason}</p></CrmSection> : null}
     <div className="mt-4 space-y-4">
-      <BookingFollowUp key={booking.id} booking={booking} />
+      <BookingFollowUp key={booking.id} booking={booking} timezone={timezone} />
       <BookingHistory booking={booking} timezone={timezone} cacheScope={`${identity}:${Boolean(booking.phoneRestricted)}`} />
       {booking.leadId || booking.taskId ? <CrmSection><div className="flex flex-wrap gap-2">
         {booking.leadId ? <Button variant="outline" size="sm" asChild><a href={`/leads/${encodeURIComponent(booking.leadId)}`}>{t("openLead")}</a></Button> : null}

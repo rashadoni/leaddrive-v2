@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Hint } from "@/components/hint"
 import { WEEKDAYS, type WeeklyHours } from "@/lib/booking/availability"
+import { REPEAT_CYCLE_DAYS } from "@/lib/booking/service"
 
 export interface BookingPageDraft {
   id?: string
@@ -23,6 +24,11 @@ export interface BookingPageDraft {
   durationMinutes: number
   locationType: "office" | "phone" | "online"
   locationText: string
+  /** Text, not a number: an empty field means «no price», not zero. */
+  price: string
+  category: string
+  /** 0 = the client does not come back on a cycle. */
+  repeatCycleDays: number
   hostIds: string[]
   weekly: WeeklyHours
   bufferMinutes: number
@@ -46,10 +52,12 @@ const WEEK_ORDER = [...WEEKDAYS.slice(1), WEEKDAYS[0]]
 const selectClass = "mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
 
 export function BookingPageEditor({
-  draft, hosts, linkBase, saving, error, onChange, onSave, onCancel,
+  draft, hosts, categories, linkBase, saving, error, onChange, onSave, onCancel,
 }: {
   draft: BookingPageDraft
   hosts: BookingHostOption[]
+  /** The groups this organization already uses, so the field spells them the same way twice. */
+  categories: string[]
   linkBase: string
   saving: boolean
   error: string
@@ -111,6 +119,43 @@ export function BookingPageEditor({
         <div className="md:col-span-2">
           <Label htmlFor="bp-location-text">{t("fieldLocationText")}</Label>
           <Input id="bp-location-text" className="mt-1" value={draft.locationText} onChange={(e) => set("locationText", e.target.value)} />
+        </div>
+      </div>
+
+      {/* What a salon needs beyond «when»: what the service costs, which group
+          it belongs to, and how soon the client is usually back for it. */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <div>
+          <Label htmlFor="bp-price">{t("fieldPrice")}</Label>
+          <Input
+            id="bp-price"
+            className="mt-1"
+            inputMode="decimal"
+            value={draft.price}
+            placeholder={t("fieldPricePlaceholder")}
+            onChange={(e) => set("price", e.target.value.replace(/[^\d.,]/g, "").slice(0, 12))}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">{t("fieldPriceHint")}</p>
+        </div>
+        <div>
+          <Label htmlFor="bp-category">{t("fieldCategory")}</Label>
+          <Input
+            id="bp-category"
+            className="mt-1"
+            list="bp-categories"
+            value={draft.category}
+            placeholder={t("fieldCategoryPlaceholder")}
+            onChange={(e) => set("category", e.target.value.slice(0, 60))}
+          />
+          <datalist id="bp-categories">{categories.map((name) => <option key={name} value={name} />)}</datalist>
+          <p className="mt-1 text-xs text-muted-foreground">{t("fieldCategoryHint")}</p>
+        </div>
+        <div>
+          <Label htmlFor="bp-cycle">{t("fieldCycle")}</Label>
+          <select id="bp-cycle" className={selectClass} value={draft.repeatCycleDays} onChange={(e) => set("repeatCycleDays", Number(e.target.value))}>
+            {REPEAT_CYCLE_DAYS.map((days) => <option key={days} value={days}>{days === 0 ? t("cycleNone") : t("cycleEvery", { count: days })}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-muted-foreground">{t("fieldCycleHint")}</p>
         </div>
       </div>
 

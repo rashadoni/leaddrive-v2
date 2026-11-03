@@ -169,6 +169,8 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
       durationMinutes: page.durationMinutes,
       locationType: page.locationType as "office" | "phone" | "online",
       locationText: page.locationText,
+      price: page.price === null ? null : String(page.price),
+      priceCurrency: page.priceCurrency,
       hostNames: hosts.map((host) => host.name),
       timezone: org.timezone,
     },
@@ -205,7 +207,7 @@ export async function createBooking(orgId: string, pageId: string, input: Bookin
 export async function bookingCancelView(orgId: string, bookingId: string) {
   const booking = await prisma.booking.findFirst({
     where: { id: bookingId, organizationId: orgId },
-    include: { bookingPage: { select: { title: true, slug: true, locationType: true, locationText: true, durationMinutes: true, description: true } } },
+    include: { bookingPage: { select: { title: true, slug: true, locationType: true, locationText: true, durationMinutes: true, description: true, price: true, priceCurrency: true } } },
   })
   if (!booking) return null
   const org = await orgContext(orgId)
@@ -225,6 +227,8 @@ export async function bookingCancelView(orgId: string, bookingId: string) {
       durationMinutes: Math.round((booking.endsAt.getTime() - booking.startsAt.getTime()) / 60000),
       locationType: (typeof saved?.locationType === "string" ? saved.locationType : booking.bookingPage.locationType) as "office" | "phone" | "online",
       locationText: typeof saved?.locationText === "string" ? saved.locationText : saved?.locationText === null ? null : booking.bookingPage.locationText,
+      price: typeof saved?.price === "string" ? saved.price : booking.bookingPage.price === null ? null : String(booking.bookingPage.price),
+      priceCurrency: typeof saved?.priceCurrency === "string" ? saved.priceCurrency : booking.bookingPage.priceCurrency,
       hostNames: host ? [host.name] : [],
       timezone: typeof saved?.timezone === "string" && isValidTimezone(saved.timezone) ? saved.timezone : org.timezone,
     },

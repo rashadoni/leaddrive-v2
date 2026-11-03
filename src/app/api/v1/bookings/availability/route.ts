@@ -48,7 +48,7 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
       hostId: host.id,
       intervals: (busy.get(host.id) ?? []).filter((item) => item.kind !== "off").map((item) => ({ start: item.start.toISOString(), end: item.end.toISOString() })),
     }))
-    return NextResponse.json({ success: true, data: { page: { orgName: org.name, title: page.title, description: page.description, durationMinutes: page.durationMinutes, locationType: page.locationType, locationText: page.locationText, hostNames: hosts.map((host) => host.name), timezone: org.timezone }, hosts: hosts.map(({ id, name }) => ({ id, name })), days, busy: busyByHost } }, { headers: { "Cache-Control": "private, no-store" } })
+    return NextResponse.json({ success: true, data: { page: { orgName: org.name, title: page.title, description: page.description, durationMinutes: page.durationMinutes, locationType: page.locationType, locationText: page.locationText, price: page.price === null ? null : String(page.price), priceCurrency: page.priceCurrency, hostNames: hosts.map((host) => host.name), timezone: org.timezone }, hosts: hosts.map(({ id, name }) => ({ id, name })), days, busy: busyByHost } }, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {
     if (error instanceof BookingCommandError) return NextResponse.json({ code: error.code }, { status: error.status })
     throw error

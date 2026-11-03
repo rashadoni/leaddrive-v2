@@ -7,6 +7,7 @@ import { z } from "zod"
 import { bookingDb as prisma } from "./db"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { parseWeeklyHours } from "./availability"
+import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 
 export const bookingPageSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -19,6 +20,11 @@ export const bookingPageSchema = z.object({
   locationType: z.enum(["office", "phone", "online"]),
   locationText: z.string().trim().max(300).optional().nullable(),
   hostIds: z.array(z.string().min(1).max(64)).min(1, "HOSTS_REQUIRED").max(20),
+  /** What the service costs. The currency is not the form's business — the route stamps the organisation's own. */
+  price: z.number().min(0).max(1_000_000_000).nullable().optional(),
+  category: z.string().trim().max(60).nullable().optional(),
+  /** Days until the client is usually back for this service; null = no cycle. */
+  repeatCycleDays: z.number().int().min(1).max(365).nullable().optional(),
   weekly: z.unknown().transform((value, ctx) => {
     const parsed = parseWeeklyHours(value)
     if (!parsed) ctx.addIssue({ code: "custom", message: "INVALID_HOURS" })
@@ -28,6 +34,16 @@ export const bookingPageSchema = z.object({
 }).strict()
 
 export type BookingPageInput = z.infer<typeof bookingPageSchema>
+
+/**
+ * The money part of a page as the database takes it: the amount plus the
+ * organisation's own currency code, stamped at save time so no screen has to
+ * guess which currency a number is in. No price, no code.
+ */
+export async function pagePriceData(orgId: string, price: number | null | undefined): Promise<{ price: number | null; priceCurrency: string | null }> {
+  if (price === null || price === undefined) return { price: null, priceCurrency: null }
+  return { price, priceCurrency: await resolveOrgDefaultCurrency(orgId) }
+}
 
 /** Slugs are unique across organizations (the URL names no tenant). */
 export async function slugTaken(slug: string, exceptId?: string): Promise<boolean> {

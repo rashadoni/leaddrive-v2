@@ -11,13 +11,14 @@
  */
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CalendarCheck, CalendarClock, Clock, Loader2, MapPin, Phone, User, Video, ArrowLeft } from "lucide-react"
+import { CalendarCheck, CalendarClock, Clock, Loader2, MapPin, Phone, User, Video, ArrowLeft, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { DaySlots } from "@/lib/booking/availability"
+import { servicePriceLabel } from "@/lib/booking/service"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { timezoneOffsetLabel } from "@/lib/timezone"
 
@@ -28,6 +29,9 @@ export interface PublicBookingPage {
   durationMinutes: number
   locationType: "office" | "phone" | "online"
   locationText: string | null
+  /** Decimal from the database, as a string; absent where a view has no price to tell. */
+  price?: string | null
+  priceCurrency?: string | null
   hostNames: string[]
   timezone: string
 }
@@ -79,12 +83,15 @@ function LocationIcon({ type }: { type: PublicBookingPage["locationType"] }) {
 
 export function BookingSummary({ page }: { page: PublicBookingPage }) {
   const t = useTranslations("booking")
+  const locale = useLocale()
+  const price = servicePriceLabel(page, locale)
   return (
     <aside className="space-y-4 border-b pb-5 md:border-b-0 md:border-r md:pb-0 md:pr-6">
       <p className="text-sm font-medium text-muted-foreground">{page.orgName}</p>
       <h1 id="booking-title" className="text-2xl font-bold tracking-tight">{page.title}</h1>
       <ul className="space-y-2 text-sm text-muted-foreground">
         <li className="flex items-center gap-2"><Clock className="h-4 w-4 shrink-0" aria-hidden="true" />{t("minutes", { count: page.durationMinutes })}</li>
+        {price ? <li className="flex items-center gap-2 font-semibold text-foreground"><Wallet className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{price}</li> : null}
         <li className="flex items-center gap-2"><LocationIcon type={page.locationType} />{page.locationText || t(`location_${page.locationType}`)}</li>
         {page.hostNames.length > 0 ? (
           <li className="flex items-center gap-2"><User className="h-4 w-4 shrink-0" aria-hidden="true" />{page.hostNames.join(", ")}</li>

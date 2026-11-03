@@ -11,6 +11,7 @@ import { BookingScheduler, type BookResult, type BookingRequest, type PublicBook
 import { BOOKING_ERROR_KEYS } from "./booking-meeting-actions"
 import { bookingRequestIdentity, completeBookingRequest } from "@/lib/booking/client-identity"
 import { dateInputValueInTimezone } from "@/lib/timezone"
+import { groupByCategory, servicePriceLabel } from "@/lib/booking/service"
 import { cn } from "@/lib/utils"
 import type { DaySlots } from "@/lib/booking/availability"
 
@@ -33,7 +34,7 @@ export interface BookingReadiness {
 }
 
 export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, onStartChange, clash, alternatives, onPickAlternative, checks }: {
-  pages: { id: string; title: string; hostIds: string[] }[]
+  pages: { id: string; title: string; hostIds: string[]; category?: string | null }[]
   hosts: { id: string; name: string }[]
   timezone: string
   onSaved: (id: string) => void
@@ -62,6 +63,12 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
       return body.data as { page: PublicBookingPage; days: DaySlots[] }
     }, enabled: Boolean(pageId), retry: false,
   })
+  const groups = groupByCategory(pages, locale)
+  // What this service costs and how long it takes, where the service is
+  // chosen: the staff form hides the customer's summary that says it.
+  const chosen = available.data?.page
+  const price = servicePriceLabel(chosen, locale)
+  const serviceMeta = chosen ? [t("minutes", { count: chosen.durationMinutes }), price].filter(Boolean).join(" · ") : ""
   async function book(request: BookingRequest): Promise<BookResult> {
     setError("")
     try {
@@ -80,7 +87,17 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
   }
   return <div className="space-y-4">
     {!pages.length ? <p className="text-sm">{t("noAvailablePages")}</p> : <>
-      <div className="space-y-1.5"><Label className={FIELD_LABEL} htmlFor="create-meeting-page">{t("colPage")}</Label><select id="create-meeting-page" className={FIELD} value={pageId} onChange={(event) => { setPageId(event.target.value); setHostId(""); onStartChange?.(null) }}>{pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select></div>
+      <div className="space-y-1.5">
+        <Label className={FIELD_LABEL} htmlFor="create-meeting-page">{t("colPage")}</Label>
+        <select id="create-meeting-page" className={FIELD} value={pageId} onChange={(event) => { setPageId(event.target.value); setHostId(""); onStartChange?.(null) }}>
+          {/* A salon with twenty services reads them by group; one that never
+              filed them sees the plain list it had before. */}
+          {groups.length > 1 || groups[0]?.category ? groups.map((group) => <optgroup key={group.category ?? "__none"} label={group.category ?? t("categoryNone")}>
+            {group.items.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
+          </optgroup>) : pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
+        </select>
+        {serviceMeta ? <p className="text-xs font-semibold text-muted-foreground">{serviceMeta}</p> : null}
+      </div>
       <div className="space-y-1.5"><Label className={FIELD_LABEL} htmlFor="create-meeting-host">{t("colHosts")}</Label><select id="create-meeting-host" className={FIELD} value={hostId} onChange={(event) => { setHostId(event.target.value); onStartChange?.(null) }}><option value="">{t("automaticHost")}</option>{hosts.filter((host) => pages.find((page) => page.id === pageId)?.hostIds.includes(host.id)).map((host) => <option key={host.id} value={host.id}>{host.name}</option>)}</select></div>
       <div className="space-y-1.5"><Label className={FIELD_LABEL} htmlFor="create-meeting-day">{t("chooseDay")}</Label><Input type="date" id="create-meeting-day" className={cn(FIELD, clash ? "border-destructive ring-2 ring-destructive/20" : "")} value={day} onChange={(event) => { if (event.target.value) { setDay(event.target.value); onStartChange?.(null) } }} /></div>
 

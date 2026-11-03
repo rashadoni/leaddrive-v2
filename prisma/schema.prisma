@@ -23513,6 +23513,14 @@ model BookingPage {
   /// office | phone | online
   locationType     String       @default("office")
   locationText     String?
+  /// What the service costs, in `priceCurrency`; null = no price set.
+  price            Decimal?     @db.Decimal(14, 2)
+  /// The organisation's own currency code, stamped when the price is saved. Nothing is converted.
+  priceCurrency    String?
+  /// Free grouping the salon chooses — «Saç», «Dırnaq»; null = ungrouped.
+  category         String?
+  /// Days after which this service is usually taken again; null = no cycle.
+  repeatCycleDays  Int?
   /// Users who take these meetings; a booking goes to one of them.
   hostIds          String[]
   /// { "0".."6": [{ start: "HH:mm", end: "HH:mm" }] } on the organization's clock, 0 = Sunday.
