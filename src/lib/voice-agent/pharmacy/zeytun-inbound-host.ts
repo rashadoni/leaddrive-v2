@@ -8,7 +8,7 @@ import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies,
   type InboundPilotOrderCall } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
-import { cancelPhoneOrderFromCall, confirmedPhoneOrderLines, savePhoneOrderFromCall } from "./phone-orders"
+import { cancelPhoneOrderFromCall, confirmedPhoneOrderLines, orderedPhoneOrderProducts, savePhoneOrderFromCall } from "./phone-orders"
 import { requestAiHandoff } from "../../voip/inbound-handoff"
 import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
@@ -56,6 +56,30 @@ export function createInboundPilotHost(options: {
     || (isLineGrant(config) && Boolean(options.holdsLine) && await options.holdsLine!(config.organizationId, config.channelConfigId))
   let catalog: { key: string; at: number; value: ReturnType<InboundPilotDependencies["loadCatalog"]>; next?: Promise<void> } | null = null
   const learned = new Map<string, { at: number; value: LearnedNames | null; loading: boolean }>()
+  // Owner, 2026-11-03 («товаров 9к»): the line learns from the orders its
+  // managers confirmed and hints the products pharmacies ask for. Read in the
+  // background, never on a spoken request: until the first reading is there,
+  // the line searches as before. The catalog load starts it too, so the warm-up
+  // cron has it ready for the first call after a restart.
+  function learnedFor(config: InboundPilotConfig): LearnedNames | null {
+    const orgId = config.orderOrganizationId
+    if (!options.orders || !isLineGrant(config) || !orgId) return null
+    const key = `${orgId}:${config.approvedSource.scopeKey}`
+    const known = learned.get(key)
+    if (!known || (!known.loading && Date.now() - known.at >= LEARNED_FOR_MS)) {
+      const entry = known ?? { at: 0, value: null as LearnedNames | null, loading: false }
+      entry.loading = true
+      learned.set(key, entry)
+      const scope = { organizationId: orgId, catalogScopeKey: config.approvedSource.scopeKey,
+        since: new Date(Date.now() - LEARNED_SINCE_MS), limit: LEARNED_MAX_LINES }
+      void Promise.all([confirmedPhoneOrderLines(options.orders, scope), orderedPhoneOrderProducts(options.orders, scope)])
+        .then(([lines, ordered]) => {
+          entry.value = learnNames(lines, ordered)
+          console.log("[zeytun-line] learned", JSON.stringify({ lines: lines.length, ordered: ordered.length }))
+        }).catch(() => undefined).finally(() => { entry.at = Date.now(); entry.loading = false })
+    }
+    return known?.value ?? null
+  }
   // The pharmacy list is small (~1 200 rows, ~0.1 s to parse): re-read when
   // its header changes, looked at no more than once a minute.
   let pharmacies: { key: string; version: string; at: number; directory: ZeytunClientsDirectory } | null = null
@@ -156,6 +180,7 @@ export function createInboundPilotHost(options: {
       return { ...rows[0], startedAt: rows[0].startedAt.toISOString(), endedAt: endedAt instanceof Date ? endedAt.toISOString() : endedAt }
     },
     async loadCatalog(config) {
+      learnedFor(config)
       const key = inboundPilotDigest(config)
       const load = () => (async () => {
         const source = config.approvedSource
@@ -232,28 +257,7 @@ export function createInboundPilotHost(options: {
         return result.status
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder" | "cancelOrder"> : {}),
-    ...(options.orders ? {
-      // Owner, 2026-11-03 («товаров 9к»): the line learns from the orders its
-      // managers confirmed. Read in the background, never on a spoken request:
-      // until the first reading is there, the line searches as before.
-      learnedNames: (config) => {
-        const orgId = config.orderOrganizationId
-        if (!orgId) return null
-        const key = `${orgId}:${config.approvedSource.scopeKey}`
-        const known = learned.get(key)
-        if (!known || (!known.loading && Date.now() - known.at >= LEARNED_FOR_MS)) {
-          const entry = known ?? { at: 0, value: null as LearnedNames | null, loading: false }
-          entry.loading = true
-          learned.set(key, entry)
-          void confirmedPhoneOrderLines(options.orders!, { organizationId: orgId, catalogScopeKey: config.approvedSource.scopeKey,
-            since: new Date(Date.now() - LEARNED_SINCE_MS), limit: LEARNED_MAX_LINES }).then((lines) => {
-            entry.value = learnNames(lines)
-            console.log("[zeytun-line] learned", JSON.stringify({ lines: lines.length }))
-          }).catch(() => undefined).finally(() => { entry.at = Date.now(); entry.loading = false })
-        }
-        return known?.value ?? null
-      },
-    } satisfies Pick<InboundPilotDependencies, "learnedNames"> : {}),
+    ...(options.orders ? { learnedNames: learnedFor } satisfies Pick<InboundPilotDependencies, "learnedNames"> : {}),
     ...(options.orders && options.transferAvailable ? {
       // Owner, 2026-10-27: the caller asks for a person, the managers' browsers
       // ring. Only where someone can take a browser call; once per call.

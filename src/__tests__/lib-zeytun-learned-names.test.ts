@@ -28,6 +28,14 @@ describe("names the line learns from confirmed orders", () => {
     expect(learned.ordered(10)).toEqual([AMLESSA, ADEFA, NOSPA])
   })
 
+  it("hints every product the line wrote, before any order is confirmed", () => {
+    // Owner's call 2026-11-03: no confirmed order yet, no hint at all — "etanol" for Ketonal.
+    const learned = learnNames([], [NOSPA, ADEFA, NOSPA])
+    expect(learned.ordered(5)).toEqual([NOSPA, ADEFA])
+    // Wordings still come only from confirmed lines.
+    expect(learned.productFor("Noşpa")).toBeNull()
+  })
+
   it("says a product's name as a caller in Baku does", () => {
     expect(spokenProductName({ name: "Адефа № 30 (Таблетки) (Pharmex Rom Industry Srl) (Румыния)", nameAz: null })).toBe("Adefa")
     expect(spokenProductName({ name: "Аджиколд № 4 (Таблетки)", nameAz: "Adjikold № 4 (Həb)" })).toBe("Acikold")

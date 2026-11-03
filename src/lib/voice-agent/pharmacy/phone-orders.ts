@@ -242,3 +242,18 @@ export async function confirmedPhoneOrderLines(db: PrismaClient,
   }))
   return rows.map(row => ({ spoken: row.spokenText, externalId: row.externalId! }))
 }
+
+/**
+ * Every product the line wrote on this catalog, newest first, whatever became
+ * of the order: what pharmacies ask for, as hints for the recognizer.
+ */
+export async function orderedPhoneOrderProducts(db: PrismaClient,
+  input: { organizationId: string; catalogScopeKey: string; since: Date; limit: number }) {
+  const orgId = input.organizationId
+  const rows = await runWithTenant(orgId, async () => await db.pharmacyPhoneOrderLine.findMany({
+    where: { organizationId: orgId, status: "resolved", externalId: { not: null },
+      order: { organizationId: orgId, catalogScopeKey: input.catalogScopeKey, createdAt: { gte: input.since } } },
+    select: { externalId: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: input.limit,
+  }))
+  return rows.map(row => row.externalId!)
+}
