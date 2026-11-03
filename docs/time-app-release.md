@@ -163,3 +163,14 @@ certificate, push service required), published as `time-v1.0.0-1058`, public red
 verified. On the owner's S23: in-place 1055 → 1057 → 1058 kept the session; on 1057 (same source) a
 real «İzahat istə» from the CRM arrived as a notification and its tap opened «İzahatlar».
 Evidence: `docs/evidence/time-public-release-1058.json`.
+
+## Release 1061 — 2026-11-04
+
+HR's decision on a request arrives as a notification and its tap opens «Sorğular» (leaddrive-mtm#230,
+server leaddrive-v2#1291); explanation requests and decisions pop up in the high-importance
+`team-messages` channel, named in Time «Kadrlar: sorğular və izahatlar» (leaddrive-mtm#231, server
+#1294). Reviewed main `f6545f6` built as 1061 (hosted Jest 299 suites, package/permissions/pinned
+certificate, push service required), published as `time-v1.0.0-1061`, public redownload hash verified.
+On the owner's S23: in-place 1058 → 1061 kept the session; a real decision from the CRM arrived and
+its tap opened «Sorğular» (1059), and on 1061 with the server channel it popped up (owner: «работает»).
+Evidence: `docs/evidence/time-public-release-1061.json`.

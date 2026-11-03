@@ -4,13 +4,13 @@
   "channel": "time-stable",
   "release": {
     "versionName": "1.0.0",
-    "versionCode": 1058,
-    "publishedAt": "2026-11-03T16:48:02Z",
-    "sourceSha": "db1bf59a087a53530038f945bca50ea2b5a03aef",
-    "apkSha256": "2a09cab99f896c321aa8ae771227bf5827c588ffda5b855c2ad9d6ce6c276a9a",
+    "versionCode": 1061,
+    "publishedAt": "2026-11-03T22:24:09Z",
+    "sourceSha": "f6545f6c2ac6776d6048b3dfc2920405b8338ef6",
+    "apkSha256": "1177df2d54b5c0cdc068e60258c0946e32ae044fd083954a5b439dd41ab6ea6b",
     "signingCertificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
-    "tag": "time-v1.0.0-1058",
-    "apkUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1058/leaddrive-time-1.0.0-1058.apk",
+    "tag": "time-v1.0.0-1061",
+    "apkUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1061/leaddrive-time-1.0.0-1061.apk",
     "sourceBranch": "main"
   }
 }
