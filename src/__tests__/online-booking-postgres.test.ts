@@ -37,6 +37,7 @@ if (!adminUrl && process.env.ONLINE_BOOKING_DB_GATE === "required") {
 
 const scratch = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_APP_URL = "https://app.example.test"
+  process.env.CRON_SECRET = process.env.CRON_SECRET || "online-booking-test-cron-secret"
   const admin = process.env.ONLINE_BOOKING_TEST_DATABASE_URL
   if (!admin) return null
   const name = `online_booking_${process.pid}`
@@ -116,6 +117,10 @@ function signIn(role: string, organizationId = ORG) {
 const json = (method: string, url: string, body?: unknown) => new NextRequest(`http://localhost:3000${url}`, {
   method,
   ...(body === undefined ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+})
+/** A scheduler call, carrying the secret the real trigger script sends. */
+const cronJson = () => new NextRequest("http://localhost:3000/api/cron/booking-reminders", {
+  method: "POST", headers: { "x-cron-secret": process.env.CRON_SECRET ?? "" },
 })
 const slugParams = (slug: string) => ({ params: Promise.resolve({ slug }) })
 const tokenParams = (token: string) => ({ params: Promise.resolve({ token }) })
@@ -1246,7 +1251,7 @@ pgDescribe("online booking on a real Postgres", () => {
       const booking = await bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, startsAt: new Date(startsAt) } }))
       const conversation = await conversationWith(phoneDigitsOf(booking.phone), "Günel", "Sabah manikür?")
 
-      expect((await remindersPost(json("POST", "/api/cron/booking-reminders"))).status).toBe(200)
+      expect((await remindersPost(cronJson())).status).toBe(200)
       const reminder = whatsapp.buttons.at(-1)!
       expect(reminder.body).toMatch(/Manikür/)
       expect(reminder.buttons.map((button) => button.id)).toEqual([
@@ -1257,7 +1262,7 @@ pgDescribe("online booking on a real Postgres", () => {
 
       // A second run says nothing more: the meeting is already reminded.
       whatsapp.buttons = []
-      expect((await remindersPost(json("POST", "/api/cron/booking-reminders"))).status).toBe(200)
+      expect((await remindersPost(cronJson())).status).toBe(200)
       expect(whatsapp.buttons).toHaveLength(0)
 
       // «Gəlirəm» is recorded on the meeting and thanked for.
