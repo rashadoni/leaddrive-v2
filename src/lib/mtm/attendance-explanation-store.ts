@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
-import { notifyAgents } from "@/lib/mtm/push-notify"
+import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
 import { formatDate } from "@/lib/format-date"
 import { canReviewMtmRouteRequest } from "@/lib/mtm/route-permissions"
 import { resolveAttendanceReviewerScope, type AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
@@ -116,7 +116,7 @@ export async function requestAttendanceExplanations(reviewer: AttendanceReviewer
   // Fire-and-forget, as every push: one that did not go out never undoes the request.
   for (const push of result.pushes) {
     void notifyAgents({ client: prisma, organizationId: reviewer.organizationId, agentIds: [push.agentId], title: push.title, body: push.body,
-      data: { target: "AttendanceExplanations", explanationId: push.id } }).catch(error => console.warn("[MTM/attendance/explanations] push failed", error))
+      data: { target: "AttendanceExplanations", explanationId: push.id }, channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL }).catch(error => console.warn("[MTM/attendance/explanations] push failed", error))
   }
   return { created: result.created, already: result.already, notNeeded: result.notNeeded }
 }

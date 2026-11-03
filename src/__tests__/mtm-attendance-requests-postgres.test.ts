@@ -26,7 +26,7 @@ const scratch = vi.hoisted(() => {
 })
 const identity = vi.hoisted(() => ({ orgId: "request-pg-a", agentId: "request-pg-owner", role: "EMPLOYEE", personnel: true }))
 // Pushes are recorded, not sent: the decision's push is asserted below.
-const pushes = vi.hoisted(() => [] as Array<{ organizationId: string; agentIds: readonly string[]; title: string; body: string; data?: Record<string, string> }>)
+const pushes = vi.hoisted(() => [] as Array<{ organizationId: string; agentIds: readonly string[]; title: string; body: string; data?: Record<string, string>; channelId?: string }>)
 vi.mock("@/lib/mtm/push-notify", async original => ({ ...(await original<typeof import("@/lib/mtm/push-notify")>()),
   notifyAgents: vi.fn(async (input: (typeof pushes)[number]) => { pushes.push(input); return { sent: 1, failed: 0, retired: 0 } }) }))
 vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: identity.personnel } }) }))
@@ -237,7 +237,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     // the commit, saying only that it was approved and where to read it.
     const decided = pushes.filter(push => push.data?.requestId === row.id)
     expect(decided).toHaveLength(1)
-    expect(decided[0]).toMatchObject({ organizationId: self.organizationId, agentIds: [self.agentId], data: { target: "AttendanceRequests", requestId: row.id } })
+    expect(decided[0]).toMatchObject({ organizationId: self.organizationId, agentIds: [self.agentId], data: { target: "AttendanceRequests", requestId: row.id }, channelId: "team-messages" })
     expect([ru.mtmAttendance.decisionApproved, az.mtmAttendance.decisionApproved, en.mtmAttendance.decisionApproved]).toContain(decided[0].title)
     expect(JSON.stringify([decided[0].title, decided[0].body, decided[0].data])).not.toMatch(/PRIVATE_LEAVE_REASON|Fictional reviewed leave|ANNUAL_LEAVE/)
     expect(answers.every(answer => !("notice" in answer))).toBe(true)

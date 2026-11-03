@@ -24,6 +24,10 @@ function sql(url: string, statement: string) {
   const result = spawnSync(process.execPath, [file, "db", "execute", "--url", url, "--stdin"], { input: statement, encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 })
   if (result.status !== 0) throw new Error(`Explanation fixture SQL failed: ${String(result.stderr || result.stdout).replace(/postgres(?:ql)?:\/\/[^\s]+/g, "[test database]")}`)
 }
+// Pushes are recorded, not sent (owner, 2026-11-03: a push in the default channel went unnoticed).
+const pushes = vi.hoisted(() => [] as Array<{ agentIds: readonly string[]; data?: Record<string, string>; channelId?: string }>)
+vi.mock("@/lib/mtm/push-notify", async original => ({ ...(await original<typeof import("@/lib/mtm/push-notify")>()),
+  notifyAgents: vi.fn(async (input: (typeof pushes)[number]) => { pushes.push(input); return { sent: 1, failed: 0, retired: 0 } }) }))
 const ORG = "explain-pg-a", OTHER = "explain-pg-b", ADMIN = "explain-pg-admin"
 const TODAY = "2026-10-16", YESTERDAY = "2026-10-15"
 const now = new Date(`${TODAY}T12:00:00Z`) // 16:00 in Baku
@@ -105,6 +109,10 @@ pgDescribe("Explanations on real PostgreSQL", () => {
       expect(inbox[1].title).toContain("30")
       expect(inbox.map(item => (item.metadata as Record<string, string>).attendanceExplanationId).sort()).toEqual(rows.map(row => row.id).sort())
       expect(await prisma.mtmAuditLog.count({ where: { action: "MTM_ATTENDANCE_EXPLANATION_REQUESTED" } })).toBe(2)
+      // One push per new request, none for the repeat, in the channel that pops up over the screen.
+      expect(pushes.map(push => push.agentIds[0]).sort()).toEqual(["absent", "late"])
+      expect(pushes.every(push => push.channelId === "team-messages" && push.data?.target === "AttendanceExplanations")).toBe(true)
+      expect(pushes.map(push => push.data?.explanationId).sort()).toEqual(rows.map(row => row.id).sort())
     })
     // Another tenant sees nothing (forced RLS).
     await tenant(OTHER, async () => { expect(await prisma.mtmAttendanceExplanation.count()).toBe(0) })
