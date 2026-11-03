@@ -977,6 +977,22 @@ pgDescribe("online booking on a real Postgres", () => {
     organizationId: ORG, channelConfigId: "channel-wa", conversationId, waPhone: "994551234567", senderName: "Nigar",
     text: "Sabah saç kəsiminə yazılmaq olar?", replyId: null, ...over,
   }))
+  /** Only the digits, the way WhatsApp names a number. */
+  const phoneDigitsOf = (value: string) => value.replace(/\D/g, "")
+
+  /** A slot the page offers whose start falls in the window asked for. */
+  async function slotWithin(slug: string, fromMs: number, toMs: number) {
+    const { body } = await view(slug)
+    const now = Date.now()
+    for (const day of body.data.days as { slots: { startsAt: string }[] }[]) {
+      for (const slot of day.slots) {
+        const ahead = Date.parse(slot.startsAt) - now
+        if (ahead >= fromMs && ahead <= toMs) return slot.startsAt
+      }
+    }
+    throw new Error("the page offers no slot in the window the reminder needs")
+  }
+
   /** A WhatsApp conversation with one inbound message, as the webhook leaves it. */
   async function conversationWith(waPhone: string, name: string, body: string) {
     const conversation = await bypass(() => prisma.socialConversation.create({ data: {
@@ -1221,17 +1237,14 @@ pgDescribe("online booking on a real Postgres", () => {
 
   it("WhatsApp: the day-before reminder goes out once, with three buttons, and «coming» is recorded", async () => {
     await withWhatsAppBooking(async () => {
-      const slug = await newPage({ title: "Manikür", durationMinutes: 30, maxDaysAhead: 3 })
-      const conversation = await conversationWith("994557778899", "Günel", "Sabah manikür?")
-      // A meeting a day out, booked by this very client — their message keeps
-      // Meta's window open, so the reminder may be ordinary text with buttons.
-      const startsAt = new Date(Date.now() + 23 * 3600_000)
-      const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
-      const booking = await bypass(() => prisma.booking.create({ data: {
-        organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A, startsAt, endsAt: new Date(startsAt.getTime() + 1800_000),
-        name: "Günel", phone: "+994557778899", cancelTokenHash: randomUUID().replace(/-/g, "") + "0".repeat(32),
-        snapshot: { locale: "az" }, version: 1,
-      } }))
+      const slug = await newPage({ title: "Manikür", durationMinutes: 30, maxDaysAhead: 2 })
+      // A meeting a day out, booked the ordinary way — the database refuses a
+      // row written around its canonical event, and the client's own message
+      // keeps Meta's window open, so the reminder may be text with buttons.
+      const startsAt = await slotWithin(slug, 18 * 3600_000, 24 * 3600_000)
+      expect((await book(slug, startsAt, "Günel")).status).toBe(201)
+      const booking = await bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, startsAt: new Date(startsAt) } }))
+      const conversation = await conversationWith(phoneDigitsOf(booking.phone), "Günel", "Sabah manikür?")
 
       expect((await remindersPost(json("POST", "/api/cron/booking-reminders"))).status).toBe(200)
       const reminder = whatsapp.buttons.at(-1)!
@@ -1248,7 +1261,7 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(whatsapp.buttons).toHaveLength(0)
 
       // «Gəlirəm» is recorded on the meeting and thanked for.
-      expect(await turnIn(conversation, { waPhone: "994557778899", replyId: `rm:confirm:${booking.id}`, text: "Gəlirəm" })).toEqual({ handled: true })
+      expect(await turnIn(conversation, { waPhone: phoneDigitsOf(booking.phone), replyId: `rm:confirm:${booking.id}`, text: "Gəlirəm" })).toEqual({ handled: true })
       const confirmed = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }))
       expect(confirmed.clientConfirmedAt).not.toBeNull()
       expect(confirmed.clientConfirmedVia).toBe("whatsapp")
@@ -1262,34 +1275,31 @@ pgDescribe("online booking on a real Postgres", () => {
 
   it("WhatsApp: «Ləğv etmək» frees the chair at once, and «vaxtı dəyişmək» moves the meeting only when a new time is taken", async () => {
     await withWhatsAppBooking(async () => {
-      const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 30, maxDaysAhead: 3 })
+      const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 30, maxDaysAhead: 2 })
       const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
-      const conversation = await conversationWith("994551212121", "Aytən", "Saç kəsimi")
-      const make = async () => {
-        const startsAt = await someSlot(slug, 6)
-        return bypass(() => prisma.booking.create({ data: {
-          organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A,
-          startsAt: new Date(startsAt), endsAt: new Date(Date.parse(startsAt) + 1800_000),
-          name: "Aytən", phone: "+994551212121", cancelTokenHash: randomUUID().replace(/-/g, "") + "1".repeat(32),
-          snapshot: { locale: "az" }, version: 1,
-        } }))
+      const make = async (index: number) => {
+        const startsAt = await someSlot(slug, index)
+        expect((await book(slug, startsAt, "Aytən")).status).toBe(201)
+        return bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, startsAt: new Date(startsAt) } }))
       }
+      const first = await make(6)
+      const conversation = await conversationWith(phoneDigitsOf(first.phone), "Aytən", "Saç kəsimi")
+      const phone = phoneDigitsOf(first.phone)
 
       // Cancel: the meeting goes, and the client is told plainly.
-      const first = await make()
-      expect(await turnIn(conversation, { waPhone: "994551212121", replyId: `rm:cancel:${first.id}`, text: "Ləğv" })).toEqual({ handled: true })
+      expect(await turnIn(conversation, { waPhone: phone, replyId: `rm:cancel:${first.id}`, text: "Ləğv" })).toEqual({ handled: true })
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: first.id } }))).status).toBe("cancelled")
       expect(whatsapp.texts.at(-1)!.message).toMatch(/ləğv edildi/)
 
       // Move: new times arrive, and the old meeting stands until one is taken.
-      const second = await make()
-      expect(await turnIn(conversation, { waPhone: "994551212121", replyId: `rm:move:${second.id}`, text: "Dəyişmək" })).toEqual({ handled: true })
+      const second = await make(7)
+      expect(await turnIn(conversation, { waPhone: phone, replyId: `rm:move:${second.id}`, text: "Dəyişmək" })).toEqual({ handled: true })
       const offers = await offersOf(conversation, "offered")
       expect(offers.length).toBeGreaterThan(0)
       for (const offer of offers) expect(offer.replacesBookingId).toBe(second.id)
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: second.id } }))).status).toBe("confirmed")
 
-      await turnIn(conversation, { waPhone: "994551212121", replyId: `bk:${offers[0].id}`, text: "tap" })
+      await turnIn(conversation, { waPhone: phone, replyId: `bk:${offers[0].id}`, text: "tap" })
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: second.id } }))).status).toBe("cancelled")
       const moved = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
       expect(moved).toHaveLength(1)

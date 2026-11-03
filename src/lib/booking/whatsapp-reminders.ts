@@ -23,6 +23,15 @@ import { servicePriceLabel } from "./service"
 import { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
 import { readWhatsAppBookingSetting } from "./whatsapp-setting"
 
+/**
+ * Only the digits. A meeting's phone is whatever the client typed — spaces,
+ * brackets, a leading plus — while WhatsApp always says bare digits, and the
+ * two have to be comparable.
+ */
+export function phoneDigits(value: string): string {
+  return value.replace(/\D/g, "")
+}
+
 /** A tap on a reminder button: `rm:<kind>:<bookingId>`. */
 export const REMINDER_PREFIX = "rm:"
 export type ReminderAction = "confirm" | "move" | "cancel"
@@ -93,7 +102,7 @@ function languageOf(snapshot: Prisma.JsonValue | null): ReplyLanguage {
  * approved template may be sent.
  */
 async function windowOpen(orgId: string, phone: string, now: Date): Promise<boolean> {
-  const digits = phone.replace(/^\+/, "")
+  const digits = phoneDigits(phone)
   const since = new Date(now.getTime() - 24 * 3600_000)
   const inbound = await prisma.channelMessage.findFirst({
     where: {

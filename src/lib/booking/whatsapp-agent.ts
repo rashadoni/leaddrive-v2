@@ -34,7 +34,7 @@ import { BookingCommandError } from "./command-error"
 import { bookingRules } from "./commands"
 import { createStoredBooking } from "./create"
 import { cancelStoredBooking } from "./commands"
-import { readReminderButton, reminderReply, type ReminderAction } from "./whatsapp-reminders"
+import { phoneDigits, readReminderButton, reminderReply, type ReminderAction } from "./whatsapp-reminders"
 import { servicePriceLabel } from "./service"
 import { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
 export { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
@@ -748,7 +748,7 @@ async function answerReminder(input: BookingTurnInput, reminder: { action: Remin
     select: { id: true, status: true, startsAt: true, phone: true, snapshot: true, bookingPageId: true, hostUserId: true },
   })
   // A button from someone else's phone decides nothing.
-  if (!booking || booking.phone.replace(/^\+/, "") !== input.waPhone.replace(/^\+/, "")) return false
+  if (!booking || phoneDigits(booking.phone) !== phoneDigits(input.waPhone)) return false
   const snapshot = booking.snapshot && typeof booking.snapshot === "object" && !Array.isArray(booking.snapshot) ? booking.snapshot as Record<string, unknown> : null
   const language: ReplyLanguage = snapshot?.locale === "ru" || snapshot?.locale === "en" ? snapshot.locale : "az"
   if (booking.status !== "confirmed") return true
