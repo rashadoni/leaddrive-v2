@@ -249,6 +249,20 @@ def build(source, bridge):
     # already caps the bound at 5 s.
     replace("            min(5.0, GEMINI_LIVE_RESUME_PROGRESS_TIMEOUT_SECONDS),\n",
             "            min(5.0, 5.0 if self.pharmacy_preview else GEMINI_LIVE_RESUME_PROGRESS_TIMEOUT_SECONDS),\n")
+    # Call 7c2383d1, 2026-11-03: the CRM transcript lost two answers the
+    # caller heard (see zeytun_call_transcript). Other calls keep the core's
+    # own record.
+    replace('''            excluded = set(self.truncated_items)
+            excluded.update(self.non_business_transcript_items)
+        return [
+''', '''            excluded = set(self.truncated_items)
+            excluded.update(self.non_business_transcript_items)
+            heard = (set(self.truncated_items), set(self.audible_agent_items),
+                     set(self.non_business_transcript_items), dict(self.dialog_turn_keys))
+        if self.pharmacy_preview:
+            return zeytun_call_transcript(order, items, *heard)
+        return [
+''')
     # Owner, 2026-10-28: the station resends an order the CRM did not answer.
     # Started with the service, so what a previous run left is sent before
     # the first call after a restart.

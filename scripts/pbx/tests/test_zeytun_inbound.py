@@ -1304,6 +1304,131 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertIs(on.speech_relay("k" * 39, **noop), relay)  # one per call
 
 
+class CallTranscriptTests(unittest.TestCase):
+    # Call 7c2383d1, 2026-11-03: four answers were voiced, the CRM got two.
+    ITEMS = {"a1": {"role": "agent", "text": "Salam! Hansı preparat?"},
+             "c1": {"role": "customer", "text": "Adefa lazımdır"},
+             "a2": {"role": "agent", "text": "Hmm... bir saniyə. Adefa var, neçə qutu yazım?"},
+             "c2": {"role": "customer", "text": "on qutu"},
+             "a3": {"role": "agent", "text": "On qutu yazdım."},
+             "a4": {"role": "agent", "text": "Bu cavab heç səslənmədi."},
+             "a5": {"role": "agent", "text": "Zəhmət olmasa təkrar deyin."}}
+    KEYS = {"a1": (0, 1, 1), "c1": (1, 0, 0), "a2": (1, 1, 2), "c2": (2, 0, 0), "a3": (2, 1, 3),
+            "a4": (2, 1, 4), "a5": (2, 1, 5)}
+
+    def test_an_answer_the_caller_heard_stays_marked_as_cut_off(self):
+        # transcript_order puts the interruption c2 before the answer a2 it cut.
+        order = ["a1", "c1", "c2", "a2", "a3", "a4", "a5"]
+        turns = bridge_module.zeytun_call_transcript(
+            order, self.ITEMS, truncated={"a2", "a3", "a4"}, audible={"a1", "a2", "a3", "a5"},
+            non_business={"a5"}, keys=self.KEYS)
+        self.assertEqual(turns, [
+            {"role": "agent", "text": "Salam! Hansı preparat?"},
+            {"role": "customer", "text": "Adefa lazımdır"},
+            {"role": "agent", "text": "Hmm... bir saniyə. Adefa var, neçə qutu yazım? …"},
+            {"role": "customer", "text": "on qutu"},
+            {"role": "agent", "text": "On qutu yazdım …"},
+        ])  # a4 never played, a5 is the core's own technical turn
+        self.assertEqual(self.ITEMS["a3"]["text"], "On qutu yazdım.")  # the core's record is not touched
+
+    def test_without_a_causal_key_for_every_turn_the_order_is_kept(self):
+        keys = dict(self.KEYS)
+        del keys["c2"]
+        turns = bridge_module.zeytun_call_transcript(["a1", "c1", "c2", "a2"], self.ITEMS, set(), {"a1", "a2"}, set(), keys)
+        self.assertEqual([turn["text"] for turn in turns],
+                         ["Salam! Hansı preparat?", "Adefa lazımdır", "on qutu", "Hmm... bir saniyə. Adefa var, neçə qutu yazım?"])
+
+    @unittest.skipUnless(os.environ.get("ZEYTUN_INSPECTED_CORE"), "private inspected core is not available in CI")
+    def test_answers_after_a_lookup_a_barge_in_and_a_hang_up_reach_the_crm(self):
+        """The 7c2383d1 call on the built core: lookup, wait filler, answer, barge-in, answer, hang-up."""
+        import tempfile
+        generated = builder.build(Path(os.environ["ZEYTUN_INSPECTED_CORE"]).read_bytes(),
+                                  (ROOT / "fanum-zeytun-inbound.py").read_text())
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "core.py"
+            path.write_bytes(generated)
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GOOGLE_SPEECH_API_KEY": "test",
+                                         "GEMINI_LIVE_ENABLED": "1", "GEMINI_LIVE_MODEL": "gemini-3.8-live",
+                                         "GEMINI_LIVE_VOICE": "Sulafat"}):
+                core = load("zeytun_built_core", path)
+        core.latency = lambda *args, **fields: None
+
+        class Line:
+            def sendall(self, data): pass
+            def shutdown(self, how): pass
+
+        class Socket:
+            def __getattr__(self, name):
+                return lambda *args, **kwargs: True
+
+        session = core.GeminiLiveSession(SimpleNamespace(request=Line()))
+        ws = Socket()
+        session.ws, session.setup_complete, session.pharmacy_preview, session.greeting_sent = ws, True, True, True
+        class Tts(FakeTts):
+            def stream(self, text, on_pcm, keep_going):
+                for _ in range(3):  # 0.6 s of speech: it is still playing when the caller speaks
+                    if keep_going():
+                        on_pcm(b"\x01\x00" * 4800)
+
+        relay = core.ZeytunSpeechRelay(Tts(), inject=lambda value: session._handle_gemini_event(value, session.ws),
+            speakable=lambda: not (session.closed or session.hangup_started or session.discarding_response),
+            alive=lambda: not session.closed)
+        relay.TAIL_GRACE_SECONDS = 0.05
+        session.pharmacy_bridge = SimpleNamespace(handle=lambda event, send, current: "toolCall" in event,
+                                                  speech_relay=lambda *args, **kwargs: relay)
+        threading.Thread(target=session.playback_loop, daemon=True).start()
+        audio = {"inlineData": {"mimeType": "audio/pcm;rate=24000", "data": base64.b64encode(b"\x02\x00" * 480).decode()}}
+
+        def provider(**content):
+            session._handle_gemini_event({"serverContent": content}, ws)
+
+        def answer(text):
+            provider(modelTurn={"parts": [dict(audio)]}, outputTranscription={"text": text})
+            provider(generationComplete=True)
+            provider(turnComplete=True)
+
+        try:
+            answer("Salam! Zeytunun köməkçisiyəm. Hansı preparat?")
+            time.sleep(1.5)
+            provider(inputTranscription={"text": "Salam, Nərimanov aptekiyik"})
+            answer("Çox sağ olun, hansı preparatı sifariş edirsiniz?")
+            time.sleep(1.5)
+            provider(inputTranscription={"text": "Adefa lazımdır"})
+            session._handle_gemini_event({"toolCall": {"functionCalls": [
+                {"id": "1", "name": "search_pharmacy_catalog", "args": {"text": "Adefa"}}]}}, ws)
+            core.ZEYTUN_FILLER_AUDIO[relay.filler_key] = (b"\x03\x00" * 4800,)
+            self.assertTrue(relay.filler())  # the lookup is slow: «Hmm... bir saniyə.»
+            time.sleep(0.4)
+            answer("Adefa var, neçə qutu yazım?")  # the toolResponse's answer
+            time.sleep(0.3)
+            self.assertTrue(session._clear_gemini_playback("barge_in"))  # the caller answers over its tail
+            provider(inputTranscription={"text": "on qutu yaz"})
+            time.sleep(0.3)
+            answer("On qutu yazdım. Başqa nə lazımdır, zəhmət olmasa deyin?")
+            time.sleep(0.3)
+            session.begin_hangup()  # the caller hangs up while it plays
+            session.mark_unheard_output()
+            session.pharmacy_preview = False
+            core_record = session.transcript_turns()
+            session.pharmacy_preview = True
+            turns = session.finalize_transcript_turns()
+        finally:
+            session.closed = True
+        # The core's own record: the two answers the CRM got on 7c2383d1.
+        self.assertEqual([turn["text"] for turn in core_record if turn["role"] == "agent"],
+                         ["Salam! Zeytunun köməkçisiyəm. Hansı preparat?",
+                          "Çox sağ olun, hansı preparatı sifariş edirsiniz?"])
+        self.assertEqual(turns, [
+            {"role": "agent", "text": "Salam! Zeytunun köməkçisiyəm. Hansı preparat?"},
+            {"role": "customer", "text": "Salam, Nərimanov aptekiyik"},
+            {"role": "agent", "text": "Çox sağ olun, hansı preparatı sifariş edirsiniz?"},
+            {"role": "customer", "text": "Adefa lazımdır"},
+            {"role": "agent", "text": "Hmm... bir saniyə. Adefa var, neçə qutu yazım? …"},
+            {"role": "customer", "text": "on qutu yaz"},
+            {"role": "agent", "text": "On qutu yazdım. Başqa nə lazımdır, zəhmət olmasa deyin? …"},
+        ])
+
+
 class ArtifactTests(unittest.TestCase):
     def test_unreviewed_source_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "unexpected_live_core_digest"):
@@ -1323,7 +1448,8 @@ class ArtifactTests(unittest.TestCase):
         new_methods = {node.name: node for node in changed["GeminiLiveSession"].body if isinstance(node, ast.FunctionDef)}
         differences = {name for name in old_methods if ast.dump(old_methods[name]) != ast.dump(new_methods[name])}
         allowed = {"__init__", "start", "_setup_event", "_handle_current_gemini_event",
-                   "_fresh_recovery_prompt", "_fresh_recovery_event", "_arm_resume_progress_watchdog"}
+                   "_fresh_recovery_prompt", "_fresh_recovery_event", "_arm_resume_progress_watchdog",
+                   "transcript_turns"}
         # Recovery method names are discovered from the pinned source; assert
         # their changed content is confined to the four neutral-wording checks.
         # The deadline loop changes only its two farewell waits, for pharmacy calls.
@@ -1342,6 +1468,12 @@ class ArtifactTests(unittest.TestCase):
             "_pharmacy_wait_filler"})
         # A lookup or save the model calls after an interruption is progress,
         # not a wedged session; a pharmacy call gets the core's 5 s ceiling.
+        # A pharmacy call's CRM record keeps what the caller heard; any other
+        # call returns exactly what the core returned before.
+        record = ast.unparse(new_methods["transcript_turns"])
+        self.assertIn("return zeytun_call_transcript(order, items, *heard)", record)
+        self.assertTrue(ast.unparse(old_methods["transcript_turns"]).endswith(
+            record[record.index("return [items[item_id]"):]))
         handler = ast.unparse(new_methods["_handle_current_gemini_event"])
         self.assertIn("self._pharmacy_tool_progress()", handler)
         self.assertIn("5.0 if self.pharmacy_preview else GEMINI_LIVE_RESUME_PROGRESS_TIMEOUT_SECONDS",
