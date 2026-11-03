@@ -146,9 +146,59 @@ test('--plan says what is there and sends nothing', () => {
     const got = summary(out.out);
     assert.equal(got.files, '2', 'call recordings must not be counted');
     assert.equal(got.pending_files, '2');
-    assert.equal(got.pending_unsealed, '1', 'the LDFE envelope is how sealed is told from legacy');
+    assert.equal(got.plain_unexpected, '1', 'the LDFE envelope is how sealed is told from legacy');
     assert.equal(got.recipient, 'MISSING');
     assert.deepEqual(objects(w), [], '--plan uploaded something');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('a plain client file is counted apart from the files that are plain by design', () => {
+  // One number could not tell these apart, and on 2026-11-02 it did not: the
+  // 36 plain files on production were read as a sealing backfill that had
+  // stopped half way, when 25 of them are public by design, 2 are empty
+  // placeholders and 9 were orphans of a feature whose code had been removed.
+  const w = world({
+    files: {
+      'inbox/org1/sealed.bin': 'LDFE\u0001запечатанный',
+      'logos/brand.png': 'логотип',                      // public: served without a login
+      'email-images/org1/header.png': 'картинка письма',  // public
+      'social-logos/org1/profile.png': 'аватар профиля',  // public
+      'social-media-previews/org1/post.jpg': 'превью',    // public
+      '.gitkeep': '',                                     // empty placeholder
+      'contracts/.gitkeep': '',
+      'contracts/real.pdf': 'договор клиента',            // the one that matters
+    },
+  });
+  try {
+    const got = summary(run(w, ['--plan']).out);
+    assert.equal(got.plain_public, '4', 'public-by-design directories must not read as unsealed client files');
+    assert.equal(got.plain_empty, '2');
+    assert.equal(got.plain_unexpected, '1');
+    // And it names the directory, because that is what says which upload path wrote it.
+    assert.match(run(w, ['--plan']).out, /незашифрованных файлов клиентов на диске: 1/);
+    assert.match(run(w, ['--plan']).out, /\n\[uploads-offsite\]\s+contracts — 1/);
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('the plain count is a property of the tree, not of the copy queue', () => {
+  // The defect this replaced: it counted only files still waiting to be
+  // copied, so the day after the first run it read 0 — "everything sealed" —
+  // over a tree of plain files. It has to be the same number before and after.
+  const w = world({ files: { 'contracts/real.pdf': 'договор клиента' } });
+  try {
+    assert.equal(summary(run(w, ['--plan']).out).plain_unexpected, '1');
+    const copied = run(w, ['--run', '--recipient', RECIPIENT]);
+    assert.equal(copied.status, 0, copied.out);
+    assert.equal(summary(copied.out).plain_unexpected, '1', 'the run must report the tree it walked');
+    const after = run(w, ['--plan']);
+    assert.equal(summary(after.out).pending_files, '0', 'nothing should be left to copy');
+    assert.equal(summary(after.out).plain_unexpected, '1', 'a copied file is still a plain file on disk');
+    // And the watch reads it from the state file, not from this output.
+    assert.equal(state(w).offsite_plain_unexpected, '1');
   } finally {
     rmSync(w.dir, { recursive: true, force: true });
   }

@@ -243,35 +243,57 @@ export function assessBackupFiles(probe, files = WATCHED_BACKUP_FILES, dir = BAC
 }
 
 /**
- * Verdicts about the offsite copy of client files. Silent until the copy is
- * installed; after that, a copy that stopped is an alarm — the whole reason it
- * exists is that the database comes back from object storage and the files it
- * points at did not.
+ * Verdicts about the offsite copy of client files, and about the disk it reads.
+ * Silent until the copy is installed; after that, a copy that stopped is an
+ * alarm — the whole reason it exists is that the database comes back from
+ * object storage and the files it points at did not — and a client's file
+ * lying plain on that disk is a warning.
  */
 export function assessUploadsOffsite(probe) {
   const state = probe.offsite ?? {}
   if (state.offsite !== 'present') return []
+  const problems = []
+  const copy = assessOffsiteCopy(state, probe)
+  if (copy) problems.push(copy)
+  // Not about the copy: everything is age-encrypted on the way out either way.
+  // The mirror walks the whole tree, so it is the one thing here that looks at
+  // the disk and can tell that a client's file is lying on it plain — which
+  // tenant-file-readers-guard.test.ts cannot see, because it reads code. The
+  // journal of the mirror's own run names the directories.
+  const plain = Number(state.offsite_plain_unexpected)
+  if (Number.isFinite(plain) && plain > 0) {
+    problems.push({
+      key: 'uploads-plain',
+      critical: false,
+      text: `на диске ${plain} незашифрованных файл(ов) клиентов (журнал leaddrive-uploads-offsite назовёт каталоги)`,
+    })
+  }
+  return problems
+}
+
+/** One verdict about the copy itself, or null while it is healthy. */
+function assessOffsiteCopy(state, probe) {
   const now = Number.isFinite(probe.now) ? probe.now : Date.now()
   const ranAt = Number(state.offsite_ran_at) * 1000
   const pending = Number(state.offsite_pending)
   const backlog = Number.isFinite(pending) && pending > 0 ? `, в очереди ${pending} файл(ов)` : ''
   if (!Number.isFinite(ranAt) || ranAt <= 0) {
-    return [{ key: 'offsite', critical: true, text: 'копия файлов клиентов оставила состояние без времени прогона' }]
+    return { key: 'offsite', critical: true, text: 'копия файлов клиентов оставила состояние без времени прогона' }
   }
   const age = now - ranAt
   if (age > OFFSITE_CRIT_HOURS * 3600_000) {
-    return [{ key: 'offsite', critical: true, text: `копия файлов клиентов не делалась ${hours(age)} ч (порог ${OFFSITE_CRIT_HOURS} ч)${backlog}` }]
+    return { key: 'offsite', critical: true, text: `копия файлов клиентов не делалась ${hours(age)} ч (порог ${OFFSITE_CRIT_HOURS} ч)${backlog}` }
   }
   if (age > OFFSITE_WARN_HOURS * 3600_000) {
-    return [{ key: 'offsite', critical: false, text: `копия файлов клиентов не делалась ${hours(age)} ч (порог ${OFFSITE_WARN_HOURS} ч)${backlog}` }]
+    return { key: 'offsite', critical: false, text: `копия файлов клиентов не делалась ${hours(age)} ч (порог ${OFFSITE_WARN_HOURS} ч)${backlog}` }
   }
   if (state.offsite_status === 'crit') {
-    return [{ key: 'offsite', critical: true, text: `копия файлов клиентов не отправила ни одного файла (отказов ${state.offsite_failures ?? '?'})${backlog}` }]
+    return { key: 'offsite', critical: true, text: `копия файлов клиентов не отправила ни одного файла (отказов ${state.offsite_failures ?? '?'})${backlog}` }
   }
   if (state.offsite_status === 'warn') {
-    return [{ key: 'offsite', critical: false, text: `копия файлов клиентов прошла с отказами (${state.offsite_failures ?? '?'})${backlog}` }]
+    return { key: 'offsite', critical: false, text: `копия файлов клиентов прошла с отказами (${state.offsite_failures ?? '?'})${backlog}` }
   }
-  return []
+  return null
 }
 
 /** Verdicts about free space, one per filesystem however many paths share it. */
