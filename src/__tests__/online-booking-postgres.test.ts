@@ -975,6 +975,18 @@ pgDescribe("online booking on a real Postgres", () => {
     organizationId: ORG, channelConfigId: "channel-wa", conversationId, waPhone: "994551234567", senderName: "Nigar",
     text: "Sabah saç kəsiminə yazılmaq olar?", replyId: null, ...over,
   }))
+  /** A WhatsApp conversation with one inbound message, as the webhook leaves it. */
+  async function conversationWith(waPhone: string, name: string, body: string) {
+    const conversation = await bypass(() => prisma.socialConversation.create({ data: {
+      organizationId: ORG, platform: "whatsapp", externalId: `wa-${randomUUID()}`, contactName: name,
+    } }))
+    await bypass(() => prisma.channelMessage.create({ data: {
+      organizationId: ORG, channelType: "whatsapp", direction: "inbound", from: name, to: "system",
+      body, status: "delivered", conversationId: conversation.id, metadata: { waPhone },
+    } }))
+    return conversation.id
+  }
+
   const offersOf = (conversationId: string, status?: string) => bypass(() => prisma.bookingOffer.findMany({
     where: { conversationId, ...(status ? { status } : {}) }, orderBy: { startsAt: "asc" },
   }))
@@ -1136,13 +1148,7 @@ pgDescribe("online booking on a real Postgres", () => {
     await withWhatsAppBooking(async () => {
       const slug = await newPage({ title: "Boyama", durationMinutes: 60, price: 60, maxDaysAhead: 2 })
       const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
-      const conversation = `conv-${randomUUID()}`
-      // The client's own message is what the agent answers to, and what the
-      // queue later reads the phone and the name from.
-      await bypass(() => prisma.channelMessage.create({ data: {
-        organizationId: ORG, channelType: "whatsapp", direction: "inbound", from: "Nigar", to: "system",
-        body: "Boyama olar?", status: "delivered", conversationId: conversation, metadata: { waPhone: "994551234567" },
-      } }))
+      const conversation = await conversationWith("994551234567", "Nigar", "Boyama olar?")
 
       await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })
       const [offer] = await offersOf(conversation)
@@ -1182,11 +1188,7 @@ pgDescribe("online booking on a real Postgres", () => {
     await withWhatsAppBooking(async () => {
       const slug = await newPage({ title: "Keratin", durationMinutes: 60, price: 150, maxDaysAhead: 2 })
       const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
-      const conversation = `conv-${randomUUID()}`
-      await bypass(() => prisma.channelMessage.create({ data: {
-        organizationId: ORG, channelType: "whatsapp", direction: "inbound", from: "Aysel", to: "system",
-        body: "Keratin?", status: "delivered", conversationId: conversation, metadata: { waPhone: "994551110022" },
-      } }))
+      const conversation = await conversationWith("994551110022", "Aysel", "Keratin?")
       await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })
       const [offer] = await offersOf(conversation)
       await turnIn(conversation, { replyId: `bk:${offer.id}`, text: "tap" })
