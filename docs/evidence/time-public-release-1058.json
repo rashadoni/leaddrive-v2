@@ -1,0 +1,26 @@
+{
+  "sourceSha": "db1bf59a087a53530038f945bca50ea2b5a03aef",
+  "sourceBranch": "main",
+  "packageName": "com.leaddrive.attendance",
+  "versionName": "1.0.0",
+  "versionCode": 1058,
+  "apkSha256": "2a09cab99f896c321aa8ae771227bf5827c588ffda5b855c2ad9d6ce6c276a9a",
+  "apkBytes": 46312247,
+  "signingCertificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+  "buildRun": 41674127876,
+  "hostedTests": {
+    "suitesPassed": 299,
+    "testsPassed": 2756,
+    "testsTodo": 1
+  },
+  "hostedApksignerAaptPackageCertificatePermissions": "PASS (FieldPushService and POST_NOTIFICATIONS required, background tracking forbidden)",
+  "previousPublicVersionCode": 1055,
+  "physicalMaestro": "NOT_RUN",
+  "physicalInPlaceUpgrade": "PASS on the owner's S23 (R5CXC0NP96K) on 2026-11-03: 1055 -> 1057 (branch build of the same source) -> 1058 with pm install -r, firstInstallTime and session kept, Firebase initialized",
+  "physicalPushEndToEnd": "PASS on 1057 (same source tree as 1058): HR's «İzahat istə» in the CRM produced a Time notification «3 noyabr işə gəlməməyinizi izah edin»; tapping it from the background opened «İzahatlar» with the request on top",
+  "publicationAuthorization": "Owner on 2026-11-03: «я не разбираюсь сам сделай» (push in Time end to end)",
+  "tag": "time-v1.0.0-1058",
+  "apkUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1058/leaddrive-time-1.0.0-1058.apk",
+  "publishedAt": "2026-11-03T16:48:02Z",
+  "publicRedownloadHashVerified": true
+}
