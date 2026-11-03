@@ -152,3 +152,14 @@ suites, package/permissions/pinned certificate), published as `time-v1.0.0-1055`
 hash verified. Physical in-place upgrade of this exact build: PASS on the owner's S23 — 1052 → 1055
 with `pm install -r`, first install time and session kept, the new request opens on the kind
 choice, nothing submitted. Evidence: `docs/evidence/time-public-release-1055.json`.
+
+## Release 1058 — 2026-11-03
+
+Server notifications in Time (leaddrive-mtm#229; owner: «я не разбираюсь сам сделай»): Time is a
+second client of the Firebase project `leaddrive-mtm` (app registered in the console the same day),
+registers its push address while signed in, and a tap on an explanation request opens «İzahatlar».
+Reviewed main `db1bf59` built as 1058 (hosted Jest 299 suites, package/permissions/pinned
+certificate, push service required), published as `time-v1.0.0-1058`, public redownload hash
+verified. On the owner's S23: in-place 1055 → 1057 → 1058 kept the session; on 1057 (same source) a
+real «İzahat istə» from the CRM arrived as a notification and its tap opened «İzahatlar».
+Evidence: `docs/evidence/time-public-release-1058.json`.

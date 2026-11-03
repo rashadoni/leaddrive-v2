@@ -16,13 +16,13 @@ afterEach(() => {
 })
 
 describe("Time release boundary", () => {
-  it("promotes the reviewed main-built Time 1055 release", () => {
+  it("promotes the reviewed main-built Time 1058 release", () => {
     expect(parseTimeAppRelease(manifest)).toMatchObject({
-      versionName: "1.0.0", versionCode: 1055,
-      sourceSha: "d43d71c4f0bd05f269e03cded6c5d8a5899a5389", sourceBranch: "main",
+      versionName: "1.0.0", versionCode: 1058,
+      sourceSha: "db1bf59a087a53530038f945bca50ea2b5a03aef", sourceBranch: "main",
       signingCertificateSha256: TIME_APP_CERTIFICATE,
-      tag: "time-v1.0.0-1055",
-      apkUrl: "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1055/leaddrive-time-1.0.0-1055.apk",
+      tag: "time-v1.0.0-1058",
+      apkUrl: "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1058/leaddrive-time-1.0.0-1058.apk",
     })
   })
   it("accepts a complete separately identified Time manifest", () => {
@@ -59,7 +59,7 @@ describe("public Time routes", () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       packageName: TIME_APP_PACKAGE, channel: TIME_APP_CHANNEL,
-      versionCode: 1055, versionName: "1.0.0",
+      versionCode: 1058, versionName: "1.0.0",
       apkSha256: manifest.release.apkSha256,
       downloadUrl: "https://app.leaddrivecrm.org/time/download", storeUrl: null,
     })
