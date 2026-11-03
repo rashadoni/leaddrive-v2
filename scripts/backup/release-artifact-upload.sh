@@ -16,12 +16,19 @@
 # which deletes the tarball.
 #
 # It rides on the WAL archive's bucket and credentials on purpose: pgBackRest
-# is scoped to its own repo path and never looks at this prefix, the key
-# already has write and delete there, and that bucket has no Object Lock, so
-# pruning actually frees space. One bucket and one credential set then unlock
-# both the database history and a runnable application — fewer moving parts in
-# the hour when it matters. The immutable Object-Locked dump bucket stays what
-# it is: the copy ransomware cannot touch.
+# is scoped to its own repo path and never looks at this prefix, and the key
+# already has write and delete there. One bucket and one credential set then
+# unlock both the database history and a runnable application — fewer moving
+# parts in the hour when it matters. The immutable Object-Locked dump bucket
+# stays what it is: the copy ransomware cannot touch.
+#
+# That shared bucket is why pruning here deletes VERSIONS, not objects. The
+# bucket is versioned, so `s3 rm` only hides an object: its bytes stay as a
+# noncurrent version and keep counting against the account's storage cap until
+# the bucket's lifecycle rule sweeps them a day later. On 2026-11-03 a day of a
+# dozen deploys left 6.05 GiB hidden against 0.86 GiB live, the cap tripped,
+# and production could not archive a single WAL segment for three hours —
+# everything in this bucket shares that cap.
 set -Eeuo pipefail
 
 umask 077
@@ -124,6 +131,33 @@ trap 'rm -f "$pointer"' EXIT
 "$AWS_BIN" s3 cp "$pointer" "s3://$WAL_REPO_BUCKET/$WAL_ARTIFACT_PREFIX/current.env" "${S3[@]}" \
   --only-show-errors || { log 'FATAL cannot publish the pointer'; exit 1; }
 
+# Lists "<version-id><tab><bytes>" for ONE exact key. `--prefix` is a prefix
+# match, so a key that is a prefix of another must not drag it along; delete
+# markers are listed too, because a key left with only a marker still costs a
+# listing entry. With only_noncurrent=1 the live version is kept.
+versions_of() {
+  local key="$1" only_noncurrent="$2"
+  "$AWS_BIN" s3api list-object-versions "${S3[@]}" --bucket "$WAL_REPO_BUCKET" \
+    --prefix "$key" 2>/dev/null | KEY="$key" ONLY_NONCURRENT="$only_noncurrent" python3 -I -c '
+import json, os, sys
+
+key = os.environ["KEY"]
+only_noncurrent = os.environ["ONLY_NONCURRENT"] == "1"
+try:
+    data = json.loads(sys.stdin.read())
+except Exception:
+    raise SystemExit(0)
+for row in list(data.get("Versions") or []) + list(data.get("DeleteMarkers") or []):
+    if row.get("Key") != key:
+        continue
+    if only_noncurrent and row.get("IsLatest"):
+        continue
+    version = row.get("VersionId") or ""
+    if version:
+        print("%s\t%s" % (version, row.get("Size", 0)))
+'
+}
+
 # Prune by what the bucket says, not by what we think we uploaded. The pointer
 # is never a candidate.
 listing="$("$AWS_BIN" s3api list-objects-v2 "${S3[@]}" --bucket "$WAL_REPO_BUCKET" \
@@ -142,6 +176,28 @@ for o in objects[keep:]:
     print(o["Key"])
 ' 2>/dev/null || true)"
 removed=0
+purged=0
+freed=0
+tab="$(printf '\t')"
+
+purge_versions() {  # key, only_noncurrent -> how many versions went away
+  local key="$1" rows version size gone=0
+  rows="$(versions_of "$key" "$2" || true)"
+  [ -n "$rows" ] || return 1
+  while IFS="$tab" read -r version size; do
+    [ -n "$version" ] || continue
+    if "$AWS_BIN" s3api delete-object "${S3[@]}" --bucket "$WAL_REPO_BUCKET" \
+      --key "$key" --version-id "$version" >/dev/null 2>&1; then
+      gone=$((gone + 1))
+      purged=$((purged + 1))
+      freed=$((freed + ${size:-0}))
+    else
+      log "WARNING could not purge a version of $key"
+    fi
+  done <<<"$rows"
+  [ "$gone" -gt 0 ]
+}
+
 if [ -n "$doomed" ]; then
   while IFS= read -r k; do
     [ -n "$k" ] || continue
@@ -149,10 +205,27 @@ if [ -n "$doomed" ]; then
       "$WAL_ARTIFACT_PREFIX"/*.tar.gz) ;;
       *) log "refusing to delete an unexpected key: $k"; continue ;;
     esac
-    "$AWS_BIN" s3 rm "s3://$WAL_REPO_BUCKET/$k" "${S3[@]}" --only-show-errors >/dev/null 2>&1 \
-      && removed=$((removed + 1)) || log "WARNING could not remove $k"
+    if purge_versions "$k" 0; then
+      removed=$((removed + 1))
+      continue
+    fi
+    # No version listing at all — the call failed, or this bucket is not
+    # versioned. Hiding the object is still better than keeping an artifact a
+    # restore could pick: say it out loud, because hidden bytes are a slow leak
+    # towards the very cap this is meant to protect.
+    if "$AWS_BIN" s3 rm "s3://$WAL_REPO_BUCKET/$k" "${S3[@]}" --only-show-errors >/dev/null 2>&1; then
+      removed=$((removed + 1))
+      log "WARNING hid $k without purging its versions"
+    else
+      log "WARNING could not remove $k"
+    fi
   done <<<"$doomed"
 fi
 
-log "kept the newest $WAL_ARTIFACT_KEEP artifacts, removed $removed"
-printf 'SUMMARY artifact-upload sha=%s bytes=%s removed=%s\n' "$SHA" "$bytes" "$removed"
+# The pointer is rewritten on every deploy, so its own superseded versions pile
+# up exactly the same way — 29 of them by 2026-11-03. The live one stays.
+purge_versions "$WAL_ARTIFACT_PREFIX/current.env" 1 || true
+
+log "kept the newest $WAL_ARTIFACT_KEEP artifacts, removed $removed, purged $purged version(s), freed $freed bytes"
+printf 'SUMMARY artifact-upload sha=%s bytes=%s removed=%s versions=%s freed=%s\n' \
+  "$SHA" "$bytes" "$removed" "$purged" "$freed"

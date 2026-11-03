@@ -33,6 +33,13 @@ set +a
 : "${WAL_LOG_PATH:=/var/log/pgbackrest}"
 : "${WAL_ARTIFACT_PREFIX:=artifacts}"
 : "${WAL_ARTIFACT_GRACE_SECONDS:=1800}"
+# How full the bucket may get before this says so, and how often it is worth
+# asking. The account's cap is set in the provider's console and no API reports
+# it, so the threshold lives here: below the cap, far enough to leave a day.
+: "${WAL_USAGE_WARN_GIB:=7}"
+: "${WAL_USAGE_INTERVAL_SECONDS:=3600}"
+case "$WAL_USAGE_WARN_GIB" in '' | *[!0-9]*) WAL_USAGE_WARN_GIB=7 ;; esac
+case "$WAL_USAGE_INTERVAL_SECONDS" in '' | *[!0-9]*) WAL_USAGE_INTERVAL_SECONDS=3600 ;; esac
 : "${WAL_DEPLOY_SHA_FILE:=/opt/leaddrive-v2/.next/standalone/.deploy-sha}"
 : "${AWS_BIN:=aws}"
 : "${WAL_CHECK_STATE_FILE:=/var/lib/leaddrive-wal-archive/check-state.json}"
@@ -45,6 +52,11 @@ flock -n 9 || {
   printf '[wal-check] another run holds the lock\n' >&2
   exit 0
 }
+
+# Read once, used twice: the two-run streak at the end, and the storage gauge
+# below, which is cached here so a paid listing is not repeated every ten
+# minutes.
+previous="$(cat "$WAL_CHECK_STATE_FILE" 2>/dev/null || printf '{}')"
 
 status=ok
 problems=()
@@ -191,6 +203,73 @@ if [ -n "$WAL_ARTIFACT_PREFIX" ] && [ -r "$WAL_DEPLOY_SHA_FILE" ] && command -v 
   esac
 fi
 
+# 5b. Everything in this bucket shares ONE account storage cap, and a tripped
+# cap stops archiving outright: on 2026-11-03 production could not push a
+# single WAL segment for three hours while the provider answered 403 "storage
+# cap exceeded", and the first thing anybody heard about it was that failure.
+# The gauge has to count NONCURRENT versions, because a deleted object keeps
+# its bytes until the bucket's lifecycle sweeps them a day later — `s3 ls`
+# showed 0.86 GiB where 6.9 GiB was stored. Asked at most hourly: this runs
+# every ten minutes and a full version listing is a paid request.
+usage_bytes=-1
+usage_dead=-1
+usage_at=0
+read -r prev_usage_bytes prev_usage_dead prev_usage_at <<<"$(printf '%s' "$previous" | python3 -I -c '
+import json, sys
+try:
+    s = json.loads(sys.stdin.read() or "{}")
+except Exception:
+    s = {}
+def number(name, default):
+    try:
+        return int(s.get(name, default))
+    except (TypeError, ValueError):
+        return default
+print(number("usageBytes", -1), number("usageDeadBytes", -1), number("usageAt", 0))
+')"
+now_epoch="$(date -u +%s)"
+if [ -n "${WAL_REPO_BUCKET:-}" ] && command -v "$AWS_BIN" >/dev/null 2>&1; then
+  if [ "$((now_epoch - prev_usage_at))" -ge "$WAL_USAGE_INTERVAL_SECONDS" ]; then
+    measured="$(AWS_ACCESS_KEY_ID="${WAL_REPO_KEY:-}" AWS_SECRET_ACCESS_KEY="${WAL_REPO_KEY_SECRET:-}" \
+      AWS_DEFAULT_REGION="${WAL_REPO_REGION:-}" \
+      "$AWS_BIN" s3api list-object-versions --endpoint-url "https://${WAL_REPO_ENDPOINT:-}" \
+        --region "${WAL_REPO_REGION:-}" --no-cli-pager --bucket "$WAL_REPO_BUCKET" 2>/dev/null \
+      | python3 -I -c '
+import json, sys
+try:
+    data = json.loads(sys.stdin.read())
+except Exception:
+    raise SystemExit(1)
+total = dead = 0
+for row in data.get("Versions") or []:
+    size = int(row.get("Size") or 0)
+    total += size
+    if not row.get("IsLatest"):
+        dead += size
+print(total, dead)
+' 2>/dev/null || true)"
+    case "$measured" in
+      # Unmeasurable this run (no answer, no permission, a timeout): say
+      # nothing rather than invent a number, and leave the cached one alone.
+      [0-9]*' '[0-9]*)
+        usage_bytes="${measured%% *}"
+        usage_dead="${measured##* }"
+        usage_at="$now_epoch"
+        ;;
+    esac
+  else
+    usage_bytes="$prev_usage_bytes"
+    usage_dead="$prev_usage_dead"
+    usage_at="$prev_usage_at"
+  fi
+fi
+
+gib() { awk -v bytes="${1:-0}" 'BEGIN { printf "%.1f", bytes / 1073741824 }'; }
+
+if [ "$usage_bytes" -ge 0 ] && [ "$usage_bytes" -ge $((WAL_USAGE_WARN_GIB * 1073741824)) ]; then
+  note warn "в бакете $WAL_REPO_BUCKET занято $(gib "$usage_bytes") ГиБ при пороге ${WAL_USAGE_WARN_GIB} ГиБ, из них $(gib "$usage_dead") ГиБ держат скрытые версии; исчерпание квоты остановит архивацию WAL"
+fi
+
 # 6. End-to-end: pgbackrest check pushes a real segment and reads it back.
 if ! check_output="$(as_pg "pgbackrest --stanza=$WAL_STANZA check")"; then
   note crit "pgbackrest check failed: $(printf '%s' "$check_output" | tail -2 | tr '\n' ' ')"
@@ -198,7 +277,6 @@ fi
 
 # Alert on two consecutive bad runs, recover after one clean run; same shape as
 # the Kafka and line watches, so a single network blip stays quiet.
-previous="$(cat "$WAL_CHECK_STATE_FILE" 2>/dev/null || printf '{}')"
 read -r prev_status prev_streak <<<"$(printf '%s' "$previous" | python3 -I -c '
 import json, sys
 try:
@@ -235,6 +313,8 @@ fi
 # caught a half-written file would see broken JSON and call it an incident.
 WAL_STATE_STATUS="$status" WAL_STATE_STREAK="$streak" \
 WAL_STATE_MESSAGE="$message" WAL_STATE_ALERT="$should_alert" \
+WAL_STATE_USAGE="$usage_bytes" WAL_STATE_USAGE_DEAD="$usage_dead" \
+WAL_STATE_USAGE_AT="$usage_at" \
 WAL_STATE_FILE="$WAL_CHECK_STATE_FILE" python3 -I -c '
 import json, os, tempfile, time
 
@@ -245,6 +325,10 @@ payload = {
     "message": os.environ["WAL_STATE_MESSAGE"],
     "shouldAlert": os.environ["WAL_STATE_ALERT"] == "1",
     "checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    # The storage gauge, carried so the paid listing is hourly and not every run.
+    "usageBytes": int(os.environ["WAL_STATE_USAGE"]),
+    "usageDeadBytes": int(os.environ["WAL_STATE_USAGE_DEAD"]),
+    "usageAt": int(os.environ["WAL_STATE_USAGE_AT"]),
 }
 directory = os.path.dirname(target) or "."
 fd, tmp = tempfile.mkstemp(dir=directory)
@@ -258,8 +342,9 @@ except BaseException:
     raise
 '
 
-printf 'SUMMARY wal-check status=%s lag=%ss backlog=%s dropped=%s backup_age=%ss full_age=%ss\n' \
-  "$status" "${last_archived_age:--1}" "$backlog" "$dropped_total" "${backup_age:--1}" "${full_age:--1}"
+printf 'SUMMARY wal-check status=%s lag=%ss backlog=%s dropped=%s backup_age=%ss full_age=%ss usage=%s dead=%s\n' \
+  "$status" "${last_archived_age:--1}" "$backlog" "$dropped_total" "${backup_age:--1}" "${full_age:--1}" \
+  "$usage_bytes" "$usage_dead"
 [ "${#problems[@]}" -eq 0 ] || printf '%s\n' "${problems[@]}"
 
 case "$status" in

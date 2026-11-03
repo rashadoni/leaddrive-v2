@@ -17,7 +17,12 @@ const check = readFileSync('scripts/backup/wal-archive-check.sh', 'utf8');
 const envExample = readFileSync('ops/backup/wal-archive.env.example', 'utf8');
 
 // A stub `aws` over a directory: cp both ways, head-object from a sidecar
-// written at upload time, list-objects-v2, rm. Enough to be a bucket.
+// written at upload time, list-objects-v2, rm. Enough to be a bucket — and a
+// VERSIONED one, because that is the property the pruning depends on: live
+// bytes in objects/, superseded bytes in noncurrent/, delete markers in
+// markers/. A stub without versions would have called hiding an object
+// "freeing space", which is exactly the mistake that tripped the storage cap
+// on production.
 const STUB = `#!/usr/bin/env bash
 set -Eeuo pipefail
 bucket_dir="$FAKE_BUCKET"
@@ -25,6 +30,19 @@ args=("$@")
 svc="\${args[0]}"
 op="\${args[1]}"
 key_of() { printf '%s' "\${1#s3://*/}"; }
+stash_current() {
+  local k="\$1" vid
+  [ -f "\$bucket_dir/objects/\$k" ] || return 0
+  vid="\$(date -u +%s%N)-\$RANDOM"
+  mkdir -p "\$bucket_dir/noncurrent/\$k"
+  mv -- "\$bucket_dir/objects/\$k" "\$bucket_dir/noncurrent/\$k/\$vid"
+  rm -f -- "\$bucket_dir/meta/\$k" "\$bucket_dir/meta/\$k.when"
+}
+mark_deleted() {
+  local k="\$1"
+  mkdir -p "\$(dirname "\$bucket_dir/markers/\$k")"
+  : > "\$bucket_dir/markers/\$k"
+}
 get_opt() {
   local want="$1"; shift
   local i
@@ -41,6 +59,8 @@ if [ "\$svc" = s3 ] && [ "\$op" = cp ]; then
     mkdir -p "\$(dirname "\$dst")"; cp -- "\$bucket_dir/objects/\$k" "\$dst"
   else
     k="\$(key_of "\$dst")"
+    stash_current "\$k"
+    rm -f -- "\$bucket_dir/markers/\$k"
     mkdir -p "\$(dirname "\$bucket_dir/objects/\$k")" "\$(dirname "\$bucket_dir/meta/\$k")"
     cp -- "\$src" "\$bucket_dir/objects/\$k"
     meta="\$(get_opt metadata || true)"
@@ -78,7 +98,57 @@ if [ "\$svc" = s3api ] && [ "\$op" = list-objects-v2 ]; then
 fi
 if [ "\$svc" = s3 ] && [ "\$op" = rm ]; then
   k="\$(key_of "\${args[2]}")"
-  rm -f -- "\$bucket_dir/objects/\$k" "\$bucket_dir/meta/\$k" "\$bucket_dir/meta/\$k.when"
+  stash_current "\$k"
+  mark_deleted "\$k"
+  exit 0
+fi
+if [ "\$svc" = s3api ] && [ "\$op" = list-object-versions ]; then
+  [ -z "\${FAKE_NO_VERSIONS:-}" ] || { echo "AccessDenied" >&2; exit 254; }
+  prefix="\$(get_opt prefix || true)"
+  printf '{"Versions": ['
+  first=1
+  while IFS= read -r f; do
+    k="\${f#\$bucket_dir/objects/}"
+    case "\$k" in "\$prefix"*) ;; *) continue ;; esac
+    [ "\$first" = 1 ] || printf ','
+    printf '{"Key": "%s", "VersionId": "current", "IsLatest": true, "Size": %s}' \
+      "\$k" "\$(stat -c %s -- "\$f")"
+    first=0
+  done < <(find "\$bucket_dir/objects" -type f 2>/dev/null | sort)
+  while IFS= read -r f; do
+    rel="\${f#\$bucket_dir/noncurrent/}"
+    k="\${rel%/*}"
+    vid="\${rel##*/}"
+    case "\$k" in "\$prefix"*) ;; *) continue ;; esac
+    [ "\$first" = 1 ] || printf ','
+    printf '{"Key": "%s", "VersionId": "%s", "IsLatest": false, "Size": %s}' \
+      "\$k" "\$vid" "\$(stat -c %s -- "\$f")"
+    first=0
+  done < <(find "\$bucket_dir/noncurrent" -type f 2>/dev/null | sort)
+  printf '], "DeleteMarkers": ['
+  first=1
+  while IFS= read -r f; do
+    k="\${f#\$bucket_dir/markers/}"
+    case "\$k" in "\$prefix"*) ;; *) continue ;; esac
+    [ "\$first" = 1 ] || printf ','
+    printf '{"Key": "%s", "VersionId": "marker", "IsLatest": true}' "\$k"
+    first=0
+  done < <(find "\$bucket_dir/markers" -type f 2>/dev/null | sort)
+  printf ']}\\n'
+  exit 0
+fi
+if [ "\$svc" = s3api ] && [ "\$op" = delete-object ]; then
+  k="\$(get_opt key)"
+  vid="\$(get_opt version-id || true)"
+  case "\$vid" in
+    '') stash_current "\$k"; mark_deleted "\$k" ;;
+    current) rm -f -- "\$bucket_dir/objects/\$k" "\$bucket_dir/meta/\$k" "\$bucket_dir/meta/\$k.when" ;;
+    marker) rm -f -- "\$bucket_dir/markers/\$k" ;;
+    *)
+      [ -f "\$bucket_dir/noncurrent/\$k/\$vid" ] || { echo "NoSuchVersion" >&2; exit 254; }
+      rm -f -- "\$bucket_dir/noncurrent/\$k/\$vid"
+      ;;
+  esac
   exit 0
 fi
 if [ "\$svc" = s3 ] && [ "\$op" = ls ]; then
@@ -92,8 +162,9 @@ exit 2
 function makeWorld() {
   const dir = mkdtempSync(join(tmpdir(), 'leaddrive-artifact-'));
   const bucket = join(dir, 'bucket');
-  mkdirSync(join(bucket, 'objects'), { recursive: true });
-  mkdirSync(join(bucket, 'meta'), { recursive: true });
+  for (const sub of ['objects', 'meta', 'noncurrent', 'markers']) {
+    mkdirSync(join(bucket, sub), { recursive: true });
+  }
   const stub = join(dir, 'aws');
   writeFileSync(stub, STUB);
   chmodSync(stub, 0o755);
@@ -206,6 +277,21 @@ test('a corrupted download is refused, not handed to the operator', () => {
   }
 });
 
+// How many bytes the bucket still holds in one area. The question pruning has
+// to answer is about bytes, not about what a listing shows.
+function areaBytes(bucket, area) {
+  const out = execFileSync(
+    'bash',
+    ['-c', `find ${join(bucket, area)} -type f -printf '%s\\n' 2>/dev/null | awk '{s+=$1} END {print s+0}'`],
+    { encoding: 'utf8' },
+  );
+  return Number(out.trim());
+}
+
+function areaFiles(bucket, area) {
+  return execFileSync('bash', ['-c', `find ${join(bucket, area)} -type f 2>/dev/null | sort`], { encoding: 'utf8' });
+}
+
 test('pruning keeps the newest artifacts and never touches the pointer', () => {
   const world = makeWorld();
   try {
@@ -225,6 +311,81 @@ test('pruning keeps the newest artifacts and never touches the pointer', () => {
     const down = run('scripts/backup/release-artifact-restore.sh', ['--dest', dest], world);
     assert.equal(down.status, 0, down.stdout);
     assert.match(down.stdout, new RegExp(`pointer names ${SHA_C}`));
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('pruning frees the bytes; hiding the object would not', () => {
+  // 2026-11-03: `s3 rm` in a versioned bucket only hides, and a day of deploys
+  // left 6.05 GiB of hidden tarballs against 0.86 GiB live. The account's
+  // storage cap tripped and production could not archive WAL for three hours.
+  // So the assertion is about the bytes the bucket still holds, not about what
+  // a listing shows.
+  const world = makeWorld();
+  try {
+    let last = null;
+    for (const sha of [SHA_A, SHA_B, SHA_C]) {
+      const tar = makeTarball(world.dir, `r-${sha.slice(0, 3)}.tar.gz`, `release ${sha}\n`.repeat(50));
+      last = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', sha], world);
+      assert.equal(last.status, 0, last.stdout);
+      execFileSync('sleep', ['1.1']);
+    }
+    // The run that pruned says how much it actually took back.
+    const summary = last.stdout.match(/SUMMARY artifact-upload .*versions=(\d+) freed=(\d+)/);
+    assert.ok(summary, `no versions/freed in the summary: ${last.stdout}`);
+    assert.ok(Number(summary[1]) >= 1, `nothing was purged: ${last.stdout}`);
+    assert.ok(Number(summary[2]) > 0, `nothing was freed: ${last.stdout}`);
+
+    assert.equal(areaBytes(world.bucket, 'noncurrent'), 0, `bytes stayed hidden: ${areaFiles(world.bucket, 'noncurrent')}`);
+    assert.equal(areaFiles(world.bucket, 'markers'), '', 'a delete marker was left behind instead of purging');
+    const live = areaFiles(world.bucket, 'objects');
+    assert.ok(!live.includes(`${SHA_A}.tar.gz`), `oldest artifact survived: ${live}`);
+    assert.ok(live.includes(`${SHA_C}.tar.gz`) && live.includes('current.env'), `wrong survivors: ${live}`);
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('the pointer does not pile up its own superseded versions', () => {
+  // current.env is rewritten on every deploy, so it leaks at exactly the same
+  // rate as the artifacts — 29 dead copies by 2026-11-03 — and the live one
+  // must still be the live one afterwards.
+  const world = makeWorld();
+  try {
+    for (const sha of [SHA_A, SHA_B, SHA_C]) {
+      const tar = makeTarball(world.dir, `p-${sha.slice(0, 3)}.tar.gz`, `release ${sha}\n`.repeat(20));
+      assert.equal(run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', sha], world).status, 0);
+      execFileSync('sleep', ['1.1']);
+    }
+    const hidden = areaFiles(world.bucket, 'noncurrent');
+    assert.ok(!hidden.includes('current.env'), `superseded pointers kept their bytes: ${hidden}`);
+    const down = run('scripts/backup/release-artifact-restore.sh', ['--dest', join(world.dir, 'newest.tar.gz')], world);
+    assert.equal(down.status, 0, down.stdout);
+    assert.match(down.stdout, new RegExp(`pointer names ${SHA_C}`));
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('a bucket that will not list versions still gets the old artifact out of the way', () => {
+  // Fallback, and it has to be loud: a kept artifact is a wrong restore, while
+  // hidden bytes are a slow leak towards the cap. Both are worse in silence.
+  const world = makeWorld();
+  try {
+    let last = null;
+    for (const [index, sha] of [SHA_A, SHA_B, SHA_C].entries()) {
+      const tar = makeTarball(world.dir, `f-${sha.slice(0, 3)}.tar.gz`, `release ${sha}\n`.repeat(30));
+      const extra = index === 2 ? { FAKE_NO_VERSIONS: '1' } : {};
+      last = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', sha], world, extra);
+      assert.equal(last.status, 0, last.stdout);
+      execFileSync('sleep', ['1.1']);
+    }
+    assert.match(last.stdout, /WARNING hid artifacts\/a{40}\.tar\.gz without purging its versions/);
+    assert.match(last.stdout, /SUMMARY artifact-upload .*removed=1 versions=0 freed=0/);
+    const live = areaFiles(world.bucket, 'objects');
+    assert.ok(!live.includes(`${SHA_A}.tar.gz`), `the old artifact is still restorable: ${live}`);
+    assert.ok(areaFiles(world.bucket, 'noncurrent').includes(`${SHA_A}.tar.gz`), 'the fallback lost the bytes silently');
   } finally {
     rmSync(world.dir, { recursive: true, force: true });
   }
