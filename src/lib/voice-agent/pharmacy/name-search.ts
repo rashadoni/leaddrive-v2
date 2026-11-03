@@ -85,6 +85,14 @@ function spellingSlack(length: number): number {
 
 /** Words shorter than this, folded, match only their exact folded spelling (no slack). */
 const SLACK_FROM = 5
+/**
+ * How much a caller's word counts when it matches only an item's maker or
+ * country. 2026-11-03 owner's call: "Abdi İbrahim Adefa" — two maker words
+ * outweighed the one product name, and the five candidates were Abdi Ibrahim
+ * items without Adefa. A maker word still decides between two equal names
+ * ("Parasetamol Sopharma"), never against a name.
+ */
+const SOURCE_WORD_WEIGHT = 0.25
 
 interface IndexedWord { label: string; gramCount: number; letters: string[]; folded: Int32Array }
 
@@ -103,6 +111,8 @@ export class PharmacyNameSearch {
   private readonly termSizes: number[] = []
   /** Whether the label is some item's complete name, not only one of its words. */
   private readonly termIsName: boolean[] = []
+  /** Per word label: items in whose labels this word is only the maker or country. */
+  private readonly sourceOnly = new Map<number, Set<number>>()
   private readonly postings = new Map<string, number[]>()
   private readonly words = new Map<string, number>()
   private readonly wordList: IndexedWord[] = []
@@ -127,7 +137,8 @@ export class PharmacyNameSearch {
 
   constructor(private readonly indexWords = false) {}
 
-  add(id: string, rawName: string): void {
+  /** `source`: the parts of the label that name the maker and country, not the product. */
+  add(id: string, rawName: string, source: string[] = []): void {
     const name = normalizePharmacyLabel(rawName)
     let item = this.idIndex.get(id)
     if (item === undefined) {
@@ -135,6 +146,12 @@ export class PharmacyNameSearch {
       this.idIndex.set(id, item)
     }
     const labels = new Set([name])
+    let own: Set<string> | null = null
+    if (this.indexWords && source.length) {
+      let rest = rawName
+      for (const part of source) rest = rest.replace(part, " ")
+      own = new Set(pharmacyWords(normalizePharmacyLabel(rest)))
+    }
     if (this.indexWords) {
       // Full feed names contain dose, brand and packaging in one long label.
       // Word entries improve discovery; they NEVER become approved aliases.
@@ -144,13 +161,19 @@ export class PharmacyNameSearch {
       }
     }
     for (const label of labels) {
+      const fromSource = own !== null && label !== name && !own.has(label)
       const existing = this.terms.get(label)
       if (existing !== undefined) {
-        this.termIds[existing].add(item)
+        const ids = this.termIds[existing], sources = this.sourceOnly.get(existing)
+        // A word in the item's own name in any of its labels stays a name word.
+        if (!fromSource) sources?.delete(item)
+        else if (!ids.has(item)) this.sourceOnly.set(existing, (sources ?? new Set()).add(item))
+        ids.add(item)
         if (label === name) this.termIsName[existing] = true
         continue
       }
       const term = this.termIds.push(new Set([item])) - 1
+      if (fromSource) this.sourceOnly.set(term, new Set([item]))
       this.terms.set(label, term)
       this.termIsName.push(label === name)
       const grams = trigrams(label)
@@ -218,12 +241,17 @@ export class PharmacyNameSearch {
       const weight = Math.log(1 + this.idList.length / this.termIds[this.terms.get(closest)!].size)
       const best: number[] = []
       for (const [label, score] of matches) {
-        for (const item of this.termIds[this.terms.get(label)!]) {
+        // A maker's word wherever most of its labels put it there: 1C writes a
+        // few labels out of pattern (three of Abdi Ibrahim's 57 on 2026-11-03).
+        const term = this.terms.get(label)!, ids = this.termIds[term]
+        const factor = (this.sourceOnly.get(term)?.size ?? 0) * 2 > ids.size ? SOURCE_WORD_WEIGHT : 1
+        for (const item of ids) {
+          const value = score * weight * factor
           if (!bestSeen[item]) {
             bestSeen[item] = 1
             best.push(item)
-            bestScores[item] = Math.max(0, score * weight)
-          } else bestScores[item] = Math.max(bestScores[item], score * weight)
+            bestScores[item] = Math.max(0, value)
+          } else bestScores[item] = Math.max(bestScores[item], value)
         }
       }
       for (const item of best) {

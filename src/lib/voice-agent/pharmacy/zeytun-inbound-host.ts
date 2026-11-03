@@ -161,8 +161,12 @@ export function createInboundPilotHost(options: {
         // takes the newest live snapshot the refresh cron saved.
         if (!snapshot || (!isLineGrant(config) && snapshot.version !== config.approvedSource.catalogVersion)) throw new Error("snapshot_unavailable")
         const feed = await ZeytunAvailableBalances.build(snapshot.payload, snapshot.context)
+        // No catalog words go to the recognizer: 2026-11-03 the maker hints
+        // ("Abdi", "Sopharma"…) turned "Adefa" into "Abdi İbrahim", in the
+        // transcript and in the agent's own search. Callers name products;
+        // the search already finds Adefa from Adexa, Adelfa or Adesa.
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
-          observedAt: snapshot.context.observedAt, source: snapshot.context.source, vocabulary: feed.manufacturerWords(400),
+          observedAt: snapshot.context.observedAt, source: snapshot.context.source,
           search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query) }
       })()
       if (catalog?.key !== key) {

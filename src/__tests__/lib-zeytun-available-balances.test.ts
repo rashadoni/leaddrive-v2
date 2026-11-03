@@ -197,25 +197,29 @@ describe("bounded AvailableBalances reader", () => {
     expect(transport).toHaveBeenCalledTimes(1)
     expect(transport.mock.calls[0][1].method).toBe("POST")
   })
-  it("lists the catalog's makers for the recognizer, most frequent first, without placeholders", () => {
+  it("ranks the product's name above its maker's words", () => {
     const item = (n: number, ru: string, az: string | null) => {
       const r = row()
       return { ...r, Номенклатура: { ...r.Номенклатура, Guid: `11111111-2222-4333-8444-${String(n).padStart(12, "0")}`,
         Номер: `SN-${n}`, Наименование: ru, НаименованиеАз: az ?? "", МассивШтрихкодов: [] } }
     }
     const feed = new ZeytunAvailableBalances(payload([
-      item(1, "Парацетамол 0,5 гр № 20 (Таблетки) (Sopharma ) (Болгария)", "Parasetamol 500 mq № 20 /*qutu/* \\*Sopharma Asc , Bolqarıstan\\*"),
-      item(2, "Темпалгин № 10 (Таблетки) (Sopharma) (Болгария)", null),
-      item(3, "Мезим форте № 20 (Таблетки) (Berlin-Chemie) (Германия)", "Mezim forte 10 000 Vah № 20 (Həb) (Berlin-Chemie) (Almaniya)"),
-      item(4, "Нимесил № 30 (Саше) (Berlin-Chemie) (Германия)", null),
-      item(5, "Масло № 1 (Масло) (Прочее) (Азербайджан)", null),
-      item(6, "Масло № 2 (Масло) (Прочее) (Азербайджан)", null),
-      item(7, "Одиночка № 1 (Таблетки) (Rarefarm) (Индия)", null),
+      item(1, "Адефа № 30 (Таблетки) (Pharmex Rom Industry Srl) (Румыния)", null),
+      ...["Эпинекс 500 мг № 50", "Рисомакс 0.05% 18г", "Фито крем 40 гр", "Монтель 4 мг № 28", "Монтель 10 мг № 28", "Дексован 50 мг № 20"]
+        .map((name, n) => item(n + 2, `${name} (Таблетки) (Abdi Ibrahim İlaç) (Турция)`, null)),
+      item(8, "Парацетамол 0,5 гр № 20 (Таблетки) (Sopharma ) (Болгария)", "Parasetamol 500 mq № 20 /*qutu/* \\*Sopharma Asc , Bolqarıstan\\*"),
+      item(9, "Парацетамол 0,5 гр № 20 (Таблетки) (Борисовский ЗМП) (Беларусия)", null),
+      // As in Zeytun's 9 000 items, a maker's words are rare next to the whole feed.
+      ...Array.from({ length: 300 }, (_, n) => item(100 + n, `Препарат${n} № 10 (Таблетки) (Завод${n % 40}) (Индия)`, null)),
     ]), context)
-    // Sopharma three times (twice in Russian labels, once in the Azerbaijani
-    // marker), Berlin-Chemie twice; a maker seen once and "Прочее" are left out.
-    expect(feed.manufacturerWords()).toEqual(["Sopharma", "Berlin-Chemie"])
-    expect(feed.manufacturerWords(1)).toEqual(["Sopharma"])
+    const names = (text: string) => feed.search("tenant-test", { text }).candidates.map((c) => c.name.split(" ")[0])
+    // 2026-11-03 owner's call: the agent searched "Abdi İbrahim Adefa" and got
+    // five Abdi Ibrahim items without Adefa; two maker words outweighed the name.
+    expect(names("Abdi İbrahim Adefa")[0]).toBe("Адефа")
+    // The maker still decides between two equal names, and alone still finds its items.
+    expect(feed.search("tenant-test", { text: "Parasetamol Sopharma" }).candidates[0].externalId).toBe("11111111-2222-4333-8444-000000000008")
+    expect(names("Abdi Ibrahim")).toHaveLength(5)
+    expect(names("Abdi Ibrahim")).not.toContain("Адефа")
   })
 })
 
@@ -233,7 +237,6 @@ describe("Zeytun feed built a slice at a time", () => {
     const at = new ZeytunAvailableBalances(payload(many), context)
     const sliced = await ZeytunAvailableBalances.build(payload(many), context, 0)
     expect(sliced.summary("tenant-test")).toEqual(at.summary("tenant-test"))
-    expect(sliced.manufacturerWords()).toEqual(at.manufacturerWords())
     for (const query of [{ text: "Adefa" }, { text: "Noşpa 20" }, { text: "ketanol" }, { text: "Preparat 30" },
       { itemCode: "SN-7" }, { barcode: "4800000000042" }, { externalId: many[5].Номенклатура.Guid }]) {
       expect(sliced.search("tenant-test", query)).toEqual(at.search("tenant-test", query))
