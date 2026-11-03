@@ -20536,6 +20536,7 @@
     "limitsReload": "Refresh data",
     "decisionApproved": "Request approved",
     "decisionRejected": "Request rejected",
+    "decisionPushBody": "Details are in the app under «Requests».",
     "reportCorrectionFacts": "{start} – {end}; breaks {paused}",
     "reportCorrectionEntry": "Correction: {before} → {after}. Approved by {reviewer}, {at}.",
     "reportCorrectionMissing": "no recorded marks",

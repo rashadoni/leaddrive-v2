@@ -16,6 +16,7 @@ import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 import { readAttendanceTwoStepApproval } from "@/lib/mtm/attendance-approval-chain"
 import { notifyAttendanceRequestHr } from "@/lib/mtm/attendance-request-notify"
 import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
+import { notifyAgents } from "@/lib/mtm/push-notify"
 
 export const AttendanceDecisionInputSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]), version: z.string().datetime(),
@@ -84,7 +85,7 @@ export async function decideAttendanceRequestInTransaction(tx: Prisma.Transactio
   // the first half and changes nothing but the request; HR decides the rest.
   if (row.status === "PENDING" && access.actor.role !== "ADMIN" && await readAttendanceTwoStepApproval(tx, organizationId)) {
     if (row.managerApprovedAt) {
-      if (decision === "APPROVED" && row.managerApprovedByUserId === userId && row.managerApprovalNote === note) return { request: attendanceRequestDto(row), idempotent: true, passedToHr: true }
+      if (decision === "APPROVED" && row.managerApprovedByUserId === userId && row.managerApprovalNote === note) return { request: attendanceRequestDto(row), idempotent: true, passedToHr: true, notice: null }
       throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_AWAITING_HR")
     }
     if (decision === "APPROVED") {
@@ -98,7 +99,7 @@ export async function decideAttendanceRequestInTransaction(tx: Prisma.Transactio
       await notifyAttendanceRequestHr(tx, { organizationId, agentId: candidate.agentId, requestId })
       const passedOn = await tx.mtmHrmRequest.findFirst({ where: { id: requestId, organizationId }, select: attendanceRequestSelect })
       if (!passedOn) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
-      return { request: attendanceRequestDto(passedOn), idempotent: false, passedToHr: true }
+      return { request: attendanceRequestDto(passedOn), idempotent: false, passedToHr: true, notice: null }
     }
   }
   let idempotent = false
@@ -114,20 +115,35 @@ export async function decideAttendanceRequestInTransaction(tx: Prisma.Transactio
       data: { status: decision, decisionNote: note, decidedAt: now, decidedByUserId: userId } })
     if (changed.count !== 1) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
   }
+  let notice: { agentId: string; title: string; body: string } | null = null
   if (!idempotent) {
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: userId, agentId: candidate.agentId,
       action: "MTM_ATTENDANCE_REQUEST_DECIDED", entity: "hrm_request", entityId: requestId, metadataKind: "mtm_attendance_request",
       oldData: { status: "PENDING" }, newData: { status: decision, actorUserId: userId } } })
     const locale = access.locale === "ru" || access.locale === "en" ? access.locale : "az"
+    const title = notificationMessages[locale][decision === "APPROVED" ? "decisionApproved" : "decisionRejected"]
     await tx.mtmNotification.create({ data: { organizationId, agentId: candidate.agentId,
-      title: notificationMessages[locale][decision === "APPROVED" ? "decisionApproved" : "decisionRejected"], type: decision === "APPROVED" ? "info" : "warning",
+      title, type: decision === "APPROVED" ? "info" : "warning",
       // No reason, medical subtype, attachment or coordinates in an inbox preview.
       metadata: { domain: "route", attendanceRequestId: requestId, status: decision } } })
+    notice = { agentId: candidate.agentId, title, body: notificationMessages[locale].decisionPushBody }
   }
   const updated = await tx.mtmHrmRequest.findFirst({ where: { id: requestId, organizationId }, select: attendanceRequestSelect })
   if (!updated) throw new AttendanceRequestError("MTM_ATTENDANCE_REQUEST_CHANGED")
-  return { request: attendanceRequestDto(updated), idempotent, passedToHr: false }
+  return { request: attendanceRequestDto(updated), idempotent, passedToHr: false, notice }
 }
+/**
+ * A decision reaches the employee's phone (owner, 2026-11-03: «Делай» — the
+ * employee learnt of an approved or refused request only by opening the app).
+ * Sent after the commit, as every push: one that did not go out never undoes
+ * the decision. The push says only approved or refused; the request itself is
+ * read in the app («Sorğular»), where the tap leads.
+ */
 export async function decideAttendanceRequest(reviewer: AttendanceReviewer, requestId: string, raw: unknown) {
-  return prisma.$transaction((tx: Prisma.TransactionClient) => decideAttendanceRequestInTransaction(tx, reviewer, requestId, raw), { timeout: 15_000 })
+  const { notice, ...result } = await prisma.$transaction((tx: Prisma.TransactionClient) => decideAttendanceRequestInTransaction(tx, reviewer, requestId, raw), { timeout: 15_000 })
+  if (notice) {
+    void notifyAgents({ client: prisma, organizationId: reviewer.organizationId, agentIds: [notice.agentId], title: notice.title, body: notice.body,
+      data: { target: "AttendanceRequests", requestId } }).catch(error => console.warn("[MTM/attendance/requests] decision push failed", error))
+  }
+  return result
 }

@@ -20536,6 +20536,7 @@
     "limitsReload": "Обновить данные",
     "decisionApproved": "Заявка одобрена",
     "decisionRejected": "Заявка отклонена",
+    "decisionPushBody": "Подробности — в приложении, в разделе «Заявки».",
     "reportCorrectionFacts": "{start} – {end}; перерывы {paused}",
     "reportCorrectionEntry": "Исправление: {before} → {after}. Подтвердил: {reviewer}, {at}.",
     "reportCorrectionMissing": "отметок не было",

@@ -20532,6 +20532,7 @@
     "limitsReload": "Məlumatı yenilə",
     "decisionApproved": "Müraciət təsdiqləndi",
     "decisionRejected": "Müraciət rədd edildi",
+    "decisionPushBody": "Ətraflı — tətbiqdə «Sorğular» bölməsində.",
     "reportCorrectionFacts": "{start} – {end}; fasilələr {paused}",
     "reportCorrectionEntry": "Düzəliş: {before} → {after}. Təsdiqləyən: {reviewer}, {at}.",
     "reportCorrectionMissing": "qeyd yox idi",

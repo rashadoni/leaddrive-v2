@@ -8,6 +8,9 @@ import { homedir, tmpdir } from "node:os"
 import sharp from "sharp"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import az from "../../messages/az.json"
+import ru from "../../messages/ru.json"
+import en from "../../messages/en.json"
 
 const adminUrl = process.env.MTM_ATTENDANCE_TEST_DATABASE_URL
 if (!adminUrl && process.env.MTM_ATTENDANCE_DB_GATE === "required") throw new Error("MTM_ATTENDANCE_TEST_DATABASE_URL is required")
@@ -22,6 +25,10 @@ const scratch = vi.hoisted(() => {
   return { name, role, adminDb: db.toString() }
 })
 const identity = vi.hoisted(() => ({ orgId: "request-pg-a", agentId: "request-pg-owner", role: "EMPLOYEE", personnel: true }))
+// Pushes are recorded, not sent: the decision's push is asserted below.
+const pushes = vi.hoisted(() => [] as Array<{ organizationId: string; agentIds: readonly string[]; title: string; body: string; data?: Record<string, string> }>)
+vi.mock("@/lib/mtm/push-notify", async original => ({ ...(await original<typeof import("@/lib/mtm/push-notify")>()),
+  notifyAgents: vi.fn(async (input: (typeof pushes)[number]) => { pushes.push(input); return { sent: 1, failed: 0, retired: 0 } }) }))
 vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: identity.personnel } }) }))
 function sql(url: string, statement: string) {
   const file = createRequire(import.meta.url).resolve("prisma/build/index.js")
@@ -226,6 +233,14 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
     const raw = { decision: "APPROVED", version: row.version, note: "Fictional reviewed leave" }
     const answers = await Promise.all([1, 2].map(() => tenant(self.organizationId, () => decision.decideAttendanceRequest(reviewer, row.id, raw))))
     expect(answers.map(item => item.idempotent).sort()).toEqual([false, true])
+    // Owner, 2026-11-03: the decision reaches the employee's phone — once, after
+    // the commit, saying only that it was approved and where to read it.
+    const decided = pushes.filter(push => push.data?.requestId === row.id)
+    expect(decided).toHaveLength(1)
+    expect(decided[0]).toMatchObject({ organizationId: self.organizationId, agentIds: [self.agentId], data: { target: "AttendanceRequests", requestId: row.id } })
+    expect([ru.mtmAttendance.decisionApproved, az.mtmAttendance.decisionApproved, en.mtmAttendance.decisionApproved]).toContain(decided[0].title)
+    expect(JSON.stringify([decided[0].title, decided[0].body, decided[0].data])).not.toMatch(/PRIVATE_LEAVE_REASON|Fictional reviewed leave|ANNUAL_LEAVE/)
+    expect(answers.every(answer => !("notice" in answer))).toBe(true)
     await tenant(self.organizationId, async () => {
       expect(await prisma.mtmAuditLog.count({ where: { entityId: row.id, action: "MTM_ATTENDANCE_REQUEST_DECIDED" } })).toBe(1)
       expect(await prisma.mtmNotification.count({ where: { metadata: { path: ["attendanceRequestId"], equals: row.id } } })).toBe(1)
@@ -236,6 +251,7 @@ pgDescribe("MTM requests on real PostgreSQL", () => {
       expect(JSON.stringify(result)).not.toMatch(/PRIVATE_LEAVE_REASON|Fictional reviewed leave|attachmentIds|submissionHash/)
       await expect(decision.decideAttendanceRequest(reviewer, row.id, { ...raw, decision: "REJECTED" })).rejects.toMatchObject({ status: 409 })
     })
+    expect(pushes.filter(push => push.data?.requestId === row.id)).toHaveLength(1)
   })
   it("rejection releases a reserved monthly slot and the employee reads the same answer", async () => {
     const requests = []
