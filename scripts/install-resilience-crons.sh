@@ -70,6 +70,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/sla-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/ticket-closure-requests/ { next }
   /cron-trigger\.sh \/api\/cron\/booking-effects/ { next }
+  /cron-trigger\.sh \/api\/cron\/booking-reminders/ { next }
   /cron-trigger\.sh \/api\/cron\/ad-conversions/ { next }
   /cron-trigger\.sh \/api\/cron\/kapitalbank-reconcile/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?renewal-alerts([ ?]|$)/ { next }
@@ -177,6 +178,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/ad-conversions >> $LOG 2>&1"
   # Durable meeting projections and calendar/customer delivery intents.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/booking-effects >> $LOG 2>&1"
+  # Reminders before a visit: the day before and two hours before, with the
+  # buttons that keep a chair from going empty. Every five minutes is enough —
+  # each window is hours wide and a booking is marked only once it is sent.
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/booking-reminders >> $LOG 2>&1"
   # The demo organization's field day (owner decision 2026-09-22). A no-op for
   # every tenant without the hand-set `mtm-demo-pulse` flag; keyed writes make
   # a repeated or late tick harmless, and the endpoint holds its own lease.

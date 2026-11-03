@@ -143,6 +143,7 @@ pgDescribe("online booking on a real Postgres", () => {
   let drain!: typeof import("@/lib/booking/effect-worker").drainBookingEffects
   let bookingTurn!: typeof import("@/lib/booking/whatsapp-agent").handleWhatsAppBookingTurn
   let reviewOffer!: typeof import("@/lib/booking/whatsapp-agent").reviewPendingOffer
+  let remindersPost!: typeof import("@/app/api/cron/booking-reminders/route").POST
   let requestsGet!: typeof import("@/app/api/v1/bookings/requests/route").GET
   let requestsPost!: typeof import("@/app/api/v1/bookings/requests/route").POST
   let tenant!: typeof import("@/lib/rls-context").runWithTenant
@@ -170,7 +171,7 @@ pgDescribe("online booking on a real Postgres", () => {
     // Only in this newly created scratch DB: replace the empty booking subset
     // with its original schema, then apply both actual forward migrations.
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_offers, booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
-    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category", "20261121090000_booking_offers", "20261122090000_booking_offer_review"]) {
+    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category", "20261121090000_booking_offers", "20261122090000_booking_offer_review", "20261123090000_booking_reminders"]) {
       prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, readFileSync(path.join(ROOT, `prisma/migrations/${migration}/migration.sql`), "utf8"))
       if (migration === "20261101090000_online_booking") {
         prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `
@@ -251,6 +252,7 @@ pgDescribe("online booking on a real Postgres", () => {
     drain = (await import("@/lib/booking/effect-worker")).drainBookingEffects
     bookingTurn = (await import("@/lib/booking/whatsapp-agent")).handleWhatsAppBookingTurn
     reviewOffer = (await import("@/lib/booking/whatsapp-agent")).reviewPendingOffer
+    remindersPost = (await import("@/app/api/cron/booking-reminders/route")).POST
     requestsGet = (await import("@/app/api/v1/bookings/requests/route")).GET
     requestsPost = (await import("@/app/api/v1/bookings/requests/route")).POST
     tenant = (await import("@/lib/rls-context")).runWithTenant
@@ -1215,6 +1217,84 @@ pgDescribe("online booking on a real Postgres", () => {
       const queue = (await (await requestsGet(json("GET", "/api/v1/bookings/requests"))).json()).data.requests
       expect(queue.some((item: { id: string }) => item.id === offer.id)).toBe(false)
     }, { bookingWhatsApp: null })
+  })
+
+  it("WhatsApp: the day-before reminder goes out once, with three buttons, and «coming» is recorded", async () => {
+    await withWhatsAppBooking(async () => {
+      const slug = await newPage({ title: "Manikür", durationMinutes: 30, maxDaysAhead: 3 })
+      const conversation = await conversationWith("994557778899", "Günel", "Sabah manikür?")
+      // A meeting a day out, booked by this very client — their message keeps
+      // Meta's window open, so the reminder may be ordinary text with buttons.
+      const startsAt = new Date(Date.now() + 23 * 3600_000)
+      const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+      const booking = await bypass(() => prisma.booking.create({ data: {
+        organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A, startsAt, endsAt: new Date(startsAt.getTime() + 1800_000),
+        name: "Günel", phone: "+994557778899", cancelTokenHash: randomUUID().replace(/-/g, "") + "0".repeat(32),
+        snapshot: { locale: "az" }, version: 1,
+      } }))
+
+      expect((await remindersPost(json("POST", "/api/cron/booking-reminders"))).status).toBe(200)
+      const reminder = whatsapp.buttons.at(-1)!
+      expect(reminder.body).toMatch(/Manikür/)
+      expect(reminder.buttons.map((button) => button.id)).toEqual([
+        `rm:confirm:${booking.id}`, `rm:move:${booking.id}`, `rm:cancel:${booking.id}`,
+      ])
+      const marked = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }))
+      expect(marked.remindedDayAt).not.toBeNull()
+
+      // A second run says nothing more: the meeting is already reminded.
+      whatsapp.buttons = []
+      expect((await remindersPost(json("POST", "/api/cron/booking-reminders"))).status).toBe(200)
+      expect(whatsapp.buttons).toHaveLength(0)
+
+      // «Gəlirəm» is recorded on the meeting and thanked for.
+      expect(await turnIn(conversation, { waPhone: "994557778899", replyId: `rm:confirm:${booking.id}`, text: "Gəlirəm" })).toEqual({ handled: true })
+      const confirmed = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }))
+      expect(confirmed.clientConfirmedAt).not.toBeNull()
+      expect(confirmed.clientConfirmedVia).toBe("whatsapp")
+      expect(whatsapp.texts.at(-1)!.message).toBe("Gözləyirik ✅")
+
+      // Another client's phone cannot answer for this meeting.
+      expect(await turnIn(conversation, { waPhone: "994500000001", replyId: `rm:cancel:${booking.id}`, text: "Ləğv" })).toEqual({ handled: false })
+      expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }))).status).toBe("confirmed")
+    })
+  })
+
+  it("WhatsApp: «Ləğv etmək» frees the chair at once, and «vaxtı dəyişmək» moves the meeting only when a new time is taken", async () => {
+    await withWhatsAppBooking(async () => {
+      const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 30, maxDaysAhead: 3 })
+      const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+      const conversation = await conversationWith("994551212121", "Aytən", "Saç kəsimi")
+      const make = async () => {
+        const startsAt = await someSlot(slug, 6)
+        return bypass(() => prisma.booking.create({ data: {
+          organizationId: ORG, bookingPageId: page.id, hostUserId: HOST_A,
+          startsAt: new Date(startsAt), endsAt: new Date(Date.parse(startsAt) + 1800_000),
+          name: "Aytən", phone: "+994551212121", cancelTokenHash: randomUUID().replace(/-/g, "") + "1".repeat(32),
+          snapshot: { locale: "az" }, version: 1,
+        } }))
+      }
+
+      // Cancel: the meeting goes, and the client is told plainly.
+      const first = await make()
+      expect(await turnIn(conversation, { waPhone: "994551212121", replyId: `rm:cancel:${first.id}`, text: "Ləğv" })).toEqual({ handled: true })
+      expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: first.id } }))).status).toBe("cancelled")
+      expect(whatsapp.texts.at(-1)!.message).toMatch(/ləğv edildi/)
+
+      // Move: new times arrive, and the old meeting stands until one is taken.
+      const second = await make()
+      expect(await turnIn(conversation, { waPhone: "994551212121", replyId: `rm:move:${second.id}`, text: "Dəyişmək" })).toEqual({ handled: true })
+      const offers = await offersOf(conversation, "offered")
+      expect(offers.length).toBeGreaterThan(0)
+      for (const offer of offers) expect(offer.replacesBookingId).toBe(second.id)
+      expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: second.id } }))).status).toBe("confirmed")
+
+      await turnIn(conversation, { waPhone: "994551212121", replyId: `bk:${offers[0].id}`, text: "tap" })
+      expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: second.id } }))).status).toBe("cancelled")
+      const moved = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
+      expect(moved).toHaveLength(1)
+      expect(moved[0].startsAt.toISOString()).toBe(offers[0].startsAt.toISOString())
+    })
   })
 
   it("FORCE RLS keeps one organization's offered times from another", async () => {

@@ -16,6 +16,11 @@ export interface WhatsAppBookingSetting {
    * the salon confirms, with the time held meanwhile — see whatsapp-rules.ts.
    */
   rules: AutonomyRules
+  /**
+   * The approved WhatsApp template a reminder goes out as when the client has
+   * not written for a day. Without it such a reminder cannot be sent at all.
+   */
+  reminderTemplate: string | null
 }
 
 /**
@@ -36,5 +41,6 @@ export function readWhatsAppBookingSetting(settings: unknown): WhatsAppBookingSe
     // No rules recorded means no narrowing: the agent books whatever it could
     // book before this screen existed.
     rules: "rules" in value ? readAutonomyRules(value.rules) : OPEN_RULES,
+    reminderTemplate: typeof value.reminderTemplate === "string" && value.reminderTemplate.trim() ? value.reminderTemplate.trim() : null,
   }
 }

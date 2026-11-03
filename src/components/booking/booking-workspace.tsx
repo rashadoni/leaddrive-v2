@@ -56,6 +56,10 @@ export interface WorkspaceBooking {
   bookingPage: { title: string; locationType: string; locationText: string | null; timezone?: string | null; price?: string | null; priceCurrency?: string | null; repeatCycleDays?: number | null }
   /** Where the meeting came from: «public_link», «staff» or «whatsapp». */
   source?: string
+  /** When the client themselves said they are coming, after a reminder. */
+  clientConfirmedAt?: string | null
+  remindedDayAt?: string | null
+  remindedHourAt?: string | null
   /** A WhatsApp meeting: what the client wrote, what was offered, what they tapped. */
   whatsapp?: { asked: string; offered: string[]; chosen: string } | null
   leadId?: string | null
@@ -253,6 +257,8 @@ export function BookingWorkspace() {
     subtitle: `${item.hostName ?? t("hostUnknown")} · ${item.bookingPage.title}`,
     start: minutesFrom(dayStartMs, item.startsAt),
     end: minutesFrom(dayStartMs, item.endsAt),
+    reminded: Boolean(item.remindedDayAt || item.remindedHourAt),
+    confirmed: Boolean(item.clientConfirmedAt),
   }))
   const freeWindows = mergeFreeWindows(slotsQuery.data?.days.find((item) => item.date === selectedDay)?.slots ?? [], dayStartMs)
   const slotMinutes = slotsQuery.data?.page.durationMinutes ?? 30

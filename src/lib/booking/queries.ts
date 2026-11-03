@@ -22,6 +22,7 @@ const columns = {
   id: true, bookingPageId: true, hostUserId: true, startsAt: true, endsAt: true,
   name: true, phone: true, email: true, note: true, status: true, createdAt: true,
   cancelledAt: true, googleEventId: true, updatedAt: true, version: true, snapshot: true, outcomeNote: true, cancellationReason: true, source: true,
+  clientConfirmedAt: true, remindedDayAt: true, remindedHourAt: true,
   bookingPage: { select: { title: true, locationType: true, locationText: true, slug: true, price: true, priceCurrency: true, repeatCycleDays: true } },
 } satisfies Prisma.BookingSelect
 

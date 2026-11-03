@@ -33,7 +33,11 @@ import { activeHosts, loadBusyByHost, orgContext } from "./book"
 import { BookingCommandError } from "./command-error"
 import { bookingRules } from "./commands"
 import { createStoredBooking } from "./create"
+import { cancelStoredBooking } from "./commands"
+import { readReminderButton, reminderReply, type ReminderAction } from "./whatsapp-reminders"
 import { servicePriceLabel } from "./service"
+import { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
+export { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
 import { OFFER_HOLD_MINUTES, readWhatsAppBookingSetting } from "./whatsapp-setting"
 import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./whatsapp-rules"
 
@@ -125,61 +129,6 @@ export function pickOfferTimes(slots: Slot[], input: {
 }
 
 // ─── Words ──────────────────────────────────────────────────────────────────
-
-export type ReplyLanguage = "az" | "ru" | "en"
-
-const WORDS = {
-  az: {
-    hello: "Salam! ", minutes: "dəq",
-    free: { morning: "Səhər boş vaxtlar:", afternoon: "Günorta boş vaxtlar:", evening: "Axşam boş vaxtlar:", any: "Boş vaxtlar:" },
-    nearest: "Ən yaxın boş vaxtlar:",
-    noneThen: { morning: "səhər boş vaxt yoxdur.", afternoon: "günorta boş vaxt yoxdur.", evening: "axşam boş vaxt yoxdur.", any: "boş vaxt yoxdur." },
-    hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`,
-    booked: "Yazıldınız ✅", address: "Ünvan", cancel: "Ləğv etmək üçün",
-    held: "Vaxtı sizin üçün saxladıq ⏳", heldNote: "Administrator təsdiqləyəcək və yazacağıq.",
-    confirmed: "Təsdiqləndi ✅", declined: "Təəssüf ki, bu vaxtı təsdiqləyə bilmədik.",
-    taken: "Bu vaxtı indicə tutdular.",
-  },
-  ru: {
-    hello: "Здравствуйте! ", minutes: "мин",
-    free: { morning: "Утром свободно:", afternoon: "Днём свободно:", evening: "Вечером свободно:", any: "Свободно:" },
-    nearest: "Ближайшее свободное время:",
-    noneThen: { morning: "утром свободного времени нет.", afternoon: "днём свободного времени нет.", evening: "вечером свободного времени нет.", any: "свободного времени нет." },
-    hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`,
-    booked: "Вы записаны ✅", address: "Адрес", cancel: "Отменить запись",
-    held: "Время придержали за вами ⏳", heldNote: "Администратор подтвердит, и мы напишем.",
-    confirmed: "Подтверждено ✅", declined: "К сожалению, это время подтвердить не удалось.",
-    taken: "Это время только что заняли.",
-  },
-  en: {
-    hello: "Hello! ", minutes: "min",
-    free: { morning: "Free in the morning:", afternoon: "Free in the afternoon:", evening: "Free in the evening:", any: "Free times:" },
-    nearest: "The nearest free times:",
-    noneThen: { morning: "there is nothing free in the morning.", afternoon: "there is nothing free in the afternoon.", evening: "there is nothing free in the evening.", any: "there is nothing free." },
-    hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`,
-    booked: "You're booked ✅", address: "Address", cancel: "To cancel",
-    held: "We're holding the time for you ⏳", heldNote: "The salon will confirm and we will write to you.",
-    confirmed: "Confirmed ✅", declined: "We could not confirm that time, sorry.",
-    taken: "That time was just taken.",
-  },
-} as const
-
-/** «Şənbə, 7 noyabr» / «суббота, 7 ноября» / «Saturday, November 7». */
-export function dayLabel(iso: string, language: ReplyLanguage, timezone: string): string {
-  const at = new Date(iso)
-  if (language === "az") {
-    const parts = new Intl.DateTimeFormat("az", { weekday: "long", day: "numeric", month: "long", timeZone: timezone }).formatToParts(at)
-    const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ""
-    const weekday = part("weekday")
-    return `${weekday.charAt(0).toLocaleUpperCase("az")}${weekday.slice(1)}, ${part("day")} ${part("month")}`
-  }
-  const text = new Intl.DateTimeFormat(language, { weekday: "long", day: "numeric", month: "long", timeZone: timezone }).format(at)
-  return language === "en" ? text : `${text.charAt(0).toLocaleUpperCase("ru")}${text.slice(1)}`
-}
-
-function clock(iso: string, timezone: string): string {
-  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone }).format(new Date(iso))
-}
 
 /**
  * What a button says: «11:30 · Leyla», and «7.11 11:30 · Leyla» when the
@@ -413,7 +362,7 @@ function asService(page: { price: unknown } & Omit<ServiceContext, "price">): Se
 
 const SERVICE_SELECT = { id: true, title: true, durationMinutes: true, bufferMinutes: true, minNoticeMinutes: true, maxDaysAhead: true, weekly: true, hostIds: true, price: true, priceCurrency: true, category: true, locationText: true } as const
 
-async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string }, now: Date): Promise<boolean> {
+async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string; replaces?: string }, now: Date): Promise<boolean> {
   const { choices, exact } = await findChoices(input, service, request, context.timezone, now)
   // Nothing free at all is a promise only a person can make.
   if (!choices.length) return false
@@ -430,6 +379,7 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
         organizationId: input.organizationId, conversationId: input.conversationId, channelConfigId: input.channelConfigId,
         bookingPageId: service.id, hostUserId: choice.hostId, startsAt: new Date(choice.startsAt), endsAt: new Date(choice.endsAt),
         bufferMinutes: service.bufferMinutes, expiresAt, request: request as unknown as Prisma.InputJsonValue,
+        replacesBookingId: context.replaces ?? null,
         // One moment for the whole message: the meeting card finds the times
         // offered together by it (src/lib/booking/queries.ts).
         createdAt: now,
@@ -602,6 +552,12 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
     where: { id: offer.id, status: { in: ["offered", "superseded", "taken"] } },
     data: { status: "booked", bookingId: result.booking.id },
   })
+  // A move is two halves: the new time is taken, the old one let go. The new
+  // one goes first — losing the old meeting and failing to book is the one
+  // outcome a client must never get.
+  if (claimed.count === 1 && offer.replacesBookingId) {
+    await cancelStoredBooking(input.organizationId, offer.replacesBookingId).catch(() => undefined)
+  }
   // The other times held for this client are free again the moment they choose.
   await prisma.bookingOffer.updateMany({
     where: { organizationId: input.organizationId, conversationId: input.conversationId, status: "offered", id: { not: offer.id } },
@@ -743,12 +699,63 @@ export async function reviewPendingOffer(input: { organizationId: string; offerI
 }
 
 /**
+ * The client answered a reminder in one tap: coming, move it, or cancel.
+ *
+ * «Cancel» two hours before is not a loss — it is a chair the salon can still
+ * sell — so it is honoured immediately and without argument. «Move» hands the
+ * conversation back to the ordinary flow: three fresh times for the same
+ * service, and taking one releases the old meeting.
+ */
+async function answerReminder(input: BookingTurnInput, reminder: { action: ReminderAction; bookingId: string }, now: Date): Promise<boolean> {
+  const booking = await prisma.booking.findFirst({
+    where: { id: reminder.bookingId, organizationId: input.organizationId },
+    select: { id: true, status: true, startsAt: true, phone: true, snapshot: true, bookingPageId: true, hostUserId: true },
+  })
+  // A button from someone else's phone decides nothing.
+  if (!booking || booking.phone.replace(/^\+/, "") !== input.waPhone.replace(/^\+/, "")) return false
+  const snapshot = booking.snapshot && typeof booking.snapshot === "object" && !Array.isArray(booking.snapshot) ? booking.snapshot as Record<string, unknown> : null
+  const language: ReplyLanguage = snapshot?.locale === "ru" || snapshot?.locale === "en" ? snapshot.locale : "az"
+  if (booking.status !== "confirmed") return true
+
+  if (reminder.action === "confirm") {
+    await prisma.booking.updateMany({
+      where: { id: booking.id, organizationId: input.organizationId, clientConfirmedAt: null },
+      data: { clientConfirmedAt: now, clientConfirmedVia: "whatsapp" },
+    })
+    await sendText(input, reminderReply(language, "confirm"))
+    return true
+  }
+  if (reminder.action === "cancel") {
+    await cancelStoredBooking(input.organizationId, booking.id)
+    await sendText(input, reminderReply(language, "cancel"))
+    return true
+  }
+
+  // Move: the same service, fresh times, and the old meeting stays until one
+  // of them is taken.
+  const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: booking.bookingPageId, isActive: true }, select: SERVICE_SELECT })
+  if (!page) return false
+  const { timezone } = await orgContext(input.organizationId)
+  const hosts = await activeHosts(input.organizationId, page.hostIds)
+  const request: OfferRequest = {
+    text: "", serviceId: page.id, date: null, partOfDay: "any", notBefore: null, notAfter: null,
+    hostId: booking.hostUserId, language,
+  }
+  return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request,
+    { timezone, hosts, greet: false, replaces: booking.id }, now)
+}
+
+/**
  * One inbound WhatsApp message for an organization that takes bookings here.
  * `handled: true` means the booking agent answered it and the ordinary path
  * (ticket, rule bot, support AI) must stay out of this turn.
  */
 export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promise<{ handled: boolean }> {
   const now = input.now ?? new Date()
+  const reminder = input.replyId ? readReminderButton(input.replyId) : null
+  // A reminder we already sent is answered whatever the switch says today:
+  // silence after a tap is the worst outcome of all.
+  if (reminder) return { handled: await answerReminder(input, reminder, now) }
   const organization = await prisma.organization.findUnique({ where: { id: input.organizationId }, select: { settings: true } })
   const setting = readWhatsAppBookingSetting(organization?.settings)
   if (setting.mode !== "book") return { handled: false }

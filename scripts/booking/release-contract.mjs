@@ -147,7 +147,9 @@ export function additiveMigration(sql) {
   const statements = sqlStatements(sql);
   if (!statements.length) return false;
   return statements.every(statement => {
-    if (new RegExp("^SET (lock_timeout|statement_timeout) = '[^']*'$", 'i').test(statement)) return true;
+    // Spacing around the equals sign is style, not meaning: every migration in
+    // the tree writes one of these, and half of them write it tight.
+    if (new RegExp("^SET (lock_timeout|statement_timeout) ?= ?'[^']*'$", 'i').test(statement)) return true;
     if (/^CREATE INDEX (IF NOT EXISTS )?/i.test(statement)) return !/\bUNIQUE\b/i.test(statement);
     const alter = new RegExp('^ALTER TABLE (?:IF EXISTS )?' + identifier + ' (.+)$', 'i').exec(statement);
     if (!alter) return false;

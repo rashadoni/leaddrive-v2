@@ -126,6 +126,10 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
 
     {/* An automatic booking is trusted once it can be read back: what the
         client wrote, what they were offered, what they chose. */}
+    {booking.clientConfirmedAt ? <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+      <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />{t("clientConfirmed", { date: day(booking.clientConfirmedAt) })}
+    </p> : null}
+
     {booking.whatsapp ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
       <p className="flex items-center gap-2 font-semibold text-emerald-800 dark:text-emerald-300"><MessageCircle aria-hidden="true" className="h-4 w-4 shrink-0" />{t("waBookedVia")}</p>
       <p className="mt-1.5 break-words text-muted-foreground">{t("waBookedWhy", { asked: booking.whatsapp.asked || "—", offered: booking.whatsapp.offered.map(time).join(", "), chosen: time(booking.whatsapp.chosen) })}</p>

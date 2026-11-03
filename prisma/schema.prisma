@@ -23589,6 +23589,9 @@ model BookingOffer {
   bookingId       String?
   /// What the client asked, as the agent understood it: the «why» on the meeting.
   request         Json?
+  /// Set when these times were offered to move an existing meeting: booking
+  /// one of them cancels that meeting in the same breath.
+  replacesBookingId String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -23631,6 +23634,12 @@ model Booking {
   taskId          String?
   googleEventId   String?
   cancelledAt     DateTime?
+  /// When the day-before and two-hours-before reminders went out; null = not yet.
+  remindedDayAt   DateTime?
+  remindedHourAt  DateTime?
+  /// When the client themselves said they are coming, and from where.
+  clientConfirmedAt DateTime?
+  clientConfirmedVia String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

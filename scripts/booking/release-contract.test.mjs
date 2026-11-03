@@ -149,6 +149,8 @@ test('the migration classifier answers no to every statement it has not reviewed
     'ALTER TABLE IF EXISTS "bookings" ADD COLUMN IF NOT EXISTS "a" TEXT;',
     'CREATE INDEX "i" ON "booking_pages"("category");',
     `-- a comment\nSET lock_timeout = '3s';\nALTER TABLE "bookings" ADD COLUMN "a" TEXT;`,
+    // Written tight, as half the migrations in the tree write it.
+    `SET lock_timeout='3s';\nALTER TABLE "bookings" ADD COLUMN "a" TEXT;`,
   ]) assert.equal(additiveMigration(sql),true,sql);
   for (const sql of ['','-- nothing but a comment',
     'ALTER TABLE "booking_pages" ADD COLUMN "a" TEXT NOT NULL;',

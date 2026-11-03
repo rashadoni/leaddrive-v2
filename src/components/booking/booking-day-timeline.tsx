@@ -41,6 +41,9 @@ export interface TimelineMeeting extends TimelineSpan {
   name: string
   status: string
   subtitle: string
+  /** A reminder went out before this visit, and whether the client answered it. */
+  reminded?: boolean
+  confirmed?: boolean
 }
 
 export interface TimelineWindow extends TimelineSpan {
@@ -452,10 +455,15 @@ export function BookingDaySummary({ meetings, windows, busyHint, windowsHint, du
   const t = useTranslations("booking")
   const counted = meetings.filter((meeting) => meeting.status !== "cancelled")
   const busy = counted.reduce((total, meeting) => total + (meeting.end - meeting.start), 0)
+  // How many of the day's clients said they are coming: the number the
+  // reminders exist for, next to the day they belong to.
+  const reminded = counted.filter((meeting) => meeting.reminded)
+  const confirmed = reminded.filter((meeting) => meeting.confirmed)
   return <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
     <Clock3 aria-hidden="true" className="h-4 w-4 shrink-0" />
     <span>{t("dayCount", { count: counted.length })}</span>
     {busy ? <>·<HintValue text={busyHint}>{t("dayBusy", { value: duration(busy) })}</HintValue></> : null}
     {windows.length ? <>·<HintValue text={windowsHint}>{t("windowCount", { count: windows.length })}</HintValue></> : null}
+    {reminded.length ? <>·<HintValue text={t("dayConfirmedHint")}>{t("dayConfirmed", { confirmed: confirmed.length, reminded: reminded.length })}</HintValue></> : null}
   </p>
 }
