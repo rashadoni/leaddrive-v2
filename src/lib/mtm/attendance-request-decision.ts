@@ -16,7 +16,7 @@ import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 import { readAttendanceTwoStepApproval } from "@/lib/mtm/attendance-approval-chain"
 import { notifyAttendanceRequestHr } from "@/lib/mtm/attendance-request-notify"
 import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
-import { notifyAgents } from "@/lib/mtm/push-notify"
+import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
 
 export const AttendanceDecisionInputSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]), version: z.string().datetime(),
@@ -143,7 +143,9 @@ export async function decideAttendanceRequest(reviewer: AttendanceReviewer, requ
   const { notice, ...result } = await prisma.$transaction((tx: Prisma.TransactionClient) => decideAttendanceRequestInTransaction(tx, reviewer, requestId, raw), { timeout: 15_000 })
   if (notice) {
     void notifyAgents({ client: prisma, organizationId: reviewer.organizationId, agentIds: [notice.agentId], title: notice.title, body: notice.body,
-      data: { target: "AttendanceRequests", requestId } }).catch(error => console.warn("[MTM/attendance/requests] decision push failed", error))
+      // The high-importance channel pops up over the screen; the default one only
+      // sat in the status bar, and the owner took it for a push that never came.
+      data: { target: "AttendanceRequests", requestId }, channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL }).catch(error => console.warn("[MTM/attendance/requests] decision push failed", error))
   }
   return result
 }
