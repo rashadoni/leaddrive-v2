@@ -9,6 +9,7 @@ import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type
 import { SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
 import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
+import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
 
 const id = z.string().trim().min(1).max(128)
 const hash = z.string().regex(/^[a-f0-9]{64}$/)
@@ -76,8 +77,6 @@ export const LATE_ORDER_WINDOW_MS = 24 * 60 * 60_000
 const awaitingAnswerSchema = callSchema.extend({ status: z.literal("answering"), wasAnswered: z.literal(false) })
 export type InboundPilotCatalog = {
   organizationId: string; scopeKey: string; version: string; observedAt: string; source: "live" | "attachment"
-  /** Manufacturer words from this catalog for the recognizer's hint list. */
-  vocabulary?: string[]
   search: (query: z.infer<typeof zeytunBalanceQuerySchema>) => {
     status: string; candidateCount: number
     candidates: Array<{ externalId: string; itemCode: string; name: string; nameAz: string | null
@@ -92,6 +91,22 @@ export type InboundPilotCatalog = {
 const SPOKEN_UNITS: Record<string, string> = {
   "шт": "qutu", "ədəd": "ədəd", "упак": "qutu", "флак": "flakon", "ампула": "ampula",
   "blister": "blister", "şpris": "şpris", "пара": "cüt",
+}
+/**
+ * The recognizer's hint list (at most 400 words; the station adds its order
+ * words): the products this organization orders, most often first, as a
+ * caller says them. Not the makers: 2026-11-03 those hints turned "Adefa"
+ * into "Abdi İbrahim". Empty until confirmed orders exist.
+ */
+function hintNames(catalog: InboundPilotCatalog, learned: LearnedNames | null): string[] {
+  const names = new Set<string>()
+  for (const id of learned?.ordered(2000) ?? []) {
+    const item = catalog.search({ externalId: id }).candidates[0]
+    const name = item && spokenProductName(item)
+    if (name) names.add(name)
+    if (names.size === 400) break
+  }
+  return [...names]
 }
 /** The feed's price for one base unit. Owner, 2026-10-23: one price for all
  * of Zeytun's pharmacies and it is final ("это цена для аптек конечная"), so it
@@ -184,6 +199,8 @@ export type InboundPilotDependencies = {
     delivery?: { seq?: number; afterCall: boolean }) => Promise<PhoneOrderSaveResult>
   /** The order organization's own line speech (zeytun-line-speech.ts); empty fields are the code's texts. */
   loadLineSpeech?: (config: LineGrant) => Promise<LineSpeech>
+  /** What its managers' confirmed orders taught the line (zeytun-learned-names.ts); null until read. Never waits. */
+  learnedNames?: (config: LineGrant) => LearnedNames | null
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
@@ -288,8 +305,11 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner's call 2026-10-29: "Adefa" reached the agent as "Adexa", "Adelfa",
   // "Deva"; the lookup returned Адефа first every time, and the agent, bound
   // to "never the nearest name", said it was not in the catalog.
+  // Owner, 2026-11-03 («товаров 9к»): a misheard name is settled by asking,
+  // like an operator — a no leads to the next close name, the strength or
+  // spelling, never to silence.
   ["Keep unresolved products for a person, never the nearest name.",
-    "Keep unresolved products for a person. Names reach you through speech recognition and are often misheard (Adexa or Adelfa for Adefa); the lookup matches by sound. If a returned name is what the caller said (spelling or alphabet aside), take it without asking. If it only sounds close, read it back once in Azerbaijani letters, even if written in Cyrillic, and ask if it is the one; take it only after a clear yes (an unclear or unrelated answer is not a yes: ask again). Say a product is not found only when no returned name sounds close. If the caller spells a name letter by letter, join the letters and search that."],
+    "Keep unresolved products for a person. Names reach you through speech recognition and are often misheard (Adexa or Adelfa for Adefa); the lookup matches by sound. If a returned name is what the caller said (spelling or alphabet aside), take it without asking. If it only sounds close, read it back once in Azerbaijani letters (even if Cyrillic) and ask if it is the one; take it only after a clear yes (unclear is not yes: ask again); on a no, offer the next close returned name, else ask its strength or to spell it. Say a product is not found only when no returned name sounds close. If the caller spells a name, join the letters and search that."],
   // Owner's call 2026-10-29: "ampoules" and "cream" for Ketonal, ampoules written without asking.
   ["If the caller gave no form and the lookup returns several forms (ampoule, cream, tablet, suppository...), ask which form.",
     "If the caller gave no form and the lookup returns several forms (ampoule, cream, tablet, suppository...), ask which form; if they named two different forms, ask which one before writing it."],
@@ -556,7 +576,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           opening, closing: line && speech.closing ? speech.closing : ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
           ...(line && dependencies.requestTransfer ? { transfer: ZEYTUN_TRANSFER_PHRASE } : {}),
           ...(line && dependencies.cancelOrder && config.orderOrganizationId ? { cancel: ZEYTUN_CANCEL_PHRASE } : {}),
-          maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: (catalog.vocabulary ?? []).slice(0, 400) })
+          maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: line ? hintNames(catalog, dependencies.learnedNames?.(config) ?? null) : [] })
       }
       if (input.action === "order") {
         const orderOrganizationId = config.orderOrganizationId
@@ -581,7 +601,13 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         console.log("[zeytun-line] transfer", JSON.stringify({ status }))
         return searchResponse({ status, ...(status === "transferring" ? { say: ZEYTUN_TRANSFER_PHRASE } : {}) })
       }
-      const result = catalog.search(input.query)
+      const found = catalog.search(input.query)
+      // A wording its managers already confirmed leads to that product first.
+      const learned = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text)
+        ? dependencies.learnedNames?.(config)?.productFor(input.query.text) : null
+      const known = learned ? catalog.search({ externalId: learned }).candidates[0] : undefined
+      const result = known ? { status: "candidates_only", candidateCount: Math.max(found.candidateCount, 1),
+        candidates: [known, ...found.candidates.filter(item => item.externalId !== known.externalId)] } : found
       // What the agent asked as a substitute and how many it got: product
       // words only, no caller. 2026-10-26 call: the agent said it could not
       // verify a substitute and nothing showed what it had searched.
@@ -589,8 +615,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         console.log("[zeytun-line] substitute", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount }))
       } else if (input.query.text && isLineGrant(config)) {
         // Owner's call 2026-10-29: the agent called a found product missing,
-        // and nothing showed what it had searched. Product words only.
-        console.log("[zeytun-line] search", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount }))
+        // and nothing showed what it had searched. Product words and the
+        // call's station id, never the caller: the line's quality report
+        // (scripts/zeytun-line/quality-report.sh) counts lookups per call.
+        console.log("[zeytun-line] search", JSON.stringify({ call: input.callId, query: input.query.text.slice(0, 240), found: result.candidateCount,
+          ...(known ? { learned: true } : {}) }))
       }
       return searchResponse({ status: result.status, mode: "owner_inbound_preview", customerVerified: false,
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount > 1,

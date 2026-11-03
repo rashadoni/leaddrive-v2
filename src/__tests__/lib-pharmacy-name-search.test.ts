@@ -90,6 +90,27 @@ describe("PharmacyNameSearch word ranking for spoken requests", () => {
     // The Latin feed is ranked as before.
     expect(index.find("Ketanol").slice(0, 2).sort()).toEqual(["ketonal-amp", "ketonal-krem"])
   })
+
+  // Owner, 2026-11-03: "товаров 9к" — a rule for every name, not a fix per
+  // product. Sounds a phone line swaps cost half a letter; measured on the
+  // whole feed by scripts/zeytun-line/search-benchmark.ts (alike swap: in the
+  // five candidates 95.3% → 99.2%).
+  it("hears alike sounds as the same name, and keeps unlike ones apart", () => {
+    const index = search()
+    index.add("azirag", "Азираг 500 № 3 (Таблетки) (BİODEAL PHARMACEUTICALS PVT LTD) (Индия)")
+    index.add("agemo", "Агемо № 30 (Капсулы) (Vefa Ilac Sanayi ve Ticaret Ltd Sti) (Турция)")
+    index.add("adzhikold", "Аджиколд № 4 (Таблетки) (AGİO PHARMACEUTİCALS LTD,) (Индия)")
+    index.add("azem", "Азем 50 мг № 28 (Таблетки) (Abdi Ibrahim İlaç) (Турция)")
+    index.add("azis", "Азис 500 мг № 3 (Таблетки) (Abdi Ibrahim İlaç) (Турция)")
+    // Azerbaijani writes «г» as "q"; l/r, k/g and voiced pairs come back swapped.
+    expect(index.find("Aqemo")[0]).toBe("agemo")
+    expect(index.find("Azilaq")[0]).toBe("azirag")
+    expect(index.find("Azirak")[0]).toBe("azirag")
+    expect(index.find("Acikolt")[0]).toBe("adzhikold")
+    // A four-letter name takes one alike sound, not an unlike one.
+    expect(index.find("Azam")[0]).toBe("azem")
+    expect(index.find("Azom")).not.toContain("azis")
+  })
 })
 
 // The index skips words and labels that cannot score; it must answer exactly
@@ -164,7 +185,7 @@ class ScanSearch {
       const limit = Math.min(slack, scanSlack(entry.folded.length))
       if (score < 0.5) {
         const distance = scanDistance(folded, entry.folded, limit)
-        if (distance <= limit) score = Math.max(score, 1 - distance / Math.max(folded.length, entry.folded.length))
+        if (distance <= limit) score = Math.max(score, 1 - distance / (2 * Math.max(folded.length, entry.folded.length)))
       }
       if (score < 0.5) continue
       let prefix = 0
@@ -181,14 +202,18 @@ function scanTrigrams(text: string): Set<string> {
   return result
 }
 
+// In half letters: a swap between sounds that sound alike costs 1, any other edit 2.
+const SCAN_ALIKE = ["kg", "dt", "bp", "vfxh", "sz", "cj", "lr", "mn", "ae", "ou", "iy"]
+const scanSound = (letter: string) => SCAN_ALIKE.find((group) => group.includes(letter)) ?? letter
 function scanDistance(left: string[], right: string[], limit: number): number {
-  if (Math.abs(left.length - right.length) > limit) return limit + 1
-  let previous = Array.from({ length: right.length + 1 }, (_, i) => i)
+  if (2 * Math.abs(left.length - right.length) > limit) return limit + 1
+  let previous = Array.from({ length: right.length + 1 }, (_, i) => 2 * i)
   for (let i = 1; i <= left.length; i++) {
-    const current = [i]
-    let best = i
+    const current = [2 * i]
+    let best = 2 * i
     for (let j = 1; j <= right.length; j++) {
-      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1))
+      const swap = left[i - 1] === right[j - 1] ? 0 : scanSound(left[i - 1]) === scanSound(right[j - 1]) ? 1 : 2
+      current[j] = Math.min(previous[j] + 2, current[j - 1] + 2, previous[j - 1] + swap)
       best = Math.min(best, current[j])
     }
     if (best > limit) return limit + 1
@@ -205,10 +230,10 @@ const SCAN_CYRILLIC: Record<string, string> = {
 function scanFold(word: string): string[] {
   const latin = word.replace(/дж/gu, "c").replace(/[а-яё]/gu, (ch) => SCAN_CYRILLIC[ch] ?? ch).replace(/dj/gu, "c")
   return Array.from(latin.replace(/sh/gu, "ş").replace(/ch/gu, "ç").replace(/gh/gu, "ğ")
-    .replace(/[şç]/gu, (ch) => (ch === "ş" ? "s" : "c")).replace(/ğ/gu, "g").replace(/ı/gu, "i")
+    .replace(/[şç]/gu, (ch) => (ch === "ş" ? "s" : "c")).replace(/[ğq]/gu, "g").replace(/ı/gu, "i")
     .replace(/ö/gu, "o").replace(/ü/gu, "u").replace(/ə/gu, "e"))
 }
-const scanSlack = (length: number) => (length >= 7 ? 2 : length >= 5 ? 1 : 0)
+const scanSlack = (length: number) => (length >= 7 ? 4 : length >= 5 ? 2 : length === 4 ? 1 : 0)
 const SCAN_QUANTITY = new Set([
   "qutu", "qutusu", "qutudan", "ədəd", "dənə", "paket", "bir", "iki", "üç", "dörd", "beş", "altı", "yeddi",
   "səkkiz", "doqquz", "iyirmi", "otuz", "qırx", "əlli", "altmış", "yetmiş", "səksən", "doxsan", "yüz", "min",

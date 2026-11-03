@@ -216,3 +216,20 @@ export async function cancelPhoneOrderFromCall(db: PrismaClient, input: { organi
     return done.count === 1 ? { status: "cancelled" as const, number: existing.number } : { status: "already_reviewed" as const, number: existing.number }
   }, { isolationLevel: "ReadCommitted", maxWait: 2000, timeout: 5000 }))
 }
+
+/**
+ * What the managers let through: for every line of a confirmed order taken on
+ * this catalog, the caller's words and the 1C product it ended as (after any
+ * correction of theirs). The line learns names from it (zeytun-learned-names.ts).
+ * Newest first; lines a manager added himself carry "—" for the words.
+ */
+export async function confirmedPhoneOrderLines(db: PrismaClient,
+  input: { organizationId: string; catalogScopeKey: string; since: Date; limit: number }) {
+  const orgId = input.organizationId
+  const rows = await runWithTenant(orgId, async () => await db.pharmacyPhoneOrderLine.findMany({
+    where: { organizationId: orgId, status: "resolved", externalId: { not: null },
+      order: { organizationId: orgId, status: "confirmed", catalogScopeKey: input.catalogScopeKey, confirmedAt: { gte: input.since } } },
+    select: { spokenText: true, externalId: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: input.limit,
+  }))
+  return rows.map(row => ({ spoken: row.spokenText, externalId: row.externalId! }))
+}

@@ -94,17 +94,26 @@ function mapRow(row: WireRow) {
 export type ZeytunBalanceCandidate = ReturnType<typeof mapRow>
 
 /**
- * Search-only feed. It deliberately cannot satisfy PharmacyCatalog's complete
- * snapshot contract or authorize a quote, reserve, substitution or order.
- * A replacement is constructed completely before the caller swaps its cache.
+ * The parts of a feed label that name the maker and country, not the product:
+ * "Адефа № 30 (Таблетки) (Pharmex Rom Industry Srl) (Румыния)" — the last two
+ * groups when there are three or more — and "… \*Sopharma Asc , Bolqarıstan\*".
+ * Searched like any word, they weigh less than the name (name-search.ts).
  */
-// Placeholders and generic words the feed puts where a maker would be.
-const STOP_MAKERS = new Set(["прочее", "прочие", "разное", "other", "digər", "diger", "mmc", "ltd", "llc", "pvt", "ооо", "оао", "зао", "ип"])
+function sourceParts(label: string): string[] {
+  const groups = [...label.matchAll(/\(([^()]*)\)/gu)].map((match) => match[1])
+  const starred = [...label.matchAll(/\\\*([\s\S]*?)\\\*/gu)].map((match) => match[1])
+  return [...(groups.length >= 3 ? groups.slice(-2) : []), ...starred]
+}
 
 /** Work between two yields of a build; a call waiting on the web process waits at most about this. */
 const BUILD_SLICE_MS = 15
 const DEFERRED = Symbol("deferred")
 
+/**
+ * Search-only feed. It deliberately cannot satisfy PharmacyCatalog's complete
+ * snapshot contract or authorize a quote, reserve, substitution or order.
+ * A replacement is constructed completely before the caller swaps its cache.
+ */
 export class ZeytunAvailableBalances {
   private context!: ZeytunBalancesContext
   private version!: string
@@ -115,7 +124,6 @@ export class ZeytunAvailableBalances {
   private readonly names = new PharmacyNameSearch(true)
   /** 1C's active substance (INN) → items, for substitutes only. */
   private readonly substances = new Map<string, Set<string>>()
-  private readonly makers = new Map<string, { word: string; n: number }>()
 
   constructor(payload: string | Uint8Array, context: ZeytunBalancesContext, deferred?: typeof DEFERRED) {
     if (deferred === DEFERRED) return
@@ -168,14 +176,13 @@ export class ZeytunAvailableBalances {
       // Do not sum repeated rows: their warehouse/lot semantics are unverified.
       if (this.items.has(item.externalId)) throw new PharmacyOrderError("invalid_catalog")
       this.items.set(item.externalId, item)
-      this.names.add(item.externalId, item.name)
-      if (item.nameAz) this.names.add(item.externalId, item.nameAz)
+      this.names.add(item.externalId, item.name, sourceParts(item.name))
+      if (item.nameAz) this.names.add(item.externalId, item.nameAz, sourceParts(item.nameAz))
       this.addLookup(this.codes, item.itemCode, item.externalId)
       for (const barcode of item.barcodes) this.addLookup(this.barcodes, barcode.value, item.externalId)
       // Pharmacological names are not aliases: one substance can have many SKUs.
       // They are searched only by an explicit substitute request.
       if (item.pharmacologicalName && innKey(item.pharmacologicalName)) this.addLookup(this.substances, innKey(item.pharmacologicalName), item.externalId)
-      this.countMakers(item)
       yield
     }
   }
@@ -232,33 +239,6 @@ export class ZeytunAvailableBalances {
       const strength = strengthOf(item.name) ?? (item.nameAz ? strengthOf(item.nameAz) : null)
       return strength !== null && sameStrength(strength, request.strength)
     })
-  }
-
-  /**
-   * Manufacturer words for the speech recognizer's hint list, most frequent
-   * first. 2026-10-25 live call: "Sopharma" came back as "суппозитории" and
-   * "repositorio" — brands are not in the recognizer's own vocabulary. Read
-   * from the labels themselves ("… (Sopharma ) (Болгария)", "… \*Sopharma
-   * Asc , Bolqarıstan\*"), first word of the maker, so the list follows the
-   * catalog instead of a hand-kept one. Not a product identity: hints only.
-   */
-  manufacturerWords(limit = 400): string[] {
-    return [...this.makers.values()].filter((entry) => entry.n >= 2).sort((a, b) => b.n - a.n || a.word.localeCompare(b.word))
-      .slice(0, limit).map((entry) => entry.word)
-  }
-
-  /** Counted while the feed is built: over the whole feed at once this was another ~0.5 s on prod. */
-  private countMakers(item: ZeytunBalanceCandidate): void {
-    const add = (maker: string | undefined) => {
-      const word = maker?.trim().split(/[\s,]+/u)[0]?.replace(/[.,;:\-]+$/u, "")
-      if (!word || word.length < 3 || word.length > 30 || !/^[\p{L}][\p{L}\-']*$/u.test(word) || STOP_MAKERS.has(word.toLowerCase())) return
-      const key = word.toLowerCase(), seen = this.makers.get(key)
-      if (seen) seen.n += 1
-      else this.makers.set(key, { word, n: 1 })
-    }
-    const groups = [...item.name.matchAll(/\(([^()]*)\)/gu)].map((match) => match[1])
-    if (groups.length >= 2) add(groups[groups.length - 2])
-    add(item.nameAz?.match(/\\\*([^\\*,]*)/u)?.[1])
   }
 
   private assertScope(organizationId: string): void {

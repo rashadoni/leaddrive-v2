@@ -289,6 +289,31 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect((await patch(order.id, { action: "remove_line", revision: 4, lineId: order.lines[1].id })).status).toBe(409)
   })
 
+  // Owner, 2026-11-03 («товаров 9к»): the line learns names from what the managers let through.
+  it("reads the caller's words and the final product of confirmed orders only, under the organization's RLS", async () => {
+    const { confirmedPhoneOrderLines } = await import("@/lib/voice-agent/pharmacy/phone-orders")
+    const read = (organizationId: string, since = new Date("2026-01-01T00:00:00Z")) =>
+      confirmedPhoneOrderLines(app as unknown as PrismaClient, { organizationId, catalogScopeKey: CATALOG.scopeKey, since, limit: 100 })
+    await saveCall(20, LIST)
+    await saveCall(21, LIST)
+    const [confirmed, pending] = await Promise.all([callId(20), callId(21)].map(providerCallId =>
+      admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId }, include: { lines: { orderBy: { position: "asc" } } } })))
+    // The manager took "ketanol beş ədəd" for No-şpa, then confirmed.
+    await admin.pharmacyPhoneOrderLine.update({ where: { id: confirmed.lines[1].id }, data: { externalId: NOSPA } })
+    await admin.pharmacyPhoneOrder.update({ where: { id: confirmed.id }, data: { status: "confirmed", confirmedAt: new Date("2026-11-03T12:00:00Z") } })
+    expect(pending.status).toBe("pending_review")
+    // Unresolved lines and the order still waiting for a manager teach nothing.
+    expect((await read(ZEYTUN)).sort((a, b) => a.spoken.localeCompare(b.spoken))).toEqual([
+      { spoken: "ketanol beş ədəd", externalId: NOSPA },
+      { spoken: "noşpa ampula, on qutu", externalId: NOSPA },
+    ])
+    // Older than asked, another catalog, another organization: nothing.
+    expect(await read(ZEYTUN, new Date("2026-11-04T00:00:00Z"))).toEqual([])
+    expect(await confirmedPhoneOrderLines(app as unknown as PrismaClient,
+      { organizationId: ZEYTUN, catalogScopeKey: "c".repeat(64), since: new Date(0), limit: 100 })).toEqual([])
+    expect(await read(OTHER)).toEqual([])
+  })
+
   it("keeps the 1C pharmacy a number named, and refuses an identification it does not know", async () => {
     const saved = await save(app as unknown as PrismaClient, {
       organizationId: ZEYTUN, providerCallId: callId(6), callStartedAt: "2026-10-24T06:42:00.000Z", callerPhoneE164: PHONE,

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { composeLinePrompt, LINE_NOTES_MAX_CHARS, LINE_PROMPT_MAX_CHARS, createInboundPilotHandler, ZEYTUN_CANCEL_PHRASE, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, ZEYTUN_LINE_RETURN_OPENING, ZEYTUN_TRANSFER_PHRASE, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 import { EMPTY_LINE_SPEECH, readLineSpeech, type LineSpeech } from "@/lib/voice-agent/pharmacy/zeytun-line-speech"
+import { learnNames } from "@/lib/voice-agent/pharmacy/zeytun-learned-names"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
@@ -73,7 +74,7 @@ describe("single-call inbound owner rehearsal", () => {
     // The delivery the owner chose («C»); plain words, never a tag the station would refuse.
     expect(body.speech.style).toMatch(/^[^<>[\]{}]{1,400}$/)
     expect(body.prompt).toContain(`"${ZEYTUN_INBOUND_CLOSING}"`)
-    // No maker words in this catalog: an empty hint list, never a missing field.
+    // The rehearsal learns nothing: an empty hint list, never a missing field.
     expect(body.vocabulary).toEqual([])
     expect(f.dependencies.claim).toHaveBeenCalledOnce()
     expect(f.dependencies.loadCall).toHaveBeenCalledTimes(2)
@@ -343,8 +344,10 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).not.toContain("save_order_list ONCE")
     // Owner's call 2026-10-29: a misheard name the lookup found is read back and asked, not called missing.
     expect(ZEYTUN_LINE_PROMPT).not.toContain("never the nearest name")
-    expect(ZEYTUN_LINE_PROMPT).toContain("read it back once in Azerbaijani letters, even if written in Cyrillic, and ask if it is the one")
+    expect(ZEYTUN_LINE_PROMPT).toContain("read it back once in Azerbaijani letters (even if Cyrillic) and ask if it is the one")
     expect(ZEYTUN_LINE_PROMPT).toContain("take it only after a clear yes")
+    // Owner, 2026-11-03 («товаров 9к»): a no to the read-back is asked on, never left in silence.
+    expect(ZEYTUN_LINE_PROMPT).toContain("on a no, offer the next close returned name, else ask its strength or to spell it")
     expect(ZEYTUN_INBOUND_PROMPT).toContain("never the nearest name")
     // Owner's call 2026-10-31: English replies, two of three products lost, a cancel taken for goodbye.
     expect(ZEYTUN_LINE_PROMPT).toContain("Always speak Azerbaijani, also right after a tool result")
@@ -358,7 +361,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     // Owner's call 2026-10-29 (TS-1005): the promotion went unsaid, "numero dos" passed for yes,
     // ampoules were written after "cream", prices came unasked, the pharmacy kept its case ending.
     expect(ZEYTUN_LINE_PROMPT).toContain("say the offer in that same reply")
-    expect(ZEYTUN_LINE_PROMPT).toContain("an unclear or unrelated answer is not a yes: ask again")
+    expect(ZEYTUN_LINE_PROMPT).toContain("(unclear is not yes: ask again)")
     expect(ZEYTUN_LINE_PROMPT).toContain("if they named two different forms, ask which one before writing it")
     expect(ZEYTUN_LINE_PROMPT).toContain("never unasked when confirming a line")
     expect(ZEYTUN_LINE_PROMPT).toContain("in its base form without case endings")
@@ -399,10 +402,43 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect((await (await failing(request())).json()).opening).toBe(ZEYTUN_LINE_OPENING)
   })
 
-  it("hands the station the catalog's maker words for recognition", async () => {
-    const f = lineFixture()
-    f.catalog.vocabulary = ["Sopharma", "Berlin-Chemie"]
-    expect((await (await f.handle(request())).json()).vocabulary).toEqual(["Sopharma", "Berlin-Chemie"])
+  // Owner, 2026-11-03 («товаров 9к»): the line learns from orders its managers confirmed.
+  describe("what confirmed orders taught the line", () => {
+    const adefa = { externalId: "dddddddd-1111-4111-8111-111111111111", itemCode: "ADEFA", name: "Адефа № 30 (Таблетки) (Pharmex) (Румыния)", nameAz: null }
+    const amlessa = { externalId: "dddddddd-2222-4111-8111-111111111111", itemCode: "AML", name: "Амлесса 8 мг (Таблетки) (KRKA) (Словения)", nameAz: null }
+    function taught(lines: { spoken: string; externalId: string }[]) {
+      const f = lineFixture()
+      vi.mocked(f.catalog.search).mockImplementation((query: { text?: string; externalId?: string }) =>
+        query.externalId ? { status: "candidates_only", candidateCount: 1, candidates: [adefa, amlessa].filter(item => item.externalId === query.externalId) }
+          : { status: "candidates_only", candidateCount: 1, candidates: [amlessa] })
+      const learnedNames = vi.fn(() => learnNames(lines))
+      return { ...f, learnedNames, handle: createInboundPilotHandler(token, { ...f.dependencies, saveOrder: f.saveOrder, learnedNames }) }
+    }
+    const lookup = (text: string) => request({ action: "search", callId: pharmacyCall.providerCallId, query: { text } })
+
+    it("puts the product a confirmed wording led to first", async () => {
+      // "Adessa" found Амлесса first on the 2026-10-30 call; a manager confirmed Адефа for it.
+      const f = taught([{ spoken: "Adessa beş qutu", externalId: adefa.externalId }])
+      const body = await (await f.handle(lookup("Adessa"))).json()
+      expect(body.candidates.map((item: { itemCode: string }) => item.itemCode)).toEqual(["ADEFA", "AML"])
+      // Another wording is searched as before.
+      expect((await (await f.handle(lookup("Amlessa"))).json()).candidates.map((item: { itemCode: string }) => item.itemCode)).toEqual(["AML"])
+    })
+
+    it("leaves a wording two products were confirmed for to the caller", async () => {
+      const f = taught([{ spoken: "Adessa", externalId: adefa.externalId }, { spoken: "adessa iki qutu", externalId: amlessa.externalId }])
+      expect((await (await f.handle(lookup("Adessa"))).json()).candidates.map((item: { itemCode: string }) => item.itemCode)).toEqual(["AML"])
+    })
+
+    it("hints the recognizer with the products ordered most, never the makers", async () => {
+      const f = taught([{ spoken: "Amlessa", externalId: amlessa.externalId }, { spoken: "Adefa", externalId: adefa.externalId },
+        { spoken: "Adefa iki", externalId: adefa.externalId }])
+      expect((await (await f.handle(request({ action: "session", callId: pharmacyCall.providerCallId }))).json()).vocabulary)
+        .toEqual(["Adefa", "Amlessa"])
+      // Nothing learned yet (or not read yet): no hints, the call goes on.
+      const empty = lineFixture()
+      expect((await (await empty.handle(request({ action: "session", callId: pharmacyCall.providerCallId }))).json()).vocabulary).toEqual([])
+    })
   })
 
   it("leaves outbound calls on the line with the line's own agent", async () => {

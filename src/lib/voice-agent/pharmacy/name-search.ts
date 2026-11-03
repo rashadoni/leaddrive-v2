@@ -10,17 +10,23 @@ function trigrams(text: string): Set<string> {
 // Two rows of the distance table, reused: thousands of words are measured per spoken word.
 let rows = [new Int32Array(64), new Int32Array(64)]
 
-/** Levenshtein distance, or limit + 1 as soon as it is certainly above limit. */
+/**
+ * Edit distance in half letters, or limit + 1 as soon as it is certainly above
+ * limit: a letter swapped for one that sounds alike (SOUND_CLASS) costs 1, any
+ * other edit 2.
+ */
 function editDistance(left: Int32Array, right: Int32Array, limit: number): number {
-  if (Math.abs(left.length - right.length) > limit) return limit + 1
+  if (2 * Math.abs(left.length - right.length) > limit) return limit + 1
   if (rows[0].length <= right.length) rows = [new Int32Array(right.length + 1), new Int32Array(right.length + 1)]
   let [previous, current] = rows
-  for (let j = 0; j <= right.length; j++) previous[j] = j
+  for (let j = 0; j <= right.length; j++) previous[j] = 2 * j
   for (let i = 1; i <= left.length; i++) {
-    current[0] = i
-    let best = i
+    current[0] = 2 * i
+    let best = 2 * i
     for (let j = 1; j <= right.length; j++) {
-      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1))
+      const a = left[i - 1], b = right[j - 1]
+      const swap = a === b ? 0 : soundClass(a) === soundClass(b) ? 1 : 2
+      current[j] = Math.min(previous[j] + 2, current[j - 1] + 2, previous[j - 1] + swap)
       if (current[j] < best) best = current[j]
     }
     if (best > limit) return limit + 1
@@ -36,10 +42,14 @@ function letterCodes(letters: string[]): Int32Array {
   return Int32Array.from(letters, (letter) => letter.codePointAt(0)!)
 }
 
-/** Which letters a word has, a bit per letter (a-z each their own; others may share a bit). */
+/**
+ * Which sounds a word has, a bit per SOUND_CLASS (others may share a bit): a
+ * swap within a class leaves the bits alone, so lettersApart still bounds the
+ * distance from below.
+ */
 function letterBits(codes: Int32Array): number {
   let bits = 0
-  for (const code of codes) bits |= 1 << (code & 31)
+  for (const code of codes) bits |= 1 << (soundClass(code) & 31)
   return bits
 }
 
@@ -50,9 +60,9 @@ function bitCount(bits: number): number {
 }
 
 /**
- * Every letter one word has and the other lacks costs an edit, and an edit
- * settles at most one such letter on each side: a lower bound on the
- * distance, far cheaper than computing it.
+ * Every sound one word has and the other lacks costs a whole edit (2), and an
+ * edit settles at most one such sound on each side: a lower bound on the
+ * distance in whole edits, far cheaper than computing it.
  */
 function lettersApart(left: number, right: number): number {
   return Math.max(bitCount(left & ~right), bitCount(right & ~left))
@@ -70,21 +80,49 @@ const CYRILLIC_LATIN: Record<string, string> = {
 // Recognizers write the same sound with different letters: "Moshpa" and
 // "Noşpa", "Ketenal", "Ushag" and "uşaq". Spelling slack is measured on this
 // folded form, where Azerbaijani letters and their digraphs are one letter.
+// Azerbaijani writes Russian «г» as "q" ("Aqemo" for Агемо): one letter here.
 function foldSpelling(word: string): string[] {
   const latin = word.replace(/дж/gu, "c").replace(/[а-яё]/gu, (ch) => CYRILLIC_LATIN[ch] ?? ch).replace(/dj/gu, "c")
   return Array.from(latin.replace(/sh/gu, "ş").replace(/ch/gu, "ç").replace(/gh/gu, "ğ")
-    .replace(/[şç]/gu, (ch) => (ch === "ş" ? "s" : "c")).replace(/ğ/gu, "g").replace(/ı/gu, "i")
+    .replace(/[şç]/gu, (ch) => (ch === "ş" ? "s" : "c")).replace(/[ğq]/gu, "g").replace(/ı/gu, "i")
     .replace(/ö/gu, "o").replace(/ü/gu, "u").replace(/ə/gu, "e"))
 }
 
-// Spoken names arrive through speech recognition: "Ketanol" for Ketonal,
-// "Noşpa" for No-şpa. Short words get no slack, they collide too easily.
-function spellingSlack(length: number): number {
-  return length >= 7 ? 2 : length >= 5 ? 1 : 0
+// Sounds a phone line and a recognizer swap for each other, in Azerbaijani and
+// Russian: voiced and voiceless pairs, k/g, f/x/h, l/r, m/n and the vowels.
+// Owner's calls: "Adexa" for Adefa, "Azirak" for Azirag, "Aceticold" for
+// Аджиколд. Measured on Zeytun's whole feed (4792 names, 2026-11-03) rather
+// than case by case — scripts/zeytun-line/search-benchmark.ts.
+// A table, not a Map: it is read for every cell of every distance computed.
+const SOUND_CLASS = new Int32Array(0x250).map((_, code) => code)
+for (const group of ["kg", "dt", "bp", "vfxh", "sz", "cj", "lr", "mn", "ae", "ou", "iy"]) {
+  for (const letter of group) SOUND_CLASS[letter.codePointAt(0)!] = group.codePointAt(0)!
+}
+function soundClass(code: number): number {
+  return code < SOUND_CLASS.length ? SOUND_CLASS[code] : code
 }
 
-/** Words shorter than this, folded, match only their exact folded spelling (no slack). */
+function soundKey(codes: Int32Array): string {
+  return String.fromCodePoint(...Array.from(codes, soundClass))
+}
+
+// Spoken names arrive through speech recognition: "Ketanol" for Ketonal,
+// "Noşpa" for No-şpa. Half letters (editDistance): short words get at most one
+// alike sound, three-letter words none — they collide too easily.
+function spellingSlack(length: number): number {
+  return length >= 7 ? 4 : length >= 5 ? 2 : length === 4 ? 1 : 0
+}
+
+/** Words shorter than this, folded, are found by their spelling or sounds, not scanned by length. */
 const SLACK_FROM = 5
+/**
+ * How much a caller's word counts when it matches only an item's maker or
+ * country. 2026-11-03 owner's call: "Abdi İbrahim Adefa" — two maker words
+ * outweighed the one product name, and the five candidates were Abdi Ibrahim
+ * items without Adefa. A maker word still decides between two equal names
+ * ("Parasetamol Sopharma"), never against a name.
+ */
+const SOURCE_WORD_WEIGHT = 0.25
 
 interface IndexedWord { label: string; gramCount: number; letters: string[]; folded: Int32Array }
 
@@ -103,12 +141,16 @@ export class PharmacyNameSearch {
   private readonly termSizes: number[] = []
   /** Whether the label is some item's complete name, not only one of its words. */
   private readonly termIsName: boolean[] = []
+  /** Per word label: items in whose labels this word is only the maker or country. */
+  private readonly sourceOnly = new Map<number, Set<number>>()
   private readonly postings = new Map<string, number[]>()
   private readonly words = new Map<string, number>()
   private readonly wordList: IndexedWord[] = []
   private readonly wordPostings = new Map<string, number[]>()
   /** Folded spelling → words, for words too short for slack. */
   private readonly shortFolded = new Map<string, number[]>()
+  /** Sounds (SOUND_CLASS) → short words: one alike sound away is the same key. */
+  private readonly shortSounds = new Map<string, number[]>()
   /** Folded length → words with slack, and which letters each has: slack k reaches only lengths within k. */
   private readonly byFoldedLength: number[][] = []
   private readonly bitsByFoldedLength: number[][] = []
@@ -127,7 +169,8 @@ export class PharmacyNameSearch {
 
   constructor(private readonly indexWords = false) {}
 
-  add(id: string, rawName: string): void {
+  /** `source`: the parts of the label that name the maker and country, not the product. */
+  add(id: string, rawName: string, source: string[] = []): void {
     const name = normalizePharmacyLabel(rawName)
     let item = this.idIndex.get(id)
     if (item === undefined) {
@@ -135,6 +178,12 @@ export class PharmacyNameSearch {
       this.idIndex.set(id, item)
     }
     const labels = new Set([name])
+    let own: Set<string> | null = null
+    if (this.indexWords && source.length) {
+      let rest = rawName
+      for (const part of source) rest = rest.replace(part, " ")
+      own = new Set(pharmacyWords(normalizePharmacyLabel(rest)))
+    }
     if (this.indexWords) {
       // Full feed names contain dose, brand and packaging in one long label.
       // Word entries improve discovery; they NEVER become approved aliases.
@@ -144,13 +193,19 @@ export class PharmacyNameSearch {
       }
     }
     for (const label of labels) {
+      const fromSource = own !== null && label !== name && !own.has(label)
       const existing = this.terms.get(label)
       if (existing !== undefined) {
-        this.termIds[existing].add(item)
+        const ids = this.termIds[existing], sources = this.sourceOnly.get(existing)
+        // A word in the item's own name in any of its labels stays a name word.
+        if (!fromSource) sources?.delete(item)
+        else if (!ids.has(item)) this.sourceOnly.set(existing, (sources ?? new Set()).add(item))
+        ids.add(item)
         if (label === name) this.termIsName[existing] = true
         continue
       }
       const term = this.termIds.push(new Set([item])) - 1
+      if (fromSource) this.sourceOnly.set(term, new Set([item]))
       this.terms.set(label, term)
       this.termIsName.push(label === name)
       const grams = trigrams(label)
@@ -180,6 +235,9 @@ export class PharmacyNameSearch {
       const key = letters.join(""), same = this.shortFolded.get(key)
       if (same) same.push(index)
       else this.shortFolded.set(key, [index])
+      const sounds = soundKey(folded), alike = this.shortSounds.get(sounds)
+      if (alike) alike.push(index)
+      else this.shortSounds.set(sounds, [index])
     } else {
       const length = letters.length
       this.byFoldedLength[length] ??= []
@@ -218,12 +276,17 @@ export class PharmacyNameSearch {
       const weight = Math.log(1 + this.idList.length / this.termIds[this.terms.get(closest)!].size)
       const best: number[] = []
       for (const [label, score] of matches) {
-        for (const item of this.termIds[this.terms.get(label)!]) {
+        // A maker's word wherever most of its labels put it there: 1C writes a
+        // few labels out of pattern (three of Abdi Ibrahim's 57 on 2026-11-03).
+        const term = this.terms.get(label)!, ids = this.termIds[term]
+        const factor = (this.sourceOnly.get(term)?.size ?? 0) * 2 > ids.size ? SOURCE_WORD_WEIGHT : 1
+        for (const item of ids) {
+          const value = score * weight * factor
           if (!bestSeen[item]) {
             bestSeen[item] = 1
             best.push(item)
-            bestScores[item] = Math.max(0, score * weight)
-          } else bestScores[item] = Math.max(bestScores[item], score * weight)
+            bestScores[item] = Math.max(0, value)
+          } else bestScores[item] = Math.max(bestScores[item], value)
         }
       }
       for (const item of best) {
@@ -288,22 +351,24 @@ export class PharmacyNameSearch {
       if (score < 0.5) {
         const limit = Math.min(slack, spellingSlack(entry.folded.length))
         const distance = editDistance(folded, entry.folded, limit)
-        if (distance <= limit) score = Math.max(score, 1 - distance / Math.max(folded.length, entry.folded.length))
+        if (distance <= limit) score = Math.max(score, 1 - distance / (2 * Math.max(folded.length, entry.folded.length)))
       }
       if (score < 0.5) return
       scores[index] = score
       matched.push(index)
     }
     for (const index of touched) if (2 * counts[index] / (grams.size + this.wordList[index].gramCount) >= 0.5) consider(index)
-    if (slack === 0) {
+    if (folded.length < SLACK_FROM) {
       for (const index of this.shortFolded.get(foldedLetters.join("")) ?? []) if (!scores[index]) consider(index)
+      if (slack) for (const index of this.shortSounds.get(soundKey(folded)) ?? []) if (!scores[index]) consider(index)
     } else {
-      for (let length = Math.max(SLACK_FROM, folded.length - slack); length <= folded.length + slack; length++) {
+      const reach = slack >> 1
+      for (let length = Math.max(SLACK_FROM, folded.length - reach); length <= folded.length + reach; length++) {
         const limit = Math.min(slack, spellingSlack(length))
-        if (Math.abs(length - folded.length) > limit) continue
+        if (2 * Math.abs(length - folded.length) > limit) continue
         const indices = this.byFoldedLength[length] ?? [], bits = this.bitsByFoldedLength[length] ?? []
         for (let k = 0; k < indices.length; k++) {
-          if (lettersApart(foldedBits, bits[k]) > limit) continue
+          if (2 * lettersApart(foldedBits, bits[k]) > limit) continue
           if (!scores[indices[k]]) consider(indices[k])
         }
       }
@@ -371,4 +436,14 @@ function pharmacyWords(name: string): string[] {
   }
   for (const joined of name.match(/[\p{L}\p{M}]+(?:-[\p{L}\p{M}]+)+/gu) ?? []) result.push(joined.replace(/-/gu, ""))
   return result
+}
+
+/**
+ * A spoken request reduced to its product words, folded (alphabets, digraphs,
+ * «г» as "q") and without quantity words: "Adexa beş qutu" and "adexa" are the
+ * same key. Used to recognize a wording a manager has already confirmed.
+ */
+export function spokenNameKey(text: string): string {
+  return [...new Set(pharmacyWords(normalizePharmacyLabel(text)))]
+    .filter((word) => !QUANTITY_WORDS.has(word)).map((word) => foldSpelling(word).join("")).join(" ")
 }
