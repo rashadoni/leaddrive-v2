@@ -1,14 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync, spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { parseManifest, parseState, admitCandidate, admitRollback, emitAdmission, databaseStateScript, bookingSchemaHash, activationSql, releaseProof } from './release-contract.mjs';
+import { parseManifest, parseState, admitCandidate, admitRollback, emitAdmission, databaseStateScript, bookingSchemaHash, activationSql, releaseProof, parseLineage, releasedSchemaLineage, compatibleSchemaHashes, additiveMigration } from './release-contract.mjs';
 
 const sha = 'a'.repeat(40), hash = 'b'.repeat(64);
 const manifest = (phase='compatibility') => ({version:1,contract:'booking-canonical-writer/v1',artifactSha:sha,schemaHash:hash,phase});
 const state = (overrides={}) => ({expanded:false,canonicalCount:0,enforced:false,readOnly:true,rlsUnfiltered:true,...overrides});
+const entry = (schemaHash,migration,bookingAdditive) => ({schemaHash,migration,bookingAdditive,note:'fixture'});
 
 test('a historical artifact is distinct from a malformed or revision-mismatched contract', () => {
   assert.equal(parseManifest('',sha),null);
@@ -83,6 +84,106 @@ test('post-deploy proof binds the actual artifact, storage and active mode witho
   assert.equal(releaseProof(state({expanded:true,enforced:true}),manifest('workspace'),manifest('workspace'),sha).phase,'workspace');
   assert.throws(()=>releaseProof(expanded,manifest(),{...manifest(),artifactSha:'c'.repeat(40)},sha));
   assert.throws(()=>releaseProof(state(),manifest(),manifest(),sha));
+});
+
+test('a forward booking schema is admissible only where the lineage proves the previous artifact can still serve', () => {
+  const strict = state({expanded:true,canonicalCount:2,enforced:true});
+  const next = 'd'.repeat(64), unlisted = 'e'.repeat(64);
+  const candidate = {...manifest('workspace'),schemaHash:next}, live = manifest('workspace');
+  const compatible = [next,hash];
+  assert.doesNotThrow(()=>admitCandidate(strict,candidate,live,compatible));
+  // The automatic rollback keeps its target: that is what the equal-hash rule
+  // used to take away from any booking schema change.
+  assert.doesNotThrow(()=>admitRollback(strict,live,candidate,false,true,compatible));
+  // No list, a list that forgot the candidate, or one that forgot the running
+  // artifact: equality is demanded again, so a stale list never widens anything.
+  for (const list of [undefined,[],[hash],[next,unlisted]]) {
+    assert.throws(()=>admitCandidate(strict,candidate,live,list));
+    assert.throws(()=>admitRollback(strict,live,candidate,false,true,list));
+  }
+  const stranger = {...manifest('workspace'),schemaHash:unlisted};
+  assert.throws(()=>admitCandidate(strict,candidate,stranger,compatible));
+  assert.throws(()=>admitRollback(strict,stranger,candidate,false,true,compatible));
+  // The cutover it was written for is untouched: the expanded schema, a real
+  // predecessor and a candidate are all still required.
+  assert.throws(()=>admitCandidate(state(),candidate,live,compatible));
+  assert.throws(()=>admitCandidate(strict,candidate,null,compatible));
+  assert.throws(()=>admitCandidate(strict,null,live,compatible));
+  assert.throws(()=>admitRollback(state(),live,candidate,false,true,compatible));
+  assert.throws(()=>admitRollback(strict,live,null,false,true,compatible));
+});
+
+test('the committed lineage names the released booking schema and walks back only through additive steps', () => {
+  const lineage = releasedSchemaLineage();
+  assert.equal(lineage[lineage.length-1].schemaHash,bookingSchemaHash(readFileSync('prisma/schema.prisma','utf8')));
+  assert.equal(lineage[0].migration,null);
+  for (const release of lineage.slice(1)) {
+    const sql = readFileSync(`prisma/migrations/${release.migration}/migration.sql`,'utf8');
+    // Declaring a step non-additive is always allowed; claiming it must be proven.
+    if (release.bookingAdditive) assert.equal(additiveMigration(sql),true,`${release.migration} claims bookingAdditive`);
+  }
+  const [a,b,c] = ['1','2','3'].map(character=>character.repeat(64));
+  assert.deepEqual(compatibleSchemaHashes([entry(a,null,false)]),[a]);
+  assert.deepEqual(compatibleSchemaHashes([entry(a,null,false),entry(b,'20260101000000_one',true)]),[b,a]);
+  assert.deepEqual(compatibleSchemaHashes([entry(a,null,false),entry(b,'20260101000000_one',false)]),[b]);
+  assert.deepEqual(compatibleSchemaHashes([entry(a,null,false),entry(b,'20260101000000_one',false),
+    entry(c,'20260101000001_two',true)]),[c,b]);
+  const many = Array.from({length:12},(ignored,index)=>entry(String(index).padStart(64,'a'),
+    index?`2026010100000${index%10}_step`:null,Boolean(index)));
+  assert.equal(compatibleSchemaHashes(many).length,8);
+  for (const releases of [[],[{...entry(a,null,false),extra:1}],[entry(a,'20260101000000_one',false)],
+    [entry(a,null,true)],[entry(a,null,false),entry(a,'20260101000000_one',true)],
+    [entry(a,null,false),entry(b,'Not A Migration',true)],[entry('short',null,false)],
+    [{...entry(a,null,false),note:''}],[{...entry(a,null,false),bookingAdditive:'false'}]]) {
+    assert.throws(()=>parseLineage(JSON.stringify({version:1,releases})),/INVALID_BOOKING_SCHEMA_LINEAGE/);
+  }
+  assert.throws(()=>parseLineage(JSON.stringify({version:2,releases:[entry(a,null,false)]})));
+  assert.throws(()=>parseLineage(JSON.stringify({version:1,releases:{}})));
+});
+
+test('the migration classifier answers no to every statement it has not reviewed', () => {
+  for (const sql of [
+    'ALTER TABLE "booking_pages" ADD COLUMN "price" DECIMAL(14, 2);',
+    'ALTER TABLE "booking_pages" ADD COLUMN "a" TEXT, ADD COLUMN "b" INTEGER;',
+    `ALTER TABLE "booking_pages" ADD COLUMN "a" TEXT NOT NULL DEFAULT 'x';`,
+    'ALTER TABLE IF EXISTS "bookings" ADD COLUMN IF NOT EXISTS "a" TEXT;',
+    'CREATE INDEX "i" ON "booking_pages"("category");',
+    `-- a comment\nSET lock_timeout = '3s';\nALTER TABLE "bookings" ADD COLUMN "a" TEXT;`,
+  ]) assert.equal(additiveMigration(sql),true,sql);
+  for (const sql of ['','-- nothing but a comment',
+    'ALTER TABLE "booking_pages" ADD COLUMN "a" TEXT NOT NULL;',
+    'ALTER TABLE "booking_pages" DROP COLUMN "price";',
+    'ALTER TABLE "booking_pages" RENAME COLUMN "price" TO "cost";',
+    'ALTER TABLE "booking_pages" ALTER COLUMN "price" TYPE TEXT;',
+    'ALTER TABLE "booking_pages" ADD COLUMN "a" TEXT, DROP COLUMN "b";',
+    'ALTER TABLE "booking_pages" ADD CONSTRAINT "c" CHECK (price > 0);',
+    'ALTER TABLE "bookings" ADD COLUMN "o" TEXT REFERENCES "orgs"("id");',
+    'ALTER TABLE "bookings" ADD COLUMN "v" INTEGER GENERATED ALWAYS AS IDENTITY;',
+    'CREATE UNIQUE INDEX "i" ON "booking_pages"("category");',
+    'DROP TABLE "booking_pages";','TRUNCATE "bookings";','UPDATE "bookings" SET version = 0;',
+    'DO $$ BEGIN ALTER TABLE "bookings" ADD COLUMN "x" TEXT; END $$;',
+    'ALTER TABLE "booking_pages" ADD COLUMN "a" TEXT; DROP TABLE "bookings";',
+  ]) assert.equal(additiveMigration(sql),false,sql);
+});
+
+test('the build refuses a booking schema change the lineage does not record', () => {
+  const root = mkdtempSync(path.join(tmpdir(),'booking-lineage-'));
+  try {
+    const script = new URL('./release-contract.mjs',import.meta.url).pathname;
+    const marker = path.join(root,'.booking-backend-contract.json');
+    const schema = readFileSync('prisma/schema.prisma','utf8');
+    mkdirSync(path.join(root,'prisma'),{recursive:true});
+    mkdirSync(path.join(root,'src/lib/booking'),{recursive:true});
+    writeFileSync(path.join(root,'src/lib/booking/release-phase.json'),readFileSync('src/lib/booking/release-phase.json'));
+    writeFileSync(path.join(root,'prisma/schema.prisma'),schema);
+    assert.equal(spawnSync(process.execPath,[script,'--write-manifest',root,sha],{cwd:root}).status,0);
+    rmSync(marker);
+    writeFileSync(path.join(root,'prisma/schema.prisma'),schema.replace('model Booking {','model Booking {\n unrecorded String?'));
+    const stale = spawnSync(process.execPath,[script,'--write-manifest',root,sha],{cwd:root,encoding:'utf8'});
+    assert.equal(stale.status,1,'an unrecorded booking schema must not produce an artifact marker');
+    assert.match(stale.stderr,/BOOKING_RELEASE_CONTRACT_BLOCKED/);
+    assert.equal(existsSync(marker),false);
+  } finally { rmSync(root,{recursive:true,force:true}); }
 });
 
 test('the booking schema contract does not freeze unrelated application schema releases', () => {
@@ -190,6 +291,10 @@ test('recovery runs current-main admission before any historical artifact is cop
   assert.ok(recovery.indexOf('Preserve current-main booking admission') < recovery.indexOf('Checkout deployment script from the recovered revision'));
   assert.ok(recovery.indexOf('Admit retained booking backend with current-main code') < recovery.indexOf('Stage exact retained recovery artifact on production disk'));
   assert.match(recovery,/node "\$RUNNER_TEMP\/booking-current-main-admission\/scripts\/booking\/release-contract.mjs"/);
+  // The preserved admission decides compatibility from the lineage, so it has
+  // to travel with the code: without the file it cannot admit anything at all.
+  assert.match(workflow,/scripts\/booking\/schema-lineage.json "\$admission\/scripts\/booking\/"/);
+  assert.match(workflow,/cp -r scripts\/booking\/\. \.next\/standalone\/scripts\/booking\//);
   assert.match(workflow,/artifact="\/tmp\/leaddrive-deploy-artifact\/leaddrive-prod-\$\{DEPLOY_TARGET_SHA\}\.tar.gz"/);
 });
 

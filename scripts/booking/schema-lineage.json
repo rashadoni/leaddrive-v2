@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "comment": "Every released shape of the booking storage contract, oldest first. The last entry must match bookingSchemaHash(prisma/schema.prisma); a release that changes a Booking* model adds an entry here or the build refuses it. bookingAdditive says the named migration leaves the previous entry's artifact able to keep serving — only added nullable booking columns, proven against the migration SQL by release-contract.test.mjs. It is a claim about the booking storage contract alone.",
+  "releases": [
+    {
+      "schemaHash": "3447924de9ae2e3a16f04a075489d211be911ba3c41bb0a7162235e9b38e880c",
+      "migration": null,
+      "bookingAdditive": false,
+      "note": "The canonical booking backend and the one-time workspace activation. Baseline: the first released shape, so it claims nothing about anything before it."
+    },
+    {
+      "schemaHash": "31c1ad427bf25c3bb18d4b53ba2ca8b821692754991b484e2eefa731a371d12e",
+      "migration": "20261120090000_booking_page_price_category",
+      "bookingAdditive": true,
+      "note": "A salon service carries a price, the currency it was stamped in, a group and a return cycle: four nullable columns on booking_pages."
+    }
+  ]
+}
