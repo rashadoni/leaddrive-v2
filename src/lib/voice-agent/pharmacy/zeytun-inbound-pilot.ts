@@ -615,8 +615,10 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         console.log("[zeytun-line] substitute", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount }))
       } else if (input.query.text && isLineGrant(config)) {
         // Owner's call 2026-10-29: the agent called a found product missing,
-        // and nothing showed what it had searched. Product words only.
-        console.log("[zeytun-line] search", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount,
+        // and nothing showed what it had searched. Product words and the
+        // call's station id, never the caller: the line's quality report
+        // (scripts/zeytun-line/quality-report.sh) counts lookups per call.
+        console.log("[zeytun-line] search", JSON.stringify({ call: input.callId, query: input.query.text.slice(0, 240), found: result.candidateCount,
           ...(known ? { learned: true } : {}) }))
       }
       return searchResponse({ status: result.status, mode: "owner_inbound_preview", customerVerified: false,
