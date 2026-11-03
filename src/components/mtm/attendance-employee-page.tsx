@@ -13,7 +13,7 @@ import { MtmAttendanceEmployeePreparation } from "@/components/mtm/attendance-em
 import { createDateFormatter, formatTime } from "@/lib/format-date"
 import { formatAttendanceDuration } from "@/lib/mtm/attendance-presentation"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
-import { ATTENDANCE_EMPLOYEE_POSITION_MAX, ATTENDANCE_PERSONNEL_NUMBER_MAX, AttendanceEmploymentInputSchema, AttendanceParticipationInputSchema, type AttendanceEmployeeDetail } from "@/lib/mtm/attendance-employee-contract"
+import { ATTENDANCE_EMPLOYEE_POSITION_MAX, AttendanceEmploymentInputSchema, AttendanceParticipationInputSchema, type AttendanceEmployeeDetail } from "@/lib/mtm/attendance-employee-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees"
 const SELECT = "min-h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
@@ -21,12 +21,11 @@ const SAVE_ERRORS: Record<string, string> = {
   MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN: "addEmployeeEmailTaken", MTM_ATTENDANCE_EMPLOYEE_PHONE_TAKEN: "addEmployeePhoneTaken",
   MTM_ATTENDANCE_EMPLOYEE_PHONE_INVALID: "addEmployeePhoneInvalid", MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED: "employeeLoginLocked",
   MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID: "employeeManagerInvalid", MTM_ATTENDANCE_EMPLOYEE_SECTION_ELSEWHERE: "employeeSectionElsewhere",
-  MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN: "employeeNumberTaken",
 }
 type Employee = AttendanceEmployeeDetail["employee"]
-type Form = { name: string; phone: string; email: string; position: string; personnelNumber: string; department: DepartmentValue; managerId: string; hireDate: string }
+type Form = { name: string; phone: string; email: string; position: string; department: DepartmentValue; managerId: string; hireDate: string }
 type Change = { kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; reason: string }
-const formOf = (employee: Employee): Form => ({ name: employee.name, phone: employee.phone ?? "", email: employee.email ?? "", position: employee.position ?? "", personnelNumber: employee.personnelNumber ?? "",
+const formOf = (employee: Employee): Form => ({ name: employee.name, phone: employee.phone ?? "", email: employee.email ?? "", position: employee.position ?? "",
   department: emptyDepartmentValue(employee.departmentId, employee.teamId), managerId: employee.managerId ?? "", hireDate: "" })
 const nextKind = (history: Employee["history"]): Change["kind"] => !history.length ? "HIRE" : history.at(-1)!.kind === "TERMINATION" ? "REHIRE" : "TERMINATION"
 
@@ -87,7 +86,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
     event.preventDefault()
     if (!detail || !form || busy) return
     const login = detail.employee.loginEditable
-    void post(`${ENDPOINT}/${encodeURIComponent(agentId)}`, { name: form.name, position: form.position.trim() || null, personnelNumber: form.personnelNumber.trim() || null, ...departmentPayload(form.department), managerId: form.managerId || null,
+    void post(`${ENDPOINT}/${encodeURIComponent(agentId)}`, { name: form.name, position: form.position.trim() || null, ...departmentPayload(form.department), managerId: form.managerId || null,
       // No number yet stays no number: an empty field is not sent (the number is the sign-in).
       ...(login ? { ...(form.phone.trim() ? { phone: form.phone } : {}), email: form.email.trim() || null } : {}), ...(form.hireDate ? { hireDate: form.hireDate } : {}) }, "employeeSaved")
   }
@@ -146,8 +145,10 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
         <Section title={p("sectionWork")} icon={<BriefcaseBusiness className="h-4 w-4" />} testId="employee-section-work">
           <Field id="employee-position" label={p("employeeCardPosition")} missing={!form.position.trim()}>
             <Input id="employee-position" maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></Field>
-          <Field id="employee-personnel-number" label={p("employeeCardPersonnelNumber")} hint={p("employeeCardPersonnelNumberHint")}>
-            <Input id="employee-personnel-number" maxLength={ATTENDANCE_PERSONNEL_NUMBER_MAX} className="min-h-11" value={form.personnelNumber} onChange={event => set("personnelNumber")(event.target.value)} /></Field>
+          {/* Issued by the server, never typed (owner, 2026-11-03): text, not a field. */}
+          <div className="space-y-1" data-testid="employee-personnel-number"><span className="block text-sm font-medium">{p("employeeCardPersonnelNumber")}</span>
+            <p className="text-2xl font-semibold tabular-nums">{employee.personnelNumber ?? "—"}</p>
+            <p className="text-xs text-muted-foreground">{p(employee.personnelNumber ? "employeeCardPersonnelNumberHint" : "employeeCardPersonnelNumberPending")}</p></div>
           <MtmAttendanceDepartmentField id="employee-department" teams={detail.teams} departments={detail.departments ?? []} value={form.department} onChange={set("department")}
             onRenamed={unit => setDetail(current => current && { ...applyAttendanceUnitRename(current, unit), employee: { ...current.employee,
               ...(unit.kind === "DEPARTMENT" && current.employee.departmentId === unit.id ? { departmentName: unit.name } : {}),

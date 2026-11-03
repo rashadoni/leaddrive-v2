@@ -13,6 +13,7 @@ import { ATTENDANCE_EMPLOYEE_POSITION_MAX, OFFICE_EMPLOYEE_CRM_ROLE } from "@/li
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { findPhoneOwner } from "@/lib/mtm/mobile-login-phone"
+import { issueAttendancePersonnelNumbers } from "@/lib/mtm/attendance-personnel-number"
 
 /**
  * Personnel → Employees → "Add employee" (owner, 2026-10-15): HR adds office
@@ -102,6 +103,7 @@ export async function createAttendanceEmployee(actor: AttendanceReviewer, raw: u
     if (hireDate) await recordAttendanceInitialHire(tx, actor, agentId, hireDate, timezone)
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "agent", entityId: agentId,
       action: "MTM_ATTENDANCE_EMPLOYEE_CREATED", metadataKind: "mtm_attendance_employment", newData: { userId: user.id, position, ...unit, hireDate } } })
+    await issueAttendancePersonnelNumbers(tx, { organizationId, actorUserId: actor.userId, agentIds: [agentId] })
     return { userId: user.id, agentId, name: user.name, email: hasRealEmail(user.email) ? user.email : null, phone }
   }, { timeout: 15_000 })
   if ("existing" in created) return created
@@ -141,6 +143,7 @@ async function adoptExistingCard(tx: Prisma.TransactionClient, actor: Attendance
   await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId: card.id, entity: "agent", entityId: card.id,
     action: "MTM_ATTENDANCE_EMPLOYEE_ENROLLED", metadataKind: "mtm_attendance_employment",
     newData: { userId: card.user.id, position, ...unit, hireDate, source: "add_employee_existing_user" } } })
+  await issueAttendancePersonnelNumbers(tx, { organizationId, actorUserId: actor.userId, agentIds: [card.id] })
   return { userId: card.user.id, agentId: card.id, name: card.name, email: hasRealEmail(card.user.email) ? card.user.email : null,
     phone: card.phone ?? card.user.phone ?? "", existing: true as const }
 }

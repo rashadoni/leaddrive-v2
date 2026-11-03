@@ -23,6 +23,7 @@ import { ATTENDANCE_FEATURE_SETTING_KEY } from "@/lib/mtm/attendance-feature"
 import { managerAssignmentCreatesCycle } from "@/lib/mtm/agent-administration"
 import { agentHistory } from "@/lib/mtm/agent-deletion"
 import { readAttendanceEmployeePreparation } from "@/lib/mtm/attendance-employee-preparation"
+import { issueAttendancePersonnelNumbers } from "@/lib/mtm/attendance-personnel-number"
 
 type EmploymentRow = { id: string; agentId: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; effectiveAt: Date; recordedByUserId: string; recordedDate: string | null }
 function employmentDate(event: EmploymentRow, timezone: string) {
@@ -80,6 +81,10 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
     // Neither the user's CRM role nor a missing job title proves membership.
     const tracked = cards.filter(card => isAttendanceTrackedCard(card)
       && (card.attendanceIncludedFrom === null || card.auditLogs.length > 0))
+    // Everyone in this list has a number: whoever reached it by a path that
+    // issues none (or before numbers were issued) gets theirs here, once.
+    const issued = await issueAttendancePersonnelNumbers(tx, { organizationId, actorUserId: actor.userId, agentIds: tracked.filter(card => !card.personnelNumber).map(card => card.id) })
+    for (const card of tracked) card.personnelNumber ??= issued.get(card.id) ?? null
     const events = await history(tx, organizationId, tracked.map(card => card.id))
     const participation = await readAttendanceParticipationHistory(tx, organizationId, tracked.map(card => card.id))
     const latestParticipation = new Map(participation.map(event => [event.agentId, event.id]))
@@ -192,6 +197,7 @@ export async function enrollAttendanceEmployee(actor: AttendanceReviewer, raw: u
     if (previous.length && (previous[0].kind !== "HIRE" || employmentDate(previous[0], timezone) !== input.hireDate)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_HISTORY_CHANGED")
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "agent", entityId: agentId,
       action: "MTM_ATTENDANCE_EMPLOYEE_ENROLLED", metadataKind: "mtm_attendance_employment", newData: { clientRequestId: input.clientRequestId, hash, reason: input.reason, userId: input.userId, hireDate: input.hireDate, ...(event ? { eventId: event.id, date: input.hireDate, timezone } : {}) } } })
+    await issueAttendancePersonnelNumbers(tx, { organizationId, actorUserId: actor.userId, agentIds: [agentId] })
     return { agentId, idempotent: false }
   }, { timeout: 15_000 })
 }
@@ -398,13 +404,9 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
       const manager = await tx.mtmAgent.findFirst({ where: { organizationId, id: input.managerId, status: "ACTIVE", role: { in: [...ATTENDANCE_MANAGER_ROLES] } }, select: { id: true } })
       if (!manager || await managerAssignmentCreatesCycle(tx, { organizationId, agentId, managerId: input.managerId })) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID", 422)
     }
-    // A personnel number names one person on the timesheet; the organization's
-    // registry lock above serializes this check with every other profile save.
-    const personnelNumber = input.personnelNumber === undefined ? card.personnelNumber : input.personnelNumber
-    if (personnelNumber && personnelNumber.toLowerCase() !== card.personnelNumber?.toLowerCase()
-      && await tx.mtmAgent.findFirst({ where: { organizationId, personnelNumber: { equals: personnelNumber, mode: "insensitive" }, NOT: { id: agentId } }, select: { id: true } })) {
-      throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NUMBER_TAKEN", 409)
-    }
+    // The personnel number is issued, never typed (`attendance-personnel-number.ts`):
+    // a tab opened before 2026-11-03 still sends the field, and it changes nothing.
+    const personnelNumber = card.personnelNumber
     const { teamId, departmentId } = await resolveAttendanceUnit(tx, organizationId, input, card.departmentId)
     // The CRM user needs an address; without a real one it keeps one that reaches nobody.
     const userEmail = emailChange ? input.email ?? `staff-${randomUUID()}@${NO_EMAIL_DOMAIN}` : undefined

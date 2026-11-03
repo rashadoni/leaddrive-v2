@@ -132,6 +132,8 @@ describe("Add employee", () => {
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="attendance-add-employee"]')!.click())
     expect(form().querySelector('input[type="password"]')).toBeNull()
     expect(form().querySelector('[data-testid="attendance-add-employee-code-note"]')!.textContent).toBe(p("addEmployeeCodeNote"))
+    // The personnel number is issued on saving, not typed (owner, 2026-11-03).
+    expect(form().querySelector('[data-testid="attendance-add-employee-number-note"]')!.textContent).toBe(p("addEmployeeNumberNote"))
     await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994 50 111 22 33")
     await send()
     expect(creates()).toHaveLength(1)

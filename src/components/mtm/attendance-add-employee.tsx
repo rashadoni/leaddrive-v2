@@ -201,6 +201,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
         <span className="block text-xs font-normal text-muted-foreground">{p("addEmployeeHireHint")}</span></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeEmail")}</span><Input type="email" maxLength={320} className="min-h-11" autoComplete="off" value={form.email} onChange={event => set("email")(event.target.value)} /></label>
     </div>
+    <p className="text-xs text-muted-foreground" data-testid="attendance-add-employee-number-note">{p("addEmployeeNumberNote")}</p>
     <p className="flex max-w-prose items-start gap-3 rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-3 text-sm" data-testid="attendance-add-employee-code-note">
       <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{p("addEmployeeCodeNote")}</span></p>
     {error ? <p role="alert" className="text-sm text-destructive">{p(error)}</p> : null}

@@ -8,6 +8,7 @@ import { prepareIdentityApplicationActorInTransaction } from "./application-acto
 import { enrollIdentityApplicationInTransaction } from "./application-enrollment"
 import { IdentityTimeEnrollmentInput, type IdentityTimePerson } from "./time-enrollment-contract"
 import { resolveAttendanceUnit, recordAttendanceInitialHire } from "../mtm/attendance-employee-store"
+import { issueAttendancePersonnelNumbers } from "../mtm/attendance-personnel-number"
 import { readLegacyTimeCandidate } from "./time-onboarding"
 import { isValidTimezone } from "../timezone"
 
@@ -107,6 +108,7 @@ export async function enrollExistingIdentityInTimeInTransaction(tx: Prisma.Trans
         clientRequestId: input.requestId, requestHash, userId: input.userId, claimId: claim.id, name: person.name,
         position: person.position, teamId: person.teamId, departmentId: person.departmentId, hireDate: input.expectedActorId ? null : input.hireDate, reusedActor: !!input.expectedActorId,
       } } })
+    await issueAttendancePersonnelNumbers(tx, { organizationId, actorUserId: administrator.userId, agentIds: [card.actorId] })
     return { agentId: card.actorId, name: person.name, replayed: false }
   })
 }
