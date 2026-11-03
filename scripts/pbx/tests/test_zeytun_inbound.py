@@ -125,6 +125,28 @@ class TransportTests(unittest.TestCase):
         time.sleep(0.15)
         self.assertEqual(len(waits), 1)
 
+    def test_a_turn_that_says_recorded_without_a_save_asks_for_the_save_once(self):
+        # Owner's call 2026-11-03 (TS-1014): "qeyd etdim" five times, one save, four lines in the CRM.
+        journal = []
+        self.bridge.log_event = lambda event, **fields: journal.append((event, fields))
+        nudges = lambda: [b for b in self.sent if "clientContent" in b]
+        self.handle({"serverContent": {"outputTranscription": {"text": "Smekta 10 qutu və Lineks 5 qutu qeyd etdim. "}}})
+        self.handle({"serverContent": {"turnComplete": True}})
+        self.assertEqual(len(nudges()), 1)
+        self.assertIn("save_order_list", nudges()[0]["clientContent"]["turns"][0]["parts"][0]["text"])
+        self.assertEqual(journal, [("zeytun_unsaved", {"status": "nudged"})])
+        # A turn that saved, and a turn that recorded nothing, are left alone.
+        self.save([{"quantity": 10, "unit": "qutu", "spoken": "Smekta on qutu"}], key="save-in-turn")
+        self.handle({"serverContent": {"outputTranscription": {"text": "Smekta 10 qutu qeyd etdim. Daha?"}}})
+        self.handle({"serverContent": {"turnComplete": True}})
+        self.handle({"serverContent": {"outputTranscription": {"text": "Hansı formasını istərdiniz?"}}})
+        self.handle({"serverContent": {"turnComplete": True}})
+        # Nor a turn the caller interrupted.
+        self.handle({"serverContent": {"outputTranscription": {"text": "Mezim qeyd etdim"}}})
+        self.handle({"serverContent": {"interrupted": True}})
+        self.handle({"serverContent": {"turnComplete": True}})
+        self.assertEqual(len(nudges()), 1)
+
     def save(self, lines, key="save-1"):
         self.finished.clear()
         self.handle({"toolCall": {"functionCalls": [{"id": key, "name": "save_order_list", "args": {"lines": lines}}]}})
@@ -1562,6 +1584,7 @@ class ArtifactTests(unittest.TestCase):
         start = ast.unparse(new_methods["start"])
         self.assertIn("ZEYTUN_INBOUND_PILOT_ENABLED", start)
         self.assertIn("self.pharmacy_bridge.on_wait = self._pharmacy_wait_filler", start)
+        self.assertIn("self.pharmacy_bridge.log_event = lambda event, **fields: latency(event, self.call_id, **fields)", start)
         self.assertIn("relay.filler()", ast.unparse(new_methods["_pharmacy_wait_filler"]))
         # The kill switch is still asked on every pharmacy call, in parallel
         # with the provider socket, and awaited before the greeting is sent.
