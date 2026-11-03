@@ -49,6 +49,10 @@ const scratch = vi.hoisted(() => {
 const session = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const mail = vi.hoisted(() => ({ sent: [] as { to: string; subject: string }[] }))
 const calendar = vi.hoisted(() => ({ update: vi.fn(), insert: vi.fn(), remove: vi.fn() }))
+const whatsapp = vi.hoisted(() => ({
+  buttons: [] as { body: string; footer?: string | null; buttons: { id: string; title: string }[]; conversationId?: string | null }[],
+  texts: [] as { message: string; conversationId?: string | null }[],
+}))
 
 vi.mock("@/lib/auth", () => ({ auth: async () => session.current }))
 vi.mock("@/lib/mobile-auth", async () => {
@@ -60,6 +64,18 @@ vi.mock("@/lib/google-calendar", () => ({
   listBusyIntervals: vi.fn(async () => null),
   createCalendarEvent: vi.fn(async () => { throw new Error("Google Calendar not connected") }),
   deleteCalendarEvent: vi.fn(async () => {}),
+}))
+// The booking agent's two senders; everything else of the module stays real.
+vi.mock("@/lib/whatsapp", async (original) => ({
+  ...(await original<typeof import("@/lib/whatsapp")>()),
+  sendWhatsAppButtons: vi.fn(async (input: { body: string; footer?: string | null; buttons: { id: string; title: string }[]; conversationId?: string | null }) => {
+    whatsapp.buttons.push({ body: input.body, footer: input.footer, buttons: input.buttons, conversationId: input.conversationId })
+    return { success: true, messageId: `wamid.${whatsapp.buttons.length}` }
+  }),
+  sendWhatsAppMessage: vi.fn(async (input: { message: string; conversationId?: string | null }) => {
+    whatsapp.texts.push({ message: input.message, conversationId: input.conversationId })
+    return { success: true, messageId: `wamid.text.${whatsapp.texts.length}` }
+  }),
 }))
 vi.mock("@/lib/email", async (original) => ({
   ...(await original<typeof import("@/lib/email")>()),
@@ -125,6 +141,8 @@ pgDescribe("online booking on a real Postgres", () => {
   let actionsPost!: typeof import("@/app/api/v1/bookings/[id]/actions/route").POST
   let grantsPut!: typeof import("@/app/api/v1/bookings/coordinators/route").PUT
   let drain!: typeof import("@/lib/booking/effect-worker").drainBookingEffects
+  let bookingTurn!: typeof import("@/lib/booking/whatsapp-agent").handleWhatsAppBookingTurn
+  let tenant!: typeof import("@/lib/rls-context").runWithTenant
   let sequence = 0
 
   beforeAll(async () => {
@@ -148,8 +166,8 @@ pgDescribe("online booking on a real Postgres", () => {
     })
     // Only in this newly created scratch DB: replace the empty booking subset
     // with its original schema, then apply both actual forward migrations.
-    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
-    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category"]) {
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_offers, booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
+    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category", "20261121090000_booking_offers"]) {
       prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, readFileSync(path.join(ROOT, `prisma/migrations/${migration}/migration.sql`), "utf8"))
       if (migration === "20261101090000_online_booking") {
         prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `
@@ -228,6 +246,8 @@ pgDescribe("online booking on a real Postgres", () => {
     actionsPost = (await import("@/app/api/v1/bookings/[id]/actions/route")).POST
     grantsPut = (await import("@/app/api/v1/bookings/coordinators/route")).PUT
     drain = (await import("@/lib/booking/effect-worker")).drainBookingEffects
+    bookingTurn = (await import("@/lib/booking/whatsapp-agent")).handleWhatsAppBookingTurn
+    tenant = (await import("@/lib/rls-context")).runWithTenant
 
   }, 300_000)
 
@@ -238,6 +258,8 @@ pgDescribe("online booking on a real Postgres", () => {
 
   beforeEach(() => {
     mail.sent = []
+    whatsapp.buttons = []
+    whatsapp.texts = []
     signIn("admin")
   })
 
@@ -916,6 +938,205 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(calendar.remove).toHaveBeenCalledTimes(1)
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))).status).toBe("cancelled")
     } finally { await bypass(() => prisma.account.delete({ where: { id: account.id } })) }
+  })
+
+  // ─── WhatsApp booking (src/lib/booking/whatsapp-agent.ts) ─────────────────
+  // The model is a stand-in that answers with a fixed decision; everything it
+  // decides about is real — the free time, the holds, the booking, the locks.
+
+  /** A model that answers every turn with this one decision. */
+  const decides = (input: Record<string, unknown>) => {
+    const create = vi.fn(async () => ({ content: [{ type: "tool_use", id: "toolu_test", name: "booking_turn", input }], usage: { input_tokens: 40, output_tokens: 12 } }))
+    return { messages: { create } } as unknown as Parameters<typeof bookingTurn>[0]["client"] & { messages: { create: typeof create } }
+  }
+
+  async function withWhatsAppBooking(run: () => Promise<void>) {
+    const before = await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: ORG }, select: { settings: true } }))
+    await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { ...(before.settings as Record<string, unknown>), bookingWhatsApp: { mode: "book", channelConfigId: null } } } }))
+    try {
+      await run()
+    } finally {
+      await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: before.settings as GeneratedPrisma.InputJsonValue } }))
+    }
+  }
+
+  const turnIn = (conversationId: string, over: Partial<Parameters<typeof bookingTurn>[0]>) => tenant(ORG, () => bookingTurn({
+    organizationId: ORG, channelConfigId: "channel-wa", conversationId, waPhone: "994551234567", senderName: "Nigar",
+    text: "Sabah saç kəsiminə yazılmaq olar?", replyId: null, ...over,
+  }))
+  const offersOf = (conversationId: string, status?: string) => bypass(() => prisma.bookingOffer.findMany({
+    where: { conversationId, ...(status ? { status } : {}) }, orderBy: { startsAt: "asc" },
+  }))
+  const offeredTimes = async (slug: string) => (await view(slug)).body.data.days
+    .flatMap((day: { slots: { startsAt: string }[] }) => day.slots.map((slot) => slot.startsAt)) as string[]
+
+  it("WhatsApp: with the switch off nothing answers, and the message goes on to the inbox", async () => {
+    const slug = await newPage({ title: "Saç kəsimi" })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    const model = decides({ action: "offer", language: "az", serviceId: page.id })
+    expect(await turnIn(`conv-${randomUUID()}`, { client: model })).toEqual({ handled: false })
+    expect(model.messages.create).not.toHaveBeenCalled()
+    expect(whatsapp.buttons).toHaveLength(0)
+  })
+
+  it("WhatsApp: the client's words become three held times, and one tap books exactly one of them", async () => {
+    const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 45, price: 25 })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    const before = await offeredTimes(slug)
+    await withWhatsAppBooking(async () => {
+      const conversation = `conv-${randomUUID()}`
+      expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })).toEqual({ handled: true })
+
+      // Three buttons, each one a held time of this conversation.
+      const message = whatsapp.buttons.at(-1)!
+      expect(message.conversationId).toBe(conversation)
+      expect(message.body).toMatch(/Saç kəsimi, 45 dəq/)
+      expect(message.footer).toBe("Vaxt 15 dəqiqə sizin üçün saxlanılır")
+      expect(message.buttons).toHaveLength(3)
+      for (const button of message.buttons) {
+        expect(button.id).toMatch(/^bk:/)
+        expect(button.title.length).toBeLessThanOrEqual(20)
+        expect(button.title).toMatch(/Leyla$/)
+      }
+      const offers = await offersOf(conversation)
+      expect(offers.map((offer) => `bk:${offer.id}`).sort()).toEqual(message.buttons.map((button) => button.id).sort())
+      expect(new Set(offers.map((offer) => offer.status))).toEqual(new Set(["offered"]))
+      // Every time offered is one the page itself offered a moment ago:
+      // the agent has no other source of time.
+      for (const offer of offers) expect(before).toContain(offer.startsAt.toISOString())
+
+      // Held: the public page stops offering them, and cannot book one.
+      const during = await offeredTimes(slug)
+      for (const offer of offers) expect(during).not.toContain(offer.startsAt.toISOString())
+      expect((await book(slug, offers[0].startsAt.toISOString())).status).toBe(409)
+
+      // The client taps the second time — twice, as people do.
+      const tapped = offers[1]
+      const tap = () => turnIn(conversation, { replyId: `bk:${tapped.id}`, text: message.buttons[1].title })
+      expect(await tap()).toEqual({ handled: true })
+      expect(await tap()).toEqual({ handled: true })
+
+      const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
+      expect(meetings).toHaveLength(1)
+      expect(meetings[0]).toMatchObject({ hostUserId: tapped.hostUserId, source: "whatsapp", name: "Nigar", phone: "+994551234567" })
+      expect(meetings[0].startsAt.toISOString()).toBe(tapped.startsAt.toISOString())
+      // One confirmation, with the link that cancels it.
+      expect(whatsapp.texts).toHaveLength(1)
+      expect(whatsapp.texts[0].message).toMatch(/^Yazıldınız ✅/)
+      expect(whatsapp.texts[0].message).toMatch(/Leyla/)
+      expect(whatsapp.texts[0].message).toMatch(/https:\/\/app\.example\.test\/book\/cancel\/[\w-]{20,}/)
+
+      // The two times not chosen are free again the moment the client chose.
+      const after = await offersOf(conversation)
+      expect(after.find((offer) => offer.id === tapped.id)).toMatchObject({ status: "booked", bookingId: meetings[0].id })
+      expect(after.filter((offer) => offer.id !== tapped.id).map((offer) => offer.status)).toEqual(["superseded", "superseded"])
+      const released = await offeredTimes(slug)
+      for (const offer of after.filter((item) => item.id !== tapped.id)) expect(released).toContain(offer.startsAt.toISOString())
+      expect(released).not.toContain(tapped.startsAt.toISOString())
+
+      // The salon reads the meeting back without opening the conversation.
+      const id = meetings[0].id
+      const card = (await (await meetingGet(json("GET", `/api/v1/bookings/${id}`), { params: Promise.resolve({ id }) })).json()).data
+      expect(card.source).toBe("whatsapp")
+      expect(card.whatsapp).toEqual({
+        asked: "Sabah saç kəsiminə yazılmaq olar?",
+        offered: offers.map((offer) => offer.startsAt.toISOString()),
+        chosen: tapped.startsAt.toISOString(),
+      })
+    })
+  })
+
+  it("WhatsApp: a held time is never offered to a second conversation, and is free again once the hold runs out", async () => {
+    const slug = await newPage({ title: "Manikür", durationMinutes: 40, maxDaysAhead: 2 })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    await withWhatsAppBooking(async () => {
+      const first = `conv-${randomUUID()}`
+      const second = `conv-${randomUUID()}`
+      const ask = (conversationId: string) => turnIn(conversationId, { text: "Завтра маникюр можно?", client: decides({ action: "offer", language: "ru", serviceId: page.id }) })
+      await ask(first)
+      await ask(second)
+      expect(whatsapp.buttons.at(-1)!.body).toMatch(/Manikür, 40 мин/)
+      const firstOffers = await offersOf(first)
+      const secondOffers = await offersOf(second)
+      expect(firstOffers).toHaveLength(3)
+      expect(secondOffers).toHaveLength(3)
+      const sameChair = (left: { hostUserId: string; startsAt: Date }, right: { hostUserId: string; startsAt: Date }) =>
+        left.hostUserId === right.hostUserId && left.startsAt.getTime() === right.startsAt.getTime()
+      for (const offer of secondOffers) expect(firstOffers.some((held) => sameChair(held, offer))).toBe(false)
+
+      // The first client went quiet: once their hold runs out, the second
+      // client's next question may be offered those times.
+      await bypass(() => prisma.bookingOffer.updateMany({ where: { conversationId: first }, data: { expiresAt: new Date(Date.now() - 1000) } }))
+      await ask(second)
+      const again = await offersOf(second, "offered")
+      expect(again).toHaveLength(3)
+      expect(again.some((offer) => firstOffers.some((held) => sameChair(held, offer)))).toBe(true)
+      // And asking again released the second client's own earlier times.
+      expect((await offersOf(second, "superseded")).length).toBe(3)
+    })
+  })
+
+  it("WhatsApp: a tap on a time someone took meanwhile gets new times, not an error and not a second meeting", async () => {
+    const slug = await newPage({ title: "Boyama", durationMinutes: 90, maxDaysAhead: 2 })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    await withWhatsAppBooking(async () => {
+      const conversation = `conv-${randomUUID()}`
+      await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })
+      const [first] = await offersOf(conversation)
+      // The client is slow, the hold runs out, and the time goes on the web.
+      await bypass(() => prisma.bookingOffer.updateMany({ where: { conversationId: conversation }, data: { expiresAt: new Date(Date.now() - 1000) } }))
+      expect((await book(slug, first.startsAt.toISOString(), "Veb müştəri")).status).toBe(201)
+
+      expect(await turnIn(conversation, { replyId: `bk:${first.id}`, text: "10:00 · Leyla" })).toEqual({ handled: true })
+      const retry = whatsapp.buttons.at(-1)!
+      expect(retry.body).toMatch(/^Bu vaxtı indicə tutdular\./)
+      expect(retry.buttons.length).toBeGreaterThan(0)
+      expect(await bypass(() => prisma.bookingOffer.findUniqueOrThrow({ where: { id: first.id } }))).toMatchObject({ status: "taken", bookingId: null })
+      const fresh = await offersOf(conversation, "offered")
+      expect(fresh.length).toBe(retry.buttons.length)
+      for (const offer of fresh) expect(offer.startsAt.getTime()).not.toBe(first.startsAt.getTime())
+      expect(whatsapp.texts).toHaveLength(0)
+      const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
+      expect(meetings.map((meeting) => meeting.source)).toEqual(["public_link"])
+    })
+  })
+
+  it("WhatsApp: a question about something else is left to the inbox, and a tap from another conversation books nothing", async () => {
+    const slug = await newPage({ title: "Pedikür" })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    await withWhatsAppBooking(async () => {
+      expect(await turnIn(`conv-${randomUUID()}`, { text: "Endirim var?", client: decides({ action: "not_booking" }) })).toEqual({ handled: false })
+      // A decision naming a service that does not exist is no decision.
+      expect(await turnIn(`conv-${randomUUID()}`, { client: decides({ action: "offer", language: "az", serviceId: "invented-service" }) })).toEqual({ handled: false })
+      expect(whatsapp.buttons).toHaveLength(0)
+
+      const owner = `conv-${randomUUID()}`
+      await turnIn(owner, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })
+      const [offer] = await offersOf(owner)
+      expect(await turnIn(`conv-${randomUUID()}`, { replyId: `bk:${offer.id}`, text: "11:00 · Leyla" })).toEqual({ handled: false })
+      expect(await bypass(() => prisma.booking.count({ where: { organizationId: ORG, bookingPageId: page.id } }))).toBe(0)
+    })
+  })
+
+  it("FORCE RLS keeps one organization's offered times from another", async () => {
+    const at = new Date(Date.now() + 86400_000)
+    await bypass(() => prisma.bookingOffer.createMany({ data: [ORG, OTHER_ORG].map((organizationId) => ({
+      organizationId, conversationId: `conv-rls-${organizationId}`, bookingPageId: "page-rls", hostUserId: HOST_A,
+      startsAt: at, endsAt: new Date(at.getTime() + 1800_000), expiresAt: new Date(Date.now() + 900_000),
+    })) }))
+    const role = `offer_reader_${randomUUID().replaceAll("-", "")}`
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `CREATE ROLE "${role}" NOLOGIN; GRANT USAGE ON SCHEMA public TO "${role}"; GRANT SELECT ON booking_offers TO "${role}";`)
+    try {
+      const visible = await bypass(() => prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE "${role}"`)
+        await tx.$executeRaw`SELECT set_config('app.rls_bypass', 'off', true), set_config('app.org_id', ${ORG}, true)`
+        return tx.$queryRaw<{ organizationId: string }[]>`SELECT "organizationId" FROM booking_offers`
+      }))
+      expect(visible.length).toBeGreaterThan(0)
+      expect(new Set(visible.map((row) => row.organizationId))).toEqual(new Set([ORG]))
+    } finally {
+      prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `REVOKE ALL ON booking_offers FROM "${role}"; REVOKE USAGE ON SCHEMA public FROM "${role}"; DROP ROLE "${role}";`)
+    }
   })
 
   it("FORCE RLS hides another tenant from a real unprivileged connection identity", async () => {

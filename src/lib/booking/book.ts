@@ -116,7 +116,18 @@ export async function activeHosts(orgId: string, hostIds: string[]): Promise<{ i
  * the organization's clock — and because every caller of this function also
  * decides whether a slot may be booked, so none of them may quietly skip it.
  */
-export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date, timezone: string): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarAccountIds: Map<string, string | null> }> {
+export interface BusyOptions {
+  /**
+   * Count the times the WhatsApp agent is holding for a client as busy. The
+   * customer-facing paths pass this — the public page, a public or WhatsApp
+   * booking — so two conversations are never offered the same chair. Staff
+   * screens do not: the salon's own decision wins over a pending offer, and
+   * the client who tapped late simply gets new times.
+   */
+  holds?: { exceptConversationId?: string | null }
+}
+
+export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date, timezone: string, options: BusyOptions = {}): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarAccountIds: Map<string, string | null> }> {
   const accounts = await calendarAccounts(prisma, hostIds)
   const calendarAccountIds = new Map(hostIds.map((id) => [id, accounts.get(id)?.id ?? null]))
   const busy = Object.assign(new Map<string, BusyInterval[]>(hostIds.map((id) => [id, []])), { unavailableHostIds: new Set<string>(), calendarAccountIds })
@@ -125,6 +136,19 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
     select: { hostUserId: true, startsAt: true, endsAt: true, bufferBefore: true, bufferAfter: true },
   })
   for (const booking of bookings) busy.get(booking.hostUserId)?.push({ start: booking.startsAt, end: booking.endsAt, bufferBeforeMinutes: booking.bufferBefore, bufferAfterMinutes: booking.bufferAfter })
+  if (options.holds) {
+    // A client's own offers never stand in their way: re-asking, or tapping
+    // one of them, sees those times as free.
+    const holds = await prisma.bookingOffer.findMany({
+      where: {
+        organizationId: orgId, hostUserId: { in: hostIds }, status: "offered", expiresAt: { gt: new Date() },
+        endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) },
+        ...(options.holds.exceptConversationId ? { conversationId: { not: options.holds.exceptConversationId } } : {}),
+      },
+      select: { hostUserId: true, startsAt: true, endsAt: true, bufferMinutes: true },
+    })
+    for (const hold of holds) busy.get(hold.hostUserId)?.push({ start: hold.startsAt, end: hold.endsAt, bufferBeforeMinutes: hold.bufferMinutes, bufferAfterMinutes: hold.bufferMinutes })
+  }
   await Promise.all(hostIds.map(async (hostId) => {
     try {
       const calendar = await listBusyIntervals(hostId, new Date(from.getTime() - 240 * 60_000).toISOString(), new Date(to.getTime() + 240 * 60_000).toISOString(), calendarAccountIds.get(hostId) ?? null)
@@ -158,7 +182,7 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
   const rules = rulesOf(page, org.timezone)
   const hosts = await activeHosts(orgId, page.hostIds)
   const { from, to } = windowOf(rules, now)
-  const busy = await loadBusyByHost(orgId, hosts.map((host) => host.id), from, to, org.timezone)
+  const busy = await loadBusyByHost(orgId, hosts.map((host) => host.id), from, to, org.timezone, { holds: {} })
   const days: DaySlots[] = computeSlots({ rules, hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
   if (!days.length && busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
   return {
@@ -191,6 +215,12 @@ export interface BookingInput {
   note?: string | null
   /** Where the customer came from (src/lib/ad-conversions/attribution.ts). */
   attribution?: AdAttribution | null
+  /**
+   * Set only by the WhatsApp agent, never from a request body: the booking is
+   * recorded as coming from WhatsApp, and this conversation's own holds do
+   * not block it. Ignored on a staff booking.
+   */
+  whatsapp?: { conversationId: string }
 }
 
 export type CreateBookingResult =

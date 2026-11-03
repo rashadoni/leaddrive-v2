@@ -130,8 +130,8 @@ type WaInboundMessagePayload = WaRecord & {
   button?: { text?: unknown }
   interactive?: {
     type?: unknown
-    button_reply?: { title?: unknown }
-    list_reply?: { title?: unknown }
+    button_reply?: { id?: unknown; title?: unknown }
+    list_reply?: { id?: unknown; title?: unknown }
     call_permission_reply?: {
       response?: unknown
       is_permanent?: unknown
@@ -1346,6 +1346,34 @@ async function processMessages(
     } else if (!flowTookOwnership && text.trim()) {
       const { fileDemoWhatsAppMedia } = await import("@/lib/demo-center/demo-whatsapp-agent")
       if (await fileDemoWhatsAppMedia({ organizationId: orgId, waPhone: waId }, { fileTicket: fileDemoTicket })) continue
+    }
+
+    // A salon's WhatsApp booking (src/lib/booking/whatsapp-agent.ts): a request
+    // for a time, or a tap on one of the times it offered, is answered by the
+    // booking agent — no ticket, no rule bot and no support AI for that
+    // message. Everything that is not booking, and any failure, returns
+    // `handled: false`, and the message takes the ordinary path below.
+    // Only a typed message or a tapped button: other interactive replies (a
+    // call permission, say) carry no words to book from.
+    const replyId = asStringOrNull(msg.interactive?.button_reply?.id) ?? asStringOrNull(msg.interactive?.list_reply?.id)
+    if (!flowTookOwnership && convId && text.trim() && (msg.type === "text" || (msg.type === "interactive" && replyId))) {
+      try {
+        const { handleWhatsAppBookingTurn } = await import("@/lib/booking/whatsapp-agent")
+        const booking = await handleWhatsAppBookingTurn({
+          organizationId: orgId,
+          channelConfigId: channelConfig.id,
+          conversationId: convId,
+          waPhone: waId,
+          senderName,
+          text,
+          replyId,
+          contactId: contactId ?? undefined,
+          leadId: leadId ?? undefined,
+        })
+        if (booking.handled) continue
+      } catch (err) {
+        console.error("[WA Webhook] booking agent error:", err)
+      }
     }
 
     // The message lands on the sender's ticket that is still being worked; failing that, a typed

@@ -10,7 +10,7 @@
  * bottom — the one thing someone checks before phoning a client to ask why
  * they never got the confirmation.
  */
-import { CalendarDays, CheckCircle2, Clock3, MapPin, Phone, Send, Tag, TriangleAlert, UserRound, Wallet } from "lucide-react"
+import { CalendarDays, CheckCircle2, Clock3, MapPin, MessageCircle, Phone, Send, Tag, TriangleAlert, UserRound, Wallet } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CrmSection } from "@/components/ui/crm-section"
@@ -123,6 +123,13 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
         </p>
       </div>
     </div>
+
+    {/* An automatic booking is trusted once it can be read back: what the
+        client wrote, what they were offered, what they chose. */}
+    {booking.whatsapp ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
+      <p className="flex items-center gap-2 font-semibold text-emerald-800 dark:text-emerald-300"><MessageCircle aria-hidden="true" className="h-4 w-4 shrink-0" />{t("waBookedVia")}</p>
+      <p className="mt-1.5 break-words text-muted-foreground">{t("waBookedWhy", { asked: booking.whatsapp.asked || "—", offered: booking.whatsapp.offered.map(time).join(", "), chosen: time(booking.whatsapp.chosen) })}</p>
+    </div> : null}
 
     {booking.note ? <><CapsLabel>{t("customerNote")}</CapsLabel><p className="whitespace-pre-wrap break-words rounded-xl bg-muted/60 p-3.5 text-sm">{booking.note}</p></> : null}
 

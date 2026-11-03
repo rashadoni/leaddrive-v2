@@ -21,7 +21,7 @@ export type BookingFilters = z.infer<typeof bookingFilters>
 const columns = {
   id: true, bookingPageId: true, hostUserId: true, startsAt: true, endsAt: true,
   name: true, phone: true, email: true, note: true, status: true, createdAt: true,
-  cancelledAt: true, googleEventId: true, updatedAt: true, version: true, snapshot: true, outcomeNote: true, cancellationReason: true,
+  cancelledAt: true, googleEventId: true, updatedAt: true, version: true, snapshot: true, outcomeNote: true, cancellationReason: true, source: true,
   bookingPage: { select: { title: true, locationType: true, locationText: true, slug: true, price: true, priceCurrency: true, repeatCycleDays: true } },
 } satisfies Prisma.BookingSelect
 
@@ -69,6 +69,22 @@ export async function listBookings(access: BookingAccess, filters: BookingFilter
   }
 }
 
+/**
+ * Why a WhatsApp meeting is at this time: what the client wrote, the times
+ * offered together in that one message, and the one tapped — so the salon
+ * understands an automatic booking without opening the conversation.
+ */
+async function whatsappExplanation(orgId: string, bookingId: string): Promise<{ asked: string; offered: string[]; chosen: string } | null> {
+  const chosen = await prisma.bookingOffer.findFirst({ where: { organizationId: orgId, bookingId }, select: { conversationId: true, createdAt: true, startsAt: true, request: true } })
+  if (!chosen) return null
+  const offered = await prisma.bookingOffer.findMany({
+    where: { organizationId: orgId, conversationId: chosen.conversationId, createdAt: chosen.createdAt },
+    select: { startsAt: true }, orderBy: { startsAt: "asc" },
+  })
+  const request = chosen.request && typeof chosen.request === "object" && !Array.isArray(chosen.request) ? chosen.request as Record<string, unknown> : {}
+  return { asked: typeof request.text === "string" ? request.text : "", offered: offered.map((offer) => offer.startsAt.toISOString()), chosen: chosen.startsAt.toISOString() }
+}
+
 export async function bookingDetail(access: BookingAccess, id: string, role: Role) {
   const row = await prisma.booking.findFirst({ where: { AND: [bookingScope(access), { id }] }, select: { ...columns, leadId: true, taskId: true } })
   if (!row) return null
@@ -76,13 +92,14 @@ export async function bookingDetail(access: BookingAccess, id: string, role: Rol
   const { googleEventId, leadId, taskId, snapshot, ...safe } = row
   const config = await prisma.bookingPage.findFirst({ where: { id: row.bookingPageId, organizationId: access.orgId }, select: { hostIds: true } })
   const availableHosts = await prisma.user.findMany({ where: bookingHostWhere(access.orgId, (config?.hostIds ?? []).filter((id) => access.writableHostIds === null || access.writableHostIds.includes(id))), select: { id: true, name: true }, orderBy: { name: "asc" } })
-  const [events, effects] = await Promise.all([
+  const [events, effects, whatsapp] = await Promise.all([
     bookingHistory(access, id),
     prisma.effectOutbox.groupBy({ by: ["effectType", "status", "lastError"], where: { organizationId: access.orgId, effectType: { startsWith: "booking." }, payload: { path: ["bookingId"], equals: id } }, _count: { _all: true } }),
+    row.source === "whatsapp" ? whatsappExplanation(access.orgId, id) : Promise.resolve(null),
   ])
   const canManage = access.writableHostIds === null || access.writableHostIds.includes(row.hostUserId)
   const canCorrect = access.administrator || Boolean(await prisma.bookingCoordinatorGrant.findFirst({ where: { organizationId: access.orgId, coordinatorUserId: access.userId, hostUserId: row.hostUserId, canManage: true } }))
-  return { ...safe, phoneRestricted: access.phoneRestricted, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId),
+  return { ...safe, phoneRestricted: access.phoneRestricted, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId), whatsapp,
     leadId: checkPermission(role, "leads", "read") ? leadId : null,
     taskId: checkPermission(role, "tasks", "read") ? taskId : null,
   }

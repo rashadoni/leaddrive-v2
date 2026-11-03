@@ -53,6 +53,10 @@ export interface WorkspaceBooking {
   hostName: string | null
   calendarLinked: boolean
   bookingPage: { title: string; locationType: string; locationText: string | null; timezone?: string | null; price?: string | null; priceCurrency?: string | null; repeatCycleDays?: number | null }
+  /** Where the meeting came from: «public_link», «staff» or «whatsapp». */
+  source?: string
+  /** A WhatsApp meeting: what the client wrote, what was offered, what they tapped. */
+  whatsapp?: { asked: string; offered: string[]; chosen: string } | null
   leadId?: string | null
   taskId?: string | null
 }

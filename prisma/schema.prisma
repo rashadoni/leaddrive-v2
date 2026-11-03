@@ -76,6 +76,7 @@ model Organization {
   bookingCoordinatorGrants BookingCoordinatorGrant[]
   bookingPages          BookingPage[]
   bookingHostSchedules  BookingHostSchedule[]
+  bookingOffers         BookingOffer[]
   adConversionDestinations AdConversionDestination[]
   adConversionEvents       AdConversionEvent[]
   telegramStaffBot         TelegramStaffBot?
@@ -23558,6 +23559,38 @@ model BookingHostSchedule {
   @@unique([organizationId, userId])
   @@index([organizationId])
   @@map("booking_host_schedules")
+}
+
+/// A time the WhatsApp booking agent put in front of a client, as one button.
+/// Until `expiresAt` it holds the slot for every other conversation and for
+/// the public page, and a tap on it books exactly this time with exactly this
+/// host — the database still refuses a second meeting on top of it.
+model BookingOffer {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The conversation the button went to: a tap counts only from there, so
+  /// no phone number is stored here at all.
+  conversationId  String
+  channelConfigId String?
+  bookingPageId   String
+  hostUserId      String
+  startsAt        DateTime
+  endsAt          DateTime
+  /// The service's buffer when it was offered, so the hold keeps it too.
+  bufferMinutes   Int          @default(0)
+  expiresAt       DateTime
+  /// offered | booked | taken | expired | superseded
+  status          String       @default("offered")
+  bookingId       String?
+  /// What the client asked, as the agent understood it: the «why» on the meeting.
+  request         Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([organizationId, hostUserId, startsAt])
+  @@index([organizationId, conversationId, createdAt])
+  @@map("booking_offers")
 }
 
 model Booking {
