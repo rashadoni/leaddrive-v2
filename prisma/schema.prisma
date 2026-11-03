@@ -23580,8 +23580,12 @@ model BookingOffer {
   /// The service's buffer when it was offered, so the hold keeps it too.
   bufferMinutes   Int          @default(0)
   expiresAt       DateTime
-  /// offered | booked | taken | expired | superseded
+  /// offered | pending | booked | taken | expired | superseded | declined
   status          String       @default("offered")
+  /// Why a person has to decide this one (src/lib/booking/whatsapp-rules.ts).
+  reviewReason    String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
   bookingId       String?
   /// What the client asked, as the agent understood it: the «why» on the meeting.
   request         Json?

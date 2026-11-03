@@ -172,7 +172,7 @@ export function BookingPagesPanel() {
         ) : null}
       </div>
 
-      {!draft ? <BookingWhatsAppCard /> : null}
+      {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
 
       {draft ? (
         <Card>

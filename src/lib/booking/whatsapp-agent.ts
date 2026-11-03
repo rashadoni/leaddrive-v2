@@ -35,6 +35,7 @@ import { bookingRules } from "./commands"
 import { createStoredBooking } from "./create"
 import { servicePriceLabel } from "./service"
 import { OFFER_HOLD_MINUTES, readWhatsAppBookingSetting } from "./whatsapp-setting"
+import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./whatsapp-rules"
 
 // ─── Choosing three times out of a day ──────────────────────────────────────
 
@@ -135,6 +136,8 @@ const WORDS = {
     noneThen: { morning: "səhər boş vaxt yoxdur.", afternoon: "günorta boş vaxt yoxdur.", evening: "axşam boş vaxt yoxdur.", any: "boş vaxt yoxdur." },
     hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`,
     booked: "Yazıldınız ✅", address: "Ünvan", cancel: "Ləğv etmək üçün",
+    held: "Vaxtı sizin üçün saxladıq ⏳", heldNote: "Administrator təsdiqləyəcək və yazacağıq.",
+    confirmed: "Təsdiqləndi ✅", declined: "Təəssüf ki, bu vaxtı təsdiqləyə bilmədik.",
     taken: "Bu vaxtı indicə tutdular.",
   },
   ru: {
@@ -144,6 +147,8 @@ const WORDS = {
     noneThen: { morning: "утром свободного времени нет.", afternoon: "днём свободного времени нет.", evening: "вечером свободного времени нет.", any: "свободного времени нет." },
     hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`,
     booked: "Вы записаны ✅", address: "Адрес", cancel: "Отменить запись",
+    held: "Время придержали за вами ⏳", heldNote: "Администратор подтвердит, и мы напишем.",
+    confirmed: "Подтверждено ✅", declined: "К сожалению, это время подтвердить не удалось.",
     taken: "Это время только что заняли.",
   },
   en: {
@@ -153,6 +158,8 @@ const WORDS = {
     noneThen: { morning: "there is nothing free in the morning.", afternoon: "there is nothing free in the afternoon.", evening: "there is nothing free in the evening.", any: "there is nothing free." },
     hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`,
     booked: "You're booked ✅", address: "Address", cancel: "To cancel",
+    held: "We're holding the time for you ⏳", heldNote: "The salon will confirm and we will write to you.",
+    confirmed: "Confirmed ✅", declined: "We could not confirm that time, sorry.",
     taken: "That time was just taken.",
   },
 } as const
@@ -529,16 +536,41 @@ async function decide(input: BookingTurnInput, context: DecisionContext, history
 }
 
 /** A tap on one of the offered times: book exactly it, or offer again if it is gone. */
-async function bookOffer(input: BookingTurnInput, offerId: string, now: Date): Promise<boolean> {
+async function bookOffer(input: BookingTurnInput, offerId: string, rules: AutonomyRules, now: Date): Promise<boolean> {
   const offer = await prisma.bookingOffer.findFirst({ where: { id: offerId, organizationId: input.organizationId, conversationId: input.conversationId } })
   // Not ours (or another conversation's): let the ordinary path see the tap.
   if (!offer) return false
-  // A second tap on a time already booked says nothing new.
-  if (offer.status === "booked") return true
+  // A second tap on a time already booked, or already waiting for the salon,
+  // says nothing new.
+  if (offer.status === "booked" || offer.status === "pending") return true
   const request = readRequest(offer.request)
   const language = request?.language ?? "az"
   const words = WORDS[language]
   const { timezone } = await orgContext(input.organizationId)
+
+  // Outside the salon's rules the time is held, not booked: the client keeps
+  // their place and a person decides. The hold runs to the meeting itself —
+  // a fifteen-minute one would hand the chair away while the salon sleeps.
+  const reason = await reviewReasonFor(input, rules, offer, timezone)
+  if (reason) {
+    const held = await prisma.bookingOffer.updateMany({
+      where: { id: offer.id, status: { in: ["offered", "superseded"] } },
+      data: { status: "pending", reviewReason: reason, expiresAt: offer.startsAt },
+    })
+    await prisma.bookingOffer.updateMany({
+      where: { organizationId: input.organizationId, conversationId: input.conversationId, status: "offered", id: { not: offer.id } },
+      data: { status: "superseded" },
+    })
+    if (held.count !== 1) return true
+    const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: offer.bookingPageId }, select: { title: true } })
+    const host = await activeHosts(input.organizationId, [offer.hostUserId])
+    await sendText(input, [
+      words.held,
+      `${dayLabel(offer.startsAt.toISOString(), language, timezone)}, ${clock(offer.startsAt.toISOString(), timezone)} — ${page?.title ?? ""}${host[0] ? `, ${host[0].name}` : ""}.`,
+      words.heldNote,
+    ].join("\n"))
+    return true
+  }
   let result: Awaited<ReturnType<typeof createStoredBooking>>
   try {
     result = await createStoredBooking(input.organizationId, offer.bookingPageId, {
@@ -576,16 +608,138 @@ async function bookOffer(input: BookingTurnInput, offerId: string, now: Date): P
     data: { status: "superseded" },
   })
   if (claimed.count !== 1) return true
-  const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: offer.bookingPageId }, select: { title: true, locationText: true } })
-  const lines = [
-    words.booked,
-    `${dayLabel(result.booking.startsAt, language, timezone)}, ${clock(result.booking.startsAt, timezone)} — ${page?.title ?? ""}, ${result.booking.hostName}.`,
+  await sendText(input, await confirmationText(input.organizationId, offer.bookingPageId, result.booking, language, timezone, words.booked))
+  return true
+}
+
+/** «Yazıldınız ✅» with the day, the master, the address and the cancel link. */
+async function confirmationText(orgId: string, pageId: string, booking: { startsAt: string; hostName: string; cancelUrl: string }, language: ReplyLanguage, timezone: string, headline: string): Promise<string> {
+  const words = WORDS[language]
+  const page = await prisma.bookingPage.findFirst({ where: { organizationId: orgId, id: pageId }, select: { title: true, locationText: true } })
+  return [
+    headline,
+    `${dayLabel(booking.startsAt, language, timezone)}, ${clock(booking.startsAt, timezone)} — ${page?.title ?? ""}, ${booking.hostName}.`,
     ...(page?.locationText ? [`${words.address}: ${page.locationText}.`] : []),
     "",
-    `${words.cancel}: ${result.booking.cancelUrl}`,
-  ]
-  await sendText(input, lines.join("\n"))
-  return true
+    `${words.cancel}: ${booking.cancelUrl}`,
+  ].join("\n")
+}
+
+/**
+ * Has the salon booked this phone before? That is all «new client» means
+ * here — a number with no meeting behind it — and it is what the request
+ * shows the administrator.
+ */
+async function isKnownClient(orgId: string, phone: string): Promise<boolean> {
+  return (await prisma.booking.count({ where: { organizationId: orgId, phone } })) > 0
+}
+
+/**
+ * The salon's own rules decide whether a tapped time becomes a meeting now or
+ * a request a person confirms. The verdict is taken on the real candidate —
+ * this service, this master, this slot, this client — so the reason shown to
+ * the administrator is the rule that actually stopped it.
+ */
+async function reviewReasonFor(input: BookingTurnInput, rules: AutonomyRules, offer: { bookingPageId: string; hostUserId: string; startsAt: Date }, timezone: string): Promise<AutonomyReason | null> {
+  const page = await prisma.bookingPage.findFirst({
+    where: { organizationId: input.organizationId, id: offer.bookingPageId },
+    select: { durationMinutes: true, price: true },
+  })
+  if (!page) return null
+  const local = new Date(offer.startsAt.getTime() + getOffsetMinutes(timezone, offer.startsAt) * 60_000)
+  const verdict = autonomyVerdict(rules, {
+    serviceId: offer.bookingPageId,
+    hostId: offer.hostUserId,
+    weekday: String(local.getUTCDay()) as Parameters<typeof autonomyVerdict>[1]["weekday"],
+    minuteOfDay: local.getUTCHours() * 60 + local.getUTCMinutes(),
+    durationMinutes: page.durationMinutes,
+    price: page.price === null || page.price === undefined ? null : Number(page.price),
+    knownClient: await isKnownClient(input.organizationId, `+${input.waPhone.replace(/^\+/, "")}`),
+  })
+  return verdict.allowed ? null : verdict.reason
+}
+
+/**
+ * Who to write back to about a held time. The offer itself keeps no phone
+ * number — the conversation does, on the messages that came from it.
+ */
+async function clientOfConversation(orgId: string, conversationId: string): Promise<{ waPhone: string; name: string } | null> {
+  const message = await prisma.channelMessage.findFirst({
+    where: { organizationId: orgId, conversationId, direction: "inbound", channelType: "whatsapp" },
+    orderBy: { createdAt: "desc" },
+    select: { from: true, metadata: true },
+  })
+  const metadata = message?.metadata && typeof message.metadata === "object" && !Array.isArray(message.metadata) ? message.metadata as Record<string, unknown> : null
+  const waPhone = typeof metadata?.waPhone === "string" ? metadata.waPhone : null
+  return waPhone ? { waPhone, name: (message?.from ?? "").trim() || "WhatsApp" } : null
+}
+
+function turnOf(orgId: string, offer: { conversationId: string; channelConfigId: string | null }, client: { waPhone: string; name: string }): BookingTurnInput {
+  return {
+    organizationId: orgId, channelConfigId: offer.channelConfigId ?? "", conversationId: offer.conversationId,
+    waPhone: client.waPhone, senderName: client.name, text: "", replyId: null,
+  }
+}
+
+export type ReviewOutcome = "confirmed" | "declined" | "taken" | "not_pending" | "no_client"
+
+/**
+ * The salon's answer to a held time. Confirming books exactly the time the
+ * client chose and tells them so; declining lets the chair go and says that
+ * too. Either way the client hears back — a request that goes silent is worse
+ * than one refused.
+ */
+export async function reviewPendingOffer(input: { organizationId: string; offerId: string; approve: boolean; userId: string; now?: Date }): Promise<ReviewOutcome> {
+  const now = input.now ?? new Date()
+  const offer = await prisma.bookingOffer.findFirst({ where: { id: input.offerId, organizationId: input.organizationId, status: "pending" } })
+  if (!offer) return "not_pending"
+  const request = readRequest(offer.request)
+  const language = request?.language ?? "az"
+  const words = WORDS[language]
+  const { timezone } = await orgContext(input.organizationId)
+  const client = await clientOfConversation(input.organizationId, offer.conversationId)
+  if (!client) return "no_client"
+  const turn = turnOf(input.organizationId, offer, client)
+
+  if (!input.approve) {
+    const closed = await prisma.bookingOffer.updateMany({
+      where: { id: offer.id, status: "pending" },
+      data: { status: "declined", reviewedBy: input.userId, reviewedAt: now },
+    })
+    if (closed.count === 1) await sendText(turn, words.declined)
+    return "declined"
+  }
+
+  let result: Awaited<ReturnType<typeof createStoredBooking>>
+  try {
+    result = await createStoredBooking(input.organizationId, offer.bookingPageId, {
+      locale: language,
+      idempotencyKey: `whatsapp-offer:${offer.id}`,
+      recoverySecret: hmacToken(`${input.organizationId}:${offer.id}`, "booking-whatsapp-offer"),
+      hostUserId: offer.hostUserId,
+      startsAt: offer.startsAt.toISOString(),
+      name: client.name,
+      phone: `+${client.waPhone.replace(/^\+/, "")}`,
+      whatsapp: { conversationId: offer.conversationId },
+    }, now)
+  } catch (error) {
+    if (!(error instanceof BookingCommandError) || !["AVAILABILITY_CHANGED", "SLOT_TAKEN"].includes(error.code)) throw error
+    result = { ok: false, reason: "taken" }
+  }
+  if (!result.ok) {
+    // Held or not, the chair can still go: a meeting booked in the salon wins.
+    await prisma.bookingOffer.updateMany({ where: { id: offer.id, status: "pending" }, data: { status: "taken", reviewedBy: input.userId, reviewedAt: now } })
+    await sendText(turn, words.taken)
+    return "taken"
+  }
+  const claimed = await prisma.bookingOffer.updateMany({
+    where: { id: offer.id, status: "pending" },
+    data: { status: "booked", bookingId: result.booking.id, reviewedBy: input.userId, reviewedAt: now },
+  })
+  if (claimed.count === 1) {
+    await sendText(turn, await confirmationText(input.organizationId, offer.bookingPageId, result.booking, language, timezone, words.confirmed))
+  }
+  return "confirmed"
 }
 
 /**
@@ -600,7 +754,7 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
   if (setting.mode !== "book") return { handled: false }
   if (setting.channelConfigId && setting.channelConfigId !== input.channelConfigId) return { handled: false }
   if (input.replyId?.startsWith(OFFER_PREFIX)) {
-    return { handled: await bookOffer(input, input.replyId.slice(OFFER_PREFIX.length), now) }
+    return { handled: await bookOffer(input, input.replyId.slice(OFFER_PREFIX.length), setting.rules, now) }
   }
   const context = await loadContext(input, now)
   if (!context) return { handled: false }
@@ -614,7 +768,7 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
   const earlier = history.slice(0, -1)
   const decision = await decide(input, context, earlier)
   if (decision.action === "not_booking") return { handled: false }
-  if (decision.action === "choose") return { handled: await bookOffer(input, decision.offerId, now) }
+  if (decision.action === "choose") return { handled: await bookOffer(input, decision.offerId, setting.rules, now) }
   const greet = !earlier.some((message) => message.direction === "outbound" && now.getTime() - message.createdAt.getTime() < 12 * 3600_000)
   if (decision.action === "ask") {
     const body = `${greet ? WORDS[decision.language].hello : ""}${decision.question}`

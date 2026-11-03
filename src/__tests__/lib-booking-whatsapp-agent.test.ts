@@ -116,9 +116,10 @@ describe("a model decision, checked against the salon's own lists", () => {
 
 describe("the organization's switch", () => {
   it("is off unless it says book, and names a number only when it names one", () => {
-    expect(readWhatsAppBookingSetting(null)).toEqual({ mode: "off", channelConfigId: null })
-    expect(readWhatsAppBookingSetting({ bookingWhatsApp: { mode: "yes" } })).toEqual({ mode: "off", channelConfigId: null })
-    expect(readWhatsAppBookingSetting({ bookingWhatsApp: { mode: "book", channelConfigId: "" } })).toEqual({ mode: "book", channelConfigId: null })
-    expect(readWhatsAppBookingSetting({ bookingWhatsApp: { mode: "book", channelConfigId: "wa-1" }, other: 1 })).toEqual({ mode: "book", channelConfigId: "wa-1" })
+    // The rules ride along in the same setting; they have their own suite.
+    expect(readWhatsAppBookingSetting(null)).toMatchObject({ mode: "off", channelConfigId: null })
+    expect(readWhatsAppBookingSetting({ bookingWhatsApp: { mode: "yes" } })).toMatchObject({ mode: "off", channelConfigId: null })
+    expect(readWhatsAppBookingSetting({ bookingWhatsApp: { mode: "book", channelConfigId: "" } })).toMatchObject({ mode: "book", channelConfigId: null })
+    expect(readWhatsAppBookingSetting({ bookingWhatsApp: { mode: "book", channelConfigId: "wa-1" }, other: 1 })).toMatchObject({ mode: "book", channelConfigId: "wa-1" })
   })
 })
