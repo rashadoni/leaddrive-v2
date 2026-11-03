@@ -130,6 +130,42 @@ export function pickOfferTimes(slots: Slot[], input: {
 
 // ─── Words ──────────────────────────────────────────────────────────────────
 
+const WORDS = {
+  az: {
+    hello: "Salam! ", minutes: "dəq",
+    free: { morning: "Səhər boş vaxtlar:", afternoon: "Günorta boş vaxtlar:", evening: "Axşam boş vaxtlar:", any: "Boş vaxtlar:" },
+    nearest: "Ən yaxın boş vaxtlar:",
+    noneThen: { morning: "səhər boş vaxt yoxdur.", afternoon: "günorta boş vaxt yoxdur.", evening: "axşam boş vaxt yoxdur.", any: "boş vaxt yoxdur." },
+    hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`,
+    booked: "Yazıldınız ✅", address: "Ünvan", cancel: "Ləğv etmək üçün",
+    held: "Vaxtı sizin üçün saxladıq ⏳", heldNote: "Administrator təsdiqləyəcək və yazacağıq.",
+    confirmed: "Təsdiqləndi ✅", declined: "Təəssüf ki, bu vaxtı təsdiqləyə bilmədik.",
+    taken: "Bu vaxtı indicə tutdular.",
+  },
+  ru: {
+    hello: "Здравствуйте! ", minutes: "мин",
+    free: { morning: "Утром свободно:", afternoon: "Днём свободно:", evening: "Вечером свободно:", any: "Свободно:" },
+    nearest: "Ближайшее свободное время:",
+    noneThen: { morning: "утром свободного времени нет.", afternoon: "днём свободного времени нет.", evening: "вечером свободного времени нет.", any: "свободного времени нет." },
+    hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`,
+    booked: "Вы записаны ✅", address: "Адрес", cancel: "Отменить запись",
+    held: "Время придержали за вами ⏳", heldNote: "Администратор подтвердит, и мы напишем.",
+    confirmed: "Подтверждено ✅", declined: "К сожалению, это время подтвердить не удалось.",
+    taken: "Это время только что заняли.",
+  },
+  en: {
+    hello: "Hello! ", minutes: "min",
+    free: { morning: "Free in the morning:", afternoon: "Free in the afternoon:", evening: "Free in the evening:", any: "Free times:" },
+    nearest: "The nearest free times:",
+    noneThen: { morning: "there is nothing free in the morning.", afternoon: "there is nothing free in the afternoon.", evening: "there is nothing free in the evening.", any: "there is nothing free." },
+    hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`,
+    booked: "You're booked ✅", address: "Address", cancel: "To cancel",
+    held: "We're holding the time for you ⏳", heldNote: "The salon will confirm and we will write to you.",
+    confirmed: "Confirmed ✅", declined: "We could not confirm that time, sorry.",
+    taken: "That time was just taken.",
+  },
+} as const
+
 /**
  * What a button says: «11:30 · Leyla», and «7.11 11:30 · Leyla» when the
  * offered times fall on different days. WhatsApp stops at 20 characters, so
