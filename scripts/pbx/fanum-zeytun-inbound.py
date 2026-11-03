@@ -588,6 +588,30 @@ def zeytun_script(text):
     return "latin"
 
 
+def zeytun_call_transcript(order, items, truncated, audible, non_business, keys):
+    """The pharmacy call's CRM transcript: everything the caller heard.
+
+    Call 7c2383d1, 2026-11-03: the transcript ended after the agent's second
+    answer and was read as the agent going silent after a lookup; it had
+    answered twice more. The core leaves every truncated turn out of the CRM
+    record, and the TTS relay queues a whole answer (and its tail of air)
+    long before it plays, so a caller who spoke as the answer ended, or hung
+    up while it played, erased what they had heard. Here an agent turn whose
+    audio reached the line stays, marked as cut off; one that never played
+    and the core's technical turns are still left out. transcript_order puts
+    an interruption before the answer it cut, so the turns follow the causal
+    keys the core's own context restore uses, when every turn has one.
+    """
+    cut = {item_id for item_id in set(truncated) & set(audible)
+           if item_id not in non_business and (items.get(item_id) or {}).get("role") == "agent"}
+    kept = [item_id for item_id in order
+            if item_id in items and item_id not in non_business and (item_id not in truncated or item_id in cut)]
+    if kept and all(item_id in keys for item_id in kept):
+        kept = [item_id for _, item_id in sorted(enumerate(kept), key=lambda entry: (keys[entry[1]], entry[0]))]
+    return [dict(items[item_id], text=items[item_id]["text"].rstrip(" .…") + " …") if item_id in cut
+            else items[item_id] for item_id in kept]
+
+
 class ZeytunOrderSpool:
     """The order list waits on the station's disk until the CRM has it.
 
