@@ -332,6 +332,16 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(self.cancel(bridge), {"status": "cancelled", "say": self.CANCEL_PHRASE})
         later.join()
 
+    def test_confirm_is_hinted_like_cancel_and_never_read_as_one(self):
+        # Owner's call 2026-11-03: "Sifarişi təsdiq edin" was heard as "Sifarişi ləğv edin"
+        # while only the cancel phrase was hinted to recognition.
+        bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        words = bridge.transcription()["customVocabulary"]
+        for word in ("sifarişi ləğv edin", "sifarişi təsdiq edin", "təsdiq", "təsdiqləyirəm", "подтверждаю"):
+            self.assertIn(word, words)
+        description = bridge.tools()[0]["functionDeclarations"][-1]["description"]
+        self.assertIn("təsdiq or подтверждаю confirms the order", description)
+
     def test_yes_and_no_words(self):
         yes = ["Bəli", "hə", "Hə, ləğv edin", "ok", "Да", "ləğv olsun", "Bəli, bəli."]
         no = ["Tərtiblə", "yox", "Xeyr", "təsdiqlə", "Bəli, amma saxlayın", "Hə, lazımdır", "нет", "", None,

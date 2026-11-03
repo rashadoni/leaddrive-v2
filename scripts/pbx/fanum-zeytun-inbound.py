@@ -870,6 +870,9 @@ class ZeytunInboundBridge:
         "мазь", "гель", "крем", "спрей", "саше", "флакон", "упаковка", "коробка", "штук",
         # 2026-10-31 live call: "ləğv edin" came back as "Çox sağ olun".
         "ləğv", "ləğv edin", "sifarişi ləğv edin", "отмените", "отменить заказ",
+        # 2026-11-03 live call: with only the cancel phrase hinted, "Sifarişi
+        # təsdiq edin" came back as "Sifarişi ləğv edin". Hint both alike.
+        "təsdiq", "təsdiq edin", "sifarişi təsdiq edin", "təsdiqləyirəm", "подтверждаю", "подтвердите",
     )
 
     @staticmethod
@@ -1059,7 +1062,7 @@ class ZeytunInboundBridge:
              "description": "Hand this call to a Zeytun manager in the CRM. Call it only when the caller asks for a person. If it returns transferring, say exactly its say text and nothing after it: the line then rings the managers. If it returns unavailable, say that no manager can answer right now and keep taking the order yourself.",
              "parameters": {"type": "OBJECT", "properties": {}}}] if self.transfer_phrase else []) + ([
             {"name": self.CANCEL_NAME,
-             "description": "Cancel this call's whole order: the manager gets nothing. Call it only after the caller clearly confirmed they want the whole order cancelled. If it returns cancelled, say exactly its say text and then the closing sentence. If it returns not_confirmed, the caller did not clearly say yes to \"Sifarişi ləğv edək?\": the order stays; say so and go on. If it returns not_cancelled, say the order is already with the manager and cannot be cancelled on this call.",
+             "description": "Cancel this call's whole order: the manager gets nothing. Only for a caller who asked to cancel (ləğv, отмена); təsdiq or подтверждаю confirms the order: finish it, never ask about cancelling. Call it only after the caller clearly confirmed they want the whole order cancelled. If it returns cancelled, say exactly its say text and then the closing sentence. If it returns not_confirmed, the caller did not clearly say yes to \"Sifarişi ləğv edək?\": the order stays; say so and go on. If it returns not_cancelled, say the order is already with the manager and cannot be cancelled on this call.",
              "parameters": {"type": "OBJECT", "properties": {}}}] if self.cancel_phrase else [])}]
 
     def transcription(self):
