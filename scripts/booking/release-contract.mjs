@@ -30,17 +30,26 @@ export function parseState(raw) {
   return value;
 }
 
-export function admitCandidate(state, candidate, predecessor) {
+// Two released booking schemas are interchangeable only when the lineage lists
+// BOTH of them in its trailing additive run — the candidate's own hash included.
+// A stale, empty or truncated list therefore falls back to demanding equality
+// instead of quietly widening what production will accept.
+function schemaAccepted(candidate, other, compatible) {
+  if (other.schemaHash === candidate.schemaHash) return true;
+  return compatible.includes(candidate.schemaHash) && compatible.includes(other.schemaHash);
+}
+
+export function admitCandidate(state, candidate, predecessor, compatible = []) {
   if (!candidate && state.expanded) throw new Error('PRE_CANONICAL_RECOVERY_FORBIDDEN');
   if (candidate?.phase === 'workspace' && (!state.expanded || !predecessor
-    || predecessor.schemaHash !== candidate.schemaHash)) throw new Error('COMPATIBLE_PREDECESSOR_REQUIRED');
+    || !schemaAccepted(candidate, predecessor, compatible))) throw new Error('COMPATIBLE_PREDECESSOR_REQUIRED');
   return { firstExpansion: candidate?.phase === 'compatibility' && !predecessor
     && !state.enforced && state.canonicalCount === 0 };
 }
 
-export function admitRollback(state, target, candidate, firstExpansion, quiesced) {
+export function admitRollback(state, target, candidate, firstExpansion, quiesced, compatible = []) {
   if (target) {
-    if (!state.expanded || !candidate || target.schemaHash !== candidate.schemaHash)
+    if (!state.expanded || !candidate || !schemaAccepted(candidate, target, compatible))
       throw new Error('ROLLBACK_SCHEMA_CONTRACT_MISMATCH');
     return;
   }
@@ -69,6 +78,99 @@ export function bookingSchemaHash(schema) {
     return definition[0];
   });
   return createHash('sha256').update(fragments.join('\n')).digest('hex');
+}
+
+const MAX_COMPATIBLE_SCHEMAS = 8;
+const migrationPattern = /^[0-9]{14}_[a-z0-9_]+$/;
+
+// Every released shape of the booking storage contract. A release that changes a
+// Booking* model adds an entry or the build refuses it, so this is the one place
+// such a change is declared — and the only place saying an older artifact can
+// keep serving after it.
+export function parseLineage(raw) {
+  if (Buffer.byteLength(raw) > 16384) throw new Error('INVALID_BOOKING_SCHEMA_LINEAGE');
+  const value = JSON.parse(raw);
+  if (!value || value.version !== 1 || !Array.isArray(value.releases) || !value.releases.length)
+    throw new Error('INVALID_BOOKING_SCHEMA_LINEAGE');
+  const keys = ['schemaHash', 'migration', 'bookingAdditive', 'note'];
+  const seen = new Set();
+  value.releases.forEach((release, index) => {
+    if (!release || Object.keys(release).length !== keys.length || keys.some(key => !(key in release))
+      || !hashPattern.test(release.schemaHash ?? '') || seen.has(release.schemaHash)
+      || typeof release.bookingAdditive !== 'boolean' || typeof release.note !== 'string' || !release.note
+      // The baseline has no predecessor to be additive against.
+      || (index === 0 ? release.migration !== null || release.bookingAdditive
+        : !migrationPattern.test(release.migration ?? ''))) throw new Error('INVALID_BOOKING_SCHEMA_LINEAGE');
+    seen.add(release.schemaHash);
+  });
+  return value.releases;
+}
+
+// Statements an artifact built against the previous schema can keep serving
+// through: added columns it never has to supply a value for, and indexes that
+// reject nothing it writes. Everything this does not recognise answers no, so an
+// unreviewed statement cannot be declared additive by writing `true` in a file.
+function sqlStatements(sql) {
+  const text = sql.replace(/--[^\n]*/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const statements = [];
+  let current = '', depth = 0, quote = '';
+  for (const character of text) {
+    if (quote) { current += character; if (character === quote) quote = ''; continue; }
+    if (character === "'" || character === '"') { quote = character; current += character; continue; }
+    if (character === '(') depth += 1;
+    if (character === ')') depth -= 1;
+    if (character === ';' && depth === 0) { statements.push(current); current = ''; continue; }
+    current += character;
+  }
+  statements.push(current);
+  return statements.map(statement => statement.trim().replace(/\s+/g, ' ')).filter(Boolean);
+}
+
+function alterClauses(text) {
+  const clauses = [];
+  let current = '', depth = 0, quote = '';
+  for (const character of text) {
+    if (quote) { current += character; if (character === quote) quote = ''; continue; }
+    if (character === "'" || character === '"') { quote = character; current += character; continue; }
+    if (character === '(') depth += 1;
+    if (character === ')') depth -= 1;
+    if (character === ',' && depth === 0) { clauses.push(current); current = ''; continue; }
+    current += character;
+  }
+  clauses.push(current);
+  return clauses.map(clause => clause.trim()).filter(Boolean);
+}
+
+const identifier = '(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)';
+
+export function additiveMigration(sql) {
+  const statements = sqlStatements(sql);
+  if (!statements.length) return false;
+  return statements.every(statement => {
+    if (new RegExp("^SET (lock_timeout|statement_timeout) = '[^']*'$", 'i').test(statement)) return true;
+    if (/^CREATE INDEX (IF NOT EXISTS )?/i.test(statement)) return !/\bUNIQUE\b/i.test(statement);
+    const alter = new RegExp('^ALTER TABLE (?:IF EXISTS )?' + identifier + ' (.+)$', 'i').exec(statement);
+    if (!alter) return false;
+    return alterClauses(alter[1]).every(clause =>
+      new RegExp('^ADD COLUMN (?:IF NOT EXISTS )?' + identifier + ' .+$', 'i').test(clause)
+      // A column the old writer must fill, a renamed or retyped one, or one
+      // carrying a constraint, all break it. NOT NULL is fine with a default.
+      && !/\b(DROP|RENAME|ALTER|CONSTRAINT|REFERENCES|UNIQUE|PRIMARY|GENERATED|IDENTITY)\b/i.test(clause)
+      && (!/\bNOT NULL\b/i.test(clause) || /\bDEFAULT\b/i.test(clause)));
+  });
+}
+
+export function releasedSchemaLineage() {
+  return parseLineage(readFileSync(new URL('./schema-lineage.json', import.meta.url), 'utf8'));
+}
+
+// Walk back from the released shape while every step only added nullable booking
+// columns. The released hash leads the list because `schemaAccepted` demands it.
+export function compatibleSchemaHashes(lineage = releasedSchemaLineage()) {
+  const hashes = [lineage[lineage.length - 1].schemaHash];
+  for (let index = lineage.length - 1; index > 0 && lineage[index].bookingAdditive; index -= 1)
+    hashes.push(lineage[index - 1].schemaHash);
+  return hashes.slice(0, MAX_COMPATIBLE_SCHEMAS);
 }
 
 function helpers() {
@@ -101,13 +203,15 @@ function readManifestAt(directory, requireRoot) {
 
 export function emitAdmission(artifactSha, rawManifest, proof = false) {
   const candidate = parseManifest(rawManifest, artifactSha);
+  const compatible = compatibleSchemaHashes();
   const own = readFileSync(fileURLToPath(import.meta.url), 'utf8');
   const core = own.split('// BEGIN PURE CONTRACT — emitted unchanged by the current-main recovery admission.')[1]
     ?.split('// END PURE CONTRACT')[0]?.replaceAll('export function ', 'function ');
   if (!core) throw new Error('CONTRACT_EMISSION_FAILED');
   const action = proof
     ? "if (readFileSync('/opt/leaddrive-v2/.next/standalone/.deploy-sha','utf8').trim() !== " + JSON.stringify(artifactSha) + ") throw new Error('DEPLOYED_SHA_MISMATCH'); console.log(JSON.stringify(releaseProof(state," + JSON.stringify(candidate) + ',predecessor,' + JSON.stringify(artifactSha) + ')));'
-    : 'admitCandidate(state,' + JSON.stringify(candidate) + ",predecessor); console.log('booking_artifact_admission=PASS');";
+    : 'admitCandidate(state,' + JSON.stringify(candidate) + ',predecessor,' + JSON.stringify(compatible)
+      + "); console.log('booking_artifact_admission=PASS');";
 
   return helpers() + `
 require_root_file /etc/leaddrive/migration.env 600 || exit 1
@@ -158,6 +262,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       const phase = JSON.parse(readFileSync('src/lib/booking/release-phase.json','utf8')).mode;
       if (!['compatibility','workspace'].includes(phase)) throw new Error('INVALID_RELEASE_PHASE');
       const schemaHash = bookingSchemaHash(readFileSync('prisma/schema.prisma','utf8'));
+      const lineage = releasedSchemaLineage();
+      if (lineage[lineage.length - 1].schemaHash !== schemaHash) throw new Error('BOOKING_SCHEMA_LINEAGE_STALE');
       writeFileSync(path.join(directory,'.booking-backend-contract.json'),JSON.stringify({
         version:1,contract:'booking-canonical-writer/v1',artifactSha,schemaHash,phase
       })+'\n',{flag:'wx'});
@@ -171,13 +277,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     } else if (mode === '--check-admission') {
       const [candidateFile,artifactSha,predecessorDirectory] = args;
       const candidate = parseManifest(readFileSync(candidateFile,'utf8'),artifactSha);
-      const result = admitCandidate(getState(), candidate, readManifestAt(predecessorDirectory,true));
+      const result = admitCandidate(getState(), candidate, readManifestAt(predecessorDirectory,true),
+        compatibleSchemaHashes());
       process.stdout.write(result.firstExpansion ? 'first-expansion\n' : 'compatible\n');
     } else if (mode === '--check-rollback') {
       const [targetDirectory,candidateFile,artifactSha,firstExpansion,quiesced] = args;
       if (![firstExpansion,quiesced].every(v=>v==='true'||v==='false')) throw new Error('INVALID_ROLLBACK_PROOF');
       admitRollback(getState(true),readManifestAt(targetDirectory,true),parseManifest(readFileSync(candidateFile,'utf8'),artifactSha),
-        firstExpansion==='true',quiesced==='true');
+        firstExpansion==='true',quiesced==='true',compatibleSchemaHashes());
       process.stdout.write('booking_rollback_admission=PASS\n');
     } else throw new Error('INVALID_ARGUMENTS');
   } catch {

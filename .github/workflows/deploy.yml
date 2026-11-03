@@ -2546,7 +2546,8 @@ jobs:
           umask 077
           admission="$RUNNER_TEMP/booking-current-main-admission"
           mkdir -p "$admission/scripts/booking" "$admission/scripts/event-platform"
-          cp scripts/booking/release-contract.mjs scripts/booking/release-state.sql "$admission/scripts/booking/"
+          cp scripts/booking/release-contract.mjs scripts/booking/release-state.sql \
+            scripts/booking/schema-lineage.json "$admission/scripts/booking/"
           mkdir -p "$admission/scripts/identity"
           cp scripts/identity/release-contract.mjs scripts/identity/release-state.sql "$admission/scripts/identity/"
           cp scripts/event-platform/inspect-production.sh "$admission/scripts/event-platform/"
