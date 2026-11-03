@@ -57,14 +57,28 @@ export async function bookingContext(access: BookingAccess) {
   return { writableHostIds: access.writableHostIds, timezone: isValidTimezone(timezone) ? timezone : "Asia/Baku", hosts: hosts.map(({ role, hiddenModules, ...host }) => ({ ...host, canReceiveBookings: isBookingOperator(role) && (["admin", "superadmin"].includes(role) || !hiddenModules.includes("sales")) })), pages: pages.map((page) => ({ ...page, hostIds: page.hostIds.filter((id) => access.writableHostIds === null || access.writableHostIds.includes(id)) })), canConfigure: access.administrator, canCoordinate: access.hostIds === null || access.hostIds.length > 1, userId: access.userId }
 }
 
+/** Reminder state for a page of meetings, keyed by meeting. */
+async function remindersOf(orgId: string, bookingIds: string[]) {
+  if (!bookingIds.length) return new Map<string, { remindedDayAt: Date | null; remindedHourAt: Date | null; clientConfirmedAt: Date | null }>()
+  const rows = await prisma.bookingReminder.findMany({
+    where: { organizationId: orgId, bookingId: { in: bookingIds } },
+    select: { bookingId: true, remindedDayAt: true, remindedHourAt: true, clientConfirmedAt: true },
+  })
+  return new Map(rows.map((row) => [row.bookingId, row]))
+}
+
 export async function listBookings(access: BookingAccess, filters: BookingFilters) {
   const rows = await prisma.booking.findMany({ where: queryWhere(access, filters), select: columns, orderBy: [{ startsAt: "asc" }, { id: "asc" }], take: filters.limit + 1 })
   const hasMore = rows.length > filters.limit
   const visible = rows.slice(0, filters.limit)
   const hosts = await prisma.user.findMany({ where: { organizationId: access.orgId, id: { in: [...new Set(visible.map((row) => row.hostUserId))] } }, select: { id: true, name: true } })
+  const reminders = await remindersOf(access.orgId, visible.map((row) => row.id))
   const last = visible.at(-1)
   return {
-    items: visible.map(({ googleEventId, snapshot, ...row }) => ({ ...row, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, hostName: hosts.find((host) => host.id === row.hostUserId)?.name ?? null, calendarLinked: Boolean(googleEventId) })),
+    items: visible.map(({ googleEventId, snapshot, ...row }) => ({ ...row, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, hostName: hosts.find((host) => host.id === row.hostUserId)?.name ?? null, calendarLinked: Boolean(googleEventId),
+      remindedDayAt: reminders.get(row.id)?.remindedDayAt?.toISOString() ?? null,
+      remindedHourAt: reminders.get(row.id)?.remindedHourAt?.toISOString() ?? null,
+      clientConfirmedAt: reminders.get(row.id)?.clientConfirmedAt?.toISOString() ?? null })),
     nextCursor: hasMore && last ? `${last.startsAt.toISOString()}~${last.id}` : null,
   }
 }
@@ -97,9 +111,13 @@ export async function bookingDetail(access: BookingAccess, id: string, role: Rol
     prisma.effectOutbox.groupBy({ by: ["effectType", "status", "lastError"], where: { organizationId: access.orgId, effectType: { startsWith: "booking." }, payload: { path: ["bookingId"], equals: id } }, _count: { _all: true } }),
     row.source === "whatsapp" ? whatsappExplanation(access.orgId, id) : Promise.resolve(null),
   ])
+  const reminder = (await remindersOf(access.orgId, [id])).get(id) ?? null
   const canManage = access.writableHostIds === null || access.writableHostIds.includes(row.hostUserId)
   const canCorrect = access.administrator || Boolean(await prisma.bookingCoordinatorGrant.findFirst({ where: { organizationId: access.orgId, coordinatorUserId: access.userId, hostUserId: row.hostUserId, canManage: true } }))
   return { ...safe, phoneRestricted: access.phoneRestricted, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId), whatsapp,
+    remindedDayAt: reminder?.remindedDayAt?.toISOString() ?? null,
+    remindedHourAt: reminder?.remindedHourAt?.toISOString() ?? null,
+    clientConfirmedAt: reminder?.clientConfirmedAt?.toISOString() ?? null,
     leadId: checkPermission(role, "leads", "read") ? leadId : null,
     taskId: checkPermission(role, "tasks", "read") ? taskId : null,
   }

@@ -153,8 +153,8 @@ jobs:
           set -euo pipefail
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
-          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS booking_offers, booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE'
-          for migration in 20261101090000_online_booking 20261102090000_booking_workspace 20261102100000_booking_commands 20261120090000_booking_page_price_category 20261121090000_booking_offers 20261122090000_booking_offer_review; do
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS booking_reminders, booking_offers, booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE'
+          for migration in 20261101090000_online_booking 20261102090000_booking_workspace 20261102100000_booking_commands 20261120090000_booking_page_price_category 20261121090000_booking_offers 20261122090000_booking_offer_review 20261123090000_booking_reminders; do
             psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "prisma/migrations/$migration/migration.sql"
           done
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$BOOKING_DB_PASSWORD" -f scripts/ci/fixtures/booking-role-sandbox.sql
