@@ -288,8 +288,11 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner's call 2026-10-29: "Adefa" reached the agent as "Adexa", "Adelfa",
   // "Deva"; the lookup returned Адефа first every time, and the agent, bound
   // to "never the nearest name", said it was not in the catalog.
+  // Owner, 2026-11-03 («товаров 9к»): a misheard name is settled by asking,
+  // like an operator — a no leads to the next close name, the strength or
+  // spelling, never to silence.
   ["Keep unresolved products for a person, never the nearest name.",
-    "Keep unresolved products for a person. Names reach you through speech recognition and are often misheard (Adexa or Adelfa for Adefa); the lookup matches by sound. If a returned name is what the caller said (spelling or alphabet aside), take it without asking. If it only sounds close, read it back once in Azerbaijani letters, even if written in Cyrillic, and ask if it is the one; take it only after a clear yes (an unclear or unrelated answer is not a yes: ask again). Say a product is not found only when no returned name sounds close. If the caller spells a name letter by letter, join the letters and search that."],
+    "Keep unresolved products for a person. Names reach you through speech recognition and are often misheard (Adexa or Adelfa for Adefa); the lookup matches by sound. If a returned name is what the caller said (spelling or alphabet aside), take it without asking. If it only sounds close, read it back once in Azerbaijani letters (even if Cyrillic) and ask if it is the one; take it only after a clear yes (unclear is not yes: ask again); on a no, offer the next close returned name, else ask its strength or to spell it. Say a product is not found only when no returned name sounds close. If the caller spells a name, join the letters and search that."],
   // Owner's call 2026-10-29: "ampoules" and "cream" for Ketonal, ampoules written without asking.
   ["If the caller gave no form and the lookup returns several forms (ampoule, cream, tablet, suppository...), ask which form.",
     "If the caller gave no form and the lookup returns several forms (ampoule, cream, tablet, suppository...), ask which form; if they named two different forms, ask which one before writing it."],

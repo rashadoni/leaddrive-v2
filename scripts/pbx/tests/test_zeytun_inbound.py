@@ -124,6 +124,49 @@ class TransportTests(unittest.TestCase):
         time.sleep(0.15)
         self.assertEqual(len(waits), 1)
 
+    def nudges(self):
+        return [body for body in self.sent if "clientContent" in body]
+
+    def test_silence_after_a_lookup_asks_the_agent_once_to_answer(self):
+        # Owner's call 2026-11-03: two lookups returned Adefa, then 50 s of nothing.
+        journal = []
+        self.bridge.log_event = lambda event, **fields: journal.append((event, fields))
+        self.bridge.SILENCE_AFTER_LOOKUP_SECONDS = 0.05
+        self.handle(event("silent"))
+        self.assertTrue(self.finished.wait(2))
+        time.sleep(0.2)
+        nudges = self.nudges()
+        self.assertEqual(len(nudges), 1)
+        self.assertTrue(nudges[0]["clientContent"]["turnComplete"])
+        self.assertIn("never read it aloud", nudges[0]["clientContent"]["turns"][0]["parts"][0]["text"])
+        self.assertEqual(journal, [("zeytun_lookup_silence", {"status": "nudged"})])
+        time.sleep(0.15)
+        self.assertEqual(len(self.nudges()), 1)
+
+    def test_no_nudge_when_the_agent_or_the_caller_spoke_after_the_lookup(self):
+        self.bridge.SILENCE_AFTER_LOOKUP_SECONDS = 0.1
+        for key, content in (("agent", {"outputTranscription": {"text": "Adefa, beş qutu."}}),
+                             ("caller", {"inputTranscription": {"text": "Bəli"}})):
+            self.finished.clear()
+            self.handle(event(key))
+            self.assertTrue(self.finished.wait(2))
+            self.handle({"serverContent": content})
+            time.sleep(0.25)
+        self.assertEqual(self.nudges(), [])
+        # Nor after a save, a transfer or a cancel: only a lookup awaits an answer.
+        self.bridge.SILENCE_AFTER_LOOKUP_SECONDS = 0.05
+        self.save([{"quantity": 1, "unit": "qutu", "spoken": "x"}], key="save-quiet")
+        time.sleep(0.15)
+        self.assertEqual(self.nudges(), [])
+
+    def test_no_nudge_once_the_call_is_gone(self):
+        self.bridge.SILENCE_AFTER_LOOKUP_SECONDS = 0.05
+        self.handle(event("gone"))
+        self.assertTrue(self.finished.wait(2))
+        self.current = False
+        time.sleep(0.15)
+        self.assertEqual(self.nudges(), [])
+
     def save(self, lines, key="save-1"):
         self.finished.clear()
         self.handle({"toolCall": {"functionCalls": [{"id": key, "name": "save_order_list", "args": {"lines": lines}}]}})
@@ -1352,6 +1395,7 @@ class ArtifactTests(unittest.TestCase):
         start = ast.unparse(new_methods["start"])
         self.assertIn("ZEYTUN_INBOUND_PILOT_ENABLED", start)
         self.assertIn("self.pharmacy_bridge.on_wait = self._pharmacy_wait_filler", start)
+        self.assertIn("self.pharmacy_bridge.log_event = lambda event, **fields: latency(event, self.call_id, **fields)", start)
         self.assertIn("relay.filler()", ast.unparse(new_methods["_pharmacy_wait_filler"]))
         # The kill switch is still asked on every pharmacy call, in parallel
         # with the provider socket, and awaited before the greeting is sent.

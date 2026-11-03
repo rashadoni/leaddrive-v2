@@ -929,6 +929,12 @@ class ZeytunInboundBridge:
         self.log = lambda status, **fields: None
         # Set by the core: called when a lookup has run FILLER_AFTER_SECONDS.
         self.on_wait = None
+        # Set by the core: other station journal lines (event name, fields).
+        self.log_event = lambda event, **fields: None
+        # Counted in note_content: did the agent or the caller say anything
+        # since a lookup's result went to the model (SILENCE_AFTER_LOOKUP_SECONDS)?
+        self.agent_output_seq = 0
+        self.caller_output_seq = 0
 
     # At the top of each minute the CRM answered in 1-4 s (measured 2026-10-28,
     # the hour a call was hung up for a 2 s deadline). A lookup that times out
@@ -936,6 +942,14 @@ class ZeytunInboundBridge:
     # the AI call before its greeting, so neither may be shorter than that.
     LOOKUP_TIMEOUT_SECONDS = 4
     FILLER_AFTER_SECONDS = 1.0
+    # Owner's call 2026-11-03: two lookups returned Adefa, then nothing was
+    # said and the caller hung up 50 s later. gemini-3.8-live may send nothing
+    # at all for a turn (proactive audio); after a lookup on a phone line that
+    # is dead air. Once per result, if neither side spoke, the agent is asked
+    # to answer — never over the caller, never twice for one result.
+    SILENCE_AFTER_LOOKUP_SECONDS = 4.0
+    SILENCE_NUDGE = ("Station note, never read it aloud: the caller is waiting in silence. Answer them now about "
+                     "the lookup you just got, in Azerbaijani, in one short sentence.")
     ANSWER_ACK_TIMEOUT_SECONDS = 5
 
     def _request(self, body):
@@ -1349,6 +1363,10 @@ class ZeytunInboundBridge:
                     spoken.append(part["text"])
         heard = content.get("inputTranscription")
         with self.lock:
+            if spoken or (isinstance(model_turn, dict) and model_turn.get("parts")):
+                self.agent_output_seq += 1
+            if isinstance(heard, dict) and heard.get("text"):
+                self.caller_output_seq += 1
             if spoken:
                 # Pieces carry their own spaces and may split a word.
                 self.model_turn_text = (self.model_turn_text + "".join(spoken))[-2000:]
@@ -1361,6 +1379,29 @@ class ZeytunInboundBridge:
             if content.get("turnComplete") is True or content.get("interrupted") is True:
                 self.model_turn_text = ""
                 self.cancel_asked_this_turn = False
+
+    def watch_silence(self, send, current):
+        """After a lookup result: if the agent and the caller both stay silent
+        for SILENCE_AFTER_LOOKUP_SECONDS, ask the agent once to answer. Holds ``lock``."""
+        seen = (self.agent_output_seq, self.caller_output_seq)
+
+        def nudge():
+            with self.lock:
+                if (not self.active or self.pending or (self.agent_output_seq, self.caller_output_seq) != seen
+                        or self.clock() >= self.expires):
+                    return None
+            self.log_event("zeytun_lookup_silence", status="nudged")
+            return {"clientContent": {"turns": [{"role": "user", "parts": [{"text": self.SILENCE_NUDGE}]}], "turnComplete": True}}
+
+        def check():
+            if current():
+                try:
+                    send(nudge)
+                except Exception:
+                    pass
+        timer = threading.Timer(self.SILENCE_AFTER_LOOKUP_SECONDS, check)
+        timer.daemon = True
+        timer.start()
 
     def caller_answer_to_cancel(self):
         """The caller's answer to CANCEL_QUESTION, waiting briefly for recognition to catch up."""
@@ -1507,6 +1548,8 @@ class ZeytunInboundBridge:
                         self.pending.pop(key, None)
                         if not self.active or self.clock() >= self.expires:
                             return None
+                        if not (saving or transferring or cancelling):
+                            self.watch_silence(send, current)
                         return response(result)
                 try:
                     if current():
