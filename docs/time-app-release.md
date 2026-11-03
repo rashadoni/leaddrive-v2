@@ -143,3 +143,12 @@ signing block, published as `time-v1.0.0-1054`, public redownload hash verified.
 in-place upgrade of this exact build: NOT RUN (device bridge closed); the same package and key
 were upgraded in place on the owner's S23 on 2026-11-01 (QA 1052) keeping session and open day.
 Evidence: `docs/evidence/time-public-release-1054.json`.
+
+## Release 1055 — 2026-11-03
+
+Owner in chat on the request form: «Давай, делай» (choice of kind first, leaddrive-mtm#228; with
+#227 the calendar days and who approves). Reviewed main `d43d71c` built as 1055 (hosted Jest 298
+suites, package/permissions/pinned certificate), published as `time-v1.0.0-1055`, public redownload
+hash verified. Physical in-place upgrade of this exact build: PASS on the owner's S23 — 1052 → 1055
+with `pm install -r`, first install time and session kept, the new request opens on the kind
+choice, nothing submitted. Evidence: `docs/evidence/time-public-release-1055.json`.

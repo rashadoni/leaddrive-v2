@@ -1,0 +1,25 @@
+{
+  "sourceSha": "d43d71c4f0bd05f269e03cded6c5d8a5899a5389",
+  "sourceBranch": "main",
+  "packageName": "com.leaddrive.attendance",
+  "versionName": "1.0.0",
+  "versionCode": 1055,
+  "apkSha256": "8ab02eafc301b175b016223aa3c5255da92851baaf2f62505c56341e75be4a15",
+  "apkBytes": 46305847,
+  "signingCertificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+  "buildRun": 41624092002,
+  "hostedTests": {
+    "suitesPassed": 298,
+    "testsPassed": 2752,
+    "testsTodo": 1
+  },
+  "hostedApksignerAaptPackageCertificatePermissions": "PASS",
+  "previousPublicVersionCode": 1054,
+  "physicalMaestro": "NOT_RUN",
+  "physicalInPlaceUpgrade": "PASS on the owner's S23 (R5CXC0NP96K) on 2026-11-03: 1052 -> 1055 with pm install -r, firstInstallTime kept, session kept, new request opens on the kind choice, chosen kind with «Başqa növ», calendar days and approval route shown; nothing submitted",
+  "publicationAuthorization": "Owner approved the kind-choice mockup with «Давай, делай» on 2026-11-03 and asked for the work to reach phones",
+  "tag": "time-v1.0.0-1055",
+  "apkUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1055/leaddrive-time-1.0.0-1055.apk",
+  "publishedAt": "2026-11-03T13:34:55Z",
+  "publicRedownloadHashVerified": true
+}
