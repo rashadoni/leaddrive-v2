@@ -101,7 +101,7 @@ export type ZeytunBalanceCandidate = ReturnType<typeof mapRow>
  */
 function sourceParts(label: string): string[] {
   const groups = [...label.matchAll(/\(([^()]*)\)/gu)].map((match) => match[1])
-  const starred = [...label.matchAll(/\\\*(.*?)\\\*/gsu)].map((match) => match[1])
+  const starred = [...label.matchAll(/\\\*([\s\S]*?)\\\*/gu)].map((match) => match[1])
   return [...(groups.length >= 3 ? groups.slice(-2) : []), ...starred]
 }
 
