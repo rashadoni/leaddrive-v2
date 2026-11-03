@@ -117,3 +117,85 @@ describe("a host's own working days", () => {
     expect(times(withSchedule).length).toBeGreaterThan(0)
   })
 })
+
+describe("free time by the service, not by one number of the day", () => {
+  /** In Baku (UTC+4, no daylight saving) this clock time is that instant. */
+  const at = (iso: string) => new Date(`${iso}:00+04:00`)
+  // Wednesday 4 November 2026, 04:00 in Baku — before the salon opens.
+  const DAWN = new Date("2026-11-04T00:00:00Z")
+  const DAY = "2026-11-04"
+  /** A salon service: its own length and its own cleanup time after it. */
+  const service = (durationMinutes: number, bufferMinutes: number): BookingRules =>
+    baku({ durationMinutes, bufferMinutes, maxDaysAhead: 0, weekly: { ...defaultWeeklyHours(), "3": [{ start: "09:00", end: "18:00" }] } })
+  const booked = (from: string, minutes: number, bufferMinutes: number) => ({
+    start: at(from), end: new Date(at(from).getTime() + minutes * 60_000),
+    bufferBeforeMinutes: bufferMinutes, bufferAfterMinutes: bufferMinutes,
+  })
+  const offered = (rules: BookingRules, busy: ReturnType<typeof booked>[] | { start: Date; end: Date; kind: "off" }[]) =>
+    (computeSlots({ rules, hostIds: ["leyla"], busyByHost: new Map([["leyla", busy]]), now: DAWN })
+      .find((day) => day.date === DAY)?.slots ?? [])
+      .map((slot) => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Baku", hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startsAt)))
+
+  it("gives a 40-minute service and a 90-minute one different windows on the same day", () => {
+    const manicure = offered(service(40, 15), [])
+    const colouring = offered(service(90, 15), [])
+    expect(manicure).not.toEqual(colouring)
+    expect(manicure.length).toBeGreaterThan(colouring.length)
+    expect(colouring).toEqual(["09:00", "10:30", "12:00", "13:30", "15:00", "16:30"])
+    expect(manicure.slice(0, 3)).toEqual(["09:00", "09:40", "10:20"])
+    // The last window of each has to end inside the working day.
+    expect(colouring.at(-1)).toBe("16:30") // 16:30 + 90 = 18:00
+    expect(manicure.at(-1)).toBe("17:00") // 17:00 + 40 = 17:40
+  })
+
+  it("offers the gap a long service leaves behind, which the ladder cannot reach", () => {
+    // 09:00 colouring runs to 10:30 and wants 15 minutes after it. The next
+    // rung of the 90-minute ladder is 12:00, so 10:45–12:15 used to be ninety
+    // free minutes nobody could book: an empty chair.
+    const after = offered(service(90, 15), [booked("2026-11-04T09:00", 90, 15)])
+    expect(after).toContain("10:45")
+    expect(after).not.toContain("10:30") // inside the cleanup time
+    expect(after).not.toContain("09:00")
+    expect(after).toEqual(["10:45", "12:00", "13:30", "15:00", "16:30"])
+    // And the slot offered is bookable: the submit path validates against this
+    // very computation, so an offered gap cannot be refused at the door.
+    expect(findSlot(computeSlots({ rules: service(90, 15), hostIds: ["leyla"], now: DAWN,
+      busyByHost: new Map([["leyla", [booked("2026-11-04T09:00", 90, 15)]]]) }), at("2026-11-04T10:45").toISOString())?.hostIds).toEqual(["leyla"])
+  })
+
+  it("fits a short service into the same gap, right after the cleanup time", () => {
+    const manicure = offered(service(40, 15), [booked("2026-11-04T09:00", 90, 15)])
+    expect(manicure.slice(0, 2)).toEqual(["10:45", "11:00"])
+    // A second booking later in the day leaves its own usable start.
+    const twice = offered(service(40, 15), [booked("2026-11-04T09:00", 90, 15), booked("2026-11-04T13:00", 40, 15)])
+    expect(twice).toContain("13:55")
+    expect(twice).not.toContain("13:00")
+    expect(twice).not.toContain("13:40")
+  })
+
+  it("changes nothing on a day with nothing booked", () => {
+    // The extra starts come from busy blocks, so a page that never had one
+    // shows exactly the windows it always did.
+    expect(offered(service(30, 0), [])).toEqual(offered(baku({ durationMinutes: 30, maxDaysAhead: 0,
+      weekly: { ...defaultWeeklyHours(), "3": [{ start: "09:00", end: "18:00" }] } }), []))
+    expect(offered(service(30, 0), []).length).toBe(18)
+  })
+
+  it("offers the end of a lunch break, and never a start that runs past closing", () => {
+    const lunch = [{ start: at("2026-11-04T13:00"), end: at("2026-11-04T14:00"), kind: "off" as const }]
+    expect(offered(service(40, 0), lunch)).toContain("14:00")
+    // The 16:50 booking ends 17:30 and wants 15 minutes after it: a start at
+    // 17:45 would run past closing, so the day simply ends earlier.
+    const late = offered(service(40, 15), [booked("2026-11-04T16:50", 40, 15)])
+    expect(late).not.toContain("17:45")
+    expect(late).not.toContain("17:00")
+    expect(late).not.toContain("16:20") // 16:20–17:00 runs into the booking's cleanup
+    expect(late.at(-1)).toBe("15:40")
+  })
+
+  it("keeps another day's busy block out of this day's windows", () => {
+    // A meeting that ends at 23:50 the day before must not seed a 00:05 start.
+    const night = [booked("2026-11-03T23:10", 40, 15)]
+    expect(offered(service(40, 15), night)).toEqual(offered(service(40, 15), []))
+  })
+})
