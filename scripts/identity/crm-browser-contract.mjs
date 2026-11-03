@@ -339,8 +339,10 @@ try {
     const existingResult = await administrator.current.request.post(registrationUrl, { timeout: 120000, data: existingRegistration })
     assert.equal(existingResult.status(), 201); assert.equal((await existingResult.json()).data.agentId, existingCandidate.timeActorId)
     const existingAfter = await admin.mtmAgent.findUniqueOrThrow({ where: { id: existingCandidate.timeActorId } })
-    assert.deepEqual({ ...existingAfter, attendanceParticipant: existingBefore.attendanceParticipant, updatedAt: existingBefore.updatedAt }, existingBefore)
+    // Registration changes only participation and issues the card its personnel number (owner, 2026-11-03).
+    assert.deepEqual({ ...existingAfter, attendanceParticipant: existingBefore.attendanceParticipant, personnelNumber: existingBefore.personnelNumber, updatedAt: existingBefore.updatedAt }, existingBefore)
     assert.equal(existingAfter.attendanceParticipant, true)
+    assert.equal(existingBefore.personnelNumber, null); assert.match(existingAfter.personnelNumber, /^\d{4}$/)
     assert.equal(await admin.mtmAgent.count({ where: { organizationId: company, userId: existingCandidate.userId } }), 1)
     assert.equal((await admin.$queryRaw`SELECT count(*)::int AS count FROM workforce_employment_events WHERE "organizationId"=${company} AND "agentId"=${existingCandidate.timeActorId}`)[0].count, 0)
     assert.equal((await administrator.current.request.post(registrationUrl, { timeout: 120000, data: existingRegistration })).status(), 201)
