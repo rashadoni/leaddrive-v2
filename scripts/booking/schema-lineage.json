@@ -13,12 +13,6 @@
       "migration": "20261120090000_booking_page_price_category",
       "bookingAdditive": true,
       "note": "A salon service carries a price, the currency it was stamped in, a group and a return cycle: four nullable columns on booking_pages."
-    },
-    {
-      "schemaHash": "9d5d3d1df2a4ab00735fa222d433daa9b8e3cc98d1139d5af5e722ca11eee4df",
-      "migration": "20261123090000_booking_reminders",
-      "bookingAdditive": true,
-      "note": "A meeting remembers the reminders sent before it and whether the client said they are coming: four nullable columns on bookings."
     }
   ]
 }

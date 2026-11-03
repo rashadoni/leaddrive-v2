@@ -77,6 +77,7 @@ model Organization {
   bookingPages          BookingPage[]
   bookingHostSchedules  BookingHostSchedule[]
   bookingOffers         BookingOffer[]
+  bookingReminders      BookingReminder[]
   adConversionDestinations AdConversionDestination[]
   adConversionEvents       AdConversionEvent[]
   telegramStaffBot         TelegramStaffBot?
@@ -23561,6 +23562,25 @@ model BookingHostSchedule {
   @@map("booking_host_schedules")
 }
 
+/// Reminders sent before a meeting and what the client answered — delivery
+/// bookkeeping, kept out of `bookings` because a canonical booking may only
+/// change through its own events.
+model BookingReminder {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId          String       @unique
+  remindedDayAt      DateTime?
+  remindedHourAt     DateTime?
+  clientConfirmedAt  DateTime?
+  clientConfirmedVia String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("booking_reminders")
+}
+
 /// A time the WhatsApp booking agent put in front of a client, as one button.
 /// Until `expiresAt` it holds the slot for every other conversation and for
 /// the public page, and a tap on it books exactly this time with exactly this
@@ -23634,12 +23654,6 @@ model Booking {
   taskId          String?
   googleEventId   String?
   cancelledAt     DateTime?
-  /// When the day-before and two-hours-before reminders went out; null = not yet.
-  remindedDayAt   DateTime?
-  remindedHourAt  DateTime?
-  /// When the client themselves said they are coming, and from where.
-  clientConfirmedAt DateTime?
-  clientConfirmedVia String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

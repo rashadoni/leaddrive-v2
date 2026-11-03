@@ -36,27 +36,33 @@ export async function POST(req: NextRequest) {
       // reminds rather than skipping the meeting entirely.
       const from = new Date(now.getTime() + (leadMinutes - openMinutes) * 60_000)
       const to = new Date(now.getTime() + leadMinutes * 60_000)
-      const due = await runWithTenant(organization.id, () => prisma.booking.findMany({
-        where: {
-          organizationId: organization.id, status: "confirmed",
-          startsAt: { gt: from, lte: to },
-          ...(kind === "day" ? { remindedDayAt: null } : { remindedHourAt: null }),
-          // A client who already said they are coming does not need the second
-          // reminder; the day-before one has already done its work.
-          ...(kind === "hour" ? { clientConfirmedAt: null } : {}),
-        },
+      const candidates = await runWithTenant(organization.id, () => prisma.booking.findMany({
+        where: { organizationId: organization.id, status: "confirmed", startsAt: { gt: from, lte: to } },
         orderBy: { startsAt: "asc" },
         take: BATCH_SIZE,
         select: { id: true, startsAt: true, phone: true, name: true, snapshot: true, bookingPageId: true },
       }))
+      const marks = candidates.length ? await runWithTenant(organization.id, () => prisma.bookingReminder.findMany({
+        where: { organizationId: organization.id, bookingId: { in: candidates.map((booking) => booking.id) } },
+      })) : []
+      const due = candidates.filter((booking) => {
+        const mark = marks.find((row) => row.bookingId === booking.id)
+        if (!mark) return true
+        // A client who already said they are coming does not need the second
+        // reminder; the day-before one has already done its work.
+        if (kind === "hour" && mark.clientConfirmedAt) return false
+        return kind === "day" ? !mark.remindedDayAt : !mark.remindedHourAt
+      })
       for (const booking of due) {
         if (!booking.phone) { counted.skipped += 1; continue }
         const outcome = await runWithTenant(organization.id, () => sendReminder({ organizationId: organization.id, booking, kind, now }))
         if (outcome === "sent") {
           counted.sent += 1
-          await runWithTenant(organization.id, () => prisma.booking.updateMany({
-            where: { id: booking.id, organizationId: organization.id },
-            data: kind === "day" ? { remindedDayAt: now } : { remindedHourAt: now },
+          const mark = kind === "day" ? { remindedDayAt: now } : { remindedHourAt: now }
+          await runWithTenant(organization.id, () => prisma.bookingReminder.upsert({
+            where: { bookingId: booking.id },
+            create: { organizationId: organization.id, bookingId: booking.id, ...mark },
+            update: mark,
           }))
         } else if (outcome === "template_missing") {
           counted.templateMissing += 1

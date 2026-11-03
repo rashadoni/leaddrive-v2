@@ -754,9 +754,10 @@ async function answerReminder(input: BookingTurnInput, reminder: { action: Remin
   if (booking.status !== "confirmed") return true
 
   if (reminder.action === "confirm") {
-    await prisma.booking.updateMany({
-      where: { id: booking.id, organizationId: input.organizationId, clientConfirmedAt: null },
-      data: { clientConfirmedAt: now, clientConfirmedVia: "whatsapp" },
+    await prisma.bookingReminder.upsert({
+      where: { bookingId: booking.id },
+      create: { organizationId: input.organizationId, bookingId: booking.id, clientConfirmedAt: now, clientConfirmedVia: "whatsapp" },
+      update: { clientConfirmedAt: now, clientConfirmedVia: "whatsapp" },
     })
     await sendText(input, reminderReply(language, "confirm"))
     return true

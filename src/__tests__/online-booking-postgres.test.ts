@@ -1257,7 +1257,7 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(reminder.buttons.map((button) => button.id)).toEqual([
         `rm:confirm:${booking.id}`, `rm:move:${booking.id}`, `rm:cancel:${booking.id}`,
       ])
-      const marked = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }))
+      const marked = await bypass(() => prisma.bookingReminder.findUniqueOrThrow({ where: { bookingId: booking.id } }))
       expect(marked.remindedDayAt).not.toBeNull()
 
       // A second run says nothing more: the meeting is already reminded.
@@ -1267,7 +1267,7 @@ pgDescribe("online booking on a real Postgres", () => {
 
       // «Gəlirəm» is recorded on the meeting and thanked for.
       expect(await turnIn(conversation, { waPhone: phoneDigitsOf(booking.phone), replyId: `rm:confirm:${booking.id}`, text: "Gəlirəm" })).toEqual({ handled: true })
-      const confirmed = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }))
+      const confirmed = await bypass(() => prisma.bookingReminder.findUniqueOrThrow({ where: { bookingId: booking.id } }))
       expect(confirmed.clientConfirmedAt).not.toBeNull()
       expect(confirmed.clientConfirmedVia).toBe("whatsapp")
       expect(whatsapp.texts.at(-1)!.message).toBe("Gözləyirik ✅")
