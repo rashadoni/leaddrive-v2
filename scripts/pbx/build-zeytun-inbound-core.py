@@ -242,6 +242,18 @@ def build(source, bridge):
             "                elif now - caller_quiet_since >= (1.0 if self.pharmacy_preview else CALL_FAREWELL_CALLER_WAIT_SECONDS):\n")
     replace("                elif now - farewell_done_at >= CALL_FAREWELL_HANGUP_DELAY_SECONDS:\n",
             "                elif now - farewell_done_at >= (0.8 if self.pharmacy_preview else CALL_FAREWELL_HANGUP_DELAY_SECONDS):\n")
+    # Owner's call 2026-11-03 (85cb2f29): the speech gate (Silero) scored the
+    # caller's loud words 0.0-0.02 while the agent was silent and dropped them:
+    # "Mezim forte on min, on qutu" reached the model as "qutu", and the last
+    # 2.5 s (Smekta, Lineks, Amoksiklav) not at all, so the agent waited and
+    # the caller hung up. The gate exists against the agent's own echo; on the
+    # pharmacy line it vetoes only while the agent speaks and for 0.8 s after,
+    # and loudness alone decides otherwise, as before the gate.
+    replace("            if loud and verdict is False:\n",
+            "            if self.pharmacy_preview and agent_speaking:\n"
+            "                self.pharmacy_agent_heard_at = time.monotonic()\n"
+            "            if loud and verdict is False and (not self.pharmacy_preview or agent_speaking\n"
+            "                    or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.8):\n")
     # Only recovery wording changes; pharmacy calls are never marked as demos.
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:

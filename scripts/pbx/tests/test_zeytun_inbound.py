@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import textwrap
 import threading
 import time
 import unittest
@@ -1524,6 +1525,17 @@ class ArtifactTests(unittest.TestCase):
             loop = loop.replace(f">= {wait}:", f">= ({shorter} if self.pharmacy_preview else {wait}):")
         self.assertEqual(ast.dump(ast.parse(loop).body[0]), ast.dump(new_methods["_call_deadline_loop"]))
         differences.discard("_call_deadline_loop")
+        # The ear changes only its veto, for pharmacy calls (owner's call 2026-11-03).
+        text = source.decode("utf-8")
+        feed = textwrap.dedent(ast.get_source_segment(text, old_methods["feed"], padded=True)).replace(
+            "        if loud and verdict is False:\n",
+            "        if self.pharmacy_preview and agent_speaking:\n"
+            "            self.pharmacy_agent_heard_at = time.monotonic()\n"
+            "        if loud and verdict is False and (not self.pharmacy_preview or agent_speaking\n"
+            "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.8):\n")
+        self.assertIn("pharmacy_agent_heard_at", feed)
+        self.assertEqual(ast.dump(ast.parse(feed).body[0]), ast.dump(new_methods["feed"]))
+        differences.discard("feed")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
