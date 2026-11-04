@@ -130,7 +130,7 @@ export function AttendanceDeskDayPanel({ code, desk, seconds, onChanged }: { cod
       <div className="flex items-center gap-4 text-left">{qr("small")}<p className="max-w-56 text-sm text-muted-foreground">{t("deskFinishHint")}</p></div>
     </>}
     {desk.state === "PAUSED" && <>
-      <span className="rounded-full bg-amber-100 px-4 py-1 text-sm font-semibold text-amber-900" data-testid="desk-screen-paused">{current ? t("deskPausedKind", { name: kindName(current, t) }) : t("deskPaused")}</span>
+      <span className="rounded-full border border-amber-500 px-4 py-1 text-sm font-semibold text-amber-800" data-testid="desk-screen-paused">{current ? t("deskPausedKind", { name: kindName(current, t) }) : t("deskPaused")}</span>
       <p className="text-6xl font-bold tabular-nums text-amber-800">{`${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`}</p>
       <p className="text-muted-foreground">{t("deskPausedSince", { time: time(desk.pausedAt) })}{current ? ` · ${kindName(current, t)}: ${usage(current)}` : ""}</p>
       <Button type="button" className="min-h-12 px-8 text-base" disabled={busy} onClick={() => void press("RESUME")} data-testid="desk-screen-resume">{t("deskResume")}</Button>
@@ -139,7 +139,7 @@ export function AttendanceDeskDayPanel({ code, desk, seconds, onChanged }: { cod
     {desk.state === "COMPLETED" && <><p className="text-2xl font-semibold" data-testid="desk-screen-completed">{t("deskCompleted")}</p>
       <div className="flex items-center gap-4 text-left">{qr("small")}<p className="max-w-56 text-sm text-muted-foreground">{t("deskCompletedHint")}</p></div></>}
     <div className="flex flex-wrap items-center justify-center gap-3"><span className="font-semibold tabular-nums text-emerald-700" data-testid="branch-screen-countdown">{t("countdown", { seconds })}</span>
-      {code.place === "NETWORK" && <span className="rounded-full bg-emerald-50 px-3 py-0.5 text-xs font-semibold text-emerald-800">✓ {t("deskNetwork")}</span>}</div>
+      {code.place === "NETWORK" && <span className="rounded-full border border-emerald-600 px-3 py-0.5 text-xs font-semibold text-emerald-800">✓ {t("deskNetwork")}</span>}</div>
     {failed && <p role="alert" className="text-sm text-destructive">{t("deskActionFailed")}</p>}
   </div>
 }
