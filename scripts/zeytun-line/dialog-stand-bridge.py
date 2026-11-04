@@ -14,14 +14,22 @@ answered by the CRM's own handler there; nothing leaves this machine.
 
 stdin  {"op": "open"} | {"op": "tools", "calls": [...]} | {"op": "note", "content": {...}}
        | {"op": "lang", "text": "..."} | {"reply": n, "value": {...}}
+       | {"op": "utterance", "first": b64, "rest": b64}   (one caller phrase as the core hands it to the
+         bridge: the 8 kHz frame that opened the activity, then every frame to activityEnd)
+       | {"op": "live", "core": "<station's base core>", "pilot": <open's answer>, "model": "gemini-3.8-live"}
+         (voice-stand.ts: the Live setup, greeting and language note exactly as the station's core
+          builds them for this bridge, from the core build-zeytun-inbound-core.py makes of the base)
 stdout {"crm": n, "body": {...}} | {"done": <result>} | {"error": "..."}
 """
+import ast
+import base64
 import importlib.util
 import json
 from pathlib import Path
 import queue
 import sys
 import threading
+from types import SimpleNamespace
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +47,37 @@ def declarations():
     bridge = station.ZeytunInboundBridge(URL, "stand", CALL_ID, request=lambda body: {})
     bridge.transfer_phrase, bridge.cancel_phrase = "transfer", "cancel"
     return bridge._declarations()
+
+
+def live_messages(core, pilot, model):
+    """The station core's own _setup_event, _greeting_event and _language_turn_event for this bridge.
+
+    The core is the station's (not in Git): build-zeytun-inbound-core.py patches it with
+    this station transport, as the install does, and only these functions and the
+    policies they read are taken from the result; nothing else of the core runs here.
+    """
+    builder_spec = importlib.util.spec_from_file_location("zeytun_builder", ROOT / "pbx" / "build-zeytun-inbound-core.py")
+    builder = importlib.util.module_from_spec(builder_spec)
+    builder_spec.loader.exec_module(builder)
+    tree = ast.parse(builder.build(Path(core).read_bytes(), STATION.read_text()).decode())
+    policies = {"LIVE_CONVERSATION_POLICY", "VOICE_DELIVERY_POLICY", "EXPLICIT_LANGUAGE_POLICY"}
+    scope = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id in policies for t in node.targets):
+            exec(compile(ast.Module(body=[node], type_ignores=[]), "core", "exec"), scope)
+    functions = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+    session = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "GeminiLiveSession")
+    methods = {n.name: n for n in session.body if isinstance(n, ast.FunctionDef)}
+    # The station's environment: no provider VAD, no language code but the CRM's, the CRM's opening.
+    scope.update(GEMINI_LIVE_MODEL=model, GEMINI_LIVE_VOICE="Sulafat", GEMINI_LIVE_LANGUAGE_CODE="",
+                 GEMINI_LIVE_PROVIDER_VAD=False, GEMINI_LIVE_OPENING_TEXT="")
+    exec(compile(ast.Module(body=[functions["demo_instruction"], methods["_setup_event"], methods["_greeting_event"],
+                                  methods["_language_turn_event"]], type_ignores=[]), "core", "exec"), scope)
+    live = SimpleNamespace(instruction=scope["demo_instruction"]("", pilot["prompt"]), pharmacy_preview=True,
+                           pharmacy_bridge=bridge, is_callback=False, crm_opening_text=pilot["opening"],
+                           state_lock=threading.Lock(), last_supported_caller_language="az")
+    return {"setup": scope["_setup_event"](live), "greeting": scope["_greeting_event"](live),
+            "language": scope["_language_turn_event"](live)}
 
 
 if "--declarations" in sys.argv:
@@ -89,7 +128,8 @@ def crm(body):
 
 
 threading.Thread(target=reader, daemon=True).start()
-bridge = station.ZeytunInboundBridge(URL, "stand", str(uuid.uuid4()), request=crm)
+# post_utterance: the second ear's phrases go to the stand's CRM too (on only when its session says so).
+bridge = station.ZeytunInboundBridge(URL, "stand", str(uuid.uuid4()), request=crm, utterances=True, post_utterance=crm)
 # The cancel check waits 1.5 s for recognition; the stand's caller has already spoken.
 bridge.CANCEL_ANSWER_WAIT_SECONDS = 0.1
 
@@ -99,10 +139,19 @@ while True:
         break
     try:
         if op["op"] == "open":
-            emit({"done": bridge.open()})
+            pilot = bridge.open()
+            # standUtterances: whether this bridge now hands the CRM the caller's phrases (the second ear).
+            emit({"done": dict(pilot, standUtterances=bridge.utterances) if pilot else pilot})
         elif op["op"] == "note":
             bridge.note_content(op["content"])
             emit({"done": True})
+        elif op["op"] == "utterance":
+            bridge.utterance_edge(True, base64.b64decode(op["first"]))
+            bridge.utterance_audio(base64.b64decode(op["rest"]))
+            bridge.utterance_edge(False)
+            emit({"done": True})
+        elif op["op"] == "live":
+            emit({"done": live_messages(op["core"], op["pilot"], op.get("model") or "gemini-3.8-live")})
         elif op["op"] == "lang":
             emit({"done": {"script": station.zeytun_script(op["text"]), "english": station.zeytun_is_english(op["text"])}})
         elif op["op"] == "tools":
