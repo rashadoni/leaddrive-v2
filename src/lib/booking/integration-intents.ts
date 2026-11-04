@@ -1,4 +1,4 @@
-import { calendarAccount } from "@/lib/google-calendar-account"
+import { connectedCalendarsOf } from "@/lib/calendar/accounts"
 import { randomUUID } from "node:crypto"
 import type { Booking, Prisma } from "@prisma/client"
 import { enqueueEffect } from "@/lib/event-platform/effects"
@@ -12,16 +12,28 @@ export async function queueBookingEffects(tx: Prisma.TransactionClient, row: Boo
   const bindings = await tx.bookingIntegrationBinding.findMany({ where: { organizationId: row.organizationId, bookingId: row.id } })
   const active = row.status !== "cancelled"
   const outcome = row.status === "completed" || row.status === "no_show"
-  const account = active && !outcome ? await calendarAccount(tx, row.hostUserId) : null
-  let matching = bindings.find((binding) => binding.hostUserId === row.hostUserId && binding.accountId === account?.id && binding.desiredState === "present")
-  if (account && !matching && row.status === "confirmed" && row.startsAt > new Date() && row.source !== "legacy") {
+  // Every calendar the host connected gets the meeting: a master who keeps
+  // their own Google account and the company's Outlook must not have to look
+  // in two places to know their day.
+  const accounts = active && !outcome ? await connectedCalendarsOf(tx, row.hostUserId) : []
+  const matching = new Set<string>()
+  for (const account of accounts) {
+    const existing = bindings.find((binding) => binding.hostUserId === row.hostUserId && binding.accountId === account.id && binding.desiredState === "present")
+    if (existing) { matching.add(existing.id); continue }
+    if (row.status !== "confirmed" || row.startsAt <= new Date() || row.source === "legacy") continue
     const generation = randomUUID()
-    matching = await tx.bookingIntegrationBinding.create({ data: { organizationId: row.organizationId, bookingId: row.id, hostUserId: row.hostUserId, accountId: account.id, calendarId: "primary", generation, providerEventId: generation.replaceAll("-", ""), desiredVersion: row.version } })
-    bindings.push(matching)
+    const created = await tx.bookingIntegrationBinding.create({ data: { organizationId: row.organizationId, bookingId: row.id, hostUserId: row.hostUserId, accountId: account.id, calendarId: "primary", generation,
+      // Google takes an event id chosen here, which makes its create
+      // idempotent on its own. Graph assigns the id itself, so the generation
+      // travels as the transaction identifier and a retry asks Microsoft
+      // whether that create already landed.
+      providerEventId: account.provider === "google" ? generation.replaceAll("-", "") : null, desiredVersion: row.version } })
+    bindings.push(created)
+    matching.add(created.id)
   }
   for (const binding of bindings) {
-    // Recording an outcome must retain historical events even after reconnecting Google.
-    const desiredState = outcome ? binding.desiredState : active && binding.id === matching?.id ? "present" : "absent"
+    // Recording an outcome must retain historical events even after reconnecting the calendar.
+    const desiredState = outcome ? binding.desiredState : active && matching.has(binding.id) ? "present" : "absent"
     await tx.bookingIntegrationBinding.update({ where: { id: binding.id }, data: { desiredState, desiredVersion: row.version, ...(binding.state !== "reconciliation_required" ? { state: "pending" } : {}) } })
     await enqueueEffect(tx, { ...common, effectType: "booking.calendar", effectKey: `${binding.id}:${row.version}`, destination: binding.id, payload: { ...payload, bindingId: binding.id } })
   }

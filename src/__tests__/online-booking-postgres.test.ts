@@ -49,7 +49,14 @@ const scratch = vi.hoisted(() => {
 
 const session = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const mail = vi.hoisted(() => ({ sent: [] as { to: string; subject: string }[] }))
-const calendar = vi.hoisted(() => ({ update: vi.fn(), insert: vi.fn(), remove: vi.fn() }))
+const calendar = vi.hoisted(() => ({ update: vi.fn(), insert: vi.fn(), remove: vi.fn(), list: vi.fn(async () => ({ data: { accessRole: "owner", items: [] } })) }))
+const outlook = vi.hoisted(() => ({
+  events: vi.fn(async () => [] as { id: string; start: Date; end: Date; subject: string | null }[]),
+  create: vi.fn(async () => "graph-event-1"),
+  update: vi.fn(async () => ({ missing: false })),
+  remove: vi.fn(async () => {}),
+  byTransaction: vi.fn(async () => null as string | null),
+}))
 const whatsapp = vi.hoisted(() => ({
   buttons: [] as { body: string; footer?: string | null; buttons: { id: string; title: string }[]; conversationId?: string | null }[],
   texts: [] as { message: string; conversationId?: string | null }[],
@@ -60,8 +67,20 @@ vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
 })
+vi.mock("@/lib/calendar/microsoft", () => ({
+  microsoftAccessToken: vi.fn(async () => "synthetic-outlook-token"),
+  microsoftEvents: outlook.events,
+  createMicrosoftEvent: outlook.create,
+  updateMicrosoftEvent: outlook.update,
+  deleteMicrosoftEvent: outlook.remove,
+  microsoftEventByTransaction: outlook.byTransaction,
+  microsoftCalendarConfigured: vi.fn(() => true),
+  microsoftAuthorizeUrl: vi.fn(() => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"),
+  exchangeMicrosoftCode: vi.fn(),
+  microsoftIdentity: vi.fn(async () => "salon@contoso.test"),
+}))
 vi.mock("@/lib/google-calendar", () => ({
-  getGoogleCalendarClient: vi.fn(async () => ({ events: { update: calendar.update, insert: calendar.insert, delete: calendar.remove } })),
+  getGoogleCalendarClient: vi.fn(async () => ({ events: { update: calendar.update, insert: calendar.insert, delete: calendar.remove, list: calendar.list } })),
   listBusyIntervals: vi.fn(async () => null),
   createCalendarEvent: vi.fn(async () => { throw new Error("Google Calendar not connected") }),
   deleteCalendarEvent: vi.fn(async () => {}),
@@ -392,6 +411,89 @@ pgDescribe("online booking on a real Postgres", () => {
     } finally {
       vi.mocked(google.listBusyIntervals).mockResolvedValue(null)
       await bypass(() => prisma.account.deleteMany({ where: { id: { in: [previous.id, ...(currentId ? [currentId] : [])] } } }))
+    }
+  })
+
+  it("an hour taken in Outlook leaves the page, and the meeting lands on every calendar the host connected", async () => {
+    const outlookAccount = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "microsoft-calendar", providerAccountId: randomUUID(), access_token: "synthetic-outlook", refresh_token: "synthetic-outlook-refresh" } }))
+    const googleAccount = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "google-calendar", providerAccountId: randomUUID(), access_token: "synthetic-google" } }))
+    try {
+      const slug = await newPage()
+      const taken = await someSlot(slug, 32)
+      outlook.events.mockResolvedValue([{ id: "outlook-busy", start: new Date(taken), end: new Date(Date.parse(taken) + 30 * 60_000), subject: "Planerka" }])
+      const after = await view(slug)
+      expect(after.body.data.days.flatMap((day: { slots: { startsAt: string }[] }) => day.slots.map((slot) => slot.startsAt))).not.toContain(taken)
+
+      outlook.events.mockResolvedValue([])
+      outlook.create.mockClear(); outlook.update.mockClear(); calendar.update.mockClear()
+      const response = await book(slug, await someSlot(slug, 33))
+      expect(response.status, await response.clone().text()).toBe(201)
+      const id = (await response.json()).data.id
+      const bindings = await bypass(() => prisma.bookingIntegrationBinding.findMany({ where: { bookingId: id } }))
+      expect(bindings).toHaveLength(2)
+      const toOutlook = bindings.find((binding) => binding.accountId === outlookAccount.id)!
+      const toGoogle = bindings.find((binding) => binding.accountId === googleAccount.id)!
+      // Graph hands out the id, so the binding learns it only after the write.
+      expect(outlook.create.mock.calls[0][2]).toBe(toOutlook.generation)
+      expect(toOutlook).toMatchObject({ providerEventId: "graph-event-1", state: "synced" })
+      expect(toGoogle).toMatchObject({ state: "synced" })
+      expect(calendar.update).toHaveBeenCalled()
+      // The legacy column stays what it says it is: the Google event.
+      expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))).googleEventId).toBe(toGoogle.providerEventId)
+    } finally {
+      outlook.events.mockResolvedValue([])
+      await bypass(() => prisma.account.deleteMany({ where: { id: { in: [outlookAccount.id, googleAccount.id] } } }))
+    }
+  })
+
+  it("a create whose answer was lost does not put the same visit in Outlook twice", async () => {
+    const account = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "microsoft-calendar", providerAccountId: randomUUID(), access_token: "synthetic-outlook" } }))
+    try {
+      outlook.create.mockClear(); outlook.update.mockClear()
+      // Microsoft already has the event from the attempt whose answer never
+      // arrived, and says so when asked by the transaction identifier.
+      outlook.byTransaction.mockResolvedValue("graph-event-from-lost-answer")
+      const slug = await newPage()
+      const response = await book(slug, await someSlot(slug, 34))
+      expect(response.status, await response.clone().text()).toBe(201)
+      const id = (await response.json()).data.id
+      expect(outlook.create).not.toHaveBeenCalled()
+      expect(outlook.update.mock.calls[0][1]).toBe("graph-event-from-lost-answer")
+      expect(await bypass(() => prisma.bookingIntegrationBinding.findFirstOrThrow({ where: { bookingId: id } }))).toMatchObject({ providerEventId: "graph-event-from-lost-answer", state: "synced" })
+    } finally {
+      outlook.byTransaction.mockResolvedValue(null)
+      await bypass(() => prisma.account.deleteMany({ where: { id: account.id } }))
+    }
+  })
+
+  it("what an hour is taken by goes only to the person whose calendar it is", async () => {
+    const account = await bypass(() => prisma.account.create({ data: { userId: HOST_A, type: "oauth", provider: "microsoft-calendar", providerAccountId: randomUUID(), access_token: "synthetic-outlook" } }))
+    try {
+      const externalGet = (await import("@/app/api/v1/bookings/external-events/route")).GET
+      const start = new Date(Date.now() + 36 * 3600_000)
+      const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Baku", year: "numeric", month: "2-digit", day: "2-digit" }).format(start)
+      outlook.events.mockResolvedValue([{ id: "outlook-busy", start, end: new Date(start.getTime() + 3600_000), subject: "Dişçi" }])
+      const ask = () => externalGet(json("GET", `/api/v1/bookings/external-events?hostId=${HOST_A}&day=${day}`))
+
+      session.current = { user: { id: HOST_A, organizationId: ORG, role: "manager", email: "a@example.test", name: "Leyla" } }
+      const own = await ask()
+      expect(own.status, await own.clone().text()).toBe(200)
+      expect((await own.json()).data.events).toEqual([{ start: start.toISOString(), end: new Date(start.getTime() + 3600_000).toISOString(), provider: "microsoft", title: "Dişçi" }])
+
+      // An administrator may see that the hour is gone — the free slots say
+      // as much already — but a private calendar's subject is not theirs.
+      signIn("admin")
+      const foreign = await ask()
+      expect(foreign.status).toBe(200)
+      expect((await foreign.json()).data.events).toEqual([{ start: start.toISOString(), end: new Date(start.getTime() + 3600_000).toISOString(), provider: "microsoft", title: null }])
+
+      // A colleague with no claim on this host's day is refused outright.
+      session.current = { user: { id: HOST_B, organizationId: ORG, role: "manager", email: "b@example.test", name: "Aysel" } }
+      expect((await ask()).status).toBe(403)
+    } finally {
+      outlook.events.mockResolvedValue([])
+      signIn("admin")
+      await bypass(() => prisma.account.deleteMany({ where: { id: account.id } }))
     }
   })
 

@@ -1,4 +1,3 @@
-import { calendarAccounts } from "@/lib/google-calendar-account"
 /**
  * Online booking on the server: the public page's data, a booking, a
  * cancellation.
@@ -17,7 +16,9 @@ import { hasModule, moduleRecordFromOrgFields } from "@/lib/modules"
 import { bookingDb as prisma } from "./db"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { organizationTimezone } from "@/lib/ticketing/customer-locale"
-import { listBusyIntervals } from "@/lib/google-calendar"
+import { connectedCalendars } from "@/lib/calendar/accounts"
+import { calendarBusy } from "@/lib/calendar/events"
+import { connectedCalendarKey } from "@/lib/calendar/providers"
 import { BookingCommandError } from "./command-error"
 import { bookingHostWhere } from "./access"
 import { isValidTimezone } from "@/lib/timezone"
@@ -127,10 +128,12 @@ export interface BusyOptions {
   holds?: { exceptConversationId?: string | null }
 }
 
-export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date, timezone: string, options: BusyOptions = {}): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarAccountIds: Map<string, string | null> }> {
-  const accounts = await calendarAccounts(prisma, hostIds)
-  const calendarAccountIds = new Map(hostIds.map((id) => [id, accounts.get(id)?.id ?? null]))
-  const busy = Object.assign(new Map<string, BusyInterval[]>(hostIds.map((id) => [id, []])), { unavailableHostIds: new Set<string>(), calendarAccountIds })
+export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date, timezone: string, options: BusyOptions = {}): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarKeys: Map<string, string> }> {
+  const accounts = await connectedCalendars(prisma, hostIds)
+  // Which calendars each host had connected when this was read; the write
+  // refuses if that set changed meanwhile (see connectedCalendarKey).
+  const calendarKeys = new Map(hostIds.map((id) => [id, connectedCalendarKey(accounts.get(id) ?? [])]))
+  const busy = Object.assign(new Map<string, BusyInterval[]>(hostIds.map((id) => [id, []])), { unavailableHostIds: new Set<string>(), calendarKeys })
   const bookings = await prisma.booking.findMany({
     where: { organizationId: orgId, hostUserId: { in: hostIds }, status: "confirmed", endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) } },
     select: { hostUserId: true, startsAt: true, endsAt: true, bufferBefore: true, bufferAfter: true },
@@ -153,11 +156,17 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
     })
     for (const hold of holds) busy.get(hold.hostUserId)?.push({ start: hold.startsAt, end: hold.endsAt, bufferBeforeMinutes: hold.bufferMinutes, bufferAfterMinutes: hold.bufferMinutes })
   }
+  // Every calendar the host connected blocks the same chair: a master with
+  // their own Google account and the company's Outlook is busy in both.
   await Promise.all(hostIds.map(async (hostId) => {
+    const connected = accounts.get(hostId) ?? []
     try {
-      const calendar = await listBusyIntervals(hostId, new Date(from.getTime() - 240 * 60_000).toISOString(), new Date(to.getTime() + 240 * 60_000).toISOString(), calendarAccountIds.get(hostId) ?? null)
-      if (calendar) busy.get(hostId)?.push(...calendar)
+      for (const account of connected) {
+        busy.get(hostId)?.push(...await calendarBusy(account, new Date(from.getTime() - 240 * 60_000), new Date(to.getTime() + 240 * 60_000)))
+      }
     } catch {
+      // One unreadable calendar takes the host out of the day entirely: a
+      // calendar nobody could read must not be offered as free time.
       busy.unavailableHostIds.add(hostId)
       busy.get(hostId)?.push({ start: from, end: to })
     }

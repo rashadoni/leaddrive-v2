@@ -56,7 +56,17 @@ export interface TimelineWindow extends TimelineSpan {
  * grey, the way a calendar shows a block it cannot open — without it the hour
  * looks free on screen while the booking form keeps refusing it.
  */
-export type TimelineBusy = TimelineSpan
+export interface TimelineBusy extends TimelineSpan {
+  /**
+   * What this hour is taken by, when the reader is entitled to know: the
+   * event's own title from the calendar it was arranged in. Without it the
+   * block says only «busy» — which is all another person's private calendar
+   * may say.
+   */
+  label?: string
+  /** Which connected calendar it came from, named on the block. */
+  source?: "google" | "microsoft"
+}
 
 /** White text sits on each of these at 4.5:1 or better. */
 const AVATAR_TONES = ["bg-violet-600", "bg-sky-700", "bg-emerald-700", "bg-rose-600", "bg-indigo-600", "bg-teal-700"]
@@ -354,8 +364,13 @@ export function BookingDayTimeline({ meetings, windows, busy, nowMinutes, select
           style={{ top: offsetStyle(span.start, rail.from), height, minHeight: height }}
         >
           <span className="flex w-full min-w-0 items-center justify-between gap-x-3">
-            <span className="truncate text-sm font-semibold text-muted-foreground">{t("busyBlock")}</span>
-            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{time(span.start)}–{time(span.end)}</span>
+            <span className="min-w-0 truncate text-sm font-semibold text-muted-foreground">{span.label || t("busyBlock")}</span>
+            <span className="flex shrink-0 items-center gap-2">
+              {span.source ? <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+                {t(span.source === "microsoft" ? "calendarOutlook" : "calendarGoogle")}
+              </span> : null}
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{time(span.start)}–{time(span.end)}</span>
+            </span>
           </span>
         </div>
       })}
@@ -445,9 +460,11 @@ export function BookingDayLegend({ statuses, statusLabel }: { statuses: string[]
   </ul>
 }
 
-export function BookingDaySummary({ meetings, windows, busyHint, windowsHint, duration }: {
+export function BookingDaySummary({ meetings, windows, external = [], busyHint, windowsHint, duration }: {
   meetings: TimelineMeeting[]
   windows: TimelineWindow[]
+  /** Blocks that came from a connected calendar, not from this section. */
+  external?: TimelineBusy[]
   busyHint: string
   windowsHint: string
   duration: (minutes: number) => string
@@ -465,5 +482,6 @@ export function BookingDaySummary({ meetings, windows, busyHint, windowsHint, du
     {busy ? <>·<HintValue text={busyHint}>{t("dayBusy", { value: duration(busy) })}</HintValue></> : null}
     {windows.length ? <>·<HintValue text={windowsHint}>{t("windowCount", { count: windows.length })}</HintValue></> : null}
     {reminded.length ? <>·<HintValue text={t("dayConfirmedHint")}>{t("dayConfirmed", { confirmed: confirmed.length, reminded: reminded.length })}</HintValue></> : null}
+    {external.length ? <>·<HintValue text={t("dayExternalHint")}>{t("dayExternal", { count: external.length })}</HintValue></> : null}
   </p>
 }

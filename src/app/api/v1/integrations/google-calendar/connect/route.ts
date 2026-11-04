@@ -4,18 +4,8 @@ import { NextResponse } from "next/server"
 // memory, and 2.4 s of module loading against 0.3 s. The calendar module exports
 // the same `auth` and `calendar`, so the calls below are unchanged.
 import * as google from "googleapis/build/src/apis/calendar"
-import crypto from "node:crypto"
 import { withRlsSessionAuth } from "@/lib/with-rls"
-
-const STATE_TTL_MS = 10 * 60_000
-function oauthStateSecret(): string {
-  return process.env.NEXTAUTH_SECRET || process.env.GOOGLE_CLIENT_SECRET || ""
-}
-function signState(userId: string, orgId: string): string {
-  const payload = Buffer.from(JSON.stringify({ userId, orgId, exp: Date.now() + STATE_TTL_MS, nonce: crypto.randomBytes(16).toString("hex") })).toString("base64url")
-  const sig = crypto.createHmac("sha256", oauthStateSecret()).update(payload).digest("base64url")
-  return `${payload}.${sig}`
-}
+import { signCalendarState } from "@/lib/calendar/oauth-state"
 
 export const GET = withRlsSessionAuth(async (_req, session) => {
 
@@ -36,7 +26,7 @@ export const GET = withRlsSessionAuth(async (_req, session) => {
       "https://www.googleapis.com/auth/calendar.events",
       "https://www.googleapis.com/auth/calendar.readonly",
     ],
-    state: signState(session.userId, session.orgId),
+    state: signCalendarState(session.userId, session.orgId),
   })
 
   return NextResponse.json({ success: true, url: authUrl })

@@ -6,6 +6,8 @@ import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { withJobLease } from "@/lib/cron/job-lease"
 import { createNotification, deliverNotificationPush } from "@/lib/notifications"
 import { getGoogleCalendarClient } from "@/lib/google-calendar"
+import { CALENDAR_ACCOUNT_PROVIDERS, calendarProviderOf } from "@/lib/calendar/providers"
+import { createMicrosoftEvent, deleteMicrosoftEvent, microsoftAccessToken, microsoftEventByTransaction, updateMicrosoftEvent } from "@/lib/calendar/microsoft"
 import { sendEmail } from "@/lib/email"
 import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
 import { bookingHostWhere } from "./access"
@@ -108,7 +110,7 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
         // Provider-result uncertainty is released by the existing reviewed
         // outbox protocol above. A missing credential identity is a separate
         // blocker and must never be silently rebound to a current account.
-        const credential = binding && binding.accountId !== "unavailable" ? await tx.account.findFirst({ where: { id: binding.accountId, userId: binding.hostUserId, provider: { in: ["google-calendar", "google"] } }, select: { id: true } }) : null
+        const credential = binding && binding.accountId !== "unavailable" ? await tx.account.findFirst({ where: { id: binding.accountId, userId: binding.hostUserId, provider: { in: CALENDAR_ACCOUNT_PROVIDERS } }, select: { id: true } }) : null
         if (binding && !credential) {
           if (await finish(tx, claimed, "reconciliation_required", { reason: "calendar_identity_unverified" })) {
             await tx.bookingIntegrationBinding.update({ where: { id: binding.id }, data: { state: "reconciliation_required" } })
@@ -144,28 +146,55 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
       if (effect.effectType === "booking.calendar" && payload.bindingId) {
         const binding = await prisma.bookingIntegrationBinding.findFirst({ where: { id: payload.bindingId, organizationId: orgId, bookingId: row.id } })
         if (!binding) throw new Error("missing binding")
-        const calendar = await getGoogleCalendarClient(binding.hostUserId, binding.accountId)
+        const account = await prisma.account.findFirst({ where: { id: binding.accountId, userId: binding.hostUserId }, select: { provider: true } })
+        const provider = account ? calendarProviderOf(account.provider) : null
+        if (!provider) throw new Error("unknown calendar provider")
         const data = snapshot(row)
         let skippedCreate = false
-        if (binding.desiredState === "absent") {
-          if (binding.providerEventId) {
-            try { await calendar.events.delete({ calendarId: binding.calendarId, eventId: binding.providerEventId, sendUpdates: "none" }, { timeout: 8000 }) }
-            catch (error) { if ((error as { code?: number }).code !== 404 && (error as { code?: number }).code !== 410) throw error }
+        // Graph hands out the event id, so it may change here; Google's was
+        // chosen when the binding was made and stays as it is.
+        let providerEventId = binding.providerEventId
+        if (provider === "microsoft") {
+          const token = await microsoftAccessToken(binding.accountId, binding.hostUserId)
+          // A create whose answer was lost leaves an event this binding does
+          // not know the id of. Microsoft remembers the transaction, so ask
+          // before writing anything: otherwise the retry makes a second one.
+          if (!providerEventId) providerEventId = await microsoftEventByTransaction(token, binding.generation)
+          if (binding.desiredState === "absent") {
+            if (providerEventId) await deleteMicrosoftEvent(token, providerEventId)
+          } else {
+            const body = { subject: `${data.title} — ${row.name}`, description: row.note || null, location: data.location || null, start: row.startsAt, end: row.endsAt }
+            const gone = providerEventId ? (await updateMicrosoftEvent(token, providerEventId, body)).missing : true
+            if (gone) {
+              if (row.endsAt <= new Date()) skippedCreate = true
+              else providerEventId = await createMicrosoftEvent(token, body, binding.generation)
+            }
           }
         } else {
-          const body = { summary: `${data.title} — ${row.name}`, description: row.note || undefined, location: data.location, start: { dateTime: row.startsAt.toISOString() }, end: { dateTime: row.endsAt.toISOString() }, extendedProperties: { private: { leaddriveBooking: row.id } } }
-          try { await calendar.events.update({ calendarId: binding.calendarId, eventId: binding.providerEventId!, sendUpdates: "none", requestBody: body }, { timeout: 8000 }) }
-          catch (error) {
-            if ((error as { code?: number }).code !== 404) throw error
-            if (row.endsAt <= new Date()) skippedCreate = true
-            else await calendar.events.insert({ calendarId: binding.calendarId, sendUpdates: "none", requestBody: { ...body, id: binding.providerEventId! } }, { timeout: 8000 })
+          const calendar = await getGoogleCalendarClient(binding.hostUserId, binding.accountId)
+          if (binding.desiredState === "absent") {
+            if (binding.providerEventId) {
+              try { await calendar.events.delete({ calendarId: binding.calendarId, eventId: binding.providerEventId, sendUpdates: "none" }, { timeout: 8000 }) }
+              catch (error) { if ((error as { code?: number }).code !== 404 && (error as { code?: number }).code !== 410) throw error }
+            }
+          } else {
+            const body = { summary: `${data.title} — ${row.name}`, description: row.note || undefined, location: data.location, start: { dateTime: row.startsAt.toISOString() }, end: { dateTime: row.endsAt.toISOString() }, extendedProperties: { private: { leaddriveBooking: row.id } } }
+            try { await calendar.events.update({ calendarId: binding.calendarId, eventId: binding.providerEventId!, sendUpdates: "none", requestBody: body }, { timeout: 8000 }) }
+            catch (error) {
+              if ((error as { code?: number }).code !== 404) throw error
+              if (row.endsAt <= new Date()) skippedCreate = true
+              else await calendar.events.insert({ calendarId: binding.calendarId, sendUpdates: "none", requestBody: { ...body, id: binding.providerEventId! } }, { timeout: 8000 })
+            }
           }
         }
         await prisma.$transaction(async (tx) => {
           await tx.$queryRaw`SELECT id FROM bookings WHERE "organizationId" = ${orgId} AND id = ${row.id} FOR UPDATE`
           if (await finish(tx, effect, "succeeded", { bindingId: binding.id, noOp: skippedCreate })) {
-            await tx.bookingIntegrationBinding.update({ where: { id: binding.id }, data: { appliedVersion: payload.version, ...(binding.desiredVersion === payload.version ? { state: skippedCreate ? "unavailable" : "synced" } : {}) } })
-            if (binding.desiredState === "present" && !skippedCreate) await tx.booking.updateMany({ where: { id: row.id, organizationId: orgId, hostUserId: binding.hostUserId, version: payload.version }, data: { googleEventId: binding.providerEventId } })
+            await tx.bookingIntegrationBinding.update({ where: { id: binding.id }, data: { appliedVersion: payload.version, ...(providerEventId !== binding.providerEventId ? { providerEventId } : {}), ...(binding.desiredVersion === payload.version ? { state: skippedCreate ? "unavailable" : "synced" } : {}) } })
+            // googleEventId is the legacy single-calendar column and keeps
+            // meaning exactly what it says; an Outlook event lives in its
+            // binding alone.
+            if (provider === "google" && binding.desiredState === "present" && !skippedCreate) await tx.booking.updateMany({ where: { id: row.id, organizationId: orgId, hostUserId: binding.hostUserId, version: payload.version }, data: { googleEventId: binding.providerEventId } })
           }
         })
       } else if (effect.effectType === "booking.push") {
