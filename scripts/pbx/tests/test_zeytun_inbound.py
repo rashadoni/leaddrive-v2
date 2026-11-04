@@ -1508,6 +1508,131 @@ class CallTranscriptTests(unittest.TestCase):
         ])
 
 
+class GoAwayTests(unittest.TestCase):
+    def test_a_warned_pharmacy_call_keeps_talking_until_just_before_time_left(self):
+        wait = bridge_module.zeytun_goaway_wait
+        self.assertEqual(wait(60.0, 1.5), 55.0)
+        self.assertEqual(wait(600.0, 1.5), 595.0)
+        # Never shorter than the core's own bound, and no warning time: the core's.
+        self.assertEqual(wait(5.5, 1.5), 1.5)
+        self.assertEqual(wait(0.3, 0.1), 0.1)
+        self.assertEqual(wait(None, 1.0), 1.0)
+
+    @unittest.skipUnless(os.environ.get("ZEYTUN_INSPECTED_CORE"), "private inspected core is not available in CI")
+    def test_the_patched_core_waits_for_a_checkpoint_and_reopens_instead_of_hanging_up(self):
+        source = Path(os.environ["ZEYTUN_INSPECTED_CORE"]).read_bytes()
+        generated = builder.build(source, (ROOT / "fanum-zeytun-inbound.py").read_text())
+        session = next(node for node in ast.parse(generated).body
+                       if isinstance(node, ast.ClassDef) and node.name == "GeminiLiveSession")
+        methods = {node.name: node for node in session.body if isinstance(node, ast.FunctionDef)}
+        logged = []
+
+        class Timeout(Exception):
+            pass
+
+        class Closed(EOFError):
+            code, category = 1011, "provider"
+
+        scope = {"time": time, "re": __import__("re"), "socket": SimpleNamespace(timeout=Timeout),
+                 "latency": lambda event, call_id, **fields: logged.append((event, fields)),
+                 "GEMINI_LIVE_GOAWAY_WAIT_SECONDS": 1.5, "GEMINI_LIVE_GOAWAY_SAFETY_SECONDS": 0.5,
+                 "RealtimeWebSocketClosed": Closed,
+                 "zeytun_goaway_wait": bridge_module.zeytun_goaway_wait,
+                 "ZEYTUN_GOAWAY_POLL_SECONDS": bridge_module.ZEYTUN_GOAWAY_POLL_SECONDS}
+        names = ("_duration_seconds", "_register_goaway", "_goaway_recovery_decision", "_drive_goaway_recovery",
+                 "receive_loop", "_pharmacy_goaway_fresh")
+        module = ast.Module(body=[methods[name] for name in names], type_ignores=[])
+        exec(compile(module, "isolated-goaway-functions", "exec"), scope)
+
+        class Sock:
+            def __init__(self): self.timeouts = []
+            def settimeout(self, value): self.timeouts.append(value)
+
+        class Ws:
+            def __init__(self, events):
+                self.socket, self.events = Sock(), list(events)
+            def receive_message(self):
+                value = self.events.pop(0)
+                if callable(value) and not isinstance(value, type):
+                    value = value()
+                if value is Timeout:
+                    time.sleep(0.25)  # the poll the core asked for, shortened
+                if isinstance(value, type) and issubclass(value, BaseException):
+                    raise value()
+                return value
+
+        current = {}
+
+        def spent(error):
+            # timeLeft runs out with nothing arriving, then the poll or the close.
+            def run():
+                current["obj"].goaway_deadline = time.monotonic() - 0.01
+                return error
+            return run
+
+        def call(pharmacy, events):
+            obj = SimpleNamespace(
+                pharmacy_preview=pharmacy, call_id="c", closed=False, hangup_started=False,
+                state_lock=threading.Lock(), gemini_ws_epoch=1, goaway_ws=None, goaway_deadline=0.0,
+                goaway_handle_version=0, goaway_audible_output=False, resumption_handle="h0",
+                resumption_handle_version=3, resumption_currently_available=False,
+                customer_input_checkpoint_version=0, response_first_audio=True, played_audio_ms=10.0,
+                local_speech_active=False, response_active=True, agent_turn_complete=False,
+                gemini_generation_complete=False, actions=[])
+            obj.ws = Ws(events)
+            current["obj"] = obj
+            obj._duration_seconds = scope["_duration_seconds"]
+            for name in names[1:]:
+                setattr(obj, name, (lambda f: lambda *a, **k: f(obj, *a, **k))(scope[name]))
+
+            def handle(event, active_ws, expected_epoch=None):
+                if "goAway" in event:
+                    obj._register_goaway(event, active_ws)
+                if "spend" in event:
+                    obj.goaway_deadline = time.monotonic() - 0.01
+                if "settle" in event:  # the turn ends and the provider sends a newer handle
+                    obj.response_active = False
+                    obj.resumption_handle, obj.resumption_handle_version = "h1", 4
+                    obj.resumption_currently_available = True
+            obj._handle_gemini_event = handle
+
+            def recover(error_type, failed_ws, resume_handle=None):
+                obj.actions.append(("resume", resume_handle))
+                obj.closed = True
+                return True
+
+            def fresh(error_type, failed_ws):
+                obj.actions.append(("fresh", error_type))
+                obj.closed = True
+                return True
+            obj._recover_gemini, obj._fresh_recover_gemini = recover, fresh
+            obj.fail_closed = lambda: (obj.actions.append(("hangup",)), setattr(obj, "closed", True))
+            obj.receive_loop()
+            return obj
+
+        warning = {"goAway": {"timeLeft": "60s"}}
+        # Warned mid-answer (resumable=false); the turn settles 1.75 s later,
+        # after the core's 1.5 s. The core as it is hangs up there.
+        ordinary = call(False, [warning] + [Timeout] * 12)
+        self.assertEqual(ordinary.actions, [("hangup",)])
+        # A pharmacy call keeps talking on the warned socket and resumes at the
+        # settled checkpoint, with most of timeLeft still unspent.
+        pharmacy = call(True, [warning] + [Timeout] * 7 + [{"settle": True}])
+        self.assertEqual(pharmacy.actions, [("resume", "h1")])
+        self.assertEqual(pharmacy.ws.socket.timeouts, [1.0])
+        self.assertGreater(pharmacy.goaway_deadline, time.monotonic() + 50)
+        # timeLeft spent without a checkpoint, or the provider closed first:
+        # the session is reopened from the call's record, not hung up.
+        for events, name in (([spent(Timeout)], "CheckpointUnavailable"), ([spent(Closed)], "Closed"),
+                             ([{"spend": True}], "EOFError")):  # found right after an event
+            logged.clear()
+            reopened = call(True, [warning] + events)
+            self.assertEqual(reopened.actions, [("fresh", "GoAway")], name)
+            self.assertIn(("zeytun_goaway", {"status": "fresh_recovery", "error_type": name}), logged)
+        # Without a warning a close takes the core's own path: resume first.
+        self.assertEqual(call(True, [Closed]).actions, [("resume", None)])
+
+
 class ArtifactTests(unittest.TestCase):
     def test_unreviewed_source_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "unexpected_live_core_digest"):
@@ -1548,6 +1673,41 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("pharmacy_agent_heard_at", feed)
         self.assertEqual(ast.dump(ast.parse(feed).body[0]), ast.dump(new_methods["feed"]))
         differences.discard("feed")
+        # goAway (call ac5ccd37 follow-up): a pharmacy call waits until timeLeft
+        # instead of 1.5 s, polls once a second, and reopens the session from its
+        # record instead of hanging up. Nothing else in either method changes.
+        def segment(name):
+            return textwrap.dedent(ast.get_source_segment(text, old_methods[name], padded=True))
+        goaway = segment("_register_goaway").replace(
+            "    now = time.monotonic()\n    with self.state_lock:\n",
+            "    if self.pharmacy_preview:\n        wait_budget = zeytun_goaway_wait(time_left, wait_budget)\n"
+            "    now = time.monotonic()\n    with self.state_lock:\n", 1).replace(
+            "settimeout(min(0.25, wait_budget))",
+            "settimeout(min(ZEYTUN_GOAWAY_POLL_SECONDS if self.pharmacy_preview else 0.25, wait_budget))")
+        self.assertIn("zeytun_goaway_wait(time_left, wait_budget)", goaway)
+        self.assertIn("ZEYTUN_GOAWAY_POLL_SECONDS", goaway)
+        self.assertEqual(ast.dump(ast.parse(goaway).body[0]), ast.dump(new_methods["_register_goaway"]))
+        differences.discard("_register_goaway")
+        loop = segment("receive_loop").replace(
+            '''                )
+                self.fail_closed()
+                break
+''', '''                )
+                if self.pharmacy_preview and self._pharmacy_goaway_fresh(active_ws, "CheckpointUnavailable"):
+                    continue
+                self.fail_closed()
+                break
+''', 1).replace('''                    continue
+            self.fail_closed()
+            break''', '''                    continue
+            elif (goaway_result == "fail" and self.pharmacy_preview
+                    and self._pharmacy_goaway_fresh(active_ws, type(error).__name__)):
+                continue
+            self.fail_closed()
+            break''', 1)
+        self.assertEqual(loop.count("_pharmacy_goaway_fresh"), 2)
+        self.assertEqual(ast.dump(ast.parse(loop).body[0]), ast.dump(new_methods["receive_loop"]))
+        differences.discard("receive_loop")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
@@ -1555,7 +1715,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(set(new_methods) - set(old_methods), {
             "_send_pharmacy_result", "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
             "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay", "_pharmacy_tool_progress",
-            "_pharmacy_wait_filler"})
+            "_pharmacy_wait_filler", "_pharmacy_goaway_fresh"})
         # A lookup or save the model calls after an interruption is progress,
         # not a wedged session; a pharmacy call gets the core's 5 s ceiling.
         # A pharmacy call's CRM record keeps what the caller heard; any other
