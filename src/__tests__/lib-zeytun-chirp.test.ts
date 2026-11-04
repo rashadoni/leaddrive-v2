@@ -150,6 +150,9 @@ describe("a phrase split into its products", () => {
     expect(heardProducts("bəli")).toEqual([])
     expect(heardProducts("on qutu")).toEqual([])
     expect(heardProducts("Zəfər aptekindən zəng edirəm")).toEqual([])
+    // Chirp's "kutu" is the caller's "qutu" (voice stand 2026-11-04): a unit, never a product.
+    expect(heardProducts("5 kutu")).toEqual([])
+    expect(heardProducts("Adefo 3 kutu").map(product => [product.text, product.words])).toEqual([["Adefo 3 qutu", "Adefo"]])
   })
 
   it("pairs a lookup with the product that sounds like it; a single fresh product whatever the model heard", () => {
@@ -160,6 +163,9 @@ describe("a phrase split into its products", () => {
     expect(pairHeard("Deva", heardProducts("Adefa"), { fresh: true })?.words).toBe("Adefa")
     // An older phrase is used only for a product that sounds like it.
     expect(pairHeard("Parasetamol", heardProducts("Adefa"), { fresh: false })).toBeNull()
+    // The voice stand's step 8: the only phrase in memory was "5 kutu" (an answer with no lookup);
+    // as a product it was paired with "Floimitil 600" and searched as "5 kutu" — Koraksan, folic acid.
+    expect(pairHeard("Floimitil 600", heardProducts("5 kutu"), { fresh: true })).toBeNull()
   })
 })
 

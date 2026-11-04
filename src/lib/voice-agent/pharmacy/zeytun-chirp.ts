@@ -206,6 +206,13 @@ export function createChirpRecognizer(options: {
 /** Words that end one product of a phrase: "Adefa beş qutu, Ketonal on qutu". */
 const UNIT_WORDS = new Set(["qutu", "qutusu", "qutudan", "ədəd", "dənə", "paket", "ampula", "ampul", "flakon", "blister", "şpris",
   "tablet", "шт", "штук", "штуки", "упаковка", "упаковки", "упаковок", "коробка", "коробки", "коробок"])
+/**
+ * Chirp writes the caller's "qutu" as "kutu" (voice stand, 2026-11-04: "5 kutu",
+ * "Adefo 3 kutu"). Unknown, "kutu" was a product word: "5 kutu" became a product of
+ * its own, the next lookup took it as its second-ear pair, and its search (k and q
+ * sound alike) returned Koraksan and folic acid by the "/*qutu/*" in 1C's names.
+ */
+const CHIRP_SPELLING: Record<string, string> = { kutu: "qutu", kutusu: "qutusu", kutudan: "qutudan" }
 /** Words that join two products ("bir" is not one: it is "one box"). */
 const JOIN_WORDS = new Set(["və", "ve", "həm", "и", "and", "plus", "üstəgəl", "sonra"])
 /** Words that are an answer or the order's own talk, never a product's name. */
@@ -235,7 +242,8 @@ export function heardProducts(text: string): HeardProduct[] {
   for (const raw of text.split(/\s+/u)) {
     if (!raw) continue
     const ends = /[,.;!?]$/u.test(raw)
-    const word = raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+    const stripped = raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+    const word = CHIRP_SPELLING[stripped.toLowerCase()] ?? stripped
     const lower = word.toLowerCase()
     if (JOIN_WORDS.has(lower)) { close(); continue }
     if (word) current.push(word)
