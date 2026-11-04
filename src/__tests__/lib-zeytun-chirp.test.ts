@@ -1,5 +1,5 @@
 import { createVerify, generateKeyPairSync } from "node:crypto"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -214,6 +214,25 @@ const settle = async () => { for (let i = 0; i < 5; i++) await Promise.resolve()
 
 describe("the line takes the pharmacy's phrases and searches what Chirp heard", () => {
   afterEach(() => vi.restoreAllMocks())
+
+  it("tells the station to send phrases only when the key is in place, and says nothing otherwise", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined)
+    const session = { action: "session", callId }
+    const on = routeFixture()
+    const body = await (await on.send(session)).json()
+    expect(body).toMatchObject({ enabled: true, utterance: true })
+    const off = routeFixture()
+    off.dependencies.secondEar = { ...off.dependencies.secondEar!, enabled: async () => false }
+    expect(await (await off.send(session)).json()).not.toHaveProperty("utterance")
+    const none = routeFixture({ secondEar: false })
+    const without = await (await none.send(session)).json()
+    expect(without.enabled).toBe(true)
+    expect(without).not.toHaveProperty("utterance")
+    // The station's session reader takes known keys with .get: an extra one is not a refusal.
+    const bridge = readFileSync(join(process.cwd(), "scripts/pbx/fanum-zeytun-inbound.py"), "utf8")
+    const open = bridge.slice(bridge.indexOf("    def open(self):"), bridge.indexOf("    def tools(self):"))
+    expect(open).not.toMatch(/set\(value\)|value\.keys\(\)|len\(value\)/)
+  })
 
   it("answers 202 at once, before Chirp, with the order hints", async () => {
     const f = routeFixture({ recognize: () => new Promise(() => undefined) })

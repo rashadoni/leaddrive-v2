@@ -597,17 +597,19 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         if (seconds < 30) return denied()
         const line = isLineGrant(config)
         // A directory that cannot be read only costs the greeting its name.
-        const [candidates, speech] = await Promise.all([
+        const [candidates, speech, hearing] = await Promise.all([
           line && dependencies.findPharmacies
             ? dependencies.findPharmacies(config, internationalNumber(call.fromNumber) ?? "").catch(() => []) : [],
           line ? lineSpeechFor(config, dependencies.loadLineSpeech) : EMPTY_LINE_SPEECH,
+          // The station sends the pharmacy's phrases only when told so here: a key in place and readable.
+          line && dependencies.secondEar ? dependencies.secondEar.enabled().catch(() => false) : false,
         ])
         let prompt = line ? composeLinePrompt(speech) : ZEYTUN_INBOUND_PROMPT
         // Notes saved under a larger budget than today's rules leave: the call
         // goes on with the code's notes-free rules rather than being refused.
         if (prompt.length > LINE_PROMPT_MAX_CHARS) prompt = composeLinePrompt({ ...speech, manner: "", knowledge: "", rules: "" })
         // The second ear's token is fetched now, not on the pharmacy's first phrase.
-        if (line) dependencies.secondEar?.warm()
+        if (hearing) dependencies.secondEar?.warm()
         if (line) {
           console.log("[zeytun-line] speech", JSON.stringify({ own: (Object.keys(speech) as (keyof LineSpeech)[]).filter(key => speech[key]),
             notesKept: prompt.includes("<company_notes>") }))
@@ -618,6 +620,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           opening, closing: line && speech.closing ? speech.closing : ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
           ...(line && dependencies.requestTransfer ? { transfer: ZEYTUN_TRANSFER_PHRASE } : {}),
           ...(line && dependencies.cancelOrder && config.orderOrganizationId ? { cancel: ZEYTUN_CANCEL_PHRASE } : {}),
+          // Absent, not false, without the ear: a station on the previous core sees nothing new.
+          ...(hearing ? { utterance: true } : {}),
           maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: line ? hintNames(catalog, dependencies.learnedNames?.(config) ?? null) : [] })
       }
       if (input.action === "order") {
