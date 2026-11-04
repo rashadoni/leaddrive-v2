@@ -750,6 +750,37 @@ def zeytun_script(text):
     return "latin"
 
 
+# Measured 2026-11-04 from production (no calls): about 2 % of caller turns
+# end the Live session at once, with no close frame and no goAway, whatever
+# the station sends. gemini-3.8-live hands out one resumption handle, at
+# setup, and never refreshes it, so the core's resumable reconnect (which
+# wants a handle newer than the caller's turn) never runs after the first
+# turn and every drop became a fresh session: the "Bir saniyə" notice, the
+# model's own voice and a retold conversation. Resuming by that one handle
+# restores the session as it was, the caller's half-finished turn included:
+# the model recalled the earlier products and heard the turn whole when
+# only the rest of it was sent, and twice when it was sent again from the
+# start. After a drop forced from this side the provider refuses the first
+# attempt (close 1008) and takes the next one half a second later; after its
+# own drops it took the first attempt 3 times in 4, and once closed it
+# without a frame, which is retried alike.
+ZEYTUN_RESUME_RETRY_SECONDS = 0.5
+ZEYTUN_RESUME_WINDOW_SECONDS = 3.0
+ZEYTUN_RESUME_PER_MINUTE = 3
+ZEYTUN_RESUME_PER_CALL = 8
+
+
+def zeytun_resume_retry(code, started, now):
+    """Another attempt after a refused resume (1008, or closed with no frame), only within the window."""
+    return code in (1008, None) and now + ZEYTUN_RESUME_RETRY_SECONDS - started < ZEYTUN_RESUME_WINDOW_SECONDS
+
+
+def zeytun_resume_allowed(history, total, now):
+    """A resume budget, so a provider that drops every session cannot become a reconnect storm."""
+    recent = [stamp for stamp in history if now - stamp < 60.0]
+    return len(recent) < ZEYTUN_RESUME_PER_MINUTE and total < ZEYTUN_RESUME_PER_CALL, recent
+
+
 def zeytun_call_transcript(order, items, truncated, audible, non_business, keys):
     """The pharmacy call's CRM transcript: everything the caller heard.
 

@@ -1596,6 +1596,150 @@ class CallTranscriptTests(unittest.TestCase):
         ])
 
 
+class ResumeTests(unittest.TestCase):
+    def test_only_the_providers_refusal_is_retried_and_only_within_the_window(self):
+        retry = bridge_module.zeytun_resume_retry
+        self.assertTrue(retry(1008, 100.0, 100.1))
+        self.assertTrue(retry(1008, 100.0, 102.4))
+        self.assertFalse(retry(1008, 100.0, 102.6))  # the next attempt would start past 3 s
+        self.assertFalse(retry(1011, 100.0, 100.1))
+        self.assertTrue(retry(None, 100.0, 100.1))  # closed during setup with no frame
+        self.assertFalse(retry(None, 100.0, 102.6))
+
+    def test_resumes_are_budgeted_per_minute_and_per_call(self):
+        allowed = bridge_module.zeytun_resume_allowed
+        self.assertEqual(allowed([], 0, 100.0), (True, []))
+        self.assertEqual(allowed([50.0, 90.0, 95.0], 3, 100.0), (False, [50.0, 90.0, 95.0]))
+        self.assertEqual(allowed([30.0, 90.0, 95.0], 3, 100.0), (True, [90.0, 95.0]))
+        self.assertEqual(allowed([], 8, 100.0)[0], False)
+
+    @unittest.skipUnless(os.environ.get("ZEYTUN_INSPECTED_CORE"), "private inspected core is not available in CI")
+    def test_the_patched_core_resumes_the_dropped_session_and_continues_the_turn(self):
+        source = Path(os.environ["ZEYTUN_INSPECTED_CORE"]).read_bytes()
+        generated = builder.build(source, (ROOT / "fanum-zeytun-inbound.py").read_text())
+        session = next(node for node in ast.parse(generated).body
+                       if isinstance(node, ast.ClassDef) and node.name == "GeminiLiveSession")
+        method = next(node for node in session.body if isinstance(node, ast.FunctionDef) and node.name == "_pharmacy_resume")
+        logged = []
+
+        class Closed(EOFError):
+            def __init__(self, code):
+                super().__init__("closed")
+                self.code = code
+
+        scope = {"time": time, "base64": base64, "RealtimeWebSocketClosed": Closed, "GEMINI_LIVE_INPUT_RATE": 16000,
+                 "latency": lambda event, call_id, **fields: logged.append((event, fields))}
+        for name in ("zeytun_resume_allowed", "zeytun_resume_retry", "ZEYTUN_RESUME_RETRY_SECONDS",
+                     "ZEYTUN_RESUME_WINDOW_SECONDS"):
+            scope[name] = getattr(bridge_module, name)
+        scope["ZEYTUN_RESUME_RETRY_SECONDS"] = 0.01
+        exec(compile(ast.Module(body=[method], type_ignores=[]), "isolated-resume", "exec"), scope)
+
+        class Ws:
+            def __init__(self): self.closed = False
+            def close(self): self.closed = True
+
+        def session(handle="h-1", window_open=True, speaking=False, outcomes=("ok",)):
+            failed = Ws()
+            obj = SimpleNamespace(
+                closed=False, hangup_started=False, ws=failed, resumption_handle=handle, pharmacy_resumes=[],
+                pharmacy_resume_total=0, provider_activity_open=window_open, reconnecting=False, gemini_ws_epoch=4,
+                goaway_ws=None, goaway_deadline=0.0, pending_gemini_input=bytearray(b"\x01\x02" * 320),
+                local_speech_active=speaking, response_active=False, latest_customer_item_id="gemini-customer-3",
+                customer_turn_complete=False, gemini_playback_progress_version=7, gemini_audio_enqueue_seq=11,
+                resume_progress_pcm_floor=None, gemini_input_release_at=99.0, call_id="c", sent=[], opened=[],
+                watchdog=[])
+            for lock in ("reconnect_lock", "gemini_event_lock", "control_send_lock", "state_lock"):
+                setattr(obj, lock, threading.RLock())
+            plan = list(outcomes)
+
+            def open_ws(deadline=None):
+                ws = Ws(); obj.opened.append(ws); return ws
+
+            def await_setup(ws, resume_handle=None, deadline=None):
+                obj.setup_handle = resume_handle
+                outcome = plan.pop(0)
+                if outcome == "eof":
+                    raise EOFError("Gemini Live closed during setup")
+                if outcome == "rejected":
+                    raise RuntimeError("Gemini Live setup rejected")
+                if outcome != "ok":
+                    raise Closed(outcome)
+
+            obj._open_gemini_websocket = open_ws
+            obj._await_setup = await_setup
+            obj._send_gemini_event = lambda ws, event, require_current=True: obj.sent.append((ws, event)) or True
+            obj._retire_fresh_recovery_episode_locked = lambda: (None, None)
+            obj._cancel_timer = lambda timer: None
+            obj._start_resume_progress_watchdog = lambda ws, owed_response, expected_progress_version=None: obj.watchdog.append(
+                (ws, owed_response, expected_progress_version))
+            obj.resume = lambda: scope["_pharmacy_resume"](obj, "EOFError", failed)
+            return obj, failed
+
+        # The drop came inside the caller's turn: refused once (1008), then
+        # resumed by the session's handle; what the caller said meanwhile goes
+        # into the same turn, which closes since the caller has stopped.
+        logged.clear()
+        obj, failed = session(outcomes=(1008, "ok"))
+        self.assertTrue(obj.resume())
+        self.assertTrue(failed.closed)
+        self.assertEqual(obj.setup_handle, "h-1")
+        self.assertEqual(len(obj.opened), 2)
+        self.assertIs(obj.ws, obj.opened[1])
+        self.assertFalse(obj.reconnecting)
+        self.assertEqual(obj.gemini_input_release_at, 0.0)
+        kinds = [next(iter(event["realtimeInput"])) for ws, event in obj.sent]
+        self.assertEqual(kinds, ["audio", "activityEnd"])  # never a second activityStart
+        self.assertEqual(base64.b64decode(obj.sent[0][1]["realtimeInput"]["audio"]["data"]), b"\x01\x02" * 320)
+        self.assertFalse(obj.provider_activity_open)
+        self.assertEqual(obj.watchdog, [(obj.opened[1], True, 7)])
+        self.assertIn(("zeytun_resume", {"status": "ok", "attempts": 2, "ms": logged[-1][1]["ms"],
+                                         "discarded_bytes": 0, "end_turn": True}), logged)
+        # Still speaking: the turn stays open for the frames still coming.
+        obj, _ = session(speaking=True)
+        self.assertTrue(obj.resume())
+        self.assertEqual([next(iter(e["realtimeInput"])) for _, e in obj.sent], ["audio"])
+        self.assertTrue(obj.provider_activity_open)
+        # Outside a caller turn nothing buffered is sent.
+        logged.clear()
+        obj, _ = session(window_open=False)
+        self.assertTrue(obj.resume())
+        self.assertEqual(obj.sent, [])
+        self.assertEqual(logged[-1][1]["discarded_bytes"], 640)
+        # No handle, or refused past the window: the core's own recovery runs.
+        obj, failed = session(handle=None)
+        self.assertFalse(obj.resume())
+        self.assertIs(obj.ws, failed)
+        self.assertFalse(failed.closed)
+        logged.clear()
+        obj, _ = session(outcomes=(1008,) * 1000)
+        started = time.monotonic()
+        self.assertFalse(obj.resume())
+        self.assertLess(time.monotonic() - started, bridge_module.ZEYTUN_RESUME_WINDOW_SECONDS + 0.5)
+        self.assertIsNone(obj.ws)
+        self.assertFalse(obj.reconnecting)
+        self.assertEqual((logged[-1][1]["status"], logged[-1][1]["close_code"]), ("failed", 1008))
+        obj, _ = session(outcomes=(1011,))
+        self.assertFalse(obj.resume())
+        self.assertEqual(len(obj.opened), 1)  # another refusal is not retried
+        obj, _ = session(outcomes=("rejected",))
+        self.assertFalse(obj.resume())
+        self.assertEqual(len(obj.opened), 1)  # nor a setup the provider rejected
+        obj, _ = session(outcomes=("eof", "ok"))
+        self.assertTrue(obj.resume())  # a setup closed with no frame is tried again
+        self.assertEqual(len(obj.opened), 2)
+        # A storm is bounded: three resumes a minute.
+        obj, _ = session()
+        obj.pharmacy_resumes = [time.monotonic() - 1] * 3
+        obj.pharmacy_resume_total = 3
+        self.assertFalse(obj.resume())
+        # A concurrent owner already put a session up.
+        obj, failed = session()
+        obj.ws = Ws()
+        self.assertTrue(obj.resume())
+        self.assertFalse(failed.closed)
+
+
 class ArtifactTests(unittest.TestCase):
     def test_unreviewed_source_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "unexpected_live_core_digest"):
@@ -1632,8 +1776,13 @@ class ArtifactTests(unittest.TestCase):
             "        if self.pharmacy_preview and agent_speaking:\n"
             "            self.pharmacy_agent_heard_at = time.monotonic()\n"
             "        if loud and verdict is False and (not self.pharmacy_preview or agent_speaking\n"
-            "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.8):\n")
+            "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.8):\n").replace(
+            # A send that finds the session gone resumes it first (measured 2026-11-04).
+            "            if not self._recover_gemini(\n",
+            "            if not (self.pharmacy_preview\n"
+            "                    and self._pharmacy_resume(type(error).__name__, delivery_ws)) and not self._recover_gemini(\n", 1)
         self.assertIn("pharmacy_agent_heard_at", feed)
+        self.assertIn("self._pharmacy_resume(type(error).__name__, delivery_ws)", feed)
         self.assertEqual(ast.dump(ast.parse(feed).body[0]), ast.dump(new_methods["feed"]))
         differences.discard("feed")
         # Playback changes only how a pharmacy call goes to 8 kHz (owner, 2026-11-04: hoarse).
@@ -1649,6 +1798,19 @@ class ArtifactTests(unittest.TestCase):
         loop = "".join(lines)
         self.assertEqual(ast.dump(ast.parse(loop).body[0]), ast.dump(new_methods["playback_loop"]))
         differences.discard("playback_loop")
+        # A dropped session is resumed by its handle before the core's own
+        # recovery, on a transport error only; nothing else in the loop changes.
+        receive = textwrap.dedent(ast.get_source_segment(text, old_methods["receive_loop"], padded=True)).replace(
+            '            if goaway_result == "none":\n                if self._recover_gemini(\n',
+            '            if goaway_result == "none":\n'
+            '                if (self.pharmacy_preview\n'
+            '                        and (bare_receive_eof or isinstance(error, (RealtimeWebSocketClosed, OSError)))\n'
+            '                        and self._pharmacy_resume(type(error).__name__, active_ws)):\n'
+            '                    continue\n'
+            '                if self._recover_gemini(\n', 1)
+        self.assertIn("self._pharmacy_resume(type(error).__name__, active_ws)", receive)
+        self.assertEqual(ast.dump(ast.parse(receive).body[0]), ast.dump(new_methods["receive_loop"]))
+        differences.discard("receive_loop")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
@@ -1656,7 +1818,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(set(new_methods) - set(old_methods), {
             "_send_pharmacy_result", "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
             "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay", "_pharmacy_tool_progress",
-            "_pharmacy_wait_filler"})
+            "_pharmacy_wait_filler", "_pharmacy_resume"})
         # A lookup or save the model calls after an interruption is progress,
         # not a wedged session; a pharmacy call gets the core's 5 s ceiling.
         # A pharmacy call's CRM record keeps what the caller heard; any other

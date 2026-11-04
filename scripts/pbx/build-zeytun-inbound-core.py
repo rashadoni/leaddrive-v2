@@ -309,6 +309,150 @@ def build(source, bridge):
                                 self.output_resample_state,
                             )
 ''')
+    # Measured 2026-11-04 (see ZEYTUN_RESUME_* in the bridge): a dropped
+    # pharmacy session is resumed by its one handle, the caller's turn going
+    # on where it stopped, before the core's own recovery is tried. Same
+    # session, same voice, no notice; without a resume the core recovers as
+    # before.
+    replace("        self.pharmacy_bridge = None\n",
+            "        self.pharmacy_bridge = None\n        self.pharmacy_resumes = []\n        self.pharmacy_resume_total = 0\n")
+    replace('''                if goaway_result == "none":
+                    if self._recover_gemini(
+''', '''                if goaway_result == "none":
+                    if (self.pharmacy_preview
+                            and (bare_receive_eof or isinstance(error, (RealtimeWebSocketClosed, OSError)))
+                            and self._pharmacy_resume(type(error).__name__, active_ws)):
+                        continue
+                    if self._recover_gemini(
+''')
+    replace('''                if not self._recover_gemini(
+                    type(error).__name__, delivery_ws
+                ):
+                    self.fail_closed()
+''', '''                if not (self.pharmacy_preview
+                        and self._pharmacy_resume(type(error).__name__, delivery_ws)) and not self._recover_gemini(
+                    type(error).__name__, delivery_ws
+                ):
+                    self.fail_closed()
+''')
+    replace('    def _setup_event(self, resume_handle=None):\n', '''    def _pharmacy_resume(self, error_type, failed_ws):
+        """Resume a dropped pharmacy session by its handle; False leaves recovery to the core."""
+        with self.reconnect_lock:
+            with self.gemini_event_lock:
+                with self.control_send_lock:
+                    with self.state_lock:
+                        if self.closed or self.hangup_started:
+                            return False
+                        if self.ws is not None and self.ws is not failed_ws:
+                            return True
+                        handle = self.resumption_handle
+                        now = time.monotonic()
+                        allowed, recent = zeytun_resume_allowed(self.pharmacy_resumes, self.pharmacy_resume_total, now)
+                        if not handle or not allowed:
+                            return False
+                        self.pharmacy_resumes = recent + [now]
+                        self.pharmacy_resume_total += 1
+                        # The provider keeps the caller's open turn: only what
+                        # the caller says from now on is sent, into that turn.
+                        window_open = self.provider_activity_open
+                        self.reconnecting = True
+                        self.gemini_ws_epoch += 1
+                        self.ws = None
+                        if self.goaway_ws is failed_ws:
+                            self.goaway_ws = None
+                            self.goaway_deadline = 0.0
+            try:
+                failed_ws.close()
+            except Exception:
+                pass
+            latency("zeytun_resume", self.call_id, status="started", error_type=error_type, window_open=window_open)
+            started = time.monotonic()
+            attempts = 0
+            replacement = None
+            try:
+                while True:
+                    attempts += 1
+                    deadline = started + ZEYTUN_RESUME_WINDOW_SECONDS
+                    try:
+                        replacement = self._open_gemini_websocket(deadline=deadline)
+                        self._await_setup(replacement, resume_handle=handle, deadline=deadline)
+                        break
+                    except EOFError as error:  # RealtimeWebSocketClosed is one, with its code
+                        if replacement is not None:
+                            replacement.close()
+                            replacement = None
+                        if not zeytun_resume_retry(getattr(error, "code", None), started, time.monotonic()):
+                            raise
+                    time.sleep(ZEYTUN_RESUME_RETRY_SECONDS)
+                    with self.state_lock:
+                        if self.closed or self.hangup_started:
+                            raise EOFError("call ended during resume")
+                discarded = 0
+                while True:
+                    with self.state_lock:
+                        if self.closed or self.hangup_started:
+                            raise EOFError("call ended during resume")
+                        buffered = bytes(self.pending_gemini_input)
+                        self.pending_gemini_input.clear()
+                    if buffered and not window_open:
+                        # Outside a caller turn the provider takes no audio.
+                        discarded += len(buffered)
+                        buffered = b""
+                    if not buffered:
+                        with self.gemini_event_lock:
+                            with self.control_send_lock:
+                                with self.state_lock:
+                                    if self.closed or self.hangup_started:
+                                        raise EOFError("call ended during resume")
+                                    if self.pending_gemini_input:
+                                        continue
+                                    end_turn = bool(window_open and not self.local_speech_active)
+                                    owed_response = bool(
+                                        self.response_active
+                                        or (self.latest_customer_item_id is not None and not self.customer_turn_complete))
+                                    playback_progress_version = self.gemini_playback_progress_version
+                                    self.resume_progress_pcm_floor = self.gemini_audio_enqueue_seq
+                                    self.gemini_ws_epoch += 1
+                                    self.ws = replacement
+                                    self.gemini_input_release_at = 0.0
+                                    self.provider_activity_open = bool(window_open and not end_turn)
+                                    self.reconnecting = False
+                                    timers = self._retire_fresh_recovery_episode_locked()
+                        break
+                    event = {"realtimeInput": {"audio": {"data": base64.b64encode(buffered).decode("ascii"),
+                                                         "mimeType": "audio/pcm;rate=%d" % GEMINI_LIVE_INPUT_RATE}}}
+                    if not self._send_gemini_event(replacement, event, require_current=False):
+                        raise EOFError("Gemini buffered input cancelled")
+                for timer in timers:
+                    self._cancel_timer(timer)
+                if end_turn:
+                    # The caller finished speaking while the session was away.
+                    self._send_gemini_event(replacement, {"realtimeInput": {"activityEnd": {}}})
+                    latency("gemini_activity", self.call_id, status="end", engine="gemini_live")
+                self._start_resume_progress_watchdog(replacement, owed_response=owed_response,
+                                                     expected_progress_version=playback_progress_version)
+                latency("zeytun_resume", self.call_id, status="ok", attempts=attempts,
+                        ms=round((time.monotonic() - started) * 1000), discarded_bytes=discarded, end_turn=end_turn)
+                return True
+            except Exception as error:
+                if replacement is not None:
+                    try:
+                        replacement.close()
+                    except Exception:
+                        pass
+                with self.gemini_event_lock:
+                    with self.control_send_lock:
+                        with self.state_lock:
+                            if self.ws is replacement:
+                                self.ws = None
+                            self.reconnecting = False
+                latency("zeytun_resume", self.call_id, status="failed", attempts=attempts,
+                        error_type=type(error).__name__, close_code=getattr(error, "code", None),
+                        ms=round((time.monotonic() - started) * 1000))
+                return False
+
+    def _setup_event(self, resume_handle=None):
+''')
     # Owner, 2026-10-28: the station resends an order the CRM did not answer.
     # Started with the service, so what a previous run left is sent before
     # the first call after a restart.
