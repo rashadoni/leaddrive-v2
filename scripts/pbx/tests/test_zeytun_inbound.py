@@ -181,7 +181,12 @@ class TransportTests(unittest.TestCase):
             {"quantity": 10, "unit": "qutu", "spoken": "noşpa on qutu", "externalId": product},
             {"quantity": 3, "unit": "qutu", "spoken": "fluimusil üç qutu"}]})
         self.assertEqual(response["name"], "save_order_list")
-        self.assertEqual(response["response"], {"status": "saved", "orderNumber": "TS-1024", "total": "170.40",
+        # An ordinary save is "recorded" for the model: no number to announce, no reason to say goodbye
+        # (owner's call 2026-11-04, TS-1015: the first save's "saved" closed the call two products in).
+        self.assertEqual(response["response"], {"status": "recorded", "notFound": ["fluimusil üç qutu"], "unpriced": []})
+        final = self.save_args({"lines": [{"quantity": 3, "unit": "qutu", "spoken": "fluimusil üç qutu"}], "final": True}, key="save-final")
+        self.assertIs(self.requests[-1]["final"], True)
+        self.assertEqual(final["response"], {"status": "saved", "orderNumber": "TS-1024", "total": "170.40",
             "currency": "AZN", "notFound": ["fluimusil üç qutu"], "unpriced": []})
 
     def test_save_carries_the_pharmacy_the_caller_named(self):
@@ -318,12 +323,12 @@ class TransportTests(unittest.TestCase):
 
     def test_a_cancel_the_crm_took_stops_every_later_save_of_the_call(self):
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
-        self.assertEqual(bridge.save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
+        self.assertEqual(bridge._save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
         self.answer_cancel(bridge, "Bəli.")
         self.assertEqual(self.cancel(bridge, {}), {"status": "cancelled", "say": self.CANCEL_PHRASE})
         # Numbered after the saves: the CRM ignores any older save that arrives late.
         self.assertEqual(requests[-1], {"action": "cancel", "callId": CALL, "seq": 2})
-        self.assertEqual(bridge.save_order({"lines": [{"quantity": 2, "unit": "qutu", "spoken": "x"}]}), {"status": "cancelled"})
+        self.assertEqual(bridge._save_order({"lines": [{"quantity": 2, "unit": "qutu", "spoken": "x"}]}), {"status": "cancelled"})
         self.assertEqual([r["action"] for r in requests], ["session", "order", "cancel"])
 
     def test_any_other_cancel_answer_leaves_the_order_as_it_is(self):
@@ -334,7 +339,7 @@ class TransportTests(unittest.TestCase):
             bridge, requests = self.cancel_bridge(reply)
             self.answer_cancel(bridge, "Hə, ləğv edin.")
             self.assertEqual(self.cancel(bridge, key="c-%d" % len(self.sent)), {"status": "not_cancelled"})
-            self.assertEqual(bridge.save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
+            self.assertEqual(bridge._save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
         # Arguments the tool does not take never reach the CRM.
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
         self.assertEqual(self.cancel(bridge, {"reason": "x"}), {"status": "not_cancelled"})
@@ -716,7 +721,7 @@ class OrderSpoolTests(unittest.TestCase):
 
     def test_a_save_the_crm_did_not_answer_is_kept_and_delivered_later(self):
         self.crm = self.silent
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "queued"})
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE}), {"status": "queued"})
         self.assertEqual(self.kept(), [CALL + ".json"])
         self.assertEqual(os.stat(os.path.join(self.dir, CALL + ".json")).st_mode & 0o777, 0o600)
         # Not resent while its own request could still be on the way.
@@ -730,12 +735,12 @@ class OrderSpoolTests(unittest.TestCase):
         self.assertEqual(self.logs[-1][2]["orderNumber"], "TS-1031")
 
     def test_an_answered_save_leaves_nothing_behind(self):
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["status"], "saved")
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE})["status"], "saved")
         self.assertEqual(self.kept(), [])
 
     def test_after_the_first_save_a_kept_list_is_answered_without_waiting_for_the_crm(self):
         # Owner, 2026-10-30: «долго принимает заказ» — each line's save held the reply.
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["orderNumber"], "TS-1031")
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE})["orderNumber"], "TS-1031")
         gate, sent = threading.Event(), threading.Event()
         def slow(body):
             gate.wait(2)
@@ -744,7 +749,7 @@ class OrderSpoolTests(unittest.TestCase):
         self.crm = slow
         longer = self.LINE + [{"quantity": 1, "unit": "flakon", "spoken": "bir flakon"}]
         started = time.monotonic()
-        self.assertEqual(self.bridge.save_order({"lines": longer}), {"status": "saved", "orderNumber": "TS-1031"})
+        self.assertEqual(self.bridge._save_order({"lines": longer}), {"status": "saved", "orderNumber": "TS-1031"})
         self.assertLess(time.monotonic() - started, 0.5)
         # Kept until the CRM has it, then settled behind the reply.
         self.assertEqual(self.kept(), [CALL + ".json"])
@@ -756,13 +761,13 @@ class OrderSpoolTests(unittest.TestCase):
         self.assertEqual(self.kept(), [])
 
     def test_a_list_sent_behind_the_reply_that_the_crm_missed_is_left_for_the_spool(self):
-        self.bridge.save_order({"lines": self.LINE})
+        self.bridge._save_order({"lines": self.LINE})
         sent = threading.Event()
         def silent(body):
             sent.set()
             raise urllib.error.URLError("timed out")
         self.crm = silent
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["status"], "saved")
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE})["status"], "saved")
         self.assertTrue(sent.wait(2))
         time.sleep(0.05)
         self.assertEqual(self.kept(), [CALL + ".json"])
@@ -773,19 +778,19 @@ class OrderSpoolTests(unittest.TestCase):
 
     def test_the_first_save_and_a_save_without_a_disk_still_wait_for_the_crm(self):
         self.crm = self.silent
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "queued"})
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE}), {"status": "queued"})
         self.assertIsNone(self.bridge.order_number)
         self.crm = lambda body: self.SAVED
-        self.bridge.save_order({"lines": self.LINE})
+        self.bridge._save_order({"lines": self.LINE})
         self.bridge.spool = None
         self.crm = self.silent
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "not_saved"})
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE}), {"status": "not_saved"})
 
     def test_a_cancelled_call_leaves_no_list_to_resend(self):
         # Owner's call 2026-10-31: a cancelled order must not reach the manager later.
         self.bridge.cancel_phrase = "Sifarişiniz ləğv olundu."
         self.crm = self.silent
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "queued"})
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE}), {"status": "queued"})
         self.assertEqual(self.kept(), [CALL + ".json"])
         self.crm = lambda body: {"status": "cancelled", "say": "Sifarişiniz ləğv olundu."}
         TransportTests.answer_cancel(self.bridge, "Bəli")
@@ -798,7 +803,7 @@ class OrderSpoolTests(unittest.TestCase):
     def test_a_cancel_the_crm_did_not_answer_keeps_the_list_for_the_manager(self):
         self.bridge.cancel_phrase = "Sifarişiniz ləğv olundu."
         self.crm = self.silent
-        self.bridge.save_order({"lines": self.LINE})
+        self.bridge._save_order({"lines": self.LINE})
         TransportTests.answer_cancel(self.bridge, "Bəli")
         self.assertEqual(self.bridge.cancel_order(), {"status": "not_cancelled"})
         self.assertEqual(self.kept(), [CALL + ".json"])
@@ -807,19 +812,19 @@ class OrderSpoolTests(unittest.TestCase):
         def refused(body):
             raise urllib.error.HTTPError(URL, 403, "Forbidden", {}, None)
         self.crm = refused
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "not_saved"})
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE}), {"status": "not_saved"})
         self.assertEqual(self.kept(), [])
 
     def test_without_a_disk_the_model_is_never_told_queued(self):
         self.bridge.spool = None
         self.crm = self.silent
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "not_saved"})
+        self.assertEqual(self.bridge._save_order({"lines": self.LINE}), {"status": "not_saved"})
 
     def test_the_newest_list_is_kept_and_an_older_answer_does_not_drop_it(self):
         self.crm = self.silent
-        self.bridge.save_order({"lines": self.LINE})
+        self.bridge._save_order({"lines": self.LINE})
         longer = self.LINE + [{"quantity": 1, "unit": "flakon", "spoken": "bir flakon"}]
-        self.bridge.save_order({"lines": longer, "pharmacy": "Zəfər"})
+        self.bridge._save_order({"lines": longer, "pharmacy": "Zəfər"})
         self.spool.settle(CALL, 1)
         self.assertEqual(self.kept(), [CALL + ".json"])
         self.now += 11
@@ -829,7 +834,7 @@ class OrderSpoolTests(unittest.TestCase):
 
     def test_a_silent_crm_is_retried_with_growing_waits_and_a_refusal_is_set_aside(self):
         self.crm = self.silent
-        self.bridge.save_order({"lines": self.LINE})
+        self.bridge._save_order({"lines": self.LINE})
         self.answer = self.silent
         attempts = []
         for _ in range(40):
@@ -851,7 +856,7 @@ class OrderSpoolTests(unittest.TestCase):
 
     def test_a_list_older_than_a_day_is_set_aside_unsent(self):
         self.crm = self.silent
-        self.bridge.save_order({"lines": self.LINE})
+        self.bridge._save_order({"lines": self.LINE})
         self.now += 24 * 3600 + 1
         self.spool.drain_once()
         self.assertEqual(self.posts, [])
@@ -860,7 +865,7 @@ class OrderSpoolTests(unittest.TestCase):
 
     def test_a_reviewed_order_settles_the_kept_list(self):
         self.crm = self.silent
-        self.bridge.save_order({"lines": self.LINE})
+        self.bridge._save_order({"lines": self.LINE})
         self.answer = lambda body: {"status": "already_reviewed", "orderNumber": "TS-1031"}
         self.now += 11
         self.spool.drain_once()
@@ -888,10 +893,17 @@ class OrderSpoolTests(unittest.TestCase):
             sent.append(body)
             done.set()
             return True
+        # The final save the CRM did not answer: the model says the order is accepted, without a number.
         self.bridge.handle({"toolCall": {"functionCalls": [{"id": "s1", "name": "save_order_list",
-                            "args": {"lines": self.LINE}}]}}, send, lambda: True)
+                            "args": {"lines": self.LINE, "final": True}}]}}, send, lambda: True)
         self.assertTrue(done.wait(2))
         self.assertEqual(sent[0]["toolResponse"]["functionResponses"][0]["response"], {"status": "queued"})
+        # An ordinary save kept on the disk is just recorded: the spool delivers it, the call goes on.
+        done.clear()
+        self.bridge.handle({"toolCall": {"functionCalls": [{"id": "s2", "name": "save_order_list",
+                            "args": {"lines": self.LINE}}]}}, send, lambda: True)
+        self.assertTrue(done.wait(2))
+        self.assertEqual(sent[-1]["toolResponse"]["functionResponses"][0]["response"], {"status": "recorded"})
         save = next(tool for tool in self.bridge.tools()[0]["functionDeclarations"] if tool["name"] == "save_order_list")
         self.assertIn("queued", save["description"])
 

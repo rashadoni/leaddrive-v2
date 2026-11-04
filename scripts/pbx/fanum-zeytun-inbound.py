@@ -1160,7 +1160,7 @@ class ZeytunInboundBridge:
                                 "unit": {"type": "STRING", "description": "The unit of that quantity: qutu, ədəd, flakon, ..."}},
                  "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}},
             {"name": self.SAVE_NAME,
-             "description": "Record the caller's list for Zeytun's manager to check. Call it after every line that is settled, with the whole list so far, and once more when the caller has nothing to add. Include every line, resolved or not. Returns orderNumber when saved, or queued when the line keeps the list and delivers it to the manager itself.",
+             "description": "Record the caller's list for Zeytun's manager to check. Call it after every line that is settled, with the whole list so far, and once more, with final true, when the caller has nothing to add. Include every line, resolved or not. An ordinary save returns recorded: say nothing about it and go on. Only the final save returns saved with orderNumber, or queued when the line keeps the list and delivers it to the manager itself.",
              "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
                  "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup; omit when the product was not resolved."},
                                 "quantity": {"type": "INTEGER", "description": "Whole number, in the unit the caller said."},
@@ -1401,6 +1401,20 @@ class ZeytunInboundBridge:
         return {"status": "saved", "orderNumber": number, "total": total, "currency": "AZN", **notes}
 
     def save_order(self, args):
+        """One save, as the model hears it.
+
+        Owner's call 2026-11-04 (TS-1015): the first save after a line came
+        back "saved" with the order number, and the agent — told to announce
+        the number and say goodbye when a save returns saved — closed the call
+        two products in. Only the final save (after «təsdiq») is "saved" with
+        the number now; any other is "recorded", with what was not found.
+        """
+        result = self._save_order(args)
+        if args.get("final") is True or result.get("status") not in ("saved", "queued"):
+            return result
+        return {"status": "recorded", **{key: result[key] for key in ("notFound", "unpriced") if key in result}}
+
+    def _save_order(self, args):
         """One save: kept on the station's disk, then sent. A CRM that does not
         answer leaves it kept, and the model hears queued: the spool delivers
         it. A CRM that answers, yes or no, settles it.

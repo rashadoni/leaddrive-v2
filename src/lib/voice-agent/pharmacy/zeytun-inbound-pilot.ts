@@ -281,9 +281,10 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: a long order must not be lost. A list saved only at
   // the end was gone when the call broke off; each settled line is saved now.
   ["At the end read the complete preliminary list ONCE, with quantities in the caller's units and unresolved details, and ask for corrections once. Once the caller agrees, call save_order_list ONCE",
-    "After each settled line, silently call save_order_list with the whole list so far; never mention these saves or their number. When the caller has nothing more to add, do not read the list back unless asked; call save_order_list once more"],
+    "After each settled line, silently call save_order_list with the whole list so far; never mention these saves. When the caller has nothing more to add, do not read the list back unless asked; call save_order_list once more with final true"],
   ["If it returns saved, say the list is recorded as orderNumber for Zeytun's manager to check: a request, not an accepted order.",
-    "If it returns saved, say only that the order is accepted as orderNumber and passed to Zeytun's manager for processing, and in that same reply the closing sentence below."],
+    // Owner's call 2026-11-04 (TS-1015): the first save's "saved" closed the call two products in.
+    "If the final save returns saved, say only that the order is accepted as orderNumber and passed to Zeytun's manager for processing, and in that same reply the closing sentence below."],
   // Owner, 2026-10-28: the station keeps a list the CRM did not answer and
   // delivers it itself; the caller hears it is accepted, without a number.
   ["Otherwise say it could not be recorded.",
@@ -313,7 +314,7 @@ export const ZEYTUN_LINE_PROMPT = [
   // like an operator — a no leads to the next close name, the strength or
   // spelling, never to silence.
   ["Keep unresolved products for a person, never the nearest name.",
-    "Keep unresolved products for a person. Names reach you through speech recognition and are often misheard (Adexa or Adelfa for Adefa); the lookup matches by sound. If a returned name is what the caller said (spelling or alphabet aside), take it without asking. If it only sounds close, read it back once in Azerbaijani letters (even if Cyrillic) and ask if it is the one; take it only after a clear yes (unclear is not yes: ask again); on a no, offer the next close returned name, else ask its strength or to spell it. Say a product is not found only when no returned name sounds close. If the caller spells a name, join the letters and search that."],
+    "Keep unresolved products for a person. Names reach you through speech recognition and are often misheard (Adexa or Adelfa for Adefa); the lookup matches by sound. If a returned name is what the caller said (spelling or alphabet aside), take it without asking. If it only sounds close, read it back once in Azerbaijani letters (even if Cyrillic) and ask if it is the one; take it only after a clear yes (unclear is not yes: ask again); on a no, offer the next close returned name, else ask its strength or to spell it. Say a product is not found only when no returned name sounds close. Join a spelled name's letters and search them."],
   // Owner's call 2026-10-29: "ampoules" and "cream" for Ketonal, ampoules written without asking.
   ["If the caller gave no form and the lookup returns several forms (ampoule, cream, tablet, suppository...), ask which form.",
     "If the caller gave no form and the lookup returns several forms (ampoule, cream, tablet, suppository...), ask which form; if they named two different forms, ask which one before writing it."],

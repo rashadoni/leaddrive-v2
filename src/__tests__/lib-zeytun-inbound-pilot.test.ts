@@ -340,7 +340,10 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("passed to Zeytun's manager for processing")
     // Owner, 2026-10-27: a long order must not be lost — the list is saved after every line, silently.
     expect(ZEYTUN_LINE_PROMPT).toContain("After each settled line, silently call save_order_list with the whole list so far")
-    expect(ZEYTUN_LINE_PROMPT).toContain("call save_order_list once more")
+    expect(ZEYTUN_LINE_PROMPT).toContain("call save_order_list once more with final true")
+    // Owner's call 2026-11-04 (TS-1015): only the final save closes the order on the call.
+    expect(ZEYTUN_LINE_PROMPT).toContain("If the final save returns saved, say only that the order is accepted as orderNumber")
+    expect(ZEYTUN_LINE_PROMPT).not.toContain("If it returns saved")
     expect(ZEYTUN_LINE_PROMPT).not.toContain("save_order_list ONCE")
     // Owner's call 2026-10-29: a misheard name the lookup found is read back and asked, not called missing.
     expect(ZEYTUN_LINE_PROMPT).not.toContain("never the nearest name")
