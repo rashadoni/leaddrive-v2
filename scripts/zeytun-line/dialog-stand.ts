@@ -22,6 +22,7 @@
  *     [--scenarios scripts/zeytun-line/dialog-scenarios.json] [--only id,id] [--repeat N] [--out report.md]
  *     [--model gemini-3.8-flash] [--thinking low] [--max-requests 300]
  *     [--station <fanum-zeytun-inbound.py of a branch>]   (a station fix on its branch, before it is merged)
+ *     [--departed-from <older snapshot>]   (what sold out since it, as the catalog refresh records it)
  *   (npx tsx works the same where it is installed)
  *
  * The snapshot is the line's catalog file from prod
@@ -43,6 +44,7 @@ import { fileURLToPath } from "node:url"
 import { ZeytunAvailableBalances } from "../../src/lib/voice-agent/pharmacy/zeytun-available-balances"
 import { createInboundPilotHandler, type InboundPilotCatalog } from "../../src/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { resolvePhoneOrderLines, type PhoneOrderLineInput } from "../../src/lib/voice-agent/pharmacy/phone-orders"
+import { createDepartedSearch, nextDeparted } from "../../src/lib/voice-agent/pharmacy/zeytun-departed-items"
 import type { PharmacyHistory } from "../../src/lib/voice-agent/pharmacy/zeytun-pharmacy-history"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -132,16 +134,24 @@ type Event =
   | { kind: "tool"; name: string; args: Json; result: Json }
   | { kind: "note"; text: string }
 
-async function loadCatalog(path: string): Promise<{ catalog: InboundPilotCatalog; snapshotAt: string }> {
+async function loadFeed(path: string) {
   const raw = readFileSync(path), newline = raw.indexOf(10)
   const header = JSON.parse(raw.subarray(0, newline).toString()) as { organizationId: string; scopeKey: string; version: string; observedAt: string }
   // The handler serves a catalog at most a day old; the stand reads it as observed now.
   const observedAt = new Date().toISOString()
-  const feed = await ZeytunAvailableBalances.build(raw.subarray(newline + 1), { organizationId: header.organizationId, observedAt, source: "live" })
+  return { header, observedAt, feed: await ZeytunAvailableBalances.build(raw.subarray(newline + 1), { organizationId: header.organizationId, observedAt, source: "live" }) }
+}
+
+/** `departedFrom`: an older snapshot of the same scope; what it had and this one lacks is sold out, as the refresh records it. */
+async function loadCatalog(path: string, departedFrom?: string): Promise<{ catalog: InboundPilotCatalog; snapshotAt: string; soldOut: number }> {
+  const { header, observedAt, feed } = await loadFeed(path)
+  const before = departedFrom ? (await loadFeed(departedFrom)).feed : null
+  const departed = before ? nextDeparted({ previous: [], before: before.labels(header.organizationId), now: feed.labels(header.organizationId), at: Date.now() }) : []
   return {
-    snapshotAt: header.observedAt,
+    snapshotAt: header.observedAt, soldOut: departed.length,
     catalog: { organizationId: header.organizationId, scopeKey: header.scopeKey, version: header.version, observedAt, source: "live",
-      search: (query) => feed.search(header.organizationId, query) } as InboundPilotCatalog,
+      search: (query) => feed.search(header.organizationId, query),
+      ...(departed.length ? { departed: createDepartedSearch(departed) } : {}) } as InboundPilotCatalog,
   }
 }
 
@@ -384,7 +394,8 @@ async function main() {
     .filter((scenario) => !flags.only || flags.only.split(",").includes(scenario.id))
   const declarations = JSON.parse(readFileSync(join(HERE, "station-tool-declarations.json"), "utf8")) as Declarations
   const model = flags.model ?? "gemini-3.8-flash", thinking = flags.thinking ?? "low", repeat = Number(flags.repeat ?? 1), station = flags.station
-  const { catalog, snapshotAt } = await loadCatalog(snapshot)
+  const { catalog, snapshotAt, soldOut } = await loadCatalog(snapshot, flags["departed-from"])
+  if (flags["departed-from"]) process.stderr.write(`sold out since the older snapshot: ${soldOut}\n`)
   const maxRequests = Number(flags["max-requests"] ?? 300)
   const gemini = new RemoteGemini(maxRequests)
   const runs: Run[] = []

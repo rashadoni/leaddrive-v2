@@ -12,6 +12,7 @@ import { HISTORY_PREFIX, historyCandidates, type PharmacyHistory } from "./zeytu
 import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
 import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
+import type { DepartedSearch } from "./zeytun-departed-items"
 import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
 
 const id = z.string().trim().min(1).max(128)
@@ -85,6 +86,8 @@ export type InboundPilotCatalog = {
     candidates: Array<{ externalId: string; itemCode: string; name: string; nameAz: string | null
       priceAsReported?: unknown; baseUnitAsReported?: unknown; quantityAsReported?: unknown; promotionAsReported?: unknown }>
   }
+  /** Products sold out lately, by name (zeytun-departed-items.ts); the line only. */
+  departed?: Pick<DepartedSearch, "find">
 }
 // 1C base units as the caller would say them. A unit missing here (tube,
 // kilogram, ...) gets no spoken price rather than a guessed word for it.
@@ -149,6 +152,8 @@ function spokenUnit(item: { baseUnitAsReported?: unknown }): string | null {
   const unit = item.baseUnitAsReported
   return typeof unit === "string" ? SPOKEN_UNITS[unit.trim().toLowerCase()] ?? null : null
 }
+/** The station takes at most this many candidates a search (safe_result in fanum-zeytun-inbound.py). */
+const STATION_CANDIDATES_MAX = 7
 /** 1C shows at most this many: 100 in the feed means "100 or more" (2026-10-23 snapshot: 2 935 of 8 834 at exactly 100). */
 const STOCK_SHOWN_MAX = 100
 /**
@@ -288,7 +293,7 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
   // есть, и акции «купи/получи» из 1С».
   ["Stock, delivery, payment: say once that this test call cannot confirm them and continue.",
-    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply, in a few words (buy N, get M free, until the date), for each such product, also several at once; if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Never say how free goods are added or billed; if asked, the manager confirms it. Delivery, payment: say once that you cannot confirm them on this call and continue.\n" +
+    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Stock 0 is sold out now: say so (never \"not found\") and offer a substitute as below; write it only if the caller still wants it. Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply, in a few words (buy N, get M free, until the date), for each such product, also several at once; if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Never say how free goods are added or billed; if asked, the manager confirms it. Delivery, payment: say once that you cannot confirm them on this call and continue.\n" +
     // Owner, 2026-11-04: «он должен общаться как продавец… с одной стороны 1С,
     // с другой клиент». The stand (scripts/zeytun-line/dialog-stand.ts) checks
     // each of these before the line gets them.
@@ -733,11 +738,28 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           console.log("[zeytun-line] chirp", JSON.stringify({ call: input.callId, ms: heard.waitedMs, used: alsoHeard.length }))
         }
       }
-      // Nothing found by the model's words but something by Chirp's: there are candidates to offer.
-      const status = !shown.length && alsoHeard.length ? "candidates_only" : result.status
+      // A product sold out lately is still known by its name (zeytun-departed-items.ts). Live call
+      // cac2adb9, 2026-11-04: Adefa ran out by noon, the search heard only Ademta and Adenuric, and the
+      // agent said "not found". When the caller's word is its name and the five lack it, it comes after
+      // them with stock 0 and no price; the station takes seven candidates, so Chirp's make room.
+      const departed = isLineGrant(config) && catalog.departed && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text)
+        && !PROMOTIONS_PREFIX.test(input.query.text) ? catalog.departed.find(input.query.text) : []
+      // One the catalog has after all (a list newer than the snapshot it serves) is no sold-out product.
+      const soldOut = departed.filter(item => !shown.some(own => own.externalId === item.externalId)
+        && !catalog.search({ externalId: item.externalId }).candidates.length).flatMap(item => {
+        const stock = catalogStock({ quantityAsReported: "0", baseUnitAsReported: item.baseUnitAsReported, nameAz: item.nameAz })
+        // Without a unit to say, stock 0 would not reach the agent: then the item is not offered at all.
+        return stock ? [{ externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
+          identityVerified: false as const, stock }] : []
+      })
+      if (soldOut.length) console.log("[zeytun-line] sold out", JSON.stringify({ call: input.callId, found: soldOut.length }))
+      const heardShown = alsoHeard.slice(0, Math.max(0, STATION_CANDIDATES_MAX - shown.length - soldOut.length))
+      const extra = soldOut.length + heardShown.length
+      // Nothing found by the model's words but something sold out or by Chirp's: there are candidates to offer.
+      const status = !shown.length && extra ? "candidates_only" : result.status
       return searchResponse({ status, mode: "owner_inbound_preview", customerVerified: false,
-        candidateCount: result.candidateCount, needsNarrowing: result.candidateCount + alsoHeard.length > 1,
-        candidates: [...shown.map(candidate), ...alsoHeard],
+        candidateCount: result.candidateCount, needsNarrowing: result.candidateCount + extra > 1,
+        candidates: [...shown.map(candidate), ...soldOut, ...heardShown],
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
     } catch { return searchResponse({ enabled: false, error: "pilot_unavailable", candidates: [], ...searchRestrictions }, 503) }
