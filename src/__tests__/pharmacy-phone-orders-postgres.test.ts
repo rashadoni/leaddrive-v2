@@ -401,6 +401,68 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(21) } })).companyId).toBe(await companyId(GUID(3)))
   })
 
+  // Owner, 2026-11-04: «как обычно» — the line offers the pharmacy's last confirmed order again.
+  it("reads the last confirmed order of the call's own pharmacy only, by the day it was ordered", async () => {
+    const { lastPharmacyOrder, historyCandidates } = await import("@/lib/voice-agent/pharmacy/zeytun-pharmacy-history")
+    const [ZAFAR, NUR, NEW] = [GUID(71), GUID(72), GUID(73)]
+    await admin.company.createMany({ data: [
+      { organizationId: ZEYTUN, name: "Zəfər Aptek", externalSource: "zeytun_1c", externalId: ZAFAR },
+      { organizationId: ZEYTUN, name: "Nur Aptek", externalSource: "zeytun_1c", externalId: NUR },
+      { organizationId: ZEYTUN, name: "Yeni Aptek", externalSource: "zeytun_1c", externalId: NEW },
+      // The same 1C GUID in another organization is another company.
+      { organizationId: OTHER, name: "Zəfər Aptek", externalSource: "zeytun_1c", externalId: ZAFAR },
+    ] })
+    const order = async (n: number, at: string, pharmacyGuid: string | null, status: "confirmed" | "rejected" | "pending_review",
+      lines: Parameters<typeof save>[1]["lines"] = [LIST[0], LIST[1]], organizationId = ZEYTUN, confirmedAt = at) => {
+      await save(app as unknown as PrismaClient, { organizationId, providerCallId: callId(n), callStartedAt: at, callerPhoneE164: PHONE,
+        catalog: CATALOG, lines, ...(pharmacyGuid ? { identification: "phone_unique" as const, pharmacyName: "Aptek", pharmacyGuid }
+          : { identification: "named_on_call" as const, pharmacyName: "Başqa aptek" }) })
+      if (status !== "pending_review") {
+        await admin.pharmacyPhoneOrder.updateMany({ where: { organizationId, providerCallId: callId(n) },
+          data: status === "confirmed" ? { status, confirmedAt: new Date(confirmedAt) } : { status, rejectedAt: new Date(at) } })
+      }
+      return (await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { organizationId, providerCallId: callId(n) } })).number
+    }
+    // Ordered 20 October, confirmed only on 30 October: the 28 October order is still the later one.
+    await order(70, "2026-10-20T07:00:00.000Z", ZAFAR, "confirmed", [LIST[0]], ZEYTUN, "2026-10-30T09:00:00.000Z")
+    const last = await order(71, "2026-10-28T07:00:00.000Z", ZAFAR, "confirmed", [{ ...LIST[0], quantity: 15 }, LIST[1], LIST[2]])
+    // Newer, but nobody confirmed it — or a manager rejected it.
+    await order(72, "2026-11-01T07:00:00.000Z", ZAFAR, "pending_review")
+    await order(73, "2026-11-02T07:00:00.000Z", ZAFAR, "rejected")
+    // Another pharmacy of the same organization, and the same pharmacy's GUID in another organization, newest of all.
+    const nur = await order(74, "2026-11-03T07:00:00.000Z", NUR, "confirmed",
+      Array.from({ length: 12 }, (_, i) => ({ ...LIST[0], quantity: i + 1 })))
+    const other = await order(75, "2026-11-04T07:00:00.000Z", ZAFAR, "confirmed", [LIST[1]], OTHER)
+    const read = (providerCallId: string, numberPharmacyGuid: string | null, organizationId = ZEYTUN) =>
+      lastPharmacyOrder(app as unknown as PrismaClient, { organizationId, providerCallId, numberPharmacyGuid })
+
+    // Before the first save: the pharmacy the caller's number alone belongs to.
+    const zafar = await read(callId(79), ZAFAR)
+    expect(zafar).toEqual({ status: "found", number: last, orderedAt: "2026-10-28", lineCount: 3, lines: [
+      { externalId: NOSPA, name: "No-şpa 2ml 40 mq № 25", quantity: 15, unit: "qutu" },
+      { externalId: KETONAL, name: "Кетонал 2 мл № 10", quantity: 5, unit: "ədəd" },
+    ] })
+    // Once the call has an order, its pharmacy decides, not the number.
+    await order(76, "2026-11-04T08:00:00.000Z", NUR, "pending_review")
+    expect(await read(callId(76), ZAFAR)).toMatchObject({ status: "found", number: nur, lineCount: 12 })
+    expect(((await read(callId(76), ZAFAR)) as { lines: unknown[] }).lines).toHaveLength(10)
+    // The caller named another pharmacy than the number's: there is none to read.
+    await order(77, "2026-11-04T08:00:00.000Z", null, "pending_review")
+    expect(await read(callId(77), ZAFAR)).toEqual({ status: "pharmacy_unknown" })
+    expect(await read(callId(78), null)).toEqual({ status: "pharmacy_unknown" })
+    // A pharmacy without a confirmed order.
+    expect(await read(callId(78), NEW)).toEqual({ status: "none" })
+    // The other organization reads its own order of that GUID, never Zeytun's.
+    expect(await read(callId(79), ZAFAR, OTHER)).toMatchObject({ status: "found", number: other, lineCount: 1,
+      lines: [{ externalId: KETONAL, quantity: 5, unit: "ədəd" }] })
+    // Today's catalog no longer has Ketonal: offered as unavailable, so the agent proposes a substitute.
+    const today = (id: string) => id === NOSPA ? { externalId: NOSPA, name: "Но-шпа", listPrice: { amount: "13", per: "qutu" } } : null
+    expect(historyCandidates((zafar as { lines: Parameters<typeof historyCandidates>[0] }).lines, today)).toEqual([
+      { externalId: NOSPA, name: "Но-шпа", listPrice: { amount: "13", per: "qutu" }, ordered: { quantity: 15, unit: "qutu" } },
+      { externalId: KETONAL, name: "Кетонал 2 мл № 10", ordered: { quantity: 5, unit: "ədəd" }, unavailable: true },
+    ])
+  })
+
   it("lets a manager name the pharmacy of a shared number, and lists the pharmacies with their orders", async () => {
     await sync(pharmacyRows(30), T1)
     // The number has two pharmacies; the caller named one, the agent could not tell which.
