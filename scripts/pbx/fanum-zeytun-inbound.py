@@ -1418,6 +1418,40 @@ class ZeytunInboundBridge:
         # More than 1000 entries is rejected by the provider (2026-10-23).
         return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES), "customVocabulary": words[:1000]}
 
+    # Owner, 2026-11-04 («мне нужна оптимизация»): every model turn and tool
+    # round is billed for the whole context again — the voice stand's 2 min 48 s
+    # presentation call cost $0.63, 328k text and 107k audio tokens in, the
+    # context growing from ~5k to ~25k tokens a turn. Once it reaches
+    # CONTEXT_TRIGGER_TOKENS the provider drops the oldest turns down to
+    # CONTEXT_TARGET_TOKENS; the instructions and tools (~4.4k) always stay,
+    # the rest keeps the last two or three exchanges. The order itself is in
+    # the CRM after every save. ZEYTUN_CONTEXT_WINDOW in the station's
+    # environment: "off" keeps the provider's default window (the rollback),
+    # "trigger,target" other numbers.
+    CONTEXT_TRIGGER_TOKENS = 16000
+    CONTEXT_TARGET_TOKENS = 10000
+    CONTEXT_WINDOW_ENV = "ZEYTUN_CONTEXT_WINDOW"
+
+    def context_window(self, environ=None):
+        """(trigger, target) tokens of the line's sliding window, or None for the provider's default."""
+        environ = os.environ if environ is None else environ
+        value = (environ.get(self.CONTEXT_WINDOW_ENV) or "").strip().lower()
+        if value in ("off", "0"):
+            return None
+        if value:
+            match = re.fullmatch(r"(\d{4,6}),(\d{4,6})", value)
+            if match and 0 < int(match.group(2)) < int(match.group(1)):
+                return int(match.group(1)), int(match.group(2))
+            # A malformed value is the code's numbers, not an unbounded window.
+        return self.CONTEXT_TRIGGER_TOKENS, self.CONTEXT_TARGET_TOKENS
+
+    def adjust_setup(self, setup):
+        """The line's last word on the Live setup: its context window."""
+        window = self.context_window()
+        if window is not None:
+            setup["contextWindowCompression"] = {"triggerTokens": window[0], "slidingWindow": {"targetTokens": window[1]}}
+        return setup
+
     def speech_language(self):
         return self.SPEECH_LANGUAGE if self.pin_language else None
 

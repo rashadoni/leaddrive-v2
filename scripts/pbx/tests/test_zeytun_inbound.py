@@ -84,6 +84,22 @@ class TransportTests(unittest.TestCase):
     def handle(self, body):
         return self.bridge.handle(body, self.send, lambda: self.current)
 
+    def test_the_line_keeps_a_bounded_context_window_and_the_station_can_switch_it_off(self):
+        # Owner, 2026-11-04: each turn and tool round is billed for the whole context again.
+        setup = {"contextWindowCompression": {"slidingWindow": {}}, "tools": ["t"]}
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(self.bridge.adjust_setup(dict(setup))["contextWindowCompression"],
+                             {"triggerTokens": 16000, "slidingWindow": {"targetTokens": 10000}})
+        self.assertIsNone(self.bridge.context_window({"ZEYTUN_CONTEXT_WINDOW": "off"}))
+        with patch.dict(os.environ, {"ZEYTUN_CONTEXT_WINDOW": "off"}):
+            self.assertEqual(self.bridge.adjust_setup(dict(setup)), setup)  # the provider's default, as before
+        self.assertEqual(self.bridge.context_window({"ZEYTUN_CONTEXT_WINDOW": "24000,12000"}), (24000, 12000))
+        # Nonsense never means an unbounded or inverted window: the code's numbers.
+        for bad in ("12000,24000", "abc", "1,1", "24000"):
+            self.assertEqual(self.bridge.context_window({"ZEYTUN_CONTEXT_WINDOW": bad}), (16000, 10000), bad)
+        # Instructions and tools (~4.4k tokens) always fit under the target, with room for recent turns.
+        self.assertGreater(self.bridge.CONTEXT_TARGET_TOKENS, 8000)
+
     def test_tools_and_result_are_narrow_and_bounded(self):
         declaration = self.bridge.tools()[0]["functionDeclarations"][0]
         self.assertEqual(declaration["name"], "search_pharmacy_catalog")
@@ -2175,11 +2191,15 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(setup["setup"]["inputAudioTranscription"], {})
         obj.pharmacy_preview = True
         self.assertNotIn("languageCode", setup["setup"]["generationConfig"]["speechConfig"])
+        adjusted = []
         obj.pharmacy_bridge = SimpleNamespace(tools=lambda: ["synthetic-declaration"],
                                               transcription=lambda: {"languageCodes": ["az-AZ"]},
-                                              speech_language=lambda: "az-AZ", speech_voice=lambda: None)
+                                              speech_language=lambda: "az-AZ", speech_voice=lambda: None,
+                                              adjust_setup=lambda setup: adjusted.append(setup) or setup)
         pharmacy = globals_["_setup_event"](obj)["setup"]
         self.assertEqual(pharmacy["tools"], ["synthetic-declaration"])
+        # The bridge has the last word on a pharmacy call's setup (its context window).
+        self.assertIs(adjusted[-1], pharmacy)
         self.assertEqual(pharmacy["inputAudioTranscription"], {"languageCodes": ["az-AZ"]})
         self.assertEqual(pharmacy["generationConfig"]["speechConfig"]["languageCode"], "az-AZ")
         # Without a CRM choice the voice stays the station's own.
