@@ -1,0 +1,56 @@
+{
+  "about": "Presentation call of the voice stand (scripts/zeytun-line/voice-stand.ts), owner 2026-11-04: «разговор протестируй». A step is one or more pharmacy phrases, each spoken after the assistant has finished the previous answer, plus 0.5 s. hear: what the phrase must contain in the model's inputTranscription, as regexes over the transcript folded to plain Latin (ə→e, ı→i, ş→s, ç→c, ğ→g, ö→o, ü→u, lower case); a miss is a hearing error. expect: what makes the step understood: tools (name, regex over the call's JSON args), reply (regex over the assistant's words), over all phrases of the step; a phrase's own expect holds for its answer alone. final: the order the last save must hold, spoken words regex and quantity. Products per the 2026-11-04 snapshot: Fluimucil is not in the catalog, A.C.C. (acetylcysteine) is; Adefa has buy 5 get 1 in the 2026-11-04 00:00 snapshot (gone from the 12:00 one).",
+  "voice": "Charon",
+  "steps": [
+    { "n": 1, "phrases": [{ "say": "Salam, Zəfər aptekindən zəng edirəm.", "hear": [{ "label": "Zəfər", "match": "zef[ae]r" }] }],
+      "expect": { "noReply": [{ "match": "hans[iı] aptek", "label": "не переспросил аптеку" }] } },
+    { "n": 2, "phrases": [{ "say": "Ketonal ampula on qutu, Bisakodil on qutu, Mezim forte on min, üç qutu.",
+        "hear": [{ "label": "Ketonal", "match": "ketonal|кетонал" }, { "label": "Bisakodil", "match": "bisa[ck]od[iy]l|бисакодил" }, { "label": "Mezim", "match": "mez[iy]m|мезим" }] }],
+      "expect": { "tools": [
+        { "name": "search_pharmacy_catalog", "args": "[Kk]etonal|Кетонал", "label": "искал Ketonal" },
+        { "name": "search_pharmacy_catalog", "args": "[Bb]isa[ck]od[iy]l|Бисакодил", "label": "искал Bisakodil" },
+        { "name": "search_pharmacy_catalog", "args": "[Mm]ez[iy]m|Мезим", "label": "искал Mezim forte" }] } },
+    { "n": 3, "phrases": [{ "say": "Ketonalda aksiya var?", "hear": [{ "label": "Ketonal", "match": "ketonal|кетонал" }, { "label": "aksiya", "match": "aksiy|акци" }] }],
+      "expect": { "reply": [{ "match": "aksiya|hədiyyə|pulsuz|bonus|yoxdur", "label": "ответил про акцию Ketonal" }] } },
+    { "n": 4, "phrases": [
+        { "say": "Paracetamol hansı formaları var?", "hear": [{ "label": "Paracetamol", "match": "paras?[cs]etamol|парацетамол" }],
+          "expect": { "tools": [{ "name": "search_pharmacy_catalog", "args": "[Pp]ara[cs]etamol|Парацетамол", "label": "формы назвал по поиску в каталоге" }],
+            "noReply": [{ "match": "həkim|məsləhət", "label": "без медицинской оговорки" }] } },
+        { "say": "Beş yüzlük tablet, on qutu.", "hear": [{ "label": "beş yüz", "match": "bes ?yuz|500" }, { "label": "tablet", "match": "tablet|таблет" }] }],
+      "expect": { "tools": [{ "name": "search_pharmacy_catalog", "args": "[Pp]ara[cs]etamol|Парацетамол", "label": "искал Paracetamol" }],
+        "reply": [{ "match": "tablet|həb|sirop|şam|forma", "label": "назвал формы" }] } },
+    { "n": 5, "phrases": [{ "say": "Paracetamolun qiyməti nə qədərdir?", "hear": [{ "label": "qiymət", "match": "qiymet|цен" }] }],
+      "expect": { "reply": [{ "match": "manat|qəpik|AZN|\\d", "label": "назвал цену" }] } },
+    { "n": 6, "phrases": [{ "say": "Bağışlayın, Bisakodil on yox, on beş qutu.", "hear": [{ "label": "Bisakodil", "match": "bisa[ck]od[iy]l|бисакодил" }, { "label": "on beş", "match": "on bes|15" }] }],
+      "expect": { "reply": [{ "match": "on beş|\\b15\\b", "label": "подтвердил Bisakodil 15" }] } },
+    { "n": 7, "phrases": [
+        { "say": "Adefa üç qutu.", "hear": [{ "label": "Adefa", "match": "adef|адеф" }] },
+        { "say": "Bəli, beş qutu.", "hear": [{ "label": "beş", "match": "bes|\\b5\\b" }] }],
+      "expect": { "tools": [{ "name": "search_pharmacy_catalog", "args": "[Aa]def|Адеф", "label": "искал Adefa" }],
+        "reply": [{ "match": "(beş|\\b5\\b)[^.!?]*(aksiya|pulsuz|hədiyyə|bonus)|(aksiya|pulsuz|hədiyyə|bonus)[^.!?]*(beş|\\b5\\b)", "label": "предложил добрать до 5 по акции" }] } },
+    { "n": 8, "phrases": [
+        { "say": "Fluimucil altı yüz, iki qutu.", "hear": [{ "label": "Fluimucil", "match": "fl[uy]i?m[uy][csz]i?l|флуимуц" }, { "label": "altı yüz", "match": "alti ?yuz|600" }] },
+        { "say": "Bəli.", "hear": [{ "label": "bəli", "match": "beli|бели" }] }],
+      "expect": { "tools": [{ "name": "search_pharmacy_catalog", "args": "substitute:\\s*ACETYLCYSTEINE", "label": "искал аналог (substitute: ACETYLCYSTEINE)" }],
+        "reply": [{ "match": "A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин", "label": "предложил ACC вместо Fluimucil" }] } },
+    { "n": 9, "phrases": [{ "say": "Bəs hansı məhsullarda aksiya var?", "hear": [{ "label": "aksiya", "match": "aksiy|акци" }] }],
+      "expect": { "tools": [{ "name": "search_pharmacy_catalog", "args": "promotions:", "label": "запросил список акций (promotions:)" }],
+        "reply": [{ "match": "aksiya|hədiyyə|pulsuz|bonus", "label": "назвал акции" }] } },
+    { "n": 10, "phrases": [{ "say": "Ümumi məbləğ nə qədərdir?", "hear": [{ "label": "məbləğ", "match": "mebleg|сумм" }] }],
+      "expect": { "tools": [{ "name": "calculate_order_total", "label": "посчитал итог (calculate_order_total)" }],
+        "reply": [{ "match": "manat|qəpik|AZN|\\d", "label": "назвал сумму" }] } },
+    { "n": 11, "phrases": [
+        { "say": "Bu qədər, təsdiq edirəm.", "hear": [{ "label": "təsdiq", "match": "tesdiq|подтвер" }] },
+        { "say": "Yox, sağ olun.", "hear": [{ "label": "sağ olun", "match": "sag ol" }] }],
+      "expect": { "tools": [{ "name": "save_order_list", "args": "\"final\":\\s*true", "label": "итоговое сохранение (final)" }],
+        "noReply": [{ "match": "ləğv", "label": "не отменил заказ" }] } }
+  ],
+  "final": [
+    { "spoken": "[Kk]etonal|Кетонал", "quantity": 10, "label": "Ketonal 10" },
+    { "spoken": "[Bb]isa[ck]od[iy]l|Бисакодил", "quantity": 15, "label": "Bisakodil 15 (после исправления)" },
+    { "spoken": "[Mm]ez[iy]m|Мезим", "quantity": 3, "label": "Mezim forte 3" },
+    { "spoken": "[Pp]ara[cs]etamol|Парацетамол", "quantity": 10, "label": "Paracetamol 500 10" },
+    { "spoken": "[Aa]def|Адеф", "quantity": 5, "label": "Adefa 5 (по акции)" },
+    { "spoken": "A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|[Aa]setilsistein|[Ff]luimu|Флуим", "quantity": 2, "label": "ACC вместо Fluimucil 2" }
+  ]
+}

@@ -30,3 +30,38 @@ describe("zeytun line dialog stand", () => {
     }
   })
 })
+
+// The voice stand (scripts/zeytun-line/voice-stand.ts) counts a hearing error
+// when the model's transcript of a phrase misses one of its hear patterns.
+// A pattern that misses the phrase as written would report an error on a
+// perfect transcript, and the owner would chase a recognizer that heard right.
+describe("zeytun line voice stand scenario", () => {
+  const scenario = JSON.parse(readFileSync("scripts/zeytun-line/voice-scenario.json", "utf8")) as {
+    steps: { n: number; phrases: { say: string; hear?: { match: string }[]; expect?: Expectation }[]; expect: Expectation }[]
+    final: { spoken: string; quantity: number }[]
+  }
+  type Expectation = { tools?: { args?: string }[]; reply?: { match: string }[]; noReply?: { match: string }[] }
+  const patterns = (expect: Expectation | undefined) => [...(expect?.tools ?? []).flatMap((rule) => rule.args ? [rule.args] : []),
+    ...(expect?.reply ?? []).map((rule) => rule.match), ...(expect?.noReply ?? []).map((rule) => rule.match)]
+
+  it("numbers its steps in order and gives every phrase words", () => {
+    expect(scenario.steps.map((step) => step.n)).toEqual(scenario.steps.map((_, i) => i + 1))
+    for (const step of scenario.steps) for (const phrase of step.phrases) expect(phrase.say.trim()).not.toBe("")
+  })
+
+  it("hears each phrase as written", async () => {
+    const { foldLatin } = await import("../../scripts/zeytun-line/stand-crm")
+    for (const step of scenario.steps) for (const phrase of step.phrases) for (const rule of phrase.hear ?? []) {
+      expect(new RegExp(rule.match, "iu").test(foldLatin(phrase.say)), `${step.n}: «${phrase.say}» / ${rule.match}`).toBe(true)
+    }
+  })
+
+  it("has checks that are valid regexes", () => {
+    for (const step of scenario.steps) {
+      for (const pattern of [...patterns(step.expect), ...step.phrases.flatMap((phrase) => patterns(phrase.expect))]) {
+        expect(() => new RegExp(pattern, "iu"), `${step.n}: ${pattern}`).not.toThrow()
+      }
+    }
+    for (const line of scenario.final) expect(() => new RegExp(line.spoken, "u")).not.toThrow()
+  })
+})
