@@ -30,7 +30,7 @@
  * assistant took elsewhere shows as not understood, the call goes on.
  *
  *   JITI_ALIAS='{"@":"'$PWD'/src"}' node_modules/.bin/jiti scripts/zeytun-line/voice-stand.ts <snapshot> --core <base core>
- *     [--runs 3] [--scenario scripts/zeytun-line/voice-scenario.json] [--voice Charon]
+ *     [--runs 1] [--stop-at 0.45] [--scenario scripts/zeytun-line/voice-scenario.json] [--voice Charon]
  *     [--out ~/inbox/zeytun-recordings/voice-stand/<time>] [--live-model gemini-3.8-live]
  *     [--vertex-key ~/.config/zeytun/vertex-key] [--second-ear-key ~/.config/zeytun/speech-key | --no-second-ear]
  *     [--station <fanum-zeytun-inbound.py of a branch>] [--departed-from <older snapshot>] (what sold out since it)
@@ -39,7 +39,11 @@
  * (EXPECTED_SOURCE in scripts/pbx/build-zeytun-inbound-core.py); it is not in
  * Git. The snapshot is the client's catalog, the audio and transcripts are the
  * owner's test material: both stay out of Git (the output goes to ~/inbox).
- * One run opens one Live session on the line's key (a few minutes of audio).
+ * One run opens one Live session on the line's key and costs real money: every
+ * turn bills the whole context again (~$0.43 a call of the presentation scenario,
+ * estimated 2026-11-04). The stand sums each usageMetadata at Google's price and
+ * ends the call at --stop-at (USD, default 0.45); a 402/429/quota refusal ends it
+ * at once and no further run starts. Run it only with the owner's word.
  */
 import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
@@ -54,6 +58,25 @@ import { crmFor, foldLatin as fold, loadCatalog, StationBridge, type Json, type 
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const OUTPUT_RATE = 24000
+/**
+ * gemini-3.8-live, USD per 1M tokens (ai.google.dev/gemini-api/docs/pricing, 2026-11-04).
+ * Every turn bills the whole session context again, so a call costs far more than its audio.
+ */
+const PRICE = { textIn: 0.75, audioIn: 3, textOut: 4.5, audioOut: 12 }
+type Usage = { promptTokenCount?: number; responseTokenCount?: number; thoughtsTokenCount?: number
+  promptTokensDetails?: { modality?: string; tokenCount?: number }[]; responseTokensDetails?: { modality?: string; tokenCount?: number }[] }
+/** One usageMetadata in USD. Tokens without a modality are priced as audio: an estimate errs high, never low. */
+function usageCost(usage: Usage) {
+  const split = (details: Usage["promptTokensDetails"], total = 0) => {
+    const text = (details ?? []).filter((d) => d.modality === "TEXT").reduce((sum, d) => sum + (d.tokenCount ?? 0), 0)
+    return { text, audio: Math.max(0, total - text) }
+  }
+  const input = split(usage.promptTokensDetails, usage.promptTokenCount)
+  const output = split(usage.responseTokensDetails, usage.responseTokenCount)
+  const tokens = { textIn: input.text, audioIn: input.audio, textOut: output.text + (usage.thoughtsTokenCount ?? 0), audioOut: output.audio }
+  const usd = (tokens.textIn * PRICE.textIn + tokens.audioIn * PRICE.audioIn + tokens.textOut * PRICE.textOut + tokens.audioOut * PRICE.audioOut) / 1e6
+  return { tokens, usd }
+}
 /** The core hands the bridge a phrase from the frame that opened the activity: the lookback's last 20 ms frame, 8 kHz PCM16. */
 const UTTERANCE_FIRST_BYTE = (24 - 1) * 320
 const END_SILENCE_BYTES = Math.round(0.65 * 8000) * 2
@@ -72,6 +95,7 @@ type Remote =
   | { ev: "spoke"; t_voice: number; t_start: number; t_speech_end: number; t_activity_end: number }
   | { ev: "drop"; t: number; kind: string; code: number | null } | { ev: "resumed"; t: number; attempts: number }
   | { ev: "dead"; t: number; attempts: number; errors?: string[] } | { ev: "error"; detail: string }
+  | { ev: "money"; t?: number; detail: string }
 
 class RemoteLive {
   private child: ChildProcessWithoutNullStreams
@@ -126,7 +150,7 @@ async function until(predicate: () => boolean, ms: number) {
 
 function speak(text: string, voice: string, vertexKey: string, cache: string) {
   const out = execFileSync("python3", ["-I", "-W", "ignore", join(HERE, "voice-caller-tts.py"), vertexKey, cache, voice, text]).toString()
-  return JSON.parse(out) as { file: string; speech_s: number }
+  return JSON.parse(out) as { file: string; speech_s: number; cached: boolean }
 }
 
 const wavPcm = (file: string) => {
@@ -135,15 +159,19 @@ const wavPcm = (file: string) => {
   return raw.subarray(data + 8)
 }
 
-type Options = { core: string; liveModel: string; voice: string; vertexKey: string; cache: string; station?: string; secondEarKey?: string }
+type Options = { core: string; liveModel: string; voice: string; vertexKey: string; cache: string; station?: string; secondEarKey?: string
+  /** USD: the call is ended once its Live usage reaches this (one more answer may still be billed). */
+  stopAt: number }
 
 async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, options: Options) {
   const saves: Save[] = []
-  let current: Turn | undefined, dead = false, opened = false, toolsPending = 0
+  let current: Turn | undefined, dead = false, opened = false, toolsPending = 0, stopped: string | undefined
+  const spend = { usd: 0, generations: 0, sessions: 0, tokens: { textIn: 0, audioIn: 0, textOut: 0, audioOut: 0 }, tts: 0, ttsCached: 0, chirp: 0 }
   // What Chirp heard of each phrase goes to the phrase's turn (the CRM never says it).
   const chirp = options.secondEarKey ? createChirpRecognizer({ keyFile: options.secondEarKey }) : undefined
   const recognizer: ChirpRecognizer | undefined = chirp && { enabled: () => chirp.enabled(), warm: () => chirp.warm(),
     recognize: async (pcm, phrases) => {
+      spend.chirp++
       const turn = current, heard = await chirp.recognize(pcm, phrases)
       if (turn) turn.chirp = "text" in heard ? heard.text : `ошибка ${heard.error}`
       return heard
@@ -158,10 +186,18 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
   const log: { t: number; kind: string; detail?: unknown }[] = []
   /** Which kinds of server message came when (no audio, no words): to see how a turn ended. */
   const trace: { t: number; step: number; phrase: number; kinds: string[] }[] = []
+  /** Every usageMetadata as the provider sent it: the cost is checked against these. */
+  const usageLog: { t: number; usage: unknown }[] = []
   let playEnd = 0 // remote s: where the assistant's audio, played in real time, ends
 
   remote.on((event) => {
-    if (event.ev === "open") opened = true
+    if (event.ev === "open") { opened = true; spend.sessions++ }
+    else if (event.ev === "money") {
+      // 402/429/quota: stop now, nothing more is opened or resumed.
+      stopped = `отказ по деньгам или квоте: ${event.detail}`
+      current?.notes.push(stopped)
+      dead = true
+    }
     else if (event.ev === "spoke" && current) {
       current.spoke = event
       // At activityEnd the core has handed the bridge the phrase; the bridge sends it to the CRM's second ear.
@@ -171,7 +207,8 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
           rest: Buffer.concat([pcm.subarray(UTTERANCE_FIRST_BYTE + 320), Buffer.alloc(END_SILENCE_BYTES)]).toString("base64") }).catch(() => undefined)
       }
     }
-    else if (event.ev === "drop" || event.ev === "resumed" || event.ev === "dead" || event.ev === "error") {
+    else if (event.ev === "resumed") spend.sessions++
+    if (event.ev === "drop" || event.ev === "resumed" || event.ev === "dead" || event.ev === "error") {
       log.push({ t: "t" in event ? event.t : 0, kind: event.ev, detail: event })
       current?.notes.push(event.ev === "drop" ? `сессия оборвалась (${event.kind} ${event.code ?? ""})`
         : event.ev === "resumed" ? `сессия продлена (${event.attempts} попыт.)`
@@ -180,6 +217,18 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
       if (event.ev === "dead" || event.ev === "error") dead = true
     } else if (event.ev === "server") {
       const msg = event.msg, turn = current
+      if (msg.usageMetadata) {
+        const { tokens, usd } = usageCost(msg.usageMetadata as Usage)
+        spend.usd += usd
+        spend.generations++
+        for (const key of Object.keys(tokens) as (keyof typeof tokens)[]) spend.tokens[key] += tokens[key]
+        usageLog.push({ t: event.t, usage: msg.usageMetadata })
+        if (spend.usd >= options.stopAt && !dead) {
+          stopped = `бюджет: Live набрал $${spend.usd.toFixed(3)} (порог $${options.stopAt})`
+          current?.notes.push(`звонок остановлен — ${stopped}`)
+          dead = true
+        }
+      }
       if (turn) {
         turn.lastEventAt = Date.now()
         trace.push({ t: event.t, step: turn.step, phrase: turn.phrase, kinds: [...Object.keys(msg),
@@ -271,6 +320,8 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
       for (const [index, phrase] of step.phrases.entries()) {
         if (dead) break
         const clip = speak(phrase.say, scenario.voice, options.vertexKey, options.cache)
+        if (clip.cached) spend.ttsCached++
+        else spend.tts++
         const turn: Turn = { step: step.n, phrase: index, say: phrase.say, clip: clip.file, speechS: clip.speech_s,
           heard: "", said: "", tools: [], audio: [], notes: [] }
         turns.push(turn)
@@ -288,7 +339,7 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
     bridge.close()
     await Promise.race([remote.exited, sleep(5000)])
   }
-  return { turns, saves, log, trace, dead, secondEar: pilot.standUtterances === true }
+  return { turns, saves, log, trace, dead, stopped, spend, usageLog, secondEar: pilot.standUtterances === true }
 }
 
 /* ---------- report ---------- */
@@ -379,6 +430,17 @@ function report(runs: Run[], scenario: VoiceScenario, meta: Json) {
   out.push(`| итоговое сохранение (final) | ${runs.map((run) => { const turn = finalAt(run)
     return turn ? `✓ шаг ${turn.step}${turn.phrase ? `.${turn.phrase + 1}` : ""}` : "✗" }).join(" | ")} |`)
 
+  out.push("", "### Стоимость", "")
+  out.push("| | " + runs.map((run) => `Прогон ${run.attempt}`).join(" | ") + " |", `|---|${runs.map(() => "---|").join("")}`)
+  const row = (label: string, value: (run: Run) => string) => out.push(`| ${label} | ${runs.map(value).join(" | ")} |`)
+  row("сессий Live (с продлениями)", (run) => String(run.spend.sessions))
+  row("ответов модели с usageMetadata", (run) => String(run.spend.generations))
+  row("токенов на входе: текст / звук", (run) => `${run.spend.tokens.textIn} / ${run.spend.tokens.audioIn}`)
+  row("токенов на выходе: текст / звук", (run) => `${run.spend.tokens.textOut} / ${run.spend.tokens.audioOut}`)
+  row("Live, $ (по usageMetadata и цене Google)", (run) => run.spend.usd.toFixed(3))
+  row("запросов TTS (Vertex) / из кэша", (run) => `${run.spend.tts} / ${run.spend.ttsCached}`)
+  row("распознаваний Chirp", (run) => String(run.spend.chirp))
+  for (const run of runs) if (run.stopped) out.push("", `Прогон ${run.attempt} остановлен: ${run.stopped}.`)
   out.push("", "### Ошибки слуха (расшифровка модели)", "")
   let hearingErrors = 0
   for (const run of runs) for (const step of scenario.steps) for (const miss of stepVerdict(step, run.turns).hearing) {
@@ -459,11 +521,11 @@ function options(argv: string[]) {
   if (!snapshot || !core) throw new Error("usage: voice-stand.ts <catalog snapshot> --core <station base core> [--runs 3] [--out dir] [--voice Charon]")
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
   const recordings = join(homedir(), "inbox", "zeytun-recordings", "voice-stand")
-  return { snapshot, core, runs: Number(value("--runs") ?? 3), scenario: value("--scenario") ?? join(HERE, "voice-scenario.json"),
+  return { snapshot, core, runs: Number(value("--runs") ?? 1), scenario: value("--scenario") ?? join(HERE, "voice-scenario.json"),
     out: value("--out") ?? join(recordings, stamp), cache: join(recordings, "caller"), voice: value("--voice"),
     liveModel: value("--live-model") ?? "gemini-3.8-live", vertexKey: value("--vertex-key") ?? join(homedir(), ".config", "zeytun", "vertex-key"),
     secondEarKey: argv.includes("--no-second-ear") ? undefined : value("--second-ear-key") ?? join(homedir(), ".config", "zeytun", "speech-key"),
-    station: value("--station"), departedFrom: value("--departed-from") }
+    station: value("--station"), departedFrom: value("--departed-from"), stopAt: Number(value("--stop-at") ?? 0.45) }
 }
 
 async function main() {
@@ -481,11 +543,12 @@ async function main() {
   for (let attempt = 1; attempt <= opts.runs; attempt++) {
     process.stderr.write(`run ${attempt}/${opts.runs}\n`)
     const run = await playCall(scenario, catalog, { core: opts.core, liveModel: opts.liveModel, voice: scenario.voice,
-      vertexKey: opts.vertexKey, cache: opts.cache, station: opts.station, secondEarKey: opts.secondEarKey })
+      vertexKey: opts.vertexKey, cache: opts.cache, station: opts.station, secondEarKey: opts.secondEarKey, stopAt: opts.stopAt })
     const wav = join(opts.out, `run-${attempt}.wav`)
     writeFileSync(wav, recording(run.turns, 0), { mode: 0o600 })
     writeFileSync(join(opts.out, `run-${attempt}.json`), JSON.stringify({ ...run, turns: run.turns.map((turn) => ({ ...turn, audio: turn.audio.length })) }, null, 1), { mode: 0o600 })
     runs.push({ ...run, attempt, wav })
+    if (run.stopped) { process.stderr.write(`stopped: ${run.stopped}\n`); break }
     if (attempt < opts.runs) await sleep(5000)
   }
   const file = join(opts.out, "report.md")

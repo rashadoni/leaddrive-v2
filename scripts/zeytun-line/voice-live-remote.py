@@ -16,8 +16,8 @@ stdin  {"op": "open", "setup": {...}}            connect, send the station's set
                                                  silence after the last word, then activityEnd
        {"op": "close"}
 stdout {"ev": "open"} | {"ev": "server", "t": s, "msg": {...}} | {"ev": "spoke", ...times}
-       | {"ev": "drop", "t", "code", "kind"} | {"ev": "resumed", "t", "attempts"} | {"ev": "dead", "t"}
-       | {"ev": "error", "detail"}
+       | {"ev": "drop", "t", "code", "kind", "reason"} | {"ev": "resumed", "t", "attempts"} | {"ev": "dead", "t"}
+       | {"ev": "money", "detail"}  (a 402/429/quota refusal: no resume; the stand stops) | {"ev": "error", "detail"}
 Every "t" is seconds of this process's monotonic clock since open: latencies are
 measured here, next to the provider, not across the ssh link.
 
@@ -65,10 +65,19 @@ def key():
     raise SystemExit("no key")
 
 
+# A refusal for money or quota: the stand stops at once, no resume, no retry.
+MONEY = ("402", "429", "quota", "billing", "exhausted", "credit", "prepay")
+
+
+def money(text):
+    return any(word in (text or "").lower() for word in MONEY)
+
+
 class Closed(Exception):
-    def __init__(self, code):
+    def __init__(self, code, reason=""):
         super().__init__(code)
         self.code = code
+        self.reason = reason
 
 
 class Ws:
@@ -122,7 +131,8 @@ class Ws:
                 n = struct.unpack(">Q", self._read(8))[0]
             data = self._read(n)
             if op == 0x8:
-                raise Closed(struct.unpack(">H", data[:2])[0] if len(data) >= 2 else None)
+                raise Closed(struct.unpack(">H", data[:2])[0] if len(data) >= 2 else None,
+                             data[2:].decode("utf-8", "replace")[:200])
             if op == 0x9:
                 with self.lock:
                     m = os.urandom(4)
@@ -178,16 +188,19 @@ class Session:
                     self.handle = update["newHandle"]
                 emit({"ev": "server", "t": now(), "msg": ev})
         except Closed as error:
-            self._dropped(ws, "close", error.code)
+            self._dropped(ws, "close", error.code, error.reason)
         except (EOFError, OSError, ValueError) as error:
             self._dropped(ws, "eof" if isinstance(error, EOFError) else type(error).__name__, None)
 
-    def _dropped(self, ws, kind, code):
+    def _dropped(self, ws, kind, code, reason=""):
         with self.cv:
             if self.closing or ws is not self.ws:
                 return
             self.ready = False
-        emit({"ev": "drop", "t": now(), "kind": kind, "code": code})
+        emit({"ev": "drop", "t": now(), "kind": kind, "code": code, "reason": reason})
+        if money(reason):
+            emit({"ev": "money", "t": now(), "detail": "close %s: %s" % (code, reason)})
+            return
         started, attempts, errors = time.monotonic(), 0, []
         while self.handle and time.monotonic() - started < RESUME_WINDOW_S:
             attempts += 1
@@ -197,10 +210,16 @@ class Session:
                 fresh = self._connect(setup)
             except Closed as error:
                 errors.append("close %s" % error.code)
+                if money(error.reason):
+                    emit({"ev": "money", "t": now(), "detail": "close %s: %s" % (error.code, error.reason)})
+                    return
                 time.sleep(RESUME_RETRY_S)
                 continue
             except Exception as error:
                 errors.append(type(error).__name__)
+                if money(str(error)):
+                    emit({"ev": "money", "t": now(), "detail": str(error)[:200]})
+                    return
                 time.sleep(RESUME_RETRY_S)
                 continue
             with self.cv:
@@ -278,7 +297,8 @@ def main():
             elif op["op"] == "close":
                 break
         except Exception as error:  # no key, no URL: the class name and a short message only
-            emit({"ev": "error", "detail": type(error).__name__ + ": " + str(error)[:200]})
+            detail = type(error).__name__ + ": " + (getattr(error, "reason", "") or str(error))[:200]
+            emit({"ev": "money" if money(detail) else "error", "detail": detail})
     session.close()
 
 

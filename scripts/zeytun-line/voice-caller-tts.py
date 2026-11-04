@@ -10,7 +10,7 @@ silence the model puts around the words cut to LEAD_S before (the station's
 lookback hears the line before the voice) and none after (voice-live-remote.py
 adds the station's 0.65 s of end silence). The result is cached by text, voice
 and style, so three runs hear the same audio; it is the owner's test audio,
-kept in ~/inbox, never in Git. Prints one JSON line: {"file", "speech_s"}.
+kept in ~/inbox, never in Git. Prints one JSON line: {"file", "speech_s", "cached"}.
 The key is read from its file, never printed.
 """
 import audioop
@@ -85,7 +85,8 @@ def phone(pcm, rate):
     return b"\0" * int(8000 * 2 * LEAD_S) + voice_pcm, len(voice_pcm) / 16000
 
 
-if not os.path.exists(target):
+cached = os.path.exists(target)
+if not cached:
     os.makedirs(cache, mode=0o700, exist_ok=True)
     clip, _ = phone(*synthesize())
     with wave.open(target + ".part", "wb") as w:
@@ -96,4 +97,4 @@ if not os.path.exists(target):
     os.replace(target + ".part", target)
 with wave.open(target) as w:
     frames = w.getnframes()
-print(json.dumps({"file": target, "speech_s": round(frames / 8000 - LEAD_S, 2)}))
+print(json.dumps({"file": target, "speech_s": round(frames / 8000 - LEAD_S, 2), "cached": cached}))
