@@ -67,6 +67,20 @@ vi.mock("@/lib/api-auth", () => ({
     principalType: "session",
   })),
   isAuthError: (value: unknown) => value instanceof Response,
+  // The organization's modules as the database has them: whether a push may go
+  // to a person is read from there (lib/notifications.ts, resolvePushDecision).
+  // Read each time, as api-auth reads it but without its 30-second cache: a
+  // test that switches a module on is not answered from before.
+  getOrgModuleContext: async (orgId: string) => {
+    const { prisma } = await import("@/lib/prisma")
+    const { moduleRecordFromOrgFields } = await import("@/lib/modules")
+    const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true, addons: true, features: true, modules: true } })
+    return {
+      plan: org?.plan || "starter",
+      addons: (org?.addons as string[] | null) || [],
+      modules: moduleRecordFromOrgFields({ features: org?.features, modules: org?.modules }),
+    }
+  },
 }))
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
@@ -76,6 +90,10 @@ vi.mock("@/lib/mobile-auth", async () => {
 vi.mock("@/lib/email", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/email")>(),
   sendEmail: vi.fn(async () => ({ success: true })),
+}))
+// Nor is a browser push sent: who it is addressed to, and with what, is read.
+vi.mock("@/lib/push-send", () => ({
+  sendPushToUser: vi.fn(async () => ({ sent: 1, removed: 0 })),
 }))
 // The tenant's plan is not what is under test.
 vi.mock("@/lib/tenant-capability-access", async (importOriginal) => ({
@@ -2276,9 +2294,11 @@ pgDescribe("client categories on a real Postgres", () => {
       // policy)…
       run(`ALTER TABLE "mtm_visits" DROP COLUMN "locationRequestId";`)
       run(`DROP TABLE "${TABLE}";`)
+      run(`DROP TYPE "MtmLocationRequestOrigin";`)
       // …then the very files the deploy applies, in their order.
       run(readFileSync(path.join(ROOT, "prisma/migrations/20261012100000_mtm_customer_location_requests/migration.sql"), "utf8"))
       run(readFileSync(path.join(ROOT, "prisma/migrations/20261012160000_mtm_visit_location_request/migration.sql"), "utf8"))
+      run(readFileSync(path.join(ROOT, "prisma/migrations/20261124090000_mtm_location_request_in_advance/migration.sql"), "utf8"))
       asker = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Nigar at the Door" }, select: { id: true } }))).id
       colleague = (await bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name: "Second at the Door" }, select: { id: true } }))).id
       pharmacy = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Nümunə", address: "Nümunə küç. 12", ...PIN }, select: { id: true } }))).id
@@ -2724,6 +2744,263 @@ pgDescribe("client categories on a real Postgres", () => {
         await endVisits(asker)
         // The request is answered: the next check-in there is refused again.
         expect((await checkIn(asker, pinlessClinic, CLINIC_DOOR)).body).toMatchObject({ code: "MTM_VISIT_CUSTOMER_NO_COORDINATES" })
+      })
+    })
+
+    // Owner, 2026-11-04: «должно быть и до и на месте. Например, он заранее
+    // смотрит, видит, что уже не там, и предлагает сразу же. Или же пришёл уже
+    // на правильное место и подтверждает, что это был правильно предложенный
+    // адрес». «Адрес и точка» in «Предложить изменение»: the place and the
+    // street address, proposed from wherever the agent is, confirmed at the place.
+    describe("a place proposed in advance, and confirmed at it", () => {
+      const OLD_PIN = { latitude: 40.6, longitude: 49.6 }
+      // Where the pharmacy moved: two kilometres north, another street.
+      const NEW_DOOR = { latitude: north(40.6, 2_000), longitude: 49.6 }
+      let moved = ""
+      let renamed = ""
+      let advanceId = ""
+      let modulesBefore: unknown = null
+      afterAll(async () => {
+        await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { modules: modulesBefore as never } }))
+      })
+      const checkIn = async (agentId: string, customerId: string, place: { latitude: number; longitude: number }) => {
+        const { POST } = await import("@/app/api/v1/mtm/visits/route")
+        const response = await POST(send("POST", "/api/v1/mtm/visits", { agentId, customerId, ...place }))
+        return { status: response.status, body: await response.json() }
+      }
+      const endVisits = (agentId: string) => bypass(() => prisma.mtmVisit.updateMany({
+        where: { organizationId: ORG, agentId, status: "CHECKED_IN" },
+        data: { status: "CHECKED_OUT", checkOutAt: new Date() },
+      }))
+      const confirmAt = async (agentId: string, customerId: string, agent: Record<string, unknown>) => {
+        await asAgent(agentId)
+        const { POST } = await import("@/app/api/v2/mtm/mobile/route-field/organizations/[id]/location-request/confirm/route")
+        const response = await POST(send("POST", `${phoneUrl(customerId)}/confirm`, { agent }), params(customerId))
+        return { status: response.status, body: await response.json() }
+      }
+      const placeOf = (customerId: string) => bypass(() => prisma.mtmCustomer.findUniqueOrThrow({ where: { id: customerId }, select: { latitude: true, longitude: true, address: true } }))
+      const fixAt = (place: { latitude: number; longitude: number }, over: Record<string, unknown> = {}) => ({ ...place, accuracyMeters: 9, fixAgeSeconds: 3, ...over })
+
+      beforeAll(async () => {
+        moved = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Köçən", address: "Füzuli küç. 12", ...OLD_PIN }, select: { id: true } }))).id
+        renamed = (await bypass(() => prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Aptek Ünvan", address: "Səməd Vurğun küç. 3", latitude: 40.7, longitude: 49.5 }, select: { id: true } }))).id
+        const since = new Date("2026-01-01T00:00:00.000Z")
+        await bypass(() => prisma.mtmCustomerAgentAssignment.createMany({
+          data: [asker, colleague].flatMap((agentId) => [moved, renamed].map((customerId) => ({ organizationId: ORG, customerId, agentId, effectiveFrom: since }))),
+        }))
+        await endVisits(asker)
+        await endVisits(colleague)
+        // An organization with the field product, as the one whose managers are told.
+        modulesBefore = (await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: ORG }, select: { modules: true } }))).modules
+        await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { modules: { mtm: true, "route-field": true } } }))
+        // The tests above already sent a score of requests in this hour.
+        const { resetRateLimit } = await import("@/lib/rate-limit")
+        resetRateLimit(`mtm-customer-location-request:${ORG}:${asker}`)
+        resetRateLimit(`mtm-customer-location-request:${ORG}:${colleague}`)
+      }, 60_000)
+
+      it("takes a proposal from anywhere, with the new address — and asks a phone from the spot where it is", async () => {
+        // From the spot without the phone's fix is no «Клиент здесь».
+        const blind = await ask(asker, moved, { idempotencyKey: "on-site-no-fix-01", proposed: NEW_DOOR, address: "Nizami küç. 41" })
+        expect(blind).toMatchObject({ status: 400, body: { code: "MTM_LOCATION_REQUEST_INVALID" } })
+
+        // From home, eight kilometres away: no fix at all.
+        const taken = await ask(asker, moved, { idempotencyKey: "advance-moved-01", origin: "REMOTE", proposed: NEW_DOOR, address: "  Nizami  küç. 41 ", comment: "Переехали" })
+        expect(taken.status, JSON.stringify(taken.body).slice(0, 300)).toBe(201)
+        advanceId = taken.body.data.request.id
+        expect(taken.body.data.request).toMatchObject({ origin: "REMOTE", confirmedAt: null, proposedAddress: "Nizami küç. 41", movedMeters: 2_000, mine: true })
+        const [row] = await rows({ id: advanceId })
+        expect(row).toMatchObject({
+          origin: "REMOTE", status: "SUBMITTED",
+          previousLatitude: 40.6, proposedLatitude: at(NEW_DOOR).latitude,
+          agentLatitude: null, agentLongitude: null, agentAccuracyMeters: null, agentFixAt: null, agentToProposedMeters: null,
+          previousAddress: "Füzuli küç. 12", proposedAddress: "Nizami küç. 41", comment: "Переехали",
+          confirmedAt: null,
+        })
+        // Nothing about the customer changed.
+        expect(await placeOf(moved)).toEqual({ ...OLD_PIN, address: "Füzuli küç. 12" })
+        // The manager is told it was proposed in advance, and what the address becomes.
+        const told = await bypass(() => prisma.notification.findFirstOrThrow({ where: { organizationId: ORG, entityType: "mtm_location_request", entityId: advanceId, userId: "loc-director-az" } }))
+        expect(told.message).toContain("əvvəlcədən, yerində olmadan")
+        expect(told.message).toContain("Yeni ünvan: «Nizami küç. 41».")
+        // …and it reaches his screen as a push, not only the bell (owner, 2026-11-04:
+        // «проверь, чтоб пуш-уведомление приходило менеджеру»).
+        const { sendPushToUser } = await import("@/lib/push-send")
+        await vi.waitFor(() => expect(vi.mocked(sendPushToUser)).toHaveBeenCalledWith(
+          ORG, "loc-director-az", expect.objectContaining({ title: "Müştəri ünvanı: agent qərar gözləyir", body: told.message }),
+        ))
+        expect(vi.mocked(sendPushToUser)).toHaveBeenCalledWith(ORG, "loc-director-ru", expect.objectContaining({ body: told.message }))
+        // The same sending again is the same request; the key with another address is not.
+        expect(await ask(asker, moved, { idempotencyKey: "advance-moved-01", origin: "REMOTE", proposed: NEW_DOOR, address: "Nizami küç. 41", comment: "Переехали" }))
+          .toMatchObject({ status: 200, body: { idempotent: true, data: { request: { id: advanceId } } } })
+        expect(await ask(asker, moved, { idempotencyKey: "advance-moved-01", origin: "REMOTE", proposed: NEW_DOOR, address: "Nizami küç. 43" }))
+          .toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_IDEMPOTENCY_MISMATCH" } })
+      })
+
+      // Production, 2026-11-04: one of the two who decide had no browser
+      // subscription, only the field app on three phones. The phone push goes
+      // to the same people, on their MTM manager cards.
+      it("rings on the phone of every manager with a card — never the agent's — and names no customer", async () => {
+        const { locationRequestReviewers } = await import("@/lib/mtm/customer-location-request-notify")
+        const { pushLocationRequestToReviewers } = await import("@/lib/mtm/customer-location-request-push")
+        const notify = vi.fn(async () => ({ sent: 1, failed: 0, retired: 0 }))
+        const reviewers = await bypass(() => locationRequestReviewers({ organizationId: ORG, requestedByAgentId: asker }))
+        const pushed = await bypass(() => pushLocationRequestToReviewers(
+          { organizationId: ORG, requestId: advanceId, requestedByAgentId: asker, agentName: "Nigar at the Door", reviewers, event: "submitted" },
+          { notify: notify as never, configured: true },
+        ))
+        const card = await bypass(() => prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: ORG, userId: "loc-field-admin" }, select: { id: true } }))
+        // Of everyone told, only the field administrator holds a manager card.
+        expect(pushed).toEqual({ cards: 1 })
+        expect(notify).toHaveBeenCalledTimes(1)
+        expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+          organizationId: ORG,
+          agentIds: [card.id],
+          title: "Customer address: an agent is waiting for a decision",
+          body: "Nigar at the Door proposes a customer's new place. Decide in the CRM, «Routes → Approvals».",
+          channelId: "team-messages",
+          data: { channel: "team-messages", kind: "customer_location_request", requestId: advanceId },
+        }))
+        const { title, body, data } = (notify.mock.calls as unknown as Array<[{ title: string; body: string; data: unknown }]>)[0][0]
+        expect(JSON.stringify({ title, body, data })).not.toContain("Aptek Köçən")
+        // Push switched off on the server: nothing is read, nobody rung.
+        expect(await pushLocationRequestToReviewers(
+          { organizationId: ORG, requestId: advanceId, requestedByAgentId: asker, agentName: "x", reviewers, event: "confirmed" },
+          { notify: notify as never, configured: false },
+        )).toEqual({ cards: 0 })
+        expect(notify).toHaveBeenCalledTimes(1)
+      })
+
+      it("is no place a visit counts from until the agent has stood at it", async () => {
+        const refused = await checkIn(asker, moved, NEW_DOOR)
+        expect(refused.status).toBeGreaterThanOrEqual(400)
+        expect(refused.body).toMatchObject({ code: "MTM_VISIT_OUT_OF_ZONE" })
+        expect(await bypass(() => prisma.mtmVisit.count({ where: { organizationId: ORG, customerId: moved } }))).toBe(0)
+      })
+
+      it("is held by the database too: «from the spot» never without a fix, a confirmation only of an advance request", async () => {
+        await expect(bypass(() => prisma.$executeRawUnsafe(
+          `INSERT INTO "${TABLE}" ("id", "organizationId", "customerId", "requestedByAgentId", "idempotencyKey", "proposedLatitude", "proposedLongitude", "updatedAt")
+           VALUES ('raw-on-site-blind', '${ORG}', '${renamed}', '${asker}', 'raw-on-site-blind', 40.71, 49.5, now())`,
+        ))).rejects.toThrow(/mtm_customer_location_requests_on_site_fix_check/)
+        await expect(bypass(() => prisma.$executeRawUnsafe(
+          `UPDATE "${TABLE}" SET "confirmedAt" = now(), "confirmLatitude" = 40.4, "confirmLongitude" = 49.85, "confirmAccuracyMeters" = 5, "confirmToProposedMeters" = 0
+           WHERE "organizationId" = '${ORG}' AND "origin" = 'ON_SITE'`,
+        ))).rejects.toThrow(/mtm_customer_location_requests_confirm_check/)
+      })
+
+      it("is confirmed only by the agent who proposed it, standing at it", async () => {
+        // At the old pharmacy, two kilometres off.
+        const notHere = await confirmAt(asker, moved, fixAt(OLD_PIN))
+        expect(notHere).toMatchObject({ status: 422, body: { code: "MTM_LOCATION_REQUEST_CONFIRM_TOO_FAR", details: { distanceMeters: 2_000, maxDistanceMeters: 150 } } })
+        expect(await confirmAt(asker, moved, fixAt(NEW_DOOR, { isMock: true }))).toMatchObject({ status: 422, body: { code: "MTM_LOCATION_REQUEST_MOCK_LOCATION" } })
+        expect(await confirmAt(colleague, moved, fixAt(NEW_DOOR))).toMatchObject({ status: 404, body: { code: "MTM_LOCATION_REQUEST_NOTHING_TO_CONFIRM" } })
+        expect((await rows({ id: advanceId }))[0].confirmedAt).toBeNull()
+
+        const door = { latitude: north(NEW_DOOR.latitude, 25), longitude: 49.6 }
+        const confirmed = await confirmAt(asker, moved, fixAt(door))
+        expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 300)).toBe(200)
+        expect(confirmed.body.data.request).toMatchObject({ id: advanceId, origin: "REMOTE", confirmedAt: expect.any(String) })
+        const [row] = await rows({ id: advanceId })
+        expect(row).toMatchObject({ status: "SUBMITTED", confirmLatitude: at(door).latitude, confirmAccuracyMeters: 9, confirmToProposedMeters: 25 })
+        // The manager is told at once — the bell and a push; no second letter.
+        const { sendPushToUser } = await import("@/lib/push-send")
+        const { sendEmail } = await import("@/lib/email")
+        const lettersBefore = vi.mocked(sendEmail).mock.calls.length
+        await vi.waitFor(() => expect(vi.mocked(sendPushToUser)).toHaveBeenCalledWith(
+          ORG, "loc-director-az", expect.objectContaining({ title: "Müştəri ünvanı: agent yerində təsdiqlədi" }),
+        ))
+        const confirmedNotice = await bypass(() => prisma.notification.findMany({
+          where: { organizationId: ORG, entityType: "mtm_location_request", entityId: advanceId, title: { in: ["Müştəri ünvanı: agent yerində təsdiqlədi", "Customer address: the agent confirmed it on the spot"] } },
+          orderBy: { userId: "asc" },
+        }))
+        // Each in his own language, as the request itself.
+        expect(confirmedNotice.map((row) => [row.userId, row.title])).toEqual([
+          ["loc-director-az", "Müştəri ünvanı: agent yerində təsdiqlədi"],
+          ["loc-director-ru", "Müştəri ünvanı: agent yerində təsdiqlədi"],
+          ["loc-field-admin", "Customer address: the agent confirmed it on the spot"],
+        ])
+        expect(confirmedNotice[0].message).toBe("Nigar at the Door «Aptek Köçən» müştərisinin əvvəlcədən təklif etdiyi yeni yerini yerində təsdiqlədi. Yeni ünvan: «Nizami küç. 41». Yeni yeri qəbul edin və ya olduğu kimi saxlayın.")
+        expect(await confirmAt(asker, moved, fixAt(door))).toMatchObject({ status: 200, body: { idempotent: true } })
+        // A second tap tells nobody again.
+        // Three about the request, three about its confirmation.
+        expect(await bypass(() => prisma.notification.count({ where: { organizationId: ORG, entityType: "mtm_location_request", entityId: advanceId } }))).toBe(6)
+        expect(vi.mocked(sendEmail).mock.calls.length).toBe(lettersBefore)
+        // The card the agent reads, and the manager's queue.
+        expect((await cardOf(asker, moved)).locationRequest).toMatchObject({ id: advanceId, origin: "REMOTE", confirmedAt: expect.any(String), proposedAddress: "Nizami küç. 41" })
+        const waiting = (await waitingList()).find((request) => request.id === advanceId)
+        expect(waiting).toMatchObject({
+          origin: "REMOTE", agentFix: null,
+          confirmation: { accuracyMeters: 9, distanceMeters: 25 },
+          previousAddress: "Füzuli küç. 12", proposedAddress: "Nizami küç. 41",
+          pinMovedSince: false,
+        })
+      })
+
+      it("once confirmed, lets the visit count from the proposed place", async () => {
+        const made = await checkIn(asker, moved, NEW_DOOR)
+        expect(made.status, JSON.stringify(made.body).slice(0, 300)).toBe(201)
+        const visit = await bypass(() => prisma.mtmVisit.findFirstOrThrow({ where: { organizationId: ORG, customerId: moved }, select: { locationRequestId: true, checkInCustomerLat: true } }))
+        expect(visit).toEqual({ locationRequestId: advanceId, checkInCustomerLat: 40.6 })
+        await endVisits(asker)
+      })
+
+      it("on «принять» moves the pin and rewrites the address, with a receipt from the confirmation", async () => {
+        const accepted = await decide(advanceId, { decision: "APPROVED" })
+        expect(accepted.status, JSON.stringify(accepted.body).slice(0, 300)).toBe(200)
+        expect(await placeOf(moved)).toEqual({ ...at(NEW_DOOR), address: "Nizami küç. 41" })
+        const receipts = await bypass(() => prisma.mtmCustomerCoordinateVerification.findMany({ where: { organizationId: ORG, customerId: moved } }))
+        expect(receipts).toHaveLength(1)
+        expect(receipts[0]).toMatchObject({ status: "VERIFIED", accuracyMeters: 9, sourceReference: `customer-location-request:${advanceId}` })
+        const told = await bypass(() => prisma.mtmRouteNotificationOutbox.findFirstOrThrow({ where: { organizationId: ORG, dedupeKey: { startsWith: `customer-location-request:${advanceId}:` } } }))
+        expect(told.body).toBe("Aptek Köçən: the pin now stands where you reported. The address now reads «Nizami küç. 41».")
+        const journal = await bypass(() => prisma.mtmAuditLog.findFirstOrThrow({ where: { organizationId: ORG, action: "CUSTOMER_LOCATION_DECISION", entityId: advanceId } }))
+        expect(journal.oldData).toMatchObject({ address: "Füzuli küç. 12" })
+        expect(journal.newData).toMatchObject({ origin: "REMOTE", confirmedOnSite: true, address: "Nizami küç. 41" })
+        // The visit made from there is now one made at the customer.
+        expect(await bypass(() => prisma.mtmVisit.findFirstOrThrow({ where: { organizationId: ORG, customerId: moved }, select: { checkInCustomerLat: true } })))
+          .toEqual({ checkInCustomerLat: at(NEW_DOOR).latitude })
+      })
+
+      it("is replaced by the agent's own next one while unconfirmed — never a request made at the place", async () => {
+        const first = await ask(asker, renamed, { idempotencyKey: "advance-replace-1", origin: "REMOTE", proposed: { latitude: north(40.7, 500), longitude: 49.5 } })
+        expect(first.status, JSON.stringify(first.body).slice(0, 300)).toBe(201)
+        // A colleague is told one waits — his own does not push it out.
+        expect(await ask(colleague, renamed, { idempotencyKey: "advance-colleague", origin: "REMOTE", proposed: { latitude: north(40.7, 900), longitude: 49.5 } }))
+          .toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_PENDING" } })
+        // The agent corrects his proposal: the address only, the pin stays.
+        const second = await ask(asker, renamed, { idempotencyKey: "advance-replace-2", origin: "REMOTE", proposed: { latitude: north(40.7, 6), longitude: 49.5 }, address: "Səməd Vurğun küç. 5" })
+        expect(second.status, JSON.stringify(second.body).slice(0, 300)).toBe(201)
+        const [replaced, current] = await rows({ customerId: renamed })
+        expect(replaced).toMatchObject({ id: first.body.data.request.id, status: "CANCELLED" })
+        expect(current).toMatchObject({ id: second.body.data.request.id, status: "SUBMITTED", proposedLatitude: 40.7, movedMeters: 0, proposedAddress: "Səməd Vurğun küç. 5" })
+        const told = await bypass(() => prisma.notification.findFirstOrThrow({ where: { organizationId: ORG, entityId: current.id, userId: "loc-director-ru" } }))
+        // Organization language is Azerbaijani (see above): the address-only text.
+        expect(told.message).toContain("ünvanını düzəltməyi təklif edir: «Səməd Vurğun küç. 5»")
+
+        // Somebody rewrites the address meanwhile: accepting would be refused.
+        await bypass(() => prisma.mtmCustomer.update({ where: { id: renamed }, data: { address: "Səməd Vurğun küç. 3A" } }))
+        expect((await waitingList()).find((request) => request.id === current.id)).toMatchObject({ pinMovedSince: true })
+        expect(await decide(current.id, { decision: "APPROVED" })).toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_CUSTOMER_MOVED" } })
+        await bypass(() => prisma.mtmCustomer.update({ where: { id: renamed }, data: { address: "Səməd Vurğun küç. 3" } }))
+
+        // Accepted on the agent's word: the address changes, the pin stays, and nobody verified a place.
+        expect((await decide(current.id, { decision: "APPROVED" })).status).toBe(200)
+        expect(await placeOf(renamed)).toEqual({ latitude: 40.7, longitude: 49.5, address: "Səməd Vurğun küç. 5" })
+        expect(await bypass(() => prisma.mtmCustomerCoordinateVerification.count({ where: { organizationId: ORG, customerId: renamed } }))).toBe(0)
+        const answer = await bypass(() => prisma.mtmRouteNotificationOutbox.findFirstOrThrow({ where: { organizationId: ORG, dedupeKey: { startsWith: `customer-location-request:${current.id}:` } } }))
+        expect(answer.body).toBe("Aptek Ünvan: the address now reads «Səməd Vurğun küç. 5».")
+      })
+
+      it("is not a way to push out a request made at the place: the agent's own from the spot stays", async () => {
+        const onSite = await ask(asker, renamed, { idempotencyKey: "on-site-stays-01", proposed: { latitude: north(40.7, 400), longitude: 49.5 }, agent: fixAt({ latitude: north(40.7, 400), longitude: 49.5 }) })
+        expect(onSite.status, JSON.stringify(onSite.body).slice(0, 300)).toBe(201)
+        expect(await ask(asker, renamed, { idempotencyKey: "advance-over-site", origin: "REMOTE", proposed: { latitude: north(40.7, 900), longitude: 49.5 } }))
+          .toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_PENDING" } })
+        expect((await rows({ id: onSite.body.data.request.id }))[0].status).toBe("SUBMITTED")
+        // Nothing to confirm about a request from the spot.
+        expect(await confirmAt(asker, renamed, fixAt({ latitude: north(40.7, 400), longitude: 49.5 }))).toMatchObject({ status: 404 })
+        expect((await takeBack(asker, renamed)).status).toBe(200)
       })
     })
   })

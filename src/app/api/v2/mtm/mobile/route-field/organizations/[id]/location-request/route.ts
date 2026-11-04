@@ -17,12 +17,16 @@ import { writeMtmAudit } from "@/lib/mtm-audit"
 import { notifyLocationRequestReviewers } from "@/lib/mtm/customer-location-request-notify"
 import {
   CUSTOMER_LOCATION_REQUEST_ERROR,
+  LOCATION_REQUEST_ADDRESS_MAX,
   LOCATION_REQUEST_COMMENT_MAX,
   MTM_LOCATION_REQUEST_IDEMPOTENCY_MISMATCH,
   MTM_LOCATION_REQUEST_NOT_FOUND,
   MTM_LOCATION_REQUEST_PENDING,
   customerLocationRequestForAgent,
+  effectiveProposedPoint,
   evaluateCustomerLocationRequest,
+  evaluateRemoteCustomerLocationRequest,
+  proposedAddressChange,
   sameCustomerLocationRequest,
 } from "@/lib/mtm/customer-location-request"
 
@@ -35,19 +39,30 @@ const point = z.object({
   latitude: z.number().finite().min(-90).max(90),
   longitude: z.number().finite().min(-180).max(180),
 })
+const fix = point.extend({
+  accuracyMeters: z.number().finite().min(0).max(100_000),
+  // Counted by the phone: «this fix is N seconds old». A phone whose clock
+  // is wrong is then neither refused nor believed about a place it left.
+  fixAgeSeconds: z.number().finite().min(0).max(86_400),
+  isMock: z.boolean().nullable().optional(),
+})
 const bodySchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(128),
+  // «Клиент здесь» from the spot (what every phone sent until 2026-11-04), or
+  // «заранее» — from wherever the agent is, about a customer he knows has moved.
+  origin: z.enum(["ON_SITE", "REMOTE"]).default("ON_SITE"),
   // Where the agent says the customer is.
   proposed: point,
-  // Where the phone itself is, as it knows it at this moment.
-  agent: point.extend({
-    accuracyMeters: z.number().finite().min(0).max(100_000),
-    // Counted by the phone: «this fix is N seconds old». A phone whose clock
-    // is wrong is then neither refused nor believed about a place it left.
-    fixAgeSeconds: z.number().finite().min(0).max(86_400),
-    isMock: z.boolean().nullable().optional(),
-  }),
+  // Where the phone itself is, as it knows it at this moment. A condition from
+  // the spot; in advance only what the phone happened to know, if anything.
+  agent: fix.nullable().optional(),
+  // The street address as the agent says it is; left out or as on the card — not corrected.
+  address: z.string().max(LOCATION_REQUEST_ADDRESS_MAX).nullable().optional(),
   comment: z.string().trim().max(LOCATION_REQUEST_COMMENT_MAX).nullable().optional(),
+}).superRefine((value, context) => {
+  if (value.origin === "ON_SITE" && !value.agent) {
+    context.addIssue({ code: "custom", path: ["agent"], message: "Where the phone is is required from the spot" })
+  }
 })
 
 const requestSelect = {
@@ -61,6 +76,9 @@ const requestSelect = {
   decisionComment: true,
   submittedAt: true,
   reviewedAt: true,
+  origin: true,
+  proposedAddress: true,
+  confirmedAt: true,
 } satisfies Prisma.MtmCustomerLocationRequestSelect
 
 function noStoreJson(body: unknown, init?: ResponseInit) {
@@ -96,6 +114,14 @@ async function agentOf(auth: Parameters<Parameters<typeof withMobileRls>[0]>[1])
  * from where the agent stands, a pin that is already there
  * (src/lib/mtm/customer-location-request.ts). One request about a customer
  * waits at a time: the second is told so, with the one that is waiting.
+ *
+ * `origin: "REMOTE"` (owner, 2026-11-04, «Адрес и точка» in «Предложить
+ * изменение»): the same question asked in advance, from wherever the agent is.
+ * Where he stands is then no condition; the request is marked so for the
+ * manager, and no visit counts from the proposed place until the agent
+ * confirms it standing there (./confirm). Either kind may carry a corrected
+ * street address. His own advance request that waits unconfirmed is replaced
+ * by his next one.
  */
 export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) => {
   const permission = requireMobilePermission(auth, "ROUTE_EXECUTE")
@@ -125,7 +151,7 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
   }
   const body = parsed.data
   // 0,0 is «no coordinates» written as a number, from either of the two.
-  if (normalizeMtmCoordinates(body.proposed).latitude === null || normalizeMtmCoordinates(body.agent).latitude === null) {
+  if (normalizeMtmCoordinates(body.proposed).latitude === null || (body.agent && normalizeMtmCoordinates(body.agent).latitude === null)) {
     return noStoreJson({ error: "Coordinates are required", code: "MTM_LOCATION_REQUEST_INVALID" }, { status: 400 })
   }
 
@@ -141,9 +167,14 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
       objectType: { not: "DOCTOR" },
       AND: [customerScopeForActor(actor, asOf)],
     },
-    select: { id: true, name: true, latitude: true, longitude: true },
+    select: { id: true, name: true, address: true, latitude: true, longitude: true },
   })
   if (!customer) return notFound()
+
+  // The address only when it says something the card does not; the pin where
+  // the agent put it — or, for an address-only correction, where it stands.
+  const proposedAddress = proposedAddressChange(customer.address, body.address)
+  const proposed = effectiveProposedPoint(body.proposed, customer, proposedAddress !== null)
 
   // A sending that was already taken, sent again (a lost answer, a second tap).
   const sent = await prisma.mtmCustomerLocationRequest.findFirst({
@@ -151,14 +182,16 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
     select: requestSelect,
   })
   if (sent) {
-    if (sent.requestedByAgentId !== actor.agentId || !sameCustomerLocationRequest(sent, customer.id, body.proposed)) {
+    if (sent.requestedByAgentId !== actor.agentId || !sameCustomerLocationRequest(sent, customer.id, proposed, { origin: body.origin, proposedAddress })) {
       return noStoreJson({ error: "Idempotency key was reused", code: MTM_LOCATION_REQUEST_IDEMPOTENCY_MISMATCH }, { status: 409 })
     }
     return noStoreJson({ success: true, data: { request: customerLocationRequestForAgent(sent, actor.agentId) }, idempotent: true })
   }
 
   const now = new Date()
-  const verdict = evaluateCustomerLocationRequest(body, customer, now)
+  const verdict = body.origin === "ON_SITE" && body.agent
+    ? evaluateCustomerLocationRequest({ proposed: body.proposed, agent: body.agent }, customer, now, { addressChanged: proposedAddress !== null })
+    : evaluateRemoteCustomerLocationRequest({ proposed: body.proposed, agent: body.agent }, customer, now, { addressChanged: proposedAddress !== null })
   if (!verdict.ok) {
     return noStoreJson({
       error: "The request cannot be taken",
@@ -168,18 +201,46 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
   }
 
   let created
+  let replacedId: string | null = null
   try {
-    created = await prisma.mtmCustomerLocationRequest.create({
-      data: {
-        organizationId: auth.orgId,
-        customerId: customer.id,
-        requestedByAgentId: actor.agentId,
-        idempotencyKey: body.idempotencyKey,
-        ...verdict.facts,
-        comment: body.comment || null,
-        submittedAt: now,
-      },
-      select: requestSelect,
+    created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // His own proposal made in advance and not yet confirmed gives way to
+      // the new one: he corrects what he proposed, or — at the door — says
+      // where the customer really is. A request made at the place, his or a
+      // colleague's, does not: the new one is told it is waiting.
+      const own = await tx.mtmCustomerLocationRequest.findFirst({
+        where: {
+          organizationId: auth.orgId,
+          customerId: customer.id,
+          requestedByAgentId: actor.agentId,
+          status: "SUBMITTED",
+          origin: "REMOTE",
+          confirmedAt: null,
+        },
+        select: { id: true },
+      })
+      if (own) {
+        const superseded = await tx.mtmCustomerLocationRequest.updateMany({
+          where: { id: own.id, organizationId: auth.orgId, status: "SUBMITTED", confirmedAt: null },
+          data: { status: "CANCELLED", reviewedAt: now },
+        })
+        if (superseded.count === 1) replacedId = own.id
+      }
+      return tx.mtmCustomerLocationRequest.create({
+        data: {
+          organizationId: auth.orgId,
+          customerId: customer.id,
+          requestedByAgentId: actor.agentId,
+          idempotencyKey: body.idempotencyKey,
+          origin: body.origin,
+          ...verdict.facts,
+          previousAddress: customer.address ?? null,
+          proposedAddress,
+          comment: body.comment || null,
+          submittedAt: now,
+        },
+        select: requestSelect,
+      })
     })
   } catch (error) {
     // Held by the database (one waiting request per customer, one row per
@@ -206,9 +267,12 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
     metadataKind: "customer_location_request",
     newData: {
       customerId: customer.id,
+      origin: body.origin,
       movedMeters: verdict.facts.movedMeters,
       agentToProposedMeters: verdict.facts.agentToProposedMeters,
-      agentAccuracyMeters: Math.round(verdict.facts.agentAccuracyMeters),
+      agentAccuracyMeters: verdict.facts.agentAccuracyMeters === null ? null : Math.round(verdict.facts.agentAccuracyMeters),
+      ...(proposedAddress !== null ? { previousAddress: customer.address ?? null, proposedAddress } : {}),
+      ...(replacedId ? { replacedRequestId: replacedId } : {}),
     },
     req,
   }).catch((error) => console.warn("[MTM/route-field/location-request] audit failed", error))
@@ -221,6 +285,8 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
     requestedByAgentId: actor.agentId,
     customerName: customer.name,
     movedMeters: verdict.facts.movedMeters,
+    origin: body.origin,
+    proposedAddress,
   })
 
   return noStoreJson({ success: true, data: { request: customerLocationRequestForAgent(created, actor.agentId) } }, { status: 201 })

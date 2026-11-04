@@ -163,7 +163,9 @@ type WaitingLocationReader = Pick<Prisma.TransactionClient, "mtmCustomerLocation
  *  - it covers nobody else: a colleague at the same door is measured against
  *    the pin as it stands;
  *  - it covers no check-in without a position, and none outside the zone
- *    around the proposed place — the request names a door, not a district.
+ *    around the proposed place — the request names a door, not a district;
+ *  - it covers no request made in advance until the agent has confirmed it
+ *    standing at the proposed place («Адрес и точка», 2026-11-04).
  *
  * Asked only where a check-in is about to be refused or flagged — a customer
  * with no pin, or a position outside the zone — so an ordinary check-in costs
@@ -193,6 +195,10 @@ export async function waitingLocationRequestCovers(
       customerId: input.customerId,
       requestedByAgentId: input.agentId,
       status: "SUBMITTED",
+      // Made at the place, or confirmed there: a pin proposed in advance from
+      // anywhere (owner, 2026-11-04) is not a place a visit can count from
+      // until the agent has stood at it.
+      OR: [{ origin: "ON_SITE" }, { confirmedAt: { not: null } }],
     },
     select: { id: true, proposedLatitude: true, proposedLongitude: true },
   })

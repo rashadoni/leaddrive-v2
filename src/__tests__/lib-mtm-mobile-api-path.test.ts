@@ -59,7 +59,9 @@ describe("«Клиент здесь» is a mobile path", () => {
   })
 
   it("keeps the allowlist exact", () => {
+    expect(isMtmMobileApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-request/confirm")).toBe(true)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-request/request-1")).toBe(false)
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-request/confirm/x")).toBe(false)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/location-requests")).toBe(false)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/contacts/contact-1/location-request")).toBe(false)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/a/b/location-request")).toBe(false)

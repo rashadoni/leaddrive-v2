@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { canReviewMtmRouteRequest, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
-import { customerPinUnchangedSince } from "@/lib/mtm/customer-location-request"
+import { customerPlaceUnchangedSince } from "@/lib/mtm/customer-location-request"
 
 const requestInclude = {
   requestedByAgent: { select: { id: true, name: true } },
@@ -44,18 +44,38 @@ function project(row: LocationRequestRow, outOfZoneAlerts: number, canDecide: bo
       ? null
       : { latitude: row.previousLatitude, longitude: row.previousLongitude },
     proposed: { latitude: row.proposedLatitude, longitude: row.proposedLongitude },
-    agentFix: {
-      latitude: row.agentLatitude,
-      longitude: row.agentLongitude,
-      accuracyMeters: Math.round(row.agentAccuracyMeters),
-      at: row.agentFixAt,
-    },
+    // «Клиент здесь» from the spot, or proposed in advance (owner, 2026-11-04)
+    // — and then whether the agent has since confirmed it standing there.
+    origin: row.origin,
+    // The phone's fix when it asked: always from the spot, in advance only if it knew.
+    agentFix: row.agentLatitude === null || row.agentLongitude === null || row.agentAccuracyMeters === null || row.agentFixAt === null
+      ? null
+      : {
+          latitude: row.agentLatitude,
+          longitude: row.agentLongitude,
+          accuracyMeters: Math.round(row.agentAccuracyMeters),
+          at: row.agentFixAt,
+        },
+    confirmation: row.confirmedAt === null || row.confirmLatitude === null || row.confirmLongitude === null || row.confirmAccuracyMeters === null
+      ? null
+      : {
+          latitude: row.confirmLatitude,
+          longitude: row.confirmLongitude,
+          accuracyMeters: Math.round(row.confirmAccuracyMeters),
+          distanceMeters: row.confirmToProposedMeters,
+          at: row.confirmedAt,
+        },
+    // The street address: as the card had it when the agent asked, and as he says it is.
+    // `proposedAddress` null — he did not touch it.
+    previousAddress: row.previousAddress,
+    proposedAddress: row.proposedAddress,
     movedMeters: row.movedMeters,
     agentToProposedMeters: row.agentToProposedMeters,
     // «Адрес на проверке»: accepted from the reported place, and outside the zone until this is accepted.
     visits: row.visits.map((visit) => ({ id: visit.id, checkInAt: visit.checkInAt })),
-    // Somebody moved the pin after the agent asked: accepting would be refused, and the screen says why.
-    pinMovedSince: row.status === "SUBMITTED" && !customerPinUnchangedSince(row, row.customer),
+    // Somebody moved the pin — or rewrote the address the agent corrects — after
+    // he asked: accepting would be refused, and the screen says why.
+    pinMovedSince: row.status === "SUBMITTED" && !customerPlaceUnchangedSince(row, row.customer),
     outOfZoneAlerts,
     canDecide,
   }

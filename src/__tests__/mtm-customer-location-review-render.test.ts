@@ -160,3 +160,52 @@ describe("GPS review removes real Leaflet maps and refreshes the queue", () => {
     expect(renderErrors).toEqual([])
   })
 })
+
+// «Адрес и точка» (owner, 2026-11-04): the manager sees which it is — proposed
+// in advance, or confirmed by the agent standing there — and the address the
+// agent corrects, before and after.
+describe("a request proposed in advance, with a corrected address", () => {
+  const advance = (id: string, confirmed: boolean): CustomerLocationRequestRow => ({
+    ...row(id, true),
+    origin: "REMOTE",
+    agentFix: null,
+    agentToProposedMeters: null,
+    confirmation: confirmed
+      ? { latitude: 40.42, longitude: 49.88, accuracyMeters: 9, distanceMeters: 12, at: "2026-10-24T09:30:00.000Z" }
+      : null,
+    previousAddress: "Füzuli küç. 12",
+    proposedAddress: "Nizami küç. 41",
+  })
+
+  it("says it was not made at the place, and that the agent was not there", async () => {
+    rows = [advance("first", false)]
+    await mount()
+    const card = container.querySelector('[data-testid="mtm-customer-location-request-first"]')!
+    expect(card.querySelector('[data-testid="mtm-customer-location-origin"]')?.textContent).toBe("Заранее, агент ещё не был на месте")
+    expect(card.textContent).toContain("предложено заранее, не с места")
+    expect(card.textContent).toContain("не был на месте")
+    const address = card.querySelector('[data-testid="mtm-customer-location-address-change"]')!
+    expect(address.textContent).toContain("Füzuli küç. 12")
+    expect(address.textContent).toContain("Nizami küç. 41")
+    expect(renderErrors).toEqual([])
+  })
+
+  it("says when the agent confirmed it standing there, with his GPS", async () => {
+    rows = [advance("first", true)]
+    await mount()
+    const card = container.querySelector('[data-testid="mtm-customer-location-request-first"]')!
+    // The clock is the browser's own zone, as on every other line of this card.
+    expect(card.querySelector('[data-testid="mtm-customer-location-origin"]')?.textContent).toMatch(/^Подтверждено на месте в \d{1,2}:30$/)
+    expect(card.textContent).toContain("±9 м")
+    expect(card.textContent).toContain("12 м")
+    expect(renderErrors).toEqual([])
+  })
+
+  it("names an address-only correction as such: the pin stays", async () => {
+    rows = [{ ...advance("first", false), movedMeters: 0 }]
+    await mount()
+    const card = container.querySelector('[data-testid="mtm-customer-location-request-first"]')!
+    expect(card.querySelector('[data-testid="mtm-customer-location-headline"]')?.textContent).toContain("агент предлагает исправить адрес")
+    expect(card.textContent).toContain("не переедет")
+  })
+})

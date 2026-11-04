@@ -43,7 +43,8 @@ const V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/rout
 // «Клиент здесь»: an agent's request, sent from the spot, to move one
 // organization's pin (and its withdrawal). The same lesson as above — a
 // handler the proxy does not admit answers the app with a redirect to /login.
-const V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/organizations\/[^/%]+\/location-request$/
+// (and since 2026-11-04 its confirmation at the place, `/confirm`, of one proposed in advance).
+const V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/organizations\/[^/%]+\/location-request(?:\/confirm)?$/
 // «Часы не те?»: an agent's proposal of a place's real «часы приёма» (and its
 // withdrawal) — the same shape, the same lesson.
 const V2_MTM_MOBILE_ORGANIZATION_HOURS_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/organizations\/[^/%]+\/hours-request$/

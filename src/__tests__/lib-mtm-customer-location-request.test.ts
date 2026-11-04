@@ -6,9 +6,18 @@ import {
   LOCATION_REQUEST_MAX_PIN_FROM_AGENT_METERS,
   LOCATION_REQUEST_MIN_MOVE_METERS,
   customerLocationRequestForAgent,
+  LOCATION_REQUEST_CONFIRMATION_ERROR,
+  customerAddressUnchangedSince,
   customerPinStillAt,
   customerPinUnchangedSince,
+  customerPlaceUnchangedSince,
+  effectiveProposedPoint,
   evaluateCustomerLocationRequest,
+  evaluateLocationRequestConfirmation,
+  evaluateRemoteCustomerLocationRequest,
+  locationRequestMadeAtPlace,
+  normalizeLocationRequestAddress,
+  proposedAddressChange,
   sameCustomerLocationRequest,
 } from "@/lib/mtm/customer-location-request"
 
@@ -162,7 +171,8 @@ describe("what the field app is told about a request", () => {
   }
   it("gives whoever asked the manager's words", () => {
     expect(customerLocationRequestForAgent(row, "a1")).toEqual({
-      id: "r1", status: "REJECTED", mine: true, proposedLatitude: 40.41, proposedLongitude: 49.85, movedMeters: 1_200,
+      id: "r1", status: "REJECTED", mine: true, origin: "ON_SITE", confirmedAt: null,
+      proposedLatitude: 40.41, proposedLongitude: 49.85, proposedAddress: null, movedMeters: 1_200,
       decisionComment: "Это склад, а не аптека", submittedAt: "2026-10-12T08:00:00.000Z", reviewedAt: "2026-10-12T09:00:00.000Z",
     })
   })
@@ -171,5 +181,107 @@ describe("what the field app is told about a request", () => {
     expect(seen).toMatchObject({ mine: false, status: "SUBMITTED", decisionComment: null, reviewedAt: null })
     expect(JSON.stringify(seen)).not.toContain("a1")
     expect(JSON.stringify(seen)).not.toContain("склад")
+  })
+})
+
+// «Адрес и точка» (owner, 2026-11-04): «должно быть и до и на месте» — the
+// agent proposes in advance, from wherever he is, and confirms at the place.
+describe("a place proposed in advance", () => {
+  it("is taken from anywhere: where the agent stands is no condition", () => {
+    const verdict = evaluateRemoteCustomerLocationRequest({ proposed: DOOR, agent: null }, PIN, NOW)
+    expect(verdict).toEqual({
+      ok: true,
+      facts: {
+        previousLatitude: 40.4, previousLongitude: 49.85,
+        proposedLatitude: DOOR.latitude, proposedLongitude: 49.85,
+        agentLatitude: null, agentLongitude: null, agentAccuracyMeters: null, agentFixAt: null,
+        movedMeters: 1_200, agentToProposedMeters: null,
+      },
+    })
+    // Ten kilometres away, with a vague GPS: still a proposal a manager may weigh.
+    const far = evaluateRemoteCustomerLocationRequest({ proposed: DOOR, agent: phone({ latitude: north(DOOR.latitude, 10_000), accuracyMeters: 900 }) }, PIN, NOW)
+    expect(far.ok && far.facts).toMatchObject({ agentAccuracyMeters: 900, agentToProposedMeters: 10_000 })
+  })
+
+  it("keeps no position the phone was told to report, nor one it took long ago", () => {
+    for (const agent of [phone({ isMock: true }), phone({ fixAgeSeconds: LOCATION_REQUEST_MAX_FIX_AGE_SECONDS + 1 })]) {
+      const verdict = evaluateRemoteCustomerLocationRequest({ proposed: DOOR, agent }, PIN, NOW)
+      expect(verdict.ok && verdict.facts).toMatchObject({ agentLatitude: null, agentFixAt: null, agentToProposedMeters: null })
+    }
+  })
+
+  it("asks for nothing when the pin is already there and the address is as it was", () => {
+    const here = { latitude: north(40.4, 8), longitude: 49.85 }
+    expect(evaluateRemoteCustomerLocationRequest({ proposed: here }, PIN, NOW)).toMatchObject({ ok: false, problem: "unchanged" })
+  })
+
+  it("corrects the address alone: a pin brushed by a finger stays where it stands", () => {
+    const brushed = { latitude: north(40.4, 8), longitude: 49.85 }
+    const verdict = evaluateRemoteCustomerLocationRequest({ proposed: brushed }, PIN, NOW, { addressChanged: true })
+    expect(verdict.ok && verdict.facts).toMatchObject({ proposedLatitude: 40.4, proposedLongitude: 49.85, movedMeters: 0 })
+    // From the spot the same.
+    const onSite = evaluateCustomerLocationRequest({ proposed: brushed, agent: phone({ ...PIN }) }, PIN, NOW, { addressChanged: true })
+    expect(onSite.ok && onSite.facts).toMatchObject({ proposedLatitude: 40.4, movedMeters: 0, agentToProposedMeters: 0 })
+    // A pin that really moves is moved, address or not.
+    expect(effectiveProposedPoint(DOOR, PIN, true)).toEqual(DOOR)
+    // A customer with no pin gets the one the agent put.
+    expect(effectiveProposedPoint(brushed, { latitude: null, longitude: null }, true)).toEqual(brushed)
+  })
+})
+
+describe("a street address the agent writes", () => {
+  it("is words: trimmed, one space between them, nothing written is nothing", () => {
+    expect(normalizeLocationRequestAddress("  Nizami   küç.  41 ")).toBe("Nizami küç. 41")
+    expect(normalizeLocationRequestAddress("   ")).toBeNull()
+    expect(normalizeLocationRequestAddress(undefined)).toBeNull()
+  })
+  it("is a correction only when it says something other than the card", () => {
+    expect(proposedAddressChange("Füzuli küç. 12", "Nizami küç. 41")).toBe("Nizami küç. 41")
+    expect(proposedAddressChange("Füzuli küç. 12", " füzuli  KÜÇ. 12 ")).toBeNull()
+    expect(proposedAddressChange("Füzuli küç. 12", "")).toBeNull()
+    expect(proposedAddressChange(null, "Nizami küç. 41")).toBe("Nizami küç. 41")
+  })
+  it("stops an acceptance when somebody rewrote it since — and only a request that corrects it", () => {
+    const asked = { previousLatitude: 40.4, previousLongitude: 49.85, previousAddress: "Füzuli küç. 12", proposedAddress: "Nizami küç. 41" }
+    expect(customerAddressUnchangedSince(asked, { address: "Füzuli  küç. 12" })).toBe(true)
+    expect(customerAddressUnchangedSince(asked, { address: "Səməd Vurğun küç. 3" })).toBe(false)
+    expect(customerAddressUnchangedSince({ ...asked, proposedAddress: null }, { address: "Səməd Vurğun küç. 3" })).toBe(true)
+    expect(customerPlaceUnchangedSince(asked, { ...PIN, address: "Füzuli küç. 12" })).toBe(true)
+    expect(customerPlaceUnchangedSince(asked, { latitude: 40.41, longitude: 49.85, address: "Füzuli küç. 12" })).toBe(false)
+  })
+  it("is part of what makes two sendings with one key the same request", () => {
+    const stored = { customerId: "c1", proposedLatitude: DOOR.latitude, proposedLongitude: DOOR.longitude, origin: "REMOTE", proposedAddress: "Nizami küç. 41" }
+    expect(sameCustomerLocationRequest(stored, "c1", DOOR, { origin: "REMOTE", proposedAddress: "Nizami küç. 41" })).toBe(true)
+    expect(sameCustomerLocationRequest(stored, "c1", DOOR, { origin: "REMOTE", proposedAddress: "Nizami küç. 43" })).toBe(false)
+    expect(sameCustomerLocationRequest(stored, "c1", DOOR, { origin: "ON_SITE", proposedAddress: "Nizami küç. 41" })).toBe(false)
+  })
+})
+
+describe("an advance proposal confirmed at the place", () => {
+  const request = { proposedLatitude: DOOR.latitude, proposedLongitude: DOOR.longitude }
+  it("is taken from a phone that knows it is at the proposed pin, now", () => {
+    expect(evaluateLocationRequestConfirmation(request, phone({ latitude: north(DOOR.latitude, 30) }), NOW)).toEqual({
+      ok: true,
+      facts: {
+        confirmedAt: new Date("2026-10-12T07:59:56.000Z"),
+        confirmLatitude: north(DOOR.latitude, 30), confirmLongitude: 49.85,
+        confirmAccuracyMeters: 8, confirmToProposedMeters: 30,
+      },
+    })
+  })
+  it("is refused away from the pin, from a vague or old or mocked fix", () => {
+    expect(evaluateLocationRequestConfirmation(request, phone({ ...PIN }), NOW)).toMatchObject({ ok: false, problem: "notHere", details: { distanceMeters: 1_200 } })
+    expect(evaluateLocationRequestConfirmation(request, phone({ accuracyMeters: 300 }), NOW)).toMatchObject({ ok: false, problem: "accuracy" })
+    expect(evaluateLocationRequestConfirmation(request, phone({ fixAgeSeconds: 600 }), NOW)).toMatchObject({ ok: false, problem: "stale" })
+    expect(evaluateLocationRequestConfirmation(request, phone({ isMock: true }), NOW)).toMatchObject({ ok: false, problem: "mock" })
+    const codes = Object.values(LOCATION_REQUEST_CONFIRMATION_ERROR)
+    expect(new Set(codes).size).toBe(codes.length)
+    expect(LOCATION_REQUEST_CONFIRMATION_ERROR.notHere).toBe("MTM_LOCATION_REQUEST_CONFIRM_TOO_FAR")
+  })
+  it("is what lets a request stand for the place — as one made from the spot does", () => {
+    expect(locationRequestMadeAtPlace({ origin: "ON_SITE" })).toBe(true)
+    expect(locationRequestMadeAtPlace({})).toBe(true)
+    expect(locationRequestMadeAtPlace({ origin: "REMOTE", confirmedAt: null })).toBe(false)
+    expect(locationRequestMadeAtPlace({ origin: "REMOTE", confirmedAt: NOW })).toBe(true)
   })
 })

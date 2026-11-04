@@ -49,7 +49,8 @@ export default function CustomerLocationRequestMap({ previous, proposed, agentFi
   /** Null: the customer had no pin. */
   previous: Point | null
   proposed: Point
-  agentFix: Point & { accuracyMeters: number }
+  /** Null: proposed in advance, and the phone did not say where it was. */
+  agentFix: (Point & { accuracyMeters: number }) | null
   labels: { previous: string; proposed: string }
 }) {
   const previousIcon = useMemo(() => pin(labels.previous, "#9ca3af", "#111827"), [labels.previous])
@@ -69,12 +70,14 @@ export default function CustomerLocationRequestMap({ previous, proposed, agentFi
       <AttributionControl prefix={false} />
       <Frame points={points} />
       <CartoBasemap />
-      <Circle
-        center={[agentFix.latitude, agentFix.longitude]}
-        radius={Math.max(agentFix.accuracyMeters, 5)}
-        pathOptions={{ color: "#2563eb", weight: 1, fillColor: "#3b82f6", fillOpacity: 0.15 }}
-        interactive={false}
-      />
+      {agentFix ? (
+        <Circle
+          center={[agentFix.latitude, agentFix.longitude]}
+          radius={Math.max(agentFix.accuracyMeters, 5)}
+          pathOptions={{ color: "#2563eb", weight: 1, fillColor: "#3b82f6", fillOpacity: 0.15 }}
+          interactive={false}
+        />
+      ) : null}
       {previous ? (
         <>
           <Polyline
