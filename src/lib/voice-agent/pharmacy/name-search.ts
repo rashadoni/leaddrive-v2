@@ -124,7 +124,10 @@ const SLACK_FROM = 5
  */
 const SOURCE_WORD_WEIGHT = 0.25
 
-interface IndexedWord { label: string; gramCount: number; letters: string[]; folded: Int32Array }
+interface IndexedWord { label: string; gramCount: number; letters: string[]; folded: Int32Array; foldedKey: string }
+
+/** One item of a ranked search: its scores in sort order, and how many of the request's words it has exactly. */
+export interface RankedItem { id: string; covered: number; full: number; whole: number; exact: number; words: number }
 
 /**
  * Candidate discovery only. Owners must check tenant scope before calling.
@@ -225,7 +228,7 @@ export class PharmacyNameSearch {
     this.words.set(word, index)
     const grams = trigrams(word), letters = foldSpelling(word)
     const folded = letterCodes(letters)
-    this.wordList.push({ label: word, gramCount: grams.size, letters: Array.from(word), folded })
+    this.wordList.push({ label: word, gramCount: grams.size, letters: Array.from(word), folded, foldedKey: letters.join("") })
     for (const gram of grams) {
       const words = this.wordPostings.get(gram)
       if (words) words.push(index)
@@ -248,10 +251,21 @@ export class PharmacyNameSearch {
   }
 
   find(rawName: string): string[] {
+    return this.rank(rawName).map((row) => row.id)
+  }
+
+  /**
+   * The same ranking as find, with what each place rests on: `exact` — how
+   * many of the request's product words the item has spelled exactly as
+   * heard (folded), of `words`. An item with every word exact is what the
+   * caller clearly said (pharmacy-assortment.ts never lifts anything above it).
+   */
+  rank(rawName: string): RankedItem[] {
     const name = normalizePharmacyLabel(rawName)
     if (Array.from(name).length < 3) {
       const term = this.terms.get(name)
-      return term === undefined ? [] : [...this.termIds[term]].map((item) => this.idList[item])
+      return term === undefined ? [] : [...this.termIds[term]].map((item) =>
+        ({ id: this.idList[item], covered: 0, full: 0, whole: 1, exact: 0, words: 0 }))
     }
     this.fitItemScratch()
     const [whole, full] = this.scoreWhole(name)
@@ -263,10 +277,18 @@ export class PharmacyNameSearch {
     // "ampula" two hundred and "qutu" thousands.
     const covered: number[] = []
     const coveredScores = this.coveredScores, coveredSeen = this.coveredSeen, bestScores = this.bestScores, bestSeen = this.bestSeen
+    const exact = new Map<number, number>()
+    let words = 0
     for (const word of this.indexWords ? new Set(pharmacyWords(name)) : []) {
       if (QUANTITY_WORDS.has(word)) continue
+      words++
       const matches = this.matchWord(word)
       if (!matches.size) continue
+      const said = foldSpelling(word).join("")
+      for (const label of matches.keys()) {
+        if (this.wordList[this.words.get(label)!].foldedKey !== said) continue
+        for (const item of this.termIds[this.terms.get(label)!]) exact.set(item, (exact.get(item) ?? 0) + 1)
+      }
       // The word's weight comes from its closest spelling, so a rarer but
       // more distant word (Retinol for "ketanol") cannot outrank Ketonal.
       let closest = "", closestScore = -Infinity
@@ -302,6 +324,7 @@ export class PharmacyNameSearch {
     const wholeScores = this.wholeScores, fullScores = this.fullScores
     const rows = [...whole, ...covered.filter((item) => !(wholeScores[item] > 0))].map((item) => ({
       id: this.idList[item], covered: coveredScores[item], full: fullScores[item], whole: wholeScores[item],
+      exact: exact.get(item) ?? 0, words,
     }))
     for (const item of whole) wholeScores[item] = 0
     for (const item of full) fullScores[item] = 0
@@ -310,7 +333,7 @@ export class PharmacyNameSearch {
       coveredSeen[item] = 0
     }
     rows.sort((a, b) => b.covered - a.covered || b.full - a.full || b.whole - a.whole || a.id.localeCompare(b.id))
-    return rows.map((row) => row.id)
+    return rows
   }
 
   private fitItemScratch(): void {
@@ -436,6 +459,42 @@ function pharmacyWords(name: string): string[] {
   }
   for (const joined of name.match(/[\p{L}\p{M}]+(?:-[\p{L}\p{M}]+)+/gu) ?? []) result.push(joined.replace(/-/gu, ""))
   return result
+}
+
+/** The product words of a spoken request (spokenNameKey), one number per folded letter. */
+export function spokenWordCodes(text: string): Int32Array[] {
+  return spokenNameKey(text).split(" ").filter(Boolean).map((word) => letterCodes(Array.from(word)))
+}
+
+/** A word as the sound measures below compare it: folded, one number per letter. */
+export function soundCodes(word: string): Int32Array {
+  return letterCodes(foldSpelling(word.toLocaleLowerCase("az").replace(/-/gu, "")))
+}
+
+/**
+ * How far a spoken word is from a product's name word, 0 to 1, by the
+ * search's own measure, when the spoken word may be only the name's
+ * beginning or end: the closest of the whole word and its beginnings and
+ * endings at least as long as the spoken word less one letter, nor shorter
+ * than four. Recognizers keep one end of a long name: "Enterol" for
+ * Enterosgel, "Alqum" for Spazmalgon (docs/zeytun-line-recognition-plan.md 4.2).
+ * Anything over `within` comes back as 1.
+ */
+export function soundPartApart(spoken: Int32Array, word: Int32Array, within: number): number {
+  let best = 1
+  const shortest = Math.max(4, spoken.length - 1)
+  for (let length = word.length; length >= shortest; length--) {
+    const scale = 2 * Math.max(spoken.length, length), limit = Math.floor(within * scale)
+    // Shorter parts only get further from a longer spoken word.
+    if (2 * (spoken.length - length) > limit) break
+    if (2 * (length - spoken.length) > limit) continue
+    const ends = length === word.length ? [word] : [word.subarray(0, length), word.subarray(word.length - length)]
+    for (const part of ends) {
+      const distance = editDistance(spoken, part, limit)
+      if (distance <= limit) best = Math.min(best, distance / scale)
+    }
+  }
+  return best
 }
 
 /**

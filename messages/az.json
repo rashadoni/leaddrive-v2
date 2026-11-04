@@ -32088,6 +32088,7 @@
       "phone_unique": "nömrə ilə tanındı",
       "phone_shared": "nömrə və adı ilə tanındı",
       "named_on_call": "zəngdə adını dedi",
+      "named_matched": "nömrəsini və rayonunu dedi — 1C-də tapıldı, yoxlayın",
       "unidentified": "aptek tanınmadı",
       "manager_selected": "menecer seçib"
     },
