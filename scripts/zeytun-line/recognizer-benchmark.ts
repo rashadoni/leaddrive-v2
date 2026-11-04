@@ -13,25 +13,29 @@
  *
  * Methods (--methods, comma-separated; default all but transcribe-*):
  *   model                — what the Live model sent to the search (labels' heardByModel);
- *   chirp-none|ordered|all — Google Speech-to-Text v2, chirp_3, az-AZ, with no hints,
- *                          the products the line has ordered, or every catalog name
- *                          (chirp_3 takes at most 1000 phrases a request, so "all" is
- *                          split into parallel requests; latency is the slowest, the
- *                          texts are searched each and their candidates interleaved);
- *   flash-none|ordered|all — Gemini (generateContent, --flash-model) with the audio and
- *                          the name list in the instructions, run on prod;
- *   transcribe-none|ordered — gemini-3.5-transcribe with the list as custom vocabulary
+ *   chirp-<list>         — Google Speech-to-Text v2, chirp_3, az-AZ, the list as inline
+ *                          phrases (chirp_3 takes at most 1000 a request, so a longer list
+ *                          is split into parallel requests; latency is the slowest, each
+ *                          text is searched on its own);
+ *   flash-<list>         — Gemini (generateContent, --flash-model) with the audio and the
+ *                          list in the instructions, run on prod;
+ *   transcribe-none|ordered|loo — gemini-3.5-transcribe with the list as custom vocabulary
  *                          (at most 1000 terms), run on prod. Only with --allow-transcribe:
  *                          the key gets 10 requests a minute and 100 a day for this model, and
  *                          the demo assistant's speech-to-text (/assistant/transcribe) uses the
  *                          same model and key — 2026-11-04 one full run of 47 phrases × 2 used up
  *                          the day. Run it on a small set or when the demo is idle.
+ * Lists: none; ordered — every product the line has written (--ordered); loo — leave one
+ * call out: a call's phrases get only what OTHER calls ordered (--ordered-by-call), so the
+ * call's own order does not hint itself; sold — every product 1C sells by "шт" with a price
+ * (~6400, what a new line would have with no order history); all — the whole catalog.
  * For every recognizer the table also shows "model+<method>": the model's query first,
  * the recognizer's candidates after — the way task 8.1 would combine them.
  *
  *   node --import jiti/register scripts/zeytun-line/recognizer-benchmark.ts \
  *     --labels ~/inbox/zeytun-recordings/segments/labels.jsonl \
  *     --snapshot <tmp>/catalog.snapshot --ordered ~/inbox/zeytun-recordings/ordered-products.txt \
+ *     --ordered-by-call <tmp>/ordered-by-call.txt \
  *     --out <tmp>/run [--methods model,chirp-none,…] [--detail] [--fresh] [--allow-transcribe]
  *
  * Labels: one JSON line per phrase, {"file", "call", "said", "expected": [externalId…],
@@ -39,7 +43,11 @@
  * labels file; "use": false leaves a doubtful phrase out (cut-caller-phrases.py writes these).
  * Each text is searched on its own and a product counts as found in any of the five-candidate
  * lists, as the agent gets five per search (so "model" matches the stand's baseline count).
- * Ordered products: "externalId|count" lines (most ordered first).
+ * Ordered products: "externalId|count" lines (most ordered first). Ordered by call:
+ * "providerCallId|TS-number|externalId" lines, one per order line — on prod, read-only:
+ *   BEGIN READ ONLY; SELECT o."providerCallId", 'TS-'||o.number, l."externalId"
+ *   FROM pharmacy_phone_order_lines l JOIN pharmacy_phone_orders o ON o.id = l."orderId"
+ *   WHERE l."externalId" IS NOT NULL ORDER BY o.number, l.position;
  * Chirp: ~/.config/zeytun/speech-key (mode 600) holds a service account's JSON key (role Cloud
  * Speech Client) or an hour-long access token (`gcloud auth print-access-token`); v2 takes no API
  * key. The Google Cloud project id comes from --project, ~/.config/zeytun/speech-project or the
@@ -70,7 +78,8 @@ interface Transcript { texts: string[]; ms: number | null; error?: string }
 
 const CHIRP_PHRASE_LIMIT = 1000
 const TRANSCRIBE_VOCABULARY_LIMIT = 1000
-const ALL_METHODS = ["model", "chirp-none", "chirp-ordered", "chirp-all", "flash-none", "flash-ordered", "flash-all", "transcribe-none", "transcribe-ordered"]
+const LISTS = ["none", "ordered", "loo", "sold", "all"]
+const ALL_METHODS = ["model", ...["chirp", "flash"].flatMap((kind) => LISTS.map((list) => `${kind}-${list}`)), "transcribe-none", "transcribe-ordered", "transcribe-loo"]
 /** transcribe-* only on request: the model allows 100 requests a day on this key and the demo assistant needs them. */
 const DEFAULT_METHODS = ALL_METHODS.filter((method) => !method.startsWith("transcribe-"))
 const ORG = "benchmark"
@@ -108,7 +117,7 @@ function readLabels(path: string): Label[] {
 async function loadCatalog(path: string) {
   const raw = readFileSync(path), newline = raw.indexOf(10)
   const payload = raw.subarray(newline + 1)
-  const goods = (JSON.parse(payload.toString()) as { data: { goods: { Номенклатура: { Guid: string; Наименование: string; НаименованиеАз?: string } }[] } }).data.goods
+  const goods = (JSON.parse(payload.toString()) as { data: { goods: { Цена?: number; Номенклатура: { Guid: string; Наименование: string; НаименованиеАз?: string; БазоваяЕдиницаИзмерения?: string } }[] } }).data.goods
   const feed = await ZeytunAvailableBalances.build(payload, { organizationId: ORG, observedAt: new Date().toISOString(), source: "attachment" })
   const items = new Map(goods.map((row) => [row.Номенклатура.Guid, { name: row.Номенклатура.Наименование, nameAz: row.Номенклатура.НаименованиеАз || null }]))
   // How many labels each folded word is in: "таблетки", "гель", "крем" are in hundreds and name no product.
@@ -116,7 +125,9 @@ async function loadCatalog(path: string) {
   for (const item of items.values()) {
     for (const word of new Set(spokenNameKey(`${item.name} ${item.nameAz ?? ""}`).split(" "))) wordLabels.set(word, (wordLabels.get(word) ?? 0) + 1)
   }
-  return { feed, items, wordLabels }
+  // What the line sells by the box: 1C's "шт" with a price (CLAUDE.md, «шт в 1С Зейтуна — это упаковка»).
+  const sold = goods.filter((row) => row.Номенклатура.БазоваяЕдиницаИзмерения?.trim().toLowerCase() === "шт" && (row.Цена ?? 0) > 0).map((row) => row.Номенклатура.Guid)
+  return { feed, items, wordLabels, sold }
 }
 
 /** Hint names, as the line words them for its recognizer (spokenProductName), unique, in the given order. */
@@ -128,6 +139,20 @@ function hintNames(ids: Iterable<string>, items: Map<string, { name: string; nam
     if (name && name.length <= 100 && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); names.push(name) }
   }
   return names
+}
+
+/** "providerCallId|order|externalId" lines: every product line the line wrote, with its call. */
+function orderLinesByCall(path: string | undefined): { call: string; id: string }[] {
+  if (!path) return []
+  return readFileSync(expand(path), "utf8").split("\n").map((line) => line.split("|").map((part) => part.trim()))
+    .filter((parts) => parts.length >= 3 && parts[0] && parts[2]).map((parts) => ({ call: parts[0], id: parts[2] }))
+}
+
+/** Products ordered on other calls than this one, most ordered first. */
+function orderedElsewhere(lines: { call: string; id: string }[], call: string | undefined): string[] {
+  const counts = new Map<string, number>()
+  for (const line of lines) if (line.call !== call) counts.set(line.id, (counts.get(line.id) ?? 0) + 1)
+  return [...counts].sort(([a, left], [b, right]) => right - left || a.localeCompare(b)).map(([id]) => id)
 }
 
 function orderedIds(path: string | undefined): string[] {
@@ -253,13 +278,23 @@ async function main() {
     throw new Error("transcribe-* shares gemini-3.5-transcribe's 100 requests a day with the demo assistant: add --allow-transcribe to run it")
   }
 
-  const { feed, items, wordLabels } = await loadCatalog(expand(String(opts.snapshot)))
+  const { feed, items, wordLabels, sold } = await loadCatalog(expand(String(opts.snapshot)))
   const ordered = orderedIds(opts.ordered as string | undefined)
+  const orderLines = orderLinesByCall(opts["ordered-by-call"] as string | undefined)
+  const byName = (ids: string[]) => [...ids].sort((a, b) => items.get(a)!.name.localeCompare(items.get(b)!.name))
   const orderedNames = hintNames(ordered, items)
-  const allNames = hintNames([...ordered, ...[...items.keys()].sort((a, b) => items.get(a)!.name.localeCompare(items.get(b)!.name))], items)
-  const lists: Record<string, string[]> = { ordered: orderedNames, all: allNames }
-  console.log(`phrases: ${labels.length} (${labels.filter((label) => !label.expected.length).length} without a product), catalog items: ${items.size}, hint names: all ${allNames.length}, ordered ${orderedNames.length}`)
+  const allNames = hintNames([...ordered, ...byName([...items.keys()])], items)
+  const soldNames = hintNames([...ordered.filter((id) => sold.includes(id)), ...byName(sold)], items)
+  const lists: Record<string, string[]> = { ordered: orderedNames, all: allNames, sold: soldNames }
+  // Leave one call out: a call's phrases get only what other calls ordered.
+  for (const call of new Set(labels.map((label) => label.call ?? ""))) lists[`loo:${call}`] = hintNames(orderedElsewhere(orderLines, call), items)
+  const listKey = (list: string, label: Label) => (list === "loo" ? `loo:${label.call ?? ""}` : list)
+  console.log(`phrases: ${labels.length} (${labels.filter((label) => !label.expected.length).length} without a product), catalog items: ${items.size}, hint names: all ${allNames.length}, sold "шт" ${soldNames.length} (of ${sold.length} items), ordered ${orderedNames.length}`)
   if (methods.some((method) => method.endsWith("-ordered")) && !orderedNames.length) throw new Error("an *-ordered method needs --ordered with products found in the snapshot")
+  if (methods.some((method) => method.endsWith("-loo")) && !orderLines.length) throw new Error("a *-loo method needs --ordered-by-call")
+  if (methods.some((method) => method.endsWith("-loo"))) {
+    console.log(`leave one call out: ${[...new Set(labels.map((label) => label.call ?? ""))].map((call) => `${call.slice(0, 8)} ${lists[`loo:${call}`].length}`).join(", ")} names`)
+  }
 
   const cachePath = join(outDir, "transcripts.json")
   const cache: Record<string, Transcript> = existsSync(cachePath) && !opts.fresh ? JSON.parse(readFileSync(cachePath, "utf8")) : {}
@@ -283,10 +318,10 @@ async function main() {
     if (!project) throw new Error(`no Google Cloud project id: --project or ${projectFile}`)
     const chirpOptions = { headers: auth.headers, project, region: String(opts["chirp-region"] ?? "eu"), boost: opts.boost ? Number(opts.boost) : undefined }
     for (const method of chirpMethods) {
-      const phrases = method === "chirp-none" ? [] : lists[method.slice("chirp-".length)]
+      const list = method.slice("chirp-".length)
       for (const label of labels) {
         if (cache[keyOf(method, label)] && !cache[keyOf(method, label)].error) continue
-        cache[keyOf(method, label)] = await chirp(wavOf(label), phrases, chirpOptions)
+        cache[keyOf(method, label)] = await chirp(wavOf(label), list === "none" ? [] : lists[listKey(list, label)], chirpOptions)
         process.stderr.write(".")
       }
       process.stderr.write("\n")
@@ -304,15 +339,17 @@ async function main() {
       jobs.push({
         id: keyOf(method, label), kind,
         model: kind === "flash" ? String(opts["flash-model"] ?? "gemini-3.8-flash") : "gemini-3.5-transcribe",
-        ...(list === "none" ? {} : { list: kind === "transcribe" ? `${list}:vocabulary` : list }),
+        ...(list === "none" ? {} : { list: listKey(list, label) }),
         ...(kind === "flash" && opts.thinking !== "none" ? { thinking: String(opts.thinking ?? "low") } : {}),
         wav: wavOf(label).toString("base64"),
       })
     }
   }
   if (jobs.length) {
-    if (geminiMethods.includes("transcribe-all")) throw new Error("transcribe-all is not offered: custom vocabulary takes at most 1000 terms")
-    const remoteLists = { ...lists, "ordered:vocabulary": orderedNames.slice(0, TRANSCRIBE_VOCABULARY_LIMIT) }
+    const remoteLists = Object.fromEntries(Object.entries(lists).filter(([name]) => (jobs as { list?: string }[]).some((job) => job.list === name)))
+    for (const job of jobs as { kind: string; list?: string }[]) {
+      if (job.kind === "transcribe" && job.list && remoteLists[job.list].length > TRANSCRIBE_VOCABULARY_LIMIT) throw new Error(`custom vocabulary takes at most ${TRANSCRIBE_VOCABULARY_LIMIT} terms; ${job.list} has ${remoteLists[job.list].length}`)
+    }
     console.log(`Gemini on prod: ${jobs.length} requests`)
     const results = await prodGemini(jobs, remoteLists, Number(opts.concurrency ?? 3), Number(opts["transcribe-rpm"] ?? 6))
     for (const [id, result] of results) cache[id] = result.error ? { texts: [], ms: result.ms, error: result.error } : { texts: result.text ? [result.text] : [], ms: result.ms }
