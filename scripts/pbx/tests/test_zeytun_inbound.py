@@ -516,8 +516,8 @@ class TransportTests(unittest.TestCase):
                 return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": prompt,
                         "opening": "Test greeting", "maxSeconds": seconds}
             return bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
-        self.assertEqual(bridge_with(900, "p" * 8000).open()["maxSeconds"], 900)
-        for seconds, prompt in [(901, "p"), (900, "p" * 8001), (29, "p")]:
+        self.assertEqual(bridge_with(900, "p" * 12000).open()["maxSeconds"], 900)
+        for seconds, prompt in [(901, "p"), (900, "p" * 12001), (29, "p")]:
             with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
                 bridge_with(seconds, prompt).open()
 

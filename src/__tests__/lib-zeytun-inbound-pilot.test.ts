@@ -740,7 +740,9 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     })
 
     it("fits the station with the longest goodbye and notes the settings allow", () => {
-      expect(LINE_PROMPT_MAX_CHARS).toBe(BRIDGE.promptChars)
+      // Never above the station's: a longer prompt is refused on every call.
+      // Raised on the station first, then here (owner, 2026-11-04).
+      expect(LINE_PROMPT_MAX_CHARS).toBeLessThanOrEqual(BRIDGE.promptChars)
       // Room for a page of company information: about a thousand characters today.
       expect(LINE_NOTES_MAX_CHARS).toBeGreaterThanOrEqual(900)
       const third = Math.floor(LINE_NOTES_MAX_CHARS / 3)
