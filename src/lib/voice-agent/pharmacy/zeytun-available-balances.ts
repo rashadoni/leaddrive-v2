@@ -6,6 +6,7 @@ import { z } from "zod"
 import { PharmacyOrderError } from "./contracts"
 import { PharmacyNameSearch } from "./name-search"
 import { formKey, innKey, parseSubstituteRequest, sameStrength, strengthOf, SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
+import { productLeads, PROMOTIONS_PREFIX, ZeytunPromotions } from "./zeytun-promotions"
 
 export const ZEYTUN_BALANCES_MAX_BYTES = 25 * 1024 * 1024
 const text = z.string().trim().max(512)
@@ -105,6 +106,10 @@ function sourceParts(label: string): string[] {
   return [...(groups.length >= 3 ? groups.slice(-2) : []), ...starred]
 }
 
+function makersOf(item: { name: string; nameAz: string | null }) {
+  return { name: sourceParts(item.name), nameAz: item.nameAz ? sourceParts(item.nameAz) : [] }
+}
+
 /** Work between two yields of a build; a call waiting on the web process waits at most about this. */
 const BUILD_SLICE_MS = 15
 const DEFERRED = Symbol("deferred")
@@ -124,6 +129,8 @@ export class ZeytunAvailableBalances {
   private readonly names = new PharmacyNameSearch(true)
   /** 1C's active substance (INN) → items, for substitutes only. */
   private readonly substances = new Map<string, Set<string>>()
+  /** Items with a "buy N, get M" promotion, for `promotions:` only. */
+  private readonly promotions = new ZeytunPromotions()
 
   constructor(payload: string | Uint8Array, context: ZeytunBalancesContext, deferred?: typeof DEFERRED) {
     if (deferred === DEFERRED) return
@@ -183,6 +190,7 @@ export class ZeytunAvailableBalances {
       // Pharmacological names are not aliases: one substance can have many SKUs.
       // They are searched only by an explicit substitute request.
       if (item.pharmacologicalName && innKey(item.pharmacologicalName)) this.addLookup(this.substances, innKey(item.pharmacologicalName), item.externalId)
+      this.promotions.add(item, makersOf(item))
       yield
     }
   }
@@ -202,7 +210,8 @@ export class ZeytunAvailableBalances {
     }
   }
 
-  search(organizationId: string, query: unknown) {
+  /** `now` dates a `promotions:` request (Baku day); nothing else reads it. */
+  search(organizationId: string, query: unknown, now = Date.now()) {
     this.assertScope(organizationId)
     const parsed = zeytunBalanceQuerySchema.safeParse(query)
     if (!parsed.success) throw new PharmacyOrderError("invalid_request")
@@ -212,6 +221,7 @@ export class ZeytunAvailableBalances {
     else if (request.itemCode) ids = [...(this.codes.get(request.itemCode) ?? [])]
     else if (request.barcode) ids = [...(this.barcodes.get(request.barcode) ?? [])]
     else if (SUBSTITUTE_PREFIX.test(request.text!)) ids = this.substitutes(request.text!)
+    else if (PROMOTIONS_PREFIX.test(request.text!)) ids = this.promotions.find(request.text!, now, (filter) => this.closestLeads(filter))
     else ids = this.names.find(request.text!)
     return {
       catalogVersion: this.version, observedAt: this.context.observedAt, source: this.context.source,
@@ -239,6 +249,13 @@ export class ZeytunAvailableBalances {
       const strength = strengthOf(item.name) ?? (item.nameAz ? strengthOf(item.nameAz) : null)
       return strength !== null && sameStrength(strength, request.strength)
     })
+  }
+
+  /** The name the catalog's product closest to a word goes by, for a misheard `promotions:` filter. */
+  private closestLeads(filter: string): Set<string> {
+    const top = this.names.find(filter)[0]
+    const item = top === undefined ? undefined : this.items.get(top)
+    return item ? productLeads(item, makersOf(item)) : new Set()
   }
 
   private assertScope(organizationId: string): void {

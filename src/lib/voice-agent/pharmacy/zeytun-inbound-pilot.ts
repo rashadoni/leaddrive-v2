@@ -7,6 +7,7 @@ import { openingForCandidates, ZEYTUN_SALES_DESK, type PharmacyCandidate } from 
 import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type PhoneOrderCatalog,
   type PhoneOrderLineInput, type PhoneOrderSaveResult } from "./phone-orders"
 import { SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
+import { PROMOTIONS_PREFIX, runningPromotion } from "./zeytun-promotions"
 import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
 import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
@@ -155,16 +156,11 @@ export function catalogStock(item: { quantityAsReported?: unknown; baseUnitAsRep
  * A flag without both numbers is some other kind of promotion: not said.
  */
 export function activePromotion(item: { promotionAsReported?: unknown; baseUnitAsReported?: unknown; nameAz?: unknown }, now: number) {
-  const promotion = item.promotionAsReported as { enabled?: unknown; buy?: unknown; get?: unknown; validFromRaw?: unknown; validToRaw?: unknown } | null | undefined
-  if (!promotion || promotion.enabled !== true) return null
-  const { buy, get, validFromRaw: from, validToRaw: to } = promotion
-  if (!Number.isInteger(buy) || !Number.isInteger(get) || (buy as number) < 1 || (get as number) < 1) return null
-  if (typeof from !== "string" || typeof to !== "string" || !/^\d{8}$/.test(from) || !/^\d{8}$/.test(to)) return null
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Baku", year: "numeric", month: "2-digit", day: "2-digit" })
-    .format(new Date(now)).replaceAll("-", "")
-  if (today < from || today > to) return null
-  const per = spokenUnit(item)
-  return { buy: buy as number, get: get as number, ...(per ? { per } : {}), until: `${to.slice(0, 4)}-${to.slice(4, 6)}-${to.slice(6)}` }
+  // The same rule lists the promotions a `promotions:` request asks for (zeytun-promotions.ts).
+  const promotion = runningPromotion(item.promotionAsReported, now)
+  if (!promotion) return null
+  const per = spokenUnit(item), to = promotion.to
+  return { buy: promotion.buy, get: promotion.get, ...(per ? { per } : {}), until: `${to.slice(0, 4)}-${to.slice(4, 6)}-${to.slice(6)}` }
 }
 /** The call's catalog as the order writer reads it: one product id, exactly. */
 function phoneOrderCatalog(catalog: InboundPilotCatalog): PhoneOrderCatalog {
@@ -609,8 +605,9 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         return searchResponse({ status, ...(status === "transferring" ? { say: ZEYTUN_TRANSFER_PHRASE } : {}) })
       }
       const found = catalog.search(input.query)
-      // A wording its managers already confirmed leads to that product first.
-      const learned = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text)
+      // A wording its managers already confirmed leads to that product first;
+      // a substitute or promotions request is no wording of a product.
+      const learned = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text) && !PROMOTIONS_PREFIX.test(input.query.text)
         ? dependencies.learnedNames?.(config)?.productFor(input.query.text) : null
       const known = learned ? catalog.search({ externalId: learned }).candidates[0] : undefined
       const result = known ? { status: "candidates_only", candidateCount: Math.max(found.candidateCount, 1),
@@ -620,6 +617,9 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       // verify a substitute and nothing showed what it had searched.
       if (input.query.text && SUBSTITUTE_PREFIX.test(input.query.text)) {
         console.log("[zeytun-line] substitute", JSON.stringify({ query: input.query.text.slice(0, 240), found: result.candidateCount }))
+      } else if (input.query.text && PROMOTIONS_PREFIX.test(input.query.text)) {
+        // Not a product lookup: kept out of the quality report's search counts.
+        console.log("[zeytun-line] promotions", JSON.stringify({ call: input.callId, query: input.query.text.slice(0, 240), found: result.candidateCount }))
       } else if (input.query.text && isLineGrant(config)) {
         // Owner's call 2026-10-29: the agent called a found product missing,
         // and nothing showed what it had searched. Product words and the

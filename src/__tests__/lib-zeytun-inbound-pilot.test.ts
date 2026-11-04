@@ -428,6 +428,14 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
       expect((await (await f.handle(lookup("Amlessa"))).json()).candidates.map((item: { itemCode: string }) => item.itemCode)).toEqual(["AML"])
     })
 
+    it("never answers a promotions request with a learned product", async () => {
+      // Owner, 2026-11-04: «на что есть акции?» asks the catalog, not the managers' wordings.
+      const f = taught([{ spoken: "promotions Adessa", externalId: adefa.externalId }])
+      const body = await (await f.handle(lookup("promotions: Adessa"))).json()
+      expect(body.candidates.map((item: { itemCode: string }) => item.itemCode)).toEqual(["AML"])
+      expect(f.catalog.search).not.toHaveBeenCalledWith({ externalId: adefa.externalId })
+    })
+
     it("leaves a wording two products were confirmed for to the caller", async () => {
       const f = taught([{ spoken: "Adessa", externalId: adefa.externalId }, { spoken: "adessa iki qutu", externalId: amlessa.externalId }])
       expect((await (await f.handle(lookup("Adessa"))).json()).candidates.map((item: { itemCode: string }) => item.itemCode)).toEqual(["AML"])
