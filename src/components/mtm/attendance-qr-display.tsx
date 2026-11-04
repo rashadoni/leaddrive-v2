@@ -111,8 +111,9 @@ export function MtmAttendanceQrDisplay() {
               <div role="radiogroup" aria-labelledby={`attendance-qr-method-${branch.id}`} className="inline-flex gap-2" data-testid="attendance-qr-branch-method">
                 {(["QR_GPS", "GPS_ONLY"] as const).map(method => <Button key={method} type="button" role="radio" aria-checked={branch.markMethod === method}
                   variant={branch.markMethod === method ? "selected" : "outline"} className="min-h-11"
-                  data-testid={`attendance-qr-branch-method-${method}`} disabled={busy || !directory.canConfigure || branch.markMethod === method}
-                  onClick={() => void setMethod(branch.id, method)}>{t(method === "QR_GPS" ? "qrBranchMethodQr" : "qrBranchMethodGps")}</Button>)}
+                  // The chosen one stays clickable-looking: a greyed «QR + GPS» read as the one not chosen (prod, 2026-11-04).
+                  data-testid={`attendance-qr-branch-method-${method}`} disabled={busy || !directory.canConfigure}
+                  onClick={() => { if (branch.markMethod !== method) void setMethod(branch.id, method) }}>{t(method === "QR_GPS" ? "qrBranchMethodQr" : "qrBranchMethodGps")}</Button>)}
               </div></div>
             {branch.markMethod === "GPS_ONLY" && <p className="text-sm text-muted-foreground" data-testid="attendance-qr-branch-gps-only">{t("qrBranchGpsOnlyHint")}</p>}
             {branch.screens.length ? branch.screens.map(screen => {

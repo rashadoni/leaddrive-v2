@@ -136,6 +136,11 @@ describe("branch screens in Personnel → Settings → QR", () => {
     expect(JSON.parse(String(fetchMock.mock.calls.find(([, o]) => o?.method === "PUT")?.[1]?.body))).toEqual({ branchId: bare.id, method: "GPS_ONLY" })
     expect(rows()[1].querySelector('[data-testid="attendance-qr-branch-method-GPS_ONLY"]')!.getAttribute("aria-checked")).toBe("true")
     expect(rows()[1].querySelector('[data-testid="attendance-qr-branch-gps-only"]')!.textContent).toBe(ru.qrBranchGpsOnlyHint)
+    // The chosen one is not greyed out (it read as «not chosen»), and pressing it again sends nothing.
+    const chosen = rows()[1].querySelector<HTMLButtonElement>('[data-testid="attendance-qr-branch-method-GPS_ONLY"]')!
+    expect(chosen.disabled).toBe(false)
+    await act(async () => chosen.click())
+    expect(fetchMock.mock.calls.filter(([, o]) => o?.method === "PUT")).toHaveLength(1)
     expect(rows()[1].querySelector('[data-testid="attendance-qr-branch-unscreened"]')).toBeNull()
     expect([...rows()[1].querySelectorAll("button")].some(item => item.textContent === ru.qrScreenPair)).toBe(false)
     // The other branch keeps its screen and its pairing button.
