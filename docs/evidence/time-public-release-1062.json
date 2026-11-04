@@ -1,0 +1,26 @@
+{
+  "sourceSha": "8eec07943e8c8d61944aaffa7b34755a2119c3a7",
+  "sourceBranch": "main",
+  "packageName": "com.leaddrive.attendance",
+  "versionName": "1.0.0",
+  "versionCode": 1062,
+  "apkSha256": "4277c1e381c59fec9f7d549765734f3ffd19306ce9b6b4e2769a4e9b8a9f968c",
+  "apkBytes": 46336031,
+  "signingCertificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+  "buildRun": 41838510684,
+  "hostedTests": {
+    "suitesPassed": 302,
+    "testsPassed": 2795,
+    "testsTodo": 1
+  },
+  "hostedApksignerAaptPackageCertificatePermissions": "PASS (FieldPushService and POST_NOTIFICATIONS required, background tracking forbidden)",
+  "previousPublicVersionCode": 1061,
+  "physicalMaestro": "NOT_RUN",
+  "physicalInPlaceUpgrade": "PASS on the owner's S23 (R5CXC0NP96K) on 2026-11-04: 1061 -> 1062 with pm install -r, firstInstallTime and session kept; «Profil» shows «İş yeri kompüterdə → Kompüteri qoş»",
+  "physicalDeskAndBreaksEndToEnd": "NOT_RUN at publication: the server's desk screen was still deploying and the company's switches are the owner's to turn on",
+  "publicationAuthorization": "Owner on 2026-11-04: «Давай, делай» (mockups desk-and-breaks)",
+  "tag": "time-v1.0.0-1062",
+  "apkUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/time-v1.0.0-1062/leaddrive-time-1.0.0-1062.apk",
+  "publishedAt": "2026-11-04T15:49:18Z",
+  "publicRedownloadHashVerified": true
+}
