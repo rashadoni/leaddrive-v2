@@ -7,6 +7,9 @@ import { clearScreenCookie, screenJson, screenRateLimited } from "@/lib/mtm/atte
 
 export const dynamic = "force-dynamic"
 
+/** The client's address as our nginx saw it, or null when it cannot be told. */
+const officeAddress = (req: NextRequest) => { const ip = clientIp(req); return ip === "unknown" ? null : ip }
+
 // The screen asks once a minute (and on wake); a few screens behind one
 // office address fit, a script does not.
 const QR_IP_LIMIT = { maxRequests: 60, windowSeconds: 60 }
@@ -19,7 +22,8 @@ export async function POST(req: NextRequest) {
   try {
     // The body carries the screen's own position; a missing or malformed one is "cannot tell".
     const body = await req.json().catch(() => null)
-    const shown = await issueAttendanceScreenQr(req.cookies.get(BRANCH_SCREEN_COOKIE)?.value, parseBranchScreenFix(body))
+    // The address it comes from: on the branch's remembered office network, the screen stands at its branch.
+    const shown = await issueAttendanceScreenQr(req.cookies.get(BRANCH_SCREEN_COOKIE)?.value, parseBranchScreenFix(body), officeAddress(req))
     if (shown.state === "UNPAIRED") return clearScreenCookie(screenJson({ success: true, data: shown }))
     return screenJson({ success: true, data: shown })
   } catch {

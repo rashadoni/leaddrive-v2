@@ -78,7 +78,7 @@ describe("public branch screen routes", () => {
   })
   it("gives the paired screen its code and clears the cookie of an unpaired one", async () => {
     const shown = await QR(qr(SECRET, { fix: FIX }))
-    expect(store.issueAttendanceScreenQr).toHaveBeenCalledWith(SECRET, FIX)
+    expect(store.issueAttendanceScreenQr).toHaveBeenCalledWith(SECRET, FIX, null)
     expect(await shown.json()).toMatchObject({ success: true, data: { state: "SHOWING", branch: { id: "b" } } })
     vi.mocked(store.issueAttendanceScreenQr).mockResolvedValue({ state: "UNPAIRED" })
     const gone = await QR(qr("mtms1.revoked"))
@@ -87,7 +87,7 @@ describe("public branch screen routes", () => {
   })
   it("passes no position on when the screen sent none or sent nonsense", async () => {
     await QR(qr(SECRET)); await QR(qr(SECRET, { fix: { latitude: "home" } }))
-    expect(vi.mocked(store.issueAttendanceScreenQr).mock.calls).toEqual([[SECRET, null], [SECRET, null]])
+    expect(vi.mocked(store.issueAttendanceScreenQr).mock.calls).toEqual([[SECRET, null, null], [SECRET, null, null]])
   })
   it("hides failures behind one answer", async () => {
     vi.mocked(store.issueAttendanceScreenQr).mockRejectedValue(new Error("private DB payload"))

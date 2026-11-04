@@ -6281,6 +6281,7 @@ model MtmAgent {
   attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
   attendanceBreakLabels MtmAttendanceBreakLabel[]
+  attendanceDeskScreens MtmAttendanceBranchScreen[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
@@ -9087,7 +9088,7 @@ model MtmAttendanceBranchScreen {
   secretHash String? @unique @db.VarChar(64)
   pairedAt DateTime?
   lastSeenAt DateTime?
-  /// AT_BRANCH | AWAY | NO_FIX — the screen's last verdict, never its coordinates.
+  /// AT_BRANCH | AWAY | NO_FIX | NETWORK — the screen's last verdict, never its coordinates.
   placeState String? @db.VarChar(16)
   placeDistanceMeters Int?
   placeCheckedAt DateTime?
@@ -9095,6 +9096,10 @@ model MtmAttendanceBranchScreen {
   revokedBy String?
   createdBy String
   createdAt DateTime @default(now())
+  /// A desk screen: the employee's own computer, paired by the employee's phone
+  /// (`attendance-desk-screen.ts`). Null: a shared reception screen.
+  agentId String?
+  agent MtmAgent? @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
   @@unique([organizationId, id])
   @@index([organizationId, branchId, createdAt])
   @@map("mtm_attendance_branch_screens")

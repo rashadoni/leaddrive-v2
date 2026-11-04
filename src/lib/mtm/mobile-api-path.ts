@@ -20,6 +20,9 @@ const V2_MTM_MOBILE_EXACT_PATHS = new Set([
   "/api/v2/mtm/mobile/route-field/attendance/location-consent",
   "/api/v2/mtm/mobile/route-field/attendance/installation",
   "/api/v2/mtm/mobile/route-field/attendance/explanations",
+  // The employee's own computer as a workplace (owner, 2026-11-04): pairing and the list.
+  "/api/v2/mtm/mobile/route-field/attendance/desk-pairing",
+  "/api/v2/mtm/mobile/route-field/attendance/desks",
   "/api/v2/mtm/mobile/route-field/contact-create-requests",
   "/api/v2/mtm/mobile/route-field/contacts",
   "/api/v2/mtm/mobile/route-field/device-tokens",
@@ -36,6 +39,7 @@ const V2_MTM_MOBILE_EXACT_PATHS = new Set([
 ])
 const V2_MTM_MOBILE_DETAIL_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/(?:contacts|organizations)\/[^/%]+$/
 const V2_MTM_MOBILE_ATTENDANCE_DETAIL_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/(?:requests|attachments)\/[^/%]+$/
+const V2_MTM_MOBILE_ATTENDANCE_DESK_REVOKE_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/desks\/[^/%]+\/revoke$/
 // An agent's change request on one client. Without this line the proxy sends
 // the app's POST to /login (307): the handler was live on production for an
 // hour on 2026-10-04 and unreachable.
@@ -58,6 +62,7 @@ function isApprovedV2MtmMobilePath(pathname: string): boolean {
   return V2_MTM_MOBILE_EXACT_PATHS.has(normalized)
     || V2_MTM_MOBILE_DETAIL_PATH.test(normalized)
     || V2_MTM_MOBILE_ATTENDANCE_DETAIL_PATH.test(normalized)
+    || V2_MTM_MOBILE_ATTENDANCE_DESK_REVOKE_PATH.test(normalized)
     || V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH.test(normalized)
     || V2_MTM_MOBILE_ORGANIZATION_LOCATION_REQUEST_PATH.test(normalized)
     || V2_MTM_MOBILE_ORGANIZATION_HOURS_REQUEST_PATH.test(normalized)

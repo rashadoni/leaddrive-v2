@@ -206,6 +206,13 @@ export function createChirpRecognizer(options: {
 /** Words that end one product of a phrase: "Adefa beş qutu, Ketonal on qutu". */
 const UNIT_WORDS = new Set(["qutu", "qutusu", "qutudan", "ədəd", "dənə", "paket", "ampula", "ampul", "flakon", "blister", "şpris",
   "tablet", "шт", "штук", "штуки", "упаковка", "упаковки", "упаковок", "коробка", "коробки", "коробок"])
+/**
+ * Chirp writes the caller's "qutu" as "kutu" (voice stand, 2026-11-04: "5 kutu",
+ * "Adefo 3 kutu"). Unknown, "kutu" was a product word: "5 kutu" became a product of
+ * its own, the next lookup took it as its second-ear pair, and its search (k and q
+ * sound alike) returned Koraksan and folic acid by the "/*qutu/*" in 1C's names.
+ */
+const CHIRP_SPELLING: Record<string, string> = { kutu: "qutu", kutusu: "qutusu", kutudan: "qutudan" }
 /** Words that join two products ("bir" is not one: it is "one box"). */
 const JOIN_WORDS = new Set(["və", "ve", "həm", "и", "and", "plus", "üstəgəl", "sonra"])
 /** Words that are an answer or the order's own talk, never a product's name. */
@@ -213,8 +220,31 @@ const NOT_PRODUCT = /^(?:bəli|bali|hə|he|yox|xeyr|yoxdur|salam|sağ|sag|olun|t
 /** A part naming a pharmacy ("Zəfər aptekindən") is the caller, not a product. */
 const PHARMACY_WORD = /^(?:aptek|apteka|аптек)/iu
 
+/** Number words a quantity is said with ("beş qutu", "on beş qutu"); a dose is mostly digits. */
+const NUMBER_WORDS = new Set(["bir", "iki", "üç", "dörd", "beş", "altı", "yeddi", "səkkiz", "doqquz", "on", "iyirmi", "otuz", "qırx",
+  "əlli", "altmış", "yetmiş", "səksən", "doxsan", "yüz", "min"])
+
+/**
+ * What the second ear searches for one part: its words without the unit and the
+ * quantity said right before it ("Bisakodil 10 qutu" -> "Bisakodil", "Mezim Forte
+ * 10000 3 qutu" -> "Mezim Forte 10000": one digit group, or a run of number words).
+ * Voice stand 2026-11-04: the whole part was searched, and "qutu" (k and q alike)
+ * matched the "/*qutu/*" in 1C's names — "Bisakodil 10 qutu" brought "Bone
+ * birdəfəlik" and Afobazol as the second ear's candidates, and "Fluimucil 600 iki
+ * qutu" found nothing at all, where "Fluimucil 600" finds the line's Fluifort.
+ */
+function searchText(part: string[]) {
+  const kept: string[] = []
+  for (const word of part) {
+    if (!UNIT_WORDS.has(word.toLowerCase())) { kept.push(word); continue }
+    if (kept.length && /^\d+$/u.test(kept[kept.length - 1])) kept.pop()
+    else while (kept.length && NUMBER_WORDS.has(kept[kept.length - 1].toLowerCase())) kept.pop()
+  }
+  return kept.join(" ")
+}
+
 export interface HeardProduct {
-  /** What is searched: the part as Chirp wrote it. */
+  /** What is searched: the part's name and dose as Chirp wrote them, without the quantity and its unit. */
   text: string
   /** Its product words as Chirp wrote them (the `alsoHeard` the agent gets). */
   words: string
@@ -226,7 +256,7 @@ export interface HeardProduct {
  * A phrase split into its products, each one searched on its own (the
  * benchmark's rule, task 8.1): at a comma or full stop, a joining word, or
  * after a unit ("beş qutu"). Parts without a product word (a number, "bəli",
- * the pharmacy) are dropped.
+ * the pharmacy) are dropped; each is searched by searchText.
  */
 export function heardProducts(text: string): HeardProduct[] {
   const parts: string[][] = []
@@ -235,7 +265,8 @@ export function heardProducts(text: string): HeardProduct[] {
   for (const raw of text.split(/\s+/u)) {
     if (!raw) continue
     const ends = /[,.;!?]$/u.test(raw)
-    const word = raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+    const stripped = raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+    const word = CHIRP_SPELLING[stripped.toLowerCase()] ?? stripped
     const lower = word.toLowerCase()
     if (JOIN_WORDS.has(lower)) { close(); continue }
     if (word) current.push(word)
@@ -247,7 +278,7 @@ export function heardProducts(text: string): HeardProduct[] {
     if (part.some((word) => PHARMACY_WORD.test(word))) continue
     const named = part.filter((word) => !NOT_PRODUCT.test(word) && spokenNameKey(word))
     if (!named.length) continue
-    products.push({ text: part.join(" ").slice(0, 240), words: named.join(" ").slice(0, 80),
+    products.push({ text: searchText(part).slice(0, 240), words: named.join(" ").slice(0, 80),
       keys: [...new Set(named.flatMap((word) => spokenNameKey(word).split(" ")).filter(Boolean))] })
   }
   return products

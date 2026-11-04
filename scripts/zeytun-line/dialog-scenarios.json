@@ -424,6 +424,29 @@
           }
         ]
       }
+    },
+    {
+      "id": "9",
+      "title": "Три товара в одной реплике, у каждого количество (голосовой стенд, 04.11: Mezim потерян)",
+      "turns": [
+        "Zəfər aptek. Ketonal ampula 10 qutu, Bisakodil 10 qutu, Mezym Forte 10000 3 qutu.",
+        { "say": "Bu qədər, təsdiq edirəm.", "when": [{ "match": "(Ketonal|Bisakodil)[^.!]*\\?", "say": "Bəli. Bu qədər, təsdiq edirəm." }] },
+        { "say": "Bu qədər, təsdiq edirəm.", "when": [{ "match": "Sağ olun, xoş günlər", "say": "Sağ olun." }] }
+      ],
+      "checks": {
+        "tools": [
+          { "name": "search_pharmacy_catalog", "args": "[Kk]etonal", "label": "искал Ketonal" },
+          { "name": "search_pharmacy_catalog", "args": "[Bb]isa[ck]od[iy]l", "label": "искал Bisakodil" },
+          { "name": "search_pharmacy_catalog", "args": "[Mm]ez[iy]m", "label": "искал Mezim forte" }
+        ],
+        "noReply": [{ "match": "Mez[iy]m[^.!?]*neçə[^.!?]*\\?", "label": "не переспросил уже названное количество Mezim" }],
+        "finalSave": true,
+        "savedQuantity": [
+          { "spoken": "[Kk]etonal", "quantity": 10, "label": "в заказе Ketonal 10" },
+          { "spoken": "[Bb]isa[ck]od[iy]l", "quantity": 10, "label": "в заказе Bisakodil 10" },
+          { "spoken": "[Mm]ez[iy]m", "quantity": 3, "label": "в заказе Mezim forte 3" }
+        ]
+      }
     }
   ]
 }

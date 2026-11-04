@@ -9,6 +9,7 @@ import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { lockAttendanceQrPolicy, readAttendanceQrRule, requireAttendanceQrAdmin } from "@/lib/mtm/attendance-qr-policy"
 import { directory, issueBranchQrImage, lockBranches } from "@/lib/mtm/attendance-qr-store"
+import { readAttendanceBranchNetworks, readAttendanceDeskDay, readAttendanceDeskRule } from "@/lib/mtm/attendance-desk-rules"
 import {
   BRANCH_SCREEN_CODE_LIFETIME_MS,
   generateBranchScreenCode,
@@ -48,22 +49,24 @@ export async function readAttendanceBranchScreens(reviewer: AttendanceReviewer):
     const listing = await directory(tx, reviewer)
     const screens = listing.branches.length ? await tx.mtmAttendanceBranchScreen.findMany({
       where: { organizationId: reviewer.organizationId, branchId: { in: listing.branches.map(branch => branch.id) }, pairedAt: { not: null }, revokedAt: null },
-      select: { id: true, branchId: true, pairedAt: true, lastSeenAt: true, placeState: true, placeDistanceMeters: true, placeCheckedAt: true }, orderBy: [{ pairedAt: "asc" }, { id: "asc" }], take: 2001,
+      select: { id: true, branchId: true, pairedAt: true, lastSeenAt: true, placeState: true, placeDistanceMeters: true, placeCheckedAt: true, agent: { select: { id: true, name: true } } },
+      orderBy: [{ pairedAt: "asc" }, { id: "asc" }], take: 2001,
     }) : []
     if (screens.length > 2000) return fail("TOO_LARGE", 422)
+    const networks = await readAttendanceBranchNetworks(tx, reviewer.organizationId)
     return {
-      enabled: listing.enabled, canConfigure: listing.canConfigure,
-      branches: listing.branches.map(branch => ({ ...branch, screens: screens.filter(screen => screen.branchId === branch.id)
+      enabled: listing.enabled, canConfigure: listing.canConfigure, deskEnabled: await readAttendanceDeskRule(tx, reviewer.organizationId),
+      branches: listing.branches.map(branch => ({ ...branch, networks: networks[branch.id]?.length ?? 0, screens: screens.filter(screen => screen.branchId === branch.id)
         .map(screen => ({ id: screen.id, pairedAt: screen.pairedAt!.toISOString(), lastSeenAt: screen.lastSeenAt?.toISOString() ?? null,
-          place: placeOf(screen) })) })),
+          place: placeOf(screen), employee: screen.agent ? { id: screen.agent.id, name: screen.agent.name } : null })) })),
     }
   }, { timeout: 15000 })
 }
 
-const PLACE_STATES = new Set(["AT_BRANCH", "AWAY", "NO_FIX"])
+const PLACE_STATES = new Set(["AT_BRANCH", "AWAY", "NO_FIX", "NETWORK"])
 function placeOf(screen: { placeState: string | null; placeDistanceMeters: number | null; placeCheckedAt: Date | null }) {
   if (!screen.placeState || !PLACE_STATES.has(screen.placeState) || !screen.placeCheckedAt) return null
-  return { state: screen.placeState as "AT_BRANCH" | "AWAY" | "NO_FIX", distanceMeters: screen.placeDistanceMeters, checkedAt: screen.placeCheckedAt.toISOString() }
+  return { state: screen.placeState as "AT_BRANCH" | "AWAY" | "NO_FIX" | "NETWORK", distanceMeters: screen.placeDistanceMeters, checkedAt: screen.placeCheckedAt.toISOString() }
 }
 
 /** A one-time code for the tablet at this branch. The code itself is never stored. */
@@ -119,15 +122,24 @@ async function screenTenantOpen(tx: Tx, organizationId: string) {
  */
 export async function pairAttendanceBranchScreen(rawCode: unknown): Promise<{ secret: string } | null> {
   const codeHash = hashBranchScreenCode(rawCode)
-  if (!codeHash) return null
+  return codeHash ? pairScreenByCodeHash(codeHash, "RECEPTION") : null
+}
+
+/**
+ * The one pairing, for both kinds of screen: an administrator's typed code
+ * (reception) or the token a desk shows and the employee's phone confirmed
+ * (`attendance-desk-screen.ts`). A code of one kind never pairs the other.
+ */
+export async function pairScreenByCodeHash(codeHash: string, kind: "RECEPTION" | "DESK"): Promise<{ secret: string } | null> {
   // The code is the only thing that names the organization: the one lookup by
   // hash runs outside any organization (the table's policy lets the bypass
   // read it); everything after it, in that organization only.
-  const pending = await runWithRlsBypass(() => prisma.mtmAttendanceBranchScreen.findUnique({ where: { codeHash }, select: { id: true, organizationId: true } }))
-  if (!pending) return null
+  const pending = await runWithRlsBypass(() => prisma.mtmAttendanceBranchScreen.findUnique({ where: { codeHash }, select: { id: true, organizationId: true, agentId: true } }))
+  if (!pending || (pending.agentId !== null) !== (kind === "DESK")) return null
   return runWithTenant(pending.organizationId, () => prisma.$transaction(async (tx: Tx) => {
     await lockAttendanceQrPolicy(tx, pending.organizationId)
     if (!await screenTenantOpen(tx, pending.organizationId)) return null
+    if (kind === "DESK" && !await readAttendanceDeskRule(tx, pending.organizationId)) return null
     const now = new Date(), { secret, secretHash } = generateBranchScreenSecret()
     // Two tablets typing one code at once: the row lets one of them have it.
     const changed = await tx.mtmAttendanceBranchScreen.updateMany({
@@ -146,11 +158,11 @@ export async function pairAttendanceBranchScreen(rawCode: unknown): Promise<{ se
  * why not. `fix` is the screen's own position; a code goes only to a screen
  * standing at its branch.
  */
-export async function issueAttendanceScreenQr(secret: unknown, fix: BranchScreenFix | null): Promise<AttendanceBranchScreenQr> {
+export async function issueAttendanceScreenQr(secret: unknown, fix: BranchScreenFix | null, ip: string | null = null): Promise<AttendanceBranchScreenQr> {
   const secretHash = hashBranchScreenSecret(secret)
   if (!secretHash) return { state: "UNPAIRED" }
   const screen = await runWithRlsBypass(() => prisma.mtmAttendanceBranchScreen.findUnique({
-    where: { secretHash }, select: { id: true, organizationId: true, branchId: true, revokedAt: true, lastSeenAt: true, placeState: true, placeDistanceMeters: true } }))
+    where: { secretHash }, select: { id: true, organizationId: true, branchId: true, agentId: true, revokedAt: true, lastSeenAt: true, placeState: true, placeDistanceMeters: true } }))
   if (!screen || screen.revokedAt) return { state: "UNPAIRED" }
   return runWithTenant(screen.organizationId, () => prisma.$transaction(async (tx: Tx): Promise<AttendanceBranchScreenQr> => {
     await lockAttendanceQrPolicy(tx, screen.organizationId)
@@ -164,7 +176,10 @@ export async function issueAttendanceScreenQr(secret: unknown, fix: BranchScreen
     if (!live) return { state: "UNPAIRED" }
     const now = new Date()
     const branch = await currentBranch(tx, screen.organizationId, screen.branchId)
-    const place = branch ? evaluateBranchScreenPlace(fix, branch) : null
+    // The branch's remembered office network stands for its place (owner, 2026-11-04):
+    // a desk computer on a cable cannot say where it is, the address it comes from can.
+    const onNetwork = !!branch && !!ip && (await readAttendanceBranchNetworks(tx, screen.organizationId))[branch.branchId]?.includes(ip) === true
+    const place = !branch ? null : onNetwork ? { state: "NETWORK" as const, distanceMeters: null } : evaluateBranchScreenPlace(fix, branch)
     // The verdict is written when it changes, the time seen at most once a minute.
     const placeChanged = place && (place.state !== screen.placeState || (place.state === "AWAY" && place.distanceMeters !== screen.placeDistanceMeters))
     if (placeChanged || !screen.lastSeenAt || now.getTime() - screen.lastSeenAt.getTime() >= LAST_SEEN_STAMP_MS) {
@@ -172,9 +187,12 @@ export async function issueAttendanceScreenQr(secret: unknown, fix: BranchScreen
         data: { lastSeenAt: now, ...(place ? { placeState: place.state, placeDistanceMeters: place.distanceMeters, placeCheckedAt: now } : {}) } })
     }
     if (!branch || !place) return { state: "BRANCH_UNAVAILABLE", organizationName: tenant.name }
-    const shown = { organizationName: tenant.name, branch: { id: branch.branchId, name: branch.name } }
+    const desk = screen.agentId ? await readAttendanceDeskDay(tx, screen.organizationId, screen.agentId, now) : null
+    // A desk whose employee left, or whose company switched desks off, shows nothing of theirs.
+    if (screen.agentId && (!desk || !await readAttendanceDeskRule(tx, screen.organizationId))) return { state: "QR_OFF", organizationName: tenant.name, branch: { id: branch.branchId, name: branch.name } }
+    const shown = { organizationName: tenant.name, branch: { id: branch.branchId, name: branch.name }, ...(desk ? { desk } : {}) }
     if (!tenant.qrOn) return { state: "QR_OFF", ...shown }
-    if (place.state !== "AT_BRANCH") return { state: "NOT_AT_BRANCH", reason: place.state, distanceMeters: place.distanceMeters, ...shown }
-    return { state: "SHOWING", ...shown, ...await issueBranchQrImage(screen.organizationId, branch.branchId, branch.id, now) }
+    if (place.state !== "AT_BRANCH" && place.state !== "NETWORK") return { state: "NOT_AT_BRANCH", reason: place.state, distanceMeters: place.distanceMeters, ...shown }
+    return { state: "SHOWING", ...shown, place: place.state, ...await issueBranchQrImage(screen.organizationId, branch.branchId, branch.id, now) }
   }, { timeout: 15000 }))
 }

@@ -328,8 +328,11 @@ export const ZEYTUN_LINE_PROMPT = [
     "Collect a PRELIMINARY list of medicines and quantities. Look up every product with search_pharmacy_catalog and wait for the result before saying anything about it; never invent a match, availability or price."],
   // Owner, 2026-10-30, the same complaint: confirmation and the next question
   // in one reply, several products in one go, no question for a plain match.
+  // Voice stand 2026-11-04: "look up two at a time" made gemini-3.8-live look up
+  // Ketonal and Bisakodil, then ask Mezim forte's quantity it had heard ("3 qutu")
+  // instead of looking it up; the caller went on and Mezim never reached the order.
   ["Acknowledge a clear line briefly; do not ask yes/no after every line.",
-    "Confirm a clear line in a few words and invite the next in the same reply (\"Adefa, 5 qutu. Daha?\"), no yes/no. Several products at once: look up two at a time, confirm them in one reply; ask a missing quantity in that reply.\n" +
+    "Confirm a clear line in a few words and invite the next in the same reply (\"Adefa, 5 qutu. Daha?\"), no yes/no. Several products at once: look up all of them in one go, confirm them in one reply; ask only a quantity the caller did not say.\n" +
     // Owner's call 2026-10-31: three products named, the agent asked No-shpa's
     // form, took "ampula" for nothing and only Adefa was written.
     "Every product the caller named stays open until it is saved or the caller drops it. An answer to your question (a form, a quantity) is about the product you asked of; write it, then go on, unasked, with the next open product. Before the closing sentence, if a named product is still unsaved, name it and ask once."],

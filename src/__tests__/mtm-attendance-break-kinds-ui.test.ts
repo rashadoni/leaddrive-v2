@@ -29,7 +29,9 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 async function render(locale = "ru") {
-  await act(async () => root.render(createElement(NextIntlClientProvider, { locale, messages: messages[locale], timeZone: "Asia/Baku" }, createElement(MtmAttendanceBreakKindsSettings))))
+  const page = createElement(MtmAttendanceBreakKindsSettings)
+  // eslint-disable-next-line react/no-children-prop -- the provider's props type requires `children`
+  await act(async () => root.render(createElement(NextIntlClientProvider, { locale, messages: messages[locale], timeZone: "Asia/Baku", children: page })))
   await act(async () => { await Promise.resolve() })
 }
 const names = () => [...host.querySelectorAll<HTMLInputElement>('[data-testid="attendance-break-kind-name"]')]
