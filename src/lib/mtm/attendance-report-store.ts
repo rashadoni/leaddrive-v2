@@ -6,6 +6,8 @@ import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import type { AttendanceEmploymentEvent } from "@/lib/mtm/attendance-employment"
 import { attendanceReportMarks } from "@/lib/mtm/attendance-location-report"
 import { readAttendanceLocationReportEvidence } from "@/lib/mtm/attendance-location-report-store"
+import { attendanceBreakKindTotals, readAttendanceBreakLabels } from "@/lib/mtm/attendance-break-kinds"
+import { mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 import { AttendanceRequestDetailsSchema } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceApprovedPeriod } from "@/lib/mtm/attendance-request-projection"
 import { readAttendanceDayKinds } from "@/lib/mtm/attendance-day-kind-store"
@@ -138,10 +140,20 @@ export async function readAttendanceProjectionInTransaction(tx: Prisma.Transacti
       explanations.set(dayKey, [...(explanations.get(dayKey) ?? []), { kind: item.kind as "LATE" | "ABSENT", status: item.status as "REQUESTED" | "ANSWERED" | "ACCEPTED" | "REJECTED", answer: item.answer }])
     }
     const explained = <T extends MtmAttendanceReportRow>(row: T): T => { const found = explanations.get(`${row.employeeId}|${row.date}`); return found ? { ...row, explanations: found } : row }
-    const rows = filterMtmAttendanceRows(report.rows, { form: query.form }).map(row => explained({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) }))
+    // Kinds of breaks sit beside the day too (owner, 2026-11-04); they never change its hours.
+    // The day's own breaks — corrected ones when a correction moved them — matched by their start.
+    const breakLabels = await readAttendanceBreakLabels(tx, organizationId, workdays.map(day => day.id))
+    const projected = new Map(calculationInput.workdays.map(day => [day.id, day]))
+    const withBreaks = <T extends MtmAttendanceReportRow>(row: T): T => {
+      const labels = row.workdayId ? breakLabels.get(row.workdayId) : undefined, day = row.workdayId ? projected.get(row.workdayId) : undefined
+      if (!labels?.length || !day || row.factsState !== "VALID") return row
+      const corrected = day.correctionProjection?.valid ? day.correctionProjection.pauseIntervals.map(pause => ({ from: new Date(pause.startedAt), to: pause.endedAt ? new Date(pause.endedAt) : null })) : null
+      return { ...row, breakKinds: attendanceBreakKindTotals(corrected ?? mtmWorkdayPauses(day.events), labels, now) }
+    }
+    const rows = filterMtmAttendanceRows(report.rows, { form: query.form }).map(row => withBreaks(explained({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) })))
     const supplemental = shiftAssignments.length ? buildMtmAttendanceReport({ ...calculationInput, from: precedingDate, to: precedingDate }).rows : []
     const accountingRows = shiftAssignments.length ? attendanceAccountingRows([...supplemental, ...report.rows], query.from, query.to)
-      .map(row => explained({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) })) : undefined
+      .map(row => withBreaks(explained({ ...row, locationMarks: attendanceReportMarks(row, locationEvidence) }))) : undefined
     if (accountingRows && accountingRows.length > MTM_ATTENDANCE_REPORT_MAX_ROWS) throw new Error("MTM_ATTENDANCE_REPORT_TOO_LARGE")
     const result = { ...report, rows, ...(accountingRows ? { accountingRows: filterMtmAttendanceRows(accountingRows, { form: query.form }) } : {}), totals: summarizeMtmAttendanceRows(rows), form: query.form }
     const id = createHash("sha256").update(JSON.stringify({ query, report: result })).digest("hex")

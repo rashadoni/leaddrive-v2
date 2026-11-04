@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 import { AttendanceMarkSchema, type AttendanceMark } from "@/lib/mtm/attendance-location-contract"
+import { AttendanceBreakInputSchema, type AttendanceBreakInput } from "@/lib/mtm/attendance-break-contract"
 
 export type MtmWorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
 
@@ -86,6 +87,8 @@ export type MtmWorkdayEventInput = {
   /** Opt-in MTM endpoint evidence; never copied into the workday coordinates. */
   attendanceQr?: AttendanceQrInput
   attendanceMark?: AttendanceMark
+  /** PAUSE only: the break kind the employee chose (`attendance-break-kinds.ts`). */
+  attendanceBreak?: AttendanceBreakInput
 }
 
 export type MtmWorkdayResult =
@@ -570,6 +573,11 @@ export function parseMtmWorkdayEvent(
     return { input: null, error: "MTM attendance marks belong only to START/FINISH and cannot contain legacy coordinates or trust proofs", code: "MTM_ATTENDANCE_MARK_INVALID" }
   }
 
+  const breakKind = value.attendanceBreak === undefined ? null : AttendanceBreakInputSchema.safeParse(value.attendanceBreak)
+  if (breakKind && (!breakKind.success || action !== "PAUSE")) {
+    return { input: null, error: "MTM break kind belongs only to PAUSE", code: "MTM_ATTENDANCE_MARK_INVALID" }
+  }
+
   return {
     input: {
       action: action as MtmWorkdayAction,
@@ -591,6 +599,7 @@ export function parseMtmWorkdayEvent(
       ...(attendance.evidence ? { attendance: attendance.evidence } : {}),
       ...(qr?.success ? { attendanceQr: qr.data } : {}),
       ...(mark?.success ? { attendanceMark: mark.data } : {}),
+      ...(breakKind?.success ? { attendanceBreak: breakKind.data } : {}),
     },
     error: null,
   }
@@ -644,6 +653,7 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     playIntegrityFingerprint: includesPlayIntegrity ? playIntegrityFingerprint : null,
     // Absent on old packets: their exact historical digest stays unchanged.
     ...(input.attendanceMark ? { attendanceMark: input.attendanceMark } : {}),
+    ...(input.attendanceBreak ? { attendanceBreak: input.attendanceBreak } : {}),
     ...(input.attendanceQr ? { attendanceQr: { version: 1, fingerprint: input.attendanceQr.token ? createHash("sha256").update(input.attendanceQr.token).digest("hex") : null } } : {}),
   })).digest("hex")
 }

@@ -1,5 +1,6 @@
 import { isAttendanceMonthClosedWrite } from "@/lib/mtm/attendance-month-guard"
 import { recordAttendanceQr, readAttendanceQrReceipt } from "@/lib/mtm/attendance-qr-store"
+import { recordAttendanceBreakKind } from "@/lib/mtm/attendance-break-kinds"
 import { enforceAttendanceInstallationApproval } from "@/lib/mtm/attendance-installation-policy"
 import { isAttendanceMarkExempt, requireAttendanceSelf, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
@@ -3109,6 +3110,7 @@ export const POST = withMobileRls(async (req, auth) => {
               // The mark's own fix first: the QR is checked against it (AWAY_FROM_BRANCH).
               await recordAttendanceMarkEvidence(tx, { scope: { organizationId: orgId, agentId }, input: workdayInput, workday, event, beforeWorkday }, { organizationId: orgId, agentId, role: auth.role })
               await recordAttendanceQr(tx, { organizationId: orgId, agentId }, workdayInput, event.id, workdayInput.action === "FINISH" && beforeWorkday?.status === "PAUSED")
+              await recordAttendanceBreakKind(tx, { organizationId: orgId, agentId }, workdayInput, event.id)
               if (!workforceWorkday) return
               const prepared = await prepareWorkforceAttendanceVerification(tx, {
                 organizationId: orgId,

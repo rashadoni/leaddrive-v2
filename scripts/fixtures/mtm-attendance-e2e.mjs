@@ -58,6 +58,7 @@ export function prepareDatabase() {
   apply('20261112090000_mtm_attendance_branch_screens')
   apply('20261113090000_mtm_attendance_branch_screen_place')
   apply('20261120090000_mtm_attendance_installation_utc_guard_clock')
+  apply('20261125090000_mtm_attendance_break_labels')
   sql(readFileSync('scripts/rls/enable-batch-5.sql', 'utf8'))
   const password = process.env.MTM_E2E_DATABASE_PASSWORD
   assert.match(password ?? '', /^[a-f0-9]{48}$/)

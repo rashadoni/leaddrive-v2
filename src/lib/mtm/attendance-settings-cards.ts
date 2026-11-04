@@ -5,7 +5,7 @@
 export const ATTENDANCE_SETTINGS_GROUPS = [
   // «reminders», «approval» and «checks» came from MTM → Settings → Company
   // (owner, 2026-10-18: settings of the time module belong to the module).
-  { key: "workday", cards: ["hours", "holidays", "shifts", "day-kinds", "reminders"] },
+  { key: "workday", cards: ["hours", "holidays", "shifts", "day-kinds", "breaks", "reminders"] },
   { key: "leave", cards: ["leave", "requests", "approval"] },
   // Suspicious marks are a daily queue on Today (/mtm/attendance/review), not a setting.
   { key: "marks", cards: ["qr", "location", "checks"] },

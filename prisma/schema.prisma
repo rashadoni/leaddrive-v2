@@ -19,6 +19,7 @@ model Organization {
   attendanceParticipationEvents MtmAttendanceParticipationEvent[]
   attendanceReminderNotices MtmAttendanceReminderNotice[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
+  attendanceBreakLabels MtmAttendanceBreakLabel[]
   attendanceBranchScreens MtmAttendanceBranchScreen[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   attendanceInstallationDecisions MtmAttendanceInstallationDecision[]
@@ -6279,6 +6280,7 @@ model MtmAgent {
   attendanceShiftMembers MtmAttendanceShiftMember[]
   attendanceLeaveProfiles MtmAttendanceLeaveProfile[]
   attendanceQrEvidence MtmAttendanceQrEvidence[]
+  attendanceBreakLabels MtmAttendanceBreakLabel[]
   attendanceInstallationRequests MtmAttendanceInstallationRequest[]
   mtmAttendanceStreamIntegrity MtmAttendanceStreamIntegrity[]
   mtmAttendanceLocationConsents MtmAttendanceLocationConsent[]
@@ -8455,6 +8457,7 @@ model MtmAgentWorkday {
 
 model MtmAgentWorkdayEvent {
   attendanceQrEvidence MtmAttendanceQrEvidence?
+  attendanceBreakLabel MtmAttendanceBreakLabel?
   mtmAttendanceMarkEvidence MtmAttendanceMarkEvidence?
   mtmAttendanceRiskCases MtmAttendanceRiskCase[]
 
@@ -23348,6 +23351,26 @@ model MtmAttendanceQrEvidence {
   @@unique([organizationId, agentId, nonceFingerprint, action])
   @@index([organizationId, agentId, createdAt])
   @@map("mtm_attendance_qr_evidence")
+}
+
+/// The kind of one break (PAUSE), with a copy of the kind's name and limit at that moment
+/// (`src/lib/mtm/attendance-break-kinds.ts`). Never a place: where a break was spent is not recorded.
+model MtmAttendanceBreakLabel {
+  id String @id @default(uuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId String
+  agent MtmAgent @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  eventId String
+  event MtmAgentWorkdayEvent @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Restrict)
+  kindId String @db.VarChar(40)
+  /// Null for a built-in kind: each screen names it in its own language.
+  kindName String? @db.VarChar(40)
+  limitMinutes Int?
+  createdAt DateTime @default(now())
+  @@unique([organizationId, eventId])
+  @@index([organizationId, agentId, createdAt])
+  @@map("mtm_attendance_break_labels")
 }
 
 model MtmAttendanceLeavePolicy {
