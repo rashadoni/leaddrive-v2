@@ -185,3 +185,11 @@ main `8eec079` built as 1062 (hosted Jest 302 suites, 2795 tests, package/permis
 published as `time-v1.0.0-1062`, public redownload hash verified. On the owner's S23: in-place 1061 → 1062
 kept the session; «Profil» shows the desk card. Pairing a desk and a break from it end to end wait for the
 server's desk screen and the company's switches. Evidence: `docs/evidence/time-public-release-1062.json`.
+
+## Release 1063 — 2026-11-04
+
+1062 plus the owner's hint in the desk card: «Profil → İş yeri kompüterdə» shows the screen link of the
+company's own server (`https://<server>/screen`, for Zeytun `zeytun.leaddrivecrm.org/screen`, which serves
+the screen page) and «Keçidi göndər» (leaddrive-mtm#236). Main `8053867` built as 1063 (hosted Jest 302
+suites, 2796 tests), published as `time-v1.0.0-1063`, public redownload hash verified; in-place 1062 → 1063
+on the owner's S23 kept the session. Evidence: `docs/evidence/time-public-release-1063.json`.
