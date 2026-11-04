@@ -554,17 +554,26 @@ class TransportTests(unittest.TestCase):
 
     def test_cancelled_result_is_dropped_and_cancel_does_not_free_worker_capacity(self):
         self.block = True
-        self.handle(event("one")); self.handle(event("two"))
-        self.handle({"toolCallCancellation": {"ids": ["one", "two"]}})
-        self.handle(event("three"))
+        # Four lookups at once: one tool batch holds at most four.
+        for key in ("one", "two", "three", "four"):
+            self.handle(event(key))
+        self.handle({"toolCallCancellation": {"ids": ["one", "two", "three", "four"]}})
+        self.handle(event("five"))
         self.assertEqual(self.sent[0]["toolResponse"]["functionResponses"][0]["response"]["status"], "search_busy")
-        self.assertEqual(len(self.requests), 3)
+        self.assertEqual(len(self.requests), 5)
         self.gate.set()
-        # Both work slots must return before asserting no late result.
-        self.assertTrue(self.bridge.workers.acquire(timeout=2))
-        self.assertTrue(self.bridge.workers.acquire(timeout=2))
+        # Every work slot must return before asserting no late result.
+        self.take_all_workers()
         self.assertEqual(len(self.sent), 1)
-        self.bridge.workers.release(); self.bridge.workers.release()
+        self.release_all_workers()
+
+    def take_all_workers(self):
+        for _ in range(4):
+            self.assertTrue(self.bridge.workers.acquire(timeout=2))
+
+    def release_all_workers(self):
+        for _ in range(4):
+            self.bridge.workers.release()
 
     def test_socket_replacement_hangup_interruption_and_expiry_drop_inflight_result(self):
         for reason in ["socket-or-hangup", "interrupted", "expired"]:
@@ -575,10 +584,9 @@ class TransportTests(unittest.TestCase):
                 elif reason == "interrupted": self.handle({"serverContent": {"interrupted": True}})
                 else: self.now = 1000
                 self.gate.set()
-                self.assertTrue(self.bridge.workers.acquire(timeout=2))
-                self.assertTrue(self.bridge.workers.acquire(timeout=2))
+                self.take_all_workers()
                 self.assertEqual(self.sent, [])
-                self.bridge.workers.release(); self.bridge.workers.release()
+                self.release_all_workers()
 
     def test_duplicate_id_never_repeats_search(self):
         self.block = True
@@ -648,7 +656,7 @@ class TransportTests(unittest.TestCase):
             observed.append(("open", request.full_url, timeout))
             return Response()
 
-        with patch.object(bridge_module.urllib.request, "build_opener", return_value=SimpleNamespace(open=open_request)):
+        with patch.object(bridge_module.ZEYTUN_HTTP, "open", open_request):
             self.bridge._request({"action": "session", "callId": CALL})
             self.bridge._request({"action": "search", "callId": CALL, "query": {"text": "Medicine"}})
             self.assertTrue(self.bridge._announce_answered())
@@ -1258,22 +1266,29 @@ class SpeechRelayTests(unittest.TestCase):
         return tts, asked
 
     def test_tts_goes_to_vertex_first_and_to_the_gemini_api_only_on_a_capacity_refusal(self):
-        vertex = ("https://aiplatform.googleapis.com/v1/projects/gen-lang-client-0496964632/locations/global/"
+        vertex = ("https://aiplatform.eu.rep.googleapis.com/v1/projects/gen-lang-client-0496964632/locations/eu/"
                   "publishers/google/models/gemini-3.8-flash-tts:streamGenerateContent")
+        vertex_global = ("https://aiplatform.googleapis.com/v1/projects/gen-lang-client-0496964632/locations/global/"
+                         "publishers/google/models/gemini-3.8-flash-tts:streamGenerateContent")
         studio = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-tts:streamGenerateContent"
         tts, asked = self.vertex_tts(["ok"])
         tts.stream("Salam", lambda pcm: None, lambda: True)
         self.assertEqual((asked, tts.path), ([vertex], "vertex"))
+        # EU first (station 2026-11-04: 0.34 s against global's 1 s), global
+        # next, the Gemini API last.
         for code in (429, 503, 403):
             tts, asked = self.vertex_tts([code, "ok"])
             tts.stream("Salam", lambda pcm: None, lambda: True)
-            self.assertEqual((asked, tts.path), ([vertex, studio], "studio"))
+            self.assertEqual((asked, tts.path), ([vertex, vertex_global], "vertex_global"))
+            tts, asked = self.vertex_tts([code, code, "ok"])
+            tts.stream("Salam", lambda pcm: None, lambda: True)
+            self.assertEqual((asked, tts.path), ([vertex, vertex_global, studio], "studio"))
         # A request refused for itself is not sent twice; both refusing ends in the old code.
         tts, asked = self.vertex_tts([404])
         with self.assertRaises(bridge_module.ZeytunPilotUnavailable) as raised:
             tts.stream("Salam", lambda pcm: None, lambda: True)
         self.assertEqual((str(raised.exception), asked), ("tts_http_404", [vertex]))
-        tts, asked = self.vertex_tts([429, 429])
+        tts, asked = self.vertex_tts([429, 429, 429])
         with self.assertRaises(bridge_module.ZeytunPilotUnavailable) as raised:
             tts.stream("Salam", lambda pcm: None, lambda: True)
         self.assertEqual(str(raised.exception), "tts_http_429")
@@ -1877,7 +1892,7 @@ class UtteranceTests(unittest.TestCase):
                 return Response()
 
         bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: None)
-        with patch.object(bridge_module.urllib.request, "build_opener", lambda *handlers: Opener()):
+        with patch.object(bridge_module.ZEYTUN_HTTP, "open", Opener().open):
             answer = bridge._post_utterance({"action": "utterance", "callId": CALL, "seq": 1, "audio": "AA=="})
         self.assertEqual(answer, {})
         self.assertEqual(list(seen["body"])[0], "action")  # the CRM names the step by its first key
@@ -1886,6 +1901,149 @@ class UtteranceTests(unittest.TestCase):
         self.assertEqual(seen["auth"], "Bearer " + "t" * 48)
         self.assertEqual(seen["timeout"], 3)
         self.assertEqual(seen["body"]["action"], "utterance")
+
+
+class KeepAliveTests(unittest.TestCase):
+    """ZEYTUN_HTTP against a real local HTTP/1.1 server."""
+
+    def setUp(self):
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        test = self
+        self.connections = 0
+        self.requests = []
+        self.mode = {}
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def setup(self):
+                super().setup()
+                test.connections += 1
+
+            def log_message(self, *args):
+                pass
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length") or 0)
+                self.rfile.read(length)
+                test.requests.append(self.path)
+                mode = test.mode.get(self.path, "ok")
+                if mode == "slow":
+                    time.sleep(1.5)
+                if mode == "refuse":
+                    body = b'{"error":"busy"}'
+                    self.send_response(503)
+                elif mode == "stream":
+                    body = b"".join(b"data: %d\n" % i for i in range(2000))
+                    self.send_response(200)
+                else:
+                    body = b'{"ok":true}'
+                    self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                try:
+                    self.wfile.write(body)
+                except OSError:
+                    pass
+                if mode == "close-after":
+                    self.close_connection = True
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+        self.base = "http://127.0.0.1:%d" % self.server.server_address[1]
+        self.now = 100.0
+        self.pool = bridge_module.ZeytunKeepAlive(clock=lambda: self.now, proxies=lambda: {})
+
+    def post(self, path, timeout=3):
+        req = bridge_module.urllib.request.Request(self.base + path, data=b'{"a":1}', method="POST",
+                                                   headers={"Content-Type": "application/json"})
+        with self.pool.open(req, timeout) as response:
+            return json.loads(response.read(32769))
+
+    def test_one_connection_carries_every_request(self):
+        for _ in range(3):
+            self.assertEqual(self.post("/crm"), {"ok": True})
+        self.assertEqual((self.connections, len(self.requests)), (1, 3))
+
+    def test_a_connection_the_server_closed_is_replaced_and_the_request_sent_once_more(self):
+        self.mode["/first"] = "close-after"
+        self.assertEqual(self.post("/first"), {"ok": True})
+        self.assertEqual(self.post("/second"), {"ok": True})
+        self.assertEqual(self.requests, ["/first", "/second"])
+        self.assertEqual(self.connections, 2)
+
+    def test_an_idle_connection_is_not_trusted_after_its_time(self):
+        self.post("/a")
+        self.now += bridge_module.ZeytunKeepAlive.IDLE_SECONDS + 1
+        self.post("/b")
+        self.assertEqual(self.connections, 2)
+
+    def test_an_answer_not_read_to_its_end_does_not_go_back_to_the_pool(self):
+        self.mode["/tts"] = "stream"
+        req = bridge_module.urllib.request.Request(self.base + "/tts", data=b"{}", method="POST")
+        with self.pool.open(req, 3) as response:
+            for line in response:
+                break  # the caller dropped the turn
+        self.assertEqual(self.post("/crm"), {"ok": True})
+        self.assertEqual(self.connections, 2)
+        # Read to the end, a stream's connection is kept: no third one.
+        with self.pool.open(req, 3) as response:
+            self.assertEqual(sum(1 for _ in response), 2000)
+        self.post("/crm")
+        self.assertEqual(self.connections, 2)
+
+    def test_a_refusal_is_urllibs_http_error_as_callers_expect(self):
+        self.mode["/crm"] = "refuse"
+        with self.assertRaises(bridge_module.urllib.error.HTTPError) as raised:
+            self.post("/crm")
+        self.assertEqual(raised.exception.code, 503)
+        self.assertTrue(bridge_module.zeytun_retryable(raised.exception))
+        self.assertEqual(bridge_module.zeytun_failure(raised.exception), "http_503")
+
+    def test_a_request_that_timed_out_is_not_sent_again(self):
+        self.post("/warm")
+        self.mode["/slow"] = "slow"
+        with self.assertRaises(bridge_module.urllib.error.URLError) as raised:
+            self.post("/slow", timeout=0.3)
+        self.assertNotIsInstance(raised.exception, bridge_module.urllib.error.HTTPError)
+        self.assertTrue(bridge_module.zeytun_retryable(raised.exception))
+        self.assertEqual(self.requests, ["/warm", "/slow"])
+
+    def test_nobody_answering_is_a_network_failure(self):
+        self.server.shutdown(); self.server.server_close()
+        with self.assertRaises(bridge_module.urllib.error.URLError):
+            self.post("/crm", timeout=0.5)
+
+    def test_warm_opens_the_connection_the_first_request_then_uses(self):
+        self.assertTrue(self.pool.warm(self.base + "/tts"))
+        for _ in range(100):
+            if self.pool.idle.get(("http", "127.0.0.1", self.server.server_address[1])) and self.connections:
+                break
+            time.sleep(0.02)
+        self.assertEqual(self.connections, 1)
+        self.post("/tts")
+        self.assertEqual((self.connections, self.requests), (1, ["/tts"]))
+
+    def test_behind_a_proxy_it_is_plain_urllib(self):
+        pool = bridge_module.ZeytunKeepAlive(proxies=lambda: {"https": "http://proxy.test:3128"})
+        self.assertEqual(pool._key("https://app.leaddrivecrm.org/x"), (None, None))
+        self.assertFalse(pool.warm("https://app.leaddrivecrm.org/x"))
+        self.assertEqual(self.pool._key("https://app.leaddrivecrm.org/api/x?y=1"),
+                         (("https", "app.leaddrivecrm.org", 443), "/api/x?y=1"))
+
+    def test_the_tts_and_the_crm_use_the_pool(self):
+        tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat")
+        self.assertIs(tts.open.__self__, bridge_module.ZEYTUN_HTTP)
+        self.assertTrue(tts.kept)
+        tested = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=lambda r, t: None)
+        self.assertFalse(tested.kept)
+        self.assertFalse(tested.warm())
+        source = (ROOT / "fanum-zeytun-inbound.py").read_text()
+        self.assertEqual(source.count("build_opener("), 1)  # only the proxy path
 
 
 class ResumeTests(unittest.TestCase):
