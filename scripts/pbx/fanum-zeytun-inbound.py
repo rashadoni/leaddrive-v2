@@ -7,6 +7,7 @@ Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 import array
 import audioop
 import base64
+import collections
 from decimal import Decimal
 import json
 import math
@@ -1162,6 +1163,11 @@ class ZeytunInboundBridge:
         self.utterance_lock = threading.Lock()
         self.utterance = None
         self.utterance_cut = False
+        # The frames before a phrase opens (#1342): the station's detector opens
+        # it ~280 ms into the word, and Chirp heard "Lumi 600" for "Fluimucil
+        # 600", "hansı…" for "Paracetamol hansı…". 480 ms, as the core's own
+        # lookback for the provider (GEMINI_LIVE_GATED_LOOKBACK_FRAMES).
+        self.utterance_lookback = collections.deque(maxlen=self.UTTERANCE_LOOKBACK_FRAMES)
         self.utterance_seq = 0
         self.utterance_busy = False
 
@@ -1197,6 +1203,7 @@ class ZeytunInboundBridge:
     UTTERANCE_MAX_BYTES = 8000 * 2 * 15
     UTTERANCE_MIN_BYTES = 8000 * 2 // 5  # under 0.2 s is a click, not a phrase
     UTTERANCE_TIMEOUT_SECONDS = 3
+    UTTERANCE_LOOKBACK_FRAMES = 24  # 20 ms frames
 
     def _post_utterance(self, body):
         req = urllib.request.Request(self.url, data=json.dumps(body, separators=(",", ":")).encode("ascii"),
@@ -1215,6 +1222,7 @@ class ZeytunInboundBridge:
         with self.utterance_lock:
             phrase = self.utterance
             if phrase is None:
+                self.utterance_lookback.append(bytes(pcm))
                 return
             room = self.UTTERANCE_MAX_BYTES - len(phrase)
             if len(pcm) > room:
@@ -1229,9 +1237,16 @@ class ZeytunInboundBridge:
         with self.utterance_lock:
             if opened:
                 # A phrase still open here was cut by a session the core
-                # replaced; its audio is not sent, and never twice.
-                self.utterance = bytearray(pcm[:self.UTTERANCE_MAX_BYTES])
-                self.utterance_cut = len(pcm) > self.UTTERANCE_MAX_BYTES
+                # replaced; its audio is not sent, and never twice. The core
+                # hands the opening frame to utterance_audio first, so it is
+                # the lookback's last frame already: never added twice.
+                frames = list(self.utterance_lookback)
+                self.utterance_lookback.clear()
+                if pcm and (not frames or frames[-1] != pcm):
+                    frames.append(bytes(pcm))
+                audio = b"".join(frames)
+                self.utterance = bytearray(audio[:self.UTTERANCE_MAX_BYTES])
+                self.utterance_cut = len(audio) > self.UTTERANCE_MAX_BYTES
                 return
             phrase, cut, self.utterance = self.utterance, self.utterance_cut, None
             if phrase is None:
