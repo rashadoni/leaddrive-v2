@@ -10,9 +10,9 @@ import { MtmAttendanceQrDisplay } from "@/components/mtm/attendance-qr-display"
 const messages = Object.fromEntries(["ru", "az", "en"].map(lang => [lang, JSON.parse(readFileSync(`messages/${lang}.json`, "utf8"))]))
 const ru = messages.ru.mtmAttendance
 const endpoint = "/api/v1/mtm/attendance/branch-screens"
-const screened = { id: "10000000-0000-4000-8000-000000000001", name: "Demo branch 01", screens: [{ id: "20000000-0000-4000-8000-000000000001", pairedAt: "2026-10-29T06:00:00Z", lastSeenAt: new Date().toISOString(),
+const screened = { id: "10000000-0000-4000-8000-000000000001", name: "Demo branch 01", markMethod: "QR_GPS" as "QR_GPS" | "GPS_ONLY", screens: [{ id: "20000000-0000-4000-8000-000000000001", pairedAt: "2026-10-29T06:00:00Z", lastSeenAt: new Date().toISOString(),
   place: { state: "AT_BRANCH", distanceMeters: 12, checkedAt: new Date().toISOString() } as { state: string; distanceMeters: number | null; checkedAt: string } | null }] }
-const bare = { id: "10000000-0000-4000-8000-000000000002", name: "Demo branch 02", screens: [] as typeof screened.screens }
+const bare = { id: "10000000-0000-4000-8000-000000000002", name: "Demo branch 02", markMethod: "QR_GPS" as "QR_GPS" | "GPS_ONLY", screens: [] as typeof screened.screens }
 const response = (data: unknown, status = 200) => new Response(JSON.stringify({ success: status < 400, data }), { status })
 let root: Root, host: HTMLDivElement
 let directory: { enabled: boolean; canConfigure: boolean; branches: typeof screened[] }
@@ -61,7 +61,7 @@ describe("branch screens in Personnel → Settings → QR", () => {
   })
   it("gives a one-time code for the chosen branch and where to type it", async () => {
     await render()
-    await act(async () => { [...host.querySelectorAll('[data-testid="attendance-qr-branch"]')][1].querySelector<HTMLButtonElement>("button")!.click() })
+    await act(async () => { [...[...host.querySelectorAll('[data-testid="attendance-qr-branch"]')][1].querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent === ru.qrScreenPair)!.click() })
     expect(JSON.parse(String(fetchMock.mock.calls.find(([url, opts]) => url === endpoint && opts?.method === "POST")?.[1]?.body))).toEqual({ branchId: bare.id })
     const panel = host.querySelector('[data-testid="attendance-qr-pairing"]')!
     expect(panel.querySelector('[data-testid="attendance-qr-pairing-code"]')!.textContent).toBe("4F7K-92QD")
@@ -70,7 +70,7 @@ describe("branch screens in Personnel → Settings → QR", () => {
   it("notices the tablet that typed the code and closes the code", async () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
     await render()
-    await act(async () => { [...host.querySelectorAll('[data-testid="attendance-qr-branch"]')][1].querySelector<HTMLButtonElement>("button")!.click() })
+    await act(async () => { [...[...host.querySelectorAll('[data-testid="attendance-qr-branch"]')][1].querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent === ru.qrScreenPair)!.click() })
     directory.branches[1].screens = [{ id: "20000000-0000-4000-8000-000000000002", pairedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(), place: null }]
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000) })
     expect(host.querySelector('[data-testid="attendance-qr-pairing"]')).toBeNull()
@@ -119,6 +119,33 @@ describe("branch screens in Personnel → Settings → QR", () => {
     expect(JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/mtm/attendance/branch-network")?.[1]?.body))).toEqual({ branchId: screened.id, action: "REMEMBER" })
     const first = host.querySelector('[data-testid="attendance-branch-network"]')!
     expect(first.textContent).toContain(ru.deskNetworkRemembered.replace("{count}", "1")); expect(first.textContent).toContain(ru.deskNetworkJustRemembered)
+  })
+  // Owner, 2026-11-04: an open site with no computer marks by GPS alone.
+  it("chooses QR + GPS or GPS only per branch and rereads it; a GPS-only site asks for no screen", async () => {
+    fetchMock.mockImplementation(async (url, opts) => {
+      if (opts?.method === "PUT" && String(url) === "/api/v1/mtm/attendance/branch-mark-method") {
+        const body = JSON.parse(String(opts.body)); directory.branches.find(row => row.id === body.branchId)!.markMethod = body.method; return response({ changed: true })
+      }
+      return response(directory)
+    })
+    await render()
+    const rows = () => [...host.querySelectorAll('[data-testid="attendance-qr-branch"]')]
+    expect(rows()[1].querySelector('[data-testid="attendance-qr-branch-method-QR_GPS"]')!.getAttribute("aria-checked")).toBe("true")
+    expect(rows()[1].textContent).toContain(ru.qrScreenNone)
+    await act(async () => rows()[1].querySelector<HTMLButtonElement>('[data-testid="attendance-qr-branch-method-GPS_ONLY"]')!.click())
+    expect(JSON.parse(String(fetchMock.mock.calls.find(([, o]) => o?.method === "PUT")?.[1]?.body))).toEqual({ branchId: bare.id, method: "GPS_ONLY" })
+    expect(rows()[1].querySelector('[data-testid="attendance-qr-branch-method-GPS_ONLY"]')!.getAttribute("aria-checked")).toBe("true")
+    expect(rows()[1].querySelector('[data-testid="attendance-qr-branch-gps-only"]')!.textContent).toBe(ru.qrBranchGpsOnlyHint)
+    expect(rows()[1].querySelector('[data-testid="attendance-qr-branch-unscreened"]')).toBeNull()
+    expect([...rows()[1].querySelectorAll("button")].some(item => item.textContent === ru.qrScreenPair)).toBe(false)
+    // The other branch keeps its screen and its pairing button.
+    expect([...rows()[0].querySelectorAll("button")].some(item => item.textContent === ru.qrScreenPair)).toBe(true)
+  })
+  it("lets a manager see the method but not change it", async () => {
+    directory.canConfigure = false; directory.branches[1].markMethod = "GPS_ONLY"; await render()
+    const choices = [...host.querySelectorAll<HTMLButtonElement>('[data-testid^="attendance-qr-branch-method-"]')]
+    expect(choices.length).toBe(4); expect(choices.every(item => item.disabled)).toBe(true)
+    expect(host.querySelector('[data-testid="attendance-qr-branch-gps-only"]')).not.toBeNull()
   })
   it("sends to Branches when there is no branch", async () => {
     directory.branches = []; await render()

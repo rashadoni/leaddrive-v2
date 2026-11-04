@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import io
@@ -9,6 +10,7 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest import mock
 import uuid
@@ -57,10 +59,31 @@ class FakeClient:
 class FakeHttpHandler(BaseHTTPRequestHandler):
     response_mode = "html"
     login_hits = 0
+    handoff_hits = 0
 
     def do_POST(self):
+        try:
+            self._answer()
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # the station gave up waiting (the bounded handoff question)
+
+    def _answer(self):
         length = int(self.headers.get("content-length", "0"))
         self.rfile.read(length)
+        if self.path == agi.HANDOFF_PATH:
+            type(self).handoff_hits += 1
+        if type(self).response_mode == "slow":
+            time.sleep(3.0)
+        if type(self).response_mode == "http-500":
+            self.send_response(500)
+            self.end_headers()
+            return
+        if type(self).response_mode == "handoff-false" and self.path == agi.HANDOFF_PATH:
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"handoff":false}')
+            return
         if self.path == "/login":
             type(self).login_hits += 1
             self.send_response(200)
@@ -92,8 +115,9 @@ class FakeHttpHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        if type(self).response_mode in {"handoff-true", "returned-true"} and self.path == agi.HANDOFF_PATH:
-            body = {"handoff-true": b'{"handoff":true}', "returned-true": b'{"returned":true}'}[type(self).response_mode]
+        if type(self).response_mode in {"handoff-true", "returned-true", "slow"} and self.path == agi.HANDOFF_PATH:
+            body = {"handoff-true": b'{"handoff":true}', "returned-true": b'{"returned":true}',
+                    "slow": b'{"handoff":true}'}[type(self).response_mode]
             self.send_response(200)
             self.send_header("content-type", "application/json")
             self.end_headers()
@@ -117,6 +141,7 @@ class InboundBrowserAgiTest(unittest.TestCase):
     def _http_client(self, mode):
         FakeHttpHandler.response_mode = mode
         FakeHttpHandler.login_hits = 0
+        FakeHttpHandler.handoff_hits = 0
         server = ThreadingHTTPServer(("127.0.0.1", 0), FakeHttpHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -333,11 +358,97 @@ class InboundBrowserAgiTest(unittest.TestCase):
                                        ("returned-true", "return", True), ("html", "start", False)]:
             server, client = self._http_client(kind)
             try:
-                self.assertEqual(client.handoff(CALL_ID, action), expected, (kind, action))
-                self.assertFalse(client.handoff(CALL_ID, "other"))
+                with contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(client.handoff(CALL_ID, action), expected, (kind, action))
+                    self.assertFalse(client.handoff(CALL_ID, "other"))
             finally:
                 server.shutdown()
                 server.server_close()
+
+    def ask_start(self, client):
+        """client.handoff(start) -> (answer, seconds, stderr)."""
+        errors = io.StringIO()
+        started = time.monotonic()
+        with contextlib.redirect_stderr(errors):
+            answer = client.handoff(CALL_ID, "start")
+        return answer, time.monotonic() - started, errors.getvalue()
+
+    def http_start(self, mode):
+        server, client = self._http_client(mode)
+        try:
+            return self.ask_start(client)
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_the_handoff_question_names_its_answer(self):
+        self.assertEqual(self.http_start("handoff-true")[::2], (True, "fanum-inbound-browser: handoff_yes\n"))
+        self.assertEqual(self.http_start("handoff-false")[::2], (False, "fanum-inbound-browser: handoff_no\n"))
+        self.assertEqual(self.http_start("html")[::2], (False, "fanum-inbound-browser: handoff_bad_answer\n"))
+
+    def test_a_slow_crm_costs_the_caller_one_bounded_attempt_after_the_goodbye(self):
+        # Call 0127e38f, 2026-11-04: the line stayed open 12 s after the AI's goodbye.
+        answer, seconds, errors = self.http_start("slow")
+        self.assertFalse(answer)
+        self.assertLess(seconds, agi.HANDOFF_START_SECONDS + 0.4)
+        self.assertEqual(errors, "fanum-inbound-browser: handoff_timeout\n")
+        self.assertEqual(FakeHttpHandler.handoff_hits, 1)
+        answer, _, errors = self.http_start("http-500")
+        self.assertFalse(answer)
+        self.assertEqual(errors, "fanum-inbound-browser: handoff_http_500\n")
+        self.assertEqual(FakeHttpHandler.handoff_hits, 1)  # no second attempt
+
+    def test_the_name_lookup_is_inside_the_budget_and_each_failure_says_why(self):
+        server, client = self._http_client("handoff-true")
+        server.shutdown()
+        server.server_close()  # nothing listens on that port any more
+        self.assertEqual(self.ask_start(client)[::2], (False, "fanum-inbound-browser: handoff_connect\n"))
+
+        def stalled(*_args, **_kwargs):
+            time.sleep(3.0)
+            raise OSError("late")
+
+        with mock.patch.object(agi.socket, "getaddrinfo", stalled):
+            answer, seconds, errors = self.ask_start(client)
+        self.assertEqual((answer, errors), (False, "fanum-inbound-browser: handoff_dns\n"))
+        self.assertLess(seconds, agi.HANDOFF_START_SECONDS + 0.4)
+        with mock.patch.object(agi.socket, "getaddrinfo", side_effect=agi.socket.gaierror(-2, "unknown")):
+            self.assertEqual(self.ask_start(client)[::2], (False, "fanum-inbound-browser: handoff_dns\n"))
+        # A plain HTTP answer to an https question: the TLS handshake fails.
+        tls_server, tls_client = self._http_client("handoff-true")
+        try:
+            port = tls_server.server_address[1]
+            tls_client._config = agi.RuntimeConfig(
+                lifecycle_url=tls_client._config.lifecycle_url, readiness_url=tls_client._config.readiness_url,
+                runtime_token="t" * 48, handoff_url=f"https://127.0.0.1:{port}{agi.HANDOFF_PATH}")
+            self.assertEqual(self.ask_start(tls_client)[::2], (False, "fanum-inbound-browser: handoff_tls\n"))
+        finally:
+            tls_server.shutdown()
+            tls_server.server_close()
+
+    def test_a_caller_who_hung_up_is_not_kept_waiting_for_the_answer(self):
+        server, client = self._http_client("slow")
+        timer = threading.Timer(0.2, lambda: setattr(agi, "_hangup_requested", True))
+        try:
+            timer.start()
+            answer, seconds, errors = self.ask_start(client)
+        finally:
+            timer.cancel()
+            agi._hangup_requested = False
+            server.shutdown()
+            server.server_close()
+        self.assertFalse(answer)
+        self.assertLess(seconds, 0.6)
+        self.assertEqual(errors, "fanum-inbound-browser: handoff_skipped_hangup\n")
+        # Hung up before the question: it is not asked at all.
+        asked = FakeClient(handoff_results={"start": True})
+        agi._hangup_requested = True
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(self.run_agi("handoff", asked), (0, 'SET VARIABLE FANUM_HANDOFF "0"\n'))
+        finally:
+            agi._hangup_requested = False
+        self.assertEqual(asked.handoffs, [])
 
     def test_lifecycle_rejects_a_200_html_login_page(self):
         server, client = self._http_client("html")

@@ -19,7 +19,10 @@ import os
 from pathlib import Path
 import re
 import signal
+import socket
+import ssl
 import sys
+import threading
 import time
 from typing import Callable, Mapping, Protocol, TextIO
 import urllib.error
@@ -40,6 +43,15 @@ READY_TIMEOUT_SECONDS = 25.0
 MANAGER_WAIT_SECONDS = 30.0
 READY_POLL_SECONDS = 1.0
 HTTP_TIMEOUT_SECONDS = 2.0
+# Owner's call 2026-11-04 (0127e38f): «он прощается, я прощаюсь, а отбой не
+# даёт, линия открыта». The handoff question runs after the AI leg and before
+# Hangup(), and the caller hears silence while it waits: the channel ended
+# 12.1 s after the AI's last word (3.0 and 4.2 s on the two calls before), and
+# the CRM had never received the question from the station. One attempt, and
+# all of it - the name lookup included, which no socket timeout covers -
+# within this budget; why it failed goes to stderr (handoff_dns, ...).
+HANDOFF_START_SECONDS = 1.5
+HANDOFF_POLL_SECONDS = 0.05
 # Owner's call, 2026-10-28: hung up after the first ring. At the top of the
 # minute the CRM answered this event in over 2 s (1-4 s measured that hour),
 # and one timeout ended the call. The caller hears ringing meanwhile, and a
@@ -171,7 +183,8 @@ class HttpLifecycleClient:
         self._config = config
         self._opener = urllib.request.build_opener(_NoRedirectHandler())
 
-    def _post(self, url: str, payload: Mapping[str, object]) -> tuple[int, bytes]:
+    def _post(self, url: str, payload: Mapping[str, object],
+              timeout: float = HTTP_TIMEOUT_SECONDS) -> tuple[int, bytes]:
         request = urllib.request.Request(
             url,
             method="POST",
@@ -183,7 +196,7 @@ class HttpLifecycleClient:
             data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
         )
         try:
-            with self._opener.open(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
+            with self._opener.open(request, timeout=timeout) as response:
                 return response.status, response.read(4_096)
         except urllib.error.HTTPError as error:
             # Status is safe operational data; the response body can contain
@@ -239,6 +252,8 @@ class HttpLifecycleClient:
         expected = {"start": "handoff", "return": "returned"}.get(action)
         if expected is None or not self._config.handoff_url:
             return False
+        if action == "start":
+            return self._handoff_start(call_id)
         for _attempt in range(2):
             try:
                 status, body = self._post(self._config.handoff_url, {"callId": call_id, "action": action})
@@ -252,6 +267,56 @@ class HttpLifecycleClient:
                 return False
             return 200 <= status < 300 and isinstance(decoded, dict) and decoded.get(expected) is True
         return False
+
+    def _handoff_start(self, call_id: str) -> bool:
+        """The question after the AI leg: one attempt within HANDOFF_START_SECONDS.
+
+        It runs on a worker thread so that the name lookup is bounded too;
+        a caller who hangs up meanwhile ends the wait at once. Every failure
+        is False (the call ends) and names its reason on stderr.
+        """
+        state: dict[str, object] = {"phase": "dns"}
+        url = self._config.handoff_url
+
+        def ask() -> None:
+            try:
+                parsed = urllib.parse.urlsplit(url)
+                if not urllib.request.getproxies().get(parsed.scheme):
+                    socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80),
+                                       type=socket.SOCK_STREAM)
+                state["phase"] = "request"
+                state["answer"] = self._post(url, {"callId": call_id, "action": "start"},
+                                             timeout=HANDOFF_START_SECONDS)
+            except Exception as error:  # classified below; never logged as text
+                state["error"] = error
+
+        worker = threading.Thread(target=ask, name="fanum-handoff", daemon=True)
+        deadline = _clock() + HANDOFF_START_SECONDS
+        worker.start()
+        while worker.is_alive() and not _hangup_requested and _clock() < deadline:
+            worker.join(HANDOFF_POLL_SECONDS)
+        if worker.is_alive():
+            _safe_log("handoff_skipped_hangup" if _hangup_requested
+                      else "handoff_dns" if state["phase"] == "dns" else "handoff_timeout")
+            return False
+        error = state.get("error")
+        if isinstance(error, Exception):
+            _safe_log(_handoff_failure(error))
+            return False
+        status, body = state["answer"]  # type: ignore[misc]
+        if not 200 <= status < 300:
+            _safe_log(f"handoff_http_{int(status)}")
+            return False
+        try:
+            decoded = json.loads(body.decode("utf-8"))
+        except (UnicodeError, json.JSONDecodeError):
+            decoded = None
+        if not isinstance(decoded, dict):
+            _safe_log("handoff_bad_answer")
+            return False
+        moved = decoded.get("handoff") is True
+        _safe_log("handoff_yes" if moved else "handoff_no")
+        return moved
 
     def browser_ready(self, call_id: str) -> bool:
         return self.answer_route(call_id) == "browser"
@@ -287,6 +352,22 @@ class HttpLifecycleClient:
             ValueError,
         ):
             return False
+
+
+def _handoff_failure(error: Exception) -> str:
+    """One word for why the handoff question failed; never the error's text."""
+    reason: object = error
+    if isinstance(error, urllib.error.URLError) and not isinstance(error, urllib.error.HTTPError):
+        reason = error.reason
+    if isinstance(reason, socket.gaierror):
+        return "handoff_dns"
+    if isinstance(reason, ssl.SSLError):
+        return "handoff_tls"
+    if isinstance(reason, TimeoutError):
+        return "handoff_timeout"
+    if isinstance(reason, OSError):
+        return "handoff_connect"
+    return "handoff_failed"
 
 
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -575,8 +656,13 @@ def run_mode(
         return 0
 
     if mode == "handoff" and len(arguments) == 1:
-        # After the AI leg: a network call is fine here, the caller is
-        # already answered and hears the AI's last words fade.
+        # After the AI leg the caller hears silence until Hangup(): the
+        # question is bounded (HANDOFF_START_SECONDS) and not asked at all
+        # for a caller who has already hung up.
+        if _hangup_requested:
+            _safe_log("handoff_skipped_hangup")
+            _agi_set(output, "FANUM_HANDOFF", "0")
+            return 0
         _agi_set(output, "FANUM_HANDOFF", "1" if client.handoff(call_id, "start") else "0")
         return 0
 
