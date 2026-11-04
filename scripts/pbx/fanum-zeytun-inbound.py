@@ -1108,7 +1108,8 @@ class ZeytunInboundBridge:
         return (urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/api/internal/voice-agent/pharmacy-inbound", "", "")),
                 urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/api/internal/asterisk/call-lifecycle", "", "")))
 
-    def __init__(self, runtime_url, token, call_id, request=None, clock=None, announce_answered=None, spool=None):
+    def __init__(self, runtime_url, token, call_id, request=None, clock=None, announce_answered=None, spool=None,
+                 utterances=None, post_utterance=None):
         self.url, self.lifecycle_url = self.endpoints(runtime_url, token)
         self.call_id = str(uuid.UUID(call_id))
         self.token = token
@@ -1152,6 +1153,17 @@ class ZeytunInboundBridge:
         self.log_event = lambda event, **fields: None
         # Set by the core: called when a lookup has run FILLER_AFTER_SECONDS.
         self.on_wait = None
+        # The second ear (utterance_edge): on once the CRM's session asks for
+        # it ("utterance": true), so a CRM without the action never gets one.
+        # ZEYTUN_UTTERANCE_ENABLED=0 is the station's emergency off switch.
+        self.utterance_switch = (os.environ.get("ZEYTUN_UTTERANCE_ENABLED") != "0") if utterances is None else bool(utterances)
+        self.utterances = False
+        self.post_utterance = post_utterance or self._post_utterance
+        self.utterance_lock = threading.Lock()
+        self.utterance = None
+        self.utterance_cut = False
+        self.utterance_seq = 0
+        self.utterance_busy = False
 
     # At the top of each minute the CRM answered in 1-4 s (measured 2026-10-28,
     # the hour a call was hung up for a 2 s deadline). A lookup that times out
@@ -1170,6 +1182,115 @@ class ZeytunInboundBridge:
 
     def _post_json(self, url, body, timeout=2):
         return zeytun_post_json(url, self.token, body, timeout)
+
+    # Owner, 2026-11-04 (task 6 of docs/zeytun-line-recognition-plan.md, PR
+    # #1318): with Google Chirp's text of the same phrase the search found
+    # 84 % of the names instead of 71 %. The core hands the bridge each caller
+    # phrase, activityStart to activityEnd, as the 8 kHz PCM16 the provider
+    # gets before its resample, without the lookback; the CRM transcribes it
+    # and searches with that text as well. Nothing here waits on the CRM: one
+    # phrase is in flight per call, the next one while it is is not sent, and
+    # a CRM that does not know the action (400/404) is not asked again on this
+    # call, nor one that answers "off". The journal says how it went, never
+    # what was said.
+    UTTERANCE_RATE = 8000
+    UTTERANCE_MAX_BYTES = 8000 * 2 * 15
+    UTTERANCE_MIN_BYTES = 8000 * 2 // 5  # under 0.2 s is a click, not a phrase
+    UTTERANCE_TIMEOUT_SECONDS = 3
+
+    def _post_utterance(self, body):
+        req = urllib.request.Request(self.url, data=json.dumps(body, separators=(",", ":")).encode("ascii"),
+            headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"}, method="POST")
+        with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=self.UTTERANCE_TIMEOUT_SECONDS) as response:
+            raw = response.read(32768)
+        try:
+            return json.loads(raw)
+        except ValueError:
+            return None
+
+    def utterance_audio(self, pcm):
+        """Every caller frame, on the audio thread: kept only inside a phrase, at most 15 s of it."""
+        if not self.utterances:
+            return
+        with self.utterance_lock:
+            phrase = self.utterance
+            if phrase is None:
+                return
+            room = self.UTTERANCE_MAX_BYTES - len(phrase)
+            if len(pcm) > room:
+                self.utterance_cut = True
+            if room > 0:
+                phrase.extend(pcm[:room])
+
+    def utterance_edge(self, opened, pcm=b""):
+        """activityStart (True, with its first frame) or activityEnd (False) of a caller phrase."""
+        if not self.utterances:
+            return
+        with self.utterance_lock:
+            if opened:
+                # A phrase still open here was cut by a session the core
+                # replaced; its audio is not sent, and never twice.
+                self.utterance = bytearray(pcm[:self.UTTERANCE_MAX_BYTES])
+                self.utterance_cut = len(pcm) > self.UTTERANCE_MAX_BYTES
+                return
+            phrase, cut, self.utterance = self.utterance, self.utterance_cut, None
+            if phrase is None:
+                return
+            self.utterance_seq += 1
+            seq = self.utterance_seq
+            seconds = round(len(phrase) / (2.0 * self.UTTERANCE_RATE), 2)
+            status = None
+            if not self.active or self.clock() >= self.expires:
+                status = "expired"
+            elif len(phrase) < self.UTTERANCE_MIN_BYTES:
+                status = "short"
+            elif self.utterance_busy:
+                status = "busy"
+            else:
+                self.utterance_busy = True
+        if status is not None:
+            self._utterance_log(status=status, seq=seq, seconds=seconds)
+            return
+        body = {"action": "utterance", "callId": self.call_id, "seq": seq,
+                "audio": base64.b64encode(bytes(phrase)).decode("ascii")}
+        try:
+            threading.Thread(target=self._send_utterance, args=(body, seconds, cut),
+                             name="zeytun-utterance", daemon=True).start()
+        except Exception:
+            with self.utterance_lock:
+                self.utterance_busy = False
+            self._utterance_log(status="no_thread", seq=seq, seconds=seconds)
+
+    def _utterance_log(self, **fields):
+        # Called on the audio thread too: a journal failure never reaches the call.
+        try:
+            self.log_event("zeytun_utterance", **fields)
+        except Exception:
+            pass
+
+    def _send_utterance(self, body, seconds, cut):
+        sent = time.monotonic()
+        status = "ok"
+        try:
+            answer = self.post_utterance(body)
+            said = answer.get("status") if isinstance(answer, dict) else None
+            if said == "off":
+                # No key at the CRM, or not a line call: nothing to hear.
+                self.utterances = False
+                status = "off"
+            elif said == "busy":
+                status = "crm_busy"
+        except Exception as error:
+            status = zeytun_failure(error)
+            if isinstance(error, urllib.error.HTTPError) and error.code in (400, 404):
+                # A CRM without the action (or with another schema) refuses
+                # every phrase alike: stop asking for the rest of the call.
+                self.utterances = False
+        finally:
+            with self.utterance_lock:
+                self.utterance_busy = False
+        self._utterance_log(status=status, seq=body["seq"], seconds=seconds, cut=cut,
+                            ms=round((time.monotonic() - sent) * 1000))
 
     def _announce_answered(self):
         # This bridge is opened only after accepting the call's AudioSocket.
@@ -1211,6 +1332,7 @@ class ZeytunInboundBridge:
             voice, pin = value.get("voice"), value.get("pinSpeechLanguage")
             self.expires = self.clock() + seconds
             self.active = True
+            self.utterances = self.utterance_switch and value.get("utterance") is True
             self.closing = closing
             self.transfer_phrase = transfer
             self.cancel_phrase = cancel
@@ -1346,44 +1468,124 @@ class ZeytunInboundBridge:
         return {"status": status, "candidates": [], "canResolveIdentity": False,
                 "canQuote": False, "canSubmitTo1c": False, "requiresOperatorReview": True}
 
+    @staticmethod
+    def restricted(value):
+        return (all(value.get(key) is False for key in ["canQuote", "canSubmitTo1c", "canResolveIdentity"])
+                and value.get("requiresOperatorReview") is True)
+
     def safe_result(self, value):
+        if isinstance(value, dict) and value.get("mode") == "pharmacy_history":
+            return self.safe_history(value)
         if (not isinstance(value, dict) or value.get("mode") != "owner_inbound_preview"
-                or value.get("customerVerified") is not False
-                or any(value.get(key) is not False for key in ["canQuote", "canSubmitTo1c", "canResolveIdentity"])
-                or value.get("requiresOperatorReview") is not True):
+                or value.get("customerVerified") is not False or not self.restricted(value)):
             return self.unavailable()
         candidates = value.get("candidates")
         count = value.get("candidateCount")
-        if not isinstance(candidates, list) or len(candidates) > 5 or type(count) is not int or not 0 <= count <= 50000:
+        # Five of the model's own words and up to two the second ear heard (alsoHeard).
+        if not isinstance(candidates, list) or len(candidates) > 7 or type(count) is not int or not 0 <= count <= 50000:
             return self.unavailable()
         result = self.unavailable("candidates")
         result.update({"customerVerified": False, "candidateCount": count, "needsNarrowing": count > 1})
         for item in candidates:
-            if not isinstance(item, dict) or item.get("identityVerified") is not False:
+            projected = self.candidate(item)
+            if projected is None:
                 return self.unavailable()
-            projected = {}
-            for key in ["externalId", "itemCode", "name", "nameAz"]:
-                val = item.get(key)
-                if key == "nameAz" and val is None:
-                    projected[key] = None
-                elif isinstance(val, str) and 0 < len(val) <= 512:
-                    projected[key] = val
-                else:
-                    return self.unavailable()
-            price = self.list_price(item.get("listPrice"))
-            if price is not None:
-                projected["listPrice"] = price
-                with self.lock:
-                    if len(self.prices) < 256:
-                        self.prices[projected["externalId"]] = (Decimal(price["amount"]), price["per"])
-            stock = self.stock(item.get("stock"))
-            if stock is not None:
-                projected["stock"] = stock
-            promotion = self.promotion(item.get("promotion"))
-            if promotion is not None:
-                projected["promotion"] = promotion
-            result["candidates"].append({**projected, "identityVerified": False})
+            heard = self.also_heard(item.get("alsoHeard"))
+            if heard is not None:
+                projected["alsoHeard"] = heard
+            result["candidates"].append(projected)
         return result
+
+    def candidate(self, item):
+        """One catalog candidate as the model may see it, or None: then the whole answer is refused."""
+        if not isinstance(item, dict) or item.get("identityVerified") is not False:
+            return None
+        projected = {}
+        for key in ["externalId", "itemCode", "name", "nameAz"]:
+            val = item.get(key)
+            if key == "nameAz" and val is None:
+                projected[key] = None
+            elif isinstance(val, str) and 0 < len(val) <= 512:
+                projected[key] = val
+            else:
+                return None
+        price = self.list_price(item.get("listPrice"))
+        if price is not None:
+            projected["listPrice"] = price
+            with self.lock:
+                if len(self.prices) < 256:
+                    self.prices[projected["externalId"]] = (Decimal(price["amount"]), price["per"])
+        stock = self.stock(item.get("stock"))
+        if stock is not None:
+            projected["stock"] = stock
+        promotion = self.promotion(item.get("promotion"))
+        if promotion is not None:
+            projected["promotion"] = promotion
+        projected["identityVerified"] = False
+        return projected
+
+    # The CRM's second ear (#1321): the word Google Chirp heard where the
+    # model heard another, so the agent can ask "Adexa or Adefa?". A short
+    # plain word or nothing: anything else is dropped, the candidate kept.
+    @staticmethod
+    def also_heard(value):
+        if (isinstance(value, str) and 1 <= len(value) <= 64 and value.strip()
+                and all(c.isalpha() or c in "0123456789 -'." for c in value)):
+            return value
+        return None
+
+    # «Как обычно» (owner, 2026-11-04; #1309): for "history:" the CRM answers
+    # with the call's own pharmacy's last confirmed order. Each line is a
+    # candidate of today's catalog with what was ordered; a product the
+    # catalog no longer has comes as unavailable, only its id, name and order.
+    HISTORY_STATUSES = frozenset({"found", "none", "pharmacy_unknown"})
+    HISTORY_MAX_LINES = 10
+
+    def safe_history(self, value):
+        status = value.get("status")
+        candidates = value.get("candidates")
+        if (status not in self.HISTORY_STATUSES or not self.restricted(value) or not isinstance(candidates, list)
+                or len(candidates) > self.HISTORY_MAX_LINES or (status != "found" and candidates)):
+            return self.unavailable()
+        result = self.unavailable(status)
+        result["mode"] = "pharmacy_history"
+        if status != "found":
+            return result
+        number, at, count = value.get("orderNumber"), value.get("orderedAt"), value.get("lineCount")
+        if (not isinstance(number, str) or not 1 <= len(number) <= 32 or not number.isprintable()
+                or not isinstance(at, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", at)
+                or type(count) is not int or not 0 <= count <= 500):
+            return self.unavailable()
+        result.update({"orderNumber": number, "orderedAt": at, "lineCount": count})
+        for item in candidates:
+            if isinstance(item, dict) and item.get("unavailable") is True:
+                key, name = item.get("externalId"), item.get("name")
+                if not isinstance(key, str) or not 0 < len(key) <= 512:
+                    return self.unavailable()
+                if not isinstance(name, str) or not 0 < len(name) <= 512:
+                    continue  # nothing the agent could name
+                projected = {"externalId": key, "name": name}
+            else:
+                projected = self.candidate(item)
+                if projected is None:
+                    return self.unavailable()
+            ordered = self.ordered(item.get("ordered"))
+            if ordered is not None:
+                projected["ordered"] = ordered
+            if item.get("unavailable") is True:
+                projected["unavailable"] = True
+            result["candidates"].append(projected)
+        return result
+
+    @staticmethod
+    def ordered(value):
+        if not isinstance(value, dict) or set(value) != {"quantity", "unit"}:
+            return None
+        quantity, unit = value["quantity"], value["unit"]
+        if (type(quantity) is not int or not 1 <= quantity <= 100000 or not isinstance(unit, str)
+                or not 1 <= len(unit) <= 16 or not unit.isprintable()):
+            return None
+        return {"quantity": quantity, "unit": unit}
 
     # Owner, 2026-10-23: one final price for all of Zeytun's pharmacies. Only
     # this exact shape reaches the model; anything else is dropped, never
