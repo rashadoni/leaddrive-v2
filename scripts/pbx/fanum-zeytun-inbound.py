@@ -933,7 +933,11 @@ class ZeytunInboundBridge:
     # the list after every line, so the per-call tool budget and the prompt
     # (which now carries that rule) are larger than the 5-minute pilot's.
     MAX_CALL_SECONDS = 900
-    MAX_PROMPT_CHARS = 8000
+    # Owner, 2026-11-04: the agent is to sell as well (promotions, substitutes,
+    # "as usual"), and the 8000 left the company notes 910 characters. The
+    # station takes 12000 first; the CRM raises its own limit only after
+    # this core is live (src/__tests__/lib-zeytun-inbound-pilot.test.ts).
+    MAX_PROMPT_CHARS = 12000
     MAX_TOOL_CALLS = 256
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
