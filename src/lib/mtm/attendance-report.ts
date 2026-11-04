@@ -9,6 +9,7 @@ import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week
 import { AttendanceRuleInputSchema, attendanceRuleForDate, minutesOfDay, type MtmAttendanceRule } from "@/lib/mtm/attendance-rules"
 import { resolveWorkCalendarDay, type WorkCalendarDayKind, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { mtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
+import type { AttendanceBreakKindTotal } from "@/lib/mtm/attendance-break-kinds-names"
 import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import { calculateWorkforceTimesheetDay, type WorkforceWorkdayFactsInput } from "@/lib/workforce/timesheet-calculation"
 import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
@@ -145,6 +146,8 @@ export interface MtmAttendanceReportRow {
   approvedRequests?: AttendanceApprovedPeriod[]
   /** HR's request for an explanation of this day and the employee's answer (owner, 2026-10-16). */
   explanations?: { kind: "LATE" | "ABSENT"; status: "REQUESTED" | "ANSWERED" | "ACCEPTED" | "REJECTED"; answer: string | null }[]
+  /** Breaks by the kind the employee chose, when the company asks for kinds (`attendance-break-kinds.ts`). Never a place. */
+  breakKinds?: AttendanceBreakKindTotal[]
 }
 
 export interface MtmAttendanceReportInput {

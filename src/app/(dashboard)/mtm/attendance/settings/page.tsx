@@ -10,6 +10,7 @@ import { MtmAttendanceShifts } from "@/components/mtm/attendance-shifts"
 import { MtmAttendanceLeaveBalances } from "@/components/mtm/attendance-leave-balances"
 import { MtmAttendanceManagedSetting } from "@/components/mtm/attendance-managed-setting"
 import { MtmAttendanceQrDisplay } from "@/components/mtm/attendance-qr-display"
+import { MtmAttendanceBreakKindsSettings } from "@/components/mtm/attendance-break-kinds-settings"
 import { MtmAttendanceLocationPolicy } from "@/components/mtm/attendance-location-policy"
 import { MtmAttendancePolicySettings } from "@/components/mtm/attendance-policy-settings"
 import { ATTENDANCE_ADMIN_SETTINGS, ATTENDANCE_SETTINGS_CARDS, type AttendanceSettingsCard } from "@/lib/mtm/attendance-settings-cards"
@@ -17,7 +18,7 @@ import { redirect } from "next/navigation"
 import type { AttendanceSearchParams } from "@/lib/mtm/attendance-legacy-redirect"
 
 // These editors carry no page heading of their own.
-const UNTITLED: readonly AttendanceSettingsCard[] = ["hours", "holidays", "day-kinds", "requests", "access", "reminders", "approval", "checks"]
+const UNTITLED: readonly AttendanceSettingsCard[] = ["hours", "holidays", "day-kinds", "breaks", "requests", "access", "reminders", "approval", "checks"]
 
 /** Owner, 2026-10-14: nine tabs were too many to explain to HR. Settings is one
  * page of cards; `?tab=<card>` opens that card's editor with a way back. */
@@ -45,6 +46,7 @@ export default async function PersonnelSettingsPage({ searchParams }: { searchPa
       : tab === "day-kinds" || tab === "requests" || tab === "access" ? <MtmAttendanceManagedSetting kind={tab} />
       : tab === "leave" ? <MtmAttendanceLeaveBalances />
       : tab === "qr" ? <MtmAttendanceQrDisplay />
+      : tab === "breaks" ? <MtmAttendanceBreakKindsSettings />
       : tab === "reminders" || tab === "approval" || tab === "checks" ? <MtmAttendancePolicySettings card={tab} canChange={isAdmin} />
       : <MtmAttendanceLocationPolicy />}
   </div>

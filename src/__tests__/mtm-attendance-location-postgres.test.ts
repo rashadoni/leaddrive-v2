@@ -48,8 +48,8 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   sql(adminUrl!,`CREATE DATABASE "${scratch!.name}"`);createdDb=true
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
-  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_qr_evidence; DROP TABLE mtm_attendance_branch_screens; DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks","20261112090000_mtm_attendance_branch_screens","20261113090000_mtm_attendance_branch_screen_place","20261120090000_mtm_attendance_installation_utc_guard_clock"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  sql(scratch!.adminDb,'DROP TABLE mtm_attendance_break_labels; DROP TABLE mtm_attendance_qr_evidence; DROP TABLE mtm_attendance_branch_screens; DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks","20261112090000_mtm_attendance_branch_screens","20261113090000_mtm_attendance_branch_screen_place","20261120090000_mtm_attendance_installation_utc_guard_clock","20261125090000_mtm_attendance_break_labels"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -970,6 +970,62 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect(()=>sql(scratch!.adminDb,`ALTER TABLE mtm_attendance_qr_evidence DISABLE TRIGGER mtm_attendance_qr_guard; UPDATE mtm_attendance_qr_evidence SET "awayDistanceMeters"=NULL WHERE state='AWAY_FROM_BRANCH'`)).toThrow()
    sql(scratch!.adminDb,"ALTER TABLE mtm_attendance_qr_evidence ENABLE TRIGGER mtm_attendance_qr_guard")
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
+ })
+
+ // Owner, 2026-11-04: «отходит от компьютера, идёт покурить… чтобы это тоже фиксировалось».
+ it("labels a break with the chosen kind, keeps the kind's name and limit, and the report sums kinds without a place",async()=>{
+  const kinds=await import("@/lib/mtm/attendance-break-kinds"),{readMtmAttendanceReport}=await import("@/lib/mtm/attendance-report-store")
+  await employee();const day=randomUUID(),base=Date.now()-10*60_000,at=(seconds:number)=>new Date(base+seconds*1000)
+  const step=async(action:string,seconds:number,kindId?:string)=>{const op=operation(action,day,at(seconds));if(kindId)Object.assign(op.data,{attendanceBreak:{version:1,kindId}});return (await send(op)).body.results[0]}
+  const labels=()=>tenant(ORG,()=>prisma.$queryRaw<{kindId:string;kindName:string|null;limitMinutes:number|null}[]>`SELECT "kindId","kindName","limitMinutes" FROM mtm_attendance_break_labels WHERE "agentId"=${identity.agentId} ORDER BY "createdAt"`)
+  expect((await step("START",0)).status).toBe("ok")
+  // Off by default: the app's kind is accepted and ignored, the break is counted as before.
+  expect((await step("PAUSE",2,"smoke")).status).toBe("ok");expect((await step("RESUME",5)).status).toBe("ok")
+  expect(await labels()).toEqual([])
+  // Only a current administrator; a nameless kind of the company's own and an empty list that asks are refused.
+  const list={enabled:true,kinds:[{id:"smoke",name:null,limitMinutes:1},{id:"lunch",name:null,limitMinutes:60},{id:null,name:"Fictional call home",limitMinutes:null}]}
+  await expect(tenant(ORG,()=>kinds.saveAttendanceBreakKinds({...admin,userId:identity.agentId},list))).rejects.toMatchObject({status:403})
+  await expect(tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:[{id:null,name:"",limitMinutes:null}]}))).rejects.toMatchObject({status:400})
+  await expect(tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:[]}))).rejects.toMatchObject({status:400})
+  const saved=await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,list));expect(saved.changed).toBe(true)
+  const own=saved.settings.kinds[2];expect(own).toMatchObject({id:expect.stringMatching(/^k-[a-f0-9]{8}$/),name:"Fictional call home",limitMinutes:null})
+  expect((await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:saved.settings.kinds}))).changed).toBe(false)
+  expect(await tenant(ORG,()=>prisma.mtmAuditLog.count({where:{organizationId:ORG,action:"MTM_ATTENDANCE_BREAK_KINDS_CHANGED"}}))).toBe(1)
+  // A kind belongs to PAUSE only.
+  expect((await step("RESUME",8,"smoke")).status).not.toBe("ok")
+  // Two smoking breaks (50 s + 20 s over a 1-minute limit), the company's own kind, and an unknown kind.
+  expect((await step("PAUSE",10,"smoke")).status).toBe("ok");expect((await step("RESUME",60)).status).toBe("ok")
+  expect((await step("PAUSE",70,"smoke")).status).toBe("ok");expect((await step("RESUME",90)).status).toBe("ok")
+  expect((await step("PAUSE",100,own.id)).status).toBe("ok");expect((await step("RESUME",130)).status).toBe("ok")
+  expect((await step("PAUSE",140,"nonexistent")).status).toBe("ok");expect((await step("RESUME",150)).status).toBe("ok")
+  // Renaming afterwards does not rewrite the breaks already taken.
+  await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:[{id:"smoke",name:"Fictional smoke",limitMinutes:40},...saved.settings.kinds.slice(1)]}))
+  expect(await labels()).toEqual([{kindId:"smoke",kindName:null,limitMinutes:1},{kindId:"smoke",kindName:null,limitMinutes:1},{kindId:own.id,kindName:"Fictional call home",limitMinutes:null}])
+  // The employee's own day: minutes used of each kind, and the kind of the break going on now.
+  expect((await step("PAUSE",160,"lunch")).status).toBe("ok")
+  const mine=await tenant(ORG,()=>kinds.readOwnAttendanceBreakDay(prisma,{organizationId:ORG,agentId:identity.agentId},day,at(200)))
+  expect(mine).toMatchObject({currentKindId:"lunch",kinds:[{id:"smoke",name:"Fictional smoke",limitMinutes:40,usedSeconds:70},{id:"lunch",usedSeconds:40},{id:own.id,usedSeconds:30}]})
+  expect((await step("RESUME",220)).status).toBe("ok");expect((await step("FINISH",230)).status).toBe("ok")
+  // The report: per kind, unlabeled last; over the limit a remark. No place anywhere.
+  const workDate=(await tenant(ORG,()=>prisma.mtmAgentWorkday.findUniqueOrThrow({where:{id:day},select:{workDate:true}}))).workDate.toISOString().slice(0,10)
+  const report=await tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:workDate,to:workDate,form:"ALL",employeeId:identity.agentId},now:new Date()}))
+  expect(report.rows[0].breakKinds).toEqual([
+   {kindId:"smoke",kindName:null,count:2,seconds:70,limitMinutes:1},{kindId:own.id,kindName:"Fictional call home",count:1,seconds:30,limitMinutes:null},
+   {kindId:"lunch",kindName:null,count:1,seconds:60,limitMinutes:60},{kindId:"",kindName:null,count:2,seconds:13,limitMinutes:null}])
+  const text=(key:string,values?:Record<string,string|number>)=>`${key}${values?JSON.stringify(values):""}`
+  const table=buildAttendanceTable(report,{version:1,mode:"DAY",columns:["employee","paused","breaks","notes"],filters:report.snapshot.query,showTotals:false},"en",text)
+  expect(table.columns.map(column=>column.key)).toEqual(["employee","paused","breaks","notes"])
+  expect(table.rows[0].cells[2]).toContain('reportBreakKindValue{"name":"breakKind_smoke","count":2,"time":"0:01:10"}')
+  expect(table.rows[0].cells[2]).toContain('reportBreakKindValue{"name":"breakKindNone","count":2')
+  expect(table.rows[0].cells[3]).toContain('reportBreakOverLimit{"name":"breakKind_smoke","used":1,"limit":1}')
+  expect(JSON.stringify(report)).not.toMatch(/latitude|longitude/)
+  // The label is immutable, belongs to a PAUSE, and stays in its organization.
+  expect(()=>sql(scratch!.adminDb,`UPDATE mtm_attendance_break_labels SET "kindId"='lunch' WHERE "agentId"='${identity.agentId}'`)).toThrow()
+  const [start]=await tenant(ORG,()=>prisma.$queryRaw<{id:string}[]>`SELECT id FROM mtm_agent_workday_events WHERE "workdayId"=${day} AND type='START'`)
+  expect(()=>sql(scratch!.adminDb,`INSERT INTO mtm_attendance_break_labels(id,"organizationId","agentId","eventId","kindId") VALUES ('${randomUUID()}','${ORG}','${identity.agentId}','${start.id}','smoke')`)).toThrow()
+  expect(await tenant(OTHER,()=>prisma.$queryRaw`SELECT id FROM mtm_attendance_break_labels`)).toEqual([])
+  // Turned off again: the app's kind is ignored once more.
+  await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:false,kinds:saved.settings.kinds}))
  })
 
 })
