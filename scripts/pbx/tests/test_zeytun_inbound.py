@@ -1596,6 +1596,171 @@ class CallTranscriptTests(unittest.TestCase):
         ])
 
 
+class UtteranceTests(unittest.TestCase):
+    FRAME = b"\x10\x00" * 160  # 20 ms of 8 kHz PCM16
+
+    def setUp(self):
+        self.now = 100
+        self.posts, self.logged = [], []
+        self.gate, self.reply, self.done = threading.Event(), None, threading.Event()
+        self.gate.set()
+
+        def request(body):
+            return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                    "opening": "Test greeting", "maxSeconds": 60}
+
+        def post(body):
+            self.posts.append(body)
+            try:
+                self.gate.wait(2)
+                if self.reply is not None:
+                    raise self.reply
+            finally:
+                self.done.set()
+
+        self.bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now,
+                                                        utterances=True, post_utterance=post)
+        self.bridge.log_event = lambda event, **fields: self.logged.append((event, fields))
+        self.bridge.open()
+
+    def phrase(self, frames=25):
+        self.done.clear()
+        self.bridge.utterance_edge(True, self.FRAME)
+        for _ in range(frames - 1):
+            self.bridge.utterance_audio(self.FRAME)
+        self.bridge.utterance_edge(False)
+
+    def settle(self):
+        self.assertTrue(self.done.wait(2))
+        until = time.monotonic() + 2
+        while self.bridge.utterance_busy and time.monotonic() < until:
+            time.sleep(0.005)
+
+    def statuses(self):
+        return [fields["status"] for event, fields in self.logged if event == "zeytun_utterance"]
+
+    def test_switched_off_by_default(self):
+        with patch.dict(os.environ, {}, clear=True):
+            bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: None, lambda: 0,
+                                                       post_utterance=lambda body: self.fail("sent while off"))
+        self.assertFalse(bridge.utterances)
+        bridge.utterance_edge(True, self.FRAME)
+        bridge.utterance_audio(self.FRAME * 50)
+        bridge.utterance_edge(False)
+        self.assertIsNone(bridge.utterance)
+        with patch.dict(os.environ, {"ZEYTUN_UTTERANCE_ENABLED": "1"}):
+            self.assertTrue(bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: None).utterances)
+
+    def test_the_phrase_goes_on_activity_end_as_its_own_audio_with_the_call_and_a_seq(self):
+        self.bridge.utterance_audio(self.FRAME)  # before activityStart: not the phrase
+        self.phrase(frames=50)
+        self.settle()
+        self.assertEqual(len(self.posts), 1)
+        body = self.posts[0]
+        self.assertEqual(set(body), {"action", "callId", "seq", "audio"})
+        self.assertEqual((body["action"], body["callId"], body["seq"]), ("utterance", CALL, 1))
+        self.assertEqual(base64.b64decode(body["audio"]), self.FRAME * 50)
+        self.phrase()
+        self.settle()
+        self.assertEqual([b["seq"] for b in self.posts], [1, 2])
+        self.bridge.utterance_audio(self.FRAME)  # after activityEnd: nothing is kept
+        self.assertIsNone(self.bridge.utterance)
+        # The journal has how it went, never the audio or a word.
+        ok = [fields for event, fields in self.logged if fields.get("status") == "ok"]
+        self.assertEqual([f["seconds"] for f in ok], [1.0, 0.5])
+        self.assertTrue(all(set(f) == {"status", "seq", "seconds", "cut", "ms"} for f in ok))
+
+    def test_a_phrase_is_at_most_fifteen_seconds_and_a_click_is_not_sent(self):
+        self.phrase(frames=50 * 20)
+        self.settle()
+        audio = base64.b64decode(self.posts[0]["audio"])
+        self.assertEqual(len(audio), 8000 * 2 * 15)
+        self.assertEqual(audio, (self.FRAME * 50 * 15))  # the first 15 s
+        self.assertTrue(self.logged[-1][1]["cut"])
+        self.phrase(frames=5)  # 0.1 s
+        self.assertEqual(len(self.posts), 1)
+        self.assertEqual(self.statuses()[-1], "short")
+
+    def test_one_phrase_in_flight_and_the_audio_thread_never_waits_for_it(self):
+        self.gate.clear()
+        started = time.monotonic()
+        self.phrase()
+        self.assertTrue(self.bridge.utterance_busy)
+        self.phrase()  # the CRM still has the first: this one is not sent
+        self.assertLess(time.monotonic() - started, 0.5)
+        self.assertEqual(self.statuses(), ["busy"])
+        self.gate.set()
+        self.settle()
+        self.assertEqual([b["seq"] for b in self.posts], [1])
+        self.phrase()
+        self.settle()
+        self.assertEqual([b["seq"] for b in self.posts], [1, 3])
+
+    def test_a_crm_without_the_action_is_not_asked_again_on_this_call(self):
+        for code in (400, 404):
+            self.setUp()
+            self.reply = urllib.error.HTTPError(URL, code, "no", {}, None)
+            self.phrase()
+            self.settle()
+            self.assertEqual(self.statuses(), ["http_%d" % code])
+            self.phrase()
+            self.phrase()
+            self.assertEqual(len(self.posts), 1)
+            self.assertFalse(self.bridge.utterances)
+
+    def test_a_slow_or_failing_crm_is_journaled_and_the_next_phrase_still_goes(self):
+        for reply, status in ((TimeoutError("timed out"), "TimeoutError"),
+                              (urllib.error.HTTPError(URL, 503, "busy", {}, None), "http_503")):
+            self.reply = reply
+            self.phrase()
+            self.settle()
+            self.assertEqual(self.statuses()[-1], status)
+        self.reply = None
+        self.phrase()
+        self.settle()
+        self.assertEqual(self.statuses(), ["TimeoutError", "http_503", "ok"])
+        self.assertEqual(len(self.posts), 3)  # no retries
+
+    def test_a_phrase_cut_by_a_new_start_is_dropped_and_never_sent_twice(self):
+        # Barge-in or a replaced session: activityStart again without an end.
+        self.bridge.utterance_edge(True, b"\x01\x00" * 160)
+        self.bridge.utterance_audio(b"\x01\x00" * 1600)
+        self.phrase()
+        self.bridge.utterance_edge(False)  # a second end (resume closing the turn) finds nothing
+        self.settle()
+        self.assertEqual(len(self.posts), 1)
+        self.assertEqual(base64.b64decode(self.posts[0]["audio"]), self.FRAME * 25)
+
+    def test_nothing_is_sent_after_the_call_ran_out(self):
+        self.now = 1000
+        self.phrase()
+        self.assertEqual(self.posts, [])
+        self.assertEqual(self.statuses(), ["expired"])
+
+    def test_the_real_post_uses_the_lookup_address_and_token_with_a_short_deadline(self):
+        seen = {}
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+            def read(self, limit): return b"{}"
+
+        class Opener:
+            def open(self, req, timeout):
+                seen.update(url=req.full_url, auth=req.get_header("Authorization"), timeout=timeout,
+                            body=json.loads(req.data))
+                return Response()
+
+        bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: None)
+        with patch.object(bridge_module.urllib.request, "build_opener", lambda *handlers: Opener()):
+            bridge._post_utterance({"action": "utterance", "callId": CALL, "seq": 1, "audio": "AA=="})
+        self.assertEqual(seen["url"], "https://app.leaddrivecrm.org/api/internal/voice-agent/pharmacy-inbound")
+        self.assertEqual(seen["url"], bridge.url)
+        self.assertEqual(seen["auth"], "Bearer " + "t" * 48)
+        self.assertEqual(seen["timeout"], 3)
+        self.assertEqual(seen["body"]["action"], "utterance")
+
+
 class ResumeTests(unittest.TestCase):
     def test_only_the_providers_refusal_is_retried_and_only_within_the_window(self):
         retry = bridge_module.zeytun_resume_retry
@@ -1648,7 +1813,8 @@ class ResumeTests(unittest.TestCase):
                 local_speech_active=speaking, response_active=False, latest_customer_item_id="gemini-customer-3",
                 customer_turn_complete=False, gemini_playback_progress_version=7, gemini_audio_enqueue_seq=11,
                 resume_progress_pcm_floor=None, gemini_input_release_at=99.0, call_id="c", sent=[], opened=[],
-                watchdog=[])
+                watchdog=[], edges=[])
+            obj.pharmacy_bridge = SimpleNamespace(utterance_edge=lambda opened, pcm=b"": obj.edges.append(opened))
             for lock in ("reconnect_lock", "gemini_event_lock", "control_send_lock", "state_lock"):
                 setattr(obj, lock, threading.RLock())
             plan = list(outcomes)
@@ -1690,6 +1856,7 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(obj.gemini_input_release_at, 0.0)
         kinds = [next(iter(event["realtimeInput"])) for ws, event in obj.sent]
         self.assertEqual(kinds, ["audio", "activityEnd"])  # never a second activityStart
+        self.assertEqual(obj.edges, [False])  # the caller's phrase ends with the turn the resume closed
         self.assertEqual(base64.b64decode(obj.sent[0][1]["realtimeInput"]["audio"]["data"]), b"\x01\x02" * 320)
         self.assertFalse(obj.provider_activity_open)
         self.assertEqual(obj.watchdog, [(obj.opened[1], True, 7)])
@@ -1700,6 +1867,7 @@ class ResumeTests(unittest.TestCase):
         self.assertTrue(obj.resume())
         self.assertEqual([next(iter(e["realtimeInput"])) for _, e in obj.sent], ["audio"])
         self.assertTrue(obj.provider_activity_open)
+        self.assertEqual(obj.edges, [])  # its end comes from feed, once
         # Outside a caller turn nothing buffered is sent.
         logged.clear()
         obj, _ = session(window_open=False)
@@ -1781,6 +1949,19 @@ class ArtifactTests(unittest.TestCase):
             "            if not self._recover_gemini(\n",
             "            if not (self.pharmacy_preview\n"
             "                    and self._pharmacy_resume(type(error).__name__, delivery_ws)) and not self._recover_gemini(\n", 1)
+        # The second ear (owner, 2026-11-04): every caller frame before its
+        # resample to the provider, and each activity edge, go to the bridge.
+        feed = feed.replace(
+            "\n    pcm16, self.gemini_input_resample_state = audioop.ratecv(\n",
+            "\n    if self.pharmacy_preview:\n"
+            "        self.pharmacy_bridge.utterance_audio(payload)\n"
+            "    pcm16, self.gemini_input_resample_state = audioop.ratecv(\n", 1).replace(
+            "                activity_open = False\n    if activity_open is not None and not GEMINI_LIVE_PROVIDER_VAD:\n",
+            "                activity_open = False\n"
+            "    if self.pharmacy_preview and activity_open is not None and not GEMINI_LIVE_PROVIDER_VAD:\n"
+            "        self.pharmacy_bridge.utterance_edge(activity_open, payload)\n"
+            "    if activity_open is not None and not GEMINI_LIVE_PROVIDER_VAD:\n", 1)
+        self.assertEqual(feed.count("self.pharmacy_bridge.utterance_"), 2)
         self.assertIn("pharmacy_agent_heard_at", feed)
         self.assertIn("self._pharmacy_resume(type(error).__name__, delivery_ws)", feed)
         self.assertEqual(ast.dump(ast.parse(feed).body[0]), ast.dump(new_methods["feed"]))
@@ -1839,6 +2020,9 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("self.pharmacy_bridge.on_wait = self._pharmacy_wait_filler", start)
         self.assertIn("self.pharmacy_bridge.log_event = lambda event, **fields: latency(event, self.call_id, **fields)", start)
         self.assertIn("relay.filler()", ast.unparse(new_methods["_pharmacy_wait_filler"]))
+        resume = ast.unparse(new_methods["_pharmacy_resume"])
+        self.assertEqual(resume.count("utterance_edge"), 1)
+        self.assertIn("{'activityEnd': {}}})\n                self.pharmacy_bridge.utterance_edge(False)", resume)
         # The kill switch is still asked on every pharmacy call, in parallel
         # with the provider socket, and awaited before the greeting is sent.
         self.assertIn("instruction_for_call()", ast.unparse(new_methods["_pharmacy_kill_switch"]))

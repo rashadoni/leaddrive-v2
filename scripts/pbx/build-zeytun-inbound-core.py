@@ -453,6 +453,33 @@ def build(source, bridge):
 
     def _setup_event(self, resume_handle=None):
 ''')
+    # Owner, 2026-11-04 (task 6 of docs/zeytun-line-recognition-plan.md):
+    # a second ear. Each caller phrase, activityStart to activityEnd, goes to
+    # the CRM as the 8 kHz audio the provider gets before its resample (no
+    # lookback); the CRM transcribes it itself and searches with that text
+    # too. The bridge copies and sends it (utterance_audio/utterance_edge),
+    # off this thread and only with ZEYTUN_UTTERANCE_ENABLED=1.
+    replace("            self._resume_progress_after_speech()\n\n        pcm16, self.gemini_input_resample_state = audioop.ratecv(\n",
+            "            self._resume_progress_after_speech()\n\n"
+            "        if self.pharmacy_preview:\n"
+            "            self.pharmacy_bridge.utterance_audio(payload)\n"
+            "        pcm16, self.gemini_input_resample_state = audioop.ratecv(\n")
+    replace("""                if self.provider_activity_open:
+                    self.provider_activity_open = False
+                    activity_open = False
+        if activity_open is not None and not GEMINI_LIVE_PROVIDER_VAD:
+""", """                if self.provider_activity_open:
+                    self.provider_activity_open = False
+                    activity_open = False
+        if self.pharmacy_preview and activity_open is not None and not GEMINI_LIVE_PROVIDER_VAD:
+            self.pharmacy_bridge.utterance_edge(activity_open, payload)
+        if activity_open is not None and not GEMINI_LIVE_PROVIDER_VAD:
+""")
+    # A turn the resumed session closes is the end of that caller phrase.
+    replace('''                    self._send_gemini_event(replacement, {"realtimeInput": {"activityEnd": {}}})
+''', '''                    self._send_gemini_event(replacement, {"realtimeInput": {"activityEnd": {}}})
+                    self.pharmacy_bridge.utterance_edge(False)
+''')
     # Owner, 2026-10-28: the station resends an order the CRM did not answer.
     # Started with the service, so what a previous run left is sent before
     # the first call after a restart.
