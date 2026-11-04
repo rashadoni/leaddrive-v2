@@ -74,6 +74,11 @@ export function MtmAttendanceQrDisplay() {
     const data = await mutate(() => fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ branchId }) })) as AttendanceBranchScreenPairing | null
     if (data?.code && data.branch?.id === branchId) setPairing({ ...data, screensBefore })
   }
+  async function setMethod(branchId: string, method: "QR_GPS" | "GPS_ONLY") {
+    if (!directory?.canConfigure) return
+    await mutate(() => fetch("/api/v1/mtm/attendance/branch-mark-method", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ branchId, method }) }))
+    await load()
+  }
   async function revoke(screenId: string) {
     setConfirming(null)
     await mutate(() => fetch(`${ENDPOINT}/${encodeURIComponent(screenId)}/revoke`, { method: "POST" }))
@@ -100,6 +105,15 @@ export function MtmAttendanceQrDisplay() {
         <Button asChild className="min-h-11 rounded-full"><Link href="/mtm/attendance/people?tab=branches" prefetch={false}>{t("qrAddBranch")}</Link></Button></div>
         : <div className="divide-y">{directory.branches.map(branch => <div key={branch.id} className="grid gap-3 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start" data-testid="attendance-qr-branch">
           <div className="min-w-0 space-y-2"><p className="font-medium">{branch.name}</p>
+            {/* Owner, 2026-11-04: an open site with no computer marks by the phone's place alone. */}
+            <div className="flex flex-wrap items-center gap-2 text-sm"><span className="text-muted-foreground" id={`attendance-qr-method-${branch.id}`}>{t("qrBranchMethodLabel")}</span>
+              <div role="radiogroup" aria-labelledby={`attendance-qr-method-${branch.id}`} className="inline-flex overflow-hidden rounded-lg border" data-testid="attendance-qr-branch-method">
+                {(["QR_GPS", "GPS_ONLY"] as const).map(method => <button key={method} type="button" role="radio" aria-checked={branch.markMethod === method}
+                  data-testid={`attendance-qr-branch-method-${method}`} disabled={busy || !directory.canConfigure || branch.markMethod === method}
+                  className={`min-h-11 px-4 text-sm ${branch.markMethod === method ? "bg-foreground font-semibold text-background" : "bg-background text-foreground hover:bg-muted"}`}
+                  onClick={() => void setMethod(branch.id, method)}>{t(method === "QR_GPS" ? "qrBranchMethodQr" : "qrBranchMethodGps")}</button>)}
+              </div></div>
+            {branch.markMethod === "GPS_ONLY" && <p className="text-sm text-muted-foreground" data-testid="attendance-qr-branch-gps-only">{t("qrBranchGpsOnlyHint")}</p>}
             {branch.screens.length ? branch.screens.map(screen => {
               const online = screen.lastSeenAt !== null && now - Date.parse(screen.lastSeenAt) < ONLINE_WITHIN_MS
               return <div key={screen.id} className="flex flex-wrap items-center gap-3 text-sm" data-testid="attendance-qr-screen">
@@ -114,7 +128,7 @@ export function MtmAttendanceQrDisplay() {
                     <Button type="button" variant="outline" className="min-h-11" disabled={busy} onClick={() => setConfirming(null)}>{t("qrScreenRevokeNo")}</Button></span>
                   : <Button type="button" variant="outline" className="min-h-11 text-destructive" disabled={busy} onClick={() => setConfirming(screen.id)}>{t("qrScreenRevoke")}</Button>)}
               </div>
-            }) : <p className="text-sm text-amber-700" data-testid="attendance-qr-branch-unscreened">{t("qrScreenNone")}</p>}
+            }) : branch.markMethod === "QR_GPS" && <p className="text-sm text-amber-700" data-testid="attendance-qr-branch-unscreened">{t("qrScreenNone")}</p>}
             {pairedBranch === branch.id && <p role="status" className="text-sm text-emerald-700">{t("qrScreenJustPaired")}</p>}
             {pairing?.branch.id === branch.id && <div className="space-y-2 rounded-xl border bg-muted/40 p-4" data-testid="attendance-qr-pairing">
               <p className="text-sm">{t("qrScreenPairOpen", { url: screenUrl })}</p>
@@ -124,7 +138,7 @@ export function MtmAttendanceQrDisplay() {
               <Button type="button" variant="outline" className="min-h-11" onClick={() => setPairing(null)}>{t("qrScreenPairClose")}</Button>
             </div>}
           </div>
-          {directory.canConfigure && <Button type="button" className="min-h-11" disabled={busy} onClick={() => void pair(branch.id, branch.screens.length)}>{t("qrScreenPair")}</Button>}
+          {directory.canConfigure && branch.markMethod === "QR_GPS" && <Button type="button" className="min-h-11" disabled={busy} onClick={() => void pair(branch.id, branch.screens.length)}>{t("qrScreenPair")}</Button>}
         </div>)}</div>}
     </HomeCard> : directory && <p className="text-sm text-muted-foreground">{t("qrOffHint")}</p>}
     <p className="border-l-2 border-orange-400 pl-4 text-sm text-muted-foreground">{t("qrScreenGpsHint")}</p>

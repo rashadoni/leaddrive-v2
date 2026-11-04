@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#d9dde3;font:15px/1.45 "Segoe UI",Arial,sans-serif;color:#162335}
+.board{width:1440px;padding:28px 36px 32px;background:#eef0f4;margin-bottom:40px}
+.bt{font-size:26px;font-weight:700;margin-bottom:4px}
+.bs{color:#5a6678;font-size:15px;margin-bottom:20px;max-width:1200px}
+.note{font-size:13px;color:#4a5568;margin-top:8px;line-height:1.4}
+.note b{color:#162335}
+.num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#162335;color:#fff;font-size:12px;font-weight:700;align-items:center;justify-content:center;margin-right:6px;vertical-align:1px}
+/* browser */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px 28px}
+.win{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.12);height:410px;display:flex;flex-direction:column}
+.bar{height:34px;background:#e8eaed;display:flex;align-items:center;gap:6px;padding:0 12px;flex:none}
+.dot{width:10px;height:10px;border-radius:50%;background:#c4c7cc}
+.url{margin-left:14px;background:#fff;border-radius:14px;padding:3px 14px;font-size:12px;color:#5f6368;flex:1}
+.page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 26px;text-align:center;position:relative}
+.org{color:#6b7280;font-size:13px}
+.h{font-size:24px;font-weight:650;letter-spacing:-.3px}
+.qr{width:170px;height:170px;border:1px solid #e5e7eb;border-radius:14px;padding:8px;background:#fff}
+.qr.s{width:120px;height:120px;padding:6px}
+.cd{color:#047857;font-weight:650;font-size:18px}
+.muted{color:#6b7280;font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600}
+.chip.ok{background:#e0f0e6;color:#17674f}
+.chip.warn{background:#f8edce;color:#815300}
+.chip.gray{background:#eceff3;color:#4b5563}
+.lang{position:absolute;top:10px;right:16px;font-size:12px;color:#6b7280}
+.lang b{color:#111}
+.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:600;font-size:15px;padding:0 18px;height:42px}
+.btn.or{background:#dc5507;color:#fff}
+.btn.ol{border:1.5px solid #cfd5dd;color:#162335;background:#fff}
+.btn.am{background:#f8edce;color:#815300;border:1.5px solid #e9cf8a}
+.row{display:flex;gap:10px;align-items:center;justify-content:center}
+.link{color:#dc5507;font-size:13px}
+.split{display:flex;gap:26px;align-items:center;text-align:left}
+.kinds{display:flex;gap:8px;margin-top:6px}
+.kind{border:1.5px solid #cfd5dd;border-radius:10px;padding:8px 14px;font-weight:600;font-size:14px;background:#fff}
+.kind small{display:block;font-weight:400;color:#6b7280;font-size:11px}
+/* phones */
+.phones{display:flex;gap:26px;justify-content:center}
+.ph{width:318px}
+.phone{width:318px;height:660px;border-radius:34px;background:#111;padding:9px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.scr{width:100%;height:100%;border-radius:26px;background:#F0F4F1;overflow:hidden;position:relative;color:#162E28;display:flex;flex-direction:column}
+.sb{height:26px;font-size:11px;padding:6px 18px 0;color:#162E28;display:flex;justify-content:space-between;flex:none}
+.ap{padding:8px 16px 0;flex:1;display:flex;flex-direction:column;gap:10px}
+.brand{color:#17674F;font-weight:700;font-size:12px}
+.title{display:flex;justify-content:space-between;align-items:baseline}
+.title b{font-size:24px}
+.title span{color:#536D63;font-size:12px}
+.who{color:#536D63;font-size:13px;margin-top:-6px}
+.card{background:#FCFDFB;border:1px solid #CFDDD4;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:9px}
+.card.amb{border-color:#c99a2e;background:#fffaf0}
+.st{display:flex;align-items:center;gap:7px;font-weight:700;font-size:15px}
+.sd{width:8px;height:8px;border-radius:50%;background:#17674F}
+.sd.a{background:#815300}
+.big{font-size:34px;font-weight:700;letter-spacing:-.5px}
+.pm{color:#536D63;font-size:12.5px}
+.pb{height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.pb.f{background:#17674F;color:#F8FCF9}
+.pb.o{border:1.5px solid #17674F;color:#17674F;background:#FCFDFB}
+.pb.am{background:#815300;color:#fff}
+.tabs{height:54px;background:#FCFDFB;border-top:1px solid #CFDDD4;display:flex;justify-content:space-around;align-items:center;font-size:10px;color:#536D63;flex:none}
+.tabs .on{color:#17674F;font-weight:700}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#FCFDFB;border-radius:22px 22px 0 0;padding:10px 16px 18px;box-shadow:0 -6px 20px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:9px}
+.shade{position:absolute;inset:0;background:rgba(10,20,16,.42)}
+.grab{width:40px;height:4px;border-radius:2px;background:#CFDDD4;margin:0 auto 4px}
+.opt{border:1.5px solid #CFDDD4;border-radius:14px;padding:11px 13px;display:flex;justify-content:space-between;align-items:center}
+.opt b{font-size:15px}
+.opt .pm{margin-top:1px}
+.chev{color:#536D63;font-size:18px}
+.bar2{height:6px;border-radius:3px;background:#E6EEE8;overflow:hidden}
+.bar2 i{display:block;height:100%;background:#815300}
+.pin{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#162E28}
+.pin .ic{width:22px;height:22px;border-radius:50%;background:#E0F0E6;color:#17674F;display:flex;align-items:center;justify-content:center;font-size:12px;flex:none;font-weight:700}
+/* crm */
+.crm{display:grid;grid-template-columns:1.25fr 1fr;gap:24px}
+.cc{background:#fff;border:1px solid #e1e5eb;border-radius:12px;padding:18px 20px}
+.cc h3{font-size:17px;margin-bottom:3px}
+.cc .sub{color:#6b7280;font-size:13px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:#6b7280;font-weight:600;font-size:12px;padding:7px 8px;border-bottom:1px solid #e5e7eb;background:#f8f9fb}
+td{padding:9px 8px;border-bottom:1px solid #eef0f3;vertical-align:middle}
+.seg{display:inline-flex;border:1px solid #cfd5dd;border-radius:8px;overflow:hidden;font-size:12.5px}
+.seg span{padding:5px 10px;color:#4b5563}
+.seg span.on{background:#162335;color:#fff;font-weight:600}
+.sm{font-size:12px;color:#6b7280}
+.tg{width:36px;height:20px;border-radius:10px;background:#17674f;position:relative;display:inline-block;vertical-align:middle}
+.tg:after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.tg.off{background:#cbd2db}.tg.off:after{right:auto;left:2px}
+.lnk{color:#dc5507;font-weight:600;font-size:13px}
+.red{color:#a8313c;font-weight:600}
+.inp{display:inline-block;border:1px solid #cfd5dd;border-radius:6px;padding:3px 8px;min-width:54px;text-align:right;font-size:13px}
+.tset{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #eef0f3;font-size:13.5px}
+.callout{background:#fff7e6;border:1px solid #f0d9a8;border-radius:10px;padding:10px 14px;font-size:13px;color:#5b4410;margin-top:14px}
+</style></head><body>
+
+<!-- ============ 1. Рабочий компьютер ============ -->
+<section class="board" id="b1">
+  <div class="bt">1. Отметка с рабочего компьютера</div>
+  <div class="bs">Сотрудник открывает ту же ссылку, что на ресепшене, на своём компьютере. Администратору ничего делать не нужно: компьютер подключает сам сотрудник, телефоном.</div>
+  <div class="grid2">
+    <div>
+      <div class="win"><div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">app.leaddrivecrm.org/attendance-screen</span></div>
+        <div class="page" style="gap:12px">
+          <span class="lang"><b>RU</b> · AZ · EN</span>
+          <div class="h">Сделать этот компьютер рабочим местом</div>
+          <div class="split">
+            <img class="qr" src="qr.svg">
+            <div style="max-width:300px;display:flex;flex-direction:column;gap:8px">
+              <div>Откройте <b>LeadDrive Time</b> на телефоне и отсканируйте этот код.</div>
+              <div class="muted">Телефон должен быть в филиале. Компьютер станет вашим рабочим местом, и утром код будет на нём.</div>
+              <div class="cd" style="font-size:15px">Код обновится через 48 с</div>
+            </div>
+          </div>
+          <span class="link">Это экран ресепшена? Введите код администратора</span>
+        </div></div>
+      <div class="note"><span class="num">1</span><b>Первый раз.</b> Сотрудник сканирует этот код приложением Time, и компьютер подключён. Код подключения тоже живёт минуту.</div>
+    </div>
+    <div>
+      <div class="win"><div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">app.leaddrivecrm.org/attendance-screen</span></div>
+        <div class="page" style="gap:10px">
+          <span class="lang"><b>RU</b> · AZ · EN</span>
+          <div class="org">Рабочее место · Рашад Рагимов</div>
+          <div class="h">Главный офис</div>
+          <img class="qr" src="qr.svg">
+          <div>Отсканируйте в Time, чтобы <b>начать день</b></div>
+          <div class="row"><span class="cd">Код обновится через 42 с</span><span class="chip ok">✓ Офисная сеть</span></div>
+        </div></div>
+      <div class="note"><span class="num">2</span><b>Каждое утро.</b> Страница сама показывает код, как экран на ресепшене. Код есть, только если компьютер в офисной сети или его место совпадает с филиалом.</div>
+    </div>
+    <div>
+      <div class="win"><div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">app.leaddrivecrm.org/attendance-screen</span></div>
+        <div class="page" style="gap:12px">
+          <span class="lang"><b>RU</b> · AZ · EN</span>
+          <div class="org">Рабочее место · Рашад Рагимов · Главный офис</div>
+          <div class="h">Вы на работе с 09:02</div>
+          <div class="muted" style="margin-top:-8px">Отработано 3 ч 14 мин · перерывы 12 мин</div>
+          <div style="font-weight:600;margin-top:4px">Отойти на перерыв:</div>
+          <div class="kinds">
+            <div class="kind">Перекур<small>сегодня 12 из 30 мин</small></div>
+            <div class="kind">Обед<small>60 мин</small></div>
+            <div class="kind">Личное<small>без лимита</small></div>
+          </div>
+          <div class="row" style="gap:14px;margin-top:4px"><img class="qr s" src="qr.svg"><span class="muted" style="text-align:left;max-width:200px">Закончить день — отсканируйте код в Time</span></div>
+        </div></div>
+      <div class="note"><span class="num">3</span><b>Днём.</b> Перерыв начинается кнопкой прямо на компьютере, телефон доставать не нужно. Закончить день — снова кодом.</div>
+    </div>
+    <div>
+      <div class="win"><div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">app.leaddrivecrm.org/attendance-screen</span></div>
+        <div class="page" style="gap:12px">
+          <span class="lang"><b>RU</b> · AZ · EN</span>
+          <span class="chip warn" style="font-size:13px;padding:4px 14px">Перерыв · Перекур</span>
+          <div class="big" style="font-size:52px;color:#815300">7:24</div>
+          <div class="muted" style="margin-top:-8px">Начат в 11:40 · сегодня на перекуры 19 из 30 мин</div>
+          <div class="btn or" style="height:48px;font-size:16px;padding:0 34px">Вернуться к работе</div>
+          <div class="muted">Где вы во время перерыва — не записывается.</div>
+        </div></div>
+      <div class="note"><span class="num">4</span><b>На перерыве.</b> Таймер и одна кнопка. Если компьютер унесли из офиса, код на нём не покажется: «Компьютер не в офисе».</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. Телефон ============ -->
+<section class="board" id="b2">
+  <div class="bt">2. Приложение Time на телефоне</div>
+  <div class="bs">Подключение компьютера, отметка на объекте без QR и перерыв с видом.</div>
+  <div class="phones">
+    <div class="ph"><div class="phone"><div class="scr">
+      <div class="sb"><span>08:57</span><span>▾ ▮ 92</span></div>
+      <div class="ap">
+        <div class="brand">LeadDrive Time</div>
+        <div class="title"><b>Компьютер</b><span>4 ноя, ср</span></div>
+        <div class="card" style="margin-top:6px">
+          <div class="st">Подключить этот компьютер?</div>
+          <div class="pin"><span class="ic">🖥</span><div><b>Рабочее место в филиале «Главный офис»</b><div class="pm">Утром на нём будет код для начала дня.</div></div></div>
+          <div class="pin"><span class="ic">✓</span><div>Вы в филиале<div class="pm">Телефон в 24 м от офиса</div></div></div>
+          <div class="pb f" style="margin-top:4px">Подключить</div>
+          <div class="pb o">Отмена</div>
+        </div>
+        <div class="pm" style="padding:0 4px">Подключённые компьютеры — в «Профиль → Мои рабочие места». Отключить можно там же.</div>
+      </div>
+      <div class="tabs"><span class="on">День</span><span>Заявки</span><span>Объясн.</span><span>Уведомл.</span><span>Профиль</span></div>
+    </div></div><div class="note"><span class="num">1</span>После скана кода подключения на компьютере.</div></div>
+
+    <div class="ph"><div class="phone"><div class="scr">
+      <div class="sb"><span>08:41</span><span>▾ ▮ 88</span></div>
+      <div class="ap">
+        <div class="brand">LeadDrive Time</div>
+        <div class="title"><b>День</b><span>4 ноя, ср</span></div>
+        <div class="who">Самир Алиев</div>
+        <div class="card">
+          <div class="st"><i class="sd"></i>Вы на объекте</div>
+          <div style="font-weight:700;font-size:17px">Объект «Нархоз, корпус 2»</div>
+          <div class="pin"><span class="ic">✓</span><div>Телефон в 35 м от объекта<div class="pm">QR здесь не нужен — отметка по GPS</div></div></div>
+          <div class="pb f" style="margin-top:4px">Начать день</div>
+        </div>
+        <div class="card" style="gap:6px">
+          <div style="font-weight:700;font-size:14px">Вне объекта</div>
+          <div class="pm">Если телефон дальше 150 м, кнопки нет. Вместо неё — «Я не на объекте: подать заявку».</div>
+        </div>
+      </div>
+      <div class="tabs"><span class="on">День</span><span>Заявки</span><span>Объясн.</span><span>Уведомл.</span><span>Профиль</span></div>
+    </div></div><div class="note"><span class="num">2</span>Объект, где в настройках выбрано «только GPS»: компьютера нет, кнопка работает сразу.</div></div>
+
+    <div class="ph"><div class="phone"><div class="scr">
+      <div class="sb"><span>11:40</span><span>▾ ▮ 74</span></div>
+      <div class="ap">
+        <div class="brand">LeadDrive Time</div>
+        <div class="title"><b>День</b><span>4 ноя, ср</span></div>
+        <div class="who">Рашад Рагимов</div>
+        <div class="card"><div class="st"><i class="sd"></i>На работе с 09:02</div><div class="big">2:38</div><div class="pb o">Перерыв</div><div class="pb f">Закончить день</div></div>
+      </div>
+      <div class="shade"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div style="font-weight:700;font-size:18px">Какой перерыв?</div>
+        <div class="opt"><div><b>Перекур</b><div class="pm">сегодня 12 из 30 мин</div></div><span class="chev">›</span></div>
+        <div class="opt"><div><b>Обед</b><div class="pm">60 мин · сегодня ещё не было</div></div><span class="chev">›</span></div>
+        <div class="opt"><div><b>Личное</b><div class="pm">без лимита</div></div><span class="chev">›</span></div>
+        <div class="pb o" style="border-color:#CFDDD4;color:#536D63">Отмена</div>
+      </div>
+    </div></div><div class="note"><span class="num">3</span>«Перерыв» теперь спрашивает вид. Одно касание — перерыв начат.</div></div>
+
+    <div class="ph"><div class="phone"><div class="scr">
+      <div class="sb"><span>11:47</span><span>▾ ▮ 73</span></div>
+      <div class="ap">
+        <div class="brand">LeadDrive Time</div>
+        <div class="title"><b>День</b><span>4 ноя, ср</span></div>
+        <div class="who">Рашад Рагимов</div>
+        <div class="card amb">
+          <div class="st" style="color:#815300"><i class="sd a"></i>Перерыв · Перекур</div>
+          <div class="big" style="color:#815300">7:24</div>
+          <div class="pm">Начат в 11:40</div>
+          <div class="pm" style="margin-top:2px">Перекуры сегодня: 19 из 30 мин</div>
+          <div class="bar2"><i style="width:63%"></i></div>
+          <div class="pb am" style="margin-top:6px">Вернуться к работе</div>
+        </div>
+        <div class="pm" style="padding:0 4px">Где вы во время перерыва — не записывается.</div>
+      </div>
+      <div class="tabs"><span class="on">День</span><span>Заявки</span><span>Объясн.</span><span>Уведомл.</span><span>Профиль</span></div>
+    </div></div><div class="note"><span class="num">4</span>Сколько осталось до лимита видно сразу. Перебор — замечание кадровику, время не урезается.</div></div>
+  </div>
+</section>
+
+<!-- ============ 3. CRM: настройки ============ -->
+<section class="board" id="b3">
+  <div class="bt">3. CRM → Учёт времени → Настройки</div>
+  <div class="bs">Для каждого филиала — как отмечаться. Рабочие места сотрудников. Виды перерывов и лимиты.</div>
+  <div class="crm">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="cc">
+        <h3>Филиалы: как отмечаться</h3>
+        <div class="sub">«QR + GPS» — код с экрана или рабочего компьютера. «Только GPS» — для объектов без компьютеров: телефон на месте, и этого достаточно.</div>
+        <table>
+          <tr><th>Филиал / объект</th><th>Отметка</th><th>Офисная сеть</th></tr>
+          <tr><td><b>Главный офис</b><div class="sm">Низами 96 · радиус 120 м</div></td><td><div class="seg"><span class="on">QR + GPS</span><span>Только GPS</span></div></td><td><span class="chip ok">✓ запомнена 4 ноя</span><div class="lnk" style="margin-top:4px">Запомнить сеть этого компьютера</div></td></tr>
+          <tr><td><b>Склад Бинагади</b><div class="sm">радиус 200 м</div></td><td><div class="seg"><span class="on">QR + GPS</span><span>Только GPS</span></div></td><td><span class="lnk">Запомнить сеть этого компьютера</span><div class="sm">пока только по месту</div></td></tr>
+          <tr><td><b>Объект «Нархоз, корпус 2»</b><div class="sm">радиус 150 м</div></td><td><div class="seg"><span>QR + GPS</span><span class="on">Только GPS</span></div></td><td class="sm">не нужна</td></tr>
+        </table>
+      </div>
+      <div class="cc">
+        <h3>Рабочие места</h3>
+        <div class="sub">Компьютеры, которые сотрудники подключили сами. Экраны ресепшена — как раньше.</div>
+        <div class="tset" style="border-top:0;padding-top:0"><span>Сотрудники могут сами подключать свой компьютер</span><span class="tg"></span></div>
+        <table>
+          <tr><th>Сотрудник</th><th>Филиал</th><th>Подключён</th><th>Последний код</th><th></th></tr>
+          <tr><td>Рашад Рагимов</td><td>Главный офис</td><td>4 ноя</td><td>сегодня 09:01 · <span class="chip ok">сеть</span></td><td class="lnk">Отключить</td></tr>
+          <tr><td>Саида Мамедова</td><td>Главный офис</td><td>4 ноя</td><td>сегодня 08:55 · <span class="chip gray">по месту</span></td><td class="lnk">Отключить</td></tr>
+          <tr><td>Эльчин Гасанов</td><td>Склад Бинагади</td><td>3 ноя</td><td><span class="red">вне офиса</span> · 2 дня</td><td class="lnk">Отключить</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="cc" style="align-self:start">
+      <h3>Виды перерывов</h3>
+      <div class="sub">Сотрудник выбирает вид, когда нажимает «Перерыв». Лимит — за день, на все перерывы этого вида.</div>
+      <div class="tset" style="border-top:0;padding-top:0"><span>Спрашивать вид перерыва</span><span class="tg"></span></div>
+      <table>
+        <tr><th>Вид</th><th style="text-align:right">Лимит в день</th><th></th></tr>
+        <tr><td><b>Перекур</b></td><td style="text-align:right"><span class="inp">30</span> мин</td><td class="lnk">Изменить</td></tr>
+        <tr><td><b>Обед</b></td><td style="text-align:right"><span class="inp">60</span> мин</td><td class="lnk">Изменить</td></tr>
+        <tr><td><b>Личное</b></td><td style="text-align:right"><span class="sm">без лимита</span></td><td class="lnk">Изменить</td></tr>
+      </table>
+      <div class="lnk" style="margin-top:12px">+ Добавить вид</div>
+      <div class="tset"><span>Обед считать рабочим временем</span><span class="tg off"></span></div>
+      <div class="callout">Превысил лимит — кадровику приходит замечание «Перекур 48 мин из 30». Рабочее время само не урезается: решает кадровик, как с опозданием.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. CRM: табель дня ============ -->
+<section class="board" id="b4">
+  <div class="bt">4. Табель за день: перерывы по видам</div>
+  <div class="bs">В отчёте «День по сотрудникам» и в выгрузке Excel — сколько раз и сколько минут на каждый вид. Где человек был в перерыве — нигде не показывается.</div>
+  <div class="cc">
+    <table>
+      <tr><th>Сотрудник</th><th>Филиал</th><th>Пришёл</th><th>Чем отметился</th><th>Ушёл</th><th>Отработано</th><th>Перекур</th><th>Обед</th><th>Личное</th><th>Замечания</th></tr>
+      <tr><td><b>Рашад Рагимов</b></td><td>Главный офис</td><td>09:02</td><td><span class="chip ok">QR · рабочее место</span></td><td>18:05</td><td>7 ч 42 мин</td><td>3 раза · 26 мин</td><td>1 · 55 мин</td><td>—</td><td>—</td></tr>
+      <tr><td><b>Саида Мамедова</b></td><td>Главный офис</td><td>08:55</td><td><span class="chip ok">QR · ресепшен</span></td><td>18:00</td><td>7 ч 10 мин</td><td>5 раз · <span class="red">48 мин</span></td><td>1 · 60 мин</td><td>1 · 7 мин</td><td><span class="chip warn">Перекур 48 из 30 мин</span></td></tr>
+      <tr><td><b>Самир Алиев</b></td><td>Объект «Нархоз, к. 2»</td><td>08:41</td><td><span class="chip gray">GPS · без QR</span></td><td>17:30</td><td>8 ч 04 мин</td><td>—</td><td>1 · 45 мин</td><td>—</td><td>—</td></tr>
+      <tr><td><b>Эльчин Гасанов</b></td><td>Склад Бинагади</td><td>09:31</td><td><span class="chip ok">QR · ресепшен</span></td><td>18:00</td><td>7 ч 03 мин</td><td>2 раза · 14 мин</td><td>1 · <span class="red">72 мин</span></td><td>—</td><td><span class="chip warn">Опоздание 31 мин</span> <span class="chip warn">Обед 72 из 60</span></td></tr>
+    </table>
+  </div>
+</section>
+</body></html>

@@ -11,6 +11,7 @@ import { attendanceQrPhoneState, type AttendanceQrDirectory, type AttendanceQrRe
 import { attendanceDistanceMeters } from "@/lib/mtm/attendance-location-contract"
 import type { MtmWorkdayEventInput } from "@/lib/mtm/workday"
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
+import { readAttendanceGpsOnlyBranchIds } from "@/lib/mtm/attendance-branch-mark-method"
 
 type Tx = Prisma.TransactionClient
 const fail = (code: string, status = 403): never => { throw new AttendanceRequestError(`MTM_ATTENDANCE_QR_${code}`, status) }
@@ -34,8 +35,10 @@ export async function directory(tx: Tx, reviewer: AttendanceReviewer): Promise<A
         WHERE a."branchId"=b."branchId" AND a."agentId"=ANY(${ids}::text[]))) ORDER BY b.name,b."branchId" LIMIT 1001`
   if (rows.length > 1000) return fail("TOO_LARGE", 422)
   const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true } })
+  const gpsOnly = await readAttendanceGpsOnlyBranchIds(tx, reviewer.organizationId)
   return { enabled: await readAttendanceQrRule(tx, reviewer.organizationId), canConfigure: !!user && ["admin", "superadmin"].includes(user.role),
-    branches: rows.map(row => ({ id: row.branchId, name: row.name })), revisions: new Map(rows.map(row => [row.branchId, row.id])) }
+    branches: rows.map(row => ({ id: row.branchId, name: row.name, markMethod: gpsOnly.has(row.branchId) ? "GPS_ONLY" as const : "QR_GPS" as const })),
+    revisions: new Map(rows.map(row => [row.branchId, row.id])) }
 }
 export async function readAttendanceQrDirectory(reviewer: AttendanceReviewer): Promise<AttendanceQrDirectory> {
   return prisma.$transaction(async (tx: Tx) => { const result = await directory(tx, reviewer); return { enabled: result.enabled, canConfigure: result.canConfigure, branches: result.branches } }, { timeout: 15000 })
@@ -87,6 +90,9 @@ export async function recordAttendanceQr(tx: Tx, scope: { organizationId: string
       }
     }
   }
+  // A mark without a code at a GPS-only site is not «QR missing»: the phone's
+  // own fix inside that site is its confirmation (owner, 2026-11-04).
+  if (state === "NOT_PROVIDED" && !finishingOnBreak && await insideGpsOnlyBranch(tx, scope, eventId)) return
   await tx.$executeRaw`INSERT INTO mtm_attendance_qr_evidence(id,"organizationId","agentId","eventId",action,state,"branchRevisionId","nonceFingerprint","awayDistanceMeters")
     VALUES (${randomUUID()},${scope.organizationId},${scope.agentId},${eventId},${input.action},${state},${branchRevisionId},${fingerprint},${awayDistanceMeters})`
 }
@@ -109,6 +115,16 @@ async function phoneAtBranch(tx: Tx, scope: { organizationId: string; agentId: s
   if (distance - fix.accuracy > branch.radiusMeters) return { state: "AWAY", distanceMeters: Math.round(distance) }
   const fresh = fix.fixAgeSeconds !== null && fix.fixAgeSeconds >= -30 && fix.fixAgeSeconds <= 120
   return fix.accuracy <= 100 && fresh && fix.isMock !== true ? { state: "AT", distanceMeters: Math.round(distance) } : { state: "UNKNOWN", distanceMeters: null }
+}
+/** The mark's own approved fix put it inside a branch the administrator marked GPS-only. */
+async function insideGpsOnlyBranch(tx: Tx, scope: { organizationId: string; agentId: string }, eventId: string) {
+  const gpsOnly = await readAttendanceGpsOnlyBranchIds(tx, scope.organizationId)
+  if (!gpsOnly.size) return false
+  const [mark] = await tx.$queryRaw<{ branchId: string | null }[]>`SELECT b."branchId" FROM mtm_attendance_mark_evidence m
+    JOIN mtm_attendance_branch_revisions b ON b."organizationId"=m."organizationId" AND b.id=m."branchRevisionId"
+    WHERE m."organizationId"=${scope.organizationId} AND m."agentId"=${scope.agentId} AND m."eventId"=${eventId}
+      AND m."consentId" IS NOT NULL AND m."locationState"='INSIDE'`
+  return !!mark?.branchId && gpsOnly.has(mark.branchId)
 }
 /** Whether the organization has switched on collecting the place of a mark (its current location text is on). */
 async function locationPolicyEnabled(tx: Tx, organizationId: string) {
