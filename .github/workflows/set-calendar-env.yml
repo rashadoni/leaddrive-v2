@@ -1,0 +1,240 @@
+name: Set Outlook calendar app on prod
+
+# Operator job: give the running deployment the Microsoft Entra application it
+# signs people in with when they connect their Outlook calendar
+# (src/lib/calendar/microsoft.ts, docs/calendar-sync.md). No build and no
+# release — the app reads these two values when someone presses «Подключить
+# Outlook», and `microsoftCalendarConfigured()` is false until both are there.
+#
+# Usage:
+#   1. Repo Settings → Secrets and variables → Actions → add (once):
+#      MICROSOFT_CLIENT_SECRET — the «Value» of a client secret of that
+#                                application (not the «Secret ID»)
+#   2. Run this workflow. `client_id` is the Application (client) ID shown on
+#      the application's Overview page; it is public (it travels in the sign-in
+#      URL in every user's browser), the secret never leaves GitHub's store and
+#      never appears in a log line.
+#
+# Rotating the secret is the same run with the new value in the same secret.
+# A run that would change nothing writes nothing and restarts nothing.
+#
+# Before anything is written the job asks Microsoft whether the pair is a real
+# application with a valid secret, and reads NEXTAUTH_URL off the host to show
+# the redirect address the app will send — it must be the one registered in
+# Entra ID, character for character, or Microsoft refuses every connection.
+# After the restart it requires /api/v1/ping and the running process to hold
+# exactly the new values.
+
+on:
+  workflow_dispatch:
+    inputs:
+      client_id:
+        description: "Application (client) ID приложения в Microsoft Entra ID"
+        required: true
+        default: 1d49bca4-6b3c-4f22-b657-ad6c04575e4c
+      probe_tenant_id:
+        description: "Directory (tenant) ID того же приложения — нужен только для проверки секрета перед записью"
+        required: true
+        default: 61bdc4ec-1db2-4764-b475-966fd7f8ae1b
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  set-calendar-env:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      # Shape first, and on the runner: these two values are typed by an
+      # operator and the secret comes from GitHub's store, and both end up on
+      # the remote command line. They are passed to the production shell as
+      # positional arguments (argv, not text), so this is a second fence, not
+      # the only one — see src/__tests__/operator-workflow-input-gate.test.ts.
+      - name: Validate inputs
+        env:
+          MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+          PROBE_TENANT_ID: ${{ inputs.probe_tenant_id }}
+        run: |
+          set -euo pipefail
+          refuse() { echo "::error::$1"; exit 1; }
+          [ -n "$MICROSOFT_CLIENT_SECRET" ] || refuse "секрет MICROSOFT_CLIENT_SECRET не задан в Settings → Secrets → Actions"
+          for name in MICROSOFT_CLIENT_ID PROBE_TENANT_ID; do
+            [[ "${!name}" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
+              || refuse "$name must be a GUID as shown on the application's Overview page"
+          done
+          # Microsoft's client secrets are drawn from this alphabet; anything
+          # else is a bad paste, and refusing it here also leaves the value
+          # with nothing a shell could read as syntax.
+          [[ "$MICROSOFT_CLIENT_SECRET" =~ ^[A-Za-z0-9._~-]{16,200}$ ]] \
+            || refuse "MICROSOFT_CLIENT_SECRET has characters a Microsoft client secret does not have; скопировано не то значение?"
+          # The «Secret ID» column is a GUID too, and pasting it instead of the
+          # «Value» is the easy mistake; Microsoft would then refuse every
+          # connection with an error nobody sees until a user tries.
+          [[ ! "$MICROSOFT_CLIENT_SECRET" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
+            || refuse "MICROSOFT_CLIENT_SECRET looks like the Secret ID, not the secret Value"
+          echo "inputs accepted"
+
+      - name: Write the Outlook application to canonical app env and restart PM2
+        env:
+          MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+          PROBE_TENANT_ID: ${{ inputs.probe_tenant_id }}
+        run: |
+          set -euo pipefail
+          refuse() { echo "::error::$1"; exit 1; }
+
+          # Ask Microsoft whether this is a real application with a valid
+          # secret. Client credentials need a concrete tenant (/common is not
+          # accepted for this grant), so the application's own directory is
+          # used. A token is not the point and the app has no application
+          # permissions: anything other than «unknown client» or «bad secret»
+          # proves the pair.
+          ANSWER="$(curl -s --max-time 25 \
+            -X POST "https://login.microsoftonline.com/${PROBE_TENANT_ID}/oauth2/v2.0/token" \
+            -d grant_type=client_credentials \
+            -d scope=https://graph.microsoft.com/.default \
+            --data-urlencode "client_id=${MICROSOFT_CLIENT_ID}" \
+            --data-urlencode "client_secret=${MICROSOFT_CLIENT_SECRET}" || true)"
+          case "$ANSWER" in
+            "") refuse "Microsoft did not answer; nothing was changed" ;;
+            *AADSTS7000215*) refuse "Microsoft: неверный секрет приложения (AADSTS7000215). Скопирован «Secret ID» или старое значение?" ;;
+            *AADSTS700016*|*AADSTS900023*|*unauthorized_client*) refuse "Microsoft: приложение с таким client_id в этом каталоге не найдено" ;;
+            *AADSTS7000222*) refuse "Microsoft: срок действия секрета приложения истёк" ;;
+            *) echo "Microsoft accepted the application and its secret" ;;
+          esac
+
+          # The two values go as positional arguments, not inside the command
+          # string: argv cannot be escaped out of.
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' -- \
+            "$MICROSOFT_CLIENT_ID" \
+            "$MICROSOFT_CLIENT_SECRET" <<'REMOTE'
+          set -euo pipefail
+          MICROSOFT_CLIENT_ID="$1"
+          MICROSOFT_CLIENT_SECRET="$2"
+          [ -n "$MICROSOFT_CLIENT_ID" ] && [ -n "$MICROSOFT_CLIENT_SECRET" ] || { echo "FATAL: the application id or its secret did not arrive"; exit 1; }
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV")"
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV" ] && [ ! -L "$ENV" ] || { echo "FATAL: canonical app env $ENV missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 9>"$APP_ENV_LOCK_FILE"
+          flock -w 120 9 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+
+          KEYS="MICROSOFT_CLIENT_ID MICROSOFT_CLIENT_SECRET"
+          # What the file holds for a key now — compared and counted, never printed.
+          kept() { sed -nE "s/^[[:space:]]*(export[[:space:]]+)?$1=(.*)$/\2/p" "$ENV" | tail -1; }
+          app_pid() { pm2 pid leaddrive-v2 2>/dev/null | tail -1; }
+          # The file is not what the app reads — the process is.
+          process_holds() {
+            local pid; pid="$(app_pid)"
+            [ -n "$pid" ] && [ "$pid" != "0" ] && [ -r "/proc/$pid/environ" ] && grep -zFxq -- "$1=$2" "/proc/$pid/environ"
+          }
+
+          # The app builds the redirect address out of NEXTAUTH_URL, and
+          # Microsoft compares it with the registered one character for
+          # character. A trailing slash here is a refused sign-in later.
+          SITE="$(kept NEXTAUTH_URL)"
+          SITE="${SITE%\"}"; SITE="${SITE#\"}"
+          case "$SITE" in
+            https://*) ;;
+            *) echo "FATAL: NEXTAUTH_URL on this host is not an https address; the Outlook redirect cannot be built"; exit 1 ;;
+          esac
+          case "$SITE" in
+            */) echo "FATAL: NEXTAUTH_URL ends with a slash; the redirect address would not match the one registered in Entra ID"; exit 1 ;;
+          esac
+          echo "redirect address the app will send: $SITE/api/v1/integrations/outlook-calendar/callback"
+
+          changed_keys=()
+          for key in $KEYS; do
+            value="${!key}"
+            if [ "$(kept "$key")" = "$value" ] && process_holds "$key" "$value"; then
+              echo "$key: already so"
+            else
+              changed_keys+=("$key")
+            fi
+          done
+          if [ "${#changed_keys[@]}" -eq 0 ]; then
+            echo "Nothing to change — the app env is untouched and PM2 was not restarted"
+            exit 0
+          fi
+
+          ENV_STAGE="$(mktemp "$ENV_DIR/.app.env.calendar.XXXXXX")"
+          cleanup() { [ -z "$ENV_STAGE" ] || rm -f -- "$ENV_STAGE"; }
+          trap cleanup EXIT
+          cp --preserve=mode,ownership "$ENV" "$ENV_STAGE"
+          # A file that does not end with a line break would have the first new key glued onto its last line.
+          [ -z "$(tail -c1 "$ENV_STAGE")" ] || printf '\n' >> "$ENV_STAGE"
+          for key in "${changed_keys[@]}"; do
+            # Replace-or-append so a rotation works; values never echo.
+            sed -i "/^[[:space:]]*\(export[[:space:]]\+\)\?${key}=/d" "$ENV_STAGE"
+            printf '%s=%s\n' "$key" "${!key}" >> "$ENV_STAGE"
+            echo "$key: staged for canonical app env"
+          done
+          # ENV_STAGE was created in $ENV_DIR, so this replace cannot cross a
+          # filesystem boundary or leave a partially written app env.
+          mv -f "$ENV_STAGE" "$ENV"
+          ENV_STAGE=""
+
+          # PM2 --update-env merges this shell's environment over what the
+          # process has. Export exactly the keys written above and nothing else;
+          # the PII master key in particular must never arrive this way.
+          for key in $KEYS; do
+            case " ${changed_keys[*]} " in *" $key "*) export "$key" ;; *) unset "$key" ;; esac
+          done
+          pm2 restart leaddrive-v2 --update-env >/dev/null
+          # The scheduler's process keeps its own copy of the environment.
+          if pm2 describe leaddrive-v2-jobs >/dev/null 2>&1; then
+            pm2 restart leaddrive-v2-jobs --update-env >/dev/null
+          fi
+          # The phone line's live slot keeps its own copy too.
+          for line_app in leaddrive-v2-line-a leaddrive-v2-line-b; do
+            if pm2 describe "$line_app" >/dev/null 2>&1; then
+              pm2 restart "$line_app" --update-env >/dev/null
+            fi
+          done
+          echo "PM2 restarted with updated env (${changed_keys[*]})"
+
+          HEALTHY=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl -fsS --max-time 10 http://127.0.0.1:3001/api/v1/ping >/dev/null 2>&1; then
+              HEALTHY=true
+              break
+            fi
+            sleep 5
+          done
+          [ "$HEALTHY" = true ] || { echo "FATAL: the app does not answer /api/v1/ping after the restart"; exit 1; }
+          echo "ping ok"
+
+          # Each key written must be, with exactly its new value, in the
+          # environment of the process that now runs.
+          for key in "${changed_keys[@]}"; do
+            process_holds "$key" "${!key}" || { echo "FATAL: the running process does not hold the new $key"; exit 1; }
+          done
+          echo "running process holds: ${changed_keys[*]}"
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
