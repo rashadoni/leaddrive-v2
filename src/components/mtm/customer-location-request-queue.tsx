@@ -214,15 +214,16 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                   {/* Owner, 2026-11-04: the manager sees which it is — proposed in
                       advance, or confirmed by the agent standing at the place. */}
                   {remote ? (
+                    // A status is the colour of its words and a dot, never a tinted pill (MTM calm colours, 2026-10-18).
                     <p
-                      className={`mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${confirmed
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
-                        : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"}`}
-                      data-testid="mtm-customer-location-origin"
+                      className={`mt-2 flex items-center gap-1.5 text-sm font-medium ${confirmed ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}
                     >
-                      {confirmed
-                        ? t("locationConfirmedOnSite", { time: clock.format(new Date(request.confirmation!.at)) })
-                        : t("locationInAdvanceUnconfirmed")}
+                      <span aria-hidden="true" className={`inline-block h-2 w-2 shrink-0 rounded-full ${confirmed ? "bg-emerald-600" : "bg-amber-500"}`} />
+                      <span data-testid="mtm-customer-location-origin">
+                        {confirmed
+                          ? t("locationConfirmedOnSite", { time: clock.format(new Date(request.confirmation!.at)) })
+                          : t("locationInAdvanceUnconfirmed")}
+                      </span>
                     </p>
                   ) : null}
                   {request.proposedAddress ? (
