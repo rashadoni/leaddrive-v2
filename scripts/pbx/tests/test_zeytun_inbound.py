@@ -411,7 +411,8 @@ class TransportTests(unittest.TestCase):
     def test_list_price_passes_only_in_its_exact_shape(self):
         good = {"amount": "1.33", "currency": "AZN", "per": "qutu", "asOf": "2026-10-22T11:14:56.587Z"}
         data = result(); data["candidates"][0]["listPrice"] = dict(good)
-        self.assertEqual(self.bridge.safe_result(data)["candidates"][0]["listPrice"], good)
+        # Checked whole; the model reads the amount and its unit.
+        self.assertEqual(self.bridge.safe_result(data)["candidates"][0]["listPrice"], {"amount": "1.33", "per": "qutu"})
         for bad in [{**good, "amount": "1,33"}, {**good, "amount": "0"}, {**good, "amount": 1.33},
                     {**good, "currency": "USD"}, {**good, "per": "тюб"}, {**good, "asOf": "yesterday"},
                     {**good, "stock": 100}, "1.33", None]:
@@ -419,11 +420,41 @@ class TransportTests(unittest.TestCase):
             candidate = self.bridge.safe_result(data)["candidates"][0]
             # A malformed price is dropped, the product itself stays.
             self.assertNotIn("listPrice", candidate, bad)
-            self.assertEqual(candidate["itemCode"], "TEST-1")
+            self.assertEqual(candidate["name"], "Medicine 10 mg")
         self.assertNotIn("listPrice", self.bridge.safe_result(result())["candidates"][0])
 
     # Owner, 2026-10-27: stock when the pharmacy asks for more, and 1C's
     # "buy N, get M". Only the exact shapes reach the model.
+    def test_the_model_sees_only_what_the_lines_rules_use(self):
+        # Owner, 2026-11-04 («мне нужна оптимизация»): every lookup answer is
+        # billed again on each later turn of the call.
+        data = result()
+        data["candidates"][0].update({"listPrice": {"amount": "1.33", "currency": "AZN", "per": "qutu",
+                                                    "asOf": "2026-10-22T11:14:56.587Z"},
+                                      "nameAz": "Dərman 10 mq", "stock": {"quantity": 12, "per": "qutu"}})
+        safe = self.bridge.safe_result(data)
+        self.assertEqual(safe, {"status": "candidates", "candidateCount": data["candidateCount"], "candidates": [
+            {"externalId": "aaaaaaaa-1111-4111-8111-111111111111", "name": "Medicine 10 mg", "nameAz": "Dərman 10 mq",
+             "listPrice": {"amount": "1.33", "per": "qutu"}, "stock": {"quantity": 12, "per": "qutu"}}]})
+        # A lookup by code keeps the code; a candidate the CRM did not mark unverified is still refused.
+        self.assertEqual(self.bridge.safe_result(data, with_code=True)["candidates"][0]["itemCode"], "TEST-1")
+        data["candidates"][0]["identityVerified"] = True
+        self.assertEqual(self.bridge.safe_result(data), {"status": "catalog_unavailable", "candidates": []})
+        # The price is still checked whole: another currency is dropped, the product kept.
+        data = result(); data["candidates"][0]["listPrice"] = {"amount": "1.33", "currency": "USD", "per": "qutu",
+                                                               "asOf": "2026-10-22T11:14:56.587Z"}
+        self.assertNotIn("listPrice", self.bridge.safe_result(data)["candidates"][0])
+
+    def test_a_lookup_by_code_shows_the_codes(self):
+        self.handle(event(args={"itemCode": "TEST-1"}))
+        self.assertTrue(self.finished.wait(2))
+        answer = self.sent[-1]["toolResponse"]["functionResponses"][0]["response"]
+        self.assertEqual(answer["candidates"][0]["itemCode"], "TEST-1")
+        self.finished.clear()
+        self.handle(event("by-name", args={"text": "Medicine"}))
+        self.assertTrue(self.finished.wait(2))
+        self.assertNotIn("itemCode", self.sent[-1]["toolResponse"]["functionResponses"][0]["response"]["candidates"][0])
+
     def test_stock_passes_only_in_its_exact_shape(self):
         for good in [{"quantity": 12, "per": "qutu"}, {"quantity": 0, "per": "ədəd"},
                      {"quantity": 100, "per": "flakon", "orMore": True}]:
@@ -436,7 +467,7 @@ class TransportTests(unittest.TestCase):
             data = result(); data["candidates"][0]["stock"] = bad
             candidate = self.bridge.safe_result(data)["candidates"][0]
             self.assertNotIn("stock", candidate, bad)
-            self.assertEqual(candidate["itemCode"], "TEST-1")
+            self.assertEqual(candidate["name"], "Medicine 10 mg")
 
     def test_promotion_passes_only_in_its_exact_shape(self):
         for good in [{"buy": 10, "get": 1, "until": "2026-10-31"}, {"buy": 5, "get": 2, "per": "qutu", "until": "2026-11-01"}]:
@@ -448,7 +479,7 @@ class TransportTests(unittest.TestCase):
             data = result(); data["candidates"][0]["promotion"] = bad
             candidate = self.bridge.safe_result(data)["candidates"][0]
             self.assertNotIn("promotion", candidate, bad)
-            self.assertEqual(candidate["itemCode"], "TEST-1")
+            self.assertEqual(candidate["name"], "Medicine 10 mg")
 
     def total_call(self, lines, key="total-1"):
         return {"toolCall": {"functionCalls": [{"id": key, "name": "calculate_order_total", "args": {"lines": lines}}]}}
@@ -666,7 +697,7 @@ class TransportTests(unittest.TestCase):
         safe = self.bridge.safe_result(value)
         self.assertEqual([c.get("alsoHeard") for c in safe["candidates"]],
                          [None, "Adefa", "Ketonal 100 mq", "D'Arcy-Plus.", "Адефа", None, None])
-        self.assertEqual(set(safe["candidates"][1]), {"externalId", "itemCode", "name", "nameAz", "identityVerified", "alsoHeard"})
+        self.assertEqual(set(safe["candidates"][1]), {"externalId", "name", "alsoHeard"})
         value["candidates"] = heard[6:]
         self.assertTrue(all("alsoHeard" not in c for c in self.bridge.safe_result(value)["candidates"]))
         # Five of the model's own and two heard: never more.
@@ -698,10 +729,12 @@ class TransportTests(unittest.TestCase):
         self.assertEqual({k: safe[k] for k in ("status", "mode", "orderNumber", "orderedAt", "lineCount")},
                          {"status": "found", "mode": "pharmacy_history", "orderNumber": "TS-1012",
                           "orderedAt": "2026-11-01", "lineCount": 3})
-        self.assertEqual((safe["canQuote"], safe["canSubmitTo1c"], safe["requiresOperatorReview"]), (False, False, True))
+        # The CRM's safety flags are checked, never forwarded to the model.
+        self.assertFalse({"canQuote", "canSubmitTo1c", "requiresOperatorReview", "canResolveIdentity"} & set(safe))
         first, gone = safe["candidates"]
         self.assertEqual(first["ordered"], {"quantity": 10, "unit": "qutu"})
-        self.assertEqual((first["listPrice"]["amount"], first["stock"]["quantity"], first["identityVerified"]), ("4.20", 40, False))
+        self.assertEqual((first["listPrice"], first["stock"]["quantity"]), ({"amount": "4.20", "per": "qutu"}, 40))
+        self.assertNotIn("identityVerified", first)
         self.assertNotIn("privateCustomer", first)
         # A product the catalog no longer has: its id, name and order, no price or identity.
         self.assertEqual(gone, {"externalId": "e-2", "name": "Old product", "ordered": {"quantity": 2, "unit": "ədəd"},
