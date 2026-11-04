@@ -98,6 +98,13 @@ export function officeAttendanceMobilePath(method: string, path: string) {
   if (method === "POST" && path === "/api/v2/mtm/mobile/route-field/workday-return") return true
   if ((method === "GET" || method === "POST") && ["/api/v2/mtm/mobile/route-field/attendance/location-consent", "/api/v2/mtm/mobile/route-field/attendance/installation"].includes(path)) return true
   if ((method === "POST" || method === "DELETE") && path === "/api/v2/mtm/mobile/route-field/device-tokens") return true
+  // The employee's own computer as a workplace (owner, 2026-11-04). Listed in
+  // `mobile-api-path.ts` only, the Time token got 401 on all three on prod.
+  if (method === "POST" && path === "/api/v2/mtm/mobile/route-field/attendance/desk-pairing") return true
+  if (method === "GET" && path === "/api/v2/mtm/mobile/route-field/attendance/desks") return true
+  if (method === "POST" && /^\/api\/v2\/mtm\/mobile\/route-field\/attendance\/desks\/[a-f0-9-]{36}\/revoke$/.test(path)) return true
+  // The app's language, chosen in Time's profile, for the employee's own notices.
+  if (method === "PUT" && path === "/api/v1/mtm/mobile/language") return true
   if (method === "GET" && ["/api/v1/mtm/mobile/bootstrap", "/api/v1/mtm/mobile/ping", "/api/v1/mtm/mobile/profile",
     "/api/v1/mtm/mobile/notifications", "/api/v2/mtm/mobile/route-field/attendance/requests", "/api/v2/mtm/mobile/route-field/attendance/request-limits"].includes(path)) return true
   if (method === "POST" && ["/api/v1/mtm/mobile/sync/push", "/api/v2/mtm/mobile/route-field/attendance/requests", "/api/v2/mtm/mobile/route-field/attendance/attachments"].includes(path)) return true
