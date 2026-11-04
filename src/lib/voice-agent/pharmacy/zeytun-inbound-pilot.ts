@@ -644,8 +644,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       if (input.action === "utterance") {
         // Answered at once: the station never waits for the recognizer, and a
         // phrase it drops costs nothing but the second ear on that phrase.
-        const ear = isLineGrant(config) ? dependencies.secondEar : undefined
-        if (!ear || finalCall.endedAt !== null || !(await ear.enabled())) return searchResponse({ status: "off" }, 202)
+        const ear = dependencies.secondEar
+        if (!isLineGrant(config) || !ear || finalCall.endedAt !== null || !(await ear.enabled())) return searchResponse({ status: "off" }, 202)
         const taken = ear.hear(input.callId, input.seq, pcm!, chirpHints(catalog, dependencies.learnedNames?.(config) ?? null))
         return searchResponse({ status: taken ? "accepted" : "busy" }, 202)
       }
@@ -718,7 +718,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           if (product) {
             heard.taken.add(product.text)
             const heardFound = catalog.search({ text: product.text })
-            const heardLearned = dependencies.learnedNames?.(config)?.productFor(product.text)
+            const heardLearned = isLineGrant(config) ? dependencies.learnedNames?.(config)?.productFor(product.text) : null
             const heardKnown = heardLearned ? catalog.search({ externalId: heardLearned }).candidates[0] : undefined
             const heardItems = heardKnown ? [heardKnown, ...heardFound.candidates.filter(item => item.externalId !== heardKnown.externalId)] : heardFound.candidates
             for (const item of heardItems.slice(0, 5)) {

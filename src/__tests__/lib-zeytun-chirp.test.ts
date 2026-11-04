@@ -26,8 +26,9 @@ describe("Chirp client", () => {
 
   it("signs an RS256 JWT, keeps the access token until it ends and asks chirp_3 in az-AZ with at most 1000 hints", async () => {
     let now = Date.parse("2026-11-04T10:00:00Z")
+    let tokens = 0
     const fetch = vi.fn<typeof globalThis.fetch>(async (url) => {
-      if (String(url) === "https://oauth2.googleapis.com/token") return json({ access_token: `tok-${fetch.mock.calls.length}`, expires_in: 3600 })
+      if (String(url) === "https://oauth2.googleapis.com/token") return json({ access_token: `tok-${++tokens}`, expires_in: 3600 })
       return json({ results: [{ alternatives: [{ transcript: "Adefa beş qutu" }] }, { alternatives: [{ transcript: " Ketonal" }] }] })
     })
     const recognizer = createChirpRecognizer({ keyFile: "/k", fetch: fetch as typeof globalThis.fetch, clock: () => now, readKey: async () => account })
