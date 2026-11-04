@@ -59,6 +59,36 @@ jobs:
           server-host: ${{ secrets.SERVER_HOST }}
           known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
 
+      # Shape first, and on the runner: these two values are typed by an
+      # operator and the secret comes from GitHub's store, and both end up on
+      # the remote command line. They are passed to the production shell as
+      # positional arguments (argv, not text), so this is a second fence, not
+      # the only one — see src/__tests__/operator-workflow-input-gate.test.ts.
+      - name: Validate inputs
+        env:
+          MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+          PROBE_TENANT_ID: ${{ inputs.probe_tenant_id }}
+        run: |
+          set -euo pipefail
+          refuse() { echo "::error::$1"; exit 1; }
+          [ -n "$MICROSOFT_CLIENT_SECRET" ] || refuse "секрет MICROSOFT_CLIENT_SECRET не задан в Settings → Secrets → Actions"
+          for name in MICROSOFT_CLIENT_ID PROBE_TENANT_ID; do
+            [[ "${!name}" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
+              || refuse "$name must be a GUID as shown on the application's Overview page"
+          done
+          # Microsoft's client secrets are drawn from this alphabet; anything
+          # else is a bad paste, and refusing it here also leaves the value
+          # with nothing a shell could read as syntax.
+          [[ "$MICROSOFT_CLIENT_SECRET" =~ ^[A-Za-z0-9._~-]{16,200}$ ]] \
+            || refuse "MICROSOFT_CLIENT_SECRET has characters a Microsoft client secret does not have; скопировано не то значение?"
+          # The «Secret ID» column is a GUID too, and pasting it instead of the
+          # «Value» is the easy mistake; Microsoft would then refuse every
+          # connection with an error nobody sees until a user tries.
+          [[ ! "$MICROSOFT_CLIENT_SECRET" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
+            || refuse "MICROSOFT_CLIENT_SECRET looks like the Secret ID, not the secret Value"
+          echo "inputs accepted"
+
       - name: Write the Outlook application to canonical app env and restart PM2
         env:
           MICROSOFT_CLIENT_ID: ${{ inputs.client_id }}
@@ -67,26 +97,6 @@ jobs:
         run: |
           set -euo pipefail
           refuse() { echo "::error::$1"; exit 1; }
-
-          # Checked here, before anything leaves the runner. The values travel
-          # to the server inside single quotes: a quote or a line break in one
-          # of them would end the quoting.
-          [ -n "$MICROSOFT_CLIENT_SECRET" ] || refuse "секрет MICROSOFT_CLIENT_SECRET не задан в Settings → Secrets → Actions"
-          for name in MICROSOFT_CLIENT_ID MICROSOFT_CLIENT_SECRET PROBE_TENANT_ID; do
-            value="${!name}"
-            case "$value" in
-              *"'"*|*$'\n'*|*$'\r'*) refuse "$name must be one line without a single quote" ;;
-            esac
-          done
-          for name in MICROSOFT_CLIENT_ID PROBE_TENANT_ID; do
-            [[ "${!name}" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
-              || refuse "$name must be a GUID as shown on the application's Overview page"
-          done
-          # The «Secret ID» column is a GUID too, and pasting it instead of the
-          # «Value» is the easy mistake; Microsoft would then refuse every
-          # connection with an error nobody sees until a user tries.
-          [[ ! "$MICROSOFT_CLIENT_SECRET" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] \
-            || refuse "MICROSOFT_CLIENT_SECRET looks like the Secret ID, not the secret Value"
 
           # Ask Microsoft whether this is a real application with a valid
           # secret. Client credentials need a concrete tenant (/common is not
@@ -108,10 +118,16 @@ jobs:
             *) echo "Microsoft accepted the application and its secret" ;;
           esac
 
+          # The two values go as positional arguments, not inside the command
+          # string: argv cannot be escaped out of.
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "MICROSOFT_CLIENT_ID='$MICROSOFT_CLIENT_ID' MICROSOFT_CLIENT_SECRET='$MICROSOFT_CLIENT_SECRET' bash -s" <<'REMOTE'
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' -- \
+            "$MICROSOFT_CLIENT_ID" \
+            "$MICROSOFT_CLIENT_SECRET" <<'REMOTE'
           set -euo pipefail
+          MICROSOFT_CLIENT_ID="$1"
+          MICROSOFT_CLIENT_SECRET="$2"
+          [ -n "$MICROSOFT_CLIENT_ID" ] && [ -n "$MICROSOFT_CLIENT_SECRET" ] || { echo "FATAL: the application id or its secret did not arrive"; exit 1; }
           APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
           ENV="$APP_ENV_FILE"
           ENV_DIR="$(dirname -- "$ENV")"
