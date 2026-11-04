@@ -160,9 +160,9 @@ describe("the desk screen (owner, 2026-11-04)", () => {
     workedSeconds: 3600, pausedSeconds: 0, breaks: { kinds: [{ id: "smoke", name: null, limitMinutes: 30, usedSeconds: 720 }, { id: "k-1a2b3c4d", name: "Fictional call", limitMinutes: null, usedSeconds: 0 }], currentKindId: null }, ...extra } })
   it("shows its pairing QR, asks with the same token until the phone confirmed, then shows the desk", async () => {
     let asked = 0
-    fetchMock.mockImplementation(async (url, init) => {
+    fetchMock.mockImplementation(async url => {
       if (String(url).endsWith("/desk-pair")) { asked += 1; if (asked < 2) return json({ success: true, state: "WAITING" }); qrAnswer = desk("NOT_STARTED"); return json({ success: true, state: "PAIRED" }) }
-      return json({ success: true, data: qrAnswer, init: undefined && init })
+      return json({ success: true, data: qrAnswer })
     })
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
     await render("ru")
