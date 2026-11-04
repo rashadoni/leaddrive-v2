@@ -6,13 +6,13 @@ import { searchResponse, searchRestrictions } from "./zeytun-search-boundary"
 import { openingForCandidates, ZEYTUN_SALES_DESK, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type PhoneOrderCatalog,
   type PhoneOrderLineInput, type PhoneOrderSaveResult } from "./phone-orders"
-import { SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
-import { PROMOTIONS_PREFIX, runningPromotion } from "./zeytun-promotions"
+import { formKey, sameStrength, strengthOf, SUBSTITUTE_PREFIX, type Strength } from "./zeytun-substitutes"
+import { PROMOTIONS_PREFIX, promotionSay, runningPromotion } from "./zeytun-promotions"
 import { HISTORY_PREFIX, historyCandidates, type PharmacyHistory } from "./zeytun-pharmacy-history"
 import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
 import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
-import type { DepartedSearch } from "./zeytun-departed-items"
+import { callerNames, type DepartedSearch } from "./zeytun-departed-items"
 import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
 
 const id = z.string().trim().min(1).max(128)
@@ -88,6 +88,20 @@ export type InboundPilotCatalog = {
   }
   /** Products sold out lately, by name (zeytun-departed-items.ts); the line only. */
   departed?: Pick<DepartedSearch, "find">
+  /** The seller's lookups the line's search and save answer by themselves (ZeytunAvailableBalances); the line only. */
+  seller?: InboundPilotSeller
+}
+type CatalogItem = ReturnType<InboundPilotCatalog["search"]>["candidates"][number]
+export type SubstituteWanted = { inn: string; strength: Strength | null; form: string | null }
+export type InboundPilotSeller = {
+  /** Promoted items of the same name in another form or strength, never one of except. */
+  sameName: (externalId: string, now: number, except: ReadonlySet<string>) => CatalogItem[]
+  /** At most two in-stock items of that substance, strength and form (null: any), never one of except. */
+  substitutes: (wanted: SubstituteWanted, except: ReadonlySet<string>) => CatalogItem[]
+  /** The item's substance, strength and form; null without a substance. */
+  substanceOf: (externalId: string) => SubstituteWanted | null
+  /** One promoted item of a maker of the order's products, none of them nor of their names. */
+  offer: (orderedIds: readonly string[], now: number) => CatalogItem | null
 }
 // 1C base units as the caller would say them. A unit missing here (tube,
 // kilogram, ...) gets no spoken price rather than a guessed word for it.
@@ -293,14 +307,17 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
   // есть, и акции «купи/получи» из 1С».
   ["Stock, delivery, payment: say once that this test call cannot confirm them and continue.",
-    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Stock 0 is sold out now: say so (never \"not found\") and offer a substitute as below; write it only if the caller still wants it. Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply, in a few words (buy N, get M free, until the date), for each such product, also several at once; if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Never say how free goods are added or billed; if asked, the manager confirms it. Delivery, payment: say once that you cannot confirm them on this call and continue.\n" +
+    "Stock (orMore: at least that) is in the candidate's unit: only if the caller wants more, say how many there are and ask whether to write that many. Stock 0 is sold out now: say so (never \"not found\") and offer substitutes. " +
+    // Owner, 2026-11-04 («продумай по этим акциям, аналогам какое-то решение,
+    // чтоб не сжирало токены»): the CRM writes the offer (promotion.say), finds
+    // another form's promotion (sameNamePromotion), substitutes and the one
+    // offer at the end (offer of a save); the rules only say when to use them.
+    "Promotion: confirming a product with promotion, say the offer in that same reply as promotion.say, for each such product, also several at once; never call one promoted without it. If they took fewer than promotion.buy and stock allows, offer once to make it promotion.buy. sameNamePromotion is that product in another form: confirming it without its own promotion, add it in one short sentence, once. Never say how free goods are added or billed. Delivery, payment: say once that you cannot confirm them on this call and continue.\n" +
     // Owner, 2026-11-04: «он должен общаться как продавец… с одной стороны 1С,
     // с другой клиент». The stand (scripts/zeytun-line/dialog-stand.ts) checks
     // each of these before the line gets them.
-    "You are Zeytun's sales desk as well as its order taker. Asked about a product's forms, makers, stock or price, look it up and answer briefly from the candidates (price and stock as above). " +
-    "Promotions: when the caller asks what is on promotion, search text \"promotions:\" alone, or \"promotions: <one product, maker or substance word>\" for one of them, also for \"does X have a promotion\"; candidateCount is how many run in all, so offer the returned items (at most three) with promotion.buy, promotion.get and until (said as day and month in words: 10 noyabr), never ask to narrow. Call an item promoted only if its candidate carries promotion; if none returns, say there is no promotion on it now. When the caller's chosen form or strength has no promotion but a returned item of the same name does, say so in one short sentence (\"for ampoules no, but Ketonal gel has 10+2 until 30 noyabr\"), once per product. " +
-    "Once per call, when the caller has nothing more to add and before the final save, search \"promotions: <maker of a product they ordered>\" and, if an item they did not order returns, offer that one in one sentence; write it only after a clear yes. " +
-    "As usual: when the caller asks to repeat their usual or last order, search text \"history:\" with nothing after it; if it returns found, in one reply name orderedAt and each candidate with its ordered quantity and unit and ask whether to write the same, offering a substitute for any unavailable one, and add lines only after a clear yes. If it returns none or pharmacy_unknown, say you cannot see an earlier order and ask what to write."],
+    "You are also Zeytun's sales desk: answer on forms, makers, stock or price briefly from a lookup. Asked about promotions (also \"does X have one\"), search \"promotions:\" alone or with one product, maker or substance word; offer at most three, with promotion.say, never ask to narrow; none: none now. A recorded save may carry offer: when the caller has nothing more, before the final save, offer it in one sentence; write it only after a clear yes. " +
+    "Usual or last order: search \"history:\"; if found, name orderedAt and each line with its ordered quantity and unit in one reply, offer a substitute for an unavailable one, ask whether to write the same and add only after a clear yes; else say you see no earlier order."],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it, in its base form without case endings (Zəfər aptek, not Zəfər aptekinin)."],
   // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
   // повторял заказы, а просто принимает и говорит номер заказа и обработки».
@@ -356,7 +373,7 @@ export const ZEYTUN_LINE_PROMPT = [
   ["Keep each quantity in the unit the caller said: qutu (box), ədəd (piece), ampula, flakon; never turn boxes into pieces or back. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit and is not added to the old one.",
     "Keep each quantity in the caller's unit (qutu, ədəd, ampula, flakon); never convert. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit, never adds."],
   ["in the final list say it is not found in the catalog.",
-    "the line stays unresolved.\nSubstitute: when the caller's product is not found, or none has their strength and form, at once, unasked, search text \"substitute: INN; strength; form\" if you surely know its INN (e.g. \"substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet\"); leave form out if the caller gave none, ask the strength if unknown. Offer at most two returned items, naming substance, strength and form; add one only after a clear yes, saving its externalId with the caller's original words in spoken. If none returns, say there is no such substitute."],
+    "the line stays unresolved.\nSubstitute: a lookup's substitutes (same substance, strength and form, in stock): offer them at once, unasked, when the product is sold out or lacks the caller's strength or form. None came and the product is not in the catalog: if you surely know its INN, search \"substitute: INN; strength; form\" (e.g. \"substitute: ACETYLCYSTEINE; 600 mg; effervescent tablet\"), asking the strength if unknown. Offer at most two, with strength and form; add one only after a clear yes (its externalId, the caller's words in spoken); none: say so."],
   ["Price: only when the caller asks, and only for a product already narrowed to one lookup candidate. If that candidate has listPrice, say the amount in manat per its unit (per qutu, per ədəd, ...). Never mention the price list date unless asked. Never round and never offer a discount.",
     "Price: only when asked, never unasked when confirming a line, and only for a product narrowed to one candidate: say its listPrice in manat per its unit. Never round or offer a discount; mention the price list date only if asked."],
   // Owner, 2026-10-27: «переводить на менеджеров Зейтуна в браузере CRM». The
@@ -389,10 +406,6 @@ export const ZEYTUN_LINE_PROMPT = [
     "Never round or offer a discount. Without listPrice, say you cannot confirm the price."],
   ["If it leaves lines out, name them and say why. ",
     "If it leaves lines out, name them. "],
-  ["Asked about a product's forms, makers, stock or price, look it up and answer briefly from the candidates (price and stock as above). ",
-    "Asked about a product's forms, makers, stock or price, answer briefly from a lookup. "],
-  ["candidateCount is how many run in all, so offer the returned items (at most three) with promotion.buy, promotion.get and until (said as day and month in words: 10 noyabr), never ask to narrow.",
-    "offer the returned items (at most three) with promotion.buy, promotion.get and until (day and month in words: 10 noyabr), never ask to narrow."],
 ].reduce((prompt, [from, to]) => {
   if (!prompt.includes(from)) throw new Error("zeytun_line_prompt_drift")
   return prompt.replace(from, to)
@@ -538,6 +551,56 @@ export function createLineHealthCheck(dependencies: Pick<InboundPilotDependencie
   }
 }
 
+/** The caller's strength and form (each null when not said) fit one of the item's labels. */
+function fitsAsked(item: { name: string; nameAz: string | null }, asked: { strength: Strength | null; form: string | null }) {
+  const labels = [item.name, item.nameAz ?? ""]
+  return (!asked.strength || labels.some(label => { const strength = strengthOf(label); return strength !== null && sameStrength(strength, asked.strength!) }))
+    && (!asked.form || labels.some(label => formKey(label) === asked.form))
+}
+/**
+ * What the line's search adds for the seller (owner, 2026-11-04: «продумай
+ * по этим акциям, аналогам какое-то решение, чтоб не сжирало токены»), so
+ * the agent needs no lookup of its own — each one a round of the whole
+ * call's context:
+ *  - sameName: the product the caller named has no promotion, another form
+ *    or strength of it has one (was the prompt's same-name rule, #1327);
+ *  - substitutes: that product is sold out, or none of its candidates has
+ *    the caller's strength or form — at most two of its substance (1C's
+ *    field) in that strength and form, in stock (was the agent's
+ *    `substitute:` lookup by its own memory of the substance).
+ * Only for a product the caller named by its own name: the closest product
+ * to a misheard or unknown name is not the caller's, nor is its substance.
+ */
+function sellerExtras(seller: InboundPilotSeller, words: string, shown: CatalogItem[],
+  soldOut: Array<{ externalId: string; name: string; nameAz: string | null; pharmacologicalName?: string | null; kind?: string }>,
+  now: number): { sameName?: CatalogItem; substitutes?: CatalogItem[] } {
+  const except = new Set([...shown, ...soldOut].map(item => item.externalId))
+  const asked = { strength: strengthOf(words), form: formKey(words) }
+  const gone = soldOut[0]
+  if (gone) {
+    // A list kept before 2026-11-04 has no substance: the agent's own `substitute:` stays its way.
+    if (!gone.pharmacologicalName) return {}
+    return { substitutes: seller.substitutes({ inn: gone.pharmacologicalName,
+      strength: asked.strength ?? strengthOf(gone.name) ?? (gone.nameAz ? strengthOf(gone.nameAz) : null),
+      form: asked.form ?? formKey(gone.kind ?? gone.name) }, except) }
+  }
+  const lead = shown[0]
+  if (!lead || !callerNames(words, lead)) return {}
+  const extras: { sameName?: CatalogItem; substitutes?: CatalogItem[] } = {}
+  if (!activePromotion(lead, now)) {
+    const [same] = seller.sameName(lead.externalId, now, new Set())
+    if (same) extras.sameName = same
+  }
+  const soldOutLead = catalogStock(lead)?.quantity === 0
+  const missing = (asked.strength || asked.form) && !shown.some(item => callerNames(words, item) && fitsAsked(item, asked))
+  if (soldOutLead || missing) {
+    const substance = seller.substanceOf(lead.externalId)
+    if (substance) extras.substitutes = seller.substitutes({ inn: substance.inn,
+      strength: asked.strength ?? (soldOutLead ? substance.strength : null), form: asked.form ?? (soldOutLead ? substance.form : null) }, except)
+  }
+  return extras
+}
+
 /** Inbound-only owner rehearsal. No CRM subject lookup: shared phone numbers
  * cannot identify an actual pharmacy. The ordinary customer handler stays strict.
  * Only catalog labels leave this boundary; no price, stock, history or order API.
@@ -655,14 +718,29 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           ...(hearing ? { utterance: true } : {}),
           maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: line ? hintNames(catalog, dependencies.learnedNames?.(config) ?? null) : [] })
       }
+      // One search candidate as the agent gets it: today's price, and on the line stock and promotion.
+      // promotionSay: the offer as the agent says it (2026-11-04), next to the terms an older station reads.
+      const candidate = (item: CatalogItem) => {
+        const price = listPrice(item, catalog.observedAt)
+        const stock = isLineGrant(config) ? catalogStock(item) : null
+        const promotion = isLineGrant(config) ? activePromotion(item, clock()) : null
+        return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
+          identityVerified: false, ...(price ? { listPrice: price } : {}), ...(stock ? { stock } : {}), ...(promotion ? { promotion, promotionSay: promotionSay(promotion) } : {}) }
+      }
       if (input.action === "order") {
         const orderOrganizationId = config.orderOrganizationId
         if (!orderOrganizationId || !dependencies.saveOrder) return searchResponse({ status: "orders_disabled" })
         const saved = await dependencies.saveOrder({ ...config, orderOrganizationId }, finalCall, phoneOrderCatalog(catalog), input.lines,
           input.pharmacy, { seq: input.seq, afterCall: finalCall.endedAt !== null, final: input.final })
         if (saved.status === "already_reviewed") return searchResponse({ status: "already_reviewed", orderNumber: phoneOrderLabel(saved.number) })
+        // The one promotion offered before the order is closed (owner, 2026-11-04): was the agent's own
+        // `promotions: <maker>` lookup before the final save; the station passes it on once a call.
+        const offer = isLineGrant(config) && !input.final && catalog.seller
+          ? catalog.seller.offer(input.lines.flatMap(line => line.externalId ? [line.externalId] : []), clock()) : null
+        if (offer) console.log("[zeytun-line] offer", JSON.stringify({ call: input.callId }))
         return searchResponse({ status: "saved", orderNumber: phoneOrderLabel(saved.number), changed: saved.changed,
-          total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced })
+          total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced,
+          ...(offer ? { offer: candidate(offer) } : {}) })
       }
       if (input.action === "cancel") {
         // Only while the pharmacy is on the line: a cancel is its own word.
@@ -686,14 +764,6 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         console.log("[zeytun-line] transfer", JSON.stringify({ status }))
         return searchResponse({ status, ...(status === "transferring" ? { say: ZEYTUN_TRANSFER_PHRASE } : {}) })
       }
-      // One search candidate as the agent gets it: today's price, and on the line stock and promotion.
-      const candidate = (item: ReturnType<InboundPilotCatalog["search"]>["candidates"][number]) => {
-        const price = listPrice(item, catalog.observedAt)
-        const stock = isLineGrant(config) ? catalogStock(item) : null
-        const promotion = isLineGrant(config) ? activePromotion(item, clock()) : null
-        return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
-          identityVerified: false, ...(price ? { listPrice: price } : {}), ...(stock ? { stock } : {}), ...(promotion ? { promotion } : {}) }
-      }
       // «Как обычно» (owner, 2026-11-04): the call's own pharmacy's last confirmed order, never one the model names.
       if (input.query.text && HISTORY_PREFIX.test(input.query.text)) {
         const history: PharmacyHistory = isLineGrant(config) && dependencies.pharmacyHistory
@@ -711,10 +781,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           ...searchRestrictions })
       }
       const found = catalog.search(input.query)
-      // A wording its managers already confirmed leads to that product first;
-      // a substitute or promotions request is no wording of a product.
-      const learned = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text) && !PROMOTIONS_PREFIX.test(input.query.text)
-        ? dependencies.learnedNames?.(config)?.productFor(input.query.text) : null
+      // The caller's words for a product on the line; a substitute or promotions request is none.
+      const productWords = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text)
+        && !PROMOTIONS_PREFIX.test(input.query.text) ? input.query.text : null
+      // A wording its managers already confirmed leads to that product first.
+      const learned = productWords && isLineGrant(config) ? dependencies.learnedNames?.(config)?.productFor(productWords) : null
       const known = learned ? catalog.search({ externalId: learned }).candidates[0] : undefined
       const result = known ? { status: "candidates_only", candidateCount: Math.max(found.candidateCount, 1),
         candidates: [known, ...found.candidates.filter(item => item.externalId !== known.externalId)] } : found
@@ -740,12 +811,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       // candidates the model's five lack come after them, marked alsoHeard.
       // The model's own candidates keep their order.
       const alsoHeard: Array<ReturnType<typeof candidate> & { alsoHeard: string }> = []
-      const ear = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text) && !PROMOTIONS_PREFIX.test(input.query.text)
-        ? dependencies.secondEar : undefined
-      if (ear && input.query.text) {
+      const ear = productWords ? dependencies.secondEar : undefined
+      if (ear && productWords) {
         const heard = await ear.heardFor(input.callId).catch(() => null)
         if (heard) {
-          const product = pairHeard(input.query.text, heard.products, { fresh: heard.fresh, taken: heard.taken })
+          const product = pairHeard(productWords, heard.products, { fresh: heard.fresh, taken: heard.taken })
           if (product) {
             heard.taken.add(product.text)
             const heardFound = catalog.search({ text: product.text })
@@ -766,11 +836,11 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       // cac2adb9, 2026-11-04: Adefa ran out by noon, the search heard only Ademta and Adenuric, and the
       // agent said "not found". When the caller's word is its name and the five lack it, it comes after
       // them with stock 0 and no price; the station takes seven candidates, so Chirp's make room.
-      const departed = isLineGrant(config) && catalog.departed && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text)
-        && !PROMOTIONS_PREFIX.test(input.query.text) ? catalog.departed.find(input.query.text) : []
+      const departed = productWords && catalog.departed ? catalog.departed.find(productWords) : []
       // One the catalog has after all (a list newer than the snapshot it serves) is no sold-out product.
-      const soldOut = departed.filter(item => !shown.some(own => own.externalId === item.externalId)
-        && !catalog.search({ externalId: item.externalId }).candidates.length).flatMap(item => {
+      const gone = departed.filter(item => !shown.some(own => own.externalId === item.externalId)
+        && !catalog.search({ externalId: item.externalId }).candidates.length)
+      const soldOut = gone.flatMap(item => {
         const stock = catalogStock({ quantityAsReported: "0", baseUnitAsReported: item.baseUnitAsReported, nameAz: item.nameAz })
         // Without a unit to say, stock 0 would not reach the agent: then the item is not offered at all.
         return stock ? [{ externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
@@ -781,9 +851,14 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       const extra = soldOut.length + heardShown.length
       // Nothing found by the model's words but something sold out or by Chirp's: there are candidates to offer.
       const status = !shown.length && extra ? "candidates_only" : result.status
+      const seller = productWords && catalog.seller ? sellerExtras(catalog.seller, productWords, shown,
+        gone.filter(item => soldOut.some(offered => offered.externalId === item.externalId)), clock()) : {}
+      if (seller.substitutes) console.log("[zeytun-line] substitutes", JSON.stringify({ call: input.callId, found: seller.substitutes.length }))
       return searchResponse({ status, mode: "owner_inbound_preview", customerVerified: false,
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount + extra > 1,
         candidates: [...shown.map(candidate), ...soldOut, ...heardShown],
+        ...(seller.sameName ? { sameNamePromotion: candidate(seller.sameName) } : {}),
+        ...(seller.substitutes?.length ? { substitutes: seller.substitutes.map(candidate) } : {}),
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
     } catch { return searchResponse({ enabled: false, error: "pilot_unavailable", candidates: [], ...searchRestrictions }, 503) }

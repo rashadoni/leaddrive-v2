@@ -208,6 +208,7 @@ export function createInboundPilotHost(options: {
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
           observedAt: snapshot.context.observedAt, source: snapshot.context.source,
           search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query),
+          ...(isLineGrant(config) ? { seller: feed.seller(source.organizationId) } : {}),
           ...(departed?.size ? { departed } : {}) }
       })()
       if (catalog?.key !== key) {

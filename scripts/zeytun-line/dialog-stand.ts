@@ -116,6 +116,8 @@ async function playScenario(scenario: Scenario, catalog: InboundPilotCatalog, ge
   const saves: { lines: PhoneOrderLineInput[]; final: boolean }[] = []
   const bridge = new StationBridge(crmFor(catalog, saves, scenario.history && historyFor(catalog, scenario.history)), options.station)
   const events: Event[] = []
+  // Model rounds and their input tokens: on the call each round bills the whole context again (task 10, 2026-11-04).
+  const usage = { rounds: 0, promptTokens: 0 }
   try {
     const session = await bridge.op<{ prompt: string; opening: string; closing: string | null }>({ op: "open" })
     const closing = session.closing ?? "Sağ olun, xoş günlər!"
@@ -139,6 +141,8 @@ async function playScenario(scenario: Scenario, catalog: InboundPilotCatalog, ge
             generationConfig: { thinkingConfig: { thinkingLevel: options.thinking } },
           })
           if (answer.error) { events.push({ kind: "note", text: `модель: ${answer.error}` }); break }
+          usage.rounds++
+          usage.promptTokens += Number((answer.json?.usageMetadata as { promptTokenCount?: number } | undefined)?.promptTokenCount ?? 0)
           const content = ((answer.json?.candidates as Json[] | undefined)?.[0]?.content ?? { role: "model", parts: [] }) as { role: string; parts?: Json[] }
           const parts = content.parts ?? []
           contents.push({ role: "model", parts })
@@ -173,7 +177,7 @@ async function playScenario(scenario: Scenario, catalog: InboundPilotCatalog, ge
     }
     const checks = await check(scenario, events, saves, bridge)
     if (error) checks.push({ label: "разговор дошёл до конца", ok: false, detail: error })
-    return { events, saves, checks }
+    return { events, saves, checks, usage }
   } finally { bridge.close() }
 }
 
@@ -239,24 +243,31 @@ function toolLine(event: Extract<Event, { kind: "tool" }>) {
   } else if (event.name === "search_pharmacy_catalog" && result.candidates) {
     outcome = `${result.candidateCount} канд.: ${result.candidates.slice(0, 3).map((item) => `${item.name}${item.promotion ? " [акция]" : ""}`).join("; ") || "—"}`
   }
+  // The seller's extras of the CRM (2026-11-04).
+  const extras = event.result as { sameNamePromotion?: { name: string }; substitutes?: { name: string }[]; offer?: { name: string } }
+  if (extras.sameNamePromotion) outcome += `; акция другой формы: ${extras.sameNamePromotion.name}`
+  if (extras.substitutes?.length) outcome += `; аналоги: ${extras.substitutes.map((item) => item.name).join("; ")}`
+  if (extras.offer) outcome += `; предложение: ${extras.offer.name}`
   if (result.notFound?.length) outcome += `, не найдено: ${result.notFound.join("; ")}`
   return `  - \`${event.name}\` ${quote(args)} → ${quote(outcome)}`
 }
 
-type Run = { scenario: Scenario; attempt: number; events: Event[]; checks: CheckResult[]; error?: string }
+type Run = { scenario: Scenario; attempt: number; events: Event[]; checks: CheckResult[]; error?: string; usage?: { rounds: number; promptTokens: number } }
 
 function report(runs: Run[], meta: { model: string; thinking: string; snapshotAt: string; sha: string; requests: number; repeat: number; station?: string }) {
   const lines = [`# Стенд разговоров линии — ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`, "",
     `main \`${meta.sha}\`, модель \`${meta.model}\` (thinking ${meta.thinking}), снимок каталога ${meta.snapshotAt}, запросов к модели ${meta.requests}.`,
     ...(meta.station ? ["", `Станция: **${meta.station}**, не \`scripts/pbx/fanum-zeytun-inbound.py\` этого коммита.`] : []), "",
-    "| Сценарий | Прошёл | Проверки | Примечание |", "|---|---|---|---|"]
+    "| Сценарий | Прошёл | Проверки | Кругов модели | Токенов на вход | Примечание |", "|---|---|---|---|---|---|"]
   const ids = [...new Set(runs.map((run) => run.scenario.id))]
   for (const id of ids) {
     const mine = runs.filter((run) => run.scenario.id === id), scenario = mine[0].scenario
     const passed = mine.filter((run) => !run.error && run.checks.every((item) => item.ok)).length
     const checks = mine.reduce((sum, run) => sum + run.checks.filter((item) => item.ok).length, 0)
     const total = mine.reduce((sum, run) => sum + run.checks.length, 0)
-    lines.push(`| ${id}. ${scenario.title} | ${passed}/${mine.length} | ${checks}/${total} | ${scenario.expectedFail ? `ожидаемо: ${scenario.expectedFail}` : ""} |`)
+    const rounds = mine.reduce((sum, run) => sum + (run.usage?.rounds ?? 0), 0)
+    const tokens = mine.reduce((sum, run) => sum + (run.usage?.promptTokens ?? 0), 0)
+    lines.push(`| ${id}. ${scenario.title} | ${passed}/${mine.length} | ${checks}/${total} | ${rounds} | ${tokens} | ${scenario.expectedFail ? `ожидаемо: ${scenario.expectedFail}` : ""} |`)
   }
   for (const run of runs) {
     const ok = !run.error && run.checks.every((item) => item.ok)
@@ -302,7 +313,7 @@ async function main() {
         process.stderr.write(`${scenario.id} #${attempt}… `)
         try {
           const played = await playScenario(scenario, catalog, gemini, { model, thinking, declarations, station })
-          runs.push({ scenario, attempt, events: played.events, checks: played.checks })
+          runs.push({ scenario, attempt, events: played.events, checks: played.checks, usage: played.usage })
           process.stderr.write(`${played.checks.filter((item) => item.ok).length}/${played.checks.length}\n`)
         } catch (error) {
           runs.push({ scenario, attempt, events: [], checks: [], error: String((error as Error).message ?? error) })

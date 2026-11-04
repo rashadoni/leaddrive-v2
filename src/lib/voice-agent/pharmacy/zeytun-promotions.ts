@@ -74,8 +74,38 @@ export function productLeads(item: { name: string; nameAz: string | null }, make
   return leads
 }
 
-/** `leads`: productLeads. */
-type Entry = { id: string; name: string; from: string; to: string; words: Map<string, number>; leads: Set<string> }
+/**
+ * The maker a label names, as one folded word: "(Pharmex Rom Industry Srl)
+ * (Румыния)" → "pharmex", "\\*Sopharma Asc , Bolqarıstan\\*" → "sopharma".
+ * The country is never a maker: every Russian product would share "rossiya".
+ */
+export function makerKeys(makers: ProductMakers): Set<string> {
+  const keys = new Set<string>()
+  for (const parts of [makers.name, makers.nameAz]) {
+    // sourceParts: the maker and the country from parentheses, or one starred "maker , country".
+    const maker = parts.length >= 2 ? parts[0] : parts[0]?.split(",")[0]
+    const key = maker ? spokenNameKey(maker).split(" ")[0] : ""
+    if (key && key.length >= 3) keys.add(key)
+  }
+  return keys
+}
+
+const AZ_MONTHS = ["yanvara", "fevrala", "marta", "aprelə", "maya", "iyuna", "iyula", "avqusta", "sentyabra", "oktyabra", "noyabra", "dekabra"]
+
+/**
+ * The promotion as the agent says it, in Azerbaijani: "5 qutu alana 1 qutu
+ * hədiyyə, 30 noyabra qədər". Owner, 2026-11-04 («чтоб не сжирало токены»):
+ * the CRM writes the sentence, the model reads it; the date in words, as the
+ * caller hears it. `per`: the unit word, none when the item has no spoken unit.
+ */
+export function promotionSay(promotion: { buy: number; get: number; per?: string; until: string }): string {
+  const [, month, day] = promotion.until.split("-").map(Number)
+  const unit = promotion.per ? ` ${promotion.per}` : ""
+  return `${promotion.buy}${unit} alana ${promotion.get}${unit} hədiyyə, ${day} ${AZ_MONTHS[month - 1]} qədər`
+}
+
+/** `leads`: productLeads; `makers`: makerKeys. */
+type Entry = { id: string; name: string; from: string; to: string; words: Map<string, number>; leads: Set<string>; makers: Set<string> }
 
 /**
  * The feed's items that carry a "buy N, get M" promotion, whatever its dates:
@@ -100,7 +130,32 @@ export class ZeytunPromotions {
     }
     if (item.pharmacologicalName) note(item.pharmacologicalName, SUBSTANCE)
     this.entries.set(item.externalId, { id: item.externalId, name: item.name, from: terms.from, to: terms.to, words,
-      leads: productLeads(item, makers) })
+      leads: productLeads(item, makers), makers: makerKeys(makers) })
+  }
+
+  private running(now: number, keep: (entry: Entry) => boolean): string[] {
+    const today = bakuDay(now)
+    return [...this.entries.values()].filter(entry => entry.from <= today && today <= entry.to && keep(entry))
+      .sort((a, b) => a.to.localeCompare(b.to) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).map(entry => entry.id)
+  }
+
+  /**
+   * Promoted items that go by the same name as the product (its leads), but
+   * another form or strength: "Ketonal" ampoules have none, the gel has 10+2.
+   * Was a rule of the prompt (2026-11-04, #1327); the CRM finds them now.
+   */
+  sameName(leads: Set<string>, now: number, except: (id: string) => boolean): string[] {
+    return this.running(now, entry => !except(entry.id) && [...entry.leads].some(lead => leads.has(lead)))
+  }
+
+  /**
+   * Promoted items of a maker (makerKeys), for the one offer at the end of
+   * an order: the soonest to end first. Was the agent's own
+   * `promotions: <maker>` lookup before the final save (one more round of the
+   * whole call's context); the CRM attaches it to a save now.
+   */
+  byMaker(makers: Set<string>, now: number, except: (id: string, leads: Set<string>) => boolean): string[] {
+    return this.running(now, entry => [...entry.makers].some(maker => makers.has(maker)) && !except(entry.id, entry.leads))
   }
 
   /**

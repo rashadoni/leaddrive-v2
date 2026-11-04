@@ -1,5 +1,5 @@
 {
-  "about": "Scenarios of the line's dialog stand (scripts/zeytun-line/dialog-stand.ts). The caller speaks Azerbaijani, as pharmacies do. A turn is the caller's words, or {say, when: [{match, say}]}: the first rule whose match (regex, case-insensitive) fits the assistant's last reply decides, else say. Regexes of checks run on the assistant's replies or on a tool call's JSON args. expectedFail: the line does not have it yet; such a scenario is reported but not fixed here. Products are chosen on the 2026-11-03 snapshot: Adefa №30 has buy 5 get 1 until 2026-11-30, Ketonal cream 50 g and gel buy 10 get 2 until 2026-11-30, Fluimucil is not in the catalog while A.C.C. long 600 effervescent is. history: what the stand's CRM answers to `history:` (pharmacyHistory); a line with find is the snapshot's first candidate for it, a line with name is a product the catalog no longer has (unavailable).",
+  "about": "Scenarios of the line's dialog stand (scripts/zeytun-line/dialog-stand.ts). The caller speaks Azerbaijani, as pharmacies do. A turn is the caller's words, or {say, when: [{match, say}]}: the first rule whose match (regex, case-insensitive) fits the assistant's last reply decides, else say. Regexes of checks run on the assistant's replies or on a tool call's JSON args. expectedFail: the line does not have it yet; such a scenario is reported but not fixed here. Products are chosen on the 2026-11-03 snapshot: Adefa №30 has buy 5 get 1 until 2026-11-30, Ketonal cream 50 g and gel buy 10 get 2 until 2026-11-30, Fluimucil is not in the catalog while A.C.C. long 600 effervescent is. history: what the stand's CRM answers to `history:` (pharmacyHistory); a line with find is the snapshot's first candidate for it, a line with name is a product the catalog no longer has (unavailable). 10: Bisakodil is Hemopharma's, whose Omnitus syrup has buy 10 get 1 until 2026-12-01 on the 2026-11-04 00:00 snapshot. 11 runs on a later snapshot with --departed-from the 00:00 one: Klariks 500 mg sold out in between, Klamicin 500 mg (the same clarithromycin tablets) is in stock.",
   "scenarios": [
     {
       "id": "1",
@@ -430,22 +430,180 @@
       "title": "Три товара в одной реплике, у каждого количество (голосовой стенд, 04.11: Mezim потерян)",
       "turns": [
         "Zəfər aptek. Ketonal ampula 10 qutu, Bisakodil 10 qutu, Mezym Forte 10000 3 qutu.",
-        { "say": "Bu qədər, təsdiq edirəm.", "when": [{ "match": "(Ketonal|Bisakodil)[^.!]*\\?", "say": "Bəli. Bu qədər, təsdiq edirəm." }] },
-        { "say": "Bu qədər, təsdiq edirəm.", "when": [{ "match": "Sağ olun, xoş günlər", "say": "Sağ olun." }] }
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "(Ketonal|Bisakodil)[^.!]*\\?",
+              "say": "Bəli. Bu qədər, təsdiq edirəm."
+            }
+          ]
+        },
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "Sağ olun, xoş günlər",
+              "say": "Sağ olun."
+            }
+          ]
+        }
       ],
       "checks": {
         "tools": [
-          { "name": "search_pharmacy_catalog", "args": "[Kk]etonal", "label": "искал Ketonal" },
-          { "name": "search_pharmacy_catalog", "args": "[Bb]isa[ck]od[iy]l", "label": "искал Bisakodil" },
-          { "name": "search_pharmacy_catalog", "args": "[Mm]ez[iy]m", "label": "искал Mezim forte" }
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "[Kk]etonal",
+            "label": "искал Ketonal"
+          },
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "[Bb]isa[ck]od[iy]l",
+            "label": "искал Bisakodil"
+          },
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "[Mm]ez[iy]m",
+            "label": "искал Mezim forte"
+          }
         ],
-        "noReply": [{ "match": "Mez[iy]m[^.!?]*neçə[^.!?]*\\?", "label": "не переспросил уже названное количество Mezim" }],
+        "noReply": [
+          {
+            "match": "Mez[iy]m[^.!?]*neçə[^.!?]*\\?",
+            "label": "не переспросил уже названное количество Mezim"
+          }
+        ],
         "finalSave": true,
         "savedQuantity": [
-          { "spoken": "[Kk]etonal", "quantity": 10, "label": "в заказе Ketonal 10" },
-          { "spoken": "[Bb]isa[ck]od[iy]l", "quantity": 10, "label": "в заказе Bisakodil 10" },
-          { "spoken": "[Mm]ez[iy]m", "quantity": 3, "label": "в заказе Mezim forte 3" }
+          {
+            "spoken": "[Kk]etonal",
+            "quantity": 10,
+            "label": "в заказе Ketonal 10"
+          },
+          {
+            "spoken": "[Bb]isa[ck]od[iy]l",
+            "quantity": 10,
+            "label": "в заказе Bisakodil 10"
+          },
+          {
+            "spoken": "[Mm]ez[iy]m",
+            "quantity": 3,
+            "label": "в заказе Mezim forte 3"
+          }
         ]
+      }
+    },
+    {
+      "id": "10",
+      "title": "Предложение в конце заказа: акция того же производителя",
+      "turns": [
+        "Zəfər aptek. Bisakodil 10 qutu.",
+        {
+          "say": "Bu qədər.",
+          "when": [
+            {
+              "match": "Bisakodil[^.!]*\\?",
+              "say": "Bəli. Bu qədər."
+            }
+          ]
+        },
+        {
+          "say": "Yox, lazım deyil. Təsdiq edirəm.",
+          "when": [
+            {
+              "match": "Sağ olun, xoş günlər",
+              "say": "Sağ olun."
+            }
+          ]
+        },
+        {
+          "say": "Təsdiq edirəm.",
+          "when": [
+            {
+              "match": "Sağ olun, xoş günlər",
+              "say": "Sağ olun."
+            }
+          ]
+        }
+      ],
+      "checks": {
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "[Bb]isa[ck]od[iy]l",
+            "label": "искал Bisakodil"
+          }
+        ],
+        "reply": [
+          {
+            "match": "Omnitus|Омнитус",
+            "label": "предложил акционный Omnitus того же производителя"
+          }
+        ],
+        "toolAfter": [
+          {
+            "name": "save_order_list",
+            "caller": "Bisakodil",
+            "label": "сохранял только после заказа"
+          }
+        ],
+        "finalSave": true,
+        "savedLines": 1
+      }
+    },
+    {
+      "id": "11",
+      "title": "Товар кончился — аналог той же дозы и формы (снимок позже, --departed-from)",
+      "turns": [
+        "Zəfər aptek. Klariks 500 mq, 5 qutu.",
+        {
+          "say": "Bəli, onu yazın, 5 qutu.",
+          "when": [
+            {
+              "match": "Klamis|Кламиц|Meristat|Меристат",
+              "say": "Bəli, Klamisin yazın, 5 qutu."
+            }
+          ]
+        },
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "Sağ olun, xoş günlər",
+              "say": "Sağ olun."
+            }
+          ]
+        },
+        {
+          "say": "Sağ olun.",
+          "when": [
+            {
+              "match": "Klamis|Кламиц|Meristat|Меристат[^.!]*\\?",
+              "say": "Bəli. Bu qədər, təsdiq edirəm."
+            }
+          ]
+        }
+      ],
+      "checks": {
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "[Kk]lari[kx]s|Кларикс",
+            "label": "искал Klariks"
+          }
+        ],
+        "reply": [
+          {
+            "match": "Klamis|Кламиц|Meristat|Меристат",
+            "label": "предложил аналог (кларитромицин 500 мг, таблетки)"
+          },
+          {
+            "match": "bitib|qalmayıb|yoxdur|tükənib|stokda",
+            "label": "сказал, что Klariks кончился"
+          }
+        ],
+        "finalSave": true,
+        "savedLines": 1
       }
     }
   ]

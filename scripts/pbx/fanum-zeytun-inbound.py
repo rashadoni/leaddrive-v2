@@ -1122,6 +1122,9 @@ class ZeytunInboundBridge:
         self.order_seq = 0
         # The call's order number once the CRM has given it (one order per call).
         self.order_number = None
+        # The CRM's one promotion to offer before the final save, and whether the model has it.
+        self.offer = None
+        self.offered = False
         self.lock = threading.Lock()
         self.pending = {}
         self.workers = threading.BoundedSemaphore(2)
@@ -1517,6 +1520,18 @@ class ZeytunInboundBridge:
             if heard is not None:
                 projected["alsoHeard"] = heard
             result["candidates"].append(projected)
+        # The seller's extras of the CRM (2026-11-04): another form of the
+        # product with a promotion, and its substitutes. Each was a lookup of
+        # the model's own, a round of the whole call's context. A malformed
+        # extra is dropped, the answer kept.
+        same = self.candidate(value.get("sameNamePromotion"))
+        if same is not None and "promotion" in same:
+            result["sameNamePromotion"] = {key: same[key] for key in ("externalId", "name", "nameAz", "promotion") if key in same}
+        substitutes = value.get("substitutes")
+        if isinstance(substitutes, list) and 1 <= len(substitutes) <= 2:
+            projected = [self.candidate(item) for item in substitutes]
+            if all(item is not None for item in projected):
+                result["substitutes"] = projected
         return result
 
     def candidate(self, item, with_code=False):
@@ -1544,8 +1559,19 @@ class ZeytunInboundBridge:
             projected["stock"] = stock
         promotion = self.promotion(item.get("promotion"))
         if promotion is not None:
-            projected["promotion"] = promotion
+            say = self.promotion_say(item.get("promotionSay"))
+            # The CRM's own sentence (2026-11-04): the model reads it, never
+            # composes it; buy stays for the "make it buy" offer.
+            projected["promotion"] = promotion if say is None else {
+                "buy": promotion["buy"], **({"per": promotion["per"]} if "per" in promotion else {}), "say": say}
         return projected
+
+    @staticmethod
+    def promotion_say(value):
+        if (isinstance(value, str) and 1 <= len(value) <= 120 and value.strip()
+                and all(c.isalpha() or c.isdigit() or c in " ,.-" for c in value)):
+            return value
+        return None
 
     # The CRM's second ear (#1321): the word Google Chirp heard where the
     # model heard another, so the agent can ask "Adexa or Adefa?". A short
@@ -1747,6 +1773,14 @@ class ZeytunInboundBridge:
             notes[key] = items
         return {"status": "saved", "orderNumber": number, "total": total, "currency": "AZN", **notes}
 
+    def safe_offer(self, value):
+        """The CRM's one promoted product to offer before the final save
+        (2026-11-04), or None; save_order passes it to the model once a call."""
+        offer = self.candidate(value.get("offer")) if isinstance(value, dict) else None
+        if offer is None or "promotion" not in offer:
+            return None
+        return {key: offer[key] for key in ("externalId", "name", "nameAz", "promotion") if key in offer}
+
     def save_order(self, args):
         """One save, as the model hears it.
 
@@ -1759,7 +1793,15 @@ class ZeytunInboundBridge:
         result = self._save_order(args)
         if args.get("final") is True or result.get("status") not in ("saved", "queued"):
             return result
-        return {"status": "recorded", **{key: result[key] for key in ("notFound", "unpriced") if key in result}}
+        recorded = {"status": "recorded", **{key: result[key] for key in ("notFound", "unpriced") if key in result}}
+        # A save answered behind the reply leaves its offer for the next one.
+        with self.lock:
+            offer = None if self.offered else self.offer
+            if offer is not None:
+                self.offered = True
+        if offer is not None:
+            recorded["offer"] = offer
+        return recorded
 
     def _save_order(self, args):
         """One save: kept on the station's disk, then sent. A CRM that does not
@@ -1802,8 +1844,11 @@ class ZeytunInboundBridge:
             self.spool.settle(self.call_id, seq)
         result = self.safe_saved(value)
         if result["status"] == "saved":
+            offer = self.safe_offer(value)
             with self.lock:
                 self.order_number = result["orderNumber"]
+                if offer is not None and self.offer is None:
+                    self.offer = offer
         return result
 
     @classmethod

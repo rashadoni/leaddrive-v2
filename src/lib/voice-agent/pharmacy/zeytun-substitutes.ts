@@ -48,7 +48,7 @@ export function sameStrength(a: Strength, b: Strength) {
 // says in Azerbaijani, Russian or English. Order matters: the specific form
 // before the general one (effervescent before tablet, eye drops before drops).
 const FORMS: Array<[string, RegExp]> = [
-  ["effervescent", /шипуч|effervesc|fışıldayan|fisildayan|suda həll|köpüklü/iu],
+  ["effervescent", /шипуч|şipuç|sipuc|effervesc|fışıldayan|fisildayan|suda həll|köpüklü/iu],
   ["chewable", /жеват|chewab|çeynə/iu],
   ["vaginal-suppository", /ваг.*(свеч|суп)|(свеч|суп).*ваг|vagin.*(suppos|şam)|vaginal şam/iu],
   ["vaginal-tablet", /ваг.*таб|vagin.*tab/iu],

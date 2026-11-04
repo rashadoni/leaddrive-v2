@@ -509,7 +509,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(rehearsal).not.toHaveProperty("promotion")
     // Owner, 2026-10-28: «если аптека берёт меньше, чем нужно для акции, пусть
     // ИИ один раз предложит добрать до акции».
-    expect(ZEYTUN_LINE_PROMPT).toContain("if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy")
+    expect(ZEYTUN_LINE_PROMPT).toContain("If they took fewer than promotion.buy and stock allows, offer once to make it promotion.buy")
   })
 
   // Owner, 2026-10-27: the line must not stop by itself on its renewal date.
@@ -727,7 +727,8 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
       expect(body.candidates).toEqual([
         { externalId: KNOWN, itemCode: "TEST-01", name: "Medicine 10 mg", nameAz: null, identityVerified: false,
           listPrice: { amount: "2.5", currency: "AZN", per: "qutu", asOf: f.catalog.observedAt }, stock: { quantity: 42, per: "qutu" },
-          promotion: { buy: 10, get: 1, per: "qutu", until: "2026-10-31" }, ordered: { quantity: 10, unit: "qutu" } },
+          promotion: { buy: 10, get: 1, per: "qutu", until: "2026-10-31" }, promotionSay: "10 qutu alana 1 qutu hədiyyə, 31 oktyabra qədər",
+          ordered: { quantity: 10, unit: "qutu" } },
         { externalId: GONE, name: "Old product", ordered: { quantity: 2, unit: "ədəd" }, unavailable: true },
       ])
       // The call itself, never a pharmacy from the model's words: the request carries none.
@@ -822,7 +823,7 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     })
 
     it("drops notes the rules no longer leave room for, never the call", async () => {
-      const body = await session(async () => ({ ...own, knowledge: "k".repeat(2000), rules: "r".repeat(2000) }))
+      const body = await session(async () => ({ ...own, knowledge: "k".repeat(3000), rules: "r".repeat(3000) }))
       expect(body.prompt.length).toBeLessThanOrEqual(BRIDGE.promptChars)
       expect(body.prompt).not.toContain("<company_notes>")
       expect(body.closing).toBe(own.closing)

@@ -88,7 +88,7 @@ describe("the catalog refresh remembers what sold out", () => {
     fetchFeed.mockImplementation(async () => feedOf([ademta, adenuric]))
     expect((await cache().refresh()).outcome).toBe("updated")
     expect(await store.loadDeparted()).toEqual([{ externalId: ADEFA, itemCode: adefa.Номенклатура.Номер, name: adefa.Номенклатура.Наименование,
-      nameAz: null, baseUnitAsReported: "шт", goneAt: "2026-11-04T12:00:00.000Z" }])
+      nameAz: null, baseUnitAsReported: "шт", pharmacologicalName: null, kind: "Таблетки", goneAt: "2026-11-04T12:00:00.000Z" }])
     expect((await stat(join(root, `${scopeKey}.departed`))).mode & 0o777).toBe(0o600)
 
     // The same stock re-observed changes nothing; Adefa back in stock leaves the list.

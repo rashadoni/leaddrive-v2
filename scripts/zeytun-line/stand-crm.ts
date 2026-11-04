@@ -75,7 +75,7 @@ export async function loadCatalog(path: string, departedFrom?: string): Promise<
   return {
     snapshotAt: header.observedAt, soldOut: departed.length,
     catalog: { organizationId: header.organizationId, scopeKey: header.scopeKey, version: header.version, observedAt, source: "live",
-      search: (query) => feed.search(header.organizationId, query),
+      search: (query) => feed.search(header.organizationId, query), seller: feed.seller(header.organizationId),
       ...(departed.length ? { departed: createDepartedSearch(departed) } : {}) } as InboundPilotCatalog,
   }
 }

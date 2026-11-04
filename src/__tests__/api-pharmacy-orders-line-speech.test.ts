@@ -79,8 +79,10 @@ describe("phone line speech settings", () => {
     await refused({ ...speech, closing: "x".repeat(121) }, "invalid", "closing")
     await refused({ ...speech, closing: ZEYTUN_TRANSFER_PHRASE.toUpperCase() }, "invalid", "closing")
     await refused({ ...speech, greeting: "a".repeat(201) }, "invalid", "greeting")
-    const half = Math.ceil((LINE_NOTES_MAX_CHARS + 1) / 2)
-    await refused({ ...speech, knowledge: "k".repeat(half), rules: "r".repeat(half) }, "too_long")
+    // Three notes, each within its own limit, together over the budget.
+    const third = Math.ceil((LINE_NOTES_MAX_CHARS + 1) / 3)
+    expect(third).toBeLessThanOrEqual(2000)
+    await refused({ ...speech, manner: "m".repeat(third), knowledge: "k".repeat(third), rules: "r".repeat(third) }, "too_long")
     await refused({ ...speech, extra: "x" }, "invalid")
     expect(prisma.organization.update).not.toHaveBeenCalled()
   })

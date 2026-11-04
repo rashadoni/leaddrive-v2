@@ -30,6 +30,8 @@ const label = z.string().min(1).max(512)
 export const departedItemSchema = z.strictObject({
   externalId: guid, itemCode: label, name: label, nameAz: label.nullable(),
   baseUnitAsReported: z.string().min(1).max(64),
+  /** 1C's active substance and item kind, for substitutes of a sold-out product (2026-11-04); a list kept before has neither. */
+  pharmacologicalName: label.nullable().optional(), kind: label.optional(),
   goneAt: z.iso.datetime({ offset: true }),
 })
 export type DepartedItem = z.infer<typeof departedItemSchema>
@@ -59,12 +61,20 @@ export function nextDeparted(options: {
   for (const item of options.before) {
     if (inStock.has(item.externalId) || kept.has(item.externalId)) continue
     kept.set(item.externalId, { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
-      baseUnitAsReported: item.baseUnitAsReported, goneAt })
+      baseUnitAsReported: item.baseUnitAsReported,
+      ...(item.pharmacologicalName !== undefined ? { pharmacologicalName: item.pharmacologicalName } : {}),
+      ...(item.kind !== undefined ? { kind: item.kind } : {}), goneAt })
   }
   return [...kept.values()].sort((a, b) => Date.parse(b.goneAt) - Date.parse(a.goneAt)).slice(0, DEPARTED_MAX_ITEMS)
 }
 
 const firstWord = (text: string) => spokenNameKey(text).split(" ")[0] ?? ""
+
+/** The caller's first word is the product's own name (one sound or letter off, any alphabet): "Ketonal ampula" names «Кетонал 100 мг». */
+export function callerNames(text: string, item: { name: string; nameAz: string | null }): boolean {
+  const asked = firstWord(text)
+  return asked.length >= 4 && [item.name, item.nameAz].some((name) => name && spokenWordsApart(asked, firstWord(name)) <= SAME_NAME)
+}
 
 /** Sold-out products found by name, only where the caller's word is the product's own name. */
 export function createDepartedSearch(items: readonly DepartedItem[]) {
@@ -78,13 +88,11 @@ export function createDepartedSearch(items: readonly DepartedItem[]) {
   return {
     size: byId.size,
     find(text: string, limit = 1): DepartedItem[] {
-      const asked = firstWord(text)
-      if (asked.length < 4 || !byId.size) return []
+      if (firstWord(text).length < 4 || !byId.size) return []
       const found: DepartedItem[] = []
       for (const id of names.find(text).slice(0, 5)) {
         const item = byId.get(id)!
-        const named = [item.name, item.nameAz].some((name) => name && spokenWordsApart(asked, firstWord(name)) <= SAME_NAME)
-        if (named) found.push(item)
+        if (callerNames(text, item)) found.push(item)
         if (found.length === limit) break
       }
       return found
