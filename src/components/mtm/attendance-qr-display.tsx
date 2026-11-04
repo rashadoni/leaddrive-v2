@@ -107,11 +107,11 @@ export function MtmAttendanceQrDisplay() {
           <div className="min-w-0 space-y-2"><p className="font-medium">{branch.name}</p>
             {/* Owner, 2026-11-04: an open site with no computer marks by the phone's place alone. */}
             <div className="flex flex-wrap items-center gap-2 text-sm"><span className="text-muted-foreground" id={`attendance-qr-method-${branch.id}`}>{t("qrBranchMethodLabel")}</span>
-              <div role="radiogroup" aria-labelledby={`attendance-qr-method-${branch.id}`} className="inline-flex overflow-hidden rounded-lg border" data-testid="attendance-qr-branch-method">
-                {(["QR_GPS", "GPS_ONLY"] as const).map(method => <button key={method} type="button" role="radio" aria-checked={branch.markMethod === method}
+              <div role="radiogroup" aria-labelledby={`attendance-qr-method-${branch.id}`} className="inline-flex gap-2" data-testid="attendance-qr-branch-method">
+                {(["QR_GPS", "GPS_ONLY"] as const).map(method => <Button key={method} type="button" role="radio" aria-checked={branch.markMethod === method}
+                  variant={branch.markMethod === method ? "selected" : "outline"} className="min-h-11"
                   data-testid={`attendance-qr-branch-method-${method}`} disabled={busy || !directory.canConfigure || branch.markMethod === method}
-                  className={`min-h-11 px-4 text-sm ${branch.markMethod === method ? "bg-foreground font-semibold text-background" : "bg-background text-foreground hover:bg-muted"}`}
-                  onClick={() => void setMethod(branch.id, method)}>{t(method === "QR_GPS" ? "qrBranchMethodQr" : "qrBranchMethodGps")}</button>)}
+                  onClick={() => void setMethod(branch.id, method)}>{t(method === "QR_GPS" ? "qrBranchMethodQr" : "qrBranchMethodGps")}</Button>)}
               </div></div>
             {branch.markMethod === "GPS_ONLY" && <p className="text-sm text-muted-foreground" data-testid="attendance-qr-branch-gps-only">{t("qrBranchGpsOnlyHint")}</p>}
             {branch.screens.length ? branch.screens.map(screen => {
