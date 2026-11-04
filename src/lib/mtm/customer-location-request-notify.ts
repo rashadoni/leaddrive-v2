@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
+import { pushLocationRequestToReviewers } from "@/lib/mtm/customer-location-request-push"
 import { canReviewMtmRouteRequest, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { locales } from "@/i18n/routing"
 import {
@@ -160,6 +161,17 @@ export async function notifyLocationRequestReviewers(input: {
       })
       if (row) told += 1
     }
+    // And on the manager's phone, for whoever has the field app and no browser
+    // push (customer-location-request-push.ts). Never awaited: a phone push
+    // that is slow or fails costs the agent nothing.
+    void pushLocationRequestToReviewers({
+      organizationId: input.organizationId,
+      requestId: input.requestId,
+      requestedByAgentId: input.requestedByAgentId,
+      agentName,
+      reviewers,
+      event: confirmed ? "confirmed" : "submitted",
+    }).catch((error) => console.warn("[MTM/location-request] phone push failed", error))
     return told
   } catch (error) {
     console.warn("[MTM/location-request] reviewers were not notified", error)

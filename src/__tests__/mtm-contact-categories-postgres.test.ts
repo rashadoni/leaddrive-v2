@@ -2837,6 +2837,40 @@ pgDescribe("client categories on a real Postgres", () => {
           .toMatchObject({ status: 409, body: { code: "MTM_LOCATION_REQUEST_IDEMPOTENCY_MISMATCH" } })
       })
 
+      // Production, 2026-11-04: one of the two who decide had no browser
+      // subscription, only the field app on three phones. The phone push goes
+      // to the same people, on their MTM manager cards.
+      it("rings on the phone of every manager with a card — never the agent's — and names no customer", async () => {
+        const { locationRequestReviewers } = await import("@/lib/mtm/customer-location-request-notify")
+        const { pushLocationRequestToReviewers } = await import("@/lib/mtm/customer-location-request-push")
+        const notify = vi.fn(async () => ({ sent: 1, failed: 0, retired: 0 }))
+        const reviewers = await bypass(() => locationRequestReviewers({ organizationId: ORG, requestedByAgentId: asker }))
+        const pushed = await bypass(() => pushLocationRequestToReviewers(
+          { organizationId: ORG, requestId: advanceId, requestedByAgentId: asker, agentName: "Nigar at the Door", reviewers, event: "submitted" },
+          { notify: notify as never, configured: true },
+        ))
+        const card = await bypass(() => prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: ORG, userId: "loc-field-admin" }, select: { id: true } }))
+        // Of everyone told, only the field administrator holds a manager card.
+        expect(pushed).toEqual({ cards: 1 })
+        expect(notify).toHaveBeenCalledTimes(1)
+        expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+          organizationId: ORG,
+          agentIds: [card.id],
+          title: "Customer address: an agent is waiting for a decision",
+          body: "Nigar at the Door proposes a customer's new place. Decide in the CRM, «Routes → Approvals».",
+          channelId: "team-messages",
+          data: { channel: "team-messages", kind: "customer_location_request", requestId: advanceId },
+        }))
+        const { title, body, data } = (notify.mock.calls as unknown as Array<[{ title: string; body: string; data: unknown }]>)[0][0]
+        expect(JSON.stringify({ title, body, data })).not.toContain("Aptek Köçən")
+        // Push switched off on the server: nothing is read, nobody rung.
+        expect(await pushLocationRequestToReviewers(
+          { organizationId: ORG, requestId: advanceId, requestedByAgentId: asker, agentName: "x", reviewers, event: "confirmed" },
+          { notify: notify as never, configured: false },
+        )).toEqual({ cards: 0 })
+        expect(notify).toHaveBeenCalledTimes(1)
+      })
+
       it("is no place a visit counts from until the agent has stood at it", async () => {
         const refused = await checkIn(asker, moved, NEW_DOOR)
         expect(refused.status).toBeGreaterThanOrEqual(400)
