@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from "node:fs"
 import { NextRequest } from "next/server"
 import { beforeEach,describe,expect,it,vi } from "vitest"
 vi.mock("@/lib/prisma",async()=>({prisma:(await import("./mocks/mtm-prisma")).makeMtmPrismaMock()}))
@@ -28,6 +29,29 @@ describe("own attendance location consent transport",()=>{
   for(const method of["GET","POST"])expect(officeAttendanceMobilePath(method,"/api/v2/mtm/mobile/route-field/attendance/location-consent")).toBe(true)
   for(const method of["PUT","DELETE","PATCH"])expect(officeAttendanceMobilePath(method,"/api/v2/mtm/mobile/route-field/attendance/location-consent")).toBe(false)
   expect(officeAttendanceMobilePath("POST","/api/v1/mtm/attendance/location-policy")).toBe(false)
+ })
+ it("admits the Time token to its own desks and language, and nothing next to them",()=>{
+  // 2026-11-04: these four were in mobile-api-path.ts only, and every call from Time got 401 on prod.
+  expect(officeAttendanceMobilePath("POST","/api/v2/mtm/mobile/route-field/attendance/desk-pairing")).toBe(true)
+  expect(officeAttendanceMobilePath("GET","/api/v2/mtm/mobile/route-field/attendance/desks")).toBe(true)
+  expect(officeAttendanceMobilePath("POST","/api/v2/mtm/mobile/route-field/attendance/desks/0f8fad5b-d9cb-469f-a165-70867728950e/revoke")).toBe(true)
+  expect(officeAttendanceMobilePath("PUT","/api/v1/mtm/mobile/language")).toBe(true)
+  expect(officeAttendanceMobilePath("GET","/api/v2/mtm/mobile/route-field/attendance/desk-pairing")).toBe(false)
+  expect(officeAttendanceMobilePath("DELETE","/api/v2/mtm/mobile/route-field/attendance/desks")).toBe(false)
+  expect(officeAttendanceMobilePath("POST","/api/v2/mtm/mobile/route-field/attendance/desks/../revoke")).toBe(false)
+  expect(officeAttendanceMobilePath("POST","/api/v1/mtm/mobile/language")).toBe(false)
+ })
+ it("lets the Time token reach every own-attendance route that exists, by each of its methods",()=>{
+  // A route listed in mobile-api-path.ts but not in officeAttendanceMobilePath answers Time with 401.
+  const root="src/app/api/v2/mtm/mobile/route-field/attendance"
+  const walk=(dir:string):string[]=>readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(`${dir}/${e.name}`):e.name==="route.ts"?[`${dir}/${e.name}`]:[])
+  const id="0f8fad5b-d9cb-469f-a165-70867728950e"
+  for(const file of walk(root)){
+   const path=`/api/v2/mtm/mobile/route-field/attendance${file.slice(root.length,-"/route.ts".length)}`.replace(/\[id\]/g,id)
+   const methods=[...readFileSync(file,"utf8").matchAll(/export (?:const|async function) (GET|POST|PUT|PATCH|DELETE)\b/g)].map(m=>m[1])
+   expect(methods.length,file).toBeGreaterThan(0)
+   for(const method of methods)expect(officeAttendanceMobilePath(method,path),`${method} ${path}`).toBe(true)
+  }
  })
  it("refuses collection while the whole feature is disabled and writes no consent",async()=>{
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{key:"attendanceEnabled",value:false}] as never)
