@@ -1770,6 +1770,42 @@ class UtteranceTests(unittest.TestCase):
     def statuses(self):
         return [fields["status"] for event, fields in self.logged if event == "zeytun_utterance"]
 
+    def frames(self, count, start=0):
+        """Distinct 20 ms frames, so their order and count can be checked."""
+        return [bytes([(start + i) % 250 + 1, 0]) * 160 for i in range(count)]
+
+    def test_a_phrase_starts_with_the_frames_before_it_opened_as_the_core_hands_them(self):
+        # #1342: the detector opens a phrase ~280 ms into the word; Chirp heard
+        # "Lumi 600" for "Fluimucil 600". The core gives every frame to
+        # utterance_audio before the edge, the opening frame included.
+        before = self.frames(30)              # 600 ms of the caller before the opening frame
+        opening, inside = self.frames(1, 30)[0], self.frames(20, 31)
+        for frame in before:
+            self.bridge.utterance_audio(frame)
+        self.bridge.utterance_audio(opening)   # the core's order: audio first...
+        self.bridge.utterance_edge(True, opening)  # ...then the edge with the same frame
+        for frame in inside:
+            self.bridge.utterance_audio(frame)
+        self.bridge.utterance_edge(False)
+        self.settle()
+        sent = base64.b64decode(self.posts[0]["audio"])
+        # 480 ms before: the last 23 frames before the opening, the opening once, then the phrase.
+        self.assertEqual(sent, b"".join(before[-23:] + [opening] + inside))
+        self.assertEqual(len(self.bridge.utterance_lookback), 0)
+        # The lookback starts over after a phrase: the next one gets only its own frames.
+        later = self.frames(3, 100)
+        for frame in later:
+            self.bridge.utterance_audio(frame)
+        self.assertEqual(list(self.bridge.utterance_lookback), later)
+
+    def test_the_lookback_never_lifts_the_15_second_limit(self):
+        for frame in self.frames(24):
+            self.bridge.utterance_audio(frame)
+        self.bridge.utterance_edge(True, self.FRAME)
+        self.bridge.utterance_audio(self.FRAME * (15 * 50))
+        self.assertEqual(len(self.bridge.utterance), self.bridge.UTTERANCE_MAX_BYTES)
+        self.assertTrue(self.bridge.utterance_cut)
+
     def test_the_crm_switches_it_on_and_the_station_can_still_switch_it_off(self):
         self.assertTrue(self.bridge.utterances)
         # A CRM without the action does not ask for it: nothing is kept or sent.
