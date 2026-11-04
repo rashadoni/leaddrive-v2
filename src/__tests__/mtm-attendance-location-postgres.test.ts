@@ -972,4 +972,50 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
  })
 
+ // Owner, 2026-11-04: an open site with no computer; the app's GPS is the whole check.
+ it("a GPS-only site confirms a mark by the phone's own place, and asks for no QR",async()=>{
+  const policy=await import("@/lib/mtm/attendance-qr-policy"),security=await import("@/lib/mtm/attendance-qr-security"),qr=await import("@/lib/mtm/attendance-qr-store")
+  const method=await import("@/lib/mtm/attendance-branch-mark-method"),{readMtmAttendanceReport}=await import("@/lib/mtm/attendance-report-store")
+  const site=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId:null,expectedRevisionId:null,name:"Fictional open site",address:"Demo Road 84",latitude:40.9,longitude:49.1,radiusMeters:150,active:true}))
+  const atSite=(at:Date):AttendanceMark=>{const value=packet(at);return{...value,location:{...value.location!,latitude:40.9,longitude:49.1}}}
+  await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
+  try {
+   const start=async(mark:(at:Date)=>AttendanceMark|undefined,token:string|null=null)=>{
+    await employee();if(mark(new Date()))await accept()
+    const at=new Date(Date.now()+1000),day=randomUUID()
+    const result=await send(operation("START",day,at,mark(at),{version:1,token}))
+    expect(result.body.results[0].status).toBe("ok")
+    const rows=await tenant(ORG,()=>prisma.$queryRaw<{state:string}[]>`SELECT state FROM mtm_attendance_qr_evidence WHERE "agentId"=${identity.agentId}`)
+    return {day,rows,serverData:result.body.results[0].serverData}
+   }
+   // Not chosen yet: a mark at the site without a code is «QR not provided».
+   expect((await start(atSite)).rows).toEqual([{state:"NOT_PROVIDED"}])
+   // Only a current administrator chooses, and it is audited once.
+   await expect(tenant(ORG,()=>method.saveAttendanceBranchMarkMethod({...admin,userId:identity.agentId},{branchId:site.branch.id,method:"GPS_ONLY"}))).rejects.toMatchObject({status:403})
+   await expect(tenant(ORG,()=>method.saveAttendanceBranchMarkMethod(admin,{branchId:randomUUID(),method:"GPS_ONLY"}))).rejects.toMatchObject({status:404})
+   await expect(tenant(ORG,()=>method.saveAttendanceBranchMarkMethod(admin,{branchId:site.branch.id,method:"QR"}))).rejects.toMatchObject({status:400})
+   expect(await tenant(ORG,()=>method.saveAttendanceBranchMarkMethod(admin,{branchId:site.branch.id,method:"GPS_ONLY"}))).toMatchObject({changed:true})
+   expect(await tenant(ORG,()=>method.saveAttendanceBranchMarkMethod(admin,{branchId:site.branch.id,method:"GPS_ONLY"}))).toMatchObject({changed:false})
+   expect(await tenant(ORG,()=>prisma.mtmAuditLog.count({where:{organizationId:ORG,action:"MTM_ATTENDANCE_BRANCH_MARK_METHOD_CHANGED",entityId:site.branch.id}}))).toBe(1)
+   expect((await tenant(ORG,()=>qr.readAttendanceQrDirectory(admin))).branches.find(row=>row.id===site.branch.id)?.markMethod).toBe("GPS_ONLY")
+   // Inside the site with a real, fresh, fine fix: confirmed by the place, no QR row at all.
+   const inside=await start(atSite)
+   expect(inside.rows).toEqual([]);expect(inside.serverData).not.toHaveProperty("attendanceQr")
+   const workDate=(await tenant(ORG,()=>prisma.mtmAgentWorkday.findUniqueOrThrow({where:{id:inside.day},select:{workDate:true}}))).workDate.toISOString().slice(0,10)
+   const report=await tenant(ORG,()=>readMtmAttendanceReport({organizationId:ORG,actor:{role:"ADMIN",agentId:null,scopedAgentIds:null},query:{from:workDate,to:workDate,form:"ALL",employeeId:identity.agentId},now:new Date()}))
+   expect(report.rows[0].locationMarks?.[0]).toMatchObject({state:"INSIDE",branch:{id:site.branch.id,name:"Fictional open site"}})
+   expect(report.rows[0].locationMarks?.[0]).not.toHaveProperty("qr")
+   // Nothing proves the place: still «QR not provided» — a mock fix, a coarse one, no fix, or elsewhere.
+   expect((await start(at=>{const value=atSite(at);return{...value,location:{...value.location!,isMock:true}}})).rows).toEqual([{state:"NOT_PROVIDED"}])
+   expect((await start(at=>{const value=atSite(at);return{...value,location:{...value.location!,accuracy:400}}})).rows).toEqual([{state:"NOT_PROVIDED"}])
+   expect((await start(()=>undefined)).rows).toEqual([{state:"NOT_PROVIDED"}])
+   expect((await start(at=>packet(at))).rows).toEqual([{state:"NOT_PROVIDED"}])
+   // A code read at the site still counts as a code.
+   expect((await start(atSite,security.issueAttendanceQrToken(ORG,site.branch.id,site.branch.revisionId,new Date()).token)).rows).toEqual([{state:"VERIFIED"}])
+   // Back to QR + GPS: the site wants its code again.
+   expect(await tenant(ORG,()=>method.saveAttendanceBranchMarkMethod(admin,{branchId:site.branch.id,method:"QR_GPS"}))).toMatchObject({changed:true})
+   expect((await start(atSite)).rows).toEqual([{state:"NOT_PROVIDED"}])
+  } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
+ })
+
 })
