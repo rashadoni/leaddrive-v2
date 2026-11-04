@@ -154,10 +154,13 @@ class ZeytunGeminiTts:
     # back to the model's own voice rather than leave the line silent.
     TIMEOUT_SECONDS = 4
 
-    def __init__(self, key, model, voice, opener=None, style=None, vertex=None):
+    def __init__(self, key, model, voice, opener=None, style=None, vertex=None, any_failure_next=False):
         if not key or model not in self.MODELS or voice not in ZeytunInboundBridge.VOICES:
             raise ZeytunPilotUnavailable("tts_unavailable")
         self.style = style
+        # Text mode: no model voice behind the TTS, so any path's failure
+        # before audio (timeout, network, any refusal) is followed by the next.
+        self.any_failure_next = any_failure_next
         query = ":streamGenerateContent?alt=sse&key="
         self.urls = []
         project, vertex_key = vertex if isinstance(vertex, tuple) and len(vertex) == 2 else (None, None)
@@ -182,11 +185,13 @@ class ZeytunGeminiTts:
             self.path = path
             try:
                 return self._styled(url, text, counted, keep_going)
-            except ZeytunPilotUnavailable as error:
-                code = str(error).rsplit("_", 1)[-1]
-                if (heard[0] or index + 1 == len(self.urls) or not keep_going()
-                        or not code.isdigit() or int(code) not in self.FALLBACK_CODES):
+            except Exception as error:
+                if heard[0] or index + 1 == len(self.urls) or not keep_going():
                     raise
+                if not self.any_failure_next:
+                    code = str(error).rsplit("_", 1)[-1] if isinstance(error, ZeytunPilotUnavailable) else ""
+                    if not code.isdigit() or int(code) not in self.FALLBACK_CODES:
+                        raise
         raise ZeytunPilotUnavailable("tts_unavailable")
 
     def _styled(self, url, text, on_pcm, keep_going):
@@ -259,9 +264,13 @@ ZEYTUN_FILLER_AUDIO = {}
 class ZeytunSpeechRelay:
     """Re-voices the Live model's answers through a TTS voice the owner chose.
 
-    gemini-3.8-live cannot answer in TEXT (1007, 2026-10-23), so the model
-    still speaks; its audio is withheld and its own output transcription is
-    read by the TTS instead. Synthetic events carry that audio and text into
+    gemini-3.8-live refused TEXT answers (1007, 2026-10-23), so by default the
+    model still speaks; its audio is withheld and its own output
+    transcription is read by the TTS instead. In text mode (the station's
+    ZEYTUN_LIVE_TEXT_ONLY, owner 2026-11-04: «мне нужна оптимизация» - the
+    model's audio was paid for and thrown away) the model answers in text
+    parts, which are read instead; there is no model voice to fall back on,
+    so a failed TTS path is followed by the next one. Synthetic events carry that audio and text into
     the core's ordinary handler, so playback, barge-in, the transcript, the
     farewell hang-up and recovery see a normal Gemini turn. A turn's
     generationComplete/turnComplete are held until its new audio is queued.
@@ -308,8 +317,9 @@ class ZeytunSpeechRelay:
                      "hear it. Say it again now, in Azerbaijani only.")
 
     def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic,
-                 progress=None, recovering=None, ask=None):
+                 progress=None, recovering=None, ask=None, text_mode=False):
         self.tts, self.inject, self.speakable, self.alive = tts, inject, speakable, alive
+        self.text_mode = text_mode
         # Set by the core: sends a client turn to the current Live session.
         self.ask = ask or (lambda payload: False)
         self.progress = progress or (lambda: None)
@@ -458,9 +468,11 @@ class ZeytunSpeechRelay:
                 return False
             starts_turn = last is None or last["finished"]
             model_turn = content.get("modelTurn")
-            speaks = (isinstance(model_turn, dict) and any(isinstance(p, dict) and isinstance(p.get("inlineData"), dict)
+            speaks = (isinstance(model_turn, dict) and any(isinstance(p, dict) and (
+                          isinstance(p.get("inlineData"), dict) or (self.text_mode and self._said(p)))
                       for p in model_turn.get("parts") or [])) or isinstance(content.get("outputTranscription"), dict)
-            if starts_turn and speaks and self.recovering():
+            # Text mode has no model voice to pass through: recovery is voiced too.
+            if starts_turn and speaks and self.recovering() and not self.text_mode:
                 # A replacement session must be heard within 2.5 s; the TTS delay
                 # would fail it, so this whole turn is the model's own voice.
                 turn = self._new_turn()
@@ -470,12 +482,19 @@ class ZeytunSpeechRelay:
                 self.log("tts_passthrough", reason="recovery")
                 self.lock.notify_all()
                 return False
-            audio = []
+            audio, said = [], []
             if isinstance(model_turn, dict) and isinstance(model_turn.get("parts"), list):
                 keep = []
                 for part in model_turn["parts"]:
                     inline = part.get("inlineData") if isinstance(part, dict) else None
-                    (audio if isinstance(inline, dict) and inline.get("data") else keep).append(part)
+                    if isinstance(inline, dict) and inline.get("data"):
+                        audio.append(part)
+                    elif self.text_mode and isinstance(part, dict) and isinstance(part.get("text"), str):
+                        if self._said(part):
+                            said.append(part["text"])
+                        # A thought is never read out, nor handed to the core.
+                    else:
+                        keep.append(part)
                 if keep:
                     model_turn["parts"] = keep
                 else:
@@ -483,7 +502,9 @@ class ZeytunSpeechRelay:
             output = content.pop("outputTranscription", None)
             text = output.get("text") if isinstance(output, dict) else None
             text = text if isinstance(text, str) else ""
-            if audio and (last is None or not last["passthrough"]):
+            if self.text_mode:
+                text = "".join(said)
+            if (audio or said) and (last is None or not last["passthrough"]):
                 now = self.clock()
                 if self.progress_at is None or now - self.progress_at >= self.PROGRESS_EVERY_SECONDS:
                     self.progress_at = now
@@ -522,6 +543,11 @@ class ZeytunSpeechRelay:
                 turn["held"] = []
             self.lock.notify_all()
             return not content
+
+    @staticmethod
+    def _said(part):
+        """A text part the model means as its answer (not a thought)."""
+        return isinstance(part.get("text"), str) and part.get("thought") is not True
 
     @staticmethod
     def _silence(ms):
@@ -1433,16 +1459,45 @@ class ZeytunInboundBridge:
         key = (environ.get("ZEYTUN_TTS_VERTEX_KEY") or "").strip()
         return (project, key) if project and key else None
 
+    TEXT_ONLY_ENV = "ZEYTUN_LIVE_TEXT_ONLY"
+
+    def text_only(self, environ=None):
+        """The Live model answers in text, the TTS reads it: only on a call with
+        a TTS voice, and only where the station's environment says so (off by
+        default until a probe showed gemini-3.8-live takes it with this setup)."""
+        environ = os.environ if environ is None else environ
+        return self.tts_model is not None and (environ.get(self.TEXT_ONLY_ENV) or "").strip() == "1"
+
+    # Owner, 2026-11-04 («мне нужна оптимизация»): every model generation —
+    # each reply and each tool round — is billed for the whole context again.
+    # None keeps the provider's default window.
+    CONTEXT_TRIGGER_TOKENS = None
+    CONTEXT_TARGET_TOKENS = None
+
+    def adjust_setup(self, setup):
+        """The line's last word on the Live setup: text answers, context window."""
+        if self.text_only():
+            generation = setup.setdefault("generationConfig", {})
+            generation["responseModalities"] = ["TEXT"]
+            # Audio-only fields: the model speaks no audio of its own.
+            generation.pop("speechConfig", None)
+            setup.pop("outputAudioTranscription", None)
+        if self.CONTEXT_TRIGGER_TOKENS and self.CONTEXT_TARGET_TOKENS:
+            setup["contextWindowCompression"] = {"triggerTokens": self.CONTEXT_TRIGGER_TOKENS,
+                                                 "slidingWindow": {"targetTokens": self.CONTEXT_TARGET_TOKENS}}
+        return setup
+
     def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None,
                      progress=None, recovering=None, ask=None):
         """The call's TTS relay, created once; None while the model speaks itself."""
         if self.tts_model is None:
             return None
         if self.relay is None:
+            text_mode = self.text_only()
             engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style,
-                                            vertex=self.tts_vertex())
+                                            vertex=self.tts_vertex(), any_failure_next=text_mode)
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
-                                           progress=progress, recovering=recovering, ask=ask)
+                                           progress=progress, recovering=recovering, ask=ask, text_mode=text_mode)
             self.relay.prefetch_filler()
         return self.relay
 

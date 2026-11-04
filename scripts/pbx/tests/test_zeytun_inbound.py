@@ -1218,6 +1218,125 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
         self.assertEqual(tts.texts, ["Növbəti preparat hansıdır, zəhmət olmasa deyin?"])
 
+    # Text mode (ZEYTUN_LIVE_TEXT_ONLY): the model answers in text parts.
+    @staticmethod
+    def text_content(*texts, thought=None, **flags):
+        parts = [{"text": text} for text in texts]
+        if thought is not None:
+            parts.insert(0, {"text": thought, "thought": True})
+        return {"serverContent": {"modelTurn": {"parts": parts}, **flags}}
+
+    def text_relay(self, tts, **kwargs):
+        def inject(event):
+            with self.lock:
+                self.injected.append(event)
+        relay = bridge_module.ZeytunSpeechRelay(tts, inject, lambda: self.speak, lambda: self.live,
+                                                text_mode=True, **kwargs)
+        relay.TAIL_GRACE_SECONDS = 0.05
+        return relay
+
+    def test_in_text_mode_the_models_text_parts_are_read_and_its_thoughts_never(self):
+        tts, progress = FakeTts(), []
+        relay = self.text_relay(tts, progress=lambda: progress.append(1))
+        self.assertTrue(relay.filter(self.text_content("Salam! Buyurun, ", thought="**Planning the reply**")))
+        self.assertTrue(relay.filter(self.text_content("hansı dərmanları sifariş etmək istərdiniz? ")))
+        self.assertTrue(relay.filter(self.text_content(generationComplete=True)))
+        self.assertTrue(relay.filter(self.content(turnComplete=True)))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Salam! <breath> Buyurun, hansı dərmanları sifariş etmək istərdiniz?"])
+        self.assertEqual(self.kinds(), [("audio", "Salam! Buyurun, hansı dərmanları sifariş etmək istərdiniz? "),
+                                        ("audio", None), ("audio", None),
+                                        ("generationComplete", None), ("turnComplete", None)])
+        # Neither the answer's text nor the thought reaches the core as a part.
+        self.assertNotIn("Planning", json.dumps(self.injected))
+        self.assertEqual(progress[:1], [1])  # text proves the session lives, as audio did
+
+    def test_text_mode_does_not_take_a_transcription_twice_and_ignores_it_alone(self):
+        tts = FakeTts()
+        relay = self.text_relay(tts)
+        both = self.text_content("Başqa nə əlavə edək? ")
+        both["serverContent"]["outputTranscription"] = {"text": "Başqa nə əlavə edək? "}
+        relay.filter(both)
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Başqa nə əlavə edək?"])
+
+    def test_in_text_mode_a_recovery_turn_is_voiced_too(self):
+        tts = FakeTts()
+        relay = self.text_relay(tts, recovering=lambda: True)
+        first = self.text_content("Bağışlayın, son cümləni təkrar edərsiniz? ")
+        self.assertTrue(relay.filter(first))
+        relay.filter(self.content(turnComplete=True))
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        self.assertEqual(tts.texts, ["Bağışlayın, son cümləni təkrar edərsiniz?"])
+
+    def test_text_mode_interruption_drops_the_rest_of_the_answer(self):
+        tts = FakeTts()
+        relay = self.text_relay(tts)
+        relay.TAIL_GRACE_SECONDS = 5.0
+        relay.filter(self.text_content("Ketonal gel"))
+        interrupted = {"serverContent": {"interrupted": True}}
+        self.assertFalse(relay.filter(interrupted))
+        relay.filter(self.text_content(", on qutu. "))  # a straggler of the dropped generation
+        time.sleep(0.3)
+        self.assertEqual(tts.texts, [])
+
+    def test_text_mode_tts_follows_any_failure_before_audio_to_the_next_path(self):
+        ok = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+            "mimeType": "audio/l16; rate=24000; channels=1", "data": "AQABAA=="}}]}}]}).encode() + b"\n"]
+        for text_mode, answers, expected in (
+                (True, [TimeoutError(), "ok"], 2), (True, [urllib.error.HTTPError("u", 400, "x", {}, None), "ok"], 2),
+                (False, [TimeoutError()], 1)):
+            asked = []
+
+            class Response(list):
+                def __enter__(self): return self
+                def __exit__(self, *exc): return False
+            def opener(req, timeout, answers=answers, asked=asked):
+                asked.append(req.full_url.split("?")[0])
+                answer = answers.pop(0)
+                if answer != "ok":
+                    raise answer
+                return Response(ok)
+            tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=opener,
+                                                vertex=("gen-lang-client-0496964632", "v" * 53),
+                                                any_failure_next=text_mode)
+            if expected == 1:
+                with self.assertRaises(TimeoutError):
+                    tts.stream("Salam", lambda pcm: None, lambda: True)
+            else:
+                self.assertGreater(tts.stream("Salam", lambda pcm: None, lambda: True), 0)
+            self.assertEqual(len(asked), expected)
+
+    def test_text_only_is_the_stations_switch_and_needs_a_tts_voice(self):
+        bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: None)
+        env = {"ZEYTUN_LIVE_TEXT_ONLY": "1"}
+        self.assertFalse(bridge.text_only(env))  # no TTS voice: the model must keep speaking
+        bridge.tts_model, bridge.tts_voice = "gemini-3.8-flash-tts", "Sulafat"
+        self.assertTrue(bridge.text_only(env))
+        self.assertFalse(bridge.text_only({}))
+        self.assertFalse(bridge.text_only({"ZEYTUN_LIVE_TEXT_ONLY": "yes"}))
+
+    def test_adjust_setup_asks_for_text_and_drops_the_audio_only_fields(self):
+        bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: None)
+        bridge.tts_model, bridge.tts_voice = "gemini-3.8-flash-tts", "Sulafat"
+        def setup():
+            return {"generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"languageCode": "az-AZ"}},
+                    "outputAudioTranscription": {}, "inputAudioTranscription": {"languageCodes": ["az-AZ"]},
+                    "contextWindowCompression": {"slidingWindow": {}}, "tools": ["t"]}
+        with patch.dict(os.environ, {"ZEYTUN_LIVE_TEXT_ONLY": "1"}):
+            text = bridge.adjust_setup(setup())
+        self.assertEqual(text["generationConfig"], {"responseModalities": ["TEXT"]})
+        self.assertNotIn("outputAudioTranscription", text)
+        self.assertEqual(text["inputAudioTranscription"], {"languageCodes": ["az-AZ"]})
+        self.assertEqual(text["tools"], ["t"])
+        with patch.dict(os.environ, {"ZEYTUN_LIVE_TEXT_ONLY": ""}):
+            self.assertEqual(bridge.adjust_setup(setup()), setup())
+            with patch.object(bridge_module.ZeytunInboundBridge, "CONTEXT_TRIGGER_TOKENS", 9000), \
+                    patch.object(bridge_module.ZeytunInboundBridge, "CONTEXT_TARGET_TOKENS", 6000):
+                self.assertEqual(bridge.adjust_setup(setup())["contextWindowCompression"],
+                                 {"triggerTokens": 9000, "slidingWindow": {"targetTokens": 6000}})
+
     def tts_with_lines(self, lines, error=None):
         class Response(list):
             def __enter__(self): return self
@@ -2175,11 +2294,15 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(setup["setup"]["inputAudioTranscription"], {})
         obj.pharmacy_preview = True
         self.assertNotIn("languageCode", setup["setup"]["generationConfig"]["speechConfig"])
+        adjusted = []
         obj.pharmacy_bridge = SimpleNamespace(tools=lambda: ["synthetic-declaration"],
                                               transcription=lambda: {"languageCodes": ["az-AZ"]},
-                                              speech_language=lambda: "az-AZ", speech_voice=lambda: None)
+                                              speech_language=lambda: "az-AZ", speech_voice=lambda: None,
+                                              adjust_setup=lambda setup: adjusted.append(setup) or setup)
         pharmacy = globals_["_setup_event"](obj)["setup"]
         self.assertEqual(pharmacy["tools"], ["synthetic-declaration"])
+        # The bridge has the last word on a pharmacy call's setup (text answers, context window).
+        self.assertIs(adjusted[-1], pharmacy)
         self.assertEqual(pharmacy["inputAudioTranscription"], {"languageCodes": ["az-AZ"]})
         self.assertEqual(pharmacy["generationConfig"]["speechConfig"]["languageCode"], "az-AZ")
         # Without a CRM choice the voice stays the station's own.
