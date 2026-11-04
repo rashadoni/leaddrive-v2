@@ -24,41 +24,68 @@ export type PharmacyHistory =
   | { status: "none" }
   | { status: "found"; number: number; orderedAt: string; lineCount: number; lines: PharmacyHistoryLine[] }
 
+/** The 1C pharmacy a call is known to be from: its CRM company, its 1C GUID, or both. */
+export type CallPharmacy = { companyId: string | null; guid: string | null }
+
 /**
- * The call's pharmacy, then its last confirmed order (by the day it was
- * ordered). The pharmacy is the call's own order's, once the call has one: a
- * caller who named another pharmacy than the number's leaves an order without
- * a 1C pharmacy, and then there is none. Before the first save it is the 1C
- * pharmacy the caller's number alone belongs to (`numberPharmacyGuid`; a
- * shared number gives none). Everything is read in the order organization,
- * under its row-level security.
+ * How an order's pharmacy may be trusted as the CALL's pharmacy: found by the
+ * caller's number (unique, or the one of a shared number the caller named) or
+ * set by a manager. A 1C pharmacy matched only to the words the caller said
+ * (`named_matched`) is a suggestion for the manager, never the call's own:
+ * anyone can name any pharmacy.
  */
-export async function lastPharmacyOrder(db: PrismaClient, input: {
+const TRUSTED_IDENTIFICATION = new Set(["phone_unique", "phone_shared", "manager_selected"])
+
+/**
+ * The pharmacy this call is from, read in the order organization under its
+ * row-level security. The call's own order's, once the call has one: a caller
+ * who named another pharmacy than the number's leaves an order without a
+ * trusted 1C pharmacy, and then there is none. Before the first save it is
+ * the 1C pharmacy the caller's number alone belongs to (`numberPharmacyGuid`;
+ * a shared number gives none). `orderId` is the call's own order, if any.
+ */
+export async function callPharmacy(db: PrismaClient, input: {
   organizationId: string; providerCallId: string; numberPharmacyGuid?: string | null
-}): Promise<PharmacyHistory> {
+}): Promise<{ pharmacy: CallPharmacy | null; orderId: string | null }> {
   const orgId = input.organizationId
-  return runWithTenant(orgId, async (): Promise<PharmacyHistory> => {
+  return runWithTenant(orgId, async () => {
     const own = await db.pharmacyPhoneOrder.findUnique({
       where: { organizationId_providerCallId: { organizationId: orgId, providerCallId: input.providerCallId } },
-      select: { id: true, companyId: true, pharmacyGuid: true },
+      select: { id: true, companyId: true, pharmacyGuid: true, pharmacyIdentification: true },
     })
+    const trusted = own && TRUSTED_IDENTIFICATION.has(own.pharmacyIdentification)
     let companyId: string | null = null, guid: string | null = null
     if (own) {
-      if (own.companyId) {
+      if (trusted && own.companyId) {
         const company = await db.company.findFirst({ where: { id: own.companyId, organizationId: orgId, externalSource: PHARMACY_COMPANY_SOURCE },
           select: { id: true, externalId: true } })
         if (company) { companyId = company.id; guid = company.externalId }
-      } else guid = own.pharmacyGuid
+      } else if (trusted) guid = own.pharmacyGuid
     } else guid = input.numberPharmacyGuid ?? null
     if (guid && !companyId) {
       const company = await db.company.findFirst({ where: { organizationId: orgId, externalSource: PHARMACY_COMPANY_SOURCE, externalId: guid },
         select: { id: true } })
       companyId = company?.id ?? null
     }
-    if (!companyId && !guid) return { status: "pharmacy_unknown" }
+    return { pharmacy: companyId || guid ? { companyId, guid } : null, orderId: own?.id ?? null }
+  })
+}
+
+/** Orders of this pharmacy, by its CRM company or its 1C GUID. */
+export function pharmacyOrdersWhere(pharmacy: CallPharmacy) {
+  return [...(pharmacy.companyId ? [{ companyId: pharmacy.companyId }] : []), ...(pharmacy.guid ? [{ pharmacyGuid: pharmacy.guid }] : [])]
+}
+
+/** The call's pharmacy (callPharmacy), then its last confirmed order (by the day it was ordered). */
+export async function lastPharmacyOrder(db: PrismaClient, input: {
+  organizationId: string; providerCallId: string; numberPharmacyGuid?: string | null
+}): Promise<PharmacyHistory> {
+  const orgId = input.organizationId
+  const { pharmacy, orderId } = await callPharmacy(db, input)
+  if (!pharmacy) return { status: "pharmacy_unknown" }
+  return runWithTenant(orgId, async (): Promise<PharmacyHistory> => {
     const last = await db.pharmacyPhoneOrder.findFirst({
-      where: { organizationId: orgId, status: "confirmed", ...(own ? { id: { not: own.id } } : {}),
-        OR: [...(companyId ? [{ companyId }] : []), ...(guid ? [{ pharmacyGuid: guid }] : [])] },
+      where: { organizationId: orgId, status: "confirmed", ...(orderId ? { id: { not: orderId } } : {}), OR: pharmacyOrdersWhere(pharmacy) },
       orderBy: [{ callStartedAt: "desc" }, { number: "desc" }],
       select: { number: true, callStartedAt: true,
         lines: { orderBy: { position: "asc" }, select: { status: true, externalId: true, productName: true, sourceName: true, quantity: true, unit: true } } },

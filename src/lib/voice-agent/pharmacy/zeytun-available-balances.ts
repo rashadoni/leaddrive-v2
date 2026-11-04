@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { PharmacyOrderError } from "./contracts"
 import { PharmacyNameSearch } from "./name-search"
+import { assortmentExtras, productSound, type ProductSound } from "./zeytun-assortment-ranking"
 import { formKey, innKey, parseSubstituteRequest, sameStrength, strengthOf, SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
 import { productLeads, PROMOTIONS_PREFIX, ZeytunPromotions } from "./zeytun-promotions"
 
@@ -127,6 +128,7 @@ export class ZeytunAvailableBalances {
   private readonly codes = new Map<string, Set<string>>()
   private readonly barcodes = new Map<string, Set<string>>()
   private readonly names = new PharmacyNameSearch(true)
+  private readonly sounds = new Map<string, ProductSound>()
   /** 1C's active substance (INN) → items, for substitutes only. */
   private readonly substances = new Map<string, Set<string>>()
   /** Items with a "buy N, get M" promotion, for `promotions:` only. */
@@ -217,25 +219,40 @@ export class ZeytunAvailableBalances {
       nameAz: item.nameAz, baseUnitAsReported: item.baseUnitAsReported }))
   }
 
-  /** `now` dates a `promotions:` request (Baku day); nothing else reads it. */
-  search(organizationId: string, query: unknown, now = Date.now()) {
+  /**
+   * `now` dates a `promotions:` request (Baku day); nothing else reads it.
+   * `assortment`: the calling pharmacy's products, most ordered first
+   * (zeytun-pharmacy-assortment.ts), for a name search only: those the five
+   * lack and the words sound like come as `preferredExtra`
+   * (zeytun-assortment-ranking.ts). The five are the same with it or without.
+   */
+  search(organizationId: string, query: unknown, now = Date.now(),
+    options: { assortment?: { ordered: readonly string[] } | null; within?: number; margin?: number } = {}) {
     this.assertScope(organizationId)
     const parsed = zeytunBalanceQuerySchema.safeParse(query)
     if (!parsed.success) throw new PharmacyOrderError("invalid_request")
     const request = parsed.data
-    let ids: string[]
+    let ids: string[], extra: string[] = []
     if (request.externalId) ids = this.items.has(request.externalId) ? [request.externalId] : []
     else if (request.itemCode) ids = [...(this.codes.get(request.itemCode) ?? [])]
     else if (request.barcode) ids = [...(this.barcodes.get(request.barcode) ?? [])]
     else if (SUBSTITUTE_PREFIX.test(request.text!)) ids = this.substitutes(request.text!)
     else if (PROMOTIONS_PREFIX.test(request.text!)) ids = this.promotions.find(request.text!, now, (filter) => this.closestLeads(filter))
-    else ids = this.names.find(request.text!)
+    else {
+      if (options.assortment?.ordered.length) {
+        const rows = this.names.rank(request.text!)
+        ids = rows.map((row) => row.id)
+        extra = assortmentExtras(request.text!, rows.slice(0, 5), options.assortment.ordered, (id) => this.soundOf(id), options.within, undefined, options.margin)
+      } else ids = this.names.find(request.text!)
+    }
     return {
       catalogVersion: this.version, observedAt: this.context.observedAt, source: this.context.source,
       sourceGeneratedAt: null, coverage: "unverified" as const,
       status: ids.length ? "candidates_only" as const : "not_found_in_snapshot" as const,
       candidateCount: ids.length,
       candidates: ids.slice(0, 5).map((id) => structuredClone(this.items.get(id)!)),
+      // Only when the pharmacy's list adds something: otherwise the result has no such field.
+      ...(extra.length ? { preferredExtra: extra.map((id) => structuredClone(this.items.get(id)!)) } : {}),
       canResolveIdentity: false as const, canSubmitTo1c: false as const,
     }
   }
@@ -263,6 +280,17 @@ export class ZeytunAvailableBalances {
     const top = this.names.find(filter)[0]
     const item = top === undefined ? undefined : this.items.get(top)
     return item ? productLeads(item, makersOf(item)) : new Set()
+  }
+
+  /** A product as the pharmacy's list compares it, worked out once per product; null when the catalog lacks it. */
+  private soundOf(id: string): ProductSound | null {
+    const known = this.sounds.get(id)
+    if (known) return known
+    const item = this.items.get(id)
+    if (!item) return null
+    const sound = productSound(item)
+    this.sounds.set(id, sound)
+    return sound
   }
 
   private assertScope(organizationId: string): void {

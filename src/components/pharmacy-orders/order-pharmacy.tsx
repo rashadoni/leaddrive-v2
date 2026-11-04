@@ -27,6 +27,7 @@ export function OrderPharmacy({ orderId, pharmacy, busy, onSet }: {
   const t = useTranslations("pharmacyPhoneOrders")
   const [choosing, setChoosing] = useState(!pharmacy.company && pharmacy.identification !== "test_call")
   const testCall = pharmacy.identification === "test_call"
+  const checkIt = pharmacy.identification === "named_matched"
 
   if (pharmacy.company && !choosing) {
     return (
@@ -36,8 +37,9 @@ export function OrderPharmacy({ orderId, pharmacy, busy, onSet }: {
             <Link href={`/companies/${pharmacy.company.id}`} className="font-semibold text-primary hover:underline">{pharmacy.company.name} →</Link>
             <div className="truncate text-[11px] text-muted-foreground">{place(pharmacy.company) || "—"}</div>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-emerald-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t(`identification.${pharmacy.identification}`)}
+          {/* Found by the words said, not by the number: the manager checks it before confirming. */}
+          <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold ${checkIt ? "text-amber-600" : "text-emerald-600"}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${checkIt ? "bg-amber-500" : "bg-emerald-500"}`} />{t(`identification.${pharmacy.identification}`)}
           </span>
         </div>
         <div><Button size="sm" variant="outline" disabled={busy} onClick={() => setChoosing(true)}>{t("pharmacyChange")}</Button></div>

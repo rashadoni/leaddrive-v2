@@ -34,6 +34,29 @@ export function normalizeZeytunClientPhone(value: string): string | null {
   if (/^\+[1-9]\d{7,14}$/.test(compact) && (!compact.startsWith("+994") || /^\+994\d{9}$/.test(compact))) return compact
   return null
 }
+/**
+ * Every number a phone field may mean, for the phone line to recognize a
+ * caller — a hint it confirms by asking, never an identity. Wider than
+ * normalizeZeytunClientPhone, which stays strict for bindings: each part of a
+ * list ("+994, 050 123 45 67"), a national number ("050…", the trunk 0 after
+ * 994, nine digits without it), and whatever the strict reading finds. A
+ * part with letters (an extension) or another length gives none. 2026-11-04: 1 118 of 1 127
+ * phones in Zeytun's list are strict already; this reads 5 more of the 9.
+ */
+export function zeytunClientPhoneHints(value: string): string[] {
+  const found = new Set<string>()
+  for (const part of value.split(/[,;/]/u)) {
+    const compact = part.trim().replace(/[\s()\-.]/g, "")
+    if (!/^\+?\d+$/.test(compact)) continue
+    const digits = compact.replace(/^\+/u, "")
+    const local = digits.match(/^(?:9940?|0)?([1-9]\d{8})$/u)?.[1]
+    if (local && !(compact.startsWith("+") && !digits.startsWith("994"))) found.add(`+994${local}`)
+  }
+  const strict = normalizeZeytunClientPhone(value)
+  if (strict) found.add(strict)
+  return [...found]
+}
+
 function mapRow(row: z.infer<typeof rowSchema>) {
   const phoneE164 = normalizeZeytunClientPhone(row.Phone)
   return {
@@ -55,6 +78,8 @@ export class ZeytunClientsDirectory {
   private readonly version: string
   private readonly clients = new Map<string, Client>()
   private readonly phones = new Map<string, Set<string>>()
+  /** Numbers by zeytunClientPhoneHints, for findByPhone (the line's hint); `phones` stays strict for checkBinding. */
+  private readonly hintPhones = new Map<string, Set<string>>()
   private readonly counts: { missingPhoneCount: number; unrecognizedPhoneCount: number; sharedPhoneCount: number; clientsWithSharedPhoneCount: number }
 
   constructor(payload: Uint8Array, context: ZeytunClientsContext) {
@@ -90,6 +115,10 @@ export class ZeytunClientsDirectory {
           if (item.phoneE164) {
             const ids = this.phones.get(item.phoneE164) ?? new Set<string>()
             ids.add(item.counterpartyGuid); this.phones.set(item.phoneE164, ids)
+          }
+          for (const phone of zeytunClientPhoneHints(item.phoneAsReported)) {
+            const ids = this.hintPhones.get(phone) ?? new Set<string>()
+            ids.add(item.counterpartyGuid); this.hintPhones.set(phone, ids)
           }
         }
         depth++
@@ -135,7 +164,7 @@ export class ZeytunClientsDirectory {
   findByPhone(organizationId: string, phone: string) {
     this.assertTenant(organizationId)
     if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new ZeytunClientsDirectoryError("invalid_query")
-    const ids = [...(this.phones.get(phone) ?? [])]
+    const ids = [...(this.hintPhones.get(phone) ?? [])]
     return { candidateCount: ids.length, candidates: ids.slice(0, 5).map((id) => structuredClone(this.clients.get(id)!)),
       requiresReview: true as const, canAuthorizeCall: false as const }
   }

@@ -12,10 +12,13 @@ import type { ZeytunCallDatabase } from "./zeytun-call-loader"
 import { cancelPhoneOrderFromCall, confirmedPhoneOrderLines, orderedPhoneOrderProducts, savePhoneOrderFromCall } from "./phone-orders"
 import { requestAiHandoff } from "../../voip/inbound-handoff"
 import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
-import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
+import { identifyPharmacy, matchPharmacyName, pharmacyHintWords, type PharmacyCandidate,
+  type PharmacyIdentity } from "./zeytun-pharmacy-identity"
 import { readLineSpeech } from "./zeytun-line-speech"
 import { learnNames, type LearnedNames } from "./zeytun-learned-names"
-import { lastPharmacyOrder } from "./zeytun-pharmacy-history"
+import { callPharmacy, lastPharmacyOrder } from "./zeytun-pharmacy-history"
+import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
+  type LoadedAssortment } from "./zeytun-pharmacy-assortment"
 import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
 import type { PrismaClient } from "@prisma/client"
 
@@ -91,7 +94,21 @@ export function createInboundPilotHost(options: {
   }
   // The pharmacy list is small (~1 200 rows, ~0.1 s to parse): re-read when
   // its header changes, looked at no more than once a minute.
-  let pharmacies: { key: string; version: string; at: number; directory: ZeytunClientsDirectory } | null = null
+  let pharmacies: { key: string; version: string; at: number; directory: ZeytunClientsDirectory
+    /** The whole list for matching a name said on the call, and its words for the second ear: worked out once per version. */
+    all?: PharmacyCandidate[]; hints?: string[] } | null = null
+  /** The pharmacy list as read last (findPharmacies keeps it fresh): never read here, so never waits. */
+  function knownPharmacies(config: InboundPilotConfig): { all: PharmacyCandidate[]; hints: string[] } | null {
+    if (!isLineGrant(config) || !config.pharmacySource || !pharmacies) return null
+    const source = config.pharmacySource
+    if (pharmacies.key !== `${source.organizationId}:${source.scopeKey}`) return null
+    const summary = pharmacies.directory.summary(source.organizationId)
+    if (summary.source !== "live" || Date.now() - Date.parse(summary.observedAt) > PHARMACY_DIRECTORY_MAX_AGE_MS) return null
+    pharmacies.all ??= pharmacies.directory.all(source.organizationId)
+      .map((client) => ({ guid: client.counterpartyGuid, name: client.name, address: client.address || null }))
+    pharmacies.hints ??= pharmacyHintWords(pharmacies.all.map((pharmacy) => pharmacy.name))
+    return { all: pharmacies.all, hints: pharmacies.hints }
+  }
   async function findPharmacies(config: InboundPilotConfig, phoneE164: string): Promise<PharmacyCandidate[]> {
     if (!isLineGrant(config) || !config.pharmacySource || !/^\+[1-9]\d{7,14}$/.test(phoneE164)) return []
     const source = config.pharmacySource, key = `${source.organizationId}:${source.scopeKey}`
@@ -110,6 +127,27 @@ export function createInboundPilotHost(options: {
     if (summary.source !== "live" || Date.now() - Date.parse(summary.observedAt) > PHARMACY_DIRECTORY_MAX_AGE_MS) return []
     return pharmacies.directory.findByPhone(source.organizationId, phoneE164).candidates
       .map((client) => ({ guid: client.counterpartyGuid, name: client.name, address: client.address || null }))
+  }
+  // What the calling pharmacy orders (owner 2026-11-04, «слух по истории аптеки»): read once
+  // when the call starts, in the background, and again if the call's order names another pharmacy.
+  const assortments = createCallAssortments()
+  const assortmentSources: AssortmentSource[] = options.orders ? [confirmedOrdersSource(options.orders)] : []
+  async function loadAssortment(config: InboundPilotConfig, call: InboundPilotOrderCall): Promise<LoadedAssortment> {
+    const orgId = config.orderOrganizationId
+    if (!options.orders || !isLineGrant(config) || !orgId || !assortmentSources.length || !(await allowedOrganization(config))) {
+      return { pharmacy: "none", assortment: null }
+    }
+    const byNumber = await findPharmacies(config, callerNumber(call.fromNumber)).catch(() => [])
+    const { pharmacy } = await callPharmacy(options.orders, { organizationId: orgId, providerCallId: call.providerCallId,
+      numberPharmacyGuid: byNumber.length === 1 ? byNumber[0].guid : null })
+    if (!pharmacy) return { pharmacy: "none", assortment: null }
+    const lists = await Promise.all(assortmentSources.map(async (source) => ({ source: source.name,
+      products: await source.products({ organizationId: orgId, catalogScopeKey: config.approvedSource.scopeKey, pharmacy }).catch(() => []) })))
+    const assortment = combineAssortment(lists)
+    // How many products and from where, never which: the call's station id, as the search log.
+    console.log("[zeytun-line] assortment", JSON.stringify({ call: call.providerCallId, products: assortment?.ordered.length ?? 0,
+      sources: assortment?.sources ?? [] }))
+    return { pharmacy: pharmacy.guid ?? pharmacy.companyId ?? "none", assortment }
   }
   // The rehearsal binds its grant to one call; the line claims each call apart.
   const claimPath = (config: InboundPilotConfig, call: InboundPilotOrderCall) => join(dirname(options.configFile),
@@ -151,13 +189,26 @@ export function createInboundPilotHost(options: {
     // contradict, or the one of a shared number the caller named; a name
     // matching nothing in 1C is kept as said, never as a 1C pharmacy.
     const caller = callerNumber(call.fromNumber)
-    const identity = identifyPharmacy(await findPharmacies(config, caller).catch(() => []), pharmacy)
+    let identity: PharmacyIdentity = identifyPharmacy(await findPharmacies(config, caller).catch(() => []), pharmacy)
+    // Not the number's pharmacy: the words may still name one of 1C's by its number and district
+    // ("92 Yasamal"), as the agent wrote them or as the second ear heard a phrase with "aptek".
+    // The manager checks it; it is never the call's own pharmacy (callPharmacy).
+    if (identity.identification === "named_on_call" || identity.identification === "unidentified") {
+      const list = knownPharmacies(config)
+      const heard = secondEar?.pharmacyHeard(call.providerCallId) ?? []
+      const matched = list ? matchPharmacyName([...(pharmacy ? [pharmacy] : []), ...heard], list.all) : null
+      if (matched) identity = { identification: "named_matched", pharmacy: matched, spoken: pharmacy?.trim() || matched.name }
+    }
     // The agent saves after every line; the managers hear of the order
     // when the call ends (call-lifecycle → announceCallOrder).
-    return savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
+    const saved = await savePhoneOrderFromCall(options.orders!, { ...base, callerPhoneE164: caller, identification: identity.identification,
       ...("pharmacy" in identity
         ? { pharmacyName: identity.pharmacy.name, pharmacyGuid: identity.pharmacy.guid, pharmacyAddress: identity.pharmacy.address }
         : "spoken" in identity ? { pharmacyName: identity.spoken } : {}) })
+    // The caller named another pharmacy than the one its list was read for: that list is no longer the call's.
+    const own = identity.identification === "phone_unique" || identity.identification === "phone_shared" ? identity.pharmacy.guid : "none"
+    assortments.refresh(call.providerCallId, own, () => loadAssortment(config, call))
+    return saved
   }
   return {
     async loadConfig() {
@@ -207,7 +258,8 @@ export function createInboundPilotHost(options: {
         // the search already finds Adefa from Adexa, Adelfa or Adesa.
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
           observedAt: snapshot.context.observedAt, source: snapshot.context.source,
-          search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query),
+          search: (query: Parameters<ZeytunAvailableBalances["search"]>[1], options?: { assortment?: { ordered: readonly string[] } | null }) =>
+            feed.search(source.organizationId, query, undefined, options),
           ...(departed?.size ? { departed } : {}) }
       })()
       if (catalog?.key !== key) {
@@ -271,6 +323,10 @@ export function createInboundPilotHost(options: {
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder" | "cancelOrder"> : {}),
     ...(options.orders ? { learnedNames: learnedFor } satisfies Pick<InboundPilotDependencies, "learnedNames"> : {}),
+    ...(options.orders ? {
+      pharmacyAssortment: (config, call) => assortments.get(call.providerCallId, () => loadAssortment(config, call)),
+    } satisfies Pick<InboundPilotDependencies, "pharmacyAssortment"> : {}),
+    pharmacyHints: (config) => knownPharmacies(config)?.hints ?? [],
     ...(options.orders ? {
       // «Как обычно» (owner, 2026-11-04): the pharmacy the call already knows —
       // its order's, or before the first save the one 1C has for this number alone.

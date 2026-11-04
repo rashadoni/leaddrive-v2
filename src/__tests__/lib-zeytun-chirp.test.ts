@@ -7,7 +7,8 @@ import {
   CHIRP_KEY_FILE, CHIRP_PHRASE_LIMIT, CHIRP_TIMEOUT_MS, createChirpRecognizer, TOKEN_REFRESH_AHEAD_MS, createZeytunSecondEar, heardProducts, pairHeard,
   UTTERANCE_WAIT_MS, type ChirpHeard, type ChirpRecognizer,
 } from "@/lib/voice-agent/pharmacy/zeytun-chirp"
-import { createInboundPilotHandler, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { createInboundPilotHandler, type InboundPilotCatalog, type InboundPilotDependencies } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { combineAssortment } from "@/lib/voice-agent/pharmacy/zeytun-pharmacy-assortment"
 import { createInboundPilotHost } from "@/lib/voice-agent/pharmacy/zeytun-inbound-host"
 import { learnNames } from "@/lib/voice-agent/pharmacy/zeytun-learned-names"
 
@@ -242,17 +243,21 @@ const item = (n: number, name: string) => ({ externalId: `cccccccc-${String(n).p
 const ITEMS = [item(1, "Deva 10 mq"), item(2, "Devamin"), item(3, "Adefa № 30"), item(4, "Adefa forte"), item(5, "Adelfan"),
   item(6, "Ketonal 100 mq"), item(7, "Ketonal krem")]
 
-function routeFixture(options: { recognize?: ChirpRecognizer["recognize"]; recognizer?: ChirpRecognizer; secondEar?: boolean } = {}) {
+function routeFixture(options: { recognize?: ChirpRecognizer["recognize"]; recognizer?: ChirpRecognizer; secondEar?: boolean
+  more?: Partial<InboundPilotDependencies> } = {}) {
   const state = { now }
   const catalog: InboundPilotCatalog = {
     organizationId: line.approvedSource.organizationId, scopeKey: line.approvedSource.scopeKey, version: "e".repeat(64),
     observedAt: new Date(now).toISOString(), source: "live",
-    search: vi.fn((query: { text?: string; externalId?: string }) => {
+    search: vi.fn((query: { text?: string; externalId?: string }, options?: { assortment?: { ordered: readonly string[] } | null }) => {
       if (query.externalId) return { status: "candidates_only", candidateCount: 1, candidates: ITEMS.filter(found => found.externalId === query.externalId) }
       const text = (query.text ?? "").toLowerCase()
       const rows = text.startsWith("dev") ? [ITEMS[0], ITEMS[1]] : text.startsWith("adefa") ? [ITEMS[2], ITEMS[3], ITEMS[4], ITEMS[0]]
         : text.startsWith("adexa") ? [ITEMS[4]] : /^ket/.test(text) ? [ITEMS[5], ITEMS[6]] : []
-      return { status: rows.length ? "candidates_only" : "not_found_in_snapshot", candidateCount: rows.length, candidates: rows }
+      // The pharmacy's list adds Ketonal krem after "Deva" (zeytun-assortment-ranking.ts decides that for real).
+      const extra = text.startsWith("dev") && options?.assortment?.ordered.includes(ITEMS[6].externalId) ? [ITEMS[6]] : []
+      return { status: rows.length ? "candidates_only" : "not_found_in_snapshot", candidateCount: rows.length, candidates: rows,
+        ...(extra.length ? { preferredExtra: extra } : {}) }
     }),
   }
   const recognize = vi.fn(options.recognize ?? (async () => ({ text: "Adefa beş qutu", ms: 600 })))
@@ -267,6 +272,8 @@ function routeFixture(options: { recognize?: ChirpRecognizer["recognize"]; recog
     clock: () => state.now,
     ...(options.secondEar === false ? {} : { secondEar }),
   }
+  // Added in place: the mocks above keep their types, and the handler reads this same object.
+  Object.assign(dependencies, options.more)
   const handle = createInboundPilotHandler(token, dependencies)
   const send = (body: unknown) => handle(new Request("https://crm.example.test/internal", {
     method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) }))
@@ -424,3 +431,64 @@ describe("the line takes the pharmacy's phrases and searches what Chirp heard", 
     expect((await f.send({ action: "search", callId, query: { text: "x".repeat(20_000) } })).status).toBe(413)
   })
 })
+
+describe("the line hears and searches knowing which pharmacy calls", () => {
+  afterEach(() => vi.restoreAllMocks())
+  const list = combineAssortment([{ source: "crm_confirmed", products: [ITEMS[6].externalId, ITEMS[2].externalId] }])!
+
+  it("hints 1C's pharmacy words while the caller says who is calling, and products once it orders", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined)
+    const f = routeFixture({ more: { pharmacyHints: () => ["Yasamal", "Xətai"] } })
+    await f.send(utterance(1)); await settle()
+    expect(f.recognize.mock.calls[0][1]).toEqual(["Yasamal", "Xətai", "Adefa", "Ketonal"])
+    await f.send(lookup("Deva"))
+    await f.send(utterance(2)); await settle()
+    expect(f.recognize.mock.calls[1][1]).toEqual(["Adefa", "Ketonal"])
+  })
+
+  it("keeps the phrases that named a pharmacy for the order's save", async () => {
+    const f = routeFixture({ recognize: async () => ({ text: "Salam, Yasamal 92 aptekindən zəng edirəm", ms: 600 }) })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    await f.send(utterance(1)); await settle()
+    // A phrase heard is no failure, whatever it said.
+    expect(warn).not.toHaveBeenCalled()
+    await f.send(utterance(2)); await settle()
+    // Nor is a phrase that named no pharmacy.
+    const order = routeFixture()
+    await order.send(utterance(1)); await settle()
+    expect(warn).not.toHaveBeenCalled()
+    expect(order.dependencies.secondEar!.pharmacyHeard(callId)).toEqual([])
+    const ear = f.dependencies.secondEar!
+    expect(ear.pharmacyHeard(callId)).toEqual(["Salam, Yasamal 92 aptekindən zəng edirəm", "Salam, Yasamal 92 aptekindən zəng edirəm"])
+    expect(ear.lookedUp(callId)).toBe(false)
+    expect(ear.pharmacyHeard("someone-else")).toEqual([])
+  })
+
+  it("hints the pharmacy's own products first, and shows its product after the five and Chirp's", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
+    const f = routeFixture({ more: { pharmacyAssortment: () => list } })
+    await f.send(utterance(1)); await settle()
+    // Ketonal krem: the pharmacy's own, before what all pharmacies order.
+    expect(f.recognize.mock.calls[0][1]).toEqual(["Ketonal", "Adefa"])
+    f.state.now += 1000
+    const body = await (await f.send(lookup("Deva"))).json()
+    expect(body.candidates.map((found: { name: string; alsoHeard?: string }) => [found.name, found.alsoHeard ?? null]))
+      .toEqual([["Deva 10 mq", null], ["Devamin", null], ["Adefa № 30", "Adefa"], ["Adefa forte", "Adefa"], ["Ketonal krem", null]])
+    expect(body.candidateCount).toBe(2)
+    const searchLog = log.mock.calls.find(([tag]) => tag === "[zeytun-line] search")
+    expect(JSON.parse(searchLog![1] as string)).toMatchObject({ usual: 1 })
+    expect(searchLog![1]).not.toMatch(/Ketonal|krem/)
+  })
+
+  it("answers exactly as before without a list", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined)
+    const none = routeFixture({ secondEar: false, more: { pharmacyAssortment: () => null } })
+    const without = routeFixture({ secondEar: false })
+    expect(await (await none.send(lookup("Deva"))).json()).toEqual(await (await without.send(lookup("Deva"))).json())
+    // A list never reaches a substitute or promotions request.
+    const f = routeFixture({ secondEar: false, more: { pharmacyAssortment: () => list } })
+    await f.send(lookup("substitute: paracetamol; 500 mg"))
+    expect(f.catalog.search).toHaveBeenLastCalledWith({ text: "substitute: paracetamol; 500 mg" }, undefined)
+  })
+})
+

@@ -71,6 +71,7 @@ const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const MIGRATION = "prisma/migrations/20261103090000_pharmacy_phone_orders/migration.sql"
 const COMPANIES_MIGRATION = "prisma/migrations/20261106090000_pharmacy_companies/migration.sql"
+const NAMED_MATCHED_MIGRATION = "prisma/migrations/20261126090000_pharmacy_phone_orders_named_matched/migration.sql"
 const ZEYTUN = "org-zeytun"
 const OTHER = "org-other"
 const NOSPA = "11111111-1111-4111-8111-111111111111"
@@ -136,6 +137,8 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     const identification = companies.slice(companies.indexOf(`ALTER TABLE "pharmacy_phone_orders" DROP CONSTRAINT`))
     if (!keyCheck || !identification.includes("manager_selected")) throw new Error("pharmacy company guards not found in the migration")
     sql(scratch!.adminScratch, `${keyCheck[0]}\n${identification}`)
+    // A 1C pharmacy matched to the words said, not the number (named_matched): its own migration.
+    sql(scratch!.adminScratch, readFileSync(path.join(ROOT, NAMED_MATCHED_MIGRATION), "utf8"))
     // companies is under the same FORCE policy in production (an older migration).
     sql(scratch!.adminScratch, `ALTER TABLE "companies" ENABLE ROW LEVEL SECURITY;
       ALTER TABLE "companies" FORCE ROW LEVEL SECURITY;
@@ -461,6 +464,50 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
       { externalId: NOSPA, name: "Но-шпа", listPrice: { amount: "13", per: "qutu" }, ordered: { quantity: 15, unit: "qutu" } },
       { externalId: KETONAL, name: "Кетонал 2 мл № 10", ordered: { quantity: 5, unit: "ədəd" }, unavailable: true },
     ])
+  })
+
+  // Owner, 2026-11-04: «слух по истории аптеки» — what the calling pharmacy orders, for its call only.
+  it("reads the calling pharmacy's confirmed products, never another's, nor one matched only to the words said", async () => {
+    const { callPharmacy } = await import("@/lib/voice-agent/pharmacy/zeytun-pharmacy-history")
+    const { confirmedOrdersSource } = await import("@/lib/voice-agent/pharmacy/zeytun-pharmacy-assortment")
+    const [YASAMAL, NEAR] = [GUID(81), GUID(82)]
+    await admin.company.createMany({ data: [
+      { organizationId: ZEYTUN, name: "92 Yasamal", externalSource: "zeytun_1c", externalId: YASAMAL },
+      { organizationId: ZEYTUN, name: "93 Yasamal", externalSource: "zeytun_1c", externalId: NEAR },
+      { organizationId: OTHER, name: "92 Yasamal", externalSource: "zeytun_1c", externalId: YASAMAL },
+    ] })
+    const order = async (n: number, pharmacyGuid: string, identification: "phone_unique" | "named_matched", lines: Parameters<typeof save>[1]["lines"],
+      status: "confirmed" | "pending_review" = "confirmed", organizationId = ZEYTUN) => {
+      await save(app as unknown as PrismaClient, { organizationId, providerCallId: callId(n), callStartedAt: "2026-10-28T07:00:00.000Z",
+        callerPhoneE164: PHONE, catalog: CATALOG, lines, identification, pharmacyName: "Aptek", pharmacyGuid })
+      if (status === "confirmed") await admin.pharmacyPhoneOrder.updateMany({ where: { organizationId, providerCallId: callId(n) },
+        data: { status, confirmedAt: new Date("2026-10-30T09:00:00.000Z") } })
+    }
+    // Ketonal twice, No-şpa once: the most ordered first. Unconfirmed, another pharmacy's, another organization's: not counted.
+    await order(80, YASAMAL, "phone_unique", [LIST[1], LIST[0]])
+    await order(81, YASAMAL, "phone_unique", [LIST[1], LIST[2]])
+    await order(82, YASAMAL, "phone_unique", [LIST[0]], "pending_review")
+    await order(83, NEAR, "phone_unique", [LIST[0], LIST[0]])
+    await order(84, YASAMAL, "phone_unique", [LIST[0]], "confirmed", OTHER)
+    const source = confirmedOrdersSource(app as unknown as PrismaClient, () => Date.parse("2026-11-04T12:00:00.000Z"))
+    const products = async (providerCallId: string, numberPharmacyGuid: string | null, organizationId = ZEYTUN) => {
+      const { pharmacy } = await callPharmacy(app as unknown as PrismaClient, { organizationId, providerCallId, numberPharmacyGuid })
+      return pharmacy ? source.products({ organizationId, catalogScopeKey: CATALOG.scopeKey, pharmacy }) : null
+    }
+    // Before the first save: the number's pharmacy.
+    expect(await products(callId(89), YASAMAL)).toEqual([KETONAL, NOSPA])
+    expect(await products(callId(89), null)).toBeNull()
+    expect(await products(callId(89), YASAMAL, OTHER)).toEqual([NOSPA])
+    // The call's order named 93 Yasamal by the words alone: no pharmacy, no list — and no `history:` either.
+    await order(85, NEAR, "named_matched", [LIST[1]], "pending_review")
+    expect(await products(callId(85), YASAMAL)).toBeNull()
+    const { lastPharmacyOrder } = await import("@/lib/voice-agent/pharmacy/zeytun-pharmacy-history")
+    expect(await lastPharmacyOrder(app as unknown as PrismaClient, { organizationId: ZEYTUN, providerCallId: callId(85), numberPharmacyGuid: YASAMAL }))
+      .toEqual({ status: "pharmacy_unknown" })
+    // It is still the 1C pharmacy on the order, for the manager to check and send to 1C.
+    expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(85) } })).toMatchObject({
+      pharmacyIdentification: "named_matched", pharmacyGuid: NEAR, companyId: (await admin.company.findFirstOrThrow({
+        where: { organizationId: ZEYTUN, externalId: NEAR } })).id })
   })
 
   it("lets a manager name the pharmacy of a shared number, and lists the pharmacies with their orders", async () => {

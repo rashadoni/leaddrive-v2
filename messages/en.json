@@ -32092,6 +32092,7 @@
       "phone_unique": "recognised by number",
       "phone_shared": "recognised by number and name",
       "named_on_call": "named on the call",
+      "named_matched": "named its number and district — found in 1C, check it",
       "unidentified": "pharmacy not identified",
       "manager_selected": "picked by a manager"
     },

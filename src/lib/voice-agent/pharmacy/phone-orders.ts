@@ -37,8 +37,8 @@ export type PhoneOrderSaveInput = {
   providerCallId: string
   callStartedAt: string
   callerPhoneE164: string
-  identification: "test_call" | "phone_unique" | "phone_shared" | "named_on_call" | "unidentified"
-  /** The pharmacy: 1C's name (phone_*) or the caller's own words (named_on_call). */
+  identification: "test_call" | "phone_unique" | "phone_shared" | "named_matched" | "named_on_call" | "unidentified"
+  /** The pharmacy: 1C's name (phone_*, named_matched) or the caller's own words (named_on_call). */
   pharmacyName?: string
   /** 1C counterparty GUID and address, when the pharmacy was found in 1C. */
   pharmacyGuid?: string

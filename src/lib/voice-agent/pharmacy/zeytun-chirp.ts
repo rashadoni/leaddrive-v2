@@ -319,7 +319,9 @@ export function pairHeard(query: string, products: HeardProduct[], options: { fr
 
 /** `order`: when it arrived among the call's phrases and lookups — the clock may give both the same millisecond. */
 interface Utterance { seq: number; at: number; order: number; text: string | null; settled: boolean; done: Promise<void> }
-interface CallMemory { utterances: Utterance[]; lastLookup: number; batch: Utterance[]; taken: Set<string>; touched: number }
+interface CallMemory { utterances: Utterance[]; lastLookup: number; batch: Utterance[]; taken: Set<string>; touched: number
+  /** Phrases that named a pharmacy ("… aptekindən"), kept for the call: the order's save matches them to 1C. */
+  pharmacy: string[] }
 
 export interface HeardForLookup {
   products: HeardProduct[]
@@ -338,6 +340,10 @@ export interface ZeytunSecondEar {
   hear(callId: string, seq: number, pcm: Buffer, hints: string[]): boolean
   /** The phrases of this lookup: those after the call's previous lookup, waiting up to UTTERANCE_WAIT_MS for their text. */
   heardFor(callId: string): Promise<HeardForLookup | null>
+  /** What the call's phrases with the word "aptek" said, oldest first (at most three); never waits. */
+  pharmacyHeard(callId: string): string[]
+  /** Whether the call has had a product lookup yet: before it, the caller is still saying who is calling. */
+  lookedUp(callId: string): boolean
 }
 
 export function createZeytunSecondEar(options: {
@@ -364,7 +370,7 @@ export function createZeytunSecondEar(options: {
     hear(callId, seq, pcm, hints) {
       const now = clock()
       prune(now)
-      const memory = calls.get(callId) ?? { utterances: [], lastLookup: 0, batch: [], taken: new Set<string>(), touched: now }
+      const memory = calls.get(callId) ?? { utterances: [], lastLookup: 0, batch: [], taken: new Set<string>(), touched: now, pharmacy: [] }
       memory.touched = now
       calls.set(callId, memory)
       // The station resends a phrase it got no answer for: the first one counts.
@@ -378,10 +384,15 @@ export function createZeytunSecondEar(options: {
       utterance.done = options.recognizer.recognize(pcm, hints).then((heard) => {
         if ("text" in heard) utterance.text = heard.text || null
         else console.warn("[zeytun-line] chirp failed", JSON.stringify({ call: callId, seq, ms: heard.ms, error: heard.error }))
+        if (utterance.text && utterance.text.split(/\s+/u).some((word) => PHARMACY_WORD.test(word.replace(/^[^\p{L}]+/u, "")))) {
+          memory.pharmacy = [...memory.pharmacy, utterance.text.slice(0, 240)].slice(-3)
+        }
       }, () => undefined).finally(() => { utterance.settled = true; inFlight-- })
       memory.utterances = [...memory.utterances, utterance].sort((a, b) => a.seq - b.seq).slice(-KEPT_PER_CALL)
       return true
     },
+    pharmacyHeard: (callId) => [...(calls.get(callId)?.pharmacy ?? [])],
+    lookedUp: (callId) => (calls.get(callId)?.lastLookup ?? 0) > 0,
     async heardFor(callId) {
       const now = clock()
       const memory = calls.get(callId)

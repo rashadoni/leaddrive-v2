@@ -12,6 +12,7 @@ import { HISTORY_PREFIX, historyCandidates, type PharmacyHistory } from "./zeytu
 import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
 import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
+import type { PharmacyAssortment } from "./zeytun-pharmacy-assortment"
 import type { DepartedSearch } from "./zeytun-departed-items"
 import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
 
@@ -79,12 +80,16 @@ export type InboundPilotOrderCall = InboundPilotCall | InboundPilotEndedCall
 /** How long after its end a call's list is still taken from the station (its spool keeps it as long). */
 export const LATE_ORDER_WINDOW_MS = 24 * 60 * 60_000
 const awaitingAnswerSchema = callSchema.extend({ status: z.literal("answering"), wasAnswered: z.literal(false) })
+type InboundPilotCatalogItem = { externalId: string; itemCode: string; name: string; nameAz: string | null
+  priceAsReported?: unknown; baseUnitAsReported?: unknown; quantityAsReported?: unknown; promotionAsReported?: unknown }
 export type InboundPilotCatalog = {
   organizationId: string; scopeKey: string; version: string; observedAt: string; source: "live" | "attachment"
-  search: (query: z.infer<typeof zeytunBalanceQuerySchema>) => {
+  /** `assortment`: the calling pharmacy's products (zeytun-assortment-ranking.ts), for a name search; the line only. */
+  search: (query: z.infer<typeof zeytunBalanceQuerySchema>, options?: { assortment?: { ordered: readonly string[] } | null }) => {
     status: string; candidateCount: number
-    candidates: Array<{ externalId: string; itemCode: string; name: string; nameAz: string | null
-      priceAsReported?: unknown; baseUnitAsReported?: unknown; quantityAsReported?: unknown; promotionAsReported?: unknown }>
+    candidates: Array<InboundPilotCatalogItem>
+    /** The pharmacy's products to show after the five, when the five lack them; absent when none. */
+    preferredExtra?: Array<InboundPilotCatalogItem>
   }
   /** Products sold out lately, by name (zeytun-departed-items.ts); the line only. */
   departed?: Pick<DepartedSearch, "find">
@@ -123,6 +128,33 @@ function chirpHints(catalog: InboundPilotCatalog, learned: LearnedNames | null):
   const names = hintNames(catalog, learned, CHIRP_PHRASE_LIMIT)
   chirpHintCache.set(learned, { version: catalog.version, names })
   return names
+}
+/** The pharmacy's own products as the recognizer hears them, worked out once per list and catalog. */
+const assortmentHintCache = new WeakMap<PharmacyAssortment, { version: string; names: string[] }>()
+function assortmentHints(catalog: InboundPilotCatalog, assortment: PharmacyAssortment): string[] {
+  const known = assortmentHintCache.get(assortment)
+  if (known?.version === catalog.version) return known.names
+  const names = new Set<string>()
+  for (const id of assortment.ordered) {
+    const item = catalog.search({ externalId: id }).candidates[0]
+    const name = item && spokenProductName(item)
+    if (name) names.add(name)
+  }
+  const value = [...names]
+  assortmentHintCache.set(assortment, { version: catalog.version, names: value })
+  return value
+}
+/**
+ * The second ear's hints for one phrase: the calling pharmacy's own products
+ * first, then what the organization's pharmacies order, at most
+ * CHIRP_PHRASE_LIMIT. Without a list, exactly chirpHints.
+ */
+function phraseHints(catalog: InboundPilotCatalog, learned: LearnedNames | null, assortment: PharmacyAssortment | null): string[] {
+  const all = chirpHints(catalog, learned)
+  const own = assortment ? assortmentHints(catalog, assortment) : []
+  if (!own.length) return all
+  const seen = new Set(own)
+  return [...own, ...all.filter(name => !seen.has(name))].slice(0, CHIRP_PHRASE_LIMIT)
 }
 /** The feed's price for one base unit. Owner, 2026-10-23: one price for all
  * of Zeytun's pharmacies and it is final ("это цена для аптек конечная"), so it
@@ -218,6 +250,11 @@ export type InboundPilotDependencies = {
   pharmacyHistory?: (config: LineGrant, call: InboundPilotOrderCall) => Promise<PharmacyHistory>
   /** Google Chirp next to the model (zeytun-chirp.ts); off without its key file. Line calls only. */
   secondEar?: ZeytunSecondEar
+  /** What the pharmacy this call is known to be from orders (zeytun-pharmacy-assortment.ts); null when
+   * none or not read yet — the first ask starts reading it. Never waits. Line calls only. */
+  pharmacyAssortment?: (config: LineGrant, call: InboundPilotOrderCall) => PharmacyAssortment | null
+  /** Words of 1C's pharmacy names (districts) for the second ear while the caller says who is calling; never waits. */
+  pharmacyHints?: (config: LineGrant) => string[]
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
@@ -641,6 +678,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         if (prompt.length > LINE_PROMPT_MAX_CHARS) prompt = composeLinePrompt({ ...speech, manner: "", knowledge: "", rules: "" })
         // The second ear's token is fetched now, not on the pharmacy's first phrase.
         if (hearing) dependencies.secondEar?.warm()
+        // The pharmacy's list is read now, in the background, for the call's first lookup and phrase.
+        if (isLineGrant(config)) dependencies.pharmacyAssortment?.(config, call)
         if (line) {
           console.log("[zeytun-line] speech", JSON.stringify({ own: (Object.keys(speech) as (keyof LineSpeech)[]).filter(key => speech[key]),
             notesKept: prompt.includes("<company_notes>") }))
@@ -677,7 +716,12 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         // phrase it drops costs nothing but the second ear on that phrase.
         const ear = dependencies.secondEar
         if (!isLineGrant(config) || !ear || finalCall.endedAt !== null || !(await ear.enabled())) return searchResponse({ status: "off" }, 202)
-        const taken = ear.hear(input.callId, input.seq, pcm!, chirpHints(catalog, dependencies.learnedNames?.(config) ?? null))
+        const hints = phraseHints(catalog, dependencies.learnedNames?.(config) ?? null, dependencies.pharmacyAssortment?.(config, finalCall) ?? null)
+        // Before the call's first product lookup the caller is still answering "which pharmacy"
+        // (owner's call 2026-11-04: "Zəfər aptekindən" heard as "Aspirin"): 1C's pharmacy words come first.
+        const named = ear.lookedUp(input.callId) ? [] : dependencies.pharmacyHints?.(config) ?? []
+        const taken = ear.hear(input.callId, input.seq, pcm!, named.length
+          ? [...named, ...hints.filter(name => !named.includes(name))].slice(0, CHIRP_PHRASE_LIMIT) : hints)
         return searchResponse({ status: taken ? "accepted" : "busy" }, 202)
       }
       if (input.action === "transfer") {
@@ -710,7 +754,12 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
           ...searchRestrictions })
       }
-      const found = catalog.search(input.query)
+      // The calling pharmacy's products the five lack, when the caller's word sounds like one (zeytun-assortment-ranking.ts);
+      // a substitute, promotions or code lookup is no wording of a product and is searched as before.
+      const productWords = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text) && !PROMOTIONS_PREFIX.test(input.query.text)
+      const assortment = productWords && isLineGrant(config) ? dependencies.pharmacyAssortment?.(config, finalCall) ?? null : null
+      const prefer = assortment ? { assortment } : undefined
+      const found = catalog.search(input.query, prefer)
       // A wording its managers already confirmed leads to that product first;
       // a substitute or promotions request is no wording of a product.
       const learned = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text) && !PROMOTIONS_PREFIX.test(input.query.text)
@@ -732,7 +781,9 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         // call's station id, never the caller: the line's quality report
         // (scripts/zeytun-line/quality-report.sh) counts lookups per call.
         console.log("[zeytun-line] search", JSON.stringify({ call: input.callId, query: input.query.text.slice(0, 240), found: result.candidateCount,
-          ...(known ? { learned: true } : {}) }))
+          ...(known ? { learned: true } : {}),
+          // What the pharmacy's list added after the five: how many, never which.
+          ...(assortment ? { usual: found.preferredExtra?.length ?? 0 } : {}) }))
       }
       const shown = result.candidates.slice(0, 5)
       // The second ear (owner 2026-11-04: «Да, встраивай»): what Chirp heard of
@@ -740,6 +791,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       // candidates the model's five lack come after them, marked alsoHeard.
       // The model's own candidates keep their order.
       const alsoHeard: Array<ReturnType<typeof candidate> & { alsoHeard: string }> = []
+      // The pharmacy's products what Chirp heard sounds like, as for the model's words.
+      let heardUsual: InboundPilotCatalogItem[] = []
       const ear = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text) && !PROMOTIONS_PREFIX.test(input.query.text)
         ? dependencies.secondEar : undefined
       if (ear && input.query.text) {
@@ -748,7 +801,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           const product = pairHeard(input.query.text, heard.products, { fresh: heard.fresh, taken: heard.taken })
           if (product) {
             heard.taken.add(product.text)
-            const heardFound = catalog.search({ text: product.text })
+            const heardFound = catalog.search({ text: product.text }, prefer)
+            heardUsual = heardFound.preferredExtra ?? []
             const heardLearned = isLineGrant(config) ? dependencies.learnedNames?.(config)?.productFor(product.text) : null
             const heardKnown = heardLearned ? catalog.search({ externalId: heardLearned }).candidates[0] : undefined
             const heardItems = heardKnown ? [heardKnown, ...heardFound.candidates.filter(item => item.externalId !== heardKnown.externalId)] : heardFound.candidates
@@ -778,12 +832,17 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       })
       if (soldOut.length) console.log("[zeytun-line] sold out", JSON.stringify({ call: input.callId, found: soldOut.length }))
       const heardShown = alsoHeard.slice(0, Math.max(0, STATION_CANDIDATES_MAX - shown.length - soldOut.length))
-      const extra = soldOut.length + heardShown.length
+      // The pharmacy's products the five lack, in the room the station's seven leave after Chirp's.
+      const usual = [...(found.preferredExtra ?? []), ...heardUsual].filter((item, index, all) => all.findIndex(other => other.externalId === item.externalId) === index
+        && !shown.some(own => own.externalId === item.externalId)
+        && !heardShown.some(own => own.externalId === item.externalId) && !soldOut.some(own => own.externalId === item.externalId))
+        .slice(0, Math.max(0, STATION_CANDIDATES_MAX - shown.length - soldOut.length - heardShown.length)).map(candidate)
+      const extra = soldOut.length + heardShown.length + usual.length
       // Nothing found by the model's words but something sold out or by Chirp's: there are candidates to offer.
       const status = !shown.length && extra ? "candidates_only" : result.status
       return searchResponse({ status, mode: "owner_inbound_preview", customerVerified: false,
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount + extra > 1,
-        candidates: [...shown.map(candidate), ...soldOut, ...heardShown],
+        candidates: [...shown.map(candidate), ...soldOut, ...heardShown, ...usual],
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
     } catch { return searchResponse({ enabled: false, error: "pilot_unavailable", candidates: [], ...searchRestrictions }, 503) }
