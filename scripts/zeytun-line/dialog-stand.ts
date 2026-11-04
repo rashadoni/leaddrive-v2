@@ -31,12 +31,13 @@
  * printed, and nothing stays on prod. The key is shared with the live line:
  * --max-requests caps one run (gemini-3.8-flash, not the line's TTS model).
  */
-import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from "node:child_process"
+import { spawn, execFileSync, type ChildProcessByStdio, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { createInterface } from "node:readline"
+import type { Readable, Writable } from "node:stream"
 import { fileURLToPath } from "node:url"
 
 import { ZeytunAvailableBalances } from "../../src/lib/voice-agent/pharmacy/zeytun-available-balances"
@@ -102,7 +103,8 @@ class RemoteGemini {
 /* ---------- the station's bridge ---------- */
 
 class StationBridge {
-  private child: ChildProcessWithoutNullStreams
+  /** stderr is inherited: the bridge's own errors go straight to the stand's stderr. */
+  private child: ChildProcessByStdio<Writable, Readable, null>
   private waiting: ((value: { done?: unknown; error?: string }) => void)[] = []
   constructor(private crm: (body: Json) => Promise<unknown>, station?: string) {
     this.child = spawn("python3", ["-I", join(HERE, "dialog-stand-bridge.py"), ...(station ? ["--station", station] : [])], { stdio: ["pipe", "pipe", "inherit"] })
