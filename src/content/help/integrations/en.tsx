@@ -123,6 +123,24 @@ export default function IntegrationsHelpEn() {
         </HelpCallout>
       </HelpSection>
 
+      <HelpSection title="Microsoft Outlook — the same, for a work calendar">
+        <p>
+          The <strong>Microsoft Outlook</strong> card works the same way and on its own:
+          connect Outlook only, Google only, or both — then the hours of both count as
+          taken, and a LeadDrive meeting appears in each of them.
+        </p>
+        <p>
+          On the day rail, the title of a calendar event is shown only to the person whose
+          calendar it is. A manager sees that the hour is taken, and by which calendar, but not by what.
+        </p>
+        <HelpCallout kind="warning">
+          <p>
+            Until an administrator has registered the application with Microsoft the card
+            says so, and <HelpKey>Connect</HelpKey> stays off.
+          </p>
+        </HelpCallout>
+      </HelpSection>
+
       <HelpSection title="Slack — notifications to a channel">
         <p>
           Slack uses an <strong>incoming webhook URL</strong> you create in your Slack

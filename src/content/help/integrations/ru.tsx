@@ -121,6 +121,24 @@ export default function IntegrationsHelpRu() {
         </HelpCallout>
       </HelpSection>
 
+      <HelpSection title="Microsoft Outlook — то же, для рабочего календаря">
+        <p>
+          Карточка <strong>Microsoft Outlook</strong> работает так же и независимо: можно
+          подключить только Outlook, только Google или оба — тогда занятыми считаются часы
+          обоих, а встреча LeadDrive появляется в каждом.
+        </p>
+        <p>
+          Название встречи из календаря на шкале дня видит только тот, чей это календарь.
+          Руководитель видит, что час занят и каким календарём, но не чем именно.
+        </p>
+        <HelpCallout kind="warning">
+          <p>
+            Пока администратор не зарегистрировал приложение в Microsoft, карточка так и
+            говорит, а кнопка <HelpKey>Подключить</HelpKey> выключена.
+          </p>
+        </HelpCallout>
+      </HelpSection>
+
       <HelpSection title="Slack — уведомления в канал">
         <p>
           Slack использует <strong>URL входящего вебхука</strong>, который вы создаёте в

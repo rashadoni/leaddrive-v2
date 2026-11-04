@@ -1,4 +1,5 @@
-import { calendarAccount } from "@/lib/google-calendar-account"
+import { connectedCalendarsOf } from "@/lib/calendar/accounts"
+import { connectedCalendarKey } from "@/lib/calendar/providers"
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { preloadTenantDataKeys } from "@/lib/crypto/tenant-data-keys"
@@ -60,7 +61,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
     if (busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
     return { ok: false, reason: "taken" }
   }
-  const accounts = busy.calendarAccountIds
+  const calendarKeys = busy.calendarKeys
   const load = await prisma.booking.groupBy({ by: ["hostUserId"], where: { organizationId: orgId, hostUserId: { in: slot.hostIds }, status: "confirmed", startsAt: { gte: now } }, _count: { _all: true } })
   const count = (id: string) => load.find((row) => row.hostUserId === id)?._count._all ?? 0
   const candidates = [...slot.hostIds].sort((a, b) => count(a) - count(b) || page.hostIds.indexOf(a) - page.hostIds.indexOf(b))
@@ -76,8 +77,8 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking:${orgId}:${hostId}`}))`
         const currentPage = await tx.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
         const host = await tx.user.findFirst({ where: bookingHostWhere(orgId, [hostId]) })
-        const account = await calendarAccount(tx, hostId)
-        if (!currentPage || currentPage.version !== page.version || !currentPage.hostIds.includes(hostId) || Date.now() - checkedAt > 15000 || (account?.id ?? null) !== (accounts.get(hostId) ?? null)) throw new BookingCommandError("AVAILABILITY_CHANGED")
+        const connected = await connectedCalendarsOf(tx, hostId)
+        if (!currentPage || currentPage.version !== page.version || !currentPage.hostIds.includes(hostId) || Date.now() - checkedAt > 15000 || connectedCalendarKey(connected) !== (calendarKeys.get(hostId) ?? "")) throw new BookingCommandError("AVAILABILITY_CHANGED")
         if (!host) throw new BookingCommandError("SLOT_TAKEN")
         if (access && !access.administrator && hostId !== access.userId && !await tx.bookingCoordinatorGrant.findFirst({ where: { organizationId: orgId, coordinatorUserId: access.userId, hostUserId: hostId, canManage: true } })) throw new BookingCommandError("FORBIDDEN", 403)
         await assertBookingInterval(tx, orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes)

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
-import { Webhook, Calendar, MessageSquare, Zap, Plus, Trash2, Check, X, ExternalLink, Copy } from "lucide-react"
+import { Webhook, Calendar, CalendarClock, MessageSquare, Zap, Plus, Trash2, Check, X, ExternalLink, Copy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PageDescription } from "@/components/page-description"
 import { WebTrackingCard } from "@/components/settings/web-tracking-card"
@@ -111,6 +111,13 @@ export default function IntegrationsPage() {
   const [gcalConnected, setGcalConnected] = useState(false)
   const [gcalLoading, setGcalLoading] = useState(false)
 
+  // Microsoft Outlook. `configured` is the server's answer about the
+  // application registration, not about this person: without it the button
+  // would send them to Microsoft only to be refused there.
+  const [outlookConnected, setOutlookConnected] = useState(false)
+  const [outlookConfigured, setOutlookConfigured] = useState(true)
+  const [outlookLoading, setOutlookLoading] = useState(false)
+
   // Slack
   const [slackConfigs, setSlackConfigs] = useState<SlackConfig[]>([])
   const [showSlackForm, setShowSlackForm] = useState(false)
@@ -186,6 +193,32 @@ export default function IntegrationsPage() {
     } catch {}
   }, [headers])
 
+  const fetchOutlookStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/integrations/outlook-calendar/status", { headers })
+      const json = await res.json()
+      if (json.success) { setOutlookConnected(json.data.connected); setOutlookConfigured(json.data.configured) }
+    } catch {}
+  }, [headers])
+
+  const connectOutlook = async () => {
+    setOutlookLoading(true)
+    try {
+      const res = await fetch("/api/v1/integrations/outlook-calendar/connect", { headers })
+      const json = await res.json()
+      if (json.success && json.url) window.location.href = json.url
+    } catch {} finally { setOutlookLoading(false) }
+  }
+
+  const disconnectOutlook = async () => {
+    if (!confirm(t("outlookDisconnectConfirm"))) return
+    setOutlookLoading(true)
+    try {
+      await fetch("/api/v1/integrations/outlook-calendar/status", { method: "DELETE", headers })
+      setOutlookConnected(false)
+    } catch {} finally { setOutlookLoading(false) }
+  }
+
   const connectGcal = async () => {
     setGcalLoading(true)
     try {
@@ -211,14 +244,19 @@ export default function IntegrationsPage() {
     fetchSlack()
     fetchTeams()
     fetchGcalStatus()
+    fetchOutlookStatus()
     fetchEsignProvider()
-    // Check for gcal callback result in URL
+    // Check for a calendar callback result in URL
     const params = new URLSearchParams(window.location.search)
     if (params.get("gcal") === "success") {
       setGcalConnected(true)
       window.history.replaceState({}, "", window.location.pathname)
     }
-  }, [fetchEsignProvider, fetchGcalStatus, fetchSlack, fetchTeams, fetchWebhooks])
+    if (params.get("outlook") === "success") {
+      setOutlookConnected(true)
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+  }, [fetchEsignProvider, fetchGcalStatus, fetchOutlookStatus, fetchSlack, fetchTeams, fetchWebhooks])
 
   const createWebhook = async () => {
     if (!webhookUrl || webhookEvents.length === 0) return
@@ -410,6 +448,24 @@ export default function IntegrationsPage() {
             )}
           </CardContent>
         </Card>
+        <Card className={outlookConnected ? "border-green-200 dark:border-green-800" : ""}>
+          <CardContent className="pt-6 text-center">
+            <CalendarClock className={cn("h-8 w-8 mx-auto mb-2", outlookConnected ? "text-green-500" : "text-blue-500")} />
+            <h3 className="font-semibold">{t("outlookCalendar")}</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              {outlookConnected ? t("outlookConnected") : outlookConfigured ? t("outlookNotConnected") : t("outlookNotConfigured")}
+            </p>
+            {outlookConnected ? (
+              <Button size="sm" variant="outline" onClick={disconnectOutlook} disabled={outlookLoading} className="gap-1 text-red-600 border-red-200 hover:bg-red-50">
+                <X className="h-3 w-3" /> {t("outlookDisconnect")}
+              </Button>
+            ) : (
+              <Button size="sm" onClick={connectOutlook} disabled={outlookLoading || !outlookConfigured} className="gap-1">
+                <ExternalLink className="h-3 w-3" /> {t("outlookConnect")}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="pt-6 text-center">
             <MessageSquare className="h-8 w-8 mx-auto mb-2 text-purple-500" />
@@ -441,6 +497,7 @@ export default function IntegrationsPage() {
           </CardContent>
         </Card>
       </div>
+      <p className="text-sm text-muted-foreground">{t("calendarSyncHint")}</p>
 
       {/* Webhooks Section */}
       <Card>

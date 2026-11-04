@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { BookingPagesPanel } from "./booking-pages-panel"
-import { BookingDayLegend, BookingDaySummary, BookingDayTimeline, BookingHostChips, BookingWeekStrip, mergeFreeWindows, minutesFrom, spansClashing, subtractSpans, type TimelineBusy, type TimelineMeeting, type TimelineWindow } from "./booking-day-timeline"
+import { BookingDayLegend, BookingDaySummary, BookingDayTimeline, BookingHostChips, BookingWeekStrip, mergeFreeWindows, minutesFrom, spansClashing, subtractSpans, type TimelineBusy, type TimelineMeeting, type TimelineSpan, type TimelineWindow } from "./booking-day-timeline"
 import { BookingDetail, type DayScheduleRow } from "./booking-detail"
 import { type BookingHistoryItem } from "./booking-history"
 import { BookingCreatePanel, type BookingAlternative, type BookingReadiness } from "./booking-create-panel"
@@ -225,6 +225,15 @@ export function BookingWorkspace() {
     queryFn: ({ signal }) => readBookingData<{ page: { durationMinutes: number }; days: DaySlots[]; busy: { hostId: string; intervals: { start: string; end: string }[] }[] }>(`/api/v1/bookings/availability?${slotsRequest}`, signal),
     enabled: contextReady && tab === "meetings" && view === "day" && Boolean(slotsRequest), retry: false, refetchInterval: 60_000, refetchIntervalInBackground: false,
   })
+  // What this host's own Outlook or Google calendar has that day. Only for
+  // the host the rail actually shows: one request, not one per colleague.
+  const soleHostId = host || (context?.hosts.filter((item) => item.isActive && item.canReceiveBookings).length === 1 ? context.hosts.find((item) => item.isActive && item.canReceiveBookings)!.id : "")
+  const externalQuery = useQuery({
+    queryKey: ["booking-external", identity, soleHostId, selectedDay, revision],
+    queryFn: ({ signal }) => readBookingData<{ events: { start: string; end: string; provider: "google" | "microsoft"; title: string | null }[]; unavailable: boolean }>(`/api/v1/bookings/external-events?hostId=${encodeURIComponent(soleHostId)}&day=${selectedDay}`, signal),
+    enabled: contextReady && tab === "meetings" && view === "day" && Boolean(soleHostId), retry: false,
+    refetchInterval: 60_000, refetchIntervalInBackground: false,
+  })
   const loaded = listQuery.isError ? [] : listQuery.data?.items ?? []
   const items = view === "day" && host ? loaded.filter((item) => item.hostUserId === host) : loaded
   const nextCursor = listQuery.data?.nextCursor ?? null
@@ -271,12 +280,26 @@ export function BookingWorkspace() {
   // Grey «busy» blocks name one person's time, so they are drawn only where
   // the rail shows one person: a host was chosen, or the team is one host.
   const soleHost = host || (hostsBooking.length === 1 ? hostsBooking[0].id : "")
+  // The same hours, named where they came from a calendar this reader may
+  // see: the free slots already treat them as taken, and a block that says
+  // «Planning · Outlook» is the difference between one window and two.
+  const externalEvents = (externalQuery.data?.events ?? []).map((event) => ({
+    start: minutesFrom(dayStartMs, event.start),
+    end: minutesFrom(dayStartMs, event.end),
+    label: event.title ?? "",
+    source: event.provider,
+  }))
+  const fromCalendar = (span: TimelineSpan) => externalEvents.find((event) => event.start <= span.start && event.end >= span.end)
   const busySpans: TimelineBusy[] = soleHost ? (slotsQuery.data?.busy.find((row) => row.hostId === soleHost)?.intervals ?? [])
     .flatMap((interval) => subtractSpans(
       { start: Math.max(0, minutesFrom(dayStartMs, interval.start)), end: Math.min(24 * 60, minutesFrom(dayStartMs, interval.end)) },
       dayMeetings.filter((meeting) => meeting.status !== "cancelled"),
     ))
-    .filter((span) => span.end - span.start >= 15) : []
+    .filter((span) => span.end - span.start >= 15)
+    .map((span) => {
+      const event = fromCalendar(span)
+      return event ? { ...span, label: event.label, source: event.source } : span
+    }) : []
   const hostChips = hostsBooking.map((item) => ({
     id: item.id,
     name: item.name,
@@ -369,7 +392,7 @@ export function BookingWorkspace() {
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-semibold first-letter:uppercase">{formatDate(atMidnight(selectedDay), locale, { weekday: "long", day: "numeric", month: "long", timeZone: timezone })}</h2>
                 <p className="mt-0.5 text-sm text-muted-foreground">{freePage ? t("dayPageLine", { page: freePage.title, minutes: slotMinutes, zone: timezone }) : t("timezoneNote", { zone: timezone })}</p>
-                <BookingDaySummary meetings={dayMeetings} windows={freeWindows} duration={duration} busyHint={t("busyHint")} windowsHint={freePage ? t("windowsHint", { page: freePage.title }) : ""} />
+                <BookingDaySummary meetings={dayMeetings} windows={freeWindows} external={busySpans.filter((span) => span.source)} duration={duration} busyHint={t("busyHint")} windowsHint={freePage ? t("windowsHint", { page: freePage.title }) : ""} />
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {selectedDay === today ? null : <Button variant="outline" size="sm" onClick={() => { setDay(today); setPendingStart(null) }}>{t("jumpToday")}</Button>}
