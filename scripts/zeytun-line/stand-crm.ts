@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url"
 import { ZeytunAvailableBalances } from "../../src/lib/voice-agent/pharmacy/zeytun-available-balances"
 import { createInboundPilotHandler, type InboundPilotCatalog } from "../../src/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { resolvePhoneOrderLines, type PhoneOrderLineInput } from "../../src/lib/voice-agent/pharmacy/phone-orders"
+import { createDepartedSearch, nextDeparted } from "../../src/lib/voice-agent/pharmacy/zeytun-departed-items"
 import type { PharmacyHistory } from "../../src/lib/voice-agent/pharmacy/zeytun-pharmacy-history"
 import type { ZeytunSecondEar } from "../../src/lib/voice-agent/pharmacy/zeytun-chirp"
 
@@ -58,16 +59,24 @@ export class StationBridge {
 
 /* ---------- the CRM on a snapshot ---------- */
 
-export async function loadCatalog(path: string): Promise<{ catalog: InboundPilotCatalog; snapshotAt: string }> {
+async function loadFeed(path: string) {
   const raw = readFileSync(path), newline = raw.indexOf(10)
   const header = JSON.parse(raw.subarray(0, newline).toString()) as { organizationId: string; scopeKey: string; version: string; observedAt: string }
   // The handler serves a catalog at most a day old; the stand reads it as observed now.
   const observedAt = new Date().toISOString()
-  const feed = await ZeytunAvailableBalances.build(raw.subarray(newline + 1), { organizationId: header.organizationId, observedAt, source: "live" })
+  return { header, observedAt, feed: await ZeytunAvailableBalances.build(raw.subarray(newline + 1), { organizationId: header.organizationId, observedAt, source: "live" }) }
+}
+
+/** `departedFrom`: an older snapshot of the same scope; what it had and this one lacks is sold out, as the refresh records it. */
+export async function loadCatalog(path: string, departedFrom?: string): Promise<{ catalog: InboundPilotCatalog; snapshotAt: string; soldOut: number }> {
+  const { header, observedAt, feed } = await loadFeed(path)
+  const before = departedFrom ? (await loadFeed(departedFrom)).feed : null
+  const departed = before ? nextDeparted({ previous: [], before: before.labels(header.organizationId), now: feed.labels(header.organizationId), at: Date.now() }) : []
   return {
-    snapshotAt: header.observedAt,
+    snapshotAt: header.observedAt, soldOut: departed.length,
     catalog: { organizationId: header.organizationId, scopeKey: header.scopeKey, version: header.version, observedAt, source: "live",
-      search: (query) => feed.search(header.organizationId, query) } as InboundPilotCatalog,
+      search: (query) => feed.search(header.organizationId, query),
+      ...(departed.length ? { departed: createDepartedSearch(departed) } : {}) } as InboundPilotCatalog,
   }
 }
 

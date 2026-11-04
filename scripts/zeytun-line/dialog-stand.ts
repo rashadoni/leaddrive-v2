@@ -22,6 +22,7 @@
  *     [--scenarios scripts/zeytun-line/dialog-scenarios.json] [--only id,id] [--repeat N] [--out report.md]
  *     [--model gemini-3.8-flash] [--thinking low] [--max-requests 300]
  *     [--station <fanum-zeytun-inbound.py of a branch>]   (a station fix on its branch, before it is merged)
+ *     [--departed-from <older snapshot>]   (what sold out since it, as the catalog refresh records it)
  *   (npx tsx works the same where it is installed)
  *
  * The snapshot is the line's catalog file from prod
@@ -290,7 +291,8 @@ async function main() {
     .filter((scenario) => !flags.only || flags.only.split(",").includes(scenario.id))
   const declarations = JSON.parse(readFileSync(join(HERE, "station-tool-declarations.json"), "utf8")) as Declarations
   const model = flags.model ?? "gemini-3.8-flash", thinking = flags.thinking ?? "low", repeat = Number(flags.repeat ?? 1), station = flags.station
-  const { catalog, snapshotAt } = await loadCatalog(snapshot)
+  const { catalog, snapshotAt, soldOut } = await loadCatalog(snapshot, flags["departed-from"])
+  if (flags["departed-from"]) process.stderr.write(`sold out since the older snapshot: ${soldOut}\n`)
   const maxRequests = Number(flags["max-requests"] ?? 300)
   const gemini = new RemoteGemini(maxRequests)
   const runs: Run[] = []

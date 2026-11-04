@@ -1,6 +1,7 @@
 import { mayUseAttendanceSelf } from "@/lib/mtm/attendance-employee-contract"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { readOwnAttendanceBreakDay } from "@/lib/mtm/attendance-break-kinds"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { agentPermissionStates } from "@/lib/mtm/agent-permissions"
@@ -436,6 +437,10 @@ export const GET = withMobileRls(async (req, auth) => {
           select: { occurredAt: true },
         })
       : null
+    // Kinds of a break, when the company asks for them (owner, 2026-11-04): the
+    // list, today's minutes of each and the kind of the break going on now.
+    // Older APKs ignore the key and keep «Fasilə» as one tap.
+    const attendanceBreaks = attendanceMarks ? await readOwnAttendanceBreakDay(prisma, { organizationId: auth.orgId, agentId: auth.agentId }, workday?.id ?? null) : null
     const qrEnabled = workforceEnabled && auth.tenantCapabilities.attendanceQr === true
     const deviceTrustEnabled = workforceEnabled && auth.tenantCapabilities.attendanceDeviceTrust === true
     const attendance = await mobileAttendanceManifest({
@@ -521,6 +526,7 @@ export const GET = withMobileRls(async (req, auth) => {
             ...(settings.attendanceEnabled ? { attendanceRequests: attendanceSelf, attendanceWorkday: attendanceMarks, attendanceLocation: attendanceMarks, attendanceInstallation: attendanceMarks, ...(settings.attendanceBranchQrEnabled === true ? { attendanceBranchQr: attendanceMarks } : {}) } : {}),
           },
           ...(attendanceMarks ? { attendanceMarkVersion: 1 } : {}),
+          ...(attendanceBreaks ? { attendanceBreakKinds: attendanceBreaks } : {}),
           ...(attendanceMarks && settings.attendanceBranchQrEnabled === true ? { attendanceBranchQrVersion: 1 } : {}),
           // This server lets an employee return to the workday they closed
           // earlier today (POST …/route-field/workday-return). Not a switch —

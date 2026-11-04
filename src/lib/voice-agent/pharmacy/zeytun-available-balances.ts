@@ -210,6 +210,13 @@ export class ZeytunAvailableBalances {
     }
   }
 
+  /** Every item by its labels, for the list of sold-out products (zeytun-departed-items.ts). */
+  labels(organizationId: string) {
+    this.assertScope(organizationId)
+    return [...this.items.values()].map((item) => ({ externalId: item.externalId, itemCode: item.itemCode, name: item.name,
+      nameAz: item.nameAz, baseUnitAsReported: item.baseUnitAsReported }))
+  }
+
   /** `now` dates a `promotions:` request (Baku day); nothing else reads it. */
   search(organizationId: string, query: unknown, now = Date.now()) {
     this.assertScope(organizationId)

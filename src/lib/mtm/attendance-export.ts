@@ -28,9 +28,9 @@ export function buildAttendancePdf(table: AttendanceTable): Buffer {
   const identity = table.columns.findIndex((column) => column.key === "employee")
   const all = table.columns.map((_, index) => index)
   const bands: number[][] = []
-  // A day report (up to 16 columns) stays on one page width — its notes are not a second page
+  // A day report (up to 17 columns) stays on one page width — its notes are not a second page
   // (owner, 2026-11-01); only a month grid's 31 days are cut into bands.
-  const perBand = all.length <= 16 ? all.length : 12
+  const perBand = all.length <= 17 ? all.length : 12
   for (let i = 0; i < all.length; i += perBand) {
     const band = all.slice(i, i + perBand)
     if (i && identity >= 0 && !band.includes(identity)) band.unshift(identity)

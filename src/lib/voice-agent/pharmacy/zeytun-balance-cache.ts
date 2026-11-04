@@ -1,6 +1,7 @@
 import { PharmacyOrderError } from "./contracts"
 import { ZeytunAvailableBalances } from "./zeytun-available-balances"
 import { fetchZeytunAvailableBalances, parseZeytunBalanceConfig, zeytunBalanceScopeKey } from "./zeytun-balance-client"
+import { nextDeparted } from "./zeytun-departed-items"
 import { ZeytunSnapshotStore, ZeytunSnapshotStoreError, type ZeytunRefreshAttempt } from "./zeytun-snapshot-store"
 
 type FeedSummary = ReturnType<ZeytunAvailableBalances["summary"]>
@@ -110,6 +111,8 @@ export class ZeytunBalanceCache {
           if (downloaded.scopeKey !== this.scopeKey || summary.source !== "live" || Date.parse(summary.observedAt) > this.clock()) {
             throw new PharmacyOrderError("invalid_catalog")
           }
+          // Before the snapshot: the line reloads both when it sees the new snapshot's version.
+          if (this.feed && this.summary?.version !== summary.version) await this.rememberDeparted(this.feed, downloaded.feed)
           await this.store.save({ payload: downloaded.payload, version: summary.version, context: {
             organizationId: this.config.organizationId, observedAt: summary.observedAt, source: summary.source,
           } })
@@ -130,6 +133,17 @@ export class ZeytunBalanceCache {
     } catch {
       this.storageError = true
       return this.result("failed")
+    }
+  }
+
+  /** What sold out between two snapshots stays known by name (zeytun-departed-items.ts); a failure here never fails the refresh. */
+  private async rememberDeparted(before: ZeytunAvailableBalances, now: ZeytunAvailableBalances): Promise<void> {
+    try {
+      const previous = await this.store.loadDeparted().catch(() => [])
+      const organizationId = this.config.organizationId
+      await this.store.saveDeparted(nextDeparted({ previous, before: before.labels(organizationId), now: now.labels(organizationId), at: this.clock() }))
+    } catch {
+      console.warn("[zeytun-catalog] departed list not saved")
     }
   }
 

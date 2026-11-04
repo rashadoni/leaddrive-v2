@@ -6,6 +6,7 @@ import { isAbsolute, join } from "node:path"
 import { z } from "zod"
 
 import { ZEYTUN_BALANCES_MAX_BYTES, type ZeytunBalancesContext } from "./zeytun-available-balances"
+import { departedListSchema, type DepartedItem } from "./zeytun-departed-items"
 
 const keySchema = z.string().regex(/^[a-f0-9]{64}$/)
 const metadataSchema = z.strictObject({
@@ -111,6 +112,21 @@ export class ZeytunSnapshotStore {
       const parsed = attemptSchema.parse(attempt)
       if (parsed.scopeKey !== this.scopeKey) throw new ZeytunSnapshotStoreError()
       await this.atomicWrite(`${this.scopeKey}.attempt`, [Buffer.from(JSON.stringify(parsed))])
+    })
+  }
+
+  /** Products sold out of this scope lately (zeytun-departed-items.ts); none when the file is missing. */
+  async loadDeparted(): Promise<DepartedItem[]> {
+    return this.safe(async () => {
+      const bytes = await this.read(`${this.scopeKey}.departed`, 4 * 1024 * 1024)
+      return bytes ? departedListSchema.parse(JSON.parse(bytes.toString("utf8"))) : []
+    })
+  }
+
+  async saveDeparted(items: readonly DepartedItem[]): Promise<void> {
+    return this.safe(async () => {
+      const parsed = departedListSchema.parse(items)
+      await this.atomicWrite(`${this.scopeKey}.departed`, [Buffer.from(JSON.stringify(parsed))])
     })
   }
 

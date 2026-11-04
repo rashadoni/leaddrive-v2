@@ -91,15 +91,15 @@ describe("Settings cards", () => {
   }
   const card = (key: string) => container.querySelector<HTMLAnchorElement>(`[data-testid="attendance-settings-card-${key}"]`)
 
-  it("groups twelve cards for an administrator, each opening its editor", async () => {
+  it("groups thirteen cards for an administrator, each opening its editor", async () => {
     await render(true)
     const cards = Array.from(container.querySelectorAll<HTMLAnchorElement>('[data-testid^="attendance-settings-card-"]'))
     // Reminders, request approval and the checks of marks came from MTM → Settings (owner, 2026-10-18).
-    expect(cards.map(link => link.getAttribute("href"))).toEqual(["hours", "holidays", "shifts", "day-kinds", "reminders", "leave", "requests", "approval", "qr", "location", "checks", "access"].map(key => `/mtm/attendance/settings?tab=${key}`))
+    expect(cards.map(link => link.getAttribute("href"))).toEqual(["hours", "holidays", "shifts", "day-kinds", "breaks", "reminders", "leave", "requests", "approval", "qr", "location", "checks", "access"].map(key => `/mtm/attendance/settings?tab=${key}`))
     expect(Array.from(container.querySelectorAll("h2")).map(heading => heading.textContent)).toEqual(Object.values(ru.personnel.settingsGroups))
     // A card alone in its row takes the whole row (owner: no half-empty rows).
     expect(cards.filter(link => link.className.includes("md:col-span-2")).map(link => link.dataset.testid))
-      .toEqual(["reminders", "approval", "checks", "access"].map(card => `attendance-settings-card-${card}`))
+      .toEqual(["approval", "checks", "access"].map(card => `attendance-settings-card-${card}`))
     // Suspicious marks are a daily queue on Today, not a setting (owner, 2026-10-15).
     expect(card("review")).toBeNull()
   })
@@ -115,7 +115,9 @@ describe("Settings cards", () => {
   it("hides the administrator cards from a manager", async () => {
     await render(false)
     for (const key of ["location", "reminders", "approval", "checks"]) expect(card(key)).toBeNull()
-    expect(container.querySelectorAll('[data-testid^="attendance-settings-card-"]')).toHaveLength(8)
+    expect(container.querySelectorAll('[data-testid^="attendance-settings-card-"]')).toHaveLength(9)
+    // Kinds of breaks (owner, 2026-11-04) are read by a manager too; without «reminders» it is alone in its row.
+    expect(card("breaks")!.className).toContain("md:col-span-2")
     // Rows stay full: without the administrator card the QR card takes its row alone.
     expect(card("qr")!.className).toContain("md:col-span-2")
     expect(card("access")!.className).toContain("md:col-span-2")

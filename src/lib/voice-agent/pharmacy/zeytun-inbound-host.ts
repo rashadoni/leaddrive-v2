@@ -4,6 +4,7 @@ import { dirname, join } from "node:path"
 import { runWithTenant } from "../../rls-context"
 import { readPrivate } from "./zeytun-private-file"
 import { ZeytunAvailableBalances } from "./zeytun-available-balances"
+import { createDepartedSearch } from "./zeytun-departed-items"
 import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies,
   type InboundPilotOrderCall } from "./zeytun-inbound-pilot"
@@ -198,13 +199,16 @@ export function createInboundPilotHost(options: {
         // takes the newest live snapshot the refresh cron saved.
         if (!snapshot || (!isLineGrant(config) && snapshot.version !== config.approvedSource.catalogVersion)) throw new Error("snapshot_unavailable")
         const feed = await ZeytunAvailableBalances.build(snapshot.payload, snapshot.context)
+        // Sold out lately: the line only; a list that cannot be read is no list, never a failed catalog.
+        const departed = isLineGrant(config) ? createDepartedSearch(await store.loadDeparted().catch(() => [])) : null
         // No catalog words go to the recognizer: 2026-11-03 the maker hints
         // ("Abdi", "Sopharma"…) turned "Adefa" into "Abdi İbrahim", in the
         // transcript and in the agent's own search. Callers name products;
         // the search already finds Adefa from Adexa, Adelfa or Adesa.
         return { organizationId: source.organizationId, scopeKey: source.scopeKey, version: snapshot.version,
           observedAt: snapshot.context.observedAt, source: snapshot.context.source,
-          search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query) }
+          search: (query: Parameters<ZeytunAvailableBalances["search"]>[1]) => feed.search(source.organizationId, query),
+          ...(departed?.size ? { departed } : {}) }
       })()
       if (catalog?.key !== key) {
         catalog = { key, at: Date.now(), value: load() }

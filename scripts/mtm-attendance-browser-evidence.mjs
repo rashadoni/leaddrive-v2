@@ -990,10 +990,11 @@ try {
     // Settings is one page of cards (2026-10-14); a card opens its editor.
     await readyPage('settings?tab=')
     await page.getByTestId('attendance-settings-hub').waitFor({ timeout: 120000 })
-    // An administrator sees twelve cards: reminders, request approval and the
-    // checks of marks came from MTM → Settings → Company (owner, 2026-10-18, #882).
+    // An administrator sees thirteen cards: reminders, request approval and the
+    // checks of marks came from MTM → Settings → Company (owner, 2026-10-18, #882);
+    // kinds of breaks were added on 2026-11-04.
     assert.deepEqual(await page.locator('[data-testid^="attendance-settings-card-"]').evaluateAll(cards => cards.map(card => card.dataset.testid.replace('attendance-settings-card-', ''))),
-      ['hours', 'holidays', 'shifts', 'day-kinds', 'reminders', 'leave', 'requests', 'approval', 'qr', 'location', 'checks', 'access'])
+      ['hours', 'holidays', 'shifts', 'day-kinds', 'breaks', 'reminders', 'leave', 'requests', 'approval', 'qr', 'location', 'checks', 'access'])
     // The organization switch sits on top of Personnel → Settings (moved from MTM settings).
     await page.getByTestId('attendance-feature-on').waitFor({ timeout: 120000 })
     await page.getByTestId('attendance-settings-card-hours').click()

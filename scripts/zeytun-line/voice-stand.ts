@@ -33,7 +33,7 @@
  *     [--runs 3] [--scenario scripts/zeytun-line/voice-scenario.json] [--voice Charon]
  *     [--out ~/inbox/zeytun-recordings/voice-stand/<time>] [--live-model gemini-3.8-live]
  *     [--vertex-key ~/.config/zeytun/vertex-key] [--second-ear-key ~/.config/zeytun/speech-key | --no-second-ear]
- *     [--station <fanum-zeytun-inbound.py of a branch>]
+ *     [--station <fanum-zeytun-inbound.py of a branch>] [--departed-from <older snapshot>] (what sold out since it)
  *
  * The base core is the station's fanum-voice-core.py the build script expects
  * (EXPECTED_SOURCE in scripts/pbx/build-zeytun-inbound-core.py); it is not in
@@ -463,7 +463,7 @@ function options(argv: string[]) {
     out: value("--out") ?? join(recordings, stamp), cache: join(recordings, "caller"), voice: value("--voice"),
     liveModel: value("--live-model") ?? "gemini-3.8-live", vertexKey: value("--vertex-key") ?? join(homedir(), ".config", "zeytun", "vertex-key"),
     secondEarKey: argv.includes("--no-second-ear") ? undefined : value("--second-ear-key") ?? join(homedir(), ".config", "zeytun", "speech-key"),
-    station: value("--station") }
+    station: value("--station"), departedFrom: value("--departed-from") }
 }
 
 async function main() {
@@ -474,7 +474,8 @@ async function main() {
   const scenario = JSON.parse(readFileSync(opts.scenario, "utf8")) as VoiceScenario
   if (opts.voice) scenario.voice = opts.voice
   mkdirSync(opts.out, { recursive: true, mode: 0o700 })
-  const { catalog, snapshotAt } = await loadCatalog(opts.snapshot)
+  const { catalog, snapshotAt, soldOut } = await loadCatalog(opts.snapshot, opts.departedFrom)
+  if (opts.departedFrom) process.stderr.write(`sold out since the older snapshot: ${soldOut}\n`)
   const sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: HERE }).toString().trim()
   const runs: Run[] = []
   for (let attempt = 1; attempt <= opts.runs; attempt++) {
