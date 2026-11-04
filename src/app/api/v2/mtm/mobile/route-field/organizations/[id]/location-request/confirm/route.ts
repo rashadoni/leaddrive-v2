@@ -10,6 +10,7 @@ import { agentPermissionDeniedBody, agentPermissionEnabled } from "@/lib/mtm/age
 import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { MTM_ROUTE_AUDIT_ACTION } from "@/lib/mtm/route-audit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import { notifyLocationRequestReviewers } from "@/lib/mtm/customer-location-request-notify"
 import {
   LOCATION_REQUEST_CONFIRMATION_ERROR,
   MTM_LOCATION_REQUEST_NOTHING_TO_CONFIRM,
@@ -160,6 +161,23 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
     },
     req,
   }).catch((error) => console.warn("[MTM/route-field/location-request/confirm] audit failed", error))
+
+  // Whoever decides is told at once — a push, as for the request itself: the
+  // request now stands on a fix taken at the place. Never fails the confirmation.
+  const customer = await prisma.mtmCustomer.findFirst({
+    where: { id: customerId, organizationId: auth.orgId },
+    select: { name: true },
+  })
+  await notifyLocationRequestReviewers({
+    organizationId: auth.orgId,
+    requestId: waiting.id,
+    requestedByAgentId: agentId,
+    customerName: customer?.name ?? "",
+    movedMeters: waiting.movedMeters,
+    origin: "REMOTE",
+    proposedAddress: waiting.proposedAddress,
+    event: "confirmed",
+  })
 
   return noStoreJson({ success: true, data: { request: current ? customerLocationRequestForAgent(current, agentId) : null } })
 }, { requiredCapability: "route-field" })

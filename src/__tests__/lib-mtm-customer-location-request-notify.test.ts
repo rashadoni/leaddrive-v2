@@ -31,6 +31,7 @@ import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
   MTM_LOCATION_REQUEST_NOTIFICATION_URL,
+  locationRequestConfirmedNotificationText,
   locationRequestNotificationText,
 } from "@/lib/mtm/customer-location-request-notification"
 import { ENTITY_TO_MODULE, NOTIFICATION_KINDS, deriveSection } from "@/lib/notifications/taxonomy"
@@ -240,5 +241,26 @@ describe("how it reaches the screen", () => {
       expect(label, locale).toBeTruthy()
       expect(messages.notifications.openRequest, locale).toBeTruthy()
     }
+  })
+})
+
+// «Адрес и точка» (owner, 2026-11-04): a proposal made in advance, and its confirmation at the place.
+describe("what a manager is told about a place proposed in advance", () => {
+  const who = { agentName: "Nigar", customerName: "Aptek Köçən" }
+  it("says it was proposed in advance, not from the spot, and what the address becomes", () => {
+    const text = locationRequestNotificationText("ru", { ...who, movedMeters: 1_240, origin: "REMOTE", proposedAddress: "Nizami küç. 41" })
+    expect(text.message).toBe("Nigar заранее, не с места, сообщает, что клиент «Aptek Köçən» теперь в 1,2 км от прежней точки. Новый адрес: «Nizami küç. 41». Примите новое место или оставьте как было.")
+  })
+  it("names an address-only correction as such", () => {
+    expect(locationRequestNotificationText("ru", { ...who, movedMeters: 0, origin: "REMOTE", proposedAddress: "Nizami küç. 41" }).message)
+      .toBe("Nigar предлагает исправить адрес клиента «Aptek Köçən»: «Nizami küç. 41». Примите новое место или оставьте как было.")
+  })
+  it("tells of the confirmation at the place in every language", () => {
+    expect(locationRequestConfirmedNotificationText("ru", who)).toEqual({
+      title: "Адрес клиента: агент подтвердил на месте",
+      message: "Nigar на месте подтвердил новое место клиента «Aptek Köçən», предложенное заранее. Примите новое место или оставьте как было.",
+    })
+    expect(locationRequestConfirmedNotificationText("en", who).title).toBe("Customer address: the agent confirmed it on the spot")
+    expect(locationRequestConfirmedNotificationText("az", who).title).toBe("Müştəri ünvanı: agent yerində təsdiqlədi")
   })
 })

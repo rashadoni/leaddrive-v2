@@ -78,6 +78,39 @@ const TEXT: Record<Locale, {
   },
 }
 
+const CONFIRMED: Record<Locale, { title: string; message: (agent: string, customer: string) => string }> = {
+  ru: {
+    title: "Адрес клиента: агент подтвердил на месте",
+    message: (agent, customer) => `${agent} на месте подтвердил новое место клиента «${customer}», предложенное заранее.`,
+  },
+  en: {
+    title: "Customer address: the agent confirmed it on the spot",
+    message: (agent, customer) => `${agent} has confirmed on the spot the new place of «${customer}» proposed in advance.`,
+  },
+  az: {
+    title: "Müştəri ünvanı: agent yerində təsdiqlədi",
+    message: (agent, customer) => `${agent} «${customer}» müştərisinin əvvəlcədən təklif etdiyi yeni yerini yerində təsdiqlədi.`,
+  },
+}
+
+/**
+ * «Подтвердить: клиент здесь» (2026-11-04): the agent who proposed a place in
+ * advance stands at it. The request a manager may have left waiting for this
+ * is now backed by a fix taken there — he is told so, as loudly as of the
+ * request itself.
+ */
+export function locationRequestConfirmedNotificationText(
+  preferredLanguage: string | null | undefined,
+  input: { agentName: string; customerName: string; proposedAddress?: string | null },
+): { title: string; message: string } {
+  const locale = locationRequestNotificationLocale(preferredLanguage)
+  const address = input.proposedAddress?.trim() || null
+  const message = CONFIRMED[locale].message(input.agentName, input.customerName)
+    + (address ? ` ${TEXT[locale].newAddress(address)}` : "")
+    + ` ${TEXT[locale].decide}`
+  return { title: CONFIRMED[locale].title, message }
+}
+
 export function locationRequestNotificationLocale(preferredLanguage: string | null | undefined): Locale {
   return locales.includes(preferredLanguage as Locale) ? (preferredLanguage as Locale) : defaultLocale
 }

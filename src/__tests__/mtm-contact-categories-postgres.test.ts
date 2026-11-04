@@ -67,6 +67,20 @@ vi.mock("@/lib/api-auth", () => ({
     principalType: "session",
   })),
   isAuthError: (value: unknown) => value instanceof Response,
+  // The organization's modules as the database has them: whether a push may go
+  // to a person is read from there (lib/notifications.ts, resolvePushDecision).
+  // Read each time, as api-auth reads it but without its 30-second cache: a
+  // test that switches a module on is not answered from before.
+  getOrgModuleContext: async (orgId: string) => {
+    const { prisma } = await import("@/lib/prisma")
+    const { moduleRecordFromOrgFields } = await import("@/lib/modules")
+    const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true, addons: true, features: true, modules: true } })
+    return {
+      plan: org?.plan || "starter",
+      addons: (org?.addons as string[] | null) || [],
+      modules: moduleRecordFromOrgFields({ features: org?.features, modules: org?.modules }),
+    }
+  },
 }))
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
@@ -76,6 +90,10 @@ vi.mock("@/lib/mobile-auth", async () => {
 vi.mock("@/lib/email", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/email")>(),
   sendEmail: vi.fn(async () => ({ success: true })),
+}))
+// Nor is a browser push sent: who it is addressed to, and with what, is read.
+vi.mock("@/lib/push-send", () => ({
+  sendPushToUser: vi.fn(async () => ({ sent: 1, removed: 0 })),
 }))
 // The tenant's plan is not what is under test.
 vi.mock("@/lib/tenant-capability-access", async (importOriginal) => ({
@@ -2741,6 +2759,10 @@ pgDescribe("client categories on a real Postgres", () => {
       let moved = ""
       let renamed = ""
       let advanceId = ""
+      let modulesBefore: unknown = null
+      afterAll(async () => {
+        await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { modules: modulesBefore as never } }))
+      })
       const checkIn = async (agentId: string, customerId: string, place: { latitude: number; longitude: number }) => {
         const { POST } = await import("@/app/api/v1/mtm/visits/route")
         const response = await POST(send("POST", "/api/v1/mtm/visits", { agentId, customerId, ...place }))
@@ -2768,6 +2790,9 @@ pgDescribe("client categories on a real Postgres", () => {
         }))
         await endVisits(asker)
         await endVisits(colleague)
+        // An organization with the field product, as the one whose managers are told.
+        modulesBefore = (await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: ORG }, select: { modules: true } }))).modules
+        await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { modules: { mtm: true, "route-field": true } } }))
         // The tests above already sent a score of requests in this hour.
         const { resetRateLimit } = await import("@/lib/rate-limit")
         resetRateLimit(`mtm-customer-location-request:${ORG}:${asker}`)
@@ -2798,6 +2823,13 @@ pgDescribe("client categories on a real Postgres", () => {
         const told = await bypass(() => prisma.notification.findFirstOrThrow({ where: { organizationId: ORG, entityType: "mtm_location_request", entityId: advanceId, userId: "loc-director-az" } }))
         expect(told.message).toContain("əvvəlcədən, yerində olmadan")
         expect(told.message).toContain("Yeni ünvan: «Nizami küç. 41».")
+        // …and it reaches his screen as a push, not only the bell (owner, 2026-11-04:
+        // «проверь, чтоб пуш-уведомление приходило менеджеру»).
+        const { sendPushToUser } = await import("@/lib/push-send")
+        await vi.waitFor(() => expect(vi.mocked(sendPushToUser)).toHaveBeenCalledWith(
+          ORG, "loc-director-az", expect.objectContaining({ title: "Müştəri ünvanı: agent qərar gözləyir", body: told.message }),
+        ))
+        expect(vi.mocked(sendPushToUser)).toHaveBeenCalledWith(ORG, "loc-director-ru", expect.objectContaining({ body: told.message }))
         // The same sending again is the same request; the key with another address is not.
         expect(await ask(asker, moved, { idempotencyKey: "advance-moved-01", origin: "REMOTE", proposed: NEW_DOOR, address: "Nizami küç. 41", comment: "Переехали" }))
           .toMatchObject({ status: 200, body: { idempotent: true, data: { request: { id: advanceId } } } })
@@ -2837,7 +2869,29 @@ pgDescribe("client categories on a real Postgres", () => {
         expect(confirmed.body.data.request).toMatchObject({ id: advanceId, origin: "REMOTE", confirmedAt: expect.any(String) })
         const [row] = await rows({ id: advanceId })
         expect(row).toMatchObject({ status: "SUBMITTED", confirmLatitude: at(door).latitude, confirmAccuracyMeters: 9, confirmToProposedMeters: 25 })
+        // The manager is told at once — the bell and a push; no second letter.
+        const { sendPushToUser } = await import("@/lib/push-send")
+        const { sendEmail } = await import("@/lib/email")
+        const lettersBefore = vi.mocked(sendEmail).mock.calls.length
+        await vi.waitFor(() => expect(vi.mocked(sendPushToUser)).toHaveBeenCalledWith(
+          ORG, "loc-director-az", expect.objectContaining({ title: "Müştəri ünvanı: agent yerində təsdiqlədi" }),
+        ))
+        const confirmedNotice = await bypass(() => prisma.notification.findMany({
+          where: { organizationId: ORG, entityType: "mtm_location_request", entityId: advanceId, title: { in: ["Müştəri ünvanı: agent yerində təsdiqlədi", "Customer address: the agent confirmed it on the spot"] } },
+          orderBy: { userId: "asc" },
+        }))
+        // Each in his own language, as the request itself.
+        expect(confirmedNotice.map((row) => [row.userId, row.title])).toEqual([
+          ["loc-director-az", "Müştəri ünvanı: agent yerində təsdiqlədi"],
+          ["loc-director-ru", "Müştəri ünvanı: agent yerində təsdiqlədi"],
+          ["loc-field-admin", "Customer address: the agent confirmed it on the spot"],
+        ])
+        expect(confirmedNotice[0].message).toBe("Nigar at the Door «Aptek Köçən» müştərisinin əvvəlcədən təklif etdiyi yeni yerini yerində təsdiqlədi. Yeni ünvan: «Nizami küç. 41». Yeni yeri qəbul edin və ya olduğu kimi saxlayın.")
         expect(await confirmAt(asker, moved, fixAt(door))).toMatchObject({ status: 200, body: { idempotent: true } })
+        // A second tap tells nobody again.
+        // Three about the request, three about its confirmation.
+        expect(await bypass(() => prisma.notification.count({ where: { organizationId: ORG, entityType: "mtm_location_request", entityId: advanceId } }))).toBe(6)
+        expect(vi.mocked(sendEmail).mock.calls.length).toBe(lettersBefore)
         // The card the agent reads, and the manager's queue.
         expect((await cardOf(asker, moved)).locationRequest).toMatchObject({ id: advanceId, origin: "REMOTE", confirmedAt: expect.any(String), proposedAddress: "Nizami küç. 41" })
         const waiting = (await waitingList()).find((request) => request.id === advanceId)

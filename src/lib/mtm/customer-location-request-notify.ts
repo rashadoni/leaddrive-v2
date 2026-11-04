@@ -5,6 +5,7 @@ import { locales } from "@/i18n/routing"
 import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
+  locationRequestConfirmedNotificationText,
   locationRequestNotificationText,
 } from "@/lib/mtm/customer-location-request-notification"
 
@@ -117,7 +118,10 @@ export async function notifyLocationRequestReviewers(input: {
   movedMeters: number | null
   origin?: "ON_SITE" | "REMOTE"
   proposedAddress?: string | null
+  /** «submitted» (the request itself) or «confirmed» (an advance one, confirmed at the place). */
+  event?: "submitted" | "confirmed"
 }): Promise<number> {
+  const confirmed = input.event === "confirmed"
   try {
     const [reviewers, agent] = await Promise.all([
       locationRequestReviewers(input),
@@ -130,13 +134,15 @@ export async function notifyLocationRequestReviewers(input: {
     const customerName = input.customerName.trim() || "—"
     let told = 0
     for (const reviewer of reviewers) {
-      const text = locationRequestNotificationText(reviewer.preferredLanguage, {
-        agentName,
-        customerName,
-        movedMeters: input.movedMeters,
-        origin: input.origin,
-        proposedAddress: input.proposedAddress,
-      })
+      const text = confirmed
+        ? locationRequestConfirmedNotificationText(reviewer.preferredLanguage, { agentName, customerName, proposedAddress: input.proposedAddress })
+        : locationRequestNotificationText(reviewer.preferredLanguage, {
+            agentName,
+            customerName,
+            movedMeters: input.movedMeters,
+            origin: input.origin,
+            proposedAddress: input.proposedAddress,
+          })
       const row = await createNotification({
         organizationId: input.organizationId,
         userId: reviewer.userId,
@@ -146,9 +152,11 @@ export async function notifyLocationRequestReviewers(input: {
         entityType: MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
         entityId: input.requestId,
         push: true,
-        email: true,
+        // The letter went with the request; the confirmation is a push and the bell.
+        email: !confirmed,
+        // The same kind: on until the manager switches this very kind off.
         kind: MTM_LOCATION_REQUEST_NOTIFICATION_KIND,
-        idempotencyKey: `mtm-location-request-submitted:${input.requestId}`,
+        idempotencyKey: `mtm-location-request-${confirmed ? "confirmed" : "submitted"}:${input.requestId}`,
       })
       if (row) told += 1
     }
