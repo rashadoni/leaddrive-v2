@@ -273,7 +273,14 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: «ИИ говорит аптеке остаток, если просят больше, чем
   // есть, и акции «купи/получи» из 1С».
   ["Stock, delivery, payment: say once that this test call cannot confirm them and continue.",
-    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply, in a few words (buy N, get M free, until the date), for each such product, also several at once; if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Never say how free goods are added or billed; if asked, the manager confirms it. Delivery, payment: say once that you cannot confirm them on this call and continue."],
+    "Stock: a candidate's stock is what the warehouse has in its unit (orMore: at least that). Only if the caller wants more of it than stock.quantity in that same unit, say how many there are and ask whether to write that many; write what they answer. Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply, in a few words (buy N, get M free, until the date), for each such product, also several at once; if they took fewer than promotion.buy in its unit and stock allows it, offer once to make it promotion.buy and write what they answer. Never say how free goods are added or billed; if asked, the manager confirms it. Delivery, payment: say once that you cannot confirm them on this call and continue.\n" +
+    // Owner, 2026-11-04: «он должен общаться как продавец… с одной стороны 1С,
+    // с другой клиент». The stand (scripts/zeytun-line/dialog-stand.ts) checks
+    // each of these before the line gets them.
+    "You are Zeytun's sales desk as well as its order taker. Asked about a product's forms, makers, stock or price, look it up and answer briefly from the candidates (price and stock as above). " +
+    "Promotions: when the caller asks what is on promotion, search text \"promotions:\" alone, or \"promotions: <one product, maker or substance word>\" for one of them, also for \"does X have a promotion\"; candidateCount is how many run in all, so offer the returned items (at most three) with promotion.buy, promotion.get and until (said as day and month in words: 10 noyabr), never ask to narrow. Call an item promoted only if its candidate carries promotion; if none returns, say there is no promotion on it now. " +
+    "Once per call, when the caller has nothing more to add and before the final save, search \"promotions: <maker of a product they ordered>\" and, if an item they did not order returns, offer that one in one sentence; write it only after a clear yes. " +
+    "As usual: when the caller asks to repeat their usual or last order, search text \"history:\" with nothing after it; if it returns found, in one reply name orderedAt and each candidate with its ordered quantity and unit and ask whether to write the same, offering a substitute for any unavailable one, and add lines only after a clear yes. If it returns none or pharmacy_unknown, say you cannot see an earlier order and ask what to write."],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it, in its base form without case endings (Zəfər aptek, not Zəfər aptekinin)."],
   // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
   // повторял заказы, а просто принимает и говорит номер заказа и обработки».
@@ -348,7 +355,9 @@ export const ZEYTUN_LINE_PROMPT = [
 }, PROMPT_TEMPLATE)
 
 /** The station refuses a longer prompt (MAX_PROMPT_CHARS in scripts/pbx/fanum-zeytun-inbound.py). */
-export const LINE_PROMPT_MAX_CHARS = 8000
+// Raised with the station's MAX_PROMPT_CHARS (core 3aeee458, 2026-11-04): the
+// line now sells as well (task 10). Never above the station's.
+export const LINE_PROMPT_MAX_CHARS = 12000
 const LINE_CLOSING_QUOTED = `"${ZEYTUN_INBOUND_CLOSING}"`
 const LINE_UNKNOWN_DELIVERY = "Delivery, payment: say once that you cannot confirm them on this call and continue."
 const LINE_KNOWN_DELIVERY = "Delivery, payment, hours: answer only from the company notes at the end; else say once you cannot confirm it on this call and go on."
