@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { decodeZeytunClientsSoap, fetchZeytunClientsSoap, parseZeytunClientsConfig, zeytunClientsScopeKey, ZEYTUN_CLIENTS_MAX_BYTES } from "@/lib/voice-agent/pharmacy/zeytun-clients-client"
-import { ZeytunClientsDirectory, normalizeZeytunClientPhone } from "@/lib/voice-agent/pharmacy/zeytun-clients-directory"
+import { ZeytunClientsDirectory, normalizeZeytunClientPhone, zeytunClientPhoneHints } from "@/lib/voice-agent/pharmacy/zeytun-clients-directory"
 import { clientGuid, otherClientGuid, clientStamp, clientContext, clientRow, clientsXml } from "./fixtures/zeytun-clients"
 
 const config = { organizationId: "tenant-test", endpoint: "https://clients.example/ws/service.1cws", username: "test-user", password: "test-password" }
@@ -34,6 +34,23 @@ describe("observed XML customer directory", () => {
   })
   it.each(["", "0500000001", "500000001", "99450000000199", "+994, 0500000001", "994500000001 ext 4", "+9945000000019", "99450x000001"])("does not guess incomplete/malformed phone %s", (phone) => {
     expect(normalizeZeytunClientPhone(phone)).toBeNull()
+  })
+  // The phone line only hints with these (the agent still asks who calls); bindings keep the strict number.
+  it("reads national numbers and each number of a list as hints for the phone line, never for a binding", () => {
+    expect(zeytunClientPhoneHints("0500000001")).toEqual(["+994500000001"])
+    expect(zeytunClientPhoneHints("500000001")).toEqual(["+994500000001"])
+    expect(zeytunClientPhoneHints("9940500000001")).toEqual(["+994500000001"])
+    expect(zeytunClientPhoneHints("+994, 050 000 00 01")).toEqual(["+994500000001"])
+    expect(zeytunClientPhoneHints("994500000001, 055 111 22 33")).toEqual(["+994500000001", "+994551112233"])
+    for (const unread of ["", "99450000000199", "+9945000000019", "994500000001 ext 4", "99450x000001", "0050000000"]) {
+      expect(zeytunClientPhoneHints(unread)).toEqual([])
+    }
+    // Whatever the strict reading finds stays found: a foreign number in international form.
+    expect(zeytunClientPhoneHints("+7 900 000 00 01")).toEqual(["+79000000001"])
+    const directory = new ZeytunClientsDirectory(clientsXml([clientRow({ Phone: "050 000 00 01" })]), clientContext)
+    expect(directory.findByPhone("tenant-test", "+994500000001").candidateCount).toBe(1)
+    expect(directory.get("tenant-test", clientRow().GUIDE)!.phoneE164).toBeNull()
+    expect(directory.checkBinding("tenant-test", clientRow().GUIDE, "+994500000001", now)).toMatchObject({ consistent: false })
   })
   it("keeps records with missing/unsupported phones, without authorizing calls", () => {
     const directory = new ZeytunClientsDirectory(clientsXml([clientRow({ Phone: "" }), clientRow({ GUIDE: otherClientGuid, Phone: "0500000001" })]), clientContext)
