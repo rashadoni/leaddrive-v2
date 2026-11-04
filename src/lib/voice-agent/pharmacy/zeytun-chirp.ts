@@ -24,8 +24,13 @@ import { spokenNameKey, spokenWordsApart } from "./name-search"
 export const CHIRP_KEY_FILE = "zeytun-speech-key.json"
 /** chirp_3 takes at most this many inline phrases a request (2026-11-04). */
 export const CHIRP_PHRASE_LIMIT = 1000
-/** Token and recognition together: a phrase not heard by then is not waited for. */
+/** A phrase's whole budget — recognition, and the token if none is ready: a phrase not heard by then is not waited for. */
 export const CHIRP_TIMEOUT_MS = 2500
+/** The token is fetched again in the background this long before it ends, and on a line call's session. Live call 0127e38f
+ * (2026-11-04): the first phrase fetched it inside its own 2.5 s and timed out — the answer to "which pharmacy" went unheard. */
+export const TOKEN_REFRESH_AHEAD_MS = 5 * 60_000
+/** A token fetch runs on its own clock, not a phrase's: a phrase that stops waiting does not abort it. */
+const TOKEN_FETCH_TIMEOUT_MS = 10_000
 /** Phone audio from the station: PCM16, 8 kHz, mono; at most 15 s a phrase. */
 export const UTTERANCE_SAMPLE_RATE = 8000
 export const UTTERANCE_MAX_BYTES = 15 * UTTERANCE_SAMPLE_RATE * 2
@@ -55,9 +60,19 @@ export type ChirpHeard = { text: string; ms: number } | { error: string; ms: num
 export interface ChirpRecognizer {
   /** Whether a usable key file is in place (looked at once a minute). */
   enabled(): Promise<boolean>
-  /** Fetches the access token ahead of the first phrase; never throws. */
+  /** Fetches the access token ahead of a call's first phrase unless it lasts five minutes more; never throws. */
   warm(): void
   recognize(pcm: Buffer, phrases: string[]): Promise<ChirpHeard>
+}
+
+/** Waits for `promise` until `signal` aborts; the work behind it goes on. */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason)
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason)
+    signal.addEventListener("abort", abort, { once: true })
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort))
+  })
 }
 
 /** A WAV header on raw PCM16: chirp_3 decodes it itself, as in the benchmark (autoDecodingConfig). */
@@ -119,17 +134,36 @@ export function createChirpRecognizer(options: {
     return token.value
   }
 
-  /** The cached token until a minute before it ends; one refresh at a time. */
-  function accessToken(service: ServiceAccount, signal: AbortSignal): Promise<string> {
-    if (token && token.account === service && clock() < token.expiresAt - 60_000) return Promise.resolve(token.value)
-    pendingToken ??= fetchToken(service, signal).finally(() => { pendingToken = null })
+  // The same key read again a minute later is a new object: compared by what it says, or every minute's phrase fetched a token.
+  const sameKey = (left: ServiceAccount, right: ServiceAccount) => left === right
+    || (left.client_email === right.client_email && left.private_key === right.private_key && left.project_id === right.project_id)
+  const lasts = (service: ServiceAccount, forMs: number) => token !== null && sameKey(token.account, service) && clock() < token.expiresAt - forMs
+
+  /** One fetch at a time; its failure is logged once, without the key. */
+  function refreshToken(service: ServiceAccount): Promise<string> {
+    if (pendingToken) return pendingToken
+    const started = clock()
+    const fetching = fetchToken(service, AbortSignal.timeout(TOKEN_FETCH_TIMEOUT_MS))
+    pendingToken = fetching.finally(() => { pendingToken = null })
+    fetching.catch((error: Error) => console.warn("[zeytun-line] chirp token failed", JSON.stringify({ ms: Math.max(0, clock() - started),
+      error: /^token_http_\d+$/.test(error?.message ?? "") ? error.message : error?.name === "TimeoutError" ? "timeout" : "network" })))
     return pendingToken
+  }
+
+  /** The cached token while it lasts a minute more, renewed in the background from five minutes before its end. */
+  function accessToken(service: ServiceAccount, signal: AbortSignal): Promise<string> {
+    if (lasts(service, 60_000)) {
+      if (!lasts(service, TOKEN_REFRESH_AHEAD_MS)) refreshToken(service).catch(() => undefined)
+      return Promise.resolve(token!.value)
+    }
+    return untilAborted(refreshToken(service), signal)
   }
 
   return {
     enabled: async () => (await account()) !== null,
     warm() {
-      void account().then((service) => service && accessToken(service, AbortSignal.timeout(timeoutMs))).catch(() => undefined)
+      void account().then((service) => service && !lasts(service, TOKEN_REFRESH_AHEAD_MS) ? refreshToken(service) : undefined)
+        .catch(() => undefined)
     },
     async recognize(pcm, phrases) {
       const started = clock()
@@ -137,8 +171,10 @@ export function createChirpRecognizer(options: {
       const service = await account()
       if (!service) return { error: "no_key", ms: ms() }
       const signal = AbortSignal.timeout(timeoutMs)
+      let stage: "token" | "speech" = "token"
       try {
         const bearer = await accessToken(service, signal)
+        stage = "speech"
         const hints = phrases.slice(0, CHIRP_PHRASE_LIMIT)
         const body = {
           config: { model: "chirp_3", languageCodes: ["az-AZ"], autoDecodingConfig: {},
@@ -157,7 +193,8 @@ export function createChirpRecognizer(options: {
         return { text: text.slice(0, 600), ms: ms() }
       } catch (error) {
         const name = (error as Error)?.name
-        return { error: name === "TimeoutError" || name === "AbortError" ? "timeout"
+        // "token_timeout": the phrase's time ran out before a token was there; "timeout": in recognition itself.
+        return { error: name === "TimeoutError" || name === "AbortError" ? (stage === "token" ? "token_timeout" : "timeout")
           : /^token_http_\d+$/.test((error as Error)?.message ?? "") ? (error as Error).message : "network", ms: ms() }
       }
     },

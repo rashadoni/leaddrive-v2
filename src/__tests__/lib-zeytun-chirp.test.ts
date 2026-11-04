@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
-  CHIRP_KEY_FILE, CHIRP_PHRASE_LIMIT, CHIRP_TIMEOUT_MS, createChirpRecognizer, createZeytunSecondEar, heardProducts, pairHeard,
+  CHIRP_KEY_FILE, CHIRP_PHRASE_LIMIT, CHIRP_TIMEOUT_MS, createChirpRecognizer, TOKEN_REFRESH_AHEAD_MS, createZeytunSecondEar, heardProducts, pairHeard,
   UTTERANCE_WAIT_MS, type ChirpHeard, type ChirpRecognizer,
 } from "@/lib/voice-agent/pharmacy/zeytun-chirp"
 import { createInboundPilotHandler, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
@@ -73,6 +73,56 @@ describe("Chirp client", () => {
       : new Promise<Response>((_, reject) => init!.signal!.addEventListener("abort", () => reject(init!.signal!.reason))))
     const recognizer = createChirpRecognizer({ keyFile: "/k", fetch: fetch as typeof globalThis.fetch, readKey: async () => account, timeoutMs: 30 })
     expect(await recognizer.recognize(pcm, [])).toMatchObject({ error: "timeout" })
+  })
+
+  it("fetches the token on warm and renews it in the background five minutes before its end, so no phrase waits for one", async () => {
+    let now = Date.parse("2026-11-04T10:00:00Z")
+    let tokens = 0
+    const fetch = vi.fn<typeof globalThis.fetch>(async (url) => String(url).includes("oauth2")
+      ? json({ access_token: `tok-${++tokens}`, expires_in: 3600 })
+      : json({ results: [{ alternatives: [{ transcript: "Adefa" }] }] }))
+    const recognizer = createChirpRecognizer({ keyFile: "/k", fetch, clock: () => now, readKey: async () => account })
+    const oauth = () => fetch.mock.calls.filter(([url]) => String(url).includes("oauth2")).length
+    // The bearer of the last recognition.
+    const bearer = () => (fetch.mock.calls.filter(([url]) => !String(url).includes("oauth2")).at(-1)![1]!.headers as Record<string, string>).Authorization
+
+    recognizer.warm()
+    await vi.waitFor(() => expect(oauth()).toBe(1))
+    expect(await recognizer.recognize(pcm, [])).toMatchObject({ text: "Adefa" })
+    expect(oauth()).toBe(1)
+    // Another call's session while the token lasts long enough: nothing fetched.
+    now += 30 * 60_000
+    recognizer.warm()
+    await recognizer.recognize(pcm, [])
+    expect(oauth()).toBe(1)
+    // Four minutes left: the phrase goes with the token it has, a new one comes behind it.
+    now += 3600_000 - 30 * 60_000 - 4 * 60_000
+    expect(TOKEN_REFRESH_AHEAD_MS).toBe(5 * 60_000)
+    await recognizer.recognize(pcm, [])
+    expect(bearer()).toBe("Bearer tok-1")
+    await vi.waitFor(() => expect(oauth()).toBe(2))
+    await recognizer.recognize(pcm, [])
+    expect(bearer()).toBe("Bearer tok-2")
+    expect(oauth()).toBe(2)
+  })
+
+  it("does not abort a slow token fetch with the phrase that gave up on it: the next phrase has the token", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    let release: (() => void) | null = null
+    const fetch = vi.fn<typeof globalThis.fetch>(async (url, init) => {
+      if (!String(url).includes("oauth2")) return json({ results: [{ alternatives: [{ transcript: "Adefa" }] }] })
+      await new Promise<void>((resolve, reject) => {
+        release = resolve
+        init!.signal!.addEventListener("abort", () => reject(init!.signal!.reason))
+      })
+      return json({ access_token: "tok", expires_in: 3600 })
+    })
+    const recognizer = createChirpRecognizer({ keyFile: "/k", fetch, readKey: async () => account, timeoutMs: 30 })
+    expect(await recognizer.recognize(pcm, [])).toMatchObject({ error: "token_timeout" })
+    release!()
+    await vi.waitFor(async () => expect(await recognizer.recognize(pcm, [])).toMatchObject({ text: "Adefa" }))
+    expect(fetch.mock.calls.filter(([url]) => String(url).includes("oauth2"))).toHaveLength(1)
+    expect(console.warn).not.toHaveBeenCalled()
   })
 
   it("is off without its key file, and reads nothing else", async () => {
@@ -180,7 +230,7 @@ const item = (n: number, name: string) => ({ externalId: `cccccccc-${String(n).p
 const ITEMS = [item(1, "Deva 10 mq"), item(2, "Devamin"), item(3, "Adefa № 30"), item(4, "Adefa forte"), item(5, "Adelfan"),
   item(6, "Ketonal 100 mq"), item(7, "Ketonal krem")]
 
-function routeFixture(options: { recognize?: ChirpRecognizer["recognize"]; secondEar?: boolean } = {}) {
+function routeFixture(options: { recognize?: ChirpRecognizer["recognize"]; recognizer?: ChirpRecognizer; secondEar?: boolean } = {}) {
   const state = { now }
   const catalog: InboundPilotCatalog = {
     organizationId: line.approvedSource.organizationId, scopeKey: line.approvedSource.scopeKey, version: "e".repeat(64),
@@ -195,7 +245,8 @@ function routeFixture(options: { recognize?: ChirpRecognizer["recognize"]; secon
   }
   const recognize = vi.fn(options.recognize ?? (async () => ({ text: "Adefa beş qutu", ms: 600 })))
   const sleep = vi.fn(async (ms: number) => { state.now += ms })
-  const secondEar = createZeytunSecondEar({ recognizer: { enabled: async () => true, warm: vi.fn(), recognize }, clock: () => state.now, sleep })
+  const secondEar = createZeytunSecondEar({ recognizer: options.recognizer ?? { enabled: async () => true, warm: vi.fn(), recognize },
+    clock: () => state.now, sleep })
   const dependencies = {
     loadConfig: vi.fn(async (): Promise<unknown> => structuredClone(line)),
     loadCall: vi.fn(async (): Promise<unknown> => structuredClone(call)),
@@ -233,6 +284,22 @@ describe("the line takes the pharmacy's phrases and searches what Chirp heard", 
     const bridge = readFileSync(join(process.cwd(), "scripts/pbx/fanum-zeytun-inbound.py"), "utf8")
     const open = bridge.slice(bridge.indexOf("    def open(self):"), bridge.indexOf("    def tools(self):"))
     expect(open).not.toMatch(/set\(value\)|value\.keys\(\)|len\(value\)/)
+  })
+
+  it("asks for the token on the call's session, and the first phrase is recognized without asking again", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined)
+    const fetch = vi.fn<typeof globalThis.fetch>(async (url) => String(url).includes("oauth2")
+      ? json({ access_token: "tok-1", expires_in: 3600 })
+      : json({ results: [{ alternatives: [{ transcript: "Zəfər aptekindən" }] }] }))
+    const recognizer = createChirpRecognizer({ keyFile: "/k", fetch, readKey: async () => account })
+    const f = routeFixture({ recognizer })
+    const oauth = () => fetch.mock.calls.filter(([url]) => String(url).includes("oauth2")).length
+
+    expect(await (await f.send({ action: "session", callId })).json()).toMatchObject({ utterance: true })
+    await vi.waitFor(() => expect(oauth()).toBe(1))
+    expect((await f.send(utterance(1))).status).toBe(202)
+    await vi.waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).includes("speech.googleapis.com"))).toBe(true))
+    expect(oauth()).toBe(1)
   })
 
   it("answers 202 at once, before Chirp, with the order hints", async () => {
