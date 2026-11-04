@@ -1420,33 +1420,27 @@ class ZeytunInboundBridge:
 
     # Owner, 2026-11-04 («мне нужна оптимизация»): every model turn and tool
     # round is billed for the whole context again — the voice stand's 2 min 48 s
-    # presentation call cost $0.63, 328k text and 107k audio tokens in, the
-    # context growing from ~5k to ~25k tokens a turn. Once it reaches
-    # CONTEXT_TRIGGER_TOKENS the provider drops the oldest turns down to
-    # CONTEXT_TARGET_TOKENS; the instructions and tools (~4.4k) always stay,
-    # the rest keeps the last two or three exchanges. The order itself is in
-    # the CRM after every save. ZEYTUN_CONTEXT_WINDOW in the station's
-    # environment: "off" keeps the provider's default window (the rollback),
-    # "trigger,target" other numbers.
-    CONTEXT_TRIGGER_TOKENS = 16000
-    CONTEXT_TARGET_TOKENS = 10000
+    # presentation call cost $0.63, the context growing from ~5k to ~25k tokens
+    # a turn. A sliding window (the provider drops the oldest turns once the
+    # context reaches trigger, down to target) cut that to $0.44-0.48 (16000,
+    # 10000) on the stand, but in 2 of 5 calls, with 16000/10000 and with
+    # 24000/14000 alike, the model lost the subject of the phrase just before
+    # («Paracetamol hansı formaları var?» → «Beş yüzlük tablet, on qutu» →
+    # «hansı dərmanın?») and the product never reached the order; 0 of 5
+    # without it. So it is off: ZEYTUN_CONTEXT_WINDOW="trigger,target" in the
+    # station's environment turns it on for a trial, nothing else does.
     CONTEXT_WINDOW_ENV = "ZEYTUN_CONTEXT_WINDOW"
 
     def context_window(self, environ=None):
-        """(trigger, target) tokens of the line's sliding window, or None for the provider's default."""
+        """(trigger, target) tokens of a trial sliding window, or None: the provider's default."""
         environ = os.environ if environ is None else environ
-        value = (environ.get(self.CONTEXT_WINDOW_ENV) or "").strip().lower()
-        if value in ("off", "0"):
-            return None
-        if value:
-            match = re.fullmatch(r"(\d{4,6}),(\d{4,6})", value)
-            if match and 0 < int(match.group(2)) < int(match.group(1)):
-                return int(match.group(1)), int(match.group(2))
-            # A malformed value is the code's numbers, not an unbounded window.
-        return self.CONTEXT_TRIGGER_TOKENS, self.CONTEXT_TARGET_TOKENS
+        match = re.fullmatch(r"(\d{4,6}),(\d{4,6})", (environ.get(self.CONTEXT_WINDOW_ENV) or "").strip())
+        if match and 0 < int(match.group(2)) < int(match.group(1)):
+            return int(match.group(1)), int(match.group(2))
+        return None
 
     def adjust_setup(self, setup):
-        """The line's last word on the Live setup: its context window."""
+        """The line's last word on the Live setup: a trial context window, when the station asks for one."""
         window = self.context_window()
         if window is not None:
             setup["contextWindowCompression"] = {"triggerTokens": window[0], "slidingWindow": {"targetTokens": window[1]}}

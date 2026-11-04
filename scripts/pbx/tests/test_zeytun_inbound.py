@@ -84,21 +84,17 @@ class TransportTests(unittest.TestCase):
     def handle(self, body):
         return self.bridge.handle(body, self.send, lambda: self.current)
 
-    def test_the_line_keeps_a_bounded_context_window_and_the_station_can_switch_it_off(self):
-        # Owner, 2026-11-04: each turn and tool round is billed for the whole context again.
+    def test_the_context_window_is_the_providers_unless_the_station_asks_for_a_trial(self):
+        # Voice stand 2026-11-04: a sliding window lost the previous phrase's subject in 2 of 5 calls.
         setup = {"contextWindowCompression": {"slidingWindow": {}}, "tools": ["t"]}
         with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(self.bridge.adjust_setup(dict(setup)), setup)
+        with patch.dict(os.environ, {"ZEYTUN_CONTEXT_WINDOW": "16000,10000"}):
             self.assertEqual(self.bridge.adjust_setup(dict(setup))["contextWindowCompression"],
                              {"triggerTokens": 16000, "slidingWindow": {"targetTokens": 10000}})
-        self.assertIsNone(self.bridge.context_window({"ZEYTUN_CONTEXT_WINDOW": "off"}))
-        with patch.dict(os.environ, {"ZEYTUN_CONTEXT_WINDOW": "off"}):
-            self.assertEqual(self.bridge.adjust_setup(dict(setup)), setup)  # the provider's default, as before
-        self.assertEqual(self.bridge.context_window({"ZEYTUN_CONTEXT_WINDOW": "24000,12000"}), (24000, 12000))
-        # Nonsense never means an unbounded or inverted window: the code's numbers.
-        for bad in ("12000,24000", "abc", "1,1", "24000"):
-            self.assertEqual(self.bridge.context_window({"ZEYTUN_CONTEXT_WINDOW": bad}), (16000, 10000), bad)
-        # Instructions and tools (~4.4k tokens) always fit under the target, with room for recent turns.
-        self.assertGreater(self.bridge.CONTEXT_TARGET_TOKENS, 8000)
+        # Nonsense is the provider's default, never an inverted window.
+        for bad in ("off", "12000,24000", "abc", "1,1", "24000", ""):
+            self.assertIsNone(self.bridge.context_window({"ZEYTUN_CONTEXT_WINDOW": bad}), bad)
 
     def test_tools_and_result_are_narrow_and_bounded(self):
         declaration = self.bridge.tools()[0]["functionDeclarations"][0]
