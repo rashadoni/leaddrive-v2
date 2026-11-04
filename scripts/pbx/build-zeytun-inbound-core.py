@@ -458,7 +458,8 @@ def build(source, bridge):
     # the CRM as the 8 kHz audio the provider gets before its resample (no
     # lookback); the CRM transcribes it itself and searches with that text
     # too. The bridge copies and sends it (utterance_audio/utterance_edge),
-    # off this thread and only with ZEYTUN_UTTERANCE_ENABLED=1.
+    # off this thread, once the CRM's session asks for it ("utterance": true);
+    # ZEYTUN_UTTERANCE_ENABLED=0 switches it off at the station.
     replace("            self._resume_progress_after_speech()\n\n        pcm16, self.gemini_input_resample_state = audioop.ratecv(\n",
             "            self._resume_progress_after_speech()\n\n"
             "        if self.pharmacy_preview:\n"
