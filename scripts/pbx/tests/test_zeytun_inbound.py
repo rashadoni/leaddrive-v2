@@ -1603,7 +1603,8 @@ class ResumeTests(unittest.TestCase):
         self.assertTrue(retry(1008, 100.0, 102.4))
         self.assertFalse(retry(1008, 100.0, 102.6))  # the next attempt would start past 3 s
         self.assertFalse(retry(1011, 100.0, 100.1))
-        self.assertFalse(retry(None, 100.0, 100.1))
+        self.assertTrue(retry(None, 100.0, 100.1))  # closed during setup with no frame
+        self.assertFalse(retry(None, 100.0, 102.6))
 
     def test_resumes_are_budgeted_per_minute_and_per_call(self):
         allowed = bridge_module.zeytun_resume_allowed
@@ -1658,6 +1659,10 @@ class ResumeTests(unittest.TestCase):
             def await_setup(ws, resume_handle=None, deadline=None):
                 obj.setup_handle = resume_handle
                 outcome = plan.pop(0)
+                if outcome == "eof":
+                    raise EOFError("Gemini Live closed during setup")
+                if outcome == "rejected":
+                    raise RuntimeError("Gemini Live setup rejected")
                 if outcome != "ok":
                     raise Closed(outcome)
 
@@ -1717,6 +1722,12 @@ class ResumeTests(unittest.TestCase):
         obj, _ = session(outcomes=(1011,))
         self.assertFalse(obj.resume())
         self.assertEqual(len(obj.opened), 1)  # another refusal is not retried
+        obj, _ = session(outcomes=("rejected",))
+        self.assertFalse(obj.resume())
+        self.assertEqual(len(obj.opened), 1)  # nor a setup the provider rejected
+        obj, _ = session(outcomes=("eof", "ok"))
+        self.assertTrue(obj.resume())  # a setup closed with no frame is tried again
+        self.assertEqual(len(obj.opened), 2)
         # A storm is bounded: three resumes a minute.
         obj, _ = session()
         obj.pharmacy_resumes = [time.monotonic() - 1] * 3

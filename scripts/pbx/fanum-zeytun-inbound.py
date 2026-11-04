@@ -760,8 +760,10 @@ def zeytun_script(text):
 # restores the session as it was, the caller's half-finished turn included:
 # the model recalled the earlier products and heard the turn whole when
 # only the rest of it was sent, and twice when it was sent again from the
-# start. The provider refuses the first attempt right after a drop (close
-# 1008) and takes the next one half a second later.
+# start. After a drop forced from this side the provider refuses the first
+# attempt (close 1008) and takes the next one half a second later; after its
+# own drops it took the first attempt 3 times in 4, and once closed it
+# without a frame, which is retried alike.
 ZEYTUN_RESUME_RETRY_SECONDS = 0.5
 ZEYTUN_RESUME_WINDOW_SECONDS = 3.0
 ZEYTUN_RESUME_PER_MINUTE = 3
@@ -769,8 +771,8 @@ ZEYTUN_RESUME_PER_CALL = 8
 
 
 def zeytun_resume_retry(code, started, now):
-    """Another attempt after a refused resume: only the provider's 1008, only within the window."""
-    return code == 1008 and now + ZEYTUN_RESUME_RETRY_SECONDS - started < ZEYTUN_RESUME_WINDOW_SECONDS
+    """Another attempt after a refused resume (1008, or closed with no frame), only within the window."""
+    return code in (1008, None) and now + ZEYTUN_RESUME_RETRY_SECONDS - started < ZEYTUN_RESUME_WINDOW_SECONDS
 
 
 def zeytun_resume_allowed(history, total, now):

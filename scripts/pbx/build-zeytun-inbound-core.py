@@ -377,11 +377,11 @@ def build(source, bridge):
                         replacement = self._open_gemini_websocket(deadline=deadline)
                         self._await_setup(replacement, resume_handle=handle, deadline=deadline)
                         break
-                    except RealtimeWebSocketClosed as error:
+                    except EOFError as error:  # RealtimeWebSocketClosed is one, with its code
                         if replacement is not None:
                             replacement.close()
                             replacement = None
-                        if not zeytun_resume_retry(error.code, started, time.monotonic()):
+                        if not zeytun_resume_retry(getattr(error, "code", None), started, time.monotonic()):
                             raise
                     time.sleep(ZEYTUN_RESUME_RETRY_SECONDS)
                     with self.state_lock:
