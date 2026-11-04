@@ -22,9 +22,17 @@ export type CustomerLocationRequestRow = {
   customer: { id: string; name: string; address: string | null; city: string | null }
   previous: Point | null
   proposed: Point
-  agentFix: Point & { accuracyMeters: number; at: string }
+  /** From the spot («Клиент здесь») or proposed in advance (2026-11-04). Older servers: absent = from the spot. */
+  origin?: "ON_SITE" | "REMOTE"
+  /** Null: proposed in advance, and the phone did not say where it was. */
+  agentFix: (Point & { accuracyMeters: number; at: string }) | null
+  /** An advance request the agent later confirmed standing at the proposed place. */
+  confirmation?: (Point & { accuracyMeters: number; distanceMeters: number | null; at: string }) | null
+  /** The street address the agent corrects: as the card had it, and as he says it is. */
+  previousAddress?: string | null
+  proposedAddress?: string | null
   movedMeters: number | null
-  agentToProposedMeters: number
+  agentToProposedMeters: number | null
   /** Visits the agent has already checked in from the place he reported. */
   visits?: Array<{ id: string; checkInAt: string }>
   pinMovedSince: boolean
@@ -44,7 +52,8 @@ interface CustomerLocationRequestQueueProps {
 }
 
 /**
- * «Клиент здесь», the manager's side: what agents sent from the spot about
+ * «Клиент здесь», the manager's side: what agents sent from the spot — or,
+ * since 2026-11-04, proposed in advance — about
  * customers whose pin is in the wrong place. Each request is one card — the
  * map with where the pin stands and where the agent says the customer is,
  * what the agent's phone knew, and two worded buttons: accept the new place
@@ -157,13 +166,25 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
       <div className="divide-y divide-border">
         {requests.map((request) => {
           const deciding = busy?.id === request.id ? busy.decision : null
+          const remote = request.origin === "REMOTE"
+          const confirmed = remote && !!request.confirmation
+          // The fix that says where the agent stood at the place: from the spot,
+          // or his later confirmation of an advance request. None: he was not there.
+          const atPlace = request.confirmation
+            ? { accuracyMeters: request.confirmation.accuracyMeters, distanceMeters: request.confirmation.distanceMeters }
+            : !remote && request.agentFix
+              ? { accuracyMeters: request.agentFix.accuracyMeters, distanceMeters: request.agentToProposedMeters }
+              : null
+          const addressOnly = !!request.proposedAddress && request.movedMeters === 0
           const facts: Array<[string, string]> = [
             // A customer that had no pin: nothing «moves», it gets its first one.
             request.movedMeters === null
               ? [t("locationFactPinBefore"), t("locationNoPinBefore")]
-              : [t("locationFactMoved"), distance(request.movedMeters)],
-            [t("locationFactAccuracy"), t("locationAccuracyValue", { meters: request.agentFix.accuracyMeters })],
-            [t("locationFactAgentDistance"), request.agentToProposedMeters <= 5 ? t("locationAgentOnPoint") : distance(request.agentToProposedMeters)],
+              : [t("locationFactMoved"), addressOnly ? t("locationPinStays") : distance(request.movedMeters)],
+            [t("locationFactAccuracy"), atPlace ? t("locationAccuracyValue", { meters: atPlace.accuracyMeters }) : t("locationNotAtPlace")],
+            [t("locationFactAgentDistance"), !atPlace || atPlace.distanceMeters === null
+              ? t("locationNotAtPlace")
+              : atPlace.distanceMeters <= 5 ? t("locationAgentOnPoint") : distance(atPlace.distanceMeters)],
             [t("locationFactOutOfZone", { days: evidenceDays }), request.outOfZoneAlerts > 0 ? String(request.outOfZoneAlerts) : t("locationOutOfZoneNone")],
           ]
           return (
@@ -172,7 +193,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                 <RequestMap
                   previous={request.previous}
                   proposed={request.proposed}
-                  agentFix={request.agentFix}
+                  agentFix={request.confirmation ?? request.agentFix}
                   labels={{ previous: t("locationMapPrevious"), proposed: t("locationMapProposed") }}
                 />
               </div>
@@ -180,15 +201,38 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
               <div className="flex min-w-0 flex-col gap-3">
                 <div>
                   <h3 className="text-lg font-semibold leading-tight text-balance" data-testid="mtm-customer-location-headline">
-                    {request.previous
-                      ? t("locationHeadline", { customer: request.customer.name })
-                      : t("locationHeadlineNoPin", { customer: request.customer.name })}
+                    {addressOnly
+                      ? t("locationHeadlineAddress", { customer: request.customer.name })
+                      : request.previous
+                        ? t("locationHeadline", { customer: request.customer.name })
+                        : t("locationHeadlineNoPin", { customer: request.customer.name })}
                   </h3>
                   <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
                     <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t("locationSentBy", { agent: request.agent.name, when: when.format(new Date(request.submittedAt)) })}
+                    {t(remote ? "locationSentByInAdvance" : "locationSentBy", { agent: request.agent.name, when: when.format(new Date(request.submittedAt)) })}
                   </p>
-                  {request.customer.address || request.customer.city ? (
+                  {/* Owner, 2026-11-04: the manager sees which it is — proposed in
+                      advance, or confirmed by the agent standing at the place. */}
+                  {remote ? (
+                    <p
+                      className={`mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${confirmed
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                        : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"}`}
+                      data-testid="mtm-customer-location-origin"
+                    >
+                      {confirmed
+                        ? t("locationConfirmedOnSite", { time: clock.format(new Date(request.confirmation!.at)) })
+                        : t("locationInAdvanceUnconfirmed")}
+                    </p>
+                  ) : null}
+                  {request.proposedAddress ? (
+                    <div className="mt-2 rounded-lg border border-border px-3 py-2 text-sm" data-testid="mtm-customer-location-address-change">
+                      <span className="block text-xs text-muted-foreground">{t("locationAddressWas")}</span>
+                      <span className="text-muted-foreground line-through">{request.previousAddress || t("locationAddressNone")}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{t("locationAddressBecomes")}</span>
+                      <span className="font-semibold text-foreground">{request.proposedAddress}</span>
+                    </div>
+                  ) : request.customer.address || request.customer.city ? (
                     <p className="mt-1 text-sm text-muted-foreground">
                       {t("locationAddress", { address: [request.customer.address, request.customer.city].filter(Boolean).join(", ") })}
                     </p>
@@ -238,7 +282,7 @@ export function MtmCustomerLocationRequestQueue({ active, orgId, onChanged }: Cu
                     {/* Owner, 2026-10-16: «тут должно быть либо подтверждаю, либо
                         отклоняю» — both, always; a moved pin asks once more. */}
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <Hint wrap text={t(request.pinMovedSince ? "hint.locationAcceptMoved" : "hint.locationAccept")}>
+                      <Hint wrap text={t(request.pinMovedSince ? "hint.locationAcceptMoved" : remote && !confirmed ? "hint.locationAcceptInAdvance" : "hint.locationAccept")}>
                           <Button
                             type="button"
                             onClick={() => { void decide(request, "APPROVED") }}

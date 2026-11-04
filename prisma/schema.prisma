@@ -5691,6 +5691,12 @@ enum MtmProductGroupMemberRole {
   AGENT
 }
 
+/** Where an agent asked for a customer's place to be corrected from. */
+enum MtmLocationRequestOrigin {
+  ON_SITE
+  REMOTE
+}
+
 enum MtmApprovalStatus {
   DRAFT
   SUBMITTED
@@ -7012,14 +7018,29 @@ model MtmCustomerLocationRequest {
   // Where the agent says the customer is.
   proposedLatitude      Float
   proposedLongitude     Float
+  // From the spot («Клиент здесь») or in advance, from wherever the agent is
+  // (owner, 2026-11-04: «должно быть и до и на месте»).
+  origin                MtmLocationRequestOrigin @default(ON_SITE)
   // Where the agent's own phone was at that moment, and how sure it was.
-  agentLatitude         Float
-  agentLongitude        Float
-  agentAccuracyMeters   Float
-  agentFixAt            DateTime
+  // Always there for ON_SITE (a CHECK holds it); in advance only if the phone knew.
+  agentLatitude         Float?
+  agentLongitude        Float?
+  agentAccuracyMeters   Float?
+  agentFixAt            DateTime?
   // Rounded metres, kept so that a manager reads them as they were measured.
   movedMeters           Int?
-  agentToProposedMeters Int
+  agentToProposedMeters Int?
+  // The street address as the card had it, and as the agent says it is.
+  // `proposedAddress` null: the agent did not touch the address.
+  previousAddress       String?
+  proposedAddress       String?
+  // An advance request the agent later confirmed standing at the proposed
+  // place: where his phone was then, how sure it was, how far from the pin.
+  confirmedAt             DateTime?
+  confirmLatitude         Float?
+  confirmLongitude        Float?
+  confirmAccuracyMeters   Float?
+  confirmToProposedMeters Int?
   comment               String?
   reviewedBy            String?
   decisionComment       String?

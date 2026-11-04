@@ -115,6 +115,8 @@ export async function notifyLocationRequestReviewers(input: {
   requestedByAgentId: string
   customerName: string
   movedMeters: number | null
+  origin?: "ON_SITE" | "REMOTE"
+  proposedAddress?: string | null
 }): Promise<number> {
   try {
     const [reviewers, agent] = await Promise.all([
@@ -132,6 +134,8 @@ export async function notifyLocationRequestReviewers(input: {
         agentName,
         customerName,
         movedMeters: input.movedMeters,
+        origin: input.origin,
+        proposedAddress: input.proposedAddress,
       })
       const row = await createNotification({
         organizationId: input.organizationId,

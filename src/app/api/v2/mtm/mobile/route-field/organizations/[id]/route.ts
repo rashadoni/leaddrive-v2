@@ -175,6 +175,9 @@ export const GET = withMobileRls(async (_req, auth, { params }: { params: Promis
     decisionComment: true,
     submittedAt: true,
     reviewedAt: true,
+    origin: true,
+    proposedAddress: true,
+    confirmedAt: true,
   } as const
   const answeredSince = new Date(Date.now() - LOCATION_REQUEST_ANSWER_SHOWN_DAYS * 24 * 60 * 60 * 1000)
   const locationRequest = await prisma.mtmCustomerLocationRequest.findFirst({

@@ -8,10 +8,13 @@ import { MTM_ROUTE_AUDIT_ACTION } from "@/lib/mtm/route-audit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-outbox"
 import {
+  LOCATION_REQUEST_MIN_MOVE_METERS,
   MTM_LOCATION_REQUEST_CUSTOMER_MOVED,
   MTM_LOCATION_REQUEST_NOT_FOUND,
   customerPinStillAt,
   customerPinUnchangedSince,
+  customerPlaceUnchangedSince,
+  locationRequestMadeAtPlace,
 } from "@/lib/mtm/customer-location-request"
 import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 
@@ -42,6 +45,11 @@ class CustomerMovedError extends Error {}
  * waited are from then on measured against it. `REJECTED` leaves the customer
  * as it is, and those visits as they were recorded: outside the zone. Either way the agent is
  * told, and the journal keeps who decided and what the pin was and became.
+ *
+ * Since 2026-11-04 a request may also correct the street address (accepted
+ * with the pin, under the same «changed since» guard), and may have been made
+ * in advance: accepted, it moves the pin like any other, but leaves no
+ * verification receipt unless the agent confirmed it standing there.
  */
 export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, auth, { params }) => {
   const { id } = await params
@@ -80,6 +88,10 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
   // Where the pin stood when it was moved: what the agent saw, or — confirmed
   // over a later change — where somebody had put it since. For the journal.
   let replaced = { latitude: request.previousLatitude, longitude: request.previousLongitude }
+  // The same for the street address, when the request corrects it.
+  let replacedAddress = request.previousAddress
+  // «Адрес и точка» (2026-11-04): only the address is corrected, the pin stays.
+  const pinMoves = request.movedMeters === null || request.movedMeters >= LOCATION_REQUEST_MIN_MOVE_METERS
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const claimed = await tx.mtmCustomerLocationRequest.updateMany({
@@ -91,15 +103,16 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
       if (body.decision === "APPROVED") {
         const customer = await tx.mtmCustomer.findFirst({
           where: { id: request.customerId, organizationId: auth.orgId, deletedAt: null },
-          select: { latitude: true, longitude: true },
+          select: { latitude: true, longitude: true, address: true },
         })
         if (!customer) throw new CustomerMovedError("Customer gone")
-        const unchanged = customerPinUnchangedSince(request, customer)
+        const unchanged = customerPlaceUnchangedSince(request, customer)
         if (!unchanged && !body.confirmPinMoved) throw new CustomerMovedError("Customer pin changed")
-        if (!unchanged) {
+        if (!customerPinUnchangedSince(request, customer)) {
           const current = normalizeMtmCoordinates(customer)
           replaced = { latitude: current.latitude, longitude: current.longitude }
         }
+        if (request.proposedAddress) replacedAddress = customer.address
         // From the place this answer was given against, and no other: a pin
         // moved a moment ago by somebody else is not moved again.
         const moved = await tx.mtmCustomer.updateMany({
@@ -108,8 +121,13 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
             organizationId: auth.orgId,
             deletedAt: null,
             ...customerPinStillAt({ previousLatitude: replaced.latitude, previousLongitude: replaced.longitude }),
+            ...(request.proposedAddress ? { address: replacedAddress } : {}),
           },
-          data: { latitude: request.proposedLatitude, longitude: request.proposedLongitude },
+          data: {
+            latitude: request.proposedLatitude,
+            longitude: request.proposedLongitude,
+            ...(request.proposedAddress ? { address: request.proposedAddress } : {}),
+          },
         })
         if (moved.count !== 1) throw new CustomerMovedError("Customer pin changed")
         // The visits this agent checked in from the reported place while the
@@ -119,22 +137,32 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
           where: { organizationId: auth.orgId, locationRequestId: id },
           data: { checkInCustomerLat: request.proposedLatitude, checkInCustomerLng: request.proposedLongitude },
         })
-        // The organization card shows where its coordinates come from: now from a person who stood there.
-        await tx.mtmCustomerCoordinateVerification.create({
-          data: {
-            organizationId: auth.orgId,
-            customerId: request.customerId,
-            latitude: request.proposedLatitude,
-            longitude: request.proposedLongitude,
-            status: "VERIFIED",
-            accuracyMeters: request.agentAccuracyMeters,
-            sourceSystem: "FIELD_AGENT",
-            sourceReference: `customer-location-request:${request.id}`,
-            sourceObservedAt: request.agentFixAt,
-            decisionReason: comment,
-            verifiedByUserId: auth.userId,
-          },
-        })
+        // The organization card shows where its coordinates come from: now
+        // from a person who stood there — when one did. A pin proposed in
+        // advance and accepted on the agent's word moves, but nobody verified
+        // it; an address-only correction does not move it at all.
+        const fixAtPlace = request.confirmedAt && request.confirmAccuracyMeters !== null
+          ? { accuracyMeters: request.confirmAccuracyMeters, observedAt: request.confirmedAt }
+          : request.origin === "ON_SITE" && request.agentFixAt
+            ? { accuracyMeters: request.agentAccuracyMeters, observedAt: request.agentFixAt }
+            : null
+        if (pinMoves && locationRequestMadeAtPlace(request) && fixAtPlace) {
+          await tx.mtmCustomerCoordinateVerification.create({
+            data: {
+              organizationId: auth.orgId,
+              customerId: request.customerId,
+              latitude: request.proposedLatitude,
+              longitude: request.proposedLongitude,
+              status: "VERIFIED",
+              accuracyMeters: fixAtPlace.accuracyMeters,
+              sourceSystem: "FIELD_AGENT",
+              sourceReference: `customer-location-request:${request.id}`,
+              sourceObservedAt: fixAtPlace.observedAt,
+              decisionReason: comment,
+              verifiedByUserId: auth.userId,
+            },
+          })
+        }
       }
 
       await enqueueMtmRouteNotification(tx, {
@@ -143,7 +171,9 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
         dedupeKey: `customer-location-request:${id}:decision:${body.decision}`,
         title: body.decision === "APPROVED" ? "Customer location corrected" : "Customer location request declined",
         body: body.decision === "APPROVED"
-          ? `${request.customer.name}: the pin now stands where you reported.`
+          ? !pinMoves && request.proposedAddress
+            ? `${request.customer.name}: the address now reads «${request.proposedAddress}».`
+            : `${request.customer.name}: the pin now stands where you reported.${request.proposedAddress ? ` The address now reads «${request.proposedAddress}».` : ""}`
           : comment ? `${request.customer.name}: ${comment}` : `${request.customer.name}: the pin stays where it was.`,
         type: body.decision === "APPROVED" ? "info" : "task",
         metadata: { kind: "customer_location_request_decision", requestId: id, customerId: request.customerId, decision: body.decision },
@@ -176,12 +206,20 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
     entity: "customer_location_request",
     entityId: id,
     metadataKind: "customer_location_decision",
-    oldData: { status: "SUBMITTED", latitude: replaced.latitude, longitude: replaced.longitude },
+    oldData: {
+      status: "SUBMITTED",
+      latitude: replaced.latitude,
+      longitude: replaced.longitude,
+      ...(request.proposedAddress ? { address: replacedAddress } : {}),
+    },
     newData: {
       status: body.decision,
       customerId: request.customerId,
+      origin: request.origin,
+      confirmedOnSite: !!request.confirmedAt,
       latitude: body.decision === "APPROVED" ? request.proposedLatitude : request.previousLatitude,
       longitude: body.decision === "APPROVED" ? request.proposedLongitude : request.previousLongitude,
+      ...(request.proposedAddress ? { address: body.decision === "APPROVED" ? request.proposedAddress : replacedAddress } : {}),
       comment,
       ...(body.decision === "APPROVED" && body.confirmPinMoved && (replaced.latitude !== request.previousLatitude || replaced.longitude !== request.previousLongitude)
         ? { confirmedOverPinMovedSinceRequest: true, pinWhenAgentAsked: { latitude: request.previousLatitude, longitude: request.previousLongitude } }
