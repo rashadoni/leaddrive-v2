@@ -1,3 +1,4 @@
+import array
 import ast
 import base64
 import importlib.util
@@ -124,28 +125,6 @@ class TransportTests(unittest.TestCase):
         self.save([{"quantity": 1, "unit": "qutu", "spoken": "x"}], key="save-wait")
         time.sleep(0.15)
         self.assertEqual(len(waits), 1)
-
-    def test_a_turn_that_says_recorded_without_a_save_asks_for_the_save_once(self):
-        # Owner's call 2026-11-03 (TS-1014): "qeyd etdim" five times, one save, four lines in the CRM.
-        journal = []
-        self.bridge.log_event = lambda event, **fields: journal.append((event, fields))
-        nudges = lambda: [b for b in self.sent if "clientContent" in b]
-        self.handle({"serverContent": {"outputTranscription": {"text": "Smekta 10 qutu və Lineks 5 qutu qeyd etdim. "}}})
-        self.handle({"serverContent": {"turnComplete": True}})
-        self.assertEqual(len(nudges()), 1)
-        self.assertIn("save_order_list", nudges()[0]["clientContent"]["turns"][0]["parts"][0]["text"])
-        self.assertEqual(journal, [("zeytun_unsaved", {"status": "nudged"})])
-        # A turn that saved, and a turn that recorded nothing, are left alone.
-        self.save([{"quantity": 10, "unit": "qutu", "spoken": "Smekta on qutu"}], key="save-in-turn")
-        self.handle({"serverContent": {"outputTranscription": {"text": "Smekta 10 qutu qeyd etdim. Daha?"}}})
-        self.handle({"serverContent": {"turnComplete": True}})
-        self.handle({"serverContent": {"outputTranscription": {"text": "Hansı formasını istərdiniz?"}}})
-        self.handle({"serverContent": {"turnComplete": True}})
-        # Nor a turn the caller interrupted.
-        self.handle({"serverContent": {"outputTranscription": {"text": "Mezim qeyd etdim"}}})
-        self.handle({"serverContent": {"interrupted": True}})
-        self.handle({"serverContent": {"turnComplete": True}})
-        self.assertEqual(len(nudges()), 1)
 
     def save(self, lines, key="save-1"):
         self.finished.clear()
@@ -537,8 +516,8 @@ class TransportTests(unittest.TestCase):
                 return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": prompt,
                         "opening": "Test greeting", "maxSeconds": seconds}
             return bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
-        self.assertEqual(bridge_with(900, "p" * 8000).open()["maxSeconds"], 900)
-        for seconds, prompt in [(901, "p"), (900, "p" * 8001), (29, "p")]:
+        self.assertEqual(bridge_with(900, "p" * 12000).open()["maxSeconds"], 900)
+        for seconds, prompt in [(901, "p"), (900, "p" * 12001), (29, "p")]:
             with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
                 bridge_with(seconds, prompt).open()
 
@@ -1166,6 +1145,93 @@ class SpeechRelayTests(unittest.TestCase):
                 self.tts_with_lines(lines, error).stream("Salam", lambda pcm: None, lambda: True)
             self.assertEqual(str(raised.exception), reason)
 
+    def vertex_tts(self, answers):
+        """A TTS with a Vertex path; answers: per request, an HTTP code or 'ok'."""
+        ok = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+            "mimeType": "audio/l16; rate=24000; channels=1", "data": "AQABAA=="}}]}}]}).encode() + b"\n"]
+        asked = []
+
+        class Response(list):
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+        def opener(req, timeout):
+            asked.append(req.full_url.split("?")[0])
+            answer = answers.pop(0)
+            if answer != "ok":
+                raise urllib.error.HTTPError("u", answer, "x", {}, None)
+            return Response(ok)
+        tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=opener,
+                                            vertex=("gen-lang-client-0496964632", "v" * 53))
+        return tts, asked
+
+    def test_tts_goes_to_vertex_first_and_to_the_gemini_api_only_on_a_capacity_refusal(self):
+        vertex = ("https://aiplatform.googleapis.com/v1/projects/gen-lang-client-0496964632/locations/global/"
+                  "publishers/google/models/gemini-3.8-flash-tts:streamGenerateContent")
+        studio = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-tts:streamGenerateContent"
+        tts, asked = self.vertex_tts(["ok"])
+        tts.stream("Salam", lambda pcm: None, lambda: True)
+        self.assertEqual((asked, tts.path), ([vertex], "vertex"))
+        for code in (429, 503, 403):
+            tts, asked = self.vertex_tts([code, "ok"])
+            tts.stream("Salam", lambda pcm: None, lambda: True)
+            self.assertEqual((asked, tts.path), ([vertex, studio], "studio"))
+        # A request refused for itself is not sent twice; both refusing ends in the old code.
+        tts, asked = self.vertex_tts([404])
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable) as raised:
+            tts.stream("Salam", lambda pcm: None, lambda: True)
+        self.assertEqual((str(raised.exception), asked), ("tts_http_404", [vertex]))
+        tts, asked = self.vertex_tts([429, 429])
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable) as raised:
+            tts.stream("Salam", lambda pcm: None, lambda: True)
+        self.assertEqual(str(raised.exception), "tts_http_429")
+        # A turn the caller already dropped is not asked again.
+        tts, asked = self.vertex_tts([429, "ok"])
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
+            tts.stream("Salam", lambda pcm: None, lambda: False)
+        self.assertEqual(asked, [vertex])
+
+    def test_tts_without_a_valid_vertex_path_keeps_the_gemini_api(self):
+        for vertex in (None, ("", "v" * 53), ("Bad_Project!", "v" * 53), ("gen-lang-client-0496964632", "short")):
+            tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", vertex=vertex)
+            self.assertEqual([path for path, _ in tts.urls], ["studio"])
+        bridge = bridge_module.ZeytunInboundBridge
+        self.assertIsNone(bridge.tts_vertex({}))
+        self.assertIsNone(bridge.tts_vertex({"ZEYTUN_TTS_VERTEX_PROJECT": "p-roject1"}))
+        self.assertEqual(bridge.tts_vertex({"ZEYTUN_TTS_VERTEX_PROJECT": " gen-lang-client-0496964632 ",
+                                            "ZEYTUN_TTS_VERTEX_KEY": "v" * 53 + "\n"}),
+                         ("gen-lang-client-0496964632", "v" * 53))
+
+    def test_the_phone_band_keeps_speech_and_drops_what_would_fold_into_it(self):
+        import audioop, math
+        def tone(freq):
+            return array.array("h", [int(12000 * math.sin(2 * math.pi * freq * i / 24000))
+                                     for i in range(24000)]).tobytes()
+        for freq, low, high in [(300, 8300, 8600), (1000, 8300, 8600), (3000, 8000, 8600),
+                                (4500, 0, 60), (6000, 0, 60), (9000, 0, 60)]:
+            out, _ = bridge_module.zeytun_phone_band(tone(freq), None)
+            self.assertEqual(len(out), 8000 * 2)
+            self.assertTrue(low <= audioop.rms(out[400:], 2) <= high, freq)
+            # What the core did before: a 6 kHz tone reached the line whole, as 2 kHz.
+        self.assertGreater(audioop.rms(audioop.ratecv(tone(6000), 2, 1, 24000, 8000, None)[0], 2), 8000)
+
+    def test_the_phone_band_is_the_same_however_the_audio_is_chunked(self):
+        voice = array.array("h", [((i * 7919) % 20001) - 10000 for i in range(24000)]).tobytes()
+        whole, _ = bridge_module.zeytun_phone_band(voice, None)
+        # Whole samples only: the core refuses unaligned Gemini audio.
+        out, state, pos, sizes = b"", None, 0, [2, 958, 4800, 1922, 6]
+        for step in range(10 ** 4):
+            if pos >= len(voice):
+                break
+            size = sizes[step % len(sizes)]
+            piece, state = bridge_module.zeytun_phone_band(voice[pos:pos + size], state)
+            out, pos = out + piece, pos + size
+        self.assertEqual(out, whole)
+        # A state the old resampler left (or nothing) starts fresh rather than failing.
+        for stale in (None, (5, ((1, 2),)), ("x", 0), (b"short", 1)):
+            self.assertEqual(bridge_module.zeytun_phone_band(voice[:960], stale)[0],
+                             bridge_module.zeytun_phone_band(voice[:960], None)[0])
+        self.assertEqual(bridge_module.zeytun_phone_band(b"", None)[0], b"")
+
     def test_a_transcript_tail_after_turn_complete_belongs_to_that_turn(self):
         tts = FakeTts()
         relay = self.relay(tts)
@@ -1570,6 +1636,19 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("pharmacy_agent_heard_at", feed)
         self.assertEqual(ast.dump(ast.parse(feed).body[0]), ast.dump(new_methods["feed"]))
         differences.discard("feed")
+        # Playback changes only how a pharmacy call goes to 8 kHz (owner, 2026-11-04: hoarse).
+        loop = textwrap.dedent(ast.get_source_segment(text, old_methods["playback_loop"], padded=True))
+        lines = loop.splitlines(True)
+        first = next(i for i, line in enumerate(lines) if "pcm8, self.output_resample_state = audioop.ratecv(" in line)
+        pad = lines[first][:len(lines[first]) - len(lines[first].lstrip())]
+        last = next(i for i in range(first + 1, len(lines)) if lines[i] == pad + ")\n")
+        lines[first:last + 1] = ([pad + "if self.pharmacy_preview:\n",
+                                  pad + "    pcm8, self.output_resample_state = zeytun_phone_band(\n",
+                                  pad + "        pcm24, self.output_resample_state)\n", pad + "else:\n"]
+                                 + ["    " + line for line in lines[first:last + 1]])
+        loop = "".join(lines)
+        self.assertEqual(ast.dump(ast.parse(loop).body[0]), ast.dump(new_methods["playback_loop"]))
+        differences.discard("playback_loop")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")

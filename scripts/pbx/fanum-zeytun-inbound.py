@@ -5,9 +5,11 @@ credential/catalog logging; no 1C calls; every lookup reauthorizes at the CRM.
 Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 """
 import array
+import audioop
 import base64
 from decimal import Decimal
 import json
+import math
 import os
 import re
 import threading
@@ -81,6 +83,51 @@ def zeytun_speakable_text(text):
     return re.sub(r"^(?:Hmm+|Hım+|Hm+)[.,…]*\s+", "Hmm... <short pause> ", text, flags=re.IGNORECASE)
 
 
+def _zeytun_phone_band_taps(count=63, cutoff=3500.0, rate=24000.0):
+    """Hamming-windowed sinc low-pass, unity gain at 0 Hz."""
+    fc, mid = cutoff / rate, (count - 1) / 2
+    taps = [(2 * fc if i == mid else math.sin(2 * math.pi * fc * (i - mid)) / (math.pi * (i - mid)))
+            * (0.54 - 0.46 * math.cos(2 * math.pi * i / (count - 1))) for i in range(count)]
+    total = sum(taps)
+    return tuple(tap / total for tap in taps)
+
+
+ZEYTUN_PHONE_BAND_TAPS = _zeytun_phone_band_taps()
+
+
+def zeytun_phone_band(pcm24, state):
+    """24 kHz PCM16 -> 8 kHz PCM16 for the phone, filtered first.
+
+    Owner, 2026-11-04, of the Vertex sample: the file converted with ffmpeg was
+    the best, the line sounded hoarse. The core went 24 -> 8 kHz with
+    audioop.ratecv, which does not filter: a third of the voice's energy lies
+    above 4 kHz (35 % on the line's greeting) and folded back into the phone
+    band. The low-pass is the one in the sample the owner chose («2c»): 63
+    taps, 3.5 kHz, then every third sample. Computed with audioop over whole
+    chunks, so the CPU stays in C. state carries the last 62 input samples and
+    the decimation phase across chunks; None starts fresh, as ratecv's did.
+    """
+    taps = ZEYTUN_PHONE_BAND_TAPS
+    keep = 2 * (len(taps) - 1)
+    # Anything else (None, a ratecv state from before the call became a
+    # pharmacy call) starts fresh.
+    fresh = not (isinstance(state, tuple) and len(state) == 2 and isinstance(state[0], bytes)
+                 and len(state[0]) == keep and state[1] in (0, 1, 2))
+    tail, phase = (b"\x00" * keep, 0) if fresh else state
+    count = len(pcm24) // 2
+    if not count:
+        return b"", (tail, phase)
+    buffer = tail + pcm24[:2 * count]
+    # sample << 8 in 32 bits: headroom for the sum, precision for the products.
+    wide = audioop.mul(audioop.lin2lin(buffer, 2, 4), 4, 1 / 256)
+    total = None
+    for index, tap in enumerate(taps):
+        term = audioop.mul(wide[4 * index:4 * (index + count)], 4, tap)
+        total = term if total is None else audioop.add(total, term, 4)
+    filtered = array.array("h", audioop.lin2lin(audioop.mul(total, 4, 256), 4, 2))
+    return filtered[phase::3].tobytes(), (buffer[-keep:], (phase - count) % 3)
+
+
 class ZeytunGeminiTts:
     """Streaming gemini TTS for one call: plain text in, PCM16 24 kHz out.
 
@@ -89,38 +136,76 @@ class ZeytunGeminiTts:
     delivery goes in the part's speechMetadata.style instead (3.8 TTS; owner,
     2026-10-30, chose that sample: «C»); a request it refuses (400) is sent
     once more without it, and the call keeps the plain delivery.
+
+    Two paths to the same model and voice (task 9, owner 2026-11-04 of the
+    Vertex sample: «Тот же, переключай»): the Gemini API on Tier 1 allows 100
+    TTS requests a day - three to five calls - and returned 429 for the rest
+    of the day; Vertex AI (Standard PayGo, global) has no daily count. With a
+    Vertex key the request goes there first; a refusal before any audio that
+    is about capacity or the server (429, 5xx, 401/403 of a revoked key) is
+    asked once of the Gemini API, so the old path is the rollback.
     """
     MODELS = frozenset({"gemini-3.8-flash-tts"})
+    VERTEX_PROJECT = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
+    # Refusals after which the other path is worth one more request; a 400
+    # is about the request itself and would be refused there too.
+    FALLBACK_CODES = frozenset({401, 403, 408, 429, 500, 502, 503, 504})
     # First audio arrives in ~0.7 s; a turn waiting longer than this falls
     # back to the model's own voice rather than leave the line silent.
     TIMEOUT_SECONDS = 4
 
-    def __init__(self, key, model, voice, opener=None, style=None):
+    def __init__(self, key, model, voice, opener=None, style=None, vertex=None):
         if not key or model not in self.MODELS or voice not in ZeytunInboundBridge.VOICES:
             raise ZeytunPilotUnavailable("tts_unavailable")
         self.style = style
-        self.url = ("https://generativelanguage.googleapis.com/v1beta/models/" + model
-                    + ":streamGenerateContent?alt=sse&key=" + urllib.parse.quote(key, safe=""))
+        query = ":streamGenerateContent?alt=sse&key="
+        self.urls = []
+        project, vertex_key = vertex if isinstance(vertex, tuple) and len(vertex) == 2 else (None, None)
+        if (isinstance(project, str) and self.VERTEX_PROJECT.match(project)
+                and isinstance(vertex_key, str) and 30 <= len(vertex_key.strip()) <= 256):
+            self.urls.append(("vertex", "https://aiplatform.googleapis.com/v1/projects/" + project
+                              + "/locations/global/publishers/google/models/" + model
+                              + query + urllib.parse.quote(vertex_key.strip(), safe="")))
+        self.urls.append(("studio", "https://generativelanguage.googleapis.com/v1beta/models/" + model
+                          + query + urllib.parse.quote(key, safe="")))
+        self.url = self.urls[0][1]
+        self.path = self.urls[0][0]
         self.voice = voice
         self.open = opener or (lambda req, timeout: urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout))
 
     def stream(self, text, on_pcm, keep_going):
+        heard = [0]
+        def counted(pcm):
+            heard[0] += len(pcm)
+            on_pcm(pcm)
+        for index, (path, url) in enumerate(self.urls):
+            self.path = path
+            try:
+                return self._styled(url, text, counted, keep_going)
+            except ZeytunPilotUnavailable as error:
+                code = str(error).rsplit("_", 1)[-1]
+                if (heard[0] or index + 1 == len(self.urls) or not keep_going()
+                        or not code.isdigit() or int(code) not in self.FALLBACK_CODES):
+                    raise
+        raise ZeytunPilotUnavailable("tts_unavailable")
+
+    def _styled(self, url, text, on_pcm, keep_going):
         try:
-            return self._stream(text, on_pcm, keep_going, self.style)
+            return self._stream(url, text, on_pcm, keep_going, self.style)
         except ZeytunPilotUnavailable as error:
             if not self.style or str(error) != "tts_http_400":
                 raise
             self.style = None
-        return self._stream(text, on_pcm, keep_going, None)
+        return self._stream(url, text, on_pcm, keep_going, None)
 
-    def _stream(self, text, on_pcm, keep_going, style):
+    def _stream(self, url, text, on_pcm, keep_going, style):
         part = {"text": text}
         if style:
             part["speechMetadata"] = {"style": style}
         body = {"contents": [{"role": "user", "parts": [part]}],
                 "generationConfig": {"responseModalities": ["AUDIO"],
                                      "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.voice}}}}}
-        req = urllib.request.Request(self.url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        req = urllib.request.Request(url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")
         produced = 0
         try:
@@ -536,7 +621,8 @@ class ZeytunSpeechRelay:
                     content["outputTranscription"] = {"text": piece + " "}
                     heard[0] = True
                     if not turn["spoken"]:
-                        self.log("tts_first_audio", ms=round((time.monotonic() - asked) * 1000))
+                        self.log("tts_first_audio", ms=round((time.monotonic() - asked) * 1000),
+                                 path=getattr(self.tts, "path", None))
                 self._emit(content)
                 turn["spoken"] = True
 
@@ -928,19 +1014,16 @@ class ZeytunInboundBridge:
                   "düzdür", "əlbəttə", "да", "ага", "конечно")
     CANCEL_NO = ("yox", "xeyr", "təsdiq", "saxla", "dayan", "gözlə", "lazımdır", "нет", "не", "подтвер", "оставь")
     CANCEL_ANSWER_WAIT_SECONDS = 1.5
-    # Owner's call 2026-11-03 (TS-1014): the agent said "qeyd etdim" for five
-    # products and saved the list once — four lines reached the managers.
-    # A turn that tells the caller a line is written, without a save in it,
-    # makes the station ask for the save once.
-    RECORDED_WORDS = ("qeyd etdim", "qeyd edirəm", "qeyd edildi", "yazdım", "yazıram", "əlavə etdim", "əlavə edirəm")
-    UNSAVED_NUDGE = ("Station note, never read it aloud: you told the caller a line is recorded but did not call "
-                     "save_order_list. Call it now, silently, with the whole list so far.")
     # Owner, 2026-10-27: a long order must not be lost. The CRM allows a call
     # up to 15 minutes (the core's own ceiling is 900 s) and the agent saves
     # the list after every line, so the per-call tool budget and the prompt
     # (which now carries that rule) are larger than the 5-minute pilot's.
     MAX_CALL_SECONDS = 900
-    MAX_PROMPT_CHARS = 8000
+    # Owner, 2026-11-04: the agent is to sell as well (promotions, substitutes,
+    # "as usual"), and the 8000 left the company notes 910 characters. The
+    # station takes 12000 first; the CRM raises its own limit only after
+    # this core is live (src/__tests__/lib-zeytun-inbound-pilot.test.ts).
+    MAX_PROMPT_CHARS = 12000
     MAX_TOOL_CALLS = 256
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
@@ -1030,8 +1113,6 @@ class ZeytunInboundBridge:
         self.cancel_answer = None
         self.model_turn_text = ""
         self.cancel_asked_this_turn = False
-        # Did this model turn call save_order_list (UNSAVED_NUDGE)?
-        self.saved_this_turn = False
         # Set by the core: called with the phrase once the CRM took the transfer.
         self.on_transfer = None
         # Set by the core: the station journal (zeytun_cancel status=...).
@@ -1190,13 +1271,23 @@ class ZeytunInboundBridge:
     def speech_voice(self):
         return self.voice
 
+    @staticmethod
+    def tts_vertex(environ=None):
+        """The station's Vertex AI path for the TTS (task 9), from the service's
+        environment: a drop-in EnvironmentFile, root-only. None: Gemini API only."""
+        environ = os.environ if environ is None else environ
+        project = (environ.get("ZEYTUN_TTS_VERTEX_PROJECT") or "").strip()
+        key = (environ.get("ZEYTUN_TTS_VERTEX_KEY") or "").strip()
+        return (project, key) if project and key else None
+
     def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None,
                      progress=None, recovering=None, ask=None):
         """The call's TTS relay, created once; None while the model speaks itself."""
         if self.tts_model is None:
             return None
         if self.relay is None:
-            engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style)
+            engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style,
+                                            vertex=self.tts_vertex())
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
                                            progress=progress, recovering=recovering, ask=ask)
             self.relay.prefetch_filler()
@@ -1490,16 +1581,9 @@ class ZeytunInboundBridge:
                     self.cancel_answer = ""
             if isinstance(heard, dict) and isinstance(heard.get("text"), str) and self.cancel_answer is not None:
                 self.cancel_answer = (self.cancel_answer + " " + heard["text"])[-500:]
-            unsaved = False
-            if content.get("turnComplete") is True:
-                said = " ".join(self.model_turn_text.lower().split())
-                unsaved = (not self.saved_this_turn and not self.cancelled
-                           and any(words in said for words in self.RECORDED_WORDS))
             if content.get("turnComplete") is True or content.get("interrupted") is True:
                 self.model_turn_text = ""
                 self.cancel_asked_this_turn = False
-                self.saved_this_turn = False
-            return unsaved
 
     def caller_answer_to_cancel(self):
         """The caller's answer to CANCEL_QUESTION, waiting briefly for recognition to catch up."""
@@ -1557,9 +1641,8 @@ class ZeytunInboundBridge:
                         self.pending.pop(key, None)
             return True
         content = event.get("serverContent")
-        if isinstance(content, dict) and self.note_content(content) and current():
-            self.log_event("zeytun_unsaved", status="nudged")
-            send({"clientContent": {"turns": [{"role": "user", "parts": [{"text": self.UNSAVED_NUDGE}]}], "turnComplete": True}})
+        if isinstance(content, dict):
+            self.note_content(content)
         if isinstance(content, dict) and content.get("interrupted") is True:
             with self.lock:
                 self.pending.clear()
@@ -1590,9 +1673,6 @@ class ZeytunInboundBridge:
                     send({"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}})
                 continue
             saving = name == self.SAVE_NAME
-            if saving:
-                with self.lock:
-                    self.saved_this_turn = True
             transferring = name == self.TRANSFER_NAME
             cancelling = name == self.CANCEL_NAME
             args = (({} if call.get("args") in (None, {}) else None) if transferring or cancelling

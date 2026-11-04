@@ -7,6 +7,7 @@ import { openingForCandidates, ZEYTUN_SALES_DESK, type PharmacyCandidate } from 
 import { PHONE_ORDER_MAX_LINES, phoneOrderLabel, phoneOrderLineInputSchema, type PhoneOrderCatalog,
   type PhoneOrderLineInput, type PhoneOrderSaveResult } from "./phone-orders"
 import { SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
+import { HISTORY_PREFIX, historyCandidates, type PharmacyHistory } from "./zeytun-pharmacy-history"
 import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
 import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
@@ -201,6 +202,8 @@ export type InboundPilotDependencies = {
   loadLineSpeech?: (config: LineGrant) => Promise<LineSpeech>
   /** What its managers' confirmed orders taught the line (zeytun-learned-names.ts); null until read. Never waits. */
   learnedNames?: (config: LineGrant) => LearnedNames | null
+  /** The last confirmed order of the pharmacy this call already knows (zeytun-pharmacy-history.ts). */
+  pharmacyHistory?: (config: LineGrant, call: InboundPilotOrderCall) => Promise<PharmacyHistory>
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
@@ -608,6 +611,30 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         console.log("[zeytun-line] transfer", JSON.stringify({ status }))
         return searchResponse({ status, ...(status === "transferring" ? { say: ZEYTUN_TRANSFER_PHRASE } : {}) })
       }
+      // One search candidate as the agent gets it: today's price, and on the line stock and promotion.
+      const candidate = (item: ReturnType<InboundPilotCatalog["search"]>["candidates"][number]) => {
+        const price = listPrice(item, catalog.observedAt)
+        const stock = isLineGrant(config) ? catalogStock(item) : null
+        const promotion = isLineGrant(config) ? activePromotion(item, clock()) : null
+        return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
+          identityVerified: false, ...(price ? { listPrice: price } : {}), ...(stock ? { stock } : {}), ...(promotion ? { promotion } : {}) }
+      }
+      // «Как обычно» (owner, 2026-11-04): the call's own pharmacy's last confirmed order, never one the model names.
+      if (input.query.text && HISTORY_PREFIX.test(input.query.text)) {
+        const history: PharmacyHistory = isLineGrant(config) && dependencies.pharmacyHistory
+          ? await dependencies.pharmacyHistory(config, finalCall) : { status: "pharmacy_unknown" }
+        console.log("[zeytun-line] history", JSON.stringify({ call: input.callId, status: history.status,
+          ...(history.status === "found" ? { lines: history.lines.length } : {}) }))
+        if (history.status !== "found") return searchResponse({ status: history.status, mode: "pharmacy_history", candidates: [], ...searchRestrictions })
+        return searchResponse({ status: "found", mode: "pharmacy_history", orderNumber: phoneOrderLabel(history.number),
+          orderedAt: history.orderedAt, lineCount: history.lineCount,
+          candidates: historyCandidates(history.lines, id => {
+            const item = catalog.search({ externalId: id }).candidates.find(found => found.externalId === id)
+            return item ? candidate(item) : null
+          }),
+          catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
+          ...searchRestrictions })
+      }
       const found = catalog.search(input.query)
       // A wording its managers already confirmed leads to that product first.
       const learned = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text)
@@ -630,13 +657,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       }
       return searchResponse({ status: result.status, mode: "owner_inbound_preview", customerVerified: false,
         candidateCount: result.candidateCount, needsNarrowing: result.candidateCount > 1,
-        candidates: result.candidates.slice(0, 5).map(item => {
-          const price = listPrice(item, catalog.observedAt)
-          const stock = isLineGrant(config) ? catalogStock(item) : null
-          const promotion = isLineGrant(config) ? activePromotion(item, clock()) : null
-          return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
-            identityVerified: false, ...(price ? { listPrice: price } : {}), ...(stock ? { stock } : {}), ...(promotion ? { promotion } : {}) }
-        }),
+        candidates: result.candidates.slice(0, 5).map(candidate),
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
     } catch { return searchResponse({ enabled: false, error: "pilot_unavailable", candidates: [], ...searchRestrictions }, 503) }

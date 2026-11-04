@@ -285,6 +285,30 @@ def build(source, bridge):
             return zeytun_call_transcript(order, items, *heard)
         return [
 ''')
+    # Owner, 2026-11-04: the line sounded hoarse, the same voice converted
+    # with a filter did not. Pharmacy calls go to 8 kHz through the filtered
+    # zeytun_phone_band; other calls keep ratecv.
+    replace('''                        pcm8, self.output_resample_state = audioop.ratecv(
+                            pcm24,
+                            2,
+                            1,
+                            GEMINI_LIVE_OUTPUT_RATE,
+                            8000,
+                            self.output_resample_state,
+                        )
+''', '''                        if self.pharmacy_preview:
+                            pcm8, self.output_resample_state = zeytun_phone_band(
+                                pcm24, self.output_resample_state)
+                        else:
+                            pcm8, self.output_resample_state = audioop.ratecv(
+                                pcm24,
+                                2,
+                                1,
+                                GEMINI_LIVE_OUTPUT_RATE,
+                                8000,
+                                self.output_resample_state,
+                            )
+''')
     # Owner, 2026-10-28: the station resends an order the CRM did not answer.
     # Started with the service, so what a previous run left is sent before
     # the first call after a restart.
