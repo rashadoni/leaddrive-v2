@@ -6,17 +6,50 @@
       "title": "Обычный заказ из трёх товаров",
       "turns": [
         "Zəfər aptek. Adefa 5 qutu, Bisakodil 10 qutu.",
-        { "say": "Mezim forte 10000, 3 qutu.", "when": [{ "match": "(Adefa|Bisakodil)[^.!]*\\?", "say": "Bəli, düzdür. Bir də Mezim forte 10000, 3 qutu." }] },
-        { "say": "Bu qədər, təsdiq edirəm.", "when": [{ "match": "Mezim[^.!]*\\?", "say": "Bəli, 10000. Bu qədər, təsdiq edirəm." }] },
+        {
+          "say": "Mezim forte 10000, 3 qutu.",
+          "when": [
+            {
+              "match": "(Adefa|Bisakodil)[^.!]*\\?",
+              "say": "Bəli, düzdür. Bir də Mezim forte 10000, 3 qutu."
+            }
+          ]
+        },
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "Mezim[^.!]*\\?",
+              "say": "Bəli, 10000. Bu qədər, təsdiq edirəm."
+            }
+          ]
+        },
         "Sağ olun."
       ],
       "checks": {
         "tools": [
-          { "name": "search_pharmacy_catalog", "args": "adefa", "label": "искал Adefa" },
-          { "name": "search_pharmacy_catalog", "args": "bisakodil", "label": "искал Bisakodil" },
-          { "name": "search_pharmacy_catalog", "args": "mezim", "label": "искал Mezim forte" }
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "adefa",
+            "label": "искал Adefa"
+          },
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "bisakodil",
+            "label": "искал Bisakodil"
+          },
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "mezim",
+            "label": "искал Mezim forte"
+          }
         ],
-        "reply": [{ "match": "aksiya|pulsuz|hədiyyə|bonus", "label": "назвал акцию на Adefa (5+1)" }],
+        "reply": [
+          {
+            "match": "aksiya|pulsuz|hədiyyə|bonus",
+            "label": "назвал акцию на Adefa (5+1)"
+          }
+        ],
         "finalSave": true,
         "savedLines": 3
       }
@@ -26,16 +59,52 @@
       "title": "Товара нет — сам предлагает аналог (substitute:)",
       "turns": [
         "Gənclik aptek. Fluimucil 600 şipuçi tablet, 10 qutu.",
-        { "say": "Fluimucil. F-L-U-İ-M-U-C-İ-L, altı yüz.", "when": [
-          { "match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)[^.!]*\\?", "say": "Bəli, onu yazın, 10 qutu." },
-          { "match": "Fluifort|Флуифорт", "say": "Yox, Fluifort yox. Fluimucil." }] },
-        { "say": "Bu qədər, təsdiq edirəm.", "when": [
-          { "match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)[^.!]*\\?", "say": "Bəli, onu yazın, 10 qutu." }] },
-        { "say": "Bu qədər, təsdiq edirəm.", "when": [{ "match": "Sağ olun, xoş günlər", "say": "Sağ olun." }] }
+        {
+          "say": "Fluimucil. F-L-U-İ-M-U-C-İ-L, altı yüz.",
+          "when": [
+            {
+              "match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)[^.!]*\\?",
+              "say": "Bəli, onu yazın, 10 qutu."
+            },
+            {
+              "match": "Fluifort|Флуифорт",
+              "say": "Yox, Fluifort yox. Fluimucil."
+            }
+          ]
+        },
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)[^.!]*\\?",
+              "say": "Bəli, onu yazın, 10 qutu."
+            }
+          ]
+        },
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "Sağ olun, xoş günlər",
+              "say": "Sağ olun."
+            }
+          ]
+        }
       ],
       "checks": {
-        "tools": [{ "name": "search_pharmacy_catalog", "args": "substitute:\\s*ACETYLCYSTEINE", "label": "сам искал аналог: substitute: ACETYLCYSTEINE" }],
-        "reply": [{ "match": "A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин", "label": "предложил ACC (ацетилцистеин)" }],
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "substitute:\\s*ACETYLCYSTEINE",
+            "label": "сам искал аналог: substitute: ACETYLCYSTEINE"
+          }
+        ],
+        "reply": [
+          {
+            "match": "A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин",
+            "label": "предложил ACC (ацетилцистеин)"
+          }
+        ],
         "finalSave": true,
         "savedLines": 1
       }
@@ -45,17 +114,42 @@
       "title": "«Paracetamol hansı formaları var?»",
       "turns": [
         "Nərgiz aptek. Paracetamol hansı formaları var?",
-        { "say": "Yaxşı, sirop 5 qutu.", "when": [{ "match": "(sirop|hansı)[^.!]*\\?", "say": "Sirop, 5 qutu." }] },
+        {
+          "say": "Yaxşı, sirop 5 qutu.",
+          "when": [
+            {
+              "match": "(sirop|hansı)[^.!]*\\?",
+              "say": "Sirop, 5 qutu."
+            }
+          ]
+        },
         "Bu qədər, təsdiq edirəm.",
         "Sağ olun."
       ],
       "checks": {
-        "tools": [{ "name": "search_pharmacy_catalog", "args": "paras?setamol|parac", "label": "искал Paracetamol" }],
-        "reply": [
-          { "match": "tablet|həb", "label": "назвал таблетки" },
-          { "match": "sirop|şərbət", "label": "назвал сироп" }
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "paras?setamol|parac",
+            "label": "искал Paracetamol"
+          }
         ],
-        "noReply": [{ "match": "manat", "label": "без вопроса о цене цену не называет" }],
+        "reply": [
+          {
+            "match": "tablet|həb",
+            "label": "назвал таблетки"
+          },
+          {
+            "match": "sirop|şərbət",
+            "label": "назвал сироп"
+          }
+        ],
+        "noReply": [
+          {
+            "match": "manat",
+            "label": "без вопроса о цене цену не называет"
+          }
+        ],
         "finalSave": true,
         "savedLines": 1
       }
@@ -71,13 +165,29 @@
       ],
       "checks": {
         "tools": [
-          { "name": "search_pharmacy_catalog", "args": "promotions:", "label": "запросил список акций (promotions:)" },
-          { "name": "search_pharmacy_catalog", "args": "ketonal", "label": "искал Ketonal" }
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "promotions:",
+            "label": "запросил список акций (promotions:)"
+          },
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "ketonal",
+            "label": "искал Ketonal"
+          }
         ],
         "reply": [
-          { "match": "Ketonal.*(aksiya|pulsuz|hədiyyə|10.*2)|(aksiya|pulsuz|hədiyyə|10.*2).*Ketonal", "label": "назвал акцию Ketonal (10+2)" }
+          {
+            "match": "Ketonal.*(aksiya|pulsuz|hədiyyə|10.*2)|(aksiya|pulsuz|hədiyyə|10.*2).*Ketonal",
+            "label": "назвал акцию Ketonal (10+2)"
+          }
         ],
-        "noReply": [{ "match": "aksiya (yoxdur|olmur)|məlumat(ım)? yoxdur|deyə bilmərəm", "label": "не отвечает «акций нет / не знаю» на вопрос об акциях" }]
+        "noReply": [
+          {
+            "match": "aksiya (yoxdur|olmur)|məlumat(ım)? yoxdur|deyə bilmərəm",
+            "label": "не отвечает «акций нет / не знаю» на вопрос об акциях"
+          }
+        ]
       }
     },
     {
@@ -90,42 +200,124 @@
         "Sağ olun."
       ],
       "checks": {
-        "tools": [{ "name": "search_pharmacy_catalog", "args": "history:", "label": "запросил историю аптеки (history:)" }],
-        "noTools": [{ "name": "save_order_list", "args": "\"externalId\"", "label": "не записал товары, которых аптека не называла" }]
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "history:",
+            "label": "запросил историю аптеки (history:)"
+          }
+        ],
+        "noTools": [
+          {
+            "name": "save_order_list",
+            "args": "\"externalId\"",
+            "label": "не записал товары, которых аптека не называла"
+          }
+        ]
       }
     },
     {
       "id": "5b",
       "title": "«Əvvəlki kimi»: история найдена, один товар выбыл из каталога",
       "expectedFail": "ждёт #1320: на main safe_result станции не принимает mode pharmacy_history и отдаёт модели unavailable",
-      "history": { "number": 812, "orderedAt": "2026-10-28", "lines": [
-        {"find": "Adefa", "quantity": 5, "unit": "qutu"},
-        {"find": "Bisakodil", "quantity": 10, "unit": "qutu"},
-        {"name": "Fluimucil 600 мг № 10 (Шипучие таблетки)", "quantity": 6, "unit": "qutu"}] },
+      "history": {
+        "number": 812,
+        "orderedAt": "2026-10-28",
+        "lines": [
+          {
+            "find": "Adefa",
+            "quantity": 5,
+            "unit": "qutu"
+          },
+          {
+            "find": "Bisakodil",
+            "quantity": 10,
+            "unit": "qutu"
+          },
+          {
+            "name": "Fluimucil 600 мг № 10 (Шипучие таблетки)",
+            "quantity": 6,
+            "unit": "qutu"
+          }
+        ]
+      },
       "turns": [
         "Zəfər aptek. Əvvəlki kimi yazın.",
-        {"say": "Bəli, eyni cür yazın.", "when": [{"match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)[^.!]*\\?", "say": "Bəli, eyni cür yazın, Fluimucil əvəzinə də onu, 6 qutu."}]},
+        {
+          "say": "Bəli, eyni cür yazın.",
+          "when": [
+            {
+              "match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)[^.!]*\\?",
+              "say": "Bəli, eyni cür yazın, Fluimucil əvəzinə də onu, 6 qutu."
+            }
+          ]
+        },
         "Bu qədər, təsdiq edirəm.",
-        {"say": "Bu qədər, təsdiq edirəm.", "when": [{"match": "Sağ olun, xoş günlər", "say": "Sağ olun."}]},
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "Sağ olun, xoş günlər",
+              "say": "Sağ olun."
+            }
+          ]
+        },
         "Sağ olun."
       ],
       "checks": {
         "tools": [
-          {"name": "search_pharmacy_catalog", "args": "\"history:\\s*\"", "label": "запросил историю (history:)"},
-          {"name": "search_pharmacy_catalog", "args": "substitute:\\s*ACETYLCYSTEINE", "label": "для выбывшего Fluimucil искал аналог (substitute:)"}
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "\"history:\\s*\"",
+            "label": "запросил историю (history:)"
+          },
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "substitute:\\s*ACETYLCYSTEINE",
+            "label": "для выбывшего Fluimucil искал аналог (substitute:)"
+          }
         ],
         "reply": [
-          {"match": "2026-10-28|28[ .-]?(oktyabr|10)|oktyabrın 28", "label": "назвал дату прошлого заказа"},
-          {"match": "Adefa[^.?]*\\b5\\b|\\b5\\b[^.?]*Adefa|Adefa[^.?]*beş", "label": "назвал Adefa с количеством 5"},
-          {"match": "Bisakodil[^.?]*\\b10\\b|\\b10\\b[^.?]*Bisakodil|Bisakodil[^.?]*on\\b", "label": "назвал Bisakodil с количеством 10"},
-          {"match": "(eyni|həmin|təkrar|belə|əvvəlki kimi)[^.!]*\\?", "label": "спросил, писать ли так же"},
-          {"match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)", "label": "предложил ACC вместо Fluimucil"}
+          {
+            "match": "2026-10-28|28[ .-]?(oktyabr|10)|oktyabrın 28",
+            "label": "назвал дату прошлого заказа"
+          },
+          {
+            "match": "Adefa[^.?]*\\b5\\b|\\b5\\b[^.?]*Adefa|Adefa[^.?]*beş",
+            "label": "назвал Adefa с количеством 5"
+          },
+          {
+            "match": "Bisakodil[^.?]*\\b10\\b|\\b10\\b[^.?]*Bisakodil|Bisakodil[^.?]*on\\b",
+            "label": "назвал Bisakodil с количеством 10"
+          },
+          {
+            "match": "(eyni|həmin|təkrar|belə|əvvəlki kimi)[^.!]*\\?",
+            "label": "спросил, писать ли так же"
+          },
+          {
+            "match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)",
+            "label": "предложил ACC вместо Fluimucil"
+          }
         ],
-        "toolAfter": [{"name": "save_order_list", "caller": "bəli", "label": "строки сохранены только после «bəli»"}],
+        "toolAfter": [
+          {
+            "name": "save_order_list",
+            "caller": "bəli",
+            "label": "строки сохранены только после «bəli»"
+          }
+        ],
         "finalSave": true,
         "savedQuantity": [
-          {"spoken": "adefa|адефа", "quantity": 5, "label": "в заказе Adefa 5 qutu"},
-          {"spoken": "bisakodil|бисакодил", "quantity": 10, "label": "в заказе Bisakodil 10 qutu"}
+          {
+            "spoken": "adefa|адефа",
+            "quantity": 5,
+            "label": "в заказе Adefa 5 qutu"
+          },
+          {
+            "spoken": "bisakodil|бисакодил",
+            "quantity": 10,
+            "label": "в заказе Bisakodil 10 qutu"
+          }
         ]
       }
     },
@@ -134,15 +326,103 @@
       "title": "Берут меньше, чем нужно для акции",
       "turns": [
         "Zəfər aptek. Adefa 3 qutu.",
-        { "say": "Bəli, 3 qutu.", "when": [{ "match": "\\b5\\b|beş", "say": "Yaxşı, 5 qutu edin." }] },
-        { "say": "Bu qədər, təsdiq edirəm.", "when": [{ "match": "(\\b5\\b|beş)[^.!]*\\?", "say": "Bəli, 5 qutu. Bu qədər, təsdiq edirəm." }] },
+        {
+          "say": "Bəli, 3 qutu.",
+          "when": [
+            {
+              "match": "\\b5\\b|beş",
+              "say": "Yaxşı, 5 qutu edin."
+            }
+          ]
+        },
+        {
+          "say": "Bu qədər, təsdiq edirəm.",
+          "when": [
+            {
+              "match": "(\\b5\\b|beş)[^.!]*\\?",
+              "say": "Bəli, 5 qutu. Bu qədər, təsdiq edirəm."
+            }
+          ]
+        },
         "Sağ olun."
       ],
       "checks": {
-        "tools": [{ "name": "search_pharmacy_catalog", "args": "adefa", "label": "искал Adefa" }],
-        "reply": [{ "match": "(\\b5\\b|beş).*(aksiya|pulsuz|hədiyyə|bonus)|(aksiya|pulsuz|hədiyyə|bonus).*(\\b5\\b|beş)", "label": "предложил добрать до 5 по акции" }],
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "adefa",
+            "label": "искал Adefa"
+          }
+        ],
+        "reply": [
+          {
+            "match": "(\\b5\\b|beş).*(aksiya|pulsuz|hədiyyə|bonus)|(aksiya|pulsuz|hədiyyə|bonus).*(\\b5\\b|beş)",
+            "label": "предложил добрать до 5 по акции"
+          }
+        ],
         "finalSave": true,
-        "savedQuantity": { "spoken": "adefa", "quantity": 5, "label": "в заказе Adefa 5 qutu (после согласия)" }
+        "savedQuantity": {
+          "spoken": "adefa",
+          "quantity": 5,
+          "label": "в заказе Adefa 5 qutu (после согласия)"
+        }
+      }
+    },
+    {
+      "id": "7",
+      "title": "Ответ на «какая аптека» услышан как товар («Aspirin»)",
+      "turns": [
+        "Aspirin.",
+        "Zəfər aptekindən zəng edirəm. Ketonal ampula 10 qutu.",
+        "Bu qədər, təsdiq edirəm.",
+        "Sağ olun."
+      ],
+      "checks": {
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "ketonal",
+            "label": "искал Ketonal"
+          }
+        ],
+        "reply": [
+          {
+            "match": "aptek",
+            "label": "переспросил аптеку"
+          }
+        ],
+        "noTools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "aspirin",
+            "label": "не искал Aspirin как товар"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8",
+      "title": "У выбранной формы акции нет, у другой формы той же марки есть",
+      "turns": [
+        "Zəfər aptek. Ketonal ampula 10 qutu.",
+        "Ketonalda aksiya var?",
+        "Yox, ampula qalsın. Bu qədər, təsdiq edirəm.",
+        "Sağ olun."
+      ],
+      "checks": {
+        "tools": [
+          {
+            "name": "search_pharmacy_catalog",
+            "args": "ketonal",
+            "label": "искал Ketonal"
+          }
+        ],
+        "reply": [
+          {
+            "match": "(gel|krem).*(aksiya|hədiyyə|10.*2)|(aksiya|hədiyyə|10.*2).*(gel|krem)",
+            "label": "назвал акцию на гель/крем Ketonal"
+          }
+        ]
       }
     }
   ]
