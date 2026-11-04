@@ -42,7 +42,8 @@ async function stepOf(request: Request): Promise<string | undefined> {
   if (request.method !== "POST" || !request.body) return undefined
   try {
     const text = await request.clone().text()
-    if (text.length > 65_536) return undefined
+    // A phrase's audio (pharmacy line `utterance`, ~320 KB) is not parsed for its step: the step leads it.
+    if (text.length > 65_536) return /^\s*\{\s*"action"\s*:\s*"([a-z][a-z0-9_-]{0,39})"/i.exec(text.slice(0, 128))?.[1]
     const value = JSON.parse(text) as { action?: unknown; state?: unknown }
     const step = typeof value?.action === "string" ? value.action : value?.state
     return typeof step === "string" && STEP.test(step) ? step : undefined

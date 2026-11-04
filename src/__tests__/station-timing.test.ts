@@ -66,6 +66,14 @@ describe("withStationTiming", () => {
     expect(logged()[0]).toMatchObject({ route: "call-result", status: 500 })
   })
 
+  it("names a phrase's audio by the action that leads it, without parsing the audio", async () => {
+    const handler = withStationTiming("pharmacy-inbound", async () => new Response(null, { status: 202 }))
+    await handler(post({ action: "utterance", callId: "c1", seq: 1, audio: "A".repeat(320_000) }))
+    expect(logged()[0]).toMatchObject({ step: "utterance", status: 202 })
+    await handler(post({ callId: "c1", action: "utterance", audio: "A".repeat(320_000) }))
+    expect(logged()[1]).not.toHaveProperty("step")
+  })
+
   it("ignores a step that is not a short word", async () => {
     const handler = withStationTiming("inbound-handoff", async () => new Response(null))
     await handler(post({ action: "+994501234567" }))

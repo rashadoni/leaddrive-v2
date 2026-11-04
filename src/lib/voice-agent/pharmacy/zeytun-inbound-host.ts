@@ -15,6 +15,7 @@ import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-iden
 import { readLineSpeech } from "./zeytun-line-speech"
 import { learnNames, type LearnedNames } from "./zeytun-learned-names"
 import { lastPharmacyOrder } from "./zeytun-pharmacy-history"
+import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
 import type { PrismaClient } from "@prisma/client"
 
 // 2026-10-25 live call: the session request got 503 and the station ended the
@@ -49,7 +50,13 @@ export function createInboundPilotHost(options: {
   announceOrder?: (organizationId: string, providerCallId: string) => Promise<unknown>
   /** An organization's settings (Organization.settings); the line reads its own speech there. */
   organizationSettings?: (organizationId: string) => Promise<unknown>
+  /** Replaces the second ear read from the key file next to the grant (tests). */
+  secondEar?: ZeytunSecondEar
 }): InboundPilotDependencies {
+  // Owner 2026-11-04 («Да, встраивай»): Chirp next to the model. Its key is a
+  // private file beside the grant; without it the ear is off.
+  const secondEar = options.secondEar ?? (options.configFile
+    ? createZeytunSecondEar({ recognizer: createChirpRecognizer({ keyFile: join(dirname(options.configFile), CHIRP_KEY_FILE) }) }) : undefined)
   // The rehearsal belongs to the installation's default organization. The
   // line runs where its number is: owner, 2026-10-26 («переноси линию Зейтуна
   // в его организацию»), the number assigned to Zeytun with its own channel.
@@ -231,6 +238,7 @@ export function createInboundPilotHost(options: {
     },
     isClaimed,
     findPharmacies,
+    ...(secondEar ? { secondEar } : {}),
     ...(options.organizationSettings ? {
       // Owner, 2026-10-31: the organization edits its line's greeting, goodbye and notes itself.
       loadLineSpeech: async (config) => config.orderOrganizationId && await allowedOrganization(config)

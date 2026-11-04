@@ -439,6 +439,19 @@ function pharmacyWords(name: string): string[] {
 }
 
 /**
+ * How far apart two spoken words sound, 0 (the same) to 1, by the search's
+ * own measure: half letters, a SOUND_CLASS swap costs half an edit. Takes
+ * words of spokenNameKey. The line pairs the model's lookup with the second
+ * recognizer's word for the same product (zeytun-chirp.ts).
+ */
+export function spokenWordsApart(left: string, right: string): number {
+  const a = letterCodes(foldSpelling(left)), b = letterCodes(foldSpelling(right))
+  const limit = 2 * Math.max(a.length, b.length)
+  if (!limit) return 1
+  return Math.min(editDistance(a, b, limit), limit) / limit
+}
+
+/**
  * A spoken request reduced to its product words, folded (alphabets, digraphs,
  * «г» as "q") and without quantity words: "Adexa beş qutu" and "adexa" are the
  * same key. Used to recognize a wording a manager has already confirmed.
