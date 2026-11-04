@@ -11,6 +11,7 @@ vi.mock("@/lib/rate-limit", () => ({
     apiKey: { maxRequests: 300, windowMs: 60000 },
     webhook: { maxRequests: 600, windowMs: 60000 },
     inboundReadiness: { maxRequests: 3600, windowMs: 60000 },
+    attendanceScreen: { maxRequests: 300, windowMs: 60000 },
   },
 }))
 
@@ -835,6 +836,26 @@ describe("middleware", async () => {
 
     expect(res.status).toBe(200)
     expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("public:203.0.113.12")
+  })
+
+  it("gives branch and desk screens their own bucket, not the 10/min lead-form one", async () => {
+    // A desk waiting for the phone asks every 3 s; in `public:` it was refused every other time.
+    for (const route of ["desk-pair", "desk-break", "qr", "pair"]) {
+      vi.mocked(checkRateLimit).mockClear()
+      vi.mocked(checkRateLimit).mockImplementation((key: string) => !key.startsWith("public:"))
+      const req = makeReq({ pathname: `/api/v1/public/attendance-screen/${route}`, method: "POST", auth: null, headers: { "x-real-ip": "203.0.113.21" } })
+      const res = await authMiddleware(req)
+      expect(res.status, route).not.toBe(429)
+      expect(vi.mocked(checkRateLimit).mock.calls.map(call => call[0]), route).toEqual(["attendance-screen:203.0.113.21"])
+      expect(vi.mocked(checkRateLimit).mock.calls[0]?.[1]).toEqual({ maxRequests: 300, windowMs: 60000 })
+    }
+  })
+
+  it("still refuses a screen flood from one address", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(false)
+    const req = makeReq({ pathname: "/api/v1/public/attendance-screen/desk-pair", method: "POST", auth: null, headers: { "x-real-ip": "203.0.113.22" } })
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(429)
   })
 
   it("isolates Demo Center events in a hashed capability bucket", async () => {
