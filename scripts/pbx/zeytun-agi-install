@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Root-owned, fixed: fanum may run it as root without a password (owner
+# 2026-11-04, as zeytun-core-install: «чтоб каждый раз я не вводил»). It
+# replaces the inbound AGI helper and nothing else. The package supplies only
+# the helper file; it is copied to a root-only stage, checked against the hash
+# given here, installed with the live file's owner and mode, compiled and
+# self-checked, and the previous helper comes back if either fails. Nothing
+# from the package runs as root before its hash matched; Asterisk is not
+# reloaded (it starts the helper afresh for every call) and no call is placed.
+#   sudo /usr/local/sbin/zeytun-agi-install <package> <new-sha256> <live-sha256>
+set -Eeuo pipefail
+umask 077
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+readonly LIVE=/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py
+readonly PACKAGES=/home/fanum
+readonly STAGE_PARENT=/run
+readonly BACKUPS=/var/backups/fanum-inbound-browser
+readonly MAX_BYTES=262144
+
+fail() { printf 'zeytun-agi-install: %s\n' "$1" >&2; exit "${2:-1}"; }
+digest() { sha256sum "$1" | awk '{print $1}'; }
+
+[[ $# -eq 3 ]] || fail "usage: zeytun-agi-install <package> <new-sha256> <live-sha256>" 2
+package=$1 expected=$2 live_expected=$3
+[[ $package =~ ^zeytun-[a-z0-9-]{1,60}$ ]] || fail "bad package name" 2
+[[ $expected =~ ^[0-9a-f]{64}$ && $live_expected =~ ^[0-9a-f]{64}$ ]] || fail "bad hash" 2
+source_file=$PACKAGES/$package/fanum-inbound-browser-agi.py
+[[ -f $source_file && ! -L $source_file ]] || fail "no helper in $package" 2
+[[ -f $LIVE && ! -L $LIVE ]] || fail "live helper is missing"
+
+live=$(digest "$LIVE")
+if [[ $live == "$expected" ]]; then
+  printf 'helper=already_current sha256=%s\n' "$live"
+  exit 0
+fi
+[[ $live == "$live_expected" ]] || fail "live helper is $live, not $live_expected: nothing changed" 4
+
+stage=$(mktemp -d "$STAGE_PARENT/zeytun-agi-stage.XXXXXX")
+trap 'rm -rf -- "$stage"' EXIT
+# -P: a link swapped in after the check above is copied as a link, then refused.
+cp -P -- "$source_file" "$stage/candidate"
+[[ -f $stage/candidate && ! -L $stage/candidate ]] || fail "helper is not a regular file" 3
+(( $(stat -c %s "$stage/candidate") <= MAX_BYTES )) || fail "helper is too large" 3
+[[ $(digest "$stage/candidate") == "$expected" ]] || fail "helper hash mismatch" 3
+logger -t zeytun-agi-install "package=$package new=$expected live=$live by=${SUDO_USER:-?}" || true
+
+backup_dir=$BACKUPS/agi-$(date -u +%Y%m%dT%H%M%SZ)-$$
+install -d -o root -g root -m 0700 "$BACKUPS" "$backup_dir"
+cp -p -- "$LIVE" "$backup_dir/fanum-inbound-browser-agi.py"
+
+next=$(dirname "$LIVE")/.fanum-inbound-browser-agi.py.next.$$
+restore() {
+  local back
+  back=$(dirname "$LIVE")/.fanum-inbound-browser-agi.py.back.$$
+  cp -p -- "$backup_dir/fanum-inbound-browser-agi.py" "$back"
+  mv -f -- "$back" "$LIVE"
+  printf 'helper=restored sha256=%s\n' "$(digest "$LIVE")" >&2
+}
+cp -- "$stage/candidate" "$next"
+chown --reference="$LIVE" -- "$next"
+chmod --reference="$LIVE" -- "$next"
+mv -f -- "$next" "$LIVE"
+
+# Compiled in memory (no __pycache__ beside the helper), then its own check of
+# the station's config, exactly as Asterisk will run it.
+if [[ $(digest "$LIVE") != "$expected" ]] \
+    || ! python3 -I -c 'import sys; compile(open(sys.argv[1], "rb").read(), sys.argv[1], "exec")' "$LIVE" \
+    || ! python3 -I "$LIVE" --self-check >/dev/null 2>&1; then
+  restore
+  fail "installed helper did not verify; the previous helper is back" 5
+fi
+printf 'helper=installed sha256=%s owner="%s" backup=%s asterisk_reloaded=no calls_placed=no\n' \
+  "$expected" "$(stat -c '%U:%G %a' "$LIVE")" "$backup_dir"
