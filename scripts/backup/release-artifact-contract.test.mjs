@@ -59,6 +59,7 @@ if [ "\$svc" = s3 ] && [ "\$op" = cp ]; then
     mkdir -p "\$(dirname "\$dst")"; cp -- "\$bucket_dir/objects/\$k" "\$dst"
   else
     k="\$(key_of "\$dst")"
+    [ -z "\${FAKE_CAP_EXCEEDED:-}" ] || { echo "AccessDenied: storage cap exceeded" >&2; exit 1; }
     stash_current "\$k"
     rm -f -- "\$bucket_dir/markers/\$k"
     mkdir -p "\$(dirname "\$bucket_dir/objects/\$k")" "\$(dirname "\$bucket_dir/meta/\$k")"
@@ -111,8 +112,9 @@ if [ "\$svc" = s3api ] && [ "\$op" = list-object-versions ]; then
     k="\${f#\$bucket_dir/objects/}"
     case "\$k" in "\$prefix"*) ;; *) continue ;; esac
     [ "\$first" = 1 ] || printf ','
-    printf '{"Key": "%s", "VersionId": "current", "IsLatest": true, "Size": %s}' \
-      "\$k" "\$(stat -c %s -- "\$f")"
+    when="\$(cat "\$bucket_dir/meta/\$k.when" 2>/dev/null || date -u -r "\$f" +%FT%T.000Z)"
+    printf '{"Key": "%s", "VersionId": "current", "IsLatest": true, "Size": %s, "LastModified": "%s"}' \
+      "\$k" "\$(stat -c %s -- "\$f")" "\$when"
     first=0
   done < <(find "\$bucket_dir/objects" -type f 2>/dev/null | sort)
   while IFS= read -r f; do
@@ -121,8 +123,8 @@ if [ "\$svc" = s3api ] && [ "\$op" = list-object-versions ]; then
     vid="\${rel##*/}"
     case "\$k" in "\$prefix"*) ;; *) continue ;; esac
     [ "\$first" = 1 ] || printf ','
-    printf '{"Key": "%s", "VersionId": "%s", "IsLatest": false, "Size": %s}' \
-      "\$k" "\$vid" "\$(stat -c %s -- "\$f")"
+    printf '{"Key": "%s", "VersionId": "%s", "IsLatest": false, "Size": %s, "LastModified": "%s"}' \
+      "\$k" "\$vid" "\$(stat -c %s -- "\$f")" "\$(date -u -r "\$f" +%FT%T.000Z)"
     first=0
   done < <(find "\$bucket_dir/noncurrent" -type f 2>/dev/null | sort)
   printf '], "DeleteMarkers": ['
@@ -131,7 +133,8 @@ if [ "\$svc" = s3api ] && [ "\$op" = list-object-versions ]; then
     k="\${f#\$bucket_dir/markers/}"
     case "\$k" in "\$prefix"*) ;; *) continue ;; esac
     [ "\$first" = 1 ] || printf ','
-    printf '{"Key": "%s", "VersionId": "marker", "IsLatest": true}' "\$k"
+    printf '{"Key": "%s", "VersionId": "marker", "IsLatest": true, "LastModified": "%s"}' \
+      "\$k" "\$(date -u -r "\$f" +%FT%T.000Z)"
     first=0
   done < <(find "\$bucket_dir/markers" -type f 2>/dev/null | sort)
   printf ']}\\n'
@@ -140,6 +143,7 @@ fi
 if [ "\$svc" = s3api ] && [ "\$op" = delete-object ]; then
   k="\$(get_opt key)"
   vid="\$(get_opt version-id || true)"
+  printf '%s %s\\n' "\$k" "\$vid" >> "\${FAKE_CALL_LOG:-/dev/null}"
   case "\$vid" in
     '') stash_current "\$k"; mark_deleted "\$k" ;;
     current) rm -f -- "\$bucket_dir/objects/\$k" "\$bucket_dir/meta/\$k" "\$bucket_dir/meta/\$k.when" ;;
@@ -389,6 +393,143 @@ test('a bucket that will not list versions still gets the old artifact out of th
   } finally {
     rmSync(world.dir, { recursive: true, force: true });
   }
+});
+
+// A key whose newest version is a delete marker — what `s3 rm` leaves behind,
+// and what every single byte of the production leak looked like.
+function plantHiddenArtifact(bucket, sha, bytes) {
+  const key = `artifacts/${sha}.tar.gz`;
+  mkdirSync(join(bucket, 'noncurrent', key), { recursive: true });
+  writeFileSync(join(bucket, 'noncurrent', key, '1700000000000000000-7'), 'x'.repeat(bytes));
+  mkdirSync(join(bucket, 'markers', 'artifacts'), { recursive: true });
+  writeFileSync(join(bucket, 'markers', key), '');
+  return key;
+}
+
+function plantLiveArtifact(bucket, sha, bytes, when) {
+  const key = `artifacts/${sha}.tar.gz`;
+  mkdirSync(join(bucket, 'objects', 'artifacts'), { recursive: true });
+  mkdirSync(join(bucket, 'meta', 'artifacts'), { recursive: true });
+  writeFileSync(join(bucket, 'objects', key), 'y'.repeat(bytes));
+  writeFileSync(join(bucket, 'meta', `${key}.when`), when);
+  return key;
+}
+
+test('bytes behind a delete marker are reclaimed, though no object listing shows them', () => {
+  // Measured on production 2026-11-04: 6.06 GiB — ALL of the dead weight in
+  // the bucket — sat on 35 keys whose newest version was a delete marker.
+  // `list-objects-v2` does not return such a key at all, so pruning from the
+  // object listing cannot see them: the cap tripped a second time with a
+  // once-a-day lifecycle rule as the only thing that would ever have.
+  const world = makeWorld();
+  try {
+    plantHiddenArtifact(world.bucket, SHA_A, 4096);
+    plantHiddenArtifact(world.bucket, SHA_B, 2048);
+    const listed = execFileSync(
+      'bash',
+      [world.stub, 's3api', 'list-objects-v2', '--bucket', 'test-bucket', '--prefix', 'artifacts/'],
+      { encoding: 'utf8', env: { ...process.env, FAKE_BUCKET: world.bucket } },
+    );
+    assert.ok(!listed.includes(SHA_A), `the object listing can see a hidden key: ${listed}`);
+
+    const log = join(world.dir, 'calls.log');
+    const tar = makeTarball(world.dir, 'release.tar.gz', 'свежий релиз\n'.repeat(30));
+    const up = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_C], world, {
+      FAKE_CALL_LOG: log,
+    });
+    assert.equal(up.status, 0, up.stdout);
+    assert.equal(areaBytes(world.bucket, 'noncurrent'), 0, `hidden bytes survived: ${areaFiles(world.bucket, 'noncurrent')}`);
+    assert.equal(areaFiles(world.bucket, 'markers'), '', 'the markers were left behind, so the keys still cost a listing');
+    assert.ok(Number(up.stdout.match(/freed=(\d+)/)[1]) >= 6144, `the freed bytes were not reported: ${up.stdout}`);
+
+    // The marker goes LAST. Deleting it while an older version survives would
+    // resurrect the hidden artifact into the live listing.
+    const calls = readFileSync(log, 'utf8').trim().split('\n');
+    const version = calls.findIndex((line) => line.startsWith(`artifacts/${SHA_A}.tar.gz 1700`));
+    const marker = calls.findIndex((line) => line === `artifacts/${SHA_A}.tar.gz marker`);
+    assert.ok(version >= 0 && marker > version, `the marker was purged before its versions: ${calls.join(' | ')}`);
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('a tripped storage cap still gets the dead bytes back', () => {
+  // The cap refuses writes, so the upload fails before any pruning would have
+  // run. That is how production stayed stuck: the one thing that could free
+  // the space was behind the one thing the full bucket would not allow.
+  const world = makeWorld();
+  try {
+    plantHiddenArtifact(world.bucket, SHA_A, 8192);
+    const tar = makeTarball(world.dir, 'release.tar.gz', 'релиз\n'.repeat(30));
+    const up = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_C], world, {
+      FAKE_CAP_EXCEEDED: '1',
+    });
+    assert.notEqual(up.status, 0, 'a refused upload must still fail');
+    assert.match(up.stdout, /FATAL upload failed \(freed \d+ bytes first/);
+    assert.equal(areaBytes(world.bucket, 'noncurrent'), 0, 'the deploy left the cap exactly where it found it');
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('--reclaim-only frees the dead bytes and leaves every live artifact alone', () => {
+  // The command for an hour when the cap is already tripped: no tarball, no
+  // upload, and no retention — three live artifacts against WAL_ARTIFACT_KEEP=2
+  // stay exactly as they are, because deleting a restorable artifact is not
+  // what this is for.
+  const world = makeWorld();
+  try {
+    plantLiveArtifact(world.bucket, SHA_C, 300, '2026-11-01T10:00:00.000Z');
+    plantLiveArtifact(world.bucket, SHA_B, 300, '2026-11-02T10:00:00.000Z');
+    plantLiveArtifact(world.bucket, SHA_A, 300, '2026-11-03T10:00:00.000Z');
+    plantHiddenArtifact(world.bucket, 'd'.repeat(40), 4096);
+    const before = areaFiles(world.bucket, 'objects');
+
+    const out = run('scripts/backup/release-artifact-upload.sh', ['--reclaim-only'], world);
+    assert.equal(out.status, 0, out.stdout);
+    assert.match(out.stdout, /SUMMARY artifact-upload reclaim-only versions=[1-9]\d* freed=[1-9]\d*/);
+    assert.equal(areaBytes(world.bucket, 'noncurrent'), 0, 'the dead bytes stayed');
+    assert.equal(areaFiles(world.bucket, 'objects'), before, 'a live artifact was touched');
+
+    assert.notEqual(
+      run('scripts/backup/release-artifact-upload.sh', ['--reclaim-only', '--sha', SHA_A], world).status,
+      0,
+      '--reclaim-only must refuse a sha instead of quietly ignoring it',
+    );
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('retention keeps the newest by time, not by the name of the sha', () => {
+  // The keep window is the only thing standing between the bucket and the cap,
+  // and commit shas sort in no useful order: a version listing without
+  // LastModified would have pruned by name and kept whatever started with z.
+  const world = makeWorld();
+  try {
+    plantLiveArtifact(world.bucket, SHA_A, 300, '2026-11-03T10:00:00.000Z');
+    plantLiveArtifact(world.bucket, SHA_B, 300, '2026-11-01T10:00:00.000Z');
+    const tar = makeTarball(world.dir, 'release.tar.gz', 'новый\n'.repeat(30));
+    const up = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_C], world);
+    assert.equal(up.status, 0, up.stdout);
+    const live = areaFiles(world.bucket, 'objects');
+    assert.ok(!live.includes(`${SHA_B}.tar.gz`), `the oldest artifact survived: ${live}`);
+    assert.ok(live.includes(`${SHA_A}.tar.gz`), `a newer artifact was pruned by name: ${live}`);
+    assert.ok(live.includes(`${SHA_C}.tar.gz`), `the artifact just uploaded is gone: ${live}`);
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('the deploy can free the bucket without a release in hand', () => {
+  // The runbook step for a tripped cap has to exist in the program the host
+  // runs, not only in a session's shell history.
+  assert.match(upload, /--reclaim-only\) RECLAIM_ONLY=1/);
+  assert.match(upload, /sweep 0\n/);
+  const sweepBeforeUpload = upload.indexOf('\nsweep 0');
+  const uploadCall = upload.indexOf('s3 cp "$TARBALL"');
+  assert.ok(sweepBeforeUpload > 0 && uploadCall > 0);
+  assert.ok(sweepBeforeUpload < uploadCall, 'the sweep must run before the upload a tripped cap would refuse');
 });
 
 test('the artifact prefix can never collide with the pgBackRest repository', () => {
