@@ -87,7 +87,7 @@ export function MtmAttendanceBreakKindsSettings() {
         {canConfigure && rows.length < ATTENDANCE_BREAK_KINDS_MAX && <Button type="button" variant="outline" className="min-h-11" disabled={busy} data-testid="attendance-break-kind-add"
           onClick={() => { setState("idle"); counter.current += 1; setRows(current => [...current, { key: `new-${counter.current}`, id: null, name: "", limit: "" }]) }}><Plus className="mr-1 h-4 w-4" aria-hidden="true" />{t("breakKindAdd")}</Button>}
         {enabled && !rows.length && <p role="alert" className="text-sm text-destructive">{t("breakKindsEmpty")}</p>}
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{t("breakKindsNote")}</p>
+        <p className="border-l-2 border-orange-400 pl-4 text-sm text-muted-foreground">{t("breakKindsNote")}</p>
         {canConfigure ? <div className="flex flex-wrap items-center gap-3"><Button type="button" className="min-h-11" disabled={busy || !valid} onClick={() => void save()} data-testid="attendance-break-kinds-save">{t("breakKindsSave")}</Button>
           {state === "saved" && <span role="status" className="text-sm text-emerald-700">{t("breakKindsSaved")}</span>}</div>
           : <p className="text-sm text-muted-foreground">{t("breakKindsReadOnly")}</p>}
