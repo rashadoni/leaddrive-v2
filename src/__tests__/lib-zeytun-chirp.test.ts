@@ -271,8 +271,9 @@ function routeFixture(options: { recognize?: ChirpRecognizer["recognize"]; recog
     learnedNames: () => learnNames([], [ITEMS[2].externalId, ITEMS[5].externalId]),
     clock: () => state.now,
     ...(options.secondEar === false ? {} : { secondEar }),
-    ...options.more,
   }
+  // Added in place: the mocks above keep their types, and the handler reads this same object.
+  Object.assign(dependencies, options.more)
   const handle = createInboundPilotHandler(token, dependencies)
   const send = (body: unknown) => handle(new Request("https://crm.example.test/internal", {
     method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) }))
@@ -447,9 +448,18 @@ describe("the line hears and searches knowing which pharmacy calls", () => {
 
   it("keeps the phrases that named a pharmacy for the order's save", async () => {
     const f = routeFixture({ recognize: async () => ({ text: "Salam, Yasamal 92 aptekindən zəng edirəm", ms: 600 }) })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
     await f.send(utterance(1)); await settle()
+    // A phrase heard is no failure, whatever it said.
+    expect(warn).not.toHaveBeenCalled()
+    await f.send(utterance(2)); await settle()
+    // Nor is a phrase that named no pharmacy.
+    const order = routeFixture()
+    await order.send(utterance(1)); await settle()
+    expect(warn).not.toHaveBeenCalled()
+    expect(order.dependencies.secondEar!.pharmacyHeard(callId)).toEqual([])
     const ear = f.dependencies.secondEar!
-    expect(ear.pharmacyHeard(callId)).toEqual(["Salam, Yasamal 92 aptekindən zəng edirəm"])
+    expect(ear.pharmacyHeard(callId)).toEqual(["Salam, Yasamal 92 aptekindən zəng edirəm", "Salam, Yasamal 92 aptekindən zəng edirəm"])
     expect(ear.lookedUp(callId)).toBe(false)
     expect(ear.pharmacyHeard("someone-else")).toEqual([])
   })

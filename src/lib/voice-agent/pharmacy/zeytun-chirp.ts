@@ -383,10 +383,10 @@ export function createZeytunSecondEar(options: {
       const utterance: Utterance = { seq, at: now, order: ++events, text: null, settled: false, done: Promise.resolve() }
       utterance.done = options.recognizer.recognize(pcm, hints).then((heard) => {
         if ("text" in heard) utterance.text = heard.text || null
+        else console.warn("[zeytun-line] chirp failed", JSON.stringify({ call: callId, seq, ms: heard.ms, error: heard.error }))
         if (utterance.text && utterance.text.split(/\s+/u).some((word) => PHARMACY_WORD.test(word.replace(/^[^\p{L}]+/u, "")))) {
           memory.pharmacy = [...memory.pharmacy, utterance.text.slice(0, 240)].slice(-3)
         }
-        else console.warn("[zeytun-line] chirp failed", JSON.stringify({ call: callId, seq, ms: heard.ms, error: heard.error }))
       }, () => undefined).finally(() => { utterance.settled = true; inFlight-- })
       memory.utterances = [...memory.utterances, utterance].sort((a, b) => a.seq - b.seq).slice(-KEPT_PER_CALL)
       return true
