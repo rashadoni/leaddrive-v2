@@ -1436,6 +1436,34 @@ class ZeytunInboundBridge:
         # More than 1000 entries is rejected by the provider (2026-10-23).
         return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES), "customVocabulary": words[:1000]}
 
+    # Owner, 2026-11-04 («мне нужна оптимизация»): every model turn and tool
+    # round is billed for the whole context again — the voice stand's 2 min 48 s
+    # presentation call cost $0.63, the context growing from ~5k to ~25k tokens
+    # a turn. A sliding window (the provider drops the oldest turns once the
+    # context reaches trigger, down to target) cut that to $0.44-0.48 (16000,
+    # 10000) on the stand, but in 2 of 5 calls, with 16000/10000 and with
+    # 24000/14000 alike, the model lost the subject of the phrase just before
+    # («Paracetamol hansı formaları var?» → «Beş yüzlük tablet, on qutu» →
+    # «hansı dərmanın?») and the product never reached the order; 0 of 5
+    # without it. So it is off: ZEYTUN_CONTEXT_WINDOW="trigger,target" in the
+    # station's environment turns it on for a trial, nothing else does.
+    CONTEXT_WINDOW_ENV = "ZEYTUN_CONTEXT_WINDOW"
+
+    def context_window(self, environ=None):
+        """(trigger, target) tokens of a trial sliding window, or None: the provider's default."""
+        environ = os.environ if environ is None else environ
+        match = re.fullmatch(r"(\d{4,6}),(\d{4,6})", (environ.get(self.CONTEXT_WINDOW_ENV) or "").strip())
+        if match and 0 < int(match.group(2)) < int(match.group(1)):
+            return int(match.group(1)), int(match.group(2))
+        return None
+
+    def adjust_setup(self, setup):
+        """The line's last word on the Live setup: a trial context window, when the station asks for one."""
+        window = self.context_window()
+        if window is not None:
+            setup["contextWindowCompression"] = {"triggerTokens": window[0], "slidingWindow": {"targetTokens": window[1]}}
+        return setup
+
     def speech_language(self):
         return self.SPEECH_LANGUAGE if self.pin_language else None
 
