@@ -14,6 +14,7 @@ import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, type PharmacyCandidate } from "./zeytun-pharmacy-identity"
 import { readLineSpeech } from "./zeytun-line-speech"
 import { learnNames, type LearnedNames } from "./zeytun-learned-names"
+import { lastPharmacyOrder } from "./zeytun-pharmacy-history"
 import type { PrismaClient } from "@prisma/client"
 
 // 2026-10-25 live call: the session request got 503 and the station ended the
@@ -258,6 +259,16 @@ export function createInboundPilotHost(options: {
       },
     } satisfies Pick<InboundPilotDependencies, "saveOrder" | "cancelOrder"> : {}),
     ...(options.orders ? { learnedNames: learnedFor } satisfies Pick<InboundPilotDependencies, "learnedNames"> : {}),
+    ...(options.orders ? {
+      // «Как обычно» (owner, 2026-11-04): the pharmacy the call already knows —
+      // its order's, or before the first save the one 1C has for this number alone.
+      pharmacyHistory: async (config, call) => {
+        if (!(await allowedOrganization(config))) return { status: "pharmacy_unknown" }
+        const byNumber = await findPharmacies(config, callerNumber(call.fromNumber)).catch(() => [])
+        return lastPharmacyOrder(options.orders!, { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
+          numberPharmacyGuid: byNumber.length === 1 ? byNumber[0].guid : null })
+      },
+    } satisfies Pick<InboundPilotDependencies, "pharmacyHistory"> : {}),
     ...(options.orders && options.transferAvailable ? {
       // Owner, 2026-10-27: the caller asks for a person, the managers' browsers
       // ring. Only where someone can take a browser call; once per call.

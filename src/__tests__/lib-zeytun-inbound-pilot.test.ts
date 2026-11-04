@@ -701,6 +701,58 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     })
   })
 
+  // Owner, 2026-11-04: «как обычно» — the pharmacy's last confirmed order, offered again.
+  describe("the pharmacy's last order", () => {
+    const KNOWN = "cccccccc-1111-4111-8111-111111111111", GONE = "cccccccc-9999-4111-8111-111111111111"
+    const history = (text = "history:") => request({ action: "search", callId: call.providerCallId, query: { text } })
+    function withHistory(answer: unknown = { status: "found", number: 1007, orderedAt: "2026-10-30", lineCount: 3, lines: [
+      { externalId: KNOWN, name: "Medicine 10 mg", quantity: 10, unit: "qutu" },
+      { externalId: GONE, name: "Old product", quantity: 2, unit: "ədəd" }] }) {
+      const f = lineFixture()
+      const pharmacyHistory = vi.fn(async () => answer as never)
+      ;(f.catalog.search as ReturnType<typeof vi.fn>).mockImplementation((query: { externalId?: string }) => query.externalId === KNOWN
+        ? { status: "candidates_only", candidateCount: 1, candidates: [{ externalId: KNOWN, itemCode: "TEST-01", name: "Medicine 10 mg", nameAz: null,
+          baseUnitAsReported: "упак", priceAsReported: "2.5", quantityAsReported: "42",
+          promotionAsReported: { enabled: true, buy: 10, get: 1, validFromRaw: "20261001", validToRaw: "20261031" } }] }
+        : { status: "not_found_in_snapshot", candidateCount: 0, candidates: [] })
+      return { ...f, pharmacyHistory, handle: createInboundPilotHandler(token, { ...f.dependencies, pharmacyHistory }) }
+    }
+
+    it("offers each line at today's price, stock and promotion, and marks a product the catalog lost", async () => {
+      const f = withHistory()
+      const body = await (await f.handle(history(" History: "))).json()
+      expect(body).toMatchObject({ status: "found", mode: "pharmacy_history", orderNumber: "TS-1007", orderedAt: "2026-10-30", lineCount: 3,
+        canSubmitTo1c: false })
+      expect(body.candidates).toEqual([
+        { externalId: KNOWN, itemCode: "TEST-01", name: "Medicine 10 mg", nameAz: null, identityVerified: false,
+          listPrice: { amount: "2.5", currency: "AZN", per: "qutu", asOf: f.catalog.observedAt }, stock: { quantity: 42, per: "qutu" },
+          promotion: { buy: 10, get: 1, per: "qutu", until: "2026-10-31" }, ordered: { quantity: 10, unit: "qutu" } },
+        { externalId: GONE, name: "Old product", ordered: { quantity: 2, unit: "ədəd" }, unavailable: true },
+      ])
+      // The call itself, never a pharmacy from the model's words: the request carries none.
+      expect(f.pharmacyHistory).toHaveBeenCalledWith(expect.objectContaining({ purpose: "zeytun_line" }), expect.objectContaining({ id: call.id }))
+      expect(f.catalog.search).not.toHaveBeenCalledWith({ text: " History: " })
+    })
+
+    it("says when the pharmacy is unknown or has no confirmed order, and never asks on the rehearsal", async () => {
+      expect(await (await withHistory({ status: "none" }).handle(history())).json()).toMatchObject({ status: "none", candidates: [] })
+      expect(await (await withHistory({ status: "pharmacy_unknown" }).handle(history())).json()).toMatchObject({ status: "pharmacy_unknown", candidates: [] })
+      expect(await (await lineFixture().handle(history())).json()).toMatchObject({ status: "pharmacy_unknown", candidates: [] })
+      const rehearsal = fixture()
+      const pharmacyHistory = vi.fn()
+      const handle = createInboundPilotHandler(token, { ...rehearsal.dependencies, pharmacyHistory })
+      expect(await (await handle(history())).json()).toMatchObject({ status: "pharmacy_unknown" })
+      expect(pharmacyHistory).not.toHaveBeenCalled()
+    })
+
+    it("is asked only for a claimed live call", async () => {
+      const f = withHistory()
+      f.dependencies.isClaimed.mockResolvedValue(false)
+      expect((await f.handle(history())).status).toBe(403)
+      expect(f.pharmacyHistory).not.toHaveBeenCalled()
+    })
+  })
+
   // Owner, 2026-10-31: «чтобы клиент сам мог редактировать речь ассистента и его знания».
   describe("the organization's own speech", () => {
     const own: LineSpeech = { greeting: "Zeytun, sifariş şöbəsi, xoş gördük!", closing: "Təşəkkürlər, sağ olun!",
@@ -748,7 +800,9 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     })
 
     it("fits the station with the longest goodbye and notes the settings allow", () => {
-      expect(LINE_PROMPT_MAX_CHARS).toBe(BRIDGE.promptChars)
+      // Never above the station's: a longer prompt is refused on every call.
+      // Raised on the station first, then here (owner, 2026-11-04).
+      expect(LINE_PROMPT_MAX_CHARS).toBeLessThanOrEqual(BRIDGE.promptChars)
       // Room for a page of company information: about a thousand characters today.
       expect(LINE_NOTES_MAX_CHARS).toBeGreaterThanOrEqual(900)
       const third = Math.floor(LINE_NOTES_MAX_CHARS / 3)
