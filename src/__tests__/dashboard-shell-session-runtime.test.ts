@@ -25,7 +25,7 @@ vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: state.sessionPresent ? state.session : null, status: state.status }),
 }))
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }))
-vi.mock("next/font/google", () => ({ Plus_Jakarta_Sans: () => ({ variable: "synthetic-font" }) }))
+vi.mock("@/fonts/crm-font", () => ({ crmFont: { variable: "synthetic-font" } }))
 vi.mock("@/hooks/use-mtm-org-settings", () => ({ useNavOrgContext: (user: unknown) => orgFromSession(user) }))
 
 // Keep the actual layout's session gate, identity key, pathname handling and
