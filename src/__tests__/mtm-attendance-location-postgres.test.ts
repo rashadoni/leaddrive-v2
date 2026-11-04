@@ -49,7 +49,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   schemaDir=mkdtempSync(join(tmpdir(),"mtm-geo-schema-"));const schema=join(schemaDir,"schema.prisma");writeFileSync(schema,readFileSync("prisma/schema.prisma","utf8").split("\n").filter(line=>!/Unsupported\("vector/.test(line)).join("\n"))
   const result=spawnSync(process.execPath,[cli,"db","push","--schema",schema,"--skip-generate"],{env:{...process.env,DATABASE_URL:scratch!.adminDb},encoding:"utf8",timeout:180000,maxBuffer:1024*1024});if(result.status!==0)throw new Error("Location fixture schema push failed")
   sql(scratch!.adminDb,'DROP TABLE mtm_attendance_break_labels; DROP TABLE mtm_attendance_qr_evidence; DROP TABLE mtm_attendance_branch_screens; DROP TABLE mtm_attendance_installation_revocations; DROP TABLE mtm_attendance_installation_decisions; DROP TABLE mtm_attendance_installation_requests; DROP TABLE mtm_attendance_stream_integrity; DROP TABLE mtm_attendance_risk_decisions; DROP TABLE mtm_attendance_risk_cases; DROP TABLE mtm_attendance_mark_evidence; DROP TABLE mtm_attendance_location_consents; DROP TABLE mtm_attendance_location_policies; DROP TABLE mtm_attendance_primary_branch_revisions; DROP TABLE mtm_attendance_branch_revisions; DROP TABLE mtm_attendance_branches; ALTER TABLE workforce_time_corrections DROP COLUMN "requestHash";')
-  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks","20261112090000_mtm_attendance_branch_screens","20261113090000_mtm_attendance_branch_screen_place","20261120090000_mtm_attendance_installation_utc_guard_clock","20261125090000_mtm_attendance_break_labels"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
+  for(const migration of["20260806120000_mtm_rls_coverage_completion","20260806160000_mtm_rls_bypass_clause_normalization","20261013070000_mtm_attendance_branches","20261013090000_mtm_attendance_location_evidence","20261013120000_mtm_attendance_risks","20261013140000_mtm_attendance_stream_integrity","20261013150000_mtm_attendance_installation_approval","20261013160000_mtm_attendance_branch_qr","20261014010000_mtm_attendance_utc_guard_clocks","20261112090000_mtm_attendance_branch_screens","20261113090000_mtm_attendance_branch_screen_place","20261120090000_mtm_attendance_installation_utc_guard_clock","20261125090000_mtm_attendance_break_labels","20261125100000_mtm_attendance_desk_screens"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   const foundation=readFileSync("prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql","utf8");sql(scratch!.adminDb,foundation.slice(foundation.indexOf("-- Tenant data ships fail-closed."),foundation.indexOf("-- A migration runner may own new tables")))
   for(const migration of["20260828224500_workforce_h3_legacy_fact_guard","20260828230000_workforce_direct_correction_contract"])sql(scratch!.adminDb,readFileSync(`prisma/migrations/${migration}/migration.sql`,"utf8"))
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
@@ -970,6 +970,75 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect(()=>sql(scratch!.adminDb,`ALTER TABLE mtm_attendance_qr_evidence DISABLE TRIGGER mtm_attendance_qr_guard; UPDATE mtm_attendance_qr_evidence SET "awayDistanceMeters"=NULL WHERE state='AWAY_FROM_BRANCH'`)).toThrow()
    sql(scratch!.adminDb,"ALTER TABLE mtm_attendance_qr_evidence ENABLE TRIGGER mtm_attendance_qr_guard")
   } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false))}
+ })
+
+ // Owner, 2026-11-04: «не обязательно, чтобы было в ресепшене монитор»; break buttons only on the employee's own screen.
+ it("a desk is paired by the employee's phone, stands at its branch by the office network, and presses the employee's breaks",async()=>{
+  const policy=await import("@/lib/mtm/attendance-qr-policy"),desk=await import("@/lib/mtm/attendance-desk-screen"),screens=await import("@/lib/mtm/attendance-branch-screen-store")
+  const kinds=await import("@/lib/mtm/attendance-break-kinds")
+  const site=await tenant(ORG,()=>branches.saveAttendanceBranch(admin,{requestId:randomUUID(),branchId:null,expectedRevisionId:null,name:"Fictional desk office",address:"Demo Road 96",latitude:40.7,longitude:49.3,radiusMeters:150,active:true}))
+  await employee();const me=self(),token=`mtmd1.${Buffer.from(randomUUID()+randomUUID()).toString("base64url").slice(0,43)}`
+  await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,true))
+  try {
+   // Off by default; only a current administrator turns it on, audited.
+   await expect(tenant(ORG,()=>desk.startAttendanceDeskPairing(me,{token}))).rejects.toMatchObject({status:409,code:"MTM_ATTENDANCE_DESK_OFF"})
+   await expect(tenant(ORG,()=>desk.saveAttendanceDeskRule({...admin,userId:identity.agentId},true))).rejects.toMatchObject({status:403})
+   expect(await tenant(ORG,()=>desk.saveAttendanceDeskRule(admin,true))).toMatchObject({changed:true})
+   // No branch of one's own: nothing to be a workplace of.
+   await expect(tenant(ORG,()=>desk.startAttendanceDeskPairing(me,{token}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_DESK_NO_BRANCH"})
+   await tenant(ORG,()=>branches.saveAttendancePrimaryBranch(admin,{requestId:randomUUID(),expectedRevisionId:null,agentId:identity.agentId,branchId:site.branch.id}))
+   // The desk asks before the phone confirmed: nothing. A reception code cannot pair a desk, nor the other way round.
+   expect(await desk.pairAttendanceDeskScreen(token)).toBeNull()
+   await expect(tenant(ORG,()=>desk.startAttendanceDeskPairing(me,{token:"mtmd1.short"}))).rejects.toMatchObject({status:400})
+   expect(await tenant(ORG,()=>desk.startAttendanceDeskPairing(me,{token}))).toMatchObject({branch:{id:site.branch.id,name:"Fictional desk office"}})
+   await expect(tenant(ORG,()=>desk.startAttendanceDeskPairing(me,{token}))).rejects.toMatchObject({code:"MTM_ATTENDANCE_DESK_TOKEN_USED"})
+   expect(await screens.pairAttendanceBranchScreen(token)).toBeNull()
+   const paired=await desk.pairAttendanceDeskScreen(token);expect(paired?.secret).toMatch(/^mtms1\./)
+   expect(await desk.pairAttendanceDeskScreen(token)).toBeNull()
+   // The settings list names whose desk it is.
+   const listed=(await tenant(ORG,()=>screens.readAttendanceBranchScreens(admin))).branches.find(row=>row.id===site.branch.id)!
+   expect(listed.screens).toEqual([expect.objectContaining({employee:{id:identity.agentId,name:"Fictional employee"}})]);expect(listed.networks).toBe(0)
+   // Elsewhere and without a position: no code, but the desk still knows its employee.
+   const away=await screens.issueAttendanceScreenQr(paired!.secret,null,"203.0.113.7")
+   expect(away).toMatchObject({state:"NOT_AT_BRANCH",reason:"NO_FIX",desk:{employeeName:"Fictional employee",state:"NOT_STARTED"}})
+   // The administrator remembers the office network from a computer there; nobody types an address.
+   await expect(tenant(ORG,()=>desk.saveAttendanceBranchNetwork({...admin,userId:identity.agentId},{branchId:site.branch.id,action:"REMEMBER"},"203.0.113.7"))).rejects.toMatchObject({status:403})
+   expect(await tenant(ORG,()=>desk.saveAttendanceBranchNetwork(admin,{branchId:site.branch.id,action:"REMEMBER"},"203.0.113.7"))).toEqual({networks:1,changed:true})
+   expect(await tenant(ORG,()=>desk.saveAttendanceBranchNetwork(admin,{branchId:site.branch.id,action:"REMEMBER"},"203.0.113.7"))).toEqual({networks:1,changed:false})
+   const shown=await screens.issueAttendanceScreenQr(paired!.secret,null,"203.0.113.7")
+   expect(shown).toMatchObject({state:"SHOWING",place:"NETWORK",desk:{employeeName:"Fictional employee",state:"NOT_STARTED",breaks:null}})
+   expect(JSON.stringify(shown)).not.toMatch(/203\.0\.113\.7|latitude|longitude/)
+   expect(await screens.issueAttendanceScreenQr(paired!.secret,null,"198.51.100.9")).toMatchObject({state:"NOT_AT_BRANCH"})
+   // A reception screen of the same branch never carries an employee's day.
+   const reception=await screens.pairAttendanceBranchScreen((await tenant(ORG,()=>screens.startAttendanceBranchScreenPairing(admin,{branchId:site.branch.id}))).code)
+   const lobby=await screens.issueAttendanceScreenQr(reception!.secret,null,"203.0.113.7");expect(lobby).toMatchObject({state:"SHOWING",place:"NETWORK"});expect(lobby).not.toHaveProperty("desk")
+   expect(await desk.deskAttendanceBreak(reception!.secret,{action:"PAUSE",requestId:randomUUID()})).toEqual({state:"UNPAIRED"})
+   // Breaks from the desk: no day yet, then the employee's own PAUSE with its kind and a RESUME; a repeated press is the same event.
+   expect(await desk.deskAttendanceBreak(paired!.secret,{action:"PAUSE",requestId:randomUUID()})).toEqual({state:"NO_DAY"})
+   await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:[{id:"smoke",name:null,limitMinutes:30}]}))
+   const day=randomUUID();expect((await send(operation("START",day,new Date(Date.now()-60_000)))).body.results[0].status).toBe("ok")
+   expect((await screens.issueAttendanceScreenQr(paired!.secret,null,"203.0.113.7"))).toMatchObject({desk:{state:"RUNNING",breaks:{kinds:[{id:"smoke",usedSeconds:0}],currentKindId:null}}})
+   const press=randomUUID()
+   expect(await desk.deskAttendanceBreak(paired!.secret,{action:"PAUSE",kindId:"smoke",requestId:press})).toEqual({state:"DONE"})
+   expect(await desk.deskAttendanceBreak(paired!.secret,{action:"PAUSE",kindId:"smoke",requestId:press})).toEqual({state:"DONE"})
+   expect((await screens.issueAttendanceScreenQr(paired!.secret,null,"203.0.113.7"))).toMatchObject({desk:{state:"PAUSED",breaks:{currentKindId:"smoke"}}})
+   expect(await desk.deskAttendanceBreak(paired!.secret,{action:"RESUME",requestId:randomUUID()})).toEqual({state:"DONE"})
+   const events=await tenant(ORG,()=>prisma.mtmAgentWorkdayEvent.findMany({where:{workdayId:day},select:{type:true},orderBy:{occurredAt:"asc"}}))
+   expect(events.map(event=>event.type)).toEqual(["START","PAUSE","RESUME"])
+   expect(await tenant(ORG,()=>prisma.$queryRaw<{kindId:string}[]>`SELECT "kindId" FROM mtm_attendance_break_labels WHERE "agentId"=${identity.agentId}`)).toEqual([{kindId:"smoke"}])
+   await expect(desk.deskAttendanceBreak(paired!.secret,{action:"FINISH",requestId:randomUUID()})).rejects.toMatchObject({status:400})
+   // The employee takes the desk off: it is a pairing page again.
+   const mine=await tenant(ORG,()=>desk.listOwnAttendanceDesks(me));expect(mine.desks).toHaveLength(1)
+   expect(await tenant(ORG,()=>desk.revokeOwnAttendanceDesk(me,mine.desks[0].id))).toEqual({revoked:true})
+   expect(await screens.issueAttendanceScreenQr(paired!.secret,null,"203.0.113.7")).toEqual({state:"UNPAIRED"})
+   // Desks switched off: a desk shows nothing of its employee.
+   const again=`mtmd1.${Buffer.from(randomUUID()+randomUUID()).toString("base64url").slice(0,43)}`
+   await tenant(ORG,()=>desk.startAttendanceDeskPairing(me,{token:again}));const second=await desk.pairAttendanceDeskScreen(again)
+   await tenant(ORG,()=>desk.saveAttendanceDeskRule(admin,false))
+   const off=await screens.issueAttendanceScreenQr(second!.secret,null,"203.0.113.7");expect(off.state).toBe("QR_OFF");expect(off).not.toHaveProperty("desk")
+   expect(await desk.deskAttendanceBreak(second!.secret,{action:"PAUSE",requestId:randomUUID()})).toEqual({state:"UNPAIRED"})
+   expect(await tenant(ORG,()=>desk.saveAttendanceBranchNetwork(admin,{branchId:site.branch.id,action:"FORGET"},null))).toEqual({networks:0,changed:true})
+  } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false));await tenant(ORG,()=>desk.saveAttendanceDeskRule(admin,false))}
  })
 
  // Owner, 2026-11-04: «отходит от компьютера, идёт покурить… чтобы это тоже фиксировалось».

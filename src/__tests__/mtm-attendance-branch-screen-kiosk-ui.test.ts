@@ -57,7 +57,13 @@ async function render(locale = "az") {
 async function until(check: () => boolean) {
   for (let i = 0; i < 300 && !check(); i++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 1)) })
 }
+/** An unpaired page shows the desk's pairing QR first; a reception tablet goes to the administrator's code. */
+function reception() {
+  const link = host.querySelector<HTMLButtonElement>('[data-testid="desk-screen-reception-link"]')
+  if (link) act(() => { link.click() })
+}
 function type(value: string) {
+  reception()
   const input = host.querySelector<HTMLInputElement>("#branch-screen-code")!
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!
   setter.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true }))
@@ -71,6 +77,10 @@ describe("the branch screen", () => {
     const asked = browserAt({ latitude: 40.3777, longitude: 49.8920, accuracy: 20 })
     await render(locale)
     expect(asked).not.toHaveBeenCalled()
+    // Owner, 2026-11-04: first the desk's own pairing QR, and no branch code.
+    expect(host.querySelector('[data-testid="desk-screen-pair"]')).not.toBeNull(); expect(host.querySelector('[data-testid="branch-screen-countdown"]')).toBeNull()
+    expect(host.textContent).not.toContain("attendanceBranchScreen.")
+    reception()
     expect(host.querySelector('[data-testid="branch-screen-pair"]')).not.toBeNull(); expect(host.querySelector("img")).toBeNull()
     expect(host.textContent).not.toContain("attendanceBranchScreen.")
   })
@@ -104,7 +114,7 @@ describe("the branch screen", () => {
     qrAnswer = showing(); await render()
     qrAnswer = { state: "UNPAIRED" }
     await act(async () => { await vi.advanceTimersByTimeAsync(56_000) })
-    expect(host.querySelector("img")).toBeNull(); expect(host.querySelector('[data-testid="branch-screen-pair"]')).not.toBeNull()
+    expect(host.querySelector('[data-testid="branch-screen-countdown"]')).toBeNull(); expect(host.querySelector('[data-testid="desk-screen-pair"]')).not.toBeNull()
   })
   // Owner, 2026-10-30: a laptop paired at home showed the branch's code at home.
   it("shows no code on a screen standing away from its branch, and says how far", async () => {
@@ -142,5 +152,50 @@ describe("the branch screen", () => {
   it("says the QR rule is off instead of showing a code", async () => {
     qrAnswer = { state: "QR_OFF", organizationName: "Demo company", branch: { id: "b", name: "Demo branch" } }; await render()
     expect(host.querySelector("img")).toBeNull(); expect(host.textContent).toContain(az.qrOff)
+  })
+})
+
+describe("the desk screen (owner, 2026-11-04)", () => {
+  const desk = (state: string, extra: Record<string, unknown> = {}) => ({ ...showing(), place: "NETWORK", desk: { employeeName: "Fictional employee", state, startedAt: "2026-11-04T05:02:00.000Z", pausedAt: null,
+    workedSeconds: 3600, pausedSeconds: 0, breaks: { kinds: [{ id: "smoke", name: null, limitMinutes: 30, usedSeconds: 720 }, { id: "k-1a2b3c4d", name: "Fictional call", limitMinutes: null, usedSeconds: 0 }], currentKindId: null }, ...extra } })
+  it("shows its pairing QR, asks with the same token until the phone confirmed, then shows the desk", async () => {
+    let asked = 0
+    fetchMock.mockImplementation(async (url, init) => {
+      if (String(url).endsWith("/desk-pair")) { asked += 1; if (asked < 2) return json({ success: true, state: "WAITING" }); qrAnswer = desk("NOT_STARTED"); return json({ success: true, state: "PAIRED" }) }
+      return json({ success: true, data: qrAnswer, init: undefined && init })
+    })
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await render("ru")
+    await act(async () => { await vi.advanceTimersByTimeAsync(6_500) })
+    vi.useRealTimers()
+    await until(() => !!host.querySelector('[data-testid="desk-screen"]'))
+    const tokens = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/desk-pair")).map(([, init]) => JSON.parse(String(init?.body)).token)
+    expect(tokens.length).toBeGreaterThanOrEqual(2); expect(new Set(tokens).size).toBe(1); expect(tokens[0]).toMatch(/^mtmd1\.[A-Za-z0-9_-]{43}$/)
+    expect(host.querySelector('[data-testid="desk-screen-employee"]')!.textContent).toBe(messages.ru.attendanceBranchScreen.deskOf.replace("{name}", "Fictional employee"))
+    expect(host.textContent).toContain(messages.ru.attendanceBranchScreen.deskStart)
+    expect(host.textContent).toContain(messages.ru.attendanceBranchScreen.deskNetwork)
+  })
+  it("offers the company's kinds of break during the day and presses one for its employee only", async () => {
+    qrAnswer = desk("RUNNING")
+    await render("ru"); await until(() => !!host.querySelector('[data-testid="desk-screen-breaks"]'))
+    const buttons = [...host.querySelectorAll<HTMLButtonElement>('[data-testid^="desk-screen-break-"]')]
+    expect(buttons.map(button => button.textContent)).toEqual([`${messages.ru.attendanceBranchScreen.breakKind_smoke}сегодня 12 из 30 мин`, `Fictional call${messages.ru.attendanceBranchScreen.deskNoLimit}`])
+    await act(async () => { buttons[0].click() })
+    const sent = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/desk-break"))
+    expect(JSON.parse(String(sent?.[1]?.body))).toEqual({ action: "PAUSE", kindId: "smoke", requestId: expect.stringMatching(/^[0-9a-f-]{36}$/) })
+  })
+  it("on a break shows the kind and one button back to work", async () => {
+    qrAnswer = desk("PAUSED", { pausedAt: new Date(Date.now() - 90_000).toISOString(), breaks: { kinds: [{ id: "smoke", name: null, limitMinutes: 30, usedSeconds: 1140 }], currentKindId: "smoke" } })
+    await render("ru"); await until(() => !!host.querySelector('[data-testid="desk-screen-resume"]'))
+    expect(host.querySelector('[data-testid="desk-screen-paused"]')!.textContent).toBe(`Перерыв · ${messages.ru.attendanceBranchScreen.breakKind_smoke}`)
+    expect(host.querySelector('[data-testid^="desk-screen-break-"]')).toBeNull()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="desk-screen-resume"]')!.click() })
+    expect(JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url).endsWith("/desk-break"))?.[1]?.body))).toMatchObject({ action: "RESUME" })
+  })
+  it("a reception screen never shows anyone's day or break buttons", async () => {
+    qrAnswer = showing()
+    await render("ru"); await until(() => !!host.querySelector("img"))
+    expect(host.querySelector('[data-testid="desk-screen"]')).toBeNull(); expect(host.querySelector('[data-testid^="desk-screen-break"]')).toBeNull()
+    expect(host.textContent).not.toContain(messages.ru.attendanceBranchScreen.deskBreakTitle)
   })
 })

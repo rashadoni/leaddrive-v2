@@ -5,11 +5,13 @@ import Image from "next/image"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import type { AttendanceBranchScreenQr } from "@/lib/mtm/attendance-qr-contract"
+import { AttendanceDeskDayPanel, AttendanceDeskPairing } from "@/components/mtm/attendance-desk-screen-parts"
 
 const PAIR_ENDPOINT = "/api/v1/public/attendance-screen/pair"
 const QR_ENDPOINT = "/api/v1/public/attendance-screen/qr"
 // The next code (and the position it needs) is fetched a little before this one runs out, so the screen never stands empty.
 const REFRESH_BEFORE_MS = 15_000
+const DESK_REFRESH_MS = 10_000
 const RETRY_MS = 15_000
 // A fresh position before every code: a still tablet's watcher may stay silent for hours.
 const FIX_OPTIONS = { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 }
@@ -18,7 +20,8 @@ const LANGUAGES = [{ code: "az", label: "AZ" }, { code: "ru", label: "RU" }, { c
 type Showing = Extract<AttendanceBranchScreenQr, { state: "SHOWING" }> & { deadline: number }
 type View =
   | { kind: "loading" }
-  | { kind: "pair"; refused?: boolean; limited?: boolean }
+  // Unpaired: the desk's pairing QR (owner, 2026-11-04), or — «это экран ресепшена» — the administrator's code.
+  | { kind: "pair"; reception?: boolean; refused?: boolean; limited?: boolean }
   | { kind: "showing"; code: Showing }
   | { kind: "waiting"; state: "QR_OFF" | "BRANCH_UNAVAILABLE"; organizationName?: string; branchName?: string }
   | { kind: "offline"; organizationName?: string; branchName?: string }
@@ -70,7 +73,7 @@ export function AttendanceBranchScreenKiosk() {
       const answer = await response.json().catch(() => null)
       if (!response.ok || answer?.success !== true) throw new Error("SCREEN_UNAVAILABLE")
       const data = answer.data as AttendanceBranchScreenQr
-      if (data.state === "UNPAIRED") { setView({ kind: "pair" }); return }
+      if (data.state === "UNPAIRED") { setView(current => current.kind === "pair" ? current : { kind: "pair" }); return }
       last.current = { organizationName: data.organizationName, branchName: data.branch?.name }
       // A paired screen asked for the first time without a position: find it, then ask again at once.
       if (data.state === "NOT_AT_BRANCH" && data.reason === "NO_FIX" && !locating.current) {
@@ -87,7 +90,8 @@ export function AttendanceBranchScreenKiosk() {
       if (!data.dataUrl?.startsWith("data:image/png;base64,") || !Number.isFinite(life) || life <= 0 || life > 60_000) throw new Error("SCREEN_CODE_INVALID")
       setSeconds(Math.ceil(life / 1000))
       setView({ kind: "showing", code: { ...data, deadline: performance.now() + life } })
-      later(() => void fetchCode(), Math.max(1_000, life - REFRESH_BEFORE_MS))
+      // A desk also shows its employee's day: it is read again more often, so a mark made in Time shows soon.
+      later(() => void fetchCode(), Math.max(1_000, Math.min(life - REFRESH_BEFORE_MS, data.desk ? DESK_REFRESH_MS : Number.POSITIVE_INFINITY)))
     } catch {
       if (!mounted.current) return
       // No connection: an expired code is taken off the screen by the countdown; try again shortly.
@@ -132,11 +136,11 @@ export function AttendanceBranchScreenKiosk() {
     try {
       const response = await fetch(PAIR_ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) })
       if (!mounted.current) return
-      if (response.status === 429) { setView({ kind: "pair", limited: true }); return }
+      if (response.status === 429) { setView({ kind: "pair", reception: true, limited: true }); return }
       const body = await response.json().catch(() => null)
-      if (!response.ok || body?.success !== true) { setView({ kind: "pair", refused: true }); return }
+      if (!response.ok || body?.success !== true) { setView({ kind: "pair", reception: true, refused: true }); return }
       setCode(""); setView({ kind: "loading" }); locating.current = true; await fetchCode()
-    } catch { if (mounted.current) setView({ kind: "pair", refused: true }) }
+    } catch { if (mounted.current) setView({ kind: "pair", reception: true, refused: true }) }
     finally { if (mounted.current) setBusy(false) }
   }
   const distanceLabel = (meters: number) => meters < 1000
@@ -153,7 +157,9 @@ export function AttendanceBranchScreenKiosk() {
     </nav>
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-8">
       {view.kind === "loading" && <p role="status" className="text-muted-foreground">{t("loading")}</p>}
-      {view.kind === "pair" && <form onSubmit={event => void pair(event)} className="w-full max-w-md space-y-5" data-testid="branch-screen-pair">
+      {view.kind === "pair" && !view.reception && <AttendanceDeskPairing onPaired={() => { setView({ kind: "loading" }); locating.current = true; void fetchCode() }}
+        onReception={() => setView({ kind: "pair", reception: true })} />}
+      {view.kind === "pair" && view.reception && <form onSubmit={event => void pair(event)} className="w-full max-w-md space-y-5" data-testid="branch-screen-pair">
         <div className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">{t("pairTitle")}</h1><p className="text-sm leading-relaxed text-muted-foreground">{t("pairHint")}</p></div>
         <label className="block space-y-2 text-sm" htmlFor="branch-screen-code"><span>{t("pairCode")}</span>
           <input id="branch-screen-code" value={code} onChange={event => setCode(event.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={32}
@@ -161,8 +167,10 @@ export function AttendanceBranchScreenKiosk() {
         {view.refused && <p role="alert" className="text-sm text-destructive">{t("pairRefused")}</p>}
         {view.limited && <p role="alert" className="text-sm text-destructive">{t("pairLimited")}</p>}
         <Button type="submit" className="min-h-12 w-full text-base" disabled={busy || !code.trim()}>{t("pairButton")}</Button>
+        <button type="button" className="min-h-11 w-full text-sm font-semibold text-primary hover:underline" onClick={() => setView({ kind: "pair" })} data-testid="branch-screen-desk-link">{t("deskLink")}</button>
       </form>}
-      {view.kind === "showing" && <>
+      {view.kind === "showing" && view.code.desk && <AttendanceDeskDayPanel code={view.code} desk={view.code.desk} seconds={seconds} onChanged={() => void fetchCode()} />}
+      {view.kind === "showing" && !view.code.desk && <>
         {header(view.code.organizationName, view.code.branch.name)}
         <div className="w-full max-w-md rounded-2xl border bg-white p-4"><Image src={view.code.dataUrl} alt={t("qrAlt")} width={480} height={480} unoptimized className="h-auto w-full" /></div>
         <div className="space-y-2 text-center"><p className="text-lg">{t("scanHint")}</p>

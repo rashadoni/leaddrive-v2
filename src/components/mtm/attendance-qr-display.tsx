@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useLocale, useTimeZone, useTranslations } from "next-intl"
 import { MonitorSmartphone, ShieldCheck } from "lucide-react"
 import { HomeCard, HomePill } from "@/components/mtm/home-parts"
+import { MtmAttendanceDeskSettings } from "@/components/mtm/attendance-desk-settings"
 import { Button } from "@/components/ui/button"
 import { formatDateTime, formatTime } from "@/lib/format-date"
 import type { AttendanceBranchScreenDirectory, AttendanceBranchScreenPairing } from "@/lib/mtm/attendance-qr-contract"
@@ -103,7 +104,10 @@ export function MtmAttendanceQrDisplay() {
             {branch.screens.length ? branch.screens.map(screen => {
               const online = screen.lastSeenAt !== null && now - Date.parse(screen.lastSeenAt) < ONLINE_WITHIN_MS
               return <div key={screen.id} className="flex flex-wrap items-center gap-3 text-sm" data-testid="attendance-qr-screen">
+                {/* A desk screen is someone's own computer (owner, 2026-11-04): say whose. */}
+                {screen.employee && <span className="font-medium" data-testid="attendance-qr-screen-desk">{t("qrScreenDeskOf", { name: screen.employee.name })}</span>}
                 <span className="text-muted-foreground">{t("qrScreenPaired", { date: when(screen.pairedAt) })}</span>
+                {screen.place?.state === "NETWORK" && <HomePill tone="green">{t("qrScreenNetwork")}</HomePill>}
                 <HomePill tone={online ? "green" : "amber"}>{online ? t("qrScreenOnline") : screen.lastSeenAt ? t("qrScreenOfflineSince", { date: when(screen.lastSeenAt) }) : t("qrScreenNeverSeen")}</HomePill>
                 {/* A screen away from its branch, or unable to say where it is, shows no code. */}
                 {screen.place?.state === "AWAY" && screen.place.distanceMeters !== null && <HomePill tone="red">{t("qrScreenAway", { distance: distance(screen.place.distanceMeters) })}</HomePill>}
@@ -127,6 +131,7 @@ export function MtmAttendanceQrDisplay() {
           {directory.canConfigure && <Button type="button" className="min-h-11" disabled={busy} onClick={() => void pair(branch.id, branch.screens.length)}>{t("qrScreenPair")}</Button>}
         </div>)}</div>}
     </HomeCard> : directory && <p className="text-sm text-muted-foreground">{t("qrOffHint")}</p>}
+    {directory?.enabled && directory.branches.length > 0 && <MtmAttendanceDeskSettings directory={directory} busy={busy} mutate={mutate} reload={load} />}
     <p className="border-l-2 border-orange-400 pl-4 text-sm text-muted-foreground">{t("qrScreenGpsHint")}</p>
     <p className="text-sm text-muted-foreground">{t("qrPrivacy")}</p>
   </main>

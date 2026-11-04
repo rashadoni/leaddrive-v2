@@ -100,6 +100,26 @@ describe("branch screens in Personnel → Settings → QR", () => {
     expect(JSON.parse(String(fetchMock.mock.calls.find(([, opts]) => opts?.method === "PUT")?.[1]?.body))).toEqual({ attendanceBranchQrEnabled: true })
     expect(host.querySelector('[data-testid="attendance-qr-screens"]')).not.toBeNull()
   })
+  // Owner, 2026-11-04: employees pair their own computer; the branch remembers its office network.
+  it("allows desks, remembers a branch's office network without typing it, and names whose desk a screen is", async () => {
+    const state = { deskEnabled: false, networks: 0 }
+    directory.branches[0].screens[0] = { ...directory.branches[0].screens[0], employee: { id: "agent-1", name: "Fictional employee" }, place: { state: "NETWORK", distanceMeters: null, checkedAt: new Date().toISOString() } } as never
+    fetchMock.mockImplementation(async (url, opts) => {
+      if (String(url) === "/api/v1/mtm/attendance/desk-screens") { state.deskEnabled = JSON.parse(String(opts!.body)).enabled; return response({ changed: true }) }
+      if (String(url) === "/api/v1/mtm/attendance/branch-network") { state.networks = 1; return response({ networks: 1, changed: true }) }
+      return response({ ...directory, deskEnabled: state.deskEnabled, branches: directory.branches.map((branch, index) => ({ ...branch, networks: index === 0 ? state.networks : 0 })) })
+    })
+    await render()
+    expect(host.querySelector('[data-testid="attendance-qr-screen-desk"]')!.textContent).toBe(ru.qrScreenDeskOf.replace("{name}", "Fictional employee"))
+    expect(host.querySelector('[data-testid="attendance-qr-screen"]')!.textContent).toContain(ru.qrScreenNetwork)
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="attendance-desk-rule"]')!.click())
+    expect(JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/mtm/attendance/desk-screens")?.[1]?.body))).toEqual({ enabled: true })
+    expect(host.querySelector('[data-testid="attendance-desk-rule"]')!.getAttribute("aria-checked")).toBe("true")
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="attendance-branch-network-remember"]')!.click())
+    expect(JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/mtm/attendance/branch-network")?.[1]?.body))).toEqual({ branchId: screened.id, action: "REMEMBER" })
+    const first = host.querySelector('[data-testid="attendance-branch-network"]')!
+    expect(first.textContent).toContain(ru.deskNetworkRemembered.replace("{count}", "1")); expect(first.textContent).toContain(ru.deskNetworkJustRemembered)
+  })
   it("sends to Branches when there is no branch", async () => {
     directory.branches = []; await render()
     const link = host.querySelector('[data-testid="attendance-qr-no-branches"] a')!
