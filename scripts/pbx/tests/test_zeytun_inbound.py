@@ -1,3 +1,4 @@
+import array
 import ast
 import base64
 import importlib.util
@@ -1200,6 +1201,37 @@ class SpeechRelayTests(unittest.TestCase):
                                             "ZEYTUN_TTS_VERTEX_KEY": "v" * 53 + "\n"}),
                          ("gen-lang-client-0496964632", "v" * 53))
 
+    def test_the_phone_band_keeps_speech_and_drops_what_would_fold_into_it(self):
+        import audioop, math
+        def tone(freq):
+            return array.array("h", [int(12000 * math.sin(2 * math.pi * freq * i / 24000))
+                                     for i in range(24000)]).tobytes()
+        for freq, low, high in [(300, 8300, 8600), (1000, 8300, 8600), (3000, 8000, 8600),
+                                (4500, 0, 60), (6000, 0, 60), (9000, 0, 60)]:
+            out, _ = bridge_module.zeytun_phone_band(tone(freq), None)
+            self.assertEqual(len(out), 8000 * 2)
+            self.assertTrue(low <= audioop.rms(out[400:], 2) <= high, freq)
+            # What the core did before: a 6 kHz tone reached the line whole, as 2 kHz.
+        self.assertGreater(audioop.rms(audioop.ratecv(tone(6000), 2, 1, 24000, 8000, None)[0], 2), 8000)
+
+    def test_the_phone_band_is_the_same_however_the_audio_is_chunked(self):
+        voice = array.array("h", [((i * 7919) % 20001) - 10000 for i in range(24000)]).tobytes()
+        whole, _ = bridge_module.zeytun_phone_band(voice, None)
+        # Whole samples only: the core refuses unaligned Gemini audio.
+        out, state, pos, sizes = b"", None, 0, [2, 958, 4800, 1922, 6]
+        for step in range(10 ** 4):
+            if pos >= len(voice):
+                break
+            size = sizes[step % len(sizes)]
+            piece, state = bridge_module.zeytun_phone_band(voice[pos:pos + size], state)
+            out, pos = out + piece, pos + size
+        self.assertEqual(out, whole)
+        # A state the old resampler left (or nothing) starts fresh rather than failing.
+        for stale in (None, (5, ((1, 2),)), ("x", 0), (b"short", 1)):
+            self.assertEqual(bridge_module.zeytun_phone_band(voice[:960], stale)[0],
+                             bridge_module.zeytun_phone_band(voice[:960], None)[0])
+        self.assertEqual(bridge_module.zeytun_phone_band(b"", None)[0], b"")
+
     def test_a_transcript_tail_after_turn_complete_belongs_to_that_turn(self):
         tts = FakeTts()
         relay = self.relay(tts)
@@ -1604,6 +1636,19 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("pharmacy_agent_heard_at", feed)
         self.assertEqual(ast.dump(ast.parse(feed).body[0]), ast.dump(new_methods["feed"]))
         differences.discard("feed")
+        # Playback changes only how a pharmacy call goes to 8 kHz (owner, 2026-11-04: hoarse).
+        loop = textwrap.dedent(ast.get_source_segment(text, old_methods["playback_loop"], padded=True))
+        lines = loop.splitlines(True)
+        first = next(i for i, line in enumerate(lines) if "pcm8, self.output_resample_state = audioop.ratecv(" in line)
+        pad = lines[first][:len(lines[first]) - len(lines[first].lstrip())]
+        last = next(i for i in range(first + 1, len(lines)) if lines[i] == pad + ")\n")
+        lines[first:last + 1] = ([pad + "if self.pharmacy_preview:\n",
+                                  pad + "    pcm8, self.output_resample_state = zeytun_phone_band(\n",
+                                  pad + "        pcm24, self.output_resample_state)\n", pad + "else:\n"]
+                                 + ["    " + line for line in lines[first:last + 1]])
+        loop = "".join(lines)
+        self.assertEqual(ast.dump(ast.parse(loop).body[0]), ast.dump(new_methods["playback_loop"]))
+        differences.discard("playback_loop")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")

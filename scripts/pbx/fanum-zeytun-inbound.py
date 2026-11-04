@@ -5,9 +5,11 @@ credential/catalog logging; no 1C calls; every lookup reauthorizes at the CRM.
 Protocol: https://ai.google.dev/api/live and /gemini-api/docs/live-api/tools.
 """
 import array
+import audioop
 import base64
 from decimal import Decimal
 import json
+import math
 import os
 import re
 import threading
@@ -79,6 +81,51 @@ def zeytun_speakable_text(text):
     # 3.8 TTS voices these angle-bracket events instead of reading them.
     text = re.sub(r"^Salam!\s+", "Salam! <breath> ", text)
     return re.sub(r"^(?:Hmm+|Hım+|Hm+)[.,…]*\s+", "Hmm... <short pause> ", text, flags=re.IGNORECASE)
+
+
+def _zeytun_phone_band_taps(count=63, cutoff=3500.0, rate=24000.0):
+    """Hamming-windowed sinc low-pass, unity gain at 0 Hz."""
+    fc, mid = cutoff / rate, (count - 1) / 2
+    taps = [(2 * fc if i == mid else math.sin(2 * math.pi * fc * (i - mid)) / (math.pi * (i - mid)))
+            * (0.54 - 0.46 * math.cos(2 * math.pi * i / (count - 1))) for i in range(count)]
+    total = sum(taps)
+    return tuple(tap / total for tap in taps)
+
+
+ZEYTUN_PHONE_BAND_TAPS = _zeytun_phone_band_taps()
+
+
+def zeytun_phone_band(pcm24, state):
+    """24 kHz PCM16 -> 8 kHz PCM16 for the phone, filtered first.
+
+    Owner, 2026-11-04, of the Vertex sample: the file converted with ffmpeg was
+    the best, the line sounded hoarse. The core went 24 -> 8 kHz with
+    audioop.ratecv, which does not filter: a third of the voice's energy lies
+    above 4 kHz (35 % on the line's greeting) and folded back into the phone
+    band. The low-pass is the one in the sample the owner chose («2c»): 63
+    taps, 3.5 kHz, then every third sample. Computed with audioop over whole
+    chunks, so the CPU stays in C. state carries the last 62 input samples and
+    the decimation phase across chunks; None starts fresh, as ratecv's did.
+    """
+    taps = ZEYTUN_PHONE_BAND_TAPS
+    keep = 2 * (len(taps) - 1)
+    # Anything else (None, a ratecv state from before the call became a
+    # pharmacy call) starts fresh.
+    fresh = not (isinstance(state, tuple) and len(state) == 2 and isinstance(state[0], bytes)
+                 and len(state[0]) == keep and state[1] in (0, 1, 2))
+    tail, phase = (b"\x00" * keep, 0) if fresh else state
+    count = len(pcm24) // 2
+    if not count:
+        return b"", (tail, phase)
+    buffer = tail + pcm24[:2 * count]
+    # sample << 8 in 32 bits: headroom for the sum, precision for the products.
+    wide = audioop.mul(audioop.lin2lin(buffer, 2, 4), 4, 1 / 256)
+    total = None
+    for index, tap in enumerate(taps):
+        term = audioop.mul(wide[4 * index:4 * (index + count)], 4, tap)
+        total = term if total is None else audioop.add(total, term, 4)
+    filtered = array.array("h", audioop.lin2lin(audioop.mul(total, 4, 256), 4, 2))
+    return filtered[phase::3].tobytes(), (buffer[-keep:], (phase - count) % 3)
 
 
 class ZeytunGeminiTts:
