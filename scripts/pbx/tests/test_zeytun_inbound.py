@@ -1166,6 +1166,62 @@ class SpeechRelayTests(unittest.TestCase):
                 self.tts_with_lines(lines, error).stream("Salam", lambda pcm: None, lambda: True)
             self.assertEqual(str(raised.exception), reason)
 
+    def vertex_tts(self, answers):
+        """A TTS with a Vertex path; answers: per request, an HTTP code or 'ok'."""
+        ok = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+            "mimeType": "audio/l16; rate=24000; channels=1", "data": "AQABAA=="}}]}}]}).encode() + b"\n"]
+        asked = []
+
+        class Response(list):
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+        def opener(req, timeout):
+            asked.append(req.full_url.split("?")[0])
+            answer = answers.pop(0)
+            if answer != "ok":
+                raise urllib.error.HTTPError("u", answer, "x", {}, None)
+            return Response(ok)
+        tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=opener,
+                                            vertex=("gen-lang-client-0496964632", "v" * 53))
+        return tts, asked
+
+    def test_tts_goes_to_vertex_first_and_to_the_gemini_api_only_on_a_capacity_refusal(self):
+        vertex = ("https://aiplatform.googleapis.com/v1/projects/gen-lang-client-0496964632/locations/global/"
+                  "publishers/google/models/gemini-3.8-flash-tts:streamGenerateContent")
+        studio = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-tts:streamGenerateContent"
+        tts, asked = self.vertex_tts(["ok"])
+        tts.stream("Salam", lambda pcm: None, lambda: True)
+        self.assertEqual((asked, tts.path), ([vertex], "vertex"))
+        for code in (429, 503, 403):
+            tts, asked = self.vertex_tts([code, "ok"])
+            tts.stream("Salam", lambda pcm: None, lambda: True)
+            self.assertEqual((asked, tts.path), ([vertex, studio], "studio"))
+        # A request refused for itself is not sent twice; both refusing ends in the old code.
+        tts, asked = self.vertex_tts([404])
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable) as raised:
+            tts.stream("Salam", lambda pcm: None, lambda: True)
+        self.assertEqual((str(raised.exception), asked), ("tts_http_404", [vertex]))
+        tts, asked = self.vertex_tts([429, 429])
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable) as raised:
+            tts.stream("Salam", lambda pcm: None, lambda: True)
+        self.assertEqual(str(raised.exception), "tts_http_429")
+        # A turn the caller already dropped is not asked again.
+        tts, asked = self.vertex_tts([429, "ok"])
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
+            tts.stream("Salam", lambda pcm: None, lambda: False)
+        self.assertEqual(asked, [vertex])
+
+    def test_tts_without_a_valid_vertex_path_keeps_the_gemini_api(self):
+        for vertex in (None, ("", "v" * 53), ("Bad_Project!", "v" * 53), ("gen-lang-client-0496964632", "short")):
+            tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", vertex=vertex)
+            self.assertEqual([path for path, _ in tts.urls], ["studio"])
+        bridge = bridge_module.ZeytunInboundBridge
+        self.assertIsNone(bridge.tts_vertex({}))
+        self.assertIsNone(bridge.tts_vertex({"ZEYTUN_TTS_VERTEX_PROJECT": "p-roject1"}))
+        self.assertEqual(bridge.tts_vertex({"ZEYTUN_TTS_VERTEX_PROJECT": " gen-lang-client-0496964632 ",
+                                            "ZEYTUN_TTS_VERTEX_KEY": "v" * 53 + "\n"}),
+                         ("gen-lang-client-0496964632", "v" * 53))
+
     def test_a_transcript_tail_after_turn_complete_belongs_to_that_turn(self):
         tts = FakeTts()
         relay = self.relay(tts)

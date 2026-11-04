@@ -89,38 +89,76 @@ class ZeytunGeminiTts:
     delivery goes in the part's speechMetadata.style instead (3.8 TTS; owner,
     2026-10-30, chose that sample: «C»); a request it refuses (400) is sent
     once more without it, and the call keeps the plain delivery.
+
+    Two paths to the same model and voice (task 9, owner 2026-11-04 of the
+    Vertex sample: «Тот же, переключай»): the Gemini API on Tier 1 allows 100
+    TTS requests a day - three to five calls - and returned 429 for the rest
+    of the day; Vertex AI (Standard PayGo, global) has no daily count. With a
+    Vertex key the request goes there first; a refusal before any audio that
+    is about capacity or the server (429, 5xx, 401/403 of a revoked key) is
+    asked once of the Gemini API, so the old path is the rollback.
     """
     MODELS = frozenset({"gemini-3.8-flash-tts"})
+    VERTEX_PROJECT = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
+    # Refusals after which the other path is worth one more request; a 400
+    # is about the request itself and would be refused there too.
+    FALLBACK_CODES = frozenset({401, 403, 408, 429, 500, 502, 503, 504})
     # First audio arrives in ~0.7 s; a turn waiting longer than this falls
     # back to the model's own voice rather than leave the line silent.
     TIMEOUT_SECONDS = 4
 
-    def __init__(self, key, model, voice, opener=None, style=None):
+    def __init__(self, key, model, voice, opener=None, style=None, vertex=None):
         if not key or model not in self.MODELS or voice not in ZeytunInboundBridge.VOICES:
             raise ZeytunPilotUnavailable("tts_unavailable")
         self.style = style
-        self.url = ("https://generativelanguage.googleapis.com/v1beta/models/" + model
-                    + ":streamGenerateContent?alt=sse&key=" + urllib.parse.quote(key, safe=""))
+        query = ":streamGenerateContent?alt=sse&key="
+        self.urls = []
+        project, vertex_key = vertex if isinstance(vertex, tuple) and len(vertex) == 2 else (None, None)
+        if (isinstance(project, str) and self.VERTEX_PROJECT.match(project)
+                and isinstance(vertex_key, str) and 30 <= len(vertex_key.strip()) <= 256):
+            self.urls.append(("vertex", "https://aiplatform.googleapis.com/v1/projects/" + project
+                              + "/locations/global/publishers/google/models/" + model
+                              + query + urllib.parse.quote(vertex_key.strip(), safe="")))
+        self.urls.append(("studio", "https://generativelanguage.googleapis.com/v1beta/models/" + model
+                          + query + urllib.parse.quote(key, safe="")))
+        self.url = self.urls[0][1]
+        self.path = self.urls[0][0]
         self.voice = voice
         self.open = opener or (lambda req, timeout: urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout))
 
     def stream(self, text, on_pcm, keep_going):
+        heard = [0]
+        def counted(pcm):
+            heard[0] += len(pcm)
+            on_pcm(pcm)
+        for index, (path, url) in enumerate(self.urls):
+            self.path = path
+            try:
+                return self._styled(url, text, counted, keep_going)
+            except ZeytunPilotUnavailable as error:
+                code = str(error).rsplit("_", 1)[-1]
+                if (heard[0] or index + 1 == len(self.urls) or not keep_going()
+                        or not code.isdigit() or int(code) not in self.FALLBACK_CODES):
+                    raise
+        raise ZeytunPilotUnavailable("tts_unavailable")
+
+    def _styled(self, url, text, on_pcm, keep_going):
         try:
-            return self._stream(text, on_pcm, keep_going, self.style)
+            return self._stream(url, text, on_pcm, keep_going, self.style)
         except ZeytunPilotUnavailable as error:
             if not self.style or str(error) != "tts_http_400":
                 raise
             self.style = None
-        return self._stream(text, on_pcm, keep_going, None)
+        return self._stream(url, text, on_pcm, keep_going, None)
 
-    def _stream(self, text, on_pcm, keep_going, style):
+    def _stream(self, url, text, on_pcm, keep_going, style):
         part = {"text": text}
         if style:
             part["speechMetadata"] = {"style": style}
         body = {"contents": [{"role": "user", "parts": [part]}],
                 "generationConfig": {"responseModalities": ["AUDIO"],
                                      "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.voice}}}}}
-        req = urllib.request.Request(self.url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        req = urllib.request.Request(url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")
         produced = 0
         try:
@@ -536,7 +574,8 @@ class ZeytunSpeechRelay:
                     content["outputTranscription"] = {"text": piece + " "}
                     heard[0] = True
                     if not turn["spoken"]:
-                        self.log("tts_first_audio", ms=round((time.monotonic() - asked) * 1000))
+                        self.log("tts_first_audio", ms=round((time.monotonic() - asked) * 1000),
+                                 path=getattr(self.tts, "path", None))
                 self._emit(content)
                 turn["spoken"] = True
 
@@ -1190,13 +1229,23 @@ class ZeytunInboundBridge:
     def speech_voice(self):
         return self.voice
 
+    @staticmethod
+    def tts_vertex(environ=None):
+        """The station's Vertex AI path for the TTS (task 9), from the service's
+        environment: a drop-in EnvironmentFile, root-only. None: Gemini API only."""
+        environ = os.environ if environ is None else environ
+        project = (environ.get("ZEYTUN_TTS_VERTEX_PROJECT") or "").strip()
+        key = (environ.get("ZEYTUN_TTS_VERTEX_KEY") or "").strip()
+        return (project, key) if project and key else None
+
     def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None,
                      progress=None, recovering=None, ask=None):
         """The call's TTS relay, created once; None while the model speaks itself."""
         if self.tts_model is None:
             return None
         if self.relay is None:
-            engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style)
+            engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style,
+                                            vertex=self.tts_vertex())
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
                                            progress=progress, recovering=recovering, ask=ask)
             self.relay.prefetch_filler()

@@ -1283,6 +1283,19 @@ HRM при этом не включается, лицо и отпечатки н
   вслух), вдох после «Salam!» и «Hmm… <short pause>» перед уточнением
   (`zeytun_speakable_text`). GPT-Live (OpenAI) пробовали — «отвратительный
   голос»; ждать GPT-Live-1.1 в API, до тех пор Gemini.
+- **Озвучка линии идёт через Vertex AI, а не через Gemini API** (владелец
+  2026-11-04 по пробе: «Тот же, переключай»). В Gemini API на Tier 1 у
+  `gemini-3.8-flash-tts` 100 запросов в день — 3–5 звонков, дальше 429 до
+  полуночи по Тихоокеанскому, и линия говорит голосом модели. В Vertex
+  (Standard PayGo, `global`) дневного счёта нет; модель, голос и тело запроса
+  те же. `ZeytunGeminiTts` шлёт сначала в Vertex, при 401/403/408/429/5xx до
+  первого звука — один раз в Gemini API (это и откат). Ключ Vertex — только
+  у сервисного аккаунта `zeytun-line-tts` (одна роль Agent Platform User),
+  ключ ограничен Agent Platform API; на станции — `ZEYTUN_TTS_VERTEX_PROJECT`
+  и `ZEYTUN_TTS_VERTEX_KEY` в `/etc/fanum-voice/zeytun-tts-vertex.env` (root,
+  0600) через drop-in `fanum-voice.service.d/zeytun-tts-vertex.conf`. Нет
+  файла — всё как раньше. Какой путь ответил — `path` в `zeytun_tts`
+  `tts_first_audio`. План — задача 9 в `docs/zeytun-line-recognition-plan.md`.
 - **Пока идёт поиск — не тишина** (звонок владельца 2026-10-30, «Tetrasiklin»:
   28 с молчания после реплики ИИ). Станция объявляет инструменты с
   `behavior: "BLOCKING"`, как консоль CRM (`geminiLiveModel()`): 3.8 иначе
