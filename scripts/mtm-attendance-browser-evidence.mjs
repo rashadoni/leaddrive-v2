@@ -756,6 +756,9 @@ try {
       await kioskContext.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort())
       const kiosk = await kioskContext.newPage()
       await kiosk.goto('/screen?lang=en', { waitUntil: 'domcontentloaded', timeout: 120000 })
+      // An unpaired screen first offers the desk's own pairing QR (owner, 2026-11-04); a tablet at the entrance takes the administrator's code.
+      await kiosk.getByTestId('desk-screen-pair').waitFor({ timeout: 120000 })
+      await kiosk.getByTestId('desk-screen-reception-link').click()
       await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
       await kiosk.locator('#branch-screen-code').fill(pairing.code.toLowerCase())
       const paired = kiosk.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/public/attendance-screen/pair', { timeout: 120000 })
@@ -810,7 +813,7 @@ try {
       await clickResponse(button('qrScreenRevokeYes', row), `${apiRoot}/branch-screens/${screen.id}/revoke`)
       await row.getByTestId('attendance-qr-branch-unscreened').waitFor({ timeout: 30000 })
       await kiosk.reload({ waitUntil: 'domcontentloaded', timeout: 120000 })
-      await kiosk.getByTestId('branch-screen-pair').waitFor({ timeout: 120000 })
+      await kiosk.getByTestId('desk-screen-pair').waitFor({ timeout: 120000 })
       assert.equal(await qr.count(), 0)
       await page.bringToFront()
       await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)

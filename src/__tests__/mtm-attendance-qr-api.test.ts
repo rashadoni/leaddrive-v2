@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "ADMIN", agentId: null, scopedAgentIds: null })
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "attendanceEnabled", value: true }] as never)
   vi.mocked(store.readAttendanceQrDirectory).mockResolvedValue({ enabled: false, canConfigure: true, branches: [] })
-  vi.mocked(screens.readAttendanceBranchScreens).mockResolvedValue({ enabled: true, canConfigure: true, branches: [] })
+  vi.mocked(screens.readAttendanceBranchScreens).mockResolvedValue({ enabled: true, canConfigure: true, deskEnabled: false, branches: [] })
   vi.mocked(screens.startAttendanceBranchScreenPairing).mockResolvedValue({ branch: { id: "b", name: "B" }, code: "ABCD-EFGH", expiresAt: "2026-10-29T10:10:00Z" })
   vi.mocked(screens.revokeAttendanceBranchScreen).mockResolvedValue({ revoked: true })
 })

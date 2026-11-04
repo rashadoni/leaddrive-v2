@@ -24,13 +24,26 @@ export type AttendanceQrReceipt = { eventId: string; state: AttendanceQrPhoneSta
 /** QR_GPS: a screen's code confirms the branch. GPS_ONLY: an open site, the phone's own fix does (`attendance-branch-mark-method.ts`). */
 export type AttendanceQrDirectory = { enabled: boolean; canConfigure: boolean; branches: { id: string; name: string; markMethod: "QR_GPS" | "GPS_ONLY" }[] }
 /** Where the screen last said it stood: at its branch, away from it, or it could not tell. Never the coordinates. */
-export type AttendanceBranchScreenPlace = { state: "AT_BRANCH" | "AWAY" | "NO_FIX"; distanceMeters: number | null; checkedAt: string }
-export type AttendanceBranchScreenSummary = { id: string; pairedAt: string; lastSeenAt: string | null; place: AttendanceBranchScreenPlace | null }
-export type AttendanceBranchScreenDirectory = Omit<AttendanceQrDirectory, "branches"> & { branches: { id: string; name: string; markMethod: "QR_GPS" | "GPS_ONLY"; screens: AttendanceBranchScreenSummary[] }[] }
+/** NETWORK: on the branch's remembered office network, which stands for its place (owner, 2026-11-04). */
+export type AttendanceBranchScreenPlace = { state: "AT_BRANCH" | "AWAY" | "NO_FIX" | "NETWORK"; distanceMeters: number | null; checkedAt: string }
+/** `employee`: a desk screen, the employee's own computer; null — a shared reception screen. */
+export type AttendanceBranchScreenSummary = { id: string; pairedAt: string; lastSeenAt: string | null; place: AttendanceBranchScreenPlace | null; employee: { id: string; name: string } | null }
+/** `deskEnabled`: employees may pair their own computer. `networks`: how many office addresses the branch remembers. */
+export type AttendanceBranchScreenDirectory = Omit<AttendanceQrDirectory, "branches"> & { deskEnabled: boolean; branches: { id: string; name: string; markMethod: "QR_GPS" | "GPS_ONLY"; networks: number; screens: AttendanceBranchScreenSummary[] }[] }
+/**
+ * What a desk screen shows of its employee (`attendance-desk-rules.ts`): never a
+ * place, never the journal — the day's state, its times, and the kinds of a break.
+ */
+export type AttendanceDeskDay = {
+  employeeName: string
+  state: "NOT_STARTED" | "RUNNING" | "PAUSED" | "COMPLETED"
+  startedAt: string | null; pausedAt: string | null; workedSeconds: number | null; pausedSeconds: number | null
+  breaks: { kinds: { id: string; name: string | null; limitMinutes: number | null; usedSeconds: number }[]; currentKindId: string | null } | null
+}
 export type AttendanceBranchScreenPairing = { branch: { id: string; name: string }; code: string; expiresAt: string }
 /** What the branch screen shows; `state` other than SHOWING carries no code. */
 export type AttendanceBranchScreenQr =
-  | { state: "SHOWING"; organizationName: string; branch: { id: string; name: string }; dataUrl: string; serverNow: string; expiresAt: string }
-  | { state: "UNPAIRED" | "QR_OFF" | "BRANCH_UNAVAILABLE"; organizationName?: string; branch?: { id: string; name: string } }
+  | { state: "SHOWING"; organizationName: string; branch: { id: string; name: string }; dataUrl: string; serverNow: string; expiresAt: string; place?: "AT_BRANCH" | "NETWORK"; desk?: AttendanceDeskDay }
+  | { state: "UNPAIRED" | "QR_OFF" | "BRANCH_UNAVAILABLE"; organizationName?: string; branch?: { id: string; name: string }; desk?: AttendanceDeskDay }
   // The screen is not at its branch, or could not say precisely where it is: no code.
-  | { state: "NOT_AT_BRANCH"; reason: "AWAY" | "NO_FIX"; distanceMeters: number | null; organizationName: string; branch: { id: string; name: string } }
+  | { state: "NOT_AT_BRANCH"; reason: "AWAY" | "NO_FIX"; distanceMeters: number | null; organizationName: string; branch: { id: string; name: string }; desk?: AttendanceDeskDay }
