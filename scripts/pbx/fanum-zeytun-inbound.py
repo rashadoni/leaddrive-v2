@@ -928,13 +928,6 @@ class ZeytunInboundBridge:
                   "düzdür", "əlbəttə", "да", "ага", "конечно")
     CANCEL_NO = ("yox", "xeyr", "təsdiq", "saxla", "dayan", "gözlə", "lazımdır", "нет", "не", "подтвер", "оставь")
     CANCEL_ANSWER_WAIT_SECONDS = 1.5
-    # Owner's call 2026-11-03 (TS-1014): the agent said "qeyd etdim" for five
-    # products and saved the list once — four lines reached the managers.
-    # A turn that tells the caller a line is written, without a save in it,
-    # makes the station ask for the save once.
-    RECORDED_WORDS = ("qeyd etdim", "qeyd edirəm", "qeyd edildi", "yazdım", "yazıram", "əlavə etdim", "əlavə edirəm")
-    UNSAVED_NUDGE = ("Station note, never read it aloud: you told the caller a line is recorded but did not call "
-                     "save_order_list. Call it now, silently, with the whole list so far.")
     # Owner, 2026-10-27: a long order must not be lost. The CRM allows a call
     # up to 15 minutes (the core's own ceiling is 900 s) and the agent saves
     # the list after every line, so the per-call tool budget and the prompt
@@ -1030,8 +1023,6 @@ class ZeytunInboundBridge:
         self.cancel_answer = None
         self.model_turn_text = ""
         self.cancel_asked_this_turn = False
-        # Did this model turn call save_order_list (UNSAVED_NUDGE)?
-        self.saved_this_turn = False
         # Set by the core: called with the phrase once the CRM took the transfer.
         self.on_transfer = None
         # Set by the core: the station journal (zeytun_cancel status=...).
@@ -1490,16 +1481,9 @@ class ZeytunInboundBridge:
                     self.cancel_answer = ""
             if isinstance(heard, dict) and isinstance(heard.get("text"), str) and self.cancel_answer is not None:
                 self.cancel_answer = (self.cancel_answer + " " + heard["text"])[-500:]
-            unsaved = False
-            if content.get("turnComplete") is True:
-                said = " ".join(self.model_turn_text.lower().split())
-                unsaved = (not self.saved_this_turn and not self.cancelled
-                           and any(words in said for words in self.RECORDED_WORDS))
             if content.get("turnComplete") is True or content.get("interrupted") is True:
                 self.model_turn_text = ""
                 self.cancel_asked_this_turn = False
-                self.saved_this_turn = False
-            return unsaved
 
     def caller_answer_to_cancel(self):
         """The caller's answer to CANCEL_QUESTION, waiting briefly for recognition to catch up."""
@@ -1557,9 +1541,8 @@ class ZeytunInboundBridge:
                         self.pending.pop(key, None)
             return True
         content = event.get("serverContent")
-        if isinstance(content, dict) and self.note_content(content) and current():
-            self.log_event("zeytun_unsaved", status="nudged")
-            send({"clientContent": {"turns": [{"role": "user", "parts": [{"text": self.UNSAVED_NUDGE}]}], "turnComplete": True}})
+        if isinstance(content, dict):
+            self.note_content(content)
         if isinstance(content, dict) and content.get("interrupted") is True:
             with self.lock:
                 self.pending.clear()
@@ -1590,9 +1573,6 @@ class ZeytunInboundBridge:
                     send({"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}})
                 continue
             saving = name == self.SAVE_NAME
-            if saving:
-                with self.lock:
-                    self.saved_this_turn = True
             transferring = name == self.TRANSFER_NAME
             cancelling = name == self.CANCEL_NAME
             args = (({} if call.get("args") in (None, {}) else None) if transferring or cancelling
