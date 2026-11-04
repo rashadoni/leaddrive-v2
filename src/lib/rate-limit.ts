@@ -20,6 +20,13 @@ export const RATE_LIMIT_CONFIG = {
   // by joinToken-hash (customer) or session id (agent) to bound
   // abuse per-session.
   cobrowseSignal: { maxRequests: 600, windowMs: 60000 } as RateLimitConfig,
+  // Branch and desk screens of Personnel (/api/v1/public/attendance-screen/*)
+  // poll on their own: a reception screen every ~45 s, a paired desk every
+  // 10 s, a desk waiting for the phone every 3 s — and one office shares one
+  // address. In the 10/min `public` bucket a pairing desk was refused every
+  // other request (2026-11-04). Each route keeps its own per-address limit
+  // (`consumePublicRateLimit`); this is only the flood ceiling.
+  attendanceScreen: { maxRequests: 300, windowMs: 60000 } as RateLimitConfig,
 }
 
 /**

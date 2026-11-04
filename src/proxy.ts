@@ -599,6 +599,17 @@ const authMiddleware = auth(async (req) => {
           nonce,
         )
       }
+    // Branch and desk screens poll by design; each route limits itself per
+    // address, so they get their own ceiling instead of the lead-form bucket.
+    } else if (pathname.startsWith("/api/v1/public/attendance-screen/")) {
+      const key = `attendance-screen:${ip}`
+      if (!checkRateLimit(key, RATE_LIMIT_CONFIG.attendanceScreen)) {
+        log429("attendance-screen", key, pathname)
+        return withCspHeaders(
+          NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 }),
+          nonce,
+        )
+      }
     // Stricter limit for AI chat (expensive)
     } else if (pathname.includes("/portal-chat")) {
       const key = `chat:${ip}`
