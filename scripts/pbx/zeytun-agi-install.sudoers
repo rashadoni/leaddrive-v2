@@ -1,0 +1,3 @@
+# Owner 2026-11-04: install a reviewed inbound AGI helper without typing the password.
+# Only this fixed root-owned script; it checks its arguments itself.
+fanum ALL=(root) NOPASSWD: /usr/local/sbin/zeytun-agi-install

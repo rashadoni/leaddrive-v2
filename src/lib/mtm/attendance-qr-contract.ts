@@ -21,11 +21,12 @@ export function attendanceQrPhoneState(state: string | null | undefined): Attend
 }
 export type AttendanceQrInput = z.infer<typeof AttendanceQrInputSchema>
 export type AttendanceQrReceipt = { eventId: string; state: AttendanceQrPhoneState; branch: { id: string; name: string } | null }
-export type AttendanceQrDirectory = { enabled: boolean; canConfigure: boolean; branches: { id: string; name: string }[] }
+/** QR_GPS: a screen's code confirms the branch. GPS_ONLY: an open site, the phone's own fix does (`attendance-branch-mark-method.ts`). */
+export type AttendanceQrDirectory = { enabled: boolean; canConfigure: boolean; branches: { id: string; name: string; markMethod: "QR_GPS" | "GPS_ONLY" }[] }
 /** Where the screen last said it stood: at its branch, away from it, or it could not tell. Never the coordinates. */
 export type AttendanceBranchScreenPlace = { state: "AT_BRANCH" | "AWAY" | "NO_FIX"; distanceMeters: number | null; checkedAt: string }
 export type AttendanceBranchScreenSummary = { id: string; pairedAt: string; lastSeenAt: string | null; place: AttendanceBranchScreenPlace | null }
-export type AttendanceBranchScreenDirectory = Omit<AttendanceQrDirectory, "branches"> & { branches: { id: string; name: string; screens: AttendanceBranchScreenSummary[] }[] }
+export type AttendanceBranchScreenDirectory = Omit<AttendanceQrDirectory, "branches"> & { branches: { id: string; name: string; markMethod: "QR_GPS" | "GPS_ONLY"; screens: AttendanceBranchScreenSummary[] }[] }
 export type AttendanceBranchScreenPairing = { branch: { id: string; name: string }; code: string; expiresAt: string }
 /** What the branch screen shows; `state` other than SHOWING carries no code. */
 export type AttendanceBranchScreenQr =
