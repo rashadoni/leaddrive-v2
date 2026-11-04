@@ -174,3 +174,14 @@ certificate, push service required), published as `time-v1.0.0-1061`, public red
 On the owner's S23: in-place 1058 → 1061 kept the session; a real decision from the CRM arrived and
 its tap opened «Sorğular» (1059), and on 1061 with the server channel it popped up (owner: «работает»).
 Evidence: `docs/evidence/time-public-release-1061.json`.
+
+## Release 1062 — 2026-11-04
+
+Kinds of a break and the desk (owner, 2026-11-04; mockups `docs/mtm-attendance/mockups/desk-and-breaks/`):
+«Fasilə» asks the kind when the company turned kinds on and shows today's minutes against the limit
+(leaddrive-mtm#234, server leaddrive-v2#1331); «Profil → İş yeri kompüterdə → Kompüteri qoş» scans a
+computer's pairing QR and makes it the employee's workplace (leaddrive-mtm#235, server #1333). Reviewed
+main `8eec079` built as 1062 (hosted Jest 302 suites, 2795 tests, package/permissions/pinned certificate),
+published as `time-v1.0.0-1062`, public redownload hash verified. On the owner's S23: in-place 1061 → 1062
+kept the session; «Profil» shows the desk card. Pairing a desk and a break from it end to end wait for the
+server's desk screen and the company's switches. Evidence: `docs/evidence/time-public-release-1062.json`.
