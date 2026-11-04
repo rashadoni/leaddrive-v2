@@ -5,23 +5,10 @@ import { NextRequest, NextResponse } from "next/server"
 // memory, and 2.4 s of module loading against 0.3 s. The calendar module exports
 // the same `auth` and `calendar`, so the calls below are unchanged.
 import * as google from "googleapis/build/src/apis/calendar"
-import crypto from "node:crypto"
 import { replaceCalendarConnection } from "@/lib/google-calendar-connection"
+import { readCalendarState } from "@/lib/calendar/oauth-state"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
-
-function readState(raw: string): { userId: string; orgId: string } | null {
-  const [payload, signature] = raw.split(".")
-  const secret = process.env.NEXTAUTH_SECRET || process.env.GOOGLE_CLIENT_SECRET || ""
-  if (!payload || !signature || !secret) return null
-  const expected = crypto.createHmac("sha256", secret).update(payload).digest("base64url")
-  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null
-  try {
-    const value = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { userId?: string; orgId?: string; exp?: number; nonce?: string }
-    if (!value.userId || !value.orgId || !value.nonce || !value.exp || value.exp < Date.now()) return null
-    return { userId: value.userId, orgId: value.orgId }
-  } catch { return null }
-}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -39,7 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}/settings/integrations?gcal=error&reason=missing_params`)
   }
 
-  const verified = readState(state)
+  const verified = readCalendarState(state)
   if (!verified) return NextResponse.redirect(`${appUrl}/settings/integrations?gcal=error&reason=invalid_state`)
   const user = await runWithRlsBypass(() => prisma.user.findFirst({
     where: { id: verified.userId, organizationId: verified.orgId, isActive: true, organization: { isActive: true } },

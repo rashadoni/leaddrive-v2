@@ -120,6 +120,24 @@ export default function IntegrationsHelpAz() {
         </HelpCallout>
       </HelpSection>
 
+      <HelpSection title="Microsoft Outlook — iş təqvimi üçün eyni qayda">
+        <p>
+          <strong>Microsoft Outlook</strong> kartı eyni şəkildə və müstəqil işləyir: yalnız
+          Outlook, yalnız Google, ya da hər ikisi qoşula bilər — o zaman hər ikisinin saatları
+          məşğul sayılır və LeadDrive görüşü hər birində görünür.
+        </p>
+        <p>
+          Gün cədvəlində təqvimdəki görüşün adını yalnız təqvimin sahibi görür. Rəhbər saatın
+          məşğul olduğunu və hansı təqvimdən gəldiyini görür, nə olduğunu isə yox.
+        </p>
+        <HelpCallout kind="warning">
+          <p>
+            Administrator tətbiqi Microsoft-da qeydiyyatdan keçirməyincə kart bunu bildirir və
+            <HelpKey>Qoşul</HelpKey> düyməsi sönülü qalır.
+          </p>
+        </HelpCallout>
+      </HelpSection>
+
       <HelpSection title="Slack — kanala bildirişlər">
         <p>
           Slack, Slack iş sahənizdə yaratdığınız <strong>gələn webhook URL-indən</strong>{" "}

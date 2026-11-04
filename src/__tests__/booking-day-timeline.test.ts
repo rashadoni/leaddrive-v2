@@ -305,6 +305,20 @@ describe("meetings day view — time taken by something that is not a meeting", 
     expect(markup).toContain("12:30–13:30")
   })
 
+  it("says what a connected calendar has there, and which calendar it is", () => {
+    // The point of the whole thing: one window. An hour arranged in Outlook
+    // is on the same rail as the salon's own meetings, and it says so.
+    const outlook = render({ meetings: [], busy: [{ start: minutes(12, 30), end: minutes(13, 30), label: "Планёрка с поставщиком", source: "microsoft" as const }] })
+    expect(outlook).toContain("Планёрка с поставщиком")
+    expect(outlook).toContain(ru.booking.calendarOutlook)
+    expect(outlook).not.toContain(ru.booking.busyBlock)
+    const google = render({ meetings: [], busy: [{ start: minutes(15), end: minutes(16), source: "google" as const }] })
+    expect(google).toContain(ru.booking.calendarGoogle)
+    // Somebody else's calendar sends no title, and then the block says only
+    // what the grey block always said.
+    expect(google).toContain(ru.booking.busyBlock)
+  })
+
   it("stretches the rail to cover a busy hour outside the meetings", () => {
     expect(railRange([{ start: minutes(9), end: minutes(10) }, { start: minutes(17), end: minutes(18) }]))
       .toEqual({ from: 9, to: 18 })
