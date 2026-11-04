@@ -12,6 +12,7 @@ import { HISTORY_PREFIX, historyCandidates, type PharmacyHistory } from "./zeytu
 import { stationState, type StationReport, type StationState } from "./station-heartbeat"
 import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
 import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
+import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
 
 const id = z.string().trim().min(1).max(128)
 const hash = z.string().regex(/^[a-f0-9]{64}$/)
@@ -100,15 +101,25 @@ const SPOKEN_UNITS: Record<string, string> = {
  * caller says them. Not the makers: 2026-11-03 those hints turned "Adefa"
  * into "Abdi İbrahim". Empty until confirmed orders exist.
  */
-function hintNames(catalog: InboundPilotCatalog, learned: LearnedNames | null): string[] {
+function hintNames(catalog: InboundPilotCatalog, learned: LearnedNames | null, limit = 400): string[] {
   const names = new Set<string>()
-  for (const id of learned?.ordered(2000) ?? []) {
+  for (const id of learned?.ordered(Math.max(2000, 2 * limit)) ?? []) {
     const item = catalog.search({ externalId: id }).candidates[0]
     const name = item && spokenProductName(item)
     if (name) names.add(name)
-    if (names.size === 400) break
+    if (names.size === limit) break
   }
   return [...names]
+}
+/** The second ear's hints (chirp_3 takes 1000): the same names, worked out once per reading of the orders, never per phrase. */
+const chirpHintCache = new WeakMap<LearnedNames, { version: string; names: string[] }>()
+function chirpHints(catalog: InboundPilotCatalog, learned: LearnedNames | null): string[] {
+  if (!learned) return []
+  const known = chirpHintCache.get(learned)
+  if (known?.version === catalog.version) return known.names
+  const names = hintNames(catalog, learned, CHIRP_PHRASE_LIMIT)
+  chirpHintCache.set(learned, { version: catalog.version, names })
+  return names
 }
 /** The feed's price for one base unit. Owner, 2026-10-23: one price for all
  * of Zeytun's pharmacies and it is final ("это цена для аптек конечная"), so it
@@ -200,6 +211,8 @@ export type InboundPilotDependencies = {
   learnedNames?: (config: LineGrant) => LearnedNames | null
   /** The last confirmed order of the pharmacy this call already knows (zeytun-pharmacy-history.ts). */
   pharmacyHistory?: (config: LineGrant, call: InboundPilotOrderCall) => Promise<PharmacyHistory>
+  /** Google Chirp next to the model (zeytun-chirp.ts); off without its key file. Line calls only. */
+  secondEar?: ZeytunSecondEar
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
@@ -409,7 +422,13 @@ const bodySchema = z.discriminatedUnion("action", [
     seq: z.number().int().min(1).max(1_000_000).optional(),
     /** The agent's last save, after the caller confirmed the order (owner's call 2026-11-03). */
     final: z.literal(true).optional() }),
+  /** One phrase of the pharmacy, as the station heard it end: PCM16, 8 kHz, mono, base64, at most 15 s.
+   * The second ear (zeytun-chirp.ts) recognizes it in the background; the answer does not wait. */
+  z.strictObject({ action: z.literal("utterance"), callId: z.uuid(), seq: z.number().int().min(1).max(1_000_000),
+    audio: z.string().min(4).max(Math.ceil(UTTERANCE_MAX_BYTES / 3) * 4).regex(/^[A-Za-z0-9+/]+={0,2}$/) }),
 ])
+/** Every action but a phrase's audio stays this small. */
+const BODY_MAX_BYTES = 16_384, UTTERANCE_BODY_MAX_BYTES = Math.ceil(UTTERANCE_MAX_BYTES / 3) * 4 + 512
 const denied = () => searchResponse({ enabled: false, status: "pilot_not_authorized", candidates: [], ...searchRestrictions }, 403)
 function active(config: InboundPilotConfig, now: number) {
   const start = Date.parse(config.issuedAt)
@@ -496,25 +515,31 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
   const clock = dependencies.clock ?? Date.now
   const token = Buffer.from(runtimeToken)
   let windowStart = clock(), count = 0, inFlight = 0
-  const perCall = new Map<string, number>()
+  // Phrases have their own budget: a pharmacy dictating fast must not use up its lookups and saves.
+  const perCall = new Map<string, number>(), perCallUtterances = new Map<string, number>()
   return async (request: Request): Promise<Response> => {
     const auth = Buffer.from(request.headers.get("authorization")?.match(/^Bearer ([A-Za-z0-9._~-]{32,1024})$/i)?.[1] ?? "")
     if (token.length < 32 || token.length > 1024 || auth.length !== token.length || !timingSafeEqual(auth, token)) return searchResponse({ error: "unauthorized" }, 401)
     if (request.method !== "POST") return searchResponse({ error: "method_not_allowed" }, 405)
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) return searchResponse({ error: "unsupported_content_type" }, 415)
-    if (clock() - windowStart >= 60_000) { windowStart = clock(); count = 0; perCall.clear() }
+    if (clock() - windowStart >= 60_000) { windowStart = clock(); count = 0; perCall.clear(); perCallUtterances.clear() }
     // Several pharmacies at once, each saving after every line: 2026-10-27,
     // four requests in flight for the whole server was three callers' worth.
     if (inFlight >= 16 || count >= 600) return searchResponse({ error: "rate_limited" }, 429)
     count++; inFlight++
     try {
-      const body = await readJsonRequestWithinLimit(request, 16_384)
+      const body = await readJsonRequestWithinLimit(request, UTTERANCE_BODY_MAX_BYTES)
       if (!body.ok) return searchResponse({ error: "invalid_request" }, body.reason === "too_large" ? 413 : 400)
+      const action = (body.value as { action?: unknown } | null)?.action
+      if (action !== "utterance" && Buffer.byteLength(JSON.stringify(body.value)) > BODY_MAX_BYTES) return searchResponse({ error: "invalid_request" }, 413)
       const parsed = bodySchema.safeParse(body.value)
       if (!parsed.success) return searchResponse({ error: "invalid_request" }, 400)
-      const input = parsed.data, used = perCall.get(input.callId) ?? 0
-      if (used >= 30) return searchResponse({ error: "rate_limited" }, 429)
-      perCall.set(input.callId, used + 1)
+      const input = parsed.data
+      const pcm = input.action === "utterance" ? Buffer.from(input.audio, "base64") : null
+      if (pcm && (pcm.length > UTTERANCE_MAX_BYTES || pcm.length < UTTERANCE_MIN_BYTES || pcm.length % 2)) return searchResponse({ error: "invalid_request" }, 400)
+      const budget = input.action === "utterance" ? perCallUtterances : perCall, used = budget.get(input.callId) ?? 0
+      if (used >= (input.action === "utterance" ? 40 : 30)) return searchResponse({ error: "rate_limited" }, 429)
+      budget.set(input.callId, used + 1)
       const raw = await dependencies.loadConfig()
       if (raw === null) return input.action === "session" ? searchResponse({ enabled: false }) : denied()
       const config = inboundPilotConfigSchema.parse(raw)
@@ -581,6 +606,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         // Notes saved under a larger budget than today's rules leave: the call
         // goes on with the code's notes-free rules rather than being refused.
         if (prompt.length > LINE_PROMPT_MAX_CHARS) prompt = composeLinePrompt({ ...speech, manner: "", knowledge: "", rules: "" })
+        // The second ear's token is fetched now, not on the pharmacy's first phrase.
+        if (line) dependencies.secondEar?.warm()
         if (line) {
           console.log("[zeytun-line] speech", JSON.stringify({ own: (Object.keys(speech) as (keyof LineSpeech)[]).filter(key => speech[key]),
             notesKept: prompt.includes("<company_notes>") }))
@@ -609,6 +636,14 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           ? await dependencies.cancelOrder({ ...config, orderOrganizationId }, finalCall, input.seq) : "already_reviewed"
         console.log("[zeytun-line] cancel", JSON.stringify({ status }))
         return searchResponse(status === "cancelled" ? { status, say: ZEYTUN_CANCEL_PHRASE } : { status: "not_cancelled" })
+      }
+      if (input.action === "utterance") {
+        // Answered at once: the station never waits for the recognizer, and a
+        // phrase it drops costs nothing but the second ear on that phrase.
+        const ear = isLineGrant(config) ? dependencies.secondEar : undefined
+        if (!ear || finalCall.endedAt !== null || !(await ear.enabled())) return searchResponse({ status: "off" }, 202)
+        const taken = ear.hear(input.callId, input.seq, pcm!, chirpHints(catalog, dependencies.learnedNames?.(config) ?? null))
+        return searchResponse({ status: taken ? "accepted" : "busy" }, 202)
       }
       if (input.action === "transfer") {
         const status = isLineGrant(config) && dependencies.requestTransfer && call.endedAt === null
@@ -664,9 +699,39 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         console.log("[zeytun-line] search", JSON.stringify({ call: input.callId, query: input.query.text.slice(0, 240), found: result.candidateCount,
           ...(known ? { learned: true } : {}) }))
       }
-      return searchResponse({ status: result.status, mode: "owner_inbound_preview", customerVerified: false,
-        candidateCount: result.candidateCount, needsNarrowing: result.candidateCount > 1,
-        candidates: result.candidates.slice(0, 5).map(candidate),
+      const shown = result.candidates.slice(0, 5)
+      // The second ear (owner 2026-11-04: «Да, встраивай»): what Chirp heard of
+      // the same phrase is searched the same way, and up to two of its
+      // candidates the model's five lack come after them, marked alsoHeard.
+      // The model's own candidates keep their order.
+      const alsoHeard: Array<ReturnType<typeof candidate> & { alsoHeard: string }> = []
+      const ear = isLineGrant(config) && input.query.text && !SUBSTITUTE_PREFIX.test(input.query.text) && !PROMOTIONS_PREFIX.test(input.query.text)
+        ? dependencies.secondEar : undefined
+      if (ear && input.query.text) {
+        const heard = await ear.heardFor(input.callId).catch(() => null)
+        if (heard) {
+          const product = pairHeard(input.query.text, heard.products, { fresh: heard.fresh, taken: heard.taken })
+          if (product) {
+            heard.taken.add(product.text)
+            const heardFound = catalog.search({ text: product.text })
+            const heardLearned = dependencies.learnedNames?.(config)?.productFor(product.text)
+            const heardKnown = heardLearned ? catalog.search({ externalId: heardLearned }).candidates[0] : undefined
+            const heardItems = heardKnown ? [heardKnown, ...heardFound.candidates.filter(item => item.externalId !== heardKnown.externalId)] : heardFound.candidates
+            for (const item of heardItems.slice(0, 5)) {
+              if (alsoHeard.length === 2) break
+              if (shown.some(own => own.externalId === item.externalId) || alsoHeard.some(own => own.externalId === item.externalId)) continue
+              alsoHeard.push({ ...candidate(item), alsoHeard: product.words })
+            }
+          }
+          // How long the lookup waited and whether the second ear added anything; never what was said.
+          console.log("[zeytun-line] chirp", JSON.stringify({ call: input.callId, ms: heard.waitedMs, used: alsoHeard.length }))
+        }
+      }
+      // Nothing found by the model's words but something by Chirp's: there are candidates to offer.
+      const status = !shown.length && alsoHeard.length ? "candidates_only" : result.status
+      return searchResponse({ status, mode: "owner_inbound_preview", customerVerified: false,
+        candidateCount: result.candidateCount, needsNarrowing: result.candidateCount + alsoHeard.length > 1,
+        candidates: [...shown.map(candidate), ...alsoHeard],
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
     } catch { return searchResponse({ enabled: false, error: "pilot_unavailable", candidates: [], ...searchRestrictions }, 503) }
