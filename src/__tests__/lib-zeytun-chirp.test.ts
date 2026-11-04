@@ -145,11 +145,20 @@ describe("Chirp client", () => {
 
 describe("a phrase split into its products", () => {
   it("splits at commas, joining words and after a unit, and drops answers and the pharmacy", () => {
-    expect(heardProducts("Adefa beş qutu Ketonal on qutu").map(product => product.text)).toEqual(["Adefa beş qutu", "Ketonal on qutu"])
+    expect(heardProducts("Adefa beş qutu Ketonal on qutu").map(product => product.text)).toEqual(["Adefa", "Ketonal"])
     expect(heardProducts("Noşpa, Mezim forte və Adefa").map(product => product.words)).toEqual(["Noşpa", "Mezim forte", "Adefa"])
     expect(heardProducts("bəli")).toEqual([])
     expect(heardProducts("on qutu")).toEqual([])
     expect(heardProducts("Zəfər aptekindən zəng edirəm")).toEqual([])
+    // Chirp's "kutu" is the caller's "qutu" (voice stand 2026-11-04): a unit, never a product.
+    expect(heardProducts("5 kutu")).toEqual([])
+    expect(heardProducts("Adefo 3 kutu").map(product => [product.text, product.words])).toEqual([["Adefo", "Adefo"]])
+    // Searched without the quantity and its unit: "qutu" matched the "/*qutu/*" in 1C's names (Bone birdəfəlik,
+    // Afobazol for "Bisakodil 10 qutu"), and "Fluimucil 600 iki qutu" found nothing. A dose in digits stays.
+    expect(heardProducts("Bisakodil 10 qutu").map(product => product.text)).toEqual(["Bisakodil"])
+    expect(heardProducts("Mezim Forte 10000 3 qutu.").map(product => product.text)).toEqual(["Mezim Forte 10000"])
+    expect(heardProducts("Fluimucil 600 iki qutu").map(product => product.text)).toEqual(["Fluimucil 600"])
+    expect(heardProducts("Bisakodil on beş qutu").map(product => product.text)).toEqual(["Bisakodil"])
   })
 
   it("pairs a lookup with the product that sounds like it; a single fresh product whatever the model heard", () => {
@@ -160,6 +169,9 @@ describe("a phrase split into its products", () => {
     expect(pairHeard("Deva", heardProducts("Adefa"), { fresh: true })?.words).toBe("Adefa")
     // An older phrase is used only for a product that sounds like it.
     expect(pairHeard("Parasetamol", heardProducts("Adefa"), { fresh: false })).toBeNull()
+    // The voice stand's step 8: the only phrase in memory was "5 kutu" (an answer with no lookup);
+    // as a product it was paired with "Floimitil 600" and searched as "5 kutu" — Koraksan, folic acid.
+    expect(pairHeard("Floimitil 600", heardProducts("5 kutu"), { fresh: true })).toBeNull()
   })
 })
 
