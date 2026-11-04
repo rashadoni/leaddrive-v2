@@ -886,7 +886,7 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    expect(await screens.issueAttendanceScreenQr("mtms1."+"A".repeat(43),atScreenBranch)).toEqual({state:"UNPAIRED"})
    expect(await screens.issueAttendanceScreenQr(undefined,atScreenBranch)).toEqual({state:"UNPAIRED"})
    const listed=await tenant(ORG,()=>screens.readAttendanceBranchScreens(admin))
-   expect(listed.branches.find(row=>row.id===created.branch.id)?.screens).toEqual([{id:rows[0].id,pairedAt:expect.any(String),lastSeenAt:expect.any(String),
+   expect(listed.branches.find(row=>row.id===created.branch.id)?.screens).toEqual([{id:rows[0].id,employee:null,pairedAt:expect.any(String),lastSeenAt:expect.any(String),
     place:{state:"AT_BRANCH",distanceMeters:0,checkedAt:expect.any(String)}}])
    // Owner, 2026-10-30: the same screen at home (~3.3 km away) gets no code, and
    // the administrator sees where it went — its verdict, never its coordinates.
@@ -1038,7 +1038,10 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
    const off=await screens.issueAttendanceScreenQr(second!.secret,null,"203.0.113.7");expect(off.state).toBe("QR_OFF");expect(off).not.toHaveProperty("desk")
    expect(await desk.deskAttendanceBreak(second!.secret,{action:"PAUSE",requestId:randomUUID()})).toEqual({state:"UNPAIRED"})
    expect(await tenant(ORG,()=>desk.saveAttendanceBranchNetwork(admin,{branchId:site.branch.id,action:"FORGET"},null))).toEqual({networks:0,changed:true})
-  } finally {await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false));await tenant(ORG,()=>desk.saveAttendanceDeskRule(admin,false))}
+  } finally {
+   await tenant(ORG,()=>policy.saveAttendanceQrRule(admin,false));await tenant(ORG,()=>desk.saveAttendanceDeskRule(admin,false))
+   await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:false,kinds:[{id:"smoke",name:null,limitMinutes:30}]}))
+  }
  })
 
  // Owner, 2026-11-04: «отходит от компьютера, идёт покурить… чтобы это тоже фиксировалось».
@@ -1056,10 +1059,11 @@ type Evidence={id:string;agentId:string;eventId:string;installationId:string;act
   await expect(tenant(ORG,()=>kinds.saveAttendanceBreakKinds({...admin,userId:identity.agentId},list))).rejects.toMatchObject({status:403})
   await expect(tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:[{id:null,name:"",limitMinutes:null}]}))).rejects.toMatchObject({status:400})
   await expect(tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:[]}))).rejects.toMatchObject({status:400})
+  const audited=()=>tenant(ORG,()=>prisma.mtmAuditLog.count({where:{organizationId:ORG,action:"MTM_ATTENDANCE_BREAK_KINDS_CHANGED"}})),auditedBefore=await audited()
   const saved=await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,list));expect(saved.changed).toBe(true)
   const own=saved.settings.kinds[2];expect(own).toMatchObject({id:expect.stringMatching(/^k-[a-f0-9]{8}$/),name:"Fictional call home",limitMinutes:null})
   expect((await tenant(ORG,()=>kinds.saveAttendanceBreakKinds(admin,{enabled:true,kinds:saved.settings.kinds}))).changed).toBe(false)
-  expect(await tenant(ORG,()=>prisma.mtmAuditLog.count({where:{organizationId:ORG,action:"MTM_ATTENDANCE_BREAK_KINDS_CHANGED"}}))).toBe(1)
+  expect(await audited()).toBe(auditedBefore+1)
   // A kind belongs to PAUSE only.
   expect((await step("RESUME",8,"smoke")).status).not.toBe("ok")
   // Two smoking breaks (50 s + 20 s over a 1-minute limit), the company's own kind, and an unknown kind.
