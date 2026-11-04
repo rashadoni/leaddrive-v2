@@ -8,10 +8,13 @@ import array
 import audioop
 import base64
 from decimal import Decimal
+import http.client
+import io
 import json
 import math
 import os
 import re
+import ssl
 import threading
 import time
 import urllib.error
@@ -27,6 +30,154 @@ class ZeytunPilotUnavailable(Exception):
 class ZeytunNoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+class ZeytunKeptResponse:
+    """One answer on a kept connection: lines or bytes; the connection goes
+    back to the pool only once the answer was read to its end."""
+
+    def __init__(self, pool, key, conn, response):
+        self.pool, self.key, self.conn, self.response = pool, key, conn, response
+        self.status = response.status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+    def __iter__(self):
+        while True:
+            line = self.response.readline()
+            if not line:
+                return
+            yield line
+
+    def read(self, amount=None):
+        return self.response.read(amount)
+
+    def close(self):
+        conn, self.conn = self.conn, None
+        if conn is None:
+            return
+        if self.response.isclosed() and not self.response.will_close:
+            self.pool.give(self.key, conn)
+        else:
+            # Unread bytes would become the next answer's start.
+            self.response.close()
+            conn.close()
+
+
+class ZeytunKeepAlive:
+    """HTTPS to the TTS and the CRM over kept connections.
+
+    Measured from the station 2026-11-04: a new connection costs 0.2-0.3 s
+    (TCP and TLS from Baku; up to 0.5 s to the CRM), and the line opened one
+    for every TTS clip, lookup and save (urllib does not keep them). Here a
+    connection is taken from the pool, used by one request at a time and put
+    back once its answer was read to the end. One idle longer than
+    IDLE_SECONDS is closed rather than trusted. A kept connection the peer has
+    closed fails at once; that request is sent again on a new one, never one
+    that timed out. Behind a proxy, or for another scheme, it is plain urllib
+    as before. Refusals are urllib's HTTPError, network failures URLError, as
+    callers already expect.
+    """
+    IDLE_SECONDS = 50.0
+    MAX_IDLE = 4
+
+    def __init__(self, clock=time.monotonic, connect=None, proxies=None):
+        self.clock = clock
+        self.connect = connect or self._connect
+        self.proxies = proxies or urllib.request.getproxies
+        self.lock = threading.Lock()
+        self.idle = {}
+
+    @staticmethod
+    def _connect(scheme, host, port, timeout):
+        if scheme == "https":
+            return http.client.HTTPSConnection(host, port, timeout=timeout, context=ssl.create_default_context())
+        return http.client.HTTPConnection(host, port, timeout=timeout)
+
+    def take(self, key):
+        with self.lock:
+            pool = self.idle.get(key) or []
+            now = self.clock()
+            while pool:
+                conn, since = pool.pop()
+                if now - since < self.IDLE_SECONDS:
+                    return conn
+                conn.close()
+        return None
+
+    def give(self, key, conn):
+        with self.lock:
+            pool = self.idle.setdefault(key, [])
+            if len(pool) < self.MAX_IDLE:
+                pool.append((conn, self.clock()))
+                return
+        conn.close()
+
+    def _key(self, url):
+        parts = urllib.parse.urlsplit(url)
+        if parts.scheme not in ("http", "https") or not parts.hostname or self.proxies().get(parts.scheme):
+            return None, None
+        path = (parts.path or "/") + ("?" + parts.query if parts.query else "")
+        return (parts.scheme, parts.hostname, parts.port or (443 if parts.scheme == "https" else 80)), path
+
+    def warm(self, url, timeout=4):
+        """Open a connection ahead of the first request, in the background."""
+        key, _ = self._key(url)
+        if key is None:
+            return False
+
+        def connect():
+            try:
+                conn = self.connect(key[0], key[1], key[2], timeout)
+                conn.connect()
+            except Exception:
+                return
+            self.give(key, conn)
+        threading.Thread(target=connect, name="zeytun-http-warm", daemon=True).start()
+        return True
+
+    def open(self, req, timeout):
+        url = req.full_url
+        key, path = self._key(url)
+        if key is None:
+            return urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout)
+        headers = dict(req.header_items())
+        while True:
+            conn = self.take(key)
+            kept = conn is not None
+            if conn is None:
+                conn = self.connect(key[0], key[1], key[2], timeout)
+            conn.timeout = timeout
+            if conn.sock is not None:
+                conn.sock.settimeout(timeout)
+            try:
+                conn.request(req.get_method(), path, body=req.data, headers=headers)
+                response = conn.getresponse()
+            except Exception as error:
+                conn.close()
+                if kept and isinstance(error, (http.client.HTTPException, OSError)) and not isinstance(error, TimeoutError):
+                    continue  # the peer closed an idle connection: once more on a new one
+                if isinstance(error, (http.client.HTTPException, OSError)):
+                    raise urllib.error.URLError(error) from None
+                raise
+            break
+        if not 200 <= response.status < 300:
+            try:
+                body = response.read(65536)
+            except Exception:
+                body = b""
+            conn.close()
+            raise urllib.error.HTTPError(url, response.status, response.reason, response.msg, io.BytesIO(body))
+        return ZeytunKeptResponse(self, key, conn, response)
+
+
+# One pool for the process: the TTS and the CRM, every call.
+ZEYTUN_HTTP = ZeytunKeepAlive()
 
 
 ZEYTUN_ONES = ("", "bir", "iki", "üç", "dörd", "beş", "altı", "yeddi", "səkkiz", "doqquz")
@@ -140,11 +291,18 @@ class ZeytunGeminiTts:
     Two paths to the same model and voice (task 9, owner 2026-11-04 of the
     Vertex sample: «Тот же, переключай»): the Gemini API on Tier 1 allows 100
     TTS requests a day - three to five calls - and returned 429 for the rest
-    of the day; Vertex AI (Standard PayGo, global) has no daily count. With a
-    Vertex key the request goes there first; a refusal before any audio that
-    is about capacity or the server (429, 5xx, 401/403 of a revoked key) is
-    asked once of the Gemini API, so the old path is the rollback.
+    of the day; Vertex AI (Standard PayGo) has no daily count. With a Vertex
+    key the request goes there first; a refusal before any audio that is
+    about capacity or the server (429, 5xx, 401/403 of a revoked key) is
+    asked of the next path, so the old path is the rollback.
+
+    Vertex's EU multi-region first, then global (measured from the station
+    2026-11-04: global answered after 0.93-1.07 s, eu after 0.34-0.39 s; the
+    model is not served in single regions, 404). Over kept connections
+    (ZEYTUN_HTTP): a new one cost the station 0.2-0.3 s per clip.
     """
+    VERTEX_LOCATIONS = (("vertex", "https://aiplatform.eu.rep.googleapis.com", "eu"),
+                        ("vertex_global", "https://aiplatform.googleapis.com", "global"))
     MODELS = frozenset({"gemini-3.8-flash-tts"})
     VERTEX_PROJECT = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
     # Refusals after which the other path is worth one more request; a 400
@@ -163,15 +321,21 @@ class ZeytunGeminiTts:
         project, vertex_key = vertex if isinstance(vertex, tuple) and len(vertex) == 2 else (None, None)
         if (isinstance(project, str) and self.VERTEX_PROJECT.match(project)
                 and isinstance(vertex_key, str) and 30 <= len(vertex_key.strip()) <= 256):
-            self.urls.append(("vertex", "https://aiplatform.googleapis.com/v1/projects/" + project
-                              + "/locations/global/publishers/google/models/" + model
-                              + query + urllib.parse.quote(vertex_key.strip(), safe="")))
+            for path, host, location in self.VERTEX_LOCATIONS:
+                self.urls.append((path, host + "/v1/projects/" + project + "/locations/" + location
+                                  + "/publishers/google/models/" + model
+                                  + query + urllib.parse.quote(vertex_key.strip(), safe="")))
         self.urls.append(("studio", "https://generativelanguage.googleapis.com/v1beta/models/" + model
                           + query + urllib.parse.quote(key, safe="")))
         self.url = self.urls[0][1]
         self.path = self.urls[0][0]
         self.voice = voice
-        self.open = opener or (lambda req, timeout: urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout))
+        self.open = opener or ZEYTUN_HTTP.open
+        self.kept = opener is None
+
+    def warm(self):
+        """The first path's connection, opened while the call greets."""
+        return self.kept and ZEYTUN_HTTP.warm(self.urls[0][1], self.TIMEOUT_SECONDS)
 
     def stream(self, text, on_pcm, keep_going):
         heard = [0]
@@ -700,7 +864,7 @@ def zeytun_post_json(url, token, body, timeout):
     req = urllib.request.Request(url,
         data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
         headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}, method="POST")
-    with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout) as response:
+    with ZEYTUN_HTTP.open(req, timeout) as response:
         raw = response.read(32769)
         if len(raw) > 32768:
             raise ZeytunPilotUnavailable("pilot_response_too_large")
@@ -1123,7 +1287,11 @@ class ZeytunInboundBridge:
         self.order_number = None
         self.lock = threading.Lock()
         self.pending = {}
-        self.workers = threading.BoundedSemaphore(2)
+        # Four lookups at once, as many as one tool batch may hold: with two,
+        # the third of "Bisakodil, Ketonal, Mezim" was refused (search_busy)
+        # and the model looked it up again in a round of its own, ~1 s
+        # (both calls of 2026-11-04 13:15 and 13:17; probe on gemini-3.8-live).
+        self.workers = threading.BoundedSemaphore(4)
         self.seen = set()
         self.expires = 0
         self.active = False
@@ -1201,7 +1369,7 @@ class ZeytunInboundBridge:
     def _post_utterance(self, body):
         req = urllib.request.Request(self.url, data=json.dumps(body, separators=(",", ":")).encode("ascii"),
             headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"}, method="POST")
-        with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=self.UTTERANCE_TIMEOUT_SECONDS) as response:
+        with ZEYTUN_HTTP.open(req, self.UTTERANCE_TIMEOUT_SECONDS) as response:
             raw = response.read(32768)
         try:
             return json.loads(raw)
@@ -1443,6 +1611,9 @@ class ZeytunInboundBridge:
                                             vertex=self.tts_vertex())
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
                                            progress=progress, recovering=recovering, ask=ask)
+            warm = getattr(engine, "warm", None)
+            if warm is not None:
+                warm()
             self.relay.prefetch_filler()
         return self.relay
 

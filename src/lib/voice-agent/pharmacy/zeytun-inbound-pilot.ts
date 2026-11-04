@@ -324,7 +324,7 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-30, the same complaint: confirmation and the next question
   // in one reply, several products in one go, no question for a plain match.
   ["Acknowledge a clear line briefly; do not ask yes/no after every line.",
-    "Confirm a clear line in a few words and invite the next in the same reply (\"Adefa, 5 qutu. Daha?\"), no yes/no. Several products at once: look up two at a time, confirm them in one reply; ask a missing quantity in that reply.\n" +
+    "Confirm a clear line in a few words and invite the next in the same reply (\"Adefa, 5 qutu. Daha?\"), no yes/no. Several products at once: look them all up in one go (up to four lookups together, never one after another), confirm them in one reply; ask a missing quantity in that reply.\n" +
     // Owner's call 2026-10-31: three products named, the agent asked No-shpa's
     // form, took "ampula" for nothing and only Adefa was written.
     "Every product the caller named stays open until it is saved or the caller drops it. An answer to your question (a form, a quantity) is about the product you asked of; write it, then go on, unasked, with the next open product. Before the closing sentence, if a named product is still unsaved, name it and ask once."],
