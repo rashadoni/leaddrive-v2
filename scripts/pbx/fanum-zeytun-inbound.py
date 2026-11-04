@@ -664,6 +664,27 @@ def zeytun_script(text):
     return "latin"
 
 
+# A Live API connection lasts about ten minutes; the provider warns with
+# goAway, whose timeLeft is the time before it ABORTs the connection (Google,
+# Live API "Session management"), and a line call may last fifteen. The core
+# waits at most 1.5 s after the warning for a fresh resumption handle at a
+# settled turn and then hangs up, although the warned socket keeps carrying
+# the conversation until timeLeft runs out. A pharmacy call keeps talking and
+# takes the first settled checkpoint within that time, keeping this margin
+# for the replacement's own connect and setup (2.5 s budget in the core).
+ZEYTUN_GOAWAY_MARGIN_SECONDS = 5.0
+# While it waits the core polls its decision on a receive timeout; a timeout
+# inside a half-read frame ends the transport, so the poll is not 0.25 s.
+ZEYTUN_GOAWAY_POLL_SECONDS = 1.0
+
+
+def zeytun_goaway_wait(time_left, core_wait):
+    """Seconds a pharmacy call waits on a warned socket; never less than the core."""
+    if time_left is None:
+        return core_wait
+    return max(core_wait, time_left - ZEYTUN_GOAWAY_MARGIN_SECONDS)
+
+
 def zeytun_call_transcript(order, items, truncated, audible, non_business, keys):
     """The pharmacy call's CRM transcript: everything the caller heard.
 

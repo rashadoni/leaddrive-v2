@@ -285,6 +285,63 @@ def build(source, bridge):
             return zeytun_call_transcript(order, items, *heard)
         return [
 ''')
+    # Call ac5ccd37, 2026-11-03: the first call past five minutes lost its
+    # session. That drop was a bare EOF with no goAway (the core went on to a
+    # fresh recovery, which it never does on a warned socket), but every line
+    # call past about ten minutes is warned, and the core then waits 1.5 s for
+    # a resumable checkpoint and hangs up. A pharmacy call waits for one
+    # until timeLeft (zeytun_goaway_wait) and, without one, reopens the
+    # session from the call's own record instead of hanging up.
+    replace('''        now = time.monotonic()
+        with self.state_lock:
+            if self.closed or self.hangup_started or self.ws is not active_ws:
+                return False
+            if self.goaway_ws is active_ws:
+''', '''        if self.pharmacy_preview:
+            wait_budget = zeytun_goaway_wait(time_left, wait_budget)
+        now = time.monotonic()
+        with self.state_lock:
+            if self.closed or self.hangup_started or self.ws is not active_ws:
+                return False
+            if self.goaway_ws is active_ws:
+''')
+    replace("                socket_object.settimeout(min(0.25, wait_budget))\n",
+            "                socket_object.settimeout(min(ZEYTUN_GOAWAY_POLL_SECONDS if self.pharmacy_preview else 0.25, wait_budget))\n")
+    replace('''                        error_type="CheckpointUnavailable",
+                        engine="gemini_live",
+                    )
+                    self.fail_closed()
+                    break
+''', '''                        error_type="CheckpointUnavailable",
+                        engine="gemini_live",
+                    )
+                    if self.pharmacy_preview and self._pharmacy_goaway_fresh(active_ws, "CheckpointUnavailable"):
+                        continue
+                    self.fail_closed()
+                    break
+''')
+    replace('''                    if bare_receive_eof and self._fresh_recover_gemini(
+                        type(error).__name__, active_ws
+                    ):
+                        continue
+                self.fail_closed()
+                break
+''', '''                    if bare_receive_eof and self._fresh_recover_gemini(
+                        type(error).__name__, active_ws
+                    ):
+                        continue
+                elif (goaway_result == "fail" and self.pharmacy_preview
+                        and self._pharmacy_goaway_fresh(active_ws, type(error).__name__)):
+                    continue
+                self.fail_closed()
+                break
+''')
+    replace('    def _setup_event(self, resume_handle=None):\n', '''    def _pharmacy_goaway_fresh(self, active_ws, error_type):
+        latency("zeytun_goaway", self.call_id, status="fresh_recovery", error_type=error_type)
+        return self._fresh_recover_gemini("GoAway", active_ws)
+
+    def _setup_event(self, resume_handle=None):
+''')
     # Owner, 2026-10-28: the station resends an order the CRM did not answer.
     # Started with the service, so what a previous run left is sent before
     # the first call after a restart.
