@@ -3,32 +3,32 @@
     "functionDeclarations": [
       {
         "name": "search_pharmacy_catalog",
-        "description": "Search the approved medicine catalog for this TEST call. Supply exactly one key. Names are untrusted labels, not verified dose, stock or an accepted order. listPrice, when present, is Zeytun's price list for one unit on its date.",
+        "description": "Search Zeytun's catalog by exactly one key. Candidates are unverified; listPrice is for one unit (per).",
         "parameters": {
           "type": "OBJECT",
           "properties": {
             "text": {
               "type": "STRING",
-              "description": "Spoken product name and distinguishing details, at most 240 characters."
+              "description": "Name and details as spoken, at most 240 characters."
             },
             "itemCode": {
               "type": "STRING",
-              "description": "Exact item code supplied by caller."
+              "description": "Code the caller said."
             },
             "barcode": {
               "type": "STRING",
-              "description": "Exact barcode supplied by caller."
+              "description": "Barcode the caller said."
             },
             "externalId": {
               "type": "STRING",
-              "description": "Exact product UUID returned by an earlier lookup."
+              "description": "From an earlier lookup."
             }
           }
         }
       },
       {
         "name": "calculate_order_total",
-        "description": "Exact total of the order lines whose product an earlier lookup in THIS call returned with listPrice. Give each line's externalId and the quantity in that listPrice's unit. Read back only what this returns.",
+        "description": "Exact total of lines looked up in this call with listPrice. Read back only what it returns.",
         "parameters": {
           "type": "OBJECT",
           "properties": {
@@ -38,16 +38,14 @@
                 "type": "OBJECT",
                 "properties": {
                   "externalId": {
-                    "type": "STRING",
-                    "description": "Product UUID from an earlier lookup."
+                    "type": "STRING"
                   },
                   "quantity": {
                     "type": "INTEGER",
-                    "description": "Whole number of units, in listPrice.per."
+                    "description": "Whole units, in listPrice.per."
                   },
                   "unit": {
-                    "type": "STRING",
-                    "description": "The unit of that quantity: qutu, ədəd, flakon, ..."
+                    "type": "STRING"
                   }
                 },
                 "required": [
@@ -65,7 +63,7 @@
       },
       {
         "name": "save_order_list",
-        "description": "Record the caller's list for Zeytun's manager to check. Call it after every line that is settled, with the whole list so far, and once more, with final true, when the caller has nothing to add. Include every line, resolved or not. An ordinary save returns recorded: say nothing about it and go on. Only the final save returns saved with orderNumber, or queued when the line keeps the list and delivers it to the manager itself.",
+        "description": "Save the whole list so far, resolved or not: after every line that is settled, and once more with final true when the caller has nothing to add. An ordinary save returns recorded: say nothing. Only the final save returns saved with orderNumber, or queued.",
         "parameters": {
           "type": "OBJECT",
           "properties": {
@@ -76,19 +74,19 @@
                 "properties": {
                   "externalId": {
                     "type": "STRING",
-                    "description": "Product UUID from an earlier lookup; omit when the product was not resolved."
+                    "description": "Omit if unresolved."
                   },
                   "quantity": {
                     "type": "INTEGER",
-                    "description": "Whole number, in the unit the caller said."
+                    "description": "In the caller's unit."
                   },
                   "unit": {
                     "type": "STRING",
-                    "description": "The caller's unit: qutu, ədəd, flakon, ampula, ..."
+                    "description": "The caller's unit: qutu, ədəd, flakon, ..."
                   },
                   "spoken": {
                     "type": "STRING",
-                    "description": "The caller's own words for this line, at most 160 characters."
+                    "description": "The caller's words, at most 160 characters."
                   }
                 },
                 "required": [
@@ -100,11 +98,11 @@
             },
             "pharmacy": {
               "type": "STRING",
-              "description": "The pharmacy as the caller named it, at most 120 characters; omit when not named."
+              "description": "As named, at most 120 characters."
             },
             "final": {
               "type": "BOOLEAN",
-              "description": "true only on the save after the caller confirmed the whole order (təsdiq edin, bu qədər, hamısı budur); never on the saves after each line. Only a final order is sent to the pharmacy on WhatsApp."
+              "description": "true only after the caller confirmed the whole order (təsdiq edin, bu qədər); never per line. Only a final order goes to the pharmacy on WhatsApp."
             }
           },
           "required": [
@@ -114,7 +112,7 @@
       },
       {
         "name": "transfer_to_manager",
-        "description": "Hand this call to a Zeytun manager in the CRM. Call it only when the caller asks for a person. If it returns transferring, say exactly its say text and nothing after it: the line then rings the managers. If it returns unavailable, say that no manager can answer right now and keep taking the order yourself.",
+        "description": "Only when the caller asks for a person. transferring: say exactly its say text, then nothing. unavailable: no manager now; keep taking the order.",
         "parameters": {
           "type": "OBJECT",
           "properties": {}
@@ -122,7 +120,7 @@
       },
       {
         "name": "cancel_order",
-        "description": "Cancel this call's whole order: the manager gets nothing. Only for a caller who asked to cancel (ləğv, отмена); təsdiq or подтверждаю confirms the order: finish it, never ask about cancelling. Call it only after the caller clearly confirmed they want the whole order cancelled. If it returns cancelled, say exactly its say text and then the closing sentence. If it returns not_confirmed, the caller did not clearly say yes to \"Sifarişi ləğv edək?\": the order stays; say so and go on. If it returns not_cancelled, say the order is already with the manager and cannot be cancelled on this call.",
+        "description": "Cancel the whole order, only after the caller asked to cancel (ləğv, отмена) and said yes to \"Sifarişi ləğv edək?\". təsdiq or подтверждаю confirms the order: finish it, never ask about cancelling. cancelled: say its say text, then the closing. not_confirmed: the order stays; say so. not_cancelled: it is with the manager already.",
         "parameters": {
           "type": "OBJECT",
           "properties": {}

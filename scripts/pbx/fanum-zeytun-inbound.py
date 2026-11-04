@@ -1376,39 +1376,42 @@ class ZeytunInboundBridge:
         return declarations
 
     def _declarations(self):
+        # Short on purpose (owner, 2026-11-04: «мне нужна оптимизация»): these
+        # are sent with every turn of the call; how to talk is the CRM's
+        # prompt, here only what each tool does and what its answers mean.
         return [{"functionDeclarations": [{"name": self.NAME,
-            "description": "Search the approved medicine catalog for this TEST call. Supply exactly one key. Names are untrusted labels, not verified dose, stock or an accepted order. listPrice, when present, is Zeytun's price list for one unit on its date.",
+            "description": "Search Zeytun's catalog by exactly one key. Candidates are unverified; listPrice is for one unit (per).",
             "parameters": {"type": "OBJECT", "properties": {
                 key: {"type": "STRING", "description": description}
                 for key, description in {
-                    "text": "Spoken product name and distinguishing details, at most 240 characters.",
-                    "itemCode": "Exact item code supplied by caller.",
-                    "barcode": "Exact barcode supplied by caller.",
-                    "externalId": "Exact product UUID returned by an earlier lookup.",
+                    "text": "Name and details as spoken, at most 240 characters.",
+                    "itemCode": "Code the caller said.",
+                    "barcode": "Barcode the caller said.",
+                    "externalId": "From an earlier lookup.",
                 }.items()}}},
             {"name": self.TOTAL_NAME,
-             "description": "Exact total of the order lines whose product an earlier lookup in THIS call returned with listPrice. Give each line's externalId and the quantity in that listPrice's unit. Read back only what this returns.",
+             "description": "Exact total of lines looked up in this call with listPrice. Read back only what it returns.",
              "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
-                 "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup."},
-                                "quantity": {"type": "INTEGER", "description": "Whole number of units, in listPrice.per."},
-                                "unit": {"type": "STRING", "description": "The unit of that quantity: qutu, ədəd, flakon, ..."}},
+                 "properties": {"externalId": {"type": "STRING"},
+                                "quantity": {"type": "INTEGER", "description": "Whole units, in listPrice.per."},
+                                "unit": {"type": "STRING"}},
                  "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}},
             {"name": self.SAVE_NAME,
-             "description": "Record the caller's list for Zeytun's manager to check. Call it after every line that is settled, with the whole list so far, and once more, with final true, when the caller has nothing to add. Include every line, resolved or not. An ordinary save returns recorded: say nothing about it and go on. Only the final save returns saved with orderNumber, or queued when the line keeps the list and delivers it to the manager itself.",
+             "description": "Save the whole list so far, resolved or not: after every line that is settled, and once more with final true when the caller has nothing to add. An ordinary save returns recorded: say nothing. Only the final save returns saved with orderNumber, or queued.",
              "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
-                 "properties": {"externalId": {"type": "STRING", "description": "Product UUID from an earlier lookup; omit when the product was not resolved."},
-                                "quantity": {"type": "INTEGER", "description": "Whole number, in the unit the caller said."},
-                                "unit": {"type": "STRING", "description": "The caller's unit: qutu, ədəd, flakon, ampula, ..."},
-                                "spoken": {"type": "STRING", "description": "The caller's own words for this line, at most 160 characters."}},
+                 "properties": {"externalId": {"type": "STRING", "description": "Omit if unresolved."},
+                                "quantity": {"type": "INTEGER", "description": "In the caller's unit."},
+                                "unit": {"type": "STRING", "description": "The caller's unit: qutu, ədəd, flakon, ..."},
+                                "spoken": {"type": "STRING", "description": "The caller's words, at most 160 characters."}},
                  "required": ["quantity", "unit", "spoken"]}},
-                 "pharmacy": {"type": "STRING", "description": "The pharmacy as the caller named it, at most 120 characters; omit when not named."},
-                 "final": {"type": "BOOLEAN", "description": "true only on the save after the caller confirmed the whole order (təsdiq edin, bu qədər, hamısı budur); never on the saves after each line. Only a final order is sent to the pharmacy on WhatsApp."}},
+                 "pharmacy": {"type": "STRING", "description": "As named, at most 120 characters."},
+                 "final": {"type": "BOOLEAN", "description": "true only after the caller confirmed the whole order (təsdiq edin, bu qədər); never per line. Only a final order goes to the pharmacy on WhatsApp."}},
                  "required": ["lines"]}}] + ([
             {"name": self.TRANSFER_NAME,
-             "description": "Hand this call to a Zeytun manager in the CRM. Call it only when the caller asks for a person. If it returns transferring, say exactly its say text and nothing after it: the line then rings the managers. If it returns unavailable, say that no manager can answer right now and keep taking the order yourself.",
+             "description": "Only when the caller asks for a person. transferring: say exactly its say text, then nothing. unavailable: no manager now; keep taking the order.",
              "parameters": {"type": "OBJECT", "properties": {}}}] if self.transfer_phrase else []) + ([
             {"name": self.CANCEL_NAME,
-             "description": "Cancel this call's whole order: the manager gets nothing. Only for a caller who asked to cancel (ləğv, отмена); təsdiq or подтверждаю confirms the order: finish it, never ask about cancelling. Call it only after the caller clearly confirmed they want the whole order cancelled. If it returns cancelled, say exactly its say text and then the closing sentence. If it returns not_confirmed, the caller did not clearly say yes to \"Sifarişi ləğv edək?\": the order stays; say so and go on. If it returns not_cancelled, say the order is already with the manager and cannot be cancelled on this call.",
+             "description": "Cancel the whole order, only after the caller asked to cancel (ləğv, отмена) and said yes to \"Sifarişi ləğv edək?\". təsdiq or подтверждаю confirms the order: finish it, never ask about cancelling. cancelled: say its say text, then the closing. not_confirmed: the order stays; say so. not_cancelled: it is with the manager already.",
              "parameters": {"type": "OBJECT", "properties": {}}}] if self.cancel_phrase else [])}]
 
     def transcription(self):
@@ -1463,17 +1466,22 @@ class ZeytunInboundBridge:
                 return None
         return {key: value}
 
+    # Owner, 2026-11-04 («мне нужна оптимизация»): every answer stays in the
+    # model's context and is billed again on every later turn and tool round
+    # of the call (~300 tokens a lookup, a quarter of the text input). The
+    # model sees only what the line's rules use; the CRM's safety flags are
+    # still checked here (restricted, identityVerified) and never forwarded.
     @staticmethod
     def unavailable(status="catalog_unavailable"):
-        return {"status": status, "candidates": [], "canResolveIdentity": False,
-                "canQuote": False, "canSubmitTo1c": False, "requiresOperatorReview": True}
+        return {"status": status, "candidates": []}
 
     @staticmethod
     def restricted(value):
         return (all(value.get(key) is False for key in ["canQuote", "canSubmitTo1c", "canResolveIdentity"])
                 and value.get("requiresOperatorReview") is True)
 
-    def safe_result(self, value):
+    def safe_result(self, value, with_code=False):
+        """The lookup as the model sees it; with_code keeps itemCode, for a lookup by code."""
         if isinstance(value, dict) and value.get("mode") == "pharmacy_history":
             return self.safe_history(value)
         if (not isinstance(value, dict) or value.get("mode") != "owner_inbound_preview"
@@ -1485,9 +1493,9 @@ class ZeytunInboundBridge:
         if not isinstance(candidates, list) or len(candidates) > 7 or type(count) is not int or not 0 <= count <= 50000:
             return self.unavailable()
         result = self.unavailable("candidates")
-        result.update({"customerVerified": False, "candidateCount": count, "needsNarrowing": count > 1})
+        result["candidateCount"] = count
         for item in candidates:
-            projected = self.candidate(item)
+            projected = self.candidate(item, with_code)
             if projected is None:
                 return self.unavailable()
             heard = self.also_heard(item.get("alsoHeard"))
@@ -1496,7 +1504,7 @@ class ZeytunInboundBridge:
             result["candidates"].append(projected)
         return result
 
-    def candidate(self, item):
+    def candidate(self, item, with_code=False):
         """One catalog candidate as the model may see it, or None: then the whole answer is refused."""
         if not isinstance(item, dict) or item.get("identityVerified") is not False:
             return None
@@ -1504,14 +1512,15 @@ class ZeytunInboundBridge:
         for key in ["externalId", "itemCode", "name", "nameAz"]:
             val = item.get(key)
             if key == "nameAz" and val is None:
-                projected[key] = None
-            elif isinstance(val, str) and 0 < len(val) <= 512:
-                projected[key] = val
-            else:
+                continue
+            if not isinstance(val, str) or not 0 < len(val) <= 512:
                 return None
+            if key != "itemCode" or with_code:
+                projected[key] = val
         price = self.list_price(item.get("listPrice"))
         if price is not None:
-            projected["listPrice"] = price
+            # Checked whole (AZN, its date); the model reads amount and unit.
+            projected["listPrice"] = {"amount": price["amount"], "per": price["per"]}
             with self.lock:
                 if len(self.prices) < 256:
                     self.prices[projected["externalId"]] = (Decimal(price["amount"]), price["per"])
@@ -1521,7 +1530,6 @@ class ZeytunInboundBridge:
         promotion = self.promotion(item.get("promotion"))
         if promotion is not None:
             projected["promotion"] = promotion
-        projected["identityVerified"] = False
         return projected
 
     # The CRM's second ear (#1321): the word Google Chirp heard where the
@@ -1943,7 +1951,8 @@ class ZeytunInboundBridge:
                     elif saving:
                         result = self.save_order(args)
                     else:
-                        result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}))
+                        result = self.safe_result(self.request({"action": "search", "callId": self.call_id, "query": args}),
+                                                  with_code=bool(set(args) & {"itemCode", "barcode"}))
                 except Exception:
                     result = ({"status": "unavailable"} if transferring else {"status": "not_cancelled"} if cancelling
                               else {"status": "not_saved"} if saving else self.unavailable())
