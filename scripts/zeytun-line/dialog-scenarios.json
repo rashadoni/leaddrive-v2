@@ -1,5 +1,5 @@
 {
-  "about": "Scenarios of the line's dialog stand (scripts/zeytun-line/dialog-stand.ts). The caller speaks Azerbaijani, as pharmacies do. A turn is the caller's words, or {say, when: [{match, say}]}: the first rule whose match (regex, case-insensitive) fits the assistant's last reply decides, else say. Regexes of checks run on the assistant's replies or on a tool call's JSON args. expectedFail: the line does not have it yet; such a scenario is reported but not fixed here. Products are chosen on the 2026-11-03 snapshot: Adefa №30 has buy 5 get 1 until 2026-11-30, Ketonal cream 50 g and gel buy 10 get 2 until 2026-11-30, Fluimucil is not in the catalog while A.C.C. long 600 effervescent is. history: what the stand's CRM answers to `history:` (pharmacyHistory); a line with find is the snapshot's first candidate for it, a line with name is a product the catalog no longer has (unavailable). 10: Bisakodil is Hemopharma's, whose Omnitus syrup has buy 10 get 1 until 2026-12-01 on the 2026-11-04 00:00 snapshot. 11 runs on a later snapshot with --departed-from the 00:00 one: Klariks 500 mg sold out in between, Klamicin 500 mg (the same clarithromycin tablets) is in stock.",
+  "about": "Scenarios of the line's dialog stand (scripts/zeytun-line/dialog-stand.ts). The caller speaks Azerbaijani, as pharmacies do. A turn is the caller's words, or {say, when: [{match, say}]}: the first rule whose match (regex, case-insensitive) fits the assistant's last reply decides, else say. Regexes of checks run on the assistant's replies or on a tool call's JSON args. expectedFail: the line does not have it yet; such a scenario is reported but not fixed here. Products are chosen on the 2026-11-03 snapshot: Adefa №30 has buy 5 get 1 until 2026-11-30, Ketonal cream 50 g and gel buy 10 get 2 until 2026-11-30, Fluimucil is not in the catalog while A.C.C. long 600 effervescent is. history: what the stand's CRM answers to `history:` (pharmacyHistory); a line with find is the snapshot's first candidate for it, a line with name is a product the catalog no longer has (unavailable). 10: Bisakodil is Hemopharma's; on the 2026-11-04 00:00 snapshot Hemopharma's Amoxicillin suspension and Omnitus syrup have buy 10 get 1 until 2026-12-01. 11 runs on a later snapshot with --departed-from the 00:00 one: Klariks 500 mg sold out in between, Klamicin 500 mg (the same clarithromycin tablets) is in stock.",
   "scenarios": [
     {
       "id": "1",
@@ -48,6 +48,10 @@
           {
             "match": "aksiya|pulsuz|hədiyyə|bonus",
             "label": "назвал акцию на Adefa (5+1)"
+          },
+          {
+            "match": "Kapitos|Капитос|Nimesil|Нимесил|Amoksis|Амоксиц|Omnitus|Омнитус",
+            "label": "в конце предложил акцию производителя заказа (одна из Pharmex, Hemopharma, Berlin-Chemie)"
           }
         ],
         "finalSave": true,
@@ -536,8 +540,8 @@
         ],
         "reply": [
           {
-            "match": "Omnitus|Омнитус",
-            "label": "предложил акционный Omnitus того же производителя"
+            "match": "(Amoksis|Амоксиц|Omnitus|Омнитус)[^.]*(aksiya|hədiyyə)|(aksiya|hədiyyə)[^.]*(Amoksis|Амоксиц|Omnitus|Омнитус)",
+            "label": "предложил акцию того же производителя (Hemopharma: Amoksisillin или Omnitus)"
           }
         ],
         "toolAfter": [
@@ -560,7 +564,7 @@
           "say": "Bəli, onu yazın, 5 qutu.",
           "when": [
             {
-              "match": "Klamis|Кламиц|Meristat|Меристат",
+              "match": "Klami[sc]|Кламиц|Meristat|Меристат",
               "say": "Bəli, Klamisin yazın, 5 qutu."
             }
           ]
@@ -578,7 +582,7 @@
           "say": "Sağ olun.",
           "when": [
             {
-              "match": "Klamis|Кламиц|Meristat|Меристат[^.!]*\\?",
+              "match": "(Klami[sc]|Кламиц|Meristat|Меристат)[^.!]*\\?",
               "say": "Bəli. Bu qədər, təsdiq edirəm."
             }
           ]
@@ -594,12 +598,16 @@
         ],
         "reply": [
           {
-            "match": "Klamis|Кламиц|Meristat|Меристат",
+            "match": "Klami[sc]|Кламиц|Meristat|Меристат",
             "label": "предложил аналог (кларитромицин 500 мг, таблетки)"
           },
           {
             "match": "bitib|qalmayıb|yoxdur|tükənib|stokda",
             "label": "сказал, что Klariks кончился"
+          },
+          {
+            "match": "Azo[kc]s?in|Азокцин|aksiya|hədiyyə",
+            "label": "в конце предложил акцию производителя (Biofarma)"
           }
         ],
         "finalSave": true,

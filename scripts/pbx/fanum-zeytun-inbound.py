@@ -1415,7 +1415,7 @@ class ZeytunInboundBridge:
                                 "unit": {"type": "STRING"}},
                  "required": ["externalId", "quantity", "unit"]}}}, "required": ["lines"]}},
             {"name": self.SAVE_NAME,
-             "description": "Save the whole list so far, resolved or not: after every line that is settled, and once more with final true when the caller has nothing to add. An ordinary save returns recorded: say nothing. Only the final save returns saved with orderNumber, or queued.",
+             "description": "Save the whole list so far, resolved or not: after every line that is settled, and once more with final true when the caller has nothing to add. An ordinary save returns recorded: say nothing. Only the final save returns saved with orderNumber, or queued; it may first return offer_first.",
              "parameters": {"type": "OBJECT", "properties": {"lines": {"type": "ARRAY", "items": {"type": "OBJECT",
                  "properties": {"externalId": {"type": "STRING", "description": "Omit if unresolved."},
                                 "quantity": {"type": "INTEGER", "description": "In the caller's unit."},
@@ -1790,18 +1790,24 @@ class ZeytunInboundBridge:
         two products in. Only the final save (after «təsdiq») is "saved" with
         the number now; any other is "recorded", with what was not found.
         """
-        result = self._save_order(args)
-        if args.get("final") is True or result.get("status") not in ("saved", "queued"):
-            return result
-        recorded = {"status": "recorded", **{key: result[key] for key in ("notFound", "unpriced") if key in result}}
-        # A save answered behind the reply leaves its offer for the next one.
-        with self.lock:
-            offer = None if self.offered else self.offer
+        if args.get("final") is True:
+            # The CRM's one promotion of the order's makers (2026-11-04), said
+            # before the order is closed: the first final save is not sent
+            # while one is waiting; the model offers it and saves again. Was
+            # the agent's own `promotions: <maker>` lookup at the same point;
+            # carried on an earlier save, the offer went unsaid once the
+            # caller said "bu qədər, təsdiq edirəm" in one breath (stand, 2026-11-04).
+            with self.lock:
+                offer = None if self.offered else self.offer
+                if offer is not None:
+                    self.offered = True
             if offer is not None:
-                self.offered = True
-        if offer is not None:
-            recorded["offer"] = offer
-        return recorded
+                return {"status": "offer_first", "offer": offer}
+            return self._save_order(args)
+        result = self._save_order(args)
+        if result.get("status") not in ("saved", "queued"):
+            return result
+        return {"status": "recorded", **{key: result[key] for key in ("notFound", "unpriced") if key in result}}
 
     def _save_order(self, args):
         """One save: kept on the station's disk, then sent. A CRM that does not

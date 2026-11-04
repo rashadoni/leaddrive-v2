@@ -152,7 +152,10 @@ describe("the seller's extras in the line's answers", () => {
   it("attaches the one end-of-order offer to an ordinary save, never the final one", async () => {
     const call = await line()
     const bisakodil = idOf("Бисакодил")
-    expect(short((await call.save([bisakodil])).offer!.name)).toBe("Диклофенак 50 мг № 20")
+    const { offer } = await call.save([bisakodil])
+    expect(short(offer!.name)).toBe("Диклофенак 50 мг № 20")
+    // A product the caller never named: its name in Azerbaijani letters opens the sentence.
+    expect(offer!.promotionSay).toBe("Diklofenak, 10 qutu alana 1 qutu hədiyyə, 5 noyabra qədər")
     expect(await call.save([bisakodil], true)).not.toHaveProperty("offer")
   })
 })

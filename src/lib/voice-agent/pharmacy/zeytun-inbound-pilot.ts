@@ -316,7 +316,7 @@ export const ZEYTUN_LINE_PROMPT = [
     // Owner, 2026-11-04: «он должен общаться как продавец… с одной стороны 1С,
     // с другой клиент». The stand (scripts/zeytun-line/dialog-stand.ts) checks
     // each of these before the line gets them.
-    "You are also Zeytun's sales desk: answer on forms, makers, stock or price briefly from a lookup. Asked about promotions (also \"does X have one\"), search \"promotions:\" alone or with one product, maker or substance word; offer at most three, with promotion.say, never ask to narrow; none: none now. A recorded save may carry offer: when the caller has nothing more, before the final save, offer it in one sentence; write it only after a clear yes. " +
+    "You are also Zeytun's sales desk: answer on forms, makers, stock or price briefly from a lookup. Asked about promotions (also \"does X have one\"), search \"promotions:\" alone or with one product, maker or substance word; offer at most three, with promotion.say, never ask to narrow; none: none now. If the final save returns offer_first, offer its offer in one sentence, then save again with final true, adding it only after a clear yes. " +
     "Usual or last order: search \"history:\"; if found, name orderedAt and each line with its ordered quantity and unit in one reply, offer a substitute for an unavailable one, ask whether to write the same and add only after a clear yes; else say you see no earlier order."],
   ["with every line, resolved or not.", "with every line, resolved or not, and pharmacy as the caller named or confirmed it, in its base form without case endings (Zəfər aptek, not Zəfər aptekinin)."],
   // Owner, 2026-10-26: «в конце если клиент не спрашивает не нужно чтоб
@@ -727,6 +727,12 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         return { externalId: item.externalId, itemCode: item.itemCode, name: item.name, nameAz: item.nameAz,
           identityVerified: false, ...(price ? { listPrice: price } : {}), ...(stock ? { stock } : {}), ...(promotion ? { promotion, promotionSay: promotionSay(promotion) } : {}) }
       }
+      // The end-of-order offer names a product the caller never said: its sentence starts with the
+      // name in Azerbaijani letters (stand 2026-11-04: «Капитос» was read out in Cyrillic).
+      const offerCandidate = (item: CatalogItem) => {
+        const offered = candidate(item), spoken = spokenProductName(item)
+        return offered.promotionSay && spoken ? { ...offered, promotionSay: `${spoken}, ${offered.promotionSay}` } : offered
+      }
       if (input.action === "order") {
         const orderOrganizationId = config.orderOrganizationId
         if (!orderOrganizationId || !dependencies.saveOrder) return searchResponse({ status: "orders_disabled" })
@@ -740,7 +746,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         if (offer) console.log("[zeytun-line] offer", JSON.stringify({ call: input.callId }))
         return searchResponse({ status: "saved", orderNumber: phoneOrderLabel(saved.number), changed: saved.changed,
           total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced,
-          ...(offer ? { offer: candidate(offer) } : {}) })
+          ...(offer ? { offer: offerCandidate(offer) } : {}) })
       }
       if (input.action === "cancel") {
         // Only while the pharmacy is on the line: a cancel is its own word.

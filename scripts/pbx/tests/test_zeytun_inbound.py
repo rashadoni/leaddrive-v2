@@ -1052,31 +1052,31 @@ class OrderSpoolTests(unittest.TestCase):
         self.assertIn("queued", save["description"])
 
 
-    def test_the_crm_s_offer_reaches_the_model_once_and_never_on_the_final_save(self):
+    def test_the_crm_s_offer_is_said_once_before_the_order_is_closed(self):
         offer = {"externalId": "dddddddd-1111-4111-8111-111111111111", "itemCode": "N-1", "name": "Nimesil 100 mg",
                  "nameAz": None, "identityVerified": False, "promotion": {"buy": 50, "get": 10, "per": "qutu", "until": "2026-11-16"},
                  "promotionSay": "50 qutu alana 10 qutu hədiyyə, 16 noyabra qədər", "listPrice": "not-for-model"}
-        self.crm = lambda body: {**self.SAVED, "offer": offer}
-        first = self.bridge.save_order({"lines": self.LINE})
-        self.assertEqual(first, {"status": "recorded", "notFound": [], "unpriced": [], "offer": {
+        orders = []
+        self.crm = lambda body: orders.append(body) or {**self.SAVED, "offer": offer}
+        # Ordinary saves stay as they were: the offer waits for the end.
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "recorded", "notFound": [], "unpriced": []})
+        sent = len(orders)
+        # The first final save is not sent: the model hears the offer first.
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE, "final": True}), {"status": "offer_first", "offer": {
             "externalId": offer["externalId"], "name": "Nimesil 100 mg",
             "promotion": {"buy": 50, "per": "qutu", "say": "50 qutu alana 10 qutu hədiyyə, 16 noyabra qədər"}}})
-        # Once a call: the next saves, answered at once from the disk or by the CRM, carry none.
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "recorded"})
-        self.assertNotIn("offer", self.bridge.save_order({"lines": self.LINE, "final": True}))
+        self.assertEqual(len(orders), sent)
+        # Once a call: the next final save is the order's.
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE, "final": True})["status"], "saved")
+        self.assertTrue(orders[-1]["final"])
 
-    def test_an_offer_answered_behind_the_reply_comes_with_the_next_save(self):
-        # The first save has no offer; the second, answered behind the reply, has one: the third carries it.
-        answers = [self.SAVED, {**self.SAVED, "offer": {"externalId": "dddddddd-1111-4111-8111-111111111111", "itemCode": "N-1",
-                   "name": "Nimesil", "nameAz": None, "identityVerified": False,
-                   "promotion": {"buy": 5, "get": 1, "until": "2026-11-16"}}}, self.SAVED]
-        self.crm = lambda body: answers.pop(0)
+    def test_without_an_offer_the_final_save_is_sent_at_once(self):
         self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "recorded", "notFound": [], "unpriced": []})
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE}), {"status": "recorded"})
-        deadline = time.monotonic() + 2
-        while self.bridge.offer is None and time.monotonic() < deadline:
-            time.sleep(0.01)
-        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["offer"]["name"], "Nimesil")
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE, "final": True})["status"], "saved")
+        # A malformed offer is no offer.
+        self.crm = lambda body: {**self.SAVED, "offer": {"name": "x", "identityVerified": True}}
+        self.assertEqual(self.bridge.save_order({"lines": self.LINE})["status"], "recorded")
+        self.assertIsNone(self.bridge.offer)
 
 class FakeTts:
     def __init__(self, fail=None, chunks=2):

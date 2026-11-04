@@ -18,6 +18,7 @@ import { resolvePhoneOrderLines, type PhoneOrderLineInput } from "../../src/lib/
 import { createDepartedSearch, nextDeparted } from "../../src/lib/voice-agent/pharmacy/zeytun-departed-items"
 import type { PharmacyHistory } from "../../src/lib/voice-agent/pharmacy/zeytun-pharmacy-history"
 import type { ZeytunSecondEar } from "../../src/lib/voice-agent/pharmacy/zeytun-chirp"
+import type { LearnedNames } from "../../src/lib/voice-agent/pharmacy/zeytun-learned-names"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -90,8 +91,9 @@ export function historyFor(catalog: InboundPilotCatalog, spec: HistorySpec): Pha
   return { status: "found", number: spec.number, orderedAt: spec.orderedAt, lineCount: lines.length, lines }
 }
 
-/** secondEar: the line's Chirp (voice-stand.ts); without it the session does not ask the station for phrases. */
-export function crmFor(catalog: InboundPilotCatalog, saves: Save[], history?: PharmacyHistory, secondEar?: ZeytunSecondEar) {
+/** secondEar: the line's Chirp (voice-stand.ts); without it the session does not ask the station for phrases.
+ * learned: what confirmed orders taught the line (chain-stand.ts --hints ordered); without it the stand's line has learned nothing. */
+export function crmFor(catalog: InboundPilotCatalog, saves: Save[], history?: PharmacyHistory, secondEar?: ZeytunSecondEar, learned?: LearnedNames) {
   const token = randomUUID().replaceAll("-", "")
   const now = Date.now()
   const config = {
@@ -114,6 +116,7 @@ export function crmFor(catalog: InboundPilotCatalog, saves: Save[], history?: Ph
     cancelOrder: async () => "cancelled",
     ...(history ? { pharmacyHistory: async () => history } : {}),
     ...(secondEar ? { secondEar } : {}),
+    ...(learned ? { learnedNames: () => learned } : {}),
     // The order writer's answer, without a database: the CRM's own line resolution.
     saveOrder: async (_config, _call, orderCatalog, lines, _pharmacy, delivery) => {
       const resolved = resolvePhoneOrderLines(orderCatalog, lines)

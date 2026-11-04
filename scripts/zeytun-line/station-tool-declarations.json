@@ -63,7 +63,7 @@
       },
       {
         "name": "save_order_list",
-        "description": "Save the whole list so far, resolved or not: after every line that is settled, and once more with final true when the caller has nothing to add. An ordinary save returns recorded: say nothing. Only the final save returns saved with orderNumber, or queued.",
+        "description": "Save the whole list so far, resolved or not: after every line that is settled, and once more with final true when the caller has nothing to add. An ordinary save returns recorded: say nothing. Only the final save returns saved with orderNumber, or queued; it may first return offer_first.",
         "parameters": {
           "type": "OBJECT",
           "properties": {
