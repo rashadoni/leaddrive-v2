@@ -1,5 +1,5 @@
 {
-  "about": "Scenarios of the line's dialog stand (scripts/zeytun-line/dialog-stand.ts). The caller speaks Azerbaijani, as pharmacies do. A turn is the caller's words, or {say, when: [{match, say}]}: the first rule whose match (regex, case-insensitive) fits the assistant's last reply decides, else say. Regexes of checks run on the assistant's replies or on a tool call's JSON args. expectedFail: the line does not have it yet; such a scenario is reported but not fixed here. Products are chosen on the 2026-11-03 snapshot: Adefa №30 has buy 5 get 1 until 2026-11-30, Ketonal cream 50 g and gel buy 10 get 2 until 2026-11-30, Fluimucil is not in the catalog while A.C.C. long 600 effervescent is.",
+  "about": "Scenarios of the line's dialog stand (scripts/zeytun-line/dialog-stand.ts). The caller speaks Azerbaijani, as pharmacies do. A turn is the caller's words, or {say, when: [{match, say}]}: the first rule whose match (regex, case-insensitive) fits the assistant's last reply decides, else say. Regexes of checks run on the assistant's replies or on a tool call's JSON args. expectedFail: the line does not have it yet; such a scenario is reported but not fixed here. Products are chosen on the 2026-11-03 snapshot: Adefa №30 has buy 5 get 1 until 2026-11-30, Ketonal cream 50 g and gel buy 10 get 2 until 2026-11-30, Fluimucil is not in the catalog while A.C.C. long 600 effervescent is. history: what the stand's CRM answers to `history:` (pharmacyHistory); a line with find is the snapshot's first candidate for it, a line with name is a product the catalog no longer has (unavailable).",
   "scenarios": [
     {
       "id": "1",
@@ -82,8 +82,7 @@
     },
     {
       "id": "5",
-      "title": "«Əvvəlki kimi» / «как обычно»",
-      "expectedFail": "нет запроса history: (сессия line-history)",
+      "title": "«Əvvəlki kimi» / «как обычно», аптека неизвестна",
       "turns": [
         "Zəfər aptek. Əvvəlki kimi yazın.",
         "Как обычно, keçən dəfəki sifariş kimi.",
@@ -93,6 +92,41 @@
       "checks": {
         "tools": [{ "name": "search_pharmacy_catalog", "args": "history:", "label": "запросил историю аптеки (history:)" }],
         "noTools": [{ "name": "save_order_list", "args": "\"externalId\"", "label": "не записал товары, которых аптека не называла" }]
+      }
+    },
+    {
+      "id": "5b",
+      "title": "«Əvvəlki kimi»: история найдена, один товар выбыл из каталога",
+      "expectedFail": "ждёт #1320: на main safe_result станции не принимает mode pharmacy_history и отдаёт модели unavailable",
+      "history": { "number": 812, "orderedAt": "2026-10-28", "lines": [
+        {"find": "Adefa", "quantity": 5, "unit": "qutu"},
+        {"find": "Bisakodil", "quantity": 10, "unit": "qutu"},
+        {"name": "Fluimucil 600 мг № 10 (Шипучие таблетки)", "quantity": 6, "unit": "qutu"}] },
+      "turns": [
+        "Zəfər aptek. Əvvəlki kimi yazın.",
+        {"say": "Bəli, eyni cür yazın.", "when": [{"match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)[^.!]*\\?", "say": "Bəli, eyni cür yazın, Fluimucil əvəzinə də onu, 6 qutu."}]},
+        "Bu qədər, təsdiq edirəm.",
+        {"say": "Bu qədər, təsdiq edirəm.", "when": [{"match": "Sağ olun, xoş günlər", "say": "Sağ olun."}]},
+        "Sağ olun."
+      ],
+      "checks": {
+        "tools": [
+          {"name": "search_pharmacy_catalog", "args": "\"history:\\s*\"", "label": "запросил историю (history:)"},
+          {"name": "search_pharmacy_catalog", "args": "substitute:\\s*ACETYLCYSTEINE", "label": "для выбывшего Fluimucil искал аналог (substitute:)"}
+        ],
+        "reply": [
+          {"match": "2026-10-28|28[ .-]?(oktyabr|10)|oktyabrın 28", "label": "назвал дату прошлого заказа"},
+          {"match": "Adefa[^.?]*\\b5\\b|\\b5\\b[^.?]*Adefa|Adefa[^.?]*beş", "label": "назвал Adefa с количеством 5"},
+          {"match": "Bisakodil[^.?]*\\b10\\b|\\b10\\b[^.?]*Bisakodil|Bisakodil[^.?]*on\\b", "label": "назвал Bisakodil с количеством 10"},
+          {"match": "(eyni|həmin|təkrar|belə|əvvəlki kimi)[^.!]*\\?", "label": "спросил, писать ли так же"},
+          {"match": "(A\\.?\\s?[CS]\\.?\\s?[CS]|АЦЦ|asetilsistein|ацетилцистеин)", "label": "предложил ACC вместо Fluimucil"}
+        ],
+        "toolAfter": [{"name": "save_order_list", "caller": "bəli", "label": "строки сохранены только после «bəli»"}],
+        "finalSave": true,
+        "savedQuantity": [
+          {"spoken": "adefa|адефа", "quantity": 5, "label": "в заказе Adefa 5 qutu"},
+          {"spoken": "bisakodil|бисакодил", "quantity": 10, "label": "в заказе Bisakodil 10 qutu"}
+        ]
       }
     },
     {

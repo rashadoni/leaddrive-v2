@@ -21,6 +21,7 @@
  *   JITI_ALIAS='{"@":"'$PWD'/src"}' node_modules/.bin/jiti scripts/zeytun-line/dialog-stand.ts <snapshot> \
  *     [--scenarios scripts/zeytun-line/dialog-scenarios.json] [--only id,id] [--repeat N] [--out report.md]
  *     [--model gemini-3.8-flash] [--thinking low] [--max-requests 300]
+ *     [--station <fanum-zeytun-inbound.py of a branch>]   (a station fix on its branch, before it is merged)
  *   (npx tsx works the same where it is installed)
  *
  * The snapshot is the line's catalog file from prod
@@ -30,17 +31,19 @@
  * printed, and nothing stays on prod. The key is shared with the live line:
  * --max-requests caps one run (gemini-3.8-flash, not the line's TTS model).
  */
-import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from "node:child_process"
+import { spawn, execFileSync, type ChildProcessByStdio, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { createInterface } from "node:readline"
+import type { Readable, Writable } from "node:stream"
 import { fileURLToPath } from "node:url"
 
 import { ZeytunAvailableBalances } from "../../src/lib/voice-agent/pharmacy/zeytun-available-balances"
 import { createInboundPilotHandler, type InboundPilotCatalog } from "../../src/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { resolvePhoneOrderLines, type PhoneOrderLineInput } from "../../src/lib/voice-agent/pharmacy/phone-orders"
+import type { PharmacyHistory } from "../../src/lib/voice-agent/pharmacy/zeytun-pharmacy-history"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -48,14 +51,23 @@ type Json = Record<string, unknown>
 type Turn = string | { say: string; when?: { match: string; say: string }[] }
 type ToolCheck = { name: string; args?: string; label?: string }
 type ReplyCheck = { match: string; label: string }
+/** The pharmacy's last confirmed order as the CRM's pharmacyHistory answers it: a line names a
+ * product of the snapshot by a search (its first candidate), or one the catalog no longer has. */
+type HistorySpec = { number: number; orderedAt: string
+  lines: ({ find: string; quantity: number; unit: string } | { name: string; quantity: number; unit: string })[] }
+type SavedQuantity = { spoken: string; quantity: number; label: string }
 export type Scenario = {
   id: string; title: string
+  /** What `history:` finds for this call's pharmacy; without it the stand's CRM has no pharmacyHistory (as before the feature). */
+  history?: HistorySpec
   /** Why this scenario is expected to fail on today's line (a tool it still lacks): reported, not counted. */
   expectedFail?: string
   turns: Turn[]
   checks: { tools?: ToolCheck[]; noTools?: ToolCheck[]; reply?: ReplyCheck[]; noReply?: ReplyCheck[]; finalSave?: boolean; savedLines?: number
     /** The last save has a line whose spoken words match and whose quantity is this. */
-    savedQuantity?: { spoken: string; quantity: number; label: string } }
+    savedQuantity?: SavedQuantity | SavedQuantity[]
+    /** Every call of the tool comes after a caller turn matching `caller` (e.g. a save only after «bəli»). */
+    toolAfter?: { name: string; caller: string; label: string }[] }
 }
 
 /* ---------- prod Gemini over ssh ---------- */
@@ -91,9 +103,11 @@ class RemoteGemini {
 /* ---------- the station's bridge ---------- */
 
 class StationBridge {
-  private child = spawn("python3", ["-I", join(HERE, "dialog-stand-bridge.py")], { stdio: ["pipe", "pipe", "inherit"] })
+  /** stderr is inherited: the bridge's own errors go straight to the stand's stderr. */
+  private child: ChildProcessByStdio<Writable, Readable, null>
   private waiting: ((value: { done?: unknown; error?: string }) => void)[] = []
-  constructor(private crm: (body: Json) => Promise<unknown>) {
+  constructor(private crm: (body: Json) => Promise<unknown>, station?: string) {
+    this.child = spawn("python3", ["-I", join(HERE, "dialog-stand-bridge.py"), ...(station ? ["--station", station] : [])], { stdio: ["pipe", "pipe", "inherit"] })
     createInterface({ input: this.child.stdout }).on("line", (line) => {
       const message = JSON.parse(line) as { crm?: number; body?: Json; done?: unknown; error?: string }
       if (message.crm !== undefined) {
@@ -131,7 +145,17 @@ async function loadCatalog(path: string): Promise<{ catalog: InboundPilotCatalog
   }
 }
 
-function crmFor(catalog: InboundPilotCatalog, saves: { lines: PhoneOrderLineInput[]; final: boolean }[]) {
+function historyFor(catalog: InboundPilotCatalog, spec: HistorySpec): PharmacyHistory {
+  const lines = spec.lines.map((line) => {
+    if ("name" in line) return { externalId: randomUUID(), name: line.name, quantity: line.quantity, unit: line.unit }
+    const item = catalog.search({ text: line.find }).candidates[0]
+    if (!item) throw new Error(`history: nothing in the snapshot for ${line.find}`)
+    return { externalId: item.externalId, name: item.nameAz ?? item.name, quantity: line.quantity, unit: line.unit }
+  })
+  return { status: "found", number: spec.number, orderedAt: spec.orderedAt, lineCount: lines.length, lines }
+}
+
+function crmFor(catalog: InboundPilotCatalog, saves: { lines: PhoneOrderLineInput[]; final: boolean }[], history?: PharmacyHistory) {
   const token = randomUUID().replaceAll("-", "")
   const now = Date.now()
   const config = {
@@ -152,6 +176,7 @@ function crmFor(catalog: InboundPilotCatalog, saves: { lines: PhoneOrderLineInpu
     findPharmacies: async () => [],
     requestTransfer: async () => "unavailable",
     cancelOrder: async () => "cancelled",
+    ...(history ? { pharmacyHistory: async () => history } : {}),
     // The order writer's answer, without a database: the CRM's own line resolution.
     saveOrder: async (_config, _call, orderCatalog, lines, _pharmacy, delivery) => {
       saves.push({ lines, final: delivery?.final === true })
@@ -173,7 +198,7 @@ function crmFor(catalog: InboundPilotCatalog, saves: { lines: PhoneOrderLineInpu
 /* ---------- one scenario ---------- */
 
 type Declarations = { functionDeclarations: Json[] }[]
-type Options = { model: string; thinking: string; declarations: Declarations }
+type Options = { model: string; thinking: string; declarations: Declarations; station?: string }
 
 const nextSay = (turn: Turn, lastReply: string) => {
   if (typeof turn === "string") return turn
@@ -182,7 +207,7 @@ const nextSay = (turn: Turn, lastReply: string) => {
 
 async function playScenario(scenario: Scenario, catalog: InboundPilotCatalog, gemini: RemoteGemini, options: Options) {
   const saves: { lines: PhoneOrderLineInput[]; final: boolean }[] = []
-  const bridge = new StationBridge(crmFor(catalog, saves))
+  const bridge = new StationBridge(crmFor(catalog, saves, scenario.history && historyFor(catalog, scenario.history)), options.station)
   const events: Event[] = []
   try {
     const session = await bridge.op<{ prompt: string; opening: string; closing: string | null }>({ op: "open" })
@@ -267,10 +292,18 @@ async function check(scenario: Scenario, events: Event[], saves: { lines: PhoneO
     const resolved = last?.lines.filter((line) => line.externalId).length ?? 0
     results.push({ label: `в последнем сохранении ${scenario.checks.savedLines} найденных строк`, ok: resolved === scenario.checks.savedLines, detail: `${resolved}` })
   }
-  const want = scenario.checks.savedQuantity
-  if (want) {
+  const wants = scenario.checks.savedQuantity
+  for (const want of wants ? [wants].flat() : []) {
     const line = saves.at(-1)?.lines.find((item) => new RegExp(want.spoken, "iu").test(item.spoken))
     results.push({ label: want.label, ok: line?.quantity === want.quantity, detail: line ? `${line.quantity} ${line.unit}` : "строки нет" })
+  }
+  for (const rule of scenario.checks.toolAfter ?? []) {
+    const yes = events.findIndex((event) => event.kind === "caller" && new RegExp(rule.caller, "iu").test(event.text))
+    const early = events.findIndex((event, index) => event.kind === "tool" && event.name === rule.name && (yes < 0 || index < yes))
+    // A call with an empty list saves nothing (the station refuses it): it is not "saved after yes".
+    const used = events.some((event) => event.kind === "tool" && event.name === rule.name &&
+      (!Array.isArray(event.args.lines) || event.args.lines.length > 0))
+    results.push({ label: rule.label, ok: used && early < 0, ...(early >= 0 ? { detail: yes < 0 ? "согласия не было" : "вызван до согласия" } : !used ? { detail: "не вызван" } : {}) })
   }
   // The station's own language tests (zeytun_script, zeytun_is_english).
   const langs = await Promise.all(replies.map((text) => bridge.op<{ script: string; english: boolean }>({ op: "lang", text })))
@@ -292,7 +325,11 @@ function toolLine(event: Extract<Event, { kind: "tool" }>) {
     ? `${(event.args.lines as unknown[] | undefined)?.length ?? 0} строк${event.args.final ? ", final" : ""}`
     : JSON.stringify(event.args)
   let outcome = result.status ?? ""
-  if (event.name === "search_pharmacy_catalog" && result.candidates) {
+  const history = event.result as { mode?: string; orderedAt?: string; candidates?: { name: string; ordered?: { quantity: number; unit: string }; unavailable?: boolean }[] }
+  if (event.name === "search_pharmacy_catalog" && /^\s*history\s*:/iu.test(String(event.args.text ?? ""))) {
+    outcome += history.orderedAt ? ` ${history.orderedAt}: ${(history.candidates ?? []).map((item) =>
+      `${item.name} ${item.ordered?.quantity ?? "?"} ${item.ordered?.unit ?? ""}${item.unavailable ? " [нет в каталоге]" : ""}`).join("; ")}` : " (модель не получила историю)"
+  } else if (event.name === "search_pharmacy_catalog" && result.candidates) {
     outcome = `${result.candidateCount} канд.: ${result.candidates.slice(0, 3).map((item) => `${item.name}${item.promotion ? " [акция]" : ""}`).join("; ") || "—"}`
   }
   if (result.notFound?.length) outcome += `, не найдено: ${result.notFound.join("; ")}`
@@ -301,9 +338,10 @@ function toolLine(event: Extract<Event, { kind: "tool" }>) {
 
 type Run = { scenario: Scenario; attempt: number; events: Event[]; checks: CheckResult[]; error?: string }
 
-function report(runs: Run[], meta: { model: string; thinking: string; snapshotAt: string; sha: string; requests: number; repeat: number }) {
+function report(runs: Run[], meta: { model: string; thinking: string; snapshotAt: string; sha: string; requests: number; repeat: number; station?: string }) {
   const lines = [`# Стенд разговоров линии — ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`, "",
-    `main \`${meta.sha}\`, модель \`${meta.model}\` (thinking ${meta.thinking}), снимок каталога ${meta.snapshotAt}, запросов к модели ${meta.requests}.`, "",
+    `main \`${meta.sha}\`, модель \`${meta.model}\` (thinking ${meta.thinking}), снимок каталога ${meta.snapshotAt}, запросов к модели ${meta.requests}.`,
+    ...(meta.station ? ["", `Станция: **${meta.station}**, не \`scripts/pbx/fanum-zeytun-inbound.py\` этого коммита.`] : []), "",
     "| Сценарий | Прошёл | Проверки | Примечание |", "|---|---|---|---|"]
   const ids = [...new Set(runs.map((run) => run.scenario.id))]
   for (const id of ids) {
@@ -345,7 +383,7 @@ async function main() {
   const scenarios = (JSON.parse(readFileSync(flags.scenarios ?? join(HERE, "dialog-scenarios.json"), "utf8")) as { scenarios: Scenario[] }).scenarios
     .filter((scenario) => !flags.only || flags.only.split(",").includes(scenario.id))
   const declarations = JSON.parse(readFileSync(join(HERE, "station-tool-declarations.json"), "utf8")) as Declarations
-  const model = flags.model ?? "gemini-3.8-flash", thinking = flags.thinking ?? "low", repeat = Number(flags.repeat ?? 1)
+  const model = flags.model ?? "gemini-3.8-flash", thinking = flags.thinking ?? "low", repeat = Number(flags.repeat ?? 1), station = flags.station
   const { catalog, snapshotAt } = await loadCatalog(snapshot)
   const maxRequests = Number(flags["max-requests"] ?? 300)
   const gemini = new RemoteGemini(maxRequests)
@@ -355,7 +393,7 @@ async function main() {
       for (let attempt = 1; attempt <= repeat; attempt++) {
         process.stderr.write(`${scenario.id} #${attempt}… `)
         try {
-          const played = await playScenario(scenario, catalog, gemini, { model, thinking, declarations })
+          const played = await playScenario(scenario, catalog, gemini, { model, thinking, declarations, station })
           runs.push({ scenario, attempt, events: played.events, checks: played.checks })
           process.stderr.write(`${played.checks.filter((item) => item.ok).length}/${played.checks.length}\n`)
         } catch (error) {
@@ -368,7 +406,7 @@ async function main() {
     }
   } finally { gemini.close() }
   const sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: HERE }).toString().trim()
-  const text = report(runs, { model, thinking, snapshotAt, sha, requests: gemini.requests, repeat })
+  const text = report(runs, { model, thinking, snapshotAt, sha, requests: gemini.requests, repeat, station })
   if (flags.out) writeFileSync(flags.out, text)
   else process.stdout.write(text)
 }

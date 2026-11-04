@@ -10,6 +10,7 @@ answered by the CRM's own handler there; nothing leaves this machine.
 
   python3 -I scripts/zeytun-line/dialog-stand-bridge.py           (JSON lines on stdin/stdout)
   python3 -I scripts/zeytun-line/dialog-stand-bridge.py --declarations
+  ... --station <file>   another station transport instead of scripts/pbx's (a fix on its branch)
 
 stdin  {"op": "open"} | {"op": "tools", "calls": [...]} | {"op": "note", "content": {...}}
        | {"op": "lang", "text": "..."} | {"reply": n, "value": {...}}
@@ -24,7 +25,8 @@ import threading
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("zeytun_bridge", ROOT / "pbx" / "fanum-zeytun-inbound.py")
+STATION = Path(sys.argv[sys.argv.index("--station") + 1]) if "--station" in sys.argv else ROOT / "pbx" / "fanum-zeytun-inbound.py"
+spec = importlib.util.spec_from_file_location("zeytun_bridge", STATION)
 station = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(station)
 
