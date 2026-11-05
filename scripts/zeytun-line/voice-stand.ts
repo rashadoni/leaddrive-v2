@@ -95,7 +95,7 @@ type Remote =
   | { ev: "spoke"; t_voice: number; t_start: number; t_speech_end: number; t_activity_end: number }
   | { ev: "drop"; t: number; kind: string; code: number | null } | { ev: "resumed"; t: number; attempts: number }
   | { ev: "dead"; t: number; attempts: number; errors?: string[] } | { ev: "error"; detail: string }
-  | { ev: "money"; t?: number; detail: string }
+  | { ev: "money"; t?: number; detail: string } | { ev: "replaced"; t: number; ms: number }
 
 class RemoteLive {
   private child: ChildProcessWithoutNullStreams
@@ -161,12 +161,14 @@ const wavPcm = (file: string) => {
 
 type Options = { core: string; liveModel: string; voice: string; vertexKey: string; cache: string; station?: string; secondEarKey?: string
   /** USD: the call is ended once its Live usage reaches this (one more answer may still be billed). */
-  stopAt: number }
+  stopAt: number
+  /** Plan task 13: after a turn that saved the list, once the context reached this many prompt tokens, a fresh session takes the call. */
+  swapAt?: number }
 
 async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, options: Options) {
   const saves: Save[] = []
   let current: Turn | undefined, dead = false, opened = false, toolsPending = 0, stopped: string | undefined
-  const spend = { usd: 0, generations: 0, sessions: 0, tokens: { textIn: 0, audioIn: 0, textOut: 0, audioOut: 0 }, tts: 0, ttsCached: 0, chirp: 0 }
+  const spend = { usd: 0, generations: 0, sessions: 0, swaps: 0, tokens: { textIn: 0, audioIn: 0, textOut: 0, audioOut: 0 }, tts: 0, ttsCached: 0, chirp: 0 }
   // What Chirp heard of each phrase goes to the phrase's turn (the CRM never says it).
   const chirp = options.secondEarKey ? createChirpRecognizer({ keyFile: options.secondEarKey }) : undefined
   const recognizer: ChirpRecognizer | undefined = chirp && { enabled: () => chirp.enabled(), warm: () => chirp.warm(),
@@ -189,6 +191,8 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
   /** Every usageMetadata as the provider sent it: the cost is checked against these. */
   const usageLog: { t: number; usage: unknown }[] = []
   let playEnd = 0 // remote s: where the assistant's audio, played in real time, ends
+  let lastPrompt = 0 // prompt tokens of the latest usageMetadata: what the next generation bills again
+  let replaced: number | undefined
 
   remote.on((event) => {
     if (event.ev === "open") { opened = true; spend.sessions++ }
@@ -208,6 +212,7 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
       }
     }
     else if (event.ev === "resumed") spend.sessions++
+    else if (event.ev === "replaced") { spend.sessions++; spend.swaps++; replaced = event.ms }
     if (event.ev === "drop" || event.ev === "resumed" || event.ev === "dead" || event.ev === "error") {
       log.push({ t: "t" in event ? event.t : 0, kind: event.ev, detail: event })
       current?.notes.push(event.ev === "drop" ? `сессия оборвалась (${event.kind} ${event.code ?? ""})`
@@ -219,6 +224,7 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
       const msg = event.msg, turn = current
       if (msg.usageMetadata) {
         const { tokens, usd } = usageCost(msg.usageMetadata as Usage)
+        lastPrompt = (msg.usageMetadata as Usage).promptTokenCount ?? lastPrompt
         spend.usd += usd
         spend.generations++
         for (const key of Object.keys(tokens) as (keyof typeof tokens)[]) spend.tokens[key] += tokens[key]
@@ -330,6 +336,18 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
         await until(() => dead || turn.spoke !== undefined, 60_000)
         if (!turn.spoke) break
         await answered(turn, turn.spoke.t_activity_end)
+        if (options.swapAt !== undefined && !dead && toolsPending === 0 && lastPrompt >= options.swapAt) {
+          const seed = swapSeed(turns, turn)
+          if (seed) {
+            const before = lastPrompt
+            replaced = undefined
+            remote.send({ op: "replace", seed })
+            if (await until(() => dead || replaced !== undefined, 15_000) && replaced !== undefined) {
+              turn.notes.push(`сессия пересажена за ${replaced} мс (контекст был ${before} токенов)`)
+              lastPrompt = 0
+            } else if (!dead) { turn.notes.push("пересадка не удалась за 15 с"); dead = true }
+          }
+        }
         const lang = await bridge.op<{ english: boolean }>({ op: "lang", text: turn.said })
         if (lang.english) turn.notes.push("ответ по-английски: станция его не озвучила бы")
       }
@@ -340,6 +358,39 @@ async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, o
     await Promise.race([remote.exited, sleep(5000)])
   }
   return { turns, saves, log, trace, dead, stopped, spend, usageLog, secondEar: pilot.standUtterances === true }
+}
+
+/**
+ * Plan task 13: what a fresh session gets instead of the whole call. Only after a turn whose
+ * save of the list was taken (the model saves after every settled line, so nothing is open):
+ * the list exactly as last saved, with its externalIds (the CRM keeps it the same way), the
+ * pharmacy as named, and the call's last words as text turns. turnComplete false: the model
+ * says nothing until the caller speaks. Without such a save in the turn: no swap (null).
+ */
+const SWAP_TURNS = 6
+function swapSeed(turns: Turn[], turn: Turn): Json | null {
+  const saved = [...turn.tools].reverse().find((tool) => tool.name === "save_order_list" && tool.args.final !== true
+    && /^(recorded|saved|queued)$/.test(String(tool.result?.status ?? "")))
+  if (!saved) return null
+  const lines = (saved.args.lines as Json[] | undefined) ?? []
+  const pharmacy = String(saved.args.pharmacy ?? "").trim()
+  const words: { role: "user" | "model"; text: string }[] = []
+  for (const t of turns) {
+    const heard = t.heard.replace(/\s+/g, " ").trim(), said = t.said.replace(/\s+/g, " ").trim()
+    if (t.step && heard) words.push({ role: "user", text: heard })
+    if (said) words.push({ role: "model", text: said })
+  }
+  const recent = words.slice(-SWAP_TURNS)
+  // The provider wants a conversation that starts with the user.
+  if (recent[0]?.role === "model") recent.unshift({ role: "user", text: "(the caller answered the phone)" })
+  const control = "TECHNICAL CONTEXT. This same phone call goes on in a fresh session to keep it short; the turns above are its last words, "
+    + "and every turn of yours above was already spoken aloud. Never greet, introduce yourself or name the company again, never repeat "
+    + "or re-read anything, never mention this. "
+    + (pharmacy ? `The pharmacy is ${JSON.stringify(pharmacy)}, already confirmed: never ask it again. ` : "")
+    + `The order list saved so far, exactly as save_order_list last saved it: ${JSON.stringify(lines)}. These lines are settled: never ask about them again `
+    + "unless the caller changes one, and every later save_order_list keeps every one of them with its externalId. "
+    + "Wait silently for the caller's next words and go on with the call by your instructions."
+  return { clientContent: { turns: [...recent.map((w) => ({ role: w.role, parts: [{ text: w.text }] })), { role: "user", parts: [{ text: control }] }], turnComplete: false } }
 }
 
 /* ---------- report ---------- */
@@ -405,6 +456,7 @@ function report(runs: Run[], scenario: VoiceScenario, meta: Json) {
   out.push("# Голосовой стенд линии: презентационный звонок", "")
   out.push(`Main \`${String(meta.sha)}\`, модель \`${String(meta.liveModel)}\`, снимок каталога ${String(meta.snapshotAt)}, голос аптеки ${scenario.voice} (Vertex), прогонов ${runs.length}.`)
   if (meta.station) out.push(`Станция: \`${String(meta.station)}\`.`)
+  out.push(`Пересадка сессии (задача 13): ${meta.swapAt == null ? "выключена" : `после сохранения списка, когда контекст ≥ ${String(meta.swapAt)} токенов`}.`)
   out.push(`Второе ухо (Chirp): ${runs.every((run) => run.secondEar) ? "включено, как на линии" : "выключено"}.`)
   out.push("", "Задержка — от конца речи аптеки (последний звук фразы, до 0,65 с тишины станции) до первого из: вызов инструмента, текст, звук модели. На звонке аптека слышит ответ ещё через первый звук TTS станции (Sulafat) после текста.", "")
 
@@ -433,7 +485,8 @@ function report(runs: Run[], scenario: VoiceScenario, meta: Json) {
   out.push("", "### Стоимость", "")
   out.push("| | " + runs.map((run) => `Прогон ${run.attempt}`).join(" | ") + " |", `|---|${runs.map(() => "---|").join("")}`)
   const row = (label: string, value: (run: Run) => string) => out.push(`| ${label} | ${runs.map(value).join(" | ")} |`)
-  row("сессий Live (с продлениями)", (run) => String(run.spend.sessions))
+  row("сессий Live (с продлениями и пересадками)", (run) => String(run.spend.sessions))
+  row("пересадок сессии", (run) => String(run.spend.swaps))
   row("ответов модели с usageMetadata", (run) => String(run.spend.generations))
   row("токенов на входе: текст / звук", (run) => `${run.spend.tokens.textIn} / ${run.spend.tokens.audioIn}`)
   row("токенов на выходе: текст / звук", (run) => `${run.spend.tokens.textOut} / ${run.spend.tokens.audioOut}`)
@@ -525,7 +578,8 @@ function options(argv: string[]) {
     out: value("--out") ?? join(recordings, stamp), cache: join(recordings, "caller"), voice: value("--voice"),
     liveModel: value("--live-model") ?? "gemini-3.8-live", vertexKey: value("--vertex-key") ?? join(homedir(), ".config", "zeytun", "vertex-key"),
     secondEarKey: argv.includes("--no-second-ear") ? undefined : value("--second-ear-key") ?? join(homedir(), ".config", "zeytun", "speech-key"),
-    station: value("--station"), departedFrom: value("--departed-from"), stopAt: Number(value("--stop-at") ?? 0.45) }
+    station: value("--station"), departedFrom: value("--departed-from"), stopAt: Number(value("--stop-at") ?? 0.45),
+    swapAt: value("--swap-at") === undefined ? undefined : Number(value("--swap-at")) }
 }
 
 async function main() {
@@ -543,7 +597,7 @@ async function main() {
   for (let attempt = 1; attempt <= opts.runs; attempt++) {
     process.stderr.write(`run ${attempt}/${opts.runs}\n`)
     const run = await playCall(scenario, catalog, { core: opts.core, liveModel: opts.liveModel, voice: scenario.voice,
-      vertexKey: opts.vertexKey, cache: opts.cache, station: opts.station, secondEarKey: opts.secondEarKey, stopAt: opts.stopAt })
+      vertexKey: opts.vertexKey, cache: opts.cache, station: opts.station, secondEarKey: opts.secondEarKey, stopAt: opts.stopAt, swapAt: opts.swapAt })
     const wav = join(opts.out, `run-${attempt}.wav`)
     writeFileSync(wav, recording(run.turns, 0), { mode: 0o600 })
     writeFileSync(join(opts.out, `run-${attempt}.json`), JSON.stringify({ ...run, turns: run.turns.map((turn) => ({ ...turn, audio: turn.audio.length })) }, null, 1), { mode: 0o600 })
@@ -552,7 +606,7 @@ async function main() {
     if (attempt < opts.runs) await sleep(5000)
   }
   const file = join(opts.out, "report.md")
-  writeFileSync(file, report(runs, scenario, { sha, liveModel: opts.liveModel, snapshotAt, station: opts.station }), { mode: 0o600 })
+  writeFileSync(file, report(runs, scenario, { sha, liveModel: opts.liveModel, snapshotAt, station: opts.station, swapAt: opts.swapAt ?? null }), { mode: 0o600 })
   process.stderr.write(`report: ${file}\n`)
 }
 

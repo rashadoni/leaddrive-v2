@@ -14,10 +14,12 @@ stdin  {"op": "open", "setup": {...}}            connect, send the station's set
                                                  activityStart and the lookback (24 frames = 480 ms) at
                                                  once, the rest in real time, END_SILENCE_S of line
                                                  silence after the last word, then activityEnd
+       {"op": "replace", "seed": {...}}             a planned swap: a fresh session (same setup, no handle)
+                                                 takes the seed (clientContent), then the call
        {"op": "close"}
 stdout {"ev": "open"} | {"ev": "server", "t": s, "msg": {...}} | {"ev": "spoke", ...times}
        | {"ev": "drop", "t", "code", "kind", "reason"} | {"ev": "resumed", "t", "attempts"} | {"ev": "dead", "t"}
-       | {"ev": "money", "detail"}  (a 402/429/quota refusal: no resume; the stand stops) | {"ev": "error", "detail"}
+       | {"ev": "replaced", "t", "ms"} | {"ev": "money", "detail"}  (a 402/429/quota refusal: no resume; the stand stops) | {"ev": "error", "detail"}
 Every "t" is seconds of this process's monotonic clock since open: latencies are
 measured here, next to the provider, not across the ssh link.
 
@@ -274,6 +276,21 @@ class Session:
         emit({"ev": "spoke", "t_voice": round(t_voice - T0, 3), "t_start": t_start,
               "t_speech_end": t_speech_end, "t_activity_end": now()})
 
+    def replace(self, seed):
+        """A planned swap (plan task 13): a fresh session with the same setup takes the seed and
+        then the call; the old one is closed. The new socket opens while the old one still serves:
+        on a call this runs while the station plays the assistant's last words."""
+        started = time.monotonic()
+        fresh = self._connect(self.setup)
+        fresh.send(seed)
+        with self.cv:
+            old, self.ws, self.ready = self.ws, fresh, True
+            self.cv.notify_all()
+        threading.Thread(target=self._reader, args=(fresh,), daemon=True).start()
+        if old:
+            old.close()  # its reader sees ws is not self.ws: no resume
+        emit({"ev": "replaced", "t": now(), "ms": round((time.monotonic() - started) * 1000)})
+
     def close(self):
         with self.cv:
             self.closing = True
@@ -294,6 +311,8 @@ def main():
             elif op["op"] == "speak":
                 threading.Thread(target=session.speak, args=(base64.b64decode(op["pcm8k"]), op["language"]),
                                  daemon=True).start()
+            elif op["op"] == "replace":
+                session.replace(op["seed"])
             elif op["op"] == "close":
                 break
         except Exception as error:  # no key, no URL: the class name and a short message only
