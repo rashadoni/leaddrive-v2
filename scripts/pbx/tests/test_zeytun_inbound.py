@@ -1097,7 +1097,10 @@ class SpeechRelayTests(unittest.TestCase):
         relay.filter(self.content(text, audio=True))
         relay.filter(self.content(turnComplete=True))
         until = time.monotonic() + 3
-        while time.monotonic() < until and not relay.question_pending:
+        while time.monotonic() < until:
+            with relay.lock:
+                if not relay.turns:  # spoken and done: question_pending is settled
+                    break
             time.sleep(0.01)
 
     def test_a_long_pause_after_the_caller_gets_the_wait_filler_once(self):
@@ -2185,7 +2188,8 @@ class KeepAliveTests(unittest.TestCase):
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.server.daemon_threads = True
-        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        # A short poll: shutdown() waits for it, 0.5 s per test at the default.
+        threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True).start()
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
         self.base = "http://127.0.0.1:%d" % self.server.server_address[1]
