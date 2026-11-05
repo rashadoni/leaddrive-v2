@@ -468,13 +468,21 @@ describe("confirming an action", () => {
     expect(JSON.parse(String(posts[0][1].body))).toEqual({ expectedRevision: 3 })
   })
 
-  it("closes locally without cancelling the server draft", async () => {
-    fetchMock.mockReturnValue(jsonResponse(serverReceipt()))
+  // Закрыть — значит закрыть (2026-11-05). Раньше крестик прятал квитанцию
+  // только на экране, а черновик оставался жить в разговоре: пользователь
+  // считал задачу брошенной, сервер — незавершённой, и следующая просьба
+  // упиралась в невидимую запись.
+  it("closing the receipt cancels the draft, not just the panel", async () => {
+    fetchMock
+      .mockReturnValueOnce(jsonResponse(serverReceipt()))
+      .mockReturnValueOnce(jsonResponse({ id: "intent-1", state: "cancelled" }))
     await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
     await click("voice-receipt-dismiss")
 
     expect(panel()).toBeNull()
-    expect(postCalls()).toHaveLength(0)
+    const posts = postCalls()
+    expect(posts).toHaveLength(1)
+    expect(posts[0][0]).toBe("/api/v1/ai/voice/actions/intent-1/cancel")
   })
 })
 

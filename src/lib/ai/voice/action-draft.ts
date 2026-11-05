@@ -271,6 +271,63 @@ async function supersedeOwnedSessionDraft(
   })
 }
 
+/**
+ * Разговор кончился — кончился и его черновик.
+ *
+ * КОРЕНЬ класса проблем, ради которого это написано (владелец, 2026-11-05:
+ * «надо найти корень таких типов проблем»). Черновик жил как состояние
+ * СЕССИИ, у которого не было хозяина конца: завершить его могли только две
+ * вещи — пользователь нажал «Отменить» или истёк срок. Всё остальное его не
+ * трогало: закрытие квитанции крестиком прятало её только на экране, конец
+ * разговора и крон-уборщик брошенных сессий про черновики не знали вовсе.
+ *
+ * А «не всякая задача должна выполняться» (владелец там же): человек передумал
+ * на полуслове — и в сессии оставалась невидимая запись, которую он не мог ни
+ * увидеть, ни убрать обычными словами. Она же потом отказывала в следующей
+ * просьбе кодом, который никто не понимал.
+ *
+ * Поэтому у конца теперь есть хозяин: тот, кто закрывает разговор, закрывает и
+ * незавершённый черновик. Состояние `executing` не трогается — его уже
+ * исполняют, и отмена на полпути создала бы запись без квитанции.
+ *
+ * Отменяется, а не удаляется: в журнале остаётся, почему черновик закончился.
+ */
+export async function cancelUnfinishedSessionDrafts(
+  organizationId: string,
+  voiceSessionId: string,
+  reason: "session_ended" | "session_abandoned",
+  now: Date = new Date(),
+): Promise<number> {
+  const drafts = await prisma.aiActionIntent.findMany({
+    where: {
+      organizationId,
+      voiceSessionId,
+      parentIntentId: null,
+      state: { in: ["collecting", "awaiting_confirmation"] },
+    },
+    select: { id: true, organizationId: true, userId: true, revision: true, payloadHash: true, state: true },
+  })
+  let cancelled = 0
+  for (const draft of drafts) {
+    const done = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const changed = await tx.aiActionIntent.updateMany({
+        where: {
+          id: draft.id,
+          organizationId: draft.organizationId,
+          state: { in: ["collecting", "awaiting_confirmation"] },
+          revision: draft.revision,
+        },
+        data: { state: "cancelled", completedAt: now },
+      })
+      if (changed.count !== 1) return false
+      await appendDraftLifecycleEvent(tx, draft, "cancelled", { fromState: draft.state, reason })
+      return true
+    })
+    if (done) cancelled += 1
+  }
+  return cancelled
+}
+
 async function expireOwnedSessionDraft(
   auth: AuthResult,
   voiceSessionId: string,
@@ -971,6 +1028,26 @@ export async function createAiVoiceActionDraft(
   auth: AuthResult,
   input: CreateAiVoiceActionDraftInput,
 ): Promise<AiVoiceActionDraftResponse> {
+  // Повтор того же вызова инструмента — это повтор, а не поправка: проверяется
+  // первым, иначе сетевой ретрай правил бы черновик сам себе.
+  const earlyReplay = await findReplay(auth, input)
+  if (earlyReplay) {
+    await assertReplayTargetAccess(auth, earlyReplay)
+    return serializeIntent(earlyReplay, true)
+  }
+
+  // Поправка к незакрытой задаче решается ДО проверки схемы. «Добавь цену» —
+  // это `{ valueAmount }` без имени сделки: по схеме создания оно неполное, а
+  // по смыслу это дополнение уже собранного (владелец, 2026-11-05).
+  const amendment = await findAmendableDraft(auth, input)
+  if (amendment) {
+    return updateAiVoiceActionDraft(auth, {
+      intentId: amendment.id,
+      expectedRevision: amendment.revision,
+      payload: { ...asJsonObject(amendment.normalizedPayload), ...asJsonObject(input.payload) },
+    })
+  }
+
   const parsed = parseAiVoiceActionPayload(input.actionType, input.payload)
   if (!parsed.success) throw firstPayloadIssue(parsed.issues)
   if (
@@ -985,12 +1062,6 @@ export async function createAiVoiceActionDraft(
   }
 
   await assertActionAccess(auth, input.actionType, parsed.data)
-
-  const replay = await findReplay(auth, input)
-  if (replay) {
-    await assertReplayTargetAccess(auth, replay)
-    return serializeIntent(replay, true)
-  }
 
   const now = new Date()
   await assertActiveVoiceSession(auth, input.voiceSessionId)
@@ -1022,10 +1093,12 @@ export async function createAiVoiceActionDraft(
     select: {
       id: true, organizationId: true, userId: true,
       revision: true, payloadHash: true, state: true,
+      actionType: true, targetEntityId: true, normalizedPayload: true,
     },
   })
   let supersededIntentId: string | null = null
   if (active) {
+    // Сюда доходит только ДРУГАЯ задача: поправка к той же разобрана выше.
     if (active.state === "executing") {
       throw new AiVoiceActionDraftError(
         "ACTIVE_EXECUTION_IN_PROGRESS",
@@ -1112,6 +1185,49 @@ export async function createAiVoiceActionDraft(
  * compare-and-swap token: concurrent edits cannot silently overwrite each
  * other and a retry of the exact same edit returns the stored revision.
  */
+/**
+ * Черновик той же задачи, который ещё не закончен.
+ *
+ * «Та же задача» — то же действие и та же целевая запись. Иначе это другая
+ * задача: лид после сделки не подмешивается в сделку, а заменяет квитанцию.
+ * Истёкшие черновики сюда не попадают — они закрываются перед поиском.
+ */
+async function findAmendableDraft(
+  auth: AuthResult,
+  input: CreateAiVoiceActionDraftInput,
+): Promise<Pick<StoredIntent, "id" | "revision" | "normalizedPayload"> | null> {
+  await expireOwnedSessionDraft(auth, input.voiceSessionId, new Date())
+  const open = await prisma.aiActionIntent.findFirst({
+    where: {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      voiceSessionId: input.voiceSessionId,
+      parentIntentId: null,
+      state: "awaiting_confirmation",
+      actionType: input.actionType,
+    },
+    select: { id: true, revision: true, normalizedPayload: true, targetEntityId: true },
+  })
+  if (!open) return null
+  if ((open.targetEntityId ?? null) !== (input.targetEntityId ?? null)) return null
+  return open
+}
+
+/**
+ * Дополнить черновик, который пользователь сейчас правит голосом.
+ *
+ * Новые поля ложатся поверх собранных, остальные остаются как были — и это
+ * ровно то, что человек имеет в виду, говоря «добавь цену» или «нет, телефон
+ * другой». Идентификатор черновика не меняется: на экране та же квитанция,
+ * у неё растёт ревизия, и подтверждение по-прежнему привязано к тому, что
+ * пользователь видит.
+ */
+function asJsonObject(value: unknown): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonObject
+    : {}
+}
+
 export async function updateAiVoiceActionDraft(
   auth: AuthResult,
   input: UpdateAiVoiceActionDraftInput,

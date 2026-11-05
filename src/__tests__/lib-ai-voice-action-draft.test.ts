@@ -5,6 +5,7 @@ const deps = vi.hoisted(() => ({
   intentFindFirst: vi.fn(),
   intentUpdateMany: vi.fn(async () => ({ count: 0 })),
   intentCreate: vi.fn(),
+  intentFindMany: vi.fn(async () => [] as unknown[]),
   eventCreate: vi.fn(async () => ({ id: "draft-event-1" })),
   sessionFindFirst: vi.fn<() => Promise<{ id: string } | null>>(async () => ({ id: "voice-1" })),
   leadFindFirst: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("@/lib/prisma", () => {
       findFirst: deps.intentFindFirst,
       updateMany: deps.intentUpdateMany,
       create: deps.intentCreate,
+      findMany: deps.intentFindMany,
     },
     aiActionIntentEvent: { create: deps.eventCreate },
   }
@@ -67,6 +69,7 @@ vi.mock("@/lib/sharing-rules", () => ({
 
 import {
   AiVoiceActionDraftError,
+  cancelUnfinishedSessionDrafts,
   createAiVoiceActionDraft,
 } from "@/lib/ai/voice/action-draft"
 
@@ -548,65 +551,133 @@ describe("AI voice action draft service", () => {
 })
 
 /**
- * Поправка к черновику, который ещё на экране (владелец, 2026-11-05).
+ * Один черновик на разговор — и что с ним делают поправка, другая задача и
+ * конец разговора (владелец, 2026-11-05).
  *
- * Сессия держит ровно один незавершённый черновик, и так и должно быть. Но
- * инструкция ассистенту велит на поправку готовить НОВЫЙ черновик — и это
- * упиралось в тот же запрет: «попросил добавить цену к сделке» — сделка не
- * создалась, следом не создался и лид, «какой-то процесс занят». Один висящий
- * черновик блокировал всю сессию до истечения срока.
+ * Корень разобранного в тот день класса проблем: черновик жил как состояние
+ * сессии без хозяина конца. Поправка упиралась в него («попросил добавить цену
+ * к сделке» — сделка не создалась, следом не создался и лид), а закрытие
+ * квитанции и конец разговора его не трогали вовсе.
+ *
+ * Моки отвечают ПО АРГУМЕНТАМ, а не по порядку вызовов: порядок внутри
+ * функции — её дело, и тест не должен ломаться от его перестановки.
  */
-describe("поправка заменяет черновик, а не упирается в него", () => {
-  function activeDraft(state = "awaiting_confirmation") {
-    return {
-      id: "intent-active",
-      organizationId: "org-1",
-      userId: "user-1",
-      revision: 1,
-      payloadHash: "b".repeat(64),
-      state,
-    }
+type FindFirstWhere = {
+  idempotencyKey?: string
+  providerToolCallId?: string
+  expiresAt?: { lte?: Date }
+  state?: string | { in: string[] }
+  actionType?: string
+  id?: string
+}
+
+function routeFindFirst(rows: {
+  replay?: unknown
+  expired?: unknown
+  open?: unknown
+  active?: unknown
+  owned?: unknown
+}) {
+  return async (args: { where?: FindFirstWhere }) => {
+    const where = args?.where ?? {}
+    if (where.idempotencyKey || where.providerToolCallId) return rows.replay ?? null
+    if (where.expiresAt?.lte) return rows.expired ?? null
+    // findAmendableDraft: открытый черновик ТОГО ЖЕ действия
+    if (where.state === "awaiting_confirmation" && where.actionType) return rows.open ?? null
+    // проверка «есть ли вообще незавершённый черновик»
+    if (typeof where.state === "object" && where.state?.in) return rows.active ?? null
+    if (where.id) return rows.owned ?? null
+    return null
+  }
+}
+
+describe("поправка к той же задаче дополняет черновик", () => {
+  function openDraft(over: Record<string, unknown> = {}) {
+    return storedIntent({
+      id: "intent-open",
+      actionType: "create_deal",
+      state: "awaiting_confirmation",
+      targetEntityId: null,
+      rawPayload: { name: "Azmart", companyId: "company-1" },
+      normalizedPayload: { name: "Azmart", companyId: "company-1" },
+      // Живой черновик: срок считается от настоящего «сейчас», а фикстура
+      // storedIntent() приколочена к сентябрю.
+      expiresAt: new Date(Date.now() + 600_000),
+      ...over,
+    })
   }
 
-  it("отменяет незавершённый черновик и готовит новый", async () => {
-    deps.intentFindFirst
-      .mockResolvedValueOnce(null)        // поиск повтора по ключу идемпотентности
-      .mockResolvedValueOnce(null)        // истёкший черновик сессии
-      .mockResolvedValueOnce(activeDraft())
+  it("добавляет цену, не теряя названного раньше", async () => {
+    const draft = openDraft()
+    deps.intentFindFirst.mockImplementation(routeFindFirst({ open: draft, owned: draft }))
     deps.intentUpdateMany.mockResolvedValue({ count: 1 })
 
-    const result = await createAiVoiceActionDraft(auth, {
+    await createAiVoiceActionDraft(auth, {
       voiceSessionId: "voice-1",
       actionType: "create_deal",
-      payload: { name: "Azmart", valueAmount: 5000 },
-      idempotencyKey: "draft:deal:price",
+      payload: { valueAmount: 5000 },
+      idempotencyKey: "draft:deal:add-price",
     })
 
-    // Старый отменён — именно отменён, а не удалён: в журнале видно, чем заменён.
-    expect(deps.intentUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        id: "intent-active",
-        state: { in: ["collecting", "awaiting_confirmation"] },
-      }),
-      data: expect.objectContaining({ state: "cancelled" }),
-    }))
+    // Второго черновика нет — правится тот же.
+    expect(deps.intentCreate).not.toHaveBeenCalled()
+    const [{ data }] = deps.intentUpdateMany.mock.calls.at(-1) as [{ data: Record<string, unknown> }]
+    expect(data.normalizedPayload).toMatchObject({
+      name: "Azmart",
+      companyId: "company-1",
+      valueAmount: 5000,
+    })
+    // Ревизия растёт: подтверждение остаётся привязанным к тому, что на экране.
+    expect(data.revision).toBe(2)
+  })
+
+  it("новое значение поля побеждает прежнее", async () => {
+    const draft = openDraft()
+    deps.intentFindFirst.mockImplementation(routeFindFirst({ open: draft, owned: draft }))
+    deps.intentUpdateMany.mockResolvedValue({ count: 1 })
+
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "create_deal",
+      payload: { name: "Azmart MMC" },
+      idempotencyKey: "draft:deal:rename",
+    })
+
+    const [{ data }] = deps.intentUpdateMany.mock.calls.at(-1) as [{ data: Record<string, unknown> }]
+    expect(data.normalizedPayload).toMatchObject({ name: "Azmart MMC", companyId: "company-1" })
+  })
+
+  // Другая задача — не поправка: лид после сделки заменяет квитанцию, а не
+  // подмешивается в неё.
+  it("другая задача не смешивается с открытой, а заменяет её", async () => {
+    const draft = openDraft()
+    deps.intentFindFirst.mockImplementation(routeFindFirst({ active: draft }))
+    deps.intentUpdateMany.mockResolvedValue({ count: 1 })
+
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "create_lead",
+      payload: { contactName: "Ali" },
+      idempotencyKey: "draft:lead:after-deal",
+    })
+
+    expect(deps.intentCreate).toHaveBeenCalled()
+    const created = deps.intentCreate.mock.calls[0]?.[0]?.data
+    expect(created.normalizedPayload).toEqual({ contactName: "Ali" })
+    // Прежний отменён — именно отменён, в журнале видно, чем заменён.
     expect(deps.eventCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         eventType: "cancelled",
         eventData: expect.objectContaining({ reason: "superseded_by_draft" }),
       }),
     }))
-    // И новый черновик действительно создан, с ссылкой на заменённый.
-    expect(deps.intentCreate).toHaveBeenCalled()
-    expect(result).toMatchObject({ supersededIntentId: "intent-active" })
   })
 
   // Исполняемый черновик — не поправка: вторая запись в CRM это дубль.
-  it("не заменяет черновик, который уже исполняется", async () => {
-    deps.intentFindFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(activeDraft("executing"))
+  it("не трогает черновик, который уже исполняется", async () => {
+    deps.intentFindFirst.mockImplementation(routeFindFirst({
+      active: storedIntent({ id: "intent-exec", state: "executing", actionType: "create_deal" }),
+    }))
 
     await expect(createAiVoiceActionDraft(auth, {
       voiceSessionId: "voice-1",
@@ -615,16 +686,14 @@ describe("поправка заменяет черновик, а не упира
       idempotencyKey: "draft:lead:while-executing",
     })).rejects.toMatchObject({ code: "ACTIVE_EXECUTION_IN_PROGRESS" })
 
-    expect(deps.intentUpdateMany).not.toHaveBeenCalled()
     expect(deps.intentCreate).not.toHaveBeenCalled()
   })
 
   // Гонка: черновик ушёл в исполнение между чтением и отменой.
   it("не создаёт второй черновик, если отмена не состоялась", async () => {
-    deps.intentFindFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(activeDraft())
+    deps.intentFindFirst.mockImplementation(routeFindFirst({
+      active: storedIntent({ id: "intent-active", state: "awaiting_confirmation", actionType: "create_deal" }),
+    }))
     deps.intentUpdateMany.mockResolvedValue({ count: 0 })
 
     await expect(createAiVoiceActionDraft(auth, {
@@ -634,5 +703,35 @@ describe("поправка заменяет черновик, а не упира
       idempotencyKey: "draft:lead:race",
     })).rejects.toMatchObject({ code: "ACTIVE_INTENT_EXISTS" })
     expect(deps.intentCreate).not.toHaveBeenCalled()
+  })
+})
+
+describe("конец разговора закрывает его незавершённый черновик", () => {
+  it("отменяет незавершённые и не трогает исполняемый", async () => {
+    deps.intentFindMany.mockResolvedValue([
+      storedIntent({ id: "intent-1", state: "awaiting_confirmation" }),
+      storedIntent({ id: "intent-2", state: "collecting" }),
+    ])
+    deps.intentUpdateMany.mockResolvedValue({ count: 1 })
+
+    const cancelled = await cancelUnfinishedSessionDrafts("org-1", "voice-1", "session_ended")
+
+    expect(cancelled).toBe(2)
+    // Выборка не включает исполняемые: их отмена на полпути оставила бы
+    // запись в CRM без квитанции.
+    const [{ where }] = deps.intentFindMany.mock.calls[0] as [{ where: { state: { in: string[] } } }]
+    expect(where.state.in).toEqual(["collecting", "awaiting_confirmation"])
+    expect(deps.eventCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        eventType: "cancelled",
+        eventData: expect.objectContaining({ reason: "session_ended" }),
+      }),
+    }))
+  })
+
+  it("ничего не делает, когда черновиков нет", async () => {
+    deps.intentFindMany.mockResolvedValue([])
+    expect(await cancelUnfinishedSessionDrafts("org-1", "voice-1", "session_abandoned")).toBe(0)
+    expect(deps.intentUpdateMany).not.toHaveBeenCalled()
   })
 })
