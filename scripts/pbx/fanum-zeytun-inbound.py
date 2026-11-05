@@ -9,10 +9,13 @@ import audioop
 import base64
 import collections
 from decimal import Decimal
+import http.client
+import io
 import json
 import math
 import os
 import re
+import ssl
 import threading
 import time
 import urllib.error
@@ -28,6 +31,164 @@ class ZeytunPilotUnavailable(Exception):
 class ZeytunNoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+class ZeytunKeptResponse:
+    """One answer on a kept connection: lines or bytes; the connection goes
+    back to the pool only once the answer was read to its end."""
+
+    def __init__(self, pool, key, conn, response):
+        self.pool, self.key, self.conn, self.response = pool, key, conn, response
+        self.status = response.status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+    def __iter__(self):
+        while True:
+            line = self.response.readline()
+            if not line:
+                return
+            yield line
+
+    def read(self, amount=None):
+        return self.response.read(amount)
+
+    def settimeout(self, seconds):
+        """The socket's read timeout from now on (the TTS waits less for its first audio)."""
+        sock = self.conn.sock if self.conn is not None else None
+        if sock is not None:
+            sock.settimeout(seconds)
+
+    def close(self):
+        conn, self.conn = self.conn, None
+        if conn is None:
+            return
+        if self.response.isclosed() and not self.response.will_close:
+            self.pool.give(self.key, conn)
+        else:
+            # Unread bytes would become the next answer's start.
+            self.response.close()
+            conn.close()
+
+
+class ZeytunKeepAlive:
+    """HTTPS to the TTS and the CRM over kept connections.
+
+    Measured from the station 2026-11-04: a new connection costs 0.2-0.3 s
+    (TCP and TLS from Baku; up to 0.5 s to the CRM), and the line opened one
+    for every TTS clip, lookup and save (urllib does not keep them). Here a
+    connection is taken from the pool, used by one request at a time and put
+    back once its answer was read to the end. One idle longer than
+    IDLE_SECONDS is closed rather than trusted. A kept connection the peer has
+    closed fails at once; that request is sent again on a new one, never one
+    that timed out. Behind a proxy, or for another scheme, it is plain urllib
+    as before. Refusals are urllib's HTTPError, network failures URLError, as
+    callers already expect.
+    """
+    IDLE_SECONDS = 50.0
+    MAX_IDLE = 4
+
+    def __init__(self, clock=time.monotonic, connect=None, proxies=None):
+        self.clock = clock
+        self.connect = connect or self._connect
+        self.proxies = proxies or urllib.request.getproxies
+        self.lock = threading.Lock()
+        self.idle = {}
+
+    @staticmethod
+    def _connect(scheme, host, port, timeout):
+        if scheme == "https":
+            return http.client.HTTPSConnection(host, port, timeout=timeout, context=ssl.create_default_context())
+        return http.client.HTTPConnection(host, port, timeout=timeout)
+
+    def take(self, key):
+        with self.lock:
+            pool = self.idle.get(key) or []
+            now = self.clock()
+            while pool:
+                conn, since = pool.pop()
+                if now - since < self.IDLE_SECONDS:
+                    return conn
+                conn.close()
+        return None
+
+    def give(self, key, conn):
+        with self.lock:
+            pool = self.idle.setdefault(key, [])
+            if len(pool) < self.MAX_IDLE:
+                pool.append((conn, self.clock()))
+                return
+        conn.close()
+
+    def keeps(self, url):
+        """True when url goes over a kept connection (not behind a proxy)."""
+        return self._key(url)[0] is not None
+
+    def _key(self, url):
+        parts = urllib.parse.urlsplit(url)
+        if parts.scheme not in ("http", "https") or not parts.hostname or self.proxies().get(parts.scheme):
+            return None, None
+        path = (parts.path or "/") + ("?" + parts.query if parts.query else "")
+        return (parts.scheme, parts.hostname, parts.port or (443 if parts.scheme == "https" else 80)), path
+
+    def warm(self, url, timeout=4):
+        """Open a connection ahead of the first request, in the background."""
+        key, _ = self._key(url)
+        if key is None:
+            return False
+
+        def connect():
+            try:
+                conn = self.connect(key[0], key[1], key[2], timeout)
+                conn.connect()
+            except Exception:
+                return
+            self.give(key, conn)
+        threading.Thread(target=connect, name="zeytun-http-warm", daemon=True).start()
+        return True
+
+    def open(self, req, timeout):
+        url = req.full_url
+        key, path = self._key(url)
+        if key is None:
+            return urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout)
+        headers = dict(req.header_items())
+        while True:
+            conn = self.take(key)
+            kept = conn is not None
+            if conn is None:
+                conn = self.connect(key[0], key[1], key[2], timeout)
+            conn.timeout = timeout
+            if conn.sock is not None:
+                conn.sock.settimeout(timeout)
+            try:
+                conn.request(req.get_method(), path, body=req.data, headers=headers)
+                response = conn.getresponse()
+            except Exception as error:
+                conn.close()
+                if kept and isinstance(error, (http.client.HTTPException, OSError)) and not isinstance(error, TimeoutError):
+                    continue  # the peer closed an idle connection: once more on a new one
+                if isinstance(error, (http.client.HTTPException, OSError)):
+                    raise urllib.error.URLError(error) from None
+                raise
+            break
+        if not 200 <= response.status < 300:
+            try:
+                body = response.read(65536)
+            except Exception:
+                body = b""
+            conn.close()
+            raise urllib.error.HTTPError(url, response.status, response.reason, response.msg, io.BytesIO(body))
+        return ZeytunKeptResponse(self, key, conn, response)
+
+
+# One pool for the process: the TTS and the CRM, every call.
+ZEYTUN_HTTP = ZeytunKeepAlive()
 
 
 ZEYTUN_ONES = ("", "bir", "iki", "üç", "dörd", "beş", "altı", "yeddi", "səkkiz", "doqquz")
@@ -141,11 +302,31 @@ class ZeytunGeminiTts:
     Two paths to the same model and voice (task 9, owner 2026-11-04 of the
     Vertex sample: «Тот же, переключай»): the Gemini API on Tier 1 allows 100
     TTS requests a day - three to five calls - and returned 429 for the rest
-    of the day; Vertex AI (Standard PayGo, global) has no daily count. With a
-    Vertex key the request goes there first; a refusal before any audio that
-    is about capacity or the server (429, 5xx, 401/403 of a revoked key) is
-    asked once of the Gemini API, so the old path is the rollback.
+    of the day; Vertex AI (Standard PayGo) has no daily count. With a Vertex
+    key the request goes there first; a refusal before any audio that is
+    about capacity or the server (429, 5xx, 401/403 of a revoked key) is
+    asked of the next path, so the old path is the rollback.
+
+    Vertex's EU multi-region first, then global (measured from the station
+    2026-11-04: global answered after 0.93-1.07 s, eu after 0.34-0.39 s; the
+    model is not served in single regions, 404). Owner 2026-11-05, «изучи
+    про лимиты и подводные камни»: a preview model may leave a region, and a
+    regional pool can be busy. So eu gets EU_FIRST_AUDIO_SECONDS for its
+    first audio, then global is asked; EU_PAUSE_AFTER failures in a row skip
+    eu for EU_PAUSE_SECONDS. eu is off unless ZEYTUN_TTS_VERTEX_EU=1: on kept
+    connections it was only 0.08 s faster (station, 2026-11-05). The worst
+    case with it on is today's path plus EU_FIRST_AUDIO_SECONDS on one reply.
+    Over kept connections (ZEYTUN_HTTP): a new one cost the station 0.2-0.3 s.
     """
+    VERTEX_LOCATIONS = (("vertex", "https://aiplatform.eu.rep.googleapis.com", "eu"),
+                        ("vertex_global", "https://aiplatform.googleapis.com", "global"))
+    EU_FIRST_AUDIO_SECONDS = 1.2
+    EU_PAUSE_AFTER = 5
+    EU_PAUSE_SECONDS = 600.0
+    # Process-wide: every call of this station shares the eu path's health.
+    eu_lock = threading.Lock()
+    eu_failures = 0
+    eu_paused_until = 0.0
     MODELS = frozenset({"gemini-3.8-flash-tts"})
     VERTEX_PROJECT = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
     # Refusals after which the other path is worth one more request; a 400
@@ -155,7 +336,7 @@ class ZeytunGeminiTts:
     # back to the model's own voice rather than leave the line silent.
     TIMEOUT_SECONDS = 4
 
-    def __init__(self, key, model, voice, opener=None, style=None, vertex=None):
+    def __init__(self, key, model, voice, opener=None, style=None, vertex=None, environ=None, clock=time.monotonic):
         if not key or model not in self.MODELS or voice not in ZeytunInboundBridge.VOICES:
             raise ZeytunPilotUnavailable("tts_unavailable")
         self.style = style
@@ -164,42 +345,84 @@ class ZeytunGeminiTts:
         project, vertex_key = vertex if isinstance(vertex, tuple) and len(vertex) == 2 else (None, None)
         if (isinstance(project, str) and self.VERTEX_PROJECT.match(project)
                 and isinstance(vertex_key, str) and 30 <= len(vertex_key.strip()) <= 256):
-            self.urls.append(("vertex", "https://aiplatform.googleapis.com/v1/projects/" + project
-                              + "/locations/global/publishers/google/models/" + model
-                              + query + urllib.parse.quote(vertex_key.strip(), safe="")))
+            # Off unless asked for: from the station on 2026-11-05, on kept connections, eu's first
+            # audio came 0.08 s before global's (median 0.57 against 0.65 s, 7 each); the gain
+            # is the kept connection, not the region, and the region's risks stay.
+            eu_off = str((os.environ if environ is None else environ).get("ZEYTUN_TTS_VERTEX_EU", "")).strip() not in ("1", "on", "true")
+            for path, host, location in self.VERTEX_LOCATIONS:
+                if location == "eu" and eu_off:
+                    continue
+                self.urls.append((path, host + "/v1/projects/" + project + "/locations/" + location
+                                  + "/publishers/google/models/" + model
+                                  + query + urllib.parse.quote(vertex_key.strip(), safe="")))
         self.urls.append(("studio", "https://generativelanguage.googleapis.com/v1beta/models/" + model
                           + query + urllib.parse.quote(key, safe="")))
         self.url = self.urls[0][1]
         self.path = self.urls[0][0]
         self.voice = voice
-        self.open = opener or (lambda req, timeout: urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout))
+        self.open = opener or ZEYTUN_HTTP.open
+        self.kept = opener is None
+        self.clock = clock
+        self.eu_note = None  # why the last reply did not come from eu, for the journal
+
+    def warm(self):
+        """The first path's connection, opened while the call greets."""
+        return self.kept and ZEYTUN_HTTP.warm(self.urls[0][1], self.TIMEOUT_SECONDS)
+
+    @classmethod
+    def _eu_result(cls, ok, now):
+        with cls.eu_lock:
+            if ok:
+                cls.eu_failures = 0
+                return
+            cls.eu_failures += 1
+            if cls.eu_failures >= cls.EU_PAUSE_AFTER:
+                cls.eu_failures = 0
+                cls.eu_paused_until = now + cls.EU_PAUSE_SECONDS
+
+    @classmethod
+    def _eu_paused(cls, now):
+        with cls.eu_lock:
+            return now < cls.eu_paused_until
 
     def stream(self, text, on_pcm, keep_going):
         heard = [0]
         def counted(pcm):
             heard[0] += len(pcm)
             on_pcm(pcm)
+        self.eu_note = None
         for index, (path, url) in enumerate(self.urls):
+            last = index + 1 == len(self.urls)
+            eu = "/locations/eu/" in url
+            if eu and not last and self._eu_paused(self.clock()):
+                self.eu_note = "paused"
+                continue
             self.path = path
             try:
-                return self._styled(url, text, counted, keep_going)
+                produced = self._styled(url, text, counted, keep_going, eu and not last)
+                if eu:
+                    self._eu_result(True, self.clock())
+                return produced
             except ZeytunPilotUnavailable as error:
                 code = str(error).rsplit("_", 1)[-1]
-                if (heard[0] or index + 1 == len(self.urls) or not keep_going()
-                        or not code.isdigit() or int(code) not in self.FALLBACK_CODES):
+                if eu and not heard[0]:
+                    self._eu_result(False, self.clock())
+                    self.eu_note = str(error)
+                # Before any audio, eu gives way to the next path whatever went wrong.
+                if heard[0] or last or not keep_going() or not (eu or (code.isdigit() and int(code) in self.FALLBACK_CODES)):
                     raise
         raise ZeytunPilotUnavailable("tts_unavailable")
 
-    def _styled(self, url, text, on_pcm, keep_going):
+    def _styled(self, url, text, on_pcm, keep_going, fast=False):
         try:
-            return self._stream(url, text, on_pcm, keep_going, self.style)
+            return self._stream(url, text, on_pcm, keep_going, self.style, fast)
         except ZeytunPilotUnavailable as error:
             if not self.style or str(error) != "tts_http_400":
                 raise
             self.style = None
-        return self._stream(url, text, on_pcm, keep_going, None)
+        return self._stream(url, text, on_pcm, keep_going, None, fast)
 
-    def _stream(self, url, text, on_pcm, keep_going, style):
+    def _stream(self, url, text, on_pcm, keep_going, style, fast=False):
         part = {"text": text}
         if style:
             part["speechMetadata"] = {"style": style}
@@ -209,12 +432,34 @@ class ZeytunGeminiTts:
         req = urllib.request.Request(url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")
         produced = 0
+        # fast (eu): the first audio within EU_FIRST_AUDIO_SECONDS of asking,
+        # on a kept connection whose read timeout can follow the deadline.
+        fast = fast and (not self.kept or ZEYTUN_HTTP.keeps(url))
+        deadline = self.clock() + self.EU_FIRST_AUDIO_SECONDS
         try:
-            response = self.open(req, self.TIMEOUT_SECONDS)
+            response = self.open(req, self.EU_FIRST_AUDIO_SECONDS if fast else self.TIMEOUT_SECONDS)
         except urllib.error.HTTPError as error:
             raise ZeytunPilotUnavailable("tts_http_%d" % error.code) from None
+        except (urllib.error.URLError, http.client.HTTPException, OSError):
+            if fast:
+                raise ZeytunPilotUnavailable("tts_eu_timeout") from None
+            raise
+        settimeout = getattr(response, "settimeout", None)
         with response:
-            for raw in response:
+            lines = iter(response)
+            while True:
+                if fast and settimeout is not None:
+                    settimeout(max(0.05, deadline - self.clock()) if not produced else self.TIMEOUT_SECONDS)
+                try:
+                    raw = next(lines)
+                except StopIteration:
+                    break
+                except (http.client.HTTPException, OSError):
+                    if fast and not produced:
+                        raise ZeytunPilotUnavailable("tts_eu_timeout") from None
+                    raise
+                if fast and not produced and self.clock() > deadline:
+                    raise ZeytunPilotUnavailable("tts_eu_timeout")
                 if not keep_going():
                     return produced
                 line = raw.decode("utf-8", "replace").strip()
@@ -307,10 +552,37 @@ class ZeytunSpeechRelay:
     # model is asked once, for that turn, to say it again in Azerbaijani.
     FOREIGN_RETRY = ("Station note, never read it aloud: your last reply was in English and the caller did not "
                      "hear it. Say it again now, in Azerbaijani only.")
+    # Owner's call 2026-11-05 (4c36453f): asked "Ketonal krem, yoxsa gel?", the
+    # owner answered at once; the answer never reached the model, the agent
+    # waited 23 s in silence and the owner hung up. A question the line has
+    # been quiet after for SILENCE_NUDGE_SECONDS - nobody speaking, nothing
+    # playing, no tool working - is asked again once, as an operator would.
+    # Owner, 2026-11-05: «эти паузы вводят в заблуждение». A caller who
+    # finished a phrase and hears nothing for TURN_FILLER_SECONDS after the
+    # station closed it (0.65 s of end silence before that) gets the wait
+    # filler, as when a lookup runs long: once per phrase, never over a reply,
+    # never more often than FILLER_EVERY_SECONDS. 2.5 s: at 1.5 s (owner's
+    # call c682e76e, 2026-11-05) it played on 7 of 10 answers, most a second
+    # before the answer itself, which then waited for it; the answers came
+    # 1-3 s after the phrase closed. Only a long pause gets it now.
+    TURN_FILLER_SECONDS = 2.5
+    SILENCE_NUDGE_SECONDS = 6.0
+    SILENCE_NUDGES_PER_CALL = 3
+    SILENCE_NUDGE = ("Station note, never read it aloud: the caller has said nothing for six seconds since your "
+                     "question; they may not have heard it, or you did not hear them. Ask once, in a few Azerbaijani "
+                     "words, whether they hear you, and repeat that question briefly.")
 
     def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic,
-                 progress=None, recovering=None, ask=None):
+                 progress=None, recovering=None, ask=None, quiet=None, playing=None):
         self.tts, self.inject, self.speakable, self.alive = tts, inject, speakable, alive
+        # Set by the core: True while nobody speaks, nothing plays and no tool works.
+        self.quiet = quiet
+        # Set by the core: True while the line still plays the agent's audio.
+        self.playing = playing or (lambda: False)
+        self.caller_done_at = None
+        self.question_pending = False
+        self.quiet_since = None
+        self.nudges = 0
         # Set by the core: sends a client turn to the current Live session.
         self.ask = ask or (lambda payload: False)
         self.progress = progress or (lambda: None)
@@ -329,12 +601,72 @@ class ZeytunSpeechRelay:
         self.prefilled = False
         self.worker = threading.Thread(target=self._run, name="zeytun-tts", daemon=True)
         self.worker.start()
+        if quiet is not None:
+            threading.Thread(target=self._watch_silence, name="zeytun-silence", daemon=True).start()
+
+    def caller_spoke(self):
+        """The core opened a caller phrase: the question was answered, or is being."""
+        with self.lock:
+            self.question_pending = False
+            self.quiet_since = None
+            self.caller_done_at = None
+
+    def caller_done(self):
+        """The core closed a caller phrase: the agent owes an answer (TURN_FILLER_SECONDS)."""
+        with self.lock:
+            self.caller_done_at = self.clock()
+
+    def turn_filler_tick(self):
+        """One check of the pause after a caller phrase (the watch thread calls it)."""
+        with self.lock:
+            done = self.caller_done_at
+            if done is None or self.clock() - done < self.TURN_FILLER_SECONDS:
+                return False
+            self.caller_done_at = None
+        if self.playing():
+            return False
+        played = self.filler()
+        if played:
+            self.log("turn_filler")
+        return played
+
+    def silence_tick(self):
+        """One check of the silence after a question (the watch thread calls it)."""
+        with self.lock:
+            if not self.question_pending or self.nudges >= self.SILENCE_NUDGES_PER_CALL:
+                return False
+            if any(not turn["finished"] or turn["pieces"] for turn in self.turns) or not self.quiet():
+                self.quiet_since = None
+                return False
+            now = self.clock()
+            if self.quiet_since is None:
+                self.quiet_since = now
+            if now - self.quiet_since < self.SILENCE_NUDGE_SECONDS:
+                return False
+            self.question_pending = False
+            self.quiet_since = None
+            self.nudges += 1
+            nudge = self.nudges
+        self.log("silence_nudge", n=nudge)
+        self.ask({"clientContent": {"turns": [{"role": "user", "parts": [{"text": self.SILENCE_NUDGE}]}],
+                                    "turnComplete": True}})
+        return True
+
+    def _watch_silence(self):
+        while self.alive():
+            try:
+                self.turn_filler_tick()
+                self.silence_tick()
+            except Exception as error:  # never the call's problem: the watch stops and says why
+                self.log("silence_watch_error", reason=type(error).__name__)
+                return
+            time.sleep(0.1)
 
     @staticmethod
     def _new_turn():
         return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None, "created": time.monotonic(),
                 "final_taken": False, "finished": False, "cancelled": False, "made": 0,
-                "passthrough": False, "spoken": False, "prefill": False}
+                "passthrough": False, "spoken": False, "prefill": False, "said": ""}
 
     def prefill(self, text, epoch=None):
         """Voice the call's fixed opening now, as the greeting generation's turn.
@@ -498,11 +830,15 @@ class ZeytunSpeechRelay:
             if turn is None and (audio or text.strip()):
                 turn = self._new_turn()
                 self.turns.append(turn)
+                self.question_pending = False
+                self.quiet_since = None
+                self.caller_done_at = None  # the answer has begun: no filler
 
             if turn is None:
                 return not content
             if not turn["cancelled"]:
                 turn["original"].extend(audio)
+                turn["said"] += text
                 if not turn["prefill"]:
                     turn["buffer"] += text
                     self._split_locked(turn)
@@ -555,6 +891,11 @@ class ZeytunSpeechRelay:
                     self.lock.wait(0.5)
                 if self.turns and self.turns[0] is turn:
                     self.turns.pop(0)
+                # A spoken reply that ends on a question waits for an answer (SILENCE_NUDGE).
+                if (not turn["cancelled"] and not turn["prefill"] and not self.turns
+                        and turn["said"].strip().endswith("?")):
+                    self.question_pending = True
+                    self.quiet_since = None
 
     def _next_piece_locked(self, turn):
         while True:
@@ -623,7 +964,7 @@ class ZeytunSpeechRelay:
                     heard[0] = True
                     if not turn["spoken"]:
                         self.log("tts_first_audio", ms=round((time.monotonic() - asked) * 1000),
-                                 path=getattr(self.tts, "path", None))
+                                 path=getattr(self.tts, "path", None), eu=getattr(self.tts, "eu_note", None))
                 self._emit(content)
                 turn["spoken"] = True
 
@@ -701,7 +1042,7 @@ def zeytun_post_json(url, token, body, timeout):
     req = urllib.request.Request(url,
         data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
         headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}, method="POST")
-    with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=timeout) as response:
+    with ZEYTUN_HTTP.open(req, timeout) as response:
         raw = response.read(32769)
         if len(raw) > 32768:
             raise ZeytunPilotUnavailable("pilot_response_too_large")
@@ -1208,7 +1549,7 @@ class ZeytunInboundBridge:
     def _post_utterance(self, body):
         req = urllib.request.Request(self.url, data=json.dumps(body, separators=(",", ":")).encode("ascii"),
             headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"}, method="POST")
-        with urllib.request.build_opener(ZeytunNoRedirect()).open(req, timeout=self.UTTERANCE_TIMEOUT_SECONDS) as response:
+        with ZEYTUN_HTTP.open(req, self.UTTERANCE_TIMEOUT_SECONDS) as response:
             raw = response.read(32768)
         try:
             return json.loads(raw)
@@ -1232,6 +1573,8 @@ class ZeytunInboundBridge:
 
     def utterance_edge(self, opened, pcm=b""):
         """activityStart (True, with its first frame) or activityEnd (False) of a caller phrase."""
+        if self.relay is not None:
+            (self.relay.caller_spoke if opened else self.relay.caller_done)()
         if not self.utterances:
             return
         with self.utterance_lock:
@@ -1452,7 +1795,7 @@ class ZeytunInboundBridge:
         return (project, key) if project and key else None
 
     def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None,
-                     progress=None, recovering=None, ask=None):
+                     progress=None, recovering=None, ask=None, quiet=None, playing=None):
         """The call's TTS relay, created once; None while the model speaks itself."""
         if self.tts_model is None:
             return None
@@ -1460,7 +1803,11 @@ class ZeytunInboundBridge:
             engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style,
                                             vertex=self.tts_vertex())
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
-                                           progress=progress, recovering=recovering, ask=ask)
+                                           progress=progress, recovering=recovering, ask=ask, quiet=quiet,
+                                           playing=playing)
+            warm = getattr(engine, "warm", None)
+            if warm is not None:
+                warm()
             self.relay.prefetch_filler()
         return self.relay
 

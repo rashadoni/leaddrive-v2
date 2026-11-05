@@ -138,7 +138,13 @@ def build(source, bridge):
             recovering=lambda: bool(self.reconnecting or self.fresh_recovery_waiting_for_audio
                                     or self.fresh_recovery_input_fenced),
             # A reply in English is asked again in Azerbaijani (ZeytunSpeechRelay.FOREIGN_RETRY).
-            ask=lambda payload: self._send_pharmacy_result(self.ws, self.gemini_ws_epoch, payload))
+            ask=lambda payload: self._send_pharmacy_result(self.ws, self.gemini_ws_epoch, payload),
+            # Owner's call 2026-11-05: an unanswered question is asked again (SILENCE_NUDGE).
+            quiet=lambda: not (self.closed or self.hangup_started or self.response_active or self.playback_active
+                               or self.local_speech_active or self.reconnecting or self.pharmacy_bridge.pending
+                               or self.wrapup_sent or self.closing_response_seq is not None),
+            # Owner 2026-11-05: a long pause after the caller gets the wait filler (TURN_FILLER_SECONDS).
+            playing=lambda: bool(self.playback_active or self.hangup_started or self.closed))
 
     def _pharmacy_wait_filler(self):
         # The relay logs it (zeytun_tts status=wait_filler) when it plays.
@@ -255,13 +261,15 @@ def build(source, bridge):
     # "Mezim forte on min, on qutu" reached the model as "qutu", and the last
     # 2.5 s (Smekta, Lineks, Amoksiklav) not at all, so the agent waited and
     # the caller hung up. The gate exists against the agent's own echo; on the
-    # pharmacy line it vetoes only while the agent speaks and for 0.8 s after,
-    # and loudness alone decides otherwise, as before the gate.
+    # pharmacy line it vetoes only while the agent speaks and for 0.4 s after,
+    # and loudness alone decides otherwise, as before the gate. Owner's call
+    # 2026-11-05 (4c36453f): "krem", said right after the question, fell into
+    # the 0.8 s it was before; the echo tail of the line is shorter.
     replace("            if loud and verdict is False:\n",
             "            if self.pharmacy_preview and agent_speaking:\n"
             "                self.pharmacy_agent_heard_at = time.monotonic()\n"
             "            if loud and verdict is False and (not self.pharmacy_preview or agent_speaking\n"
-            "                    or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.8):\n")
+            "                    or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4):\n")
     # Only recovery wording changes; pharmacy calls are never marked as demos.
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:

@@ -16,7 +16,9 @@ describe("inbound browser station bundle", () => {
       ["-m", "unittest", "discover", "-s", "scripts/pbx/tests", "-p", "test_*.py"],
       { encoding: "utf8", stdio: "pipe" },
     )).not.toThrow()
-  })
+    // The whole station suite (~200 tests, ~23 s locally) runs in this one
+    // test: vitest's default 30 s cut it on a busy CI runner (#1365).
+  }, 120_000)
 
   it("routes the station-local exact DID and answers after readiness", () => {
     const dialplan = readFileSync(dialplanPath, "utf8")
