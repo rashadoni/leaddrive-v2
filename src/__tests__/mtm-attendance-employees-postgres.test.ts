@@ -1161,6 +1161,24 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       const fresh = await load.previewAttendanceImport(actor, edited, "edited.xlsx")
       expect((await load.applyAttendanceImport(actor, edited, [{ row: 2, key: fresh.rows[0]!.key }]))[0]).toMatchObject({ outcome: "UPDATED", agentId: one.id })
       expect(await prisma.mtmAgent.findUniqueOrThrow({ where: { id: one.id } })).toMatchObject({ position: "Senior operator", managerId: "import-manager", teamId: one.teamId, name: "Fictional Import One" })
+      // Rolling Time out (2026-11-05): HR sees who has got into the app — by a sign-in or by setting their own password by the code.
+      const two = written[1]!.agentId!
+      const twoUser = (await prisma.mtmAgent.findUniqueOrThrow({ where: { id: two } })).userId!
+      const since = async () => new Map((await store.readAttendanceEmployees(actor)).employees.map(row => [row.id, row.timeSince ?? null]))
+      expect((await since()).get(one.id)).toBeNull()
+      await prisma.mtmAuditLog.create({ data: { organizationId: org, agentId: one.id, action: "MOBILE_LOGIN", entity: "agent", entityId: one.id, metadataKind: "login_success", createdAt: new Date("2026-11-05T06:00:00Z") } })
+      await prisma.mtmAuditLog.create({ data: { organizationId: org, agentId: one.id, action: "MOBILE_LOGIN", entity: "agent", entityId: one.id, metadataKind: "login_success", createdAt: new Date("2026-11-05T09:00:00Z") } })
+      if (!await prisma.identityAccount.findUnique({ where: { organizationId_userId: { organizationId: org, userId: twoUser } } })) {
+        await prisma.identityAccount.create({ data: { organizationId: org, userId: twoUser } })
+      }
+      const credential = (actorUserId: string, at: string) => prisma.identityEvent.create({ data: { id: randomUUID(), organizationId: org, userId: twoUser, actorUserId,
+        action: "CREDENTIAL_CHANGED", requestId: randomUUID(), requestHash: "d".repeat(64), application: "TIME", accountVersion: 2, createdAt: new Date(at) } })
+      // Someone else changing a person's credential is not that person getting in.
+      await credential(actor.userId, "2026-11-04T08:00:00Z")
+      const pick = async () => Object.fromEntries([...(await since())].filter(([id]) => id === one.id || id === two))
+      expect(await pick()).toEqual({ [one.id]: "2026-11-05T06:00:00.000Z", [two]: null })
+      await credential(twoUser, "2026-11-05T07:30:00Z")
+      expect(await pick()).toEqual({ [one.id]: "2026-11-05T06:00:00.000Z", [two]: "2026-11-05T07:30:00.000Z" })
       // A personnel number with somebody else's phone is refused: a phone is a login, changed on the card.
       const swapped = await file(["Табельный номер", ...header], [[one.personnelNumber, "Fictional Import One", "+994501110002", "", "", "", "", "", ""]])
       expect((await load.previewAttendanceImport(actor, swapped, "swapped.xlsx")).rows[0]!.errors.map(error => error.code)).toEqual(["NUMBER_PHONE_MISMATCH"])

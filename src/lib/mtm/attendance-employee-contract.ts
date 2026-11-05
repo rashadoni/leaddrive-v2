@@ -78,6 +78,8 @@ export type AttendanceEmployeeDirectory = {
   managers: Array<{ id: string; name: string; position: string | null }>
   employees: Array<{ id: string; name: string; role: string; teamName: string | null; departmentId: string | null; departmentName: string | null; status: string;
     position: string | null; personnelNumber?: string | null; teamId: string | null; managerId: string | null; phone?: string | null; todayMark?: AttendanceEmployeeToday | null;
+    /** First time the person got into the phone app (set their password by the code or signed in); null = not yet. */
+    timeSince?: string | null;
     included: boolean; participationVersion: string | null; includedFrom: string | null;
     history: Array<{ id: string; kind: "HIRE" | "TERMINATION" | "REHIRE"; date: string; at: string; byName: string | null }> }>
   timezone: string
