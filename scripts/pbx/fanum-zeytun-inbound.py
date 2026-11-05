@@ -561,11 +561,11 @@ class ZeytunSpeechRelay:
     # finished a phrase and hears nothing for TURN_FILLER_SECONDS after the
     # station closed it (0.65 s of end silence before that) gets the wait
     # filler, as when a lookup runs long: once per phrase, never over a reply,
-    # never more often than FILLER_EVERY_SECONDS. 1.5 s: the model's first
-    # word of a plain answer comes ~1.0-1.3 s after the station closes the
-    # phrase (voice stand, 375 turns), so the filler lands where a lookup or
-    # a slow turn would leave 2-4 s of silence, not before every answer.
-    TURN_FILLER_SECONDS = 1.5
+    # never more often than FILLER_EVERY_SECONDS. 2.5 s: at 1.5 s (owner's
+    # call c682e76e, 2026-11-05) it played on 7 of 10 answers, most a second
+    # before the answer itself, which then waited for it; the answers came
+    # 1-3 s after the phrase closed. Only a long pause gets it now.
+    TURN_FILLER_SECONDS = 2.5
     SILENCE_NUDGE_SECONDS = 6.0
     SILENCE_NUDGES_PER_CALL = 3
     SILENCE_NUDGE = ("Station note, never read it aloud: the caller has said nothing for six seconds since your "

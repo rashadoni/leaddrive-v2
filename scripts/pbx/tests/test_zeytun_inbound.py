@@ -1107,13 +1107,13 @@ class SpeechRelayTests(unittest.TestCase):
         relay.filler = lambda *a: played.append(state["now"]) or True
         relay.playing = lambda: state.get("playing", False)
         relay.caller_done()
-        state["now"] = 1.4
+        state["now"] = 2.4
         self.assertFalse(relay.turn_filler_tick())
-        state["now"] = 1.5
+        state["now"] = 2.5
         self.assertTrue(relay.turn_filler_tick())
         state["now"] = 5.0
         self.assertFalse(relay.turn_filler_tick())  # once per phrase
-        self.assertEqual(played, [1.5])
+        self.assertEqual(played, [2.5])
         # An answer that began, a new phrase or audio still playing: no filler.
         relay.caller_done()
         relay.filter(self.content("Ketonal krem, on qutu. ", audio=True))
@@ -1127,7 +1127,7 @@ class SpeechRelayTests(unittest.TestCase):
         state["playing"] = True
         state["now"] = 30.0
         self.assertFalse(relay.turn_filler_tick())
-        self.assertEqual(played, [1.5])
+        self.assertEqual(played, [2.5])
 
     def test_an_unanswered_question_is_asked_again_once_after_six_quiet_seconds(self):
         # Owner's call 2026-11-05 (4c36453f): "krem" never reached the model; 23 s of silence.
