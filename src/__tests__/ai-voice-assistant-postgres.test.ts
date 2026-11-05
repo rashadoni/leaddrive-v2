@@ -74,7 +74,9 @@ const USER = "user-voice-lifecycle"
 const auth = vi.hoisted(() => ({
   orgId: "org-voice-lifecycle",
   userId: "user-voice-lifecycle",
-  role: "admin",
+  // Литерал, а не string: `AuthResult.role` — это Role, и команды исполнения
+  // принимают личность целиком.
+  role: "admin" as const,
   email: "owner@example.com",
   name: "Owner",
   // Человек за браузером, как его помечает requireSessionAuth: голосовой
