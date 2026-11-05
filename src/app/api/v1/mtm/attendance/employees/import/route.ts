@@ -21,7 +21,7 @@ import {
 const locale = (value: string | null): AttendanceImportLocale => value === "ru" || value === "en" ? value : "az"
 const Rows = z.array(z.object({ row: z.number().int().min(2).max(100_000), key: z.string().regex(/^[a-f0-9]{32}$/) }).strict()).min(1).max(ATTENDANCE_IMPORT_CHUNK)
 
-function actorOf(auth: { orgId: string; userId: string; principalType: string }) {
+function actorOf(auth: { orgId: string; userId: string; principalType?: "session" | "api_key" }) {
   if (auth.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED", 403)
   return { organizationId: auth.orgId, userId: auth.userId, principalType: "session" as const }
 }

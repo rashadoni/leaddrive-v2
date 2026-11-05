@@ -117,7 +117,8 @@ export function importDate(value: unknown): string | null | "INVALID" {
     return date.toISOString().slice(0, 10)
   }
   const raw = text(value)
-  if (isDateKey(raw)) return raw
+  // `isDateKey` is a guard on unknown: asked of a string it would narrow `raw` to never.
+  if (isDateKey(raw as unknown)) return raw
   const local = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
   if (local) {
     const key = `${local[3]}-${local[2]!.padStart(2, "0")}-${local[1]!.padStart(2, "0")}`
@@ -180,19 +181,20 @@ async function readCompany(actor: AttendanceReviewer): Promise<Company> {
   const directory = await readAttendanceEmployees(actor)
   const { branches } = await readAttendanceBranches(actor)
   const listed = new Set(directory.employees.map(employee => employee.id))
-  return prisma.$transaction(async tx => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const cards = await tx.mtmAgent.findMany({ where: { organizationId, status: "ACTIVE", OR: [{ fieldDeletedAt: null }, { role: "EMPLOYEE" }] },
       select: { id: true, name: true, phone: true, role: true, userId: true, user: { select: { phone: true, isActive: true } } } })
-    const phoneOf = (card: typeof cards[number]) => card.phone ?? (card.user?.isActive ? card.user.phone : null) ?? null
+    type Card = { id: string; name: string; phone: string | null; role: string; userId: string | null; user: { phone: string | null; isActive: boolean } | null }
+    const phoneOf = (card: Card) => card.phone ?? (card.user?.isActive ? card.user.phone : null) ?? null
     const primary = await tx.$queryRaw<Array<{ agentId: string; id: string; branchId: string | null }>>`SELECT DISTINCT ON ("agentId") "agentId", id, "branchId"
       FROM mtm_attendance_primary_branch_revisions WHERE "organizationId" = ${organizationId} ORDER BY "agentId", version DESC`
     return {
       timezone, employees: directory.employees, departments: directory.departments, teams: directory.teams,
-      others: cards.filter(card => !listed.has(card.id)).flatMap(card => { const phone = phoneOf(card); return phone ? [{ id: card.id, phone, role: card.role }] : [] }),
-      managers: cards.filter(card => (ATTENDANCE_MANAGER_ROLES as readonly string[]).includes(card.role)).map(card => ({ id: card.id, name: card.name, phone: phoneOf(card) })),
+      others: (cards as Card[]).filter(card => !listed.has(card.id)).flatMap(card => { const phone = phoneOf(card); return phone ? [{ id: card.id, phone, role: card.role }] : [] }),
+      managers: (cards as Card[]).filter(card => (ATTENDANCE_MANAGER_ROLES as readonly string[]).includes(card.role)).map(card => ({ id: card.id, name: card.name, phone: phoneOf(card) })),
       branches: branches.filter(branch => branch.active).map(branch => ({ id: branch.id, name: branch.name })),
-      primary: new Map(primary.map(row => [row.agentId, { revisionId: row.id, branchId: row.branchId }])),
+      primary: new Map(primary.map((row: { agentId: string; id: string; branchId: string | null }) => [row.agentId, { revisionId: row.id, branchId: row.branchId }])),
     }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
 }
@@ -351,7 +353,7 @@ async function writeRow(actor: AttendanceReviewer, company: Company, row: Attend
         ...(section ? { newTeamName: section } : {}), ...(managerId ? { managerId } : {}) })
     }
     if (fields.has("hireDate") && hireDate && hireDate !== "INVALID") {
-      await prisma.$transaction(async tx => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const timezone = await requireAttendanceEmployeeAdmin(tx, actor)
         await recordAttendanceInitialHire(tx, actor, agentId, hireDate, timezone)
       }, { timeout: 15_000 })
