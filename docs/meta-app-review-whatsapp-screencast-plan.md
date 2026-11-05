@@ -61,7 +61,14 @@ Instagram-разрешения отклоняли дважды (01.10 и 08.10) 
 ## Подготовка до записи
 
 1. Отдельный профиль Chrome **без сессии Facebook**. Весь смысл в том, что вход
-   начинается с экрана логина. Пароль вводит владелец сам.
+   начинается с экрана логина. Пароль вводит владелец сам. Отдельный профиль
+   нужен и по второй причине: проверено 2026-11-05, рабочий Chrome владельца
+   залогинен в CRM как **Togrul, организация Zeytun Pharma**, а вход в CRM —
+   одна сессия на браузер, так что вход владельцем в том же профиле выбьет
+   текущую.
+1a. Войти в CRM своим аккаунтом в организацию **LeadDrive Inc.** — именно в ней
+   живёт канал Fanum Sec. Переключателя организаций в интерфейсе нет, он
+   определяется аккаунтом.
 2. Язык аккаунта Facebook — **English**. Диалог Meta игнорирует параметр
    `locale=` и идёт на языке аккаунта.
 3. Язык CRM — **English** (переключатель языка в интерфейсе).
@@ -100,15 +107,36 @@ Instagram-разрешения отклоняли дважды (01.10 и 08.10) 
 
 ## Что написать в заявке рядом с видео
 
-- Запись сделана одним дублем, это настоящая запись экрана, а не монтаж кадров.
-- Подключение выполняет **сам владелец аккаунта** через Embedded Signup; таймкод
-  экрана согласия указать прямо в тексте.
-- В показанном потоке **System User token не используется**, поток не
-  server-to-server: ответ отправляется из браузера оператора через наш сервер.
-- Свободные ответы ограничены 24-часовым окном обслуживания; вне окна
-  используется одобренный Meta шаблон.
-- Демонстрация идёт на собственном номере владельца и его тестовом контакте,
-  чужих данных в кадре нет.
+Готовый текст, остаётся подставить таймкоды вместо `0:00`:
+
+> LeadDrive CRM, operated by FANUM LLC, is a multi-tenant CRM with a shared
+> inbox. The attached file is a single continuous screen recording, not a
+> sequence of captured frames.
+>
+> 0:00 A business admin signs in to LeadDrive CRM.
+> 0:00 Settings → Channels → WhatsApp. The admin starts "Connect WhatsApp with Meta".
+> 0:00 Meta's Embedded Signup opens at the Facebook sign-in screen. The business
+> owner signs in with their own Facebook account.
+> 0:00 The owner selects the business portfolio, the WhatsApp Business Account and
+> the business phone number.
+> 0:00 The owner grants the permissions on Meta's consent screen. This is where
+> whatsapp_business_messaging is granted to the app.
+> 0:00 The dialog closes and the number appears in the CRM as a connected channel.
+> Our server exchanges the one-time code for a business token, subscribes the
+> WhatsApp Business Account to our webhook and registers the number for Cloud API.
+> 0:00 A customer sends a WhatsApp message to that business number from their phone.
+> 0:00 The message arrives in the LeadDrive inbox through our webhook endpoint.
+> 0:00 An authorized operator opens the conversation and sends a reply from the CRM
+> with POST /{phone-number-id}/messages. This is the use of whatsapp_business_messaging.
+> 0:00 The customer receives the reply; delivery and read statuses come back through
+> webhooks and are displayed in the CRM.
+>
+> The flow shown is not server-to-server and does not use a System User token: the
+> connection is performed by the account owner through Embedded Signup, and the
+> reply is sent by a signed-in operator. Free-form replies are limited to the
+> 24-hour customer service window; outside it the CRM sends a Meta-approved
+> template. The number shown belongs to our own business and the customer side is
+> our own test contact, so no third-party data appears in the recording.
 
 ## Чего не делать
 
