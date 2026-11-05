@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#eef0f4;font:15px/1.45 "Segoe UI",Arial,sans-serif;color:#162335}
+section{display:none}
+section:target{display:block}
+.board{width:1440px;padding:28px 36px 32px;background:#eef0f4}
+.bt{font-size:26px;font-weight:700;margin-bottom:4px}
+.bs{color:#5a6678;font-size:15px;margin-bottom:20px;max-width:1240px}
+.note{font-size:13px;color:#4a5568;margin-top:10px;line-height:1.45}
+.note b{color:#162335}
+.num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#162335;color:#fff;font-size:12px;font-weight:700;align-items:center;justify-content:center;margin-right:6px;vertical-align:1px}
+.cc{background:#fff;border:1px solid #e1e5eb;border-radius:12px;padding:18px 20px}
+.cc h3{font-size:17px;margin-bottom:3px}
+.sub{color:#6b7280;font-size:13px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:#6b7280;font-weight:600;font-size:12px;padding:7px 8px;border-bottom:1px solid #e5e7eb;background:#f8f9fb}
+td{padding:9px 8px;border-bottom:1px solid #eef0f3;vertical-align:middle}
+.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:600;font-size:14px;padding:0 16px;height:38px;white-space:nowrap}
+.btn.or{background:#dc5507;color:#fff}
+.btn.ol{border:1.5px solid #cfd5dd;color:#162335;background:#fff}
+.btn.dis{background:#f1f3f6;color:#9aa3af;border:1.5px solid #e5e7eb}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.ok{background:#e0f0e6;color:#17674f}
+.chip.warn{background:#f8edce;color:#815300}
+.chip.bad{background:#f7e1e3;color:#a8313c}
+.chip.gray{background:#eceff3;color:#4b5563}
+.chip.blue{background:#e3ecfa;color:#1f4f9a}
+.sm{font-size:12px;color:#6b7280}
+.red{color:#a8313c;font-weight:600}
+.lnk{color:#dc5507;font-weight:600;font-size:13px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.tabs{display:flex;gap:18px;font-size:14px;color:#6b7280;border-bottom:1px solid #e5e7eb;margin-bottom:14px}
+.tabs span{padding:8px 0}
+.tabs .on{color:#162335;font-weight:700;border-bottom:2px solid #dc5507}
+.grid2{display:grid;grid-template-columns:1.15fr 1fr;gap:24px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.tile{border:1px solid #e1e5eb;border-radius:10px;padding:12px 14px;background:#fff}
+.tile b{display:block;font-size:28px;letter-spacing:-.5px}
+.tile.ok b{color:#17674f}.tile.warn b{color:#815300}.tile.bad b{color:#a8313c}
+.tile.on{outline:2px solid #162335}
+.src{border:1.5px solid #cfd5dd;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.src h4{font-size:16px}
+.src.dim{opacity:1;background:#fafbfc}
+.drop{border:2px dashed #cfd5dd;border-radius:10px;padding:18px;text-align:center;color:#6b7280;font-size:13px}
+.shade{background:rgba(22,35,53,.38);border-radius:12px;padding:30px;display:flex;justify-content:center}
+.modal{background:#fff;border-radius:14px;width:860px;padding:22px 24px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.modal h3{font-size:20px;margin-bottom:4px}
+.row{display:flex;gap:10px;align-items:center}
+.callout{background:#fff7e6;border:1px solid #f0d9a8;border-radius:10px;padding:10px 14px;font-size:13px;color:#5b4410;margin-top:12px}
+.callout.g{background:#eef7f1;border-color:#cde5d6;color:#1d4d3c}
+.was{color:#9aa3af;text-decoration:line-through}
+.bar{height:8px;border-radius:4px;background:#e6eaef;overflow:hidden;width:140px;display:inline-block;vertical-align:middle}
+.bar i{display:block;height:100%;background:#17674f}
+.poster{border:1px solid #e1e5eb;border-radius:12px;padding:16px;text-align:center;background:#fff;width:230px}
+.qr{width:120px;height:120px;margin:8px auto;background:repeating-linear-gradient(90deg,#162335 0 6px,#fff 6px 10px),#fff;border-radius:6px;opacity:.85}
+</style></head><body>
+
+<!-- ============ 1. Откуда загрузить ============ -->
+<section class="board" id="b1">
+  <div class="bt">1. Персонал → Сотрудники → «Загрузить сотрудников»</div>
+  <div class="bs">Новая кнопка рядом с «Добавить сотрудника». Два источника, а дальше один и тот же путь: проверка → кнопка «Загрузить» → запись. Пока кадровик не нажал кнопку, в базе ничего не меняется.</div>
+  <div class="shade">
+    <div class="modal">
+      <h3>Загрузить сотрудников</h3>
+      <div class="sub">Сначала проверим список и покажем, что изменится. Записи — только по вашей кнопке.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="src">
+          <h4>Из файла Excel</h4>
+          <div class="sm">Заполните шаблон или скачайте нынешний список, поправьте и загрузите обратно.</div>
+          <div class="row"><span class="btn ol">Скачать шаблон</span><span class="btn ol">Скачать нынешний список</span></div>
+          <div class="drop">Перетащите сюда файл .xlsx<br>или <span class="lnk">выберите файл</span> · до 2000 строк</div>
+        </div>
+        <div class="src">
+          <h4>Из 1С</h4>
+          <div class="sm">Список сотрудников из кадровой базы 1С вашей компании.</div>
+          <div class="row"><span class="chip ok">✓ 1С подключена</span><span class="sm">последнее обновление сегодня в 03:00</span></div>
+          <div class="row" style="margin-top:4px"><span class="btn or">Получить список из 1С</span></div>
+          <div class="sm" style="margin-top:6px">Каждую ночь CRM сама берёт изменения из 1С: новых принятых добавляет, должности и отделы обновляет. Увольнения — только после подтверждения кадровика (экран 3).</div>
+        </div>
+      </div>
+      <div class="callout"><b>Колонки шаблона:</b> ФИО*, телефон WhatsApp*, должность, департамент, отдел, телефон руководителя, основной филиал, дата приёма. <span style="color:#815300">* — обязательно.</span> Табельный номер не вводится: LeadDrive выдаёт его сам, как и сейчас.</div>
+    </div>
+  </div>
+  <div class="note"><span class="num">1</span><b>Если 1С не подключена,</b> вместо кнопки — «1С не подключена» и подсказка, к кому обратиться; Excel работает и без неё.</div>
+  <div class="note"><span class="num">2</span><b>Человека узнаём по телефону</b> (он же вход в Time), а в «нынешнем списке» — по табельному номеру LeadDrive. В 1С — по коду сотрудника из 1С. Повторная загрузка того же файла дублей не создаёт.</div>
+</section>
+
+<!-- ============ 2. Проверка ============ -->
+<section class="board" id="b2">
+  <div class="bt">2. Проверка перед записью</div>
+  <div class="bs">Плитки — сколько людей добавится, обновится, не изменится и сколько строк с ошибками. Строки с ошибками не записываются; их можно скачать файлом, исправить и загрузить снова.</div>
+  <div class="cc">
+    <div class="top"><div><h3>Проверка: сотрудники_зейтун.xlsx</h3><div class="sub" style="margin:0">1 000 строк · ничего ещё не записано</div></div>
+      <div class="row"><span class="btn ol">Отменить</span><span class="btn or">Загрузить 952 сотрудника</span></div></div>
+    <div class="tiles">
+      <div class="tile ok"><span class="sm">Новые</span><b>931</b></div>
+      <div class="tile warn"><span class="sm">Обновятся</span><b>21</b></div>
+      <div class="tile"><span class="sm">Без изменений</span><b>0</b></div>
+      <div class="tile bad on"><span class="sm">С ошибками — не будут записаны</span><b>48</b></div>
+    </div>
+    <div class="tabs"><span>Новые 931</span><span>Обновятся 21</span><span class="on">С ошибками 48</span><span style="margin-left:auto" class="lnk">Скачать строки с ошибками (.xlsx)</span></div>
+    <table>
+      <tr><th style="width:60px">Строка</th><th>ФИО</th><th>Телефон</th><th>Отдел</th><th>Филиал</th><th>Что не так</th></tr>
+      <tr><td>14</td><td>Əliyeva Nərmin</td><td>050 123 45</td><td>Satış</td><td>Beqok Biznes Mərkəzi</td><td class="red">Неполный номер телефона</td></tr>
+      <tr><td>87</td><td>Hüseynov Elvin</td><td>+994 55 210 33 44</td><td>Anbar</td><td>Anbar — Binəqədi</td><td class="red">Такого филиала нет. Заведите его в «Филиалах» или исправьте название</td></tr>
+      <tr><td>112</td><td>Məmmədov Rauf</td><td>+994 50 444 12 12</td><td>Logistika</td><td>Beqok Biznes Mərkəzi</td><td class="red">Этот же телефон в строке 640 (Məmmədova Leyla) — у двух людей один вход быть не может</td></tr>
+      <tr><td>305</td><td>Quliyev Tural</td><td>+994 70 300 90 01</td><td>Satış</td><td>Beqok Biznes Mərkəzi</td><td class="red">Руководитель с телефоном +994 50 000 11 22 не найден ни в файле, ни в LeadDrive</td></tr>
+      <tr><td>418</td><td>—</td><td>+994 51 777 65 43</td><td>Mühasibat</td><td>Beqok Biznes Mərkəzi</td><td class="red">Нет ФИО</td></tr>
+    </table>
+    <div class="callout g" style="margin-top:14px"><b>Вкладка «Обновятся»</b> показывает только то, что меняется, — было → стало: например, Kərimov Samir · отдел <span class="was">Satış</span> → Marketinq. Имя и телефон того, кто уже входит в Time, файл не меняет — это делается в его карточке.</div>
+  </div>
+  <div class="note"><span class="num">3</span><b>Руководитель может быть в том же файле</b> — связь ставится после того, как все строки прочитаны. Новые департаменты и отделы создаются по названию; филиалы — нет: у филиала нужна точка на карте, его заводят заранее.</div>
+  <div class="note"><span class="num">4</span><b>Всё или ничего:</b> 952 человека записываются одной операцией. Оборвалась связь — не записан никто, и повтор с тем же файлом начинает с нуля без дублей.</div>
+</section>
+
+<!-- ============ 3. 1С: что изменилось ============ -->
+<section class="board" id="b3">
+  <div class="bt">3. Ночное обновление из 1С</div>
+  <div class="bs">Каждую ночь CRM сверяет список с 1С. Принятые и переведённые применяются сами, а увольнение ждёт кадровика: уволенный в LeadDrive не может отметиться, и ошибка в 1С не должна выключить человека молча.</div>
+  <div class="grid2">
+    <div class="cc">
+      <h3>Из 1С сегодня в 03:00</h3>
+      <div class="sub">Применено само · журнал изменений хранится</div>
+      <table>
+        <tr><th>Что</th><th>Кто</th><th>Изменение</th></tr>
+        <tr><td><span class="chip ok">Принят</span></td><td>Səfərov Orxan</td><td>Anbar · с 05.11.2026</td></tr>
+        <tr><td><span class="chip ok">Принят</span></td><td>Nəsirova Aysel</td><td>Satış · с 05.11.2026</td></tr>
+        <tr><td><span class="chip blue">Переведён</span></td><td>Kərimov Samir</td><td>отдел <span class="was">Satış</span> → Marketinq</td></tr>
+        <tr><td><span class="chip blue">Должность</span></td><td>Abbasova Günel</td><td><span class="was">Mütəxəssis</span> → Baş mütəxəssis</td></tr>
+        <tr><td><span class="chip bad">Ошибка</span></td><td>Rzayev Kamran</td><td class="red">В 1С нет телефона — не добавлен</td></tr>
+      </table>
+    </div>
+    <div class="cc">
+      <h3>Уволены в 1С — подтвердите</h3>
+      <div class="sub">Пока не подтверждено, человек отмечается как раньше</div>
+      <table>
+        <tr><th>Кто</th><th>Последний день в 1С</th><th></th></tr>
+        <tr><td>Hacıyev Nicat<div class="sm">Logistika</div></td><td>31.10.2026</td><td><span class="btn or" style="height:32px">Уволить</span> <span class="lnk" style="margin-left:8px">Не сейчас</span></td></tr>
+        <tr><td>Babayeva Səbinə<div class="sm">Satış · отмечалась вчера</div></td><td>04.11.2026</td><td><span class="btn or" style="height:32px">Уволить</span> <span class="lnk" style="margin-left:8px">Не сейчас</span></td></tr>
+      </table>
+      <div class="callout">«Уволить» — то же увольнение, что в карточке: с датой из 1С, история человека сохраняется, войти в Time он больше не может.</div>
+    </div>
+  </div>
+  <div class="note"><span class="num">5</span><b>Что из 1С главнее:</b> ФИО, должность, отдел, руководитель, дата приёма и увольнения — правятся в 1С, в LeadDrive эти поля у такого сотрудника только для чтения (как аптеки из 1С в CRM). Филиал и телефон 1С может и не знать — тогда их ставит кадровик.</div>
+</section>
+
+<!-- ============ 4. Раздать приложение ============ -->
+<section class="board" id="b4">
+  <div class="bt">4. Раздать Time — по отделам, а не всем сразу</div>
+  <div class="bs">После загрузки кадровик видит, кто уже вошёл в Time, а кто нет. Подключать удобнее по отделу или филиалу, 50–100 человек в день.</div>
+  <div class="grid2">
+    <div class="cc">
+      <h3>Кто уже в Time</h3>
+      <div class="sub">По отделам · обновляется сразу, как человек вошёл</div>
+      <table>
+        <tr><th>Отдел</th><th>Вошли</th><th></th></tr>
+        <tr><td>İnformasiya Texnologiyaları</td><td>18 из 18</td><td><span class="bar"><i style="width:100%"></i></span></td></tr>
+        <tr><td>Mühasibat</td><td>34 из 41</td><td><span class="bar"><i style="width:83%"></i></span> <span class="lnk">7 не вошли</span></td></tr>
+        <tr><td>Satış</td><td>12 из 210</td><td><span class="bar"><i style="width:6%"></i></span> <span class="lnk">198 не вошли</span></td></tr>
+        <tr><td>Anbar</td><td>0 из 380</td><td><span class="bar"><i style="width:0"></i></span> <span class="lnk">380 не вошли</span></td></tr>
+      </table>
+      <div class="callout g">В списке сотрудников — новая колонка «Time»: <span class="chip ok">вошёл 03.11</span> или <span class="chip gray">ещё нет</span>, и фильтр по ней.</div>
+    </div>
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div class="poster">
+        <div style="font-weight:700">Zeytun Pharma</div>
+        <div class="sm">Учёт рабочего дня</div>
+        <img class="qr" src="qr.svg" style="background:none;opacity:1">
+        <div style="font-size:13px">1. Наведите камеру — скачайте <b>Time</b><br>2. Введите свой номер WhatsApp<br>3. Придёт код — придумайте пароль</div>
+      </div>
+      <div style="flex:1">
+        <div class="cc">
+          <h3>Листовка для отдела</h3>
+          <div class="sub">PDF на A4: QR на скачивание и три шага на az и ru. Повесить у входа или раздать на собрании.</div>
+          <span class="btn ol">Скачать листовку (PDF)</span>
+        </div>
+        <div class="callout">Письмо каждому в WhatsApp со ссылкой — тоже можно, но это новый шаблон у Meta и платное сообщение на каждого человека. Предлагаю начать с листовки.</div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><span class="num">6</span><b>До запуска чиним вход с одного Wi-Fi:</b> сейчас с одного адреса пускают 10 входов в минуту, и на собрании в офисе 11-й человек получит отказ.</div>
+</section>
+</body></html>

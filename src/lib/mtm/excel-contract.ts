@@ -211,7 +211,7 @@ export function buildMtmExcelTemplate(type: MtmExcelImportType, locale: MtmExcel
   return workbook
 }
 
-function valueFromCell(cell: ExcelJS.Cell): unknown {
+export function valueFromCell(cell: ExcelJS.Cell): unknown {
   const value = cell.value
   if (value == null) return null
   if (value instanceof Date) {
@@ -282,7 +282,7 @@ async function normalizePrefixedSpreadsheetMl(bytes: Buffer): Promise<Buffer> {
   }))
 }
 
-async function loadExcelWorkbook(bytes: Buffer): Promise<ExcelJS.Workbook> {
+export async function loadExcelWorkbook(bytes: Buffer): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook()
   try {
     await workbook.xlsx.load(bytes as unknown as ExcelJS.Buffer)

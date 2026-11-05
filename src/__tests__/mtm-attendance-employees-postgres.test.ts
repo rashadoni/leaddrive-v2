@@ -1068,4 +1068,113 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     await expect(tenant("employee-pg-b", () => readAttendancePhoneMatch(actor, { phone }))).rejects.toThrow()
   })
 
+
+  // Owner, 2026-11-05: Zeytun's ~1000 people come from Excel (and 1С) — «Загрузить сотрудников».
+  it("loads employees from Excel: checks first, writes through Personnel's own functions, and adds nobody twice", async () => {
+    const ExcelJS = (await import("exceljs")).default
+    const load = await import("@/lib/mtm/attendance-employee-import")
+    const org = "employee-pg-import", actor = { organizationId: org, userId: "import-admin", principalType: "session" as const }
+    const branchId = randomUUID()
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional import organization", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      for (const [id, role] of [[actor.userId, "admin"], ["import-sales", "sales"]] as const) {
+        await prisma.user.create({ data: { id, organizationId: org, name: id, email: `${id}@example.invalid`, role, passwordHash: "unusable-fixture-hash" } })
+      }
+      await prisma.mtmAgent.create({ data: { id: "import-manager", organizationId: org, name: "Fictional head of sales", role: "MANAGER", phone: "+994551110000" } })
+      await prisma.mtmAgent.create({ data: { id: "import-field", organizationId: org, name: "Fictional field agent", role: "AGENT", phone: "+994701110009" } })
+      await prisma.mtmAttendanceBranch.create({ data: { id: branchId, organizationId: org } })
+      await prisma.mtmAttendanceBranchRevision.create({ data: { organizationId: org, branchId, version: 1, requestId: randomUUID(), requestHash: "c".repeat(64),
+        name: "Fictional Office", address: "Fictional address", latitude: 40.4, longitude: 49.8, radiusMeters: 150, active: true, createdBy: actor.userId } })
+    })
+    const file = async (header: string[], rows: unknown[][]) => {
+      const workbook = new ExcelJS.Workbook(), sheet = workbook.addWorksheet("Сотрудники")
+      sheet.addRow(header); for (const row of rows) sheet.addRow(row)
+      return Buffer.from(await workbook.xlsx.writeBuffer())
+    }
+    // HR's own sheet with Russian headings, not the template: the columns are found by their names.
+    const header = ["ФИО *", "Телефон WhatsApp", "Должность", "Департамент", "Отдел", "Телефон руководителя", "Основной филиал", "Дата приёма"]
+    const bytes = await file(header, [
+      ["Fictional Import One", "050 111 00 01", "Operator", "Fictional Commerce", "Fictional Sales", "+994 55 111 00 00", "fictional office", "05.11.2026"],
+      ["Fictional Import Two", 501110002, "", "", "", "", "", ""],
+      ["Fictional Twin A", "+994501110003", "", "", "", "", "", ""],
+      ["Fictional Twin B", "+994 50 111 00 03", "", "", "", "", "", ""],
+      ["Fictional Lost Branch", "+994501110004", "", "", "", "", "Nowhere", ""],
+      ["Fictional Lost Manager", "+994501110005", "", "", "", "+994559999999", "", ""],
+      ["", "+994501110006", "", "", "", "", "", ""],
+      ["Fictional Field Number", "+994 70 111 00 09", "", "", "", "", "", ""],
+      ["Fictional Bad Date", "+994501110007", "", "", "", "", "", "31.02.2026"],
+    ])
+    await tenant(org, async () => {
+      const counts = async () => [await prisma.user.count(), await prisma.mtmAgent.count(), await prisma.mtmAuditLog.count()]
+      // Opening the list (as the page does before the button) issues the CRM users' numbers; the check itself writes nothing.
+      await store.readAttendanceEmployees(actor)
+      const before = await counts()
+      const preview = await load.previewAttendanceImport(actor, bytes, "fictional.xlsx")
+      expect(await counts()).toEqual(before)
+      expect(preview.summary).toEqual({ total: 9, new: 2, update: 0, unchanged: 0, error: 7 })
+      const byRow = new Map(preview.rows.map(row => [row.row, row]))
+      expect(byRow.get(2)).toMatchObject({ status: "NEW", phone: "+994501110001" })
+      expect(byRow.get(3)).toMatchObject({ status: "NEW", phone: "+994501110002" })
+      expect(byRow.get(4)!.errors).toEqual([{ code: "PHONE_DUPLICATE", column: "phone", otherRow: 5 }])
+      expect(byRow.get(5)!.errors).toEqual([{ code: "PHONE_DUPLICATE", column: "phone", otherRow: 4 }])
+      expect(byRow.get(6)!.errors.map(error => error.code)).toEqual(["BRANCH_UNKNOWN"])
+      expect(byRow.get(7)!.errors.map(error => error.code)).toEqual(["MANAGER_UNKNOWN"])
+      expect(byRow.get(8)!.errors.map(error => error.code)).toEqual(["NAME_MISSING"])
+      expect(byRow.get(9)!.errors.map(error => error.code)).toEqual(["PHONE_TAKEN"])
+      expect(byRow.get(10)!.errors.map(error => error.code)).toEqual(["HIRE_DATE_INVALID"])
+      // Only an administrator checks or loads a file.
+      await expect(load.previewAttendanceImport({ ...actor, userId: "import-sales" }, bytes, "fictional.xlsx")).rejects.toMatchObject({ status: 403 })
+
+      const chosen = preview.rows.filter(row => row.status === "NEW").map(row => ({ row: row.row, key: row.key }))
+      const written = await load.applyAttendanceImport(actor, bytes, chosen)
+      expect(written.map(item => [item.row, item.outcome])).toEqual([[2, "CREATED"], [3, "CREATED"]])
+      const one = await prisma.mtmAgent.findUniqueOrThrow({ where: { id: written[0]!.agentId! }, include: { user: true, team: true, department: true } })
+      expect(one).toMatchObject({ name: "Fictional Import One", phone: "+994501110001", role: "EMPLOYEE", position: "Operator", managerId: "import-manager",
+        team: { name: "Fictional Sales" }, department: { name: "Fictional Commerce" } })
+      expect(one.personnelNumber).toMatch(/^\d{4}$/)
+      expect(one.user).toMatchObject({ role: "viewer", phone: "+994501110001", isActive: true })
+      const [primary] = await prisma.$queryRaw<Array<{ branchId: string }>>`SELECT "branchId" FROM mtm_attendance_primary_branch_revisions WHERE "agentId" = ${one.id} ORDER BY version DESC LIMIT 1`
+      expect(primary?.branchId).toBe(branchId)
+      const listed = (await store.readAttendanceEmployees(actor)).employees.find(row => row.id === one.id)!
+      expect(listed.history).toEqual([expect.objectContaining({ kind: "HIRE", date: "2026-11-05" })])
+
+      // The same file again — a repeated chunk, a second upload: nothing new.
+      const after = await counts()
+      expect((await load.applyAttendanceImport(actor, bytes, chosen)).map(item => item.outcome)).toEqual(["UNCHANGED", "UNCHANGED"])
+      const again = await load.previewAttendanceImport(actor, bytes, "fictional.xlsx")
+      expect(again.summary).toMatchObject({ new: 0, unchanged: 2, error: 7 })
+      expect(await counts()).toEqual(after)
+
+      // The downloaded list, edited and loaded back: found by the issued number, only the change is written.
+      const current = await load.buildAttendanceImportCurrentList(actor, "ru")
+      const parsed = await load.parseAttendanceImportWorkbook(current)
+      const mine = parsed.rows.find(row => row.values.name === "Fictional Import One")!
+      expect(mine.values).toMatchObject({ personnel_number: one.personnelNumber, phone: "+994501110001", branch: "Fictional Office", manager_phone: "+994551110000", hire_date: "2026-11-05" })
+      const edited = await file(["Табельный номер", ...header], [[one.personnelNumber, "Fictional Import One", "+994501110001", "Senior operator", "", "", "", "", ""]])
+      const update = await load.previewAttendanceImport(actor, edited, "edited.xlsx")
+      expect(update.rows[0]).toMatchObject({ status: "UPDATE", agentId: one.id, changes: [{ field: "position", from: "Operator", to: "Senior operator" }] })
+      // Changed between the check and the write: the row is not written.
+      await store.updateAttendanceEmployeeCard(actor, { agentId: one.id, position: "Changed meanwhile", teamId: one.teamId, departmentId: one.departmentId, managerId: one.managerId })
+      expect((await load.applyAttendanceImport(actor, edited, [{ row: 2, key: update.rows[0]!.key }]))[0]).toMatchObject({ outcome: "CHANGED" })
+      expect((await prisma.mtmAgent.findUniqueOrThrow({ where: { id: one.id } })).position).toBe("Changed meanwhile")
+      const fresh = await load.previewAttendanceImport(actor, edited, "edited.xlsx")
+      expect((await load.applyAttendanceImport(actor, edited, [{ row: 2, key: fresh.rows[0]!.key }]))[0]).toMatchObject({ outcome: "UPDATED", agentId: one.id })
+      expect(await prisma.mtmAgent.findUniqueOrThrow({ where: { id: one.id } })).toMatchObject({ position: "Senior operator", managerId: "import-manager", teamId: one.teamId, name: "Fictional Import One" })
+      // A personnel number with somebody else's phone is refused: a phone is a login, changed on the card.
+      const swapped = await file(["Табельный номер", ...header], [[one.personnelNumber, "Fictional Import One", "+994501110002", "", "", "", "", "", ""]])
+      expect((await load.previewAttendanceImport(actor, swapped, "swapped.xlsx")).rows[0]!.errors.map(error => error.code)).toEqual(["NUMBER_PHONE_MISMATCH"])
+    })
+  })
+
+  it("reads a Personnel list of more than a thousand cards (Zeytun, 2026-11-05)", async () => {
+    const org = "employee-pg-thousand", actor = { organizationId: org, userId: "thousand-admin", principalType: "session" as const }
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional large organization", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      await prisma.user.create({ data: { id: actor.userId, organizationId: org, name: "Fictional admin", email: "thousand-admin@example.invalid", role: "admin", passwordHash: "unusable-fixture-hash" } })
+      await prisma.mtmAgent.createMany({ data: Array.from({ length: 1100 }, (_, index) => ({ id: `thousand-${index}`, organizationId: org, name: `Fictional agent ${index}`, role: "AGENT" as const })) })
+    })
+    await expect(tenant(org, () => store.readAttendanceEmployees(actor))).resolves.toMatchObject({ timezone: "Asia/Baku" })
+  })
 })
