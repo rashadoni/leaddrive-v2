@@ -76,3 +76,33 @@ export function nextVisitAt(startsAt: string | Date, repeatCycleDays: number | n
 
 /** The cycles a salon picks from; 0 means «does not come back on a cycle». */
 export const REPEAT_CYCLE_DAYS = [0, 14, 21, 28, 42, 60, 90] as const
+
+/**
+ * The link a service gets from its own name: «Saç kəsimi» → `sac-kesimi`.
+ *
+ * The name is Azerbaijani or Russian and the link must be latin letters,
+ * digits and dashes, so asking a salon owner to invent one by hand asked them
+ * to transliterate — the one field in the form nobody could answer. Lower-case
+ * in the Azerbaijani locale first, so «I» becomes «ı» and not «i» before the
+ * table below folds it; then the letters that carry a tail or a dot are folded
+ * by Unicode decomposition, which covers every accent we do not list.
+ */
+const SLUG_LETTERS: Record<string, string> = {
+  "ə": "e", "ı": "i", "ö": "o", "ü": "u", "ş": "s", "ç": "c", "ğ": "g",
+  "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e", "ж": "zh", "з": "z",
+  "и": "i", "й": "i", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r",
+  "с": "s", "т": "t", "у": "u", "ф": "f", "х": "h", "ц": "ts", "ч": "ch", "ш": "sh",
+  "щ": "sch", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+}
+
+export function bookingSlug(title: string): string {
+  const lowered = title.toLocaleLowerCase("az")
+  let out = ""
+  for (const character of lowered) out += SLUG_LETTERS[character] ?? character
+  return out
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/, "")
+}

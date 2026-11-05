@@ -6,9 +6,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CalendarCheck, Check, Copy, Pencil, Plus } from "lucide-react"
+import { ArrowLeft, CalendarCheck, Check, Copy, Pencil, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
@@ -53,7 +54,7 @@ function newDraft(hostIds: string[]): BookingPageDraft {
   }
 }
 
-async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHostOption[]; linkBase: string } | null> {
+async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHostOption[]; linkBase: string; currency: string } | null> {
   const response = await fetch("/api/v1/booking-pages", { cache: "no-store" }).catch(() => null)
   const body = await response?.json().catch(() => null)
   return body?.success ? body.data : null
@@ -65,6 +66,7 @@ export function BookingPagesPanel() {
   const [pages, setPages] = useState<PageRow[]>([])
   const [users, setUsers] = useState<BookingHostOption[]>([])
   const [linkBase, setLinkBase] = useState("")
+  const [currency, setCurrency] = useState("")
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState<BookingPageDraft | null>(null)
   const [saving, setSaving] = useState(false)
@@ -78,6 +80,7 @@ export function BookingPagesPanel() {
         setPages(data.pages)
         setUsers(data.users)
         setLinkBase(data.linkBase.replace(/^https?:\/\//, ""))
+        setCurrency(data.currency ?? "")
       } else {
         setError(t("errLoad"))
       }
@@ -159,40 +162,53 @@ export function BookingPagesPanel() {
     <div className="space-y-6">
       {error && !draft ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <CalendarCheck className="h-6 w-6 text-muted-foreground" aria-hidden="true" />{t("settingsTitle")}
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("settingsDesc")}</p>
-        </div>
-        {!draft ? (
-          <Button onClick={() => { setError(""); setDraft(newDraft(users[0] ? [users[0].id] : [])) }}>
-            <Plus className="h-4 w-4" aria-hidden="true" />{t("newPage")}
-          </Button>
-        ) : null}
+        {draft ? (
+          <>
+            <div className="min-w-0">
+              <button type="button" onClick={() => setDraft(null)} className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground">
+                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />{t("settingsTitle")}
+              </button>
+              <h1 className="truncate text-2xl font-bold tracking-tight">{draft.title.trim() || t("newPage")}</h1>
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("editorSubtitle")}</p>
+            </div>
+            {/* The one setting that is about the service as a whole rather than
+                about one of its steps, so it sits with its name and not inside
+                the form. */}
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-full border bg-card px-3.5 py-2 text-sm font-semibold shadow-sm">
+              <Switch checked={draft.isActive} onCheckedChange={(on) => setDraft({ ...draft, isActive: on })} aria-label={t("fieldActive")} />
+              {draft.isActive ? t("fieldActive") : t("statusOff")}
+            </label>
+          </>
+        ) : (
+          <>
+            <div>
+              <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+                <CalendarCheck className="h-6 w-6 text-muted-foreground" aria-hidden="true" />{t("settingsTitle")}
+              </h1>
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("settingsDesc")}</p>
+            </div>
+            <Button onClick={() => { setError(""); setDraft(newDraft(users[0] ? [users[0].id] : [])) }}>
+              <Plus className="h-4 w-4" aria-hidden="true" />{t("newPage")}
+            </Button>
+          </>
+        )}
       </div>
 
       {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
 
       {draft ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{draft.title || t("newPage")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BookingPageEditor
-              draft={draft}
-              hosts={users}
-              categories={categories}
-              linkBase={linkBase}
-              saving={saving}
-              error={error}
-              onChange={setDraft}
-              onSave={() => void save()}
-              onCancel={() => setDraft(null)}
-            />
-          </CardContent>
-        </Card>
+        <BookingPageEditor
+          draft={draft}
+          hosts={users}
+          categories={categories}
+          linkBase={linkBase}
+          currency={currency}
+          saving={saving}
+          error={error}
+          onChange={setDraft}
+          onSave={() => void save()}
+          onCancel={() => setDraft(null)}
+        />
       ) : loading ? <p role="status">{t("workspaceLoading")}</p> : error ? <Button variant="outline" onClick={() => { setLoading(true); load() }}>{t("retry")}</Button> : pages.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">{t("emptyList")}</CardContent>
