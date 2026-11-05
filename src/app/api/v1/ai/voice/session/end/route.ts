@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
+import { cancelUnfinishedSessionDrafts } from "@/lib/ai/voice/action-draft"
 import { settleVoiceSeconds } from "@/lib/ai/voice/budget"
 import { voiceScopedWhere } from "@/lib/ai/voice/scoped-where"
 import { MAX_SESSION_SECONDS } from "@/lib/ai/voice/config"
@@ -71,15 +72,22 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
     })
     if (closed.count !== 1) continue
 
+    // Разговор кончился — кончился и его незавершённый черновик. Иначе он
+    // остаётся висеть невидимым состоянием сессии, которое пользователь не
+    // может ни увидеть, ни убрать (см. cancelUnfinishedSessionDrafts).
+    const cancelledDrafts = await cancelUnfinishedSessionDrafts(auth.orgId, session.id, "session_ended", now)
+
     // Settle the same month in which the reservation was made. This matters
     // for a session that crosses a month boundary by a few minutes.
     await settleVoiceSeconds(auth.orgId, auth.userId, session.reservedSeconds, billed, session.startedAt)
 
     await logAudit(auth.orgId, "voice_session_ended", "voice_session", session.id, undefined, {
       userId: auth.userId,
-      newValue: { billedSeconds: billed, status: terminalStatus },
+      newValue: { billedSeconds: billed, status: terminalStatus, cancelledDrafts },
     })
 
+    // Ответ не меняется: число отменённых черновиков нужно журналу, а не
+    // клиенту, и контракт этого роута ломать незачем.
     return NextResponse.json({ data: { billedSeconds: billed } })
   }
 

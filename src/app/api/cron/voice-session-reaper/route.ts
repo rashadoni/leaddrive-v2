@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { settleVoiceSeconds } from "@/lib/ai/voice/budget"
+import { cancelUnfinishedSessionDrafts } from "@/lib/ai/voice/action-draft"
 import { HEARTBEAT_GRACE_SECONDS } from "@/lib/ai/voice/config"
 import { voiceMarkerIsPreConnection } from "@/lib/ai/voice/session-marker"
 
@@ -89,6 +90,10 @@ export async function POST(req: NextRequest) {
         },
       })
       if (closed.count !== 1) continue
+
+      // Вкладку закрыли, не сказав ни «подтверждаю», ни «отмена». Черновик
+      // уходит вместе с разговором, которому он принадлежал.
+      await cancelUnfinishedSessionDrafts(s.organizationId, s.id, "session_abandoned")
 
       await settleVoiceSeconds(
         s.organizationId,
