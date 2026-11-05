@@ -236,7 +236,7 @@ function isAppHostedMarketingPath(pathname: string): boolean {
 import { getOrgSubdomain } from "@/lib/tenant-domain"
 
 // Paths that should be rate-limited more aggressively
-const RATE_LIMITED_PATHS = ["/api/auth", "/login", "/forgot-password", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/2fa", "/api/v1/auth/totp", "/api/v1/auth/verify-2fa", "/api/v1/auth/verify-sms-2fa", "/api/v1/auth/resend-sms-2fa", "/api/v1/auth/sms-otp", "/api/v1/auth/sms-2fa", "/api/v1/mtm/mobile/auth"]
+const RATE_LIMITED_PATHS = ["/api/auth", "/login", "/forgot-password", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/2fa", "/api/v1/auth/totp", "/api/v1/auth/verify-2fa", "/api/v1/auth/verify-sms-2fa", "/api/v1/auth/resend-sms-2fa", "/api/v1/auth/sms-otp", "/api/v1/auth/sms-2fa"]
 
 // CSP policy lives in src/lib/csp.ts (unit-testable, see tests)
 import { buildCsp, CSP_REPORT_URI, type FrameAncestorsMode } from "@/lib/csp"
@@ -532,6 +532,23 @@ const authMiddleware = auth(async (req) => {
         `[cross-tenant-block] session-slug=${xtSessionSlug || "(none)"} host-slug=${tenantSlug} path=${redactOpaquePathSegments(pathname)} user=${xtSession?.user?.id || "?"}`,
       )
       return withCspHeaders(response, nonce)
+    }
+  }
+
+  // Sign-in to the phone apps (Time, MTM). An office signs its people in from one
+  // Wi-Fi address — 50 at a meeting when Time is rolled out — and each first
+  // sign-in is three requests (code, code check, password). In the shared
+  // 10/min `auth:` bucket the fourth person in a minute was refused. Each route
+  // keeps its own per-address and per-number limits; this is the flood ceiling.
+  if (pathname.startsWith("/api/v1/mtm/mobile/auth") && req.method === "POST") {
+    const ip = clientIp(req)
+    const key = `mobile-auth:${ip}`
+    if (!checkRateLimit(key, RATE_LIMIT_CONFIG.mobileAuth)) {
+      log429("mobile-auth", key, pathname)
+      return withCspHeaders(
+        NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 }),
+        nonce,
+      )
     }
   }
 

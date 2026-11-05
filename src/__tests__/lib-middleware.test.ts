@@ -12,6 +12,7 @@ vi.mock("@/lib/rate-limit", () => ({
     webhook: { maxRequests: 600, windowMs: 60000 },
     inboundReadiness: { maxRequests: 3600, windowMs: 60000 },
     attendanceScreen: { maxRequests: 300, windowMs: 60000 },
+    mobileAuth: { maxRequests: 300, windowMs: 60000 },
   },
 }))
 
@@ -855,6 +856,28 @@ describe("middleware", async () => {
     vi.mocked(checkRateLimit).mockReturnValue(false)
     const req = makeReq({ pathname: "/api/v1/public/attendance-screen/desk-pair", method: "POST", auth: null, headers: { "x-real-ip": "203.0.113.22" } })
     const res = await authMiddleware(req)
+    expect(res.status).toBe(429)
+  })
+
+  it("gives sign-in to the phone apps its own bucket, not the 10/min web sign-in one", async () => {
+    // Fifty people signing in to Time at one meeting share the office address.
+    for (const route of ["", "/code", "/code/verify", "/password"]) {
+      vi.mocked(checkRateLimit).mockClear()
+      vi.mocked(checkRateLimit).mockImplementation((key: string) => !key.startsWith("auth:"))
+      const req = makeReq({ pathname: `/api/v1/mtm/mobile/auth${route}`, method: "POST", auth: null, headers: { "x-real-ip": "203.0.113.31" } })
+      const res = await authMiddleware(req)
+      expect(res.status, route).not.toBe(429)
+      expect(vi.mocked(checkRateLimit).mock.calls.map(call => call[0]), route).toEqual(["mobile-auth:203.0.113.31"])
+      expect(vi.mocked(checkRateLimit).mock.calls[0]?.[1]).toEqual({ maxRequests: 300, windowMs: 60000 })
+    }
+  })
+
+  it("keeps web sign-in in the 10/min bucket and still refuses a phone sign-in flood", async () => {
+    vi.mocked(checkRateLimit).mockClear()
+    await authMiddleware(makeReq({ pathname: "/api/auth/callback/credentials", method: "POST", auth: null, headers: { "x-real-ip": "203.0.113.32" } }))
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("auth:203.0.113.32")
+    vi.mocked(checkRateLimit).mockReturnValue(false)
+    const res = await authMiddleware(makeReq({ pathname: "/api/v1/mtm/mobile/auth/code", method: "POST", auth: null, headers: { "x-real-ip": "203.0.113.33" } }))
     expect(res.status).toBe(429)
   })
 

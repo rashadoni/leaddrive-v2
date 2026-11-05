@@ -27,6 +27,10 @@ export const RATE_LIMIT_CONFIG = {
   // other request (2026-11-04). Each route keeps its own per-address limit
   // (`consumePublicRateLimit`); this is only the flood ceiling.
   attendanceScreen: { maxRequests: 300, windowMs: 60000 } as RateLimitConfig,
+  // Sign-in to Time/MTM (/api/v1/mtm/mobile/auth*): one office Wi-Fi is one
+  // address for everybody signing in. The routes limit each number and each
+  // address themselves; this is only the flood ceiling (2026-11-05).
+  mobileAuth: { maxRequests: 300, windowMs: 60000 } as RateLimitConfig,
 }
 
 /**

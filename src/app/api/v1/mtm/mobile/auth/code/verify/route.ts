@@ -51,7 +51,9 @@ export async function POST(req: NextRequest) {
       if (!body.ok) return body.response
       const { organizationSlug, phone, code, application, challengeId } = body.value
       const limited = await codeFlowRateLimit(req, "mtm-mobile-login-code-verify", `${organizationSlug}:${phoneDigits(phone)}`, {
-        ip: [20, 600],
+        // One office Wi-Fi is one address (2026-11-05; was 20). Guessing a
+        // code is bounded by the number and by the code's own lock.
+        ip: [200, 600],
         principal: [10, 600],
       })
       if (limited) return limited

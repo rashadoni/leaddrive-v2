@@ -58,8 +58,11 @@ export async function POST(req: NextRequest) {
       if (!body.ok) return body.response
       const { organizationSlug, phone, language, application } = body.value
       const challengeId = application ? randomUUID() : undefined
+      // Per address: an office asks codes for its people from one Wi-Fi —
+      // 100 in 10 minutes covers a sign-in meeting. Codes go only to people the
+      // company has added, five an hour per number (2026-11-05; was 10).
       const limited = await codeFlowRateLimit(req, "mtm-mobile-login-code", `${organizationSlug}:${phoneDigits(phone)}`, {
-        ip: [10, 600],
+        ip: [100, 600],
         principal: [5, 3600],
       })
       if (limited) return limited

@@ -10,7 +10,7 @@ import { readLegacyPhoneCredentialBoundaryInTransaction } from "@/lib/identity/l
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { passwordPolicyError } from "@/lib/password-policy"
-import { clientIp } from "@/lib/request-ip"
+import { hashForRateLimit } from "@/lib/rate-limit"
 import { MOBILE_LOGIN_ORGANIZATION_SELECT } from "@/lib/mtm/mobile-login-phone"
 import {
   mobileAppRefusal,
@@ -47,7 +47,9 @@ export async function POST(req: NextRequest) {
     return await runWithRlsBypass(async () => {
       const body = await readCodeFlowBody(req, SetPasswordSchema)
       if (!body.ok) return body.response
-      const limited = await codeFlowRateLimit(req, "mtm-mobile-password-setup", clientIp(req), { ip: [20, 600], principal: [20, 600] })
+      // Per address for an office Wi-Fi (2026-11-05; was 20, and the address
+      // was also the "principal"), per setup token for the person.
+      const limited = await codeFlowRateLimit(req, "mtm-mobile-password-setup", await hashForRateLimit(body.value.setupToken), { ip: [200, 600], principal: [10, 600] })
       if (limited) return limited
       if (body.value.setupToken.startsWith("lds")) {
         const { setupToken, password, organizationSlug, application } = body.value
