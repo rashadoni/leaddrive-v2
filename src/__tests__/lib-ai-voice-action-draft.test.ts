@@ -5,7 +5,7 @@ const deps = vi.hoisted(() => ({
   intentFindFirst: vi.fn(),
   intentUpdateMany: vi.fn(async () => ({ count: 0 })),
   intentCreate: vi.fn(),
-  intentFindMany: vi.fn(async () => [] as unknown[]),
+  intentFindMany: vi.fn(async (_args?: unknown) => [] as unknown[]),
   eventCreate: vi.fn(async () => ({ id: "draft-event-1" })),
   sessionFindFirst: vi.fn<() => Promise<{ id: string } | null>>(async () => ({ id: "voice-1" })),
   leadFindFirst: vi.fn(),
@@ -574,6 +574,11 @@ type FindFirstWhere = {
   executionLeaseExpiresAt?: { lte?: Date }
 }
 
+/** Какое состояние спрашивает выборка: строку «executing» или набор черновиков. */
+function askedState(args: unknown): unknown {
+  return (args as { where?: { state?: unknown } } | undefined)?.where?.state
+}
+
 function routeFindFirst(rows: {
   replay?: unknown
   expired?: unknown
@@ -744,12 +749,12 @@ describe("поправка к той же задаче дополняет чер
 
 describe("конец разговора закрывает его незавершённый черновик", () => {
   it("отменяет незавершённые и не трогает исполняемый", async () => {
-    deps.intentFindMany.mockImplementation(async (args: {
-      where?: { state?: string | { in: string[] } }
-    }) => (typeof args?.where?.state === "string" ? [] : [
-      storedIntent({ id: "intent-1", state: "awaiting_confirmation" }),
-      storedIntent({ id: "intent-2", state: "collecting" }),
-    ]))
+    deps.intentFindMany.mockImplementation(async (args?: unknown) => (
+      askedState(args) === "executing" ? [] : [
+        storedIntent({ id: "intent-1", state: "awaiting_confirmation" }),
+        storedIntent({ id: "intent-2", state: "collecting" }),
+      ]
+    ))
     deps.intentUpdateMany.mockResolvedValue({ count: 1 })
 
     const cancelled = await cancelUnfinishedSessionDrafts("org-1", "voice-1", "session_ended")
@@ -770,15 +775,15 @@ describe("конец разговора закрывает его незавер
   // Тот же конец, последнее место, где его не было: исполнение, начатое и
   // брошенное. Разговор кончился — кончилось и оно.
   it("закрывает брошенное исполнение, у которого истекла лиза", async () => {
-    deps.intentFindMany.mockImplementation(async (args: {
-      where?: { state?: string | { in: string[] } }
-    }) => (args?.where?.state === "executing"
-      ? [storedIntent({
-          id: "intent-exec",
-          state: "executing",
-          executionLeaseExpiresAt: new Date(Date.now() - 1),
-        })]
-      : []))
+    deps.intentFindMany.mockImplementation(async (args?: unknown) => (
+      askedState(args) === "executing"
+        ? [storedIntent({
+            id: "intent-exec",
+            state: "executing",
+            executionLeaseExpiresAt: new Date(Date.now() - 1),
+          })]
+        : []
+    ))
     deps.intentUpdateMany.mockResolvedValue({ count: 1 })
 
     expect(await cancelUnfinishedSessionDrafts("org-1", "voice-1", "session_ended")).toBe(1)
