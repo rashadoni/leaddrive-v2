@@ -430,6 +430,13 @@ export const ZEYTUN_LINE_PROMPT = [
     "Asked about a product's forms, makers, stock or price, answer briefly from a lookup. "],
   ["candidateCount is how many run in all, so offer the returned items (at most three) with promotion.buy, promotion.get and until (said as day and month in words: 10 noyabr), never ask to narrow.",
     "offer the returned items (at most three) with promotion.buy, promotion.get and until (day and month in words: 10 noyabr), never ask to narrow."],
+  // Owner 2026-11-05: «аналоги нужны». Two rules pulled apart: "ask it to be
+  // spelled" and "offer a substitute if you surely know its INN". On the voice
+  // stand a misheard Fluimucil ("Floimitil") got the substitute in about half
+  // of 37 calls and a spelling request in the rest; live calls never got one.
+  ["else ask its strength or to spell it. Say a product is not found only when no returned name sounds close.",
+    "else ask its strength or to spell it. Say a product is not found only when no returned name sounds close. If nothing close returns but you recognise the medicine, also misheard (Floimitil is Fluimucil), it is not available: say so and offer its substitute at once; ask to spell only a medicine you cannot tell."],
+  ["if you surely know its INN (e.g.", "if you know its INN (e.g."],
 ].reduce((prompt, [from, to]) => {
   if (!prompt.includes(from)) throw new Error("zeytun_line_prompt_drift")
   return prompt.replace(from, to)
