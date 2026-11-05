@@ -16,13 +16,22 @@ type SessionUpdateArgs = {
 }
 
 const deps = vi.hoisted(() => ({
+  intentFindMany: vi.fn(async () => [] as unknown[]),
   findMany: vi.fn<() => Promise<StaleSession[]>>(),
   updateMany: vi.fn<(args: SessionUpdateArgs) => Promise<{ count: number }>>(async () => ({ count: 1 })),
   settleVoiceSeconds: vi.fn(async () => {}),
 }))
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { voiceSession: { findMany: deps.findMany, updateMany: deps.updateMany } },
+  prisma: {
+    voiceSession: { findMany: deps.findMany, updateMany: deps.updateMany },
+    // Брошенный разговор уносит с собой и незавершённый черновик (2026-11-05).
+    aiActionIntent: { findMany: deps.intentFindMany },
+    $transaction: async (run: (tx: unknown) => unknown) => run({
+      aiActionIntent: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      aiActionIntentEvent: { create: vi.fn(async () => ({ id: "event-1" })) },
+    }),
+  },
 }))
 vi.mock("@/lib/rls-context", () => ({
   runWithRlsBypass: (operation: () => Promise<Response>) => operation(),

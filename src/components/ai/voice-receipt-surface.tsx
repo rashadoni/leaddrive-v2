@@ -466,7 +466,10 @@ export function VoiceReceiptSurface({
         </div>
         <button
           type="button"
-          onClick={() => store.dismiss()}
+          // Закрыть — значит закрыть. Раньше крестик прятал квитанцию только
+          // на экране, а черновик оставался жить в сессии: пользователь считал
+          // задачу брошенной, а сервер — незавершённой.
+          onClick={() => void discard("button")}
           data-testid="voice-receipt-dismiss"
           aria-label={t("receipt.dismiss")}
           title={t("receipt.dismiss")}

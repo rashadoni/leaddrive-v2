@@ -16,6 +16,7 @@ type SessionUpdateArgs = {
 }
 
 const deps = vi.hoisted(() => ({
+  intentFindMany: vi.fn(async () => [] as unknown[]),
   findFirst: vi.fn<() => Promise<Session | null>>(),
   updateMany: vi.fn<(args: SessionUpdateArgs) => Promise<{ count: number }>>(async () => ({ count: 1 })),
   settleVoiceSeconds: vi.fn(async () => {}),
@@ -27,7 +28,16 @@ vi.mock("@/lib/with-rls", () => ({
     (req: NextRequest) => handler(req, { orgId: "org-1", userId: "user-1", role: "admin" }),
 }))
 vi.mock("@/lib/prisma", () => ({
-  prisma: { voiceSession: { findFirst: deps.findFirst, updateMany: deps.updateMany } },
+  prisma: {
+    voiceSession: { findFirst: deps.findFirst, updateMany: deps.updateMany },
+    // Конец разговора закрывает и его незавершённый черновик (2026-11-05).
+    aiActionIntent: { findMany: deps.intentFindMany, updateMany: vi.fn(async () => ({ count: 1 })) },
+    aiActionIntentEvent: { create: vi.fn(async () => ({ id: "event-1" })) },
+    $transaction: async (run: (tx: unknown) => unknown) => run({
+      aiActionIntent: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      aiActionIntentEvent: { create: vi.fn(async () => ({ id: "event-1" })) },
+    }),
+  },
   logAudit: deps.logAudit,
 }))
 vi.mock("@/lib/ai/voice/budget", () => ({ settleVoiceSeconds: deps.settleVoiceSeconds }))
