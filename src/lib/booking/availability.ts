@@ -271,3 +271,38 @@ export function parseWeeklyHours(value: unknown): WeeklyHours | null {
   }
   return result
 }
+
+/**
+ * Editing weekly hours, not reading them.
+ *
+ * A salon keeps one working day for the whole week — «09:00–18:00, closed on
+ * Sunday» — and the form used to ask for it as seven checkboxes and fourteen
+ * time fields. These three let a screen offer the common answer in one move
+ * and fall back to per-day editing only when the days really differ.
+ */
+
+/** The days the organization is open, Monday first. */
+export function openWeekdays(weekly: WeeklyHours): Weekday[] {
+  return WEEKDAYS.filter((day) => (weekly[day]?.length ?? 0) > 0).sort((left, right) => (Number(left) || 7) - (Number(right) || 7))
+}
+
+/**
+ * The one interval every open day shares, or null when they differ — which is
+ * the signal to show the per-day rows instead of a single pair of fields.
+ * No open day at all is «no shared interval» as well: there is nothing to edit.
+ */
+export function uniformInterval(weekly: WeeklyHours): HoursInterval | null {
+  const open = openWeekdays(weekly)
+  if (open.length === 0) return null
+  const first = weekly[open[0]][0]
+  if (!first) return null
+  const same = open.every((day) => weekly[day].length === 1 && weekly[day][0].start === first.start && weekly[day][0].end === first.end)
+  return same ? { ...first } : null
+}
+
+/** Open exactly `days` with `interval`, close the rest. */
+export function applyWeekly(days: Weekday[], interval: HoursInterval): WeeklyHours {
+  const next = {} as WeeklyHours
+  for (const day of WEEKDAYS) next[day] = days.includes(day) ? [{ ...interval }] : []
+  return next
+}
