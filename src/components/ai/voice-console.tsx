@@ -85,6 +85,30 @@ import { navItemPathname } from "@/lib/nav-items"
  * this tab with the user's same-origin cookie, so RBAC/RLS remain authoritative.
  */
 
+/**
+ * Что ассистент говорит пользователю, когда черновик подготовить не удалось.
+ *
+ * Голый код отказа модель пересказывает как придётся: владелец 2026-11-05
+ * услышал «какой-то процесс занят» и, по его словам, не понял ни сам, ни за
+ * клиента. Поэтому на каждый известный код — готовая инструкция человеческим
+ * языком, а не имя константы.
+ */
+function proposeRefusalMessage(code: unknown, status: number): string {
+  if (code === "ACTIVE_EXECUTION_IN_PROGRESS") {
+    return "BUSY: предыдущее действие сейчас сохраняется в CRM. Скажи пользователю коротко: «секунду, сохраняю предыдущее» — и повтори подготовку после того, как он снова заговорит. Не придумывай других причин."
+  }
+  if (code === "RATE_LIMITED") {
+    return "RATE_LIMITED: слишком много черновиков подряд. Скажи пользователю, что нужно немного подождать, и предложи продолжить через минуту."
+  }
+  if (code === "VOICE_WRITES_DISABLED") {
+    return "DISABLED: запись голосом сейчас выключена в настройках. Скажи это прямо и предложи сделать то же на экране."
+  }
+  if (code === "TARGET_NOT_FOUND") {
+    return "NOT_FOUND: записи, которую нужно изменить, не видно. Переспроси, какую именно запись менять, и не придумывай другую."
+  }
+  return `REJECTED (${code ?? status}): подготовить не удалось, в CRM ничего не сохранено. Скажи пользователю своими словами, ЧТО именно не получилось подготовить, и попроси повторить или уточнить. Не называй коды ошибок и не говори про «процессы».`
+}
+
 const UNAVAILABLE =
   "DATA_UNAVAILABLE: нет связи с CRM. Скажи, что данных сейчас нет, и не называй никаких цифр."
 const TOOL_TIMEOUT_MS = 15_000
@@ -502,7 +526,7 @@ function ConsoleInner({
       }
       if (!response.ok || body?.success !== true) {
         trace("propose", { tool, code: body?.code }, "rejected")
-        return `REJECTED (${body?.code ?? response.status}): подготовить не удалось, ничего не сохранено. Объясни пользователя и попроси уточнить.`
+        return proposeRefusalMessage(body?.code, response.status)
       }
 
       trace("propose", { tool }, "ok")
