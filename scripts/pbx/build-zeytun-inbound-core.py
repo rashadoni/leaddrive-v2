@@ -142,7 +142,9 @@ def build(source, bridge):
             # Owner's call 2026-11-05: an unanswered question is asked again (SILENCE_NUDGE).
             quiet=lambda: not (self.closed or self.hangup_started or self.response_active or self.playback_active
                                or self.local_speech_active or self.reconnecting or self.pharmacy_bridge.pending
-                               or self.wrapup_sent or self.closing_response_seq is not None))
+                               or self.wrapup_sent or self.closing_response_seq is not None),
+            # Owner 2026-11-05: a long pause after the caller gets the wait filler (TURN_FILLER_SECONDS).
+            playing=lambda: bool(self.playback_active or self.hangup_started or self.closed))
 
     def _pharmacy_wait_filler(self):
         # The relay logs it (zeytun_tts status=wait_filler) when it plays.

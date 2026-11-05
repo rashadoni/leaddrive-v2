@@ -1100,6 +1100,35 @@ class SpeechRelayTests(unittest.TestCase):
         while time.monotonic() < until and not relay.question_pending:
             time.sleep(0.01)
 
+    def test_a_long_pause_after_the_caller_gets_the_wait_filler_once(self):
+        # Owner 2026-11-05: «эти паузы вводят в заблуждение».
+        relay, state = self.nudge_relay()
+        played = []
+        relay.filler = lambda *a: played.append(state["now"]) or True
+        relay.playing = lambda: state.get("playing", False)
+        relay.caller_done()
+        state["now"] = 1.4
+        self.assertFalse(relay.turn_filler_tick())
+        state["now"] = 1.5
+        self.assertTrue(relay.turn_filler_tick())
+        state["now"] = 5.0
+        self.assertFalse(relay.turn_filler_tick())  # once per phrase
+        self.assertEqual(played, [1.5])
+        # An answer that began, a new phrase or audio still playing: no filler.
+        relay.caller_done()
+        relay.filter(self.content("Ketonal krem, on qutu. ", audio=True))
+        state["now"] = 10.0
+        self.assertFalse(relay.turn_filler_tick())
+        relay.caller_done()
+        relay.caller_spoke()
+        state["now"] = 20.0
+        self.assertFalse(relay.turn_filler_tick())
+        relay.caller_done()
+        state["playing"] = True
+        state["now"] = 30.0
+        self.assertFalse(relay.turn_filler_tick())
+        self.assertEqual(played, [1.5])
+
     def test_an_unanswered_question_is_asked_again_once_after_six_quiet_seconds(self):
         # Owner's call 2026-11-05 (4c36453f): "krem" never reached the model; 23 s of silence.
         relay, state = self.nudge_relay()
