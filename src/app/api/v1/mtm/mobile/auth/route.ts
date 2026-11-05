@@ -33,7 +33,9 @@ type ResolvedAuthAgent = MobileLoginAgent
 // AUTH_RATE_LIMIT remains the audit-window metadata; enforcement uses the two
 // Redis-backed policies below.
 const AUTH_RATE_LIMIT = { maxRequests: 5, windowMs: 60_000 }
-const AUTH_IP_RATE_LIMIT = { maxRequests: 20, windowSeconds: 60 }
+// Per address: one office Wi-Fi signs everybody in (2026-11-05; was 20).
+// Guessing a password is bounded per account below, not per address.
+const AUTH_IP_RATE_LIMIT = { maxRequests: 100, windowSeconds: 60 }
 const AUTH_PRINCIPAL_RATE_LIMIT = { maxRequests: 5, windowSeconds: 60 }
 const MAX_MOBILE_LOGIN_BODY_SIZE = 8 * 1024
 
