@@ -313,8 +313,9 @@ class ZeytunGeminiTts:
     про лимиты и подводные камни»: a preview model may leave a region, and a
     regional pool can be busy. So eu gets EU_FIRST_AUDIO_SECONDS for its
     first audio, then global is asked; EU_PAUSE_AFTER failures in a row skip
-    eu for EU_PAUSE_SECONDS; ZEYTUN_TTS_VERTEX_EU=0 turns it off. The worst
-    case is today's path plus EU_FIRST_AUDIO_SECONDS on one reply.
+    eu for EU_PAUSE_SECONDS. eu is off unless ZEYTUN_TTS_VERTEX_EU=1: on kept
+    connections it was only 0.08 s faster (station, 2026-11-05). The worst
+    case with it on is today's path plus EU_FIRST_AUDIO_SECONDS on one reply.
     Over kept connections (ZEYTUN_HTTP): a new one cost the station 0.2-0.3 s.
     """
     VERTEX_LOCATIONS = (("vertex", "https://aiplatform.eu.rep.googleapis.com", "eu"),
@@ -344,7 +345,10 @@ class ZeytunGeminiTts:
         project, vertex_key = vertex if isinstance(vertex, tuple) and len(vertex) == 2 else (None, None)
         if (isinstance(project, str) and self.VERTEX_PROJECT.match(project)
                 and isinstance(vertex_key, str) and 30 <= len(vertex_key.strip()) <= 256):
-            eu_off = str((os.environ if environ is None else environ).get("ZEYTUN_TTS_VERTEX_EU", "")).strip() in ("0", "off", "false")
+            # Off unless asked for: from the station on 2026-11-05, on kept connections, eu's first
+            # audio came 0.08 s before global's (median 0.57 against 0.65 s, 7 each); the gain
+            # is the kept connection, not the region, and the region's risks stay.
+            eu_off = str((os.environ if environ is None else environ).get("ZEYTUN_TTS_VERTEX_EU", "")).strip() not in ("1", "on", "true")
             for path, host, location in self.VERTEX_LOCATIONS:
                 if location == "eu" and eu_off:
                     continue

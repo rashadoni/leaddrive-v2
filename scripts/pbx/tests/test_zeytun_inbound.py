@@ -1293,7 +1293,7 @@ class SpeechRelayTests(unittest.TestCase):
             return Response(ok)
         tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=opener,
                                             vertex=("gen-lang-client-0496964632", "v" * 53),
-                                            environ={} if environ is None else environ,
+                                            environ={"ZEYTUN_TTS_VERTEX_EU": "1"} if environ is None else environ,
                                             clock=clock or (lambda: 0.0))
         return tts, asked
 
@@ -1333,7 +1333,7 @@ class SpeechRelayTests(unittest.TestCase):
             asked.append((req.full_url.split("?")[0], timeout))
             return Slow() if "/locations/eu/" in req.full_url else Answer([chunk])
         tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=opener,
-                                            vertex=("gen-lang-client-0496964632", "v" * 53), environ={}, clock=lambda: now[0])
+                                            vertex=("gen-lang-client-0496964632", "v" * 53), environ={"ZEYTUN_TTS_VERTEX_EU": "1"}, clock=lambda: now[0])
         heard = []
         tts.stream("Salam", heard.append, lambda: True)
         self.assertEqual([url for url, _ in asked], [self.EU, self.GLOBAL])
@@ -1361,10 +1361,14 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertEqual(bridge_module.ZeytunGeminiTts.eu_failures, 1)
 
     def test_eu_off_switch_leaves_global_first(self):
-        for value in ("0", "off", "false"):
+        for value in ("0", "off", "false", ""):
             tts, asked = self.vertex_tts(["ok"], environ={"ZEYTUN_TTS_VERTEX_EU": value})
             tts.stream("Salam", lambda pcm: None, lambda: True)
             self.assertEqual((asked, tts.path), ([self.GLOBAL], "vertex_global"))
+        # Unset is off: global first, as on the station since 2026-11-04.
+        tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat", opener=lambda req, timeout: None,
+                                            vertex=("gen-lang-client-0496964632", "v" * 53), environ={})
+        self.assertEqual([path for path, _ in tts.urls], ["vertex_global", "studio"])
 
     def test_tts_goes_to_vertex_first_and_to_the_gemini_api_only_on_a_capacity_refusal(self):
         vertex, studio = self.GLOBAL, self.STUDIO
