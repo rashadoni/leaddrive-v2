@@ -35,8 +35,8 @@ describe("zeytun line dialog stand", () => {
 // when the model's transcript of a phrase misses one of its hear patterns.
 // A pattern that misses the phrase as written would report an error on a
 // perfect transcript, and the owner would chase a recognizer that heard right.
-describe("zeytun line voice stand scenario", () => {
-  const scenario = JSON.parse(readFileSync("scripts/zeytun-line/voice-scenario.json", "utf8")) as {
+describe.each(["voice-scenario.json", "voice-scenario-search-words.json"])("zeytun line voice stand scenario %s", (file) => {
+  const scenario = JSON.parse(readFileSync(`scripts/zeytun-line/${file}`, "utf8")) as {
     steps: { n: number; phrases: { say: string; hear?: { match: string }[]; expect?: Expectation }[]; expect: Expectation }[]
     final: { spoken: string; quantity: number }[]
   }
