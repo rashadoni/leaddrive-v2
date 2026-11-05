@@ -339,3 +339,39 @@ describe("the task and deal cards re-read themselves after a voice edit", () => 
     ))
   })
 })
+
+/**
+ * Что ассистент говорит, когда черновик подготовить не удалось.
+ *
+ * Владелец 2026-11-05: «клиент не поймёт, и я сам не понял, что открыто». Он
+ * услышал «какой-то процесс занят» — это модель пересказала голый код отказа.
+ * Ответ инструменту адресован модели, поэтому в нём должна быть инструкция,
+ * что сказать человеку, а не имя константы.
+ */
+describe("отказ в подготовке черновика объясняется человеческим языком", () => {
+  const console_ = readFileSync("src/components/ai/voice-console.tsx", "utf8")
+  const refusal = console_.slice(
+    console_.indexOf("function proposeRefusalMessage"),
+    console_.indexOf("const UNAVAILABLE ="),
+  )
+
+  it("на каждый известный код даёт готовую фразу, а не код", () => {
+    for (const code of ["ACTIVE_EXECUTION_IN_PROGRESS", "RATE_LIMITED", "VOICE_WRITES_DISABLED", "TARGET_NOT_FOUND"]) {
+      expect(refusal, code).toContain(code)
+    }
+    // «Секунду, сохраняю предыдущее» — это то, что человек поймёт.
+    expect(refusal).toMatch(/сохраняю предыдущее/)
+    expect(refusal).toMatch(/немного подождать/)
+  })
+
+  it("запрещает пересказывать коды и «процессы» в общем случае", () => {
+    expect(refusal).toMatch(/Не называй коды ошибок и не говори про «процессы»/)
+    expect(refusal).toMatch(/ЧТО именно не получилось подготовить/)
+  })
+
+  it("остаётся единственным местом, которое отвечает модели на отказ", () => {
+    const rejections = [...console_.matchAll(/return `REJECTED \(/g)]
+    expect(rejections).toHaveLength(1)
+    expect(console_).toMatch(/return proposeRefusalMessage\(body\?\.code, response\.status\)/)
+  })
+})

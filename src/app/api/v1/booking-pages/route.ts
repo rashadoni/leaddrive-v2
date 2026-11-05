@@ -1,6 +1,6 @@
 /**
  * Online booking pages of the organization (Settings → «Onlayn yazılış»).
- *   GET  → { pages, users, linkBase }
+ *   GET  → { pages, users, linkBase, currency }
  *   POST → create
  */
 import type { Prisma } from "@prisma/client"
@@ -10,13 +10,14 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { bookingPageUrl } from "@/lib/booking/book"
 import { bookingAccess, bookingHostWhere } from "@/lib/booking/access"
 import { bookingPageSchema, pagePriceData, slugTaken } from "@/lib/booking/page-input"
+import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 
 export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
   const access = await bookingAccess(auth)
   if (access instanceof NextResponse) return access
   if (!access.administrator) return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 })
   const orgId = auth.orgId
-  const [pages, users, upcoming] = await Promise.all([
+  const [pages, users, upcoming, currency] = await Promise.all([
     prisma.bookingPage.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } }),
     prisma.user.findMany({ where: bookingHostWhere(orgId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.booking.groupBy({
@@ -24,11 +25,17 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
       where: { organizationId: orgId, status: "confirmed", startsAt: { gte: new Date() } },
       _count: { _all: true },
     }),
+    // The symbol the price field shows while it is being typed. The saved row
+    // carries its own code (`pagePriceData`), but a service that has no price
+    // yet has none to read, and the browser must not guess: DEFAULT_CURRENCY
+    // is "USD" in the bundle whatever the server runs on.
+    resolveOrgDefaultCurrency(orgId),
   ])
   return NextResponse.json({
     success: true,
     data: {
       linkBase: bookingPageUrl("").replace(/\/$/, ""),
+      currency,
       users,
       pages: pages.map((page: (typeof pages)[number]) => ({
         ...page,

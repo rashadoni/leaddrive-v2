@@ -5,7 +5,7 @@
  * meeting card cannot disagree.
  */
 import { describe, expect, it } from "vitest"
-import { groupByCategory, nextVisitAt, servicePriceLabel } from "@/lib/booking/service"
+import { bookingSlug, groupByCategory, nextVisitAt, servicePriceLabel } from "@/lib/booking/service"
 
 describe("a service's price", () => {
   it("prints the amount with the currency saved next to it", () => {
@@ -71,5 +71,35 @@ describe("when the client is due back", () => {
     expect(nextVisitAt(start, undefined)).toBeNull()
     expect(nextVisitAt(start, -7)).toBeNull()
     expect(nextVisitAt("not a date", 28)).toBeNull()
+  })
+})
+
+describe("the link a service gets from its own name", () => {
+  it("writes an Azerbaijani name in the letters a URL allows", () => {
+    expect(bookingSlug("Saç kəsimi")).toBe("sac-kesimi")
+    expect(bookingSlug("Üz baxımı")).toBe("uz-baximi")
+    expect(bookingSlug("Qaş düzəltmə")).toBe("qas-duzeltme")
+    // Lower-casing happens in the Azerbaijani locale, where «I» is «ı» — the
+    // English rule would already have turned it into «i» and the fold below
+    // would never see it.
+    expect(bookingSlug("İLKİN GÖRÜŞ")).toBe("ilkin-gorus")
+  })
+
+  it("writes a Russian name too — the same salon types both", () => {
+    expect(bookingSlug("Стрижка мужская")).toBe("strizhka-muzhskaya")
+    expect(bookingSlug("Окрашивание")).toBe("okrashivanie")
+  })
+
+  it("leaves nothing a URL would have to escape", () => {
+    expect(bookingSlug("  Spa — 60 min / lux!  ")).toBe("spa-60-min-lux")
+    expect(bookingSlug("***")).toBe("")
+    expect(bookingSlug("")).toBe("")
+    expect(/^[a-z0-9-]*$/.test(bookingSlug("Épilation (jambes) 15%"))).toBe(true)
+  })
+
+  it("never ends on the dash a cut leaves behind", () => {
+    const long = bookingSlug("a".repeat(58) + " bb")
+    expect(long.length).toBeLessThanOrEqual(60)
+    expect(long.endsWith("-")).toBe(false)
   })
 })

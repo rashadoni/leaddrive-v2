@@ -546,3 +546,93 @@ describe("AI voice action draft service", () => {
     expect(deps.intentCreate).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * Поправка к черновику, который ещё на экране (владелец, 2026-11-05).
+ *
+ * Сессия держит ровно один незавершённый черновик, и так и должно быть. Но
+ * инструкция ассистенту велит на поправку готовить НОВЫЙ черновик — и это
+ * упиралось в тот же запрет: «попросил добавить цену к сделке» — сделка не
+ * создалась, следом не создался и лид, «какой-то процесс занят». Один висящий
+ * черновик блокировал всю сессию до истечения срока.
+ */
+describe("поправка заменяет черновик, а не упирается в него", () => {
+  function activeDraft(state = "awaiting_confirmation") {
+    return {
+      id: "intent-active",
+      organizationId: "org-1",
+      userId: "user-1",
+      revision: 1,
+      payloadHash: "b".repeat(64),
+      state,
+    }
+  }
+
+  it("отменяет незавершённый черновик и готовит новый", async () => {
+    deps.intentFindFirst
+      .mockResolvedValueOnce(null)        // поиск повтора по ключу идемпотентности
+      .mockResolvedValueOnce(null)        // истёкший черновик сессии
+      .mockResolvedValueOnce(activeDraft())
+    deps.intentUpdateMany.mockResolvedValue({ count: 1 })
+
+    const result = await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "create_deal",
+      payload: { name: "Azmart", valueAmount: 5000 },
+      idempotencyKey: "draft:deal:price",
+    })
+
+    // Старый отменён — именно отменён, а не удалён: в журнале видно, чем заменён.
+    expect(deps.intentUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        id: "intent-active",
+        state: { in: ["collecting", "awaiting_confirmation"] },
+      }),
+      data: expect.objectContaining({ state: "cancelled" }),
+    }))
+    expect(deps.eventCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        eventType: "cancelled",
+        eventData: expect.objectContaining({ reason: "superseded_by_draft" }),
+      }),
+    }))
+    // И новый черновик действительно создан, с ссылкой на заменённый.
+    expect(deps.intentCreate).toHaveBeenCalled()
+    expect(result).toMatchObject({ supersededIntentId: "intent-active" })
+  })
+
+  // Исполняемый черновик — не поправка: вторая запись в CRM это дубль.
+  it("не заменяет черновик, который уже исполняется", async () => {
+    deps.intentFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(activeDraft("executing"))
+
+    await expect(createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "create_lead",
+      payload: { contactName: "Ali" },
+      idempotencyKey: "draft:lead:while-executing",
+    })).rejects.toMatchObject({ code: "ACTIVE_EXECUTION_IN_PROGRESS" })
+
+    expect(deps.intentUpdateMany).not.toHaveBeenCalled()
+    expect(deps.intentCreate).not.toHaveBeenCalled()
+  })
+
+  // Гонка: черновик ушёл в исполнение между чтением и отменой.
+  it("не создаёт второй черновик, если отмена не состоялась", async () => {
+    deps.intentFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(activeDraft())
+    deps.intentUpdateMany.mockResolvedValue({ count: 0 })
+
+    await expect(createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "create_lead",
+      payload: { contactName: "Ali" },
+      idempotencyKey: "draft:lead:race",
+    })).rejects.toMatchObject({ code: "ACTIVE_INTENT_EXISTS" })
+    expect(deps.intentCreate).not.toHaveBeenCalled()
+  })
+})

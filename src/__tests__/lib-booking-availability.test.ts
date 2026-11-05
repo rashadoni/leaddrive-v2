@@ -2,7 +2,7 @@
  * Free time on a booking page: which slots a customer is offered.
  */
 import { describe, expect, it } from "vitest"
-import { computeSlots, defaultWeeklyHours, findSlot, offHoursIntervals, parseWeeklyHours, type BookingRules, type WeeklyHours } from "@/lib/booking/availability"
+import { applyWeekly, computeSlots, defaultWeeklyHours, findSlot, offHoursIntervals, openWeekdays, parseWeeklyHours, uniformInterval, type BookingRules, type WeeklyHours } from "@/lib/booking/availability"
 
 const baku = (over: Partial<BookingRules> = {}): BookingRules => ({
   timezone: "Asia/Baku",
@@ -197,5 +197,47 @@ describe("free time by the service, not by one number of the day", () => {
     // A meeting that ends at 23:50 the day before must not seed a 00:05 start.
     const night = [booked("2026-11-03T23:10", 40, 15)]
     expect(offered(service(40, 15), night)).toEqual(offered(service(40, 15), []))
+  })
+})
+
+describe("editing weekly hours the way a salon keeps them", () => {
+  it("opens exactly the days asked for, Monday first when read back", () => {
+    const weekly = applyWeekly(["1", "2", "3", "4", "5", "6"], { start: "09:00", end: "18:00" })
+    expect(openWeekdays(weekly)).toEqual(["1", "2", "3", "4", "5", "6"])
+    expect(weekly["0"]).toEqual([])
+    expect(weekly["6"]).toEqual([{ start: "09:00", end: "18:00" }])
+  })
+
+  it("puts Sunday last — it is weekday «0» and would sort first", () => {
+    expect(openWeekdays(applyWeekly(["0", "1"], { start: "10:00", end: "14:00" }))).toEqual(["1", "0"])
+  })
+
+  it("reports the one interval every open day shares", () => {
+    expect(uniformInterval(applyWeekly(["1", "2"], { start: "09:00", end: "18:00" }))).toEqual({ start: "09:00", end: "18:00" })
+  })
+
+  it("reports no shared interval when one day differs — that is when the per-day rows must open", () => {
+    const weekly = applyWeekly(["1", "2", "6"], { start: "09:00", end: "18:00" })
+    weekly["6"] = [{ start: "10:00", end: "15:00" }]
+    expect(uniformInterval(weekly)).toBeNull()
+    // A closed day is not a difference: the shared pair still edits the rest.
+    expect(uniformInterval(applyWeekly(["1", "2"], { start: "09:00", end: "18:00" }))).not.toBeNull()
+  })
+
+  it("has no shared interval to show when nothing is open", () => {
+    const closed = applyWeekly([], { start: "09:00", end: "18:00" })
+    expect(openWeekdays(closed)).toEqual([])
+    expect(uniformInterval(closed)).toBeNull()
+  })
+
+  it("hands back a copy, so editing one day cannot move another", () => {
+    const weekly = applyWeekly(["1", "2"], { start: "09:00", end: "18:00" })
+    weekly["1"][0].start = "11:00"
+    expect(weekly["2"][0].start).toBe("09:00")
+  })
+
+  it("stays readable by the slot maths it feeds", () => {
+    const weekly = applyWeekly(["1", "2", "3", "4", "5"], { start: "09:00", end: "18:00" })
+    expect(parseWeeklyHours(JSON.parse(JSON.stringify(weekly)))).toEqual(weekly)
   })
 })

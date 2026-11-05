@@ -1,0 +1,211 @@
+{
+ "about": "Search-words call of the voice stand (owner's call TS-1022, 2026-11-05): a misheard name corrected, a form said with the product, a product heard without its first word. Same format as voice-scenario.json.",
+ "voice": "Charon",
+ "steps": [
+  {
+   "n": 1,
+   "phrases": [
+    {
+     "say": "Salam, Zəfər aptekindən zəng edirəm.",
+     "hear": [
+      {
+       "label": "Zəfər",
+       "match": "zefer"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 2,
+   "phrases": [
+    {
+     "say": "Iklatinak beş qutu."
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "label": "искал услышанное"
+     }
+    ]
+   }
+  },
+  {
+   "n": 3,
+   "phrases": [
+    {
+     "say": "Yox, Diklofenak.",
+     "hear": [
+      {
+       "label": "Diklofenak",
+       "match": "diklofenak|диклофенак"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "[Dd]iklofenak|Диклофенак",
+      "label": "после поправки искал Diklofenak заново"
+     }
+    ],
+    "reply": [
+     {
+      "match": "tablet|həb|ampul|gel|şam|məlhəm|forma",
+      "label": "спросил форму"
+     }
+    ]
+   }
+  },
+  {
+   "n": 4,
+   "phrases": [
+    {
+     "say": "Tablet, əlli milliqram.",
+     "hear": [
+      {
+       "label": "tablet",
+       "match": "tablet|таблет|heb"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 5,
+   "phrases": [
+    {
+     "say": "Parasetamol şam, üç qutu.",
+     "hear": [
+      {
+       "label": "Parasetamol",
+       "match": "paras?[cs]etamol|парацетамол"
+      },
+      {
+       "label": "şam",
+       "match": "sam|свеч"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "([Pp]ara[cs]etamol|Парацетамол).*([Şş]am|sam|свеч|suppoz)",
+      "label": "искал вместе с формой (şam)"
+     }
+    ]
+   }
+  },
+  {
+   "n": 6,
+   "phrases": [
+    {
+     "say": "Əlli milliqram."
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 7,
+   "phrases": [
+    {
+     "say": "Forte, səkkiz qutu.",
+     "hear": [
+      {
+       "label": "forte",
+       "match": "forte|форте"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "reply": [
+     {
+      "match": "ad|hansı|tam|dəqiq|təkrar|nə",
+      "label": "спросил полное название"
+     }
+    ]
+   }
+  },
+  {
+   "n": 8,
+   "phrases": [
+    {
+     "say": "Mezim forte.",
+     "hear": [
+      {
+       "label": "Mezim",
+       "match": "mez[iy]m|мезим"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "[Mm]ez[iy]m|Мезим",
+      "label": "искал Mezim forte"
+     }
+    ]
+   }
+  },
+  {
+   "n": 9,
+   "phrases": [
+    {
+     "say": "Bu qədər, təsdiq edirəm.",
+     "hear": [
+      {
+       "label": "təsdiq",
+       "match": "tesdiq"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "save_order_list",
+      "args": "\"final\":true",
+      "label": "итоговое сохранение"
+     }
+    ]
+   }
+  },
+  {
+   "n": 10,
+   "phrases": [
+    {
+     "say": "Yox, sağ olun."
+    }
+   ],
+   "expect": {}
+  }
+ ],
+ "final": [
+  {
+   "spoken": "[Dd]iklofenak|Диклофенак",
+   "quantity": 5,
+   "label": "Diklofenak таблетки 5"
+  },
+  {
+   "spoken": "[Pp]ara[cs]etamol|Парацетамол|Цефекон",
+   "quantity": 3,
+   "label": "Parasetamol şam 3"
+  },
+  {
+   "spoken": "[Mm]ez[iy]m|Мезим",
+   "quantity": 8,
+   "label": "Mezim forte 8"
+  }
+ ]
+}

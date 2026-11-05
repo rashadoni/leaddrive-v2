@@ -119,10 +119,17 @@ export type AiVoiceActionDraftResponse = Readonly<{
   createdAt: string
   updatedAt: string
   replayed: boolean
+  /** Черновик, который этот заменил: поправка пользователя, а не второй черновик. */
+  supersededIntentId?: string
 }>
 
-function serializeIntent(intent: StoredIntent, replayed: boolean): AiVoiceActionDraftResponse {
+function serializeIntent(
+  intent: StoredIntent,
+  replayed: boolean,
+  supersededIntentId: string | null = null,
+): AiVoiceActionDraftResponse {
   return {
+    ...(supersededIntentId ? { supersededIntentId } : {}),
     id: intent.id,
     voiceSessionId: intent.voiceSessionId,
     actionType: intent.actionType,
@@ -215,6 +222,50 @@ async function expireIntent(intent: StoredIntent, now: Date): Promise<boolean> {
     await appendDraftLifecycleEvent(tx, intent, "expired", {
       fromState: intent.state,
       reason: "ttl_elapsed",
+    })
+    return true
+  })
+}
+
+/**
+ * Пользователь поправил себя — черновик на экране заменяется новым.
+ *
+ * Почему это не «ещё один черновик». Сессия держит ровно один незавершённый
+ * черновик, и так и должно быть: двух квитанций на экране не бывает. Но
+ * инструкция ассистенту прямо велит на поправку («добавь цену», «нет, телефон
+ * другой») готовить НОВЫЙ черновик — и упиралась в тот же запрет. Владелец
+ * 2026-11-05: попросил добавить цену к сделке — сделка не создалась; следом не
+ * создался и лид, «какой-то процесс занят». Это был один и тот же висящий
+ * черновик.
+ *
+ * Поэтому незавершённый черновик отменяется в пользу нового. Отмена, а не
+ * удаление: в журнале остаётся запись `superseded_by_draft`, по которой видно,
+ * что заменило и чем.
+ *
+ * Черновик в состоянии `executing` НЕ заменяется: его уже исполняют, и вторая
+ * запись в CRM — это не поправка, а дубль.
+ */
+async function supersedeOwnedSessionDraft(
+  active: Pick<StoredIntent, "id" | "organizationId" | "userId" | "revision" | "payloadHash" | "state">,
+  now: Date,
+): Promise<boolean> {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const changed = await tx.aiActionIntent.updateMany({
+      where: {
+        id: active.id,
+        organizationId: active.organizationId,
+        userId: active.userId,
+        // Гонка: если черновик за эти миллисекунды ушёл в исполнение, замена
+        // не состоится и вызывающий получит честный отказ.
+        state: { in: ["collecting", "awaiting_confirmation"] },
+        revision: active.revision,
+      },
+      data: { state: "cancelled", completedAt: now },
+    })
+    if (changed.count !== 1) return false
+    await appendDraftLifecycleEvent(tx, active, "cancelled", {
+      fromState: active.state,
+      reason: "superseded_by_draft",
     })
     return true
   })
@@ -968,15 +1019,30 @@ export async function createAiVoiceActionDraft(
       parentIntentId: null,
       state: { in: ["collecting", "awaiting_confirmation", "executing"] },
     },
-    select: { id: true },
+    select: {
+      id: true, organizationId: true, userId: true,
+      revision: true, payloadHash: true, state: true,
+    },
   })
+  let supersededIntentId: string | null = null
   if (active) {
-    throw new AiVoiceActionDraftError(
-      "ACTIVE_INTENT_EXISTS",
-      "This voice session already has an active action draft",
-      409,
-      { activeIntentId: active.id },
-    )
+    if (active.state === "executing") {
+      throw new AiVoiceActionDraftError(
+        "ACTIVE_EXECUTION_IN_PROGRESS",
+        "The previous action is being executed right now",
+        409,
+        { activeIntentId: active.id },
+      )
+    }
+    if (!await supersedeOwnedSessionDraft(active, now)) {
+      throw new AiVoiceActionDraftError(
+        "ACTIVE_INTENT_EXISTS",
+        "This voice session already has an active action draft",
+        409,
+        { activeIntentId: active.id },
+      )
+    }
+    supersededIntentId = active.id
   }
 
   try {
@@ -1017,7 +1083,7 @@ export async function createAiVoiceActionDraft(
         revision,
       },
     })
-    return serializeIntent(created, false)
+    return serializeIntent(created, false, supersededIntentId)
   } catch (error) {
     if (!isUniqueConstraintError(error)) throw error
     const concurrentReplay = await findReplay(auth, input)
