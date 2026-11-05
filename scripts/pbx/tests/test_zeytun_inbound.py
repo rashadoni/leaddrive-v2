@@ -1080,6 +1080,74 @@ class SpeechRelayTests(unittest.TestCase):
                     out.append((key, None))
         return out
 
+    def nudge_relay(self):
+        """A relay whose silence watch is driven by hand: quiet, clock and asks are the test's."""
+        state = {"quiet": True, "now": 0.0, "asked": []}
+        def inject(event):
+            with self.lock:
+                self.injected.append(event)
+        relay = bridge_module.ZeytunSpeechRelay(FakeTts(), inject, lambda: self.speak, lambda: self.live,
+                                                clock=lambda: state["now"], ask=state["asked"].append,
+                                                quiet=None)
+        relay.quiet = lambda: state["quiet"]
+        relay.TAIL_GRACE_SECONDS = 0.0
+        return relay, state
+
+    def spoken_question(self, relay, text="Ketonalın hansı formasını istərdiniz: krem, yoxsa gel? "):
+        relay.filter(self.content(text, audio=True))
+        relay.filter(self.content(turnComplete=True))
+        until = time.monotonic() + 3
+        while time.monotonic() < until and not relay.question_pending:
+            time.sleep(0.01)
+
+    def test_an_unanswered_question_is_asked_again_once_after_six_quiet_seconds(self):
+        # Owner's call 2026-11-05 (4c36453f): "krem" never reached the model; 23 s of silence.
+        relay, state = self.nudge_relay()
+        self.spoken_question(relay)
+        self.assertTrue(relay.question_pending)
+        self.assertFalse(relay.silence_tick())  # the quiet starts now
+        state["now"] = 5.9
+        self.assertFalse(relay.silence_tick())
+        state["now"] = 6.0
+        self.assertTrue(relay.silence_tick())
+        self.assertEqual(len(state["asked"]), 1)
+        turn = state["asked"][0]["clientContent"]
+        self.assertTrue(turn["turnComplete"])
+        self.assertIn("never read it aloud", turn["turns"][0]["parts"][0]["text"])
+        # Once per question: no second ask without a new question.
+        state["now"] = 20.0
+        self.assertFalse(relay.silence_tick())
+        self.assertEqual(len(state["asked"]), 1)
+
+    def test_the_silence_count_waits_for_the_line_and_stops_when_the_caller_speaks(self):
+        relay, state = self.nudge_relay()
+        self.spoken_question(relay)
+        # Still playing, the caller speaking or a tool working: not quiet, the count starts again.
+        state["quiet"] = False
+        self.assertFalse(relay.silence_tick())
+        state["now"] = 10.0
+        self.assertFalse(relay.silence_tick())
+        state["quiet"] = True
+        self.assertFalse(relay.silence_tick())
+        state["now"] = 15.9
+        self.assertFalse(relay.silence_tick())
+        relay.caller_spoke()  # the caller answered: no nudge
+        state["now"] = 30.0
+        self.assertFalse(relay.silence_tick())
+        self.assertEqual(state["asked"], [])
+
+    def test_no_nudge_after_a_reply_that_asks_nothing_and_at_most_three_a_call(self):
+        relay, state = self.nudge_relay()
+        self.spoken_question(relay, "Ketonal krem, on qutu. ")
+        self.assertFalse(relay.question_pending)
+        for n in range(4):
+            self.spoken_question(relay)
+            state["now"] += 1.0
+            relay.silence_tick()
+            state["now"] += 6.0
+            relay.silence_tick()
+        self.assertEqual(len(state["asked"]), bridge_module.ZeytunSpeechRelay.SILENCE_NUDGES_PER_CALL)
+
     def test_model_audio_is_withheld_and_its_text_is_spoken_before_the_held_boundaries(self):
         tts = FakeTts()
         relay = self.relay(tts)
@@ -2366,7 +2434,7 @@ class ArtifactTests(unittest.TestCase):
             "        if self.pharmacy_preview and agent_speaking:\n"
             "            self.pharmacy_agent_heard_at = time.monotonic()\n"
             "        if loud and verdict is False and (not self.pharmacy_preview or agent_speaking\n"
-            "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.8):\n").replace(
+            "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4):\n").replace(
             # A send that finds the session gone resumes it first (measured 2026-11-04).
             "            if not self._recover_gemini(\n",
             "            if not (self.pharmacy_preview\n"

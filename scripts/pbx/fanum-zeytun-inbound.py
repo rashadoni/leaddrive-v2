@@ -552,10 +552,25 @@ class ZeytunSpeechRelay:
     # model is asked once, for that turn, to say it again in Azerbaijani.
     FOREIGN_RETRY = ("Station note, never read it aloud: your last reply was in English and the caller did not "
                      "hear it. Say it again now, in Azerbaijani only.")
+    # Owner's call 2026-11-05 (4c36453f): asked "Ketonal krem, yoxsa gel?", the
+    # owner answered at once; the answer never reached the model, the agent
+    # waited 23 s in silence and the owner hung up. A question the line has
+    # been quiet after for SILENCE_NUDGE_SECONDS - nobody speaking, nothing
+    # playing, no tool working - is asked again once, as an operator would.
+    SILENCE_NUDGE_SECONDS = 6.0
+    SILENCE_NUDGES_PER_CALL = 3
+    SILENCE_NUDGE = ("Station note, never read it aloud: the caller has said nothing for six seconds since your "
+                     "question; they may not have heard it, or you did not hear them. Ask once, in a few Azerbaijani "
+                     "words, whether they hear you, and repeat that question briefly.")
 
     def __init__(self, tts, inject, speakable, alive, room=None, log=None, clock=time.monotonic,
-                 progress=None, recovering=None, ask=None):
+                 progress=None, recovering=None, ask=None, quiet=None):
         self.tts, self.inject, self.speakable, self.alive = tts, inject, speakable, alive
+        # Set by the core: True while nobody speaks, nothing plays and no tool works.
+        self.quiet = quiet
+        self.question_pending = False
+        self.quiet_since = None
+        self.nudges = 0
         # Set by the core: sends a client turn to the current Live session.
         self.ask = ask or (lambda payload: False)
         self.progress = progress or (lambda: None)
@@ -574,12 +589,51 @@ class ZeytunSpeechRelay:
         self.prefilled = False
         self.worker = threading.Thread(target=self._run, name="zeytun-tts", daemon=True)
         self.worker.start()
+        if quiet is not None:
+            threading.Thread(target=self._watch_silence, name="zeytun-silence", daemon=True).start()
+
+    def caller_spoke(self):
+        """The core opened a caller phrase: the question was answered, or is being."""
+        with self.lock:
+            self.question_pending = False
+            self.quiet_since = None
+
+    def silence_tick(self):
+        """One check of the silence after a question (the watch thread calls it)."""
+        with self.lock:
+            if not self.question_pending or self.nudges >= self.SILENCE_NUDGES_PER_CALL:
+                return False
+            if any(not turn["finished"] or turn["pieces"] for turn in self.turns) or not self.quiet():
+                self.quiet_since = None
+                return False
+            now = self.clock()
+            if self.quiet_since is None:
+                self.quiet_since = now
+            if now - self.quiet_since < self.SILENCE_NUDGE_SECONDS:
+                return False
+            self.question_pending = False
+            self.quiet_since = None
+            self.nudges += 1
+            nudge = self.nudges
+        self.log("silence_nudge", n=nudge)
+        self.ask({"clientContent": {"turns": [{"role": "user", "parts": [{"text": self.SILENCE_NUDGE}]}],
+                                    "turnComplete": True}})
+        return True
+
+    def _watch_silence(self):
+        while self.alive():
+            try:
+                self.silence_tick()
+            except Exception as error:  # never the call's problem: the watch stops and says why
+                self.log("silence_watch_error", reason=type(error).__name__)
+                return
+            time.sleep(0.25)
 
     @staticmethod
     def _new_turn():
         return {"buffer": "", "pieces": [], "original": [], "held": [], "done_at": None, "created": time.monotonic(),
                 "final_taken": False, "finished": False, "cancelled": False, "made": 0,
-                "passthrough": False, "spoken": False, "prefill": False}
+                "passthrough": False, "spoken": False, "prefill": False, "said": ""}
 
     def prefill(self, text, epoch=None):
         """Voice the call's fixed opening now, as the greeting generation's turn.
@@ -743,11 +797,14 @@ class ZeytunSpeechRelay:
             if turn is None and (audio or text.strip()):
                 turn = self._new_turn()
                 self.turns.append(turn)
+                self.question_pending = False
+                self.quiet_since = None
 
             if turn is None:
                 return not content
             if not turn["cancelled"]:
                 turn["original"].extend(audio)
+                turn["said"] += text
                 if not turn["prefill"]:
                     turn["buffer"] += text
                     self._split_locked(turn)
@@ -800,6 +857,11 @@ class ZeytunSpeechRelay:
                     self.lock.wait(0.5)
                 if self.turns and self.turns[0] is turn:
                     self.turns.pop(0)
+                # A spoken reply that ends on a question waits for an answer (SILENCE_NUDGE).
+                if (not turn["cancelled"] and not turn["prefill"] and not self.turns
+                        and turn["said"].strip().endswith("?")):
+                    self.question_pending = True
+                    self.quiet_since = None
 
     def _next_piece_locked(self, turn):
         while True:
@@ -1477,6 +1539,8 @@ class ZeytunInboundBridge:
 
     def utterance_edge(self, opened, pcm=b""):
         """activityStart (True, with its first frame) or activityEnd (False) of a caller phrase."""
+        if opened and self.relay is not None:
+            self.relay.caller_spoke()
         if not self.utterances:
             return
         with self.utterance_lock:
@@ -1697,7 +1761,7 @@ class ZeytunInboundBridge:
         return (project, key) if project and key else None
 
     def speech_relay(self, key, inject, speakable, alive, room=None, log=None, tts=None,
-                     progress=None, recovering=None, ask=None):
+                     progress=None, recovering=None, ask=None, quiet=None):
         """The call's TTS relay, created once; None while the model speaks itself."""
         if self.tts_model is None:
             return None
@@ -1705,7 +1769,7 @@ class ZeytunInboundBridge:
             engine = tts or ZeytunGeminiTts(key, self.tts_model, self.tts_voice, style=self.tts_style,
                                             vertex=self.tts_vertex())
             self.relay = ZeytunSpeechRelay(engine, inject, speakable, alive, room=room, log=log,
-                                           progress=progress, recovering=recovering, ask=ask)
+                                           progress=progress, recovering=recovering, ask=ask, quiet=quiet)
             warm = getattr(engine, "warm", None)
             if warm is not None:
                 warm()
