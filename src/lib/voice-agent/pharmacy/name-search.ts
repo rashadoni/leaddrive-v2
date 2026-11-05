@@ -1,4 +1,5 @@
 import { normalizePharmacyLabel } from "./contracts"
+import { createSpokenForms, formScore, itemStrengths, spokenStrengths, type SpokenForms } from "./spoken-forms"
 
 function trigrams(text: string): Set<string> {
   const characters = Array.from(`  ${text} `)
@@ -159,6 +160,10 @@ export class PharmacyNameSearch {
   private readonly bitsByFoldedLength: number[][] = []
   private readonly idIndex = new Map<string, number>()
   private readonly idList: string[] = []
+  /** Per item: its form (spoken-forms.ts) and the strengths its labels write. */
+  private readonly itemForms: (string | null)[] = []
+  private readonly formGiven: boolean[] = []
+  private readonly itemAmounts: Set<number>[] = []
   // Per-call scratch, cleared after each use.
   private termCounts = new Int32Array(0)
   private wordCounts = new Int32Array(0)
@@ -169,17 +174,30 @@ export class PharmacyNameSearch {
   private bestScores = new Float64Array(0)
   private coveredSeen = new Uint8Array(0)
   private bestSeen = new Uint8Array(0)
+  private bestLabels = new Int32Array(0)
 
   constructor(private readonly indexWords = false) {}
 
-  /** `source`: the parts of the label that name the maker and country, not the product. */
-  add(id: string, rawName: string, source: string[] = []): void {
+  /**
+   * `source`: the parts of the label that name the maker and country, not the product.
+   * `form`: the item's form from 1C's item kind (spoken-forms.ts itemFormOfKind);
+   * left out, it is read from the label's brackets ("(Şam)", "(Таблетки)").
+   */
+  add(id: string, rawName: string, source: string[] = [], form?: string | null): void {
     const name = normalizePharmacyLabel(rawName)
     let item = this.idIndex.get(id)
     if (item === undefined) {
       item = this.idList.push(id) - 1
       this.idIndex.set(id, item)
+      this.itemForms.push(null)
+      this.formGiven.push(false)
+      this.itemAmounts.push(new Set())
     }
+    if (form !== undefined) {
+      if (!this.formGiven[item]) this.itemForms[item] = form
+      this.formGiven[item] = true
+    } else if (!this.formGiven[item] && this.itemForms[item] === null) this.itemForms[item] = SPOKEN.labelForm(name)
+    for (const amount of itemStrengths(name)) this.itemAmounts[item].add(amount)
     const labels = new Set([name])
     let own: Set<string> | null = null
     if (this.indexWords && source.length) {
@@ -269,6 +287,20 @@ export class PharmacyNameSearch {
     }
     this.fitItemScratch()
     const [whole, full] = this.scoreWhole(name)
+    // "Parasetamol şam 50": the form and the strength choose among the
+    // brand's own variants (spoken-forms.ts), they do not search by
+    // themselves. With no other word left, a form word is the name.
+    const said = this.indexWords ? [...new Set(pharmacyWords(name))] : []
+    const forms = said.map((word) => SPOKEN.formOf(word)).filter((form): form is string => form !== null)
+    const named = said.filter((word) => !QUANTITY_WORDS.has(word) && !SPOKEN.formOf(word) && !(forms.length && SPOKEN.kindOf(word)))
+    let spoken: SpokenForms | null = null
+    if (named.length) {
+      spoken = { forms, kinds: forms.length ? said.map((word) => SPOKEN.kindOf(word)).filter((kind): kind is string => kind !== null) : [],
+        strengths: spokenStrengths(name, (word) => QUANTITY_WORDS.has(word)) }
+      if (!spoken.forms.length && !spoken.strengths.length) spoken = null
+    }
+    const productWords = named.length ? named : said.filter((word) => !QUANTITY_WORDS.has(word))
+    const signatures = spoken ? new Map<number, string>() : null
     // A spoken request is "No-şpa ampula": scored only as one string, the
     // form word matches every ampoule in the feed as well as the name does,
     // and the medicine itself falls out of the five candidates returned.
@@ -279,8 +311,8 @@ export class PharmacyNameSearch {
     const coveredScores = this.coveredScores, coveredSeen = this.coveredSeen, bestScores = this.bestScores, bestSeen = this.bestSeen
     const exact = new Map<number, number>()
     let words = 0
-    for (const word of this.indexWords ? new Set(pharmacyWords(name)) : []) {
-      if (QUANTITY_WORDS.has(word)) continue
+    const bestLabels = this.bestLabels
+    for (const [position, word] of productWords.entries()) {
       words++
       const matches = this.matchWord(word)
       if (!matches.size) continue
@@ -300,7 +332,7 @@ export class PharmacyNameSearch {
       for (const [label, score] of matches) {
         // A maker's word wherever most of its labels put it there: 1C writes a
         // few labels out of pattern (three of Abdi Ibrahim's 57 on 2026-11-03).
-        const term = this.terms.get(label)!, ids = this.termIds[term]
+        const term = this.terms.get(label)!, ids = this.termIds[term], labelIndex = this.words.get(label)!
         const factor = (this.sourceOnly.get(term)?.size ?? 0) * 2 > ids.size ? SOURCE_WORD_WEIGHT : 1
         for (const item of ids) {
           const value = score * weight * factor
@@ -308,10 +340,17 @@ export class PharmacyNameSearch {
             bestSeen[item] = 1
             best.push(item)
             bestScores[item] = Math.max(0, value)
-          } else bestScores[item] = Math.max(bestScores[item], value)
+            bestLabels[item] = labelIndex
+          } else if (value > bestScores[item]) {
+            bestScores[item] = value
+            bestLabels[item] = labelIndex
+          }
         }
       }
       for (const item of best) {
+        // Which brand an item is to this request: the catalog spelling each
+        // of its words was heard as, folded ("Кетонал" and "Ketonal" are one).
+        if (signatures) signatures.set(item, `${signatures.get(item) ?? ""}${position}:${this.wordList[bestLabels[item]].foldedKey} `)
         if (!coveredSeen[item]) {
           coveredSeen[item] = 1
           covered.push(item)
@@ -323,7 +362,8 @@ export class PharmacyNameSearch {
     }
     const wholeScores = this.wholeScores, fullScores = this.fullScores
     const rows = [...whole, ...covered.filter((item) => !(wholeScores[item] > 0))].map((item) => ({
-      id: this.idList[item], covered: coveredScores[item], full: fullScores[item], whole: wholeScores[item],
+      id: this.idList[item],
+      covered: coveredScores[item] * (spoken?.forms.length && formScore(this.itemForms[item], spoken) > 0 ? 1 + FORM_TIP : 1), full: fullScores[item], whole: wholeScores[item],
       exact: exact.get(item) ?? 0, words,
     }))
     for (const item of whole) wholeScores[item] = 0
@@ -333,7 +373,35 @@ export class PharmacyNameSearch {
       coveredSeen[item] = 0
     }
     rows.sort((a, b) => b.covered - a.covered || b.full - a.full || b.whole - a.whole || a.id.localeCompare(b.id))
-    return rows
+    return signatures && spoken ? this.chooseVariants(rows, signatures, spoken) : rows
+  }
+
+  /**
+   * Items heard as the same brand keep the places they hold, and among
+   * themselves the asked form comes first, then the asked strength; nothing
+   * moves between brands. "Ketonal ampula" puts Ketonal's ampoules where
+   * Ketonal stood, never another brand's ampoules above Ketonal.
+   */
+  private chooseVariants(rows: RankedItem[], signatures: Map<number, string>, spoken: SpokenForms): RankedItem[] {
+    const brands = new Map<string, number[]>()
+    rows.forEach((row, at) => {
+      const brand = signatures.get(this.idIndex.get(row.id)!)
+      if (brand === undefined) return
+      const places = brands.get(brand)
+      if (places) places.push(at)
+      else brands.set(brand, [at])
+    })
+    const result = rows.slice()
+    for (const places of brands.values()) {
+      if (places.length < 2) continue
+      const fit = places.map((at) => {
+        const item = this.idIndex.get(rows[at].id)!
+        return { at, form: formScore(this.itemForms[item], spoken), strength: spoken.strengths.some((amount) => this.itemAmounts[item].has(amount)) ? 1 : 0 }
+      })
+      fit.sort((a, b) => b.form - a.form || b.strength - a.strength || a.at - b.at)
+      places.forEach((place, k) => { result[place] = rows[fit[k].at] })
+    }
+    return result
   }
 
   private fitItemScratch(): void {
@@ -345,6 +413,7 @@ export class PharmacyNameSearch {
     this.bestScores = new Float64Array(size)
     this.coveredSeen = new Uint8Array(size)
     this.bestSeen = new Uint8Array(size)
+    this.bestLabels = new Int32Array(size)
   }
 
   /**
@@ -449,6 +518,18 @@ const QUANTITY_WORDS = new Set([
   "səkkiz", "doqquz", "iyirmi", "otuz", "qırx", "əlli", "altmış", "yetmiş", "səksən", "doxsan", "yüz", "min",
   "lazımdır", "istəyirəm", "yazın", "olsun",
 ])
+
+/**
+ * How much the asked form weighs between two brands heard almost alike: an
+ * item of that form counts this much more of what its name words scored. It
+ * only tips brands within a tenth of each other ("Ketanol ampula": Ketonal,
+ * which has ampoules, over Ketanur shampoo); an item none of whose words was
+ * heard scores nothing to multiply. Catalog benchmark 2026-11-05, brand
+ * misheard by one dropped letter + form: first 85.3% without, 90.2% with.
+ */
+const FORM_TIP = 0.1
+
+const SPOKEN = createSpokenForms((word) => foldSpelling(word).join(""))
 
 /** Letter words of a normalized label, with hyphenated names also joined:
  * the feed writes "No-şpa", a recognizer hears "Noşpa". */
