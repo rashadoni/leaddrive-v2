@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { PharmacyOrderError } from "./contracts"
 import { PharmacyNameSearch } from "./name-search"
+import { itemFormOfKind } from "./spoken-forms"
 import { assortmentExtras, productSound, type ProductSound } from "./zeytun-assortment-ranking"
 import { formKey, innKey, parseSubstituteRequest, sameStrength, strengthOf, SUBSTITUTE_PREFIX } from "./zeytun-substitutes"
 import { productLeads, PROMOTIONS_PREFIX, ZeytunPromotions } from "./zeytun-promotions"
@@ -185,8 +186,9 @@ export class ZeytunAvailableBalances {
       // Do not sum repeated rows: their warehouse/lot semantics are unverified.
       if (this.items.has(item.externalId)) throw new PharmacyOrderError("invalid_catalog")
       this.items.set(item.externalId, item)
-      this.names.add(item.externalId, item.name, sourceParts(item.name))
-      if (item.nameAz) this.names.add(item.externalId, item.nameAz, sourceParts(item.nameAz))
+      const form = itemFormOfKind(item.category.name)
+      this.names.add(item.externalId, item.name, sourceParts(item.name), form)
+      if (item.nameAz) this.names.add(item.externalId, item.nameAz, sourceParts(item.nameAz), form)
       this.addLookup(this.codes, item.itemCode, item.externalId)
       for (const barcode of item.barcodes) this.addLookup(this.barcodes, barcode.value, item.externalId)
       // Pharmacological names are not aliases: one substance can have many SKUs.

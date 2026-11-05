@@ -11,6 +11,7 @@
  * agent gets. "exact" and "other" also show what a looser search costs.
  *
  *   node --import tsx scripts/zeytun-line/search-benchmark.ts <snapshot> [--misses]
+ *   node --import tsx scripts/zeytun-line/search-benchmark.ts <snapshot> --forms [--misses]
  *
  * The snapshot is the line's own file on prod (/var/lib/leaddrive-v2/…/*.snapshot,
  * a JSON header line, then 1C's AvailableBalances response). It is the
@@ -21,6 +22,7 @@ import { performance } from "node:perf_hooks"
 
 import { ZeytunAvailableBalances } from "../../src/lib/voice-agent/pharmacy/zeytun-available-balances"
 import { ASSORTMENT_MARGIN, ASSORTMENT_WITHIN } from "../../src/lib/voice-agent/pharmacy/zeytun-assortment-ranking"
+import { formKey } from "../../src/lib/voice-agent/pharmacy/zeytun-substitutes"
 
 const AZ_LATIN: Record<string, string> = {
   а: "a", б: "b", в: "v", г: "q", д: "d", е: "e", ё: "yo", ж: "j", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m",
@@ -181,12 +183,101 @@ async function callsRun(feed: ZeytunAvailableBalances, org: string, labelsPath: 
   if (process.env.MISSES) for (const miss of misses) console.log(`    not in five: ${miss}`)
 }
 
+
+// The form of an item as the benchmark judges it: 1C's item kind, the same
+// reading as substitutes (zeytun-substitutes.ts formKey), plus the kinds that
+// reading leaves out. Kept apart from the search's own table on purpose: the
+// answer key must not be the rule it grades.
+const KIND_FORM: Record<string, string> = { "пакет": "sachet", "масло": "oil", "шампунь": "shampoo", "мыло": "soap", "аэрозоль": "spray" }
+const kindForm = (kind: string) => formKey(kind) ?? KIND_FORM[kind.trim().toLowerCase()] ?? null
+// What a pharmacy says for each form: 1C's own Azerbaijani word (the
+// НаименованиеАз group most items of that kind carry, snapshot 2026-11-04)
+// first, then the words callers use instead (plan 4.2: paket, tablet, sirop…).
+const SAID: Record<string, string[]> = {
+  tablet: ["həb", "tablet"], capsule: ["kapsul"], ampoule: ["ampula"], suppository: ["şam"],
+  "vaginal-suppository": ["vaginal şam"], drops: ["damcı"], "eye-drops": ["göz damcısı"], "nasal-drops": ["burun damcısı"],
+  "ear-drops": ["qulaq damcısı"], syrup: ["şərbət", "sirop"], "pediatric-syrup": ["pediatrik şərbət"],
+  suspension: ["suspenziya"], sachet: ["saşe", "paket"], powder: ["toz", "poroşok"], granules: ["granula"],
+  cream: ["krem"], gel: ["gel"], ointment: ["məlhəm"], "eye-ointment": ["göz məlhəmi"], spray: ["sprey"],
+  "nasal-spray": ["burun spreyi"], "throat-spray": ["boğaz spreyi"], solution: ["məhlul"], vial: ["flakon"],
+  effervescent: ["fışıldayan həb"], chewable: ["çeynəmə həbi"], lozenge: ["pastilka"], patch: ["plastır"],
+  infusion: ["infuziya"], oil: ["yağ"], shampoo: ["şampun"], soap: ["sabun"],
+}
+const STRENGTH_IN = /(\d+(?:[.,]\d+)?)\s*(mkq|mcg|мкг|mg|mq|мг|ml|мл|%|me|ме|ед)(?![\p{L}])/giu
+const strengths = (label: string) => new Set([...label.matchAll(STRENGTH_IN)].map((match) => Number(match[1].replace(",", "."))))
+
+/**
+ * `--forms`: "brand + form (+ strength)", the way a pharmacy names one
+ * variant of a product it orders (plan 4.2, "не тот товар"). Every brand (the
+ * name's first word, said as above) that 1C sells in more than one form is
+ * asked for each of its forms in each word a caller uses for it; "+ dose" adds
+ * the strength of one item of that form (number only, as said: "Parasetamol
+ * şam 50"). Right = an item of that brand and form (and strength) comes first
+ * / is among the five.
+ */
+function formsRun(feed: ZeytunAvailableBalances, org: string, goods: { Номенклатура: { Наименование: string; Guid: string; ВидНоменклатуры: { Наименование: string } } }[], misses: boolean) {
+  const items = new Map<string, { brand: string; form: string | null; strengths: Set<number> }>()
+  const brands = new Map<string, Map<string, Set<number>>>()
+  for (const row of goods) {
+    const item = row.Номенклатура, brand = nameWord(item.Наименование), form = kindForm(item.ВидНоменклатуры.Наименование)
+    const amounts = strengths(item.Наименование)
+    items.set(item.Guid.toLowerCase(), { brand, form, strengths: amounts })
+    if (!brand || !form) continue
+    const forms = brands.get(brand) ?? new Map<string, Set<number>>()
+    forms.set(form, new Set([...(forms.get(form) ?? []), ...amounts]))
+    brands.set(brand, forms)
+  }
+  type Tally = { first: number; five: number; n: number; misses: string[] }
+  const tally = new Map<string, Tally>()
+  const count = (key: string, query: string, right: (id: string) => boolean) => {
+    const entry = tally.get(key) ?? { first: 0, five: 0, n: 0, misses: [] }
+    tally.set(key, entry)
+    const ids = feed.search(org, { text: query }).candidates.map((candidate) => candidate.externalId)
+    entry.n++
+    if (ids[0] !== undefined && right(ids[0])) entry.first++
+    if (ids.some(right)) entry.five++
+    else if (entry.misses.length < 8) {
+      entry.misses.push(`${query} -> ${ids.slice(0, 3).map((id) => { const item = items.get(id)!; return `${item.brand}/${item.form}` }).join(", ")}`)
+    }
+  }
+  for (const [brand, forms] of brands) {
+    if (forms.size < 2) continue
+    const spoken = latin(brand)
+    for (const [form, amounts] of forms) {
+      for (const word of SAID[form] ?? []) {
+        const of = (id: string) => { const item = items.get(id); return item?.brand === brand && item.form === form }
+        count(`${word}`, `${spoken} ${word}`, of)
+        // The brand misheard as in the main mode: the form must not pull the
+        // search to another brand, nor be lost when the brand is unsure.
+        for (const [kind, heard] of Object.entries(misheard(spoken))) {
+          if (kind !== "exact" && heard !== spoken) count(`~ misheard ${kind}`, `${heard} ${word}`, of)
+        }
+        // One strength per form: the smallest, said as a bare number.
+        const amount = [...amounts].sort((a, b) => a - b)[0]
+        if (amount !== undefined) count(`${word} + dose`, `${spoken} ${word} ${String(amount).replace(".", ",")}`, (id) => of(id) && items.get(id)!.strengths.has(amount))
+      }
+    }
+  }
+  const sum = (dose: boolean) => [...tally].filter(([key]) => !key.startsWith("~") && key.endsWith("+ dose") === dose)
+    .reduce((total, [, entry]) => ({ first: total.first + entry.first, five: total.five + entry.five, n: total.n + entry.n }), { first: 0, five: 0, n: 0 })
+  const line = (label: string, entry: { first: number; five: number; n: number }) =>
+    `${label.padEnd(26)} first ${(100 * entry.first / entry.n).toFixed(1).padStart(5)}%  in five ${(100 * entry.five / entry.n).toFixed(1).padStart(5)}%  (${entry.n})`
+  console.log(`brands with more than one form: ${[...brands.values()].filter((forms) => forms.size > 1).length}`)
+  console.log(line("ALL brand + form", sum(false)))
+  console.log(line("ALL brand + form + dose", sum(true)))
+  for (const [key, entry] of [...tally].sort(([a], [b]) => a.localeCompare(b))) {
+    console.log(line(key, entry))
+    if (misses) for (const miss of entry.misses) console.log(`    ${miss}`)
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2)
   const [path, flag] = args
-  if (!path) throw new Error("usage: search-benchmark.ts <snapshot> [--misses | --assortment [size] | --calls <labels.jsonl> <ordered-by-call.txt>]")
+  if (!path) throw new Error("usage: search-benchmark.ts <snapshot> [--misses | --forms [--misses] | --assortment [size] | --calls <labels.jsonl> <ordered-by-call.txt>]")
   const raw = readFileSync(path), newline = raw.indexOf(10)
-  const goods = (JSON.parse(raw.subarray(newline + 1).toString()) as { data: { goods: { Номенклатура: { Наименование: string } }[] } }).data.goods
+  const goods = (JSON.parse(raw.subarray(newline + 1).toString()) as
+    { data: { goods: { Номенклатура: { Наименование: string; Guid: string; ВидНоменклатуры: { Наименование: string } } }[] } }).data.goods
   const org = "benchmark"
   const feed = await ZeytunAvailableBalances.build(raw.subarray(newline + 1), { organizationId: org, observedAt: new Date().toISOString(), source: "attachment" })
   const names = new Map<string, string>()
@@ -195,6 +286,7 @@ async function main() {
     if (word && !names.has(word)) names.set(word, latin(word))
   }
   if (flag === "--calls") return callsRun(feed, org, args[2], args[3])
+  if (flag === "--forms") return formsRun(feed, org, goods, args[2] === "--misses")
   if (flag === "--assortment") {
     const itemsByWord = new Map<string, string[]>(), allIds: string[] = []
     for (const item of feed.labels(org)) {

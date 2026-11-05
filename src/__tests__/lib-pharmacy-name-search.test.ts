@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { PharmacyNameSearch } from "@/lib/voice-agent/pharmacy/name-search"
+import { createSpokenForms, formScore, itemStrengths, spokenStrengths, type SpokenForms } from "@/lib/voice-agent/pharmacy/spoken-forms"
 
 // Labels copied in shape from the Zeytun feed (2026-10-23 live probe): the
 // medicine shares its form word with hundreds of other items, and speech
@@ -113,6 +114,85 @@ describe("PharmacyNameSearch word ranking for spoken requests", () => {
   })
 })
 
+// Plan 4.2 "не тот товар": a pharmacy names one variant as "brand + form (+
+// strength)". Measured on Zeytun's whole catalog (search-benchmark.ts
+// --forms, 2026-11-05): the asked form first 69.7% → 97.4%; "tablet" 22.9% →
+// 99.5%, "paket" 17.4% → 100%, "şam" 58.8% → 100%. Labels copied in shape
+// from that snapshot.
+describe("PharmacyNameSearch: form and strength choose among the brand's own variants", () => {
+  function catalog() {
+    const index = new PharmacyNameSearch(true)
+    index.add("acc-200", "А,Ц,Ц  200 мг № 20 (Шипучие таблетки) (Hexal) (Германия)", [], "effervescent")
+    index.add("acc-200", "Asetilsistein 200 mq №20 (fışıldayan tablet) /*qutu/*", [], "effervescent")
+    index.add("acc-600", "А,Ц,Ц лонг  600 мг № 10 (Шипучие таблетки) (Hexal) (Германия)", [], "effervescent")
+    index.add("acc-600", "Asetilsistein 600 mq №10 (fışıldayan tablet) /*qutu/*", [], "effervescent")
+    index.add("dikl-tab", "Диклофенак 50 мг № 20 (Таблетки) (Борисовский ЗМП) (Беларусия)", [], "tablet")
+    index.add("dikl-sam", "Диклофенак 100 мг № 10 (Свечи) (Farmaprim) (Moldova)", [], "suppository")
+    index.add("dikl-gel", "Диклофенак 1% 40 гр (Гель) (Hemopharma) (Serbiya)", [], "gel")
+    index.add("cefekon-50", "Цефекон-Д (1-3мес,) 50 мг № 10 (Свечи) (НижФарм) (Россия)", [], "suppository")
+    index.add("cefekon-50", "Parasetamol şam 50 mg №10 /*qutu/* \\*Nijfarm Asc,Rusiya\\*", [], "suppository")
+    index.add("cefekon-100", "Цефекон-Д (от3мес до3лет) 100 мг № 10 (Свечи) (НижФарм) (Россия)", [], "suppository")
+    index.add("cefekon-100", "Parasetamol  şam 125 mq № 10 /*qutu/*", [], "suppository")
+    index.add("para-tab", "Парацетамол 0,5 гр № 20 (Таблетки) (Sopharma ) (Болгария)", [], "tablet")
+    index.add("para-tab", "Parasetamol 500 mq № 20 /*qutu/*", [], "tablet")
+    index.add("para-syrup", "Парацетамол 120мг/5мл 100 мл (Сироп) (REPLEK FARM) (Македония)", [], "syrup")
+    index.add("ketonal-amp", "Кетонал 100 мг/ 2 мл № 10 (Ампулы) (LEK) (Словения)", [], "ampoule")
+    index.add("ketonal-amp", "Ketonal 2 ml № 10  /*qutu/*", [], "ampoule")
+    index.add("ketonal-krem", "Кетонал 5%  30 гр (Крем) (LEK) (Словения)", [], "cream")
+    index.add("ketonal-krem", "Ketonal 30 qr (Krem) (LEK) (Sloveniya)", [], "cream")
+    // Cyrillic only: it must still count as Ketonal (the folded spelling is the brand).
+    index.add("ketonal-sase", "Кетонал экстра 25 мг № 30 (Саше) (FINE FOODS) (Словения)", [], "sachet")
+    index.add("ketanur", "Кетанур Плюс (Selenium Sulfid 2%) 100 мл (Шампунь) (Altuğ Medikal) (Турция)", [], "shampoo")
+    index.add("mezim-3500", "Мезим форте  3500 ЕД № 20 (Таблетки) (Berlin-Chemie) (Германия)", [], "tablet")
+    index.add("mezim-10000", "Мезим форте 10000 ЕД № 20 (Таблетки) (Berlin-Chemie) (Германия)", [], "tablet")
+    index.add("otrivin-drops", "Отривин 0,05% 10 мл (Капли) (Novartis-Farma) (Швейцария)", [], "drops")
+    index.add("otrivin-spray", "Отривин 0,1%  10 мл (Спрей) (Novartis-Farma) (Швейцария)", [], "spray")
+    index.add("smekta", "Смекта 3 гр № 10 (Саше) (Beaufour Ipsen Pharma) (Франция)", [], "sachet")
+    index.add("smekta", "Smekta 3 qr № 10 (DIOSMECTITE) (Saşe) (Beaufour Ipsen Pharma) (Fransa)", [], "sachet")
+    for (let i = 0; i < 30; i++) index.add(`other-amp-${i}`, `Препарат${i} 1 мл № 5 (Ампулы) (Firma) (Ölkə)`, [], "ampoule")
+    return index
+  }
+
+  it("never lets a form word pull another brand above the one named", () => {
+    // Before: "tablet" is rare in 1C's names, so the two effervescent ACC came first.
+    expect(catalog().find("Diklofenak tablet")[0]).toBe("dikl-tab")
+    expect(catalog().find("Diklofenak tablet").slice(0, 3)).not.toContain("acc-200")
+    expect(catalog().find("Ketonal ampula")[0]).toBe("ketonal-amp")
+    expect(catalog().find("Ketonal ampula").slice(0, 3).every((id) => id.startsWith("ketonal"))).toBe(true)
+  })
+
+  it("puts the asked form of the brand first, in any of the words callers use", () => {
+    expect(catalog().find("Diklofenak şam")[0]).toBe("dikl-sam")
+    expect(catalog().find("Diklofenak geli")[0]).toBe("dikl-gel")
+    expect(catalog().find("Diklofenak həb")[0]).toBe("dikl-tab")
+    expect(catalog().find("Otrivin damcı")[0]).toBe("otrivin-drops")
+    expect(catalog().find("Otrivin sprey")[0]).toBe("otrivin-spray")
+    expect(catalog().find("Parasetamol şərbət")[0]).toBe("para-syrup")
+    // "paket" is also a count word: as a form it is 1C's sachet.
+    expect(catalog().find("Ketonal paket")[0]).toBe("ketonal-sase")
+    expect(catalog().find("Ketonal saşe")[0]).toBe("ketonal-sase")
+  })
+
+  it("chooses the strength among the brand's variants, and does not read a count as one", () => {
+    expect(catalog().find("Parasetamol şam 50")[0]).toBe("cefekon-50")
+    expect(catalog().find("Parasetamol şam 125")[0]).toBe("cefekon-100")
+    expect(catalog().find("Parasetamol 500")[0]).toBe("para-tab")
+    expect(catalog().find("Mezim forte 10000")[0]).toBe("mezim-10000")
+    expect(catalog().find("Mezim forte 3500 mq 10 qutu")[0]).toBe("mezim-3500")
+    // "10 qutu" is how many, not which: the 10000 variant gains nothing from it.
+    expect(catalog().find("Mezim forte 10 qutu")[0]).toBe(catalog().find("Mezim forte")[0])
+  })
+
+  it("lets the asked form tip a brand heard almost alike", () => {
+    // "Ketanol" sounds closer to Кетанур than to Кетонал; only Ketonal has ampoules.
+    expect(catalog().find("Ketanol ampula")[0]).toBe("ketonal-amp")
+  })
+
+  it("keeps a form word the name when nothing else is said", () => {
+    expect(catalog().find("ampula").slice(0, 5).every((id) => id.includes("amp"))).toBe(true)
+  })
+})
+
 // The index skips words and labels that cannot score; it must answer exactly
 // as the plain scan of every word and label it replaced (2026-10-28: on
 // prod's 9 176 items that scan held the web process 0.1-0.9 s a request).
@@ -124,11 +204,18 @@ class ScanSearch {
   private readonly words = new Map<string, { grams: Set<string>; letters: string[]; folded: string[] }>()
   private readonly ids = new Set<string>()
   private readonly fullLabels = new Set<string>()
+  private readonly forms = new Map<string, string | null>()
+  private readonly amounts = new Map<string, Set<number>>()
 
   add(id: string, rawName: string): void {
     const name = rawName.normalize("NFC").trim().replace(/\s+/gu, " ").toLowerCase()
     this.ids.add(id)
     this.fullLabels.add(name)
+    // No kind given: the first label naming a form decides it.
+    if (!this.forms.get(id)) this.forms.set(id, scanForms().labelForm(name))
+    const amounts = this.amounts.get(id) ?? new Set<number>()
+    for (const amount of itemStrengths(name)) amounts.add(amount)
+    this.amounts.set(id, amounts)
     const labels = new Set([name])
     for (const word of scanWords(name)) {
       labels.add(word)
@@ -160,19 +247,51 @@ class ScanSearch {
       if (score < 0.3) continue
       for (const id of this.terms.get(term)!) whole.set(id, Math.max(whole.get(id) ?? 0, score))
     }
-    const covered = new Map<string, number>()
-    for (const word of new Set(scanWords(name))) {
-      if (SCAN_QUANTITY.has(word)) continue
+    // Form and strength words (spoken-forms.ts) choose among the variants of
+    // what the other words named; with no other word, they are the name.
+    const said = [...new Set(scanWords(name))], spokenForms = scanForms()
+    const forms = said.map((word) => spokenForms.formOf(word)).filter((form): form is string => form !== null)
+    const named = said.filter((word) => !SCAN_QUANTITY.has(word) && !spokenForms.formOf(word) && !(forms.length && spokenForms.kindOf(word)))
+    let spoken: SpokenForms | null = null
+    if (named.length) {
+      spoken = { forms, kinds: forms.length ? said.map((word) => spokenForms.kindOf(word)).filter((kind): kind is string => kind !== null) : [],
+        strengths: spokenStrengths(name, (word) => SCAN_QUANTITY.has(word)) }
+      if (!forms.length && !spoken.strengths.length) spoken = null
+    }
+    const covered = new Map<string, number>(), brands = new Map<string, string>()
+    for (const [position, word] of (named.length ? named : said.filter((each) => !SCAN_QUANTITY.has(each))).entries()) {
       const matches = this.matchWord(word)
       if (!matches.size) continue
       const [closest] = [...matches].sort(([a, left], [b, right]) => right - left || a.localeCompare(b))[0]
       const weight = Math.log(1 + this.ids.size / this.terms.get(closest)!.size)
-      const best = new Map<string, number>()
-      for (const [label, score] of matches) for (const id of this.terms.get(label)!) best.set(id, Math.max(best.get(id) ?? 0, score * weight))
-      for (const [id, score] of best) covered.set(id, (covered.get(id) ?? 0) + score)
+      // Per item its best score and the catalog spelling it came from: the brand it was heard as.
+      const best = new Map<string, { score: number; spelling: string }>()
+      for (const [label, score] of matches) {
+        for (const id of this.terms.get(label)!) {
+          const value = score * weight, known = best.get(id)
+          if (!known) best.set(id, { score: Math.max(0, value), spelling: scanFold(label).join("") })
+          else if (value > known.score) best.set(id, { score: value, spelling: scanFold(label).join("") })
+        }
+      }
+      for (const [id, { score, spelling }] of best) {
+        covered.set(id, (covered.get(id) ?? 0) + score)
+        brands.set(id, `${brands.get(id) ?? ""}${position}:${spelling} `)
+      }
     }
+    // An item of the asked form counts a tenth more: it tips only brands heard almost alike.
+    if (spoken?.forms.length) for (const [id, score] of covered) if (formScore(this.forms.get(id) ?? null, spoken) > 0) covered.set(id, score * 1.1)
     const by = (scores: Map<string, number>, a: string, b: string) => (scores.get(b) ?? 0) - (scores.get(a) ?? 0)
-    return [...new Set([...whole.keys(), ...covered.keys()])].sort((a, b) => by(covered, a, b) || by(full, a, b) || by(whole, a, b) || a.localeCompare(b))
+    const order = [...new Set([...whole.keys(), ...covered.keys()])].sort((a, b) => by(covered, a, b) || by(full, a, b) || by(whole, a, b) || a.localeCompare(b))
+    if (!spoken) return order
+    // Within one brand: the asked form first, then the asked strength; the brand keeps its places.
+    const asked = spoken, result = order.slice()
+    for (const brand of new Set(brands.values())) {
+      const places = order.flatMap((id, at) => (brands.get(id) === brand ? [at] : []))
+      const fit = (id: string) => [formScore(this.forms.get(id) ?? null, asked), asked.strengths.some((amount) => this.amounts.get(id)!.has(amount)) ? 1 : 0]
+      const ranked = places.map((at) => order[at]).sort((a, b) => fit(b)[0] - fit(a)[0] || fit(b)[1] - fit(a)[1] || order.indexOf(a) - order.indexOf(b))
+      places.forEach((place, k) => { result[place] = ranked[k] })
+    }
+    return result
   }
 
   private matchWord(word: string): Map<string, number> {
@@ -233,6 +352,8 @@ function scanFold(word: string): string[] {
     .replace(/[şç]/gu, (ch) => (ch === "ş" ? "s" : "c")).replace(/[ğq]/gu, "g").replace(/ı/gu, "i")
     .replace(/ö/gu, "o").replace(/ü/gu, "u").replace(/ə/gu, "e"))
 }
+let scanFormReader: ReturnType<typeof createSpokenForms> | null = null
+const scanForms = () => (scanFormReader ??= createSpokenForms((word) => scanFold(word).join("")))
 const scanSlack = (length: number) => (length >= 7 ? 4 : length >= 5 ? 2 : length === 4 ? 1 : 0)
 const SCAN_QUANTITY = new Set([
   "qutu", "qutusu", "qutudan", "ədəd", "dənə", "paket", "bir", "iki", "üç", "dörd", "beş", "altı", "yeddi",
@@ -256,7 +377,8 @@ describe("PharmacyNameSearch answers exactly as a scan of the whole index", () =
     // Few distinct words, so many items share each one: ties, common form
     // words and near spellings are the cases an index can get wrong.
     const vocabulary = [...Array.from({ length: 150 }, () => spell(latin)), ...Array.from({ length: 150 }, () => spell(cyrillic)),
-      "no-şpa", "ketonal", "ketanol", "retinol", "ampula", "таблетки", "qutu", "Адефа", "аджисепт", "şalfey"]
+      "no-şpa", "ketonal", "ketanol", "retinol", "ampula", "таблетки", "qutu", "Адефа", "аджисепт", "şalfey",
+      "şam", "damcı", "göz", "paket", "свечи", "gel"]
     const typo = (word: string) => {
       const letters = Array.from(word), at = Math.floor(random() * letters.length)
       if (random() < 0.5) letters[at] = pick(latin)
@@ -266,14 +388,20 @@ describe("PharmacyNameSearch answers exactly as a scan of the whole index", () =
     const labels: string[] = []
     const index = new PharmacyNameSearch(true), scan = new ScanSearch()
     const add = (id: string, label: string) => { index.add(id, label); scan.add(id, label); labels.push(label) }
+    // Form words as callers say them and as 1C writes them, for "brand + form (+ strength)".
+    const formWords = ["ampula", "həb", "tablet", "şam", "damcı", "göz damcısı", "krem", "gel", "paket", "saşe", "sirop", "таблетки", "свечи"]
     const queries = () => {
-      const words = pick(labels).toLowerCase().match(/[\p{L}\p{M}-]+/gu) ?? ["x"]
-      return [pick(words), typo(pick(words)), words.slice(0, 2).join(" ") + " beş qutu", words.map(typo).join(" "), pick(labels),
-        pick(words).replace(/[а-я]/gu, (ch) => SCAN_CYRILLIC[ch] ?? ch), pick(words).slice(0, 2), pick(vocabulary)]
+      const label = pick(labels), words = label.toLowerCase().match(/[\p{L}\p{M}-]+/gu) ?? ["x"]
+      const amount = label.match(/\d+/u)?.[0] ?? String(Math.floor(random() * 500))
+      return [pick(words), typo(pick(words)), words.slice(0, 2).join(" ") + " beş qutu", words.map(typo).join(" "), label,
+        pick(words).replace(/[а-я]/gu, (ch) => SCAN_CYRILLIC[ch] ?? ch), pick(words).slice(0, 2), pick(vocabulary),
+        `${pick(words)} ${pick(formWords)}`, `${typo(pick(words))} ${pick(formWords)}`, `${pick(words)} ${pick(formWords)} ${amount}`,
+        `${pick(words)} ${amount} mq`, `${pick(words)} ${amount} qutu`, pick(formWords)]
     }
     for (let i = 0; i < 300; i++) {
       const name = Array.from({ length: 1 + Math.floor(random() * 4) }, () => pick(vocabulary)).join(" ")
-      add(`item-${i}`, `${name} ${Math.floor(random() * 500)} mq № ${Math.floor(random() * 50)} (${pick(vocabulary)})`)
+      const form = random() < 0.6 ? pick(["Ampula", "Həb", "Таблетки", "Şam", "Свечи", "Damcı", "göz damcısı", "Krem", "Гель", "Saşe", "Сироп", "fışıldayan tablet"]) : pick(vocabulary)
+      add(`item-${i}`, `${name} ${Math.floor(random() * 500)} mq № ${Math.floor(random() * 50)} (${form})`)
       if (random() < 0.3) add(`item-${i}`, name)
       if (random() < 0.05) add(`item-${Math.floor(random() * (i + 1))}`, name)
     }
