@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { createDateFormatter, formatTime } from "@/lib/format-date"
 import { MtmAttendanceAddEmployee } from "@/components/mtm/attendance-add-employee"
+import { MtmAttendanceEmployeeImport } from "@/components/mtm/attendance-employee-import"
+import { MtmAttendanceTimeRollout, type TimeFilter } from "@/components/mtm/attendance-time-rollout"
 import type { AttendanceEmployeeDirectory } from "@/lib/mtm/attendance-employee-contract"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees"
@@ -36,6 +38,7 @@ export function MtmAttendanceEmployees() {
   const [search, setSearch] = useState(() => params.get("q") ?? "")
   const [department, setDepartment] = useState(() => params.get("team") ?? "")
   const [participation, setParticipation] = useState<Participation>(() => (["INCLUDED", "EXCLUDED", "DISMISSED"].includes(params.get("show") ?? "") ? params.get("show") : "ALL") as Participation)
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>(() => (["IN", "OUT"].includes(params.get("time") ?? "") ? params.get("time") : "ALL") as TimeFilter)
   const [page, setPage] = useState(() => Math.max(0, Number(params.get("page") ?? 1) - 1) || 0)
   const [loading, setLoading] = useState(false), [denied, setDenied] = useState(false), [error, setError] = useState<string | null>(null)
   const read = useRef<AbortController | null>(null)
@@ -62,9 +65,10 @@ export function MtmAttendanceEmployees() {
     if (search.trim()) next.set("q", search.trim())
     if (department) next.set("team", department)
     if (participation !== "ALL") next.set("show", participation)
+    if (timeFilter !== "ALL") next.set("time", timeFilter)
     if (page) next.set("page", String(page + 1))
     return next.toString()
-  }, [search, department, participation, page])
+  }, [search, department, participation, timeFilter, page])
   useEffect(() => { if (`?${query}` !== `?${params.toString()}`) router.replace(`${pathname}?${query}`, { scroll: false }) }, [query, params, pathname, router])
 
   const needle = search.trim().toLocaleLowerCase(locale), digits = search.replace(/\D/g, "")
@@ -74,11 +78,14 @@ export function MtmAttendanceEmployees() {
     && (!department || (department === NO_DEPARTMENT ? !employee.teamId && !employee.departmentId
       : department.startsWith(DEPARTMENT_FILTER) ? employee.departmentId === department.slice(DEPARTMENT_FILTER.length) : employee.teamId === department))
     // Dismissed people (2026-10-16) leave the list; their own filter brings them back.
-    && (participation === "DISMISSED" ? employee.status !== "ACTIVE" : employee.status === "ACTIVE" && (participation === "ALL" || employee.included === (participation === "INCLUDED"))))
+    && (participation === "DISMISSED" ? employee.status !== "ACTIVE" : employee.status === "ACTIVE" && (participation === "ALL" || employee.included === (participation === "INCLUDED")))
+    // Rolling Time out (2026-11-05): who has got into the app, who not yet.
+    && (timeFilter === "ALL" || Boolean(employee.timeSince) === (timeFilter === "IN")))
   const pages = Math.max(1, Math.ceil(employees.length / PAGE_SIZE)), currentPage = Math.min(page, pages - 1)
   const active = directory?.employees.filter(employee => employee.status === "ACTIVE") ?? []
   const includedCount = active.filter(employee => employee.included).length
   const date = (value: string) => createDateFormatter(locale, { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T00:00:00Z`))
+  const signedDate = (value: string) => createDateFormatter(locale, { timeZone: directory?.timezone ?? "Asia/Baku", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value))
   const time = (value: string | null) => value && directory ? formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: directory.timezone }) : ""
   function today(employee: Employee): [string, HomeTone] {
     const mark = employee.todayMark
@@ -100,12 +107,14 @@ export function MtmAttendanceEmployees() {
   return <div className="space-y-5" data-testid="attendance-employees">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <div className="flex flex-wrap items-start gap-2">
       <MtmAttendanceAddEmployee disabled={loading || !directory} teams={directory?.teams ?? []} departments={directory?.departments ?? []} onAdded={(name, phone) => { void load().then(() => setAdded({ name, phone })) }} onUnitRenamed={() => void load()} />
+      <MtmAttendanceEmployeeImport disabled={loading || !directory} onLoaded={() => void load()} />
       <Button variant="outline" className="min-h-11 rounded-full" disabled={loading} onClick={() => void load()}>{t("employeesRefresh")}</Button></div>}</div>
     {added && <p role="status" className="max-w-prose rounded-xl border border-l-4 border-border border-l-emerald-500 bg-card text-foreground dark:border-l-emerald-500 p-4 text-sm" data-testid="attendance-employee-added">{p("addEmployeeDone", added)}</p>}
     {loading && !directory && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}
     {error && <p role="alert" className="max-w-prose text-sm text-destructive">{t(error)}</p>}
+    {directory && !denied && <MtmAttendanceTimeRollout employees={active} onShowMissing={unit => { setDepartment(unit); setTimeFilter("OUT"); setParticipation("ALL"); reset() }} />}
     {directory && !denied && <section className="space-y-4 rounded-2xl border bg-card p-5" data-testid="employees-roster" aria-label={t("employeesRoster")}>
-      <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_14rem_14rem]">
+      <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_14rem_14rem_12rem]">
         <div className="space-y-1.5"><label htmlFor="employee-search" className="text-sm font-medium">{p("employeesSearchLabel")}</label>
           <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input id="employee-search" className="min-h-11 pl-9" type="search" placeholder={p("employeesSearchPlaceholder")} value={search} onChange={event => { setSearch(event.target.value); reset() }} /></div></div>
@@ -119,10 +128,13 @@ export function MtmAttendanceEmployees() {
         <div className="space-y-1.5"><label htmlFor="employee-participation" className="text-sm font-medium">{t("employeesParticipationFilter")}</label>
           <select id="employee-participation" className={SELECT} value={participation} onChange={event => { setParticipation(event.target.value as Participation); reset() }}>
             <option value="ALL">{t("employeesFilterAll")}</option><option value="INCLUDED">{t("employeesFilterIncluded")}</option><option value="EXCLUDED">{t("employeesFilterExcluded")}</option><option value="DISMISSED">{p("employeesFilterDismissed")}</option></select></div>
+        <div className="space-y-1.5"><label htmlFor="employee-time" className="text-sm font-medium">{p("timeFilterLabel")}</label>
+          <select id="employee-time" className={SELECT} value={timeFilter} onChange={event => { setTimeFilter(event.target.value as TimeFilter); reset() }} data-testid="employee-time-filter">
+            <option value="ALL">{p("timeFilterAll")}</option><option value="IN">{p("timeFilterIn")}</option><option value="OUT">{p("timeFilterOut")}</option></select></div>
       </div>
       <p className="text-sm text-muted-foreground" role="status">{t("employeesParticipationCounts", { total: active.length, included: includedCount, excluded: active.length - includedCount })}</p>
       {employees.length ? <div className="overflow-x-auto"><table className="w-full table-fixed text-left text-sm">
-        <thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground"><th className="w-[46%] px-3 py-2 font-medium">{p("employeesColEmployee")}</th><th className="px-3 py-2 font-medium">{p(directory.departments?.length ? "employeesColUnit" : "employeeCardDepartment")}</th><th className="px-3 py-2 font-medium">{p("employeesColToday")}</th><th className="w-36 px-3 py-2"><span className="sr-only">{p("employeeEdit")}</span></th></tr></thead>
+        <thead className="hidden md:table-header-group"><tr className="border-b text-xs text-muted-foreground"><th className="w-[46%] px-3 py-2 font-medium">{p("employeesColEmployee")}</th><th className="px-3 py-2 font-medium">{p(directory.departments?.length ? "employeesColUnit" : "employeeCardDepartment")}</th><th className="px-3 py-2 font-medium">{p("employeesColToday")}</th><th className="px-3 py-2 font-medium">{p("timeColumn")}</th><th className="w-36 px-3 py-2"><span className="sr-only">{p("employeeEdit")}</span></th></tr></thead>
         <tbody className="block md:table-row-group">{employees.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(employee => {
           const href = `/mtm/attendance/people/${encodeURIComponent(employee.id)}?back=${back}`, [todayText, tone] = today(employee)
           const initials = employee.name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]!.toUpperCase()).join("")
@@ -134,6 +146,7 @@ export function MtmAttendanceEmployees() {
               ? <><span className="block truncate text-foreground">{employee.departmentName}</span>{employee.teamName ? <span className="block truncate text-xs">{employee.teamName}</span> : null}</>
               : employee.teamName ?? t("employeesNoTeam")}</td>
             <td className="md:px-3 md:py-3"><HomePill tone={tone}>{todayText}</HomePill></td>
+            <td className="md:px-3 md:py-3" data-testid="employee-time">{employee.timeSince ? <HomePill tone="green">{p("timeSince", { date: signedDate(employee.timeSince) })}</HomePill> : <HomePill tone="zinc">{p("timeNotYet")}</HomePill>}</td>
             <td className="row-start-1 col-start-2 text-right md:px-3 md:py-3"><Button asChild variant="outline" className="min-h-10 rounded-full">
               <Link href={href} prefetch={false} aria-label={p("employeeEditNamed", { name: employee.name })}><IdCard className="mr-2 h-4 w-4" aria-hidden="true" />{p("employeeEdit")}</Link></Button></td>
           </tr>

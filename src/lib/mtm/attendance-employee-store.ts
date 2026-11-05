@@ -30,6 +30,9 @@ function employmentDate(event: EmploymentRow, timezone: string) {
   if (event.recordedDate && isDateKey(event.recordedDate)) return event.recordedDate
   return event.kind === "TERMINATION" ? addDateKeyDays(currentDateKey(event.effectiveAt, timezone), -1) : currentDateKey(event.effectiveAt, timezone)
 }
+/** People, CRM users, sections and departments one Personnel list reads at most. */
+export const ATTENDANCE_DIRECTORY_MAX = 5000
+
 export async function requireAttendanceEmployeeAdmin(tx: Prisma.TransactionClient, actor: AttendanceReviewer) {
   await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
   await tx.$queryRaw`SELECT "id" FROM mtm_settings WHERE "organizationId" = ${actor.organizationId} AND "key" IN (${ATTENDANCE_FEATURE_SETTING_KEY}, 'timezone') ORDER BY "key" FOR SHARE`
@@ -49,21 +52,45 @@ async function history(tx: Prisma.TransactionClient, organizationId: string, age
       WHERE audit."organizationId" = event."organizationId" AND audit."metadataKind" = 'mtm_attendance_employment'
         AND audit."newData"->>'eventId' = event."id" ORDER BY audit."createdAt", audit."id" LIMIT 1) AS "recordedDate"
     FROM workforce_employment_events AS event
-    WHERE event."organizationId" = ${organizationId} AND event."agentId" IN (${Prisma.join(agentIds)}) ORDER BY event."effectiveAt", CASE WHEN event."kind" = 'REHIRE' THEN 1 ELSE 0 END, event."id" LIMIT 10001`
-  if (rows.length > 10000) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
+    WHERE event."organizationId" = ${organizationId} AND event."agentId" IN (${Prisma.join(agentIds)}) ORDER BY event."effectiveAt", CASE WHEN event."kind" = 'REHIRE' THEN 1 ELSE 0 END, event."id" LIMIT 50001`
+  if (rows.length > 50000) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
   return rows
 }
+/**
+ * When each person first got into the phone app (owner, 2026-11-05: rolling Time
+ * out to a thousand people, HR has to see who has not yet). Either signal is
+ * enough: they set their own password by the WhatsApp code (the canonical
+ * account's CREDENTIAL_CHANGED by the person, or the legacy card's
+ * MOBILE_PASSWORD_SET_BY_CODE), or they signed in (MOBILE_LOGIN).
+ */
+async function firstAppSignIns(tx: Prisma.TransactionClient, organizationId: string, cards: ReadonlyArray<{ id: string; userId: string | null }>) {
+  const result = new Map<string, string>()
+  if (!cards.length) return result
+  const keep = (agentId: string, at: Date) => { const iso = at.toISOString(), seen = result.get(agentId); if (!seen || iso < seen) result.set(agentId, iso) }
+  const logins = await tx.$queryRaw<Array<{ agentId: string; at: Date }>>`SELECT "agentId", MIN("createdAt") AS at FROM mtm_audit_logs
+    WHERE "organizationId" = ${organizationId} AND "agentId" = ANY(${cards.map(card => card.id)}::text[]) AND action IN ('MOBILE_LOGIN', 'MOBILE_PASSWORD_SET_BY_CODE') GROUP BY "agentId"`
+  for (const row of logins) keep(row.agentId, row.at)
+  const byUser = new Map(cards.flatMap(card => card.userId ? [[card.userId, card.id] as const] : []))
+  if (byUser.size) {
+    const own = await tx.$queryRaw<Array<{ userId: string; at: Date }>>`SELECT "userId", MIN("createdAt") AS at FROM identity_events
+      WHERE "organizationId" = ${organizationId} AND action = 'CREDENTIAL_CHANGED' AND "actorUserId" = "userId" AND application IS NOT NULL
+        AND "userId" = ANY(${[...byUser.keys()]}::text[]) GROUP BY "userId"`
+    for (const row of own) keep(byUser.get(row.userId)!, row.at)
+  }
+  return result
+}
+
 /** Today's mark per employee for the list: on the job since, on a break, gone at. */
 async function todayMarks(tx: Prisma.TransactionClient, organizationId: string, agentIds: string[], today: string) {
   if (!agentIds.length) return new Map<string, AttendanceEmployeeToday>()
   const days = await tx.mtmAgentWorkday.findMany({ where: { organizationId, agentId: { in: agentIds }, workDate: new Date(`${today}T00:00:00.000Z`) },
-    select: { agentId: true, status: true, startedAt: true, completedAt: true }, take: 2001 })
+    select: { agentId: true, status: true, startedAt: true, completedAt: true }, take: ATTENDANCE_DIRECTORY_MAX + 1 })
   return new Map(days.map(day => [day.agentId, { status: day.status, startedAt: day.startedAt?.toISOString() ?? null, completedAt: day.completedAt?.toISOString() ?? null }]))
 }
 export async function readAttendanceEmployees(actor: AttendanceReviewer): Promise<AttendanceEmployeeDirectory> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
-    const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true, phone: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
+    const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null }, select: { id: true, name: true, phone: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: ATTENDANCE_DIRECTORY_MAX + 1 })
     const cards = await tx.mtmAgent.findMany({ where: { organizationId }, select: { id: true, name: true, phone: true, position: true, personnelNumber: true, managerId: true, userId: true, role: true, status: true, attendanceParticipant: true, attendanceExcluded: true, attendanceIncludedFrom: true, teamId: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
       user: { select: { identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
       identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
@@ -71,10 +98,11 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
         { action: { in: ["MTM_ATTENDANCE_EMPLOYEE_CREATED", "MTM_ATTENDANCE_EMPLOYEE_ENROLLED", "MTM_IDENTITY_TIME_ENROLLED"] } },
         { action: "MTM_ATTENDANCE_EMPLOYMENT_RECORDED", newData: { path: ["kind"], equals: "HIRE" } },
       ] }, select: { id: true }, take: 1 },
-    }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
-    const teams = await tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true, departmentId: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
-    const departments = await tx.mtmDepartment.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 1001 })
-    if (users.length > 1000 || cards.length > 1000 || teams.length > 1000 || departments.length > 1000) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
+    }, orderBy: [{ name: "asc" }, { id: "asc" }], take: ATTENDANCE_DIRECTORY_MAX + 1 })
+    const teams = await tx.mtmTeam.findMany({ where: { organizationId }, select: { id: true, name: true, departmentId: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: ATTENDANCE_DIRECTORY_MAX + 1 })
+    const departments = await tx.mtmDepartment.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: ATTENDANCE_DIRECTORY_MAX + 1 })
+    // Zeytun alone has about 1000 people (2026-11-05): at 1000 the whole list refused.
+    if (users.length > ATTENDANCE_DIRECTORY_MAX || cards.length > ATTENDANCE_DIRECTORY_MAX || teams.length > ATTENDANCE_DIRECTORY_MAX || departments.length > ATTENDANCE_DIRECTORY_MAX) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_TOO_LARGE", 422)
     // A CRM login receives a technical attendance card automatically; it is
     // not an HR enrollment. Keep pre-automation manual staff and explicit HR
     // additions, including staff excluded from tracking or later dismissed.
@@ -93,6 +121,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
     const latestParticipation = new Map(participation.map(event => [event.agentId, event.id]))
     const names = new Map(users.map(user => [user.id, user.name])), phones = new Map(users.map(user => [user.id, user.phone]))
     const marks = await todayMarks(tx, organizationId, tracked.map(card => card.id), currentDateKey(new Date(), timezone))
+    const signedIn = await firstAppSignIns(tx, organizationId, tracked)
     const managers = cards.filter(card => card.status === "ACTIVE" && (ATTENDANCE_MANAGER_ROLES as readonly string[]).includes(card.role))
       .map(card => ({ id: card.id, name: card.name, position: card.position ?? null }))
     return { timezone, teams, departments, managers, users: users.map(user => {
@@ -102,6 +131,7 @@ export async function readAttendanceEmployees(actor: AttendanceReviewer): Promis
     }), employees: tracked.map(card => ({ id: card.id, name: card.name, role: card.role, status: card.status, teamName: card.team?.name ?? null,
       departmentId: card.departmentId, departmentName: card.department?.name ?? null, position: card.position ?? null, personnelNumber: card.personnelNumber ?? null, teamId: card.teamId, managerId: card.managerId,
       phone: identityDirectoryPhone({ userAccount: card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? (card.userId ? phones.get(card.userId) ?? null : null) }), todayMark: marks.get(card.id) ?? null,
+      timeSince: signedIn.get(card.id) ?? null,
       included: !card.attendanceExcluded, participationVersion: latestParticipation.get(card.id) ?? null, includedFrom: card.attendanceIncludedFrom?.toISOString() ?? null,
       history: events.filter(event => event.agentId === card.id).map(event => ({ id: event.id, kind: event.kind,
         // A termination instant is the start of the day after the last work day.
