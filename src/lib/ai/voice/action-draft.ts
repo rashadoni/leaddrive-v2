@@ -26,7 +26,13 @@ import {
 type JsonObject = Record<string, unknown>
 
 const ACTIVE_DRAFT_STATES = ["collecting", "awaiting_confirmation"] as const
-type DraftLifecycleEventType = "drafted" | "draft_updated" | "cancelled" | "expired"
+type DraftLifecycleEventType = "drafted" | "draft_updated" | "cancelled" | "expired" | "failed"
+
+/**
+ * Исполнение, которое начали и не закончили. Код намеренно отличается от
+ * ошибок самой CRM-команды: он означает «до записи дело не дошло».
+ */
+const EXECUTION_ABANDONED_ERROR_CODE = "EXECUTION_ABANDONED"
 
 export class AiVoiceActionDraftError extends Error {
   constructor(
@@ -66,6 +72,8 @@ type StoredIntent = Readonly<{
   targetEntityId: string | null
   expectedUpdatedAt: Date | null
   expiresAt: Date
+  executionLeaseExpiresAt: Date | null
+  errorCode: string | null
   createdAt: Date
   updatedAt: Date
 }>
@@ -228,6 +236,54 @@ async function expireIntent(intent: StoredIntent, now: Date): Promise<boolean> {
 }
 
 /**
+ * Брошенное исполнение — тоже конец, и у него теперь есть хозяин.
+ *
+ * Тот же класс, что и забытый черновик (см. `cancelUnfinishedSessionDrafts`), и
+ * последнее его место. Состояние `executing` нигде не закрывалось: заменять его
+ * нельзя (вторая запись в CRM — дубль), срок жизни черновика к нему не
+ * применялся, крон о нём не знал, а крестик на него не действовал. Если браузер
+ * ушёл между заявкой на исполнение и результатом — упал процесс при деплое,
+ * порвалась сеть, закрыли вкладку, — запись оставалась `executing` НАВСЕГДА.
+ * Через минуту, когда истекала лиза, каждая следующая просьба в этом разговоре
+ * получала «предыдущее действие выполняется прямо сейчас» — утверждение,
+ * которое к этому моменту уже было ложью.
+ *
+ * Закрывается именно как `failed`, и это не домысел: CRM-мутация, результат и
+ * событие `succeeded` лежат в ОДНОЙ транзакции (`executeClaimedAiVoiceAction`),
+ * поэтому незакрытая заявка значит, что в CRM не записано ничего. Не
+ * «неизвестно, записалось ли» — ничего.
+ *
+ * Живую лизу это не трогает: пока её срок не истёк, исполнение идёт, и
+ * восстановить его может только тот, кто его начал (`recoverExpiredLease`).
+ */
+async function abandonExpiredExecution(intent: StoredIntent, now: Date): Promise<boolean> {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const changed = await tx.aiActionIntent.updateMany({
+      where: {
+        id: intent.id,
+        organizationId: intent.organizationId,
+        userId: intent.userId,
+        state: "executing",
+        revision: intent.revision,
+        executionLeaseExpiresAt: { lte: now },
+      },
+      data: {
+        state: "failed",
+        errorCode: EXECUTION_ABANDONED_ERROR_CODE,
+        completedAt: now,
+      },
+    })
+    if (changed.count !== 1) return false
+    await appendDraftLifecycleEvent(tx, intent, "failed", {
+      fromState: "executing",
+      reason: "execution_lease_expired",
+      errorCode: EXECUTION_ABANDONED_ERROR_CODE,
+    })
+    return true
+  })
+}
+
+/**
  * Пользователь поправил себя — черновик на экране заменяется новым.
  *
  * Почему это не «ещё один черновик». Сессия держит ровно один незавершённый
@@ -325,10 +381,30 @@ export async function cancelUnfinishedSessionDrafts(
     })
     if (done) cancelled += 1
   }
+
+  // Брошенное исполнение закрывается здесь же: конец разговора — это конец
+  // всего, что разговор держал. Живая лиза не трогается.
+  const abandoned = await prisma.aiActionIntent.findMany({
+    where: {
+      organizationId,
+      voiceSessionId,
+      parentIntentId: null,
+      state: "executing",
+      executionLeaseExpiresAt: { lte: now },
+    },
+  }) as StoredIntent[]
+  for (const intent of abandoned) {
+    if (await abandonExpiredExecution(intent, now)) cancelled += 1
+  }
   return cancelled
 }
 
-async function expireOwnedSessionDraft(
+/**
+ * Закрыть то, что в этом разговоре уже кончилось: просроченный черновик и
+ * брошенное исполнение. Вызывается перед каждым чтением и каждой записью, чтобы
+ * ни одна просьба не упёрлась в состояние, которого уже нет.
+ */
+async function endOwnedSessionDraftIfOver(
   auth: AuthResult,
   voiceSessionId: string,
   now: Date,
@@ -344,6 +420,18 @@ async function expireOwnedSessionDraft(
     },
   }) as StoredIntent | null
   if (expired) await expireIntent(expired, now)
+
+  const abandoned = await prisma.aiActionIntent.findFirst({
+    where: {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      voiceSessionId,
+      parentIntentId: null,
+      state: "executing",
+      executionLeaseExpiresAt: { lte: now },
+    },
+  }) as StoredIntent | null
+  if (abandoned) await abandonExpiredExecution(abandoned, now)
 }
 
 function hashConfirmationToken(token: string): string {
@@ -1039,16 +1127,38 @@ export async function createAiVoiceActionDraft(
   // Поправка к незакрытой задаче решается ДО проверки схемы. «Добавь цену» —
   // это `{ valueAmount }` без имени сделки: по схеме создания оно неполное, а
   // по смыслу это дополнение уже собранного (владелец, 2026-11-05).
+  let payload = asJsonObject(input.payload)
   const amendment = await findAmendableDraft(auth, input)
   if (amendment) {
-    return updateAiVoiceActionDraft(auth, {
-      intentId: amendment.id,
-      expectedRevision: amendment.revision,
-      payload: { ...asJsonObject(amendment.normalizedPayload), ...asJsonObject(input.payload) },
-    })
+    const merged = { ...asJsonObject(amendment.normalizedPayload), ...payload }
+    try {
+      return await updateAiVoiceActionDraft(auth, {
+        intentId: amendment.id,
+        expectedRevision: amendment.revision,
+        payload: merged,
+      })
+    } catch (error) {
+      /**
+       * Запись изменил кто-то другой, пока квитанция висела на экране.
+       *
+       * Дополнять нечего: открытый черновик считался от версии, которой больше
+       * нет, и подтвердить его нельзя — это правильно, иначе голос затёр бы
+       * чужую правку. Но и ОТКАЗЫВАТЬ человеку тут нельзя: он просто повторил
+       * фразу, а в ответ получал «запись изменилась» до конца разговора, и
+       * единственным выходом был крестик.
+       *
+       * Поэтому дальше идёт обычный путь: старая квитанция отменяется, новая
+       * считается от ЖИВОЙ версии записи, всё сказанное раньше переносится, а
+       * версия записи — нет: её ставит сервер по текущей строке. Человек
+       * подтверждает то, что видит на новой квитанции.
+       */
+      if (!(error instanceof AiVoiceActionDraftError) || error.code !== "STALE_TARGET") throw error
+      const { expectedUpdatedAt: _staleVersion, ...carried } = merged
+      payload = carried
+    }
   }
 
-  const parsed = parseAiVoiceActionPayload(input.actionType, input.payload)
+  const parsed = parseAiVoiceActionPayload(input.actionType, payload)
   if (!parsed.success) throw firstPayloadIssue(parsed.issues)
   if (
     getAiVoiceActionDefinition(input.actionType).operation === "update"
@@ -1066,7 +1176,7 @@ export async function createAiVoiceActionDraft(
   const now = new Date()
   await assertActiveVoiceSession(auth, input.voiceSessionId)
 
-  const bound = await bindTarget(auth, input, parsed.data)
+  const bound = await bindTarget(auth, { ...input, payload }, parsed.data)
   const definition = getAiVoiceActionDefinition(input.actionType)
   const warnings = await duplicateWarnings(auth, input.actionType, bound.normalizedPayload)
   const revision = 1
@@ -1080,7 +1190,7 @@ export async function createAiVoiceActionDraft(
     definition.renderPreview(bound.normalizedPayload, bound.previewContext),
   )
 
-  await expireOwnedSessionDraft(auth, input.voiceSessionId, now)
+  await endOwnedSessionDraftIfOver(auth, input.voiceSessionId, now)
 
   const active = await prisma.aiActionIntent.findFirst({
     where: {
@@ -1126,7 +1236,7 @@ export async function createAiVoiceActionDraft(
           userId: auth.userId,
           voiceSessionId: input.voiceSessionId,
           actionType: input.actionType,
-          rawPayload: input.payload as Prisma.InputJsonValue,
+          rawPayload: payload as Prisma.InputJsonValue,
           normalizedPayload: bound.normalizedPayload as Prisma.InputJsonValue,
           preview: preview as unknown as Prisma.InputJsonValue,
           warnings: warnings as Prisma.InputJsonValue,
@@ -1196,7 +1306,7 @@ async function findAmendableDraft(
   auth: AuthResult,
   input: CreateAiVoiceActionDraftInput,
 ): Promise<Pick<StoredIntent, "id" | "revision" | "normalizedPayload"> | null> {
-  await expireOwnedSessionDraft(auth, input.voiceSessionId, new Date())
+  await endOwnedSessionDraftIfOver(auth, input.voiceSessionId, new Date())
   const open = await prisma.aiActionIntent.findFirst({
     where: {
       organizationId: auth.orgId,
@@ -1367,7 +1477,7 @@ export async function getActiveAiVoiceActionDraft(
 ): Promise<AiVoiceActionDraftResponse | null> {
   await assertActiveVoiceSession(auth, voiceSessionId)
   const now = new Date()
-  await expireOwnedSessionDraft(auth, voiceSessionId, now)
+  await endOwnedSessionDraftIfOver(auth, voiceSessionId, now)
   const active = await prisma.aiActionIntent.findFirst({
     where: {
       organizationId: auth.orgId,
@@ -1397,6 +1507,45 @@ export async function cancelAiVoiceActionDraft(
 ): Promise<AiVoiceActionDraftResponse> {
   const existing = await findOwnedIntent(auth, input.intentId)
   if (existing.state === "cancelled") return serializeIntent(existing, true)
+  // Повторное нажатие на уже закрытом брошенном исполнении — не ошибка.
+  if (existing.state === "failed" && existing.errorCode === EXECUTION_ABANDONED_ERROR_CODE) {
+    return serializeIntent(existing, true)
+  }
+  // Крестик закрывает и брошенное исполнение: лиза истекла, в CRM ничего не
+  // записано, а квитанция иначе висит на экране неубираемой.
+  if (
+    existing.state === "executing"
+    && existing.executionLeaseExpiresAt
+    && existing.executionLeaseExpiresAt.getTime() <= Date.now()
+  ) {
+    if (existing.revision !== input.expectedRevision) {
+      throw new AiVoiceActionDraftError(
+        "REVISION_CONFLICT",
+        "The action draft was changed by another request",
+        409,
+        { currentRevision: existing.revision },
+      )
+    }
+    const closed = await abandonExpiredExecution(existing, new Date())
+    if (!closed) {
+      throw new AiVoiceActionDraftError(
+        "INTENT_NOT_CANCELLABLE",
+        "The action draft can no longer be cancelled",
+        409,
+        { state: existing.state },
+      )
+    }
+    const settled = await findOwnedIntent(auth, existing.id)
+    void logAudit(auth.orgId, "voice_action_cancelled", "ai_action_intent", existing.id, undefined, {
+      userId: auth.userId,
+      newValue: {
+        actionType: existing.actionType,
+        revision: existing.revision,
+        reason: "execution_lease_expired",
+      },
+    })
+    return serializeIntent(settled, false)
+  }
   if (existing.state !== "collecting" && existing.state !== "awaiting_confirmation") {
     throw new AiVoiceActionDraftError(
       "INTENT_NOT_CANCELLABLE",

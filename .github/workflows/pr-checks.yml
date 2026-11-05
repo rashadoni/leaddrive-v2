@@ -709,6 +709,18 @@ jobs:
           TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           TENANT_DATA_KEYS_DB_GATE: required
 
+      - name: AI voice assistant database gate
+        # Весь голосовой помощник, проигранный без микрофона: настоящие роуты
+        # предложения/черновика/подтверждения/записи, настоящие CRM-команды и
+        # настоящий Postgres. Моки Prisma не видят главного — что состояние
+        # разговора тянется МЕЖДУ запросами; именно там 2026-11-05 владелец не
+        # смог добавить цену к сделке, а следом создать лида («какой-то процесс
+        # занят»), при полностью зелёных юнит-тестах.
+        run: npx vitest run src/__tests__/ai-voice-assistant-postgres.test.ts
+        env:
+          AI_VOICE_ASSISTANT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          AI_VOICE_ASSISTANT_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
