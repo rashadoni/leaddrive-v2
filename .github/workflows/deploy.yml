@@ -749,6 +749,16 @@ jobs:
           TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           TENANT_DATA_KEYS_DB_GATE: required
 
+      - name: AI voice assistant database gate
+        # Same gate as in pr-checks: the whole voice assistant replayed without
+        # a microphone over real routes, real CRM commands and a real Postgres
+        # (see the test's header — the 2026-11-05 failures were in the sequence
+        # of requests, which a mocked Prisma cannot show).
+        run: npx vitest run src/__tests__/ai-voice-assistant-postgres.test.ts
+        env:
+          AI_VOICE_ASSISTANT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          AI_VOICE_ASSISTANT_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

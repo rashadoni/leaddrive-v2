@@ -89,9 +89,27 @@ function personLabel(user: Readonly<{ name: string; email: string }>): string {
  * "Aysel Məmmədova". That deliberately produces several matches often, which
  * is why the ambiguous branch exists rather than an ordering heuristic.
  */
+/**
+ * Кому НОВЫЙ лид вообще может принадлежать.
+ *
+ * `createLeadCommand` принимает в владельцы лида только роль `sales` — это
+ * единственная команда с таким правилом, остальные берут любого активного
+ * сотрудника. Если не сузить поиск здесь, разговор идёт так: «назначь Лейлу»
+ * (она менеджер) — квитанция послушно показывает Лейлу, человек нажимает
+ * «Создать», и команда отказывает чужой английской фразой. Тот же класс, на
+ * который жаловался владелец 2026-11-05: «клиент не поймёт и я сам не понял».
+ *
+ * Поэтому в поиск попадают только те, кто может быть владельцем лида, и
+ * ненайденное имя превращается в вопрос СО СПИСКОМ продавцов — до черновика,
+ * а не после кнопки.
+ */
+const LEAD_OWNER_ROLE = "sales"
+
 async function resolveAssignee(
   auth: AuthResult,
   spokenName: string,
+  /** Роль, без которой запись не примет владельца. */
+  requiredRole?: string,
 ): Promise<
   | Readonly<{ ok: true; userId: string }>
   | Readonly<{ ok: false; code: "ASSIGNEE_NOT_FOUND" | "ASSIGNEE_AMBIGUOUS"; candidates: Readonly<{ id: string; label: string }>[] }>
@@ -100,6 +118,7 @@ async function resolveAssignee(
     where: {
       organizationId: auth.orgId,
       isActive: true,
+      ...(requiredRole ? { role: requiredRole } : {}),
       OR: [
         { name: { contains: spokenName, mode: "insensitive" } },
         { email: { contains: spokenName, mode: "insensitive" } },
@@ -424,7 +443,11 @@ export async function resolveVoiceProposal(
   }
 
   if (typeof args.assigneeName === "string") {
-    const assignee = await resolveAssignee(auth, args.assigneeName)
+    const assignee = await resolveAssignee(
+      auth,
+      args.assigneeName,
+      tool === "propose_create_lead" ? LEAD_OWNER_ROLE : undefined,
+    )
     if (!assignee.ok) {
       return { kind: "clarify", code: assignee.code, field: "assigneeName", candidates: assignee.candidates }
     }

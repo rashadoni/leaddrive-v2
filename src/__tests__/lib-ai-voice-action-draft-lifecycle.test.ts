@@ -249,6 +249,54 @@ describe("AI voice action draft lifecycle", () => {
     expect(replay.replayed).toBe(true)
   })
 
+  /**
+   * Брошенное исполнение — тоже открытое состояние, и крестик обязан его
+   * закрывать. Лиза истекла, значит в CRM не записано ничего (мутация и
+   * результат лежат в одной транзакции), а квитанция до этой правки висела на
+   * экране неубираемой и запирала разговор.
+   */
+  it("closes an abandoned execution from the cross, replays a second press, and leaves a live lease alone", async () => {
+    deps.intentFindFirst
+      .mockResolvedValueOnce(storedIntent({
+        state: "executing",
+        executionLeaseExpiresAt: new Date(Date.now() - 1),
+      }))
+      .mockResolvedValueOnce(storedIntent({ state: "failed", errorCode: "EXECUTION_ABANDONED" }))
+
+    const closed = await cancelAiVoiceActionDraft(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+    })
+    expect(closed).toMatchObject({ state: "failed", replayed: false })
+    expect(deps.intentUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ state: "executing", revision: 1 }),
+      data: expect.objectContaining({ state: "failed", errorCode: "EXECUTION_ABANDONED" }),
+    })
+    expect(deps.eventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "failed",
+        eventData: expect.objectContaining({ reason: "execution_lease_expired" }),
+      }),
+    })
+
+    deps.intentFindFirst.mockResolvedValueOnce(
+      storedIntent({ state: "failed", errorCode: "EXECUTION_ABANDONED" }),
+    )
+    expect((await cancelAiVoiceActionDraft(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+    })).replayed).toBe(true)
+
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent({
+      state: "executing",
+      executionLeaseExpiresAt: new Date(Date.now() + 60_000),
+    }))
+    await expect(cancelAiVoiceActionDraft(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+    })).rejects.toMatchObject({ code: "INTENT_NOT_CANCELLABLE", status: 409 })
+  })
+
   it("never edits expired or executing receipts", async () => {
     deps.intentFindFirst.mockResolvedValueOnce(storedIntent({
       expiresAt: new Date(Date.now() - 1),

@@ -5,7 +5,7 @@ const deps = vi.hoisted(() => ({
   intentFindFirst: vi.fn(),
   intentUpdateMany: vi.fn(async () => ({ count: 0 })),
   intentCreate: vi.fn(),
-  intentFindMany: vi.fn(async () => [] as unknown[]),
+  intentFindMany: vi.fn(async (_args?: unknown) => [] as unknown[]),
   eventCreate: vi.fn(async () => ({ id: "draft-event-1" })),
   sessionFindFirst: vi.fn<() => Promise<{ id: string } | null>>(async () => ({ id: "voice-1" })),
   leadFindFirst: vi.fn(),
@@ -100,6 +100,8 @@ function storedIntent(overrides: Record<string, unknown> = {}) {
     targetEntityType: null,
     targetEntityId: null,
     expiresAt: new Date(now.getTime() + 600_000),
+    executionLeaseExpiresAt: null,
+    errorCode: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -569,11 +571,18 @@ type FindFirstWhere = {
   state?: string | { in: string[] }
   actionType?: string
   id?: string
+  executionLeaseExpiresAt?: { lte?: Date }
+}
+
+/** Какое состояние спрашивает выборка: строку «executing» или набор черновиков. */
+function askedState(args: unknown): unknown {
+  return (args as { where?: { state?: unknown } } | undefined)?.where?.state
 }
 
 function routeFindFirst(rows: {
   replay?: unknown
   expired?: unknown
+  abandoned?: unknown
   open?: unknown
   active?: unknown
   owned?: unknown
@@ -582,6 +591,10 @@ function routeFindFirst(rows: {
     const where = args?.where ?? {}
     if (where.idempotencyKey || where.providerToolCallId) return rows.replay ?? null
     if (where.expiresAt?.lte) return rows.expired ?? null
+    // брошенное исполнение: лиза истекла, результата нет
+    if (where.state === "executing" && where.executionLeaseExpiresAt?.lte) {
+      return rows.abandoned ?? null
+    }
     // findAmendableDraft: открытый черновик ТОГО ЖЕ действия
     if (where.state === "awaiting_confirmation" && where.actionType) return rows.open ?? null
     // проверка «есть ли вообще незавершённый черновик»
@@ -689,6 +702,34 @@ describe("поправка к той же задаче дополняет чер
     expect(deps.intentCreate).not.toHaveBeenCalled()
   })
 
+  // Исполнение, начатое и брошенное: лиза истекла, в CRM ничего не записано,
+  // а разговор до этой правки был заперт до конца — «предыдущее действие
+  // выполняется прямо сейчас» уже неправда.
+  it("закрывает брошенное исполнение и не запирает разговор", async () => {
+    deps.intentFindFirst.mockImplementation(routeFindFirst({
+      abandoned: storedIntent({
+        id: "intent-exec",
+        state: "executing",
+        actionType: "create_deal",
+        executionLeaseExpiresAt: new Date(Date.now() - 1),
+      }),
+    }))
+    deps.intentUpdateMany.mockResolvedValue({ count: 1 })
+
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "create_lead",
+      payload: { contactName: "Ali" },
+      idempotencyKey: "draft:lead:after-abandoned-execution",
+    })
+
+    expect(deps.intentUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ state: "executing" }),
+      data: expect.objectContaining({ state: "failed", errorCode: "EXECUTION_ABANDONED" }),
+    }))
+    expect(deps.intentCreate).toHaveBeenCalled()
+  })
+
   // Гонка: черновик ушёл в исполнение между чтением и отменой.
   it("не создаёт второй черновик, если отмена не состоялась", async () => {
     deps.intentFindFirst.mockImplementation(routeFindFirst({
@@ -708,10 +749,12 @@ describe("поправка к той же задаче дополняет чер
 
 describe("конец разговора закрывает его незавершённый черновик", () => {
   it("отменяет незавершённые и не трогает исполняемый", async () => {
-    deps.intentFindMany.mockResolvedValue([
-      storedIntent({ id: "intent-1", state: "awaiting_confirmation" }),
-      storedIntent({ id: "intent-2", state: "collecting" }),
-    ])
+    deps.intentFindMany.mockImplementation(async (args?: unknown) => (
+      askedState(args) === "executing" ? [] : [
+        storedIntent({ id: "intent-1", state: "awaiting_confirmation" }),
+        storedIntent({ id: "intent-2", state: "collecting" }),
+      ]
+    ))
     deps.intentUpdateMany.mockResolvedValue({ count: 1 })
 
     const cancelled = await cancelUnfinishedSessionDrafts("org-1", "voice-1", "session_ended")
@@ -725,6 +768,33 @@ describe("конец разговора закрывает его незавер
       data: expect.objectContaining({
         eventType: "cancelled",
         eventData: expect.objectContaining({ reason: "session_ended" }),
+      }),
+    }))
+  })
+
+  // Тот же конец, последнее место, где его не было: исполнение, начатое и
+  // брошенное. Разговор кончился — кончилось и оно.
+  it("закрывает брошенное исполнение, у которого истекла лиза", async () => {
+    deps.intentFindMany.mockImplementation(async (args?: unknown) => (
+      askedState(args) === "executing"
+        ? [storedIntent({
+            id: "intent-exec",
+            state: "executing",
+            executionLeaseExpiresAt: new Date(Date.now() - 1),
+          })]
+        : []
+    ))
+    deps.intentUpdateMany.mockResolvedValue({ count: 1 })
+
+    expect(await cancelUnfinishedSessionDrafts("org-1", "voice-1", "session_ended")).toBe(1)
+    expect(deps.intentUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ state: "executing" }),
+      data: expect.objectContaining({ state: "failed", errorCode: "EXECUTION_ABANDONED" }),
+    }))
+    expect(deps.eventCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        eventType: "failed",
+        eventData: expect.objectContaining({ reason: "execution_lease_expired" }),
       }),
     }))
   })
