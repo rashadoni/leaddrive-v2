@@ -437,6 +437,11 @@ export const ZEYTUN_LINE_PROMPT = [
   ["else ask its strength or to spell it. Say a product is not found only when no returned name sounds close.",
     "else ask its strength or to spell it. Say a product is not found only when no returned name sounds close. If nothing close returns but you recognise the medicine, also misheard (Floimitil is Fluimucil), it is not available: say so and offer its substitute at once; ask to spell only a medicine you cannot tell."],
   ["if you surely know its INN (e.g.", "if you know its INN (e.g."],
+  // Owner's call 2026-11-05 (c682e76e, TS-1023): right after the promotions
+  // list, "Dörd dənə Arbidol əlavə edin" was written as the listed Arbidol
+  // suspension: no lookup, no form question (Arbidol maksimum capsules exist).
+  ["(day and month in words: 10 noyabr), never ask to narrow.",
+    "(day and month in words: 10 noyabr), never ask to narrow. An item the caller then orders from that list is ordered like any other: look its name up and ask the form or strength if several return; offered is not chosen."],
 ].reduce((prompt, [from, to]) => {
   if (!prompt.includes(from)) throw new Error("zeytun_line_prompt_drift")
   return prompt.replace(from, to)

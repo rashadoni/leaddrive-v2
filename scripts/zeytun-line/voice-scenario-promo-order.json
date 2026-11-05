@@ -1,0 +1,155 @@
+{
+ "about": "Promotions-then-order call of the voice stand (owner's call TS-1023, 2026-11-05): the caller hears the promotions and orders a listed product by name in pieces. Same format as voice-scenario.json.",
+ "voice": "Charon",
+ "steps": [
+  {
+   "n": 1,
+   "phrases": [
+    {
+     "say": "Salam, Zəfər aptekindən zəng edirəm.",
+     "hear": [
+      {
+       "label": "Zəfər",
+       "match": "zefer"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 2,
+   "phrases": [
+    {
+     "say": "Ketonal gel, üç qutu.",
+     "hear": [
+      {
+       "label": "Ketonal",
+       "match": "ketonal|кетонал"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "[Kk]etonal|Кетонал",
+      "label": "искал Ketonal"
+     }
+    ]
+   }
+  },
+  {
+   "n": 3,
+   "phrases": [
+    {
+     "say": "Sizdə indi aksiyalarda nə var?",
+     "hear": [
+      {
+       "label": "aksiya",
+       "match": "aksiy|акци"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "promotions:",
+      "label": "запросил список акций"
+     }
+    ]
+   }
+  },
+  {
+   "n": 4,
+   "phrases": [
+    {
+     "say": "Dörd dənə Arbidol əlavə edin.",
+     "hear": [
+      {
+       "label": "Arbidol",
+       "match": "arbidol|арбидол"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "[Aa]rbidol|Арбидол",
+      "label": "искал Arbidol по названию"
+     }
+    ],
+    "reply": [
+     {
+      "match": "kapsul|sus?penz|toz|flakon|forma|hansı",
+      "label": "спросил форму Arbidol"
+     }
+    ]
+   }
+  },
+  {
+   "n": 5,
+   "phrases": [
+    {
+     "say": "Kapsul.",
+     "hear": [
+      {
+       "label": "kapsul",
+       "match": "kapsul|капсул"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 6,
+   "phrases": [
+    {
+     "say": "Bu qədər, təsdiq edirəm.",
+     "hear": [
+      {
+       "label": "təsdiq",
+       "match": "tesdiq"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "save_order_list",
+      "args": "\"final\":true",
+      "label": "итоговое сохранение"
+     }
+    ]
+   }
+  },
+  {
+   "n": 7,
+   "phrases": [
+    {
+     "say": "Yox, sağ olun."
+    }
+   ],
+   "expect": {}
+  }
+ ],
+ "final": [
+  {
+   "spoken": "[Kk]etonal|Кетонал",
+   "quantity": 3,
+   "label": "Ketonal gel 3"
+  },
+  {
+   "spoken": "[Aa]rbidol|Арбидол",
+   "quantity": 4,
+   "label": "Arbidol 4"
+  }
+ ]
+}
