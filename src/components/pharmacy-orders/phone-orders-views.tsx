@@ -6,10 +6,11 @@ import { cn } from "@/lib/utils"
 const VIEWS = [
   { key: "orders", href: "/pharmacy-orders", label: "viewOrders" },
   { key: "pharmacies", href: "/pharmacy-orders/pharmacies", label: "viewPharmacies" },
+  { key: "waitlist", href: "/pharmacy-orders/waitlist", label: "viewWaitlist" },
   { key: "speech", href: "/pharmacy-orders/speech", label: "viewSpeech" },
 ] as const
 
-/** The views of phone orders: the orders, the pharmacies they come from, what the line says. */
+/** The views of phone orders: the orders, the pharmacies they come from, what they wait for, what the line says. */
 export function PhoneOrdersViews({ active }: { active: (typeof VIEWS)[number]["key"] }) {
   const t = useTranslations("pharmacyPhoneOrders")
   const views = VIEWS

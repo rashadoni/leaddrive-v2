@@ -72,6 +72,7 @@ const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js
 const MIGRATION = "prisma/migrations/20261103090000_pharmacy_phone_orders/migration.sql"
 const COMPANIES_MIGRATION = "prisma/migrations/20261106090000_pharmacy_companies/migration.sql"
 const NAMED_MATCHED_MIGRATION = "prisma/migrations/20261126090000_pharmacy_phone_orders_named_matched/migration.sql"
+const WAITLIST_MIGRATION = "prisma/migrations/20261127090000_pharmacy_waitlist/migration.sql"
 const ZEYTUN = "org-zeytun"
 const OTHER = "org-other"
 const NOSPA = "11111111-1111-4111-8111-111111111111"
@@ -139,6 +140,13 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     sql(scratch!.adminScratch, `${keyCheck[0]}\n${identification}`)
     // A 1C pharmacy matched to the words said, not the number (named_matched): its own migration.
     sql(scratch!.adminScratch, readFileSync(path.join(ROOT, NAMED_MATCHED_MIGRATION), "utf8"))
+    // The waiting list: its CHECKs and its policy, from its own migration.
+    const waitlist = readFileSync(path.join(ROOT, WAITLIST_MIGRATION), "utf8")
+    const waitlistChecks = [...waitlist.matchAll(/CONSTRAINT "(pharmacy_waitlist_items_\w+_check)" CHECK (\([\s\S]*?\))(?:,\n|\n\);)/g)]
+    const waitlistPolicy = waitlist.slice(waitlist.indexOf(`ALTER TABLE "pharmacy_waitlist_items" ENABLE ROW LEVEL SECURITY`))
+    if (waitlistChecks.length !== 2 || !waitlistPolicy.includes("FORCE ROW LEVEL SECURITY")) throw new Error("waiting list guards not found in the migration")
+    sql(scratch!.adminScratch, [...waitlistChecks.map(([, name, body]) => `ALTER TABLE "pharmacy_waitlist_items" ADD CONSTRAINT "${name}" CHECK ${body};`),
+      waitlistPolicy].join("\n"))
     // companies is under the same FORCE policy in production (an older migration).
     sql(scratch!.adminScratch, `ALTER TABLE "companies" ENABLE ROW LEVEL SECURITY;
       ALTER TABLE "companies" FORCE ROW LEVEL SECURITY;
@@ -176,6 +184,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
   }, 60_000)
 
   beforeEach(async () => {
+    await admin.pharmacyWaitlistItem.deleteMany({})
     await admin.pharmacyPhoneOrder.deleteMany({})
     await admin.company.deleteMany({})
     session.current = { user: { id: "user-zeytun", organizationId: ZEYTUN, role: "admin", email: "manager@zeytun.test", name: "Nigar" } }
@@ -508,6 +517,80 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(85) } })).toMatchObject({
       pharmacyIdentification: "named_matched", pharmacyGuid: NEAR, companyId: (await admin.company.findFirstOrThrow({
         where: { organizationId: ZEYTUN, externalId: NEAR } })).id })
+  })
+
+  // Owner's client, 2026-11-06: a sold-out product the pharmacy still wants waits for it; its next call hears of it first.
+  it("keeps a pharmacy's sold-out products on its waiting list and offers them, then its own products, when 1C has them again", async () => {
+    const waitlist = await import("@/lib/voice-agent/pharmacy/zeytun-waitlist")
+    const db = app as unknown as PrismaClient
+    const [YASAMAL, SOLD] = [GUID(91), "33333333-3333-4333-8333-333333333333"]
+    await admin.company.createMany({ data: [
+      { organizationId: ZEYTUN, name: "92 Yasamal", externalSource: "zeytun_1c", externalId: YASAMAL },
+      { organizationId: OTHER, name: "92 Yasamal", externalSource: "zeytun_1c", externalId: YASAMAL },
+    ] })
+    const withSold = { ...CATALOG, find: (id: string) => id === SOLD
+      ? { externalId: SOLD, itemCode: "00000001111", name: "Адефа № 30", nameAz: null, listPrice: { amount: "8.1", per: "qutu" } } : CATALOG.find(id) }
+    const order = (n: number, at: string, lines: Parameters<typeof save>[1]["lines"], catalog = CATALOG, organizationId = ZEYTUN) =>
+      save(db, { organizationId, providerCallId: callId(n), callStartedAt: at, callerPhoneE164: PHONE, catalog, lines,
+        identification: "phone_unique", pharmacyName: "92 Yasamal", pharmacyGuid: YASAMAL })
+    const soldLine = { externalId: SOLD, itemCode: "00000001111", productName: "Адефа № 30", spokenText: "Adefa beş qutu", quantity: 5, unit: "qutu" }
+    // No-şpa confirmed long ago: the pharmacy orders it.
+    await order(90, "2026-10-28T07:00:00.000Z", [LIST[0]])
+    await admin.pharmacyPhoneOrder.updateMany({ where: { providerCallId: callId(90) }, data: { status: "confirmed", confirmedAt: new Date("2026-10-29T09:00:00.000Z") } })
+    // On 1 November Adefa was sold out: the order keeps the words, the waiting list its 1C id.
+    const saved = await order(91, "2026-11-01T07:00:00.000Z", [{ externalId: SOLD, quantity: 5, unit: "qutu", spoken: "Adefa beş qutu" }])
+    expect(saved).toMatchObject({ status: "saved", notFound: ["Adefa beş qutu"] })
+    await waitlist.recordCallWaitlist(db, { organizationId: ZEYTUN, providerCallId: callId(91), catalogScopeKey: CATALOG.scopeKey, lines: [soldLine] })
+    await waitlist.recordCallWaitlist(db, { organizationId: OTHER, providerCallId: callId(91), catalogScopeKey: CATALOG.scopeKey, lines: [soldLine] })
+    const company = await admin.company.findFirstOrThrow({ where: { organizationId: ZEYTUN, externalId: YASAMAL } })
+    expect(await admin.pharmacyWaitlistItem.findMany({ where: { organizationId: ZEYTUN } })).toEqual([expect.objectContaining({
+      externalId: SOLD, quantity: 5, orderId: saved.status === "saved" ? saved.orderId : null, companyId: company.id, pharmacyGuid: YASAMAL,
+      pharmacyName: "92 Yasamal", arrivedAt: null })])
+    // The caller took it back, then wanted it again: the list follows the call's latest save.
+    await waitlist.recordCallWaitlist(db, { organizationId: ZEYTUN, providerCallId: callId(91), catalogScopeKey: CATALOG.scopeKey, lines: [] })
+    expect(await admin.pharmacyWaitlistItem.count({ where: { organizationId: ZEYTUN } })).toBe(0)
+    await waitlist.recordCallWaitlist(db, { organizationId: ZEYTUN, providerCallId: callId(91), catalogScopeKey: CATALOG.scopeKey, lines: [soldLine] })
+    // Row-level security: each organization sees its own row only.
+    expect((await waitlist.listWaitlist(db, ZEYTUN)).map(row => [row.state, row.productName, row.orderNumber]))
+      .toEqual([["waiting", "Адефа № 30", saved.status === "saved" ? saved.number : null]])
+    expect(await waitlist.listWaitlist(db, OTHER)).toHaveLength(1)
+
+    // The refresh finds it in 1C again.
+    expect(await waitlist.markWaitlistArrivals(db, { organizationId: ZEYTUN, catalogScopeKey: CATALOG.scopeKey, inStock: id => id === SOLD,
+      now: new Date("2026-11-05T08:00:00.000Z") })).toBe(1)
+    expect(await waitlist.markWaitlistArrivals(db, { organizationId: ZEYTUN, catalogScopeKey: CATALOG.scopeKey, inStock: () => true })).toBe(0)
+    expect((await waitlist.listWaitlist(db, ZEYTUN))[0]).toMatchObject({ state: "arrived", arrivedAt: "2026-11-05T08:00:00.000Z" })
+
+    // The pharmacy calls on 6 November: what it waited for first, then No-şpa, back since its last call.
+    const names: Record<string, string> = { [SOLD]: "Adefa № 30", [NOSPA]: "No-şpa 2ml 40 mq № 25" }
+    const offers = (providerCallId: string, numberPharmacyGuid: string | null, organizationId = ZEYTUN) => waitlist.pharmacyArrivals(db, {
+      organizationId, providerCallId, callStartedAt: "2026-11-06T09:00:00.000Z", numberPharmacyGuid, catalogScopeKey: CATALOG.scopeKey,
+      arrived: [{ externalId: NOSPA, arrivedAt: "2026-11-05T08:00:00.000Z", goneAt: "2026-11-02T08:00:00.000Z" },
+        { externalId: KETONAL, arrivedAt: "2026-11-05T08:00:00.000Z", goneAt: null }],
+      inStock: id => names[id] ? { name: names[id] } : null, now: Date.parse("2026-11-06T09:00:00.000Z") })
+    expect(await offers(callId(92), YASAMAL)).toEqual([{ externalId: SOLD, name: "Adefa № 30", waited: true },
+      { externalId: NOSPA, name: "No-şpa 2ml 40 mq № 25", waited: false }])
+    // No pharmacy for the number: nothing. Another organization never sees this one's list (its own row names no pharmacy).
+    expect(await offers(callId(92), null)).toEqual([])
+    expect(await offers(callId(92), YASAMAL, OTHER)).toEqual([])
+
+    // It ordered Adefa on that call: the list says so, and the next call is not offered it again.
+    await order(92, "2026-11-06T09:00:00.000Z", [{ externalId: SOLD, quantity: 5, unit: "qutu", spoken: "Adefa beş qutu" }], withSold)
+    expect((await waitlist.listWaitlist(db, ZEYTUN))[0]).toMatchObject({ state: "ordered" })
+    expect((await waitlist.pharmacyArrivals(db, { organizationId: ZEYTUN, providerCallId: callId(93), callStartedAt: "2026-11-07T09:00:00.000Z",
+      numberPharmacyGuid: YASAMAL, catalogScopeKey: CATALOG.scopeKey, arrived: [], inStock: id => names[id] ? { name: names[id] } : null,
+      now: Date.parse("2026-11-07T09:00:00.000Z") })).map(offer => offer.externalId)).toEqual([])
+
+    // A manager takes a row off the list through the API; another organization's row is not found.
+    const row = await admin.pharmacyWaitlistItem.findFirstOrThrow({ where: { organizationId: ZEYTUN } })
+    const other = await admin.pharmacyWaitlistItem.findFirstOrThrow({ where: { organizationId: OTHER } })
+    const route = await import("@/app/api/v1/pharmacy-orders/waitlist/[id]/route")
+    const dismiss = (id: string) => route.PATCH(json("PATCH", `/api/v1/pharmacy-orders/waitlist/${id}`, { dismissed: true }), params(id))
+    expect((await dismiss(row.id)).status).toBe(200)
+    expect((await dismiss(other.id)).status).toBe(404)
+    expect(await admin.pharmacyWaitlistItem.findUniqueOrThrow({ where: { id: other.id } })).toMatchObject({ dismissedAt: null })
+    const listed = await (await import("@/app/api/v1/pharmacy-orders/waitlist/route")).GET(json("GET", "/api/v1/pharmacy-orders/waitlist"))
+    expect(((await listed.json()) as { data: { state: string }[] }).data.map(item => item.state)).toEqual(["dismissed"])
   })
 
   it("lets a manager name the pharmacy of a shared number, and lists the pharmacies with their orders", async () => {

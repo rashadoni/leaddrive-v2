@@ -1,6 +1,7 @@
 import { PharmacyOrderError } from "./contracts"
 import { ZeytunAvailableBalances } from "./zeytun-available-balances"
 import { fetchZeytunAvailableBalances, parseZeytunBalanceConfig, zeytunBalanceScopeKey } from "./zeytun-balance-client"
+import { nextArrived } from "./zeytun-arrived-items"
 import { nextDeparted } from "./zeytun-departed-items"
 import { ZeytunSnapshotStore, ZeytunSnapshotStoreError, type ZeytunRefreshAttempt } from "./zeytun-snapshot-store"
 
@@ -136,12 +137,24 @@ export class ZeytunBalanceCache {
     }
   }
 
-  /** What sold out between two snapshots stays known by name (zeytun-departed-items.ts); a failure here never fails the refresh. */
+  /**
+   * What sold out between two snapshots stays known by name (zeytun-departed-items.ts),
+   * and what came back is news for the pharmacies that want it (zeytun-arrived-items.ts).
+   * A failure here never fails the refresh.
+   */
   private async rememberDeparted(before: ZeytunAvailableBalances, now: ZeytunAvailableBalances): Promise<void> {
+    const organizationId = this.config.organizationId, at = this.clock()
+    const beforeLabels = before.labels(organizationId), nowLabels = now.labels(organizationId)
+    const departed = await this.store.loadDeparted().catch(() => [])
     try {
-      const previous = await this.store.loadDeparted().catch(() => [])
-      const organizationId = this.config.organizationId
-      await this.store.saveDeparted(nextDeparted({ previous, before: before.labels(organizationId), now: now.labels(organizationId), at: this.clock() }))
+      const arrived = nextArrived({ previous: await this.store.loadArrived().catch(() => []), departed, before: beforeLabels, now: nowLabels, at })
+      if (arrived.held) console.warn("[zeytun-catalog] arrivals held: too many at once")
+      await this.store.saveArrived(arrived.items)
+    } catch {
+      console.warn("[zeytun-catalog] arrived list not saved")
+    }
+    try {
+      await this.store.saveDeparted(nextDeparted({ previous: departed, before: beforeLabels, now: nowLabels, at }))
     } catch {
       console.warn("[zeytun-catalog] departed list not saved")
     }
