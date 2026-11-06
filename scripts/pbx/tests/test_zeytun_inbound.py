@@ -1109,6 +1109,13 @@ class SpeechRelayTests(unittest.TestCase):
         played = []
         relay.filler = lambda *a: played.append(state["now"]) or True
         relay.playing = lambda: state.get("playing", False)
+        # Off on the line since 2026-11-06 («говорит хмм даже когда ничего не спрашиваешь»).
+        relay.caller_done()
+        state["now"] = 60.0
+        self.assertFalse(relay.turn_filler_tick())
+        self.assertEqual(played, [])
+        relay.TURN_FILLER_SECONDS = 2.5
+        state["now"] = 0.0
         relay.caller_done()
         state["now"] = 2.4
         self.assertFalse(relay.turn_filler_tick())

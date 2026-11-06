@@ -565,7 +565,11 @@ class ZeytunSpeechRelay:
     # call c682e76e, 2026-11-05) it played on 7 of 10 answers, most a second
     # before the answer itself, which then waited for it; the answers came
     # 1-3 s after the phrase closed. Only a long pause gets it now.
-    TURN_FILLER_SECONDS = 2.5
+    # Off since the owner's rehearsal 2026-11-06 (4347170e): «просто говорит
+    # хмм даже когда ничего не спрашиваешь» - a caller who paused mid-order
+    # ("daha doğrusu...") got it too. None turns it off; a long lookup still
+    # gets the filler (FILLER_AFTER).
+    TURN_FILLER_SECONDS = None
     SILENCE_NUDGE_SECONDS = 6.0
     SILENCE_NUDGES_PER_CALL = 3
     SILENCE_NUDGE = ("Station note, never read it aloud: the caller has said nothing for six seconds since your "
@@ -620,7 +624,7 @@ class ZeytunSpeechRelay:
         """One check of the pause after a caller phrase (the watch thread calls it)."""
         with self.lock:
             done = self.caller_done_at
-            if done is None or self.clock() - done < self.TURN_FILLER_SECONDS:
+            if self.TURN_FILLER_SECONDS is None or done is None or self.clock() - done < self.TURN_FILLER_SECONDS:
                 return False
             self.caller_done_at = None
         if self.playing():

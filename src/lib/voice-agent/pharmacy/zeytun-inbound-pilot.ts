@@ -442,6 +442,15 @@ export const ZEYTUN_LINE_PROMPT = [
   // suspension: no lookup, no form question (Arbidol maksimum capsules exist).
   ["(day and month in words: 10 noyabr), never ask to narrow.",
     "(day and month in words: 10 noyabr), never ask to narrow. An item the caller then orders from that list is ordered like any other: look its name up and ask the form or strength if several return; offered is not chosen."],
+  // Owner's rehearsal 2026-11-06 (4347170e): "Detraleks 8 qutu" in one breath
+  // with a Mezim question; the reply named Detralex 1000 and its 8 boxes and
+  // never its "buy 10, get 1", in this reply or the next.
+  ["Promotion: when you confirm a product whose candidate has promotion, say the offer in that same reply,",
+    "Promotion: never name a product whose candidate has promotion without its offer: the first reply naming it says the offer (also beside a question about another product),"],
+  // Same call: "on min" (10 000) for Mezim forte reached the model as "10 milli";
+  // no strength matched, and it listed all three again.
+  ["never one already given. If only one item matches,",
+    "never one already given. A heard strength that matches none but one in thousands (\"10 milli\" or \"10 mq\" for 10 000: min is a thousand) is that one: ask \"10 000?\", never list all. If only one item matches,"],
 ].reduce((prompt, [from, to]) => {
   if (!prompt.includes(from)) throw new Error("zeytun_line_prompt_drift")
   return prompt.replace(from, to)

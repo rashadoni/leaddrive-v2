@@ -1,0 +1,163 @@
+{
+ "about": "Owner's rehearsal 2026-11-06 (4347170e) for a client demo: Mezim forte's strength said as \"on milli\" (how \"on min\" reached the model) and Detralex taken below its \"buy 10, get 1\". Same format as voice-scenario.json.",
+ "voice": "Charon",
+ "steps": [
+  {
+   "n": 1,
+   "phrases": [
+    {
+     "say": "Salam, Mərkəzi aptekdən zəng edirəm.",
+     "hear": [
+      {
+       "label": "Mərkəzi",
+       "match": "m[əe]rk[əe]zi"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 2,
+   "phrases": [
+    {
+     "say": "Ketonal gel, beş qutu.",
+     "hear": [
+      {
+       "label": "Ketonal",
+       "match": "ketonal|кетонал"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "[Kk]etonal|Кетонал",
+      "label": "искал Ketonal"
+     }
+    ]
+   }
+  },
+  {
+   "n": 3,
+   "phrases": [
+    {
+     "say": "Mezim forte, on qutu, on milli.",
+     "hear": [
+      {
+       "label": "Mezim",
+       "match": "mezim|мезим"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "[Mm]ez[iy]m|Мезим",
+      "label": "искал Mezim"
+     }
+    ],
+    "reply": [
+     {
+      "match": "10 ?000|on min",
+      "label": "назвал 10 000"
+     }
+    ],
+    "noReply": [
+     {
+      "match": "3 ?500|25 ?000|iyirmi beş|üç min",
+      "label": "перечислил все дозировки"
+     }
+    ]
+   }
+  },
+  {
+   "n": 4,
+   "phrases": [
+    {
+     "say": "Detraleks, səkkiz qutu.",
+     "hear": [
+      {
+       "label": "Detraleks",
+       "match": "detral|детрал"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "search_pharmacy_catalog",
+      "args": "[DdTt]etral|Детрал",
+      "label": "искал Detralex"
+     }
+    ],
+    "reply": [
+     {
+      "match": "aksiya|hədiyyə|pulsuz|bonus|10 alsan|on alsan|10 qutu|on qutu",
+      "label": "сказал про акцию"
+     }
+    ]
+   }
+  },
+  {
+   "n": 5,
+   "phrases": [
+    {
+     "say": "Yaxşı, on qutu yazın.",
+     "hear": []
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 6,
+   "phrases": [
+    {
+     "say": "Hamısı bu, təsdiq edirəm.",
+     "hear": []
+    }
+   ],
+   "expect": {
+    "tools": [
+     {
+      "name": "save_order_list",
+      "args": "\"final\":true",
+      "label": "итоговое сохранение"
+     }
+    ]
+   }
+  },
+  {
+   "n": 7,
+   "phrases": [
+    {
+     "say": "Yox, sağ olun.",
+     "hear": []
+    }
+   ],
+   "expect": {}
+  }
+ ],
+ "final": [
+  {
+   "spoken": "[Kk]etonal|Кетонал",
+   "quantity": 5,
+   "label": "Ketonal gel 5"
+  },
+  {
+   "spoken": "[Mm]ezim|Мезим",
+   "quantity": 10,
+   "label": "Mezim forte 10000 10"
+  },
+  {
+   "spoken": "[Dd]etral|Детрал",
+   "quantity": 10,
+   "label": "Detralex 10"
+  }
+ ]
+}
