@@ -163,9 +163,20 @@ describe("instagram/start with ?app=", () => {
     findFirst.mockResolvedValue(IG_STAGED)
     const res = await igStart(igReq("?from=channels-instagram&app=cfg_ig"))
     const loc = new URL(res.headers.get("location")!)
-    expect(loc.origin + loc.pathname).toBe("https://api.instagram.com/oauth/authorize")
+    expect(loc.origin + loc.pathname).toBe("https://www.instagram.com/oauth/authorize")
     expect(loc.searchParams.get("client_id")).toBe("IG_NEW")
     expect(statePayload(res).app).toBe("cfg_ig")
+  })
+
+  // 2026-11-06, Zeytun Pharma: with three accounts connected, Connect for a fourth re-granted the account
+  // the browser was signed in to and reported "Channel connected". Instagram must ask for the account.
+  it("makes Instagram ask which account to connect, pinned or not", async () => {
+    findFirst.mockResolvedValue(IG_STAGED)
+    const pinned = new URL((await igStart(igReq("?from=channels-instagram&app=cfg_ig"))).headers.get("location")!)
+    expect(pinned.searchParams.get("force_reauth")).toBe("true")
+    findFirst.mockResolvedValue(null)
+    const plain = new URL((await igStart(igReq("?from=channels-instagram"))).headers.get("location")!)
+    expect(plain.searchParams.get("force_reauth")).toBe("true")
   })
 
   it("FAILS CLOSED rather than falling back to the env Instagram app", async () => {
