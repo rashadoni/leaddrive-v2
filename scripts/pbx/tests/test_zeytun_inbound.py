@@ -1749,6 +1749,8 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertEqual(speak("Ketonal geli 10 qutu."), "Ketonal geli on qutu.")
         self.assertEqual(speak("Ketonal geli, 1 qutu."), "Ketonal geli, bir qutu.")
         self.assertEqual(speak("Adefa № 30, 5-dən az"), "Adefa nömrə otuz, beşdən az")
+        # Task 8 (2026-11-06): the order number's letters in Azerbaijani.
+        self.assertEqual(speak("Sifarişiniz TS-1026 nömrəsi ilə qəbul edildi."), "Sifarişiniz te-se min iyirmi altı nömrəsi ilə qəbul edildi.")
         self.assertEqual(speak("Azirag 500 mq, sirop 150 ml"), "Azirag beş yüz milliqram, sirop yüz əlli millilitr")
         # A decimal and an ordinal change the word itself: left as written.
         self.assertEqual(speak("2,5% gel, 2026-cı ilədək, 3-cü"), "2,5% gel, 2026-cı ilədək, 3-cü")

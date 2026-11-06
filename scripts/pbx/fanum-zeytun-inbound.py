@@ -232,6 +232,10 @@ def zeytun_speakable_text(text):
     # suffix after a hyphen joins its word ("5-dən" is "beşdən"). A decimal
     # (2,5%) and an ordinal are left as written.
     text = re.sub(r"№\s*", "nömrə ", text)
+    # Owner's queue 2026-11-06, task 8: the order number "TS-1026" was voiced
+    # "TS-min iyirmi altı", the Latin letters as the TTS liked. The letters are
+    # named as in Azerbaijani: "te-se min iyirmi altı".
+    text = re.sub(r"\bTS-(?=\d)", "te-se ", text)
     text = re.sub(r"(?<=\d)\s*(mq|ml)\b|\b(mq|ml)\b",
                   lambda m: (" " if m.group(1) else "") + ("milliqram" if (m.group(1) or m.group(2)).lower() == "mq" else "millilitr"),
                   text, flags=re.IGNORECASE)
