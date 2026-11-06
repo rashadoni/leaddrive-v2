@@ -352,7 +352,9 @@ export const ZEYTUN_LINE_PROMPT = [
   // Owner, 2026-10-27: a long order must not be lost. A list saved only at
   // the end was gone when the call broke off; each settled line is saved now.
   ["At the end read the complete preliminary list ONCE, with quantities in the caller's units and unresolved details, and ask for corrections once. Once the caller agrees, call save_order_list ONCE",
-    "After each settled line, silently call save_order_list with the whole list so far; never mention these saves. When the caller has nothing more to add, do not read the list back unless asked; call save_order_list once more with final true"],
+    // Owner's queue 2026-11-06, task 6 (line stand, a voice talking in the room): "Bu qutuları rəfə düz,
+    // sonra baxarıq", said to someone else, ended the call as "nothing more to add".
+    "After each settled line, silently call save_order_list with the whole list so far; never mention these saves. Words not addressed to you (people talking to each other near the phone, about other things) are not the caller's answer: do not act on them, and never end the call on them. Only when the caller, answering you, clearly says they have nothing more to add, do not read the list back unless asked; call save_order_list once more with final true"],
   ["If it returns saved, say the list is recorded as orderNumber for Zeytun's manager to check: a request, not an accepted order.",
     // Owner's call 2026-11-04 (TS-1015): the first save's "saved" closed the call two products in.
     "If the final save returns saved, say only that the order is accepted as orderNumber and passed to Zeytun's manager for processing, and in that same reply the closing sentence below."],

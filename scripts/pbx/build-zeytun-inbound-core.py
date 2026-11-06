@@ -296,6 +296,15 @@ def build(source, bridge):
     replace('        if state.get("untranscribed_caller_turn"):\n',
             '        if state.get("untranscribed_caller_turn") and (not self.pharmacy_preview\n'
             '                                                     or zeytun_caller_owed(self.pharmacy_bridge)):\n')
+    # Owner's queue 2026-11-06 (line stand): a fresh session that took longer
+    # than 2.5 s to set up, or to its first TTS audio (the line's TTS adds
+    # ~1 s), ended the pharmacy's call. Its setup took 0.5-0.9 s on the stand,
+    # but Google is sometimes slower; 2.5 s more silence costs far less than
+    # a dropped order. Other calls keep 2.5 s.
+    replace("                GEMINI_LIVE_FRESH_RECOVERY_TIMEOUT_SECONDS,\n",
+            "                (5.0 if self.pharmacy_preview else GEMINI_LIVE_FRESH_RECOVERY_TIMEOUT_SECONDS),\n")
+    replace("                GEMINI_LIVE_FRESH_RECOVERY_FIRST_AUDIO_TIMEOUT_SECONDS,\n",
+            "                (5.0 if self.pharmacy_preview else GEMINI_LIVE_FRESH_RECOVERY_FIRST_AUDIO_TIMEOUT_SECONDS),\n")
     # Only recovery wording changes; pharmacy calls are never marked as demos.
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:
@@ -316,6 +325,10 @@ def build(source, bridge):
             heard = (set(self.truncated_items), set(self.audible_agent_items),
                      set(self.non_business_transcript_items), dict(self.dialog_turn_keys))
         if self.pharmacy_preview:
+            # Task 13 (2026-11-06): the call's Gemini usage, once, as the call's record is made.
+            log_cost = getattr(self.pharmacy_bridge, "log_cost", None)
+            if log_cost is not None:
+                log_cost(lambda status, **fields: latency("zeytun_cost", self.call_id, status=status, **fields))
             return zeytun_call_transcript(order, items, *heard)
         return [
 ''')
