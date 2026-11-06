@@ -35,7 +35,8 @@ export const GET = withRls(async (req, { orgId, session }) => {
         where,
         skip: offset,
         take: limit,
-        orderBy: [{ boardPosition: "asc" }, { dueDate: "asc" }, { createdAt: "asc" }],
+        // id last: equal positions/dates must not reorder between pages (the board reads them all).
+        orderBy: [{ boardPosition: "asc" }, { dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
         include: {
           assignee: { select: { id: true, name: true, avatar: true } },
           creator: { select: { id: true, name: true } },

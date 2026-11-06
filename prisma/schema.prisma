@@ -1890,6 +1890,13 @@ model Task {
   // by the client so inserting between two cards normally updates only the
   // dragged task; createdAt remains the deterministic tie-breaker.
   boardPosition      Float              @default(0)
+  // Where an imported task came from (2026-11-06: Zeytun's marketing board moved
+  // over from Bordio). externalSource names the system ("bordio"), externalId is
+  // that system's own task id. Both NULL for every task made in the CRM. The
+  // unique index makes a re-run of the same import update the task it already
+  // brought over instead of adding a second copy. See src/lib/tasks/external-import.ts.
+  externalSource     String?
+  externalId         String?
   // Soft delete (spec DELETE = soft). Board/list reads filter deletedAt:null via
   // the prisma client extension; the taskKey generator deliberately bypasses it.
   deletedAt          DateTime?
@@ -1920,6 +1927,7 @@ model Task {
   // taskKey unique per org. Postgres treats NULL as distinct, so the many
   // pre-existing NULL-key rows don't collide; only generated keys are constrained.
   @@unique([organizationId, taskKey])
+  @@unique([organizationId, externalSource, externalId])
   @@index([organizationId])
   @@index([organizationId, assignedTo])
   @@index([organizationId, divisionId])

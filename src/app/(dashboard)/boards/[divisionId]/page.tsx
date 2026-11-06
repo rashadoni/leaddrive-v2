@@ -39,6 +39,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { TaskDetailView } from "@/components/tasks/task-detail-view"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { resolveLaneKey } from "@/lib/tasks/board-columns"
+import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
 import { BoardReports } from "@/components/boards/board-reports"
 import { DepartmentBoardView } from "@/components/boards/department-board-view"
 import { OperationalReport } from "@/components/tasks/operational-report"
@@ -220,10 +221,8 @@ function BoardInner() {
   }, [search, type, priority, assignee, eventType, mine, mineCreated, pathname, router])
 
   const loadTasks = useCallback(async () => {
-    const res = await fetch(`/api/v1/tasks?divisionId=${encodeURIComponent(divisionId)}&limit=200`, { credentials: "include" })
-    if (!res.ok) throw new Error(`Failed to load tasks (${res.status})`)
-    const j = await res.json()
-    setTasks(j?.data?.tasks ?? [])
+    // All of them, not the API's first 200 — see fetch-board-tasks.ts.
+    setTasks(await fetchAllBoardTasks<Task>(divisionId))
   }, [divisionId])
 
   const load = useCallback(async () => {
