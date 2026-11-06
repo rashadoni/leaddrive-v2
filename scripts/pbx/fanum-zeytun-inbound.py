@@ -1981,6 +1981,9 @@ class ZeytunInboundBridge:
         promotion = self.promotion(item.get("promotion"))
         if promotion is not None:
             projected["promotion"] = promotion
+        # Task 11 (2026-11-06): the one variant of its name the calling pharmacy orders; only a plain true.
+        if item.get("usual") is True:
+            projected["usual"] = True
         return projected
 
     # The CRM's second ear (#1321): the word Google Chirp heard where the

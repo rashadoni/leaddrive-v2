@@ -174,9 +174,10 @@ class StandCrm {
   private crm: (body: Json) => Promise<unknown>
   private server: http.Server
   proxy: http.Server
-  constructor(catalog: InboundPilotCatalog, readonly saves: Save[], secondEarKey: string | undefined, private certs: { key: Buffer; cert: Buffer }) {
+  constructor(catalog: InboundPilotCatalog, readonly saves: Save[], secondEarKey: string | undefined, private certs: { key: Buffer; cert: Buffer },
+    usual?: readonly string[]) {
     const chirp = secondEarKey && existsSync(secondEarKey) ? createChirpRecognizer({ keyFile: secondEarKey }) : undefined
-    this.crm = crmFor(catalog, saves, undefined, chirp && createZeytunSecondEar({ recognizer: chirp }))
+    this.crm = crmFor(catalog, saves, undefined, chirp && createZeytunSecondEar({ recognizer: chirp }), undefined, usual)
     this.server = http.createServer((req, res) => void this.answer(req, res))
     this.proxy = http.createServer((_req, res) => { res.writeHead(403).end() })
     this.proxy.on("connect", (req, client: net.Socket, head: Buffer) => {
@@ -417,6 +418,8 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
 type Options = { snapshot: string; core: string; builder?: string; station?: string; manners: Manner[]; steps?: number; scenario: string
   /** After this step's answer the stand drops the Google session and refuses its resumption (--drop-after-step). */
   dropAfterStep?: number
+  /** Product words of the stand pharmacy's history: each word's first catalog candidate is "ordered" (--usual a,b,c). */
+  usual?: string[]
   stopAt: number; out: string; departedFrom?: string; standDir: string; vertexKey: string; secondEarKey?: string; cache: string }
 
 function options(argv: string[]): Options {
@@ -430,6 +433,7 @@ function options(argv: string[]): Options {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
   return { snapshot, core, builder: value("--builder"), station: value("--station"), manners, steps: value("--steps") ? Number(value("--steps")) : undefined,
     dropAfterStep: value("--drop-after-step") ? Number(value("--drop-after-step")) : undefined,
+    usual: value("--usual")?.split(",").map((word) => word.trim()).filter(Boolean),
     scenario: value("--scenario") ?? join(HERE, "voice-scenario.json"), stopAt: Number(value("--stop-at") ?? 0.6),
     out: value("--out") ?? join(recordings, "line-stand", stamp), departedFrom: value("--departed-from"),
     standDir: value("--stand-dir") ?? join(homedir(), ".cache", "zeytun-core-stand"),
@@ -526,7 +530,9 @@ async function main() {
   mkdirSync(join(work, "spool"), { recursive: true, mode: 0o700 })
   const { catalog, snapshotAt } = await loadCatalog(opts.snapshot, opts.departedFrom)
   const saves: Save[] = []
-  const crm = new StandCrm(catalog, saves, opts.secondEarKey, certificates(work))
+  const usual = opts.usual?.flatMap((word) => catalog.search({ text: word }).candidates.slice(0, 1).map((item) => item.externalId))
+  if (opts.usual) process.stderr.write(`usual: ${opts.usual.length} words → ${usual?.length ?? 0} products\n`)
+  const crm = new StandCrm(catalog, saves, opts.secondEarKey, certificates(work), usual)
   const proxyPort = await crm.listen()
   const corePort = 20000 + Math.floor(Math.random() * 20000)
   const core = new Core(["--source", opts.core, "--port", String(corePort), "--vendor", join(opts.standDir, "vendor"),
