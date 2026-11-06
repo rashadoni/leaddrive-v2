@@ -14,6 +14,7 @@ import {
   customerEtaPhone,
   customerEtaRecipient,
   customerEtaSmsText,
+  customerEtaTemplateLanguageMissing,
   customerEtaWhatsAppVariables,
   nextCustomerEtaStop,
 } from "@/lib/mtm/customer-eta-link"
@@ -86,5 +87,13 @@ describe("in what words", () => {
   it("keeps a provider's failure short and without the number it was sent to", () => {
     expect(customerEtaFailure("Invalid 'To' Phone Number: +994 50 111 22 33")).toBe("Invalid 'To' Phone Number: …")
     expect(customerEtaFailure(new Error("x".repeat(500)))).toHaveLength(200)
+  })
+
+  it("tries Azerbaijani again only when Meta says the template has no version in the language asked for", () => {
+    expect(customerEtaTemplateLanguageMissing("(#132001) Template name does not exist in the translation")).toBe(true)
+    expect(customerEtaTemplateLanguageMissing(new Error("Template name does not exist in the translation"))).toBe(true)
+    expect(customerEtaTemplateLanguageMissing("(#131026) Message undeliverable")).toBe(false)
+    expect(customerEtaTemplateLanguageMissing("network error")).toBe(false)
+    expect(customerEtaTemplateLanguageMissing(undefined)).toBe(false)
   })
 })
