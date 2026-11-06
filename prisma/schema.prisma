@@ -90,6 +90,7 @@ model Organization {
   pharmacyPhoneOrders   PharmacyPhoneOrder[]
   voiceLineNumbers      VoiceLineNumber[]
   pharmacyPhoneOrderLines PharmacyPhoneOrderLine[]
+  pharmacyWaitlistItems PharmacyWaitlistItem[]
   reviewerAccessGrants  ReviewerAccessGrant[]
   accountGradeConfig    AccountGradeConfig?
   intentSignalConfig    IntentSignalConfig?
@@ -1550,6 +1551,7 @@ model Company {
   entitlements Entitlement[]
   monitoringSubjects MonitoringSubject[]
   pharmacyPhoneOrders PharmacyPhoneOrder[]
+  pharmacyWaitlistItems PharmacyWaitlistItem[]
 
   @@unique([organizationId, externalSource, externalId])
   @@index([organizationId])
@@ -1890,6 +1892,13 @@ model Task {
   // by the client so inserting between two cards normally updates only the
   // dragged task; createdAt remains the deterministic tie-breaker.
   boardPosition      Float              @default(0)
+  // Where an imported task came from (2026-11-06: Zeytun's marketing board moved
+  // over from Bordio). externalSource names the system ("bordio"), externalId is
+  // that system's own task id. Both NULL for every task made in the CRM. The
+  // unique index makes a re-run of the same import update the task it already
+  // brought over instead of adding a second copy. See src/lib/tasks/external-import.ts.
+  externalSource     String?
+  externalId         String?
   // Soft delete (spec DELETE = soft). Board/list reads filter deletedAt:null via
   // the prisma client extension; the taskKey generator deliberately bypasses it.
   deletedAt          DateTime?
@@ -1920,6 +1929,7 @@ model Task {
   // taskKey unique per org. Postgres treats NULL as distinct, so the many
   // pre-existing NULL-key rows don't collide; only generated keys are constrained.
   @@unique([organizationId, taskKey])
+  @@unique([organizationId, externalSource, externalId])
   @@index([organizationId])
   @@index([organizationId, assignedTo])
   @@index([organizationId, divisionId])
@@ -23849,6 +23859,7 @@ model PharmacyPhoneOrder {
   updatedAt              DateTime     @updatedAt
 
   lines PharmacyPhoneOrderLine[]
+  waitlistItems PharmacyWaitlistItem[]
 
   @@index([organizationId, companyId, createdAt])
   @@unique([organizationId, number])
@@ -23888,6 +23899,49 @@ model PharmacyPhoneOrderLine {
   @@unique([orderId, position])
   @@index([organizationId])
   @@map("pharmacy_phone_order_lines")
+}
+
+/// A product a pharmacy wanted on the line while it was sold out (owner's
+/// client, 2026-11-06: «если был отказ из-за того, что не было на складе —
+/// режим ожидания»). Written by the call's save next to the order's own line
+/// (which stays as it was: not found), one row per call and product. The
+/// catalog refresh stamps arrivedAt when 1C has it again; the next call of
+/// the same pharmacy hears of it first (zeytun-arrivals.ts). Whether the
+/// pharmacy has ordered it since is read from its orders, never stored.
+model PharmacyWaitlistItem {
+  id               String              @id @default(cuid())
+  organizationId   String
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The call's order, while it exists.
+  orderId          String?
+  order            PharmacyPhoneOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  providerCallId   String
+  /// The pharmacy as the order named it.
+  companyId        String?
+  company          Company?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  pharmacyGuid     String?
+  pharmacyName     String?
+  catalogScopeKey  String
+  /// The 1C product (Номенклатура GUID) and its names when it sold out.
+  externalId       String
+  itemCode         String
+  productName      String
+  spokenText       String
+  quantity         Int
+  unit             String
+  requestedAt      DateTime            @default(now())
+  /// When the catalog had it again; null while it waits.
+  arrivedAt        DateTime?
+  /// A manager took it off the list.
+  dismissedAt      DateTime?
+  dismissedById    String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@unique([organizationId, providerCallId, externalId])
+  @@index([organizationId, catalogScopeKey, arrivedAt])
+  @@index([organizationId, companyId])
+  @@map("pharmacy_waitlist_items")
 }
 
 /// Explicit own/team expansion for the meetings workspace; board membership is unrelated.

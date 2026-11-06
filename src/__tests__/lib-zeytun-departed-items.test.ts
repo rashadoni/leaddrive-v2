@@ -99,7 +99,7 @@ describe("the catalog refresh remembers what sold out", () => {
     fetchFeed.mockImplementation(async () => feedOf([adefa, ademta, adenuric]))
     expect((await cache().refresh()).outcome).toBe("updated")
     expect(await store.loadDeparted()).toEqual([])
-    expect((await readdir(root)).sort()).toEqual([`${scopeKey}.attempt`, `${scopeKey}.departed`, `${scopeKey}.snapshot`, "refresh.lock"])
+    expect((await readdir(root)).sort()).toEqual([`${scopeKey}.arrived`, `${scopeKey}.attempt`, `${scopeKey}.departed`, `${scopeKey}.snapshot`, "refresh.lock"])
   })
 
   it("an unreadable list is no list: the refresh still replaces the snapshot", async () => {

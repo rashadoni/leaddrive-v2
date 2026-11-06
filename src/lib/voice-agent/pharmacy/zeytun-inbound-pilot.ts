@@ -14,6 +14,8 @@ import { EMPTY_LINE_SPEECH, type LineSpeech } from "./zeytun-line-speech"
 import { spokenProductName, type LearnedNames } from "./zeytun-learned-names"
 import type { PharmacyAssortment } from "./zeytun-pharmacy-assortment"
 import type { DepartedSearch } from "./zeytun-departed-items"
+import type { ArrivedItem } from "./zeytun-arrived-items"
+import type { ArrivalOffer, WaitlistLine } from "./zeytun-waitlist"
 import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
 
 const id = z.string().trim().min(1).max(128)
@@ -92,7 +94,9 @@ export type InboundPilotCatalog = {
     preferredExtra?: Array<InboundPilotCatalogItem>
   }
   /** Products sold out lately, by name (zeytun-departed-items.ts); the line only. */
-  departed?: Pick<DepartedSearch, "find">
+  departed?: Pick<DepartedSearch, "find"> & Partial<Pick<DepartedSearch, "byId">>
+  /** Products back in stock lately (zeytun-arrived-items.ts); the line only. */
+  arrived?: readonly ArrivedItem[]
 }
 // 1C base units as the caller would say them. A unit missing here (tube,
 // kilogram, ...) gets no spoken price rather than a guessed word for it.
@@ -241,7 +245,7 @@ export type InboundPilotDependencies = {
   /** Saves the call's list to config.orderOrganizationId's phone orders. */
   saveOrder?: (config: InboundPilotConfig & { orderOrganizationId: string }, call: InboundPilotOrderCall,
     catalog: PhoneOrderCatalog, lines: PhoneOrderLineInput[], pharmacy?: string,
-    delivery?: { seq?: number; afterCall: boolean; final?: boolean }) => Promise<PhoneOrderSaveResult>
+    delivery?: { seq?: number; afterCall: boolean; final?: boolean; waiting?: WaitlistLine[] }) => Promise<PhoneOrderSaveResult>
   /** The order organization's own line speech (zeytun-line-speech.ts); empty fields are the code's texts. */
   loadLineSpeech?: (config: LineGrant) => Promise<LineSpeech>
   /** What its managers' confirmed orders taught the line (zeytun-learned-names.ts); null until read. Never waits. */
@@ -255,6 +259,10 @@ export type InboundPilotDependencies = {
   pharmacyAssortment?: (config: LineGrant, call: InboundPilotOrderCall) => PharmacyAssortment | null
   /** Words of 1C's pharmacy names (districts) for the second ear while the caller says who is calling; never waits. */
   pharmacyHints?: (config: LineGrant) => string[]
+  /** What the pharmacy of the caller's number waited for or orders and 1C has again (zeytun-waitlist.ts). Line calls only. */
+  pharmacyArrivals?: (config: LineGrant, call: InboundPilotOrderCall, catalog: InboundPilotCatalog, numberPharmacyGuid: string) => Promise<ArrivalOffer[]>
+  /** Stamps waiting-list products 1C has again; warmZeytunLine calls it after each catalog refresh. */
+  markWaitlistArrivals?: (config: InboundPilotConfig) => Promise<number>
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
@@ -451,6 +459,10 @@ export const ZEYTUN_LINE_PROMPT = [
   // no strength matched, and it listed all three again.
   ["never one already given. If only one item matches,",
     "never one already given. A heard strength that matches none but one in thousands (\"10 milli\" or \"10 mq\" for 10 000: min is a thousand) is that one: ask \"10 000?\", never list all. If only one item matches,"],
+  // Owner's client, 2026-11-06: a sold-out product the pharmacy still wants
+  // goes on the waiting list (zeytun-waitlist.ts), and its next call hears of it.
+  ["write it only if the caller still wants it.",
+    "if they still want it rather than a substitute, say \"qeyd etdim, gələn kimi xəbər verəcəyik\" and write it with its quantity."],
 ].reduce((prompt, [from, to]) => {
   if (!prompt.includes(from)) throw new Error("zeytun_line_prompt_drift")
   return prompt.replace(from, to)
@@ -596,6 +608,29 @@ export function createLineHealthCheck(dependencies: Pick<InboundPilotDependencie
   }
 }
 
+/** How long the session waits for the pharmacy's arrivals before the call goes on without them. */
+export const ARRIVALS_WAIT_MS = 700
+
+function withinMs<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([promise, new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), ms); timer.unref?.() })])
+    .finally(() => clearTimeout(timer))
+}
+
+/**
+ * The call's own news for the agent, after the rules: products the calling
+ * pharmacy waited for or orders that 1C has again (zeytun-waitlist.ts). Asked
+ * once, only after the caller confirms the pharmacy the greeting named.
+ */
+export function arrivalsNote(offers: readonly ArrivalOffer[]): string {
+  if (!offers.length) return ""
+  return "\n<pharmacy_arrivals>\nBack in stock since this pharmacy's last call: products it asked to wait for (waited) or orders. " +
+    "Only if the caller confirms they are the pharmacy the greeting named (never if they name another one): once, at the end of your reply " +
+    "to their first phrase, ask \"Yeni daxilolmalar var, eşitmək istəyirsiniz?\". On yes, name them in a few words (for a waited one add " +
+    "\"siz soruşmuşdunuz\") and ask which to write; search a product before writing it. On no, or if they just go on ordering, never bring it up again.\n" +
+    offers.map(offer => `- ${offer.name}${offer.waited ? " (waited)" : ""}`).join("\n") + "\n</pharmacy_arrivals>"
+}
+
 /** Inbound-only owner rehearsal. No CRM subject lookup: shared phone numbers
  * cannot identify an actual pharmacy. The ordinary customer handler stays strict.
  * Only catalog labels leave this boundary; no price, stock, history or order API.
@@ -697,6 +732,17 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         // Notes saved under a larger budget than today's rules leave: the call
         // goes on with the code's notes-free rules rather than being refused.
         if (prompt.length > LINE_PROMPT_MAX_CHARS) prompt = composeLinePrompt({ ...speech, manner: "", knowledge: "", rules: "" })
+        // Owner's client, 2026-11-06: what this pharmacy waited for or orders and 1C has again
+        // (zeytun-waitlist.ts). Only the pharmacy the caller's number alone names; a slow or
+        // failed read, or a prompt without room for it, costs the call nothing.
+        if (isLineGrant(config) && candidates.length === 1 && dependencies.pharmacyArrivals) {
+          const offers = await withinMs(dependencies.pharmacyArrivals(config, call, catalog, candidates[0].guid), ARRIVALS_WAIT_MS)
+            .catch(() => null)
+          const note = offers?.length ? arrivalsNote(offers) : ""
+          if (note && prompt.length + note.length <= LINE_PROMPT_MAX_CHARS) prompt += note
+          if (offers?.length) console.log("[zeytun-line] arrivals", JSON.stringify({ call: call.providerCallId, offered: note && prompt.endsWith(note) ? offers.length : 0,
+            waited: offers.filter(offer => offer.waited).length }))
+        }
         // The second ear's token is fetched now, not on the pharmacy's first phrase.
         if (hearing) dependencies.secondEar?.warm()
         // The pharmacy's list is read now, in the background, for the call's first lookup and phrase.
@@ -718,8 +764,18 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       if (input.action === "order") {
         const orderOrganizationId = config.orderOrganizationId
         if (!orderOrganizationId || !dependencies.saveOrder) return searchResponse({ status: "orders_disabled" })
-        const saved = await dependencies.saveOrder({ ...config, orderOrganizationId }, finalCall, phoneOrderCatalog(catalog), input.lines,
-          input.pharmacy, { seq: input.seq, afterCall: finalCall.endedAt !== null, final: input.final })
+        const orderCatalog = phoneOrderCatalog(catalog)
+        // A sold-out product the caller still wants (owner's client, 2026-11-06): the order keeps it as
+        // a line nobody resolved, as before; the waiting list keeps its 1C id (zeytun-waitlist.ts).
+        const byId = catalog.departed?.byId
+        const waiting = isLineGrant(config) && byId ? input.lines.flatMap((line): WaitlistLine[] => {
+          if (!line.externalId || orderCatalog.find(line.externalId)) return []
+          const gone = byId(line.externalId)
+          return gone ? [{ externalId: gone.externalId, itemCode: gone.itemCode, productName: gone.nameAz?.trim() || gone.name,
+            spokenText: line.spoken, quantity: line.quantity, unit: line.unit.trim().toLowerCase() }] : []
+        }) : undefined
+        const saved = await dependencies.saveOrder({ ...config, orderOrganizationId }, finalCall, orderCatalog, input.lines,
+          input.pharmacy, { seq: input.seq, afterCall: finalCall.endedAt !== null, final: input.final, ...(waiting ? { waiting } : {}) })
         if (saved.status === "already_reviewed") return searchResponse({ status: "already_reviewed", orderNumber: phoneOrderLabel(saved.number) })
         return searchResponse({ status: "saved", orderNumber: phoneOrderLabel(saved.number), changed: saved.changed,
           total: saved.total, currency: saved.currency, notFound: saved.notFound, unpriced: saved.unpriced })

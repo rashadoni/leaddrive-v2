@@ -92,5 +92,9 @@ export async function warmZeytunLine(host: Host = zeytunLineHost()) {
   await host.loadCatalog(parsed.data)
   // Any well-formed number loads the list; the answer itself is not used.
   await host.findPharmacies?.(parsed.data, "+994000000000").catch(() => [])
+  // The waiting list learns what 1C has again (zeytun-waitlist.ts); a failure leaves it as it was.
+  const arrived = await (host.markWaitlistArrivals?.(parsed.data) ?? Promise.resolve(0))
+    .catch((error: unknown) => { console.warn("[zeytun-line] waitlist arrivals not marked", error instanceof Error ? error.name : typeof error); return 0 })
+  if (arrived) console.log("[zeytun-line] waitlist arrived", JSON.stringify({ items: arrived }))
   return { outcome: "warm" as const, ms: Date.now() - started }
 }

@@ -17,6 +17,7 @@ import { identifyPharmacy, matchPharmacyName, pharmacyHintWords, type PharmacyCa
 import { readLineSpeech } from "./zeytun-line-speech"
 import { learnNames, type LearnedNames } from "./zeytun-learned-names"
 import { callPharmacy, lastPharmacyOrder } from "./zeytun-pharmacy-history"
+import { markWaitlistArrivals, pharmacyArrivals, recordCallWaitlist } from "./zeytun-waitlist"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
 import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
@@ -252,6 +253,8 @@ export function createInboundPilotHost(options: {
         const feed = await ZeytunAvailableBalances.build(snapshot.payload, snapshot.context)
         // Sold out lately: the line only; a list that cannot be read is no list, never a failed catalog.
         const departed = isLineGrant(config) ? createDepartedSearch(await store.loadDeparted().catch(() => [])) : null
+        // Back in stock lately, for the pharmacies that wait for or order it (zeytun-waitlist.ts); the line only.
+        const arrived = isLineGrant(config) ? await store.loadArrived().catch(() => []) : []
         // No catalog words go to the recognizer: 2026-11-03 the maker hints
         // ("Abdi", "Sopharma"…) turned "Adefa" into "Abdi İbrahim", in the
         // transcript and in the agent's own search. Callers name products;
@@ -260,7 +263,7 @@ export function createInboundPilotHost(options: {
           observedAt: snapshot.context.observedAt, source: snapshot.context.source,
           search: (query: Parameters<ZeytunAvailableBalances["search"]>[1], options?: { assortment?: { ordered: readonly string[] } | null }) =>
             feed.search(source.organizationId, query, undefined, options),
-          ...(departed?.size ? { departed } : {}) }
+          ...(departed?.size ? { departed } : {}), ...(arrived.length ? { arrived } : {}) }
       })()
       if (catalog?.key !== key) {
         catalog = { key, at: Date.now(), value: load() }
@@ -305,6 +308,12 @@ export function createInboundPilotHost(options: {
         const base = { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
           callStartedAt: call.startedAt, catalog, lines, seq: delivery?.seq, afterCall: delivery?.afterCall === true, final: delivery?.final === true }
         const saved = await saveFromCall(config, call, base, pharmacy)
+        // The waiting list follows the list the call holds now; a failure costs the order nothing.
+        if (delivery?.waiting && saved.status === "saved" && saved.changed && isLineGrant(config)) {
+          await recordCallWaitlist(options.orders!, { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
+            catalogScopeKey: catalog.scopeKey, lines: delivery.waiting })
+            .catch((error: unknown) => console.warn("[zeytun-line] waitlist not saved", error instanceof Error ? error.name : typeof error))
+        }
         // The end of the call announced the order as it was then (or found
         // none): a list delivered later is announced again, as it now is; so
         // is a late final save, which only now lets the pharmacy hear of it.
@@ -327,6 +336,25 @@ export function createInboundPilotHost(options: {
       pharmacyAssortment: (config, call) => assortments.get(call.providerCallId, () => loadAssortment(config, call)),
     } satisfies Pick<InboundPilotDependencies, "pharmacyAssortment"> : {}),
     pharmacyHints: (config) => knownPharmacies(config)?.hints ?? [],
+    /** Stamps the waiting list's products 1C has again (warmZeytunLine, after each catalog refresh). */
+    async markWaitlistArrivals(config: InboundPilotConfig): Promise<number> {
+      if (!options.orders || !isLineGrant(config) || !config.orderOrganizationId || !(await allowedOrganization(config))) return 0
+      const catalog = await this.loadCatalog(config)
+      return markWaitlistArrivals(options.orders, { organizationId: config.orderOrganizationId, catalogScopeKey: catalog.scopeKey,
+        inStock: (externalId) => catalog.search({ externalId }).candidates.some(candidate => candidate.externalId === externalId) })
+    },
+    ...(options.orders ? {
+      // Owner's client, 2026-11-06: «есть новые поступления, хотите ли узнать?» — what this pharmacy waited for or orders.
+      pharmacyArrivals: async (config, call, catalog, numberPharmacyGuid) => {
+        if (!(await allowedOrganization(config))) return []
+        return pharmacyArrivals(options.orders!, { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,
+          callStartedAt: call.startedAt, numberPharmacyGuid, catalogScopeKey: catalog.scopeKey, arrived: catalog.arrived ?? [],
+          inStock: (externalId) => {
+            const item = catalog.search({ externalId }).candidates.find(candidate => candidate.externalId === externalId)
+            return item ? { name: item.nameAz?.trim() || item.name } : null
+          } })
+      },
+    } satisfies Pick<InboundPilotDependencies, "pharmacyArrivals"> : {}),
     ...(options.orders ? {
       // «Как обычно» (owner, 2026-11-04): the pharmacy the call already knows —
       // its order's, or before the first save the one 1C has for this number alone.
