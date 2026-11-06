@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { Sidebar } from "@/components/sidebar"
@@ -12,7 +12,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { CommandSearch } from "@/components/command-search"
 import { AppLauncher } from "@/components/app-launcher"
 import { LauncherPrefsProvider } from "@/contexts/launcher-prefs-context"
-import { isNavItemEnabled, isNavPathRoleBlocked, matchNavItem } from "@/lib/nav-items"
+import { isBoardsOnlyWorkspace, isNavItemEnabled, isNavPathRoleBlocked, matchNavItem } from "@/lib/nav-items"
 import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 import { ModuleDisabled } from "@/components/module-disabled"
 import { AiAssistantPanel } from "@/components/ai-assistant-panel"
@@ -137,6 +137,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const roleBlocked = !!session && !moduleBlocked && isNavPathRoleBlocked(org, pathname)
   const pageBlocked = moduleBlocked || roleBlocked
 
+  // Someone who was given the boards and nothing else works without the
+  // sidebar, and the CRM home is not theirs: send it to the boards.
+  const boardsOnly = !!session && sessionLoaded && isBoardsOnlyWorkspace(org)
+  const router = useRouter()
+  useEffect(() => {
+    if (boardsOnly && (pathname === "/dashboard" || pathname === "/")) router.replace("/boards")
+  }, [boardsOnly, pathname, router])
+
   // Page-fetch race fix (44 pages): child pages do raw `fetch()` in
   // `useEffect([session])`. If a page mounts BEFORE the session is authenticated,
   // its fetch races to a 401 (cookie not ready), the response isn't retried, and
@@ -184,7 +192,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 placeholders — rendering the menu from a default org context
                 here silently hid module groups (MTM/Finance) and showed a
                 fake "User" identity (recurring bug report 2026-06-11). */}
-            <Sidebar org={org} sessionLoaded={sessionLoaded} />
+            {!boardsOnly && <Sidebar org={org} sessionLoaded={sessionLoaded} />}
             <div data-crm-workspace="" className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <Header
                 orgName={user?.organizationName}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { GROUP_MODULE_IDS, hasModule } from "@/lib/modules"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
-import { accessibleNavItems } from "@/lib/nav-items"
+import { accessibleNavItems, isBoardsOnlyWorkspace } from "@/lib/nav-items"
 import {
   applyUserModuleMask,
   effectiveHiddenModules,
@@ -26,11 +26,13 @@ const masked = (
 ) => ({ plan: "enterprise", addons, modules: applyUserModuleMask(org(modules, addons), hidden) })
 
 describe("the hideable catalog", () => {
-  it("offers every sidebar group except Settings, plus Workforce HRM", () => {
+  it("offers every sidebar group except Settings, the boards right after CRM, plus Workforce HRM", () => {
     // The list is spelled out in user-module-access.ts; this is what keeps a
     // newly added group-module from being left un-hideable (and un-pinned).
     expect(USER_HIDEABLE_MODULE_IDS).toEqual([
-      ...GROUP_MODULE_IDS.filter((id) => id !== "settings"),
+      "crm",
+      "boards",
+      ...GROUP_MODULE_IDS.filter((id) => id !== "settings" && id !== "crm"),
       "workforce-hrm",
     ])
   })
@@ -55,11 +57,13 @@ describe("the hideable catalog", () => {
   })
 
   it("lists only what the tenant has", () => {
-    expect(tenantHideableModules(org({ crm: true, sales: true, settings: true }))).toEqual(["crm", "sales"])
+    // Boards come with CRM: a tenant never toggles them on their own.
+    expect(tenantHideableModules(org({ crm: true, sales: true, settings: true }))).toEqual(["crm", "boards", "sales"])
+    expect(tenantHideableModules(org({ crm: false, sales: true }))).toEqual(["sales"])
     // The historical `mtm` grant dual-reads as both field capabilities.
-    expect(tenantHideableModules(org({ crm: true, mtm: true }))).toEqual(["crm", "mtm"])
+    expect(tenantHideableModules(org({ crm: true, mtm: true }))).toEqual(["crm", "boards", "mtm"])
     // A Workforce-only tenant has HRM without Route & Field.
-    expect(tenantHideableModules(org({ crm: true, "workforce-hrm": true }))).toEqual(["crm"])
+    expect(tenantHideableModules(org({ crm: true, "workforce-hrm": true }))).toEqual(["crm", "boards"])
   })
 })
 
@@ -98,6 +102,29 @@ describe("applyUserModuleMask", () => {
     expect(hasModule(ctx, "crm")).toBe(false)
     expect(hasModule(ctx, "support")).toBe(true)
     expect(hasModule(ctx, "finance")).toBe(true)
+  })
+
+  // Owner, 2026-11-06: a person can be given the boards and nothing else.
+  describe("boards, a tick of their own", () => {
+    it("follow CRM for the tenant", () => {
+      expect(hasModule(org({ crm: true }), "boards")).toBe(true)
+      expect(hasModule(org({ crm: false, sales: true }), "boards")).toBe(false)
+      expect(hasModule(org({ core: true }), "boards")).toBe(true) // legacy record: core → crm
+    })
+
+    it("stay with CRM hidden, and go with their own tick", () => {
+      const boardsOnly = masked(allOn, USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "boards"))
+      expect(hasModule(boardsOnly, "boards")).toBe(true)
+      expect(hasModule(boardsOnly, "crm")).toBe(false)
+
+      const crmWithoutBoards = masked(allOn, ["boards"])
+      expect(hasModule(crmWithoutBoards, "boards")).toBe(false)
+      expect(hasModule(crmWithoutBoards, "crm")).toBe(true)
+    })
+
+    it("are not handed to a tenant without CRM by an unrelated tick", () => {
+      expect(hasModule(masked({ crm: false, sales: true }, ["sales"]), "boards")).toBe(false)
+    })
   })
 
   it("keeps non-group keys such as feature flags", () => {
@@ -148,6 +175,32 @@ describe("what the restricted user's menu shows", () => {
     const after = groupsFor(["sales", "marketing", "mtm"])
     expect(before).toEqual(expect.arrayContaining(["Sales", "Marketing", "Route & Field"]))
     expect(before.filter((group) => !after.includes(group))).toEqual(["Sales", "Marketing", "Route & Field"])
+  })
+
+  const pagesFor = (hidden: string[], role = "sales") =>
+    accessibleNavItems({ ...masked({ ...allOn, mtm: true }, hidden), role })
+      .filter((item) => item.group !== "Settings")
+      .map((item) => item.href)
+
+  it("can leave a marketing person with the boards alone, and the boards-only workspace follows", () => {
+    const everythingElse = USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "boards")
+    expect(pagesFor([...everythingElse])).toEqual(["/boards", "/settings/task-templates"])
+    expect(isBoardsOnlyWorkspace({ ...masked({ ...allOn, mtm: true }, [...everythingElse]), role: "sales" })).toBe(true)
+  })
+
+  it("keeps CRM pages without the boards when only the boards are unticked", () => {
+    const pages = pagesFor(["boards"])
+    expect(pages).toEqual(expect.arrayContaining(["/dashboard", "/companies", "/contacts"]))
+    expect(pages).not.toContain("/boards")
+    expect(pages).not.toContain("/settings/task-templates")
+  })
+
+  it("is not boards-only with anything else left, nor ever for an admin", () => {
+    const allButBoardsAndSales = USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "boards" && id !== "sales")
+    expect(isBoardsOnlyWorkspace({ ...masked({ ...allOn, mtm: true }, [...allButBoardsAndSales]), role: "sales" })).toBe(false)
+    expect(isBoardsOnlyWorkspace({ ...masked(allOn, []), role: "sales" })).toBe(false)
+    const everythingElse = USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "boards")
+    expect(isBoardsOnlyWorkspace({ ...masked(allOn, [...everythingElse]), role: "admin" })).toBe(false)
   })
 
   it("can leave a field rep with Route & Field alone", () => {

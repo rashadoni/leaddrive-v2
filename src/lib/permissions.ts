@@ -164,6 +164,11 @@ export type Module =
  */
 export const PERMISSION_MODULE_TO_MODULE_ID: Record<string, ModuleId> = {
   ...LEGACY_MODULE_MAP,
+  // Tasks, boards and task templates answer to the boards module, which follows
+  // crm for the tenant but has its own tick on the user card (modules.ts,
+  // BOARDS_MODULE_ID). LEGACY_MODULE_MAP keeps `tasks: "crm"` for the
+  // legacy-record expansion in hasModule; this bridge is only the live gate.
+  tasks: "boards",
 }
 
 /**

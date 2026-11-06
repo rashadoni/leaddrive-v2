@@ -1,4 +1,5 @@
 import { isCrmCapabilityAvailable } from "./crm-product-availability"
+import { BOARDS_MODULE_ID } from "./modules"
 import { navItems, type NavItem } from "./nav-items"
 import {
   USER_HIDEABLE_MODULE_IDS,
@@ -74,7 +75,11 @@ export function userModuleOptions(
 ): UserModuleOption[] {
   return ids.filter(isCrmCapabilityAvailable).map((id) => {
     const { groups, pages } = USER_MODULE_COVERAGE.get(id) ?? { groups: [], pages: [] }
-    const label = groups.length > 0 ? groups.map((group) => translate(`groups.${group}`)).join(" · ") : id
+    // Boards live inside the CRM sidebar group, so the group name would label
+    // two ticks «CRM»; they are named after their pages instead («Lövhələr»).
+    const label = id === BOARDS_MODULE_ID
+      ? pages.map(translate).join(" · ") || id
+      : groups.length > 0 ? groups.map((group) => translate(`groups.${group}`)).join(" · ") : id
     return { id, label, groups, pages, pagesText: pages.map(translate).join(", ") }
   })
 }
