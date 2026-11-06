@@ -6,15 +6,14 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, CalendarCheck, Check, Copy, Pencil, Plus } from "lucide-react"
+import { CalendarCheck, Check, Copy, CopyPlus, Pencil, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
-import { groupByCategory, servicePriceLabel } from "@/lib/booking/service"
+import { bookingSlug, groupByCategory, servicePriceLabel } from "@/lib/booking/service"
 
 interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays"> {
   id: string
@@ -54,7 +53,16 @@ function newDraft(hostIds: string[]): BookingPageDraft {
   }
 }
 
-async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHostOption[]; linkBase: string; currency: string } | null> {
+/**
+ * The next service of a price list: the same room, the same people and the
+ * same hours as the one just saved — only the name, the link, the text and the
+ * price start empty. Twenty services are entered in one sitting, not twenty.
+ */
+function nextDraft(previous: BookingPageDraft): BookingPageDraft {
+  return { ...previous, id: undefined, title: "", slug: "", description: "", price: "" }
+}
+
+async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHostOption[]; linkBase: string; currency: string; ai?: boolean } | null> {
   const response = await fetch("/api/v1/booking-pages", { cache: "no-store" }).catch(() => null)
   const body = await response?.json().catch(() => null)
   return body?.success ? body.data : null
@@ -67,8 +75,14 @@ export function BookingPagesPanel() {
   const [users, setUsers] = useState<BookingHostOption[]>([])
   const [linkBase, setLinkBase] = useState("")
   const [currency, setCurrency] = useState("")
+  const [ai, setAi] = useState(false)
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState<BookingPageDraft | null>(null)
+  // A fresh form is a fresh editor: its own state (whether the link still
+  // follows the name, whether the per-day rows are open) must not survive into
+  // the next service.
+  const [editorSeq, setEditorSeq] = useState(0)
+  const [savedTitle, setSavedTitle] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState<string | null>(null)
@@ -81,6 +95,7 @@ export function BookingPagesPanel() {
         setUsers(data.users)
         setLinkBase(data.linkBase.replace(/^https?:\/\//, ""))
         setCurrency(data.currency ?? "")
+        setAi(Boolean(data.ai))
       } else {
         setError(t("errLoad"))
       }
@@ -90,10 +105,11 @@ export function BookingPagesPanel() {
 
   useEffect(load, [load])
 
-  async function save() {
+  async function save(another?: boolean) {
     if (!draft) return
     setSaving(true)
     setError("")
+    setSavedTitle("")
     const { id, price, category, repeatCycleDays, ...body } = draft
     // An empty field is «no price», and a typed comma is a decimal point here.
     const amount = price.trim() ? Number(price.trim().replace(",", ".")) : null
@@ -115,7 +131,14 @@ export function BookingPagesPanel() {
       setError(t(ERROR_KEYS[result?.code] ?? "errSave"))
       return
     }
-    setDraft(null)
+    if (another) {
+      setSavedTitle(draft.title.trim())
+      setDraft(nextDraft(draft))
+      setEditorSeq((seq) => seq + 1)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } else {
+      setDraft(null)
+    }
     load()
   }
 
@@ -129,9 +152,9 @@ export function BookingPagesPanel() {
     }
   }
 
-  function edit(page: PageRow) {
-    setError("")
-    setDraft({
+  /** The saved service as the form holds it. */
+  function draftOf(page: PageRow): BookingPageDraft {
+    return {
       id: page.id,
       title: page.title,
       slug: page.slug,
@@ -148,7 +171,24 @@ export function BookingPagesPanel() {
       minNoticeMinutes: page.minNoticeMinutes,
       maxDaysAhead: page.maxDaysAhead,
       isActive: page.isActive,
-    })
+    }
+  }
+
+  function openDraft(next: BookingPageDraft) {
+    setError("")
+    setSavedTitle("")
+    setEditorSeq((seq) => seq + 1)
+    setDraft(next)
+  }
+
+  /**
+   * «Haircut, men's» and «Haircut, women's» differ in a word and a price, so
+   * the second one starts as a copy of the first — with its own link, since a
+   * link is unique and a published one is never taken from the page that has it.
+   */
+  function duplicate(page: PageRow) {
+    const title = `${page.title} ${t("copySuffix")}`
+    openDraft({ ...draftOf(page), id: undefined, title, slug: bookingSlug(title) })
   }
 
   const hostNames = (ids: string[]) => ids.map((id) => users.find((user) => user.id === id)?.name).filter(Boolean).join(", ")
@@ -161,52 +201,44 @@ export function BookingPagesPanel() {
   return (
     <div className="space-y-6">
       {error && !draft ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        {draft ? (
-          <>
-            <div className="min-w-0">
-              <button type="button" onClick={() => setDraft(null)} className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground">
-                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />{t("settingsTitle")}
-              </button>
-              <h1 className="truncate text-2xl font-bold tracking-tight">{draft.title.trim() || t("newPage")}</h1>
-              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("editorSubtitle")}</p>
-            </div>
-            {/* The one setting that is about the service as a whole rather than
-                about one of its steps, so it sits with its name and not inside
-                the form. */}
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-full border bg-card px-3.5 py-2 text-sm font-semibold shadow-sm">
-              <Switch checked={draft.isActive} onCheckedChange={(on) => setDraft({ ...draft, isActive: on })} aria-label={t("fieldActive")} />
-              {draft.isActive ? t("fieldActive") : t("statusOff")}
-            </label>
-          </>
-        ) : (
-          <>
-            <div>
-              <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-                <CalendarCheck className="h-6 w-6 text-muted-foreground" aria-hidden="true" />{t("settingsTitle")}
-              </h1>
-              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("settingsDesc")}</p>
-            </div>
-            <Button onClick={() => { setError(""); setDraft(newDraft(users[0] ? [users[0].id] : [])) }}>
-              <Plus className="h-4 w-4" aria-hidden="true" />{t("newPage")}
-            </Button>
-          </>
-        )}
-      </div>
+      {/* Editing a service takes the screen: the editor brings its own name,
+          its own index and its own actions, so the list's heading would be a
+          second heading above a page that already has one. */}
+      {draft ? null : (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <CalendarCheck className="h-6 w-6 text-muted-foreground" aria-hidden="true" />{t("settingsTitle")}
+            </h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("settingsDesc")}</p>
+          </div>
+          <Button onClick={() => openDraft(newDraft(users[0] ? [users[0].id] : []))}>
+            <Plus className="h-4 w-4" aria-hidden="true" />{t("newPage")}
+          </Button>
+        </div>
+      )}
 
       {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
 
+      {draft && savedTitle ? (
+        <p className="flex items-center gap-2 rounded-lg border border-emerald-600/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400" role="status">
+          <Check className="h-4 w-4 shrink-0" aria-hidden="true" />{t("savedAnother", { title: savedTitle })}
+        </p>
+      ) : null}
+
       {draft ? (
         <BookingPageEditor
+          key={editorSeq}
           draft={draft}
           hosts={users}
           categories={categories}
           linkBase={linkBase}
           currency={currency}
+          ai={ai}
           saving={saving}
           error={error}
           onChange={setDraft}
-          onSave={() => void save()}
+          onSave={(another) => void save(another)}
           onCancel={() => setDraft(null)}
         />
       ) : loading ? <p role="status">{t("workspaceLoading")}</p> : error ? <Button variant="outline" onClick={() => { setLoading(true); load() }}>{t("retry")}</Button> : pages.length === 0 ? (
@@ -247,8 +279,11 @@ export function BookingPagesPanel() {
                   <Hint text={page.url}>
                     <Button variant="outline" size="sm" asChild><a href={page.url} target="_blank" rel="noreferrer">{t("openPage")} ↗</a></Button>
                   </Hint>
-                  <Button variant="outline" size="sm" onClick={() => edit(page)}>
+                  <Button variant="outline" size="sm" onClick={() => openDraft(draftOf(page))}>
                     <Pencil className="h-4 w-4" aria-hidden="true" />{t("edit")}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => duplicate(page)}>
+                    <CopyPlus className="h-4 w-4" aria-hidden="true" />{t("duplicate")}
                   </Button>
                 </div>
               </CardContent>

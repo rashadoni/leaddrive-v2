@@ -312,6 +312,19 @@ class TransportTests(unittest.TestCase):
         self.assertIn("keeping every externalId exactly", note)
         self.assertIn('"spoken":"Ketonal ampula 10 qutu","quantity":10', note)
 
+    def test_the_call_cost_is_logged_once_from_every_usage(self):
+        # Task 13 (2026-11-06): what a call cost, visible on the station.
+        bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        bridge.handle({"usageMetadata": {"promptTokenCount": 1000, "responseTokenCount": 200, "thoughtsTokenCount": 50,
+                                         "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 800}, {"modality": "AUDIO", "tokenCount": 200}],
+                                         "responseTokensDetails": [{"modality": "AUDIO", "tokenCount": 200}]}}, lambda m: None, lambda: True)
+        bridge.handle({"usageMetadata": {"promptTokenCount": 1000}}, lambda m: None, lambda: True)
+        lines = []
+        self.assertTrue(bridge.log_cost(lambda status, **fields: lines.append((status, fields))))
+        self.assertFalse(bridge.log_cost(lambda status, **fields: lines.append((status, fields))))
+        self.assertEqual(lines, [("call", {"usd": round((800 * 0.75 + 1200 * 3 + 50 * 4.5 + 200 * 12) / 1e6, 4),
+                                           "textIn": 800, "audioIn": 1200, "textOut": 50, "audioOut": 200, "turns": 2})])
+
     def test_a_cancel_the_crm_took_stops_every_later_save_of_the_call(self):
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
         self.assertEqual(bridge._save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
@@ -1749,6 +1762,8 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertEqual(speak("Ketonal geli 10 qutu."), "Ketonal geli on qutu.")
         self.assertEqual(speak("Ketonal geli, 1 qutu."), "Ketonal geli, bir qutu.")
         self.assertEqual(speak("Adefa № 30, 5-dən az"), "Adefa nömrə otuz, beşdən az")
+        # Task 8 (2026-11-06): the order number's letters in Azerbaijani.
+        self.assertEqual(speak("Sifarişiniz TS-1026 nömrəsi ilə qəbul edildi."), "Sifarişiniz te-se min iyirmi altı nömrəsi ilə qəbul edildi.")
         self.assertEqual(speak("Azirag 500 mq, sirop 150 ml"), "Azirag beş yüz milliqram, sirop yüz əlli millilitr")
         # A decimal and an ordinal change the word itself: left as written.
         self.assertEqual(speak("2,5% gel, 2026-cı ilədək, 3-cü"), "2,5% gel, 2026-cı ilədək, 3-cü")
@@ -2614,6 +2629,15 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("zeytun_restore_note", restore)
         self.assertEqual(ast.dump(ast.parse(restore).body[0]), ast.dump(new_methods["_context_restore_event"]))
         differences.discard("_context_restore_event")
+        # A fresh session on a pharmacy call gets 5 s to set up and to its first audio (2026-11-06).
+        recover = ast.unparse(old_methods["_fresh_recover_gemini"]).replace(
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, GEMINI_LIVE_FRESH_RECOVERY_TIMEOUT_SECONDS)",
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, 5.0 if self.pharmacy_preview else GEMINI_LIVE_FRESH_RECOVERY_TIMEOUT_SECONDS)", 1).replace(
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, GEMINI_LIVE_FRESH_RECOVERY_FIRST_AUDIO_TIMEOUT_SECONDS)",
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, 5.0 if self.pharmacy_preview else GEMINI_LIVE_FRESH_RECOVERY_FIRST_AUDIO_TIMEOUT_SECONDS)", 1)
+        self.assertEqual(recover.count("5.0 if self.pharmacy_preview"), 2)
+        self.assertEqual(ast.dump(ast.parse(recover).body[0]), ast.dump(new_methods["_fresh_recover_gemini"]))
+        differences.discard("_fresh_recover_gemini")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
@@ -2628,6 +2652,7 @@ class ArtifactTests(unittest.TestCase):
         # call returns exactly what the core returned before.
         record = ast.unparse(new_methods["transcript_turns"])
         self.assertIn("return zeytun_call_transcript(order, items, *heard)", record)
+        self.assertIn("log_cost(lambda status", record)
         self.assertTrue(ast.unparse(old_methods["transcript_turns"]).endswith(
             record[record.index("return [items[item_id]"):]))
         handler = ast.unparse(new_methods["_handle_current_gemini_event"])

@@ -162,6 +162,8 @@ class RelayWebSocket:
         live_sockets.add(self)
         self.socket = None
         self.n = next(ids)
+        self.asked_at = time.monotonic()
+        self.first_seen = False
         self.inbox = relay_inbox[self.n] = queue.Queue()
         slot = relay_waiting[self.n] = {"ready": threading.Event(), "event": None}
         relay_send({"op": "connect", "id": self.n})
@@ -205,6 +207,10 @@ class RelayWebSocket:
         except queue.Empty:
             raise socket.timeout("timed out")
         if event["ev"] == "msg":
+            if not self.first_seen:
+                # How long the provider took to its first message (setupComplete): the core gives a fresh session 2.5 s.
+                self.first_seen = True
+                stand({"relay": "first_message", "ms": round((time.monotonic() - self.asked_at) * 1000), "keys": sorted(event["msg"])[:3]})
             return event["msg"]
         self.closed = True
         if event.get("code") is None:
