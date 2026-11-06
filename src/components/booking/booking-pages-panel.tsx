@@ -13,9 +13,11 @@ import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
+import { parseHostVariants } from "@/lib/booking/host-variants"
 import { bookingSlug, groupByCategory, servicePriceLabel } from "@/lib/booking/service"
 
-interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays"> {
+interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays" | "hostVariants"> {
+  hostVariants: unknown
   id: string
   description: string | null
   locationText: string | null
@@ -42,6 +44,7 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     locationType: "office",
     locationText: "",
     hostIds,
+    hostVariants: {},
     weekly: defaultWeeklyHours(),
     price: "",
     category: "",
@@ -163,6 +166,7 @@ export function BookingPagesPanel() {
       locationType: page.locationType,
       locationText: page.locationText ?? "",
       hostIds: page.hostIds,
+      hostVariants: parseHostVariants(page.hostVariants),
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
       price: page.price ?? "",
       category: page.category ?? "",
