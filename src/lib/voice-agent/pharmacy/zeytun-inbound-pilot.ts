@@ -261,6 +261,8 @@ export type InboundPilotDependencies = {
   pharmacyHints?: (config: LineGrant) => string[]
   /** What the pharmacy of the caller's number waited for or orders and 1C has again (zeytun-waitlist.ts). Line calls only. */
   pharmacyArrivals?: (config: LineGrant, call: InboundPilotOrderCall, catalog: InboundPilotCatalog, numberPharmacyGuid: string) => Promise<ArrivalOffer[]>
+  /** Stamps waiting-list products 1C has again; warmZeytunLine calls it after each catalog refresh. */
+  markWaitlistArrivals?: (config: InboundPilotConfig) => Promise<number>
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
