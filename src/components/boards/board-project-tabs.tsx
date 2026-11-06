@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
+import { Columns3, Folder, FolderOpen } from "lucide-react"
 import { boardTabRows, type TabDivision } from "@/lib/tasks/board-tabs"
 
 /**
@@ -10,7 +11,20 @@ import { boardTabRows, type TabDivision } from "@/lib/tasks/board-tabs"
  * one click and the sidebar stays as it is (owner, 2026-11-06). Rows and their
  * order: src/lib/tasks/board-tabs.ts. Without `divisions` it reads the board
  * list itself (the department view has none of its own).
+ *
+ * Styled here rather than with the CRM's filter and tab chrome: those were
+ * pale enough that the owner had to look for them («если не присмотреться, не
+ * видны» — 2026-11-07). The open folder is a bold orange-framed tile, the open
+ * project carries an orange bar; inline styles because crm-workspace.css
+ * outranks Tailwind utilities inside the workspace.
  */
+const ORANGE = "hsl(var(--primary))"
+const ORANGE_TINT = "hsl(var(--primary) / 0.1)"
+const TEXT = "hsl(var(--foreground))"
+const SUB = "hsl(var(--muted-foreground))"
+const CARD = "hsl(var(--card))"
+const LINE = "hsl(var(--muted-foreground) / 0.35)"
+
 export function BoardProjectTabs({ currentId, divisions }: { currentId: string; divisions?: readonly TabDivision[] }) {
   const t = useTranslations("board")
   const [fetched, setFetched] = useState<TabDivision[] | null>(null)
@@ -31,47 +45,61 @@ export function BoardProjectTabs({ currentId, divisions }: { currentId: string; 
   if (!rows || (rows.places.length < 2 && !rows.projects)) return null
 
   return (
-    <div className="flex flex-col gap-2 px-5 pb-2" data-testid="board-project-tabs">
-      <nav aria-label={t("placeTabs")} className="flex flex-wrap items-center gap-1.5">
-        {rows.places.map((place) => (
-          <Link
-            key={place.id}
-            href={`/boards/${place.id}`}
-            data-crm-filter=""
-            data-state={place.active ? "active" : "inactive"}
-            aria-current={place.active ? "page" : undefined}
-            className="px-3 py-1 text-sm font-medium"
-          >
-            {place.name}
-          </Link>
-        ))}
+    <div className="flex flex-col gap-3 px-5 pb-3" data-testid="board-project-tabs">
+      <nav aria-label={t("placeTabs")} className="flex flex-wrap items-center gap-2">
+        {rows.places.map((place) => {
+          const Icon = place.isDepartment ? (place.active ? FolderOpen : Folder) : Columns3
+          return (
+            <Link
+              key={place.id}
+              href={`/boards/${place.id}`}
+              aria-current={place.active ? "page" : undefined}
+              data-active={place.active ? "true" : "false"}
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[15px] font-semibold transition-colors hover:opacity-90"
+              style={place.active
+                ? { background: ORANGE_TINT, color: ORANGE, border: `2px solid ${ORANGE}` }
+                : { background: CARD, color: TEXT, border: `1px solid ${LINE}`, boxShadow: "0 1px 2px rgb(0 0 0 / 0.06)" }}
+            >
+              <Icon className="h-4 w-4 flex-shrink-0" style={{ color: place.active ? ORANGE : SUB }} aria-hidden="true" />
+              {place.name}
+            </Link>
+          )
+        })}
       </nav>
       {rows.projects && (
-        <nav aria-label={t("projectTabs")} data-crm-tabs="" className="flex flex-wrap items-center gap-1">
-          <Link
-            href={`/boards/${rows.projects.departmentId}`}
-            data-crm-tab=""
-            data-state={rows.projects.allActive ? "active" : "inactive"}
-            aria-current={rows.projects.allActive ? "page" : undefined}
-            className="rounded-t px-3 py-1.5 text-sm font-medium"
-          >
-            {t("allProjects")}
-          </Link>
+        <nav
+          aria-label={t("projectTabs")}
+          className="flex flex-wrap items-end gap-1 rounded-lg px-2"
+          style={{ background: CARD, borderBottom: `2px solid ${LINE}` }}
+        >
+          <ProjectLink href={`/boards/${rows.projects.departmentId}`} active={rows.projects.allActive} label={t("allProjects")} count={null} />
           {rows.projects.items.map((project) => (
-            <Link
-              key={project.id}
-              href={`/boards/${project.id}`}
-              data-crm-tab=""
-              data-state={project.active ? "active" : "inactive"}
-              aria-current={project.active ? "page" : undefined}
-              className="rounded-t px-3 py-1.5 text-sm font-medium"
-            >
-              {project.name}
-              {project.count !== null && <span className="ml-1.5 text-xs opacity-60">{project.count}</span>}
-            </Link>
+            <ProjectLink key={project.id} href={`/boards/${project.id}`} active={project.active} label={project.name} count={project.count} />
           ))}
         </nav>
       )}
     </div>
+  )
+}
+
+function ProjectLink({ href, active, label, count }: { href: string; active: boolean; label: string; count: number | null }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      data-active={active ? "true" : "false"}
+      className="-mb-[2px] inline-flex items-center gap-2 px-3 py-2.5 text-[15px] font-semibold transition-colors"
+      style={{ color: active ? ORANGE : TEXT, borderBottom: `3px solid ${active ? ORANGE : "transparent"}` }}
+    >
+      {label}
+      {count !== null && (
+        <span
+          className="rounded-full px-2 py-0.5 text-xs font-semibold"
+          style={active ? { background: ORANGE, color: "#fff" } : { background: "hsl(var(--muted))", color: SUB }}
+        >
+          {count}
+        </span>
+      )}
+    </Link>
   )
 }
