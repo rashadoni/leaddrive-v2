@@ -27,11 +27,12 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Link2, Loader2, Phone, Plus, Sparkles, Undo2, Video, Wallet } from "lucide-react"
+import { ArrowLeft, Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Link2, Loader2, Phone, Plus, Sparkles, Undo2, Video, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { BookingAvatar } from "@/components/booking/booking-day-timeline"
 import { applyWeekly, openWeekdays, uniformInterval, WEEKDAYS, type HoursInterval, type Weekday, type WeeklyHours } from "@/lib/booking/availability"
 import { bookingSlug, REPEAT_CYCLE_DAYS } from "@/lib/booking/service"
@@ -120,7 +121,7 @@ function Section({ id, title, hint, aside, children }: { id: string; title: stri
   return (
     <section id={id} className="scroll-mt-24 px-5 py-7 sm:px-8">
       <div className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="text-[17px] font-bold tracking-tight">{title}</h3>
+        <h3 className="text-[19px] font-bold tracking-tight">{title}</h3>
         {hint ? <p className="text-[13px] text-muted-foreground">{hint}</p> : null}
         {aside ? <div className="ml-auto text-xs text-muted-foreground">{aside}</div> : null}
       </div>
@@ -172,8 +173,8 @@ function useActiveStep(ids: readonly string[]): string {
  */
 function StepIndex({ items, active, label }: { items: StepNavItem[]; active: string; label: string }) {
   return (
-    <nav aria-label={label} className="hidden xl:sticky xl:top-4 xl:block">
-      <ol className="space-y-0.5 rounded-2xl border bg-card p-2 shadow-sm">
+    <nav aria-label={label} className="hidden xl:block xl:border-r">
+      <ol className="sticky top-4 space-y-0.5 p-3">
         {items.map((item) => {
           const current = active === item.id
           return (
@@ -378,10 +379,32 @@ export function BookingPageEditor({
     // Below the three-column width the sheet is capped and centred: a form
     // field two thousand pixels wide is not a form field, it is a line.
     <div className="mx-auto max-w-4xl space-y-4 xl:max-w-none" data-testid="booking-page-editor">
-      <div className="grid items-start gap-5 xl:grid-cols-[196px_minmax(0,1fr)_320px]">
+      {/* One screen of its own, with its own name, its own index and its own
+          preview — not a form with a list of sections parked beside it. */}
+      {/* No `overflow-hidden` on purpose: it would turn this box into the
+          scrollport of everything inside, and the index and the preview would
+          stop following the page. The corners are rounded on the children. */}
+      <div className="rounded-2xl border bg-card shadow-sm">
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 py-4 sm:px-7">
+          <div className="min-w-0">
+            <button type="button" onClick={onCancel} className="mb-0.5 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground">
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />{t("settingsTitle")}
+            </button>
+            <h2 className="truncate text-xl font-extrabold tracking-tight sm:text-2xl">{draft.title.trim() || t("newPage")}</h2>
+            <p className="mt-0.5 hidden text-[13px] text-muted-foreground xl:block">{t("editorSubtitle")}</p>
+          </div>
+          {/* The one setting about the service as a whole rather than about one
+              of its parts, so it sits with its name. */}
+          <label className="ml-auto flex cursor-pointer items-center gap-2.5 rounded-full border bg-card px-3.5 py-2 text-sm font-semibold">
+            <Switch checked={draft.isActive} onCheckedChange={(on) => set("isActive", on)} aria-label={t("fieldActive")} />
+            {draft.isActive ? t("fieldActive") : t("statusOff")}
+          </label>
+        </header>
+
+      <div className="grid xl:grid-cols-[212px_minmax(0,1fr)_340px]">
         <StepIndex items={stepItems} active={activeStep} label={t("stepsNav")} />
 
-        <div className="divide-y rounded-2xl border bg-card shadow-sm">
+        <div className="min-w-0 divide-y">
 
           <Section id={STEP_IDS[0]} title={t("stepService")}>
             <div className="flex flex-wrap items-end justify-between gap-2">
@@ -668,7 +691,7 @@ export function BookingPageEditor({
           {/* Calendly folds a step down to one line with its current answer on
               it; the three settings here are exactly that kind of step. */}
           <details id={STEP_IDS[5]} className="group scroll-mt-24">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5 px-5 py-6 text-[17px] font-bold tracking-tight sm:px-8 [&::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5 px-5 py-6 text-[19px] font-bold tracking-tight sm:px-8 [&::-webkit-details-marker]:hidden">
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
               {t("advancedTitle")}
               <span className="ml-auto text-[13px] font-normal text-muted-foreground group-open:hidden">{advancedNote}</span>
@@ -697,9 +720,10 @@ export function BookingPageEditor({
           </details>
         </div>
 
-        <aside className="max-w-md space-y-3 xl:sticky xl:top-4 xl:max-w-none">
+        <aside className="rounded-b-2xl border-t bg-muted/25 p-5 xl:rounded-b-none xl:rounded-br-2xl xl:border-l xl:border-t-0">
+          <div className="space-y-3 xl:sticky xl:top-4">
           <p className="px-0.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">{t("previewTitle")}</p>
-          <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
             <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-2">
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-border" />
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-border" />
@@ -731,7 +755,7 @@ export function BookingPageEditor({
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
             <p className="mb-3.5 text-[13px] font-bold">{t("afterSaveTitle")}</p>
             <ol className="space-y-2.5">
               {[1, 2, 3].map((step) => (
@@ -745,7 +769,9 @@ export function BookingPageEditor({
               ))}
             </ol>
           </div>
+          </div>
         </aside>
+      </div>
       </div>
 
       {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
