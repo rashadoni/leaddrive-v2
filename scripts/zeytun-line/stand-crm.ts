@@ -34,6 +34,25 @@ export type Save = { lines: PhoneOrderLineInput[]; final: boolean; products?: (s
 export const foldLatin = (text: string) => text.toLowerCase().replaceAll("i̇", "i").replaceAll("ə", "e").replaceAll("ı", "i")
   .replaceAll("ş", "s").replaceAll("ç", "c").replaceAll("ğ", "g").replaceAll("ö", "o").replaceAll("ü", "u")
 
+/**
+ * gemini-3.8-live, USD per 1M tokens (ai.google.dev/gemini-api/docs/pricing, 2026-11-04).
+ * Every turn bills the whole session context again, so a call costs far more than its audio.
+ */
+export const PRICE = { textIn: 0.75, audioIn: 3, textOut: 4.5, audioOut: 12 }
+export type Usage = { promptTokenCount?: number; responseTokenCount?: number; thoughtsTokenCount?: number
+  promptTokensDetails?: { modality?: string; tokenCount?: number }[]; responseTokensDetails?: { modality?: string; tokenCount?: number }[] }
+/** One usageMetadata in USD. Tokens without a modality are priced as audio: an estimate errs high, never low. */
+export function usageCost(usage: Usage) {
+  const split = (details: Usage["promptTokensDetails"], total = 0) => {
+    const text = (details ?? []).filter((d) => d.modality === "TEXT").reduce((sum, d) => sum + (d.tokenCount ?? 0), 0)
+    return { text, audio: Math.max(0, total - text) }
+  }
+  const input = split(usage.promptTokensDetails, usage.promptTokenCount)
+  const output = split(usage.responseTokensDetails, usage.responseTokenCount)
+  const tokens = { textIn: input.text, audioIn: input.audio, textOut: output.text + (usage.thoughtsTokenCount ?? 0), audioOut: output.audio }
+  const usd = (tokens.textIn * PRICE.textIn + tokens.audioIn * PRICE.audioIn + tokens.textOut * PRICE.textOut + tokens.audioOut * PRICE.audioOut) / 1e6
+  return { tokens, usd }
+}
 /* ---------- the station's bridge ---------- */
 
 export class StationBridge {

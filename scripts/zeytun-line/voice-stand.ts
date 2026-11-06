@@ -54,29 +54,10 @@ import { fileURLToPath } from "node:url"
 
 import type { InboundPilotCatalog } from "../../src/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { createChirpRecognizer, createZeytunSecondEar, type ChirpRecognizer } from "../../src/lib/voice-agent/pharmacy/zeytun-chirp"
-import { crmFor, foldLatin as fold, loadCatalog, StationBridge, type Json, type Save } from "./stand-crm"
+import { crmFor, foldLatin as fold, loadCatalog, StationBridge, usageCost, type Json, type Save, type Usage } from "./stand-crm"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const OUTPUT_RATE = 24000
-/**
- * gemini-3.8-live, USD per 1M tokens (ai.google.dev/gemini-api/docs/pricing, 2026-11-04).
- * Every turn bills the whole session context again, so a call costs far more than its audio.
- */
-const PRICE = { textIn: 0.75, audioIn: 3, textOut: 4.5, audioOut: 12 }
-type Usage = { promptTokenCount?: number; responseTokenCount?: number; thoughtsTokenCount?: number
-  promptTokensDetails?: { modality?: string; tokenCount?: number }[]; responseTokensDetails?: { modality?: string; tokenCount?: number }[] }
-/** One usageMetadata in USD. Tokens without a modality are priced as audio: an estimate errs high, never low. */
-function usageCost(usage: Usage) {
-  const split = (details: Usage["promptTokensDetails"], total = 0) => {
-    const text = (details ?? []).filter((d) => d.modality === "TEXT").reduce((sum, d) => sum + (d.tokenCount ?? 0), 0)
-    return { text, audio: Math.max(0, total - text) }
-  }
-  const input = split(usage.promptTokensDetails, usage.promptTokenCount)
-  const output = split(usage.responseTokensDetails, usage.responseTokenCount)
-  const tokens = { textIn: input.text, audioIn: input.audio, textOut: output.text + (usage.thoughtsTokenCount ?? 0), audioOut: output.audio }
-  const usd = (tokens.textIn * PRICE.textIn + tokens.audioIn * PRICE.audioIn + tokens.textOut * PRICE.textOut + tokens.audioOut * PRICE.audioOut) / 1e6
-  return { tokens, usd }
-}
 /** The core hands the bridge a phrase from the frame that opened the activity: the lookback's last 20 ms frame, 8 kHz PCM16. */
 const UTTERANCE_FIRST_BYTE = (24 - 1) * 320
 const END_SILENCE_BYTES = Math.round(0.65 * 8000) * 2
