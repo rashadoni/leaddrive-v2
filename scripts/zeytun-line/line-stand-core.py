@@ -221,6 +221,13 @@ class RelayWebSocket:
 
 core.RealtimeWebSocket = RelayWebSocket
 
+# The ssh relay on prod starts in a second or two; the core's early socket of the first call
+# must not spend its deadline on that. One socket opened and closed before the listener opens.
+try:
+    RelayWebSocket("warm", "", {}, timeout=20).close()
+except Exception as error:  # the first call will say what is wrong
+    stand({"relay": "warm_failed", "detail": type(error).__name__})
+
 # ---------- the AudioSocket listener, as the service starts it ----------
 
 core.silero_session()
