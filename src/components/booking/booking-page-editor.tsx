@@ -385,12 +385,12 @@ export function BookingPageEditor({
           scrollport of everything inside, and the index and the preview would
           stop following the page. The corners are rounded on the children. */}
       <div className="rounded-2xl border bg-card shadow-sm">
-        <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 py-4 sm:px-7">
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 py-5 sm:px-7 sm:py-6">
           <div className="min-w-0">
             <button type="button" onClick={onCancel} className="mb-0.5 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground">
               <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />{t("settingsTitle")}
             </button>
-            <h2 className="truncate text-xl font-extrabold tracking-tight sm:text-2xl">{draft.title.trim() || t("newPage")}</h2>
+            <h2 className="truncate text-2xl font-extrabold tracking-tight sm:text-[28px]">{draft.title.trim() || t("newPage")}</h2>
             <p className="mt-0.5 hidden text-[13px] text-muted-foreground xl:block">{t("editorSubtitle")}</p>
           </div>
           {/* The one setting about the service as a whole rather than about one
