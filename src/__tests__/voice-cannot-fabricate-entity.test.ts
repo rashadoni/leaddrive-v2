@@ -98,6 +98,13 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   // A real stage word, because an unmatched stage is a question to the user
   // rather than a draft; the poisoned-stage case has its own test below.
   propose_move_deal_stage: { dealName: POISON, stage: "negotiation", lostReason: POISON },
+  // У компании полей-ссылок нет вовсе: сказанное человеком остаётся текстом, и
+  // отраве некуда превратиться в чужую запись. Сайт и почта здесь не отравлены
+  // намеренно — их форма проверяется схемой, и строка-идентификатор просто не
+  // пройдёт как URL, то есть этот путь закрыт раньше резолвера.
+  propose_create_company: {
+    name: POISON, industry: POISON, address: POISON, city: POISON, country: POISON, description: POISON,
+  },
 }
 
 beforeEach(() => {

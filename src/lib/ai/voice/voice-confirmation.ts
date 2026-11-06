@@ -28,6 +28,8 @@
  *    must not confirm itself.
  */
 
+// Только тип: в клиентский бандл реестр действий от этого не попадает.
+import type { AiVoiceActionEntityType } from "./action-registry"
 /** How long after the assistant finishes asking an answer still counts as one. */
 export const VOICE_CONFIRMATION_WINDOW_MS = 30_000
 
@@ -294,7 +296,10 @@ export function voiceOutcomeMessage(detail: VoiceReceiptOutcomeDetail): string {
  * reach them.
  */
 export const VOICE_RECORD_CHANGED_EVENT = "leaddrive:voice-record-changed"
-export type VoiceRecordChangedDetail = Readonly<{ entityType: "task" | "lead" | "deal"; entityId: string }>
+export type VoiceRecordChangedDetail = Readonly<{
+  entityType: AiVoiceActionEntityType
+  entityId: string
+}>
 
 /** The answer to a propose call that put a draft on screen. */
 /**

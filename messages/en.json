@@ -29141,6 +29141,11 @@
   },
   "aiVoiceActions": {
     "fields": {
+      "industry": "Industry",
+      "website": "Website",
+      "address": "Address",
+      "city": "City",
+      "country": "Country",
       "title": "Title",
       "description": "Description",
       "priority": "Priority",
@@ -29250,7 +29255,8 @@
         "update_deal": "Update deal",
         "move_deal_stage": "Move deal",
         "create_deal": "Create deal",
-        "convert_lead_to_deal": "Convert lead into deal"
+        "convert_lead_to_deal": "Convert lead into deal",
+        "create_company": "Create client company"
       },
       "confirm": {
         "create_task": "Create task",
@@ -29260,7 +29266,8 @@
         "update_deal": "Save deal",
         "move_deal_stage": "Move the deal",
         "create_deal": "Create deal",
-        "convert_lead_to_deal": "Convert into deal"
+        "convert_lead_to_deal": "Convert into deal",
+        "create_company": "Create company"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "A similar record already exists:",

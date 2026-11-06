@@ -191,6 +191,7 @@ type Receipt = {
   state: string
   supersededIntentId?: string
   unchangedFields?: string[]
+  warnings?: unknown
   preview: { fields?: { key: string; after: unknown }[] }
 }
 
@@ -2318,6 +2319,87 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         where: { organizationId: ORG, title: "Fanumsec-ə zəng" },
       }))).toBe(0)
       expect((await storedIntent(typed.body.data!.id)).state).toBe("failed")
+    })
+  })
+
+  /**
+   * «Клиент» — это компания, а не лид.
+   *
+   * Владелец 2026-11-06: «создай клиента, название компании fanumsec».
+   * Действия для этого не было вовсе, и фраза превращалась в ЛИД — ещё не
+   * квалифицированный интерес, который потом превращают в сделку. Теперь есть
+   * девятое действие записи, и проверяется оно тем же путём, что остальные:
+   * имена вслух, квитанция, кнопка.
+   */
+  describe("сценарий: клиент — это компания", () => {
+    it("создать компанию голосом, увидеть похожую и записать одну", async () => {
+      // Лидов до фразы: имя «Fanumsec» в этом файле уже звучало — в сценарии
+      // про неверно услышанное название, — поэтому «лида не появилось»
+      // проверяется разницей, а не нулём.
+      const leadsBefore = await bypass(() => prisma.lead.count({ where: { organizationId: ORG } }))
+      const created = await propose("propose_create_company", {
+        name: "Fanumsec",
+        city: "Bakı",
+        phone: "+994501234567",
+        industry: "Təhlükəsizlik",
+      })
+      expect(created.status).toBe(201)
+      const receipt = created.body.data!
+      // Выдуманное название в квитанции стоит буква в букву.
+      expect(previewField(receipt, "name")).toBe("Fanumsec")
+      expect(previewField(receipt, "city")).toBe("Bakı")
+      expect((await pressCreate(receipt)).status).toBe(200)
+
+      const company = await bypass(() => prisma.company.findFirstOrThrow({
+        where: { organizationId: ORG, name: "Fanumsec" },
+      }))
+      expect(company.city).toBe("Bakı")
+      expect(company.industry).toBe("Təhlükəsizlik")
+      // И это компания, а не лид: ровно та разница, из-за которой действие и
+      // появилось.
+      expect(await bypass(() => prisma.lead.count({ where: { organizationId: ORG } })))
+        .toBe(leadsBefore)
+
+      // Вторая компания с похожим названием — предупреждение с первой
+      // карточкой ДО подтверждения, а не второй дубль в базе потом.
+      const similar = await propose("propose_create_company", { name: "Fanumsec MMC" })
+      expect(similar.status).toBe(201)
+      const warned = JSON.stringify(similar.body.data!.warnings ?? [])
+      expect(warned).toContain("POSSIBLE_DUPLICATE")
+      expect(warned).toContain(company.id)
+
+      // Предупреждение не запрет: человек видит его и решает сам.
+      expect((await pressCreate(similar.body.data!)).status).toBe(200)
+      expect(await bypass(() => prisma.company.count({
+        where: { organizationId: ORG, name: { startsWith: "Fanumsec" } },
+      }))).toBe(2)
+    })
+
+    it("закрытые словари и налоговые поля голосом не задаются", async () => {
+      // Статус и категория компании в базе имеют свои значения, а
+      // произнесённое «клиент» — это не хранимое `category`.
+      for (const args of [
+        { name: "Söz lüğəti", status: "prospect" },
+        { name: "Vergi nömrəsi", voen: "1234567890" },
+        { name: "Kredit limiti", creditLimit: 1000 },
+        { name: "Menecer", managerId: "user-colleague" },
+      ]) {
+        const refused = await propose("propose_create_company", args)
+        expect(refused.status, JSON.stringify(args)).toBe(400)
+      }
+      // И ни одной компании от этих четырёх фраз.
+      expect(await bypass(() => prisma.company.count({
+        where: {
+          organizationId: ORG,
+          name: { in: ["Söz lüğəti", "Vergi nömrəsi", "Kredit limiti", "Menecer"] },
+        },
+      }))).toBe(0)
+    })
+
+    it("компания без названия — отказ, а не пустая карточка", async () => {
+      const refused = await propose("propose_create_company", { city: "Gəncə" })
+      expect(refused.status).toBe(400)
+      expect(await activeReceipt()).toBeNull()
     })
   })
 })

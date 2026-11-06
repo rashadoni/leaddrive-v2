@@ -5,6 +5,7 @@ import { getOrgModuleContext } from "@/lib/api-auth"
 import { moduleContextForUser } from "@/lib/user-module-access"
 import { prisma, logAudit } from "@/lib/prisma"
 import { applyRecordFilter } from "@/lib/sharing-rules"
+import { companyDuplicateNeedle } from "@/lib/crm-commands/company/create-company"
 import { checkPermission } from "@/lib/permissions"
 import { hasModule } from "@/lib/modules"
 import { azerbaijaniLocalPart } from "@/lib/inbox/customer-phone"
@@ -1109,6 +1110,25 @@ async function duplicateWarnings(
     return safeCandidates.length > 0
       ? [{ code: "POSSIBLE_DUPLICATE", candidates: safeCandidates }]
       : []
+  }
+
+  if (actionType === "create_company") {
+    // Та же функция, что у самой команды: иначе квитанция предупреждала бы об
+    // одном, а команда считала дублем другое.
+    const name = typeof payload.name === "string" ? payload.name : ""
+    const needle = companyDuplicateNeedle(name)
+    if (!needle) return []
+    const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "company", {
+      organizationId: auth.orgId,
+      name: { contains: needle, mode: "insensitive" },
+    })
+    const candidates = await prisma.company.findMany({
+      where,
+      select: { id: true, name: true, city: true, phone: true },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    })
+    return candidates.length > 0 ? [{ code: "POSSIBLE_DUPLICATE", candidates }] : []
   }
 
   return []

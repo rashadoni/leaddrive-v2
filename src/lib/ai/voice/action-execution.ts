@@ -8,6 +8,7 @@ import { createDealCommand } from "@/lib/crm-commands/deal/create-deal"
 import { convertLeadToDealCommand } from "@/lib/crm-commands/lead/convert-lead-to-deal"
 import { updateTaskCommand } from "@/lib/crm-commands/task/update-task"
 import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
+import { createCompanyCommand } from "@/lib/crm-commands/company/create-company"
 import {
   dispatchCollectedCommandEffects,
   type CrmCommandPostCommitEffect,
@@ -18,6 +19,7 @@ import {
   getAiVoiceActionDefinition,
   isAiVoiceActionType,
   parseAiVoiceActionPayload,
+  type AiVoiceActionEntityType,
   type AiVoiceActionType,
 } from "./action-registry"
 
@@ -54,7 +56,7 @@ export type AiVoiceActionExecutionResult = Readonly<{
   revision: number
   payloadHash: string
   result: Readonly<{
-    entityType: "task" | "lead" | "deal"
+    entityType: AiVoiceActionEntityType
     entityId: string
   }>
   replayed: boolean
@@ -63,7 +65,7 @@ export type AiVoiceActionExecutionResult = Readonly<{
 type StoredResultPayload = Readonly<{
   contract: 1
   actionType: AiVoiceActionType
-  entityType: "task" | "lead" | "deal"
+  entityType: AiVoiceActionEntityType
   entityId: string
 }>
 
@@ -152,6 +154,8 @@ async function runCanonicalCommand(
     entityId = (await updateLeadCommand(actor, intent.targetEntityId, payload, execution)).entity.id
   } else if (intent.actionType === "create_deal") {
     entityId = (await createDealCommand(actor, payload, execution)).entity.id
+  } else if (intent.actionType === "create_company") {
+    entityId = (await createCompanyCommand(actor, payload, execution)).entity.id
   } else if (intent.actionType === "update_task") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
