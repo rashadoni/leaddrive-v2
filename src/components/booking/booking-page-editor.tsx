@@ -27,7 +27,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Loader2, Phone, Sparkles, Undo2, Video, Wallet } from "lucide-react"
+import { Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Link2, Loader2, Phone, Plus, Sparkles, Undo2, Video, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -107,12 +107,21 @@ function Chip({ active, onClick, children, className }: { active: boolean; onCli
   )
 }
 
-function Step({ id, index, title, aside, children }: { id: string; index: number; title: string; aside?: ReactNode; children: ReactNode }) {
+/**
+ * One part of the form.
+ *
+ * Fresha and Altegio put the whole service on a single sheet divided by
+ * hairlines, not in six separate cards with a coloured number on each: a card
+ * is a thing of its own, and these six parts are one thing. The quiet comes
+ * from that, from the space around the fields, and from the accent colour
+ * being spent on one element per screen rather than on every link.
+ */
+function Section({ id, title, hint, aside, children }: { id: string; title: string; hint?: string; aside?: ReactNode; children: ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-24 rounded-xl border bg-card p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex flex-wrap items-center gap-2.5">
-        <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-extrabold text-primary">{index}</span>
-        <h3 className="text-sm font-bold tracking-tight">{title}</h3>
+    <section id={id} className="scroll-mt-24 px-5 py-7 sm:px-8">
+      <div className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="text-[17px] font-bold tracking-tight">{title}</h3>
+        {hint ? <p className="text-[13px] text-muted-foreground">{hint}</p> : null}
         {aside ? <div className="ml-auto text-xs text-muted-foreground">{aside}</div> : null}
       </div>
       {children}
@@ -123,9 +132,9 @@ function Step({ id, index, title, aside, children }: { id: string; index: number
 interface StepNavItem {
   id: string
   label: string
-  /** What this step already holds — or what it still needs, when `missing`. */
-  note: string
-  done: boolean
+  /** What this step already holds, in as few characters as it can be said. */
+  value: string
+  /** The step is required and still empty — a dot, not a sentence: the save bar names them. */
   missing: boolean
 }
 
@@ -155,37 +164,39 @@ function useActiveStep(ids: readonly string[]): string {
   return active
 }
 
-/** The list of steps Fresha and Altegio keep beside the form, laid across the top. */
-function StepNav({ items, active, label }: { items: StepNavItem[]; active: string; label: string }) {
+/**
+ * The index of the form, as Fresha and Altegio keep it: a quiet list beside
+ * the sheet, each line saying what that part holds. It appears only where
+ * there is room for a third column; on a narrower screen the form is one
+ * scroll and the save bar says what is still missing.
+ */
+function StepIndex({ items, active, label }: { items: StepNavItem[]; active: string; label: string }) {
   return (
-    <nav aria-label={label} className="sticky top-0 z-20 overflow-x-auto rounded-xl border bg-card/95 p-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85">
-      <ol className="flex min-w-max items-stretch gap-1">
-        {items.map((item, index) => (
-          <li key={item.id}>
-            <button
-              type="button"
-              data-crm-filter=""
-              data-state={active === item.id ? "active" : "inactive"}
-              aria-current={active === item.id ? "step" : undefined}
-              onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="flex h-11 items-center gap-2 rounded-lg px-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span
-                aria-hidden="true"
+    <nav aria-label={label} className="hidden xl:sticky xl:top-4 xl:block">
+      <ol className="space-y-0.5 rounded-2xl border bg-card p-2 shadow-sm">
+        {items.map((item) => {
+          const current = active === item.id
+          return (
+            <li key={item.id}>
+              <button
+                type="button"
+                aria-current={current ? "step" : undefined}
+                onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className={cn(
-                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-extrabold",
-                  item.missing ? "bg-destructive/10 text-destructive" : item.done ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                  "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  current ? "bg-muted font-bold text-foreground" : "font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                 )}
               >
-                {item.done ? <Check className="h-3.5 w-3.5" /> : index + 1}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-xs font-bold leading-tight">{item.label}</span>
-                <span className={cn("block truncate text-[11px] leading-tight", item.missing ? "font-semibold text-destructive" : "text-muted-foreground")}>{item.note}</span>
-              </span>
-            </button>
-          </li>
-        ))}
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.missing ? (
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" aria-hidden="true" />
+                ) : (
+                  <span className="max-w-[76px] shrink-0 truncate text-[11px] font-normal text-muted-foreground">{item.value}</span>
+                )}
+              </button>
+            </li>
+          )
+        })}
       </ol>
     </nav>
   )
@@ -344,19 +355,16 @@ export function BookingPageEditor({
     t("hoursBefore", { count: noticeHours }),
     t("daysAhead", { count: draft.maxDaysAhead }),
   ].join(" · ")
-  // A tick means «nothing more is needed here», so only the three answers a
-  // service cannot be saved without can earn one. The steps that come with a
-  // working default keep their number: a tick on a step nobody has looked at
-  // would say the owner decided something they did not.
+  // The index says what a part holds in as few characters as it can; what is
+  // missing is a dot there and a sentence in the save bar, so the same warning
+  // is not shouted twice.
   const stepItems: StepNavItem[] = [
-    { id: STEP_IDS[0], label: t("stepService"), done: Boolean(draft.title.trim()), missing: !draft.title.trim(), note: draft.title.trim() || t("missingTitle") },
-    { id: STEP_IDS[1], label: t("stepWhere"), done: false, missing: false, note: `${t("minutes", { count: draft.durationMinutes })} · ${t(`location_${draft.locationType}`)}` },
-    { id: STEP_IDS[2], label: t("stepPrice"), done: false, missing: false, note: draft.price.trim() ? `${draft.price.trim()} ${symbol}` : t("optionalMark") },
-    { id: STEP_IDS[3], label: t("fieldHosts"), done: chosenHosts.length > 0, missing: chosenHosts.length === 0, note: chosenHosts.length === 0 ? t("missingHosts") : chosenHosts.length === 1 ? chosenHosts[0].name : t("hostsCount", { count: chosenHosts.length }) },
-    // One pair of times only when every open day really keeps them: «6 days ·
-    // 09:00–18:00» under a week whose Saturday is shorter would be a lie.
-    { id: STEP_IDS[4], label: t("fieldHours"), done: open.length > 0, missing: open.length === 0, note: open.length === 0 ? t("missingHours") : `${t("daysCount", { count: open.length })} · ${uniform ? `${uniform.start}–${uniform.end}` : t("hoursMixed")}` },
-    { id: STEP_IDS[5], label: t("advancedTitle"), done: false, missing: false, note: advancedNote },
+    { id: STEP_IDS[0], label: t("stepService"), missing: !draft.title.trim(), value: draft.category.trim() },
+    { id: STEP_IDS[1], label: t("idxWhere"), missing: false, value: t("minutes", { count: draft.durationMinutes }) },
+    { id: STEP_IDS[2], label: t("stepPrice"), missing: false, value: draft.price.trim() ? `${draft.price.trim()} ${symbol}` : "—" },
+    { id: STEP_IDS[3], label: t("idxHosts"), missing: chosenHosts.length === 0, value: String(chosenHosts.length) },
+    { id: STEP_IDS[4], label: t("fieldHours"), missing: open.length === 0, value: open.length === 0 ? "" : t("daysCount", { count: open.length }) },
+    { id: STEP_IDS[5], label: t("advancedTitle"), missing: false, value: "" },
   ]
   // Altegio puts the final price and duration under the form; here they sit in
   // the bar the eye is already on when it reaches for Save.
@@ -367,12 +375,15 @@ export function BookingPageEditor({
   ].filter(Boolean).join(" · ")
 
   return (
-    <div className="space-y-4" data-testid="booking-page-editor">
-      <StepNav items={stepItems} active={activeStep} label={t("stepsNav")} />
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
-        <div className="space-y-4">
+    // Below the three-column width the sheet is capped and centred: a form
+    // field two thousand pixels wide is not a form field, it is a line.
+    <div className="mx-auto max-w-4xl space-y-4 xl:max-w-none" data-testid="booking-page-editor">
+      <div className="grid items-start gap-5 xl:grid-cols-[196px_minmax(0,1fr)_320px]">
+        <StepIndex items={stepItems} active={activeStep} label={t("stepsNav")} />
 
-          <Step id={STEP_IDS[0]} index={1} title={t("stepService")}>
+        <div className="divide-y rounded-2xl border bg-card shadow-sm">
+
+          <Section id={STEP_IDS[0]} title={t("stepService")}>
             <div className="flex flex-wrap items-end justify-between gap-2">
               <Label htmlFor="bp-title">{t("fieldTitle")}</Label>
               {draft.title.length > 0 ? <span className="text-xs tabular-nums text-muted-foreground">{draft.title.length}/{TITLE_MAX}</span> : null}
@@ -389,15 +400,17 @@ export function BookingPageEditor({
                 <p className="mt-1 text-xs text-muted-foreground">{t("fieldSlugHint")}</p>
               </div>
             ) : (
-              <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-dashed border-input bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                <span>{t("fieldSlug")}:</span>
-                <span className="break-all font-semibold text-foreground">{linkBase}/{draft.slug || "…"}</span>
-                <button type="button" className="font-bold text-primary underline-offset-2 hover:underline" onClick={() => { setLinkOpen(true); setLinkLocked(true) }}>{t("linkEdit")}</button>
-                {linkLocked ? null : <span className="ml-auto hidden sm:inline">{t("linkAuto")}</span>}
+              // The link is a fact about the service, not a field to fill in:
+              // a boxed-in dashed row gave it the weight of one.
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+                <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="break-all font-medium text-foreground">{linkBase}/{draft.slug || "…"}</span>
+                <button type="button" className="font-semibold underline-offset-4 hover:text-foreground hover:underline" onClick={() => { setLinkOpen(true); setLinkLocked(true) }}>{t("linkEdit")}</button>
+                {linkLocked ? null : <span className="hidden sm:inline">· {t("linkAuto")}</span>}
               </div>
             )}
 
-            <div className="mt-4">
+            <div className="mt-6">
               <Label>{t("fieldCategory")} {optional}</Label>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {groups.map((name) => (
@@ -406,8 +419,8 @@ export function BookingPageEditor({
                 <button
                   type="button"
                   onClick={() => { setNewCategory(true); set("category", "") }}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-input bg-card px-3.5 text-sm font-semibold text-primary transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >+ {t("catNew")}</button>
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-input bg-card px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                ><Plus className="h-3.5 w-3.5" aria-hidden="true" />{t("catNew")}</button>
               </div>
               {newCategory ? (
                 <Input className="mt-2 max-w-xs" autoFocus value={draft.category} placeholder={t("fieldCategoryPlaceholder")} onChange={(event) => set("category", event.target.value.slice(0, 60))} />
@@ -415,7 +428,7 @@ export function BookingPageEditor({
               <p className="mt-1.5 text-xs text-muted-foreground">{t("fieldCategoryHint")}</p>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-6">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <Label htmlFor="bp-description">{t("fieldDescription")} {optional}</Label>
                 {draft.description.length > 0 ? <span className="text-xs tabular-nums text-muted-foreground">{draft.description.length}/{DESCRIPTION_MAX}</span> : null}
@@ -427,7 +440,9 @@ export function BookingPageEditor({
                     type="button"
                     onClick={() => void writeDescription()}
                     disabled={aiBusy || !draft.title.trim()}
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-dashed border-input bg-card px-3 text-sm font-semibold text-primary transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:border-input"
+                    // The one tinted control of the form: the accent is spent
+                    // here, on the thing nobody expects a CRM to do for them.
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-primary/10 px-3.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
                     {draft.description.trim() ? t("aiEnhance") : t("aiWrite")}
@@ -442,9 +457,9 @@ export function BookingPageEditor({
               ) : null}
               {aiError ? <p className="mt-1.5 text-xs text-destructive" role="alert">{aiError}</p> : null}
             </div>
-          </Step>
+          </Section>
 
-          <Step id={STEP_IDS[1]} index={2} title={t("stepWhere")}>
+          <Section id={STEP_IDS[1]} title={t("stepWhere")}>
             <Label>{t("fieldDuration")}</Label>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {DURATIONS.map((value) => (
@@ -453,8 +468,8 @@ export function BookingPageEditor({
               <button
                 type="button"
                 onClick={() => setCustomDuration(true)}
-                className="inline-flex min-h-10 items-center rounded-full border border-dashed border-input bg-card px-3.5 text-sm font-semibold text-primary transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >+ {t("durationOther")}</button>
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-input bg-card px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              ><Plus className="h-3.5 w-3.5" aria-hidden="true" />{t("durationOther")}</button>
               {customDuration ? (
                 <span className="inline-flex items-center gap-2">
                   <Input
@@ -470,7 +485,7 @@ export function BookingPageEditor({
               ) : null}
             </div>
 
-            <div className="mt-4">
+            <div className="mt-6">
               <Label>{t("fieldLocation")}</Label>
               <div className="mt-1.5 grid gap-2 sm:grid-cols-3">
                 {LOCATIONS.map((value) => {
@@ -489,7 +504,9 @@ export function BookingPageEditor({
                         "hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       )}
                     >
-                      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4 w-4" /></span>
+                      {/* The icon takes the accent only on the chosen one: three
+                          tinted squares in a row say nothing about the choice. */}
+                      <span aria-hidden="true" className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}><Icon className="h-4 w-4" /></span>
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-semibold text-foreground">{t(`location_${value}`)}</span>
                         <span className="block truncate text-xs text-muted-foreground">{t(`locHint_${value}`)}</span>
@@ -500,14 +517,14 @@ export function BookingPageEditor({
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-6">
               <Label htmlFor="bp-location-text">{t(`locText_${draft.locationType}`)} {optional}</Label>
               <Input id="bp-location-text" className="mt-1" value={draft.locationText} onChange={(event) => set("locationText", event.target.value)} />
               <p className="mt-1.5 text-xs text-muted-foreground">{t("locTextHint")}</p>
             </div>
-          </Step>
+          </Section>
 
-          <Step id={STEP_IDS[2]} index={3} title={t("stepPrice")}>
+          <Section id={STEP_IDS[2]} title={t("stepPrice")}>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label htmlFor="bp-price">{t("fieldPrice")} {optional}</Label>
@@ -536,14 +553,13 @@ export function BookingPageEditor({
                 <p className="mt-1.5 text-xs text-muted-foreground">{t("fieldCycleHint")}</p>
               </div>
             </div>
-          </Step>
+          </Section>
 
-          <Step
+          <Section
             id={STEP_IDS[3]}
-            index={4}
             title={t("fieldHosts")}
             aside={hosts.length > 1 ? (
-              <button type="button" className="font-bold text-primary underline-offset-2 hover:underline" onClick={() => set("hostIds", hosts.map((host) => host.id))}>{t("hostsAll")}</button>
+              <button type="button" className="font-semibold underline-offset-4 hover:text-foreground hover:underline" onClick={() => set("hostIds", hosts.map((host) => host.id))}>{t("hostsAll")}</button>
             ) : null}
           >
             <div className="flex flex-wrap gap-2">
@@ -556,9 +572,9 @@ export function BookingPageEditor({
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">{t("fieldHostsHint")}</p>
-          </Step>
+          </Section>
 
-          <Step id={STEP_IDS[4]} index={5} title={t("fieldHours")} aside={t("hoursOnLegend")}>
+          <Section id={STEP_IDS[4]} title={t("fieldHours")} aside={t("hoursOnLegend")}>
             <div className="flex flex-wrap gap-2">
               {PRESETS.map((preset) => {
                 const active = Boolean(uniform) && open.length === preset.days.length && preset.days.every((day) => open.includes(day))
@@ -607,12 +623,12 @@ export function BookingPageEditor({
               </div>
             )}
 
-            <button type="button" className="mt-3 text-xs font-bold text-primary underline-offset-2 hover:underline" onClick={() => setPerDayOpen(!perDay)}>
+            <button type="button" className="mt-4 text-[13px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" onClick={() => setPerDayOpen(!perDay)}>
               {perDay ? t("hoursPerDayClose") : t("hoursPerDay")}
             </button>
 
             {perDay ? (
-              <div className="mt-2 space-y-1.5 border-t border-dashed pt-3">
+              <div className="mt-3 space-y-2.5 border-t pt-4">
                 {uniform ? null : <p className="pb-1 text-xs font-semibold text-muted-foreground">{t("hoursDiffer")}</p>}
                 {WEEK_ORDER.map((day) => {
                   const interval = draft.weekly[day][0]
@@ -647,18 +663,18 @@ export function BookingPageEditor({
                 })}
               </div>
             ) : null}
-          </Step>
+          </Section>
 
           {/* Calendly folds a step down to one line with its current answer on
               it; the three settings here are exactly that kind of step. */}
-          <details id={STEP_IDS[5]} className="group scroll-mt-24 rounded-xl border bg-card shadow-sm">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5 p-4 text-sm font-bold sm:p-5 [&::-webkit-details-marker]:hidden">
-              <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" aria-hidden="true" />
+          <details id={STEP_IDS[5]} className="group scroll-mt-24">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5 px-5 py-6 text-[17px] font-bold tracking-tight sm:px-8 [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
               {t("advancedTitle")}
-              <span className="ml-auto text-xs font-normal text-muted-foreground group-open:hidden">{advancedNote}</span>
-              <span className="ml-auto hidden text-xs font-normal text-muted-foreground group-open:inline">{t("advancedHint")}</span>
+              <span className="ml-auto text-[13px] font-normal text-muted-foreground group-open:hidden">{advancedNote}</span>
+              <span className="ml-auto hidden text-[13px] font-normal text-muted-foreground group-open:inline">{t("advancedHint")}</span>
             </summary>
-            <div className="grid gap-4 px-4 pb-5 sm:px-5">
+            <div className="grid gap-5 px-5 pb-7 sm:px-8">
               <div>
                 <Label>{t("fieldBuffer")}</Label>
                 <div className="mt-1.5 flex flex-wrap gap-2">
@@ -681,16 +697,15 @@ export function BookingPageEditor({
           </details>
         </div>
 
-        {/* Below the strip of steps, which is sticky at the top of the page. */}
-        <aside className="space-y-3 xl:sticky xl:top-[76px]">
+        <aside className="max-w-md space-y-3 xl:sticky xl:top-4 xl:max-w-none">
           <p className="px-0.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">{t("previewTitle")}</p>
-          <div className="overflow-hidden rounded-2xl border bg-card shadow-md">
+          <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
             <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-2">
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-border" />
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-border" />
               <span className="ml-1 truncate text-[11px] text-muted-foreground">{linkBase}/{draft.slug || "…"}</span>
             </div>
-            <div className="p-4">
+            <div className="p-5">
               {draft.category.trim() ? <span className="inline-block rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-primary">{draft.category.trim()}</span> : null}
               <h4 className={cn("mt-2 text-lg font-extrabold tracking-tight", draft.title.trim() ? "" : "text-muted-foreground")}>{draft.title.trim() || t("previewNoTitle")}</h4>
               {draft.description.trim() ? <p className="mt-1 text-sm text-muted-foreground">{draft.description.trim()}</p> : null}
@@ -716,8 +731,8 @@ export function BookingPageEditor({
             </div>
           </div>
 
-          <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <p className="mb-3 text-[13px] font-bold">{t("afterSaveTitle")}</p>
+          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+            <p className="mb-3.5 text-[13px] font-bold">{t("afterSaveTitle")}</p>
             <ol className="space-y-2.5">
               {[1, 2, 3].map((step) => (
                 <li key={step} className="flex gap-2.5">
@@ -735,7 +750,7 @@ export function BookingPageEditor({
 
       {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
 
-      <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-3 rounded-t-xl border-t bg-card/95 px-4 py-3 shadow-[0_-6px_18px_-14px_rgba(16,24,40,.7)] backdrop-blur supports-[backdrop-filter]:bg-card/85 sm:rounded-xl sm:border">
+      <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-3 rounded-t-2xl border-t bg-card/95 px-5 py-3.5 shadow-[0_-6px_18px_-14px_rgba(16,24,40,.7)] backdrop-blur supports-[backdrop-filter]:bg-card/85 sm:rounded-2xl sm:border">
         {missing.length ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
