@@ -68,6 +68,9 @@ const scratch = vi.hoisted(() => {
   return { name, url: url.toString() }
 })
 
+/** Выключенные на время одного теста модули. */
+const modulesOff = vi.hoisted(() => new Set<string>())
+
 const ORG = "org-voice-lifecycle"
 const USER = "user-voice-lifecycle"
 
@@ -96,11 +99,33 @@ vi.mock("@/lib/api-auth", async (importOriginal) => ({
   requireAuth: vi.fn(async () => ({ ...auth })),
   getSession: vi.fn(async () => ({ ...auth })),
   getOrgId: vi.fn(async () => ORG),
-  getOrgModuleContext: vi.fn(async () => ({
-    plan: "enterprise",
-    addons: [] as string[],
-    modules: { ai: true, crm: true, sales: true, deals: true, leads: true } as Record<string, boolean>,
-  })),
+  // Все модули тенанта включены, кроме названных в `modulesOff`. Иначе
+  // инструмент чтения отвечает `MODULE_NOT_ENABLED` и до своего читателя не
+  // доходит вовсе — а он и есть предмет проверки. На первом наборе так молча
+  // не проверились шесть инструментов из двадцати трёх: счета, тикеты, сводка
+  // дня, маркетинг, входящие и поле. Отказ по невыкупленному модулю проверяет
+  // отдельный тест ниже.
+  getOrgModuleContext: vi.fn(async () => {
+    // Список не переписывается руками: он собирается из реестра модулей и из
+    // самого меню (модуль, фича и аддон каждого пункта). Иначе новый модуль
+    // пришлось бы вспомнить здесь, а забытый выглядел бы как «инструмент не
+    // отвечает».
+    const { MODULE_REGISTRY } = await import("@/lib/modules")
+    const { navItems } = await import("@/lib/nav-items")
+    const ids = new Set<string>(Object.keys(MODULE_REGISTRY))
+    for (const item of navItems) {
+      if (item.module) ids.add(item.module)
+      if (item.feature) ids.add(item.feature)
+      if (item.addon) ids.add(item.addon)
+    }
+    return {
+      plan: "enterprise",
+      addons: [] as string[],
+      modules: Object.fromEntries(
+        [...ids].map((id) => [id, !modulesOff.has(id)]),
+      ) as Record<string, boolean>,
+    }
+  }),
 }))
 
 // Пилотный allowlist голоса живёт в env и проверяется в lib-ai-voice-gate:
@@ -1061,6 +1086,19 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
   describe("сценарий: читает всё, не пишет ничего", () => {
     it("проходит все инструменты чтения и не меняет в CRM ни строки", async () => {
       const { VOICE_TOOL_NAMES } = await import("@/lib/ai/voice/read-tools")
+      // Своя цель для двух инструментов, которым нужна запись: тест не должен
+      // зависеть от строк, созданных другими тестами этого файла (с ключом
+      // `-t` они не запускаются, и цикл падал не по своей вине).
+      const target = await bypass(() => prisma.deal.create({
+        data: {
+          organizationId: ORG,
+          pipelineId: "pipeline-1",
+          name: "Oxu hədəfi",
+          stage: "NEGOTIATION",
+          valueAmount: 10,
+          currency: "AZN",
+        },
+      }))
       const before = await bypass(async () => ({
         deals: await prisma.deal.count({ where: { organizationId: ORG } }),
         leads: await prisma.lead.count({ where: { organizationId: ORG } }),
@@ -1070,27 +1108,30 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       }))
 
       const answered: string[] = []
-      const refused: Record<string, number> = {}
+      const refused: Record<string, string> = {}
       for (const tool of VOICE_TOOL_NAMES) {
         // Двум инструментам нужна цель; остальные отвечают про всё.
         const filter = tool === "read_record"
-          ? { type: "deal", id: (await bypass(() => prisma.deal.findFirstOrThrow({
-              where: { organizationId: ORG },
-              select: { id: true },
-            }))).id }
+          ? { type: "deal", id: target.id }
           : tool === "find_record"
-            ? { type: "deal", query: "Azmart" }
+            ? { type: "deal", query: "Oxu hədəfi" }
             : tool === "describe_section" || tool === "explain_section"
               ? { section: "deals" }
               : {}
         const result = await ask(tool, filter)
-        if (result.status === 200) answered.push(tool)
-        else refused[tool] = result.status
+        // Отказ приезжает ДАННЫМИ при статусе 200 — намеренно, чтобы помощник
+        // объяснил и продолжил, а не услышал мёртвую CRM. Поэтому «ответил»
+        // здесь — это 200 БЕЗ `data.error`: проверка только по статусу
+        // зеленела на невыкупленном модуле и на отвергнутых аргументах.
+        const error = (result.body as { data?: { error?: string } } | null)?.data?.error
+        if (result.status !== 200) refused[tool] = `HTTP ${result.status}`
+        else if (error) refused[tool] = error
+        else answered.push(tool)
       }
 
-      // Каждый инструмент из реестра отвечает — реестр и реализация не
-      // расходятся. Раньше это ловилось только там, где кто-то вручную
-      // перечислил инструменты.
+      // Каждый инструмент из реестра доходит до своего читателя — реестр и
+      // реализация не расходятся. Раньше это ловилось только там, где кто-то
+      // вручную перечислил инструменты.
       expect(refused).toEqual({})
       expect(answered).toHaveLength(VOICE_TOOL_NAMES.length)
 
@@ -1464,6 +1505,634 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         expect(afterReaper.settledSeconds).toBe(90 + 600)
       } finally {
         auth.userId = USER
+      }
+    })
+  })
+
+  /**
+   * Правка существующей задачи — восьмое действие записи, и единственное, по
+   * которому не было ни одного разговора: нашлось пересчётом реестра против
+   * теста, а не падением. Здесь задача ведётся словами от создания до
+   * закрытия, и ни один идентификатор не произносится вслух.
+   */
+  describe("сценарий: задача, которую ведут словами", () => {
+    const TASK = "Azmart-a zəng etmək"
+
+    async function thatTask() {
+      return bypass(() => prisma.task.findFirstOrThrow({
+        where: { organizationId: ORG, title: TASK },
+      }))
+    }
+
+    it("создать, перенести, передать, закрыть — каждое слово через свою квитанцию", async () => {
+      const created = await propose("propose_create_task", { title: TASK, dueDate: "2026-11-10" })
+      expect(created.status).toBe(201)
+      expect((await pressCreate(created.body.data!)).status).toBe(200)
+      // Список, а не доска: у этой задачи свой словарь состояний.
+      expect((await thatTask()).status).toBe("pending")
+
+      // «Перенеси на пятницу»: задача названа словами, цель нашёл сервер.
+      const moved = await propose("propose_update_task", { taskTitle: TASK, dueDate: "2026-11-14" })
+      expect(moved.status).toBe(201)
+      // Другое действие — своя квитанция, а не поправка прежней.
+      expect(moved.body.data!.id).not.toBe(created.body.data!.id)
+      expect((await pressCreate(moved.body.data!)).status).toBe(200)
+      expect((await thatTask()).dueDate?.toISOString().slice(0, 10)).toBe("2026-11-14")
+
+      // «Передай Лейле»: исполнитель тоже по имени.
+      const handed = await propose("propose_update_task", { taskTitle: TASK, assigneeName: "Leyla" })
+      expect(handed.status).toBe(201)
+      expect((await pressCreate(handed.body.data!)).status).toBe(200)
+      expect((await thatTask()).assignedTo).toBe("user-colleague")
+
+      // «Закрой задачу»: слово превращается в состояние ЭТОЙ задачи.
+      const closed = await propose("propose_update_task", { taskTitle: TASK, status: "done" })
+      expect(closed.status).toBe(201)
+      expect((await pressCreate(closed.body.data!)).status).toBe(200)
+      expect((await thatTask()).status).toBe("completed")
+
+      // Четыре фразы — четыре квитанции и одна задача. Экран чист.
+      expect(await bypass(() => prisma.task.count({ where: { organizationId: ORG, title: TASK } }))).toBe(1)
+      expect(await activeReceipt()).toBeNull()
+    })
+
+    it("та же фраза про задачу на доске пишет другое слово", async () => {
+      await bypass(async () => {
+        await prisma.division.create({
+          data: { id: "division-board", organizationId: ORG, key: "WH", name: "Anbar" },
+        })
+        await prisma.task.create({
+          data: {
+            id: "task-on-board",
+            organizationId: ORG,
+            title: "Rəfləri saymaq",
+            divisionId: "division-board",
+          },
+        })
+      })
+
+      const closed = await propose("propose_update_task", { taskTitle: "Rəfləri saymaq", status: "done" })
+      expect(closed.status).toBe(201)
+      expect((await pressCreate(closed.body.data!)).status).toBe(200)
+      // Доска, а не список: «done», а не «completed». Одно и то же слово
+      // человека, разные значения в базе — поэтому состояние не приходит от
+      // модели готовым значением.
+      expect((await bypass(() => prisma.task.findFirstOrThrow({ where: { id: "task-on-board" } }))).status)
+        .toBe("done")
+    })
+
+    it("не угадывает, какую задачу править: спрашивает и ничего не меняет", async () => {
+      const mine = await bypass(() => prisma.task.create({
+        data: { organizationId: ORG, title: "Sənədləri yoxlamaq" },
+      }))
+      const before = await bypass(() => prisma.task.count({ where: { organizationId: ORG } }))
+
+      // Задачи с таким названием нет.
+      const missing = await propose("propose_update_task", { taskTitle: "Kaktusu sulamaq", status: "done" })
+      expect(missing.status).toBe(200)
+      expect(missing.body.needsClarification).toBe(true)
+      expect(missing.body.code).toBe("TASK_NOT_FOUND")
+
+      // «Закрой эту» без открытой на экране записи — тоже вопрос, а не выбор
+      // наугад: закрытая чужая задача не отменяется словами.
+      const noTarget = await propose("propose_update_task", { status: "done" })
+      expect(noTarget.status).toBe(200)
+      expect(noTarget.body.code).toBe("TASK_TARGET_REQUIRED")
+
+      // Правка, в которой не названо ни одного поля, — отказ, а не пустая
+      // квитанция, которую человеку предложат подтвердить.
+      const empty = await propose("propose_update_task", { taskTitle: "Sənədləri yoxlamaq" })
+      expect(empty.status).toBe(400)
+
+      // Три фразы — ни одной квитанции и ни одной новой или изменённой задачи.
+      expect(await activeReceipt()).toBeNull()
+      expect(await bypass(() => prisma.task.count({ where: { organizationId: ORG } }))).toBe(before)
+      expect((await bypass(() => prisma.task.findFirstOrThrow({ where: { id: mine.id } }))).status)
+        .toBe("pending")
+    })
+
+    it("«поставь срочным» берёт цель с экрана, а не из названия", async () => {
+      const open = await bypass(() => prisma.task.create({
+        data: { organizationId: ORG, title: "Müqaviləni aparmaq" },
+      }))
+      // Так это и приходит с экрана: браузер говорит, что открыто, модель —
+      // только что изменить.
+      const receipt = await propose(
+        "propose_update_task",
+        { priority: "high" },
+        { screen: { recordType: "task", recordId: open.id } },
+      )
+      expect(receipt.status).toBe(201)
+      expect((await pressCreate(receipt.body.data!)).status).toBe(200)
+      expect((await bypass(() => prisma.task.findFirstOrThrow({ where: { id: open.id } }))).priority)
+        .toBe("high")
+    })
+  })
+
+  /**
+   * Карточка и поиск — по КАЖДОМУ типу записи, а не по сделке и лиду.
+   *
+   * У девяти карточек девять своих читателей (`READERS` в record-read.ts), у
+   * поиска — пятнадцать своих запросов. Это ровно та форма кода, которая
+   * ломается по одному типу и молчит: до этого набора проверялась одна сделка
+   * из пятнадцати возможных.
+   */
+  describe("сценарий: карточка и поиск по каждому типу записи", () => {
+    /** Название, по которому запись и находят, и узнают в прочитанной карточке. */
+    const NEEDLE: Record<string, string> = {
+      deal: "Printer partiyası",
+      contact: "Könül Əliyeva",
+      company: "Bakı Ofis MMC",
+      lead: "Tural Həsənov",
+      ticket: "Printer işləmir",
+      invoice: "Printer hesabı",
+      project: "Anbar köçürülməsi",
+      contract: "Təchizat müqaviləsi",
+      product: "Printer HP 1020",
+      board: "Satış şöbəsi",
+      quote: "QTE-9001",
+      campaign: "Payız kampaniyası",
+      complaint: "Çatdırılma gecikdi",
+      event: "Açıq qapı günü",
+      task: "Sifarişi yoxlamaq",
+    }
+    /**
+     * Чем человек ищет эту запись. По умолчанию — тем же названием, которое
+     * помощник произносит из карточки; у счёта иначе: искать его реестр даёт
+     * по НОМЕРУ (`searchFields` в record-types), а вслух карточка называет
+     * заголовок. Две разные строки для одной записи — и обе должны работать.
+     */
+    const QUERY: Record<string, string> = { invoice: "INV-9001" }
+
+    const ID: Record<string, string> = {}
+
+    beforeEach(async () => {
+      if (ID.deal) return
+      await bypass(async () => {
+        ID.deal = (await prisma.deal.create({
+          data: {
+            organizationId: ORG,
+            pipelineId: "pipeline-1",
+            name: NEEDLE.deal,
+            stage: "NEGOTIATION",
+            valueAmount: 1500,
+            currency: "AZN",
+          },
+        })).id
+        ID.contact = (await prisma.contact.create({
+          data: { organizationId: ORG, fullName: NEEDLE.contact },
+        })).id
+        ID.company = (await prisma.company.create({
+          data: { organizationId: ORG, name: NEEDLE.company },
+        })).id
+        ID.lead = (await prisma.lead.create({
+          data: { organizationId: ORG, contactName: NEEDLE.lead, status: "new" },
+        })).id
+        ID.ticket = (await prisma.ticket.create({
+          data: { organizationId: ORG, ticketNumber: "TCK-9001", subject: NEEDLE.ticket },
+        })).id
+        ID.invoice = (await prisma.invoice.create({
+          data: {
+            organizationId: ORG,
+            invoiceNumber: "INV-9001",
+            title: NEEDLE.invoice,
+            currency: "AZN",
+          },
+        })).id
+        ID.project = (await prisma.project.create({
+          data: { organizationId: ORG, name: NEEDLE.project },
+        })).id
+        ID.contract = (await prisma.contract.create({
+          data: { organizationId: ORG, contractNumber: "CTR-9001", title: NEEDLE.contract },
+        })).id
+        ID.product = (await prisma.product.create({
+          data: { organizationId: ORG, name: NEEDLE.product, sku: "PRN-1020" },
+        })).id
+        ID.board = (await prisma.division.create({
+          data: { organizationId: ORG, key: "SALES9", name: NEEDLE.board },
+        })).id
+        ID.quote = (await prisma.quote.create({
+          data: { organizationId: ORG, quoteNumber: NEEDLE.quote, currency: "AZN" },
+        })).id
+        ID.campaign = (await prisma.campaign.create({
+          data: { organizationId: ORG, name: NEEDLE.campaign },
+        })).id
+        // Жалоба — не своя таблица: это тикет, у которого есть строка
+        // ComplaintMeta. Поиск жалоб смотрит именно на неё, поэтому обычный
+        // тикет сюда не годится.
+        const complaint = await prisma.ticket.create({
+          data: { organizationId: ORG, ticketNumber: "TCK-9002", subject: NEEDLE.complaint },
+        })
+        await prisma.complaintMeta.create({
+          data: { organizationId: ORG, ticketId: complaint.id, riskLevel: "high" },
+        })
+        ID.complaint = complaint.id
+        ID.event = (await prisma.event.create({
+          data: { organizationId: ORG, name: NEEDLE.event, startDate: new Date() },
+        })).id
+        ID.task = (await prisma.task.create({
+          data: { organizationId: ORG, title: NEEDLE.task },
+        })).id
+      })
+    })
+
+    it("каждую карточку помощник читает, и в ней та запись, о которой спросили", async () => {
+      const { VOICE_READABLE_TYPES } = await import("@/lib/ai/voice/record-read")
+      const broken: Record<string, string> = {}
+      for (const type of VOICE_READABLE_TYPES) {
+        const answer = await ask("read_record", { type, id: ID[type] })
+        const card = (answer.body as { data?: Record<string, unknown> }).data
+        if (answer.status !== 200) broken[type] = `HTTP ${answer.status}`
+        else if (!card || card.error) broken[type] = String(card?.error ?? "no data")
+        // Карточка без имени записи — это карточка не той записи или пустая:
+        // помощник зачитает её вслух, и человек не поймёт, о чём он.
+        else if (!JSON.stringify(card).includes(NEEDLE[type])) broken[type] = "карточка без названия записи"
+      }
+      expect(broken).toEqual({})
+      expect(VOICE_READABLE_TYPES.length).toBe(9)
+    })
+
+    it("каждый тип записи находится по словам человека", async () => {
+      const { RECORD_TYPES } = await import("@/lib/ai/voice/record-types")
+      const types = Object.keys(RECORD_TYPES)
+      const broken: Record<string, string> = {}
+      for (const type of types) {
+        // Потолок вызовов на разговор — 40, типов пятнадцать плюс карточки:
+        // счётчик обнуляется, иначе цикл упёрся бы в защиту от зациклившейся
+        // модели, а не проверил поиск.
+        await bypass(() => prisma.voiceSession.update({
+          where: { id: session },
+          data: { toolCallCount: 0 },
+        }))
+        const answer = await ask("find_record", { type, query: QUERY[type] ?? NEEDLE[type] })
+        const found = (answer.body as { data?: { error?: string; matches?: { id: string }[] } }).data
+        if (answer.status !== 200) broken[type] = `HTTP ${answer.status}`
+        else if (!found || found.error) broken[type] = String(found?.error ?? "no data")
+        else if (!found.matches?.some((match) => match.id === ID[type])) broken[type] = "не нашёл"
+      }
+      expect(broken).toEqual({})
+      expect(types.length).toBe(15)
+    })
+
+    it("расслышанный слог не превращается в список всех записей", async () => {
+      // Одна буква — отказ схемы, и он тоже приезжает ДАННЫМИ: модель
+      // переспросит и позовёт снова, а не услышит мёртвую CRM. Пустой ответ
+      // здесь был бы хуже отказа только тем, что неотличим от «ничего не
+      // найдено».
+      const answer = await ask("find_record", { type: "deal", query: "a" })
+      expect(answer.status).toBe(200)
+      expect((answer.body as { data: { error?: string } }).data.error).toBe("BAD_ARGUMENTS")
+    })
+  })
+
+  /**
+   * Разделы: и цифры, и разбор словами.
+   *
+   * Урок здесь уже оплачен — первый список разделов был написан руками и
+   * приехал без «лидов», а аудит нашёл 142 недостижимых пункта меню из 152.
+   * Поэтому цикл идёт по РЕЕСТРУ, а не по тому, что кто-то вспомнил.
+   */
+  describe("сценарий: каждый раздел отвечает о себе", () => {
+    it("каждый раздел с цифрами называет своё число", async () => {
+      const { SECTION_DESCRIPTORS } = await import("@/lib/ai/voice/section-registry")
+      const sections = Object.keys(SECTION_DESCRIPTORS)
+      const broken: Record<string, string> = {}
+      for (const section of sections) {
+        await bypass(() => prisma.voiceSession.update({
+          where: { id: session },
+          data: { toolCallCount: 0 },
+        }))
+        const answer = await ask("describe_section", { section })
+        const data = (answer.body as { data?: { error?: string; total?: unknown } }).data
+        if (answer.status !== 200) broken[section] = `HTTP ${answer.status}`
+        else if (data?.error) broken[section] = String(data.error)
+        else if (typeof data?.total !== "number") broken[section] = `total=${typeof data?.total}`
+      }
+      expect(broken).toEqual({})
+      // Реестр не должен молча усохнуть: пустой цикл зеленел бы всегда.
+      expect(sections.length).toBeGreaterThanOrEqual(22)
+    })
+
+    it("написанный разбор доходит целиком, а снятого с продукта помощник не зачитывает", async () => {
+      const { SECTION_GUIDE } = await import("@/lib/ai/voice/section-guide")
+      const { VOICE_SECTIONS } = await import("@/lib/ai/voice/sections")
+      const { isWithdrawnCrmPath } = await import("@/lib/crm-product-availability")
+      const sections = Object.keys(SECTION_GUIDE)
+      const broken: Record<string, string> = {}
+      const served: string[] = []
+      for (const section of sections) {
+        // Девять разборов из десяти написаны про Workforce, снятый с продукта
+        // решением в коде («Re-enabling it requires a reviewed release»).
+        // Помощник обязан отказать по ним, а не рассказывать про то, чего
+        // тенанту не отдают: иначе текст живёт дольше функции.
+        const withdrawn = isWithdrawnCrmPath(VOICE_SECTIONS[section] ?? "")
+        await bypass(() => prisma.voiceSession.update({
+          where: { id: session },
+          data: { toolCallCount: 0 },
+        }))
+        const answer = await ask("explain_section", { section })
+        const data = (answer.body as {
+          data?: { error?: string; whatItIs?: string; howItWorks?: string; keyFeatures?: string[] }
+        }).data
+        if (answer.status !== 200) broken[section] = `HTTP ${answer.status}`
+        else if (withdrawn) {
+          if (data?.error !== "SECTION_NOT_AVAILABLE") broken[section] = `снятое отдано: ${data?.error ?? "разбор"}`
+        }
+        else if (data?.error) broken[section] = String(data.error)
+        else if (!data?.whatItIs || !data.howItWorks || !data.keyFeatures?.length) {
+          broken[section] = "разбор без одной из трёх частей"
+        }
+        else served.push(section)
+      }
+      expect(broken).toEqual({})
+      // Хотя бы один разбор помощник всё-таки отдаёт: иначе цикл зеленел бы,
+      // проверяя одни отказы.
+      expect(served.length).toBeGreaterThanOrEqual(1)
+      expect(sections.length).toBeGreaterThanOrEqual(10)
+    })
+
+    it("раздел без цифр не молчит, а называет те, о которых цифры есть", async () => {
+      const answer = await ask("describe_section", { section: "dashboard" })
+      const data = (answer.body as { data: { error: string; known: string[] } }).data
+      // Отказ приезжает данными и со списком: помощнику есть что сказать
+      // дальше, а не «не могу».
+      expect(data.error).toBe("UNKNOWN_SECTION")
+      expect(data.known).toContain("deals")
+    })
+
+    it("инструмент невыкупленного модуля отвечает словами, а не ошибкой", async () => {
+      modulesOff.add("finance")
+      try {
+        const answer = await ask("list_invoices")
+        // 200 и данными — намеренно: браузер считает два ответа не-2xx мёртвой
+        // CRM и заканчивает разговор, так что два вопроса про чужой модуль
+        // кладут трубку.
+        expect(answer.status).toBe(200)
+        expect(answer.body).toEqual({ data: { error: "MODULE_NOT_ENABLED", module: "finance" } })
+      } finally {
+        modulesOff.delete("finance")
+      }
+    })
+  })
+
+  /**
+   * Цифры, которые помощник произносит вслух.
+   *
+   * Неверное число звучит так же уверенно, как верное, и проверить его на слух
+   * нельзя. Поэтому здесь не «ответил 200», а «изменилось в CRM ровно на
+   * столько»: сначала читается цифра, потом меняется CRM, потом цифра
+   * читается снова. Так тест не зависит от того, что накопили соседние
+   * сценарии, и доказывает поведение, а не форму ответа.
+   */
+  describe("сценарий: цифры отвечают на то, что изменилось в CRM", () => {
+    type Pipeline = {
+      openDeals: number
+      openAmount: number
+      stages: { stage: string; deals: number; amount: number }[]
+    }
+    type Managers = {
+      managers: { name: string; openDeals: number; openAmount: number; wonDeals: number; wonAmount: number }[]
+      unassignedOpen: number
+    }
+    type Period = { wonCount: number; money: { amount: number } | null }
+    type Overdue = {
+      overdueTasks: number
+      overdueInvoices: number
+      overdueInvoiceAmount: number
+      dealsPastExpectedClose: number
+    }
+
+    async function pipeline(): Promise<Pipeline> {
+      return ((await ask("get_pipeline_by_stage")).body as { data: Pipeline }).data
+    }
+    async function managers(): Promise<Managers> {
+      return ((await ask("get_sales_by_manager")).body as { data: Managers }).data
+    }
+    async function period(): Promise<Period> {
+      return ((await ask("get_sales_in_period", { period: "this_month" })).body as { data: Period }).data
+    }
+    async function overdue(): Promise<Overdue> {
+      return ((await ask("get_overdue")).body as { data: Overdue }).data
+    }
+    function seller(rows: Managers) {
+      return rows.managers.find((row) => row.name.includes("Rəşad Quliyev"))
+    }
+
+    it("сделка, созданная и выигранная голосом, двигает воронку, менеджера и итог месяца", async () => {
+      const wasPipeline = await pipeline()
+      const wasManagers = await managers()
+      const wasPeriod = await period()
+      const DEAL = "Printer partiyası üçün müqavilə"
+
+      const created = await propose("propose_create_deal", {
+        name: DEAL,
+        companyName: "Azmart MMC",
+        valueAmount: 4000,
+        currency: "AZN",
+        assigneeName: "Rəşad Quliyev",
+      })
+      expect(created.status).toBe(201)
+      expect((await pressCreate(created.body.data!)).status).toBe(200)
+
+      const afterCreate = await pipeline()
+      expect(afterCreate.openDeals).toBe(wasPipeline.openDeals + 1)
+      expect(afterCreate.openAmount).toBe(wasPipeline.openAmount + 4000)
+      const sellerAfterCreate = seller(await managers())!
+      expect(sellerAfterCreate.openDeals).toBe((seller(wasManagers)?.openDeals ?? 0) + 1)
+      expect(sellerAfterCreate.openAmount).toBe((seller(wasManagers)?.openAmount ?? 0) + 4000)
+
+      // «Qazanıldı» — слово воронки этой организации.
+      const won = await propose("propose_move_deal_stage", { dealName: DEAL, stage: "qazanıldı" })
+      expect(won.status).toBe(201)
+      expect((await pressCreate(won.body.data!)).status).toBe(200)
+
+      const afterWin = await pipeline()
+      // Выигранная ушла из открытых: «у вас в воронке столько» не должно
+      // включать закрытое.
+      expect(afterWin.openDeals).toBe(wasPipeline.openDeals)
+      expect(afterWin.openAmount).toBe(wasPipeline.openAmount)
+      const wonStage = afterWin.stages.find((row) => row.stage === "WON")!
+      expect(wonStage.deals).toBe((wasPipeline.stages.find((row) => row.stage === "WON")?.deals ?? 0) + 1)
+      // У менеджера она переехала из открытых в выигранные.
+      const sellerAfterWin = seller(await managers())!
+      expect(sellerAfterWin.wonDeals).toBe((seller(wasManagers)?.wonDeals ?? 0) + 1)
+      expect(sellerAfterWin.wonAmount).toBe((seller(wasManagers)?.wonAmount ?? 0) + 4000)
+      // Итог месяца считается по ЗАПИСАННОМУ переходу, а не по текущей
+      // стадии, — значит голосовая победа его и записала.
+      const nowPeriod = await period()
+      expect(nowPeriod.wonCount).toBe(wasPeriod.wonCount + 1)
+      expect(nowPeriod.money?.amount).toBe((wasPeriod.money?.amount ?? 0) + 4000)
+    })
+
+    it("просрочка растёт только на просроченное", async () => {
+      const was = await overdue()
+      const past = new Date(Date.now() - 48 * 3_600_000)
+      await bypass(async () => {
+        await prisma.task.create({
+          data: { organizationId: ORG, title: "Gecikmiş zəng", dueDate: past },
+        })
+        // Закрытая задача со вчерашним сроком не просрочена.
+        await prisma.task.create({
+          data: { organizationId: ORG, title: "Gecikmiş, amma bitmiş", dueDate: past, status: "completed" },
+        })
+        await prisma.invoice.create({
+          data: {
+            organizationId: ORG,
+            invoiceNumber: "INV-OVERDUE",
+            title: "Gecikmiş hesab",
+            dueDate: past,
+            totalAmount: 250,
+            balanceDue: 250,
+            currency: "AZN",
+          },
+        })
+        // Оплаченный счёт не просрочен, даже если на нём остался ярлык.
+        await prisma.invoice.create({
+          data: {
+            organizationId: ORG,
+            invoiceNumber: "INV-PAID",
+            title: "Ödənilmiş hesab",
+            status: "overdue",
+            dueDate: past,
+            totalAmount: 900,
+            paidAmount: 900,
+            balanceDue: 0,
+            currency: "AZN",
+          },
+        })
+        await prisma.deal.create({
+          data: {
+            organizationId: ORG,
+            pipelineId: "pipeline-1",
+            name: "Tarixi keçmiş sövdələşmə",
+            stage: "NEGOTIATION",
+            expectedClose: past,
+            valueAmount: 100,
+            currency: "AZN",
+          },
+        })
+        // Уже выигранная сделка с прошедшей датой — не «съехавшая».
+        await prisma.deal.create({
+          data: {
+            organizationId: ORG,
+            pipelineId: "pipeline-1",
+            name: "Qazanılmış, tarixi keçmiş",
+            stage: "WON",
+            expectedClose: past,
+            valueAmount: 100,
+            currency: "AZN",
+          },
+        })
+      })
+
+      const now = await overdue()
+      expect(now.overdueTasks).toBe(was.overdueTasks + 1)
+      expect(now.overdueInvoices).toBe(was.overdueInvoices + 1)
+      expect(now.overdueInvoiceAmount).toBe(was.overdueInvoiceAmount + 250)
+      expect(now.dealsPastExpectedClose).toBe(was.dealsPastExpectedClose + 1)
+    })
+
+    it("сводка дня читается из снимка, а без снимка честно говорит, что его нет", async () => {
+      const empty = ((await ask("get_daily_briefing")).body as {
+        data: { available: boolean; totalSignals: number }
+      }).data
+      // Снимка ещё нет: ответ — «нечего сказать», а не нули как факт.
+      expect(empty).toMatchObject({ available: false, totalSignals: 0 })
+
+      await bypass(() => prisma.advisorSignalSnapshot.create({
+        data: {
+          organizationId: ORG,
+          snapshotKey: "voice-assistant-test",
+          snapshotAt: new Date(Date.now() - 2 * 3_600_000),
+          totalSignals: 7,
+          criticalCount: 2,
+          highCount: 3,
+          moneyAtRisk: 12_345.6,
+        },
+      }))
+
+      const briefing = ((await ask("get_daily_briefing")).body as {
+        data: {
+          available: boolean
+          totalSignals: number
+          criticalCount: number
+          highCount: number
+          moneyAtRisk: number
+          staleHours: number
+        }
+      }).data
+      expect(briefing).toMatchObject({
+        available: true,
+        totalSignals: 7,
+        criticalCount: 2,
+        highCount: 3,
+        // Копейки вслух — шум, и сама величина оценочная.
+        moneyAtRisk: 12_346,
+      })
+      // Возраст снимка возвращается, чтобы помощник сказал, КОГДА это мерили.
+      expect(briefing.staleHours).toBe(2)
+    })
+
+    it("непокрытый лид виден как непокрытый", async () => {
+      type Coverage = { openLeads: number; unassigned: number }
+      const coverage = async () =>
+        ((await ask("get_lead_coverage")).body as { data: Coverage }).data
+
+      const was = await coverage()
+      await bypass(() => prisma.lead.create({
+        data: {
+          organizationId: ORG,
+          contactName: "Örtülməmiş müştəri",
+          status: "new",
+          createdAt: new Date(Date.now() - 72 * 3_600_000),
+        },
+      }))
+      const now = await coverage()
+      expect(now.openLeads).toBe(was.openLeads + 1)
+      expect(now.unassigned).toBe(was.unassigned + 1)
+    })
+
+    it("списки называют то, что только что появилось", async () => {
+      const NEEDLE = "Siyahı yoxlaması"
+      await bypass(async () => {
+        await prisma.deal.create({
+          data: {
+            organizationId: ORG,
+            pipelineId: "pipeline-1",
+            name: NEEDLE,
+            stage: "NEGOTIATION",
+            valueAmount: 10,
+            currency: "AZN",
+          },
+        })
+        await prisma.task.create({ data: { organizationId: ORG, title: NEEDLE } })
+        await prisma.contact.create({ data: { organizationId: ORG, fullName: NEEDLE } })
+        await prisma.invoice.create({
+          data: {
+            organizationId: ORG,
+            invoiceNumber: "INV-LIST",
+            title: NEEDLE,
+            currency: "AZN",
+          },
+        })
+        await prisma.ticket.create({
+          data: { organizationId: ORG, ticketNumber: "TCK-LIST", subject: NEEDLE },
+        })
+      })
+
+      // Чем список называет строку, решает он сам: счета люди знают по
+      // номеру, остальное — по названию. Поэтому ждём ровно то, что в этом
+      // списке и есть смысл услышать.
+      const named: Record<string, string> = {
+        list_deals: NEEDLE,
+        list_tasks: NEEDLE,
+        list_contacts: NEEDLE,
+        list_invoices: "INV-LIST",
+        list_tickets: NEEDLE,
+      }
+      for (const [tool, needle] of Object.entries(named)) {
+        const answer = await ask(tool)
+        expect(JSON.stringify(answer.body), tool).toContain(needle)
       }
     })
   })
