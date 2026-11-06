@@ -265,10 +265,19 @@ def build(source, bridge):
     # and loudness alone decides otherwise, as before the gate. Owner's call
     # 2026-11-05 (4c36453f): "krem", said right after the question, fell into
     # the 0.8 s it was before; the echo tail of the line is shorter.
+    # Owner's call 2026-11-06 (452259a8): "agent speaking" also counts the
+    # model's own greeting turn, which the line never voices (the CRM opening
+    # plays instead) and which ran ~3 s past the audible greeting. The gate
+    # dropped the caller's first second ("…mərkəzi aptekdən") there, the model
+    # got a quiet fragment and heard it as the drug "Adenurik". The veto is
+    # against echo, so on the pharmacy line it follows what is actually played.
     replace("            if loud and verdict is False:\n",
-            "            if self.pharmacy_preview and agent_speaking:\n"
-            "                self.pharmacy_agent_heard_at = time.monotonic()\n"
-            "            if loud and verdict is False and (not self.pharmacy_preview or agent_speaking\n"
+            "            if self.pharmacy_preview:\n"
+            "                with self.state_lock:\n"
+            "                    pharmacy_audible = bool(self.playback_active)\n"
+            "                if pharmacy_audible:\n"
+            "                    self.pharmacy_agent_heard_at = time.monotonic()\n"
+            "            if loud and verdict is False and (not self.pharmacy_preview or pharmacy_audible\n"
             "                    or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4):\n")
     # Only recovery wording changes; pharmacy calls are never marked as demos.
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',

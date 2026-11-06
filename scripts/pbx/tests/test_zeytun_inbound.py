@@ -2471,9 +2471,12 @@ class ArtifactTests(unittest.TestCase):
         text = source.decode("utf-8")
         feed = textwrap.dedent(ast.get_source_segment(text, old_methods["feed"], padded=True)).replace(
             "        if loud and verdict is False:\n",
-            "        if self.pharmacy_preview and agent_speaking:\n"
-            "            self.pharmacy_agent_heard_at = time.monotonic()\n"
-            "        if loud and verdict is False and (not self.pharmacy_preview or agent_speaking\n"
+            "        if self.pharmacy_preview:\n"
+            "            with self.state_lock:\n"
+            "                pharmacy_audible = bool(self.playback_active)\n"
+            "            if pharmacy_audible:\n"
+            "                self.pharmacy_agent_heard_at = time.monotonic()\n"
+            "        if loud and verdict is False and (not self.pharmacy_preview or pharmacy_audible\n"
             "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4):\n").replace(
             # A send that finds the session gone resumes it first (measured 2026-11-04).
             "            if not self._recover_gemini(\n",
