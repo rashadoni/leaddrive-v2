@@ -80,12 +80,19 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
     "instagram_business_manage_messages",
   ].join(",")
 
-  const url = new URL("https://api.instagram.com/oauth/authorize")
+  // Meta's documented Business Login endpoint (api.instagram.com/oauth/authorize only redirects here).
+  const url = new URL("https://www.instagram.com/oauth/authorize")
   url.searchParams.set("client_id", appId)
   url.searchParams.set("redirect_uri", redirectUri)
   url.searchParams.set("response_type", "code")
   url.searchParams.set("scope", scopes)
   url.searchParams.set("state", signedState)
+  // Ask for the account every time. Without it Instagram silently authorizes whichever account the
+  // browser is already signed in to: on 2026-11-06 Zeytun Pharma, holding three accounts, pressed
+  // Connect for a fourth and got "Channel connected" while the consent screen had re-granted the
+  // third one (@rentacarazerbaijan) — no way to pick another account short of logging out of
+  // instagram.com first. force_reauth shows Instagram's login form, where any account can be entered.
+  url.searchParams.set("force_reauth", "true")
 
   const res = NextResponse.redirect(url.toString())
   res.cookies.set("ld_ig_oauth", signedState, {
