@@ -8,6 +8,7 @@ import {
   updateLeadCommandSchema,
 } from "@/lib/crm-commands/schemas/lead"
 import { createDealCommandSchema, updateDealCommandSchema } from "@/lib/crm-commands/schemas/deal"
+import { createCompanyCommandSchema } from "@/lib/crm-commands/schemas/company"
 import { DEFAULT_AI_ACTION_INTENT_TTL_MS } from "./action-intent"
 
 export const AI_VOICE_ACTION_TYPES = [
@@ -19,6 +20,7 @@ export const AI_VOICE_ACTION_TYPES = [
   "update_task",
   "update_deal",
   "move_deal_stage",
+  "create_company",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -32,6 +34,7 @@ export type AiVoiceActionCommand =
   | "updateTaskCommand"
   | "updateDealCommand"
   | "moveDealStageCommand"
+  | "createCompanyCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -43,6 +46,13 @@ export type AiVoiceActionPermission = Readonly<{
   action: Action
   tenantModule: ModuleId
 }>
+
+/**
+ * Запись, которой заканчивается действие. Компания появилась здесь
+ * 2026-11-06: «создай клиента» до этого превращалось в ЛИД, потому что
+ * создавать компанию голосом было нечем.
+ */
+export type AiVoiceActionEntityType = "task" | "lead" | "deal" | "company"
 
 /** The kinds of record a voice update may target. */
 export type AiVoiceActionTargetType = "lead" | "task" | "deal"
@@ -71,7 +81,7 @@ export type AiVoiceActionPreview = Readonly<{
   contract: 1
   actionType: AiVoiceActionType
   operation: "create" | "update" | "convert"
-  entityType: "task" | "lead" | "deal"
+  entityType: AiVoiceActionEntityType
   titleKey: string
   target?: Readonly<{
     entityType: AiVoiceActionTargetType
@@ -98,14 +108,14 @@ export type AiVoiceActionRegistryEntry = Readonly<{
   commandSchema: z.ZodType
   allowedFields: readonly string[]
   permissions: readonly AiVoiceActionPermission[]
-  fieldPermissionEntity: "task" | "lead" | "deal"
+  fieldPermissionEntity: AiVoiceActionEntityType
   fieldPermissionNames: (payload: JsonObject) => readonly string[]
   risk: AiVoiceActionRisk
   ttlMs: number
   dedupePolicy: AiVoiceActionDedupePolicy
   target: AiVoiceActionTarget | null
   operation: "create" | "update" | "convert"
-  resultEntityType: "task" | "lead" | "deal"
+  resultEntityType: AiVoiceActionEntityType
   previewFields: readonly string[]
   renderPreview: (
     payload: JsonObject,
@@ -222,6 +232,21 @@ const MOVE_DEAL_STAGE_FIELDS = [
   "expectedUpdatedAt",
 ] as const
 
+// Подмножество экрана компании: закрытые словари (статус, категория),
+// налоговый номер, представитель, кредитный лимит и SLA голосом не диктуются —
+// см. schemas/company.ts.
+const CREATE_COMPANY_FIELDS = [
+  "name",
+  "industry",
+  "website",
+  "phone",
+  "email",
+  "address",
+  "city",
+  "country",
+  "description",
+] as const
+
 const CONVERT_LEAD_FIELDS = [
   "dealTitle",
   "dealStage",
@@ -247,7 +272,7 @@ function conversionPermissionFields(payload: JsonObject): string[] {
 function createPreviewRenderer(input: {
   actionType: AiVoiceActionType
   operation: "create" | "update" | "convert"
-  entityType: "task" | "lead" | "deal"
+  entityType: AiVoiceActionEntityType
   previewFields: readonly string[]
 }) {
   return (payload: JsonObject, context?: AiVoiceActionPreviewContext): AiVoiceActionPreview => {
@@ -309,6 +334,9 @@ const WRITE_LEADS: readonly AiVoiceActionPermission[] = [
 ]
 const WRITE_DEALS: readonly AiVoiceActionPermission[] = [
   { module: "deals", action: "write", tenantModule: "sales" },
+]
+const WRITE_COMPANIES: readonly AiVoiceActionPermission[] = [
+  { module: "companies", action: "write", tenantModule: "crm" },
 ]
 const CONVERT_LEAD_PERMISSIONS: readonly AiVoiceActionPermission[] = [
   ...WRITE_LEADS,
@@ -490,6 +518,28 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
       operation: "update",
       entityType: "deal",
       previewFields: MOVE_DEAL_STAGE_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    }),
+  },
+  create_company: {
+    actionType: "create_company",
+    command: "createCompanyCommand",
+    commandSchema: createCompanyCommandSchema,
+    allowedFields: CREATE_COMPANY_FIELDS,
+    permissions: WRITE_COMPANIES,
+    fieldPermissionEntity: "company",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload),
+    risk: "standard",
+    ttlMs: STANDARD_TTL_MS,
+    dedupePolicy: "idempotency_key",
+    target: null,
+    operation: "create",
+    resultEntityType: "company",
+    previewFields: CREATE_COMPANY_FIELDS,
+    renderPreview: createPreviewRenderer({
+      actionType: "create_company",
+      operation: "create",
+      entityType: "company",
+      previewFields: CREATE_COMPANY_FIELDS,
     }),
   },
 })

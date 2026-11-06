@@ -22,6 +22,8 @@
  *   partially repaired object.
  */
 
+// Только тип: реестр действий в клиентский бандл от этого не попадает.
+import type { AiVoiceActionEntityType } from "./action-registry"
 import type { VoiceCommitOutcome } from "./receipt-commit"
 
 /**
@@ -73,7 +75,7 @@ export type VoiceReceiptPreview = Readonly<{
 /** One existing record a duplicate warning matched, named well enough to judge. */
 export type VoiceReceiptDuplicateCandidate = Readonly<{
   id: string
-  entityType: "lead" | "deal"
+  entityType: AiVoiceActionEntityType
   label: string
 }>
 
@@ -186,7 +188,7 @@ function candidateLabel(raw: Record<string, unknown>): string | null {
 
 function normalizeCandidates(
   value: unknown,
-  entityType: "lead" | "deal",
+  entityType: AiVoiceActionEntityType,
 ): readonly VoiceReceiptDuplicateCandidate[] {
   if (!Array.isArray(value)) return []
   const candidates: VoiceReceiptDuplicateCandidate[] = []
@@ -200,9 +202,21 @@ function normalizeCandidates(
   return candidates
 }
 
+/**
+ * Чем похожая запись является на самом деле.
+ *
+ * Ярлык кандидата — это ССЫЛКА (`voiceResultHref`), поэтому неверный вид
+ * записи даёт не косметику, а мёртвый адрес: пока здесь всё, кроме сделки,
+ * считалось лидом, похожая КОМПАНИЯ ушла бы ссылкой на `/leads/<id компании>`.
+ */
+const WARNING_ENTITY_TYPES: Record<string, AiVoiceActionEntityType> = {
+  create_deal: "deal",
+  create_company: "company",
+}
+
 function normalizeWarnings(value: unknown, actionType: string): readonly VoiceReceiptWarning[] {
   if (!Array.isArray(value)) return []
-  const entityType = actionType === "create_deal" ? "deal" : "lead"
+  const entityType = WARNING_ENTITY_TYPES[actionType] ?? "lead"
   const warnings: VoiceReceiptWarning[] = []
   for (const raw of value) {
     if (!isPlainObject(raw)) continue

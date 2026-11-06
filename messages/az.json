@@ -29137,6 +29137,11 @@
   },
   "aiVoiceActions": {
     "fields": {
+      "industry": "Sahə",
+      "website": "Veb sayt",
+      "address": "Ünvan",
+      "city": "Şəhər",
+      "country": "Ölkə",
       "title": "Başlıq",
       "description": "Təsvir",
       "priority": "Prioritet",
@@ -29246,7 +29251,8 @@
         "update_deal": "Sövdələşməni dəyiş",
         "move_deal_stage": "Mərhələni dəyiş",
         "create_deal": "Sövdələşmə yarat",
-        "convert_lead_to_deal": "Lidi sövdələşməyə çevir"
+        "convert_lead_to_deal": "Lidi sövdələşməyə çevir",
+        "create_company": "Müştəri şirkəti yarat"
       },
       "confirm": {
         "create_task": "Tapşırıq yarat",
@@ -29256,7 +29262,8 @@
         "update_deal": "Sövdələşməni saxla",
         "move_deal_stage": "Sövdələşməni keçir",
         "create_deal": "Sövdələşmə yarat",
-        "convert_lead_to_deal": "Sövdələşməyə çevir"
+        "convert_lead_to_deal": "Sövdələşməyə çevir",
+        "create_company": "Şirkət yarat"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:",

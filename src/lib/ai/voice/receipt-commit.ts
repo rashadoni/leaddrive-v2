@@ -22,11 +22,13 @@
  * receipt. Recomputing or defaulting them here would defeat the whole check.
  */
 
+// Только тип: в клиентский бандл реестр действий от этого не попадает.
+import type { AiVoiceActionEntityType } from "./action-registry"
 export type VoiceCommitOutcome =
   /** The CRM record exists. `replayed` means this click found an earlier success. */
   | Readonly<{
     kind: "succeeded"
-    entityType: "task" | "lead" | "deal"
+    entityType: AiVoiceActionEntityType
     entityId: string
     replayed: boolean
   }>
@@ -270,7 +272,13 @@ export async function cancelVoiceReceipt(
 }
 
 /** Where the created or updated record lives, for the success link. */
-export function voiceResultHref(entityType: "task" | "lead" | "deal", entityId: string): string {
-  const base = entityType === "task" ? "/tasks" : entityType === "lead" ? "/leads" : "/deals"
-  return `${base}/${encodeURIComponent(entityId)}`
+const RESULT_ROUTES: Record<AiVoiceActionEntityType, string> = {
+  task: "/tasks",
+  lead: "/leads",
+  deal: "/deals",
+  company: "/companies",
+}
+
+export function voiceResultHref(entityType: AiVoiceActionEntityType, entityId: string): string {
+  return `${RESULT_ROUTES[entityType]}/${encodeURIComponent(entityId)}`
 }

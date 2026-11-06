@@ -55,6 +55,35 @@ describe("voice receipt normalization", () => {
     expect(result.receipt.expiresAtMs).toBe(Date.parse("2026-09-20T12:10:00.000Z"))
   })
 
+  /**
+   * Ярлык похожей записи — это ссылка, которую строит `voiceResultHref` по
+   * этому виду. Пока всё, кроме сделки, считалось лидом, похожая КОМПАНИЯ
+   * уходила бы ссылкой на `/leads/<id компании>` — мёртвый адрес вместо
+   * карточки, по которой человек и решает, дубль это или нет.
+   */
+  it("называет похожую компанию компанией, а не лидом", () => {
+    const result = normalizeVoiceReceipt(serverReceipt({
+      actionType: "create_company",
+      preview: {
+        contract: 1,
+        actionType: "create_company",
+        operation: "create",
+        entityType: "company",
+        titleKey: "voice.receipt.action.create_company",
+        fields: [{ key: "name", labelKey: "aiVoiceActions.fields.name", after: "Fanumsec" }],
+      },
+      warnings: [{
+        code: "POSSIBLE_DUPLICATE",
+        candidates: [{ id: "company-9", name: "Fanumsec MMC", city: "Bakı" }],
+      }],
+    }), SESSION)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.receipt.warnings[0].candidates).toEqual([
+      { id: "company-9", entityType: "company", label: "Fanumsec MMC" },
+    ])
+  })
+
   it("rejects a receipt that belongs to another voice session", () => {
     const result = normalizeVoiceReceipt(
       serverReceipt({ voiceSessionId: "voice-session-2" }),

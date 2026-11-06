@@ -28,6 +28,8 @@
  *    must not confirm itself.
  */
 
+// Только тип: в клиентский бандл реестр действий от этого не попадает.
+import type { AiVoiceActionEntityType } from "./action-registry"
 /** How long after the assistant finishes asking an answer still counts as one. */
 export const VOICE_CONFIRMATION_WINDOW_MS = 30_000
 
@@ -294,8 +296,28 @@ export function voiceOutcomeMessage(detail: VoiceReceiptOutcomeDetail): string {
  * reach them.
  */
 export const VOICE_RECORD_CHANGED_EVENT = "leaddrive:voice-record-changed"
-export type VoiceRecordChangedDetail = Readonly<{ entityType: "task" | "lead" | "deal"; entityId: string }>
+export type VoiceRecordChangedDetail = Readonly<{
+  entityType: AiVoiceActionEntityType
+  entityId: string
+}>
 
 /** The answer to a propose call that put a draft on screen. */
+/**
+ * Приписка к `VOICE_DRAFT_SHOWN`: поправка пришла с тем же значением.
+ *
+ * Разбор случая — в `unchangedAmendmentFields` (action-draft.ts). Коротко:
+ * повтор названия голосом не может его исправить, если распознаватель слышит
+ * одно и то же, поэтому помощник обязан перестать повторять попытку и назвать
+ * две дороги, которые действительно работают.
+ */
+export function voiceDraftUnchangedNote(fields: readonly string[]): string {
+  return [
+    `UNCHANGED (${fields.join(", ")}): the correction arrived with the value the draft already had,`,
+    "so nothing on the receipt changed. Say plainly that you keep hearing the same thing, and offer the two ways that do work:",
+    "the «Изменить» button on the receipt on screen, or spelling the name out letter by letter.",
+    "Do not repeat the same tool call.",
+  ].join(" ")
+}
+
 export const VOICE_DRAFT_SHOWN =
   "OK: the draft is on screen. Read it back briefly in the user's language and ask them to confirm. The app hears their yes or no itself — do not call any tool for it. When they answer, say only a short acknowledgement (\"сохраняю\") and wait for the CRM_RESULT message; nothing is saved before it arrives."

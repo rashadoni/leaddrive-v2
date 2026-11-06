@@ -8,10 +8,13 @@ import {
 } from "@/lib/ai/voice/action-registry"
 
 describe("AI voice action registry", () => {
-  // Eight since 2026-09-28: tasks and deals are edited by voice (2026-09-21),
-  // and a deal can be moved between the stages of its own pipeline. Growing
-  // this list is a decision, so it stays pinned.
-  it("is a closed eight-action allowlist with no executable callback", () => {
+  // Nine since 2026-11-06: a CLIENT COMPANY can be created by voice. Until
+  // then «создай клиента» had nowhere to go and became a LEAD — an
+  // unqualified interest, which is not what the owner asked for. Eight since
+  // 2026-09-28: tasks and deals are edited by voice (2026-09-21), and a deal
+  // can be moved between the stages of its own pipeline. Growing this list is
+  // a decision, so it stays pinned.
+  it("is a closed nine-action allowlist with no executable callback", () => {
     expect(AI_VOICE_ACTION_TYPES).toEqual([
       "create_task",
       "create_lead",
@@ -21,6 +24,7 @@ describe("AI voice action registry", () => {
       "update_task",
       "update_deal",
       "move_deal_stage",
+      "create_company",
     ])
     expect(Object.keys(AI_VOICE_ACTION_REGISTRY)).toEqual(AI_VOICE_ACTION_TYPES)
     expect(isAiVoiceActionType("create_lead")).toBe(true)

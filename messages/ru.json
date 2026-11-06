@@ -29141,6 +29141,11 @@
   },
   "aiVoiceActions": {
     "fields": {
+      "industry": "Отрасль",
+      "website": "Сайт",
+      "address": "Адрес",
+      "city": "Город",
+      "country": "Страна",
       "title": "Заголовок",
       "description": "Описание",
       "priority": "Приоритет",
@@ -29250,7 +29255,8 @@
         "update_deal": "Изменить сделку",
         "move_deal_stage": "Сменить этап",
         "create_deal": "Создать сделку",
-        "convert_lead_to_deal": "Превратить лид в сделку"
+        "convert_lead_to_deal": "Превратить лид в сделку",
+        "create_company": "Создать клиента-компанию"
       },
       "confirm": {
         "create_task": "Создать задачу",
@@ -29260,7 +29266,8 @@
         "update_deal": "Сохранить сделку",
         "move_deal_stage": "Перевести сделку",
         "create_deal": "Создать сделку",
-        "convert_lead_to_deal": "Превратить в сделку"
+        "convert_lead_to_deal": "Превратить в сделку",
+        "create_company": "Создать компанию"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Похожая запись уже есть:",

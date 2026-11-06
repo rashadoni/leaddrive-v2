@@ -34,6 +34,7 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_update_task",
   "propose_update_deal",
   "propose_move_deal_stage",
+  "propose_create_company",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -48,6 +49,7 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_update_task: "update_task",
     propose_update_deal: "update_deal",
     propose_move_deal_stage: "move_deal_stage",
+    propose_create_company: "create_company",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -177,6 +179,27 @@ export const VOICE_PROPOSE_SCHEMAS = {
    * own one, so "закрой задачу" lands on whatever "done" means for that task
    * and the board's move permissions still decide whether it may.
    */
+  /**
+   * Клиент-компания. Владелец 2026-11-06: «создай клиента, название компании
+   * fanumsec» — такого действия не было, и фраза превращалась в ЛИД, то есть в
+   * ещё не квалифицированный интерес.
+   *
+   * Закрытых словарей здесь нет намеренно: статус, категория и «горячесть»
+   * компании имеют в базе свои значения, и произнесённое слово «клиент» — не
+   * то же, что хранимое `category`. Налоговый номер, законный представитель и
+   * кредитный лимит — тоже не голосом: у них своя проверка на экране компании.
+   */
+  propose_create_company: z.strictObject({
+    name: shortText,
+    industry: z.string().trim().max(100).optional(),
+    website: z.string().trim().url().max(1000).optional(),
+    phone: z.string().trim().min(6).max(40).optional(),
+    email: z.string().trim().email().max(255).optional(),
+    address: z.string().trim().max(500).optional(),
+    city: z.string().trim().max(100).optional(),
+    country: z.string().trim().max(100).optional(),
+    description: longText.optional(),
+  }),
   propose_update_task: z.strictObject({
     /** Omit to change the task currently open on screen. */
     taskTitle: shortText.optional(),
@@ -236,6 +259,8 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare a change to ONE existing lead for the user to confirm on screen. This does NOT save anything. Omit leadName to change the lead currently open on the user's screen; otherwise give the name the user said. Send only the fields being changed. Use propose_convert_lead_to_deal to turn a lead into a deal; this tool cannot set the status to converted.",
   propose_convert_lead_to_deal:
     "Prepare turning ONE lead into a deal, for the user to confirm on screen. This does NOT convert anything: it shows a receipt the user confirms by saying yes or pressing the button. Omit leadName for the lead currently open on the user's screen. Do not pass a stage or a pipeline — the CRM chooses them from the lead. Omit dealTitle unless the user named the deal.",
+  propose_create_company:
+    "Prepare a new CLIENT COMPANY for the user to confirm. This does NOT save anything. Use it when the user asks to create a client, a customer or a company — a lead is an unqualified interest, not a client. Only the name is required; add what the user said (industry, website, phone, email, address, city, country, description). Never pass a status, a category, a tax number, a legal representative or a credit limit: those are not spoken fields. Keep an invented name exactly as the user said it.",
   propose_update_task:
     "Prepare a change to ONE existing task for the user to confirm. This does NOT save anything. Omit taskTitle to change the task currently open on the user's screen; otherwise give the title the user said. Send only the fields being changed. status is the meaning: open, in_progress, done (\"закрой задачу\", \"выполнено\") or cancelled. Resolve relative dates to an absolute YYYY-MM-DD before calling.",
   propose_update_deal:
