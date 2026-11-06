@@ -99,7 +99,9 @@ export function cleanServiceDescription(raw: string): string {
   // is two rows high and the public page shows it as a single paragraph.
   text = text.replace(/\s*\n+\s*/g, " ").replace(/[ \t]{2,}/g, " ").trim()
   // Quotation marks around the whole answer, straight or typographic.
-  const quoted = /^["«“'](.+)["»”']$/s.exec(text)
+  // `[\s\S]` rather than `.` with the `s` flag: the project targets an older
+  // ES level, where that flag does not compile.
+  const quoted = /^["«“']([\s\S]+)["»”']$/.exec(text)
   if (quoted) text = quoted[1].trim()
   if (text.length <= SERVICE_DESCRIPTION_MAX) return text
 
