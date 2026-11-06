@@ -13,6 +13,12 @@
       "migration": "20261120090000_booking_page_price_category",
       "bookingAdditive": true,
       "note": "A salon service carries a price, the currency it was stamped in, a group and a return cycle: four nullable columns on booking_pages."
+    },
+    {
+      "schemaHash": "18daf505e846d7bf35beda731cd98c8732a81408bccc1a4029f41eba8d92f350",
+      "migration": "20261129090000_booking_page_host_variants",
+      "bookingAdditive": true,
+      "note": "What a single master charges for a service and how long they take: one nullable JSON column on booking_pages. A release that does not know it reads every page exactly as before."
     }
   ]
 }

@@ -12,6 +12,7 @@ import { queueBookingEffects } from "./integration-intents"
 import { assertBookingInterval, bookingRules } from "./commands"
 import { BookingCommandError } from "./command-error"
 import { computeSlots, findSlot } from "./availability"
+import { hostService } from "./host-variants"
 import { activeHosts, orgContext, loadBusyByHost, bookingCancelUrl, hashBookingToken, type BookingInput, type CreateBookingResult } from "./book"
 import { bookingHostWhere, bookingScope } from "./access"
 import type { BookingAccess } from "./access"
@@ -50,13 +51,20 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   const hosts = await activeHosts(orgId, page.hostIds)
   const permitted = hosts.filter((host) => (!input.hostUserId || host.id === input.hostUserId) && (!access || access.writableHostIds === null || access.writableHostIds.includes(host.id)))
   if (!permitted.length) return { ok: false, reason: "taken" }
+  // A master who takes longer over this service is offered their own times,
+  // not the service's. With nobody named, the service's own duration stands —
+  // exactly as before this existed.
+  const chosenHostId = input.hostUserId && page.hostIds.includes(input.hostUserId) ? input.hostUserId : null
+  const serviceOf = (row: typeof page, hostId: string) =>
+    hostService({ price: row.price === null ? null : String(row.price), durationMinutes: row.durationMinutes, hostVariants: row.hostVariants }, hostId)
+  const rules = { ...bookingRules(page, org.timezone), ...(chosenHostId ? { durationMinutes: serviceOf(page, chosenHostId).durationMinutes } : {}) }
   const from = now, to = new Date(now.getTime() + (page.maxDaysAhead + 2) * 86400_000)
   const checkedAt = Date.now()
   // A customer-facing booking respects the holds of other conversations; a
   // staff one does not (see BusyOptions).
   const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to, org.timezone,
     access ? {} : { holds: { exceptConversationId: input.whatsapp?.conversationId ?? null } })
-  const slot = findSlot(computeSlots({ rules: bookingRules(page, org.timezone), hostIds: permitted.map((host) => host.id), busyByHost: busy, now }), input.startsAt)
+  const slot = findSlot(computeSlots({ rules, hostIds: permitted.map((host) => host.id), busyByHost: busy, now }), input.startsAt)
   if (!slot) {
     if (busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
     return { ok: false, reason: "taken" }
@@ -89,9 +97,11 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
           source: access ? "staff" : input.whatsapp ? "whatsapp" : "public_link", createdBy: access?.userId ?? null,
           bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes,
           snapshot: { orgName: org.name, description: currentPage.description, locale: input.locale ?? "az", slug: currentPage.slug, title: currentPage.title, locationType: currentPage.locationType, locationText: currentPage.locationText, timezone: org.timezone, legacyDerived: false,
-            // The price as it stood when the client agreed to it: a salon that
-            // raises a service tomorrow must not rewrite what yesterday cost.
-            price: currentPage.price === null ? null : String(currentPage.price), priceCurrency: currentPage.priceCurrency, repeatCycleDays: currentPage.repeatCycleDays },
+            // The price as it stood when the client agreed to it, for the master
+            // who is taking them: a salon that raises a service tomorrow, or
+            // charges differently per master, must not rewrite what yesterday
+            // cost.
+            price: serviceOf(currentPage, hostId).price, priceCurrency: currentPage.priceCurrency, repeatCycleDays: currentPage.repeatCycleDays },
           adAttribution: input.attribution ? input.attribution as Prisma.InputJsonValue : undefined,
         } })
         const event = await appendBookingEvent(tx, row, "created", access?.userId ?? null)

@@ -23608,6 +23608,10 @@ model BookingPage {
   repeatCycleDays  Int?
   /// Users who take these meetings; a booking goes to one of them.
   hostIds          String[]
+  /// What a single master charges for this service and how long they take:
+  /// { "<userId>": { "price": "40", "durationMinutes": 45 } }. A missing master
+  /// or a missing field means the service's own price and duration.
+  hostVariants     Json?
   /// { "0".."6": [{ start: "HH:mm", end: "HH:mm" }] } on the organization's clock, 0 = Sunday.
   weekly           Json
   isActive         Boolean      @default(true)
