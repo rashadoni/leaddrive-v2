@@ -12,9 +12,10 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { Columns3, Plus, ArrowRight, X, Loader2, Pencil, Search, Trash2, ChevronDown, ChevronRight, FolderTree } from "lucide-react"
+import { Columns3, Plus, ArrowRight, X, Loader2, Pencil, Trash2, ChevronDown, ChevronRight, FolderTree } from "lucide-react"
 import { BoardColumnsEditor, COLUMN_STAGES, type EditCol } from "@/components/boards/board-columns-editor"
 import { HelpButton } from "@/components/help/help-button"
+import { MEMBER_FLAGS, MemberPicker, type OrgUser, type PickerState } from "@/components/boards/member-picker"
 
 interface BoardColumnDTO { key: string; label: string; sortOrder: number; mapsToStatus: string; color: string | null }
 
@@ -33,69 +34,7 @@ interface Division {
 // EditCol + COLUMN_STAGES + DEFAULT_STAGE_ACCENT now live in BoardColumnsEditor
 // (imported above) — the single column editor shared with the Configuration page.
 
-interface OrgUser { id: string; name: string; email?: string; avatar?: string | null }
-
-// A board "member" gets full access on that board: view + create + edit + all
-// column moves + comment.
-const MEMBER_FLAGS = {
-  canView: true, canEdit: true, canCreateTask: true, canComment: true,
-  canMoveToTodo: true, canMoveToInProgress: true, canMoveToTesting: true,
-  canMoveToReview: true, canMoveBack: true,
-}
-
 const SWATCHES = ["#EA580C", "#00875A", "#6554C0", "#00B8D9", "#FF8B00", "#DE350B", "#172B4D"]
-
-// ── Reusable member picker: search box + scrollable checkbox list ────────────
-// `state` is the users-fetch lifecycle. Before it existed, a failed fetch
-// (403 module gate / 500 / network) left `users` empty forever and the picker
-// showed an endless "loading" row with no hint anything went wrong.
-type PickerState = "loading" | "error" | "ready"
-function MemberPicker({ users, state, selected, onToggle }: { users: OrgUser[]; state: PickerState; selected: Set<string>; onToggle: (id: string) => void }) {
-  const t = useTranslations("board")
-  const [q, setQ] = useState("")
-  const filtered = useMemo(() => {
-    // Tokenised match: every whitespace-separated word must appear somewhere in
-    // name+email. A whole-phrase includes() made "madina agh" miss
-    // "Mədinə Ağayeva <madina.aghayeva@…>" (dot between the email words, and the
-    // display name spells it with Azerbaijani letters).
-    const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
-    if (tokens.length === 0) return users
-    return users.filter((u) => {
-      const hay = `${u.name} ${u.email ?? ""}`.toLowerCase()
-      return tokens.every((tok) => hay.includes(tok))
-    })
-  }, [users, q])
-  return (
-    <div>
-      <div className="mb-1 flex items-center gap-2 rounded-md border bg-background px-2">
-        <Search className="h-3.5 w-3.5 text-muted-foreground" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t("searchUsers")}
-          className="w-full bg-transparent py-1.5 text-sm outline-none"
-        />
-      </div>
-      <div className="max-h-44 overflow-y-auto rounded-md border">
-        {state === "loading" ? (
-          <p className="px-3 py-2 text-sm text-muted-foreground">{t("loading")}</p>
-        ) : state === "error" ? (
-          <p className="px-3 py-2 text-sm text-destructive">{t("loadUsersFailed")}</p>
-        ) : filtered.length === 0 ? (
-          <p className="px-3 py-2 text-sm text-muted-foreground">—</p>
-        ) : (
-          filtered.map((u) => (
-            <label key={u.id} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted">
-              <input type="checkbox" checked={selected.has(u.id)} onChange={() => onToggle(u.id)} />
-              <span className="truncate">{u.name}</span>
-              {u.email && <span className="ml-auto truncate text-xs text-muted-foreground">{u.email}</span>}
-            </label>
-          ))
-        )}
-      </div>
-    </div>
-  )
-}
 
 // ── Inherited-access panel: shown when editing a SECTION under a department ───
 // Members granted on the parent department inherit access to every section

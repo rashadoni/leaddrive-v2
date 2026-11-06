@@ -40,7 +40,9 @@ import { TaskDetailView } from "@/components/tasks/task-detail-view"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { resolveLaneKey } from "@/lib/tasks/board-columns"
 import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
-import { DEFAULT_BOARD_VIEW, browserStorage, readBoardView, rememberBoardView, type BoardView } from "@/lib/tasks/board-view"
+import { BOARD_VIEWS, DEFAULT_BOARD_VIEW, browserStorage, readBoardView, rememberBoardView, type BoardView } from "@/lib/tasks/board-view"
+import { BoardCalendar } from "@/components/boards/board-calendar"
+import { BoardMembersPanel } from "@/components/boards/board-members-panel"
 import { BoardReports } from "@/components/boards/board-reports"
 import { BoardProjectTabs } from "@/components/boards/board-project-tabs"
 import { DepartmentBoardView } from "@/components/boards/department-board-view"
@@ -204,6 +206,9 @@ function BoardInner() {
     setViewState(next)
     rememberBoardView(divisionId, next, browserStorage())
   }, [divisionId])
+  // «Üzvlər» is for the roles that may manage a board; anyone else whose saved
+  // view is that tab gets the table.
+  const activeView: BoardView = view === "members" && !canManageBoard ? DEFAULT_BOARD_VIEW : view
   const [reportsReloadKey, setReportsReloadKey] = useState(0)
   const [showAllDone, setShowAllDone] = useState(false) // DONE column expanded in-place (vs navigating away)
 
@@ -656,19 +661,19 @@ function BoardInner() {
 
       {/* Board / Reports tab switch */}
       <div data-crm-tabs="" className="flex items-center gap-1 px-5 pt-1">
-        {(["board", "list", "reports"] as const).map((v) => (
-          <button data-crm-tab="" data-state={view === v ? "active" : "inactive"}
+        {BOARD_VIEWS.filter((v) => v !== "members" || canManageBoard).map((v) => (
+          <button data-crm-tab="" data-state={activeView === v ? "active" : "inactive"}
             key={v}
             type="button"
             onClick={() => setView(v)}
             className="rounded-t px-3 py-1.5 text-sm font-medium"
           >
-            {v === "board" ? t("boardView") : v === "list" ? tc("list") : t("reportsTab")}
+            {v === "board" ? t("boardView") : v === "list" ? tc("list") : v === "calendar" ? t("calendarTab") : v === "members" ? t("membersTab") : t("reportsTab")}
           </button>
         ))}
       </div>
 
-      {view === "board" && (
+      {activeView === "board" && (
         <>
       {/* Toolbar (sticky, single row) */}
       <div
@@ -750,7 +755,7 @@ function BoardInner() {
         </>
       )}
 
-      {view === "list" && (
+      {activeView === "list" && (
         <div className="px-5 pb-8 pt-3">
           <InlineTasksTable
             tasks={listTasks}
@@ -776,7 +781,19 @@ function BoardInner() {
         </div>
       )}
 
-      {view === "reports" && (
+      {activeView === "calendar" && (
+        <BoardCalendar tasks={filtered} onOpenTask={setOpenTaskId} />
+      )}
+
+      {activeView === "members" && (
+        <BoardMembersPanel
+          divisionId={divisionId}
+          parentDivisionId={division?.parentDivisionId ?? null}
+          parentName={divisions.find((d) => d.id === division?.parentDivisionId)?.name ?? null}
+        />
+      )}
+
+      {activeView === "reports" && (
         <>
           <BoardReports divisionId={divisionId} assignees={assigneeOptions} onOpenTask={setOpenTaskId} reloadKey={reportsReloadKey} canEditSla={canManageBoard} />
           {/* Per-board operational report — locked to THIS board so it shows only
