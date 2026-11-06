@@ -31661,7 +31661,7 @@
     "step1": "Tap «Download for Android» and open the downloaded file.",
     "step2": "If the phone asks, allow installing apps from this source.",
     "step3": "Tap «Install». If the app is already installed, the new version installs over it — unsent visits and drafts are kept.",
-    "step4": "Open the app and enter your company code and the sign-in details your administrator gave you.",
+    "step4": "Open the app and enter your company's name. Then, under «First sign-in», enter the WhatsApp number your company has on file: a code will arrive in WhatsApp and you will set your own password.",
     "updatesTitle": "Updates",
     "updates": "When a new version is released, the app offers it as soon as you open it: tap «Update».",
     "playNote": "Coming soon to Google Play.",
