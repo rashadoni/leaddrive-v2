@@ -42,6 +42,7 @@ import { resolveLaneKey } from "@/lib/tasks/board-columns"
 import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
 import { DEFAULT_BOARD_VIEW, browserStorage, readBoardView, rememberBoardView, type BoardView } from "@/lib/tasks/board-view"
 import { BoardReports } from "@/components/boards/board-reports"
+import { BoardProjectTabs } from "@/components/boards/board-project-tabs"
 import { DepartmentBoardView } from "@/components/boards/department-board-view"
 import { OperationalReport } from "@/components/tasks/operational-report"
 import { TaskExportMenu } from "@/components/tasks/task-export-menu"
@@ -140,7 +141,10 @@ interface Task {
 }
 
 interface BoardColumnDTO { key: string; label: string; sortOrder: number; mapsToStatus: string; color: string | null }
-interface Division { id: string; key: string; name: string; color: string | null; isDepartment?: boolean; boardColumns?: BoardColumnDTO[] }
+interface Division {
+  id: string; key: string; name: string; color: string | null; isDepartment?: boolean; boardColumns?: BoardColumnDTO[]
+  parentDivisionId?: string | null; sortOrder?: number | null; _count?: { tasks?: number } | null
+}
 interface OrgUser { id: string; name: string; avatar?: string | null }
 
 function fmtDate(d: string | null, locale: string): string {
@@ -581,6 +585,8 @@ function BoardInner() {
     <EventTypeCtx.Provider value={eventTypeMap}>
     <BoardActionsCtx.Provider value={boardActions}>
     <div style={{ background: C.page, minHeight: "100%", color: C.text }} className="flex flex-col">
+      {/* Folders and projects (Bordio's sidebar) as tabs — src/components/boards/board-project-tabs.tsx */}
+      <BoardProjectTabs currentId={divisionId} divisions={divisions} />
       {/* Header */}
       {/* <main> already pads the page (p-3 … lg:p-8), so no top padding here —
           pt-4 on top of it left an empty band above the breadcrumb. The board

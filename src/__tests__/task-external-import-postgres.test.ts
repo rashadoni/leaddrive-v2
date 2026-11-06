@@ -60,6 +60,7 @@ const ORG = "org-import"
 const OTHER_ORG = "org-import-other"
 const BOARD = "div-marketing"
 const DEPARTMENT = "div-department"
+const SECTION = "div-section-zeytun"
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const STAGES = ["backlog", "todo", "in_progress", "testing", "review", "done"]
 
@@ -187,6 +188,7 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
       dryRun: true,
       created: 2,
       updated: 0,
+      moved: 0,
       unmatchedEmails: { "former.member@zeytunpharma.az": 1 },
       newTaskTypes: ["digital_marketing", "traditional_marketing"],
       newBrands: ["Zeytun", "Pharmastore"],
@@ -268,6 +270,47 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
       .toEqual(["MARKETING-2", "in_progress", "col_in_progress", null, "gullu", 1])
     const brand = await bypass(() => prisma.customField.findFirst({ where: { organizationId: ORG, fieldName: "brand" }, select: { options: true } }))
     expect(brand?.options).toEqual(["Zeytun", "Pharmastore", "Noreva - Buccotherm"])
+  })
+
+  // Owner, 2026-11-06: Bordio's projects became boards of their own after the
+  // first run had put every task on one board.
+  it("moves a task to another board only when asked, with its history and a key of the new board", async () => {
+    await bypass(async () => {
+      await prisma.division.create({ data: { id: SECTION, organizationId: ORG, key: "DZEY", name: "Zeytun", parentDivisionId: DEPARTMENT } })
+      await prisma.boardColumn.createMany({
+        data: [["todo", "New task"], ["in_progress", "In progress"], ["done", "Completed"]].map(([stage, label], sortOrder) => (
+          { organizationId: ORG, divisionId: SECTION, key: `sec_${stage}`, label, sortOrder, mapsToStatus: stage })),
+      })
+    })
+    const before = (await boardTasks()).find((task) => task.externalId === OPEN.externalId)!
+
+    const refused = await send({ source: "bordio", allowUnmatched: true, tasks: [OPEN] }, SECTION)
+    expect([refused.status, refused.body.error]).toEqual([409, `Task ${OPEN.externalId} was already imported onto another board`])
+
+    const dry = await send({ source: "bordio", allowUnmatched: true, relocate: true, dryRun: true, tasks: [OPEN] }, SECTION)
+    expect([dry.body.data.created, dry.body.data.updated, dry.body.data.moved]).toEqual([0, 1, 1])
+    expect((await boardTasks()).some((task) => task.id === before.id)).toBe(true)
+
+    const moved = await send({ source: "bordio", allowUnmatched: true, relocate: true, tasks: [OPEN] }, SECTION)
+    expect([moved.status, moved.body.data.moved]).toEqual([200, 1])
+    const task = await bypass(() => prisma.task.findFirstOrThrow({
+      where: { id: before.id },
+      include: { comments: true, checklist: true, activities: { orderBy: { createdAt: "asc" } } },
+    }))
+    expect({
+      board: task.divisionId, key: task.taskKey, lane: task.boardColumnKey, comments: task.comments.length, checklist: task.checklist.length,
+      last: task.activities.filter((a) => a.action === "board_changed").map((a) => [a.oldValue, a.newValue, (a.metadata as { previousTaskKey?: string }).previousTaskKey]),
+    }).toEqual({
+      board: SECTION, key: "DZEY-1", lane: "sec_todo", comments: 1, checklist: 2,
+      last: [["Ümumi Marketinq", "Zeytun", before.taskKey]],
+    })
+    expect((await boardTasks()).some((t) => t.id === before.id)).toBe(false)
+
+    // Running the same batch again is a plain update on the new board.
+    const again = await send({ source: "bordio", allowUnmatched: true, relocate: true, tasks: [OPEN] }, SECTION)
+    expect([again.body.data.updated, again.body.data.moved]).toEqual([1, 0])
+    const still = await bypass(() => prisma.task.findFirstOrThrow({ where: { id: before.id }, select: { taskKey: true } }))
+    expect(still.taskKey).toBe("DZEY-1")
   })
 
   it("the list hands out a board past 200 tasks page by page, every card exactly once", async () => {
