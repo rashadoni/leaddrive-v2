@@ -226,7 +226,8 @@ export function createInboundPilotHost(options: {
         return tx.$queryRaw<Array<Omit<InboundPilotCall, "startedAt" | "endedAt"> & { startedAt: Date; endedAt: Date | null }>>`
           WITH candidates AS (
             SELECT id, "organizationId", "channelConfigId", "providerCallId", provider, direction, "callMode", status,
-              "wasAnswered", "endedAt", "startedAt", "fromNumber", "targetPhoneE164", "handoffState"
+              "wasAnswered", "endedAt", "startedAt", "fromNumber", "targetPhoneE164", "handoffState",
+              "consentAudit"->'pharmacyWaitlistCallback' AS "callbackMarker"
             FROM call_logs WHERE "organizationId"=${config.organizationId} AND provider='asterisk' AND "providerCallId"=${callId} LIMIT 2
           ) SELECT c.* FROM candidates c
           JOIN organizations org ON org.id=c."organizationId" AND org."isActive"=true

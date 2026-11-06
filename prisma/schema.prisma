@@ -23935,12 +23935,19 @@ model PharmacyWaitlistItem {
   /// A manager took it off the list.
   dismissedAt      DateTime?
   dismissedById    String?
+  /// Owner's queue task 10 (2026-11-07): the AI called the pharmacy back about this product
+  /// (zeytun-waitlist-callback.ts): when, the call's provider id, and how it was placed.
+  callbackAt       DateTime?
+  callbackCallId   String?
+  /// placed | failed
+  callbackStatus   String?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
   @@unique([organizationId, providerCallId, externalId])
   @@index([organizationId, catalogScopeKey, arrivedAt])
   @@index([organizationId, companyId])
+  @@index([organizationId, callbackCallId])
   @@map("pharmacy_waitlist_items")
 }
 
