@@ -499,6 +499,8 @@ ZEYTUN_OPENING_AUDIO_MAX = 4
 # looked a product up. A lookup still running after a second gets this, in the
 # call's voice, voiced once per process like the opening.
 ZEYTUN_WAIT_FILLER = "Hmm... bir saniyə."
+# Owner, 2026-11-06: «когда перебиваешь, он начинает сразу в тишину… например говорил «ага» или хмыкал».
+ZEYTUN_BARGE_ACK = "Hə."
 ZEYTUN_FILLER_AUDIO = {}
 
 
@@ -570,6 +572,14 @@ class ZeytunSpeechRelay:
     # ("daha doğrusu...") got it too. None turns it off; a long lookup still
     # gets the filler (FILLER_AFTER).
     TURN_FILLER_SECONDS = None
+    # Owner, 2026-11-06: «когда перебиваешь, он начинает сразу в тишину». The
+    # caller who cut the agent off hears it stop at once, then ~2.5 s of
+    # nothing while the model and the TTS answer. Only after such a phrase:
+    # "Hə." in the line's voice, BARGE_ACK_SECONDS after the station closed
+    # it, if the answer has not begun and nothing plays. Once per phrase, never
+    # within FILLER_EVERY_SECONDS of a filler. None turns it off.
+    BARGE_ACK_SECONDS = 0.3
+    BARGE_ACK_WINDOW_SECONDS = 20.0
     SILENCE_NUDGE_SECONDS = 6.0
     SILENCE_NUDGES_PER_CALL = 3
     SILENCE_NUDGE = ("Station note, never read it aloud: the caller has said nothing for six seconds since your "
@@ -584,6 +594,10 @@ class ZeytunSpeechRelay:
         # Set by the core: True while the line still plays the agent's audio.
         self.playing = playing or (lambda: False)
         self.caller_done_at = None
+        # When the agent was last cut off by the caller (interrupted), and when "Hə." is due.
+        self.barged_at = None
+        self.ack_due_at = None
+        self.ack_key = None
         self.question_pending = False
         self.quiet_since = None
         self.nudges = 0
@@ -614,11 +628,31 @@ class ZeytunSpeechRelay:
             self.question_pending = False
             self.quiet_since = None
             self.caller_done_at = None
+            self.ack_due_at = None
 
     def caller_done(self):
-        """The core closed a caller phrase: the agent owes an answer (TURN_FILLER_SECONDS)."""
+        """The core closed a caller phrase: the agent owes an answer (TURN_FILLER_SECONDS).
+
+        A phrase that cut the agent off also owes the caller "Hə." (BARGE_ACK_SECONDS)."""
         with self.lock:
-            self.caller_done_at = self.clock()
+            now = self.clock()
+            self.caller_done_at = now
+            if (self.BARGE_ACK_SECONDS is not None and self.barged_at is not None
+                    and now - self.barged_at < self.BARGE_ACK_WINDOW_SECONDS):
+                self.ack_due_at = now + self.BARGE_ACK_SECONDS
+            self.barged_at = None
+
+    def barge_ack_tick(self):
+        """One check of the pause after a phrase that cut the agent off (the watch thread calls it)."""
+        with self.lock:
+            due = self.ack_due_at
+            if due is None or self.clock() < due:
+                return False
+            self.ack_due_at = None
+        if self.playing():
+            return False
+        played = self.filler(ZEYTUN_BARGE_ACK, key=self.ack_key, kind="barge_ack")
+        return played
 
     def turn_filler_tick(self):
         """One check of the pause after a caller phrase (the watch thread calls it)."""
@@ -659,6 +693,7 @@ class ZeytunSpeechRelay:
     def _watch_silence(self):
         while self.alive():
             try:
+                self.barge_ack_tick()
                 self.turn_filler_tick()
                 self.silence_tick()
             except Exception as error:  # never the call's problem: the watch stops and says why
@@ -694,10 +729,13 @@ class ZeytunSpeechRelay:
         return True
 
     def prefetch_filler(self, text=ZEYTUN_WAIT_FILLER):
-        """Voice the wait filler in the background, once per process and voice."""
+        """Voice the wait filler (or "Hə.", ZEYTUN_BARGE_ACK) in the background, once per process and voice."""
         key = (getattr(self.tts, "voice", None), getattr(self.tts, "url", "").split("?")[0],
                getattr(self.tts, "style", None), text)
-        self.filler_key = key
+        if text == ZEYTUN_BARGE_ACK:
+            self.ack_key = key
+        else:
+            self.filler_key = key
         if key in ZEYTUN_FILLER_AUDIO:
             return
 
@@ -713,12 +751,12 @@ class ZeytunSpeechRelay:
                 ZEYTUN_FILLER_AUDIO[key] = tuple(chunks)
         threading.Thread(target=voice, name="zeytun-filler", daemon=True).start()
 
-    def filler(self, text=ZEYTUN_WAIT_FILLER):
-        """Play the wait filler now, if it is ready and nothing is being said.
+    def filler(self, text=ZEYTUN_WAIT_FILLER, key=None, kind="wait_filler"):
+        """Play the wait filler (or another voiced clip) now, if it is ready and nothing is being said.
 
         Never over a reply in progress, never more often than FILLER_EVERY_SECONDS.
         """
-        chunks = ZEYTUN_FILLER_AUDIO.get(getattr(self, "filler_key", None))
+        chunks = ZEYTUN_FILLER_AUDIO.get(key or getattr(self, "filler_key", None))
         with self.lock:
             busy = any(not turn["finished"] or turn["pieces"] or turn["buffer"].strip() for turn in self.turns)
             now = self.clock()
@@ -736,7 +774,7 @@ class ZeytunSpeechRelay:
             self._emit(content)
         self._emit({"modelTurn": {"parts": [{"inlineData": {"mimeType": "audio/pcm;rate=24000",
             "data": base64.b64encode(self._silence(self.TAIL_SILENCE_MS)).decode("ascii")}}]}})
-        self.log("wait_filler")
+        self.log(kind)
         return True
 
     def _split_locked(self, turn):
@@ -782,6 +820,7 @@ class ZeytunSpeechRelay:
                 self._cancel_all_locked(generation_over=True)
                 self.epoch = epoch
             if content.get("interrupted") is True:
+                self.barged_at = self.clock()
                 self._cancel_all_locked(generation_over=True)
                 for queued in self.turns:
                     for key in queued["held"]:
@@ -837,6 +876,7 @@ class ZeytunSpeechRelay:
                 self.question_pending = False
                 self.quiet_since = None
                 self.caller_done_at = None  # the answer has begun: no filler
+                self.ack_due_at = None
 
             if turn is None:
                 return not content
@@ -1813,6 +1853,8 @@ class ZeytunInboundBridge:
             if warm is not None:
                 warm()
             self.relay.prefetch_filler()
+            if ZeytunSpeechRelay.BARGE_ACK_SECONDS is not None:
+                self.relay.prefetch_filler(ZEYTUN_BARGE_ACK)
         return self.relay
 
     @staticmethod
