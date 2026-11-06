@@ -291,6 +291,11 @@ def build(source, bridge):
     replace('            + obligation\n',
             '            + (zeytun_restore_note(self.pharmacy_bridge) if self.pharmacy_preview else "")\n'
             '            + obligation\n')
+    # Task 3 (2026-11-06): every restore after a drop in silence asked the caller to
+    # repeat; on the pharmacy line only a caller who spoke after the agent's last audio is.
+    replace('        if state.get("untranscribed_caller_turn"):\n',
+            '        if state.get("untranscribed_caller_turn") and (not self.pharmacy_preview\n'
+            '                                                     or zeytun_caller_owed(self.pharmacy_bridge)):\n')
     # Only recovery wording changes; pharmacy calls are never marked as demos.
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:

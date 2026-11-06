@@ -504,6 +504,13 @@ ZEYTUN_WAIT_FILLER = "Hmm... bir saniyə."
 ZEYTUN_RESTORE_TURNS = 60
 
 
+def zeytun_caller_owed(bridge):
+    """True unless the line's relay knows the caller has said nothing since the agent's last audio."""
+    relay = getattr(bridge, "relay", None)
+    owed = getattr(relay, "caller_owed", None)
+    return True if owed is None else owed()
+
+
 def zeytun_restore_note(bridge):
     """The restore's save rule, with the list the station last sent: its externalIds keep the lines
     on their 1C products (2026-11-06 stand: a save rebuilt from the words alone came back not found)."""
@@ -612,6 +619,10 @@ class ZeytunSpeechRelay:
         self.barged_at = None
         self.ack_due_at = None
         self.ack_key = None
+        # When the caller last finished a phrase, whether one is open now, when the agent's audio last went out.
+        self.caller_end_at = None
+        self.caller_speaking = False
+        self.agent_audio_at = None
         self.question_pending = False
         self.quiet_since = None
         self.nudges = 0
@@ -643,6 +654,7 @@ class ZeytunSpeechRelay:
             self.quiet_since = None
             self.caller_done_at = None
             self.ack_due_at = None
+            self.caller_speaking = True
 
     def caller_done(self):
         """The core closed a caller phrase: the agent owes an answer (TURN_FILLER_SECONDS).
@@ -651,6 +663,8 @@ class ZeytunSpeechRelay:
         with self.lock:
             now = self.clock()
             self.caller_done_at = now
+            self.caller_end_at = now
+            self.caller_speaking = False
             if (self.BARGE_ACK_SECONDS is not None and self.barged_at is not None
                     and now - self.barged_at < self.BARGE_ACK_WINDOW_SECONDS):
                 self.ack_due_at = now + self.BARGE_ACK_SECONDS
@@ -932,7 +946,20 @@ class ZeytunSpeechRelay:
         return samples.tobytes() + pcm[len(samples) * 2:]
 
     def _emit(self, content):
+        if any(isinstance(part, dict) and part.get("inlineData") for part in (content.get("modelTurn") or {}).get("parts") or []):
+            self.agent_audio_at = self.clock()
         self.inject({"serverContent": content, self.MARK: True})
+
+    def caller_owed(self):
+        """Whether the caller spoke after the agent's last audio: a restore owes them an answer.
+
+        Task 3 of the owner's queue (2026-11-06): after every drop in silence the restored
+        agent asked "son dediyinizi təkrar edin" — the core's check marks the caller's turn
+        untranscribed even when it was long answered."""
+        with self.lock:
+            if self.caller_speaking:
+                return True
+            return self.caller_end_at is not None and (self.agent_audio_at is None or self.caller_end_at > self.agent_audio_at)
 
     def _run(self):
         while self.alive():

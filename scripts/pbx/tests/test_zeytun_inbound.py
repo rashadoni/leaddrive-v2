@@ -1151,6 +1151,23 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertFalse(relay.turn_filler_tick())
         self.assertEqual(played, [2.5])
 
+    def test_a_restore_owes_the_caller_an_answer_only_after_they_spoke(self):
+        # Task 3 (2026-11-06): a drop in silence restored as "son dediyinizi təkrar edin".
+        relay, state = self.nudge_relay()
+        self.assertFalse(relay.caller_owed())
+        relay.caller_spoke()
+        self.assertTrue(relay.caller_owed())  # speaking now
+        state["now"] = 1.0
+        relay.caller_done()
+        self.assertTrue(relay.caller_owed())  # spoke, not answered yet
+        state["now"] = 2.0
+        relay.filter(self.content("Ketonal, on qutu. Daha? ", audio=True))
+        until = time.monotonic() + 3
+        while relay.agent_audio_at is None and time.monotonic() < until:
+            time.sleep(0.01)
+        self.assertFalse(relay.caller_owed())  # answered aloud since
+        self.assertTrue(bridge_module.zeytun_caller_owed(None))  # no relay: the core's own rule
+
     def test_a_phrase_that_cut_the_agent_off_gets_a_short_ha_once(self):
         # Owner 2026-11-06: «когда перебиваешь, он начинает сразу в тишину… говорил «ага» или хмыкал».
         relay, state = self.nudge_relay()
@@ -2591,7 +2608,9 @@ class ArtifactTests(unittest.TestCase):
         differences.discard("_dialog_restore_state")
         restore = ast.unparse(old_methods["_context_restore_event"]).replace(
             " + obligation + ", " + (zeytun_restore_note(self.pharmacy_bridge) if self.pharmacy_preview else '') + obligation + ", 1).replace(
-            "self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
+            "self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)").replace(
+            "if state.get('untranscribed_caller_turn'):",
+            "if state.get('untranscribed_caller_turn') and (not self.pharmacy_preview or zeytun_caller_owed(self.pharmacy_bridge)):", 1)
         self.assertIn("zeytun_restore_note", restore)
         self.assertEqual(ast.dump(ast.parse(restore).body[0]), ast.dump(new_methods["_context_restore_event"]))
         differences.discard("_context_restore_event")
