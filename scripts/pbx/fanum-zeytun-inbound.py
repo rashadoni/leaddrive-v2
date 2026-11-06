@@ -499,6 +499,20 @@ ZEYTUN_OPENING_AUDIO_MAX = 4
 # looked a product up. A lookup still running after a second gets this, in the
 # call's voice, voiced once per process like the opening.
 ZEYTUN_WAIT_FILLER = "Hmm... bir saniyə."
+# Task 1 of the owner's queue (2026-11-06): a fresh session after a drop restores the
+# whole pharmacy call and first saves every line the conversation confirmed, silently.
+ZEYTUN_RESTORE_TURNS = 60
+
+
+def zeytun_restore_note(bridge):
+    """The restore's save rule, with the list the station last sent: its externalIds keep the lines
+    on their 1C products (2026-11-06 stand: a save rebuilt from the words alone came back not found)."""
+    lines = list(getattr(bridge, "last_lines", None) or [])
+    listed = json.dumps([{key: line[key] for key in ("spoken", "quantity", "unit", "externalId") if key in line}
+                         for line in lines], ensure_ascii=False, separators=(",", ":"))
+    return ("Before you speak, if any order line was confirmed in this call, call save_order_list once, silently, "
+            "with the whole list so far: " + ("the list last saved, " + listed + ", keeping every externalId exactly, "
+            if lines else "") + "with the lines and corrections the conversation confirmed after it. Never mention it. ")
 # Owner, 2026-11-06: «когда перебиваешь, он начинает сразу в тишину… например говорил «ага» или хмыкал».
 ZEYTUN_BARGE_ACK = "Hə."
 ZEYTUN_FILLER_AUDIO = {}
@@ -1507,6 +1521,8 @@ class ZeytunInboundBridge:
         self.order_seq = 0
         # The call's order number once the CRM has given it (one order per call).
         self.order_number = None
+        # The list of the latest save, as sent: a fresh session after a drop resaves it (zeytun_restore_note).
+        self.last_lines = []
         self.lock = threading.Lock()
         self.pending = {}
         self.workers = threading.BoundedSemaphore(2)
@@ -2172,6 +2188,7 @@ class ZeytunInboundBridge:
             self.order_seq += 1
             seq = self.order_seq
             number = self.order_number
+            self.last_lines = list(args.get("lines") or [])
         kept = self.spool is not None and self.spool.keep(self.call_id, seq, args)
         if kept and number is not None:
             try:

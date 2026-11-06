@@ -35,6 +35,8 @@
  *     [--builder <build-zeytun-inbound-core.py of another revision>] [--station <fanum-zeytun-inbound.py>]
  *     [--manners polite,quick,overlap,pauses,noisy] [--steps N] [--scenario scripts/zeytun-line/voice-scenario.json]
  *     [--stop-at 0.6] [--out ~/inbox/zeytun-recordings/line-stand/<time>] [--departed-from <older snapshot>]
+ *     [--drop-after-step N] (after step N's answer: Google drops the session and refuses its resumption,
+ *      so the core restores the call in a fresh session — call ac5ccd37 lost its unsaved lines there)
  *     [--stand-dir ~/.cache/zeytun-core-stand] (onnxruntime in vendor/, silero-vad.onnx: the station's)
  *
  * Costs real money: one Live session per call (~$0.4-0.6 for the presentation
@@ -254,6 +256,8 @@ class Core {
       }
     })
   }
+  /** A planned Google drop with every resume refused: the core must restore the call in a fresh session. */
+  drop() { this.child.stdin.write(`${JSON.stringify({ drop: true, refuse_resume_s: 10 })}\n`) }
   close() { this.child.stdin.end(); setTimeout(() => this.child.kill(), 3000).unref() }
 }
 
@@ -361,6 +365,11 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
           result.replyGapMs = Math.max(0, agentStartedAt - endedAt)
         } else notes.push(`шаг ${step.n}: ассистент молчал 12 с после «${phrase.say}»`)
       }
+      if (opts.dropAfterStep === step.n && !closed) {
+        await until(() => closed || quietFor(1500), 20_000)
+        core.drop()
+        notes.push(`после шага ${step.n}: обрыв сессии Google по команде стенда, продление отклонено`)
+      }
       if (closed || stopped) break
     }
     if (!closed) await until(() => closed || quietFor(2500), 30_000)
@@ -379,6 +388,8 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
 /* ---------- the report ---------- */
 
 type Options = { snapshot: string; core: string; builder?: string; station?: string; manners: Manner[]; steps?: number; scenario: string
+  /** After this step's answer the stand drops the Google session and refuses its resumption (--drop-after-step). */
+  dropAfterStep?: number
   stopAt: number; out: string; departedFrom?: string; standDir: string; vertexKey: string; secondEarKey?: string; cache: string }
 
 function options(argv: string[]): Options {
@@ -391,6 +402,7 @@ function options(argv: string[]): Options {
   const recordings = join(homedir(), "inbox", "zeytun-recordings")
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
   return { snapshot, core, builder: value("--builder"), station: value("--station"), manners, steps: value("--steps") ? Number(value("--steps")) : undefined,
+    dropAfterStep: value("--drop-after-step") ? Number(value("--drop-after-step")) : undefined,
     scenario: value("--scenario") ?? join(HERE, "voice-scenario.json"), stopAt: Number(value("--stop-at") ?? 0.6),
     out: value("--out") ?? join(recordings, "line-stand", stamp), departedFrom: value("--departed-from"),
     standDir: value("--stand-dir") ?? join(homedir(), ".cache", "zeytun-core-stand"),
