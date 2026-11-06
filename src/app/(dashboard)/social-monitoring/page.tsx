@@ -727,7 +727,7 @@ function MentionImagePreview(props: { sourceUrl: string; previewUrl: string; alt
   return (
     <a href={props.sourceUrl} target="_blank" rel="noreferrer" className="inline-block">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <img loading="lazy" decoding="async"
         src={props.previewUrl}
         alt={props.alt}
         onError={() => setFailed(true)}
@@ -4289,7 +4289,7 @@ export default function SocialMonitoringPage() {
                     <Newspaper className="h-4 w-4 text-primary" />
                   ) : m.authorAvatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.authorAvatar} alt="" className="h-full w-full object-cover" />
+                    <img loading="lazy" decoding="async" src={m.authorAvatar} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   )}
@@ -4433,7 +4433,7 @@ export default function SocialMonitoringPage() {
                           className="overflow-hidden rounded-lg border border-border bg-muted"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={newsImageUrl}
                             alt=""
                             className="aspect-[16/10] h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"

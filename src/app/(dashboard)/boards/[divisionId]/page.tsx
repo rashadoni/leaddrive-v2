@@ -973,7 +973,7 @@ function Card({ task, locale, overlay }: { task: Task; locale: string; overlay?:
         {task.assignee && (
           task.assignee.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={task.assignee.avatar} alt={task.assignee.name} title={task.assignee.name} className="h-[22px] w-[22px] rounded-full object-cover" />
+            <img loading="lazy" decoding="async" src={task.assignee.avatar} alt={task.assignee.name} title={task.assignee.name} className="h-[22px] w-[22px] rounded-full object-cover" />
           ) : (
             <span
               className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[10px] font-semibold text-white"

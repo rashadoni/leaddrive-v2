@@ -240,6 +240,7 @@ const RATE_LIMITED_PATHS = ["/api/auth", "/login", "/forgot-password", "/api/v1/
 
 // CSP policy lives in src/lib/csp.ts (unit-testable, see tests)
 import { buildCsp, CSP_REPORT_URI, type FrameAncestorsMode } from "@/lib/csp"
+import { WEB_VITALS_URI } from "@/lib/telemetry/web-vitals"
 
 // Paths that are allowed to be embedded in same-origin iframes (e.g. invoice preview)
 const IFRAME_ALLOWED_PATHS = ["/api/v1/invoices/"]
@@ -583,6 +584,18 @@ const authMiddleware = auth(async (req) => {
   // (which returns early for all of /api/v1/public/*). With enforce on, every
   // full page load POSTs ~1 report (webpack's benign globalThis-shim eval), so
   // the browser-driven volume needs its own generous bucket as a flood cap.
+  // Page-speed beacons (src/lib/telemetry/web-vitals.ts): one per page view
+  // from every open CRM tab — an office behind one address would exhaust the
+  // 10/min public lead-form bucket, so they get their own, like CSP reports.
+  if (pathname === WEB_VITALS_URI && req.method === "POST") {
+    const ip = clientIp(req)
+    const webVitalsKey = `web-vitals:${ip}`
+    if (!checkRateLimit(webVitalsKey, RATE_LIMIT_CONFIG.api)) {
+      log429("web-vitals", webVitalsKey, pathname)
+      return withCspHeaders(new NextResponse(null, { status: 429 }), nonce)
+    }
+  }
+
   if (pathname === CSP_REPORT_URI && req.method === "POST") {
     const ip = clientIp(req)
     const cspReportKey = `csp-report:${ip}`
@@ -595,7 +608,7 @@ const authMiddleware = auth(async (req) => {
   // Rate limit public API POST endpoints (these bypass auth but must not bypass
   // rate limits). This must run BEFORE the public-path early return below.
   if (
-    ((pathname.startsWith("/api/v1/public/") && pathname !== CSP_REPORT_URI)
+    ((pathname.startsWith("/api/v1/public/") && pathname !== CSP_REPORT_URI && pathname !== WEB_VITALS_URI)
       || pathname === "/api/v1/demo-request")
     && req.method === "POST"
   ) {

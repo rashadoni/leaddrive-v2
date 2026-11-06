@@ -116,9 +116,6 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {basemapProvider ? <meta name={BASEMAP_PROVIDER_META} content={basemapProvider} /> : null}
       </head>
       <body className="font-sans antialiased">

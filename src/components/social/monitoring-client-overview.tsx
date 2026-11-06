@@ -58,7 +58,7 @@ function ClientLogo({ name, logoUrl }: { name: string; logoUrl: string | null })
     return (
       // Runtime brand logos are authenticated, same-origin uploads.
       // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <img loading="lazy" decoding="async"
         src={logoUrl}
         alt=""
         className="h-7 w-7 shrink-0 rounded-lg border bg-background object-contain"

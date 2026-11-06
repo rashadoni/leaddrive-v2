@@ -28,7 +28,7 @@ export function PhotoThumbnailImg({ src, onFinalError, ...props }: Omit<ImgHTMLA
   }, [attempt])
 
   return (
-    <img
+    <img loading="lazy" decoding="async"
       {...props}
       alt={props.alt ?? ""}
       src={attempt === 1 ? mtmPhotoRetryUrl(src) : src}

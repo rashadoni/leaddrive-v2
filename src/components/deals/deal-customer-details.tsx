@@ -76,7 +76,7 @@ export function DealCustomerDetails({
             <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
               {contact.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={contact.avatar} alt="" className="h-full w-full object-cover" />
+                <img loading="lazy" decoding="async" src={contact.avatar} alt="" className="h-full w-full object-cover" />
               ) : (
                 contact.fullName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
               )}

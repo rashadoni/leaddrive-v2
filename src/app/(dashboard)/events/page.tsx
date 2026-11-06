@@ -18,8 +18,10 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 import { EventsAnalytics } from "@/components/events/events-analytics"
 import { cn } from "@/lib/utils"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 const STATUS_STYLES: Record<string, string> = {
   planned: "bg-blue-100 text-blue-700",
@@ -39,6 +41,7 @@ export default function EventsPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search)
   const [statusFilter, setStatusFilter] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteEvent, setDeleteEvent] = useState<any>(null)
@@ -64,7 +67,7 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       const qs = new URLSearchParams()
-      if (search) qs.set("search", search)
+      if (debouncedSearch) qs.set("search", debouncedSearch)
       if (statusFilter) qs.set("status", statusFilter)
       const res = await fetch(`/api/v1/events?${qs}`, {
         headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
@@ -77,7 +80,7 @@ export default function EventsPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { if (session) fetchEvents() }, [session, search, statusFilter])
+  useEffect(() => { if (session) fetchEvents() }, [session, debouncedSearch, statusFilter])
 
   const handleDelete = async () => {
     if (!deleteEvent) return

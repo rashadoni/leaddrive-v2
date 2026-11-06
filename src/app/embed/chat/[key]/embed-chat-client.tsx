@@ -410,7 +410,7 @@ export function EmbedChatClient({ publicKey, title, greeting, primaryColor, orga
                     m.attachmentType?.startsWith("image/") ? (
                       <a href={m.attachmentUrl} target="_blank" rel="noreferrer">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={m.attachmentUrl} alt={m.attachmentName || ""} className="rounded-md max-h-48 max-w-full object-contain" />
+                        <img loading="lazy" decoding="async" src={m.attachmentUrl} alt={m.attachmentName || ""} className="rounded-md max-h-48 max-w-full object-contain" />
                       </a>
                     ) : (
                       <a href={m.attachmentUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline">

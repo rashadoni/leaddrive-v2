@@ -444,7 +444,7 @@ export function MonitoringProfileLogo({
       <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border bg-background">
         {/* Runtime brand logos are authenticated, same-origin uploads. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <img loading="lazy" decoding="async"
           src={logoUrl}
           alt=""
           className="h-full w-full object-contain p-1.5"

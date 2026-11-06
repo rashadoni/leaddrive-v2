@@ -13,6 +13,7 @@ import { MtmAttendanceAddEmployee } from "@/components/mtm/attendance-add-employ
 import { MtmAttendanceEmployeeImport } from "@/components/mtm/attendance-employee-import"
 import { MtmAttendanceTimeRollout, type TimeFilter } from "@/components/mtm/attendance-time-rollout"
 import type { AttendanceEmployeeDirectory } from "@/lib/mtm/attendance-employee-contract"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 const ENDPOINT = "/api/v1/mtm/attendance/employees"
 const SELECT = "min-h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
@@ -60,15 +61,18 @@ export function MtmAttendanceEmployees() {
   useEffect(() => { void load(); return () => read.current?.abort() }, [load])
 
   // The list's state is the address: «back» from an employee lands on the same view.
+  // The list filters on every keystroke; the address (a server round trip in
+  // the app router) follows the pause in typing.
+  const addressSearch = useDebouncedValue(search)
   const query = useMemo(() => {
     const next = new URLSearchParams({ tab: "employees" })
-    if (search.trim()) next.set("q", search.trim())
+    if (addressSearch.trim()) next.set("q", addressSearch.trim())
     if (department) next.set("team", department)
     if (participation !== "ALL") next.set("show", participation)
     if (timeFilter !== "ALL") next.set("time", timeFilter)
     if (page) next.set("page", String(page + 1))
     return next.toString()
-  }, [search, department, participation, timeFilter, page])
+  }, [addressSearch, department, participation, timeFilter, page])
   useEffect(() => { if (`?${query}` !== `?${params.toString()}`) router.replace(`${pathname}?${query}`, { scroll: false }) }, [query, params, pathname, router])
 
   const needle = search.trim().toLocaleLowerCase(locale), digits = search.replace(/\D/g, "")

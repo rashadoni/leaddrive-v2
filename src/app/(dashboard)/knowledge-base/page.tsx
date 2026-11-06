@@ -45,6 +45,7 @@ import { Input } from "@/components/ui/input"
 import { formatDate } from "@/lib/format-date"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { cn } from "@/lib/utils"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 type ArticleStatus = "published" | "draft"
 
@@ -225,9 +226,17 @@ export default function KnowledgeBasePage() {
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
   }, [filterCategory, filterStatus, pathname, router, search, searchParams])
 
+  // The list filters locally on every keystroke; only the address follows the
+  // pause in typing — router.replace is a server round trip in the app router.
+  const debouncedSearch = useDebouncedValue(search)
+  useEffect(() => {
+    if (debouncedSearch.trim() === (searchParams.get("q") ?? "")) return
+    syncFilters({ q: debouncedSearch })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
+
   const setSearchFilter = (value: string) => {
     setSearch(value)
-    syncFilters({ q: value })
   }
 
   const setStatusFilter = (value: "all" | ArticleStatus) => {

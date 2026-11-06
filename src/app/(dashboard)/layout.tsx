@@ -34,6 +34,8 @@ import { PharmacyPromotionOutboxSync } from "@/components/mtm/pharmacy-promotion
 import { dashboardAssistantVisibility } from "@/lib/dashboard-assistant-visibility"
 import { ReviewerWatermark } from "@/components/reviewer-watermark"
 import { CrmAppearanceProvider } from "@/components/ui/crm-appearance"
+import { PageSkeleton } from "@/components/ui/page-skeleton"
+import { WebVitalsReporter } from "@/components/web-vitals-reporter"
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -202,9 +204,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               />
               <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} data-crm-workspace="" ref={mainRef}>
                 {!childrenReady ? (
-                  <div className="flex h-full items-center justify-center" aria-busy="true">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />
-                  </div>
+                  <PageSkeleton />
                 ) : pageBlocked ? (
                   <ModuleDisabled reason={roleBlocked ? "role" : "module"} />
                 ) : (
@@ -250,6 +250,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
           <TourRenderer />
           <TicketNotifier />
+          <WebVitalsReporter />
           {status === "authenticated" && mtmSyncEnabled ? <PharmacyPromotionOutboxSync sessionKey={outboxSessionKey} /> : null}
           </LauncherPrefsProvider>
           </TooltipProvider>
