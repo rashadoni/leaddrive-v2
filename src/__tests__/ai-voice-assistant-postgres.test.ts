@@ -190,6 +190,7 @@ type Receipt = {
   payloadHash: string
   state: string
   supersededIntentId?: string
+  unchangedFields?: string[]
   preview: { fields?: { key: string; after: unknown }[] }
 }
 
@@ -206,6 +207,7 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
   let confirmRoute!: typeof import("@/app/api/v1/ai/voice/actions/[id]/confirmation/route")
   let commitRoute!: typeof import("@/app/api/v1/ai/voice/actions/[id]/commit/route")
   let cancelRoute!: typeof import("@/app/api/v1/ai/voice/actions/[id]/cancel/route")
+  let editRoute!: typeof import("@/app/api/v1/ai/voice/actions/[id]/route")
   let endRoute!: typeof import("@/app/api/v1/ai/voice/session/end/route")
   let reaperRoute!: typeof import("@/app/api/cron/voice-session-reaper/route")
   let claimExecution!: typeof import("@/lib/ai/voice/action-execution-claim").claimAiVoiceActionExecution
@@ -321,6 +323,34 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
     return { step: "commit", status: response.status, body: await response.json() }
   }
 
+  /**
+   * Правка поля руками в квитанции: «Изменить» → поле → «Сохранить».
+   * Эндпоинт не сливает, а ЗАМЕНЯЕТ, поэтому форма присылает всю полезную
+   * нагрузку целиком — как и настоящая форма (buildEditedReceiptPayload).
+   */
+  async function typeIntoReceipt(
+    receipt: Receipt,
+    fields: Record<string, unknown>,
+  ): Promise<{ status: number; body: { data?: Receipt; code?: string } }> {
+    const whole: Record<string, unknown> = {}
+    for (const field of receipt.preview.fields ?? []) {
+      if (field.key === "expectedUpdatedAt") continue
+      if (field.after !== null && field.after !== undefined) whole[field.key] = field.after
+    }
+    const response = await editRoute.PATCH(
+      new NextRequest(`http://localhost:3000/api/v1/ai/voice/actions/${receipt.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+        body: JSON.stringify({
+          expectedRevision: receipt.revision,
+          payload: { ...whole, ...fields },
+        }),
+      }),
+      { params: Promise.resolve({ id: receipt.id }) },
+    )
+    return { status: response.status, body: await response.json() }
+  }
+
   /** Нажатие ✕ на квитанции. */
   async function pressClose(receipt: Receipt): Promise<{ status: number; body: { code?: string; data?: Receipt } }> {
     const response = await cancelRoute.POST(
@@ -382,6 +412,7 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
     confirmRoute = await import("@/app/api/v1/ai/voice/actions/[id]/confirmation/route")
     commitRoute = await import("@/app/api/v1/ai/voice/actions/[id]/commit/route")
     cancelRoute = await import("@/app/api/v1/ai/voice/actions/[id]/cancel/route")
+    editRoute = await import("@/app/api/v1/ai/voice/actions/[id]/route")
     endRoute = await import("@/app/api/v1/ai/voice/session/end/route")
     reaperRoute = await import("@/app/api/cron/voice-session-reaper/route")
     claimExecution = (await import("@/lib/ai/voice/action-execution-claim")).claimAiVoiceActionExecution
@@ -2134,6 +2165,159 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         const answer = await ask(tool)
         expect(JSON.stringify(answer.body), tool).toContain(needle)
       }
+    })
+  })
+
+  /**
+   * Помощник записал не то имя — и повтор голосом этого не лечит.
+   *
+   * Разговор владельца 2026-11-06 (орг Zeytun Pharma, 06:51 UTC): «создай
+   * клиента, компания fanumsec» — модель услышала «PhantomSec». На «нет, измени
+   * на fanumsec» ревизия выросла до второй, а название осталось тем же: для
+   * распознавателя «фанум-сек» и «фантом-сек» одно слово. Человек бросил
+   * квитанцию крестиком, и в CRM не появилось ничего.
+   *
+   * Отсюда два пути, и оба проверяются здесь: сервер говорит, что поправка
+   * ничего не изменила (сам он единственный, кто это видит), а правка руками в
+   * квитанции пишет имя буква в букву.
+   */
+  describe("сценарий: записал не то имя", () => {
+    const HEARD = "PhantomSec"
+    const SAID = "fanumsec"
+
+    it("повтор того же слова помечается, настоящая поправка — нет", async () => {
+      const first = await propose("propose_create_lead", {
+        contactName: "Rəşad Rəhimov",
+        companyName: HEARD,
+      })
+      expect(first.status).toBe(201)
+      // Пометки на первом черновике быть не может: сравнивать не с чем.
+      expect(first.body.data!.unchangedFields).toBeUndefined()
+
+      // «Нет, компания fanumsec» — и услышано снова то же самое. Поправку
+      // модель присылает полным набором: имя контакта она не забыла.
+      const circle = await propose("propose_create_lead", {
+        contactName: "Rəşad Rəhimov",
+        companyName: HEARD,
+      })
+      expect(circle.status).toBe(201)
+      expect(circle.body.data!.id).toBe(first.body.data!.id)
+      expect(circle.body.data!.revision).toBe(2)
+      // Вот это и есть то, чего модель о своём вызове знать не может.
+      expect(circle.body.data!.unchangedFields).toEqual(["contactName", "companyName"])
+
+      // Поправка, которая меняет хоть одно поле, не помечается: неизменившиеся
+      // поля есть почти в каждой поправке, и пометка на них ничего не стоила бы.
+      const real = await propose("propose_create_lead", {
+        contactName: "Rəşad Rəhimov",
+        companyName: SAID,
+      })
+      expect(real.status).toBe(201)
+      expect(real.body.data!.unchangedFields).toBeUndefined()
+      expect(previewField(real.body.data!, "companyName")).toBe(SAID)
+
+      // А названное раньше не потерялось по дороге.
+      expect(previewField(real.body.data!, "contactName")).toBe("Rəşad Rəhimov")
+    })
+
+    it("правка руками в квитанции пишет имя буква в букву", async () => {
+      const heard = await propose("propose_create_lead", {
+        contactName: "Könül Məmmədova",
+        companyName: HEARD,
+      })
+      expect(heard.status).toBe(201)
+
+      // «Изменить» → стёр «PhantomSec», написал «Fanumsec» → «Сохранить».
+      const typed = await typeIntoReceipt(heard.body.data!, { companyName: "Fanumsec" })
+      expect(typed.status).toBe(200)
+      const corrected = typed.body.data!
+      expect(corrected.revision).toBe(2)
+      expect(previewField(corrected, "companyName")).toBe("Fanumsec")
+      // Имя контакта правка не уронила: форма присылает нагрузку целиком.
+      expect(previewField(corrected, "contactName")).toBe("Könül Məmmədova")
+
+      expect((await pressCreate(corrected)).status).toBe(200)
+      const lead = await bypass(() => prisma.lead.findFirstOrThrow({
+        where: { organizationId: ORG, contactName: "Könül Məmmədova" },
+      }))
+      // Буква в букву: выдуманное название никто не «улучшает» по дороге.
+      expect(lead.companyName).toBe("Fanumsec")
+    })
+
+    it("подтверждение, выданное до правки, после неё не проходит", async () => {
+      const heard = await propose("propose_create_lead", {
+        contactName: "Elçin Nəsirov",
+        companyName: HEARD,
+      })
+      const draft = heard.body.data!
+
+      // Доказательство на старую ревизию выдано…
+      const proofResponse = await confirmRoute.POST(
+        post(`/api/v1/ai/voice/actions/${draft.id}/confirmation`, {
+          expectedRevision: draft.revision,
+          payloadHash: draft.payloadHash,
+          confirmed: true,
+        }),
+        { params: Promise.resolve({ id: draft.id }) },
+      )
+      expect(proofResponse.status).toBe(201)
+      const proof = (await proofResponse.json()) as {
+        data: { confirmationEventId: string; confirmationToken: string }
+      }
+
+      // …а потом человек поправил название на экране.
+      const typed = await typeIntoReceipt(draft, { companyName: "Fanumsec" })
+      expect(typed.status).toBe(200)
+
+      // Старое доказательство не записывает: подтверждали другое имя.
+      const commit = await commitRoute.POST(
+        post(`/api/v1/ai/voice/actions/${draft.id}/commit`, {
+          confirmationEventId: proof.data.confirmationEventId,
+          confirmationToken: proof.data.confirmationToken,
+          expectedRevision: draft.revision,
+          payloadHash: draft.payloadHash,
+        }),
+        { params: Promise.resolve({ id: draft.id }) },
+      )
+      expect(commit.status).toBe(409)
+      expect(await bypass(() => prisma.lead.count({
+        where: { organizationId: ORG, contactName: "Elçin Nəsirov" },
+      }))).toBe(0)
+
+      // Новое — записывает, и с поправленным именем.
+      expect((await pressCreate(typed.body.data!)).status).toBe(200)
+      expect((await bypass(() => prisma.lead.findFirstOrThrow({
+        where: { organizationId: ORG, contactName: "Elçin Nəsirov" },
+      }))).companyName).toBe("Fanumsec")
+    })
+
+    it("выдуманный идентификатор в правке в CRM не попадает", async () => {
+      // Исполнителя сервер находит по имени сам, и в квитанции он — ссылка;
+      // форма её не предлагает перепечатывать (REFERENCE_FIELD_KEYS), но
+      // эндпоинт правки — это дверь, и держать её должен он сам.
+      const draft = (await propose("propose_create_task", {
+        title: "Fanumsec-ə zəng",
+        assigneeName: "Leyla",
+      })).body.data!
+      expect(previewField(draft, "assignedTo")).toBe("user-colleague")
+
+      // Сейчас эндпоинт правки такую строку ПРИНИМАЕТ, а отказывает кнопка:
+      // исполнителя проверяет сама команда. Записать это нельзя — и именно
+      // «нельзя записать» здесь и закреплено. Что отказ приходит на кнопке, а
+      // не на сохранении правки, — известный зазор того же рода, что и
+      // квитанция, обещавшая исполнителя, которого команда отвергает.
+      const typed = await typeIntoReceipt(draft, { assignedTo: "user-from-nowhere" })
+      expect(typed.status).toBe(200)
+
+      const pressed = await pressCreate(typed.body.data!)
+      expect(pressed.step).toBe("commit")
+      expect(pressed.status).toBe(400)
+      expect(pressed.body.code).toBe("VALIDATION_FAILED")
+      // В CRM не появилось ничего, а квитанция закрыта как неудавшаяся.
+      expect(await bypass(() => prisma.task.count({
+        where: { organizationId: ORG, title: "Fanumsec-ə zəng" },
+      }))).toBe(0)
+      expect((await storedIntent(typed.body.data!.id)).state).toBe("failed")
     })
   })
 })

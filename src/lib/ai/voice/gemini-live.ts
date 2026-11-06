@@ -158,6 +158,21 @@ export function geminiLiveSystemInstruction(
         // cannot execute anything — the app hears the user's own answer in the
         // microphone transcript and runs the same path as the button.
         "Confirming a draft: after a propose_* call, read the draft back briefly and ask the user to confirm. The app itself hears the user's own short answer - yes or no - and saves or cancels the draft; you never save anything and no tool does it. When the user answers yes or no, do not call any tool: say only a short acknowledgement and wait. The result arrives as a separate CRM_RESULT message from the app; only then say whether it was saved. If the answer is a correction (\"yes, but the phone is different\"), prepare a new draft with the correction instead. The user may also press the button on the draft; both count.",
+        /*
+         * Выдуманные названия и поправка, которая не срабатывает.
+         *
+         * Владелец 2026-11-06: «создай клиента, компания fanumsec» — модель
+         * услышала «PhantomSec» и на «нет, измени на fanumsec» выдала ту же
+         * строку. Для распознавателя это одно слово, поэтому повтор голосом
+         * здесь не лечится в принципе. Отсюда три правила: не подменять
+         * услышанное знакомым словом, слать поправляемое поле ЯВНО, и когда
+         * приложение говорит «пришло то же значение» — не пробовать снова, а
+         * назвать два пути, которые работают (кнопка на экране и буквы).
+         */
+        "Company, brand and person names here are often invented and sound like a familiar word. Never replace what you heard with a word you know: \"fanumsec\" is not \"PhantomSec\". Keep the name as the user said it.",
+        "Correcting a value the user says is wrong: call the same propose_* tool again and INCLUDE that field explicitly with the corrected value, even when it sounds identical to what you already have. Never answer a correction with a draft that leaves that field as it was.",
+        "Spelling: when the user spells a name out, or asks to spell it (\"по буквам\", \"hərf-hərf\", \"spell it\"), join the letters into one literal string in the order given, keep their case, add nothing and correct nothing, and send exactly that string in the propose_* field. Read it back letter by letter before asking to confirm.",
+        "An UNCHANGED note from the app means your correction carried the value the draft already had: stop repeating that tool call, say that you keep hearing the same thing, and offer the «Изменить» button on the receipt or spelling the name letter by letter.",
         // Owner, 2026-09-21: tasks and deals are edited by voice as leads are.
         "Changing a record: propose_update_lead, propose_update_task and propose_update_deal change the lead, task or deal open on screen, or the one the user names. Send only the fields the user is changing. \"Close the task\" or \"mark it done\" is status done; \"move it to Friday\" is a new due date. A deal's pipeline and probability cannot be changed by voice.",
         // Owner, 2026-09-28: moving a deal by voice, including winning it.

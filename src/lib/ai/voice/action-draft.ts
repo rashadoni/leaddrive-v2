@@ -129,6 +129,12 @@ export type AiVoiceActionDraftResponse = Readonly<{
   replayed: boolean
   /** Черновик, который этот заменил: поправка пользователя, а не второй черновик. */
   supersededIntentId?: string
+  /**
+   * Поля поправки, пришедшие с тем же значением, что в квитанции уже стоит, —
+   * то есть поправка ничего не изменила. Это свойство ВЫЗОВА, а не черновика:
+   * его видит только тот, кто сейчас поправлял.
+   */
+  unchangedFields?: readonly string[]
 }>
 
 function serializeIntent(
@@ -1112,6 +1118,37 @@ function isUniqueConstraintError(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === "P2002")
 }
 
+/**
+ * Поля поправки, пришедшие с тем же значением, что в квитанции уже стоит.
+ *
+ * 2026-11-06 владелец диктовал название компании «fanumsec», модель услышала
+ * «PhantomSec». Он сказал «нет, измени на fanumsec» — ревизия выросла, строка
+ * осталась та же: для распознавателя «фанум-сек» и «фантом-сек» одно слово, и
+ * повторять его голосом можно бесконечно. Модель этого увидеть НЕ может — для
+ * неё обе фразы одинаковы, — а сервер видит: он сравнивает присланное с тем,
+ * что уже лежит. Дальше консоль говорит об этом помощнику словами, и тот
+ * предлагает две дороги, которые работают: кнопка «Изменить» в квитанции и
+ * диктовка по буквам.
+ *
+ * Сравниваются РАЗРЕШЁННЫЕ значения: имя компании, которое сервер снова
+ * нашёл той же строкой, — это тоже «слышу то же самое».
+ *
+ * Отвечает `null`, если изменилось хоть что-нибудь, и это не придирка к
+ * формулировке. Поправку модель присылает ПОЛНЫМ набором полей, который у неё
+ * собрался («контакт, компания, источник»), поэтому отдельные неизменившиеся
+ * поля есть почти в каждой поправке — пометка на них срабатывала бы всегда и
+ * перестала бы читаться. Тупик — это когда не изменилось ни одно поле.
+ */
+function unchangedAmendmentFields(stored: JsonObject, incoming: JsonObject): string[] | null {
+  const keys = Object.keys(incoming)
+  if (keys.length === 0) return null
+  const unchanged = keys.filter((key) => (
+    Object.prototype.hasOwnProperty.call(stored, key)
+    && JSON.stringify(stored[key] ?? null) === JSON.stringify(incoming[key] ?? null)
+  ))
+  return unchanged.length === keys.length ? unchanged : null
+}
+
 export async function createAiVoiceActionDraft(
   auth: AuthResult,
   input: CreateAiVoiceActionDraftInput,
@@ -1130,13 +1167,18 @@ export async function createAiVoiceActionDraft(
   let payload = asJsonObject(input.payload)
   const amendment = await findAmendableDraft(auth, input)
   if (amendment) {
-    const merged = { ...asJsonObject(amendment.normalizedPayload), ...payload }
+    const stored = asJsonObject(amendment.normalizedPayload)
+    const merged = { ...stored, ...payload }
+    // Поправка, которая не изменила НИЧЕГО, — это не пустое действие, а тупик,
+    // и сказать о нём может только сервер: см. unchangedAmendmentFields.
+    const unchangedFields = unchangedAmendmentFields(stored, payload)
     try {
-      return await updateAiVoiceActionDraft(auth, {
+      const updated = await updateAiVoiceActionDraft(auth, {
         intentId: amendment.id,
         expectedRevision: amendment.revision,
         payload: merged,
       })
+      return unchangedFields ? { ...updated, unchangedFields } : updated
     } catch (error) {
       /**
        * Запись изменил кто-то другой, пока квитанция висела на экране.
