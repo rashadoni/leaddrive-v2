@@ -798,6 +798,9 @@ async function recordInboundAiResult(params: {
   }
 
   if (isPharmacyInboundPreview(call.consentAudit, params.callId)) {
+    // Owner's queue 2026-11-06, task 1b: an unfinished order of the line gets what its
+    // transcript has and it lacks, for a manager. In the background: the station waits for this answer.
+    if (transcription !== null && customerSpoke) recoverLineOrder(params.callId, transcription)
     return NextResponse.json({ success: true, analysisStatus: "test_preview" })
   }
   if (!customerSpoke) {
@@ -811,6 +814,19 @@ async function recordInboundAiResult(params: {
     insightsWhere: scope,
     placeCallback: false,
   })
+}
+
+function recoverLineOrder(callId: string, transcription: string) {
+  // Loaded here, not at the top: the line's host belongs to the line process, not to every result.
+  void (async () => {
+    const [{ zeytunLineHost }, { geminiTranscriptReader }, { geminiApiKey }] = await Promise.all([
+      import("@/lib/voice-agent/pharmacy/zeytun-line-host"), import("@/lib/voice-agent/pharmacy/zeytun-transcript-recovery"),
+      import("@/lib/ai/gemini-speech")])
+    const host = zeytunLineHost()
+    if (!host.recoverOrderFromTranscript) return
+    const result = await host.recoverOrderFromTranscript(callId, transcription, geminiTranscriptReader(geminiApiKey()))
+    if (result.status === "saved") console.log("[zeytun-line] transcript order", JSON.stringify(result))
+  })().catch((error: unknown) => console.warn("[zeytun-line] transcript order failed", error instanceof Error ? error.name : typeof error))
 }
 
 /**
