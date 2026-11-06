@@ -1139,6 +1139,50 @@ class SpeechRelayTests(unittest.TestCase):
         self.assertFalse(relay.turn_filler_tick())
         self.assertEqual(played, [2.5])
 
+    def test_a_phrase_that_cut_the_agent_off_gets_a_short_ha_once(self):
+        # Owner 2026-11-06: «когда перебиваешь, он начинает сразу в тишину… говорил «ага» или хмыкал».
+        relay, state = self.nudge_relay()
+        played = []
+        relay.filler = lambda text=None, key=None, kind=None: played.append((state["now"], text, kind)) or True
+        relay.playing = lambda: state.get("playing", False)
+        # No interruption: no "Hə.".
+        relay.caller_spoke()
+        relay.caller_done()
+        state["now"] = 5.0
+        self.assertFalse(relay.barge_ack_tick())
+        # The caller cut the agent off: "Hə." 0.3 s after the station closed the phrase, once.
+        state["now"] = 10.0
+        relay.filter(self.content(interrupted=True))
+        relay.caller_spoke()
+        state["now"] = 12.0
+        relay.caller_done()
+        state["now"] = 12.2
+        self.assertFalse(relay.barge_ack_tick())
+        state["now"] = 12.3
+        self.assertTrue(relay.barge_ack_tick())
+        state["now"] = 13.0
+        self.assertFalse(relay.barge_ack_tick())
+        self.assertEqual(played, [(12.3, bridge_module.ZEYTUN_BARGE_ACK, "barge_ack")])
+        # An answer that began first, or audio still playing: nothing.
+        relay.filter(self.content(interrupted=True))
+        relay.caller_done()
+        relay.filter(self.content("Bisakodil, on beş qutu. ", audio=True))
+        state["now"] = 20.0
+        self.assertFalse(relay.barge_ack_tick())
+        relay.filter(self.content(interrupted=True))
+        relay.caller_done()
+        state["playing"] = True
+        state["now"] = 30.0
+        self.assertFalse(relay.barge_ack_tick())
+        # Off: None.
+        state["playing"] = False
+        relay.BARGE_ACK_SECONDS = None
+        relay.filter(self.content(interrupted=True))
+        relay.caller_done()
+        state["now"] = 40.0
+        self.assertFalse(relay.barge_ack_tick())
+        self.assertEqual(len(played), 1)
+
     def test_an_unanswered_question_is_asked_again_once_after_six_quiet_seconds(self):
         # Owner's call 2026-11-05 (4c36453f): "krem" never reached the model; 23 s of silence.
         relay, state = self.nudge_relay()
