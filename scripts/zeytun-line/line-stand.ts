@@ -398,6 +398,11 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
         core.drop()
         notes.push(`после шага ${step.n}: обрыв сессии Google по команде стенда, продление отклонено`)
       }
+      if (opts.dropAfterStep === step.n && !closed) {
+        await until(() => closed || quietFor(1500), 20_000)
+        core.drop()
+        notes.push(`после шага ${step.n}: обрыв сессии Google по команде стенда, продление отклонено`)
+      }
       if (closed || stopped) break
     }
     if (!closed) await until(() => closed || quietFor(2500), 30_000)

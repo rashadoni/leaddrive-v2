@@ -1,0 +1,256 @@
+{
+ "about": "Line stand, owner's queue 2026-11-06 task 2 (quantities misheard: 10→1, 8→9, 3→5): one product per phrase with a different number each, then two in one phrase. final: every line with its number.",
+ "voice": "Charon",
+ "steps": [
+  {
+   "n": 1,
+   "phrases": [
+    {
+     "say": "Salam, Zəfər aptekindən zəng edirəm.",
+     "hear": [
+      {
+       "label": "Zəfər",
+       "match": "z[ae]f[ae]r"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 2,
+   "phrases": [
+    {
+     "say": "No-şpa ampula on qutu.",
+     "hear": [
+      {
+       "label": "No-şpa",
+       "match": "No-?şpa|no-?spa|но-?шпа"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 3,
+   "phrases": [
+    {
+     "say": "Spazmalqon səkkiz qutu.",
+     "hear": [
+      {
+       "label": "Spazmalqon",
+       "match": "spazmal"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 4,
+   "phrases": [
+    {
+     "say": "Lineks üç qutu.",
+     "hear": [
+      {
+       "label": "Lineks",
+       "match": "lin[eia]ks|линекс"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 5,
+   "phrases": [
+    {
+     "say": "Smekta dörd qutu.",
+     "hear": [
+      {
+       "label": "Smekta",
+       "match": "sm[ei]kta|смекта"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 6,
+   "phrases": [
+    {
+     "say": "Magnerot on beş qutu.",
+     "hear": [
+      {
+       "label": "Magnerot",
+       "match": "magnerot|магнерот"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 7,
+   "phrases": [
+    {
+     "say": "Milgamma iyirmi qutu.",
+     "hear": [
+      {
+       "label": "Milgamma",
+       "match": "milgam|мильгам"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 8,
+   "phrases": [
+    {
+     "say": "Analgin yeddi qutu.",
+     "hear": [
+      {
+       "label": "Analgin",
+       "match": "anal[gq]in|анальгин"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 9,
+   "phrases": [
+    {
+     "say": "Aspirin kardio on iki qutu.",
+     "hear": [
+      {
+       "label": "Aspirin",
+       "match": "aspirin|аспирин"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 10,
+   "phrases": [
+    {
+     "say": "Bisakodil otuz qutu.",
+     "hear": [
+      {
+       "label": "Bisakodil",
+       "match": "bisa[ck]od[iy]l|бисакодил"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 11,
+   "phrases": [
+    {
+     "say": "Mezim forte doqquz qutu, Ketonal ampula iki qutu.",
+     "hear": [
+      {
+       "label": "Mezim",
+       "match": "mez[iy]m|мезим"
+      },
+      {
+       "label": "Ketonal",
+       "match": "ketonal|кетонал"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  },
+  {
+   "n": 12,
+   "phrases": [
+    {
+     "say": "Hamısı bu, təsdiq edirəm.",
+     "hear": [
+      {
+       "label": "təsdiq",
+       "match": "t[ae]sdiq"
+      }
+     ]
+    },
+    {
+     "say": "Yox, sağ olun.",
+     "hear": [
+      {
+       "label": "sağ olun",
+       "match": "sag ol"
+      }
+     ]
+    }
+   ],
+   "expect": {}
+  }
+ ],
+ "final": [
+  {
+   "spoken": "[Nn]o-?[şs]pa|Но-?шпа",
+   "quantity": 10,
+   "label": "No-şpa ampula on qutu"
+  },
+  {
+   "spoken": "[Ss]pazmal|Спазмал",
+   "quantity": 8,
+   "label": "Spazmalqon səkkiz qutu"
+  },
+  {
+   "spoken": "[Ll]in[eia]ks|Линекс",
+   "quantity": 3,
+   "label": "Lineks üç qutu"
+  },
+  {
+   "spoken": "[Ss]m[ei]kta|Смекта",
+   "quantity": 4,
+   "label": "Smekta dörd qutu"
+  },
+  {
+   "spoken": "[Mm]agnerot|Магнерот",
+   "quantity": 15,
+   "label": "Magnerot on beş qutu"
+  },
+  {
+   "spoken": "[Mm]il[gq]am|Мильгам",
+   "quantity": 20,
+   "label": "Milgamma iyirmi qutu"
+  },
+  {
+   "spoken": "[Aa]nal[gq]in|Анальгин",
+   "quantity": 7,
+   "label": "Analgin yeddi qutu"
+  },
+  {
+   "spoken": "[Aa]spirin|Аспирин",
+   "quantity": 12,
+   "label": "Aspirin kardio on iki qutu"
+  },
+  {
+   "spoken": "[Bb]isa[ck]od[iy]l|Бисакодил",
+   "quantity": 30,
+   "label": "Bisakodil otuz qutu"
+  },
+  {
+   "spoken": "[Mm]ez[iy]m|Мезим",
+   "quantity": 9,
+   "label": "Mezim forte doqquz (9)"
+  },
+  {
+   "spoken": "[Kk]etonal|Кетонал",
+   "quantity": 2,
+   "label": "Ketonal ampula iki (2)"
+  }
+ ]
+}

@@ -431,7 +431,10 @@ export const ZEYTUN_LINE_PROMPT = [
   ["Keep each quantity in the caller's unit (qutu, ədəd, ampula, flakon); never convert. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit, never adds. Never change mg, ml, pack size or units by assumption.",
     "Keep each quantity in the caller's unit (qutu, ədəd, ampula, flakon); never convert or assume mg, ml or pack size. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit, never adds."],
   ["If lookup fails, tell the caller you cannot verify that item and retain their wording for review; the line stays unresolved.",
-    "If lookup fails, say you cannot verify that item and keep their wording; the line stays unresolved."],
+    // Owner's queue 2026-11-06, task 2 (line stand): "Mezim forte doqquz qutu, Ketonal ampula iki qutu"
+    // with a breath at the comma reached the model as two phrases; the second cut off the Mezim lookup,
+    // and the model told the pharmacy the catalog could not be checked. A cut-off lookup is not a failure.
+    "If a lookup you asked for has no result because the caller spoke meanwhile, search again before you answer; never say the catalog is unavailable then. If lookup fails, say you cannot verify that item and keep their wording; the line stays unresolved."],
   ["Never round or offer a discount; mention the price list date only if asked. Without listPrice, say you cannot confirm the price.",
     "Never round or offer a discount. Without listPrice, say you cannot confirm the price."],
   ["If it leaves lines out, name them and say why. ",

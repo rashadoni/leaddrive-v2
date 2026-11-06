@@ -40,6 +40,7 @@ import { TaskDetailView } from "@/components/tasks/task-detail-view"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { resolveLaneKey } from "@/lib/tasks/board-columns"
 import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
+import { DEFAULT_BOARD_VIEW, browserStorage, readBoardView, rememberBoardView, type BoardView } from "@/lib/tasks/board-view"
 import { BoardReports } from "@/components/boards/board-reports"
 import { DepartmentBoardView } from "@/components/boards/department-board-view"
 import { OperationalReport } from "@/components/tasks/operational-report"
@@ -189,7 +190,16 @@ function BoardInner() {
   const [showCreate, setShowCreate] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null) // task open in the detail modal
-  const [view, setView] = useState<"board" | "list" | "reports">("board")
+  // Opens as the table, like a Bordio project; a person's own pick is kept per board (src/lib/tasks/board-view.ts).
+  // Read after mount, not in the initializer: the server render has no localStorage.
+  const [view, setViewState] = useState<BoardView>(DEFAULT_BOARD_VIEW)
+  useEffect(() => {
+    setViewState(readBoardView(divisionId, browserStorage()))
+  }, [divisionId])
+  const setView = useCallback((next: BoardView) => {
+    setViewState(next)
+    rememberBoardView(divisionId, next, browserStorage())
+  }, [divisionId])
   const [reportsReloadKey, setReportsReloadKey] = useState(0)
   const [showAllDone, setShowAllDone] = useState(false) // DONE column expanded in-place (vs navigating away)
 
