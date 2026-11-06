@@ -4,6 +4,7 @@ import { act, createElement, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { orgFromSession } from "@/lib/nav-items"
+import { applyUserModuleMask, USER_HIDEABLE_MODULE_IDS } from "@/lib/user-module-access"
 
 const state = vi.hoisted(() => ({
   session: {
@@ -19,12 +20,14 @@ const state = vi.hoisted(() => ({
   pathname: "/dashboard",
   mounts: 0,
   unmounts: 0,
+  replaced: [] as string[],
 }))
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: state.sessionPresent ? state.session : null, status: state.status }),
 }))
-vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }))
+const router = { replace: (href: string) => { state.replaced.push(href) }, push: () => {} }
+vi.mock("next/navigation", () => ({ usePathname: () => state.pathname, useRouter: () => router }))
 vi.mock("next/font/google", () => ({ Plus_Jakarta_Sans: () => ({ variable: "synthetic-font" }) }))
 vi.mock("@/hooks/use-mtm-org-settings", () => ({ useNavOrgContext: (user: unknown) => orgFromSession(user) }))
 
@@ -44,7 +47,7 @@ vi.mock("@/contexts/launcher-prefs-context", () => ({ LauncherPrefsProvider: ({ 
 vi.mock("@/components/ui/motion", () => ({
   MotionPage: ({ children }: { children: ReactNode }) => createElement("div", null, children),
 }))
-vi.mock("@/components/sidebar", () => ({ Sidebar: () => null }))
+vi.mock("@/components/sidebar", () => ({ Sidebar: () => createElement("nav", { "data-testid": "sidebar" }) }))
 vi.mock("@/components/support-mobile-navigation", () => ({ SupportMobileNavigation: () => null }))
 vi.mock("@/components/header", () => ({ Header: () => null }))
 vi.mock("@/components/command-search", () => ({ CommandSearch: () => null }))
@@ -100,6 +103,7 @@ function cloneSession() {
 }
 
 beforeEach(() => {
+  state.replaced = []
   state.session = {
     iat: 1,
     user: {
@@ -223,5 +227,34 @@ describe("dashboard shell session lifecycle", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1) })
     expect(page()?.textContent).toBe("edits:0")
     expect(state.mounts).toBe(1)
+  })
+
+  // Owner, 2026-11-06: someone given the boards and nothing else works without
+  // the sidebar, and lands on the boards instead of the CRM home.
+  it("drops the sidebar and opens the boards for a boards-only person", async () => {
+    const everythingButBoards = USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "boards")
+    const allOn = { crm: true, sales: true, marketing: true, analytics: true, support: true, settings: true, mtm: false }
+    state.session.user = {
+      ...state.session.user,
+      role: "sales",
+      modules: applyUserModuleMask({ plan: "enterprise", modules: allOn }, everythingButBoards) as typeof allOn,
+      hiddenModules: everythingButBoards,
+    } as typeof state.session.user
+    await render()
+    expect(container.querySelector('[data-testid="sidebar"]')).toBeNull()
+    expect(state.replaced).toEqual(["/boards"])
+
+    state.pathname = "/boards/div-1"
+    state.replaced = []
+    await render()
+    expect(container.querySelector('[data-testid="sidebar"]')).toBeNull()
+    expect(page()).not.toBeNull()
+    expect(state.replaced).toEqual([])
+  })
+
+  it("keeps the sidebar and the home page for everyone else", async () => {
+    await render()
+    expect(container.querySelector('[data-testid="sidebar"]')).not.toBeNull()
+    expect(state.replaced).toEqual([])
   })
 })

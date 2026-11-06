@@ -7,7 +7,8 @@ import { MODULE_REGISTRY, ADDON_MODULES, SEPARATE_SUBSCRIPTIONS, PAID_ADDONS } f
 const EXTRA_FEATURE_FLAGS = ["whatsapp", "complaints_register"] as const
 
 export const FEATURE_CATALOG: string[] = [
-  ...Object.keys(MODULE_REGISTRY),
+  // A derived module (boards follow crm) is never a tenant feature.
+  ...Object.entries(MODULE_REGISTRY).filter(([, definition]) => !("derived" in definition && definition.derived)).map(([id]) => id),
   ...EXTRA_FEATURE_FLAGS,
 ]
 

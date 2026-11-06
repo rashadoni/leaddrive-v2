@@ -63,7 +63,8 @@ export const EVENT_DOMAIN_CATALOG = [
   {
     domainId: "crm",
     title: "CRM",
-    scopes: ["crm"],
+    // `boards` follows crm for the tenant; it is split off only per user (modules.ts).
+    scopes: ["crm", "boards"],
     profiles: ["B"],
     migrationWave: 3,
     implementation: planned,
